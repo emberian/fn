@@ -67,7 +67,7 @@
      (otherwise (mv :schema off fn2-pool))))
    (defun fn2-run-layout-size (sid lv base fn2-fields)
     (declare (xargs :stobjs fn2-fields :guard ,room) (ignorable lv base fn2-fields))
-    (case sid ,@(fn2-ra-layout-arms rows "-SIZE" '(base fn2-fields)) (otherwise 0)))
+    (nfix (case sid ,@(fn2-ra-layout-arms rows "-SIZE" '(base fn2-fields)) (otherwise 0))))
    (defun fn2-run-layout-compare (sid abase bbase ak as ag bk bs bg fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-fields fn2-pool)
      :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp abase) (natp bbase)
@@ -83,6 +83,7 @@
  `(defthm ,name
    (implies ,guard (and ,@(fn2-fc-shape-claims outputs call)))
    :hints (("Goal" :in-theory (disable fn2-run-writersp fn2-run-writers-wfp fn2-run-restartsp fn2-run-restarts-wfp
+                                       fn2-run-cursorsp fn2-run-cursors-wfp fn2-run-pathsp fn2-run-paths-wfp
                                        fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp ,@disables)))))
 
 ; Shape lemmas, by cases over the arms, from each codec's own lemmas.
@@ -106,6 +107,7 @@
     (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp base)
                   (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields)))
              (natp (fn2-run-layout-size sid lv base fn2-fields)))
+    :hints (("Goal" :in-theory (disable fn2-fields-rows)))
     :rule-classes :type-prescription)
    (in-theory (disable fn2-run-layout-decode fn2-run-layout-encode fn2-run-layout-size fn2-run-layout-compare))))
 
@@ -469,52 +471,99 @@
          ((unless (eq c2 :ok)) (mv c2 fn2-run-cursors fn2-fields))
          ((mv c2 fn2-run-cursors) (fn2-run-cursor-set-left c fn2-run-cursors)))
      (mv (if (eq c2 :ok) :more c2) fn2-run-cursors fn2-fields)))
+   (fn2-ra-shape fn2-run-step-header-shape
+    (fn2-run-step-header c level slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+   (fn2-ra-shape fn2-run-step-seek-shape
+    (fn2-run-step-seek c sid left level budget lo hi idx off qbase slot gen unit counter rb ok os og qk qs qg fn2-run-cursors fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
+    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+   (fn2-ra-shape fn2-run-step-child-shape
+    (fn2-run-step-child c sid childp level nkeys slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+   (fn2-ra-shape fn2-run-step-deliver-shape
+    (fn2-run-step-deliver c sid idx off slot gen unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
+    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+   (fn2-ra-shape fn2-run-step-up-shape
+    (fn2-run-step-up c level top rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-run-readerp rb fn2-fields))
+    ((fn2-run-cursors 1) (fn2-fields 2)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
    (in-theory (disable fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up))
-   ;; One step of a descent (lookup) or of a scan; SCAN selects which the
+   ;; Each phase reads the cursor row and checks it, then runs its helper;
+   ;; the step dispatches on the phase.
+   (defun fn2-run-phase-header (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))) (ignorable budget qbase qk qs qg fn2-run-cache))
+    (fn2-ra-with-cursor (level slot gen lo hi idx off unit counter ok os og) (fn2-run-step-header c level slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
+   (fn2-ra-shape fn2-run-phase-header-shape (fn2-run-phase-header c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-phase-header))
+   (defun fn2-run-phase-seek (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))) (ignorable budget qbase qk qs qg fn2-run-cache))
+    (fn2-ra-with-cursor (sid left level slot gen lo hi idx off unit counter ok os og) (mv-let (code fn2-run-cursors fn2-fields)
+      (fn2-run-step-seek c sid left level budget lo hi idx off qbase slot gen unit counter rb ok os og qk qs qg fn2-run-cursors fn2-fields fn2-pool)
+     (mv code fn2-run-cursors fn2-run-paths fn2-fields))))
+   (fn2-ra-shape fn2-run-phase-seek-shape (fn2-run-phase-seek c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-phase-seek))
+   (defun fn2-run-phase-child (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))) (ignorable budget qbase qk qs qg fn2-run-cache))
+    (fn2-ra-with-cursor (sid phase level nkeys slot gen lo hi idx off unit counter ok os og) (fn2-run-step-child c sid (equal phase *fn2-run-cursor-phase-child*) level nkeys slot gen lo hi idx off unit counter rb ok os og
+                         fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
+   (fn2-ra-shape fn2-run-phase-child-shape (fn2-run-phase-child c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-phase-child))
+   (defun fn2-run-phase-deliver (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))) (ignorable budget qbase qk qs qg fn2-run-cache))
+    (fn2-ra-with-cursor (sid idx off slot gen unit counter ok os og) (mv-let (code fn2-run-cursors fn2-fields)
+      (fn2-run-step-deliver c sid idx off slot gen unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
+     (mv code fn2-run-cursors fn2-run-paths fn2-fields))))
+   (fn2-ra-shape fn2-run-phase-deliver-shape (fn2-run-phase-deliver c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-phase-deliver))
+   (defun fn2-run-phase-up (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))) (ignorable budget qbase qk qs qg fn2-run-cache))
+    (fn2-ra-with-cursor (level top ok os og) (mv-let (code fn2-run-cursors fn2-fields)
+      (fn2-run-step-up c level top rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+     (mv code fn2-run-cursors fn2-run-paths fn2-fields))))
+   (fn2-ra-shape fn2-run-phase-up-shape (fn2-run-phase-up c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-phase-up))
+   ;; One step of a descent (lookup) or of a scan; SCAN selects what the
    ;; positioned phases mean: final answers for a lookup, entries for a scan.
    (defun fn2-run-cursor-step (scan c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-     :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+    (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))))
     (b* (((unless (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)))) (mv :bounds fn2-run-cursors fn2-run-paths fn2-fields))
-         (sid (fn2-run-cursors-schema c fn2-run-cursors))
-         (phase (fn2-run-cursors-phase c fn2-run-cursors)) (level (nfix (fn2-run-cursors-level c fn2-run-cursors)))
-         (top (nfix (fn2-run-cursors-top c fn2-run-cursors))) (left (equal (fn2-run-cursors-left c fn2-run-cursors) 1))
-         (slot (fn2-run-cursors-slot c fn2-run-cursors)) (gen (fn2-run-cursors-gen c fn2-run-cursors))
-         (lo (nfix (fn2-run-cursors-lo c fn2-run-cursors))) (hi (nfix (fn2-run-cursors-hi c fn2-run-cursors)))
-         (idx (nfix (fn2-run-cursors-idx c fn2-run-cursors))) (off (nfix (fn2-run-cursors-off c fn2-run-cursors)))
-         (unit (fn2-run-cursors-unit c fn2-run-cursors)) (counter (fn2-run-cursors-counter c fn2-run-cursors))
-         (rb (nfix (fn2-run-cursors-rb c fn2-run-cursors)))
-         (ok (fn2-run-cursors-okind c fn2-run-cursors)) (os (fn2-run-cursors-oslot c fn2-run-cursors))
-         (og (fn2-run-cursors-ogen c fn2-run-cursors))
-         (nkeys (fn2-run-layout-keys sid))
-         ((unless (and (fn2-run-readerp rb fn2-fields) (natp qbase) (natp nkeys)
-                       (<= (+ qbase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
-          (mv :bounds fn2-run-cursors fn2-run-paths fn2-fields)))
+         (phase (fn2-run-cursors-phase c fn2-run-cursors)))
      (cond
-      ((equal phase *fn2-run-cursor-phase-header*)
-       (fn2-run-step-header c level slot gen lo hi idx off unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
+      ((equal phase *fn2-run-cursor-phase-header*) (fn2-run-phase-header c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((equal phase *fn2-run-cursor-phase-seek*)
-       (mv-let (code fn2-run-cursors fn2-fields)
-         (fn2-run-step-seek c sid left level budget lo hi idx off qbase slot gen unit counter rb ok os og qk qs qg fn2-run-cursors fn2-fields fn2-pool)
+       (mv-let (code fn2-run-cursors fn2-run-paths fn2-fields) (fn2-run-phase-seek c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
         (mv (if (and scan (member-eq code '(:found :absent))) :more code) fn2-run-cursors fn2-run-paths fn2-fields)))
       ((or (equal phase *fn2-run-cursor-phase-child*) (equal phase *fn2-run-cursor-phase-miss*))
-       (fn2-run-step-child c sid (equal phase *fn2-run-cursor-phase-child*) level nkeys slot gen lo hi idx off unit counter rb ok os og
-                           fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+       (fn2-run-phase-child c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((and scan (or (equal phase *fn2-run-cursor-phase-found*) (equal phase *fn2-run-cursor-phase-absent*)
                      (equal phase *fn2-run-cursor-phase-at*)))
-       (mv-let (code fn2-run-cursors fn2-fields)
-         (fn2-run-step-deliver c sid idx off slot gen unit counter rb ok os og fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
-        (mv code fn2-run-cursors fn2-run-paths fn2-fields)))
-      ((and scan (equal phase *fn2-run-cursor-phase-up*))
-       (mv-let (code fn2-run-cursors fn2-fields)
-         (fn2-run-step-up c level top rb ok os og fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv code fn2-run-cursors fn2-run-paths fn2-fields)))
+       (fn2-run-phase-deliver c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+      ((and scan (equal phase *fn2-run-cursor-phase-up*)) (fn2-run-phase-up c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((equal phase *fn2-run-cursor-phase-found*) (mv :found fn2-run-cursors fn2-run-paths fn2-fields))
       ((equal phase *fn2-run-cursor-phase-absent*) (mv :absent fn2-run-cursors fn2-run-paths fn2-fields))
       ((equal phase *fn2-run-cursor-phase-end*) (mv :end fn2-run-cursors fn2-run-paths fn2-fields))
       ((equal phase *fn2-run-cursor-phase-lost*) (mv :lost fn2-run-cursors fn2-run-paths fn2-fields))
       (t (mv :state fn2-run-cursors fn2-run-paths fn2-fields)))))
+   (fn2-ra-shape fn2-run-cursor-step-shape
+    (fn2-run-cursor-step scan c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))
+    ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-run-layout-keys fn2-run-cursors-schema fn2-run-cursors-phase fn2-run-cursors-level fn2-run-cursors-top fn2-run-cursors-left fn2-run-cursors-slot fn2-run-cursors-gen fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx fn2-run-cursors-off fn2-run-cursors-unit fn2-run-cursors-counter fn2-run-cursors-rb fn2-run-cursors-okind fn2-run-cursors-oslot fn2-run-cursors-ogen))
+   (in-theory (disable fn2-run-cursor-step))
    (defun fn2-run-lookup-step (c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
      :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
@@ -525,7 +574,40 @@
      :guard (and (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))))
     (fn2-run-cursor-step t c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+   (fn2-ra-shape fn2-run-lookup-step-shape
+    (fn2-run-lookup-step c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
+   (fn2-ra-shape fn2-run-scan-step-shape
+    (fn2-run-scan-step c budget qbase qk qs qg fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (and (fn2-run-cursorsp fn2-run-cursors) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-pathsp fn2-run-paths) (fn2-run-paths-wfp fn2-run-paths) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-run-cursors 1) (fn2-run-paths 2) (fn2-fields 3)) (fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows))
    (in-theory (disable fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step))))
+
+;; A phase of a cursor step reads the cursor row and checks it before running
+;; its helper; it binds only the row values VARS the helper uses.
+(defconst *fn2-ra-cursor-bindings*
+ '((sid (fn2-run-cursors-schema c fn2-run-cursors)) (phase (fn2-run-cursors-phase c fn2-run-cursors))
+   (level (nfix (fn2-run-cursors-level c fn2-run-cursors))) (top (nfix (fn2-run-cursors-top c fn2-run-cursors)))
+   (left (equal (fn2-run-cursors-left c fn2-run-cursors) 1))
+   (slot (fn2-run-cursors-slot c fn2-run-cursors)) (gen (fn2-run-cursors-gen c fn2-run-cursors))
+   (lo (nfix (fn2-run-cursors-lo c fn2-run-cursors))) (hi (nfix (fn2-run-cursors-hi c fn2-run-cursors)))
+   (idx (nfix (fn2-run-cursors-idx c fn2-run-cursors))) (off (nfix (fn2-run-cursors-off c fn2-run-cursors)))
+   (unit (fn2-run-cursors-unit c fn2-run-cursors)) (counter (fn2-run-cursors-counter c fn2-run-cursors))
+   (ok (fn2-run-cursors-okind c fn2-run-cursors)) (os (fn2-run-cursors-oslot c fn2-run-cursors))
+   (og (fn2-run-cursors-ogen c fn2-run-cursors))
+   (nkeys (fn2-run-layout-keys (fn2-run-cursors-schema c fn2-run-cursors)))))
+(defun fn2-ra-select-bindings (vars bindings)
+ (declare (xargs :verify-guards nil))
+ (if (atom bindings) nil
+  (if (member-eq (caar bindings) vars) (cons (car bindings) (fn2-ra-select-bindings vars (cdr bindings)))
+    (fn2-ra-select-bindings vars (cdr bindings)))))
+(defmacro fn2-ra-with-cursor (vars body)
+ `(b* (((unless (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)))) (mv :bounds fn2-run-cursors fn2-run-paths fn2-fields))
+       (rb (nfix (fn2-run-cursors-rb c fn2-run-cursors)))
+       ((unless (and (fn2-run-readerp rb fn2-fields) (natp qbase) (natp (fn2-run-layout-keys (fn2-run-cursors-schema c fn2-run-cursors)))
+                     (<= (+ qbase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
+        (mv :bounds fn2-run-cursors fn2-run-paths fn2-fields))
+       ,@(fn2-ra-select-bindings vars *fn2-ra-cursor-bindings*))
+   ,body))
 
 ;; The overlay, over the dispatcher. FN2-OV-ENTRY decodes the entry at sorted
 ;; position POS into rows EB. FN2-OV-LOCATE finds the lower bound of the query
@@ -913,7 +995,7 @@
  '(fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-decode fn2-run-layout-encode
    fn2-run-layout-size fn2-run-layout-compare fn2-run-add-ready fn2-run-add-write fn2-run-add fn2-run-seek fn2-run-build-add
    fn2-run-build-promote fn2-run-build-work fn2-run-build-start fn2-run-build-page fn2-run-build-finish
-   fn2-run-skip fn2-run-nth fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step fn2-ov-entry fn2-ov-order fn2-ov-search fn2-ov-locate fn2-ov-write fn2-ov-insert fn2-ov-start fn2-ov-place fn2-ov-insert-at fn2-run-cursor-start fn2-run-cache-install))
+   fn2-run-skip fn2-run-nth fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up fn2-run-phase-header fn2-run-phase-seek fn2-run-phase-child fn2-run-phase-deliver fn2-run-phase-up fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step fn2-ov-entry fn2-ov-order fn2-ov-search fn2-ov-locate fn2-ov-write fn2-ov-insert fn2-ov-start fn2-ov-place fn2-ov-insert-at fn2-run-cursor-start fn2-run-cache-install))
 (defconst *fn2-run-glue-old-suffixes*
  '("-ENTRY-ADD" "-INDEX-ADD" "-ENTRY-SEEK" "-INDEX-SEEK" "-BUILD-ADD" "-BUILD-PROMOTE"
    "-INDEX-SKIP" "-INDEX-NTH" "-LOOKUP-STEP"))
@@ -965,8 +1047,21 @@
 ;; certify-time check; its teeth: the assembled schemas pass, and a schema
 ;; carrying per-schema glue admitted without guard verification is refused
 ;; by name.
+;; The generated proofs run in one theory, whatever the including world's.
+;; deflayout disables the fields and pool accessors locally in each codec's
+;; book; a world that includes a schema's certified book has them enabled
+;; again, and the assembly's proofs there took ten times as long (159 s
+;; against 17 s). The assembly folds the same accessors, and the rows
+;; accessors of the digest and checker tables, as runs.lisp does.
+(defmacro fn2-run-assembly-theory ()
+ '(local (in-theory (disable fn2-fieldsp fn2-poolp fn2-fields-rows fn2-fields-value fn2-fields-ref-slot
+                             fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status fn2-pool-rows
+                             fn2-pool-read fn2-pool-write fn2-fields-decode-phase fn2-fields-decode-pos fn2-fields-decode-acc
+                             fn2-fields-decode-high fn2-fields-decode-size fn2-fields-decode-ref fn2-fields-decode-payload
+                             fn2-fields-decode-next fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows))))
 (defmacro fn2-run-assemble ()
- '(progn
+ '(encapsulate ()
+   (fn2-run-assembly-theory)
    (make-event
     (if (fn2-rs-assembled (w state))
         (er soft 'fn2-run-assemble "The runs are already assembled: ~x0." (fn2-rs-assembled (w state)))

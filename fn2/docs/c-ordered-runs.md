@@ -18,7 +18,8 @@ departure from a decision that is not recorded here is a defect.
 | `defrunschema`: per-schema entry, index-entry and run-descriptor layouts, key comparison, writer/seek entry points, the schema's registration | `fn2/books/runs-schema.lisp` | C1 |
 | multi-page runs: the build (one writer per level, promotion of sealed pages into index entries), the verified-page cache, resumable lookup cursors, the run-level adapter and keystone | `fn2/books/runs.lisp` | C1b' |
 | the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1c |
-| identity schema, Binding merge, conflict bound | `fn2/books/identity.lisp` | C2 |
+| identity schema, its specification, the decision machine over overlays and installed runs, the recording under the conflict bound, adapters and keystones (`fn2-identity-assemble`, expanded after the run assembly) | `fn2/books/identity.lisp`; unit `fn2/tests/identity-unit.lisp` | C2b |
+| installed runs (the resident view of each schema's sealed runs; the manifest makes it durable in C1c) | `fn2/books/runs.lisp` (`fn2-run-installed`) | C2b |
 | active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run | `fn2/books/ribbon.lisp` | C2 |
@@ -27,7 +28,8 @@ departure from a decision that is not recorded here is a defect.
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY and CONSUMER checkers | `fn2/sim/check-identity.lisp`, `fn2/sim/check-consumer.lisp` | C2, C4 |
 | acceptance | `fn2/tests/sim-layer-c.lisp` (+ driver `.lsp`) | C2-C6 |
-| units | `fn2/tests/runs-unit.lisp`, one per later book | each |
+| C's test assembly: the identity schema and the run units' fixture schemas, assembled once; the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
+| units | `fn2/tests/runs-unit.lisp`, `fn2/tests/identity-unit.lisp` (both include the test assembly) | each |
 
 Every C book starts `(fn2-book-layer :c)` after its includes, so its rows count under layer C.
 
@@ -124,14 +126,28 @@ declaration.
 | manifest | (schema, run) | the run descriptor fields | `:latest` | C1 |
 
 **Identity is a Binding (UC §4.3, decision 3).** `B : Message-ID → P_fin(content facts)`, merged by
-union. The key includes the content identity, so a Message-ID's facts are adjacent entries and
-`conflicted(mid)` is "two adjacent entries share the octets". An offer `(mid, c)` decides `stored`,
-`duplicate` (an entry `(mid, c)` exists) or `conflict` (an entry `(mid, c')`, `c' ≠ c`, exists). A
-conflict refusal records its evidence as an entry under a per-Message-ID bound on retained
-conflicting contents, charged to the offering principal, with the named refusal
-`:identity-conflict-bound`. The served choice of content is a separate statement; evidence only
-grows. Exact octets are kept permanently (STORAGE §4 decision 6); a filter or hash may reject,
-never decide.
+union. The schema is `fn2-identity` (id 1): key `(message-id (:octets 250)) (content :digest)`,
+value `state (:accepted :conflict)`, `article`, `binding` (the accepting event), `principal` (the
+offerer). The key includes the content identity, so a Message-ID's facts are adjacent and
+`conflicted(mid)` is "two adjacent entries share the octets".
+
+The decision (`fn2-id-decide-start`, `fn2-id-decide-step`, one row of `fn2-id-decides` per
+decision in flight) visits every identity overlay, then every installed identity run, each
+positioned at the lower bound `(mid, empty content)`, and reads that Message-ID's block: whether
+`(mid, c)` is recorded, and how many other contents are. The answer is `:duplicate` when `(mid, c)`
+is recorded, `:conflict` when another content is, else `:stored`. Each step is bounded (a run's
+block is read through the scan, one entry per step; a block longer than the bound plus two is cut
+short) and resumable; `:miss` hands the caller the page to load. `:found`/`:absent` come from byte
+comparisons only; no filter decides.
+
+The recording (`fn2-id-record`) writes a stored offer as the accepted content and a conflicting
+one as evidence, while the Message-ID holds fewer than `*fn2-identity-contents-max*` = 4 contents
+(the accepted one and three conflicting); past that the offer is refused
+`:identity-conflict-bound` and nothing is recorded. The evidence entry names the offering
+principal; charging it against that principal's account is layer D's accounting. The offer's
+octets are copied into the overlay's arena, so the decision and every later lookup are exact after
+the offer's body and journal placement are reclaimed. The served choice of content is a separate
+statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 decision 6).
 
 ## 5. The write path (C1, C2, C5)
 
@@ -233,7 +249,17 @@ never decide.
   the dispatcher, its codecs and key order, every function its declaration generated, and any
   per-schema glue by the old names) must be `:common-lisp-compliant`, or `fn2-run-assemble` fails
   naming the schema and the function.
-- **C-ASSEMBLY-THEORY.** Inside the generated guard proofs, a stobj's `-rows` accessor is disabled
+- **C-ONE-ASSEMBLY.** A world holds one assembly: the dispatcher and the generic functions are
+  defined once, so two books that each assemble cannot be included together (the OWED export
+  includes every unit). C's units therefore share one test assembly book. When the node's
+  production assembly lands (with the sealer, C1c), the C units move onto it: their fixture schemas
+  join it under the test profile or the units use the production schemas.
+- **C-ASSEMBLY-THEORY.** Each assembly (`fn2-run-assemble`, `fn2-identity-assemble`) expands inside
+  an `encapsulate` with one local theory (the rows accessors of the pool, fields, digests and
+  checker tables folded, as in runs.lisp), so its proofs do not depend on the including world's
+  theory: the identity unit's world first broke proofs the runs unit's world had passed. A phase
+  that reads a cursor row and calls a helper proves its shape lemma with the row accessors folded
+  (unfolded, two such lemmas took 115 s and 135 s). Inside the generated guard proofs, a stobj's `-rows` accessor is disabled
   exactly where a callee has changed that stobj (the shape lemmas are stated over `-rows`) and left
   enabled where an element's type is read from the recognizer; disabling it everywhere loses the
   element typing and sends the prover into inductions.
@@ -299,8 +325,8 @@ never decide.
 | `NAME-page-roundtrip` (generated per schema) | for sorted, well-formed entries that fit one page (`fn2-run-page-inputp`), the real append, close, head and seal produce, and B's checker accepts under the parent-held hash, exactly the octets of `fn2-run-page-spec` (B's list codec for the headers and each entry, the restart directory, zero padding) | positive: 40 entries per test schema, inputs checked; negative: unsorted entries (refused `:order` part way) give a different image | C1 |
 | `NAME-seek-lower-bound` (generated per schema) | the real page seek returns `(:found i)` or `(:absent i)` equal to `fn2-run-lower-bound-spec` over the spec key order | positive: queries before, inside, between, after and at restart boundaries, including empty octets and a query held by another owner; negative: the unsorted page disagrees with the spec | C1 |
 | `NAME-run-lookup-exact` (generated per schema) | for at most 64 sorted well-formed entries and a fill at which every page holds two entries (`fn2-run-run-inputp`), a run built through the real build entry points and searched from its root through the real cursor steps answers `(:found entry)` exactly when an entry's key equals the query's, with that entry, and `(:absent nil)` otherwise (`fn2-run-key-lookup-spec`) | positive: present, between, before, after and empty-octet queries over multi-level runs of both test schemas; negative: unsorted entries make the conclusion false | C1b' |
-| `fn2-exact-identity` (RELEASE-PLAN T9) | the identity decision for `(mid, c)` is `duplicate` iff a stored fact `(mid, c)` exists, `conflict` iff a fact `(mid, c')`, `c' ≠ c`, exists, and the answer is unchanged after the body's and the journal placement's reclamation | positive: M3 scenario; negative: a summary that drops the octets fails "re-offer the same Message-ID with different content" | C2 |
-| `fn2-identity-binding-converges` | two nodes with equal validated fact sets have equal Bindings and equal `conflicted` | positive: two delivery orders; negative: a node that refuses a conflict and records nothing diverges | C2 |
+| `fn2-exact-identity` (RELEASE-PLAN T9) | offers decided and recorded through the real decision and recording, sealed into runs every `split` offers, the offers' staging workspace released, then queries decided: each answer equals `fn2-id-answers-spec` (`:duplicate` iff recorded, `:conflict` iff another content is, else `:stored`) | positive: the M3-shaped scenario (a conflict, a duplicate, five contents for one Message-ID against the bound of four) at splits 0, 4 and 1; negative: a node whose summary dropped the Message-ID octets answers `:stored` to the re-offer of m1 with another content, where the statement requires `:conflict` | C2b |
+| `fn2-identity-binding-converges` | two nodes whose offered fact sets are equal (any order, duplication or sealing schedule, within the bound) hold equal Bindings, read back by the real scan of every installed run | positive: one fact set in two orders (one with a duplicate) under splits 2 and 3, equal to each other and to `fn2-id-binding-spec`; negative: nodes that refuse a conflict and record nothing hold different Bindings for the two orders | C2b |
 | `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
@@ -318,7 +344,8 @@ OWED.md is regenerated when the export is green.
 | C1b' | runs.lisp: multi-page build, promotion, verified-page cache, resumable lookup cursor; `NAME-run-lookup-exact`; R6a1's compare in place of the interim | **done**: 3,000 entries at a 400-byte fill build 80 pages, height 4, and every query answers right; the teeth | C1b, R6a1 |
 | C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
 | C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
-| C2 | identity schema, decide/admit, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
+| C2b | identity schema, the decision machine, the recording under the bound, the two keystones | **done**: the M3-shaped scenario pinned; both keystones' teeth | C2a |
+| C2 (rest) | Ribbon per sealed run (C2c); IDENTITY checker and M3 in the simulator (C2d) | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |

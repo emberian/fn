@@ -26,6 +26,7 @@
 (include-book "fn2/tests/conn-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")
+(include-book "fn2/tests/identity-unit")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.

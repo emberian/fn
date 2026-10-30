@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 336; bound statements: 331; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 349; bound statements: 344; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1866,6 +1866,78 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RUN-RESTART-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RUN-RESTART-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 1) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((OFFSET :U32)) (FN2-LAYOUT-VALUES '((OFFSET :U32)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-ENTRY-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-ENTRY-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-IDENTITY-ENTRY-ROUNDTRIP-HYPS BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (MV-LET (EC END P2) (FN2-IDENTITY-ENTRY-ENCODE BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (AND (EQ EC :OK) (MV-LET (CODE NEXT F2) (FN2-IDENTITY-ENTRY-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P2) (FN2-LAYOUT-ROUNDTRIP-RESULTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (STATE (:ENUM FN2-IDENTITY-STATE (:ACCEPTED :CONFLICT))) (ARTICLE (:ID ARTICLE)) (BINDING (:ID EVENT)) (PRINCIPAL (:ID PRINCIPAL))) (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (STATE (:ENUM FN2-IDENTITY-STATE (:ACCEPTED :CONFLICT))) (ARTICLE (:ID ARTICLE)) (BINDING (:ID EVENT)) (PRINCIPAL (:ID PRINCIPAL))) BASE F P) CODE NEXT END (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (STATE (:ENUM FN2-IDENTITY-STATE (:ACCEPTED :CONFLICT))) (ARTICLE (:ID ARTICLE)) (BINDING (:ID EVENT)) (PRINCIPAL (:ID PRINCIPAL))) BASE F2 P2) (FN2-POOL-LOGICAL-OCTETS (- END OFF) (+ (FN2-POOL-BASE SLOT P2) OFF) P2))))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-ENTRY-CANONICAL)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-ENTRY-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-IDENTITY-ENTRY-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 6) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (STATE (:ENUM FN2-IDENTITY-STATE (:ACCEPTED :CONFLICT))) (ARTICLE (:ID ARTICLE)) (BINDING (:ID EVENT)) (PRINCIPAL (:ID PRINCIPAL))) (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (STATE (:ENUM FN2-IDENTITY-STATE (:ACCEPTED :CONFLICT))) (ARTICLE (:ID ARTICLE)) (BINDING (:ID EVENT)) (PRINCIPAL (:ID PRINCIPAL))) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-INDEX-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-INDEX-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-IDENTITY-INDEX-ROUNDTRIP-HYPS BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (MV-LET (EC END P2) (FN2-IDENTITY-INDEX-ENCODE BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (AND (EQ EC :OK) (MV-LET (CODE NEXT F2) (FN2-IDENTITY-INDEX-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P2) (FN2-LAYOUT-ROUNDTRIP-RESULTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (CHILD-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (CHILD-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (CHILD-WRITER-EPOCH (:ID WRITER-EPOCH)) (CHILD-ALLOCATION (:ID ALLOCATION)) (CHILD-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (CHILD-ENCODED-LENGTH :VARINT) (CHILD-EXPECTED-HASH :DIGEST) (CHILD-ENTRIES :VARINT)) (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (CHILD-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (CHILD-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (CHILD-WRITER-EPOCH (:ID WRITER-EPOCH)) (CHILD-ALLOCATION (:ID ALLOCATION)) (CHILD-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (CHILD-ENCODED-LENGTH :VARINT) (CHILD-EXPECTED-HASH :DIGEST) (CHILD-ENTRIES :VARINT)) BASE F P) CODE NEXT END (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (CHILD-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (CHILD-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (CHILD-WRITER-EPOCH (:ID WRITER-EPOCH)) (CHILD-ALLOCATION (:ID ALLOCATION)) (CHILD-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (CHILD-ENCODED-LENGTH :VARINT) (CHILD-EXPECTED-HASH :DIGEST) (CHILD-ENTRIES :VARINT)) BASE F2 P2) (FN2-POOL-LOGICAL-OCTETS (- END OFF) (+ (FN2-POOL-BASE SLOT P2) OFF) P2))))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-INDEX-CANONICAL)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-INDEX-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-IDENTITY-INDEX-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 10) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (CHILD-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (CHILD-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (CHILD-WRITER-EPOCH (:ID WRITER-EPOCH)) (CHILD-ALLOCATION (:ID ALLOCATION)) (CHILD-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (CHILD-ENCODED-LENGTH :VARINT) (CHILD-EXPECTED-HASH :DIGEST) (CHILD-ENTRIES :VARINT)) (FN2-LAYOUT-VALUES '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (CHILD-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (CHILD-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (CHILD-WRITER-EPOCH (:ID WRITER-EPOCH)) (CHILD-ALLOCATION (:ID ALLOCATION)) (CHILD-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (CHILD-ENCODED-LENGTH :VARINT) (CHILD-EXPECTED-HASH :DIGEST) (CHILD-ENTRIES :VARINT)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-RUN-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-IDENTITY-RUN-ROUNDTRIP-HYPS BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (MV-LET (EC END P2) (FN2-IDENTITY-RUN-ENCODE BASE SLOT GEN OFF OKIND OSLOT OGEN F P) (AND (EQ EC :OK) (MV-LET (CODE NEXT F2) (FN2-IDENTITY-RUN-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P2) (FN2-LAYOUT-ROUNDTRIP-RESULTP '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F P) CODE NEXT END (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F2 P2) (FN2-POOL-LOGICAL-OCTETS (- END OFF) (+ (FN2-POOL-BASE SLOT P2) OFF) P2))))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-CANONICAL)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-RUN-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-IDENTITY-RUN-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 22) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
 ## Correspondence / owner: `(:SQUARE FN2-RT-NUM-ENTRY-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -2010,6 +2082,66 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-MID-RUN-CANONICAL` | :OWED | :ASSERTION | `(MV-LET (CODE NEXT F2) (FN2-RT-MID-RUN-DECODE BASE SLOT GEN OFF END OKIND OSLOT OGEN F P) (IMPLIES (AND (FN2-FIELDSP F) (FN2-FIELDS-WFP F) (FN2-POOL-SEMANTICP P) (NATP BASE) (<= (+ BASE 22) (FN2-FIELDS-ROWS F)) (EQ CODE :OK)) (FN2-LAYOUT-CANONICAL-RESULTP '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) (FN2-LAYOUT-VALUES '((RUN :VARINT) (HEIGHT :U8) (PAGES :VARINT) (ENTRIES :VARINT) (MIN-MESSAGE-ID (:OCTETS 250)) (MIN-CONTENT :DIGEST) (MAX-MESSAGE-ID (:OCTETS 250)) (MAX-CONTENT :DIGEST) (ROOT-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (ROOT-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (ROOT-WRITER-EPOCH (:ID WRITER-EPOCH)) (ROOT-ALLOCATION (:ID ALLOCATION)) (ROOT-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (ROOT-ENCODED-LENGTH :VARINT) (ROOT-EXPECTED-HASH :DIGEST) (FILTER-STORAGE-DOMAIN (:ID STORAGE-DOMAIN)) (FILTER-PHYSICAL-UNIT (:ID PHYSICAL-UNIT)) (FILTER-WRITER-EPOCH (:ID WRITER-EPOCH)) (FILTER-ALLOCATION (:ID ALLOCATION)) (FILTER-PAGE-KIND (:ENUM PAGE-KIND (:RUN-DATA :RUN-INDEX :PARTITIONED-FILTER :MANIFEST :ALLOCATION-MAP :SOURCE-MANIFEST :RANGE-PROOF :CHECKPOINT-DESCRIPTOR :MERKLE-NODE :RAW-SOURCE :KEY-LIST :RECOVERY-ARENA :DEPENDENCY-MANIFEST :MEMBERSHIP-LIST :OBLIGATION-LIST))) (FILTER-ENCODED-LENGTH :VARINT) (FILTER-EXPECTED-HASH :DIGEST)) BASE F2 P) (FN2-POOL-LOGICAL-OCTETS (- NEXT OFF) (+ (FN2-POOL-BASE SLOT P) OFF) P))))` | `(FN2-LAYOUT-GENERATED-TEETH)` | Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-PAGE-ROUNDTRIP)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-IDENTITY-ENTRY* META ENTRIES))))` | `(FN2-IDENTITY-PAGE-ROUNDTRIP-POSITIVE FN2-IDENTITY-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-SEEK-LOWER-BOUND)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-IDENTITY-SEEK-LOWER-BOUND-POSITIVE FN2-IDENTITY-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-LOOKUP-EXACT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-IDENTITY-RUN-LOOKUP-EXACT-POSITIVE FN2-IDENTITY-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-SCAN)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q N)))` | `(FN2-IDENTITY-RUN-SCAN-POSITIVE FN2-IDENTITY-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-OVERLAY-SORTED)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES) (EQUAL (FN2-OV-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES)))` | `(FN2-IDENTITY-OVERLAY-SORTED-POSITIVE FN2-IDENTITY-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
 ## Correspondence / owner: `(:SQUARE FN2-RT-NUM-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -2141,3 +2273,27 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RUN-GLUE-VERIFIED` | :OWED | :ASSERTION | `(EQUAL (FN2-RUN-GLUE-CHECK (FN2-RUN-GLUE-ASSEMBLED)) :OK)` | `(FN2-RUN-GLUE-VERIFIED-POSITIVE FN2-RUN-GLUE-VERIFIED-NEGATIVE)` | Every assembled schema's build and lookup path (generic entry points, dispatcher, codecs, key order, generated functions, any per-schema glue) is guard-verified; the assembly refuses otherwise, by name. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-EXACT-IDENTITY)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-EXACT-IDENTITY` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-ID-OFFERSP OFFERS) (<= (LEN OFFERS) 40) (FN2-ID-OFFERSP QUERIES) (NATP SPLIT)) (EQUAL (CADDR (FN2-IDENTITY-DECIDE-IMAGE OFFERS SPLIT NIL QUERIES)) (FN2-ID-ANSWERS-SPEC OFFERS QUERIES)))` | `(FN2-EXACT-IDENTITY-POSITIVE FN2-EXACT-IDENTITY-NEGATIVE)` | The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-IDENTITY-BINDING-CONVERGES)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-IDENTITY-BINDING-CONVERGES` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-ID-OFFERSP O1) (FN2-ID-OFFERSP O2) (<= (LEN O1) 40) (<= (LEN O2) 40) (NATP S1) (NATP S2) (EQUAL (FN2-ID-BINDING-SPEC O1) (FN2-ID-BINDING-SPEC O2)) (FN2-ID-WITHIN-BOUND O1)) (EQUAL (FN2-IDENTITY-BINDING-IMAGE O1 S1 NIL) (FN2-IDENTITY-BINDING-IMAGE O2 S2 NIL)))` | `(FN2-IDENTITY-BINDING-CONVERGES-POSITIVE FN2-IDENTITY-BINDING-CONVERGES-NEGATIVE)` | Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
