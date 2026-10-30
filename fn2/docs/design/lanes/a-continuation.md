@@ -1,77 +1,60 @@
-# fn2 A+D DSL continuation (layer A's forms and what D and B build on; present state, rewritten whole)
+# fn2 A+D DSL continuation (layer A's forms and what D, B and C build on; present state, rewritten whole)
 
-Seat: Opus, writing the code itself. Brief: `build/coordinator/briefs/FN2-SEAT-COMMON.md` (dev is the
-branch; shared tree /Users/ember/dev/fn on dev; `git commit -F msg -- <paths>`; foundation edits in a
-worktree, landed as one commit with the export green; READY per commit). Syntax notes owned here:
-`lanes/a-to-d-arm-contracts.md` (now has "Row fields: the read set"), `lanes/a-to-bcd-ranges.md`.
+Seat: Opus (third), writing the code itself. Brief: `build/coordinator/briefs/FN2-SEAT-COMMON.md` (dev is
+the branch; shared tree /Users/ember/dev/fn on dev; `git commit -F msg -- <paths>`; foundation edits in a
+worktree, landed with the export green; READY per commit; **a foundation commit certifies the whole
+tree's closure**: every fn2/tests/*-unit.lisp, not only the seat's list; `fn2/tools/forge-certify.sh`
+with no books does exactly that). Syntax notes owned here: `lanes/a-to-d-arm-contracts.md`,
+`lanes/a-to-bcd-ranges.md`.
 
-## Landed this session (all on dev and origin/dev; READY sent in the seat report)
+## Landed (dev and origin/dev)
 | sha | what |
 |---|---|
-| 6b8e453a9 | DM3 1/n: TRACE per case (`fn2-check-trace-cases-turn`, sim/check-trace.lisp), named loop stops (`fn2-concrete-loop-stop-p`, `fn2-ref-loop-stop-p`), A4 hook `tests/q1-case-hook.lsp`, tally `tests/evidence/q1-a4-tally.lisp`, `tests/q1-evidence.lisp` (in owed-export), export lists cases with/without a passing check. Coverage 0 -> 53 (34 Q1 cases + 19 arm BOUND rows) |
-| 6b2f6ef5b | Read sets: a callback takes only the ROW- fields its body reads (inferred, nothing for D to declare); per-field readers `K-ROW-<field>` with width lemmas; K-SNAPSHOT / -READ / VALUESP deleted; owed BOUND/FRAME bind only reads. fn2-conn 30 fields, widest read set 17 |
-| 71c1fb2f2 | Section split: core init -> `assembly-init` (`fn2-core-init-events`); commit kind -> `assembly-callbacks-b` + `assembly-callbacks` (`fn2-commit-events`, `-2`, shared `fn2-commit-local-theory`). Forge max assembly book now assembly-access 39.8 s |
+| 6c8f3d1a0 | fix forward: tests/commit-resource-unit.lisp reads both commit sections (my split 71c1fb2f2 had broken it) |
+| 57054a247 | S6: `:account` stop reason (code 22) appended to fn2-stop-reason |
 
-Current OWED: 349 rows; check coverage 53 rows with a passing, exercised check. Q1 catalogue is 67
-labels since D3 (fn2-conn's 13 added); A4 exercises 34 of 67; unexercised are listed in OWED.md.
+## In flight (fn2/a-seams3 in worktree build/lanes/fn2/r7-arms; dev locally = 7fd40d0b7, NOT yet pushed)
+| sha | what | state |
+|---|---|---|
+| 7fd40d0b7 | S4 `fn2-sched-reattribute machine to fn2-sched -> (mv code fn2-sched)` (cherry-pick of b02c6e099, accepted on the pre-C base: closure, export identical, 7 drivers, 113 blocks) | on local dev in the shared tree, push after the run below |
+| c95c35ef7 | C2c seam: `fn2/books/words.lisp` (fn2-u32, fn2-u32-mul, fn2-prng-mix32 moved from sim/prng.lisp); C deletes fn2-ribbon-mul32/-mix | forge acceptance in /build/lanes/a3b (PID file build/accept.pid is the process group: stop with `kill -- -PID`) |
+| 427a2dd83 | S3 weighted calendar: `fn2-sched-init profile weights n`, weights = `fn2-profile-weights` (`:accounts` `(SLOT :weight W)`, default 1), pass-interleaved, L = W + 4 ceil(W/16), weighted L <= 4096; `fn2-sched-calendar-validp weights`, starvation statement over weights; reference `fn2-ref-calendar weights`, `fn2-ref-lists weights ...` | same run; S3 changes the owed statement of fn2-sched-starvation, so the regenerated OWED.md (acc/427a2dd83/OWED.md on forge) is amended into the S3 commit before landing |
 
-## Queue (main's order as of the last message)
-1. D7's six seams (fn2/docs/d-machines-nntp.md section 13.6 on dev 1d6cce7ca), each its own small
-   commit, A's drivers unchanged, reply with shas: S1 `:listener-principals` profile key + booking at
-   Accept via `fn2-account-book` / `-unbook` (admission `:copy (principal-slot account-ref)`); S2
-   `fn2-account-charge-run` after `fn2-machine-run` in fn2-exec-principal and on the system row in
-   fn2-exec-service; S3 weighted calendar in `fn2-sched-init` (weights; all-1 = today's calendar entry
-   for entry; L = sum w + 4*ceil(sum w/16) <= 4096; calendar-validp and starvation hyps follow); S4
-   `(fn2-sched-reattribute machine to fn2-sched) -> (mv code fn2-sched)`; S5 a fourth grant source in
-   fn2-machine-grant-ready-p / -grant-one (`fn2-account-grant-ready-p`, `fn2-account-grant-one`);
-   S6 an `:account` stop reason in exec-state's enum. S1, S2, S5 call D's functions: they need D's
-   accounts.lisp first (or D lands its wrappers and A wires the call sites); S3, S4, S6 are A-only.
-2. R6a1 rest, parked on branch fn2/r6a1c at 65209c7b5 in this worktree (based on 6b8e453a9, so
-   rebase onto dev first): new range primitives in pool-ranges.lisp (set-range, span, put/get-u32,
-   word loops, fold u32 lemmas; certify fine) and core wrappers + defcosts; scribe fill/patch/verify
-   on them (`fn2-scribe-fill-sector`, `-verify-sector`), per-byte loops kept only in
-   tests/scribe-ranges-unit.lisp as the reference; quantum 65,536 in machines-a :budget with
-   `*fn2-run-bytes-quantum*` in operations.lisp (formula Q >= 10*F*R) and an assert; turn-refinement
-   statement uses constants; own-read-hook reports range reads/writes per byte. OPEN: the guard of
-   `fn2-scribe-fill-run` fails in tests/core-child-assembly-callbacks (goal about machine-kind after
-   update-fn2-scribe-table of (mv-nth 2 (fn2-scribe-fill-sector ...))): the helper returns a core and
-   the callback emitter needs its frame; likely fix: inline the fill chain in the callback body (all
-   calls are defcost'd wrappers) or make the helper a wrapper whose frame is visible. Then the
-   simulator fill-range port (sim-transfer input kinds: collect bytes, one fill-range), A4 new
-   baseline (summaries may change in that commit only), formula in layer doc section 7.
-3. DM3 2/n: the per-case teeth `FN2-Q1-CASE-i-POSITIVE/-NEGATIVE` are still forward references.
-   Plan: certified fixtures per label kind (tiny profile, lists consistent with the concrete
-   scheduler; run labels by waking one row of kind K in phase P; observe labels by a posted
-   completion; router by a stale owner; clock/signal by fn2-post-clock / fn2-post-signal;
-   service/empty principal by calendar cursor), positive = one lockstep G1 step passes at the
-   fixture, negative = an untouched reference field perturbed fails it.
-4. R6a2, R6b, A5r (Accept peer-address aux words), A6.
+Landing: `cd /Users/ember/dev/fn; git fetch origin; git merge --ff-only origin/dev` (if dev moved, cherry-pick
+and re-accept), `git merge --ff-only fn2/a-seams3` (or cherry-pick), secrets check, push, READY to main per sha.
+
+## Queue
+1. After landing: tell main S3/S4/words shas; D7 doc 13.6 is D's to update.
+2. S1, S2, S5 wait on D's accounts.lisp (fn2-account-book/-unbook, -charge-run, -grant-ready-p/-grant-one).
+3. DM3 2/n, WIP (uncommitted) in r7-arms, also saved as build/seat-ad/dm3b/{wip.patch,q1-teeth.lisp,sim-layer-d-evidence.lsp}:
+   - `fn2/tests/q1-teeth.lisp`: per-label fixtures from the tiny profile (drain the scheduler; run labels:
+     row 0 of kind K, `fn2-machine-write-phase`, `fn2-exec-wake`; observe labels: op slot 0 written as a
+     submitted op owned by the row, phase set to one accepting the event, `fn2-post-result`; router: stale
+     owner gen; clock/signal: fn2-post-clock/-signal; services: flag + cursor P+j; empty principal: flag 0 +
+     cursor 0), reference by fn2-ref-reset, lists from the concrete scheduler; positive = one
+     `fn2-trace-lockstep` step labelled and passing; negative = another kind's row generation perturbed on
+     the reference is refused, restored is accepted. Generates FN2-Q1-CASE-i-POSITIVE/-NEGATIVE for all 67
+     and asserts them. NOT YET RUN: iterate with build/seat-ad/dm3b/teeth-repl.lsp on a certified forge tree.
+   - `sim/check-trace.lisp`: `fn2-ref-queues-of-core`, `fn2-check-trace-reseeded-turn` (reference reseeded
+     from the concrete core each turn). `tests/q1-case-hook.lsp`: `fn2-q1-hook-install-turn profile`
+     (replaces fn2-turn), tally writer takes a prefix. `tests/sim-layer-d-evidence.lsp`: runs D's
+     unchanged sim-layer-d.lsp under the hook, writes `tests/evidence/q1-d-tally.lisp` from an exit hook.
+     `tests/q1-evidence.lisp`: second evidence record per case and per arm from the D tally. Unverified:
+     that replacing fn2-turn's symbol-function reaches D's callers; that good-bye runs sb-ext:*exit-hooks*.
+4. R6a1 rest: rebased clean onto dev 0160c5a69 as branch fn2/r6a1d in worktree build/lanes/fn2/a-r6a1;
+   uncommitted try for the fill-run guard: `fn2-scribe-fill-sector` kept disabled (its fn2-core-preserves
+   lemmas then apply) instead of enabled. Untested. Then the simulator fill-range port, quantum 64 KiB
+   with the A4 re-baseline (that commit only).
+5. R6a2, R6b, A5r, A6.
 
 ## Forge
-- Trees: /build/lanes/ad-split (clean clone of fn2/a-split; has build/split-run.sh, evtimes.py
-  per-event profiler) and /build/lanes/ad-r7b. Run detached jobs as
-  `setsid nohup sh -c "..." < /dev/null & echo $! > build/X.pid` so the whole group can be stopped
-  by its PID file; ssh with `< /dev/null`.
-- ORPHANS, no PID file (reported, not killed): in /build/lanes/ad-r7b an old certify of
-  assembly-core (certify.sh pid 255348, make 255355, sbcl 255931) started 06:42 forge time whose
-  wrapper I stopped; it loops in a guard proof (per-child init attempt, abandoned) and holds that
-  tree's certify lock; a later split-run.sh (pid in build/split-run.pid there, child forge-certify
-  347415) waits on that lock. Ask main/ember to stop them or leave ad-r7b unused.
-- B's sim-layer-b sweep at 6b2f6ef5b's code was running in ad-split (log build/sim-layer-b.log),
-  passing at scenario 14 case 2000/10000; check its end (`B3 TIMING`) and report.
-
-## Tooling
-- Worktree /Users/ember/dev/fn/build/lanes/fn2/r7-arms on branch fn2/a-readsets (== dev 71c1fb2f2).
-- Closure list build/seat-ad/closure.txt (now with q1-evidence, scribe-ranges-unit [only valid on
-  fn2/r6a1c], commit-proof-unit, conn-unit, conn-answer-unit, runs-unit, identity-unit; pass
-  books/assembly-init.lisp and books/assembly-callbacks-b.lisp explicitly or rely on deps).
-  Local: `FN_ACL2_SLOT_DIR=/tmp/fn2-a4-acl2-slots FN_ACL2_SLOTS=6 sh fn2/tools/certify.sh
-  --export-owed -j 4 books/assembly.lisp $(grep -v scribe-ranges closure.txt)`.
-- Summaries: `python3 build/seat-ad/compare.py <dir> build/seat-ad/baseline-r5e2-a4.log` (a `Q1 `
-  line ends a block).
-- Evidence refresh: run the A4 driver on forge, scp `fn2/tests/evidence/q1-a4-tally.lisp`, certify
-  tests/q1-evidence.lisp + export, commit with the code.
+- /build/lanes/a3b: my acceptance clone; `build/forge-accept.sh SHA[:certify] ...` (closure certify of
+  every book, owed export, then A's seven drivers in parallel; results build/acc/<sha>/result).
+  Start detached as `setsid sh -c "echo \$\$ > build/accept.pid; exec sh build/forge-accept.sh ..."`.
+- /build/lanes/a3: older clone; a stale run of mine (pid 552805, no valid PID file) may still be
+  certifying there; benign, main knows. ad-r7b's orphan awaits ember.
+- Compare: `python3 build/seat-ad/compare.py <dir with sim-layer-a-a4-driver.log> build/seat-ad/baseline-r5e2-a4.log`.
 
 ## Rules
-PID files only; never stash / add -A; named paths; secrets check before push; one certify at a time
-through the slot pool; a book over 60 s blocks the commit; disk < 60 GiB: stop.
+PID files only (group leader); never stash / add -A; named paths; secrets check before push; one certify at
+a time; a book over 60 s blocks the commit (slowest now ~43 s, assembly-access); disk < 60 GiB: stop.
