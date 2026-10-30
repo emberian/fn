@@ -8,49 +8,62 @@ seams, schemas, read contract, keystones, quest plan, interim decisions). Box sa
 COMMON.
 
 ## Landed
-- 181df0df0 C1a: `:schema` declaration kind. 8dfba6db2 C1b: run pages and defrunschema (page
-  level), layer doc. 1e823b06f C1b': multi-page build, verified-page cache, resumable lookup
-  cursors, `NAME-run-lookup-exact`; GC1 closed (R6a1 compare). 37ba641da boxes.md hbox fallback.
-  READY sent for each.
-- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) is reset to dev
-  37ba641da, clean apart from certificates. forge clone `/build/lanes/c` (branch fn2/c-found on
-  forge's bare repo) and hbox `/tank/fn/scratch/fn2-c/tree` are scratch.
+- 181df0df0 C1a (:schema kind). 8dfba6db2 C1b (run pages, defrunschema). 1e823b06f C1b' (multi-page
+  runs, cache, cursors, run lookup; GC1 closed). 37ba641da boxes.md hbox fallback.
+- **1c603fcdd C1c first item: the run assembly** (`fn2/books/runs-assemble.lisp`, macro
+  `fn2-run-assemble`, expanded once per world after its last schema). Dispatcher
+  `fn2-run-layout-{fields,keys,decode,encode,size,compare}` (case over schema ids; level 0 entry
+  layout, positive level index layout) + shape lemmas; generic `fn2-run-add` (= `-add-ready` pure +
+  `-add-write`), `fn2-run-seek`, `fn2-run-build-add/-promote`, `fn2-run-index-skip/-nth`,
+  `fn2-run-step-{header,seek,child}`, `fn2-run-lookup-step`; generic adapters
+  `fn2-run-page-image/-seek-image/-lookup-image (sid layout ...)`; per-schema keystones generated at
+  assembly (names unchanged); owed `fn2-run-glue-verified` + certify-time check
+  (`fn2-run-glue-check` over `fn2-run-glue-assembled`). defrunschema = 3 deflayouts + compare +
+  registration (`:compare` in the row); refuses after assembly (table `fn2-run-assembly`).
+  Cursors carry `schema`; `fn2-run-cursor-start (c schema level ...)`. READY sent.
+- **8db53928a C2a**: scans (`fn2-run-paths` table; `fn2-run-cursor-step` shared by
+  `fn2-run-lookup-step` / `fn2-run-scan-step`; phases :at :up :end :lost; `fn2-run-nth (sid lv k ...)`
+  returns next offset) and the generic overlay (`fn2/books/overlay.lisp`: `fn2-overlays`,
+  `fn2-overlay-index`, `fn2-ov-start/-freeze/-retire/-place`; assembly: `fn2-ov-entry/-order/-search/
+  -locate/-write/-insert`); keystones NAME-RUN-SCAN, NAME-OVERLAY-SORTED. READY sent.
+- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev 8db53928a.
+  forge clone `/build/lanes/c` holds that tree (uncommitted copy, certified).
 
-## Next (in this order; the critical path is A6 -> B3 -> B4 -> B5 -> C2 -> C3 -> D3)
-1. **Assembly dispatcher (C-GLUE-UNVERIFIED's remedy), before more per-schema glue grows.** Design:
-   a `fn2-run-assemble` event macro (run once in a top-level book after every `defrunschema`;
-   test units call it after their schemas) generates `fn2-run-layout-decode/-encode/-size/-compare
-   (lid ...)` as `case` dispatch over the registered schemas' layouts (rows of table
-   `fn2-schemas`, `:layouts`), their shape lemmas by cases, and then the generic build-add,
-   promote, index-nth and lookup-step written ONCE over the dispatcher and guard-verified there.
-   defrunschema then emits only layouts, registration and adapters. Measure: assembly cost with
-   2 and 9 schemas; per-schema expansion should fall to the deflayout time (~3-5 s).
-   Main (2026-10-30): accepted C-GLUE-UNVERIFIED with this remedy as the obligation, and made it
-   C1c's FIRST item. Record an owed row with teeth: a certify-time check that refuses any
-   registered schema whose build/lookup glue is not guard-verified once the dispatcher exists
-   (positive tooth: the assembled test schemas pass; negative tooth: a schema declared with the
-   old unverified glue is refused by name).
-2. **C2 identity** (layer doc §4, FILTERS-2026 items 1-3, UC §4.3): schema `fn2-identity`
-   (key message-id `(:octets 250)` + content `:digest`; value article, binding ref, state,
-   event; merge `:union`); the bounded active overlay (resident sorted table, defcolumns, fed by
-   the prepared successor; per-Message-ID conflict bound with refusal `:identity-conflict-bound`);
-   InfiniFilter for the overlay (never delete a non-member); Ribbon per sealed run (built at seal
-   into `:partitioned-filter` pages, referenced by the run descriptor's FILTER- ref); the decision
-   function stored/duplicate/conflict; the IDENTITY checker; keystones `fn2-exact-identity` (T9)
-   and `fn2-identity-binding-converges` with teeth; M3 (lookup after bodies and journal
-   placements are reclaimed). Ribbon/InfiniFilter are bounded, well-specified pieces: a Codex
-   helper quest is reasonable once one filter has been done by hand.
-3. C3 ordered schemas (metadata, overview, addr) + range cursors with resume key and version,
-   positioned seek, M2.
-4. C1c sealer machine + manifest schema + run descriptor + GC2 member use (B builds the member in
-   B5; agreed form in the layer doc §8: hook gets the commit owner triple; >31 pages through
-   C-sealed `:dependency-manifest` pages followed one level by B5).
-
-## Handoff (2026-10-30)
-This seat is past its context ceiling (about 750K); a successor starts from this file and the
-layer doc. Nothing is in flight: no background jobs, no uncommitted C work, no PID files of mine
-alive (forge `/build/lanes/c/build/c1.pid` and hbox `/tank/fn/scratch/fn2-c/cert.pid` name
-finished runs).
+## Next (critical path B5 -> C2 -> C3 -> D3)
+1. (done in 8db53928a) **C2a: generic range iteration + overlay** (both emitted by assembly-time macros, since they call
+   the dispatcher; staged library-macro books expanded in order after `fn2-run-assemble`).
+   - Iteration: path per level (table rows c*6+level: slot gen unit counter idx entries) recorded
+     during descent; `next` at leaf: deliver entry idx (off tracked; off=0 -> nth via restart),
+     at leaf end pop to the lowest level with idx+1 < entries, take that index entry, descend
+     leftmost; a path page no longer cached -> `:lost` (caller re-seeks strictly after the last
+     delivered key). cursor-start needs the root's unit/counter.
+   - Overlay (generic per schema): bounded sorted in-memory run. Entries encoded by the schema's
+     entry codec into a C-owned pool arena (C-OWNER copy at admission); resident u32 offset index
+     kept sorted (binary search by decode+compare; insert shifts, bounded by capacity); phases
+     :active/:frozen (frozen while sealing, still readable); seal = feed sorted entries to build-add.
+     Decision C-OVERLAY-SORTED (recorded in layer doc §7 at C2a): no InfiniFilter in front of a
+     resident bounded sorted table; FILTERS item 3 stays a measured alternative.
+2. **C2b identity** (statement first). Drafts in the worktree: `build/c/identity-lib.lisp` (schema,
+   spec: block/decide/record/answers/binding/within-bound; reorder answers-over and within-bound-over
+   before their callers), `build/c/identity-engine.lisp` (fn2-id-decides machine: start, overlay block
+   walk, run-start, run-scan, fold, decide-step, record; needs a `fn2-id-decide-fold*` macro and
+   okind/oslot/ogen columns on `fn2-run-installed`), `build/c/registry.lisp` (the installed-runs table
+   to append to runs.lisp). Still to write: adapters (offers processed with seals every `split`,
+   staging slot released before queries) and the two keystones with teeth, in a new unit
+   `fn2/tests/identity-unit.lisp` (assembles the identity schema alone). Design: `defrunschema fn2-identity :id 1 :key ((message-id (:octets
+   250)) (content :digest)) :value ((state (:enum fn2-identity-state (:accepted :conflict)))
+   (article (:id article)) (binding (:id event)) (principal (:id principal))) :merge :union`.
+   Decide(mid,c) over overlays + runs: seek LB (mid, empty digest), iterate the mid block (<= bound+1
+   entries): duplicate iff (mid,c) present; conflict iff other content; else stored. Admission of
+   conflict evidence under per-mid bound, refusal `:identity-conflict-bound`. Keystones:
+   `fn2-exact-identity` (image builds via real admit/seal with split, releases source slots, decides;
+   = spec; negative tooth: index built from facts with octets dropped answers :stored on the re-offer
+   where spec says :conflict); `fn2-identity-binding-converges` (keys-only Binding + conflicted equal
+   for two delivery orders; negative: a node that refuses conflicts and records nothing diverges).
+   Interim resident run registry per schema until the manifest (C1c rest).
+3. C2c Ribbon per sealed run: homogeneous Ribbon (r=8, w=64; never fails; free rows from a PRNG
+   seeded by run id), keyed on Message-ID octets hash, in :partitioned-filter pages, FILTER- ref.
+4. C2d IDENTITY checker + M3 in the simulator. Then C3, rest of C1c, C4-C6.
 
 ## Pitfalls hit (and what worked)
 - Per-schema generated functions must be thin: preconditions checked at run time by generic
@@ -68,6 +81,18 @@ finished runs).
   book conflicts: certify the lower books and include them.
 - Never `&` inside a backgrounded Bash call; never chain sleeps; use run_in_background waiters.
 
+- Generated guard proofs: disable a stobj's `-rows` only where a callee changed that stobj (shape
+  lemmas use -rows); leave it enabled where element types are read from the recognizer, or the
+  prover inducts (build-add failed; lookup-step took 355 s). Split multi-branch stobj functions into
+  pure checks + straight-line writes / per-phase helpers, each disabled after definition.
+- `(zp lv)` needs natp guard; dispatcher uses `(and (integerp lv) (< 0 lv))` under guard t.
+- Disable each generic entry point after its definition; give recursive adapters termination hints
+  disabling the step they call.
+- Per-event timing: ld the inner forms with summary output on (not the macro) — see it2/it3.lsp.
+- `nohup tools/acl2 ... & echo $! > pid` in a foreground Bash call so the PID is the wrapper itself
+  (an `sh -c` PID orphans the wrapper when stopped).
+- New files: `git add <file>` in the worktree, then `git commit -F msg -- <paths>`.
+
 ## Commands that work
 - REPL: `cd <worktree> && tools/acl2 --timeout 580 < scratch/it10.lsp` (include certified
   runs-schema, ld runs.lisp, ld the unit body extracted with `sed -n '/^(defrunschema/,$p'`).
@@ -79,10 +104,15 @@ finished runs).
   /tank/fn/scratch/fn2-c/tree && tar xzf -'`; `/tank/fn/scratch/fn2-c/cert.sh` sets FN_ACL2 and
   ACL2_SYSTEM_BOOKS and runs certify.sh under swarm-build.
 
-## Certify times (laptop)
+- Integration: commit in the worktree; in the shared tree `git merge --ff-only fn2/c-found`,
+  secrets check, `git push origin dev`.
+
+## Certify times (forge, 8db53928a)
 | book | seconds |
 |---|---|
-| books/runs-page | 19.5 |
-| books/runs-schema | 1.7 |
-| books/runs | 11.7 |
-| tests/runs-unit | 27.3 |
+| books/runs-page | 24.4 |
+| books/runs-schema | 2.0 |
+| books/runs | 15.1 |
+| books/runs-assemble | 2.1 |
+| books/overlay | 4.2 |
+| tests/runs-unit | 22.5 |
