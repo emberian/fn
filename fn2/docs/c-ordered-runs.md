@@ -26,7 +26,8 @@ departure from a decision that is not recorded here is a defect.
 | article metadata, overview, addressing schemas | `fn2/books/ordered.lisp` | C3 |
 | range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
 | the served assembly: the production schemas assembled once with the identity decision, then the range reads | `fn2/books/runs-served.lisp`, `fn2/books/range-served.lisp` | C-ONE-ASSEMBLY |
-| C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1), the batch's private successor (C-S2) and their defcosts; the core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp` (included by `assembly-index`), materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
+| C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1), their defcosts and core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp`, materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
+| the batch's private successor (C-S2): the engine row, stage, bind, publish, drop, their defcosts and core wrappers (`fn2-identity-successor-core-events`) | `fn2/books/machines-c-successor.lisp` (includes machines-c; included by `assembly-index`), materialized in `assembly-callbacks-c.lisp` | C-S2 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
@@ -377,6 +378,19 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   `:capacity` when the entry (Message-ID + 32 + 48) exceeds the arena size (`:identity-arena-bytes`,
   64 KiB by default). Until C1c's sealer seals frozen overlays into runs, the overlays accumulate:
   identity capacity is overlay rows times arena entries, and its exhaustion is backpressure at stage.
+- **C-SUCCESSOR-BOOK.** C-S2 is its own book, `machines-c-successor.lisp`, included by
+  `assembly-index` in place of `machines-c.lisp` (which it includes): the decision (C-S1) and the
+  successor are separate seams, and together they made one book of 58.8 s on forge.
+- **C-SHAPE-READS.** A helper's shape lemma (type, wfp and rows of every stobj it returns) folds
+  the row reads whose values only feed run-time checks and callee arguments (`fn2-fields-ref-*`,
+  the decision's owner triple, the engine's scratch row, the stage's stamp and version reads):
+  the preservation lemmas of the writes need only the written index. Unfolded, every read became
+  a case split: `fn2-idc-rehome`'s lemma took 375,056 prover steps and 14.4 s on the laptop (17.8 s
+  on forge), folded 0.3 s; stage 3.9 s to 0.4 s; bind 4.4 s to 1.5 s. A read whose value is a later
+  write's index (the decision's QBASE) stays unfolded: its type comes from the recognizer. The
+  1.25 s once measured for the same lemma came from a world built by `ld` of the books' sources, whose
+  top-level `local` theory events stay in force; a certified world drops them, so time a lemma in a
+  world that includes the certified books.
 - **C-ENGINE-OWNER (interim until C1c).** The engine's workspaces are owned by the MRef
   (`*fn2-idc-owner-kind*` = 254, 0, 1); no machine kind takes that number. C1c's sealer machine row
   becomes the owner.
