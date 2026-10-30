@@ -29,3 +29,25 @@
  :key ((principal (:id principal)) (position (:id position)))
  :value ((article (:id article)) (stream (:id stream)) (reasons :u8))
  :merge :unique)
+
+; The group directory (seam S-GROUP): a newsgroup's exact name octets to its
+; group identifier, the (:id group) key of fn2-group-counts and fn2-overview.
+; Latest-only: a renumbering or a later configuration replaces the row. The
+; configured groups enter at genesis from the profile's :groups list
+; (machines-c-groups.lisp; E owns the configuration later); a POST's
+; Newsgroups octets are looked up exactly, and an absent name is the 441
+; "no such newsgroup" refusal.
+(defrunschema fn2-groups :id 8
+ :key ((name (:octets 250)))
+ :value ((group (:id group)))
+ :merge :latest)
+
+; Operation outcomes (seam S-OUTCOME; d-machines-nntp.md 14.4.1): the outcome
+; of (principal, operation), a record of the batch that carried it. A retry
+; with the same operation identity reads the original outcome; the request
+; digest refuses a contradictory reuse. OUTCOME is the operation's reply code,
+; EVENT the member's commit position.
+(defrunschema fn2-outcome :id 9
+ :key ((principal (:id principal)) (operation (:id operation)))
+ :value ((request :digest) (outcome :u16) (event (:id event)))
+ :merge :unique)

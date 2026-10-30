@@ -10,7 +10,7 @@
       :issue-cancel-target :issue-enqueue :harvest-fifo :harvest-input
       :harvest-output :harvest-finish :wake-bounds :wake-state :machine-write
       :machine-observation :machine-phase :pool-release :signal
-      :clock-exhausted :work-overflow :issue-wake :machine-contract :account))))))))
+      :clock-exhausted :work-overflow :issue-wake :machine-contract :account :engine-genesis))))))))
 (defcolumns fn2-control nil
   :init-name fn2-control-columns-init
   :extra-fields

@@ -23,11 +23,12 @@ departure from a decision that is not recorded here is a defect.
 | active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run: the build (band, insertion, back substitution, page), the probe, the adapter and keystones | `fn2/books/ribbon.lisp`; unit `fn2/tests/ribbon-unit.lisp` | C2c |
-| article metadata, overview, addressing schemas | `fn2/books/ordered.lisp` | C3 |
+| article metadata, overview, addressing schemas; the group directory and operation outcomes | `fn2/books/ordered.lisp` | C3, D5 seams |
 | range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
 | the served assembly: the production schemas assembled once with the identity decision, then the range reads | `fn2/books/runs-served.lisp`, `fn2/books/range-served.lisp` | C-ONE-ASSEMBLY |
 | C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1), their defcosts and core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp`, materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
-| the batch's private successor (C-S3, which replaced C-S2): the transaction and write-slot tables, the engine row, put / arg / arg-octets / resolve / stage / out / bind / release / publish / drop over every schema, their defcosts and core wrappers (`fn2-successor-core-events`) | `fn2/books/machines-c-successor.lisp` (tables, put, arg, arg-octets, resolve; includes machines-c), `machines-c-stage.lisp` (stage, out), `machines-c-bind.lisp` (bind, release, publish, drop, defcosts, wrappers; included by `assembly-index`), materialized in `assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S3 |
+| the batch's private successor (C-S3, which replaced C-S2): the transaction and write-slot tables, the engine row, put / arg / arg-octets / resolve / stage / out / bind / release / publish / drop over every schema, their defcosts and core wrappers (`fn2-successor-core-events`) | `fn2/books/machines-c-successor.lisp` (tables, put, arg, arg-octets, resolve; includes machines-c), `machines-c-stage.lisp` (stage, out), `machines-c-bind.lisp` (bind, release, publish, drop, defcosts, wrappers), materialized in `assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S3 |
+| the group directory's genesis and lookup, the generic exact lookup over overlays and runs (S-GROUP), their defcost and core wrappers (`fn2-groups-core-events`) | `fn2/books/machines-c-groups.lisp` (includes machines-c-bind; included by `assembly-index`); unit `fn2/tests/groups-unit.lisp` (with S-OUTCOME and S-ARTICLE-ID) | D5 seams |
 | fold declarations (`defrunschema :fold` on the `:schema` row: interpretation, initialization, coverage, observation; the step compiled twice, as a list function and as the served step over decoded rows) | `fn2/books/runs-schema.lisp` | C4a |
 | the folds the clients read: group counts and watermarks, the consumer cursor, principal charges (durable half) | `fn2/books/folds.lisp` (included by runs-served before the assembly) | C4a |
 | the folds' summary contract through the real engine (`fn2-fold-image`) and the generated keystones | `fn2/books/folds-served.lisp`; unit `fn2/tests/folds-unit.lisp` | C4a |
@@ -129,7 +130,8 @@ declaration.
 | group counts (`fn2-group-counts`, id 5) | group | count, low, high | `:latest`, fold | C4a |
 | consumer cursor (`fn2-consumer-cursor`, id 6) | (consumer, epoch) | position, version | `:latest`, fold | C4a |
 | principal charges (`fn2-principal-charges`, id 7) | (principal, dimension) | charged | `:latest`, fold | C4a |
-| operation outcomes | (principal, operation) | request binding digest, outcome, event | `:unique` within the declared retry lifetime | C4 |
+| operation outcomes (`fn2-outcome`, id 9; S-OUTCOME) | (principal, operation) | request digest, outcome (reply code, u16), event | `:unique` (within the declared retry lifetime: C5's retention) | D5 seam |
+| group directory (`fn2-groups`, id 8; S-GROUP) | exact name octets (≤ 250) | group | `:latest` | D5 seam |
 | obligations | obligation | owner, article, state, terms ref, release evidence ref | `:latest` | C4 |
 | locations | logical object | current placement ref | `:latest` | C5 |
 | manifest | (schema, run) | the run descriptor fields | `:latest` | C1 |
@@ -413,7 +415,8 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   profile-dependent stride would put C's key into B's book; 16 slots hold a POST cross-posted to
   five groups with two addressees. (2) `fn2-successor-out` returns `(mv code value)`, never a bare
   value (assert, never absorb): `:state` unless staged, bound or published, `:kind` for a record
-  slot or an octet field. (3) `:event` is an insert's integer field only (a fold step must know
+  slot or an octet field. (3) `:event` is an insert's integer field or a record slot's article (arg 0;
+  S-ARTICLE-ID: the article identifier is the member's commit position), never a fold's arg (a fold step must know
   its args at stage); `:out` never feeds a fold's key arg (resolve must read the key) and never
   reads a record slot. (4) A `:unique` insert is checked for a duplicate at stage only when its
   key args are all `:value`; a key with an `:out` or `:event` arg (overview's number, `addr`'s
@@ -621,6 +624,38 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
    Not in this seam: read-state, registration, edge-policy and inbox folds (C4b) are written by
    E's ack and registration transactions through the same calls.
 
+
+9. **S-GROUP (to D, ruled 2026-10-30; built).** The group directory is the schema `fn2-groups`
+   (id 8, `ordered.lisp`): exact name octets (at most 250) to `(:id group)`, `:latest`. Genesis:
+   `(fn2-groups-genesis profile fn2-core) -> (mv code fn2-core)`, called by `fn2-init-executor`
+   right after the core init (a refusal stops the core, reason `:engine-genesis`), puts the profile's
+   `:groups` list, `((NAME . GROUP) ...)` with NAME a string of 1-250 characters and GROUP a positive
+   u60, into one published overlay of the directory (an engine arena; SEQ the engine's next;
+   coverage 0); a malformed list is `:groups`, a repeated name `:duplicate`, more names than an
+   overlay holds `:capacity`. E owns the configuration later; the profile key is the interim.
+   Lookup, with one difference from the request (the transaction row `tx` first: a lookup is
+   resumable and its continuation, query rows and cursor are the transaction's):
+   `(fn2-group-lookup tx slot gen off len okind oslot ogen budget fn2-core) -> (mv code group
+   fn2-core)`, the name the LEN octets at [OFF, OFF+LEN) of SLOT/GEN under the owner, the same
+   arguments on every call; `:ok` with the group, `:absent` (441), `:more` (call again: one source
+   per call, an overlay search or one run step of at most BUDGET ≤ 4,096 reads), `:miss` (a run page
+   to load, as C-S1), `:bounds`, `:state` (the transaction's identity decision is in flight or
+   resolve is inside a run descent: look groups up before offering the Message-ID, or after its
+   decision is done, and before resolve). Sources newest first: published overlays by SEQ, then live
+   runs by identifier; a run version that moves during the run leg restarts the lookup. The generic
+   exact lookup under it (`fn2-xl-step`, `machines-c-groups.lisp`) serves any schema's exact key.
+10. **S-OUTCOME (to D, ruled 2026-10-30; built).** `fn2-outcome` (id 9): key (principal,
+   operation), value (request digest, outcome u16, event), `:unique`: an `:insert` slot whose key
+   args are `:value` is checked at stage against the tip and the runs (`:duplicate`); the digest by
+   `fn2-successor-arg-octets`, the event by `:event`. Its unit found a C-S3 defect, fixed with it: an
+   octet arg's row carried value 0, which the codec refuses for a digest field (`:unknown-tag` at
+   bind; a digest's row carries the presence value 1), so every `:insert` with a digest (the article
+   row's source, this request digest) failed at bind; `fn2-succ-arg-octets` now writes 1 for a digest
+   field (a field whose value check refuses length 0).
+11. **S-ARTICLE-ID (to D, ruled 2026-10-30).** No allocator: the article identifier is the member's
+   commit position. The article row's key takes it by `:event` (an insert's integer field; built
+   in C-S3), and so does the identity record's article (arg 0 of the `:record` slot: added with
+   this seam; its principal stays `:value`); bind writes the same `event` into both.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 

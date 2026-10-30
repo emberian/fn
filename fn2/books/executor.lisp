@@ -205,13 +205,26 @@
   (fn2-listener-bookings-from (fn2-machine-accept-count fn2-core)
                               (fn2-machine-kind-base *fn2-listener-kind* fn2-core) p fn2-core))
 
+;; Layer C's genesis (the profile's group directory, S-GROUP) right after the
+;; core init; a refusal stops the core before anything runs.
+(defun fn2-init-engine (profile fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (genesis fn2-core) (fn2-groups-genesis profile fn2-core)
+    (if (eq genesis :ok) fn2-core (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))))
+(defthm fn2-init-engine-type
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (fn2-init-engine profile fn2-core))))
+(defthm fn2-init-engine-wfp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-core-wfp (fn2-init-engine profile fn2-core))))
+(in-theory (disable fn2-init-engine))
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
       (:instance fn2-machine-kind-base-natp (kind *fn2-listener-kind*)
         (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1)
-                    (fn2-core-init profile fn2-core))))))))
+                    (fn2-init-engine profile (fn2-core-init profile fn2-core)))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
+       (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
                   (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))

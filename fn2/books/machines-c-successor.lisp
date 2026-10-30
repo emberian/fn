@@ -76,7 +76,8 @@
 ; size, the next overlay sequence number. A transaction row (one per
 ; transaction, as its decision row): its phase, the slot holding its
 ; identity fact (1 + index, or 0), its batch and commit position once bound,
-; and resolve's progress (slot RI, run bound RBOUND). A slot row (row
+; resolve's progress (slot RI, run bound RBOUND), and an exact lookup's
+; (machines-c-groups.lisp: LPHASE, LBOUND, LROW, LVER). A slot row (row
 ; T * 16 + I): schema, kind (:insert, :record, or one of the folds' event
 ; kinds), the masks of args given (SET), given :event (EVENTS) and given
 ; :out (OUTS), what resolve found (FOUND, the schema's run version VRUN), the
@@ -91,7 +92,8 @@
 (defcolumns fn2-succ-txns
  ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published)))
   (record :u8) (batch :u60) (event :u60)
-  (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60)))
+  (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60)
+  (lphase (:enum fn2-succ-lookup (:idle :overlays :runs :scan))) (lbound :u60) (lrow :u32) (lver :u60)))
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
@@ -289,8 +291,8 @@
 (in-theory (disable fn2-succ-declared))
 
 ; Arg J of slot I of TX from SRC: :value (the integer VALUE), :event (the
-; member's commit position, written at bind; an insert's integer field
-; only), or :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged
+; member's commit position, written at bind; an insert's integer field, or a
+; record's article: the article identifier is the commit position), or :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged
 ; row, never a record's; never a fold's key arg, which resolve must read).
 ; An assigned arg takes no call. B0 is TX's stripe base. :ok, :bounds,
 ; :state, :kind.
@@ -315,7 +317,7 @@
       (k (floor value 256)) (f (mod value 256)) (ks (+ (* tx *fn2-succ-slots*) k))
       ((unless (case src
                 (:value t)
-                (:event insert)
+                (:event (or insert (and (equal kcode *fn2-succ-kind-record*) (equal j 0))))
                 (:out (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
                            (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
                            (not (equal (fn2-succ-slots-kind ks fn2-succ-slots) *fn2-succ-kind-record*))
@@ -372,7 +374,11 @@
       (set (logior (nfix (fn2-succ-slots-set s fn2-succ-slots)) bit))
       (events (logand (nfix (fn2-succ-slots-events s fn2-succ-slots)) (- #xffffffff bit)))
       (outs (logand (nfix (fn2-succ-slots-outs s fn2-succ-slots)) (- #xffffffff bit)))
-      (fn2-fields (fn2-fields-put row (value 0) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
+      ; A digest field's row carries the codec's presence value 1 (an octet
+      ; field's value is unused); a digest admits only length 32, so a length
+      ; of 0 tells it apart from (:octets 32).
+      (digest (not (fn2-run-layout-value-ok sid j 0)))
+      (fn2-fields (fn2-fields-put row (value (if digest 1 0)) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
       (fn2-succ-slots (fn2-succ-slots-put s (oset 1) (sk okind) (ss oslot) (sg ogen)))
       ((mv code fn2-succ-txns fn2-succ-slots) (fn2-succ-touch tx s set events outs fn2-succ-txns fn2-succ-slots)))
   (mv code fn2-succ-txns fn2-succ-slots fn2-fields)))

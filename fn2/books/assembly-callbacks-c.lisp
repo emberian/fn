@@ -5,3 +5,4 @@
 (include-book "assembly-callbacks-a")
 (fn2-identity-core-events)
 (fn2-successor-core-events)
+(fn2-groups-core-events)

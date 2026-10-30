@@ -5,7 +5,7 @@
 (include-book "reference-state")
 ; B/C/D registration books go HERE, before either registry is consumed.
 (include-book "machines-b")
-(include-book "machines-c-bind")
+(include-book "machines-c-groups")
 (include-book "conn")
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
