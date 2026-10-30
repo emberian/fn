@@ -177,6 +177,56 @@
                         (fn2-sched (update-fn2-sched-queued (- (fn2-sched-queued fn2-sched) 1) fn2-sched)))
                    (mv :ok head fn2-sched)))))))))
 
+;; Re-attribution (D7's S4): MACHINE's scheduler membership moves to principal TO.
+;; Queued: unlinked from its FIFO (head, middle or tail) and appended to TO's tail,
+;; one step; not queued: only its principal column is set.  Every link check precedes
+;; the first write, so a refusal (:bounds, :state) leaves the scheduler unchanged.
+(defun fn2-sched-reattribute (machine to fn2-sched)
+  (declare (xargs :stobjs fn2-sched :guard (fn2-sched-wfp fn2-sched)))
+  (cond
+   ((not (and (natp machine) (< machine (fn2-sched-rows fn2-sched))
+              (fn2-sched-principalp to fn2-sched))) (mv :bounds fn2-sched))
+   ((not (= (fn2-sched-in-queue machine fn2-sched) 1))
+    (let ((fn2-sched (fn2-sched-set-principal machine to fn2-sched))) (mv :ok fn2-sched)))
+   (t
+    (let* ((from (fn2-sched-principal machine fn2-sched))
+           (rows (fn2-sched-rows fn2-sched)))
+      (cond
+       ((not (fn2-sched-principalp from fn2-sched)) (mv :state fn2-sched))
+       ((equal from to) (mv :ok fn2-sched))
+       (t
+        (let ((prev (fn2-sched-prev machine fn2-sched))
+              (next (fn2-sched-next machine fn2-sched))
+              (fcount (fn2-sched-countsi from fn2-sched))
+              (tcount (fn2-sched-countsi to fn2-sched))
+              (ttail (fn2-sched-tailsi to fn2-sched)))
+          (if (or (= fcount 0) (>= tcount *fn2-none*)
+                  (and (< 0 tcount) (>= ttail rows))
+                  (if (= prev *fn2-none*)
+                      (not (= (fn2-sched-headsi from fn2-sched) machine))
+                    (>= prev rows))
+                  (if (= next *fn2-none*)
+                      (not (= (fn2-sched-tailsi from fn2-sched) machine))
+                    (>= next rows)))
+              (mv :state fn2-sched)
+            (let* ((fn2-sched (if (= prev *fn2-none*)
+                                  (update-fn2-sched-headsi from next fn2-sched)
+                                (fn2-sched-set-next prev next fn2-sched)))
+                   (fn2-sched (if (= next *fn2-none*)
+                                  (update-fn2-sched-tailsi from prev fn2-sched)
+                                (fn2-sched-set-prev next prev fn2-sched)))
+                   (fn2-sched (update-fn2-sched-countsi from (- fcount 1) fn2-sched))
+                   (fn2-sched (fn2-sched-set-principal machine to fn2-sched))
+                   (fn2-sched (fn2-sched-set-prev machine
+                               (if (= tcount 0) *fn2-none* ttail) fn2-sched))
+                   (fn2-sched (fn2-sched-set-next machine *fn2-none* fn2-sched))
+                   (fn2-sched (if (= tcount 0)
+                                  (update-fn2-sched-headsi to machine fn2-sched)
+                                (fn2-sched-set-next ttail machine fn2-sched)))
+                   (fn2-sched (update-fn2-sched-tailsi to machine fn2-sched))
+                   (fn2-sched (update-fn2-sched-countsi to (+ tcount 1) fn2-sched)))
+              (mv :ok fn2-sched))))))))))
+
 ; Return the entry's kind, principal slot (zero for services), and OLD cursor.
 ; An empty calendar is an uninitialized scheduler, represented by kind=255.
 (defun fn2-sched-visit (fn2-sched)
@@ -225,12 +275,20 @@
            (fn2-schedp (mv-nth 2 (fn2-sched-pop-head principal fn2-sched)))))
 (defthm fn2-sched-pop-head-rows
   (equal (fn2-sched-rows (mv-nth 2 (fn2-sched-pop-head principal fn2-sched))) (fn2-sched-rows fn2-sched)))
+(defthm fn2-sched-reattribute-wfp
+  (implies (and (fn2-schedp fn2-sched) (fn2-sched-wfp fn2-sched))
+           (fn2-sched-wfp (mv-nth 1 (fn2-sched-reattribute machine to fn2-sched)))))
+(defthm fn2-sched-reattribute-type
+  (implies (and (fn2-schedp fn2-sched) (fn2-sched-wfp fn2-sched))
+           (fn2-schedp (mv-nth 1 (fn2-sched-reattribute machine to fn2-sched)))))
+(defthm fn2-sched-reattribute-rows
+  (equal (fn2-sched-rows (mv-nth 1 (fn2-sched-reattribute machine to fn2-sched))) (fn2-sched-rows fn2-sched)))
 (defthm fn2-sched-visit-type
   (implies (and (fn2-schedp fn2-sched) (fn2-sched-wfp fn2-sched))
            (fn2-schedp (mv-nth 3 (fn2-sched-visit  fn2-sched)))))
 (defthm fn2-sched-visit-rows
   (equal (fn2-sched-rows (mv-nth 3 (fn2-sched-visit  fn2-sched))) (fn2-sched-rows fn2-sched)))
-(in-theory (disable fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-visit))
+(in-theory (disable fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-reattribute fn2-sched-visit))
 
 ; Read-only evidence helpers, never called by the executor.
 (defun fn2-sched-calendar-validp (i fn2-sched)
@@ -267,6 +325,6 @@
 
 (assert-event (fn2-assert-compliant-p
  '(fn2-sched-profilep fn2-sched-calendar-code fn2-sched-principalp fn2-sched-init
-   fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-visit
+   fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-reattribute fn2-sched-visit
    fn2-sched-set-service fn2-sched-service-ready fn2-sched-eligiblep)
  (w state)))
