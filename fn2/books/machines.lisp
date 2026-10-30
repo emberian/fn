@@ -1219,10 +1219,10 @@
               ,@(fn2-machine-field-cases field names world 0 t) (otherwise fn2-core)))))
       (defthm ,(fn2-columns-sym put "-TYPE")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (,put id value fn2-core))))
+      ; Through core.lisp's per-child facts: each case sees only its own table.
       (defthm ,(fn2-columns-sym put "-WFP")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (fn2-core-wfp (,put id value fn2-core)))
-        :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+                 (fn2-core-wfp (,put id value fn2-core))))
       (in-theory (disable ,get ,put))
       (defun ,write (id value fn2-core)
         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -1282,8 +1282,7 @@
                   (fn2-corep (,put value fn2-core))))
        (defthm ,(fn2-columns-sym put "-WFP")
          (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                  (fn2-core-wfp (,put value fn2-core)))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+                  (fn2-core-wfp (,put value fn2-core))))
        (in-theory (disable ,get ,put)))))
 
 ; The generated router's one case: an observation it cannot deliver (stale
