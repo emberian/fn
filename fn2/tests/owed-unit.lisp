@@ -99,6 +99,21 @@
     :shared ((:columns fn2-example)) :teeth (fn2-owed-sample-positive) :layer :b)
   (assert-event
    (equal (fn2-decl-get :layer (fn2-decl-row '(:square fn2-square-representation) (w state))) :b))
+  ; A function named on both sides is a shared declaration, declared or refused;
+  ; shared representation rows are base, step or route squares, never :assertion.
+  (must-fail
+   (defthm-owed fn2-square-sides-undeclared (x) (natp x) :schema :g1 :claim :representation
+     :sides (:concrete (fn2-example-encode fn2-example-decode) :reference (fn2-example-decode))
+     :teeth (fn2-owed-sample-positive))
+   :expected :any)
+  (must-fail
+   (defthm-owed fn2-square-shared-assertion (x) (natp x) :claim :representation
+     :shared ((:layout fn2-example)) :teeth (fn2-owed-sample-positive))
+   :expected :any)
+  (defthm-owed fn2-square-sides-declared (x) (natp x) :schema :g1 :claim :representation
+    :shared ((:layout fn2-example))
+    :sides (:concrete (fn2-example-encode fn2-example-decode) :reference (fn2-example-decode))
+    :teeth (fn2-owed-sample-positive))
   (table fn2-squares 'fn2-square-unbound
     '(:schema :bound :owner (:correspondence fn2-unit) :case-source :executor-cases
       :proof (:owed) :statement nil :translated nil :checks nil))

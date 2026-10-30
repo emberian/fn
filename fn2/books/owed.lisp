@@ -36,6 +36,10 @@
     (and (true-listp (car ids)) (equal (len (car ids)) 2)
          (keywordp (caar ids)) (symbolp (cadar ids)) (cadar ids)
          (fn2-square-sharedp (cdr ids)))))
+(defun fn2-square-side-functions (side row)
+  (declare (xargs :verify-guards nil))
+  (let ((fns (fn2-decl-get side (fn2-decl-get :sides row))))
+    (if (symbol-listp fns) fns nil)))
 (defun fn2-square-rowp (name row world)
   (declare (xargs :verify-guards nil))
   (let* ((statement (fn2-decl-get :statement row))
@@ -47,6 +51,14 @@
          (member-eq (fn2-decl-get :schema row)
                     '(:g0 :g1 :g1q :g2 :route :crash :bound :invariant :assertion))
          (fn2-square-sharedp (fn2-decl-get :shared row))
+         ; A function named on both sides is shared; sharing is declared.
+         (or (fn2-decl-get :shared row)
+             (not (intersectp-eq (fn2-square-side-functions :concrete row)
+                                 (fn2-square-side-functions :reference row))))
+         ; DSL-METATHEORY decision 1: sides derived from one declaration
+         ; claim representation or compiler refinement (a base, step or
+         ; route square), or carry an independent contract for the
+         ; consequential behaviour and a shared-handler mutation control.
          (or (not (fn2-decl-get :shared row))
              (and (member-eq (fn2-decl-get :claim row) '(:representation :compiler))
                   (member-eq (fn2-decl-get :schema row) '(:g0 :g1 :g2 :route)))

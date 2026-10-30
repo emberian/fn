@@ -276,6 +276,7 @@
 (defthm-owed fn2-mk-root-is-mth (records hashes)
  (implies (fn2-mk-root-hyps records hashes) (fn2-mk-root-result records hashes))
  :teeth (fn2-mk-root-positive fn2-mk-root-negative)
+ :schema :g1 :claim :representation
  :doc "Actual initialized append/root over canonical leaf hashes equals the RFC 6962 recursive MTH. Unproved.")
 (defun fn2-mk-load-proof (proof at fn2-digests)
  (declare (xargs :stobjs fn2-digests :verify-guards nil))
@@ -330,7 +331,7 @@
    (fn2-mk-consistency-premise old new proof)
    (eq (car (fn2-mk-consistency-observation old new proof)) :ok))
   (equal old (take (len old) new)))
- :teeth (fn2-mk-consistency-positive fn2-mk-consistency-negative)
+ :teeth (fn2-mk-consistency-positive fn2-mk-consistency-negative) :schema :invariant
  :doc "Actual consistency verifier implies prefix under finite A-INTEGRITY-EVIDENCE on tree openings and actual verifier node inputs. Unproved; no real hash collision-resistance claim.")
 (assert-event (eq (symbol-class 'fn2-mk-init (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-mk-leaf-start (w state)) :common-lisp-compliant))

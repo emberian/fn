@@ -163,6 +163,9 @@
                          (equal (fn2-fold-image ,sid ,layout ',key rows (list e) seal qs)
                                 (,(fn2-columns-sym name "-FOLD-OBSERVE-ALL") (,(fn2-columns-sym name "-FOLD-APPLY-SPEC") rows e) qs))))
            :teeth (,(fn2-columns-sym thm "-POSITIVE") ,(fn2-columns-sym thm "-NEGATIVE"))
+           ; The real step and the specification's step are both compiled from the
+           ; schema's one fold declaration (DSL-METATHEORY decision 1).
+           :schema :g1 :claim :compiler :shared ((:schema ,name))
            :doc ,(concatenate 'string "The summary rule's certificate for " (symbol-name name) " and event kind "
                               (symbol-name (car kinds)) ": the rows read back through the real engine observe as the "
                               "fold's state, and after one such event applied by the real step they observe as the "
@@ -177,6 +180,7 @@
              (equal (fn2-fold-image ,sid ,layout ',key (,(fn2-columns-sym name "-FOLD-SPEC") (take k events)) (nthcdr k events) seal qs)
                     (,(fn2-columns-sym name "-FOLD-OBSERVE-ALL") (,(fn2-columns-sym name "-FOLD-SPEC") events) qs)))
     :teeth (,(fn2-columns-sym thm "-POSITIVE") ,(fn2-columns-sym thm "-NEGATIVE") ,(fn2-columns-sym thm "-WEAK"))
+    :schema :route :claim :compiler :shared ((:schema ,name))
     :doc ,(concatenate 'string "State = Fold(Summary_k, Events_{k+1..n}) for " (symbol-name name)
                        ": the summary at any cut k, materialized as rows sealed into a run or held in an overlay, "
                        "with the rest of the events applied by the real step, observes as the whole fold."))))
