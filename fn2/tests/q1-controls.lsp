@@ -49,12 +49,16 @@
                              counts (list 0 0) *fn2-q1-hook-failures* nil
                              ; a monitor belongs to the run whose fn2-own-init made it
                              *fn2-q1-hook-monitor* nil)
-                       (let* ((ok (handler-case (and (funcall oracle) t) (cl:error () :error)))
+                       ; An oracle that signals is :error, never :fail: a mutant that breaks the
+                       ; run is not one the oracle caught (the judge refuses it).
+                       (let* ((ok (handler-case (if (funcall oracle) :pass :fail)
+                                    (cl:error (condition)
+                                      (format t "Q1 CONTROL ~A ~A oracle error: ~A~%" kind phase condition)
+                                      :error)))
                               (trace (if (find :trace *fn2-q1-hook-failures* :key #'second) :fail :pass)))
                          (format t "Q1 CONTROL ~A ~A trace=~A oracle=~A invocations(concrete reference)=~A~%"
-                                 kind phase trace (if (eq ok t) :pass :fail) counts)
-                         (push (list kind phase trace (if (eq ok t) :pass :fail) (first counts) (second counts))
-                               records)))
+                                 kind phase trace ok counts)
+                         (push (list kind phase trace ok (first counts) (second counts)) records)))
                    (funcall restore) (setf mode :off)))))
           (fn2-q1-hook-install-turn)
           (unwind-protect
@@ -62,8 +66,8 @@
                 ; fn2-conn: the greeting is sent as 900 (its first TX octet becomes '9').
                 (run-kind 'fn2-conn (lambda () (fn2-q1c-fixtures-ok *fn2-cu-fixtures* nil)) 'fn2-conn-run-greeting
                   (lambda (orig)
-                    (lambda (refused mask tslot tgen id owner-gen core)
-                      (multiple-value-bind (code after core) (funcall orig refused mask tslot tgen id owner-gen core)
+                    (lambda (refused posting mask tslot tgen id owner-gen core)
+                      (multiple-value-bind (code after core) (funcall orig refused posting mask tslot tgen id owner-gen core)
                         (when (and (active core) (eq code :ok) (not (equal refused 1)))
                           (note core)
                           (fn2-core-write tslot tgen 0 57 *fn2-conn-kind* id owner-gen core))
@@ -92,6 +96,20 @@
                           (note core)
                           (setf core (fn2-machine-write-account-ref id principal core)))
                         (values b s d r core)))))
+                ; fn2-upload: the hasher is fed one octet short at the start of each chunk (the
+                ; octet is counted as hashed, so the upload goes on to its verdict as before).
+                (run-kind 'fn2-upload
+                  (lambda () (and (fn2-q1c-upload-ok (fn2-q1c-upload-case "valid") nil)
+                                  (fn2-q1c-upload-ok (fn2-q1c-upload-case "valid-two-chunks") nil)
+                                  (fn2-q1c-upload-ok (fn2-q1c-upload-case "subject-missing") nil)))
+                  'fn2-upload-hash-step
+                  (lambda (orig)
+                    (lambda (row slot gen off len id ogen core)
+                      (if (and (active core) (eql off 0) (integerp len) (< 1 len))
+                          (multiple-value-bind (code consumed core) (funcall orig row slot gen 1 (- len 1) id ogen core)
+                            (note core)
+                            (values code (if (member code '(:ok :more)) (+ 1 consumed) consumed) core))
+                        (funcall orig row slot gen off len id ogen core)))))
                 ; fn2-scribe: the checksum the patch writes is off by one bit.
                 (run-kind 'fn2-scribe (lambda () (fn2-q1c-scribe-ok 1001 2000)) 'fn2-scribe-patch-loop
                   (lambda (orig)

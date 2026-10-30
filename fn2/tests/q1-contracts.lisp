@@ -7,6 +7,7 @@
 (include-book "../sim/check-wire")
 (include-book "../sim/sim-recovery")
 (include-book "../sim/echo")
+(include-book "evidence/upload-model")
 
 ; ------------------------------------------------------------------------
 ; fn2-conn: WIRE correctness. The served connection, alone, given any client
@@ -46,19 +47,27 @@
        (fn2-q1c-fixtures-ok *fn2-cu-fixtures* '(3))
        (fn2-q1c-random-ok 6 101)))
 ; Negative: the conclusion refuses a wrong wire: the served wire of the
-; pipelined fixture passes, and with its greeting code changed to 900 fails.
-; (WIRE accepts that wire cut before its final 205 when the connection is
-; closed: a close ends the expected replies early. That is WIRE's
-; permissiveness, reported to D, not a property this row claims.)
+; pipelined fixture passes, and fails with its greeting code changed to 900,
+; and fails cut before its final 205 on the closed connection (WIRE requires
+; a reply for every complete command line received before a close).
 (defun fn2-q1c-regreet (wire)
   (declare (xargs :verify-guards nil))
   (if (and (consp wire) (consp (cdr wire)) (consp (cddr wire))) (list* 57 48 48 (cdddr wire)) wire))
+(defconst *fn2-q1c-205-line* (fn2-cw-crlf-octets '("205 closing connection")))
+(defun fn2-q1c-drop-205 (wire)
+  ; WIRE without its final 205 line; nil when it does not end in one
+  (declare (xargs :verify-guards nil))
+  (let ((n (len *fn2-q1c-205-line*)))
+    (and (<= n (len wire)) (equal (nthcdr (- (len wire) n) wire) *fn2-q1c-205-line*)
+         (take (- (len wire) n) wire))))
 (defun fn2-conn-wire-correct-negative ()
   (declare (xargs :verify-guards nil))
   (let* ((octets (nth 1 (nth 1 *fn2-cu-fixtures*)))
-         (r (fn2-conn-wire-solo octets nil)))
-    (and (fn2-wire-pass-p octets (car r) (cadr r))
-         (not (fn2-wire-pass-p octets (fn2-q1c-regreet (car r)) (cadr r))))))
+         (r (fn2-conn-wire-solo octets nil))
+         (cut (fn2-q1c-drop-205 (car r))))
+    (and (fn2-wire-pass-p octets (car r) (cadr r)) (cadr r) (consp cut)
+         (not (fn2-wire-pass-p octets (fn2-q1c-regreet (car r)) (cadr r)))
+         (not (fn2-wire-pass-p octets cut t)))))
 
 ; ------------------------------------------------------------------------
 ; fn2-echo: the served echo, alone, returns exactly the octets its client
@@ -293,6 +302,144 @@
     (and (<= 1 (nth 1 r)) (eq (car (nth 3 r)) :torn-corrupt)
          (not (fn2-q1c-valid-prefix-p (nth 1 r) (nth 3 r))))))
 
+; ------------------------------------------------------------------------
+; fn2-upload: the article block's judgement and digest. The served
+; connection and upload, alone, given POST, one article block in any chunks
+; and QUIT, answer a wire WIRE accepts (POST read in its two phases), reply
+; to the block as layer H's spec-derived model judges it, and leave in the
+; upload's hasher row the BLAKE3 digest of the article the model decoded
+; from the block. Nothing on the checking side calls an upload handler: the
+; judgements and decoded articles are H's model's (tests/model/nntp_model.py
+; through tests/upload-model-export.py, pinned in evidence/upload-model.lisp
+; with the model's digest), the digest reference is B's list-level
+; fn-blake3, and the observation is the wire and the hasher row's result
+; slot after the run.
+;   (:accept)         the model admits 240 or a 441: until B-S2's batch
+;                     admission the transaction's answer is the interim
+;                     :not-stored, exactly "441 posting failed" (layer doc 14.5)
+;   (:refuse ALT ...) a 441 whose text after its code contains an ALT (the
+;                     model's 441 .*?(?:ALT|...).*)
+;   (:framing)        a 441 (WIRE checks the close after it)
+; The digest is claimed for every block the model decodes within the
+; profile's bound (two chunks less the digest's 32 octets and one, 8159): a
+; refused framing or size is drained unhashed.
+; upload-unit's profile: two upload windows of 4 KiB chunks, the fixtures'
+; groups, and room for C's engine, so an admissible article reaches the
+; transaction's :ready (D5 1/n).
+(defconst *fn2-q1c-upload-profile*
+  (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
+    (put-assoc-equal :identity-arena-bytes 4096
+      (put-assoc-equal :posting-interim t
+        (put-assoc-equal :format-slots 5
+          (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*))))))
+(defconst *fn2-q1c-upload-interim* (fn2-cw-chars (coerce "441 posting failed" 'list)))
+; The model cases this row does not claim, each a disagreement between the
+; served text and H's model reported through main: the catalogue's (fn1's)
+; "441 posting failed; From appears more than once" names no ALT of the
+; model's duplicate rule (duplicat|malformed|field|Path). The negative
+; tooth asserts each still disagrees, so a resolution removes it here.
+(defconst *fn2-q1c-upload-open* '("from-duplicate"))
+(defun fn2-q1c-hasher-result (row fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-digests (fn2-core-digests fn2-core))) (d)
+    (fn2-digest-list (fn2-digest-slot row *fn2-b3-result*) fn2-digests) d))
+; (status stop (wire closed) digest): one client alone; its upload is row
+; slot 0, so its hasher row is 3 (B-S1).
+(defun fn2-upload-served-run (client sizes)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core)
+      (let ((fn2-core (fn2-init-executor *fn2-q1c-upload-profile* :echo nil fn2-core)))
+        (mv-let (status clients fn2-core)
+          (fn2-cw-loop (+ 2600 (* 4 (len sizes))) 0 0 (fn2-cw-clients (list (list client sizes))) fn2-core)
+          (mv (list status (fn2-core-stop-reason fn2-core) (car (fn2-cw-results clients))
+                    (fn2-q1c-hasher-result 3 fn2-core))
+              fn2-core)))
+      result)))
+(defun fn2-q1c-line (n wire)
+  ; the Nth CRLF line of WIRE (from 0), without its CRLF; nil past the end
+  (declare (xargs :verify-guards nil :measure (nfix n)))
+  (mv-let (found line rest) (fn2-wire-take-line wire nil)
+    (cond ((not found) nil) ((zp n) line) (t (fn2-q1c-line (- n 1) rest)))))
+(defun fn2-q1c-prefix-p (p l)
+  (declare (xargs :verify-guards nil))
+  (or (atom p) (and (consp l) (equal (car p) (car l)) (fn2-q1c-prefix-p (cdr p) (cdr l)))))
+(defun fn2-q1c-contains-p (p l)
+  (declare (xargs :verify-guards nil))
+  (or (fn2-q1c-prefix-p p l) (and (consp l) (fn2-q1c-contains-p p (cdr l)))))
+(defun fn2-q1c-any-alt-p (alts text)
+  (declare (xargs :verify-guards nil))
+  (and (consp alts)
+       (or (fn2-q1c-contains-p (fn2-cw-chars (coerce (car alts) 'list)) text)
+           (fn2-q1c-any-alt-p (cdr alts) text))))
+(defun fn2-q1c-model-reply-p (judgement line)
+  (declare (xargs :verify-guards nil))
+  (case (car judgement)
+    (:accept (equal line *fn2-q1c-upload-interim*))
+    (:refuse (and (equal (fn2-wire-code line) 441) (fn2-q1c-any-alt-p (cdr judgement) (nthcdr 4 line))))
+    (:framing (equal (fn2-wire-code line) 441))
+    (otherwise nil)))
+(defun fn2-q1c-upload-client (block)
+  (declare (xargs :verify-guards nil))
+  (append (fn2-cw-crlf-octets '("POST")) block (fn2-cw-crlf-octets '("QUIT"))))
+; CASE is (name block data judgement), as the model export writes it.
+(defun fn2-q1c-upload-ok (case sizes)
+  (declare (xargs :verify-guards nil))
+  (let* ((data (nth 2 case)) (judgement (nth 3 case))
+         (client (fn2-q1c-upload-client (nth 1 case)))
+         (r (fn2-upload-served-run client sizes))
+         (wire (car (nth 2 r))) (closed (cadr (nth 2 r))))
+    (and (equal (nth 0 r) :quiet) (equal (nth 1 r) 0)
+         (fn2-wire-pass-p client wire closed)
+         (equal (fn2-wire-code (fn2-q1c-line 1 wire)) 340)
+         (fn2-q1c-model-reply-p judgement (fn2-q1c-line 2 wire))
+         (or (null data) (< *fn2-upload-model-limit* (len data))
+             (equal (nth 3 r) (fn-b3-words 8 (fn-blake3 data)))))))
+(defun fn2-q1c-upload-chunks (n k)
+  (declare (xargs :verify-guards nil))
+  (make-list (+ 1 (floor n k)) :initial-element k))
+(defthm-owed fn2-upload-judged-and-hashed (case sizes)
+  (implies (and (member-equal case *fn2-upload-model-cases*)
+                (not (member-equal (car case) *fn2-q1c-upload-open*))
+                (nat-listp sizes))
+           (fn2-q1c-upload-ok case sizes))
+  :schema :invariant :claim :semantic
+  :teeth (fn2-upload-judged-positive fn2-upload-judged-negative)
+  :doc "For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded; open disagreements with the model are listed by name.")
+(defun fn2-q1c-upload-all (cases k)
+  ; every claimed case whole (K nil) or in K-octet chunks
+  (declare (xargs :verify-guards nil))
+  (or (atom cases)
+      (and (or (member-equal (car (car cases)) *fn2-q1c-upload-open*)
+               (fn2-q1c-upload-ok (car cases)
+                                  (and k (fn2-q1c-upload-chunks (len (fn2-q1c-upload-client (nth 1 (car cases)))) k)))
+               (cw "UPLOAD CONTRACT ~x0 chunks ~x1 FAIL~%" (car (car cases)) k))
+           (fn2-q1c-upload-all (cdr cases) k))))
+; Positive: every claimed model case whole and in 7-octet chunks.
+(defun fn2-upload-judged-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-q1c-upload-all *fn2-upload-model-cases* nil)
+       (fn2-q1c-upload-all *fn2-upload-model-cases* 7)))
+(defun fn2-q1c-upload-case (name)
+  (declare (xargs :verify-guards nil))
+  (assoc-equal name *fn2-upload-model-cases*))
+; Negative: without the fixture hypothesis the conclusion is false: the
+; valid case with its decoded article one octet short (the digest refuses
+; it), the subject-missing case judged admissible (the reply refuses it),
+; and each open case as it stands (the model refuses the served text).
+(defun fn2-q1c-upload-open-fail (names)
+  (declare (xargs :verify-guards nil))
+  (or (atom names)
+      (and (not (fn2-q1c-upload-ok (fn2-q1c-upload-case (car names)) nil))
+           (fn2-q1c-upload-open-fail (cdr names)))))
+(defun fn2-upload-judged-negative ()
+  (declare (xargs :verify-guards nil))
+  (let ((valid (fn2-q1c-upload-case "valid")) (missing (fn2-q1c-upload-case "subject-missing")))
+    (and (consp (nth 2 valid))
+         (not (fn2-q1c-upload-ok (update-nth 2 (cdr (nth 2 valid)) valid) nil))
+         (not (fn2-q1c-upload-ok (update-nth 3 '(:accept) missing) nil))
+         (fn2-q1c-upload-open-fail *fn2-q1c-upload-open*))))
+
 (fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input fn2-listener-admits-within-ledger
-                       fn2-scribe-reads-back)
-(value-triple (cw "Q1 CONTRACTS: conn, echo, listener and scribe teeth PASS~%"))
+                       fn2-scribe-reads-back fn2-upload-judged-and-hashed)
+(value-triple (cw "Q1 CONTRACTS: conn, echo, listener, scribe and upload teeth PASS~%"))
