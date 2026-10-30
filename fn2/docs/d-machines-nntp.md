@@ -305,12 +305,13 @@ wait-reason, deadline):
 | `cap-index cap-nonce` | u32 u32 | the capability token (A's Accept result) |
 | `rx-slot rx-gen tx-slot tx-gen` | link u60 link u60 | the RX and TX pool ranges (whole slots; offsets below) |
 | `start pos overflow` | u32 u32 bool | the framer's whole state over `[start, fill)` of RX (`fn2-gram-frame`) |
+| `compacting cursor` | bool u32 | a drop-prefix compaction in progress and its continuation |
 | `tx-off` | u32 | the sent prefix of TX |
 | `after` | u8 | the phase `:reply` moves to when TX is drained: an enum of `:command :article-input :upgrading :closing` (by name) |
 | `pending borrows` | u32 u32 | outstanding ops; TX bytes lent to a Send |
 | `mask` | u8 | the grammar state mask (`*fn2-nntp-state-reader*` etc.): reader or peer, anonymous or authenticated |
 | `ordinal` | u32 | commands answered on this connection |
-| `view` | u60 | the selected view (pinned logical version; STORAGE-DESIGN §4 decision 2): `*fn2-none*` until D6 selects one |
+| `selected-view` | u60 | the selected view (pinned logical version; STORAGE-DESIGN §4 decision 2): `*fn2-none*` until D6 selects one |
 | `auth-ref access-ref config-ref` | u32 u32 u32 | the principal's authentication reference (none = anonymous); the pinned access rule (W01); the configuration generation pinned at admission |
 | `auth-pending` | u8 | H's shared pending slot: none, AUTHINFO USER, SASL, XREDEEM (starting any replaces the others) |
 | `requests uses` | u32 u32 | the active request reference (cursor, upload, transaction, TLS row; none in D3) and the outstanding-use count |
@@ -343,10 +344,10 @@ reaches the cap, and its `:next` includes `:command`. Framer outcomes:
 
 Compaction (GD4): when every filled octet is consumed (`start = fill`) the RX range is reset
 (`fn2-core-reset`) and `start = pos = 0`; when a partial line is retained and the slot is full, its at
-most 511 octets move to the front. D3 does this with R6a1's `fn2-pool-drop-prefix` if R6a1 has
-landed; otherwise through TX, which is empty whenever `:command` runs (every reply is sent before the
-next line is framed): copy `[start, fill)` to TX, reset RX, copy back, reset TX, at most 1,022
-octets, within the run's bytes. D2c deletes that interim the moment drop-prefix exists.
+most 511 octets move to the front with R6a1's `fn2-core-drop-prefix`, a bounded continuation over the
+row's `cursor` (`compacting` set; at most `*fn2-conn-compact-bytes*` = 1,024 per run). A slot smaller
+than the line cap that fills with one unfinished line is refused as overlong (501, close): only a
+profile below `*fn2-conn-range-min*` can reach it.
 
 Pipelining is preserved by construction: the framer resumes at `pos`, so lines that arrived together
 are answered in order, one reply per run of `:command` → `:reply` → `:command`. Fragmentation
@@ -358,11 +359,18 @@ forwarded with `fn2-call` carry `:contract`):
 | arm | cost (bytes / steps / descriptors) | writes | next | uses (each a defcost or contracted callback) |
 |---|---|---|---|---|
 | `:free`, `:retired` `fn2-conn-idle` | 0 / `(:cost fn2-machine-idle :steps)` / 0 | none | own phase | `fn2-machine-idle` |
-| `:greeting` `fn2-conn-greet` | 512 / transition / 0 | `tx-off after ordinal deadline` | `:reply` | `fn2-conn-render` |
-| `:command` `fn2-conn-command` | 4,096 / transition + small / 1 | `start pos overflow after ordinal mask auth-pending deadline pending stopped wait-reason ready-prev ready-next` | `:command :reply` | `fn2-conn-frame`, `fn2-conn-parse`, `fn2-conn-decide` (contracted), `fn2-conn-render`, `fn2-conn-compact`, `fn2-issue-receive`, `fn2-machine-issue-result`, `fn2-conn-clock` |
-| `:reply` `fn2-conn-reply` | 4,096 (the send length) / mailbox / 1 | `tx-off borrows pending stopped wait-reason ready-prev ready-next` | `:reply :command :closing` | `fn2-issue-send`, `fn2-core-reset`, `fn2-machine-issue-result` |
-| `:closing` `fn2-conn-close` | 0 / transition / 1 | `pending stopped wait-reason ready-prev ready-next` | `:closing` | `fn2-issue-close`, `fn2-machine-issue-result` |
-| `:draining` `fn2-conn-drain` | 0 / release / 0 | the release set (generation, ranges, capability, offsets, next-free, wait-reason) | `:draining :free :retired` | `(fn2-core-release :effects ((:release (:tx-range))))`, `(fn2-core-release :effects ((:release (:rx-range))))`, the connection kind's reclaim (4.5) |
+| `:greeting` `fn2-conn-greet` | 512 / transition / 0 | `tx-off after` | `:greeting :reply` | `fn2-conn-run-greeting`, `fn2-machine-refuse-phase` |
+| `:command` `fn2-conn-command` | max of its two forwards: 4,096 / 32 / 1 | the framer state, `compacting cursor tx-off after auth-pending ordinal` and the issue set | `:command :reply` | `fn2-conn-frame-run`, `fn2-conn-compact-run` |
+| (contracted) `fn2-conn-frame-run` | 4,096 / transition / 1 | as `:command` | `:command :reply` | `fn2-conn-frame`, `fn2-conn-run-answer`, `fn2-conn-run-overflow`, `fn2-conn-input`, `fn2-machine-refuse-phase` |
+| (contracted) `fn2-conn-input` | frame + max(receive, overflow) / mailbox / 1 | `start pos compacting cursor tx-off after` and the issue set | `:command :reply` | `fn2-conn-room`, `fn2-core-reset`, `fn2-issue-receive`, `fn2-machine-issue-result`, `fn2-conn-run-overflow`, `fn2-machine-refuse-phase` |
+| (contracted) `fn2-conn-compact-run` | 1,024 / transition / 0 | `start pos compacting cursor` | `:command` | `fn2-core-drop-prefix`, `fn2-machine-refuse-phase` |
+| `:article-input`, `:upgrading` `fn2-conn-unreached` | 0 / refuse / 0 | none | own phase | `fn2-machine-refuse-phase` |
+| `:reply` `fn2-conn-reply` | 4,096 (the send length) / 2 mailbox / 1 | `tx-off borrows` and the issue set | `:reply :command :closing` | `fn2-conn-room`, `fn2-issue-send`, `fn2-core-reset`, `fn2-machine-issue-result`, `fn2-machine-refuse-phase` |
+| `:closing` `fn2-conn-close` | 0 / transition / 1 | the issue set | `:closing` | `fn2-issue-close`, `fn2-machine-issue-result` |
+| `:draining` `fn2-conn-drain` → (contracted) `fn2-conn-release` | 0 / release / 0 | the release set (generation, ranges, capability, framer state, offsets, next-free, wait-reason) | `:draining :free :retired` | `(fn2-core-release :effects ((:release (:tx-range))))`, `(fn2-core-release :effects ((:release (:rx-range))))`, `fn2-machine-gen-limit`, `fn2-machine-reclaim-fn2-conn` (4.5), `fn2-core-stop` |
+
+("The issue set" is `pending stopped wait-reason ready-prev ready-next`, what A's
+`fn2-machine-issue-result` writes.)
 
 Observation handlers, mirroring echo's: `:receive-result` (from `:command`; a positive count stays in
 `:command`, EOF or failure moves to `:closing`), `:send-result` (from `:reply`; advances `tx-off`, a
@@ -371,21 +379,21 @@ failure moves to `:closing`), `:borrow-released` (writes `borrows`), `:close-res
 :releases ())` (the row keeps its ranges until `:draining`; a refused Receive closes); `:reply` the
 same.
 
-The grammar ops get their defcosts in conn.lisp (D's layer, as the arm-contract doc asks), each a
-thin `stobj-let` wrapper over the pool child, never copying octets into a list:
+The connection's own operations have their defcosts in conn.lisp (D's layer, as the arm-contract
+doc asks); each is a thin `stobj-let` wrapper over the pool child, never copying octets into a list:
 
 | op | over | declared |
 |---|---|---|
-| `fn2-conn-frame` | `fn2-gram-frame` on RX | `:bytes *fn2-conn-frame-bytes*`, `:tables (fn2-core-pool)` (reads only; none written) |
-| `fn2-conn-parse` | `fn2-nntp-parse-line` on `[start, pos)` | `:bytes *fn2-nntp-line-cap*` |
-| `fn2-conn-render` | `fn2-nntp-render` + fixed bodies into TX | `:bytes (+ 512 *fn2-conn-body-bytes*)`, `:tables (fn2-core-pool)` |
-| `fn2-conn-compact` | reset or move the retained prefix | `:bytes 1024`, `:tables (fn2-core-pool)` |
-| `fn2-conn-clock` | the clock mailbox (monotonic, realtime, flags) | reads `fn2-core-ops`, changes nothing |
+| `fn2-conn-frame` | `fn2-gram-frame` on RX (since D2c one `fn2-pool-scan` for LF) | `:bytes *fn2-conn-frame-bytes*` (reads only) |
+| `fn2-conn-run-answer` | `fn2-answer` (conn-answer.lisp): parse, sub-form checks, decide, render into TX; reads the clock mailbox | `:bytes *fn2-conn-answer-bytes*`, `:tables (fn2-core-pool)` |
+| `fn2-conn-run-greeting`, `fn2-conn-run-overflow` | `fn2-answer-greeting`, `fn2-answer-overflow` | `:bytes 512`, `:tables (fn2-core-pool)` |
+| `fn2-conn-room` | a held slot's fill and capacity | reads only |
 
 ### 4.3 The decision table (command tag → reply), D3's half
 
-`fn2-conn-decide` is one contracted callback over the parse outcome; it never reads a live
-configuration or access rule, only the row's `config-ref`, `access-ref`, `auth-ref` and `mask`
+The decision is `fn2-answer` (`fn2/books/conn-answer.lisp`), a pool-level library the arm reaches
+through the one declared operation `fn2-conn-run-answer`; it never reads a live configuration or
+access rule, only the row's `config-ref`, `access-ref`, `auth-ref` and `mask`
 (**the pinned access rule, H ruling HZ3 / fn1 W01**: one rule per connection, pinned at admission for
 the anonymous principal and re-pinned only by the authentication arm; checked structurally, because
 no arm but authentication lists `access-ref` in `:writes` and no defcost reads a live rule, and by
@@ -420,14 +428,14 @@ compares those lines too, through the machine's transcript runner instead of the
 
 ### 4.4 Timers, refusals, the anonymous principal
 
-The first-command, idle and send deadlines are the row's `deadline` field, set at greeting, after
-each reply and while a Send is pending, and compared with the clock mailbox at every run (expiry:
-close without a reply, specs/nntp.md:2318-2326). What makes an idle row *run* at its deadline is a
-wake, and the earliest-deadline `ArmWake` is the timer service's (D7, from the `:arm-wake` reserve;
-ROUND2 keeps one replaceable wake, not one per connection); D3 records the deadlines and enforces
-them on the next run, D7 adds the wake (scenario 18). Capacity refusal (NNT-031/043): the connection
-partition keeps `*fn2-conn-refusal-rows*` = 1 row in reserve; an admission that leaves fewer than
-that free is admitted with `refused` set, and `:greeting` renders 400 `:busy` with `after` =
+The first-command, idle and send deadlines are configured limits (`exposure-first-seconds`,
+`exposure-idle-seconds`, specs/nntp.md:2318-2326), and no limit configuration exists before D7's
+configuration generations; the row's `deadline` stays `*fn2-no-deadline*` in D3. D7 sets it at the
+greeting, after each reply and while a Send is pending, enforces it on the row's run (close without a
+reply), and adds the earliest-deadline `ArmWake` from the `:arm-wake` reserve (ROUND2 keeps one
+replaceable wake, not one per connection; scenario 18). Capacity refusal (NNT-031/043): the connection
+partition keeps one row in reserve; an admission that leaves no other row free is admitted with
+`refused` set (the admission seam of 4.5 exposes the partition's free count for this), and `:greeting` renders 400 `:busy` with `after` =
 `:closing`. The per-address 400 needs the peer address, which the Accept result does not carry
 (ABI row, §8). Every D3 connection is the anonymous principal (`principal-slot` the anonymous slot,
 `auth-ref` none) under `anonymous open` on a plaintext listener (§11).
@@ -609,8 +617,10 @@ and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verd
   it checks UTF-8, so it expects an ill-formed UTF-8 line that ends in whitespace to get 501 with the
   connection kept open. The grammar answers 501 and closes. `specs/nntp.md:513-518` permits either
   (drain or close). The oracle counts these cases separately; one in 4,416.
-- The parser scans line ends byte by byte through the scalar export; D2c moves it onto R6a1's
-  `fn2-pool-scan` / `fn2-pool-drop-prefix` and deletes that loop.
+- The framer finds line ends with one R6a1 `fn2-pool-scan` per run (D2c): the octet loop is gone
+  from the served path and survives only in `tests/grammar-unit.lisp` as the reference the scan-based
+  framer must equal at every (start, pos), budget, cap and overflow state of the probe transcripts.
+  Prefix retention is the connection's: R6a1's `fn2-core-drop-prefix` (section 4.2).
 
 **The fuzzer (D2b; form F of RELEASE-PLAN §2.4).** `defgrammar-generator NAME`
 (`fn2/tests/grammar-gen.lisp`) reads NAME's `(:command ...)` rows from the declaration table, so
@@ -753,7 +763,7 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 | GD1 dispatcher fallback hardwired to A's core | closed by the same: the generated dispatch's refusal arm receives the assembled `fn2-core` | none |
 | GD2 no commit/recovery machine | B3b on `fn2/b-durability` | D5 references B's batch; no stand-in persistence |
 | GD3 no arm cost/frame contract | R7 | §4's seam request; D3 builds on R7 (landed) |
-| GD4 no retained-prefix compaction | R6a1 `fn2-pool-drop-prefix` | D2a interim over scalar exports, D2c ports |
+| GD4 no retained-prefix compaction | R6a1 `fn2-pool-drop-prefix` | closed: D3's connection compacts with `fn2-core-drop-prefix`; D2c put the framer on `fn2-pool-scan` |
 | GC1 no two-owner range compare | R6a1 `fn2-pool-compare` | C's and D5's consumer |
 
 ## 10. Departures, seam requests and open items
@@ -765,7 +775,6 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 - R6b item 1 re-cut onto D0 (§2); R7 carried §4's forms (done, 926b09328).
 - `declare.lisp` gained the `command` kind's table entry (D2a), purely additive.
 - D3's interim replies (§4.3) are a named constant whose emptiness is a D9 check.
-- D3's RX compaction goes through TX until R6a1's drop-prefix exists (§4.2); D2c deletes it.
 - Echo stays A's test workload in the served instance (A4's drivers); the served listener admits
   `fn2-conn` once §4.5 lands. Whether echo leaves the served instance is A's call.
 
@@ -803,6 +812,6 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D1a | T10 in owed-d.lisp with teeth | A only | done |
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
-| D2c | parser onto R6a1's scan and drop-prefix | R6a1 | |
+| D2c | framer onto R6a1's scan (drop-prefix is the connection's compaction) | R6a1 | done |
 | D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8 | R7 (landed), D0, D2; the listener seam (§4.5) for the simulator half | design written |
 | D4-D9 | per the brief | per the brief | |
