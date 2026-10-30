@@ -26,7 +26,10 @@
 (defun fn2-square-absent-roles (group plist calls)
   (declare (xargs :verify-guards nil))
   (if (atom plist) nil
-    (append (and (not (subsetp-eq (fn2-square-endpoints (list (car plist) (cadr plist))) calls))
+    ; :independent names the row's independent contract (metadata, decision 1),
+    ; not a function the statement calls.
+    (append (and (not (eq (car plist) :independent))
+                 (not (subsetp-eq (fn2-square-endpoints (list (car plist) (cadr plist))) calls))
                  (list (list group (car plist))))
             (fn2-square-absent-roles group (cddr plist) calls))))
 (defun fn2-square-exceptionsp (unused absent)
@@ -100,7 +103,12 @@
                 :owner (list :correspondence owner) :origin (fn2-decl-get :origin payload)
                 :case case :case-source source :boundary (fn2-decl-get :boundary payload)
                 :contract contract :sides sides :unused-roles unused
-                :shared nil :claim :semantic :shared-handler-mutation nil
+                ; A binding records what its two sides execute in common (decision 1):
+                ; the declarations, and the shared functions by name.
+                :shared (fn2-decl-get :shared payload)
+                :shared-provenance (fn2-decl-get :shared-provenance payload)
+                :claim (or (fn2-decl-get :claim payload) :semantic)
+                :shared-handler-mutation (fn2-decl-get :shared-handler-mutation payload)
                 :statement statement :vars vars :formula formula :teeth teeth
                 :doc (fn2-decl-get :doc payload) :checker checker
                 :depends (fn2-decl-get :depends payload)

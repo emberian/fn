@@ -170,6 +170,44 @@
     (fn2-q1-termination :schema :bound :doc "Both loops stop within fuel h+k under the shared budgets.")
     (fn2-q1-partition :schema :invariant :doc "The catalogue's selectors partition the loop's transitions under the invariant; stopped, invalid and no-transition dispatch excluded.")
     (fn2-q1-accounting :schema :bound :doc "Per-arm cost certificates compose to the turn work bound of fn2-turn-refinement.")))
+;; What a case's two sides execute in common (Q1's honest classification,
+;; build/coordinator/fn2/lanes/a-dm4-q1-classification.md section 2): the
+;; reference shares the handlers and the executor's effects and is
+;; independent in selection, so a case row is a representation refinement
+;; of the scheduler over these. Behavioural dependencies only, by name; the
+;; declarations come from the registry (a hand-written function shared by
+;; both sides is recorded as (:function NAME)).
+(defun fn2-q1-shared-functions (case)
+  (declare (xargs :verify-guards nil))
+  (let ((tag (car case)))
+    (cond ((eq tag :observe) '(fn2-harvest-one fn2-machine-observe))
+          ((eq tag :run)
+           (append '(fn2-machine-run fn2-exec-charge-run fn2-machine-take-wake)
+                   (and (eq (cadr case) 'fn2-listener)
+                        '(fn2-machine-admit fn2-account-book fn2-account-unbook))))
+          ((eq tag :router) '(fn2-harvest-one fn2-machine-observe))
+          ((equal case '(:executor :clock)) '(fn2-take-clock fn2-exec-clock))
+          ((equal case '(:executor :signal)) '(fn2-take-signal fn2-core-stop))
+          ((equal case '(:executor :service 1)) '(fn2-machine-grant-one fn2-exec-arm fn2-exec-charge-run))
+          ((eq tag :executor) (if (eq (cadr case) :service) '(fn2-exec-charge-run) nil))
+          (t nil))))
+(defun fn2-q1-decl-owner-in (name rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (if (fn2-decl-find-artifact name (fn2-decl-get :generated (cdar rows)))
+        (fn2-decl-get :decl-id (cdar rows))
+      (fn2-q1-decl-owner-in name (cdr rows)))))
+(defun fn2-q1-shared-decls (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons (or (fn2-q1-decl-owner-in (car names) (fn2-decl-all-rows world))
+              (list :function (car names)))
+          (fn2-q1-shared-decls (cdr names) world))))
+(defun fn2-q1-shared (case world)
+  (declare (xargs :verify-guards nil))
+  (remove-duplicates-equal
+   (append (and (member-eq (car case) '(:run :observe)) (list (list :machine (cadr case))))
+           (fn2-q1-shared-decls (fn2-q1-shared-functions case) world))))
 (defun fn2-q1-bind-cases (cases index contract sides world)
   (declare (xargs :verify-guards nil))
   (if (atom cases) nil
@@ -177,6 +215,8 @@
       (cons
        (cons case
              (list :id id :schema :g1 :source (fn2-case-source case world)
+                   :claim :representation :shared (fn2-q1-shared case world)
+                   :shared-provenance (fn2-q1-shared-functions case)
                    :origin (fn2-case-source case world)
                    :boundary :loop-iteration :vars '(ctx concrete reference lists)
                    :formula (fn2-q1-case-formula case contract sides) :proof '(:owed)
