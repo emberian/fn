@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "core-child-assembly-access")
 
+; Each admitted kind's admission and reclamation operations (D 4.5).
+(fn2-machine-admission-events)
 (fn2-scribe-events)
 (fn2-machine-a-events)
 (fn2-test-machine-events)
@@ -58,7 +60,7 @@
 (assert-event
  (not (fn2-arm-resource-problem '(:admitting) '(:accepting :closing)
         '((:accepting :accept-credit) (:admitting :accept-credit :connection-row) (:closing :accept-credit))
-        '(fn2-machine-admit-connection fn2-listener-return-credit) (w state))))
+        '(fn2-machine-admit fn2-listener-return-credit) (w state))))
 ; 7. over budget and the cap-reaching arm without its own phase: run checks.
 (assert-event
  (fn2-machine-arm-problem 'fn2-test-machine

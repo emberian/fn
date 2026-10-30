@@ -17,7 +17,7 @@
 ; are rows (static); the fence slot is adapter-side (no core count).
 (defun fn2-acq-census (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (let ((credits (fn2-machine-admission-credits fn2-core)))
+  (let ((credits (fn2-machine-admission-credits *fn2-echo-admission-ordinal* fn2-core)))
     (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
                 (fn2-ops (fn2-core-ops fn2-core)))
       (c0 c1 free out)

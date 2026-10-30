@@ -53,14 +53,9 @@
   :doc "Reserve one connection row at Accept issue.")
 (defcost fn2-listener-return-credit :tables (fn2-core-machines) :effects ((:release (:connection-row)))
   :doc "Return a reserved row: failed Accept, refused admission.")
-(defcost fn2-machine-admit-connection
-  :tables (fn2-core-machines fn2-core-pool fn2-echo-table)
-  :effects ((:transfer (:connection-row) :to fn2-echo) (:acquire (:rx-range) :for fn2-echo))
-  :target (fn2-echo :free :command)
-  :doc "Install an accepted connection: the reserved row moves to it with a fresh RX range.")
-(defcost fn2-machine-reclaim-connection :tables (fn2-core-machines)
-  :effects ((:release (:connection-row)))
-  :doc "Return a drained connection row to the free list and its credit (unless it retires).")
+; The admission and reclamation operations of each admitted kind, and the
+; listener's dispatcher fn2-machine-admit, declare their costs where they are
+; generated (machines.lisp, fn2-machine-admission-events).
 
 ; Pool range operations: the resource kind is the caller's (:rx-range for a
 ; connection, :storage-window for the scribe), given in its :uses entry.
