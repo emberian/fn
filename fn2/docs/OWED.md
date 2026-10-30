@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 332; bound statements: 327; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 336; bound statements: 331; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -2046,6 +2046,30 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-NUM-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 900 *FN2-RT-NUM-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-RT-NUM-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-NUM-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-RUN-SCAN)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 900 *FN2-RT-NUM-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q N)))` | `(FN2-RT-NUM-RUN-SCAN-POSITIVE FN2-RT-NUM-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-OVERLAY-SORTED)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES) (EQUAL (FN2-OV-IMAGE 900 *FN2-RT-NUM-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES)))` | `(FN2-RT-NUM-OVERLAY-SORTED-POSITIVE FN2-RT-NUM-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -2081,6 +2105,30 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-MID-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 901 *FN2-RT-MID-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-RT-MID-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-MID-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-MID-RUN-SCAN)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-MID-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 901 *FN2-RT-MID-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q N)))` | `(FN2-RT-MID-RUN-SCAN-POSITIVE FN2-RT-MID-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-MID-OVERLAY-SORTED)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-MID-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES) (EQUAL (FN2-OV-IMAGE 901 *FN2-RT-MID-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES)))` | `(FN2-RT-MID-OVERLAY-SORTED-POSITIVE FN2-RT-MID-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RUN-GLUE-VERIFIED)`
 

@@ -408,3 +408,70 @@
             (declare (xargs :verify-guards nil))
             (equal (fn2-run-glue-check ',snapshot) '(:unverified fn2-rt-old fn2-rt-old-lookup-step))))))
 (fn2-assert-owed-teeth fn2-run-glue-verified)
+
+;; Scans from a lower bound across pages and levels. 3,000 entries at a
+;; 400-byte fill: from before the first, from the middle (present and absent
+;; queries), and past the last.
+(assert-event
+ (let ((all *fn2-rt-num-3000*))
+  (and (equal (fn2-run-scan-image 900 *fn2-rt-num-entry* all 400 '(0 0 0) 3001) (append all (list :end)))
+       (equal (fn2-run-scan-image 900 *fn2-rt-num-entry* all 400 '(1 3000 0) 40) (fn2-run-scan-spec '((group (:id group)) (number (:id group-number))) all '(1 3000 0) 40))
+       (equal (fn2-run-scan-image 900 *fn2-rt-num-entry* all 400 '(1 3001 0) 2000) (fn2-run-scan-spec '((group (:id group)) (number (:id group-number))) all '(1 3001 0) 2000))
+       (equal (fn2-run-scan-image 900 *fn2-rt-num-entry* all 400 '(1 6001 0) 5) '(:end)))))
+(defmacro fn2-rt-scan-teeth (name id key good bad limit queries badq)
+ (let ((entry (fn2-columns-sym name "-ENTRY")))
+  `(progn
+    (defun ,(fn2-columns-sym name "-RUN-SCANS-HOLD") (qs)
+     (declare (xargs :verify-guards nil))
+     (or (atom qs)
+         (and (fn2-run-values-layoutp ,(fn2-codec-constant entry "") (caar qs))
+              (equal (fn2-run-scan-image ,id ,(fn2-codec-constant entry "") ,good ,limit (caar qs) (cadar qs))
+                     (fn2-run-scan-spec ',key ,good (caar qs) (cadar qs)))
+              (,(fn2-columns-sym name "-RUN-SCANS-HOLD") (cdr qs)))))
+    (defun ,(fn2-columns-sym name "-RUN-SCAN-POSITIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (fn2-run-run-inputp ,(fn2-codec-constant entry "") ',key ,good ,limit)
+          (,(fn2-columns-sym name "-RUN-SCANS-HOLD") ,queries)))
+    (defun ,(fn2-columns-sym name "-RUN-SCAN-NEGATIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (not (fn2-run-run-inputp ,(fn2-codec-constant entry "") ',key ,bad ,limit))
+          (not (equal (fn2-run-scan-image ,id ,(fn2-codec-constant entry "") ,bad ,limit ,badq 64)
+                      (fn2-run-scan-spec ',key ,bad ,badq 64)))))
+    (fn2-assert-owed-teeth ,(fn2-columns-sym name "-RUN-SCAN")))))
+(fn2-rt-scan-teeth fn2-rt-num 900 ((group (:id group)) (number (:id group-number)))
+ *fn2-rt-num-64* (append (list (nth 5 *fn2-rt-num-64*)) (take 5 *fn2-rt-num-64*) (nthcdr 6 *fn2-rt-num-64*)) 400
+ '(((0 0 0) 70) ((1 3 0) 10) ((1 64 0) 64) ((1 128 0) 3) ((1 129 0) 2) ((1 40 0) 0)) '(1 0 0))
+(fn2-rt-scan-teeth fn2-rt-mid 901 ((message-id (:octets 250)) (content :digest))
+ *fn2-rt-mid-good* *fn2-rt-mid-bad* 1024
+ (list (list (list nil (cons 1 (make-list 32 :initial-element 0)) 0) 50)
+       (list (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 0)) 0) 3)
+       (list (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 2)) 0) 4)
+       (list (nth 39 *fn2-rt-mid-good*) 2))
+ (list nil (cons 1 (make-list 32 :initial-element 0)) 0))
+
+;; Overlay teeth. Positive: entries inserted out of order (every seventh,
+;; wrapping) read back sorted, every insert :ok. Negative: a repeated key
+;; (premise false) is refused :duplicate, so the image differs from the spec.
+(defun fn2-rt-shuffle-loop (k i n entries)
+ (declare (xargs :verify-guards nil :measure (nfix k)))
+ (if (zp k) nil
+  (cons (nth (mod (* 7 (nfix i)) (nfix n)) entries) (fn2-rt-shuffle-loop (- k 1) (+ 1 (nfix i)) n entries))))
+(defun fn2-rt-shuffle (entries i n)
+ (declare (xargs :verify-guards nil))
+ (fn2-rt-shuffle-loop (nfix (- (nfix n) (nfix i))) i n entries))
+(defmacro fn2-rt-overlay-teeth (name id key good bad)
+ (let ((entry (fn2-columns-sym name "-ENTRY")))
+  `(progn
+    (defun ,(fn2-columns-sym name "-OVERLAY-SORTED-POSITIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (fn2-ov-inputp ,(fn2-codec-constant entry "") ',key ,good)
+          (equal (fn2-ov-image ,id ,(fn2-codec-constant entry "") ,good) (fn2-ov-image-spec ',key ,good))))
+    (defun ,(fn2-columns-sym name "-OVERLAY-SORTED-NEGATIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (not (fn2-ov-inputp ,(fn2-codec-constant entry "") ',key ,bad))
+          (not (equal (fn2-ov-image ,id ,(fn2-codec-constant entry "") ,bad) (fn2-ov-image-spec ',key ,bad)))))
+    (fn2-assert-owed-teeth ,(fn2-columns-sym name "-OVERLAY-SORTED")))))
+(fn2-rt-overlay-teeth fn2-rt-num 900 ((group (:id group)) (number (:id group-number)))
+ (fn2-rt-shuffle *fn2-rt-num-good* 0 40) (cons (nth 3 *fn2-rt-num-good*) (fn2-rt-shuffle *fn2-rt-num-good* 0 40)))
+(fn2-rt-overlay-teeth fn2-rt-mid 901 ((message-id (:octets 250)) (content :digest))
+ (fn2-rt-shuffle *fn2-rt-mid-good* 0 40) (cons (nth 3 *fn2-rt-mid-good*) (fn2-rt-shuffle *fn2-rt-mid-good* 0 40)))

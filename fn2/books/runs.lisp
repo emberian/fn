@@ -300,8 +300,22 @@
              (* 2 (+ *fn2-run-restart-bytes*
                      (max (fn2-layout-max-size layout) (fn2-layout-max-size (fn2-rs-index-layout key))))))
           limit)))
+;; A scan from the lower bound of Q: the next N entries in key order, then
+;; :count, or the entries left, then :end.
+(defun fn2-run-from-spec (key entries q)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom entries) nil)
+       ((eq (fn2-run-key-order-spec key (car entries) q) :lt) (fn2-run-from-spec key (cdr entries) q))
+       (t entries)))
+(defun fn2-run-take-spec (rest n)
+ (declare (xargs :verify-guards nil))
+ (cond ((zp n) (list :count)) ((atom rest) (list :end))
+       (t (cons (car rest) (fn2-run-take-spec (cdr rest) (- n 1))))))
+(defun fn2-run-scan-spec (key entries q n)
+ (declare (xargs :verify-guards nil))
+ (fn2-run-take-spec (fn2-run-from-spec key entries q) n))
 (defconst *fn2-run-run-adapter-stobjs*
- '(fn2-run-builds fn2-run-cursors fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
+ '(fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
    fn2-fc fn2-fc-context fn2-b3 fn2-digests))
 (defconst *fn2-run-run-entry* 1100)
 (defconst *fn2-run-run-reader* 1200)
@@ -338,24 +352,67 @@
    (mv :ok fn2-run-cache))))
 (fn2-run-cache-preserves fn2-run-cache-install (unit counter slot gen fn2-run-cache) :position 1 :raw-rows t)
 
-; A lookup cursor: one resumable descent from a run's root to level 0.
-; Each step does at most BUDGET entry decodes; the continuation is the row.
+; A cursor: one resumable descent from a run's root to level 0, then (for a
+; scan) a walk forward over level 0. Each step does at most BUDGET entry
+; decodes; the continuation is the row. TOP is the root's level; LEFT means
+; the descent takes the leftmost child (a scan moving to the next leaf); UNIT
+; and COUNTER name the page the cursor is on.
 (defconst *fn2-run-cursor-fields* *fn2-run-reader-fields*)
 (defcolumns fn2-run-cursors
- ((phase (:enum fn2-run-cursor-phase (:idle :header :seek :child :miss :found :absent :failed)))
-  (schema :u60) (level :u8) (slot :u32) (gen :u60) (lo :u32) (hi :u32) (idx :u32) (off :u32)
+ ((phase (:enum fn2-run-cursor-phase (:idle :header :seek :child :miss :found :absent :failed :at :up :end :lost)))
+  (schema :u60) (level :u8) (top :u8) (left :bool) (slot :u32) (gen :u60) (lo :u32) (hi :u32) (idx :u32) (off :u32)
   (unit :u60) (counter :u60) (rb :u32) (okind :u8) (oslot :u32) (ogen :u60)))
-(defun fn2-run-cursor-start (c schema level slot gen rb okind oslot ogen fn2-run-cursors)
+(defun fn2-run-cursor-start (c schema level slot gen unit counter rb okind oslot ogen fn2-run-cursors)
  (declare (xargs :stobjs fn2-run-cursors :guard (fn2-run-cursors-wfp fn2-run-cursors)))
  (if (not (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)) (unsigned-byte-p 60 schema) (unsigned-byte-p 8 level)
-               (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 32 rb)
-               (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+               (< level *fn2-run-max-levels*)
+               (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)
+               (unsigned-byte-p 32 rb) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
      (mv :bounds fn2-run-cursors)
-  (let ((fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-header*) (schema schema) (level level) (slot slot) (gen gen)
-                               (lo 0) (hi 0) (idx 0) (off 0) (unit 0) (counter 0) (rb rb)
+  (let ((fn2-run-cursors (fn2-run-cursors-put c (phase *fn2-run-cursor-phase-header*) (schema schema) (level level) (top level)
+                               (left 0) (slot slot) (gen gen)
+                               (lo 0) (hi 0) (idx 0) (off 0) (unit unit) (counter counter) (rb rb)
                                (okind okind) (oslot oslot) (ogen ogen))))
    (mv :ok fn2-run-cursors))))
-(fn2-run-cursors-preserves fn2-run-cursor-start (c schema level slot gen rb okind oslot ogen fn2-run-cursors) :position 1 :raw-rows t)
+(fn2-run-cursors-preserves fn2-run-cursor-start (c schema level slot gen unit counter rb okind oslot ogen fn2-run-cursors) :position 1 :raw-rows t)
+(defun fn2-run-cursor-set-left (c fn2-run-cursors)
+ (declare (xargs :stobjs fn2-run-cursors :guard (fn2-run-cursors-wfp fn2-run-cursors)))
+ (if (and (natp c) (< c (fn2-run-cursors-rows fn2-run-cursors)))
+     (let ((fn2-run-cursors (fn2-run-cursors-set-left c 1 fn2-run-cursors))) (mv :ok fn2-run-cursors))
+   (mv :bounds fn2-run-cursors)))
+(fn2-run-cursors-preserves fn2-run-cursor-set-left (c fn2-run-cursors) :position 1 :raw-rows t)
+
+; A cursor's path: row C * levels + L names the page the descent visited at
+; level L (its slot, generation and physical identity), its entry count, and
+; the index entry the descent took. A scan moves to the next leaf through it.
+(defcolumns fn2-run-paths
+ ((slot :u32) (gen :u60) (unit :u60) (counter :u60) (idx :u32) (entries :u32)))
+(defun fn2-run-path-row (c level)
+ (declare (xargs :guard (and (natp c) (natp level))))
+ (+ (* c *fn2-run-max-levels*) level))
+(defun fn2-run-path-note (c level slot gen unit counter entries fn2-run-paths)
+ (declare (xargs :stobjs fn2-run-paths :guard (fn2-run-paths-wfp fn2-run-paths)))
+ (if (not (and (natp c) (natp level) (< level *fn2-run-max-levels*)
+               (< (fn2-run-path-row c level) (fn2-run-paths-rows fn2-run-paths))
+               (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 60 unit)
+               (unsigned-byte-p 60 counter) (unsigned-byte-p 32 entries)))
+     (mv :bounds fn2-run-paths)
+  (let ((fn2-run-paths (fn2-run-paths-put (fn2-run-path-row c level) (slot slot) (gen gen) (unit unit)
+                                          (counter counter) (idx 0) (entries entries))))
+   (mv :ok fn2-run-paths))))
+(fn2-run-paths-preserves fn2-run-path-note (c level slot gen unit counter entries fn2-run-paths) :position 1 :raw-rows t)
+(defun fn2-run-path-take (c level idx fn2-run-paths)
+ (declare (xargs :stobjs fn2-run-paths :guard (fn2-run-paths-wfp fn2-run-paths)))
+ (if (not (and (natp c) (natp level) (< level *fn2-run-max-levels*)
+               (< (fn2-run-path-row c level) (fn2-run-paths-rows fn2-run-paths)) (unsigned-byte-p 32 idx)))
+     (mv :bounds fn2-run-paths)
+  (let ((fn2-run-paths (fn2-run-paths-set-idx (fn2-run-path-row c level) idx fn2-run-paths)))
+   (mv :ok fn2-run-paths))))
+(fn2-run-paths-preserves fn2-run-path-take (c level idx fn2-run-paths) :position 1 :raw-rows t)
+(defthm fn2-run-path-row-natp
+ (implies (and (natp c) (natp level)) (natp (fn2-run-path-row c level)))
+ :rule-classes :type-prescription)
+(in-theory (disable fn2-run-path-row))
 ; Save a cursor's continuation after a step; a value out of width is a
 ; refusal by name, never a silent no-op.
 (defun fn2-run-cursor-save (c phase level slot gen lo hi idx off unit counter fn2-run-cursors)
@@ -371,12 +428,13 @@
 (fn2-run-cursors-preserves fn2-run-cursor-save (c phase level slot gen lo hi idx off unit counter fn2-run-cursors) :position 1 :raw-rows t)
 
 ; Fixture plan of the run-level logic adapter (the assembly's fn2-run-run-run).
-(defun fn2-run-run-setup (fn2-run-builds fn2-run-cursors fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
+(defun fn2-run-run-setup (fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
                            fn2-fc fn2-fc-context fn2-b3 fn2-digests)
- (declare (xargs :stobjs (fn2-run-builds fn2-run-cursors fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
+ (declare (xargs :stobjs (fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
                           fn2-fc fn2-fc-context fn2-b3 fn2-digests) :verify-guards nil))
  (b* ((fn2-run-builds (fn2-run-builds-init 1 fn2-run-builds))
       (fn2-run-cursors (fn2-run-cursors-init 1 fn2-run-cursors))
+      (fn2-run-paths (fn2-run-paths-init *fn2-run-max-levels* fn2-run-paths))
       (fn2-run-cache (fn2-run-cache-init 256 fn2-run-cache))
       (fn2-run-writers (fn2-run-writers-init *fn2-run-max-levels* fn2-run-writers))
       (fn2-run-restarts (fn2-run-restarts-init (* *fn2-run-max-levels* *fn2-run-restart-capacity*) fn2-run-restarts))
@@ -386,5 +444,5 @@
       (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
       (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
       (fn2-digests (fn2-digests-init 150 fn2-digests)))
-  (mv fn2-run-builds fn2-run-cursors fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
+  (mv fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
       fn2-fc fn2-fc-context fn2-b3 fn2-digests)))

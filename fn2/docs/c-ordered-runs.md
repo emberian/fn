@@ -19,7 +19,8 @@ departure from a decision that is not recorded here is a defect.
 | multi-page runs: the build (one writer per level, promotion of sealed pages into index entries), the verified-page cache, resumable lookup cursors, the run-level adapter and keystone | `fn2/books/runs.lisp` | C1b' |
 | the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1c |
 | identity schema, Binding merge, conflict bound | `fn2/books/identity.lisp` | C2 |
-| active overlay per schema (bounded resident sorted table), InfiniFilter for the identity overlay | `fn2/books/overlay.lisp`, `fn2/books/infinifilter.lisp` | C2 |
+| active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
+| range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run | `fn2/books/ribbon.lisp` | C2 |
 | article metadata, overview, addressing schemas; range cursors | `fn2/books/ordered.lisp`, `fn2/books/cursor.lisp` | C3 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
@@ -151,11 +152,14 @@ never decide.
   C-owned 64 KiB workspace and its physical identity from the allocator), `(:root L)`, or `:idle`
   (append the next entry with `NAME-BUILD-ADD`, or `fn2-run-build-finish`). The protocol keeps the
   library free of allocator and device coupling; C1c's sealer machine is its caller.
-- **Overlay (C2).** One bounded active overlay per schema, fed by the commit batch's prepared
+- **Overlay (C2a).** One bounded active overlay per schema, fed by the commit batch's prepared
   successor (Astra §E: the read-visible successor overlay is built before sealing; installation is
-  a handle swap). Sealing an overlay produces a level-0 run through the writer. The identity
-  overlay carries an InfiniFilter (FILTERS-2026 item 3) that never deletes a non-member (the 2024
-  lower bound).
+  a handle swap). An overlay is an in-memory sorted run: entries are encoded by the schema's entry
+  codec into one C-owned arena workspace in arrival order, and a resident index of their arena
+  offsets is kept in key order (locate by binary search, insert by opening a gap; both bounded by
+  the overlay's index capacity). `:active` takes inserts; `:frozen` is being sealed and stays
+  readable; then `:free`. An equal key is refused `:duplicate` and changes nothing; no room is
+  `:full` (seal and start another). Sealing reads the overlay in order into the run writer.
 - **Sealing through the commit protocol.** C's sealer machine (declared through A's `defmachine`)
   reserves extents, writes sealed pages into them and harvests their completions; the commit batch
   then carries a run-replacement record naming old and new manifest refs, lists every new page in
@@ -179,6 +183,12 @@ never decide.
   before it is adopted (C6).
 - **Exactness.** A lookup's `:found` means a byte-equal key was compared; `:absent` means the
   search ended at a lower bound whose key is greater. Neither ever comes from a filter alone.
+- **Scan (C2a).** A cursor notes, at every level of its descent, the page (slot, generation,
+  physical identity), its entry count and the index entry it took. A scan positioned at the lower
+  bound of a query delivers level-0 entries in order (`:entry`); at a leaf's end it climbs to the
+  lowest level with an entry to the right, takes it, and descends leftmost (`:more`, `:miss` as for
+  lookup), and answers `:end` after the last entry. A page of its path that left the cache answers
+  `:lost`: the caller re-seeks strictly after the last delivered key.
 - **Cursors (C3).** A range cursor holds a stable resume key and the logical version (the root
   generation it read); after a yield it re-seeks from the resume key in the current version. It
   never holds an old manifest or a physical traversal state as its meaning.
@@ -227,6 +237,13 @@ never decide.
   exactly where a callee has changed that stobj (the shape lemmas are stated over `-rows`) and left
   enabled where an element's type is read from the recognizer; disabling it everywhere loses the
   element typing and sends the prover into inductions.
+- **C-OVERLAY-SORTED (FILTERS-2026 item 3 not adopted, measured alternative).** The active overlay
+  is a bounded resident sorted index over an arena, so membership in it is an exact binary search
+  over at most its index capacity. A filter in front of it would save decodes no measurement has
+  shown to matter; InfiniFilter's two properties (growth without rebuild, deletion) answer needs
+  this overlay does not have: it is bounded and sealed when full, and a removal from a sorted index
+  is exact, so deleting a non-member cannot arise. Revisit only with a measurement of overlay probe
+  cost against a filter.
 - **C-PAGE-FILL.** A writer's fill limit (bytes of header, entries and directory) is a page-fill
   parameter, like a block size; the encoded page stays 64 KiB. Tests use small fills to reach many
   pages and levels with few entries.
@@ -300,7 +317,8 @@ OWED.md is regenerated when the export is green.
 | C1b | runs-page, runs-schema; runs-unit with a numeric-key and an octet-key test schema | **done**: books under 60 s; sealed pages pass B's checker, a flipped byte is refused; seek agrees with the spec; the two page keystones' teeth | C1a |
 | C1b' | runs.lisp: multi-page build, promotion, verified-page cache, resumable lookup cursor; `NAME-run-lookup-exact`; R6a1's compare in place of the interim | **done**: 3,000 entries at a 400-byte fill build 80 pages, height 4, and every query answers right; the teeth | C1b, R6a1 |
 | C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
-| C2 | identity schema, overlay, InfiniFilter, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
+| C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
+| C2 | identity schema, decide/admit, Ribbon, IDENTITY checker, M3 | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |
