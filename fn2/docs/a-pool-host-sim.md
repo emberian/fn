@@ -352,6 +352,22 @@ side is real TCP; a control line on the node's stdin (fd 0 is in the mux) is the
   boundary trace; the same `@@FN2SS wire ID VERDICT@@` lines as the simulator session (an
   ENVELOPE refusal is reported as every connection's verdict, so the case fails at cleanup).
 
+**The configured listener (for the natives and H's Node backend).** The served profile's
+`:listener-address` (an IPv4 address as a u32, network order; default 127.0.0.1) and
+`:listener-port` (a u16; default 0, an ephemeral port the node reports) are read by key, as
+`:listener-targets` is, through `fn2-host-listener-bind` (books/host-boundary.lisp); a value
+outside its width is a named refusal to start (`:listener-address`, `:listener-port`), never a
+clamp. `fn2/tests/native-serve.lsp` is the served node on that listener, driven the way fn1's
+Node backend drives fn1: `FN2_LISTENER_PORT` (and optionally `FN2_LISTENER_ADDRESS`, a dotted
+quad) set the two keys; once bound it prints `LISTENING <port>` at a line's start (fn1's ready
+line), serves until SIGTERM or SIGINT reaches the SBCL process (signal the process group:
+`tools/acl2` is a wrapper whose child is SBCL), then prints `STOPPED <reason>` and exits 0; a
+refused configuration prints `REFUSED listener-port` (or `listener-address`) and exits 2.
+`FN2_ENVELOPE_TRACE=N` records a boundary trace and prints ENVELOPE's legality verdict at stop.
+`fn2/tests/native-serve-check.py` is its check (a configured port, NNTP over it, the stop by
+group, no listener left after it, the refusal), and the native loop serves two fixtures on a
+configured port.
+
 Replies equal the simulator session's when the core's replies are fragmentation-invariant (T8,
 owed, checked by conn-unit's every-split fixtures) and the schedule is fault-free; DATE reads the
 real clock, so DATE lines (and nothing else: D's profile has no timing-dependent closure before

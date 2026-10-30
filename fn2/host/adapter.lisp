@@ -381,13 +381,16 @@ otherwise the bound one. Values: (index . cap) or nil."
   (or (cdr (assoc 'fn2-core (user-stobj-alist *the-live-state*)))
       (error "fn2 native: the certified core stobj is absent")))
 
-(defun fn2-n-make-host (profile &key (port 0) (control-fd -1) (trace-capacity 0) (kill-at 0))
-  "Initialize the live core with PROFILE, bind 127.0.0.1:PORT, and return the host."
+(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0))
+  "Initialize the live core with PROFILE, bind its configured listener (:listener-address,
+:listener-port; default 127.0.0.1 and an ephemeral port), and return the host."
+  (multiple-value-bind (bind address port) (fn2-host-listener-bind profile)
+   (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
          (n (fn2-profile-o profile))
          (ncaps (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n)))
     (fn2-init-executor profile :echo nil core)
-    (multiple-value-bind (lfd lport) (fn2-native-listen port)
+    (multiple-value-bind (lfd lport) (fn2-native-listen port address)
       (let ((host (make-fn2-nhost
                    :core core
                    ;; The one raw nested access: the pool's byte array, for SAPs.
@@ -406,7 +409,7 @@ otherwise the bound one. Values: (index . cap) or nil."
         (setf *fn2-n-signal* 0 *fn2-n-signal-mux* (fn2-nhost-mux host))
         (sb-sys:enable-interrupt sb-unix:sigterm #'fn2-n-signal-handler)
         (sb-sys:enable-interrupt sb-unix:sigint #'fn2-n-signal-handler)
-        host))))
+        host)))))
 
 (defun fn2-n-run (host)
   "Iterate until the core stops (a signal or a stop control posts the sticky signal)."

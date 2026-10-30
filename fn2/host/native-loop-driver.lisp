@@ -9,9 +9,9 @@
                      (list (nth 0 f) octets (make-list (length octets) :initial-element 1))
                      (list (nth 0 f) octets (make-list (ceiling (length octets) 7) :initial-element 7)))))
 
-(defun fn2-nl-run-set (transcripts trace-capacity)
-  "One node, these clients one after another. Values: client views, trace, stop reason."
-  (let ((host (fn2-n-make-host *fn2-nl-profile* :trace-capacity trace-capacity)) (views nil))
+(defun fn2-nl-run-set (transcripts trace-capacity &optional (profile *fn2-nl-profile*))
+  "One node, these clients one after another. Values: client views, trace, stop reason, bound port."
+  (let ((host (fn2-n-make-host profile :trace-capacity trace-capacity)) (views nil))
     (unwind-protect
          (progn
            (dolist (tr transcripts)
@@ -22,7 +22,7 @@
                (push (fn2-nc-view c) views)
                (sb-bsd-sockets:socket-close (fn2-nc-socket c))))
            (let ((reason (fn2-n-stop host)))
-             (values (reverse views) (fn2-n-trace-list host) reason)))
+             (values (reverse views) (fn2-n-trace-list host) reason (fn2-nhost-listen-port host))))
       (fn2-n-destroy host))))
 
 (defun fn2-nl-wire-gap-p (v verdict)
@@ -120,6 +120,18 @@ unterminated tail, which it calls :unasked-reply. Named and counted, never silen
                                          (map 'string #'code-char (nth 2 v)) (nth 3 v))))
         (format t "NATIVE ALL FIXTURES: clients=~d trace=~d stop=~d wire=~s envelope=~s~%" (length views) (length trace) reason wire env)
         (unless (and (null wire) (eq env :pass)) (setf ok nil))))
+    ;; The configured listener: a port chosen free, set in the profile, bound
+    ;; and served (two fixtures), WIRE and ENVELOPE clean.
+    (let* ((probe (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp))
+           (port (progn (sb-bsd-sockets:socket-bind probe #(127 0 0 1) 0)
+                        (prog1 (nth-value 1 (sb-bsd-sockets:socket-name probe))
+                          (sb-bsd-sockets:socket-close probe))))
+           (profile (put-assoc-equal :listener-port port *fn2-nl-profile*)))
+      (multiple-value-bind (views trace reason bound) (fn2-nl-run-set (list (nth 3 all) (nth 9 all)) 400000 profile)
+        (let ((wire (fn2-nl-wire views)) (env (fn2-envelope-check trace views profile)))
+          (format t "NATIVE CONFIGURED LISTENER: port=~d bound=~d clients=~d stop=~d wire=~s envelope=~s~%"
+                  port bound (length views) reason wire env)
+          (unless (and (eql bound port) (null wire) (eq env :pass)) (setf ok nil)))))
     (format t "WIRE-GAP-UNTERMINATED-OVERLONG ~d (D's WIRE gap, reported)~%" *fn2-nl-wire-gaps*)
     (format t "NATIVE LOOP ~a~%" (if ok "PASS" "FAIL"))
     (finish-output)

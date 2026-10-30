@@ -133,6 +133,22 @@
   (declare (xargs :guard (natp len)))
   (fn2-sim-terminal-values kind code count aux len nil cancelled))
 
+; The configured listener (layer doc 4.1.4): the served profile's
+; :listener-address (an IPv4 address as a u32, network order; default
+; 127.0.0.1) and :listener-port (a u16; 0 asks the kernel for an ephemeral
+; port, which the node reports). Read like :listener-targets, by key; a value
+; outside its width is a named refusal to start, never a clamp.
+(defconst *fn2-host-loopback* #x7f000001)
+(defun fn2-host-listener-bind (profile)
+  (declare (xargs :guard t))
+  (let ((address (if (assoc-equal :listener-address (and (alistp profile) profile))
+                     (fn2-profile-get :listener-address profile) *fn2-host-loopback*))
+        (port (if (assoc-equal :listener-port (and (alistp profile) profile))
+                  (fn2-profile-get :listener-port profile) 0)))
+    (cond ((not (unsigned-byte-p 32 address)) (mv :listener-address 0 0))
+          ((not (unsigned-byte-p 16 port)) (mv :listener-port 0 0))
+          (t (mv :ok address port)))))
+
 (defun fn2-host-stop-reason (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-core-stop-reason fn2-core))
@@ -145,4 +161,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-stop-reason fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-result fn2-host-listener-bind fn2-host-stop-reason fn2-host-idle-deadline) (w state)))
