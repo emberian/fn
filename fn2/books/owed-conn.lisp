@@ -128,8 +128,45 @@
     (cons (list (reverse (nth 2 (car clients))) (nth 3 (car clients)))
           (fn2-cw-results (cdr clients)))))
 
+; The ledger after a run, beside what the runner saw (D7 3/n): (conserved
+; hold rx tx live delivered sent) for the anonymous principal, every client
+; on it. DELIVERED is what the adapter gave the core by Receive results,
+; SENT what it took by Send results, LIVE the clients greeted and not
+; closed.
+(defun fn2-cw-delivered (transcripts clients)
+  (declare (xargs :verify-guards nil))
+  (if (atom transcripts) 0
+    (+ (- (len (car (car transcripts))) (len (nth 0 (car clients))))
+       (fn2-cw-delivered (cdr transcripts) (cdr clients)))))
+(defun fn2-cw-sent (clients)
+  (declare (xargs :verify-guards nil))
+  (if (atom clients) 0 (+ (len (nth 2 (car clients))) (fn2-cw-sent (cdr clients)))))
+(defun fn2-cw-greeted-p (wire)
+  ; WIRE newest first: its first three octets are 200 or 201
+  (declare (xargs :verify-guards nil))
+  (let ((w (reverse wire)))
+    (and (<= 3 (len w)) (equal (take 2 w) '(50 48)) (member (nth 2 w) '(48 49)))))
+(defun fn2-cw-live (clients)
+  (declare (xargs :verify-guards nil))
+  (if (atom clients) 0
+    (+ (if (and (fn2-cw-greeted-p (nth 2 (car clients))) (not (nth 3 (car clients)))) 1 0)
+       (fn2-cw-live (cdr clients)))))
+(defun fn2-cw-ledger (transcripts clients fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((d (fn2-account-holding :connection-row)))
+    (list (fn2-account-core-conservedp fn2-core)
+          (fn2-account-core-hold 0 d fn2-core)
+          (fn2-account-core-charged 0 *fn2-account-charge-rx* fn2-core)
+          (fn2-account-core-charged 0 *fn2-account-charge-tx* fn2-core)
+          (fn2-cw-live clients) (fn2-cw-delivered transcripts clients) (fn2-cw-sent clients))))
+(defun fn2-conn-ledger-matches-p (view)
+  (declare (xargs :verify-guards nil))
+  (and (equal (nth 0 view) t) (equal (nth 1 view) (nth 4 view))
+       (equal (nth 2 view) (nth 5 view)) (equal (nth 3 view) (nth 6 view))))
+
 ; TRANSCRIPTS is a list of (octets sizes), one per client (at most the
-; profile's C connections). Result: (status ((wire closed) ...) stop-reason).
+; profile's C connections). Result: (status ((wire closed) ...) stop-reason
+; ledger-view).
 (defun fn2-conn-wire-run (transcripts)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
@@ -137,7 +174,9 @@
       (let ((fn2-core (fn2-init-executor *fn2-conn-wire-profile* :echo nil fn2-core)))
         (mv-let (status clients fn2-core)
           (fn2-cw-loop (+ 2000 (* 600 (len transcripts))) 0 0 (fn2-cw-clients transcripts) fn2-core)
-          (mv (list status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)) fn2-core)))
+          (mv (list status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)
+                    (fn2-cw-ledger transcripts clients fn2-core))
+              fn2-core)))
       result)))
 
 ; One client's wire and close state when it is alone.
@@ -166,6 +205,19 @@
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-conn-test-served-safety fn2-conn-test-served-safety-negative)
   :doc "T1: arbitrary boundary octets, in arbitrary chunks, on up to C connections, leave the served core quiescent and never stopped: no run, handler or reached call violated its contract or guard.")
+
+; The ledger matches the rows (D7 3/n; layer doc 13.5): after any client
+; octets in any chunks on up to C connections, the anonymous principal's
+; ledger row is conserved, holds exactly the connections greeted and not
+; closed, and is charged exactly the octets the adapter delivered by
+; Receive results and took by Send results (charged from the first byte,
+; none erased by a close).
+(defthm-owed fn2-account-ledger-matches (transcripts)
+  (implies (and (fn2-conn-octets-transcripts-p transcripts) (<= (len transcripts) 4))
+           (fn2-conn-ledger-matches-p (nth 3 (fn2-conn-wire-run transcripts))))
+  :schema :invariant :from (:operation-set fn2-conn-wire)
+  :teeth (fn2-conn-test-ledger-matches fn2-conn-test-ledger-matches-negative)
+  :doc "Rule 5 over the served connection: the principal ledger stays conserved, books exactly the live greeted connections, and charges exactly the received and sent octets, from the first byte, whatever the chunking; a close erases no charge.")
 
 ; T8, fragmentation: the wire a client receives depends on its octets, not
 ; on how they were chunked.

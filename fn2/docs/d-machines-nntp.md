@@ -812,6 +812,9 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 - R6b item 1 re-cut onto D0 (§2); R7 carried §4's forms (done, 926b09328).
 - `declare.lisp` gained the `command` kind's table entry (D2a), purely additive.
 - D3's interim replies (§4.3) are a named constant whose emptiness is a D9 check.
+- D7's interim booking point (§13.4): a connection books its principal's `:connection-row` at the
+  greeting, not at Accept issue, so the rows between Accept and greeting are unattributed; S1 closes it.
+- Ledger failures stop the core as `:machine-contract` until A's stop-reason enum gains `:account` (S6).
 - Echo stays A's test workload in the served instance (A4's drivers); the served listener admits
   `fn2-conn` once §4.5 lands. Whether echo leaves the served instance is A's call.
 
@@ -851,7 +854,7 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
 | D2c | framer onto R6a1's scan (drop-prefix is the connection's compaction) | R6a1 | done |
 | D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8, scenario 1's plaintext half, the surface session hook | R7, the admission seam a20fac18f | done (ec9b96173) |
-| D7 | the ledger, the scheduler over principals, the services, TLS admission (§13, six slices) | A's seam S1-S4 for 4/n | 1/n design |
+| D7 | the ledger, the scheduler over principals, the services, TLS admission (§13, six slices) | A's seam S1-S5 for 4/n | 1/n design, 2/n ledger, 3/n served booking and ACCOUNT |
 | D4-D6, D8, D9 | per the brief | D4: A's assembly split and read-set snapshot; D5: C2; D6: C3 | |
 
 ## 13. D7: principals, the ledger and the scheduler over them *(design; D7's commits rewrite it as built)*
@@ -952,8 +955,8 @@ under. They are equal once booked.
 - **3/n, the interim.** Until S1 lands, `fn2-conn-greet` books `:connection-row 1` on its slot (0)
   before rendering; refused (`:limit` or `:shared`) it renders the capacity 400 exactly as the
   partition's reserve row does today (A keeps one physical row for it) and books nothing. The hole
-  above is open by at most the physical rows between Accept and greeting; it is recorded as the owed
-  interim `fn2-account-greeting-booking-interim` and closed by S1.
+  above is open by at most the physical rows between Accept and greeting; it is listed in section 10
+  and closed by S1.
 - **Charges.** The receive-result handler adds the completion's `count` to `:rx-octets` of the row's
   principal (before the greeting too: the first byte is charged); the send-result handler adds to
   `:tx-octets`; the frame run adds 1 to `:requests` per answered line.
@@ -987,7 +990,7 @@ no field (22 of 24 stay used).
 | `fn2-account-acquire-protected`: from a ledger with committed ≤ capacity, `acquire(q, d, a)` with `hold_q + a ≤ reserve_q` and `≤ limit_q` is `:ok`, whatever every other row holds | **proved** (2/n) | the ledger stobj | the unit exhausts shared capacity first, then acquires positive amounts within a reserve (slot 1 and the system row) |
 | `fn2-account-{acquire,release,attribute}-charges`, `fn2-account-charge-monotone`: holding operations leave every charge unchanged; a charge only adds | **proved** (2/n) | the ledger stobj | the unit's disconnect and attribution keep the 100 charged octets on slot 0 |
 | `fn2-account-ops-conserve`: acquire, release, charge, acquire2, release2 and attribute preserve `fn2-accounts-conservedp` | owed (2/n): the sum over the dimension-major array under one update | the ledger stobj | positive: 600 pseudo-random operations of every kind, conserved after each; negative: committed off by one, a holding over its limit |
-| `fn2-account-ledger-matches` (`:invariant` over the assembled core): the core's ledger is conserved and its holdings equal the explicit booking ownership of the rows (each `fn2-conn` row whose `account-ref` is the slot, from the greeting through `:draining`; with S1, listener-owned admission bookings too; with 4/n, each request token holder by its holding phase) | owed (3/n) | the assembled core | ACCOUNT over the simulator runs (positive), a core whose drain skips the release (negative) |
+| `fn2-account-ledger-matches` (`fn2/books/owed-conn.lisp`, over `fn2-conn-wire-run`, the T1 view): after any client octets in any chunks on up to C connections, the anonymous row is conserved, holds exactly the connections greeted and not closed, and is charged exactly the octets the adapter delivered by Receive results and took by Send results. With S1 it gains listener-owned admission bookings, with 4/n each request token by its holding phase | owed (3/n) | the served core at its adapter boundary | `tests/conn-unit.lisp`: three mixed clients and eight random pairs in varied chunkings (positive, nonzero charges); a view off by one in holding, received or sent, or unconserved (negative). ACCOUNT checks the same over the simulator's runs |
 | the weighted starvation bound | A's `fn2-sched-starvation`, its hypothesis `fn2-sched-calendar-validp` generalised to the weighted calendar (otherwise weighted cases are vacuous); still a visit bound, not request completion (4/n) | sched | A's teeth |
 
 ### 13.6 The seam request to A (sched.lisp, machines-a*.lisp, executor.lisp are A's; sent through main)

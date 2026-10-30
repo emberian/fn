@@ -9,6 +9,7 @@
 (include-book "machines-a")
 (include-book "profile")
 (include-book "conn-answer")
+(include-book "accounts-core")
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically (section 4.2): the framer examines at
@@ -48,12 +49,16 @@
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
                      auth-pending access-ref))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
-           (rx-slot *fn2-none*) (tx-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
+           (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
  :observes ((:receive-result fn2-conn-observe-receive
-             :cost (:steps *fn2-work-transition*) :writes () :from (:command) :next (:command :closing) :uses ())
+             :cost (:steps *fn2-work-transition*) :writes () :tables (fn2-core-accounts)
+             :from (:command) :next (:command :closing)
+             :uses (fn2-account-charge-core fn2-machine-refuse-observation))
             (:send-result fn2-conn-observe-send
-             :cost (:steps *fn2-work-transition*) :writes (tx-off borrows) :from (:reply) :next (:reply :closing)
-             :uses (fn2-machine-pool-borrows-read-code fn2-machine-pool-borrows fn2-machine-refuse-observation))
+             :cost (:steps *fn2-work-transition*) :writes (tx-off borrows) :tables (fn2-core-accounts)
+             :from (:reply) :next (:reply :closing)
+             :uses (fn2-machine-pool-borrows-read-code fn2-machine-pool-borrows fn2-account-charge-core
+                    fn2-machine-refuse-observation))
             (:borrow-released fn2-conn-observe-release
              :cost (:steps *fn2-work-transition*) :writes (borrows) :next ()
              :uses (fn2-machine-pool-borrows-read-code fn2-machine-pool-borrows fn2-machine-refuse-observation))
@@ -63,15 +68,15 @@
  ((:free fn2-conn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
    :uses (fn2-machine-idle))
   (:greeting fn2-conn-greet :cost (:bytes 512 :steps *fn2-work-transition*)
-   :writes (tx-off after mask) :tables (fn2-core-pool)
-   :next (:greeting :reply) :uses (fn2-conn-run-greeting fn2-machine-refuse-phase))
+   :writes (tx-off after mask refused account-ref) :tables (fn2-core-pool fn2-core-accounts)
+   :next (:greeting :reply) :uses (fn2-account-book-admitted fn2-conn-run-greeting fn2-machine-refuse-phase))
   (:command fn2-conn-command
    :cost (:bytes (max (:cost fn2-conn-frame-run :bytes) (:cost fn2-conn-compact-run :bytes))
           :steps (max (:cost fn2-conn-frame-run :steps) (:cost fn2-conn-compact-run :steps))
           :descriptors (:cost fn2-conn-frame-run :descriptors))
    :writes (start pos overflow compacting cursor tx-off after auth-pending ordinal
             pending stopped wait-reason ready-prev ready-next)
-   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-core-accounts)
    :next (:command :reply)
    :uses (fn2-conn-frame-run fn2-conn-compact-run))
   (:article-input fn2-conn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
@@ -90,8 +95,8 @@
    :next (:closing) :uses (fn2-issue-close fn2-machine-issue-result))
   (:draining fn2-conn-drain :cost (:steps (:cost fn2-conn-release :steps))
    :writes (generation rx-slot rx-gen tx-slot tx-gen cap-index cap-nonce start pos overflow compacting
-            cursor tx-off ordinal auth-pending refused next-free wait-reason)
-   :tables (fn2-core-pool fn2-core-machines)
+            cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref)
+   :tables (fn2-core-pool fn2-core-machines fn2-core-accounts)
    :next (:draining :free :retired) :uses (fn2-conn-release))
   (:retired fn2-conn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:retired)
    :uses (fn2-machine-idle))))
@@ -193,17 +198,29 @@
   (fn2-machine-refuse-phase id fn2-core))
 
 ;; :greeting renders the greeting (or the capacity 400) and moves to :reply.
+;; :greeting books the connection on its principal (D7, section 13.4: the
+;; interim booking point until the listener books at Accept issue), then
+;; renders the greeting, or the capacity 400 when the admission was into
+;; the partition's reserve row or the principal's entitlement is refused
+;; (:limit, :shared), and moves to :reply.
 (defmachine-callback fn2-conn-greet fn2-conn (id budget) 4
   (fn2-machine-with-work 512 *fn2-work-transition* 0
-    (mv-let (code after fn2-core)
-      (fn2-conn-run-greeting row-refused row-mask row-tx-slot row-tx-gen id row-generation fn2-core)
-      (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
-        ;; Every D3 connection is a reader and the anonymous principal
-        ;; (section 4.4); E4's peer listener and E2's authentication set
-        ;; the other bits.
-        (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0) (after after)
-                                           (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)))))
-          (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))
+    (b* ((principal row-principal-slot)
+         ((mv bcode fn2-core) (fn2-account-book-admitted row-refused principal fn2-core)))
+      (if (not (or (eq bcode :ok) (eq bcode :refused) (eq bcode :limit) (eq bcode :shared)))
+          (fn2-machine-refuse-phase id fn2-core)
+        (b* ((refused (if (eq bcode :ok) 0 1))
+             ((mv code after fn2-core)
+              (fn2-conn-run-greeting refused row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
+          (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+            ;; Every D3 connection is a reader and the anonymous principal
+            ;; (section 4.4); E4's peer listener and E2's authentication set
+            ;; the other bits.
+            (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0) (after after)
+                                               (refused refused)
+                                               (account-ref (if (eq bcode :ok) principal *fn2-none*))
+                                               (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)))))
+              (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))))
 
 ;; Need-more: every filled octet is examined. All consumed: reset RX. Full
 ;; with a retained partial line: compact (next run). Else Receive at fill.
@@ -247,24 +264,29 @@
                     :descriptors (:cost fn2-conn-input :descriptors))
              :writes (start pos overflow compacting cursor tx-off after auth-pending ordinal
                       pending stopped wait-reason ready-prev ready-next)
-             :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+             :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-core-accounts)
              :next (:command :reply)
-             :uses (fn2-conn-frame fn2-conn-run-answer fn2-conn-run-overflow fn2-conn-input fn2-machine-refuse-phase))
+             :uses (fn2-conn-frame fn2-conn-run-answer fn2-conn-run-overflow fn2-account-charge-core fn2-conn-input
+                    fn2-machine-refuse-phase))
   (fn2-machine-with-work *fn2-conn-run-bytes* *fn2-work-transition* 1
    (b* ((ordinal row-ordinal) (mask row-mask) (auth row-auth-pending)
         (rslot row-rx-slot) (rgen row-rx-gen) (tslot row-tx-slot) (tgen row-tx-gen) (gen row-generation)
         ((mv status s p o) (fn2-conn-frame rslot rgen row-start row-pos row-overflow id gen fn2-core)))
      (cond ((eq status :line)
-            (mv-let (code after next fn2-core)
-              (fn2-conn-run-answer s p mask auth rslot rgen tslot tgen id gen fn2-core)
-              (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+            (b* (((mv ccode fn2-core)
+                  (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
+                 ((mv code after next fn2-core)
+                  (fn2-conn-run-answer s p mask auth rslot rgen tslot tgen id gen fn2-core)))
+              (if (not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core)
                 (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (start p) (pos p) (overflow 0)
                                                    (tx-off 0) (after after) (auth-pending next)
                                                    (ordinal (+ 1 ordinal)))))
                   (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core)))))
            ((or (eq status :overflow) (eq status :long-line))
-            (mv-let (code fn2-core) (fn2-conn-run-overflow mask tslot tgen id gen fn2-core)
-              (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+            (b* (((mv ccode fn2-core)
+                  (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
+                 ((mv code fn2-core) (fn2-conn-run-overflow mask tslot tgen id gen fn2-core)))
+              (if (not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core)
                 (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (start s) (pos p) (overflow o)
                                                    (tx-off 0) (after *fn2-conn-after-closing*))))
                   (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core)))))
@@ -334,18 +356,28 @@
 (defmachine-callback fn2-conn-release fn2-conn (id budget) 4
   :contract (:cost (:steps *fn2-work-release*)
              :writes (generation rx-slot rx-gen tx-slot tx-gen cap-index cap-nonce start pos overflow compacting
-                      cursor tx-off ordinal auth-pending refused next-free wait-reason)
-             :tables (fn2-core-pool fn2-core-machines) :next (:free :retired)
+                      cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref)
+             :tables (fn2-core-pool fn2-core-machines fn2-core-accounts) :next (:free :retired)
              ;; One use entry per operation: the two calls release TX then RX
              ;; (D0's descending order), declared together.
              :uses ((fn2-core-release :effects ((:release (:tx-range :rx-range))))
-                    fn2-machine-gen-limit fn2-machine-free-head fn2-machine-reclaim-fn2-conn fn2-core-stop))
-  (b* ((kind *fn2-conn-kind*) (gen row-generation)
+                    fn2-machine-gen-limit fn2-machine-free-head fn2-account-unbook-ref fn2-machine-reclaim-fn2-conn
+                    fn2-core-stop))
+  (b* ((kind *fn2-conn-kind*) (gen row-generation) (booked row-account-ref)
        ((mv tcode fn2-core) (fn2-core-release row-tx-slot row-tx-gen kind id gen fn2-core))
-       ((mv rcode fn2-core) (fn2-core-release row-rx-slot row-rx-gen kind id gen fn2-core)))
-    (if (not (and (or (eq tcode :ok) (eq tcode :retired)) (or (eq rcode :ok) (eq rcode :retired))))
+       ((mv rcode fn2-core) (fn2-core-release row-rx-slot row-rx-gen kind id gen fn2-core))
+       ;; the booking goes; the charges stay with the principal (rule 5)
+       ((mv acode fn2-core) (fn2-account-unbook-ref booked fn2-core)))
+    (cond
+     ((not (and (or (eq tcode :ok) (eq tcode :retired)) (or (eq rcode :ok) (eq rcode :retired))))
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
-          (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core))
+          (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core)))
+     ;; a booking the ledger does not hold: the ledger's invariant is broken
+     ;; (stop reason :machine-contract until A's enum gains :account, seam S6)
+     ((not (eq acode :ok))
+        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
+          (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core)))
+     (t
       (b* ((retire (>= gen (fn2-machine-gen-limit fn2-core)))
            (next (fn2-machine-free-head *fn2-conn-admission-ordinal* fn2-core))
            (fn2-core (fn2-conn-put-core id
@@ -354,9 +386,9 @@
                        (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0)
                        (cap-index 0) (cap-nonce 0) (start 0) (pos 0) (overflow 0) (compacting 0)
                        (cursor 0) (tx-off 0) (ordinal 0) (auth-pending *fn2-conn-auth-none*) (refused 0)
-                       (next-free next) (wait-reason *fn2-wait-none*)))
+                       (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)))
            (fn2-core (fn2-machine-reclaim-fn2-conn id retire fn2-core)))
-        (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core)))))
+        (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core))))))
 
 (defmachine-callback fn2-conn-drain fn2-conn (id budget) 4
   (cond ((not (equal row-pending 0)) (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
@@ -364,25 +396,30 @@
         (t (fn2-machine-result 0 *fn2-work-poll* 0 nil fn2-core))))
 
 ;; Observations (the generic router decrements PENDING at a terminal).
+;; A completed Receive is charged to the row's principal from its first
+;; byte (D7, section 13.4: settled from the completion's count).
 (defmachine-callback fn2-conn-observe-receive fn2-conn (id event outcome reason count aux0 aux1) 1
   (if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
            (natp count) (< 0 count))
-      (mv id fn2-core)
+      (mv-let (code fn2-core) (fn2-account-charge-core row-principal-slot *fn2-account-charge-rx* count fn2-core)
+        (if (eq code :ok) (mv id fn2-core) (fn2-machine-refuse-observation fn2-core)))
     (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-closing*))))
       (mv id fn2-core))))
 
 (defmachine-callback fn2-conn-observe-send fn2-conn (id event outcome reason count aux0 aux1) 1
   (if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot fn2-core) :ok))
       (fn2-machine-refuse-observation fn2-core)
-    (let* ((off row-tx-off)
-           (fn2-core (fn2-conn-put-core id (borrows (fn2-machine-pool-borrows row-tx-slot fn2-core)))))
+    (let ((off row-tx-off) (borrows (fn2-machine-pool-borrows row-tx-slot fn2-core)))
       ;; A short send is terminal and the remainder is a new Send (ROUND2
       ;; D.1); it may have moved zero octets, which is progress deferred,
-      ;; not a failure.
+      ;; not a failure. The octets it moved are charged to the row's
+      ;; principal (D7, section 13.4).
       (if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
                (natp count))
-          (let ((fn2-core (fn2-conn-put-core id (tx-off (+ off count))))) (mv id fn2-core))
-        (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-closing*)))) (mv id fn2-core))))))
+          (mv-let (code fn2-core) (fn2-account-charge-core row-principal-slot *fn2-account-charge-tx* count fn2-core)
+            (if (not (eq code :ok)) (fn2-machine-refuse-observation fn2-core)
+              (let ((fn2-core (fn2-conn-put-core id (borrows borrows) (tx-off (+ off count))))) (mv id fn2-core))))
+        (let ((fn2-core (fn2-conn-put-core id (borrows borrows) (phase *fn2-conn-state-closing*)))) (mv id fn2-core))))))
 
 (defmachine-callback fn2-conn-observe-release fn2-conn (id event outcome reason count aux0 aux1) 1
   (if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot fn2-core) :ok))
