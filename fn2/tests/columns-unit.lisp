@@ -191,3 +191,36 @@
                      (fn2-columns-scalar-bytes-length fn2-columns-scalar))
                (list *fn2-none* *fn2-columns-scalar-dimension*)) fn2-columns-scalar) ok)))
 (assert-event (fn2-columns-scalar-control))
+
+; Init is fresh (process death re-initializes a core in place): rows written
+; before init read back as init values, resizable extras are empty, scalar
+; extras take their declared initial value, hash tables are cleared.
+(local
+ (defun fn2-columns-fresh-control ()
+   (declare (xargs :verify-guards nil))
+   (with-local-stobj fn2-columns-example
+     (mv-let (answer fn2-columns-example)
+       (let* ((fn2-columns-example (fn2-columns-example-init 3 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-set-word 2 42 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-set-flag 1 1 fn2-columns-example))
+              (fn2-columns-example (resize-fn2-columns-example-bytes 4 fn2-columns-example))
+              (fn2-columns-example (update-fn2-columns-example-count 5 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-cache-put 'k 1 fn2-columns-example))
+              (fn2-columns-example (fn2-columns-example-init 3 fn2-columns-example)))
+         (mv (and (equal (fn2-columns-example-word 2 fn2-columns-example) 0)
+                  (equal (fn2-columns-example-flag 1 fn2-columns-example) 0)
+                  (equal (fn2-columns-example-next 2 fn2-columns-example) *fn2-none*)
+                  (equal (fn2-columns-example-bytes-length fn2-columns-example) 0)
+                  (equal (fn2-columns-example-count fn2-columns-example) 0)
+                  (equal (fn2-columns-example-cache-count fn2-columns-example) 0))
+             fn2-columns-example))
+       answer))))
+(local (assert-event (fn2-columns-fresh-control)))
+(defun fn2-columns-scalar-fresh-control ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-columns-scalar
+  (mv-let (ok fn2-columns-scalar)
+    (let* ((fn2-columns-scalar (update-fn2-columns-scalar-head 7 fn2-columns-scalar))
+           (fn2-columns-scalar (fn2-columns-scalar-init 0 fn2-columns-scalar)))
+      (mv (equal (fn2-columns-scalar-head fn2-columns-scalar) *fn2-none*) fn2-columns-scalar)) ok)))
+(assert-event (fn2-columns-scalar-fresh-control))

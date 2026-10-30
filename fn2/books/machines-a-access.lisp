@@ -9,17 +9,9 @@
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
                     (and ,@(fn2-machine-child-shapes *fn2-core-children*))))))
-; Batched own-row writes reattach one well-shaped child. This boundary fact
-; keeps every callback guard from reopening the parent representation.
-(defun fn2-machine-core-update-shapes (names)
-  (if (atom names) nil
-    (let* ((name (car names)) (writer (fn2-columns-pre "UPDATE-" (fn2-columns-sym name "-TABLE"))))
-      (cons `(defthm ,(fn2-columns-sym writer "-WFP")
-               (implies (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym name "-WFP") child))
-                        (fn2-core-wfp (,writer child fn2-core)))
-               :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-            (fn2-machine-core-update-shapes (cdr names))))))
-(make-event (value (cons 'progn (fn2-machine-core-update-shapes (fn2-machine-names (w state))))))
+; A batched own-row write reattaches one well-shaped child: core.lisp's
+; FN2-CORE-WFP-OF-UPDATE-FN2-<KIND>-TABLE keeps every callback guard from
+; reopening the parent representation.
 (in-theory (disable fn2-machines-rows
                     fn2-core-wfp
                     fn2-ops-free-count fn2-ops-reserved-credits fn2-ops-queued
@@ -105,8 +97,7 @@
        (defthm ,(fn2-columns-sym put "-WFP")
          (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp ord)
                        (< ord *fn2-machine-admitted-max*))
-                  (fn2-core-wfp (,put ord value fn2-core)))
-         :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+                  (fn2-core-wfp (,put ord value fn2-core))))
        (in-theory (disable ,get ,put)))))
 (fn2-machine-partition-access connection-count)
 (fn2-machine-partition-access free-head)

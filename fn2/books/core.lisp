@@ -48,7 +48,10 @@
            (implies (fn2-corep fn2-core) (,pred (,field fn2-core))))
          (defthm ,(fn2-columns-sym update "-TYPE")
            (implies (and (fn2-corep fn2-core) (,pred p))
-                    (fn2-corep (,update p fn2-core)))))
+                    (fn2-corep (,update p fn2-core)))
+           ; Symbolic positions: without it the child at position 0 splits
+           ; one case per child and costs seconds per registered kind.
+           :hints (("Goal" :in-theory (disable nth update-nth)))))
        (fn2-core-child-read-facts field all)
        (fn2-core-child-facts (cdr children) all)))))
 (defmacro fn2-core-children-facts (&rest children)
@@ -85,6 +88,24 @@
            (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
              (answer)
              (and ,@(fn2-core-child-wfps *fn2-core-children*)) answer))))
+; The core's well-formedness through its children, stated once per child and
+; then closed: a proof about an operation sees only the children it touches,
+; so its cost does not grow with the number of registered kinds.
+(defun fn2-core-child-wfp-facts (children)
+  (if (atom children) nil
+    (let* ((field (caar children)) (type (cadar children))
+           (wfp (fn2-columns-sym type "-WFP"))
+           (update (fn2-columns-pre "UPDATE-" field)))
+      (list* `(defthm ,(fn2-columns-pre "FN2-CORE-WFP-OF-" update)
+                (implies (and (fn2-core-wfp fn2-core) (,wfp p))
+                         (fn2-core-wfp (,update p fn2-core)))
+                :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+             `(defthm ,(fn2-columns-sym wfp (concatenate 'string "-OF-" (symbol-name field)))
+                (implies (fn2-core-wfp fn2-core) (,wfp (,field fn2-core)))
+                :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+             (fn2-core-child-wfp-facts (cdr children))))))
+(make-event (value `(progn ,@(fn2-core-child-wfp-facts *fn2-core-children*))))
+(in-theory (disable fn2-core-wfp))
 
 ; The pool has at most sixteen size classes; general profile validity alone
 ; does not impose that representation constraint.
@@ -535,7 +556,7 @@
 (defthm fn2-core-init-wfp
   (implies (fn2-core-profilep profile)
            (fn2-core-wfp (fn2-core-init profile fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))
+  :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-core-profilep fn2-machines-profilep))))
 (in-theory (disable fn2-core-init))
 (assert-event (fn2-assert-compliant-p '(fn2-core-init) (w state)))
 ))

@@ -24,12 +24,11 @@ verbatim in COMMON.
   dispatcher `fn2-run-layout-merge`, `fn2-fold-apply`; overlay replace (`fn2-ov-reput`, ov-write REPL
   arg); `folds-served.lisp` (`fn2-fold-image`, `-bug` :plus1/:skip; keystones NAME-SUMMARY-ADEQUATE-KIND x6,
   NAME-SUMMARY-CUT x3); `tests/folds-unit.lisp` (teeth, in owed-export.lsp). Gate green at 34e106dca;
-  OWED 411. A confirming gate on the merged eff0ab945 (dev's ba644c1de, A for D7, merged in during
-  my gate) was started on forge (/build/lanes/c, build/c1.pid); if its export differs from OWED.md,
-  commit the regenerated OWED.md.
+  OWED 411. The merged eff0ab945 (with dev's ba644c1de, A for D7) re-gated green on forge:
+  closure rc=0, export PASS, OWED.md identical.
 
 ## Next
-1. Confirm the merged-tree gate (above). Shave machines-c-successor (32.4 s forge; fn2-idc-copy
+1. Shave machines-c-successor (32.4-35.0 s forge at load 7; fn2-idc-copy
    preserves ~4 s, publish-stamps preserves ~2.5 s, record-insert shape 2 s; try reads lists).
 2. C4b, statement first: `fn2-select-materialize-equivalent` (INBOX §4.6). Sketch: list spec of
    streams (stream -> ascending (position . event)), registration edges (stream, start), the

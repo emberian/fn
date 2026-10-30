@@ -7,6 +7,15 @@ code. Brief: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md` over `FN2-S
 doc: `fn2/docs/d-machines-nntp.md` on dev: §4 D3 as built, §13 D7, **§14 D4+D5 (design, Astra-reviewed,
 `build/d-seat/d45/astra-1.md`)**, §10 open items, §12 quests.
 
+
+## RULING 2026-10-30 (main): C-S3 replaces C-S2 for D5 2/n
+C-S3 on dev at 7147451cf (fn2/docs/c-ordered-runs.md §8 item 8) REPLACES fn2-identity-stage/-bind/-release
+(fn2-identity-offer/-step stay). At :prepare: fn2-successor-put (t i sid kind); fn2-successor-arg (t i j src value),
+src :value/:event/:out (packed k*2^8+f); fn2-successor-arg-octets; fn2-successor-resolve (t budget) -> :more/:miss/:ok.
+In :ready, ONE transition: fn2-successor-stage t -> (mv code i); fn2-successor-out (t i f) (assigned group number);
+fn2-commit-admit-txn; fn2-successor-bind (t batch event). At the outcome: fn2-successor-release t. Numbers at stage
+(commit order). Object through main only if :ready cannot be one transition with these; otherwise build to it.
+
 ## Tree
 - Shared tree `/Users/ember/dev/fn` on `dev`: D's own books (upload-scan, later upload/txn/conn edits that
   touch no foundation) are edited and committed there by pathspec (`git commit --no-gpg-sign -F <msg> --
