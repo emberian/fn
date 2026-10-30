@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (require :sb-bsd-sockets)
 
-(defstruct fn2-nc socket (port 0) (sent nil) (received nil) (closed nil) (total 0))
+(defstruct fn2-nc socket (port 0) (sent nil) (received nil) (closed nil) (total 0) (key nil))
 
 (defun fn2-nc-connect (host)
   (let ((s (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp)))
@@ -24,9 +24,9 @@
               ((zerop n) (setf (fn2-nc-closed c) t) (return))
               (t (setf (fn2-nc-received c) (append (fn2-nc-received c) (coerce (subseq buf 0 n) 'list)))))))))
 
-(defun fn2-nc-sync (host c eof &key (limit 200000))
-  "Iterate the node until it answers the sync for C; then read to its output count."
-  (setf (fn2-nhost-sync host) (list (fn2-nc-port c) (length (fn2-nc-sent c)) (if eof 1 0)))
+(defun fn2-nc-sync (host c eof &key (limit 200000) openp)
+  "Iterate the node until it answers the sync (OPENP: the open) for C; then read to its output count."
+  (setf (fn2-nhost-sync host) (list (fn2-nc-port c) (length (fn2-nc-sent c)) (if eof 1 0) openp))
   (let ((out nil))
     (loop repeat limit
           while (fn2-nhost-sync host)
@@ -36,6 +36,7 @@
     (when (fn2-nhost-sync host) (error "fn2 native test: no quiescence for port ~d" (fn2-nc-port c)))
     ;; The quiet marker's OUT: the node's cumulative Send octets on that capability.
     (let ((found (fn2-n-cap-by-port host (fn2-nc-port c))))
+      (when found (setf (fn2-nc-key c) (cons (car found) (fn2-ncap-nonce (cdr found)))))
       (setf out (if found (fn2-ncap-tx (cdr found)) 0))
       (loop repeat 100000
             until (and (>= (length (fn2-nc-received c)) out)
@@ -65,8 +66,8 @@
   (fn2-nc-drain c))
 
 (defun fn2-nc-view (c)
-  "The client's view for ENVELOPE and WIRE: (port sent received closed)."
-  (list (fn2-nc-port c) (fn2-nc-sent c) (fn2-nc-received c) (fn2-nc-closed c)))
+  "The client's view for ENVELOPE and WIRE: (incarnation sent received closed port)."
+  (list (fn2-nc-key c) (fn2-nc-sent c) (fn2-nc-received c) (fn2-nc-closed c) (fn2-nc-port c)))
 
 (defun fn2-n-stop (host)
   (setf (fn2-nhost-stop host) t)

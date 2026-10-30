@@ -16,7 +16,7 @@
          (progn
            (dolist (tr transcripts)
              (let ((c (fn2-nc-connect host)))
-               (fn2-nc-sync host c nil)
+               (fn2-nc-sync host c nil :openp t)
                (fn2-nc-send host c (nth 1 tr) (nth 2 tr))
                (fn2-nc-close host c)
                (push (fn2-nc-view c) views)
@@ -89,7 +89,7 @@ unterminated tail, which it calls :unasked-reply. Named and counted, never silen
          (ok t))
     (dolist (c cases ok)
       (let* ((mutant (second c))
-             (v (and mutant (funcall (if (eq (first c) :receive-not-client) #'fn2-envelope-check-inputs #'fn2-envelope-check) mutant (mapcar (lambda (x) (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x))) views) *fn2-nl-profile*)))
+             (v (and mutant (funcall (if (eq (first c) :receive-not-client) #'fn2-envelope-check-inputs #'fn2-envelope-check) mutant (mapcar #'identity views) *fn2-nl-profile*)))
              (word (if (consp v) (car v) v)))
         (format t "ENVELOPE CONTROL ~a: ~s~%" (first c) v)
         (unless (and mutant (eq word (first c))) (setf ok nil))))))

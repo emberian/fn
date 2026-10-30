@@ -22,7 +22,7 @@
 ;; A capability: index 0 is the listener; connections from 1.
 (defstruct fn2-ncap
   (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
-  (rx 0) (eof nil) (tx 0) (closed nil))
+  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0))
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
@@ -31,7 +31,10 @@
   ;; test instruments: the boundary trace (ENVELOPE), death cuts, the session
   trace (trace-count 0 :type fixnum) (boundaries 0 :type fixnum) (kill-at 0 :type fixnum)
   (control-fd -1 :type fixnum) control-window (control-text "")
-  sync (stop nil) (signal 0) (iterations 0))
+  sync (stop nil) (signal 0) (iterations 0) (accepts 0)
+  ;; port -> the incarnation (index . nonce) an "open PORT" bound it to: client
+  ;; ports are reused over a long session, incarnations never.
+  (bindings (make-hash-table)))
 
 (defvar *fn2-n-signal* 0)
 (defvar *fn2-n-signal-mux* nil)
@@ -97,7 +100,7 @@
           when (and (= (fn2-ncap-fd cap) -1) (< (fn2-ncap-nonce cap) #xffffffff))
             do (setf (aref caps i)
                      (make-fn2-ncap :fd fd :nonce (1+ (fn2-ncap-nonce cap)) :family family :port port
-                                    :w0 w0 :w1 w1 :w2 w2 :w3 w3))
+                                    :w0 w0 :w1 w1 :w2 w2 :w3 w3 :seq (incf (fn2-nhost-accepts host))))
                (return-from fn2-n-new-cap (values i (1+ (fn2-ncap-nonce cap)))))
     ;; Capacity covers every accept credit, so this is a host defect: stop by name.
     (fn2-native-close fd)
@@ -285,19 +288,31 @@
                           (cond ((string= line "stop") (setf (fn2-nhost-stop host) t))
                                 ((and (> (length line) 5) (string= (subseq line 0 5) "sync "))
                                  (with-input-from-string (in (subseq line 5))
-                                   (setf (fn2-nhost-sync host) (list (read in) (read in) (read in)))))
+                                   (setf (fn2-nhost-sync host) (list (read in) (read in) (read in) nil))))
+                                ((and (> (length line) 5) (string= (subseq line 0 5) "open "))
+                                 (with-input-from-string (in (subseq line 5))
+                                   (setf (fn2-nhost-sync host) (list (read in) 0 0 t))))
                                 ((string= line "") nil)
                                 (t (error "fn2 native: unknown control line ~s" line)))))
                (setf (fn2-nhost-control-text host) text)))))))
 
-(defun fn2-n-cap-by-port (host port)
-  (let ((caps (fn2-nhost-caps host)) (best nil))
-    ;; The newest incarnation with that peer port (closed ones included).
-    (loop for i from 1 below (length caps)
-          for cap = (aref caps i)
-          when (and (eql (fn2-ncap-port cap) port) (or (>= (fn2-ncap-fd cap) 0) (fn2-ncap-closed cap)))
-            do (setf best (cons i cap)))
-    best))
+(defun fn2-n-cap-by-port (host port &optional openp)
+  "The incarnation PORT names: for an open, the newest one accepted with that peer
+port that is not the incarnation the port was bound to before (and bind it);
+otherwise the bound one. Values: (index . cap) or nil."
+  (let* ((caps (fn2-nhost-caps host)) (bound (gethash port (fn2-nhost-bindings host))))
+    (if openp
+        (let ((best nil))
+          (loop for i from 1 below (length caps)
+                for cap = (aref caps i)
+                when (and (eql (fn2-ncap-port cap) port) (plusp (fn2-ncap-seq cap))
+                          (not (equal bound (cons i (fn2-ncap-nonce cap))))
+                          (or (null best) (> (fn2-ncap-seq cap) (fn2-ncap-seq (cdr best)))))
+                  do (setf best (cons i cap)))
+          (when best (setf (gethash port (fn2-nhost-bindings host)) (cons (car best) (fn2-ncap-nonce (cdr best)))))
+          best)
+      (and bound (let ((cap (aref caps (car bound))))
+                   (and (eql (fn2-ncap-nonce cap) (cdr bound)) (cons (car bound) cap)))))))
 (defun fn2-n-cap-receiving-p (host index nonce)
   (loop for op across (fn2-nhost-ops host)
         thereis (and (= (fn2-nop-state op) +fn2-n-waiting+) (= (fn2-nop-kind op) *fn2-action-receive*)
@@ -310,8 +325,10 @@
   (let ((sync (fn2-nhost-sync host)) (core (fn2-nhost-core host)))
     (when (and sync (eq status :idle) (not ready) (zerop (fn2-nhost-pending host))
                (zerop (fn2-host-outbox-queued core)))
-      (destructuring-bind (port sent eof) sync
-        (let ((found (fn2-n-cap-by-port host port)))
+      (destructuring-bind (port sent eof openp) sync
+        (let ((found (fn2-n-cap-by-port host port openp)))
+          ;; An open binds once; it then waits on that incarnation like a sync.
+          (when (and found openp) (setf (fourth (fn2-nhost-sync host)) nil))
           (when found
             (let* ((index (car found)) (cap (cdr found))
                    (delivered (and (>= (fn2-ncap-rx cap) sent) (or (eql eof 0) (fn2-ncap-eof cap)))))

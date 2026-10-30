@@ -208,11 +208,12 @@
       (list verdict caps))))
 
 ; ------------------------------------------------------------------------
-; The bytes are the clients'. CLIENTS: one (port sent received closed) per
-; client, octet lists oldest first. Per capability (by its Accept's peer
-; port): the Receive octets are the client's sent octets (all of them when
-; the node read EOF, else a prefix), and the Send octets are exactly what the
-; client received.
+; The bytes are the clients'. CLIENTS: one (incarnation sent received closed
+; port) per client, the incarnation (index . nonce) the session bound the
+; client to, octet lists oldest first. Per incarnation: the Accept's peer port
+; is the client's local port, the Receive octets are the client's sent octets
+; (all of them when the node read EOF, else a prefix), and the Send octets
+; are exactly what the client received.
 (defun fn2-env-prefixp (a b)
   (declare (xargs :guard t))
   (if (atom a) t (and (consp b) (equal (car a) (car b)) (fn2-env-prefixp (cdr a) (cdr b)))))
@@ -224,9 +225,10 @@
 (defun fn2-env-bytes (caps clients)
   (declare (xargs :verify-guards nil))
   (if (atom caps) :pass
-    (b* ((c (cdr (car caps))) (cl (fn2-env-client (nth 1 c) clients))
+    (b* ((c (cdr (car caps))) (cl (fn2-env-client (car (car caps)) clients))
          (rx (reverse (nth 2 c))) (tx (reverse (nth 3 c))))
       (cond ((null cl) (list :no-client (nth 1 c)))
+            ((not (equal (nth 4 cl) (nth 1 c))) (list :peer-port-not-client (nth 1 c)))
             ((not (if (nth 4 c) (equal rx (nth 1 cl)) (fn2-env-prefixp rx (nth 1 cl))))
              (list :receive-not-client (nth 1 c)))
             ((not (equal tx (nth 2 cl))) (list :send-not-client (nth 1 c)))

@@ -335,7 +335,13 @@ side is real TCP; a control line on the node's stdin (fd 0 is in the mux) is the
   until it holds OUT octets in all (and EOF when CLOSED), so a marker overtaking the socket
   output cannot cut a reply. It drains its socket concurrently while sending, so the node's
   Sends never block on a full client queue.
-- `open()`: connect, `sync PORT 0 0`, read what arrived (the greeting, or 400 and EOF).
+- `open()`: connect, then `open PORT`: the node binds PORT to the newest capability incarnation
+  accepted with that peer port that it was not bound to before, answers `quiet` for it, and every
+  later `sync PORT ...` means that incarnation (client ports are reused over a long session; a
+  1,000-example run reused them, and ENVELOPE caught it as a byte mismatch before the binding).
+  The client keeps the incarnation from the marker; read what arrived (the greeting, or 400 and
+  EOF). A client whose node closed releases its descriptor at once (the harness does not close
+  every client), and the session waits with poll(2), not select's 1,024-descriptor set.
 - `send(id, octets, chunks)`: per chunk, `sendall` then `sync`: a chunk is a delivery barrier,
   as in the simulator session (which feeds bounded pipes and may also cut one chunk into several
   Receive results); TCP keeps no boundary within a chunk, so one chunk may reach the core as
@@ -407,6 +413,24 @@ identical, D's `sim-layer-d-evidence`, every unit book under 60 s; the loop comm
 green on a native run of conn-unit's fixture transcripts over socketpairs and its controls
 caught; the socket commit with H's nntp S form (`h8-run.py`, the hook pointed at
 `fn2_native_session`) green against `127.0.0.1` and its WIRE and ENVELOPE verdicts ok.
+
+#### 4.1.7 As built
+- f6485baea (1/3): the peer record, the latch, `fn2-core-observed-peer`, the listener's fields and
+  offer; `fn2-accept-peer-delivered` with teeth (tests/host-unit.lisp). Whole-tree gate on forge:
+  113 A4 blocks identical, D's evidence run green, every book under 60 s.
+- 03b4a2f41 (2/3): the loop, ENVELOPE, `fn2-native-envelope-refines` with teeth over a recorded
+  trace (tests/native-unit.lisp, tests/evidence/native-envelope-trace.lisp); tests/native-loop.lsp
+  runs conn-unit's 7 fixtures in 3 chunkings as TCP clients (Linux/epoll on forge).
+- 3/3: the session (tests/native-session.lsp, host/native-session-raw.lisp,
+  tests/surface/fn2_native_session.py); ENVELOPE's client views keyed by incarnation with the
+  peer port checked. H's nntp S form through it, unchanged (h8-run.py with
+  `FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_native_session:session`), on forge against
+  127.0.0.1: 1,000 examples x 50 steps, RESULT ok in 449 s, 16,730 served replies judged with 0
+  disagreements (the simulator session's H8b count, exactly), WIRE and ENVELOPE ok per connection.
+- Open: the storage backend (inline pread/pwrite/fdatasync on one preallocated file, the
+  compost's path) lands with B's durable POST; the darwin poll(2) path is written and runs
+  untested until a Mac run; D's WIRE refuses an unterminated 511+ octet line answered 501 and
+  close when the client stops at EOF (reported to D; the native driver counts it by name).
 
 ## 5. Executor (contract item 5)
 `fn2-turn` calls `fn2-concrete-turn` / `fn2-concrete-loop`, the bounded
