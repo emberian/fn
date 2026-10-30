@@ -72,3 +72,11 @@
 (defcost fn2-scribe-patch-loop :bytes *fn2-format-word-bytes* :tables (fn2-core-pool)
   :doc "Patch the sector's checksum word.")
 (defcost fn2-scribe-verify :bytes *fn2-scribe-chunk-bytes* :doc "Verify one chunk read back.")
+
+; Range primitives (R6a1): one check, one loop; the range length is the
+; work, charged by the arm that sizes it (at most its run's byte quantum).
+(defcost fn2-core-copy-range :tables (fn2-core-pool) :doc "Copy a range into an owned workspace (overlap-safe).")
+(defcost fn2-core-compare :doc "Compare two ranges, each under its own owner.")
+(defcost fn2-core-fold :doc "FNV-1a over a range.")
+(defcost fn2-core-scan :doc "First byte or CR LF in a range.")
+(defcost fn2-core-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")

@@ -1,6 +1,6 @@
 ; Core event library: bounded transitions over registered children.
 (in-package "ACL2")
-(include-book "pool")
+(include-book "pool-ranges")
 (include-book "vocab")
 (include-book "std/util/bstar" :dir :system)
 
@@ -182,6 +182,29 @@
   (slot gen okind oslot ogen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-write fn2-pool-write
   (slot gen idx byte okind oslot ogen) (code) 1)
+; The range primitives through the parent (R6a1): one check, one loop.
+(fn2-core-pool-wrapper fn2-core-copy-range fn2-pool-copy-range
+  (src sgen soff dst dgen doff len okind oslot ogen) (code) 1)
+(fn2-core-pool-wrapper fn2-core-drop-prefix fn2-pool-drop-prefix
+  (slot gen k cursor limit okind oslot ogen) (code cursor) 2)
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
+(defun fn2-core-compare (s1 g1 off1 k1 os1 og1 s2 g2 off2 k2 os2 og2 len fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code result at) (fn2-pool-compare s1 g1 off1 k1 os1 og1 s2 g2 off2 k2 os2 og2 len fn2-pool)
+    (mv code result at))))
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
+(defun fn2-core-fold (slot gen off len hash okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code value) (fn2-pool-fold slot gen off len hash okind oslot ogen fn2-pool)
+    (mv code value))))
+(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
+(defun fn2-core-scan (slot gen off len target okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code at) (fn2-pool-scan slot gen off len target okind oslot ogen fn2-pool)
+    (mv code at))))
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-read (slot gen idx okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -380,7 +403,8 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-core-init fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
-    fn2-core-reset fn2-core-write fn2-core-read fn2-core-issue fn2-core-lease
+    fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix
+    fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-issue fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
     fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake
     fn2-ops-next-owner fn2-core-next-owner fn2-harvest-one)
