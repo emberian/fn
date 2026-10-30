@@ -487,16 +487,54 @@
 (defun fn2-columns-resize-bindings (name cols)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom cols) nil
-    (cons `(,name (,(fn2-columns-pre "RESIZE-"
-                       (fn2-columns-sym (fn2-columns-col-name name (caar cols)) "$A"))
-                  n ,name))
-          (fn2-columns-resize-bindings name (cdr cols)))))
+    ; A fresh table: resize to 0 first, so init never keeps an earlier
+    ; incarnation's rows (process death re-initializes the core in place).
+    (let ((resize (fn2-columns-pre "RESIZE-"
+                    (fn2-columns-sym (fn2-columns-col-name name (caar cols)) "$A"))))
+      (list* `(,name (,resize 0 ,name)) `(,name (,resize n ,name))
+             (fn2-columns-resize-bindings name (cdr cols))))))
 
-(defun fn2-columns-init-nth (name cols index)
+; Extras are fresh after init too: resizable arrays are emptied (their owner's
+; init sizes them afresh) and scalars take their declared initial value; a
+; fixed-size array keeps its declared shape. Init never keeps an earlier
+; incarnation's contents (process death re-initializes the core in place).
+; Nested stobj fields keep their own init.
+(defun fn2-columns-extra-kind (spec)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((type (cadr (member-eq :type spec))))
+    (cond ((and (consp type) (eq (car type) 'array))
+           (if (eq (cadr (member-eq :resizable spec)) t) :resizable :fixed))
+          ((and (consp type) (eq (car type) 'hash-table)) :hash)
+          ; A nested stobj field is re-initialized by its own owner.
+          ((and type (symbolp type) (not (eq type t))) :stobj)
+          (t :scalar))))
+(defun fn2-columns-extra-clears (name extras)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom extras) nil
+    (let ((kind (and (consp (car extras)) (fn2-columns-extra-kind (cdar extras)))))
+      (append (cond ((eq kind :resizable)
+                     (list `(,name (,(fn2-columns-pre "RESIZE-" (caar extras)) 0 ,name))))
+                    ((eq kind :scalar)
+                     (list `(,name (,(fn2-columns-pre "UPDATE-" (caar extras))
+                                    ',(cadr (member-eq :initially (cdar extras))) ,name))))
+                    ((eq kind :hash)
+                     (list `(,name (,(fn2-columns-sym (caar extras) "-CLEAR") ,name))))
+                    (t nil))
+              (fn2-columns-extra-clears name (cdr extras))))))
+(defun fn2-columns-extra-nth (name extras index)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom extras) `(nth k ,name)
+    (let ((kind (and (consp (car extras)) (fn2-columns-extra-kind (cdar extras))))
+          (rest (fn2-columns-extra-nth name (cdr extras) (+ 1 (nfix index)))))
+      (cond ((member-eq kind '(:resizable :hash)) `(if (equal (nfix k) ,index) nil ,rest))
+            ((eq kind :scalar)
+             `(if (equal (nfix k) ,index) ',(cadr (member-eq :initially (cdar extras))) ,rest))
+            (t `(if (equal (nfix k) ,index) (nth k ,name) ,rest))))))
+(defun fn2-columns-init-nth (name cols index extras)
   (declare (xargs :verify-guards nil))
-  (if (atom cols) `(if (equal (nfix k) ,index) n (nth k ,name))
-    `(if (equal (nfix k) ,index) (resize-list (nth ,index ,name) n ,(if (eq (cadar cols) :link) *fn2-none* 0))
-       ,(fn2-columns-init-nth name (cdr cols) (+ 1 (nfix index))))))
+  (if (atom cols) `(if (equal (nfix k) ,index) n ,(fn2-columns-extra-nth name extras (+ 1 (nfix index))))
+    `(if (equal (nfix k) ,index) (resize-list nil n ,(if (eq (cadar cols) :link) *fn2-none* 0))
+       ,(fn2-columns-init-nth name (cdr cols) (+ 1 (nfix index)) extras))))
 
 (defun fn2-columns-shape-expansions (n)
   (declare (xargs :verify-guards nil))
@@ -826,6 +864,7 @@
        (defun ,init (n ,name)
          (declare (xargs :stobjs ,name :guard (and (natp n) (< n ,bound))))
          (let* (,@(fn2-columns-resize-bindings name cols)
+                ,@(fn2-columns-extra-clears name extras)
                 (,name (,(fn2-columns-pre "UPDATE-" rows) n ,name)))
            ,name))
        (defthm ,(fn2-columns-sym init "-PRESERVES-TYPE")
@@ -835,7 +874,7 @@
          :hints (("Goal" :in-theory (enable ,wfp))))
        (defthm ,(fn2-columns-sym init "-NTH")
          (equal (nth k (,init n ,name))
-                ,(fn2-columns-init-nth name cols 0)))
+                ,(fn2-columns-init-nth name cols 0 extras)))
        (defthm ,(fn2-columns-sym init "-ROWS")
          (equal (,rows (,init n ,name)) n))
        ,@(fn2-columns-wfp-write-facts name fields (fn2-columns-fields name cols))
