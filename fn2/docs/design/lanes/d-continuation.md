@@ -1,33 +1,52 @@
-# fn2 layer D continuation (present state, rewritten whole; 2026-10-30, the fourth Opus seat)
+# fn2 layer D continuation (present state, rewritten whole; 2026-10-30, the fifth Opus seat)
 
 Seat: Opus, layer D (machines, scheduler over principals, accounting, NNTP over them). The seat WRITES
 the code; Codex (second account) takes only bounded pieces with real signatures pasted, every line read;
-Astra (`codex exec -m gpt-6-astra -s read-only`) reviews designs as a peer before code. Brief:
-`build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md` over `FN2-SEAT-COMMON.md`. Layer doc:
-`fn2/docs/d-machines-nntp.md` on dev: section 4 is D3 as built, section 13 is D7 (design + 2/n, 3/n as
-built), section 10 the open items, section 12 the quest table.
+Astra (`codex exec -m gpt-6-astra -s read-only -C /Users/ember/dev/fn`) reviews designs as a peer before
+code. Brief: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md` over `FN2-SEAT-COMMON.md`. Layer
+doc: `fn2/docs/d-machines-nntp.md` on dev: §4 D3 as built, §13 D7, **§14 D4+D5 (design, Astra-reviewed,
+`build/d-seat/d45/astra-1.md`)**, §10 open items, §12 quests.
 
 ## Tree
-- Shared tree `/Users/ember/dev/fn` is on `dev`. D's lane worktree is `build/lanes/fn2/d7` (branch
-  `fn2/d7`). Foundation-touching work (assembly includes, conn.lisp) is done there, merged with
-  origin/dev, gated on forge, then dev fast-forwards (`git -C /Users/ember/dev/fn merge --ff-only fn2/d7`,
-  secrets check, `git push origin dev`). Commit with `git commit --no-gpg-sign -F <msg> -- <paths>`; new
-  files get `git add -N` first; never stage. Messages live in `build/d-seat/d7-*.msg`.
-- Forge clone `/build/lanes/d7` (branch `lane`) is the D gate tree, certified at the 3/n state. Refresh:
-  `git push fn@forge:/build/fn.git fn2/d7:refs/heads/fn2/d7`, then in the clone `git checkout -- . &&
-  git fetch /build/fn.git fn2/d7 && git checkout -B lane FETCH_HEAD` (rm untracked copies first).
-  `/build/lanes/d3b` is the older D clone, now a scratch REPL tree.
-- **Stuck process to report/clean**: on forge, pid 427111 (sbcl, a certify of the old
-  tests/accounts-unit in /build/lanes/d3b, started 07:58 without a PID file; its forge-certify parent is
-  426918). It holds an ACL2 slot. Not killed (no PID file); main or ember may stop it.
+- Shared tree `/Users/ember/dev/fn` on `dev`: D's own books (upload-scan, later upload/txn/conn edits that
+  touch no foundation) are edited and committed there by pathspec (`git commit --no-gpg-sign -F <msg> --
+  <paths>`, new files `git add -N` first; never stage). Messages in `build/d-seat/d45/*.msg`.
+- Foundation edits (assembly includes, A's machines.lisp/pool-ranges for A-S7/A-S8 if main lets D write
+  them) go in the worktree `build/lanes/fn2/d7` (branch `fn2/d7`, behind dev now: merge origin/dev first),
+  whole-tree gate, then ff dev.
+- Forge clone `/build/lanes/d7` (branch `lane`) is the D gate tree (at D7 3/n). No setsid on the Mac: use
+  `python3 build/d-seat/bin/detach.py PIDFILE LOG -- cmd...` (setsid + group-leader pid written).
+- Stuck processes to report (not ours, no PID file): forge pid 427111 (old accounts-unit certify in
+  /build/lanes/d3b); laptop pid 80380/80382 (`timeout 180 acl2-literal-4g-tls64k`, 1 d 23 h at 99%).
 
 ## Done (this seat)
 | quest | commit | one line |
 |---|---|---|
-| D7 1/n | 7b12faab9 (dev 1d6cce7ca) | layer doc 13: ledger and scheduler-over-principals design, Astra-reviewed (`build/d-seat/d7-astra-1.md`), seam S1-S6 to A |
-| D7 2/n | 424312db7 (dev a98d3c7c5) | `fn2/books/accounts.lisp`: the ledger library; acquire-protected and the charge lemmas proved; ops-conserve owed; `tests/accounts-unit.lisp` |
-| D7 3/n | 792a36bd3, 703b5503a, edbda1d0b, OWED d15c0b3c1 (dev a98d3c7c5) | `accounts-core.lisp` (core child, wrappers, seam entry points), fn2-conn booked at the greeting and charged rx/tx/requests, `sim/check-account.lisp` (ACCOUNT), sim-layer-d ACCOUNT + scenario 11 flood half, `fn2-account-ledger-matches` owed with teeth in conn-unit |
-Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
+| D4 1/n | 92a31a6dd | `fn2/books/upload-scan.lisp`: bounded header scan (fn1 header syntax, limits, Message-ID/Newsgroups/Path ranges, SEEN bits) and the definite verdict in H's model order; `tests/upload-scan-unit.lisp` 33 fixtures x every split point |
+| D4 1/n input | 228a59645 | `fn2/books/upload-feed.lisp`: streaming 5-state unstuffing feed RX (conn owner) -> chunk (upload owner), octet by octet; framing per framing.py; `tests/upload-feed-unit.lisp`; A-S8 now perf-only |
+| D5 1/n library | a8ead74eb | `fn2/books/claims.lisp` (fn2-claims stobj: begin / walk with stamp restart / release with FIFO hand-off), `tests/claims-unit.lisp`; layer doc takes C's amended C-S2 |
+| D4+D5 design | b416f0308 | layer doc §14 with Astra's six changes; seams A-S7, A-S8, B-S1, B-S2, C-S1, C-S2 sent to main (READY + seam message 2026-10-30) |
+Earlier seats: D0, D1a, D2a-c, D3, D7 1/n-3/n (layer doc §12, §13).
+
+## D4/D5 key decisions (read §14 for the whole)
+- Rulings received 2026-10-30: C agreed C-S1; C amended C-S2 (in :ready: `fn2-identity-stage d` before
+  `fn2-commit-admit-txn`, `fn2-identity-bind d batch article binding principal` after its :ok, infallible;
+  commit kind calls `fn2-identity-publish batch` / `fn2-identity-drop batch`); DSL seat: D writes A-S7
+  (taken kinds) as a foundation commit ON TOP OF S1 (main sends S1's sha; S1 adds
+  fn2-machine-admission-books-p and copies principal-slot/account-ref), whole-tree gate (every unit book,
+  A's seven drivers with the 113 A4 blocks identical, B's units), DSL seat reads the diff first; S1's
+  refused booking admits unbooked and renders 400 (no parking): accepted.
+- Owed in claims: waiter cancellation (an aborting upload's txn waiting in a FIFO).
+- Three machines: conn frames blocks + copies (fn2-upload-feed, cost 1024 framed + 1024 rescanned + 1024
+  copied), upload hashes/scans (B's fn2-b3 row 2+window), txn claims/decides/stages/commits.
+- Transaction row taken at the upload's :identity, then claim (txn :reserve holds no claim); POST without
+  Message-ID generates one before claiming.
+- Identity facts staged into the batch's private successor overlay at :prepare (C-S2), exposed at publish.
+- Evidence of conflicting content is its own operation; C-S1 answers :evidence vs :duplicate.
+- Posting capability (greeting 200, CAPABILITIES POST, 340) stays OFF until D5 2/n's durable POST; the
+  interim path runs under profile key `:posting-interim t` in tests only.
+- Outcome words posted to the conn row with generation AND request ordinal; TAKETHIS token kept in a
+  reserved TX tail.
 
 ## D7 as built (for the next slice)
 - Ledger rows: P+1 (row P = system). Dimension-major arrays; holdings `:connection-row
@@ -47,32 +66,7 @@ Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
 - ACCOUNT (`fn2/sim/check-account.lisp`): `fn2-account-check rows records capacity`, controls
   `fn2-account-controls` (third control `:n/a` without reserves).
 
-## Next
-0. (done) READY 2/n+3/n sent with the seam names. A landed S4 (fn2-sched-reattribute, 7fd40d0b7)
-   and S6 (:account, used at drain). Main asked A to move `(fn2-account-events)` ahead of its callers
-   when it wires S1/S2/S5.
-1. D5 first (main/C, 2026-10-30): C's identity decision is linearizable by per-bucket stamps and an
-   identity version; `fn2-id-record` refuses `:stale` before any other verdict when either moved since
-   the decision began, and a stale offer is offered again. D5's `:identity-reservation` (D0 kind,
-   serializing same-Message-ID offers on one node) bounds the retry count: declare it as an arm with
-   its cost; WIRE stays one reply per POST/IHAVE/TAKETHIS; run D5's scenario with
-   `fn2/sim/check-identity.lisp` on (C's IDENTITY checker, scenario M3). Then D4.
-2. D4 (upload) and D5 (transaction) are unblocked (A's read-set 6b2f6ef5b, assembly split 71c1fb2f2;
-   C2 identity c06369c9d; doc: `fn2/docs/c-ordered-runs.md`). H's M1a oracle has 713 POST interims for
-   D5. Order: D4 then D5, or D5's POST path first if D4's upload machine is the smaller bottleneck.
-3. S1 ruling (main, 2026-10-30): the DSL seat lands S1 as ONE commit: the listener books at Accept only
-   when the target kind's :admission copies account-ref (echo copies nothing, so A4 never touches the
-   ledger); admission copies principal-slot and account-ref and unbooks on a failed Accept or refused
-   admission; and it changes fn2-conn-greet to stop booking and keep account-ref as copied (nothing else
-   in conn.lisp). Its gate runs sim-layer-d (all four sets) and conn-unit. READ THAT DIFF when main sends
-   the sha. S2 (charge-run in the executor, principal and service visits, non-:ok stops :account) and S5
-   (grant source fourth; fn2-account-events at the head of assembly-access) are in A's acceptance.
-   D7 4/n builds on S1: booking at Accept (move the book from greet), the request bundle
-   (`:control-reply` phase, per-principal FIFOs, grant service), run charges, weights, reattribute.
-   Then 5/n timers, 6/n TLS admission.
-4. Prove `fn2-account-ops-conserve` when cheap (sum over the dimension-major array under one update).
-
-## Certify times (forge, merged tree b587be19f + 3/n)
+## Certify times (forge, merged tree b587be19f + 3/n; laptop for upload-scan)
 | book | s |
 |---|---:|
 | books/assembly-access (A) | 48.4 |
@@ -83,7 +77,52 @@ Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
 | books/owed-conn | 6.3 |
 | books/conn | 4.7 |
 | accounts-core, accounts-unit, check-account | < 1 each |
+| books/upload-scan, tests/upload-scan-unit (laptop) | 2.0, 1.0 |
+| books/upload-feed, tests/upload-feed-unit (laptop) | 1.4, 0.6 |
+| books/claims, tests/claims-unit (laptop) | 5.7, 0.5 |
 | tests/sim-layer-d.lsp (LD, 18 runs) | about 3 min |
+
+## In flight (uncommitted, worktree `build/lanes/fn2/d-taken`, branch `fn2/d-taken` = fn2/a-seams6 (S1-S5) + dev)
+- A-S7 in `fn2/books/machines.lisp`: defmachine `:taken (:phase :rows :ranges :copy :clear)`,
+  `fn2-machine-taken`/`-partitioned`, `*fn2-machine-partitioned*` (directory uses it), generated
+  `fn2-machine-take-K (waiter COPIES fn2-core) -> (mv code id fn2-core)` (parks the waiter on the
+  partition FIFO with the row kind as wait reason) and `fn2-machine-reclaim-K`; the observation router now
+  keeps any row parked on a resource kind parked (was: operation/storage-window/connection-row only).
+- `fn2/books/upload.lisp`: fn2-input-config core child (`:posting-interim`, `:article-max`), fn2-upload
+  kind (capacity 0 unless `:posting-interim`; hasher row 2+slot needs `:format-slots` >= 2+windows),
+  ops (hash begin/step/end, scan step, verdict, `fn2-conn-post-word`, `fn2-upload-input`,
+  `fn2-upload-advance`), arms (work, release/drain, abort). Words refined by field
+  (`fn2-upload-word-by-field`).
+- conn.lisp: new fields (upload upload-gen rule request feed-mode feed-discard word outcome-ready posting),
+  arms open-block, block-input, feed-step, block (replacing unreached for :article-input), release
+  notifies its upload; conn-answer: `posting` arg to fn2-answer/-ok/-greeting, POST -> :article-input,
+  `fn2-answer-block-open`, `fn2-answer-post-reply`, `fn2-answer-outcome`. Test callers updated
+  (conn-answer-unit, grammar-fuzz-export). owed-conn: `fn2-conn-wire-run-in profile`.
+- tests/upload-unit.lisp: POST transcripts under `*fn2-uu-profile*`.
+- Chain certify: `python3 build/d-seat/bin/detach.py build/tN.pid build/tN.log -- sh fn2/tools/certify.sh
+  -j 8 books/assembly-callbacks-d.lisp` in the worktree. Then the whole-tree gate (A's seven drivers with
+  113 A4 blocks identical, all unit books, sim-layer-d) and the DSL seat reads the diff before landing,
+  once S1 is on dev.
+
+## Next
+1. **D4 2/n ingestion** (§14.8; first A-S7 on S1 in the d7 worktree): fn2-upload declared (needs A-S7: write the declaration and arms now,
+   land when A-S7 lands or when main lets D write A-S7 as a foundation commit); fn2-conn fields (upload,
+   upload-gen, rule, word, outcome-ready, request, token-off/len), the `:block` answer code in conn-answer,
+   `fn2-conn-block` replacing fn2-conn-unreached for :article-input over `fn2-upload-feed` (landed), BLAKE3 over the window (fn2-b3-init/-update/-finalize, result into the
+   row via fn2-digest-store), conn-unit POST transcripts under `:posting-interim t`.
+2. D5 1/n (fn2-txn, fn2-txn-claims core child, the claim FIFO, generated Message-ID, lookup via C-S1),
+   D5 2/n (one durable POST through B-S2/C-S2, posting on, regenerate fn2_conn_interim.json), D5 3/n
+   (transit with request/reply queuing, evidence ops, scenario 5), D4 3/n (extents).
+3. **Queued after D5 (main, 2026-10-30): D6**, the query cursor (ARTICLE/HEAD/BODY/STAT, NEXT/LAST,
+   GROUP/LISTGROUP, OVER/XOVER, NEWNEWS; 15,028 interims in H's M1a). C3a on dev 654d1fd39: schemas in
+   fn2/books/ordered.lisp (fn2-article id 2 latest-only, fn2-overview id 3 key (group, number), fn2-addr
+   id 4), range.lisp `fn2-range-start` / `fn2-range-step` (:entry rows at fn2-ranges-out, :end :more
+   :miss), read contract `fn2-read-plan (strength p fallback cov append) -> (mv outcome position limit)`.
+   C3b on dev b44d74417: Seek(stream, after = p) via the fn2-seeks table (`fn2-seek-start`,
+   `fn2-seek-step`), a bisection over the stream key's last field (each probe a one-entry range read)
+   answering the number from which a read delivers exactly the entries after p. XOVER needs only C3a;
+   NEWNEWS-by-position and D8's wait positions use C3b.
+4. D7 4/n on S1 (main sends the sha), 5/n timers, 6/n TLS admission; prove fn2-account-ops-conserve.
 
 ## Commands that work
 - Forge certify (PID file!): `ssh forge 'cd /build/lanes/d7 && (nohup swarm-build sh
@@ -101,7 +140,16 @@ Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
 - OWED: `swarm-build sh fn2/tools/certify.sh --export-owed` in the forge tree, copy OWED.md back.
 - ld a library + unit quickly: `build/accu-ld.lsp` in d3b (`(ld "fn2/books/accounts.lisp")` ...).
 
-## Pitfalls hit (this seat)
+## Pitfalls hit
+- A stobj helper whose preservation is proved inline in a big function costs minutes (claims walk:
+  286 s): factor each multi-setter step into its own defun with `(TABLE-preserves f args :position k
+  :raw-rows t)`; each helper must check its own indices so preservation needs no guard hyps.
+- upload-scan: guard proofs over pool-reading helpers explode unless the helpers are disabled and
+  every computed index is `nfix`ed; `min` disabled breaks linear facts (use an explicit `if`); a
+  recursive driver over a 13-value line function needs the line function disabled for termination and
+  `nfix` on every recursive argument.
+- REPL a D library fast: `tools/acl2 < drv.lsp` with `(include-book "fn2/books/grammar")` then
+  `(ld "fn2/books/X.lisp")`; test bodies: `ld` the unit with include lines stripped.
 - A defun over stobj arrays: element facts must be rewrite rules (natp/rationalp/acl2-numberp) plus a
   typed reader (`nfix` of the element, disabled) so guards stay linear; index-in-range lemmas stated
   over the normalized `(nth *X-rows* st)` form, rule-classes rewrite and linear.

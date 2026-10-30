@@ -46,26 +46,45 @@ COMMON.
   `fn2-run-version sid` (runs), overlay COV column + `fn2-ov-cover`; `fn2-ov-start` takes cov.
   Test world `tests/range-assembly.lisp` (runs-assembly + range, calls fn2-range-assemble); unit
   `tests/range-unit.lisp`. Told main D6 can start.
-- OWED.md regenerated at each (390 requirements at C3a, other seats' rows included).
-- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev 654d1fd39.
-  forge clone `/build/lanes/c` at d42bff1d2.
+- 439586224 **C3b** (dev b44d74417): positioned seek in range.lisp: table `fn2-seeks` (phase
+  :idle :probe :read :entry :end :done; g lo hi mid after pfield probes), `fn2-seek-start (k g lo
+  hi p pfield seeks)` (range row g must already be started with the stream prefix in its qbase and
+  hbase), generated `fn2-seek-step (k budget seeks ranges sources overlays overlay-index installed
+  cursors paths cache fields pool)` -> :more / :miss / :done (answer = seek row's LO: the number
+  from which a read delivers exactly the entries after p) / refusal. Probe and narrow are separate
+  steps (no stobj composition of the range step). Keystone fn2-range-seek-position. Decision
+  C-POSITION-SEEK (no position fence until consumer seeks measure hot).
+- OWED.md regenerated after each (391 requirements at C3b).
+- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev b44d74417,
+  clean. forge clone `/build/lanes/c` at f9d1a2482.
 
 ## Seam requests outstanding (sent to main)
-- B: GC2 inside B5 (layer doc §8 item 2), still pending; blocks C1c's sealer and M3's device leg.
+- B: GC2 inside B5 (layer doc §8 item 2), still pending; blocks C1c's sealer, M2's cold leg and
+  M3's device leg.
 
-## Next
-1. **C3b** positioned seek over overview: `Seek(stream, after = p)` = first entry of group g with
-   position > p. Plan: a schema option naming a monotone value field as a fence (with the stream
-   prefix length), copied into index entries at promotion (runs-schema index layout +
-   `fn2-run-build-promote`), and a seek variant comparing (prefix, fence) at index levels and
-   (prefix, value) at level 0; a range read then starts at a position. Fallback if the format
-   change is too costly: binary search over numbers by lookups. Then M2 (cold sparse groups past
-   cache capacity, charging directory and overlap reads; report reads per delivered row).
-2. Rest of C1c once B5/GC2 lands (sealer machine through defmachine, descriptor + manifest,
-   production assembly, filter ref in the descriptor). C4 (deffold, folds, summary cut, overlay
-   replace for :latest) does not wait on GC2.
-3. Watch: tests/runs-assembly 52 s on forge; split the identity assembly into its own book if it
-   passes 55.
+## Next (the third seat handed off here at its context ceiling, 2026-10-30)
+1. **C4** (does not wait on GC2). Read first: STORAGE-DESIGN.md §4 decision 1 (fold names
+   interpretation, initialization, coverage; latest-only internal folds; summary equation),
+   `STORAGE-DECISIONS-SCHOLAR.md` and `scholar-astra-ch1.md` (the fold chapter: interpretation /
+   initialization / coverage, the summary cut scenario), INBOX-DELIVERY §4.3-4.6 (registration,
+   read-state, edge-policy, optional inbox fold with coverage), TRANSPORT.md §9 (the two teeth of
+   fn2-fold-summary-adequate), UC §2.1-2.4. Then design `deffold` (a declaration through
+   fn2-declare generating a fold-row schema keyed (table, object) :latest, its interpretation as
+   an event -> row-update function, initialization, coverage interval), the overlay's replace for
+   :latest (today fn2-ov-insert refuses an equal key :duplicate; C-RANGE-NEWEST notes this), the
+   summary cut check in the simulator (exhaustive in tiny), the CONSUMER checker and the
+   select-versus-materialize equivalence (INBOX §4.6). Statement-first: write the keystones
+   (fn2-fold-summary-adequate per fold, fn2-select-materialize-equivalent) with teeth before code.
+2. Rest of C1c once B5/GC2 lands (sealer machine through defmachine with full arm contracts per
+   `lanes/a-to-d-arm-contracts.md`, descriptor + manifest schema, production assembly
+   (C-ONE-ASSEMBLY: C units move onto it), filter ref in the descriptor (C-FILTER-INSTALLED), the
+   page load path for :miss/:filter-miss), then M2 and M3's device leg. Then C5 (compaction under
+   a lease; it must keep replaced runs live until older range reads / identity decisions finish,
+   see C-IDENTITY-STALE and fn2-run-version) and C6.
+3. Watch the one-minute rule: tests/runs-assembly 52 s on forge (load ~8); if it passes 55, move
+   the identity assembly into its own book like range-assembly.
+4. Not yet run: `fn2/tests/sim-layer-c-sweep.lsp` (10,000 M3 seeds) on forge via
+   `sh fn2/tools/forge-driver.sh sim-layer-c-sweep` when the box is quiet; report the row.
 
 ## Pitfalls hit (and what worked)
 - Guard proofs and stobj column values: a column read through an enabled accessor becomes raw
@@ -79,6 +98,13 @@ COMMON.
 - Preserves of a setter with computed values needs the values' types as hyps (natp index, u32).
 - Termination of a big stobj loop: split one non-recursive "tick" and a loop that disables it.
 - Never define a constant named `*t*` (built in).
+- defcolumns: a column named `p` collides with generated predicate names; a table name that is a
+  prefix of another's generated names (fn2-range-seeks vs fn2-range-...) collides too. A spec
+  predicate must not end in `p` after a table name (fn2-range-sourcesp is the stobj recognizer).
+- Shape lemmas for functions that compose many stobjs are slow or fail; prefer one helper per
+  branch and a separate step per stobj composition (fn2-seek-step's :read then :entry/:end).
+- A guard that needs a column value's type after another call: bind it and check `natp` at run
+  time (fn2-range-deliver's sbase/n, fn2-range-step's n).
 - Per-schema generated functions must be thin; everything else generic over the dispatcher.
 - **World-dependence of proofs**: deflayout disables fields/pool accessors locally; a world that
   includes a schema's certified book has them enabled → assembly 148 s instead of 17 s. Fixed by
@@ -126,11 +152,11 @@ COMMON.
 | books/ribbon | 16.2 |
 | books/ordered | 16.1 |
 | books/identity | 11.1 |
-| books/range | 24.2 |
+| books/range | 21.7 (f9d1a2482) |
 | tests/runs-assembly | 52.1 |
-| tests/range-assembly | 27.0 |
+| tests/range-assembly | 30.1 (f9d1a2482) |
 | tests/identity-unit | 4.0 |
 | tests/ribbon-unit | 2.3 |
-| tests/range-unit | 3.1 |
+| tests/range-unit | 3.6 (f9d1a2482) |
 | tests/sim-layer-c | 18.9 |
 | sim/check-identity | 0.3 |
