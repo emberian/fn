@@ -113,4 +113,6 @@
   (declare (xargs :verify-guards nil))
   (list (not (eq (fn2-account-check (fn2-acct-drop-charge rows) records capacity) :pass))
         (not (eq (fn2-account-check (fn2-acct-clear-charges rows) records capacity) :pass))
-        (not (eq (fn2-account-check rows (fn2-acct-protected-refusal rows records) capacity) :pass))))
+        ;; applicable only when some principal holds less than its reserve
+        (if (equal (fn2-acct-protected-refusal rows records) records) :n/a
+          (not (eq (fn2-account-check rows (fn2-acct-protected-refusal rows records) capacity) :pass)))))

@@ -127,34 +127,44 @@
     (append (and (nth 5 (car before)) (not (equal (nth 5 (car before)) (nth 5 (car after))))
                  (list (car before)))
             (fn2-sld-retired (cdr before) (cdr after)))))
+; One round: (mv stopped records next done busy fn2-core fn2-sim fn2-own),
+; STOPPED nil or the failure. Kept out of the recursion so its termination
+; proof does not see the round's body.
+(defun fn2-sld-round (records transcripts next done fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+  (b* (((mv & fn2-core fn2-sim fn2-own)
+        (fn2-sim-take-prefix (fn2-sld-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
+       (records (fn2-sld-sample records fn2-sim))
+       ((mv & & & nactions fn2-core) (fn2-turn fn2-core))
+       ((unless (equal (fn2-core-stop-reason fn2-core) 0))
+        (mv (list :fail :core-stopped (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
+            records next done nil fn2-core fn2-sim fn2-own))
+       ((mv & fn2-core fn2-sim fn2-own)
+        (fn2-sim-take-prefix (fn2-sld-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
+       (records (fn2-sld-sample records fn2-sim))
+       ((mv word fn2-sim) (fn2-sim-random fn2-sim))
+       (before records)
+       ((mv records next fn2-sim) (fn2-sld-client-round records transcripts next word fn2-sim))
+       ((mv & fn2-core fn2-sim fn2-own)
+        (fn2-sim-advance-with-clients nil (< next (len transcripts)) fn2-core fn2-sim fn2-own))
+       (records (fn2-sld-sample records fn2-sim))
+       ; Progress is an action the core emitted or a client's octets (every round
+       ; observes a clock reading, so observations are not progress); a held Accept
+       ; (no client left to connect) is re-delayed by the adapter forever.
+       (busy (or (not (equal before records)) (< 0 nactions)))
+       (done (append (fn2-sld-retired before records) done)))
+    (mv nil records next done busy fn2-core fn2-sim fn2-own)))
+(in-theory (disable fn2-sld-round))
 (defun fn2-sld-rounds (fuel idle records transcripts next done fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
   (if (zp fuel) (mv :fuel records next done fn2-core fn2-sim fn2-own)
-    (b* (((mv & fn2-core fn2-sim fn2-own)
-          (fn2-sim-take-prefix (fn2-sld-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
-         (records (fn2-sld-sample records fn2-sim))
-         ((mv & & & nactions fn2-core) (fn2-turn fn2-core))
-         ((unless (equal (fn2-core-stop-reason fn2-core) 0))
-          (mv (list :fail :core-stopped (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)))
-              records next done fn2-core fn2-sim fn2-own))
-         ((mv & fn2-core fn2-sim fn2-own)
-          (fn2-sim-take-prefix (fn2-sld-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
-         (records (fn2-sld-sample records fn2-sim))
-         ((mv word fn2-sim) (fn2-sim-random fn2-sim))
-         (before records)
-         ((mv records next fn2-sim) (fn2-sld-client-round records transcripts next word fn2-sim))
-         ((mv & fn2-core fn2-sim fn2-own)
-          (fn2-sim-advance-with-clients nil (< next (len transcripts)) fn2-core fn2-sim fn2-own))
-         (records (fn2-sld-sample records fn2-sim))
-         ; Progress is an action the core emitted or a client's octets (every round
-         ; observes a clock reading, so observations are not progress); a held Accept
-         ; (no client left to connect) is re-delayed by the adapter forever.
-         (busy (or (not (equal before records)) (< 0 nactions)))
-         (idle (if busy 0 (+ 1 idle)))
-         (done (append (fn2-sld-retired before records) done)))
-      (if (and (<= 64 idle) (>= next (len transcripts)) (fn2-sld-quiet-p records))
-          (mv :quiet records next done fn2-core fn2-sim fn2-own)
-        (fn2-sld-rounds (- fuel 1) idle records transcripts next done fn2-core fn2-sim fn2-own)))))
+    (mv-let (stopped records next done busy fn2-core fn2-sim fn2-own)
+      (fn2-sld-round records transcripts next done fn2-core fn2-sim fn2-own)
+      (let ((idle (if busy 0 (+ 1 idle))))
+        (cond (stopped (mv stopped records next done fn2-core fn2-sim fn2-own))
+              ((and (<= 64 idle) (>= next (len transcripts)) (fn2-sld-quiet-p records))
+               (mv :quiet records next done fn2-core fn2-sim fn2-own))
+              (t (fn2-sld-rounds (- fuel 1) idle records transcripts next done fn2-core fn2-sim fn2-own)))))))
 
 ;; The simulator posts clock readings, so a DATE reply is 111 and a
 ;; 14-digit UTC date where conn-unit (no clock) has 503: the date-mode
@@ -278,17 +288,19 @@
 ; scenario-11 profile) the ledger refused some connections with the 400.
 (defun fn2-sld-account-ok (acct want-refusals)
   (declare (xargs :verify-guards nil))
-  (and (eq (nth 0 acct) :pass) (equal (nth 1 acct) '(t t t))
-       (or (not want-refusals) (< 0 (nth 2 acct)))))
+  (and (eq (nth 0 acct) :pass)
+       (equal (take 2 (nth 1 acct)) '(t t))
+       (if want-refusals (and (eq (nth 2 (nth 1 acct)) t) (< 0 (nth 2 acct)))
+         (member-eq (nth 2 (nth 1 acct)) '(t :n/a)))))
 (defun fn2-sld-seeds (seeds fault-profile nrandom profile fixtures-p want-refusals)
   (declare (xargs :verify-guards nil))
   (if (atom seeds) :pass
     (let ((r (fn2-sld-run (car seeds) fault-profile nrandom profile fixtures-p)))
       (progn$
-       (cw "SIM-LAYER-D seed=~x0 faults=~x1 status=~x2 started=~x3 served=~x4 deaths=~x5 hits(fragment short-send delay release-order)=~x7 wire=~x6 account=~x8 controls=~x9 refused=~x10 anonymous-row=~x11~%"
+       (cw "SIM-LAYER-D seed=~x0 faults=~x1 status=~x2 started=~x3 served=~x4 deaths=~x5 hits(fragment short-send delay release-order)=~x7 wire=~x6 account(verdict controls refused anonymous-row)=~x8~%"
            (car seeds) fault-profile (nth 0 r) (nth 1 r) (nth 2 r) (nth 4 r)
            (if (eq (nth 3 r) :pass) :pass (list (nth 0 (nth 3 r)) (nth 1 (nth 3 r)) (nth 2 (nth 3 r))))
-           (nth 5 r) (nth 0 (nth 6 r)) (nth 1 (nth 6 r)) (nth 2 (nth 6 r)) (nth 3 (nth 6 r)))
+           (nth 5 r) (nth 6 r))
        (if (and (eq (nth 0 r) :quiet) (eq (nth 3 r) :pass) (fn2-sld-account-ok (nth 6 r) want-refusals))
            (fn2-sld-seeds (cdr seeds) fault-profile nrandom profile fixtures-p want-refusals)
          (list :fail (car seeds) r))))))
