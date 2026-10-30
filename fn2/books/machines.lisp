@@ -24,12 +24,6 @@
 
 
 
-(defun fn2-machine-state-arms (states continuations n args)
-  (declare (xargs :verify-guards nil))
-  (if (atom states) nil
-    (cons `(,n (,(cadr (assoc-eq (car states) continuations)) ,@args))
-          (fn2-machine-state-arms (cdr states) continuations (+ 1 (nfix n)) args))))
-
 (defun fn2-machine-initial-values (cols initial)
   (declare (xargs :verify-guards nil))
   (if (atom cols) nil
@@ -129,17 +123,49 @@
          (not (keywordp (cadar entries)))
          (or (not observationp) (fn2-event-keyword->code (caar entries)))
          (fn2-machine-continuationsp (cdr entries) observationp))))
-(defun fn2-machine-observe-event-arms (observes predicatep args)
+(defun fn2-machine-observe-event-guards (observes)
+  ; One (TAG t) case per observed event: the handlers' guard.
   (declare (xargs :verify-guards nil))
   (if (atom observes) nil
     (let ((tag (fn2-event-keyword->code (caar observes))))
       (if (not tag) (er hard 'defmachine "Unknown observation event ~x0." (caar observes))
-        (cons (list tag (if predicatep t (cons (cadar observes) args)))
-              (fn2-machine-observe-event-arms (cdr observes) predicatep args))))))
+        (cons (list tag t) (fn2-machine-observe-event-guards (cdr observes)))))))
 (defun fn2-machine-row-vars (columns)
   (declare (xargs :verify-guards nil))
   (if (atom columns) nil
     (cons (fn2-columns-col-name 'row (caar columns)) (fn2-machine-row-vars (cdr columns)))))
+; A callback receives only the row fields its body reads (inferred from its
+; ROW- references after fn2-call expansion), each through the kind's
+; per-field reader K-ROW-F: no snapshot of the whole row crosses an mv, so a
+; row may have more fields than ACL2's 32 multiple values.
+(defun fn2-machine-row-reader (kind field)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-col-name kind (fn2-columns-pre "ROW-" field)))
+(defun fn2-machine-var-column (var columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom columns) nil
+    (if (eq var (fn2-columns-col-name 'row (caar columns))) (car columns)
+      (fn2-machine-var-column var (cdr columns)))))
+(defun fn2-machine-read-bindings (kind reads columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom reads) nil
+    (cons `(,(car reads) (,(fn2-machine-row-reader kind (car (fn2-machine-var-column (car reads) columns)))
+                          id fn2-core))
+          (fn2-machine-read-bindings kind (cdr reads) columns))))
+(defun fn2-machine-read-columns (reads columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom reads) nil
+    (cons (fn2-machine-var-column (car reads) columns) (fn2-machine-read-columns (cdr reads) columns))))
+(defun fn2-machine-occurs (var form)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom form) (eq form var)) ((eq (car form) 'quote) nil)
+        (t (or (fn2-machine-occurs var (car form)) (fn2-machine-occurs var (cdr form))))))
+(defun fn2-machine-body-reads (vars body)
+  (declare (xargs :verify-guards nil))
+  (if (atom vars) nil
+    (if (fn2-machine-occurs (car vars) body)
+        (cons (car vars) (fn2-machine-body-reads (cdr vars) body))
+      (fn2-machine-body-reads (cdr vars) body))))
 (defun fn2-machine-initialp (name columns states fields)
   (declare (xargs :verify-guards nil))
   (if (atom fields) (null fields)
@@ -261,7 +287,7 @@
          (declare (xargs :guard t) ,@(if (or (member-eq :free states) (member-eq :retired states)) nil '((ignore phase))))
          (and ,(if (member-eq :free states) `(not (equal phase ,(position-eq :free states))) t)
               ,(if (member-eq :retired states) `(not (equal phase ,(position-eq :retired states))) t)
-              (case event ,@(fn2-machine-observe-event-arms observes t nil) (otherwise nil))))
+              (case event ,@(fn2-machine-observe-event-guards observes) (otherwise nil))))
 
        ,@(fn2-machine-prepare-events name cols initial)))))
 
@@ -299,6 +325,31 @@
 (defun fn2-machine-property (name key world)
   (declare (xargs :verify-guards nil))
   (cadr (member-eq key (fn2-decl-row (list :machine name) world))))
+(defun fn2-machine-arm-call (kind fn fixed bound world)
+  ; FN's call with its row fields: those not already BOUND are read here.
+  (declare (xargs :verify-guards nil))
+  (let* ((reads (fn2-decl-get :row-bindings (fn2-operation-row fn world)))
+         (bindings (fn2-machine-read-bindings kind (set-difference-eq reads bound)
+                                              (fn2-machine-property kind :columns world))))
+    (if bindings `(let ,bindings (,fn ,@fixed ,@reads fn2-core))
+      `(,fn ,@fixed ,@reads fn2-core))))
+(defun fn2-machine-state-arms (states continuations n kind world)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (cons `(,n ,(fn2-machine-arm-call kind (cadr (assoc-eq (car states) continuations))
+                                      '(id budget) '(row-phase) world))
+          (fn2-machine-state-arms (cdr states) continuations (+ 1 (nfix n)) kind world))))
+(defun fn2-machine-observe-event-arms (observes predicatep args)
+  ; ARGS is (KIND WORLD) for calls; each handler gets only its read fields.
+  (declare (xargs :verify-guards nil))
+  (if (atom observes) nil
+    (let ((tag (fn2-event-keyword->code (caar observes))))
+      (if (not tag) (er hard 'defmachine "Unknown observation event ~x0." (caar observes))
+        (cons (list tag (if predicatep t
+                          (fn2-machine-arm-call (car args) (cadar observes)
+                                                '(id event outcome reason count aux0 aux1)
+                                                '(row-phase) (cadr args))))
+              (fn2-machine-observe-event-arms (cdr observes) predicatep args))))))
 
 ; ----------------------------------------------------------------------
 ; Arm contracts in the registry (R7). The contract of a callback: an arm
@@ -556,7 +607,6 @@
   (declare (xargs :verify-guards nil))
   (if (atom arms) nil
     (let* ((tag (caar arms)) (fn (cadar arms)) (c (cddar arms))
-           (vars (fn2-machine-row-vars (fn2-machine-property name :columns world)))
            (phase (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE") tag) "*")))
            (cols (fn2-machine-property name :columns world))
            (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
@@ -569,10 +619,9 @@
        (list
        `(defthm-owed ,(fn2-columns-sym stem "-BOUND") (id budget fn2-core)
           (implies ,(fn2-machine-arm-pre name phase)
-                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
-                     (mv-let (bytes steps descriptors runnable after) (,fn id budget ,@vars fn2-core)
-                       (declare (ignore runnable after))
-                       (,charge ,phase bytes steps descriptors))))
+                   (mv-let (bytes steps descriptors runnable after) ,(fn2-machine-arm-call name fn '(id budget) nil world)
+                     (declare (ignore runnable after))
+                     (,charge ,phase bytes steps descriptors)))
           :schema :bound :from (:machine ,name)
           :teeth (,(fn2-columns-sym name "-ARM-CERTIFICATE-POSITIVE") ,(fn2-columns-sym name "-ARM-CERTIFICATE-NEGATIVE"))
           :doc ,(concatenate 'string "Arm " (symbol-name tag) " of " (symbol-name name)
@@ -582,12 +631,11 @@
        (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
        `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id budget fn2-core)
           (implies ,(fn2-machine-arm-pre name phase)
-                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
-                     (let ((after (mv-nth 4 (,fn id budget ,@vars fn2-core))))
-                       (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
-                                (,next ,phase (fn2-machine-phase id after)))
-                            (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
-                                            fn2-core after)))))
+                   (let ((after (mv-nth 4 ,(fn2-machine-arm-call name fn '(id budget) nil world))))
+                     (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
+                              (,next ,phase (fn2-machine-phase id after)))
+                          (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
+                                          fn2-core after))))
           :schema :invariant :from (:machine ,name)
           :teeth (,(fn2-columns-sym name "-ARM-NEXT-POSITIVE") ,(fn2-columns-sym name "-ARM-NEXT-NEGATIVE")
                   fn2-arm-frame-positive fn2-arm-frame-negative)
@@ -598,7 +646,6 @@
   (declare (xargs :verify-guards nil))
   (if (atom observes) nil
     (let* ((tag (caar observes)) (fn (cadar observes)) (c (cddar observes))
-           (vars (fn2-machine-row-vars (fn2-machine-property name :columns world)))
            (cols (fn2-machine-property name :columns world))
            (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
            (columns (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
@@ -608,13 +655,13 @@
       (append (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
        `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id outcome reason count aux0 aux1 fn2-core)
           (implies ,(fn2-machine-arm-pre name nil)
-                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
-                     (let ((after (mv-nth 1 (,fn id ,event outcome reason count aux0 aux1 ,@vars fn2-core))))
-                       (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
-                                (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") ,event
-                                 (fn2-machine-phase id fn2-core) (fn2-machine-phase id after)))
-                            (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
-                                            fn2-core after)))))
+                   (let ((after (mv-nth 1 ,(fn2-machine-arm-call name fn
+                                             `(id ,event outcome reason count aux0 aux1) nil world))))
+                     (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
+                              (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") ,event
+                               (fn2-machine-phase id fn2-core) (fn2-machine-phase id after)))
+                          (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
+                                          fn2-core after))))
           :schema :invariant :from (:machine ,name)
           :teeth (fn2-arm-frame-positive fn2-arm-frame-negative)
           :doc ,(concatenate 'string "Handler " (symbol-name tag) " of " (symbol-name name)
@@ -704,55 +751,39 @@
   (declare (xargs :verify-guards nil))
   (if (atom vars) nil
     (cons `(mv-nth ,n ,call) (fn2-machine-mv-fields (cdr vars) (+ 1 (nfix n)) call))))
-(defun fn2-machine-snapshot-value-facts (name columns n)
+(defun fn2-machine-row-reader-events (name columns code)
   (declare (xargs :verify-guards nil))
   (if (atom columns) nil
-    (let ((value (if (zp n) `(car (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core))
-                  `(mv-nth ,n (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core))))
-          (hyps '(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))))
-      (cons `(defthm ,(fn2-columns-col-name (fn2-columns-sym name "-SNAPSHOT") (caar columns))
-               (implies ,hyps (unsigned-byte-p ,(fn2-columns-width (cadar columns)) ,value))
-               :rule-classes (:rewrite
-                 (:type-prescription :corollary (implies ,hyps (natp ,value)))
-                 (:rewrite :corollary
-                   (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
-               :hints (("Goal" :use ,(fn2-columns-sym name "-SNAPSHOT-VALUES")
-                         :in-theory (e/d (,(fn2-columns-sym name "-VALUESP"))
-                                         (,(fn2-columns-sym name "-SNAPSHOT"))))))
-            (fn2-machine-snapshot-value-facts name (cdr columns) (1+ (nfix n)))))))
+    (let* ((reader (fn2-machine-row-reader name (caar columns)))
+           (value `(,reader id fn2-core))
+           (hyps '(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))))
+      (list* (fn2-operation-events (list :machine name) reader 'fn2-core '(id) :infer nil :access
+               `(declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
+                                                            (eq (,code id fn2-core) :ok))))
+               `((if (eq (,code id fn2-core) :ok)
+                     (let ((slot (fn2-machine-slot id fn2-core)))
+                       (stobj-let ((,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
+                         (value) (,(fn2-columns-col-name name (caar columns)) slot ,name) value))
+                   (prog2$ (hard-error ',reader "Invalid internal row read." nil) 0))) nil nil)
+             `(defthm ,(fn2-columns-sym reader "-WIDTH")
+                (implies ,hyps (unsigned-byte-p ,(fn2-columns-width (cadar columns)) ,value))
+                :rule-classes (:rewrite
+                  (:type-prescription :corollary (implies ,hyps (natp ,value)))
+                  (:linear :corollary (implies ,hyps (< ,value ,(expt 2 (fn2-columns-width (cadar columns))))))
+                  (:rewrite :corollary (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
+                :hints (("Goal" :in-theory (enable ,reader))))
+             `(in-theory (disable ,reader))
+             (fn2-machine-row-reader-events name (cdr columns) code)))))
 (defun fn2-machine-snapshot-events (name columns)
   (declare (xargs :verify-guards nil))
-  (let* ((vars (fn2-machine-row-vars columns)) (snapshot (fn2-columns-sym name "-SNAPSHOT"))
-         (read (fn2-columns-sym snapshot "-READ"))
-         (code (fn2-columns-sym snapshot "-READ-CODE"))
-         (valuesp (fn2-columns-sym name "-VALUESP")) (owner (list :machine name)))
-    `((defun ,valuesp ,vars
-        (declare (xargs :guard t)) (and ,@(fn2-machine-value-guards columns vars)))
-      ,(fn2-operation-events owner code 'fn2-core '(id) :infer nil :access
+  (let* ((code (fn2-columns-sym name "-SNAPSHOT-READ-CODE")) (owner (list :machine name)))
+    `(,(fn2-operation-events owner code 'fn2-core '(id) :infer nil :access
          '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
          `((let ((code (fn2-machine-phase-read-code id fn2-core)))
              (if (not (eq code :ok)) code
                (if (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))) :ok :kind)))) nil nil)
-      ,(fn2-operation-events owner snapshot 'fn2-core '(id) :infer nil :access
-         `(declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
-                                                      (eq (,code id fn2-core) :ok))))
-         `((if (eq (,code id fn2-core) :ok)
-             (let ((slot (fn2-machine-slot id fn2-core)))
-             (stobj-let ((,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
-               ,vars (mv ,@(fn2-machine-snapshot-calls name columns)) (mv ,@vars)))
-             (prog2$ (hard-error ',snapshot "Invalid internal snapshot." nil)
-                     (mv ,@(make-list (len vars) :initial-element 0))))) nil nil)
-      ,(fn2-operation-events owner read 'fn2-core '(id) :infer nil :access
-         '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         `((let ((code (,code id fn2-core)))
-             (if (eq code :ok) (mv-let ,vars (,snapshot id fn2-core) (mv :ok (list ,@vars)))
-               (mv code nil)))) nil nil)
-      (defthm ,(fn2-columns-sym snapshot "-VALUES")
-        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (,valuesp ,@(fn2-machine-mv-fields vars 0 `(,snapshot id fn2-core)))))
-      (in-theory (disable ,snapshot))
-      ,@(fn2-machine-snapshot-value-facts name columns 0))))
+      ,@(fn2-machine-row-reader-events name columns code))))
 (defun fn2-machine-all-snapshots (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -790,12 +821,6 @@
 (defun fn2-callback-reads (form vars)
   (cond ((atom form) (member-eq form vars)) ((eq (car form) 'quote) nil)
         (t (or (fn2-callback-reads (car form) vars) (fn2-callback-reads (cdr form) vars)))))
-(defun fn2-callback-snapshot-vars (all active)
-  (declare (xargs :verify-guards nil))
-  (if (atom all) nil
-    (cons (if (member-eq (car all) active) (car all)
-            (fn2-columns-sym (car all) "$SNAPSHOT"))
-          (fn2-callback-snapshot-vars (cdr all) active))))
 (defun fn2-callback-checked-body (body kind position)
   (declare (xargs :verify-guards nil))
   `((if (eq (,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
@@ -812,8 +837,9 @@
       (cons (car body) (fn2-callback-fresh-body (cdr body) kind vars all position))
     (if (fn2-callback-reads body vars)
         (fn2-callback-checked-body
-         `((mv-let ,(fn2-callback-snapshot-vars all vars) (,(fn2-columns-sym kind "-SNAPSHOT") id fn2-core)
-            (declare (ignorable ,@(fn2-callback-snapshot-vars all vars))) ,@body)) kind position)
+         `((let ,(fn2-machine-read-bindings kind (fn2-machine-body-reads vars body) all)
+            (declare (ignorable ,@(fn2-machine-body-reads vars body)))
+            ,@body)) kind position)
       body)))
 ; Refresh from the returned core, never the proposed write values. LET* is
 ; lowered to nested LETs so every intervening read sees the current core.
@@ -865,9 +891,11 @@
                (fn2-callback-input-error (cdr form) world)))))
 (defun fn2-machine-callback-event (name kind args position own body world)
   (declare (xargs :verify-guards nil))
-  (let* ((vars (butlast (cddr (fn2-decl-get :run
+  (let* ((all (butlast (cddr (fn2-decl-get :run
                                 (fn2-machine-property kind :calling-convention world))) 1))
-         (problem (fn2-callback-forwarding body vars world)))
+         (columns (fn2-machine-property kind :columns world))
+         (vars (fn2-machine-body-reads all (fn2-call-expand body world)))
+         (problem (fn2-callback-forwarding body all world)))
     (cond ((fn2-callback-input-error body world)
            `(make-event (er soft 'defmachine-callback
                           "~x0 has an unknown call, wrong arity or unsupported binder: ~x1."
@@ -881,10 +909,11 @@
             (fn2-operation-events (list :machine kind) name 'fn2-core args
           (append (make-list position :initial-element :value) '(fn2-core)) vars :callbacks
           `(declare (xargs :stobjs fn2-core
-                     :guard (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym kind "-VALUESP") ,@vars)))
+                     :guard (and (fn2-core-wfp fn2-core)
+                                 ,@(fn2-machine-value-guards (fn2-machine-read-columns vars columns) vars)))
                     (ignorable ,@args ,@vars))
           (fn2-callback-checked-body
-           (fn2-callback-refresh (fn2-call-expand body world) kind vars vars position (* 3 (acl2-count (fn2-call-expand body world)))) kind position)
+           (fn2-callback-refresh (fn2-call-expand body world) kind vars columns position (* 3 (acl2-count (fn2-call-expand body world)))) kind position)
           `((fn2-core-preserves ,name (,@args ,@vars fn2-core) :position ,position :rows nil))
           (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                 :refusal (fn2-arm-get :on-refusal contract) :contract contract :cost-values values))))))))
@@ -898,8 +927,7 @@
     `(make-event (value (fn2-machine-callback-event ',name ',kind ',args ',position ',own ',body (w state))))))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
-  (let* ((vars (butlast (cddr (fn2-decl-get :run (fn2-machine-property name :calling-convention world))) 1))
-         (run (fn2-columns-sym name "-RUN"))
+  (let* ((run (fn2-columns-sym name "-RUN"))
          (problem (or (fn2-machine-arms-problem name (fn2-machine-property name :continuations world) nil world)
                       (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world))))
     (if problem `(make-event (er soft 'defmachine-run "~@0" ',problem))
@@ -908,17 +936,15 @@
        ,(fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
       '(bytes steps descriptors runnable fn2-core) nil :callbacks
       `(declare (xargs :stobjs fn2-core
-                    :guard-hints (("Goal" :use ((:instance ,(fn2-columns-sym name "-SNAPSHOT-VALUES")))
-                                  :in-theory (disable ,(fn2-columns-sym name "-VALUESP"))))
                     :guard (and (fn2-core-wfp fn2-core)
                    (fn2-machine-idp id fn2-core)
                    (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))))))
-      (fn2-callback-checked-body `((mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+      (fn2-callback-checked-body `((let ((row-phase (,(fn2-machine-row-reader name 'phase) id fn2-core)))
            (mv-let (bytes steps descriptors runnable fn2-core)
              (case row-phase
                ,@(fn2-machine-state-arms (fn2-machine-property name :states world)
-                  (fn2-machine-property name :continuations world) 0 `(id budget ,@vars fn2-core))
+                  (fn2-machine-property name :continuations world) 0 name world)
                (otherwise (fn2-machine-refuse-phase id fn2-core)))
              ; The arm's contract, asserted where it holds: its charge is
              ; within its certificate and its row moves only to a declared
@@ -935,21 +961,18 @@
 (defun fn2-machine-observe-handlers (router names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
-    (let* ((name (car names)) (handler (fn2-columns-col-name router name))
-           (vars (butlast (cddr (fn2-decl-get :run (fn2-machine-property name :calling-convention world))) 1)))
+    (let* ((name (car names)) (handler (fn2-columns-col-name router name)))
       (append
        `((defun ,handler (id event outcome reason count aux0 aux1 fn2-core)
            (declare (xargs :stobjs fn2-core
-                    :guard-hints (("Goal" :use ((:instance ,(fn2-columns-sym name "-SNAPSHOT-VALUES")))
-                                  :in-theory (disable ,(fn2-columns-sym name "-VALUESP"))))
                     :guard (and (fn2-core-wfp fn2-core)
-                     (case event ,@(fn2-machine-observe-event-arms
-                                    (fn2-machine-property name :observes world) t nil) (otherwise nil)))))
-           ,@(fn2-callback-checked-body `((mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+                     (case event ,@(fn2-machine-observe-event-guards
+                                    (fn2-machine-property name :observes world)) (otherwise nil)))))
+           ,@(fn2-callback-checked-body `((let ((row-phase (,(fn2-machine-row-reader name 'phase) id fn2-core)))
              (mv-let (wake fn2-core)
                (case event
                  ,@(fn2-machine-observe-event-arms (fn2-machine-property name :observes world) nil
-                    `(id event outcome reason count aux0 aux1 ,@vars fn2-core))
+                    (list name world))
                  (otherwise (fn2-machine-refuse-observation fn2-core)))
                (fn2-machine-observe-contract-check
                 (,(fn2-columns-sym name "-OBSERVE-OK-P") id event row-phase fn2-core)
