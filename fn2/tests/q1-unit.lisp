@@ -32,19 +32,23 @@
     (:run fn2-conn :closing) (:run fn2-conn :draining) (:run fn2-conn :retired)
     (:observe fn2-conn :receive-result) (:observe fn2-conn :send-result)
     (:observe fn2-conn :borrow-released) (:observe fn2-conn :close-result)
+    (:run fn2-upload :free) (:run fn2-upload :head) (:run fn2-upload :identity)
+    (:run fn2-upload :receiving) (:run fn2-upload :validating) (:run fn2-upload :discard)
+    (:run fn2-upload :sealed) (:run fn2-upload :aborting) (:run fn2-upload :draining)
+    (:run fn2-upload :retired)
     (:router :fallback) (:executor :clock) (:executor :signal)
     (:executor :service 0) (:executor :service 1) (:executor :service 2)
     (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 67))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 77))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 67 :bound 67 :unmatched nil
+        '(:required 77 :bound 77 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 67 labels = E1's 39 + listener :admitting + 14 B commit + 13 D fn2-conn (59 machine, 1 router, 7 executor); 67 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 77 labels = E1's 39 + listener :admitting + 14 B commit + 13 D fn2-conn + 10 D fn2-upload (69 machine, 1 router, 7 executor); 77 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.

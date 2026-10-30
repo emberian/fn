@@ -10,6 +10,8 @@
 (include-book "profile")
 (include-book "conn-answer")
 (include-book "accounts-core")
+(include-book "upload-scan")
+(include-book "upload-feed")
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically (section 4.2): the framer examines at
@@ -25,6 +27,12 @@
 (defconst *fn2-conn-run-bytes* (+ *fn2-conn-frame-bytes* *fn2-conn-answer-bytes*))
 (defconst *fn2-conn-input-bytes* (+ *fn2-conn-frame-bytes* *fn2-conn-compact-bytes* *fn2-conn-receive-bytes*))
 (defconst *fn2-conn-range-min* 1024)
+;; Article input (section 14.2): at most this many RX octets fed per run
+;; (each read once and written at most once).
+(defconst *fn2-conn-feed-bytes* 1024)
+(defconst *fn2-conn-feed-cost* (* 2 *fn2-conn-feed-bytes*))
+;; The feed's mode after the terminator (upload-feed.lisp uses 0..4).
+(defconst *fn2-conn-feed-done* 5)
 (assert-event (and (equal *fn2-conn-run-bytes* 4096) (equal *fn2-conn-input-bytes* 4096)
                    (<= (* 2 *fn2-nntp-line-cap*) *fn2-conn-range-min*)))
 
@@ -36,7 +44,13 @@
           (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
-          (refused :bool) (stopped :bool) (next-free :link))
+          (refused :bool) (stopped :bool) (next-free :link)
+          ;; article input (D4, section 14.2): the upload this connection
+          ;; feeds, the block's rule, the request it answers, the feed's
+          ;; continuation, the outcome word posted back, the posting switch
+          (upload :link) (upload-gen :u60) (rule (:enum fn2-conn-rule (:none :post :ihave :takethis)))
+          (request :u32) (feed-mode :u8) (feed-discard :u8) (fed :u60) (word :u8) (outcome-ready :bool)
+          (posting :bool))
  :holds ((:greeting :connection-row :rx-range :tx-range) (:command :connection-row :rx-range :tx-range)
          (:article-input :connection-row :rx-range :tx-range) (:reply :connection-row :rx-range :tx-range)
          (:upgrading :connection-row :rx-range :tx-range) (:closing :connection-row :rx-range :tx-range)
@@ -47,12 +61,14 @@
  ;; ranges reserved whole (A's generated fn2-machine-admit-fn2-conn).
  :admission (:phase :greeting :ranges (:rx-range :tx-range) :copy (principal-slot account-ref)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
-                     auth-pending access-ref))
+                     auth-pending access-ref upload-gen rule request feed-mode feed-discard fed word
+                     outcome-ready posting))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
-           (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
+           (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
+           (upload *fn2-none*))
  :observes ((:receive-result fn2-conn-observe-receive
              :cost (:steps *fn2-work-transition*) :writes () :tables (fn2-core-accounts)
-             :from (:command) :next (:command :closing)
+             :from (:command :article-input) :next (:command :article-input :closing)
              :uses (fn2-account-charge-core fn2-machine-refuse-observation))
             (:send-result fn2-conn-observe-send
              :cost (:steps *fn2-work-transition*) :writes (tx-off borrows) :tables (fn2-core-accounts)
@@ -68,24 +84,35 @@
  ((:free fn2-conn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
    :uses (fn2-machine-idle))
   (:greeting fn2-conn-greet :cost (:bytes 512 :steps *fn2-work-transition*)
-   :writes (tx-off after mask refused account-ref) :tables (fn2-core-pool fn2-core-accounts)
-   :next (:greeting :reply) :uses (fn2-account-unbook-ref fn2-conn-run-greeting fn2-machine-refuse-phase))
+   :writes (tx-off after mask refused account-ref posting) :tables (fn2-core-pool fn2-core-accounts)
+   :next (:greeting :reply)
+   :uses (fn2-account-unbook-ref fn2-conn-posting-p fn2-conn-run-greeting fn2-machine-refuse-phase))
   (:command fn2-conn-command
-   :cost (:bytes (max (:cost fn2-conn-frame-run :bytes) (:cost fn2-conn-compact-run :bytes))
-          :steps (max (:cost fn2-conn-frame-run :steps) (:cost fn2-conn-compact-run :steps))
+   :cost (:bytes (max (:cost fn2-conn-frame-run :bytes) (:cost fn2-conn-compact-run :bytes)
+                      (:cost fn2-conn-open-block :bytes))
+          :steps (max (:cost fn2-conn-frame-run :steps) (:cost fn2-conn-compact-run :steps)
+                      (:cost fn2-conn-open-block :steps))
           :descriptors (:cost fn2-conn-frame-run :descriptors))
    :writes (start pos overflow compacting cursor tx-off after auth-pending ordinal
-            pending stopped wait-reason ready-prev ready-next)
-   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-core-accounts)
+            pending stopped wait-reason ready-prev ready-next rule request upload upload-gen
+            feed-mode feed-discard fed word outcome-ready)
+   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-core-accounts fn2-upload-table)
    :next (:command :reply)
-   :uses (fn2-conn-frame-run fn2-conn-compact-run))
-  (:article-input fn2-conn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
-   :next (:article-input) :uses (fn2-machine-refuse-phase))
+   :uses (fn2-conn-frame-run fn2-conn-compact-run fn2-conn-open-block))
+  (:article-input fn2-conn-block
+   :cost (:bytes (max (:cost fn2-conn-feed-step :bytes) (:cost fn2-conn-run-outcome :bytes))
+          :steps (max (:cost fn2-conn-feed-step :steps) *fn2-work-transition*)
+          :descriptors (:cost fn2-conn-feed-step :descriptors))
+   :writes (start pos tx-off after upload upload-gen rule word outcome-ready feed-mode feed-discard fed
+            pending stopped wait-reason ready-prev ready-next)
+   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+   :next (:article-input :reply)
+   :uses (fn2-conn-feed-step fn2-conn-run-outcome fn2-machine-refuse-phase))
   (:reply fn2-conn-reply
    :cost (:bytes *fn2-conn-send-bytes* :steps (+ *fn2-work-mailbox* *fn2-work-mailbox*) :descriptors 1)
    :writes (tx-off borrows pending stopped wait-reason ready-prev ready-next)
    :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
-   :next (:reply :command :closing)
+   :next (:reply :command :article-input :closing)
    :uses (fn2-conn-fill fn2-issue-send fn2-core-reset fn2-machine-issue-result fn2-machine-refuse-phase))
   (:upgrading fn2-conn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
    :next (:upgrading) :uses (fn2-machine-refuse-phase))
@@ -95,7 +122,7 @@
    :next (:closing) :uses (fn2-issue-close fn2-machine-issue-result))
   (:draining fn2-conn-drain :cost (:steps (:cost fn2-conn-release :steps))
    :writes (generation rx-slot rx-gen tx-slot tx-gen cap-index cap-nonce start pos overflow compacting
-            cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref)
+            cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref upload)
    :tables (fn2-core-pool fn2-core-machines fn2-core-accounts)
    :next (:draining :free :retired) :uses (fn2-conn-release))
   (:retired fn2-conn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:retired)
@@ -112,13 +139,16 @@
 (defcost fn2-conn-run-greeting :bytes 512 :tables (fn2-core-pool)
   :doc "Render the greeting, or the capacity 400, into TX.")
 (defcost fn2-conn-fill :doc "A held pool slot's fill.")
+(defcost fn2-conn-posting-p :doc "Whether posting is served (the input configuration; section 14.5).")
+(defcost fn2-conn-run-block-open :bytes 512 :tables (fn2-core-pool) :doc "Render a block's opening reply (340) into TX.")
+(defcost fn2-conn-run-outcome :bytes 512 :tables (fn2-core-pool) :doc "Render a block's outcome reply into TX.")
 (defcost fn2-conn-cap :doc "A held pool slot's capacity.")
 
 ;; ------------------------------------------------------------------------
 ;; The operations and continuations, materialized after the core instance
 ;; (assembly-callbacks-d.lisp). The row's owner triple for every pool access
 ;; is (*fn2-conn-kind* id generation).
-(defmacro fn2-conn-events ()
+(defmacro fn2-conn-op-events ()
  '(progn
 (defun fn2-conn-frame (slot gen start pos overflow id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -157,28 +187,29 @@
     (:redeem *fn2-conn-auth-redeem*) (otherwise *fn2-conn-auth-none*)))
 (defun fn2-conn-after-code (after)
   (declare (xargs :guard t))
-  (if (eq after :closing) *fn2-conn-after-closing* *fn2-conn-after-command*))
+  (case after (:closing *fn2-conn-after-closing*) (:article-input *fn2-conn-after-article-input*)
+    (otherwise *fn2-conn-after-command*)))
 
 ;; One framed line [s, e) answered into TX: (mv code after pending fn2-core),
 ;; AFTER and PENDING as the row's enum codes.
-(defun fn2-conn-run-answer (s e mask pending rslot rgen tslot tgen id owner-gen fn2-core)
+(defun fn2-conn-run-answer (s e mask pending posting rslot rgen tslot tgen id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (mv-let (seen flags real) (fn2-conn-clock fn2-core)
     (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
       (code after next fn2-pool)
-      (fn2-answer (nfix s) (nfix e) mask (fn2-conn-auth-keyword pending) seen flags real
+      (fn2-answer (nfix s) (nfix e) mask (fn2-conn-auth-keyword pending) (equal posting 1) seen flags real
                        rslot rgen tslot tgen *fn2-conn-kind* id owner-gen fn2-pool)
       (mv code (fn2-conn-after-code after) (fn2-conn-auth-code next) fn2-core))))
-(fn2-core-preserves fn2-conn-run-answer (s e mask pending rslot rgen tslot tgen id owner-gen fn2-core) :position 3 :rows nil
+(fn2-core-preserves fn2-conn-run-answer (s e mask pending posting rslot rgen tslot tgen id owner-gen fn2-core) :position 3 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
-(defun fn2-conn-run-greeting (refused mask tslot tgen id owner-gen fn2-core)
+(defun fn2-conn-run-greeting (refused posting mask tslot tgen id owner-gen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
     (code after fn2-pool)
-    (fn2-answer-greeting (equal refused 1) mask tslot tgen *fn2-conn-kind* id owner-gen fn2-pool)
+    (fn2-answer-greeting (equal refused 1) (equal posting 1) mask tslot tgen *fn2-conn-kind* id owner-gen fn2-pool)
     (mv code (fn2-conn-after-code after) fn2-core)))
-(fn2-core-preserves fn2-conn-run-greeting (refused mask tslot tgen id owner-gen fn2-core) :position 2 :rows nil
+(fn2-core-preserves fn2-conn-run-greeting (refused posting mask tslot tgen id owner-gen fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
 (defun fn2-conn-run-overflow (mask tslot tgen id owner-gen fn2-core)
@@ -189,9 +220,97 @@
     (mv code fn2-core)))
 (fn2-core-preserves fn2-conn-run-overflow (mask tslot tgen id owner-gen fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(defun fn2-conn-posting-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
+    (p) (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
+             (< 0 (fn2-input-config-rows fn2-input-config)) (equal (fn2-input-config-posting 0 fn2-input-config) 1))
+    (if p 1 0)))
+(defun fn2-upload-gen-of (u fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (eq (fn2-upload-snapshot-read-code u fn2-core) :ok) (fn2-machine-generation u fn2-core) 0))
+(defthm fn2-conn-posting-p-bit
+  (bitp (fn2-conn-posting-p fn2-core))
+  :rule-classes ((:type-prescription :typed-term (fn2-conn-posting-p fn2-core))
+                 (:rewrite :corollary (unsigned-byte-p 1 (fn2-conn-posting-p fn2-core)))))
+(defthm fn2-upload-gen-of-u60
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (unsigned-byte-p 60 (fn2-upload-gen-of u fn2-core))))
+(defun fn2-conn-run-block-open (mask tslot tgen id owner-gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code fn2-pool)
+    (fn2-answer-block-open mask tslot tgen *fn2-conn-kind* id owner-gen fn2-pool)
+    (mv code fn2-core)))
+(fn2-core-preserves fn2-conn-run-block-open (mask tslot tgen id owner-gen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(defun fn2-conn-run-outcome (word mask tslot tgen id owner-gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code after fn2-pool)
+    (fn2-answer-outcome (fn2-upload-word-of (nfix word)) mask tslot tgen *fn2-conn-kind* id owner-gen fn2-pool)
+    (mv code (fn2-conn-after-code after) fn2-core)))
+(fn2-core-preserves fn2-conn-run-outcome (word mask tslot tgen id owner-gen fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+;; Feed [start, fill) of RX into the upload's current chunk (the first while
+;; it has room), at most *fn2-conn-feed-bytes* octets and no further than one
+;; octet past the article bound (so a too-large block is refused, never
+;; buffered). FED is what this connection has written into the window so
+;; far, WHY its discard reason (0 none, 1 framing, 2 too large). The upload
+;; reads FED, WHY and the terminator from this row (no cross-row write).
+;; Returns (mv status start mode why copied fn2-core).
+;; The pool step alone (its own preservation facts; the readers around it
+;; change nothing): (mv status start mode discard copied fn2-core).
+(defun fn2-conn-feed-pool (left start mode discard rslot rgen id gen slot sgen u ugen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (status start2 mode2 discard2 copied fn2-pool)
+    (fn2-upload-feed (max 1 (nfix left)) (nfix start) (nfix mode) discard rslot rgen *fn2-conn-kind* id gen
+                     slot sgen *fn2-upload-kind* u ugen fn2-pool)
+    (mv status start2 mode2 discard2 copied fn2-core)))
+(fn2-core-preserves fn2-conn-feed-pool (left start mode discard rslot rgen id gen slot sgen u ugen fn2-core)
+  :position 5 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-conn-feed-pool))
+(defun fn2-conn-feed-run (start mode why fed rslot rgen id gen u ugen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  ;; UGEN is the generation the take gave: the upload cannot drain while this
+  ;; row feeds it, so another generation is an invariant failure (:bounds)
+  (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
+                     (equal (fn2-machine-generation u fn2-core) ugen)
+                     (natp start) (natp mode) (natp fed) (natp why)))
+        (mv :bounds 0 0 0 0 fn2-core))
+       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
+       (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
+       (cap0 (fn2-upload-chunk-cap c0 fn2-core)) (cap1 (fn2-upload-chunk-cap c1 fn2-core))
+       (bound (fn2-upload-bound cap0 cap1 fn2-core))
+       (in0 (< fed cap0))
+       (discard (not (equal why 0)))
+       (left (if discard *fn2-conn-feed-bytes* (min *fn2-conn-feed-bytes* (nfix (- (+ 1 bound) fed)))))
+       ((mv status start2 mode2 discard2 copied fn2-core)
+        (fn2-conn-feed-pool left start mode discard rslot rgen id gen (if in0 c0 c1) (if in0 g0 g1) u ugen fn2-core))
+       (fed2 (+ fed (nfix copied)))
+       ;; the second chunk full, or past the bound: too large
+       (too-large (and (not discard2) (or (< bound fed2) (and (eq status :full) (not in0)))))
+       (why2 (cond (discard why) (too-large 2) (discard2 1) (t 0))))
+    ;; :full is never an end: chunk 0 full switches to chunk 1 next run; chunk
+    ;; 1 full is too large (WHY2), drained from then on
+    (mv (if (eq status :full) :budget status) start2 mode2 why2 (nfix copied) fn2-core)))
+(fn2-core-preserves fn2-conn-feed-run (start mode why fed rslot rgen id gen u ugen fn2-core) :position 5 :rows nil)
+(defun fn2-conn-wake (u fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (and (unsigned-byte-p 32 u) (not (equal u *fn2-none*))) (fn2-machine-set-wake-id u fn2-core) fn2-core))
+(fn2-core-preserves fn2-conn-wake (u fn2-core) :rows nil)
+(in-theory (disable fn2-conn-posting-p fn2-upload-gen-of fn2-conn-run-block-open fn2-conn-run-outcome fn2-conn-feed-run
+                    fn2-conn-wake))
 (in-theory (disable fn2-conn-frame fn2-conn-fill fn2-conn-cap fn2-conn-clock fn2-conn-run-answer
                     fn2-conn-run-greeting fn2-conn-run-overflow))
 
+))
+
+;; The connection's continuations (materialized after the helpers above, in
+;; their own section book: assembly-callbacks-d-conn.lisp).
+(defmacro fn2-conn-events ()
+ '(progn
 (defmachine-callback fn2-conn-idle fn2-conn (id budget) 4
   (fn2-machine-idle id fn2-core))
 (defmachine-callback fn2-conn-unreached fn2-conn (id budget) 4
@@ -211,14 +330,15 @@
          ((mv ucode fn2-core) (fn2-account-unbook-ref (if (equal refused 1) ref *fn2-none*) fn2-core)))
       (if (not (eq ucode :ok))
           (fn2-machine-refuse-phase id fn2-core)
-        (b* (((mv code after fn2-core)
-              (fn2-conn-run-greeting refused row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
+        (b* ((posting (fn2-conn-posting-p fn2-core))
+             ((mv code after fn2-core)
+              (fn2-conn-run-greeting refused posting row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
           (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
             ;; Every D3 connection is a reader and the anonymous principal
             ;; (section 4.4); E4's peer listener and E2's authentication set
             ;; the other bits.
             (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0) (after after)
-                                               (refused refused)
+                                               (refused refused) (posting posting)
                                                (account-ref (if (equal refused 1) *fn2-none* ref))
                                                (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)))))
               (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))))
@@ -258,13 +378,19 @@
                  (declare (ignore op opgen))
                  (fn2-machine-issue-result id code (+ *fn2-conn-frame-bytes* len) fn2-core)))))))
 
+))
+
+;; The connection's continuations, second half (assembly-callbacks-d-conn2.lisp):
+;; the framer, the article input, the reply, the close and the release.
+(defmacro fn2-conn-events-2 ()
+ '(progn
 ;; Frame from the row's continuation; at a line, answer it and move to :reply.
 (defmachine-callback fn2-conn-frame-run fn2-conn (id budget) 4
   :contract (:cost (:bytes *fn2-conn-run-bytes*
                     :steps (max *fn2-work-transition* (:cost fn2-conn-input :steps))
                     :descriptors (:cost fn2-conn-input :descriptors))
              :writes (start pos overflow compacting cursor tx-off after auth-pending ordinal
-                      pending stopped wait-reason ready-prev ready-next)
+                      pending stopped wait-reason ready-prev ready-next rule request)
              :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-core-accounts)
              :next (:command :reply)
              :uses (fn2-conn-frame fn2-conn-run-answer fn2-conn-run-overflow fn2-account-charge-core fn2-conn-input
@@ -277,12 +403,19 @@
             (b* (((mv ccode fn2-core)
                   (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
                  ((mv code after next fn2-core)
-                  (fn2-conn-run-answer s p mask auth rslot rgen tslot tgen id gen fn2-core)))
-              (if (not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core)
-                (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (start p) (pos p) (overflow 0)
-                                                   (tx-off 0) (after after) (auth-pending next)
-                                                   (ordinal (+ 1 ordinal)))))
-                  (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core)))))
+                  (fn2-conn-run-answer s p mask auth row-posting rslot rgen tslot tgen id gen fn2-core)))
+              (cond ((not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core))
+                    ;; POST where posting is served: nothing rendered yet; the
+                    ;; next run takes an upload and renders 340 (section 14.2)
+                    ((equal after *fn2-conn-after-article-input*)
+                     (let ((fn2-core (fn2-conn-put-core id (start p) (pos p) (overflow 0) (auth-pending next)
+                                                        (rule *fn2-conn-rule-post*) (request ordinal)
+                                                        (ordinal (+ 1 ordinal)))))
+                       (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core)))
+                    (t (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (start p) (pos p) (overflow 0)
+                                                          (tx-off 0) (after after) (auth-pending next)
+                                                          (ordinal (+ 1 ordinal)))))
+                         (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core))))))
            ((or (eq status :overflow) (eq status :long-line))
             (b* (((mv ccode fn2-core)
                   (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
@@ -317,8 +450,105 @@
                (fn2-machine-result *fn2-conn-compact-bytes* *fn2-work-transition* 0 t fn2-core)))
             (t (fn2-machine-refuse-phase id fn2-core))))))
 
+;; A POST line was answered :article-input: take an upload row and its
+;; window (A-S7) and render 340, or wait parked on the upload kind's FIFO
+;; (the take parked this row) and try again when granted (section 14.2).
+(defmachine-callback fn2-conn-open-block fn2-conn (id budget) 4
+  :contract (:cost (:bytes (:cost fn2-conn-run-block-open :bytes) :steps *fn2-work-transition*)
+             :writes (tx-off after upload upload-gen feed-mode feed-discard fed word outcome-ready rule)
+             :tables (fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-upload-table)
+             :next (:command :reply)
+             :uses (fn2-machine-take-fn2-upload fn2-upload-gen-of fn2-conn-run-block-open fn2-machine-refuse-phase))
+  (fn2-machine-with-work 512 *fn2-work-transition* 0
+    (b* (((mv tcode u fn2-core)
+          (fn2-machine-take-fn2-upload id id row-generation row-request *fn2-upload-rule-post* row-principal-slot fn2-core)))
+      (if (not (eq tcode :ok))
+          ;; parked by the take: no work until the grant wakes this row
+          (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
+        (b* ((ugen (fn2-upload-gen-of u fn2-core))
+             ((mv code fn2-core) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
+          (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+            (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0)
+                                               (after *fn2-conn-after-article-input*)
+                                               (upload u) (upload-gen ugen) (feed-mode 0) (feed-discard 0) (fed 0)
+                                               (word 0) (outcome-ready 0))))
+              (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))))
+
+;; RX exhausted during a block: reset it when every octet was fed, else
+;; Receive (the feed consumes every octet it frames, so nothing is retained).
+(defmachine-callback fn2-conn-block-input fn2-conn (id budget) 4
+  :contract (:cost (:bytes *fn2-conn-receive-bytes*
+                    :steps (max *fn2-work-mailbox* (:cost fn2-machine-issue-result :steps)) :descriptors 1)
+             :writes (start pos pending stopped wait-reason ready-prev ready-next)
+             :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+             :next (:article-input)
+             :uses (fn2-conn-fill fn2-conn-cap fn2-core-reset fn2-issue-receive fn2-machine-issue-result
+                    fn2-machine-refuse-phase))
+  (let ((nfill (fn2-conn-fill row-rx-slot fn2-core)) (cap (fn2-conn-cap row-rx-slot fn2-core)))
+    (cond ((and (equal row-start nfill) (< 0 nfill))
+           (mv-let (code fn2-core) (fn2-core-reset row-rx-slot row-rx-gen *fn2-conn-kind* id row-generation fn2-core)
+             (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+               (let ((fn2-core (fn2-conn-put-core id (start 0) (pos 0))))
+                 (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))))
+          ((<= cap nfill) (fn2-machine-refuse-phase id fn2-core))
+          (t (let ((len (min *fn2-conn-receive-bytes* (- cap nfill))))
+               (mv-let (code op opgen fn2-core)
+                 (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
+                                    *fn2-conn-kind* id row-generation row-principal-slot fn2-core)
+                 (declare (ignore op opgen))
+                 (fn2-machine-issue-result id code len fn2-core)))))))
+
+;; Feed one quantum of the block into the upload (section 14.2), and wake it.
+(defmachine-callback fn2-conn-feed-step fn2-conn (id budget) 4
+  :contract (:cost (:bytes (max (:cost fn2-conn-feed-run :bytes) (:cost fn2-conn-block-input :bytes))
+                    :steps (max *fn2-work-transition* (:cost fn2-conn-block-input :steps))
+                    :descriptors (:cost fn2-conn-block-input :descriptors))
+             :writes (start pos feed-mode feed-discard fed pending stopped wait-reason ready-prev ready-next)
+             :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+             :next (:article-input)
+             :uses (fn2-conn-feed-run fn2-conn-wake fn2-conn-block-input fn2-machine-refuse-phase))
+  (b* ((u row-upload)
+       ((mv status start mode why copied fn2-core)
+        (fn2-conn-feed-run row-start row-feed-mode row-feed-discard row-fed row-rx-slot row-rx-gen id
+                           row-generation u row-upload-gen fn2-core))
+       (fed (+ row-fed (nfix copied)))
+       (fn2-core (fn2-conn-wake u fn2-core)))
+    (cond ((not (and (unsigned-byte-p 32 start) (unsigned-byte-p 8 mode) (unsigned-byte-p 8 why)
+                     (unsigned-byte-p 60 fed)))
+           (fn2-machine-refuse-phase id fn2-core))
+          ((eq status :terminator)
+           ;; the upload has the block; wait for its outcome (posted to this row)
+           (let ((fn2-core (fn2-conn-put-core id (start start) (pos start) (feed-mode *fn2-conn-feed-done*)
+                                              (feed-discard why) (fed fed))))
+             (fn2-machine-result *fn2-conn-feed-cost* *fn2-work-transition* 0 nil fn2-core)))
+          ((eq status :need-more)
+           (let ((fn2-core (fn2-conn-put-core id (start start) (pos start) (feed-mode mode)
+                                              (feed-discard why) (fed fed))))
+             (fn2-call fn2-conn-block-input id budget)))
+          ((eq status :budget)
+           (let ((fn2-core (fn2-conn-put-core id (start start) (pos start) (feed-mode mode)
+                                              (feed-discard why) (fed fed))))
+             (fn2-machine-result *fn2-conn-feed-cost* *fn2-work-transition* 0 t fn2-core)))
+          (t (fn2-machine-refuse-phase id fn2-core)))))
+
+;; :article-input: feed the block; once its outcome is posted, render it.
+(defmachine-callback fn2-conn-block fn2-conn (id budget) 4
+  (cond ((not (equal row-pending 0)) (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
+        ((equal row-outcome-ready 1)
+         (fn2-machine-with-work 512 *fn2-work-transition* 0
+           (mv-let (code after fn2-core)
+             (fn2-conn-run-outcome row-word row-mask row-tx-slot row-tx-gen id row-generation fn2-core)
+             (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
+               (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0) (after after)
+                                                  (upload *fn2-none*) (upload-gen 0) (rule *fn2-conn-rule-none*)
+                                                  (word 0) (outcome-ready 0) (feed-mode 0) (feed-discard 0) (fed 0))))
+                 (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))
+        ((equal row-feed-mode *fn2-conn-feed-done*) (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
+        (t (fn2-call fn2-conn-feed-step id budget))))
+
 (defmachine-callback fn2-conn-command fn2-conn (id budget) 4
   (cond ((not (equal row-pending 0)) (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core))
+        ((not (equal row-rule *fn2-conn-rule-none*)) (fn2-call fn2-conn-open-block id budget))
         ((equal row-compacting 1) (fn2-call fn2-conn-compact-run id budget))
         (t (fn2-call fn2-conn-frame-run id budget))))
 
@@ -341,7 +571,9 @@
                  (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
                    (let ((fn2-core (fn2-conn-put-core id (tx-off 0)
                                      (phase (if (equal after *fn2-conn-after-closing*)
-                                                *fn2-conn-state-closing* *fn2-conn-state-command*)))))
+                                                *fn2-conn-state-closing*
+                                              (if (equal after *fn2-conn-after-article-input*)
+                                                  *fn2-conn-state-article-input* *fn2-conn-state-command*))))))
                      (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))))))))
 
 (defmachine-callback fn2-conn-close fn2-conn (id budget) 4
@@ -357,18 +589,21 @@
 (defmachine-callback fn2-conn-release fn2-conn (id budget) 4
   :contract (:cost (:steps *fn2-work-release*)
              :writes (generation rx-slot rx-gen tx-slot tx-gen cap-index cap-nonce start pos overflow compacting
-                      cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref)
+                      cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref upload)
              :tables (fn2-core-pool fn2-core-machines fn2-core-accounts) :next (:free :retired)
              ;; One use entry per operation: the two calls release TX then RX
              ;; (D0's descending order), declared together.
              :uses ((fn2-core-release :effects ((:release (:tx-range :rx-range))))
-                    fn2-machine-gen-limit fn2-machine-free-head fn2-account-unbook-ref fn2-machine-reclaim-fn2-conn
-                    fn2-core-stop))
+                    fn2-machine-gen-limit fn2-machine-free-head fn2-account-unbook-ref fn2-conn-wake
+                    fn2-machine-reclaim-fn2-conn fn2-core-stop))
   (b* ((kind *fn2-conn-kind*) (gen row-generation) (booked row-account-ref)
        ((mv tcode fn2-core) (fn2-core-release row-tx-slot row-tx-gen kind id gen fn2-core))
        ((mv rcode fn2-core) (fn2-core-release row-rx-slot row-rx-gen kind id gen fn2-core))
        ;; the booking goes; the charges stay with the principal (rule 5)
-       ((mv acode fn2-core) (fn2-account-unbook-ref booked fn2-core)))
+       ((mv acode fn2-core) (fn2-account-unbook-ref booked fn2-core))
+       ;; an upload this row was feeding is woken: it sees the row move on
+       ;; (its generation) and drains, posting nothing
+       (fn2-core (fn2-conn-wake row-upload fn2-core)))
     (cond
      ((not (and (or (eq tcode :ok) (eq tcode :retired)) (or (eq rcode :ok) (eq rcode :retired))))
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
@@ -386,7 +621,8 @@
                        (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0)
                        (cap-index 0) (cap-nonce 0) (start 0) (pos 0) (overflow 0) (compacting 0)
                        (cursor 0) (tx-off 0) (ordinal 0) (auth-pending *fn2-conn-auth-none*) (refused 0)
-                       (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)))
+                       (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)
+                       (upload *fn2-none*)))
            (fn2-core (fn2-machine-reclaim-fn2-conn id retire fn2-core)))
         (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core))))))
 

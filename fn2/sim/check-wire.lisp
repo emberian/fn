@@ -18,16 +18,19 @@
 ; server closed; (4) an unfinished multi-line body is allowed only on a
 ; closed stream (incomplete-stream behaviour), and then no fresh status
 ; line follows inside it. Commands after the last reply are unanswered
-; only if the server closed or the client's last line was cut.
+; only after a closing reply, or after an article block's refusal that
+; the server closed on; a close never excuses a complete command line.
 (in-package "ACL2")
 
 (defun fn2-wire-lines (octets cur acc)
-  ; The client's complete lines (each without its CRLF or LF), and the
-  ; unfinished tail. Lists of octet lists.
+  ; The client's complete lines (each without its CRLF), and the unfinished
+  ; tail. Lists of octet lists. A line ended by a bare LF keeps the marker
+  ; :bare-lf as its last element (a malformed line, RFC 3977 section 3.1).
   (declare (xargs :verify-guards nil))
   (cond ((atom octets) (mv (reverse acc) (reverse cur)))
         ((equal (car octets) 10)
-         (let ((line (reverse (if (and (consp cur) (equal (car cur) 13)) (cdr cur) cur))))
+         (let ((line (if (and (consp cur) (equal (car cur) 13)) (reverse (cdr cur))
+                       (reverse (cons :bare-lf cur)))))
            (fn2-wire-lines (cdr octets) nil (cons line acc))))
         (t (fn2-wire-lines (cdr octets) (cons (car octets) cur) acc))))
 
@@ -51,7 +54,10 @@
 (defconst *fn2-wire-generic* '(400 403 480 483 500 501 502 503))
 (defconst *fn2-wire-codes*
   '(("CAPABILITIES" 101) ("HELP" 100) ("QUIT" 205) ("MODE" 200 201 203) ("DATE" 111)
-    ("POST" 340 440 441 240) ("IHAVE" 335 435 436 437 235) ("CHECK" 238 431 438)
+    ;; POST and IHAVE in two phases (RFC 3977 sections 6.3.1, 6.3.2): the
+    ;; command's reply, and after 340 / 335 the reply to the article block
+    ("POST" 340 440) ("POST-BLOCK" 240 441) ("IHAVE" 335 435 436) ("IHAVE-BLOCK" 235 436 437)
+    ("CHECK" 238 431 438)
     ("TAKETHIS" 239 439) ("AUTHINFO" 281 381 481 482 283 383 504) ("STARTTLS" 382 580)
     ("XREDEEM" 281 381 482) ("COMPRESS" 206) ("GROUP" 211 411) ("LISTGROUP" 211 411 412)
     ("LIST" 215) ("NEXT" 223 412 420 421) ("LAST" 223 412 420 422) ("NEWGROUPS" 231) ("NEWNEWS" 230)
@@ -101,11 +107,63 @@
              (mv :unstuffed rest))
             (t (fn2-wire-body rest (- fuel 1)))))))
 
+; Well-formed UTF-8 (RFC 3629 section 4: no overlong forms, no surrogates,
+; nothing above U+10FFFF).
+(defun fn2-wire-cont-p (b) (declare (xargs :verify-guards nil)) (and (natp b) (<= 128 b) (<= b 191)))
+(defun fn2-wire-utf8-p (l)
+  (declare (xargs :verify-guards nil :measure (len l)))
+  (cond ((atom l) t)
+        ((not (natp (car l))) nil)
+        ((< (car l) 128) (fn2-wire-utf8-p (cdr l)))
+        ((and (<= 194 (car l)) (<= (car l) 223))
+         (and (consp (cdr l)) (fn2-wire-cont-p (cadr l)) (fn2-wire-utf8-p (cddr l))))
+        ((and (<= 224 (car l)) (<= (car l) 239))
+         (and (consp (cdr l)) (consp (cddr l))
+              (natp (cadr l))
+              (cond ((equal (car l) 224) (and (<= 160 (cadr l)) (<= (cadr l) 191)))
+                    ((equal (car l) 237) (and (<= 128 (cadr l)) (<= (cadr l) 159)))
+                    (t (fn2-wire-cont-p (cadr l))))
+              (fn2-wire-cont-p (caddr l)) (fn2-wire-utf8-p (cdddr l))))
+        ((and (<= 240 (car l)) (<= (car l) 244))
+         (and (consp (cdr l)) (consp (cddr l)) (consp (cdddr l))
+              (natp (cadr l))
+              (cond ((equal (car l) 240) (and (<= 144 (cadr l)) (<= (cadr l) 191)))
+                    ((equal (car l) 244) (and (<= 128 (cadr l)) (<= (cadr l) 143)))
+                    (t (fn2-wire-cont-p (cadr l))))
+              (fn2-wire-cont-p (caddr l)) (fn2-wire-cont-p (cadddr l)) (fn2-wire-utf8-p (cddddr l))))
+        (t nil)))
 (defun fn2-wire-malformed-p (line)
-  ; The client line the spec makes malformed: a NUL, or over 512 octets
-  ; with its CRLF (RFC 3977 section 3.1; specs/nntp.md:513-518).
+  ; The client line the spec makes malformed (RFC 3977 sections 3.1 and
+  ; 12.5; specs/nntp.md:513-518): empty, ended by a bare LF, holding a bare
+  ; CR or a NUL, over 512 octets with its CRLF, or not UTF-8 (H's first spec
+  ; pin, 22de14c4d: 501 and close whatever else is wrong).
   (declare (xargs :verify-guards nil))
-  (or (and (true-listp line) (member 0 line)) (and (true-listp line) (< 510 (len line)))))
+  (and (true-listp line)
+       (or (null line) (member-eq :bare-lf line) (member 13 line) (member 0 line)
+           (< 510 (len line)) (not (fn2-wire-utf8-p line)))))
+
+; After 340 (POST) or 335 (IHAVE) the client's next lines are the article
+; block up to its "." line; they stand as one entry, KEYWORD-BLOCK, which
+; the next reply answers. A block the client never ended is cut input.
+(defun fn2-wire-skip-block (lines)
+  ; (mv found rest): the lines after the block's terminator line
+  (declare (xargs :verify-guards nil))
+  (cond ((atom lines) (mv nil nil))
+        ((equal (car lines) '(46)) (mv t (cdr lines)))
+        (t (fn2-wire-skip-block (cdr lines)))))
+(defun fn2-wire-entry-keyword (line)
+  (declare (xargs :verify-guards nil))
+  (cond ((eq line :post-block) "POST-BLOCK") ((eq line :ihave-block) "IHAVE-BLOCK")
+        (t (fn2-wire-word line))))
+(defun fn2-wire-next-lines (keyword code lines)
+  ; the client entries after the one CODE answered: (mv ok rest), OK nil
+  ; when a block was opened and the client never ended it
+  (declare (xargs :verify-guards nil))
+  (let ((marker (cond ((and (equal keyword "POST") (equal code 340)) :post-block)
+                      ((and (equal keyword "IHAVE") (equal code 335)) :ihave-block))))
+    (if (not marker) (mv t (cdr lines))
+      (mv-let (found rest) (fn2-wire-skip-block (cdr lines))
+        (if found (mv t (cons marker rest)) (mv nil nil))))))
 
 ; Walk the replies against the client's lines. Returns :pass or
 ; (:fail reason index).
@@ -113,15 +171,22 @@
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond
    ((zp fuel) (list :fail :fuel index))
+   ;; DONE: t after a closing reply (205, a malformed line's 501): nothing
+   ;; follows and the server closed; :may-close after an article block's
+   ;; refusal (the server may close after it, H's model does for a framing
+   ;; or bound refusal); nil otherwise. Every complete command line the
+   ;; client sent before the close is answered: a close truncates only an
+   ;; incomplete line, or the lines after a closing reply.
    ((atom wire)
-    (cond ((and done (not closed)) (list :fail :closing-reply-but-open index))
-          ((or closed (atom lines) cut) :pass)
-          (t (list :fail :missing-reply index))))
-   (done (list :fail :reply-after-close index))
+    (cond ((and (eq done t) (not closed)) (list :fail :closing-reply-but-open index))
+          ((or (eq done t) (atom lines)) :pass)
+          ((and closed (eq done :may-close)) :pass)
+          (t (list :fail (if closed :closed-before-reply :missing-reply) index))))
+   ((eq done t) (list :fail :reply-after-close index))
    ((atom lines) (list :fail :unasked-reply index))
    (t (mv-let (found status rest) (fn2-wire-take-line wire nil)
         (let* ((code (and found (fn2-wire-code status)))
-               (line (car lines)) (keyword (fn2-wire-word line)))
+               (line (car lines)) (keyword (fn2-wire-entry-keyword line)))
           (cond
            ((not found) (if closed :pass (list :fail :unfinished-status index)))
            ((not code) (list :fail :bad-status-line index))
@@ -135,7 +200,16 @@
                 (:ok (fn2-wire-walk brest (cdr lines) cut closed (+ 1 index) (equal code 205) (- fuel 1)))
                 (:unfinished (if closed :pass (list :fail :unfinished-body index)))
                 (otherwise (list :fail :unstuffed-body index)))))
-           (t (fn2-wire-walk rest (cdr lines) cut closed (+ 1 index) (equal code 205) (- fuel 1)))))))))
+           (t (mv-let (ok next) (fn2-wire-next-lines keyword code lines)
+                ;; an opened block the client never ended: its reply is unasked
+                (if (not ok)
+                    (if (and (atom rest) (or closed cut)) :pass (list :fail :unended-block index))
+                  (fn2-wire-walk rest next cut closed (+ 1 index)
+                                 (cond ((equal code 205) t)
+                                       ((and (member-eq line '(:post-block :ihave-block))
+                                             (not (member code '(240 235)))) :may-close)
+                                       (t nil))
+                                 (- fuel 1)))))))))))
 
 ; The whole connection: CLIENT octets sent, WIRE octets received, CLOSED.
 (defun fn2-wire-check (client wire closed)

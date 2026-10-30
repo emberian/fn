@@ -167,17 +167,26 @@
 ; TRANSCRIPTS is a list of (octets sizes), one per client (at most the
 ; profile's C connections). Result: (status ((wire closed) ...) stop-reason
 ; ledger-view).
-(defun fn2-conn-wire-run (transcripts)
+(defun fn2-cw-arrivals (transcripts)
+  (declare (xargs :verify-guards nil))
+  (if (atom transcripts) 0 (+ (len (cadr (car transcripts))) (fn2-cw-arrivals (cdr transcripts)))))
+(defun fn2-conn-wire-run-in (profile transcripts)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
-      (let ((fn2-core (fn2-init-executor *fn2-conn-wire-profile* :echo nil fn2-core)))
+      (let ((fn2-core (fn2-init-executor profile :echo nil fn2-core)))
         (mv-let (status clients fn2-core)
-          (fn2-cw-loop (+ 2000 (* 600 (len transcripts))) 0 0 (fn2-cw-clients transcripts) fn2-core)
+          ;; fuel per client and per arrival (a fragmented block takes a
+          ;; Receive and a feed per chunk)
+          (fn2-cw-loop (+ 2000 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
+                       0 0 (fn2-cw-clients transcripts) fn2-core)
           (mv (list status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)
                     (fn2-cw-ledger transcripts clients fn2-core))
               fn2-core)))
       result)))
+(defun fn2-conn-wire-run (transcripts)
+  (declare (xargs :verify-guards nil))
+  (fn2-conn-wire-run-in *fn2-conn-wire-profile* transcripts))
 
 ; One client's wire and close state when it is alone.
 (defun fn2-conn-wire-solo (octets sizes)

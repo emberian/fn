@@ -64,7 +64,7 @@
       (fn2-q1-hook-write "fn2/tests/evidence/q1-d-tally.lisp" "fn2/tests/sim-layer-d.lsp"
                          (coerce (format nil "D's sim-layer-d, every turn under TRACE per case and OWN: ~{~A~^; ~}" domain)
                                  '(simple-array character (*)))
-                         '(:conn-wire :conn-wire-flood) "d")
+                         '(:conn-wire :conn-wire-flood :conn-wire-posting) "d")
       (format t "SIM-LAYER-D-EVIDENCE PASS~%")
       (sb-ext:exit :code 0))
   (cl:error (condition)

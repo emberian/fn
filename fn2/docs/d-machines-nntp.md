@@ -1178,8 +1178,9 @@ the profile and, for transit, the peer record's `inbound-max-octets`, E4), `rule
 chunk class is profile key `:upload-chunk-bytes` (the smallest pool class at least that size; 65,536
 in the concrete profile, whose largest class is 64 KiB today; ROUND2's 256 KiB is a profile change
 with its T10 row), and `:large-upload-windows` (16) windows exist. The hasher row of window `w` is
-row `2 + w` of B's `fn2-b3` table and its digest stripe (B's `fn2-b3` rows are sized by
-`:format-slots`; the served profile sets it to `2 + windows`, rows 0-1 staying the commit kind's;
+row `3 + w` of B's `fn2-b3` table and its digest stripe (B's `fn2-b3` rows are sized by
+`:format-slots`; the served profile sets it to `3 + windows`, rows 0-1 staying the commit kind's and row 2
+recovery's checker (`*fn2-rec-checker-row*`, B5-3);
 seam B-S1 is this convention plus a profile check, no code). The upload kind's partition (A-S7)
 grants a row and a window whole or not at all, so `U` rows serve at most 16 concurrent inputs
 until D4 3/n; rows beyond 16 matter once a sealed upload gives its window back after writing temporary
@@ -1399,8 +1400,8 @@ traces, 14.8).
   ```lisp
   (defmachine fn2-upload ...
     :taken (:phase :head :rows :upload-row
-            :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class (:profile :upload-chunk-bytes))
-                     (:chunk-window :slot c1-slot :gen c1-gen :class (:profile :upload-chunk-bytes)))
+            :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
+                     (:chunk-window :slot c1-slot :gen c1-gen :class 1))
             :copy (conn conn-gen rule) :clear (...)))
   ;; generated, per taken kind K, beside the admission events, sharing the directory's
   ;; per-ordinal partition arrays (capacity, free head, credits, active count, FIFO):
@@ -1420,8 +1421,9 @@ traces, 14.8).
   fn2-pool)`: `[soff, soff+len)` readable under `(sk ss sg)` copied to `doff` of a workspace of `(dk ds
   dg)`, `doff ≤ fill`, with `fn2-core-copy-across` and a defcost; the feed would then copy the runs
   between line boundaries in one call.
-- **B-S1, hasher rows** (no code): the served profile sets `:format-slots` to `2 + :large-upload-
-  windows`; rows 0-1 are the commit kind's, row `2 + w` window `w`'s. B confirms nothing else indexes
+- **B-S1, hasher rows** (no code): the served profile sets `:format-slots` to `3 + :large-upload-
+  windows`; rows 0-1 are the commit kind's, row 2 recovery's checker, row `3 + w` window `w`'s
+  (B's ruling, 2026-10-30; C1c's sealer claims a checker row of its own after the windows). B confirms nothing else indexes
   `fn2-b3` rows by count.
 - **B-S2, the transaction member** (with GC2 inside B5, the same admission shape):
   `(fn2-commit-admit-txn member-slot member-gen bytes okind oslot ogen fn2-core) -> (mv code batch
@@ -1455,6 +1457,12 @@ traces, 14.8).
   skips private overlays. Until C1c's sealer, identity capacity is overlay rows × arenas, and exhaustion
   shows as `:full` at stage. So `:prepare` does injection and membership only, and the identity staging
   moves into `:ready`.
+- **A-S7 as landed** (DSL seat's read taken): `:class` is a pool class index (class 1, the profile's
+  second; the upload's profile check requires it), not a profile expression; a take refused by the pool
+  parks its waiter on the partition FIFO, and the grant service wakes the head only when the pool holds
+  the rows the take reserves (`fn2-machine-partition-classes`, `fn2-machine-pool-has-p`), so a pool
+  shortage is a wait, not a re-park loop; a waiter that is neither `*fn2-none*` nor an idle machine is
+  refused (`fn2-machine-refuse-write`). A taken kind owns `next-free` and `stopped`.
 - **A-S7 ruling (DSL seat, 2026-10-30):** D writes taken kinds itself as a foundation commit in a
   worktree on top of S1 (S1 touches the admission generator), under the whole-tree gate (every layer's
   unit books, A's seven drivers with the 113 A4 blocks identical, B's units); the DSL seat reads the diff
@@ -1477,6 +1485,29 @@ then one real durable POST with its read-back, before anything is widened.
 | D5 2/n | one real durable POST: prepare into the private successor (C-S2), the batch member (B-S2), 240 after publication, uncertain; read-back through D6's ARTICLE by Message-ID or the IDENTITY checker; stale-decision, disconnect and death-cut controls; posting capability on; H's POST interims leave | B-S2, C-S2 |
 | D5 3/n | IHAVE, CHECK, TAKETHIS on the peer path with request/reply queuing (a connection keeps framing the next TAKETHIS while earlier outcomes are pending, replies in request order), evidence operations; scenario 5 | D5 2/n |
 | D4 3/n | temporary extents through storage jobs (articles over two chunks; chunk reuse once its octets are durable; the Message-ID keeps its own range when chunk 0 is recycled); scenario 4 whole | B's allocator in the core, a storage-job kind |
+
+**D4 2/n as built.** POST only (IHAVE, TAKETHIS's token and its no-row discard move to D5 3/n with the
+peer path, which needs the request/reply queue anyway). The connection answers POST `:article-input`
+(`rule :post`), its next `:command` run takes the upload (`fn2-machine-take-fn2-upload`, copies `conn
+conn-gen request rule principal-slot`) and renders 340; `:reply` moves to its `after` phase, now
+including `:article-input`. The feed state lives on the connection row (`fed`, `feed-mode`,
+`feed-discard`), written only by the connection; the upload reads it (a cross-row read, no cross-row
+write) and aborts when the connection's generation, `upload` or `upload-gen` no longer name it (the
+connection's phase is not read: the take wakes the upload while 340 is still being sent). A full second
+chunk or a source past the bound is `:too-large` and the block drains. The upload hashes into hasher row
+`3 + slot` (B-S1), scans the header, and at the terminator gives the verdict and posts its word
+(`fn2-conn-post-word`, generation and request checked); a valid article gets the interim `:not-stored`
+until D5. Layer D's section is four books, each under the one-minute rule: `assembly-callbacks-d` (the
+operations the connection and the upload share, the connection's helpers), `-d-conn` (greeting and
+input), `-d-conn2` (the rest of the connection) and `-d-upload`; the upload's finish is three
+preserved steps (two minutes inline). WIRE requires a reply for every complete command line received
+before a close: only a closing reply (205, a malformed line's 501) or an article block's refusal may
+be followed by the close with lines unanswered (the dropped-205 wire is its mutation control in
+`tests/conn-unit.lisp`). Evidence: `tests/upload-unit.lisp` (every POST shape whole, by 7 and by 1
+octet, each expected wire also passing WIRE; three clients over two windows, the third parked and
+granted; WIRE's two-phase controls) and sim-layer-d's POSTING set (four seeds under network faults).
+WIRE now reads POST and IHAVE in two phases (`POST` 340/440, `POST-BLOCK` 240/441; `IHAVE`
+335/435/436, `IHAVE-BLOCK` 235/436/437).
 
 **sim-layer-d** gains a posting client (POST blocks in seeded fragmentations, valid and each refusal
 shape, duplicate and conflicting resends) on every run of the existing four sets, with WIRE (reply

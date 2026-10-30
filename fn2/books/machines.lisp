@@ -1528,11 +1528,14 @@
                   (fn2-core (fn2-machine-set-wake-id target fn2-core)))
              (mv :ok target fn2-core)))
          ;; WAITER *fn2-none* parks nothing; any other waiter must be a
-         ;; machine not already waiting (else the caller is wrong: refused)
+         ;; machine not queued on a resource (else the caller is wrong:
+         ;; refused). A running row may still carry :completion from the
+         ;; I/O it last waited on (the router wakes it and leaves the reason).
          (park `(cond ((equal waiter *fn2-none*) fn2-core)
                       ((and (fn2-machine-idp waiter fn2-core)
                             (eq (fn2-machine-wait-reason-read-code waiter fn2-core) :ok)
-                            (equal (fn2-machine-wait-reason waiter fn2-core) *fn2-wait-none*))
+                            (or (equal (fn2-machine-wait-reason waiter fn2-core) *fn2-wait-none*)
+                                (equal (fn2-machine-wait-reason waiter fn2-core) *fn2-wait-completion*)))
                        (let ((fn2-core (fn2-machine-park-admission waiter ,o fn2-core)))
                          (fn2-machine-write-wait-reason waiter ,reason fn2-core)))
                       (t (fn2-machine-refuse-write fn2-core)))))

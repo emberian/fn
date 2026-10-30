@@ -29,9 +29,36 @@
 (defun fn2-sld-octets-of (fixtures)
   (declare (xargs :verify-guards nil))
   (if (atom fixtures) nil (cons (nth 1 (car fixtures)) (fn2-sld-octets-of (cdr fixtures)))))
-(defun fn2-sld-all-transcripts (nrandom)
+(defun fn2-sld-all-transcripts (nrandom posts)
+  ; POSTS (octet transcripts) follow the fixtures, so fixture indices hold
   (declare (xargs :verify-guards nil))
-  (append (fn2-sld-octets-of *fn2-cu-fixtures*) (fn2-sld-transcripts nrandom 0)))
+  (append (fn2-sld-octets-of *fn2-cu-fixtures*) posts (fn2-sld-transcripts nrandom 0)))
+
+; Posting clients (D4 2/n, layer doc 14.8) for the POSTING set: POST blocks,
+; valid (the interim refusal until D5) and each refusal shape, pipelined,
+; and a block over the bound, under a profile that serves posting
+; (:posting-interim) with two upload windows of 4 KiB chunks. Fixture bytes
+; are not compared there (the greeting is 200 and POST is served); WIRE and
+; ACCOUNT are, over every client.
+(defun fn2-sld-post-text (lines) (declare (xargs :verify-guards nil)) (fn2-cw-crlf-octets lines))
+(defun fn2-sld-big (n) (declare (xargs :verify-guards nil))
+  (if (zp n) nil (cons (coerce (make-list 100 :initial-element #\z) 'string) (fn2-sld-big (- n 1)))))
+(defconst *fn2-sld-good*
+  '("From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
+    "Message-ID: <one@example.invalid>" "" "body" "..stuffed"))
+(defconst *fn2-sld-posts*
+  (list (fn2-sld-post-text (append '("POST") *fn2-sld-good* '("." "QUIT")))
+        (fn2-sld-post-text '("POST" "From: a" "Newsgroups: g" "" "x" "." "DATE" "QUIT"))
+        (fn2-sld-post-text '("POST" "From: a" "From: b" "Subject: s" "Newsgroups: g" "" "x" "." "QUIT"))
+        (fn2-sld-post-text '("POST" "From: a" "Subject: s" "Newsgroups: g" "Message-ID: <bad>" "" "x" "." "QUIT"))
+        (fn2-sld-post-text '("POST" "From: a" "Subject: s" "Newsgroups: g" "" ".bad" "." "QUIT"))
+        (fn2-sld-post-text (append '("POST") *fn2-sld-good* '(".") '("POST" "From: a" "Newsgroups: g" "" "x" "." "QUIT")))
+        (fn2-sld-post-text (append '("POST" "From: a" "Subject: s" "Newsgroups: g" "") (fn2-sld-big 100) '("." "QUIT")))
+        (fn2-sld-post-text (append '("POST") *fn2-sld-good* '("." "QUIT")))))
+(defconst *fn2-sld-posting-profile*
+  (put-assoc-equal :posting-interim t
+    (put-assoc-equal :format-slots 5
+      (put-assoc-equal :pool-classes '((8 . 1024) (4 . 4096)) *fn2-sld-profile*))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by
@@ -251,9 +278,9 @@
 ; One run: SEED, the simulator fault profile, and how many random
 ; transcripts follow the fixtures. Connections are at most the profile's C
 ; at once; the run reuses connection rows as clients close.
-(defun fn2-sld-run (seed fault-profile nrandom profile fixtures-p)
+(defun fn2-sld-run (seed fault-profile nrandom profile fixtures-p posts)
   (declare (xargs :verify-guards nil))
-  (let ((transcripts (fn2-sld-all-transcripts nrandom)))
+  (let ((transcripts (fn2-sld-all-transcripts nrandom posts)))
     (with-local-stobj fn2-core
       (mv-let (answer fn2-core)
         (with-local-stobj fn2-sim
@@ -292,17 +319,17 @@
        (equal (take 2 (nth 1 acct)) '(t t))
        (if want-refusals (and (eq (nth 2 (nth 1 acct)) t) (< 0 (nth 2 acct)))
          (member-eq (nth 2 (nth 1 acct)) '(t :n/a)))))
-(defun fn2-sld-seeds (seeds fault-profile nrandom profile fixtures-p want-refusals)
+(defun fn2-sld-seeds (seeds fault-profile nrandom profile fixtures-p want-refusals posts)
   (declare (xargs :verify-guards nil))
   (if (atom seeds) :pass
-    (let ((r (fn2-sld-run (car seeds) fault-profile nrandom profile fixtures-p)))
+    (let ((r (fn2-sld-run (car seeds) fault-profile nrandom profile fixtures-p posts)))
       (progn$
        (cw "SIM-LAYER-D seed=~x0 faults=~x1 status=~x2 started=~x3 served=~x4 deaths=~x5 hits(fragment short-send delay release-order)=~x7 wire=~x6 account(verdict controls refused anonymous-row)=~x8~%"
            (car seeds) fault-profile (nth 0 r) (nth 1 r) (nth 2 r) (nth 4 r)
            (if (eq (nth 3 r) :pass) :pass (list (nth 0 (nth 3 r)) (nth 1 (nth 3 r)) (nth 2 (nth 3 r))))
            (nth 5 r) (nth 6 r))
        (if (and (eq (nth 0 r) :quiet) (eq (nth 3 r) :pass) (fn2-sld-account-ok (nth 6 r) want-refusals))
-           (fn2-sld-seeds (cdr seeds) fault-profile nrandom profile fixtures-p want-refusals)
+           (fn2-sld-seeds (cdr seeds) fault-profile nrandom profile fixtures-p want-refusals posts)
          (list :fail (car seeds) r))))))
 
 ; Scenario 11's anonymous-flood half (layer doc 13.7): capacity C = 4, the
@@ -318,8 +345,9 @@
                         :reserves ((:connection-row . 2) (:principal-reservation . 1))))
                    *fn2-sld-profile*))
 
-(value-triple (cw "SIM-LAYER-D NONE ~x0~%" (fn2-sld-seeds '(1 2 3) :none 8 *fn2-sld-profile* t nil)))
-(value-triple (cw "SIM-LAYER-D NETWORK ~x0~%" (fn2-sld-seeds '(11 12 13 14 15 16 17 18) :crash-only 8 *fn2-sld-profile* t nil)))
-(value-triple (cw "SIM-LAYER-D FLOOD ~x0~%" (fn2-sld-seeds '(21 22 23) :none 8 *fn2-sld-flood-profile* nil t)))
-(value-triple (cw "SIM-LAYER-D FLOOD-NETWORK ~x0~%" (fn2-sld-seeds '(31 32 33 34) :crash-only 8 *fn2-sld-flood-profile* nil t)))
+(value-triple (cw "SIM-LAYER-D NONE ~x0~%" (fn2-sld-seeds '(1 2 3) :none 8 *fn2-sld-profile* t nil nil)))
+(value-triple (cw "SIM-LAYER-D NETWORK ~x0~%" (fn2-sld-seeds '(11 12 13 14 15 16 17 18) :crash-only 8 *fn2-sld-profile* t nil nil)))
+(value-triple (cw "SIM-LAYER-D FLOOD ~x0~%" (fn2-sld-seeds '(21 22 23) :none 8 *fn2-sld-flood-profile* nil t nil)))
+(value-triple (cw "SIM-LAYER-D FLOOD-NETWORK ~x0~%" (fn2-sld-seeds '(31 32 33 34) :crash-only 8 *fn2-sld-flood-profile* nil t nil)))
+(value-triple (cw "SIM-LAYER-D POSTING ~x0~%" (fn2-sld-seeds '(41 42 43 44) :crash-only 4 *fn2-sld-posting-profile* nil nil *fn2-sld-posts*)))
 (good-bye)

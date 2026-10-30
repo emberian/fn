@@ -227,7 +227,7 @@
 ;; (:none :user :redeem; H's model: starting any exchange replaces the
 ;; others). With no credential store and no invitations until E2, every
 ;; completed exchange fails by its declared word.
-(defun fn2-answer-ok (tag f0 a0 b0 mask pending seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer-ok (tag f0 a0 b0 mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0))))
   (let ((c tag))
@@ -244,10 +244,12 @@
       (mv-let (code fn2-pool) (fn2-answer-say c *fn2-nntp-reply-quit-closing* mask 0 tslot tgen okind oslot ogen fn2-pool)
         (mv code :closing pending fn2-pool)))
      ((equal tag *fn2-nntp-command-mode*)
-      ;; Posting is not served until D5, so MODE READER says 201, as the
-      ;; greeting does; MODE STREAM reaches here only on a peer connection.
+      ;; MODE READER says what the greeting said: 200 only where posting is
+      ;; served (section 14.5); MODE STREAM reaches here only on a peer connection.
       (mv-let (code fn2-pool)
-        (fn2-answer-say c (if (equal a0 1) *fn2-nntp-reply-mode-streaming* *fn2-nntp-reply-mode-no-posting*)
+        (fn2-answer-say c (cond ((equal a0 1) *fn2-nntp-reply-mode-streaming*)
+                                (posting *fn2-nntp-reply-mode-posting*)
+                                (t *fn2-nntp-reply-mode-no-posting*))
                       mask 0 tslot tgen okind oslot ogen fn2-pool)
         (mv code :command pending fn2-pool)))
      ((equal tag *fn2-nntp-command-date*)
@@ -290,6 +292,10 @@
                  (fn2-answer-say c *fn2-nntp-reply-list-not-stored* mask 0 tslot tgen okind oslot ogen fn2-pool))
                 (t (fn2-answer-say c (fn2-answer-interim-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)))
           (mv code :command pending fn2-pool))))
+     ;; POST where posting is served: no reply yet; the connection takes an
+     ;; upload and renders 340, or waits for one (section 14.2).
+     ((and posting (equal tag *fn2-nntp-command-post*))
+      (mv :ok :article-input pending fn2-pool))
      ((equal tag *fn2-nntp-command-takethis*)
       ;; Reached only on a peer connection, which D3 never admits: its block
       ;; follows at once and D4's article input discards it. Until then the
@@ -305,14 +311,14 @@
      (t
       ;; A tag outside the table: the decision table missed a command.
       (mv :untabled :closing pending fn2-pool)))))
-(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 mask pending seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
 (in-theory (disable fn2-answer-ok))
 
 (local (in-theory (disable fn2-nntp-parse-line)))
 ;; One complete command line [s, e) of the RX slot, answered into the TX
 ;; slot. Returns (mv code after pending fn2-pool); CODE :ok or the failing
 ;; renderer's code (the machine stops on any other).
-(defun fn2-answer (s e mask pending seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer (s e mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp e))))
   (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
     (fn2-nntp-parse-line s e mask rslot rgen okind oslot ogen fn2-pool)
@@ -321,7 +327,7 @@
       (case code
         (:ok (if (fn2-answer-subform-p tag (nfix nargs) f0 (nfix a0) (nfix b0) f1 (nfix a1) (nfix b1)
                                      f2 (nfix a2) (nfix b2) mask rslot rgen okind oslot ogen fn2-pool)
-                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) mask pending seen flags real
+                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) mask pending posting seen flags real
                                      rslot rgen tslot tgen okind oslot ogen fn2-pool)
                (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                  (mv rc :command pending fn2-pool))))
@@ -336,7 +342,7 @@
         ;; :malformed (H pin P-UTF8-WS): 501, then close.
         (otherwise (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                      (mv rc :closing pending fn2-pool)))))))
-(fn2-pool-preserves fn2-answer (s e mask pending seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer (s e mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
 (in-theory (disable fn2-answer))
 
 ;; Every command tag is answered by the table: no tag reaches :untabled.
@@ -354,13 +360,60 @@
 ;; The answer at a connection's greeting: 201 (posting is not served until
 ;; D5), or the capacity 400 when the row was admitted into the refusal
 ;; reserve, after which the connection closes.
-(defun fn2-answer-greeting (refused mask tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer-greeting (refused posting mask tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (mv-let (code fn2-pool)
-    (fn2-answer-say *fn2-nntp-command-none* (if refused *fn2-nntp-reply-busy* *fn2-nntp-reply-greeting*)
+    (fn2-answer-say *fn2-nntp-command-none* (cond (refused *fn2-nntp-reply-busy*)
+                                                  (posting *fn2-nntp-reply-greeting-posting*)
+                                                  (t *fn2-nntp-reply-greeting*))
                   mask 0 tslot tgen okind oslot ogen fn2-pool)
     (mv code (if refused :closing :command) fn2-pool)))
-(fn2-pool-preserves fn2-answer-greeting (refused mask tslot tgen okind oslot ogen fn2-pool) :position 2 :rows nil)
+(fn2-pool-preserves fn2-answer-greeting (refused posting mask tslot tgen okind oslot ogen fn2-pool) :position 2 :rows nil)
+
+;; Article input (section 14.2, 14.5). The opening reply of a block: 340 for
+;; POST (IHAVE's 335 with D5 3/n).
+(defun fn2-answer-block-open (mask tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (fn2-answer-say *fn2-nntp-command-post* *fn2-nntp-reply-post-send* mask 0 tslot tgen okind oslot ogen fn2-pool))
+(fn2-pool-preserves fn2-answer-block-open (mask tslot tgen okind oslot ogen fn2-pool) :position 1 :rows nil)
+;; A POST's outcome word as its reply row (the catalogue's texts are fn1's).
+(defun fn2-answer-post-reply (word)
+  (declare (xargs :guard t))
+  (case word
+    (:accepted *fn2-nntp-reply-post-received*)
+    (:uncertain *fn2-nntp-reply-post-uncertain*)
+    ((:malformed :framing) *fn2-nntp-reply-post-refused-unparsable*)
+    (:too-large *fn2-nntp-reply-post-refused-oversize*)
+    (:line-length *fn2-nntp-reply-post-refused-line-length*)
+    (:header-fields *fn2-nntp-reply-post-refused-header-fields-limit*)
+    (:header-lines *fn2-nntp-reply-post-refused-header-lines-limit*)
+    (:header-octets *fn2-nntp-reply-post-refused-header-octets-limit*)
+    (:from-missing *fn2-nntp-reply-post-refused-from-missing*)
+    (:subject-missing *fn2-nntp-reply-post-refused-subject-missing*)
+    (:newsgroups-missing *fn2-nntp-reply-post-refused-newsgroups-missing*)
+    (:from-duplicate *fn2-nntp-reply-post-refused-from-duplicate*)
+    (:subject-duplicate *fn2-nntp-reply-post-refused-subject-duplicate*)
+    (:newsgroups-duplicate *fn2-nntp-reply-post-refused-newsgroups-duplicate*)
+    (:message-id-duplicate *fn2-nntp-reply-post-refused-message-id-duplicate*)
+    (:date-duplicate *fn2-nntp-reply-post-refused-date-duplicate*)
+    (:path-duplicate *fn2-nntp-reply-post-refused-path-duplicate*)
+    (:path *fn2-nntp-reply-post-refused-path-malformed*)
+    (:message-id *fn2-nntp-reply-post-refused-message-id-invalid*)
+    (:xref *fn2-nntp-reply-post-refused-xref*)
+    (:injection-info *fn2-nntp-reply-post-refused-injection-info*)
+    (:injection-date *fn2-nntp-reply-post-refused-injection-date-present*)
+    (:no-clock *fn2-nntp-reply-post-refused-clock-unusable*)
+    (:group *fn2-nntp-reply-post-refused-unknown-group*)
+    ;; :not-stored (the interim, D5 2/n) and every other refusal: the generic line
+    (otherwise *fn2-nntp-reply-post-refused-unnamed*)))
+;; The outcome reply: (mv code after fn2-pool); a framing refusal closes
+;; after its reply (H's model; specs/nntp.md:513-518).
+(defun fn2-answer-outcome (word mask tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (mv-let (code fn2-pool)
+    (fn2-answer-say *fn2-nntp-command-post* (fn2-answer-post-reply word) mask 0 tslot tgen okind oslot ogen fn2-pool)
+    (mv code (if (eq word :framing) :closing :command) fn2-pool)))
+(fn2-pool-preserves fn2-answer-outcome (word mask tslot tgen okind oslot ogen fn2-pool) :position 2 :rows nil)
 ;; A command line over the 512-octet cap: 501, then close (RFC 3977 3.1).
 (defun fn2-answer-overflow (mask tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
@@ -371,5 +424,5 @@
  (fn2-assert-compliant-p
   '(fn2-answer-put-text fn2-answer-civil fn2-answer-date-digits fn2-answer-field-p fn2-answer-digests-loop
     fn2-answer-subform-p fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-ok
-    fn2-answer fn2-answer-greeting fn2-answer-overflow)
+    fn2-answer fn2-answer-greeting fn2-answer-overflow fn2-answer-block-open fn2-answer-post-reply fn2-answer-outcome)
   (w state)))

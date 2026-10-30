@@ -243,3 +243,9 @@
 ; A reply after the closing one.
 (assert-event (not (fn2-wire-pass-p *fn2-cu-wire-client*
                                     (append (nth 0 *fn2-cu-wire-good*) (fn2-cu-text '("201 again"))) t)))
+; A dropped closing reply: the wire without its 205, the server closed. A
+; close excuses no complete command line (the QUIT went unanswered).
+(assert-event (not (fn2-wire-pass-p *fn2-cu-wire-client*
+                                    (fn2-cu-text (list *fn2-cu-greeting* "500 command not recognized"
+                                                       "503 archive projection unavailable"
+                                                       "412 no newsgroup selected")) t)))

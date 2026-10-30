@@ -14,8 +14,12 @@
 (in-package "ACL2")
 (include-book "../sim/check-trace")
 
+; Posting is served (D4 2/n) so that every kind, the upload included, has
+; rows: an upload row needs a hasher row (:format-slots 3 + windows, B-S1).
 (defconst *fn2-q1-teeth-profile*
-  (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))
+  (put-assoc-equal :posting-interim t
+    (put-assoc-equal :format-slots 5
+      (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))))
 
 (defun fn2-q1-teeth-position (x xs)
   (declare (xargs :guard t))

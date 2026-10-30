@@ -11,21 +11,26 @@
 (include-book "check-wire")
 (include-book "std/util/bstar" :dir :system)
 
-; Replies after the greeting on one connection, counted by walking the
+; Requests after the greeting on one connection, counted by walking the
 ; server octets against the client's lines as WIRE does: one per answered
-; line, a multi-line body skipped to its terminator, an unfinished reply
-; not counted.
+; command line, a multi-line body skipped to its terminator, an unfinished
+; reply not counted. An article block (after 340 or 335) is one entry, as
+; WIRE reads it, and its reply belongs to the command's request: it is
+; not another one.
 (defun fn2-acct-replies (wire lines fuel)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (if (or (zp fuel) (atom wire) (atom lines)) 0
     (mv-let (found status rest) (fn2-wire-take-line wire nil)
-      (let ((code (and found (fn2-wire-code status))))
+      (let* ((code (and found (fn2-wire-code status)))
+             (keyword (fn2-wire-entry-keyword (car lines)))
+             (one (if (member-eq (car lines) '(:post-block :ihave-block)) 0 1)))
         (cond ((not code) 0)
               ((and (not (fn2-wire-malformed-p (car lines)))
-                    (fn2-wire-multiline-p (fn2-wire-word (car lines)) code))
+                    (fn2-wire-multiline-p keyword code))
                (mv-let (bstatus brest) (fn2-wire-body rest 100000)
-                 (if (eq bstatus :ok) (+ 1 (fn2-acct-replies brest (cdr lines) (- fuel 1))) 0)))
-              (t (+ 1 (fn2-acct-replies rest (cdr lines) (- fuel 1)))))))))
+                 (if (eq bstatus :ok) (+ one (fn2-acct-replies brest (cdr lines) (- fuel 1))) 0)))
+              (t (mv-let (ok next) (fn2-wire-next-lines keyword code lines)
+                   (+ one (if ok (fn2-acct-replies rest next (- fuel 1)) 0)))))))))
 
 ; A connection record: (principal client-octets wire open rx-delivered tx-moved).
 ; Its greeting: :greeted (200/201), :refused (400), or :none (nothing yet).

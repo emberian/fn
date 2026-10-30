@@ -27,7 +27,7 @@
             (declare (ignore c2))
             (let ((fn2-pool (fn2-gfe-put line slot gen fn2-pool)))
               (mv-let (code after pending fn2-pool)
-                (fn2-answer 0 (len line) mask :none nil 0 0 slot gen tslot tgen 1 1 1 fn2-pool)
+                (fn2-answer 0 (len line) mask :none nil nil 0 0 slot gen tslot tgen 1 1 1 fn2-pool)
                 (declare (ignore code after pending))
                 (mv-let (ok0 d0) (fn2-gram-read tslot tgen 0 1 1 1 fn2-pool)
                   (mv-let (ok1 d1) (fn2-gram-read tslot tgen 1 1 1 1 fn2-pool)

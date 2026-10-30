@@ -56,7 +56,7 @@
                                   (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                             fn2-pool))))
                 (mv-let (code after pending fn2-pool)
-                  (fn2-answer 0 (len octets) mask pending seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
+                  (fn2-answer 0 (len octets) mask pending nil seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
                   (mv (list code after pending
                             (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                       fn2-pool)))))))
@@ -216,7 +216,7 @@
       (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
         (mv-let (c1 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
           (declare (ignore c1))
-          (mv-let (code after fn2-pool) (fn2-answer-greeting refused *fn2-cau-reader* tslot tgen 1 1 1 fn2-pool)
+          (mv-let (code after fn2-pool) (fn2-answer-greeting refused nil *fn2-cau-reader* tslot tgen 1 1 1 fn2-pool)
             (mv (list code after (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                 fn2-pool))))
       result)))
