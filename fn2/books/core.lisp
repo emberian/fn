@@ -100,6 +100,7 @@
                     fn2-pool-lease-in fn2-pool-lease-out fn2-pool-complete-in
                     fn2-pool-release-out fn2-pool-adapter-write
                     fn2-pool-write fn2-pool-reset fn2-pool-read fn2-pool-rows
+                    fn2-pool-copy-range fn2-pool-drop-prefix fn2-pool-compare fn2-pool-fold fn2-pool-scan
                     fn2-op-cell fn2-op-range fn2-op-phase))
 
 (make-event
