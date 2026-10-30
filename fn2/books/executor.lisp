@@ -69,6 +69,7 @@
                           0 *fn2-work-empty* 0 nil *fn2-none* start fn2-core)))
           (mv 0 1 0 0 *fn2-work-empty* fn2-core)))
        ((mv bytes steps actions runnable fn2-core) (fn2-machine-run id budget fn2-core))
+       (fn2-core (fn2-exec-charge-run principal bytes steps fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
        ; New work enters before the running machine's tail requeue. The
        ; trace checker reconstructs this order without consulting links.
@@ -90,6 +91,9 @@
         (if (and (equal service 1) (natp budget) (< 0 budget))
             (fn2-exec-arm fn2-core) (mv 0 fn2-core)))
        (fn2-core (fn2-exec-wake wake fn2-core))
+       (fn2-core (fn2-exec-charge-run (fn2-exec-system-row fn2-core) 0
+                   (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*)
+                   fn2-core))
        (fn2-core (fn2-exec-record *fn2-trace-kind-service* *fn2-none* service position 0
                     (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) actions nil wake start fn2-core)))
     (mv 0 1 actions 0 (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) fn2-core)))
