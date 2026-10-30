@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 390; bound statements: 385; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
+Requirements: 391; bound statements: 386; admitted proofs: 0; check coverage: 53 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -2778,3 +2778,15 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RANGE-READ-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP LO) (EQUAL (LEN LO) 2) (TRUE-LISTP HI) (EQUAL (LEN HI) 2)) (EQUAL (FN2-RANGE-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES LO HI PIDX PLIMIT BUDGET SEALAT) (FN2-RANGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES LO HI PIDX PLIMIT)))` | `(FN2-RANGE-READ-EXACT-POSITIVE FN2-RANGE-READ-EXACT-NEGATIVE)` | A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RANGE-SEEK-POSITION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RANGE-SEEK-POSITION` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP PREFIX) (EQUAL (LEN PREFIX) 1) (NATP P) (POSP HI) (UNSIGNED-BYTE-P 59 HI) (FN2-RANGE-MONOTONEP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX 3)) (EQUAL (CAR (FN2-RANGE-SEEK-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES PREFIX P HI 3 BUDGET)) (FN2-RANGE-SEEK-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX P HI 3)))` | `(FN2-RANGE-SEEK-POSITION-POSITIVE FN2-RANGE-SEEK-POSITION-NEGATIVE)` | Within one stream (a group's overview, positions growing with numbers), the positioned seek over the overlay and runs answers the number from which a read delivers exactly the entries after commit position p: one past the last entry at or before p. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
