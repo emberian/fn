@@ -1,9 +1,11 @@
-; Layer C's test assembly: the identity schema (fn2/books/identity.lisp) and
-; the run units' two fixture schemas, assembled once. Every C unit includes
-; this book, so a world holds one assembly (the dispatcher's functions are
-; defined once per world).
+; Layer C's test assembly: the identity schema (fn2/books/identity.lisp), the
+; ordered schemas (fn2/books/ordered.lisp) and the run units' two fixture
+; schemas, assembled once, with the identity decision. Every C unit includes
+; this book (range-assembly.lisp adds the range reads on top), so a world
+; holds one assembly (the dispatcher's functions are defined once per world).
 (in-package "ACL2")
 (include-book "../books/identity")
+(include-book "../books/ordered")
 (include-book "std/util/bstar" :dir :system)
 
 (defrunschema fn2-rt-num :id 900

@@ -354,6 +354,19 @@
  ((fn2-run-writers 1) (fn2-fc 2) (fn2-b3 3) (fn2-fields 4) (fn2-pool 5) (fn2-digests 6)))
 (in-theory (disable fn2-run-seal-step fn2-run-head fn2-run-close-step fn2-run-open fn2-run-note-restart))
 
+; Copy field row FROM to TO (value, reference, status).
+(defun fn2-run-copy-row (from to fn2-fields)
+ (declare (xargs :stobjs fn2-fields
+  :guard (and (fn2-fields-wfp fn2-fields) (natp from) (natp to)
+              (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields)))))
+ (let ((v (fn2-fields-value from fn2-fields)) (rs (fn2-fields-ref-slot from fn2-fields))
+       (rg (fn2-fields-ref-gen from fn2-fields)) (ro (fn2-fields-ref-off from fn2-fields))
+       (rl (fn2-fields-ref-len from fn2-fields)) (st (fn2-fields-status from fn2-fields)))
+  (fn2-layout-store to v rs rg ro rl st fn2-fields)))
+(fn2-fields-preserves fn2-run-copy-row (from to fn2-fields)
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp from) (natp to)
+        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields))))
+
 ; Reader. A page is read only after B's checker accepted it under its
 ; parent-held hash; these checks name malformed internal structure anyway.
 ; Field rows: B header at BASE, C header after it, one restart row, then the

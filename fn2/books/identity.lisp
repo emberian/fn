@@ -143,23 +143,9 @@
 ; an overlay is retired only after its run is installed. A bucket shared
 ; with a busy Message-ID costs a retry, never a wrong answer.
 (defcolumns fn2-id-stamps ((gen :u60)))
-; The identity version: the greatest run identifier among the live identity
-; runs. Run identifiers only grow, and every installation (a seal, C5's
-; merge) installs a new one, so the version moves whenever facts move from
-; an overlay into a run. A decision takes it at start and its record
-; refuses :stale when it moved: a decision that met a moving fact twice
-; (in the overlay and in its new run) or not at all (its overlay sealed
-; before the decision reached it) never records.
-(defun fn2-id-version (n fn2-run-installed)
- (declare (xargs :stobjs fn2-run-installed :measure (nfix n)
-  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp n) (<= n (fn2-run-installed-rows fn2-run-installed)))))
- (if (zp n) 0
-  (let ((r (- n 1)) (rest (fn2-id-version (- n 1) fn2-run-installed)))
-   (if (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
-            (equal (fn2-run-installed-schema r fn2-run-installed) 1)
-            (< rest (nfix (fn2-run-installed-run r fn2-run-installed))))
-       (nfix (fn2-run-installed-run r fn2-run-installed)) rest))))
-(defthm fn2-id-version-natp (natp (fn2-id-version n fn2-run-installed)) :rule-classes :type-prescription)
+; The identity version is fn2-run-version of schema 1 (runs.lisp): it moves
+; whenever facts move from an overlay into a new run; a record refuses
+; :stale when it moved since its decision started.
 (defun fn2-id-bucket (qbase qk qs qg fn2-id-stamps fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-stamps fn2-fields fn2-pool)
   :guard (and (fn2-id-stamps-wfp fn2-id-stamps) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -172,29 +158,16 @@
       ((mv code h1 &) (fn2-ribbon-hash len (fn2-fields-ref-slot row fn2-fields) (fn2-fields-ref-gen row fn2-fields) off 0 qk qs qg fn2-pool)))
   (mv code (mod h1 rows))))
 
-; Copy field row FROM to TO (value, reference, status).
-(defun fn2-id-copy-row (from to fn2-fields)
- (declare (xargs :stobjs fn2-fields
-  :guard (and (fn2-fields-wfp fn2-fields) (natp from) (natp to)
-              (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields)))))
- (let ((v (fn2-fields-value from fn2-fields)) (rs (fn2-fields-ref-slot from fn2-fields))
-       (rg (fn2-fields-ref-gen from fn2-fields)) (ro (fn2-fields-ref-off from fn2-fields))
-       (rl (fn2-fields-ref-len from fn2-fields)) (st (fn2-fields-status from fn2-fields)))
-  (fn2-layout-store to v rs rg ro rl st fn2-fields)))
-(fn2-fields-preserves fn2-id-copy-row (from to fn2-fields)
- :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp from) (natp to)
-        (< from (fn2-fields-rows fn2-fields)) (< to (fn2-fields-rows fn2-fields))))
-
 ; LBQ := (Message-ID of QBASE, the empty content): every key of that
 ; Message-ID is at or above it.
 (defun fn2-id-lower-query (qbase lbq fn2-fields)
  (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)
-  :guard-hints (("Goal" :in-theory (disable fn2-id-copy-row)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-run-copy-row)))))
  (b* (((unless (and (natp qbase) (natp lbq) (< (+ qbase 1) (fn2-fields-rows fn2-fields))
                     (< (+ lbq 1) (fn2-fields-rows fn2-fields))))
        (mv :bounds fn2-fields))
-      (fn2-fields (fn2-id-copy-row (+ qbase *fn2-id-mid*) (+ lbq *fn2-id-mid*) fn2-fields))
-      (fn2-fields (fn2-id-copy-row (+ qbase *fn2-id-mid*) (+ lbq *fn2-id-con*) fn2-fields))
+      (fn2-fields (fn2-run-copy-row (+ qbase *fn2-id-mid*) (+ lbq *fn2-id-mid*) fn2-fields))
+      (fn2-fields (fn2-run-copy-row (+ qbase *fn2-id-mid*) (+ lbq *fn2-id-con*) fn2-fields))
       (fn2-fields (fn2-fields-set-ref-len (+ lbq *fn2-id-con*) 0 fn2-fields)))
   (mv :ok fn2-fields)))
 (fn2-fields-preserves fn2-id-lower-query (qbase lbq fn2-fields) :position 1)
@@ -280,7 +253,7 @@
           (mv (if (eq code :ok) :bounds code) fn2-id-decides fn2-fields))
          (stamp (fn2-id-stamps-gen bucket fn2-id-stamps))
          ((unless (unsigned-byte-p 60 stamp)) (mv :bounds fn2-id-decides fn2-fields))
-         (vrun (fn2-id-version (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
+         (vrun (fn2-run-version 1 (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
          ((unless (unsigned-byte-p 60 vrun)) (mv :bounds fn2-id-decides fn2-fields))
          ((mv code fn2-fields) (fn2-id-lower-query qbase lbq fn2-fields))
          ((unless (eq code :ok)) (mv code fn2-id-decides fn2-fields))
@@ -447,7 +420,7 @@
     (declare (xargs :stobjs (fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
      :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
-     :guard-hints (("Goal" :in-theory (disable fn2-id-copy-row fn2-ov-insert fn2-fields-rows)))))
+     :guard-hints (("Goal" :in-theory (disable fn2-run-copy-row fn2-ov-insert fn2-fields-rows)))))
     (b* (((unless (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides)) (natp o) (< o (fn2-overlays-rows fn2-overlays))
                        (natp ebase) (<= (+ ebase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
                        (unsigned-byte-p 60 article) (unsigned-byte-p 60 binding) (unsigned-byte-p 60 principal)))
@@ -459,8 +432,8 @@
           (mv :owner fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          (q (fn2-id-decides-qbase d fn2-id-decides))
          ((unless (< (+ q 1) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         (fn2-fields (fn2-id-copy-row (+ q *fn2-id-mid*) (+ ebase *fn2-id-mid*) fn2-fields))
-         (fn2-fields (fn2-id-copy-row (+ q *fn2-id-con*) (+ ebase *fn2-id-con*) fn2-fields))
+         (fn2-fields (fn2-run-copy-row (+ q *fn2-id-mid*) (+ ebase *fn2-id-mid*) fn2-fields))
+         (fn2-fields (fn2-run-copy-row (+ q *fn2-id-con*) (+ ebase *fn2-id-con*) fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-state*)
                                            (if (zp others) *fn2-identity-state-accepted* *fn2-identity-state-conflict*) fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-article*) article fn2-fields))
@@ -480,7 +453,7 @@
          ((unless (and (natp bucket) (< bucket (fn2-id-stamps-rows fn2-id-stamps)))) (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          (stamp (fn2-id-stamps-gen bucket fn2-id-stamps))
          ((unless (and (equal stamp (fn2-id-decides-stamp d fn2-id-decides))
-                       (equal (fn2-id-version (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
+                       (equal (fn2-run-version 1 (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
                               (fn2-id-decides-vrun d fn2-id-decides))))
           (mv :stale fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((when (equal (fn2-id-decides-exact d fn2-id-decides) 1)) (mv :duplicate fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -550,7 +523,7 @@
          (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
          (fn2-digests (fn2-digests-init 150 fn2-digests))
          ((mv & aslot agen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 fn2-overlays fn2-overlay-index fn2-pool)))
+         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 0 fn2-overlays fn2-overlay-index fn2-pool)))
      (fn2-ida-mv code)))
    ;; Place offer X's octets in SLOT at OFF and point the offer rows at them.
    (fn2-ida-defun fn2-ida-place (x slot gen off)
@@ -650,7 +623,7 @@
          ((mv code fn2-overlays) (fn2-ov-retire 0 fn2-overlays))
          ((unless (eq code :ok)) (fn2-ida-mv (list :retire code)))
          ((mv & aslot agen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 fn2-overlays fn2-overlay-index fn2-pool)))
+         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 0 fn2-overlays fn2-overlay-index fn2-pool)))
      (fn2-ida-mv code)))
    ;; Decide and record each offer; seal every SPLIT offers. (answers runs)
    (fn2-ida-defun fn2-ida-offers (offers i split forget slot gen off runs)

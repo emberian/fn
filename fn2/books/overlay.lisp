@@ -13,7 +13,7 @@
 (defcolumns fn2-overlays
  ((phase (:enum fn2-overlay-phase (:free :active :frozen)))
   (schema :u60) (slot :u32) (gen :u60) (fill :u32) (cap :u32)
-  (count :u32) (ibase :u32) (icap :u32) (okind :u8) (oslot :u32) (ogen :u60)))
+  (count :u32) (ibase :u32) (icap :u32) (okind :u8) (oslot :u32) (ogen :u60) (cov :u60)))
 (defcolumns fn2-overlay-index ((off :u32)))
 
 ; An overlay row whose index range lies inside the index table.
@@ -27,7 +27,9 @@
 
 ; Start an overlay of SCHEMA in a fresh C-owned workspace SLOT/GEN (reset
 ; here; its capacity is the arena's) with index rows IBASE .. IBASE+ICAP-1.
-(defun fn2-ov-start (o schema slot gen ibase icap okind oslot ogen fn2-overlays fn2-overlay-index fn2-pool)
+; COV is the schema's coverage: the commit position through which its
+; overlays and runs reflect every commit (the read contract's cov).
+(defun fn2-ov-start (o schema slot gen ibase icap okind oslot ogen cov fn2-overlays fn2-overlay-index fn2-pool)
  (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-pool)
   :guard (and (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays))
@@ -35,7 +37,7 @@
                     (unsigned-byte-p 32 ibase) (unsigned-byte-p 32 icap)
                     (<= (+ ibase icap) (fn2-overlay-index-rows fn2-overlay-index))
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
-                    (< slot (fn2-pool-rows fn2-pool))))
+                    (unsigned-byte-p 60 cov) (< slot (fn2-pool-rows fn2-pool))))
        (mv :bounds fn2-overlays fn2-pool))
       ((unless (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-free*))
        (mv :state fn2-overlays fn2-pool))
@@ -45,9 +47,17 @@
       ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool))
       (fn2-overlays (fn2-overlays-put o (phase *fn2-overlay-phase-active*) (schema schema) (slot slot) (gen gen)
                       (fill 0) (cap cap) (count 0) (ibase ibase) (icap icap)
-                      (okind okind) (oslot oslot) (ogen ogen))))
+                      (okind okind) (oslot oslot) (ogen ogen) (cov cov))))
   (mv :ok fn2-overlays fn2-pool)))
 
+; Advance active overlay O's coverage to P (the commit install that fed it
+; reached P). Coverage never moves back.
+(defun fn2-ov-cover (o p fn2-overlays)
+ (declare (xargs :stobjs fn2-overlays :guard (fn2-overlays-wfp fn2-overlays)))
+ (cond ((not (and (natp o) (< o (fn2-overlays-rows fn2-overlays)) (unsigned-byte-p 60 p))) (mv :bounds fn2-overlays))
+       ((not (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-active*)) (mv :state fn2-overlays))
+       ((< p (fn2-overlays-cov o fn2-overlays)) (mv :regress fn2-overlays))
+       (t (let ((fn2-overlays (fn2-overlays-set-cov o p fn2-overlays))) (mv :ok fn2-overlays)))))
 ; :active -> :frozen (its run is being sealed); :frozen -> :free (the run is
 ; installed; the caller releases the arena).
 (defun fn2-ov-advance (o from to fn2-overlays)

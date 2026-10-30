@@ -57,7 +57,7 @@
       (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
       (fn2-digests (fn2-digests-init 150 fn2-digests))
       ((mv & aslot agen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-      ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 fn2-overlays fn2-overlay-index fn2-pool)))
+      ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 1 aslot agen 0 256 9 0 1 0 fn2-overlays fn2-overlay-index fn2-pool)))
   (fn2-ida-mv code)))
 
 ;; Place offer X in slot D's rows and start its decision.
@@ -73,7 +73,7 @@
 (fn2-ida-defun fn2-m3-record (d defeat article)
  (b* ((fn2-id-decides (if defeat
                           (fn2-id-decides-put d (stamp (fn2-id-stamps-gen (fn2-id-decides-bucket d fn2-id-decides) fn2-id-stamps))
-                                              (vrun (fn2-id-version (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)))
+                                              (vrun (fn2-run-version 1 (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)))
                         fn2-id-decides))
       ((mv code fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (fn2-id-record d 0 (+ (fn2-m3-q d) 200) article article 7 fn2-id-decides fn2-id-stamps fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))

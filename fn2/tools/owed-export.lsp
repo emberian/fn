@@ -29,6 +29,7 @@
 (include-book "fn2/tests/identity-unit")
 (include-book "fn2/tests/ribbon-unit")
 (include-book "fn2/tests/sim-layer-c")
+(include-book "fn2/tests/range-unit")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.

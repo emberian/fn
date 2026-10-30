@@ -484,3 +484,18 @@
       (fn2-run-installed (fn2-run-installed-put r (filter 1) (funit unit) (fcounter counter))))
   (mv :ok fn2-run-installed)))
 (fn2-run-installed-preserves fn2-run-install-filter (r unit counter fn2-run-installed) :position 1 :raw-rows t)
+; A schema's version: the greatest run identifier among its live runs.
+; Run identifiers only grow, and every installation (a seal, C5's merge)
+; installs a new one, so the version moves whenever facts move from an
+; overlay into a run. A reader that holds it (an identity decision, a range
+; read) knows by comparing it whether its sources moved under it.
+(defun fn2-run-version (sid n fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix n)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp n) (<= n (fn2-run-installed-rows fn2-run-installed)))))
+ (if (zp n) 0
+  (let ((r (- n 1)) (rest (fn2-run-version sid (- n 1) fn2-run-installed)))
+   (if (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+            (equal (fn2-run-installed-schema r fn2-run-installed) sid)
+            (< rest (nfix (fn2-run-installed-run r fn2-run-installed))))
+       (nfix (fn2-run-installed-run r fn2-run-installed)) rest))))
+(defthm fn2-run-version-natp (natp (fn2-run-version sid n fn2-run-installed)) :rule-classes :type-prescription)

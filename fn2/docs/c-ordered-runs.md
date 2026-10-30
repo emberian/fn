@@ -23,7 +23,8 @@ departure from a decision that is not recorded here is a defect.
 | active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
 | Ribbon filter per sealed run: the build (band, insertion, back substitution, page), the probe, the adapter and keystones | `fn2/books/ribbon.lisp`; unit `fn2/tests/ribbon-unit.lisp` | C2c |
-| article metadata, overview, addressing schemas; range cursors | `fn2/books/ordered.lisp`, `fn2/books/cursor.lisp` | C3 |
+| article metadata, overview, addressing schemas | `fn2/books/ordered.lisp` | C3 |
+| range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; test assembly `fn2/tests/range-assembly.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
@@ -236,10 +237,21 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   lowest level with an entry to the right, takes it, and descends leftmost (`:more`, `:miss` as for
   lookup), and answers `:end` after the last entry. A page of its path that left the cache answers
   `:lost`: the caller re-seeks strictly after the last delivered key.
-- **Cursors (C3).** A range cursor holds a stable resume key and the logical version (the root
-  generation it read); after a yield it re-seeks from the resume key in the current version. It
-  never holds an old manifest or a physical traversal state as its meaning.
-- **The read contract (UC §12 decision 2).** Every read names its strength: `exactly-at p` (needs
+- **Range reads (C3).** `fn2-range-start` names the schema, lo and hi key regions, the source rows,
+  cursor rows and head regions it may use, and an optional position field and limit;
+  `fn2-range-step` is one bounded step answering `:entry` (the entry's rows at the range's OUT, read
+  under its owner, valid until the next step), `:end`, `:more`, `:miss` or a refusal. Sources are
+  the schema's overlays (active or frozen) and live runs, each with one decoded head; the step
+  advances the sources that need it, delivers the least head (equal keys: the newest source, an
+  overlay over any run, a greater run identifier over a smaller), and makes the delivered key's
+  successor the query. Its meaning is that resume key plus the schema's version
+  (`fn2-run-version`): when the version moved every source is found again strictly after the
+  resume key; when an overlay took an insert its source is located again. A stream read stops at
+  the first entry whose position exceeds the limit (position is monotone in key order within one
+  group or principal). It never holds an old manifest or a physical traversal state as its meaning.
+- **The read contract (UC §12 decision 2)**, `fn2-read-plan (strength p fallback cov append)` →
+  `(mv outcome position limit)`; coverage is the active overlay's COV (`fn2-ov-cover`, monotone).
+  Every read names its strength: `exactly-at p` (needs
   retained version state or snapshot plus replay; unavailable history is a gap) or `at-least p` (a
   threshold read on coverage). Fallbacks are `wait`, `stale-ok` and `catch-up` (the projection's
   maintenance state at `cov` advanced over `(cov, p]`), which replaces `select` as the general
@@ -328,6 +340,17 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   per 30 offers, so a retry is common under that contention; production seals are far rarer and D's
   reservation removes same-Message-ID races. Revisit with D's measurement under the concrete
   profile.
+- **C-RANGE-KEYS.** Range reads take schemas whose key fields are all integers (`fn2-range-keys-ok`,
+  generated at assembly; `:key-kind` otherwise): the resume point is the delivered key's successor
+  (its last field plus one), which needs no stored octets. Every ordered schema of C3 is such.
+- **C-RANGE-NEWEST.** Equal keys in two sources deliver once, newest winning. For a `:unique`
+  schema that happens only while an overlay is being sealed into its run (the same entry twice);
+  a `:latest` schema's newer row replaces an older one. The overlay still refuses an equal key
+  (`:duplicate`), so a `:latest` update into a live overlay needs the overlay's replace (C4, with
+  the folds).
+- **C-RANGE-ASSEMBLY.** The range reads are generated by their own macro in their own test book
+  (`range-assembly.lisp`, including `runs-assembly.lisp`), so neither assembly book nears the
+  minute (20 s and 33 s on the laptop).
 - **C-LEVELS.** A build has at most `*fn2-run-max-levels*` = 6 levels, a format parameter: with
   64 KiB pages and index entries of at most about 350 bytes, six levels address over 10^13 pages.
   Exhaustion is the named refusal `:levels`.
@@ -384,6 +407,7 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `fn2-ribbon-no-false-negative` | a filter built through the real start, add, finish and work from at most 256 keys seals, passes B's checker under its parent-held hash, and its probe answers `:absent` only for a query that is no key (`fn2-ribbon-answers-sound`) | positive: 200 keys and 56 others probed, every key `:maybe`, at least 50 others `:absent`; negative: a filter built without key 17 answers `:absent` to it | C2c |
 | `fn2-ribbon-mutation-refused` | any one-byte change (offset in the page, nonzero XOR) of a sealed filter page is refused by B's checker by name | positive: changes in B's header, the filter header, Z and the padding refused while the unchanged page is accepted; negative: a zero change is accepted | C2c |
 | `fn2-identity-linearizable` | for every seed and at most 64 offers, the M3 scenario's trace (interleaved decisions, records, seals with filters, bodies released, then every pair queried and the Binding scanned) is accepted by the independent IDENTITY checker | positive: 40 seeds pass with races exercised (1,808 stale records) and 722 seals; negative: the same schedules with the stamp and version checks defeated are refused by name (37 of 40) | C2d |
+| `fn2-range-read-exact` | a range read through the real steps over runs and an overlay (at most six sources of 48 sorted entries, any budget, the overlay sealed into a run after any delivery) delivers exactly `fn2-range-spec`: the union, newest entry per key, from lo to hi, cut at the position limit | positive: seven windows (whole group, inner window, position limit, empty, the other group, budget 1 with a seal after the third and after the first delivery), non-vacuous (15 rows, the overlay's row for 4); negative: an unsorted run reads back otherwise | C3 |
 | `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
@@ -404,7 +428,8 @@ OWED.md is regenerated when the export is green.
 | C2b | identity schema, the decision machine, the recording under the bound, the two keystones | **done**: the M3-shaped scenario pinned; both keystones' teeth | C2a |
 | C2c | Ribbon per sealed run, the probe in the identity decision | **done**: no key ever `:absent`; 8.5 bits/key at 60,000 keys (8.75 at 2,000); false positives 0.375% (75 in 20,000) and 0.395% (790 in 200,000 at 60,000 keys) against 2^-8 = 0.39%; the M3-shaped scenario reads only the runs holding the Message-ID (an absent one reads none); both keystones' teeth | C2b |
 | C2d | IDENTITY checker; scenario M3 (interleaved decisions, seals, bodies released); the stamp and version refusal | **done (engine leg)**: 200 seeds of 30 offers all accepted, 9,077 stale records, 3,607 seals; defeated checks refused on 188 of 200; 10,000 seeds in `sim-layer-c-sweep.lsp`. The device leg (run pages through the commit batch, recovery) waits on C1c and B's GC2 | C2c |
-| C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
+| C3a | metadata, overview and `addr` schemas; range reads with resume key and version; the read plan | **done**: the keystone's teeth; `addr` read after a position by key; an octet-keyed schema refused `:key-kind` | C2d |
+| C3b | positioned seek in overview (a position fence in index entries); M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C3a |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |
 | C6 | permanent exact-identity retention and reclamation tests; perfect hash measured against sorted search inside a sealed run | 10,000 seeds concrete (nightly row); the measurement table | C5 |

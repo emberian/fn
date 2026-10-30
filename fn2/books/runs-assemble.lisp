@@ -938,7 +938,7 @@
          (fn2-pool (fn2-pool-init '((2 . 65536)) 1 100 fn2-pool))
          ((mv & aslot agen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
          ((mv & src sgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 sid aslot agen 0 256 9 0 1 fn2-overlays fn2-overlay-index fn2-pool))
+         ((mv code fn2-overlays fn2-pool) (fn2-ov-start 0 sid aslot agen 0 256 9 0 1 0 fn2-overlays fn2-overlay-index fn2-pool))
          ((unless (eq code :ok)) (mv (list :start code) fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((mv codes fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
           (fn2-ov-adapter-load sid layout entries src sgen 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
