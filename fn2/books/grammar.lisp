@@ -9,7 +9,7 @@
 ; checked exports, a line or token is an (offset, length) in its slot, and
 ; nothing on a served path builds a list of octets.
 (in-package "ACL2")
-(include-book "pool")
+(include-book "pool-ranges")
 (include-book "std/util/bstar" :dir :system)
 (fn2-book-layer :d)
 
@@ -69,23 +69,29 @@
 ;   :budget     LEFT is spent; resume with the returned state;
 ;   :fault      the pool refused a read of a filled octet.
 (defun fn2-gram-frame (left start pos overflow cap slot gen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+  ; D2c: one fn2-pool-scan for LF over [pos, pos+n), n = min(LEFT, fill-pos),
+  ; replacing the octet loop. The overflow point is the first octet at or
+  ; after POS that would make the line reach CAP without its LF:
+  ; max(pos, start+cap-1).
+  (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp start) (natp pos)
                               (<= start pos) (bitp overflow) (posp cap))))
-  (cond ((zp left) (mv :budget start pos overflow))
-        ((>= (nfix pos) (fn2-gram-fill slot fn2-pool)) (mv :need-more start pos overflow))
-        (t (mv-let (ok byte) (fn2-gram-read slot gen pos okind oslot ogen fn2-pool)
-             (cond ((not ok) (mv :fault start pos overflow))
-                   ((= byte *fn2-gram-lf*)
-                    (if (equal overflow 1) (mv :long-line (+ 1 (nfix pos)) (+ 1 (nfix pos)) overflow)
-                      (mv :line start (+ 1 (nfix pos)) overflow)))
-                   ((or (equal overflow 1) (>= (- (+ 1 (nfix pos)) (nfix start)) (nfix cap)))
-                    (if (equal overflow 1)
-                        (fn2-gram-frame (- left 1) (+ 1 (nfix pos)) (+ 1 (nfix pos)) 1 cap
-                                        slot gen okind oslot ogen fn2-pool)
-                      (mv :overflow (+ 1 (nfix pos)) (+ 1 (nfix pos)) 1)))
-                   (t (fn2-gram-frame (- left 1) start (+ 1 (nfix pos)) overflow cap
-                                      slot gen okind oslot ogen fn2-pool)))))))
+  (let ((nfill (fn2-gram-fill slot fn2-pool)) (pos (nfix pos)) (left (nfix left)))
+    (cond ((zp left) (mv :budget start pos overflow))
+          ((>= pos nfill) (mv :need-more start pos overflow))
+          (t (let ((n (min left (- nfill pos))))
+               (mv-let (code at) (fn2-pool-scan slot gen pos n *fn2-gram-lf* okind oslot ogen fn2-pool)
+                 (if (not (eq code :ok)) (mv :fault start pos overflow)
+                   (let* ((at (nfix at)) (lf (+ pos at)) (found (< at n)))
+                     (if (equal overflow 1)
+                         (cond (found (mv :long-line (+ 1 lf) (+ 1 lf) 1))
+                               ((equal n left) (mv :budget (+ pos n) (+ pos n) 1))
+                               (t (mv :need-more nfill nfill 1)))
+                       (let ((limit (max pos (+ (nfix start) (nfix cap) -1))))
+                         (cond ((and found (<= lf limit)) (mv :line start (+ 1 lf) overflow))
+                               ((< limit (+ pos n)) (mv :overflow (+ 1 limit) (+ 1 limit) 1))
+                               ((equal n left) (mv :budget start (+ pos n) overflow))
+                               (t (mv :need-more start nfill overflow)))))))))))))
 
 (defconst *fn2-gram-frame-statuses* '(:line :long-line :overflow :need-more :budget :fault))
 

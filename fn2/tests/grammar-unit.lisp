@@ -364,3 +364,78 @@
 (make-event
  (value `(defconst *fn2-gu-table* ',(fn2-gu-command-rows (fn2-decl-rows :command (w state))))))
 (assert-event (equal (len *fn2-gu-table*) *fn2-nntp-command-none*))
+;
+; ------------------------------------------------------------------------
+; D2c: the framer moved onto R6a1's fn2-pool-scan. The retired octet loop is
+; kept here, in the test only, as the reference it must equal: every
+; (start, pos) of the short transcripts and the all-octets line (pos up to
+; 19 octets past start, as the shape probe), budgets 0, 1, 3 and the run
+; quantum, caps 4 and 512, both overflow states, all agree on the status
+; and the whole returned state.
+(defun fn2-gu-frame-reference (left start pos overflow cap slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left) :verify-guards nil
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp start) (natp pos)
+                              (<= start pos) (bitp overflow) (posp cap))))
+  (cond ((zp left) (mv :budget start pos overflow))
+        ((>= (nfix pos) (fn2-gram-fill slot fn2-pool)) (mv :need-more start pos overflow))
+        (t (mv-let (ok byte) (fn2-gram-read slot gen pos okind oslot ogen fn2-pool)
+             (cond ((not ok) (mv :fault start pos overflow))
+                   ((= byte *fn2-gram-lf*)
+                    (if (equal overflow 1) (mv :long-line (+ 1 (nfix pos)) (+ 1 (nfix pos)) overflow)
+                      (mv :line start (+ 1 (nfix pos)) overflow)))
+                   ((or (equal overflow 1) (>= (- (+ 1 (nfix pos)) (nfix start)) (nfix cap)))
+                    (if (equal overflow 1)
+                        (fn2-gu-frame-reference (- left 1) (+ 1 (nfix pos)) (+ 1 (nfix pos)) 1 cap
+                                        slot gen okind oslot ogen fn2-pool)
+                      (mv :overflow (+ 1 (nfix pos)) (+ 1 (nfix pos)) 1)))
+                   (t (fn2-gu-frame-reference (- left 1) start (+ 1 (nfix pos)) overflow cap
+                                      slot gen okind oslot ogen fn2-pool)))))))
+
+(in-theory (disable fn2-gu-frame-reference))
+(defun fn2-gu-frame-agree-one (left cap start pos slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil))
+  (and (equal (mv-list 4 (fn2-gram-frame left start pos 0 cap slot gen 1 1 1 fn2-pool))
+              (mv-list 4 (fn2-gu-frame-reference left start pos 0 cap slot gen 1 1 1 fn2-pool)))
+       (equal (mv-list 4 (fn2-gram-frame left start pos 1 cap slot gen 1 1 1 fn2-pool))
+              (mv-list 4 (fn2-gu-frame-reference left start pos 1 cap slot gen 1 1 1 fn2-pool)))))
+(in-theory (disable fn2-gu-frame-agree-one))
+(defun fn2-gu-frame-agree-caps (left caps start pos slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil))
+  (if (atom caps) t
+    (and (fn2-gu-frame-agree-one left (car caps) start pos slot gen fn2-pool)
+         (fn2-gu-frame-agree-caps left (cdr caps) start pos slot gen fn2-pool))))
+(in-theory (disable fn2-gu-frame-agree-caps))
+(defun fn2-gu-frame-agree-budgets (budgets start pos slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil))
+  (if (atom budgets) t
+    (and (fn2-gu-frame-agree-caps (car budgets) '(4 512) start pos slot gen fn2-pool)
+         (fn2-gu-frame-agree-budgets (cdr budgets) start pos slot gen fn2-pool))))
+(in-theory (disable fn2-gu-frame-agree-budgets))
+(defun fn2-gu-frame-agree-pos (left start pos slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix left)))
+  (if (zp left) t
+    (and (fn2-gu-frame-agree-budgets '(0 1 3 4096) start pos slot gen fn2-pool)
+         (fn2-gu-frame-agree-pos (- left 1) start (+ 1 pos) slot gen fn2-pool))))
+(in-theory (disable fn2-gu-frame-agree-pos))
+(defun fn2-gu-frame-agree-start (left start n slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix left)))
+  (if (zp left) t
+    (and (fn2-gu-frame-agree-pos (min 20 (+ 1 (nfix (- n start)))) start start slot gen fn2-pool)
+         (fn2-gu-frame-agree-start (- left 1) (+ 1 start) n slot gen fn2-pool))))
+(in-theory (disable fn2-gu-frame-agree-start))
+(defun fn2-gu-frame-agree-octets (octets)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
+        (mv-let (c slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+          (declare (ignore c))
+          (mv-let (rest fn2-pool) (fn2-nntp-feed (len octets) octets slot gen fn2-pool)
+            (declare (ignore rest))
+            (mv (fn2-gu-frame-agree-start (+ 1 (len octets)) 0 (len octets) slot gen fn2-pool) fn2-pool))))
+      result)))
+(in-theory (disable fn2-gu-frame-agree-octets))
+(defun fn2-gu-frame-agree-all (ts)
+  (declare (xargs :verify-guards nil))
+  (if (atom ts) t (and (fn2-gu-frame-agree-octets (car ts)) (fn2-gu-frame-agree-all (cdr ts)))))
+(assert-event (fn2-gu-frame-agree-all *fn2-gu-short-transcripts*))
