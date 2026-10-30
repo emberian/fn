@@ -311,11 +311,18 @@ wait-reason, deadline):
 | `pending borrows` | u32 u32 | outstanding ops; TX bytes lent to a Send |
 | `mask` | u8 | the grammar state mask (`*fn2-nntp-state-reader*` etc.): reader or peer, anonymous or authenticated |
 | `ordinal` | u32 | commands answered on this connection |
-| `selected-view` | u60 | the selected view (pinned logical version; STORAGE-DESIGN §4 decision 2): `*fn2-none*` until D6 selects one |
-| `auth-ref access-ref config-ref` | u32 u32 u32 | the principal's authentication reference (none = anonymous); the pinned access rule (W01); the configuration generation pinned at admission |
+| `access-ref` | u32 | the pinned access rule (W01): the anonymous rule (0) at admission, re-pinned only by E2's authentication arm |
 | `auth-pending` | u8 | H's shared pending slot: none, AUTHINFO USER, SASL, XREDEEM (starting any replaces the others) |
-| `requests uses` | u32 u32 | the active request reference (cursor, upload, transaction, TLS row; none in D3) and the outstanding-use count |
-| `refused stopped event-ready` | bool bool bool | admitted into the refusal reserve; the row's stop bit; an observation is waiting |
+| `refused stopped next-free` | bool bool link | admitted into the refusal reserve; the row's stop bit; the partition's free chain (A's admission) |
+
+**The 32-value limit, and the fields that wait for their quests.** The arm calling convention
+passes every row field as a scalar argument and the snapshot returns them through `mv`, which ACL2
+caps at 32 values: the common row (8 with the phase) leaves 24 fields to a kind. fn2-conn uses 22.
+So the fields whose subjects are later quests are added by those quests, not declared empty now:
+the selected view (D6), the authentication and configuration references (E2, D7), the active request
+reference and outstanding-use count (D4-D6). Seam note to A (sent with this commit): a kind with more
+than 24 fields (D4's upload and D5's transaction rows will be) needs the snapshot to pass only the
+fields an arm reads, or the row split into two tables.
 
 **Budget** `(:bytes 4096 :steps 32 :descriptors 4)` (ROUND2 §B.3). **Capacity** `(fn2-profile-c
 profile)`. **Pool class**: RX and TX are each one slot of the smallest class of at least
@@ -479,10 +486,15 @@ admission) as R6b's item, unchanged.
   greeting; every D3 command, positive and negative; pipelined lines; every split point of every
   transcript (T8's teeth); overflow, malformed and EOF closes; the compaction boundary; drain and
   reclaim with every count back; the deferred sub-form fixtures.
-- **WIRE** (`fn2/sim/check-wire.lisp`): replies have the expected bytes (fixture text, written from
-  the spec, never read from the grammar), CRLF framing, one status line per command in order, a
-  multi-line body dot-terminated, and after a close nothing more; mutation controls: a wrong byte,
-  a missing reply, a reply after close, each caught.
+- **WIRE** (`fn2/sim/check-wire.lisp`, built): an independent checker over one connection's client
+  octets, server octets and close. Its reply-code table by command keyword is written from RFC 3977,
+  4643, 4644, 8054 and specs/nntp.md (it reads neither the grammar nor the core). It checks the
+  greeting (200/201, or 400 then close), one reply per client line in order with an admitted code,
+  status-line framing, multi-line bodies by command (dot-stuffed, `.CRLF`-terminated), 501 as the
+  last reply to a line the spec makes malformed (a NUL, over 512 octets), nothing after a closing
+  reply, a closing reply only on a closed stream, and an unfinished body only on a closed stream. In
+  `tests/conn-unit.lisp` it passes every fixture and the 24 random transcripts, and catches its three
+  mutation controls (a wrong status byte, a missing reply, a reply after the close).
 - With A's seam: `fn2/tests/sim-layer-d.lisp` scenario 1's plaintext anonymous half under the
   simulator's network with WIRE, and the fuzz campaign's served half (`fuzz-nntp`).
 - Keystones admitted (§7): T1 `fn2-turn-served-safety` and T8 `fn2-reply-trace-fragmentation-
@@ -694,9 +706,28 @@ from `(seed, class, mask, budget)`.
 | statement | admitted with | over |
 |---|---|---|
 | T10 `fn2-core-state-bounded` | D1a (owed, with teeth) | the assembled core's children and their `fn2-columns` rows: a generated resident measure, the same for every core initialized from one profile, and unchanged by `fn2-turn` and by the adapter-boundary entries `fn2-outbox-ack`, `fn2-post-result`, `fn2-post-clock` (no array grows after init) |
-| T1 `fn2-turn-served-safety`, T8 `fn2-reply-trace-fragmentation-invariant` / `fn2-connection-privacy` | D3 | the connection machine and grammar |
+| T1 `fn2-turn-served-safety`, T8 `fn2-reply-trace-fragmentation-invariant` / `fn2-connection-privacy`, and the interim `fn2-conn-reader-only-interim` | D3 (owed, with teeth: `fn2/books/owed-conn.lisp`, `fn2/tests/conn-unit.lisp`) | `fn2-conn-wire-run`, the served core at its adapter boundary with scripted clients (octets in chunks in, wire and close out, stop reason) |
 | T6 `fn2-refusal-no-committed-mutation` / `fn2-outcomes-three`, T9 `fn2-exact-identity` | D5 | the transaction machine, C's identity schema, B's commit batch |
 | closure audit `fn2/tests/turn-guards.lisp` | D9 | `fn2-turn`'s executable closure |
+
+**T1 and T8 as built (D3).** `fn2/books/owed-conn.lisp` defines the logical view
+`fn2-conn-wire-run`: the served core (`fn2-init-executor` with `:listener-targets fn2-conn` and a
+pool of 1,024-octet slots) driven by real turns, with an adapter that completes the outbox head:
+Accepts in client order (capability index = client index), each Receive with the client's next
+chunk (left pending once the client has sent everything), each Send recorded on the client's wire
+with its terminal and release, each Close. It returns, per client, the wire and whether the core
+closed it, plus the status (`:quiet` after three idle rounds) and the core's stop reason. T1:
+any client octets in any chunks on up to four connections end quiescent with the core never
+stopped (every run, handler and reached call kept its contract and guard, since a violation stops
+the core by name). T8 fragmentation: a client's wire and close do not depend on its chunking. T8
+privacy: a client's wire and close in a two-client run are those it gets alone (D3's only shared
+input is the clock, not posted in these runs). The peer-address interim is owed too: a first
+`MODE STREAM` gets the reader greeting and 501, whatever follows; lifting it (A5r's address words,
+E4's peer records) replaces the row. Teeth (`tests/conn-unit.lisp`): seven spec-written transcripts
+(the greeting alone, pipelined CAPABILITIES/HELP/QUIT, DATE/MODE, unknown/interim/NEXT, a NUL, a
+600-octet line, 150 lines across the slot); every split point and bytewise arrival of the short
+ones and 7- and 300-octet chunkings of the long ones; four two-client pairs; 24 seeded random
+transcripts in seeded chunks; each negative tooth refuses a wrong runner or result.
 
 **T10 as built (D1a).** `fn2/books/resident.lisp` is a library over the core-child registry. Its
 generator, `fn2-resident-measure-events`, emits one measure per registered child: the rows scalar
@@ -813,5 +844,5 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
 | D2c | framer onto R6a1's scan (drop-prefix is the connection's compaction) | R6a1 | done |
-| D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8 | R7 (landed), D0, D2; the listener seam (§4.5) for the simulator half | design written |
+| D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8 | R7, the admission seam a20fac18f | decision table af591acec; machine assembled (2/n); next WIRE, T1/T8, scenario 1 |
 | D4-D9 | per the brief | per the brief | |

@@ -22,6 +22,7 @@
 (include-book "fn2/tests/commit-proof-unit")
 (include-book "fn2/tests/grammar-unit")
 (include-book "fn2/tests/owed-d-unit")
+(include-book "fn2/tests/conn-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")
 ; Other layers' unit and checker books are included above this line.

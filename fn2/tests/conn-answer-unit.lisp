@@ -111,6 +111,8 @@
     (authinfo-user "AUTHINFO USER alice" ,*fn2-cau-reader* :redeem (nil 0 0) :command :user ("381 password required") t)
     (authinfo-pass "AUTHINFO PASS secret" ,*fn2-cau-reader* :user (nil 0 0) :command :none ("481 authentication failed") t)
     (authinfo-pass-alone "AUTHINFO PASS secret" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("482 authentication commands issued out of sequence") t)
+    ; H7-07: AUTHINFO PASS after a pending XREDEEM is out of sequence (RFC 4643; fn1's 481 is its bug).
+    (authinfo-pass-after-redeem "AUTHINFO PASS secret" ,*fn2-cau-reader* :redeem (nil 0 0) :command :redeem ("482 authentication commands issued out of sequence") t)
     (authinfo-user-arity "AUTHINFO USER" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) t)
     (authinfo-user-extra "AUTHINFO USER a b" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) t)
     (authinfo-sasl "AUTHINFO SASL PLAIN" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("503 mechanism not recognized") t)
