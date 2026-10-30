@@ -11,7 +11,7 @@ import unittest
 
 from fn2.tests.harness import run_natives, shim
 from fn2.tests.surface.live_evidence import json_value
-from . import FAMILIES, MANIFEST, RUN, form_suite, fuzz_allocations, driver, native_timeout
+from . import FAMILIES, MANIFEST, RUN, TARGETS, backend, form_suite, fuzz_allocations, driver, native_timeout
 
 
 def intended_skip(record, module=None):
@@ -181,7 +181,7 @@ def child_main(config):
         name = request['test'].rsplit('.test_native_', 1)[1]
         RUN['native_envs'] = {name: dict(os.environ)}
     try:
-        shim.install(request['target'])
+        shim.install(backend(request['target']))
         tests = [test for test in run_natives.flatten(form_suite(request['family'], request['form']))
                  if test.id() == request['test']]
         if len(tests) != 1:
@@ -300,7 +300,7 @@ def main(argv=None):
     select.add_argument('--family', help='comma-separated families; hyphen aliases accepted')
     select.add_argument('--all', action='store_true')
     parser.add_argument('--box', choices=('laptop', 'hbox'), default='laptop')
-    parser.add_argument('--target', choices=('fn1', 'fn2'), default=os.environ.get('FN2_SURFACE_TARGET', 'fn2'))
+    parser.add_argument('--target', choices=tuple(TARGETS), default=os.environ.get('FN2_SURFACE_TARGET', 'fn2'))
     parser.add_argument('--out', type=Path, default=Path('build/surface'))
     parser.add_argument('--pid-file', type=Path)
     parser.add_argument('--child-config', type=Path, help=argparse.SUPPRESS)
@@ -310,8 +310,8 @@ def main(argv=None):
     families = list(dict.fromkeys(f.strip().replace('-', '_') for f in args.family.split(','))) if args.family else list(FAMILIES)
     if any(f not in FAMILIES for f in families):
         parser.error('unknown family; choose ' + ','.join(FAMILIES))
-    if args.target not in MANIFEST['serves']:
-        parser.error('FN2_SURFACE_TARGET must be fn1 or fn2')
+    if args.target not in TARGETS:
+        parser.error('FN2_SURFACE_TARGET must be one of ' + ', '.join(TARGETS))
     args.out = args.out.resolve(); args.out.mkdir(parents=True, exist_ok=True)
     pidfile = args.pid_file or args.out / 'surface.pid'
     pidfile.parent.mkdir(parents=True, exist_ok=True)
@@ -328,7 +328,7 @@ def main(argv=None):
                   assertion_metric='TestCase-call count: assert*/fail* calls (including delegation), plus native subprocess counts; excludes Python assert and external driver internals',
                   families={}, errors=[])
     try:
-        shim.install(args.target)
+        shim.install(backend(args.target))
         if args.target == 'fn1':
             names = [name for f in families for name in FAMILIES[f]['carried_natives']]
             options = argparse.Namespace(backend='fn1', env_plan=os.environ.get('FN2_SURFACE_IMAGES',

@@ -1,5 +1,6 @@
 """SimTarget/SimClient over a fake simulator session (the model's own fake renderer behind a session API)."""
 import os
+import sys
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -85,6 +86,61 @@ class SimTargetUnit(unittest.TestCase):
             with self.assertRaisesRegex(unittest.SkipTest, 'simulator session owed'):
                 sim_target.SimTarget(self)
 
+    def test_native_target_is_the_same_target_over_its_own_hook(self):
+        with mock.patch.dict(os.environ, {'FN2_SURFACE_NATIVE_NNTP': __name__ + ':hook'}):
+            os.environ.pop('FN2_SURFACE_SIM_NNTP', None)
+            client = sim_target.NativeTarget(self).connect()
+            self.assertTrue(client.command(b'GROUP fn.test').startswith(b'211'))
+        with mock.patch.dict(os.environ, {'FN2_SURFACE_NATIVE_NNTP': __name__ + ':refusing_hook'}):
+            case = unittest.TestCase()
+            sim_target.NativeTarget(case).connect()
+            function, args, kwargs = case._cleanups.pop()
+            with self.assertRaisesRegex(AssertionError, 'WIRE refused native connections'):
+                function(*args, **kwargs)
+        with mock.patch.dict(os.environ, {'FN2_SURFACE_SIM_NNTP': __name__ + ':hook'}):
+            os.environ.pop('FN2_SURFACE_NATIVE_NNTP', None)
+            with self.assertRaisesRegex(unittest.SkipTest, 'socket session owed'):
+                sim_target.NativeTarget(self)
+
+    def test_a_reused_id_leaves_a_connection_unjudged(self):
+        # A session keying its records by slot judges only each slot's last incarnation: two opens, one verdict.
+        class SlotSession(FakeSession):
+            def open(self, peer=False):
+                cid, greeting = super().open(peer)
+                self.conns = {0: self.conns[cid]}
+                return 0, greeting
+        with mock.patch.object(sys.modules[__name__], 'hook', lambda case, family, out: SlotSession()), \
+                mock.patch.dict(os.environ, {'FN2_SURFACE_SIM_NNTP': __name__ + ':hook'}):
+            case = unittest.TestCase()
+            case.evidence = {}
+            target = sim_target.SimTarget(case)
+            target.connect(); target.connect()
+            function, args, kwargs = case._cleanups.pop()
+            with self.assertRaisesRegex(AssertionError, 'WIRE judged 1 of 2 sim connections'):
+                function(*args, **kwargs)
+            self.assertEqual(case.evidence['wire']['unjudged'], 1)
+
+    def test_targets_pick_their_carrier_and_backend(self):
+        # fn2 runs nntp S under the simulator, fn2-native on the socket; both are fn2's Node backend, and a
+        # family neither carrier names stays a named not-yet-serving skip under fn2-native.
+        from fn2.tests import surface
+        from fn2.tests.surface.nntp.test_model_nntp import TestSurface
+        self.assertEqual({t: surface.backend(t) for t in surface.TARGETS},
+                         {'fn1': 'fn1', 'fn2': 'fn2', 'fn2-native': 'fn2'})
+        self.assertEqual(surface.MANIFEST['serves']['fn2-native'], [])
+        carriers = []
+        with mock.patch.object(TestSurface, 'sim_state_machine', lambda self, carrier: carriers.append(carrier)):
+            for target in ('fn2', 'fn2-native'):
+                with mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': target}):
+                    TestSurface('test_live_state_machine').test_live_state_machine()
+        self.assertEqual(carriers, ['SIM', 'NATIVE'])
+        with mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': 'fn2-native'}):
+            gated = surface.serving('consumer')(lambda: self.fail('ran an unserved family'))
+            with self.assertRaisesRegex(unittest.SkipTest, 'not yet serving'):
+                gated()
+        with mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': 'fn3'}):
+            with self.assertRaises(ValueError):
+                surface.backend()
 
     def test_sim_machine_lines_against_the_interim_table(self):
         # Every interim line names a verb the table holds; no served line names an interim verb with its

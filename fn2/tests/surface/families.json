@@ -2046,7 +2046,8 @@
       "config_limits",
       "store_ops"
     ],
-    "fn2": []
+    "fn2": [],
+    "fn2-native": []
   },
   "native_timeout_overrides": {
     "open_depth": {
@@ -2071,7 +2072,16 @@
     "fn1": [],
     "fn2": [
       "nntp"
+    ],
+    "fn2-native": []
+  },
+  "serves_sim_note": "S forms that run through layer D's simulator session (sim_target.SimTarget, FN2_SURFACE_SIM_<FAMILY>) before the family serves on a socket: M1a, nntp under D3 (fn2_conn_interim.json names the interim replies).",
+  "serves_native": {
+    "fn1": [],
+    "fn2": [],
+    "fn2-native": [
+      "nntp"
     ]
   },
-  "serves_sim_note": "S forms that run through layer D's simulator session (sim_target.SimTarget, FN2_SURFACE_SIM_<FAMILY>) before the family serves on a socket: M1a, nntp under D3 (fn2_conn_interim.json names the interim replies)."
+  "serves_native_note": "S forms that run against fn2 on a real loopback socket through layer A's session hook (FN2_SURFACE_NATIVE_<FAMILY>=module:callable, the simulator session's API over the native event loop; sim_target.NativeTarget): M1b, nntp under D3 with the same served-verb restriction and interim table as the simulator run. The target fn2-native is fn2's Node backend otherwise: every family not named here is not yet serving."
 }

@@ -31,6 +31,18 @@ REQUIREMENTS = {
     'store_ops': 'store needs store STORE ...',
 }
 RUN = {}
+# A target names what answers (fn1, or fn2 under one carrier) and the Node backend its natives run against:
+# fn2 is the simulator carrier for serves_sim's S forms, fn2-native the loopback-socket carrier for
+# serves_native's; both are fn2's backend for everything else.
+TARGETS = {'fn1': 'fn1', 'fn2': 'fn2', 'fn2-native': 'fn2'}
+
+
+def backend(target=None):
+    """The Node backend (fn1 or fn2) behind a surface target."""
+    target = os.environ.get('FN2_SURFACE_TARGET', 'fn2') if target is None else target
+    if target not in TARGETS:
+        raise ValueError('FN2_SURFACE_TARGET must be one of ' + ', '.join(TARGETS))
+    return TARGETS[target]
 
 
 def box_budget():
@@ -105,8 +117,10 @@ def adjudicate_differences(rows, target, evidence_dir=None):
             and row.get('reply_hex') in g['reply_patterns']
             and (PREDICATES[g['match']](evidence) if 'match' in g
                  else row.get('command_hex') == g['command_pattern'])), None)
-        recorded = group is not None and (target == 'fn1' or
-            (target == 'fn2' and group['primary_class'] == 'spec-ambiguity'))
+        # The differential's own targets (fake) are no surface target: they record nothing.
+        node = TARGETS.get(target, target)
+        recorded = group is not None and (node == 'fn1' or
+            (node == 'fn2' and group['primary_class'] == 'spec-ambiguity'))
         result.append(dict(row, disposition='recorded' if recorded else 'new',
                            group=group['group'] if group else None,
                            match=group.get('match') if group else None,
@@ -120,8 +134,7 @@ def serving(family):
         @functools.wraps(call)
         def wrapped(*args, **kwargs):
             target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
-            if target not in MANIFEST['serves']:
-                raise ValueError('FN2_SURFACE_TARGET must be fn1 or fn2')
+            backend(target)
             if family not in MANIFEST['serves'][target]:
                 raise unittest.SkipTest(SKIP + ': ' + REQUIREMENTS[family])
             return call(*args, **kwargs)
@@ -233,7 +246,7 @@ class SurfaceCase(unittest.TestCase):
 
     def native(self, family, name):
         out = output(family) / 'natives'; out.mkdir(exist_ok=True)
-        args = argparse.Namespace(out=str(out), backend=os.environ.get('FN2_SURFACE_TARGET', 'fn2'), retired_skip=True,
+        args = argparse.Namespace(out=str(out), backend=backend(), retired_skip=True,
                                   timeout=native_timeout(name), env_plan=os.environ.get('FN2_SURFACE_IMAGES',
                                   'developer,production,dtn,dtn-developer,reference,developer-stripped'),
                                   identity=os.environ.get('FN2_SURFACE_IDENTITY'),

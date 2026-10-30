@@ -648,11 +648,41 @@ Run on the laptop (certified `tests/conn-unit`, `sim/echo`, `sim/check-wire`; h-
 1,000 examples of up to 50 steps in 75 s.
 - **16,730 served replies, 0 disagreements.**
 - 15,741 interim replies across 18 verbs, all named: POST 713 as D5, the other 17 verbs as D6.
-- Every connection's WIRE verdict ok.
+- WIRE ok on the 4 connections it judged, out of 17,776 (H11 below: the session judged only each slot's last connection).
 
 One model change came from the first run. A node that offers no SASL mechanism answers `AUTHINFO SASL
 PLAIN` with 503, not 483. 483 is for a mechanism the node would accept under TLS (RFC 4643 2.4). The CAPABILITIES rule
 gains `advertise_authinfo` for a node with no credential store.
+
+## H11: the rerun at dev 83ced3bf9, WIRE's coverage, and the native target (M1b's run, prepared)
+
+**Rerun.** The nntp S form ran under the simulator at dev 83ced3bf9, which is 03b4a2f41 (D4 2/n, A5r 2/3)
+plus C1c's foundation commit. The command was `run_surface --target fn2 --family nntp`, with 1,000 examples
+of up to 50 steps, on the laptop in 99 s. The counts match H8b exactly:
+- 16,730 served replies, 0 disagreements.
+- 15,741 interim replies across 18 verbs: POST 713 (D5), the other 17 verbs D6.
+
+**WIRE's coverage.** The run opened 17,776 connections and WIRE returned 4 verdicts. `fn2/tests/sim-session.lsp`
+keys `fn2-ss-clients` by capability slot, and a fresh incarnation on a slot replaces the previous record. So
+stop judges only each slot's last connection, and H8b's "WIRE ok on every connection" covered 4 of them.
+SimTarget now records `opened` / `judged` / `unjudged` in the evidence. A case fails when a connection it
+opened has no verdict of its own. The S form is therefore red until the session gives every open its own
+id and verdict. That fix is layer D's, sent to main as a case.
+
+**The native target.** `--target fn2-native` is fn2's Node backend, with its S forms carried on a real socket.
+`families.json` has `serves_native` beside `serves_sim`, each keyed by target. `fn2-native` names nntp, and
+`serves.fn2-native` is empty, so every other form stays a named not-yet-serving skip. The nntp S form
+dispatches by carrier. `serves_sim` runs `sim_target.SimTarget` over `FN2_SURFACE_SIM_NNTP`, and
+`serves_native` runs `sim_target.NativeTarget` over `FN2_SURFACE_NATIVE_NNTP`. Both use the same session
+API, the same served-verb restriction (D3's profile) and the same interim table, `fn2_conn_interim.json`.
+Without the hook, the case is a named skip: "socket session owed ... (layer A, A5r 3/3)". When 3/3 lands,
+the first run against the port is:
+
+    FN2_SURFACE_NATIVE_NNTP=<3/3's module:callable> FN2_SIM_EXAMPLES=1000 FN2_SIM_STEPS=50 \
+      build/h-venv/bin/python -m fn2.tests.surface.run_surface --target fn2-native --family nntp --out DIR
+
+The counts are read from DIR/surface.json, or printed by h-quests/h8-counts.py DIR. M1b's gate is zero
+disagreements on served verbs, every interim reply named, and a WIRE verdict of ok for every opened connection.
 
 ## The nightly of 2026-10-30 (fn1, hbox, every family and every H7 driver)
 

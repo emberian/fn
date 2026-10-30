@@ -106,20 +106,24 @@ class TestSurface(SurfaceCase):
         import os
         from fn2.tests.surface import MANIFEST
         target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
-        if target == 'fn2' and 'nntp' in MANIFEST.get('serves_sim', {}).get('fn2', []):
-            return self.sim_state_machine()
+        if 'nntp' in MANIFEST['serves_sim'].get(target, []):
+            return self.sim_state_machine('SIM')
+        if 'nntp' in MANIFEST['serves_native'].get(target, []):
+            return self.sim_state_machine('NATIVE')
         return serving('nntp')(lambda self: run_live_machine(self, 'nntp', machine(self)))(self)
 
-    def sim_state_machine(self):
-        """fn2 under the simulator (M1a): served verbs judged by the model, interim replies named OWED."""
+    def sim_state_machine(self, carrier):
+        """fn2 through a session carrier, the simulator (M1a) or the native loop on a socket (M1b): served verbs
+        judged by the model, interim replies named OWED."""
         import os
         from hypothesis import Phase, settings
         from hypothesis.stateful import run_state_machine_as_test
         from fn2.tests.surface import output
         from fn2.tests.surface.nntp import sim_nntp
-        from fn2.tests.surface.sim_target import SimTarget
+        from fn2.tests.surface.sim_target import NativeTarget, SimTarget
         from fn2.tests.surface.live_evidence import failure_context
-        target = SimTarget(self, 'nntp', out=str(output('nntp')))
+        target = dict(SIM=SimTarget, NATIVE=NativeTarget)[carrier](self, 'nntp', out=str(output('nntp')))
+        self.evidence['carrier'] = carrier
         owed, served = {}, {}
         self.evidence['owed_interim'], self.evidence['served_checked'] = owed, served
         examples = int(os.environ.get('FN2_SIM_EXAMPLES', '100'))

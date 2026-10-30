@@ -21,6 +21,14 @@ uses the same environment variable and the same shared `serving` decorator.
 fn2 claims none until layer D declares them. An unserved family skips before
 invoking a driver, with `layer D/E not yet serving` followed by its relevant
 first `node.Fn2Backend` execution requirement. These skips are **NOT RUN**, exit 3.
+Before a family serves through the Node adapter, its S form can run against fn2
+through a carrier: `--target fn2` with the family in `serves_sim.fn2` runs it under
+layer D's simulator session (`FN2_SURFACE_SIM_<FAMILY>`, `sim_target.SimTarget`), and
+`--target fn2-native` with the family in `serves_native.fn2-native` runs it against the
+native event loop on a loopback socket (`FN2_SURFACE_NATIVE_<FAMILY>`, the same session
+API, `sim_target.NativeTarget`). Both judge served verbs by the model and name the
+interim table's replies (`fn2_conn_interim.json`); `fn2-native` is fn2's Node backend
+for every other form.
 
 ## Forms and scope
 
