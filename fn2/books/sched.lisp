@@ -20,24 +20,69 @@
    (fn2-sched-cursor :type (unsigned-byte 32) :initially 0 :why "One calendar position is shared by all visits.")
    (fn2-sched-queued :type (unsigned-byte 32) :initially 0 :why "Aggregate runnable population permits constant-time eligibility.")))
 
-; Init accepts precisely the declared calendar geometry.  Each group has up
-; to sixteen principal slots and all four protected services, in that order.
+;; The weighted calendar (D7's S3).  A principal slot of weight w (1..255) appears w times per
+;; round: pass k lists, in slot order, every slot whose weight exceeds k.  After every sixteen
+;; principal entries, and after the last, the four services follow (commit, timer/grant, wake,
+;; maintenance).  L = W + 4*ceiling(W/16) for W the sum of the weights
+;; (`fn2-profile-calendar-length`); with every weight 1 it is the unweighted calendar, entry
+;; for entry.  A calendar with any weight above 1 has at most 4,096 entries.
+(defconst *fn2-sched-weighted-calendar-max* 4096)
+(defun fn2-sched-weightsp (weights)
+  (declare (xargs :guard t))
+  (if (atom weights) (null weights)
+    (and (integerp (car weights)) (<= 1 (car weights)) (<= (car weights) 255)
+         (fn2-sched-weightsp (cdr weights)))))
+(defun fn2-sched-weights-onesp (weights)
+  (declare (xargs :guard t))
+  (if (atom weights) t (and (equal (car weights) 1) (fn2-sched-weights-onesp (cdr weights)))))
+(defun fn2-sched-weights-max (weights)
+  (declare (xargs :guard t))
+  (if (atom weights) 0 (max (nfix (car weights)) (fn2-sched-weights-max (cdr weights)))))
+(defun fn2-sched-pass (weights k slot)
+  (declare (xargs :guard (and (natp k) (natp slot))))
+  (if (atom weights) nil
+    (if (< k (nfix (car weights)))
+        (cons slot (fn2-sched-pass (cdr weights) k (+ 1 slot)))
+      (fn2-sched-pass (cdr weights) k (+ 1 slot)))))
+(defun fn2-sched-principal-sequence (weights k top)
+  (declare (xargs :guard (and (natp k) (natp top)) :measure (nfix (- (nfix top) (nfix k)))))
+  (if (or (not (natp k)) (>= k (nfix top))) nil
+    (append (fn2-sched-pass weights k 0)
+            (fn2-sched-principal-sequence weights (+ 1 k) top))))
+(defun fn2-sched-calendar-entries (sequence p in-block)
+  (declare (xargs :guard (and (natp p) (natp in-block))))
+  (if (atom sequence) nil
+    (cons (car sequence)
+          (if (or (atom (cdr sequence)) (>= in-block (1- *fn2-calendar-principals-per-group*)))
+              (list* p (+ p 1) (+ p 2) (+ p 3)
+                     (fn2-sched-calendar-entries (cdr sequence) p 0))
+            (fn2-sched-calendar-entries (cdr sequence) p (+ 1 in-block))))))
+(defun fn2-sched-calendar-list (weights)
+  (declare (xargs :guard t))
+  (fn2-sched-calendar-entries
+   (fn2-sched-principal-sequence weights 0 (fn2-sched-weights-max weights)) (len weights) 0))
+
+;; WEIGHTS is the calendar's weight list, one per principal slot (the core passes
+;; `(fn2-profile-weights profile)`).
+(defun fn2-sched-init-weightsp (profile weights)
+  (declare (xargs :guard t))
+  (and (fn2-sched-weightsp weights)
+       (equal (len weights) (nfix (fn2-profile-p profile)))
+       (unsigned-byte-p 32 (len (fn2-sched-calendar-list weights)))))
+
+; Init accepts precisely the declared calendar geometry: the profile's weights (all 1 unless
+; :accounts configures them), one per principal slot.
 (defun fn2-sched-profilep (profile)
   (declare (xargs :guard t))
   (and (fn2-profilep profile)
        (posp (fn2-profile-p profile)) (<= (fn2-profile-p profile) 65536)
-       (unsigned-byte-p 32 (fn2-profile-calendar-length profile))))
-
-(defun fn2-sched-calendar-code (position principals)
-  (declare (xargs :guard (and (natp position) (natp principals))))
-  (let* ((full (floor principals *fn2-calendar-principals-per-group*)) (full-end (* full *fn2-calendar-group-size*)))
-    (if (< position full-end)
-        (let ((group (floor position *fn2-calendar-group-size*)) (within (mod position *fn2-calendar-group-size*)))
-          (if (< within *fn2-calendar-principals-per-group*) (+ (* group *fn2-calendar-principals-per-group*) within)
-            (+ principals (- within *fn2-calendar-principals-per-group*))))
-      (let ((within (- position full-end)) (remaining (mod principals *fn2-calendar-principals-per-group*)))
-        (if (< within remaining) (+ (* full *fn2-calendar-principals-per-group*) within)
-          (+ principals (- within remaining)))))))
+       (fn2-sched-init-weightsp profile (fn2-profile-weights profile))
+       (or (fn2-sched-weights-onesp (fn2-profile-weights profile))
+           (<= (len (fn2-sched-calendar-list (fn2-profile-weights profile)))
+               *fn2-sched-weighted-calendar-max*))))
+(defthm fn2-sched-profilep-weights
+  (implies (fn2-sched-profilep profile)
+           (fn2-sched-init-weightsp profile (fn2-profile-weights profile))))
 
 (defun fn2-sched-principalp (principal fn2-sched)
   (declare (xargs :stobjs fn2-sched))
@@ -80,31 +125,32 @@
            (fn2-schedp (fn2-sched-clear-principals i fn2-sched))))
 (in-theory (disable fn2-sched-clear-principals))
 
-(defun fn2-sched-fill-calendar (i fn2-sched)
+(defun fn2-sched-fill-calendar (i codes fn2-sched)
   (declare (xargs :stobjs fn2-sched :guard (natp i)
-                  :measure (nfix (- (fn2-sched-calendar-length fn2-sched) (nfix i)))))
-  (if (or (not (natp i)) (>= i (fn2-sched-calendar-length fn2-sched))) fn2-sched
-    (let* ((code (fn2-sched-calendar-code i (fn2-sched-nprincipals fn2-sched)))
-           (fn2-sched (update-fn2-sched-calendari
-                       i (if (unsigned-byte-p 32 code) code 0) fn2-sched)))
-      (fn2-sched-fill-calendar (+ 1 i) fn2-sched))))
+                  :measure (len codes)))
+  (if (or (atom codes) (not (natp i)) (>= i (fn2-sched-calendar-length fn2-sched))) fn2-sched
+    (let ((fn2-sched (update-fn2-sched-calendari
+                      i (if (unsigned-byte-p 32 (car codes)) (car codes) 0) fn2-sched)))
+      (fn2-sched-fill-calendar (+ 1 i) (cdr codes) fn2-sched))))
 (defthm fn2-sched-fill-calendar-wfp
   (implies (fn2-sched-wfp fn2-sched)
-           (fn2-sched-wfp (fn2-sched-fill-calendar i fn2-sched))))
+           (fn2-sched-wfp (fn2-sched-fill-calendar i codes fn2-sched))))
 (defthm fn2-sched-fill-calendar-type
   (implies (and (fn2-schedp fn2-sched) (fn2-sched-wfp fn2-sched) (natp i))
-           (fn2-schedp (fn2-sched-fill-calendar i fn2-sched))))
+           (fn2-schedp (fn2-sched-fill-calendar i codes fn2-sched))))
 (in-theory (disable fn2-sched-fill-calendar))
 
-(defun fn2-sched-init (profile n fn2-sched)
-  (declare (xargs :stobjs fn2-sched :guard (and (fn2-sched-profilep profile) (unsigned-byte-p 32 n))))
+(defun fn2-sched-init (profile weights n fn2-sched)
+  (declare (xargs :stobjs fn2-sched
+                  :guard (and (fn2-sched-profilep profile) (fn2-sched-init-weightsp profile weights)
+                              (unsigned-byte-p 32 n))))
   (let* ((p (fn2-profile-p profile))
-         (l (fn2-profile-calendar-length profile))
+         (codes (fn2-sched-calendar-list weights))
          (fn2-sched (fn2-sched-columns-init n fn2-sched))
          (fn2-sched (resize-fn2-sched-heads p fn2-sched))
          (fn2-sched (resize-fn2-sched-tails p fn2-sched))
          (fn2-sched (resize-fn2-sched-counts p fn2-sched))
-         (fn2-sched (resize-fn2-sched-calendar l fn2-sched))
+         (fn2-sched (resize-fn2-sched-calendar (len codes) fn2-sched))
          (fn2-sched (update-fn2-sched-nprincipals p fn2-sched))
          (fn2-sched (update-fn2-sched-cursor 0 fn2-sched))
          (fn2-sched (update-fn2-sched-queued 0 fn2-sched))
@@ -114,14 +160,14 @@
          (fn2-sched (update-fn2-sched-servicesi 3 0 fn2-sched))
          (fn2-sched (fn2-sched-clear-machines 0 fn2-sched))
          (fn2-sched (fn2-sched-clear-principals 0 fn2-sched)))
-    (fn2-sched-fill-calendar 0 fn2-sched)))
+    (fn2-sched-fill-calendar 0 codes fn2-sched)))
 (defthm fn2-sched-init-wfp
   (implies (and (fn2-sched-profilep profile) (unsigned-byte-p 32 n))
-           (fn2-sched-wfp (fn2-sched-init profile n fn2-sched))))
+           (fn2-sched-wfp (fn2-sched-init profile weights n fn2-sched))))
 (defthm fn2-sched-init-type
   (implies (and (fn2-schedp fn2-sched) (fn2-sched-profilep profile) (unsigned-byte-p 32 n))
-           (fn2-schedp (fn2-sched-init profile n fn2-sched))))
-(in-theory (disable fn2-sched-init fn2-sched-profilep fn2-sched-calendar-code))
+           (fn2-schedp (fn2-sched-init profile weights n fn2-sched))))
+(in-theory (disable fn2-sched-init fn2-sched-profilep fn2-sched-init-weightsp))
 
 (defun fn2-sched-make-runnable (machine principal fn2-sched)
   (declare (xargs :stobjs fn2-sched :guard (fn2-sched-wfp fn2-sched)))
@@ -291,23 +337,27 @@
 (in-theory (disable fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-reattribute fn2-sched-visit))
 
 ; Read-only evidence helpers, never called by the executor.
-(defun fn2-sched-calendar-validp (i fn2-sched)
-  (declare (xargs :stobjs fn2-sched :verify-guards nil
-                  :measure (nfix (- (fn2-sched-calendar-length fn2-sched) (nfix i)))))
-  (if (or (not (natp i)) (>= i (fn2-sched-calendar-length fn2-sched))) t
-    (and (equal (fn2-sched-calendari i fn2-sched)
-                (fn2-sched-calendar-code i (fn2-sched-nprincipals fn2-sched)))
-         (fn2-sched-calendar-validp (+ i 1) fn2-sched))))
-(defun fn2-sched-starvation-hyps (principal fn2-sched)
+(defun fn2-sched-calendar-matchp (codes i fn2-sched)
+  (declare (xargs :stobjs fn2-sched :verify-guards nil :measure (len codes)))
+  (if (atom codes) t
+    (and (natp i) (< i (fn2-sched-calendar-length fn2-sched))
+         (equal (fn2-sched-calendari i fn2-sched) (car codes))
+         (fn2-sched-calendar-matchp (cdr codes) (+ i 1) fn2-sched))))
+;; The calendar is the weighted calendar of WEIGHTS, one weight in 1..255 per principal slot.
+(defun fn2-sched-calendar-validp (weights fn2-sched)
+  (declare (xargs :stobjs fn2-sched :verify-guards nil))
+  (let ((codes (fn2-sched-calendar-list weights)))
+    (and (fn2-sched-weightsp weights)
+         (equal (len weights) (fn2-sched-nprincipals fn2-sched))
+         (equal (fn2-sched-calendar-length fn2-sched) (len codes))
+         (fn2-sched-calendar-matchp codes 0 fn2-sched))))
+(defun fn2-sched-starvation-hyps (principal weights fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
   (and (fn2-schedp fn2-sched) (fn2-sched-wfp fn2-sched)
        (fn2-sched-principalp principal fn2-sched)
        (< 0 (fn2-sched-countsi principal fn2-sched))
        (< (fn2-sched-cursor fn2-sched) (fn2-sched-calendar-length fn2-sched))
-       (equal (fn2-sched-calendar-length fn2-sched)
-              (+ (fn2-sched-nprincipals fn2-sched)
-                 (* *fn2-calendar-services* (ceiling (fn2-sched-nprincipals fn2-sched) *fn2-calendar-principals-per-group*))))
-       (fn2-sched-calendar-validp 0 fn2-sched)))
+       (fn2-sched-calendar-validp weights fn2-sched)))
 (defun fn2-sched-visits-principal (left principal fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil :measure (nfix left)))
   (if (zp left) (mv nil fn2-sched)
@@ -315,16 +365,18 @@
       (declare (ignore position))
       (if (and (= kind 0) (equal slot principal)) (mv t fn2-sched)
         (fn2-sched-visits-principal (- left 1) principal fn2-sched)))))
-(defthm-owed fn2-sched-starvation (principal fn2-sched)
-  (implies (fn2-sched-starvation-hyps principal fn2-sched)
+(defthm-owed fn2-sched-starvation (principal weights fn2-sched)
+  (implies (fn2-sched-starvation-hyps principal weights fn2-sched)
            (mv-nth 0 (fn2-sched-visits-principal
                       (fn2-sched-calendar-length fn2-sched) principal fn2-sched)))
   :schema :bound :from (:operation fn2-sched)
   :teeth (fn2-sched-test-starvation fn2-sched-test-starvation-negative)
-  :doc "Actual scheduler visit sequence grants a continuously eligible principal an opportunity within calendar length L visits. This is an opportunity bound, not dependency progress or machine completion.")
+  :doc "Actual scheduler visit sequence over any weighted calendar (every principal weight 1..255) grants a continuously eligible principal an opportunity within calendar length L visits. This is an opportunity bound, not dependency progress or machine completion.")
 
 (assert-event (fn2-assert-compliant-p
- '(fn2-sched-profilep fn2-sched-calendar-code fn2-sched-principalp fn2-sched-init
+ '(fn2-sched-profilep fn2-sched-weightsp fn2-sched-weights-onesp fn2-sched-weights-max
+   fn2-sched-pass fn2-sched-principal-sequence fn2-sched-calendar-entries fn2-sched-calendar-list
+   fn2-sched-init-weightsp fn2-sched-principalp fn2-sched-init
    fn2-sched-make-runnable fn2-sched-pop-head fn2-sched-reattribute fn2-sched-visit
    fn2-sched-set-service fn2-sched-service-ready fn2-sched-eligiblep)
  (w state)))

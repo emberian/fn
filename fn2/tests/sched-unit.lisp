@@ -4,7 +4,7 @@
 
 (defun fn2-sched-test-fifo-run (fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
-  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
+  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* '(1 1 1 1) (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
        ((mv c0 fn2-sched) (fn2-sched-make-runnable 2 0 fn2-sched))
        ((mv c1 fn2-sched) (fn2-sched-make-runnable 3 0 fn2-sched))
        ((mv c2 fn2-sched) (fn2-sched-make-runnable 4 0 fn2-sched))
@@ -51,7 +51,7 @@
 (defun fn2-sched-test-reattribute-run (fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
   (b* ((none *fn2-none*)
-       (fn2-sched (fn2-sched-init *fn2-profile-tiny* (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
+       (fn2-sched (fn2-sched-init *fn2-profile-tiny* '(1 1 1 1) (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
        ((mv c0 fn2-sched) (fn2-sched-make-runnable 2 0 fn2-sched))
        ((mv c1 fn2-sched) (fn2-sched-make-runnable 3 0 fn2-sched))
        ((mv c2 fn2-sched) (fn2-sched-make-runnable 4 0 fn2-sched))
@@ -116,7 +116,7 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched
     (mv-let (result fn2-sched)
-      (let ((fn2-sched (fn2-sched-init profile (fn2-machine-index-count profile) fn2-sched)))
+      (let ((fn2-sched (fn2-sched-init profile (fn2-profile-weights profile) (fn2-machine-index-count profile) fn2-sched)))
         (fn2-sched-test-calendar-run n fn2-sched)) result)))
 (assert-event
  (equal (fn2-sched-test-calendar *fn2-profile-tiny* 9)
@@ -131,43 +131,86 @@
         (equal (nth 79 entries) '(4 0 79))
         (equal (nth 80 entries) '(0 0 0)))))
 
-; Every concrete principal, every starting calendar position: executable
-; whole-hypothesis and actual-visit conclusion, including cursor wraparound.
-(defun fn2-sched-test-starvation-cursors (cursor principal fn2-sched)
-  (declare (xargs :stobjs fn2-sched :verify-guards nil
-                  :measure (nfix (- 80 (nfix cursor)))))
-  (if (or (not (natp cursor)) (>= cursor 80)) (mv t fn2-sched)
+(defconst *fn2-sched-test-weighted*
+  (put-assoc-equal :accounts '((0 :state :anonymous :weight 3) (2 :state :configured :weight 2) (:system :weight 9)) *fn2-profile-tiny*))
+(assert-event
+ (and (equal (fn2-profile-weights *fn2-profile-tiny*) '(1 1 1 1))
+      (equal (fn2-profile-weights *fn2-sched-test-weighted*) '(3 1 2 1))
+      (equal (fn2-sched-calendar-list '(1 1 1 1)) '(0 1 2 3 4 5 6 7))
+      (equal (fn2-sched-calendar-list '(3 1 2 1)) '(0 1 2 3 0 2 0 4 5 6 7))
+      (fn2-sched-profilep *fn2-sched-test-weighted*)
+      ; L = W + 4*ceiling(W/16), weighted or not, against the list the scheduler is filled from
+      (equal (fn2-profile-calendar-length *fn2-profile-concrete*) 80)
+      (equal (len (fn2-sched-calendar-list (fn2-profile-weights *fn2-profile-concrete*))) 80)
+      (equal (fn2-profile-calendar-length *fn2-sched-test-weighted*) 11)
+      (equal (len (fn2-sched-calendar-list (make-list 17 :initial-element 2))) 46)
+      (equal (fn2-profile-calendar-length
+              (put-assoc-equal :p 17 (put-assoc-equal :accounts
+               '((0 :weight 2) (1 :weight 2) (2 :weight 2) (3 :weight 2) (4 :weight 2) (5 :weight 2)
+                 (6 :weight 2) (7 :weight 2) (8 :weight 2) (9 :weight 2) (10 :weight 2) (11 :weight 2)
+                 (12 :weight 2) (13 :weight 2) (14 :weight 2) (15 :weight 2) (16 :weight 2))
+               *fn2-profile-tiny*))) 46)
+      ; refusals: a weight outside 1..255, and a weighted calendar over 4,096 entries
+      (not (fn2-sched-profilep (put-assoc-equal :accounts '((1 :weight 0)) *fn2-profile-tiny*)))
+      (not (fn2-sched-profilep (put-assoc-equal :accounts '((1 :weight 256)) *fn2-profile-tiny*)))
+      (fn2-sched-profilep (put-assoc-equal :p 3276 *fn2-profile-tiny*))
+      (not (fn2-sched-profilep (put-assoc-equal :accounts '((0 :weight 2))
+                                (put-assoc-equal :p 3276 *fn2-profile-tiny*))))
+      (fn2-sched-profilep (put-assoc-equal :accounts '((0 :weight 2))
+                           (put-assoc-equal :p 3275 *fn2-profile-tiny*)))
+      ; an unweighted calendar keeps today's geometry beyond 4,096 entries
+      (fn2-sched-profilep (put-assoc-equal :p 65536 *fn2-profile-tiny*))))
+(assert-event
+ (equal (fn2-sched-test-calendar *fn2-sched-test-weighted* 12)
+        '((0 0 0) (0 1 1) (0 2 2) (0 3 3) (0 0 4) (0 2 5) (0 0 6)
+          (1 0 7) (2 0 8) (3 0 9) (4 0 10) (0 0 0))))
+
+; Every principal, every starting calendar position: executable whole-hypothesis and
+; actual-visit conclusion, including cursor wraparound; the concrete profile (80 entries)
+; and a weighted tiny one (11 entries).
+(defun fn2-sched-test-starvation-cursors (cursor l principal weights fn2-sched)
+  (declare (xargs :stobjs fn2-sched :verify-guards nil :measure (nfix (- (nfix l) (nfix cursor)))))
+  (if (or (not (natp cursor)) (>= cursor (nfix l))) (mv t fn2-sched)
     (b* ((fn2-sched (update-fn2-sched-cursor cursor fn2-sched))
-         (hyp (fn2-sched-starvation-hyps principal fn2-sched))
-         ((mv conclusion fn2-sched) (fn2-sched-visits-principal 80 principal fn2-sched)))
+         (hyp (fn2-sched-starvation-hyps principal weights fn2-sched))
+         ((mv conclusion fn2-sched)
+          (fn2-sched-visits-principal (fn2-sched-calendar-length fn2-sched) principal fn2-sched)))
       (if (and hyp conclusion)
-          (fn2-sched-test-starvation-cursors (+ cursor 1) principal fn2-sched)
+          (fn2-sched-test-starvation-cursors (+ cursor 1) l principal weights fn2-sched)
         (mv nil fn2-sched)))))
-(defun fn2-sched-test-starvation-principals (principal fn2-sched)
-  (declare (xargs :stobjs fn2-sched :verify-guards nil
-                  :measure (nfix (- 64 (nfix principal)))))
-  (if (or (not (natp principal)) (>= principal 64)) (mv t fn2-sched)
+(defun fn2-sched-test-starvation-principals (principal p weights fn2-sched)
+  (declare (xargs :stobjs fn2-sched :verify-guards nil :measure (nfix (- (nfix p) (nfix principal)))))
+  (if (or (not (natp principal)) (>= principal (nfix p))) (mv t fn2-sched)
     (b* (((mv code fn2-sched) (fn2-sched-make-runnable principal principal fn2-sched))
-         ((mv result fn2-sched) (fn2-sched-test-starvation-cursors 0 principal fn2-sched)))
+         ((mv result fn2-sched)
+          (fn2-sched-test-starvation-cursors 0 (fn2-sched-calendar-length fn2-sched) principal weights fn2-sched)))
       (if (and (eq code :ok) result)
-          (fn2-sched-test-starvation-principals (+ principal 1) fn2-sched)
+          (fn2-sched-test-starvation-principals (+ principal 1) p weights fn2-sched)
         (mv nil fn2-sched)))))
-(defun fn2-sched-test-starvation ()
+(defun fn2-sched-test-starvation-profile (profile)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched
     (mv-let (result fn2-sched)
-      (let ((fn2-sched (fn2-sched-init *fn2-profile-concrete* (fn2-machine-index-count *fn2-profile-concrete*) fn2-sched)))
-        (fn2-sched-test-starvation-principals 0 fn2-sched)) result)))
+      (let ((fn2-sched (fn2-sched-init profile (fn2-profile-weights profile)
+                                       (fn2-machine-index-count profile) fn2-sched)))
+        (fn2-sched-test-starvation-principals 0 (fn2-profile-p profile) (fn2-profile-weights profile) fn2-sched)) result)))
+(defun fn2-sched-test-starvation ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-sched-test-starvation-profile *fn2-profile-concrete*)
+       (fn2-sched-test-starvation-profile *fn2-sched-test-weighted*)))
 (assert-event (fn2-sched-test-starvation))
 
 (defun fn2-sched-test-starvation-negative-run (fn2-sched)
   (declare (xargs :stobjs fn2-sched :verify-guards nil))
-  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
+  (b* ((fn2-sched (fn2-sched-init *fn2-profile-tiny* '(1 1 1 1) (fn2-machine-index-count *fn2-profile-tiny*) fn2-sched))
        ((mv code fn2-sched) (fn2-sched-make-runnable 0 0 fn2-sched))
+       (good (fn2-sched-starvation-hyps 0 '(1 1 1 1) fn2-sched))
+       ; the hypothesis names the weights the calendar was built from
+       (other (fn2-sched-starvation-hyps 0 '(2 1 1 1) fn2-sched))
        (fn2-sched (update-fn2-sched-calendari 0 1 fn2-sched))
-       (hyp (fn2-sched-starvation-hyps 0 fn2-sched))
+       (hyp (fn2-sched-starvation-hyps 0 '(1 1 1 1) fn2-sched))
        ((mv conclusion fn2-sched) (fn2-sched-visits-principal 8 0 fn2-sched)))
-    (mv (and (eq code :ok) (not hyp) (not conclusion)) fn2-sched)))
+    (mv (and (eq code :ok) good (not other) (not hyp) (not conclusion)) fn2-sched)))
 (defun fn2-sched-test-starvation-negative ()
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-sched

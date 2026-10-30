@@ -32,25 +32,53 @@
      principal (append (true-list-fix (fn2-ref-queue principal queues))
                        (list machine)) queues)))
 
-; Build the specification text literally: at most sixteen principal entries,
-; then four distinct services, repeated until the principal list is exhausted.
-(defun fn2-ref-calendar-build (left principal in-block)
-  (declare (xargs :guard (and (natp left) (natp principal) (natp in-block))
-                  :measure (nfix left)))
-  (if (zp left) nil
-    (cons (list :principal principal)
-          (if (or (= left 1) (= in-block (1- *fn2-calendar-principals-per-group*)))
+; Build the specification text literally.  A round lists each principal slot once per unit of
+; its weight, pass by pass: pass k is the slots whose weight exceeds k, in slot order.  At most
+; sixteen principal entries, then four distinct services, repeated until the round is exhausted.
+(defun fn2-ref-weight-pass (weights k slot)
+  (declare (xargs :guard (and (natp k) (natp slot))))
+  (if (atom weights) nil
+    (if (< k (nfix (car weights)))
+        (cons (list :principal slot) (fn2-ref-weight-pass (cdr weights) k (+ 1 slot)))
+      (fn2-ref-weight-pass (cdr weights) k (+ 1 slot)))))
+(defun fn2-ref-weight-round (weights k)
+  (declare (xargs :guard (natp k) :measure (nfix (- 255 (nfix k)))))
+  (if (or (not (natp k)) (>= k 255)) nil
+    (let ((pass (fn2-ref-weight-pass weights k 0)))
+      (if (atom pass) nil (append pass (fn2-ref-weight-round weights (+ 1 k)))))))
+(defun fn2-ref-calendar-build (entries in-block)
+  (declare (xargs :guard (natp in-block)))
+  (if (atom entries) nil
+    (cons (car entries)
+          (if (or (atom (cdr entries)) (= in-block (1- *fn2-calendar-principals-per-group*)))
               (append '((:service 0) (:service 1) (:service 2) (:service 3))
-                      (fn2-ref-calendar-build (1- left) (+ 1 principal) 0))
-            (fn2-ref-calendar-build (1- left) (+ 1 principal) (+ 1 in-block))))))
-(defun fn2-ref-calendar (principals)
+                      (fn2-ref-calendar-build (cdr entries) 0))
+            (fn2-ref-calendar-build (cdr entries) (+ 1 in-block))))))
+(defun fn2-ref-calendar (weights)
   (declare (xargs :guard t))
-  (fn2-ref-calendar-build (nfix principals) 0 0))
+  (fn2-ref-calendar-build (fn2-ref-weight-round weights 0) 0))
+; The weights a literal calendar was built from: each slot's count of principal entries.
+(defun fn2-ref-calendar-count (calendar slot)
+  (declare (xargs :guard t))
+  (if (atom calendar) 0
+    (+ (if (equal (car calendar) (list :principal slot)) 1 0)
+       (fn2-ref-calendar-count (cdr calendar) slot))))
+(defun fn2-ref-calendar-weights (calendar slot p)
+  (declare (xargs :guard (and (natp slot) (natp p)) :measure (nfix (- (nfix p) (nfix slot)))))
+  (if (or (not (natp slot)) (>= slot (nfix p))) nil
+    (cons (fn2-ref-calendar-count calendar slot)
+          (fn2-ref-calendar-weights calendar (+ 1 slot) p))))
+(defun fn2-ref-weights-in-range (weights)
+  (declare (xargs :guard t))
+  (or (atom weights)
+      (and (natp (car weights)) (<= 1 (car weights)) (<= (car weights) 255)
+           (fn2-ref-weights-in-range (cdr weights)))))
 
 ; Reference lists = (literal-calendar cursor principal-FIFOs service-flags).
-(defun fn2-ref-lists (principals cursor queues)
+; WEIGHTS: one per principal slot, `(fn2-profile-weights profile)`.
+(defun fn2-ref-lists (weights cursor queues)
   (declare (xargs :verify-guards nil))
-  (list (fn2-ref-calendar principals) cursor queues '(0 0 0 0)))
+  (list (fn2-ref-calendar weights) cursor queues '(0 0 0 0)))
 (defun fn2-ref-queue-count (queues)
   (declare (xargs :verify-guards nil))
   (if (atom queues) 0 (+ (len (cdar queues)) (fn2-ref-queue-count (cdr queues)))))
@@ -252,7 +280,9 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (difference)
-    (cond ((not (equal (nth 0 lists) (fn2-ref-calendar (fn2-sched-nprincipals fn2-sched))))
+    (cond ((let ((weights (fn2-ref-calendar-weights (nth 0 lists) 0 (fn2-sched-nprincipals fn2-sched))))
+             (not (and (fn2-ref-weights-in-range weights)
+                       (equal (nth 0 lists) (fn2-ref-calendar weights)))))
            '(:literal-calendar))
           ((not (equal (fn2-sched-queued fn2-sched) (fn2-ref-queue-count (nth 2 lists))))
            '(:runnable-count))

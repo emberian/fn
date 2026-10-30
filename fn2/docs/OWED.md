@@ -55,7 +55,7 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-SCHED-STARVATION` | :OWED | :BOUND | `(IMPLIES (FN2-SCHED-STARVATION-HYPS PRINCIPAL FN2-SCHED) (MV-NTH 0 (FN2-SCHED-VISITS-PRINCIPAL (FN2-SCHED-CALENDAR-LENGTH FN2-SCHED) PRINCIPAL FN2-SCHED)))` | `(FN2-SCHED-TEST-STARVATION FN2-SCHED-TEST-STARVATION-NEGATIVE)` | Actual scheduler visit sequence grants a continuously eligible principal an opportunity within calendar length L visits. This is an opportunity bound, not dependency progress or machine completion. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-SCHED-STARVATION` | :OWED | :BOUND | `(IMPLIES (FN2-SCHED-STARVATION-HYPS PRINCIPAL WEIGHTS FN2-SCHED) (MV-NTH 0 (FN2-SCHED-VISITS-PRINCIPAL (FN2-SCHED-CALENDAR-LENGTH FN2-SCHED) PRINCIPAL FN2-SCHED)))` | `(FN2-SCHED-TEST-STARVATION FN2-SCHED-TEST-STARVATION-NEGATIVE)` | Actual scheduler visit sequence over any weighted calendar (every principal weight 1..255) grants a continuously eligible principal an opportunity within calendar length L visits. This is an opportunity bound, not dependency progress or machine completion. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ALLOC-RELEASE-SAFE)`
 
