@@ -373,9 +373,8 @@
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
           (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core)))
      ;; a booking the ledger does not hold: the ledger's invariant is broken
-     ;; (stop reason :machine-contract until A's enum gains :account, seam S6)
      ((not (eq acode :ok))
-        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
+        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-account* fn2-core)))
           (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core)))
      (t
       (b* ((retire (>= gen (fn2-machine-gen-limit fn2-core)))

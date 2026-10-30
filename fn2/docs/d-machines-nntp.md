@@ -814,7 +814,6 @@ The sprint (`origin/fn2/sprint-cd` 8e3488fcb) is compost; its gaps are the seams
 - D3's interim replies (§4.3) are a named constant whose emptiness is a D9 check.
 - D7's interim booking point (§13.4): a connection books its principal's `:connection-row` at the
   greeting, not at Accept issue, so the rows between Accept and greeting are unattributed; S1 closes it.
-- Ledger failures stop the core as `:machine-contract` until A's stop-reason enum gains `:account` (S6).
 - Echo stays A's test workload in the served instance (A4's drivers); the served listener admits
   `fn2-conn` once §4.5 lands. Whether echo leaves the served instance is A's call.
 
