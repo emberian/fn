@@ -101,6 +101,7 @@ which a service acquires and is never awaited).
 | 20 | `:fence-slot` | :slot | `(:profile :fence-slots)` | :fence | One fence in flight per storage domain. |
 | 21 | `:cancel-credit` | :credit | `(:profile :ncancel)` | :cancel | One outstanding cancellation request. |
 | 22 | `:operation` | :op | `(:profile :o :qa)` | (:close :cancel :arm-wake :fence) | One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue. |
+| 23 | `:sealable` | :overlay | `(:profile :identity-overlays)` | none | A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it. |
 
 **(b, c) Bundles and held-while-waiting** (`*fn2-resource-bundles*`).
 
@@ -197,7 +198,7 @@ which a service acquires and is never awaited).
 the outstanding table, and waiting for a completion is not a resource wait. R7 moves this table into
 each `defmachine`'s `:holds` and then deletes it here, as it will `*fn2-resource-effects*` once R7
 declares those effects on its allocator operations. The wait-reason enum is now `(:none :completion`
-followed by the 22 kinds by name, read from `*fn2-resource-order*` (R7 2/n, 80458ea94). The wait
+followed by the 23 kinds by name, read from `*fn2-resource-order*` (R7 2/n, 80458ea94). The wait
 projection therefore reads the awaited kind directly, and no translation table remains. R7 also
 splits the listener into `:accepting` (`:accept-credit`) and `:admitting` (`:accept-credit
 :connection-row`): with one phase spanning both states, per-phase holds could not state the

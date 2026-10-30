@@ -58,7 +58,9 @@
     (:cancel-credit :rank 21 :unit :credit :bound (:profile :ncancel) :reserve :cancel
      :why "One outstanding cancellation request.")
     (:operation :rank 22 :unit :op :bound (:profile :o :qa) :reserve (:close :cancel :arm-wake :fence)
-     :why "One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue.")))
+     :why "One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue.")
+    (:sealable :rank 23 :unit :overlay :bound (:profile :identity-overlays) :reserve nil
+     :why "A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it.")))
 
 ; Protected reserves (e): units set aside at init and never lent to ordinary
 ; issue, so a table full of idle receives can still close, cancel, arm a wake
@@ -487,7 +489,7 @@
 ; Each table, checked over its own data at certification (negative fixtures
 ; for every predicate: tests/resources-unit.lisp).
 (assert-event (fn2-resource-order-p *fn2-resource-order*))
-(assert-event (equal (len *fn2-resource-order*) 22))
+(assert-event (equal (len *fn2-resource-order*) 23))
 (assert-event (fn2-resource-reserves-p *fn2-resource-reserves* *fn2-resource-order*))
 (assert-event (fn2-resource-bundles-p *fn2-resource-bundles* *fn2-resource-order* *fn2-resource-reserves*))
 (assert-event (fn2-resource-releases-p *fn2-resource-releases* *fn2-resource-order*))

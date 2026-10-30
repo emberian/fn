@@ -5,6 +5,36 @@
 
 (defmacro fn2-machine-access-events ()
  '(progn
+; The grant service's fifth source (C1c): a sealer parked on the :sealable
+; wait kind is woken when a published overlay is sealable. Layer C attaches
+; the readiness and the grant (assembly-callbacks-c); an assembly without the
+; sealer keeps these defaults, which grant nothing.
+(encapsulate
+ (((fn2-sealable-ready-p fn2-core) => * :formals (fn2-core) :guard (fn2-core-wfp fn2-core))
+  ((fn2-sealable-grant-one fn2-core) => (mv * fn2-core) :formals (fn2-core) :guard (fn2-core-wfp fn2-core)))
+ (local (defun fn2-sealable-ready-p (fn2-core)
+          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core)) nil))
+ (local (defun fn2-sealable-grant-one (fn2-core)
+          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))) (mv *fn2-none* fn2-core)))
+ (defthm fn2-sealable-grant-one-type
+   (and (consp (fn2-sealable-grant-one fn2-core)) (true-listp (fn2-sealable-grant-one fn2-core)))
+   :rule-classes :type-prescription)
+ ;; Liveness: a ready source grants a row, so the grant service never sees a
+ ;; ready source forever (an attachment must prove this of its pair).
+ (defthm fn2-sealable-grant-one-live
+   (implies (fn2-sealable-ready-p fn2-core)
+            (not (equal (mv-nth 0 (fn2-sealable-grant-one fn2-core)) *fn2-none*))))
+ (defthm fn2-sealable-grant-one-shape
+   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+            (and (fn2-corep (mv-nth 1 (fn2-sealable-grant-one fn2-core)))
+                 (fn2-core-wfp (mv-nth 1 (fn2-sealable-grant-one fn2-core)))))))
+(defun fn2-sealable-ready-none (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core))
+  nil)
+(defun fn2-sealable-grant-none (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv *fn2-none* fn2-core))
+(defattach (fn2-sealable-ready-p fn2-sealable-ready-none) (fn2-sealable-grant-one fn2-sealable-grant-none))
 (make-event
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
@@ -254,7 +284,8 @@
   (or (and (fn2-machine-waiting-p fn2-core) (fn2-machine-op-credit-p fn2-core))
       (fn2-machine-pool-credit-p fn2-core)
       (fn2-machine-admission-ready-p fn2-core)
-      (fn2-account-grant-ready-p fn2-core)))
+      (fn2-account-grant-ready-p fn2-core)
+      (fn2-sealable-ready-p fn2-core)))
 
 (defun fn2-machine-grant-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -270,6 +301,9 @@
         ; The ledger's source (D7's S5): one blocked principal head whose
         ; reservation now fits, acquired, dequeued and its wait cleared by D.
         ((fn2-account-grant-ready-p fn2-core) (fn2-account-grant-one fn2-core))
+        ; The sealer's source (C1c): the parked sealer, once an overlay is
+        ; sealable, its wait cleared by C's attachment.
+        ((fn2-sealable-ready-p fn2-core) (fn2-sealable-grant-one fn2-core))
         (t (mv *fn2-none* fn2-core))))
 (fn2-core-preserves fn2-machine-grant-one (fn2-core) :position 1 :rows nil)
 
