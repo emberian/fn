@@ -649,7 +649,7 @@ Run on the laptop (certified `tests/conn-unit`, `sim/echo`, `sim/check-wire`; h-
 1,000 examples of up to 50 steps in 75 s.
 - **16,730 served replies, 0 disagreements.**
 - 15,741 interim replies across 18 verbs, all named: POST 713 as D5, the other 17 verbs as D6.
-- WIRE ok on the 4 connections it judged, out of 17,776 (H11 below: the session judged only each slot's last connection).
+- WIRE ok on the 4 connections it judged, out of 17,776. The session judged only each slot's last connection; H11 found this and H13 records the full coverage.
 
 One model change came from the first run. A node that offers no SASL mechanism answers `AUTHINFO SASL
 PLAIN` with 503, not 483. 483 is for a mechanism the node would accept under TLS (RFC 4643 2.4). The CAPABILITIES rule
@@ -684,6 +684,29 @@ the first run against the port is:
 
 The counts are read from DIR/surface.json, or printed by h-quests/h8-counts.py DIR. M1b's gate is zero
 disagreements on served verbs, every interim reply named, and a WIRE verdict of ok for every opened connection.
+
+## H13: M1b, the nntp S form against a real socket, and the simulator line with full WIRE coverage
+
+D's session fixes landed in two commits. 323c9da1d gave each open a serial id and its own verdict. Its records
+grew one per open and were walked on every step, so the run went quadratic: about 6 opens/s after 6,000, and
+we stopped it by its PID file. e0f1377a3 retires closed records, so each call's cost is flat in the number of
+opens. A5r 3/3 (1b0892045) supplies the socket hook, `fn2.tests.surface.fn2_native_session:session`. Its stop
+folds ENVELOPE's verdict over the boundary trace into every connection's verdict.
+
+Both runs used dev 10e454049 and 1,000 examples of up to 50 steps, on the laptop, run in parallel, through
+`run_surface --family nntp`:
+
+| carrier | target | served | disagreements | interim (POST D5 / D6) | WIRE opened / distinct ids / judged ok / unjudged | time |
+|---|---|---|---|---|---|---|
+| simulator | `fn2` | 16,730 | 0 | 15,741 (713 / 15,028 over 17 verbs) | 17,776 / 17,776 / 17,776 / 0 | 105 s |
+| loopback TCP | `fn2-native` | 16,730 | 0 | 15,741 (713 / 15,028 over 17 verbs) | 17,776 / 17,776 / 17,776 / 0 | 298 s |
+
+**M1b's gate holds.** There are zero disagreements on served verbs, every interim reply is named, and every
+opened connection has its own WIRE verdict, all ok, with ENVELOPE ok. The A5r seat's own laptop run at
+424f3f9ef (dev 852fd6a02) gave the same native line. The served and interim counts equal M1a's exactly on
+both carriers. The two carriers give the same replies, because Hypothesis is derandomized and the model
+judges the same command sequence. The other 32 nntp tests (E, F, H) are NOT RUN on both targets. They need
+the Node adapter's configured listener (`serves.fn2` is still empty).
 
 ## The nightly of 2026-10-30 (fn1, hbox, every family and every H7 driver)
 

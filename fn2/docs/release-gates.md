@@ -179,10 +179,17 @@ fn1's `make check` is replaced by fn2's per-commit set. Its parts, each a driver
 - **Today:** 8 of 11 checkers exist. The 100,000-seed release run is owed.
 - **What H has judged fn2 on so far:** M1a, the nntp S form under the simulator at dev 524e30869.
   1,000 examples × 50 steps gave 16,730 served replies with 0 disagreements and 15,741 interim replies,
-  each named by its quest. WIRE judged only 4 of the run's 17,776 connections: the session keys its
-  records by slot, so each slot's last connection is the only one checked (H11, dev 83ced3bf9; the
-  counts are unchanged there, and the case now fails until every connection has its own verdict).
-  Laptop, Python 3.11.16, Hypothesis 6.170.13.
+  each named by its quest. WIRE then judged only 4 of the run's 17,776 connections: the session keyed
+  its records by slot (H11). Laptop, Python 3.11.16, Hypothesis 6.170.13.
+- **At dev 10e454049 (H13), both carriers, the same 1,000 × 50 run:**
+
+  | carrier | target | served | disagreements | interim (POST D5 / D6) | WIRE opened / judged ok | time |
+  |---|---|---|---|---|---|---|
+  | simulator | `fn2` | 16,730 | 0 | 15,741 (713 / 15,028) | 17,776 / 17,776 | 105 s |
+  | loopback TCP (M1b) | `fn2-native` | 16,730 | 0 | 15,741 (713 / 15,028) | 17,776 / 17,776, ENVELOPE ok | 298 s |
+
+  Every opened connection has its own id and verdict: 0 refused, 0 unjudged. The A5r seat's laptop run at
+  424f3f9ef gave the same native line.
 
 ### 07 docs
 - **Contract:** `tools/docs_check.py --check` on the swapped tree, against the docs R3 rewrites.
