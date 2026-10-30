@@ -1,4 +1,4 @@
-# fn2 layer H continuation (present state, rewritten whole; 2026-10-30, sixth seat)
+# fn2 layer H continuation (present state, rewritten whole; 2026-10-30, seventh seat)
 
 Seat: Opus seat for layer H (the surface test harness). The seat WRITES the code (FN2-SEAT-COMMON "The method from
 2026-10-29 afternoon"); Codex (second account) only for bounded pieces with real signatures pasted, every line read.
@@ -16,13 +16,11 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   H7-07, H7-08, the node's article bound in the differential), 4f931bd74 (H7d: reply window grows with segments
   sent; H7-08 withdrawn), 4ed372d1e (H7e: FNCT frame fuzz after fncu, TCPCL session fuzz after BPv7), 8ae997f07 (H8a: SimTarget, the Target
   over D's simulator session), 524e30869 (H8b: nntp S vs fn2 under the simulator, M1a gate: 16,730 served 0
-  disagreements, 15,741 interim named, WIRE ok). Nothing of H uncommitted.
-- RUNNING on hbox: the full nightly on e495a7b55 (tree nightly-e495a7b55, 64 GiB, every family, every driver),
-  started 2026-10-30 01:44 hbox time, cap 8 h. PID file /tank/fn/scratch/fn2-h-harness/nightly-20261030/nightly.pid,
-  log nightly-20261030.log, report nightly-20261030/nightly.md when the log's last line is DONE. Harvest: copy
-  nightly.md to build/coordinator/fn2/nightly/2026-10-30.md, classify `unclassified` rows (the tree predates H7d:
-  a bytewise TAKETHIS 'wrong number of status lines' row in nntp F is the fixed H7-08, still recorded in that
-  tree), write the per-family table into fn2/docs/h-harness.md, commit, READY with per-family numbers (main asked).
+  disagreements, 15,741 interim named, WIRE ok), 4b1c90ca4 (H9: nightly 2026-10-30 harvested; web removal by post access), 68677f727 (H10: fn2/docs/release-gates.md, the
+  17-gate migration matrix for R1, with a cut_release.sh dry run at 945f625ad; logs in h-quests/r1-dryrun-945f625ad/).
+  Nothing of H uncommitted.
+- Nothing running on hbox for H. Last nightly: 2026-10-30 (build/coordinator/fn2/nightly/2026-10-30.md; h-harness.md
+  section). Every S and F form passes against fn1 (web S after H9's fix, rerun 50 ex PASS).
 - Last F runs: run-h7-fuzz-4 (operator, store_ops), -7 (tls_auth), -8 (peering with H7d), run-h7-perf/rows.json.
 - Laptop unit acceptance (~65 s, 402 OK at e495a7b55 (403 OK at 4ed372d1e)), from /Users/ember/dev/fn: `build/h-venv/bin/python -m unittest
   fn2.tests.harness.test_harness fn2.tests.history.test_history fn2.tests.history.test_convergence
@@ -51,14 +49,17 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 - Open: listed under What remains, item 2.
 
 ## What remains (in order)
-1. Harvest the running nightly (above) -> commit + READY with per-family numbers.
-2. Owed pieces: bp bundle convergence (F8, the simulator); the W7
-   perf adapter; perf rows with no tools/load cell (consumer wake/M5, web p99, W3-W5).
-3. fn2 surface under the simulator: nntp S runs via serves_sim.fn2 (H8b). Rerun after each D quest lands
-   (the interim table shrinks; regenerate fn2_conn_interim.json is D's); run: build/h-venv/bin/python
+1. On main's forward of a D READY (D5 transaction machine: POST, IHAVE, TAKETHIS): rerun the fn2 nntp S under the
+   simulator (item 4's command) and report served/interim counts; a disagreement goes to main with the case.
+2. Owed pieces: the W7 perf adapter (tools.load.w7_extent); perf rows with no tools/load cell (consumer wake/M5,
+   web p99, W3-W5 hostile workloads); bp bundle convergence with the F8 simulator scenario.
+3. Keep fn2/docs/release-gates.md current as drivers land (R1 owns it; H keeps the driver rows). The per-commit
+   30-CPU-minute allocation (§2.5) is still H's.
+4. fn2 surface under the simulator: nntp S runs via serves_sim.fn2 (H8b). Run: build/h-venv/bin/python
    build/coordinator/fn2/lanes/h-quests/h8-run.py OUTDIR with PYTHONPATH=/Users/ember/dev/fn, FN2_SIM_EXAMPLES,
    FN2_SIM_STEPS; needs certified fn2/tests/conn-unit, sim/echo, sim/check-wire (fn2/tools/certify.sh, PID file).
-   Peer connections (IHAVE/TAKETHIS on a peer) wait for E4: open(peer=True) raises NotImplementedError.
+   Regenerating fn2_conn_interim.json is D's. Peer connections wait for E4: open(peer=True) raises NotImplementedError.
+5. A nightly only when its tree has moved, on the seat's word (recipe below; SWARM_MEM_MAX=64G; ~6 h).
 
 ## The nightly recipe (fn2/tests/harness/hbox_nightly.sh; documented in fn2/docs/h-harness.md "The hbox nightly")
 - Ship the commit: `git archive --prefix=nightly-<sha>/ <sha> | gzip -1 | ssh hbox 'cd /tank/fn/scratch/fn2-h-harness
@@ -138,6 +139,8 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 | H7e FNCT + TCPCL fuzz | fnct 300 / tcpcl 80 cases vs fn1, 0 findings | 4ed372d1e |
 | H8a SimTarget over D's sim session | fake-session unit tests + WIRE refusal control | 8ae997f07 |
 | H8b nntp S vs fn2 under the sim (M1a gate) | 1,000 ex x 50 steps: 16,730 served 0 disagreements; 15,741 interim named; WIRE ok | 524e30869 |
+| H9 nightly 2026-10-30 harvest + web removal by post access | every S/F passes on fn1; 11 non-ok: 8 known, 2 unprovisioned, web S fixed | 4b1c90ca4 |
+| H10 the 17-gate release matrix (fn2/docs/release-gates.md) | seat-written; dry run at 945f625ad: GREEN 02/08, RED 01/03/04/05/07/09, 10-15 preconditions present, 16 would run | 68677f727 |
 | H6 pin P-UTF8-WS (D seat's request) + one pending auth slot | seat-written; D oracle 0 disagreements; 148 unit OK | 22de14c4d |
 | H6 H5c harvest, control_across_peers adjudication, nntp s_timeout, nightly world-deps + memory floor | seat-written; reruns: across_peers 4/4 at 64/96 GiB, image_differential 20/20 | 3ea9d2f8d |
 | HZ2 live on fn1: tagged-line reason parsing, fn1 tags where docs name only the class, operator-form import, O01 effect row | seat-written; probe 0 disagreements; operator S 5 ex 173 s, store_ops S 5 ex 46 s PASS | 8a4875e89 |
@@ -216,6 +219,9 @@ web/nntp W01 access rule on an open connection: LIST ACTIVE live, POST pinned ev
   spawn one sub-agent per piece and report per piece (H4's per-family skeleton is the example); never for pieces sharing files.
 
 ## Pitfalls hit
+- macOS has no `setsid`: launch detached laptop runs as `nohup python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' CMD ... & echo $! > X.pid`, then check `ps -o pid=,pgid= -p $(cat X.pid)` agree.
+- build/ is git-ignored: only fn2/ files are committed; continuation, quest files and dry-run logs live on the laptop.
+- The hbox nightly output dir is `/tank/fn/scratch/fn2-h-harness/nightly-YYYYMMDD` (no dashes); surface.json under it.
 - `bp receive` without a STORE (with an enrolled bp-boundary for the peer at the receive port) refuses every inbound bundle at the receive boundary; accepted bundles journal to lifecycle/*.fnb (the log's `BP accepted ... path=`), not receive-evidence/*.adu.
 - fn1 refuses a control socket path past 103 octets (CONTROL-PATH-TOO-LONG): a deep --out kills every differential node (fixed: short scratch dir in differential.owner).
 - `fn --fn config check` answers an oversize profile with a fault; the operator verbs say usage: fuzz through `operator PATH show`.

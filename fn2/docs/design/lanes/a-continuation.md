@@ -13,19 +13,22 @@ with no books does exactly that). Syntax notes owned here: `lanes/a-to-d-arm-con
 | 6c8f3d1a0 | fix forward: tests/commit-resource-unit.lisp reads both commit sections |
 | 57054a247 | S6: `:account` stop reason (code 22) |
 | 7fd40d0b7 | S4: `fn2-sched-reattribute machine to fn2-sched -> (mv code fn2-sched)` |
-| 578174649 | C2c seam: `fn2/books/words.lisp` (fn2-u32, fn2-u32-mul, fn2-prng-mix32); C uses it (d2f2ea9e8) |
+| 578174649 | C2c seam: `fn2/books/words.lisp` |
+| 91950f63a | S3 weighted calendar (`fn2-profile-weights` is disabled on purpose: open, it makes fn2-core-init's guard loop) |
+| 63a7412fe | S2 run charges (`fn2-exec-charge-run`, executor + reference) |
+| b31e5d4de | S5 ledger grant source; account events at the head of assembly-access; test instance includes accounts-core |
 
-## In flight: branch fn2/a-seams4 (worktree build/lanes/fn2/r7-arms) over dev a98d3c7c5
-| sha | what |
-|---|---|
-| 61ce57fc6 | S3 weighted calendar (`fn2-sched-init profile weights n`; weights from `:accounts` `:weight`; `fn2-profile-weights` DISABLED after its definition, or fn2-core-init's guard loops in assembly-init) |
-| edaea0d84 | S2 run charges: `fn2-exec-charge-run` (executor-access), principal runs and service visits (system row = sched nprincipals); the reference makes the same calls |
-| 5a94dd215 | S5 ledger grant source; `(fn2-account-events)` moved to the head of assembly-access |
-| 59f41e76a | S1: `:listener-principals`; listener books at Accept for targets whose admission copies account-ref (`fn2-machine-admission-books-p`); refused booking admits unbooked (400 at greeting); unbook on failed issue/Accept/refused admission; dispatcher copies (mode principal-slot account-ref); conn.lisp's :admission copies, greeting arm no longer books (main's ruling) |
-Acceptance on forge /build/lanes/a3b (group PID file build/accept.pid): 61ce57fc6 full, S2/S5 certify, S1 full;
-then D's `fn2/tests/sim-layer-d.lsp` at S1 (four sets; flood refuses 10-12 of 15, principal 1 reserve
-intact). S3's commit also needs the regenerated OWED.md (acc/61ce57fc6/OWED.md) amended in before landing
-(the fn2-sched-starvation statement changed). Landing: ff dev (cherry-pick if dev moved), push, READY per sha.
+## In flight: S1 at 8dc48aef2 (branch fn2/a-s1c, worktree build/lanes/fn2/r7-arms) over dev b31e5d4de
+Listener books at Accept for targets whose admission copies account-ref (`fn2-machine-admission-books-p`);
+refused booking admits unbooked (400 at greeting); unbook on failed issue / failed Accept / refused admission;
+dispatcher takes the fixed listener offer `*fn2-machine-listener-offer*` = (mode principal-slot account-ref);
+`:listener-principals`; `fn2-listener-bookings p core` (executor.lisp). Outside A by main's rulings: conn.lisp
+(:admission :copy, greeting arm), accounts-core.lisp (defcost fn2-account-book), owed-conn.lisp fn2-cw-ledger,
+check-account.lisp holding check (2), sim-layer-d.lsp row builder (8th element). Gate: whole tree incl.
+conn-unit, A's drivers, then `SECS=7200 sh fn2/tools/forge-driver.sh sim-layer-d` in /build/lanes/a3b
+(NONE, NETWORK, FLOOD, FLOOD-NETWORK all PASS; flood refuses 10-12 of 15, principal 1 reserve untouched).
+Lessons: callback bodies take no `&` binders (use mv-let + declare ignore); an observer must not rebind the
+core inside a let value (branch at the top, each arm returns (mv id core)); read row fields before rebinding.
 
 ## Queue
 1. Land the D7 stack above. A-S7 (taken kinds, D doc 14.7): D writes it as a foundation commit after S1
