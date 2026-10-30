@@ -610,25 +610,17 @@ and `wildmat`. Result: 0 disagreements. The oracle catches a mutated row or verd
 - The parser reads through the pool library's `fn2-pool-read`, not `fn2-core-read`. The grammar is a
   library over `fn2-pool` and needs no core instance. OWN's read hook must cover `fn2-pool-read` (or
   the range primitives of D2c) when D3 serves it; R5b's rule.
-- What depends on a sub-form or on the connection kind is left to D3's decision code. The grammar
-  declares one entry per keyword, and D3 answers with that command's declared 501. H's model over
-  the fuzz cases names each case (`DEFERRED` in `tests/grammar-fuzz-oracle.py`):
-  - AUTHINFO and XREDEEM sub-form arity;
-  - XFN-ZARTICLE's 64-hex digests;
-  - XFNCATCHUP's field values;
-  - MODE STREAM on a reader connection (501, RFC 4644 §2.3);
-  - LIST variant arguments: none for MOTD, DISTRIB.PATS, DISTRIBUTIONS and OVERVIEW.FMT, MSGID or
-    RANGE for HEADERS, and a wildmat for the others;
-  - XPAT's patterns as wildmats;
-  - HDR and XHDR field-name syntax.
-
-  These become D3 checks, each with a fixture.
+- What depends on a sub-form or on the connection kind is D3's decision table
+  (`books/conn-answer.lisp`, section 4.3): AUTHINFO arity, XFN-ZARTICLE's digests, MODE STREAM on a
+  reader connection, LIST variant arguments, XPAT's wildmat, HDR/XHDR field names (XREDEEM's code is
+  any token, per H's model; XFNCATCHUP's fields are the grammar's own kinds). Each has a fixture in
+  `tests/conn-answer-unit.lisp`, and the fuzz oracle no longer defers them: the export carries each
+  line's decision-table status code, and the model's 501 and D3's 501 must agree both ways on every
+  parsed line (4,416 cases, 13,501 lines, 0 disagreements).
 - XOVER takes a range only (RFC 2980 §2.8). The table had `:ref-range`, copied from OVER; H's model
   over the fuzz cases found the difference.
-- A note for H, recorded rather than resolved: H's model checks the whitespace around a line before
-  it checks UTF-8, so it expects an ill-formed UTF-8 line that ends in whitespace to get 501 with the
-  connection kept open. The grammar answers 501 and closes. `specs/nntp.md:513-518` permits either
-  (drain or close). The oracle counts these cases separately; one in 4,416.
+- H's pin P-UTF8-WS (whitespace on an ill-formed UTF-8 line is still malformed: 501 and close) is
+  the oracle's rule; its former exception for the model's whitespace-first order is deleted.
 - The framer finds line ends with one R6a1 `fn2-pool-scan` per run (D2c): the octet loop is gone
   from the served path and survives only in `tests/grammar-unit.lisp` as the reference the scan-based
   framer must equal at every (start, pos), budget, cap and overflow state of the probe transcripts.
