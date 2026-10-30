@@ -214,22 +214,40 @@ class DifferentialTests(unittest.TestCase):
                         self.assertEqual(r.rows, [])
         (ARTIFACTS / 'fake-summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
+    def test_focus_generators_agree_on_the_fake(self):
+        # H7c: tls_auth's and peering's F use these; the unmutated fake must agree on every cut.
+        for kind, mode in (('auth', 'reader'), ('feed', 'peer')):
+            seen = set()
+            for seed in range(60):
+                items = d.generator(seed, mode, kind).transcript(20)
+                seen.update(item.split(b' ', 1)[0].rstrip(b'\r\n').upper() for item in items)
+                for cut in ('whole', 'bytewise'):
+                    with self.subTest(kind=kind, seed=seed, cut=cut):
+                        self.assertEqual(d.compare(items, seed=seed, mode=mode, cut=cut,
+                                                   transport=('plain', 'starttls', 'implicit')[seed % 3]).rows, [])
+            wanted = {b'AUTHINFO', b'XREDEEM', b'STARTTLS'} if kind == 'auth' else {b'IHAVE', b'CHECK', b'TAKETHIS', b'XFNCATCHUP'}
+            self.assertLessEqual(wanted, seen, kind)
+
     def test_each_mutation_caught_and_minimized(self):
         expected = {'reuse-number': {'GROUP'}, '423-for-420': {'XOVER'},
                     'frame-after-quit': {'closed'}, 'wrong-over-field': {'OVER', 'XOVER'},
-                    'dot-unstuffed': {'BODY'}}
+                    'dot-unstuffed': {'BODY'}, 'auth-wrong-accepted': {'AUTHINFO'},
+                    'feed-wrong-id': {'CHECK', 'TAKETHIS'}}
+        # H7c: the focus plants run under their family's focused generator and mode.
+        focus = {'auth-wrong-accepted': ('auth', 'reader'), 'feed-wrong-id': ('feed', 'peer')}
         table = {}
         for plant in d.PLANTS:
+            kind, mode = focus.get(plant, (None, 'reader'))
             for seed in range(200):
-                items = d.fz.Gen(seed, 'reader', d.fz.PRESENT_IDS).transcript(20)
-                run = lambda xs: d.compare(xs, seed=seed, plants=(plant,))
+                items = d.generator(seed, mode, kind).transcript(20)
+                run = lambda xs: d.compare(xs, seed=seed, mode=mode, plants=(plant,))
                 result = run(items)
                 if not result.rows:
                     continue
                 row = result.rows[0]
                 self.assertIn(row['rule'], expected[plant], row)
                 self.assertEqual(row['class'], 'unclassified')
-                self.assertEqual(d.compare(items).rows, [], 'unmutated control')
+                self.assertEqual(d.compare(items, seed=seed, mode=mode).rows, [], 'unmutated control')
                 small = d.minimize(items, row, run, seconds=10)
                 self.assertLessEqual(len(small), 3)
                 reduced = run(small)
@@ -237,8 +255,8 @@ class DifferentialTests(unittest.TestCase):
                 # Units are commands, including one complete article block.
                 self.assertLessEqual(len(reduced.commands), 3)
                 for cut in d.CUTS:
-                    self.assertEqual(d.compare(small, cut=cut).rows, [])
-                    self.assertEqual(d.compare(small, cut=cut, plants=(plant,)).rows[0]['rule'], row['rule'])
+                    self.assertEqual(d.compare(small, cut=cut, mode=mode).rows, [])
+                    self.assertEqual(d.compare(small, cut=cut, mode=mode, plants=(plant,)).rows[0]['rule'], row['rule'])
                 table[plant] = dict(seed=seed, rule=row['rule'], commands=len(small),
                                     row=row, minimized_hex=[x.hex() for x in small])
                 break

@@ -177,7 +177,7 @@ def adapt(records):
         request = {k: v for k, v in value.items() if k not in
                    {'code', 'reason', 'events', 'more', 'report', 'posture'}
                    and (k != 'position' or f == 'ack')
-                   and (k != 'digest' or f == 'post')}
+                   and (k != 'digest' or f in ('post', 'transfer'))}
         events.extend([(start, 0, process, 'invoke', f, request),
                        (end, 1, process, outcome, f, value | (response or {}))])
         used.update((start, end))
@@ -472,14 +472,19 @@ def adapt(records):
                               authorized=local if verb == 'POST' else None, headers=headers))
             if verb == 'IHAVE':
                 # A transfer is observation on this peer, never evidence of
-                # simultaneous delivery on any other node. Other transfers
-                # remain outside this adapter's POST durability vocabulary.
+                # simultaneous delivery on any other node: it is its own op
+                # (`transfer`, H7: the convergence checker's), outside the
+                # POST durability vocabulary.
                 if target:
                     observed_cancel(start, final_end, node, cause, phase)
                     if phase == 'ok' and mid:
                         cancels.setdefault(mid, cause)
-                    used.add(end)
-                    transport(start, final_end)
+                if {'message_id', 'digest'} <= value.keys():
+                    emit(start, final_end, 'transfer', value, phase, suffix=':transfer')
+                else:
+                    miss(end, 'IHAVE send/body/Message-ID not observed')
+                used.add(end)
+                transport(start, final_end)
                 continue
             if not {'message_id', 'digest'} <= value.keys():
                 value['observed_only'] = True

@@ -503,10 +503,10 @@
       "model": "fn2.tests.model.consumer_model",
       "model_scope": "model and live Target adapter owed",
       "fuzz": {
-        "driver": "fn2.tests.surface.consumer:fuzz (owed)",
+        "driver": "fn2.tests.surface.fncu_fuzz (fncu; the FNCT frame half owed)",
         "grammar": "fnct/fncu",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [
         "fn2.tests.history.consumer:check"
@@ -806,10 +806,10 @@
       "model": "fn2.tests.model.operator_model",
       "model_scope": "HZ: row 76 group create/retire/describe/policy/moderate, moderation list/approve/reject, motd set/clear, capacity, retention set/expire; row 77 account invite/list/set-password/access/delete and principal list/set-password/delete. CLI state composed into NntpModel; fixed per-verb success/refusal witnesses plus generated steps. Other operator rows and authority, subscribe-default, account hash, principal/consumer bindings remain outside this S slice.",
       "fuzz": {
-        "driver": "fn2.tests.surface.operator:fuzz (owed)",
+        "driver": "fn2.tests.surface.argv_fuzz",
         "grammar": "argv",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [],
       "sim": {
@@ -945,10 +945,10 @@
       "model": "fn2.tests.model.web_model",
       "model_scope": "HZ3: rows 92-97: every path x method (404, 405 with Allow, 501), /health and /style.css, the signed-out redirects, redeem (XREDEEM), sign-in (AUTHINFO 281/481) and sign-out, CSRF and fnr_pre refusals, the groups, group and article pages read from the session's own pinned connection, POST (Posted! / The server said no) and removal (Removed / Still there), composed onto NntpModel. Two browsers, plain HTTP, the developer image (FN_NATIVE_DEVELOPER_HOST). Outside: TLS face, proxied, idle_seconds and max_sessions, uncertain submissions (503), threads/search (row 98), access changes under an open session (W01).",
       "fuzz": {
-        "driver": "fn2.tests.surface.web:fuzz (owed)",
+        "driver": "fn2.tests.surface.http_fuzz",
         "grammar": "http",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [],
       "sim": {
@@ -1152,13 +1152,14 @@
       "model": "fn2.tests.model.peering_model",
       "model_scope": "peer add/remove/list/set/feed/distributions/budget/pull/pull-login/catch-up/login on one live node; transit on the loopback peer connection (source-address record with an inbound half; accept-groups scope); the outbound feed to scripted peers (CHECK/TAKETHIS on 203, IHAVE on 500 or a non-streaming record; pause/resume; distributions; feed-groups); one NEWNEWS pull. TLS words, invitations, catch-up rounds, the legacy add and retire drain remain outside this S slice.",
       "fuzz": {
-        "driver": "fn2.tests.surface.peering:fuzz (owed)",
+        "driver": "fn2.tests.model.differential --focus feed",
         "grammar": "XFNCATCHUP/feed-reply",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [
-        "fn2.tests.history.convergence:check (owed)"
+        "fn2.tests.history.convergence:check",
+        "fn2.tests.history.durable:check"
       ],
       "sim": {
         "path": "fn2/sim/",
@@ -1292,13 +1293,14 @@
       "model": "fn2.tests.model.bp_model",
       "model_scope": "carry list/inspect/pause/resume/drop/drop --abandon over one FNWF journal (no node running), bp-obligation undertake/status/request/receipt, bp-boundary add, bp-route add/remove; the invariant that a Store pin moves only at undertake and at a recorded waiver, read back after every step; request routing (no-route, no-live-hop, routed to a contact that never connects). Signed receipts, waiver-cut recovery, TCPCL sessions, bundles and custody remain outside this S slice.",
       "fuzz": {
-        "driver": "fn2.tests.surface.bp:fuzz (owed)",
+        "driver": "fn2.tests.surface.bp_fuzz (BPv7; the TCPCL segment half owed)",
         "grammar": "tcpcl/bpv7",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [
-        "fn2.tests.history.convergence:check (owed)"
+        "fn2.tests.history.durable:check",
+        "bundle convergence (F8) owed: the bp natives observe no bundle operations"
       ],
       "sim": {
         "path": "fn2/sim/",
@@ -1556,10 +1558,10 @@
       "model": "fn2.tests.model.nntp_model",
       "model_scope": "live TLS/auth connection sequences over the shared NNTP model; transport and authentication gates",
       "fuzz": {
-        "driver": "fn2.tests.surface.tls_auth:fuzz (owed)",
+        "driver": "fn2.tests.model.differential --focus auth",
         "grammar": "AUTHINFO/SASL/XREDEEM",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [],
       "sim": {
@@ -1770,10 +1772,10 @@
       "model": "fn2.tests.model.limits_model",
       "model_scope": "HW policy state + NNTP exposure witnesses; policy set outcomes and wire effects, no recorded fn1 adjudications; init key parsing/refusals; send-stalled remains E",
       "fuzz": {
-        "driver": "fn2.tests.surface.config_limits:fuzz (owed)",
+        "driver": "fn2.tests.surface.config_fuzz",
         "grammar": "fn.toml (connection-policy row has F dash)",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [],
       "sim": {
@@ -1965,10 +1967,10 @@
       "model": "fn2.tests.model.store_ops_model",
       "model_scope": "HZ: rows 73-75 and row 84 subset status/recover/export/export --status/import with field override/bless-snapshot/compact/checkpoint/inspect. Authenticated POST, identity/group/number/BODY round trips through NntpModel, stopped/live lifecycle and named refusals. Reclaim/RSS, rebind-filesystem, node-secret, repair-control, provenance, probe, digest, journal, retention/compression and repair truncation remain outside this S slice.",
       "fuzz": {
-        "driver": "fn2.tests.surface.store_ops:fuzz (owed)",
+        "driver": "fn2.tests.surface.argv_fuzz",
         "grammar": "argv",
         "corpus": null,
-        "status": "D/E grammar driver and mutation controls owed"
+        "status": "H7: driver through fn2.tests.surface.fuzz:fuzz, with its oracle and mutation controls"
       },
       "history": [],
       "sim": {

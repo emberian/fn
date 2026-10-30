@@ -209,6 +209,11 @@ class Expect:
         return recorded
 
 
+def moderate_off(a):
+    """`group moderate G --off`: --off as a flag of its own, never as the value of --queue or --moderators."""
+    return any(w == '--off' and (i == 0 or a[i - 1] not in ('--queue', '--moderators')) for i, w in enumerate(a))
+
+
 class OperatorModel:
     VERBS = ('group create', 'group retire', 'group describe', 'group policy',
              'group moderate', 'moderation list', 'moderation approve', 'moderation reject',
@@ -240,8 +245,19 @@ class OperatorModel:
             return bad('argv-malformed', 'malformed-argv', 5)
         live = lambda name: (name in self.groups and not self.groups[name].get('retired')
                              and name not in self.served_retired)
+        named = lambda name: re.fullmatch(r'[A-Za-z0-9_+-]+(?:\.[A-Za-z0-9_+-]+)*', name) is not None
+        # H7d (argv fuzz on fn1, image c14e9e8e): a malformed group name is usage before any state is read,
+        # tagged per verb as fn1 tags it; `group policy` takes only y/n, any other status is usage SYNTAX.
+        if v in ('group retire', 'group policy') and not named(a[0]):
+            return bad('syntax', 'invalid-group', 5)
+        if v in ('group describe', 'group moderate') and not named(a[0]):
+            return bad('group-name', 'invalid-group', 5)
+        if v == 'group moderate' and '--queue' in a and not named(a[a.index('--queue') + 1]):
+            return bad('group-name', 'invalid-group', 5)
+        if v == 'group policy' and a[1:] not in (('y',), ('n',)):
+            return bad('syntax', 'invalid-status', 5)
         if v == 'group create':
-            if not re.fullmatch(r'[A-Za-z0-9_+-]+(?:\.[A-Za-z0-9_+-]+)*', a[0]):
+            if not named(a[0]):
                 return bad('syntax', 'invalid-group', 5)
             # RFC 5536 §3.1.4 (docs/operator.md:255-256): first component
             # `example`, or exactly `poster`. Tag provisional (fn1's init tag).
@@ -251,14 +267,14 @@ class OperatorModel:
                 return bad('duplicate-group', 'duplicate-group')
         # moderation list names no refusal (specs/nntp.md:1186-1192); fn1 reports
         # an unmoderated or absent group as `moderated=no` (HZ2 live run).
-        if v in ('group retire', 'group describe', 'group policy', 'group moderate', 'retention expire'):
+        # `retention expire {GROUP | *}` names a policy, not a served group (docs/operator-internals.md:510-514;
+        # fn1 accepts it for a group no store holds, H7d): no existence check.
+        if v in ('group retire', 'group describe', 'group policy', 'group moderate'):
             if not live(a[0]):
                 return bad('no-such-group', 'unknown-group')
         if v == 'group describe' and (not ' '.join(a[1:]).strip() or any(ord(c) < 32 or ord(c) > 126 for c in ' '.join(a[1:]))):
             return bad('description-blank' if not ' '.join(a[1:]).strip() else 'description-row', 'invalid-description')
-        if v == 'group policy' and a[1] not in ('y', 'n'):
-            return bad('group-status', 'invalid-status')
-        if v == 'group moderate' and '--off' not in a:
+        if v == 'group moderate' and not moderate_off(a):
             q = a[a.index('--queue')+1] if '--queue' in a else a[0] + '.moderation'
             if not live(q) or q == a[0] or self.groups[q].get('moderated'):
                 return bad('moderation-queue', 'invalid-queue')
@@ -280,10 +296,15 @@ class OperatorModel:
         if v == 'retention set' and a not in (('keep-forever',), ('released-by-all-holders',)) and not (
                 len(a) == 2 and a[0] == 'release-after' and a[1].isdecimal()):
             return bad('retention', 'invalid-retention', 5)
-        if v == 'retention expire' and a[1:] != ('clear',) and not (
-                len(a) == 3 and a[1] in ('keep', 'default', 'purge', 'octets') and a[2].isdecimal()):
+        if v == 'retention expire' and (not (a[0] == '*' or named(a[0])) or a[1:] != ('clear',) and not (
+                len(a) == 3 and a[1] in ('keep', 'default', 'purge', 'octets') and a[2].isdecimal()
+                and int(a[2]) <= 4294967295)):
             return bad('retention', 'invalid-expiry', 5)
         if v == 'account access' and a != ('show',):
+            # H7d: a call without its --read and --post values is SYNTAX; a malformed pattern is ACCESS-PATTERN.
+            flags = [i for i, w in enumerate(a) if w in ('--read', '--post')]
+            if len(a) != 5 or sorted(a[i] for i in flags) != ['--post', '--read'] or any(i + 1 >= len(a) for i in flags):
+                return bad('syntax', 'invalid-access', 5)
             try:
                 wildmat(a[a.index('--read')+1], '')
                 wildmat(a[a.index('--post')+1], '')
@@ -367,7 +388,7 @@ class OperatorModel:
             self.groups[a[0]]['posting'] = a[1]
         elif v == 'group moderate':
             f = self.groups[a[0]]
-            if '--off' in a:
+            if moderate_off(a):
                 for key in ('moderated', 'moderators', 'queue'):
                     f.pop(key, None)
             else:

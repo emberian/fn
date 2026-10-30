@@ -341,9 +341,17 @@ class HistoryTests(unittest.TestCase):
             result = adapt(source)
             self.assertEqual(result.unmapped, [])
             ops = pair(result.history)
-            self.assertEqual(len(ops), 1)
-            self.assertEqual((ops[0].f, ops[0].type, ops[0].node), ('withdraw', phase, 'peer'))
-            self.assertEqual(ops[0].value['cause_call'], '575195:111')
+            # H7: the IHAVE is also its own `transfer` op, beside the cancel's local outcome.
+            self.assertEqual(sorted(o.f for o in ops), ['transfer', 'withdraw'])
+            withdraw = next(o for o in ops if o.f == 'withdraw')
+            transfer = next(o for o in ops if o.f == 'transfer')
+            self.assertEqual((withdraw.type, withdraw.node), (phase, 'peer'))
+            self.assertEqual(withdraw.value['cause_call'], '575195:111')
+            # The transfer's own outcome is the reply's (235 ok, 437 fail, 436 uncertain); the withdrawal's
+            # is the cancel's local authority, which this fixture leaves unknown.
+            self.assertEqual((transfer.type, transfer.node, transfer.value['code']),
+                             ({235: 'ok', 437: 'fail', 436: 'info'}[int(reply[:3])], 'peer', int(reply[:3])))
+            self.assertTrue(transfer.value['message_id'].startswith('<') and transfer.value['digest'])
 
     def test_accepted_bob_cancel_cannot_excuse_lost_alice_post(self):
         source = [json.loads(line) for line in (FIXTURES / 'ineffective-cancel.jsonl').read_text().splitlines()]

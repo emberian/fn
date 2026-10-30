@@ -196,6 +196,23 @@ The callable receives keyword arguments `case`, `target`, `family`, `out`, plus:
 | HISTORY | `checkers` | Generate/check eligible histories, record observation gaps, and assert findings using `case`. |
 | PERF | `row` | Return `{value, unit, profile}`; extra metadata is retained. Never assert a numeric threshold. |
 
+The drivers this tree carries (H7; hbox_nightly.sh exports every one):
+
+| hook | module | what it judges |
+|---|---|---|
+| FIXTURE, every family | `fixtures:fixture` | each fixture row replayed live (above) |
+| FUZZ tls_auth, peering | `fuzz:fuzz` → `fn2.tests.model.differential --focus auth/feed` | H2's model on AUTHINFO/SASL/XREDEEM/STARTTLS, or on IHAVE/CHECK/TAKETHIS/XFNCATCHUP; mismatches adjudicated as for nntp |
+| FUZZ operator, store_ops | `fuzz:fuzz` → `argv_fuzz` | the exit table, ARGV-MALFORMED, usage, OperatorModel / StoreOpsModel |
+| FUZZ config_limits | `fuzz:fuzz` → `config_fuzz` | specs/native-config.md through `operator PATH show` |
+| FUZZ web | `fuzz:fuzz` → `http_fuzz` | RFC 9112/9110 and the face's stated policy |
+| FUZZ consumer | `fuzz:fuzz` → `fncu_fuzz` | the `fncu` v1 encoding through `consumer-inspect` (the FNCT frame half owed) |
+| FUZZ bp | `fuzz:fuzz` → `bp_fuzz` | RFC 9171 through `bp decode` (the TCPCL segment half owed) |
+| HISTORY peering, bp | `history_drivers:history` | convergence V1-V4 and durability D1-D3 over the E natives' logs (bp: durability; bundle convergence owed to F8) |
+| PERF every family | `perf:perf` | the tools/load cell measuring the row; tools/load's verdicts published, never asserted |
+
+Each fuzz module runs alone too (`python3 -m fn2.tests.surface.<module> --target fake|fn1 ...`), and its
+`--target fake` with `--plant` is its mutation control, exercised by its unit test.
+
 Missing hooks raise named skips under fn1. Drivers should put their detailed
 results in `out`; successful invocation alone is not evidence for unimplemented
 assertions. To try H2b's independent smoke target separately:

@@ -250,6 +250,9 @@ class StoreOpsModel:
                 return 1, 'snapshot-incomplete', 'unmarked-copy'
             if not archive.get('secret'):
                 return 1, 'no-node-secret', 'copy-without-secret'
+        if r.verb == 'inspect' and not re.fullmatch(r'<[^<>@\s]+@[^<>@\s]+>', r.argument):
+            # H7d (argv fuzz on fn1): an argument that is not a Message-ID is the sub-verb's usage, not `absent`.
+            return 5, 'invalid-store-command', 'not-a-message-id'
         if r.verb == 'inspect' and r.argument not in self.wire.articles:
             return 1, 'absent', 'absent-id'
         if r.verb == 'inspect-group' and r.argument != GROUP:

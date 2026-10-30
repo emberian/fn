@@ -18,7 +18,9 @@ from re import _parser as regex_parser  # Python 3.11; fake witness renderer onl
 import signal
 import socket
 import ssl
+import shutil
 import subprocess
+import tempfile
 import time
 import tomllib
 from unittest.mock import patch
@@ -29,10 +31,68 @@ from . import framing
 from .nntp_model import Expect, HELP, NntpModel, Verdict, msgid, packed, wildmat
 
 PLANTS = ('reuse-number', '423-for-420', 'frame-after-quit',
-          'wrong-over-field', 'dot-unstuffed')
+          'wrong-over-field', 'dot-unstuffed',
+          # H7c: one plant per focus (tls_auth's auth, peering's feed).
+          'auth-wrong-accepted', 'feed-wrong-id')
 CUTS = ('whole', 'per-item', 'bytewise')
 BARRIERS = {b'POST', b'IHAVE', b'TAKETHIS', b'STARTTLS', b'COMPRESS', b'AUTHINFO'}
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class FocusGen(fz.Gen):
+    """fn1's Gen with its step distribution narrowed to one surface family's commands (H7c).
+
+    The productions are Gen's own (the protocol table's :fuzz grammar through Gen.cmd and its AUTHINFO
+    cases); only the weights change. `auth` is tls_auth's F (AUTHINFO USER/PASS/SASL arguments, XREDEEM,
+    STARTTLS, with reads between them to observe the authentication state); `feed` is peering's F
+    (IHAVE/CHECK/TAKETHIS offers and articles, and XFNCATCHUP, which fn1's Gen leaves unfuzzed).
+    """
+    FOCUS = ('auth', 'feed')
+
+    def __init__(self, seed, mode, ids=None, focus='auth'):
+        super().__init__(seed, mode, ids)
+        if focus not in self.FOCUS:
+            raise ValueError('unknown focus ' + focus)
+        self.focus = focus
+
+    def step(self):
+        r = self.rng.random()
+        if self.focus == 'auth':
+            if r < 0.55:
+                kind = self.rng.randrange(5)
+                cases = fz.PROTOCOL["AUTHINFO"]["fuzz"][0][1:]
+                # A *-PLUS mechanism needs the connection's TLS exporter, which the model is not given
+                # (nntp_model raises: E5); the focus sends its plain sibling instead.
+                return [self.command([b"AUTHINFO"] + self.words(words)).replace(b"-PLUS", b"")
+                        for words in cases[kind]]
+            if r < 0.70:
+                return [self.cmd("XREDEEM")]
+            if r < 0.78:
+                return [self.cmd("STARTTLS")] if self.mode != "tls" else [self.cmd("HELP")]
+            if r < 0.92:
+                return [self.cmd(self.family("GROUP", "ARTICLE", "STAT", "LIST", "CAPABILITIES"))]
+            return [self.choice(fz.GARBAGE_LINES)]
+        if r < 0.25:
+            mid = self.msgid()
+            items = [self.cmd("IHAVE", {"mid": (mid,)})]
+            if self.chance(0.8):
+                items.append(self.article(mid if self.chance(0.9) else None, transit=True))
+            return items
+        if r < 0.45:
+            return [self.cmd("CHECK")]
+        if r < 0.65:
+            mid = self.msgid()
+            return [self.cmd("TAKETHIS", {"mid": (mid,)}),
+                    self.article(mid if self.chance(0.9) else None, transit=True)]
+        if r < 0.90:
+            return [self.cmd("XFNCATCHUP")]
+        if r < 0.95:
+            return [self.cmd("MODE")]
+        return [self.choice(fz.GARBAGE_LINES)]
+
+
+def generator(seed, mode, focus=None):
+    return FocusGen(seed, mode, fz.PRESENT_IDS, focus) if focus else fz.Gen(seed, mode, fz.PRESENT_IDS)
 
 
 def fixture(fake=True, config=None):
@@ -229,6 +289,10 @@ class Fake:
                     body = b'\t'.join(fields)
             if 'dot-unstuffed' in self.plants and body:
                 body = framing.unstuff(body)
+            if 'auth-wrong-accepted' in self.plants and rule == 'AUTHINFO' and status.startswith(b'481'):
+                status = b'281 planted\r\n'
+            if 'feed-wrong-id' in self.plants and rule in ('CHECK', 'TAKETHIS') and re.match(rb'^(238|239|431|438|439) <', status):
+                status = status[:4] + b'<planted@fixture.invalid>\r\n'
             payload = status + (body or b'')
             self.output.extend(self.enc.compress(payload) + self.enc.flush(zlib.Z_SYNC_FLUSH)
                                if self.enc else payload)
@@ -725,7 +789,10 @@ def compare(items, *, seed=0, mode='reader', cut='whole', transport='plain',
                 session = dict(received=bytes(wire.received), eof=wire.eof, reset=wire.reset,
                                timeout=wire.timed_out, connect_error=None, elapsed=timeout)
                 owner = node or type('Alive', (), {'alive': lambda self: True})()
-                fault = fz.node_verdict(owner, session, False)  # EOF bound also on TLS.
+                # XFNCATCHUP's 291 is one multi-line response (specs/peering.md:381); fn1's fuzzer never sent
+                # XFNCATCHUP, so its shape table lacks it (H7c: the feed focus does send it).
+                with patch.object(fz, 'MULTILINE', fz.MULTILINE | {291}):
+                    fault = fz.node_verdict(owner, session, False)  # EOF bound also on TLS.
                 if wire.reset and getattr(wire.sock, 'client_close_notify', False):
                     fault = ('tls-close', 'reset after client TLS close_notify; no orderly server TLS EOF')
                 if c.quit and wire.timed_out:
@@ -769,13 +836,21 @@ def owner(image, directory, ports=None):
         (directory / f'child-{child.pid}.pid').write_text(str(child.pid) + '\n')
         return child
     node = fz.Node.__new__(fz.Node)
+    # The node's control socket is <its directory>/store/control.sock, and fn1 refuses a socket path
+    # past 103 octets (CONTROL-PATH-TOO-LONG): a deep --out (a surface run's OUT/<family>/fuzz) puts the
+    # node in a short scratch directory instead, linked from DIRECTORY (H7c).
+    root, scratch = directory, None
+    if len(str(directory / 'store' / 'control.sock')) > 100:
+        scratch = Path(tempfile.mkdtemp(prefix='fn2d-'))
+        root = scratch / 'n'
+        (directory / 'node').symlink_to(root)
     try:
         before = int(time.time())
         with ExitStack() as setup:
             setup.enter_context(patch.object(fz.subprocess, 'Popen', recorded))
             if ports:
                 setup.enter_context(patch.object(fz, 'free_port', ports))
-            node.__init__(image, directory)
+            node.__init__(image, root)
         node.creation_window = (before, int(time.time()))
         if not node.login_ok:
             raise RuntimeError('Node login setup failed: ' + node.login_detail)
@@ -783,6 +858,8 @@ def owner(image, directory, ports=None):
     finally:
         if hasattr(node, 'process'):
             node.stop()
+        if scratch is not None:
+            shutil.rmtree(scratch, ignore_errors=True)   # this run's own scratch node, after its stop
 
 
 def read_only(items):
@@ -1014,6 +1091,7 @@ def main(argv=None):
     p.add_argument('--seeds', default='0..199')
     p.add_argument('--mode', default='reader,node,peer')
     p.add_argument('--steps', type=int, default=20)
+    p.add_argument('--focus', choices=FocusGen.FOCUS, help='narrow the generator to one family (tls_auth: auth, peering: feed)')
     p.add_argument('--cuts', default=','.join(CUTS))
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--pid-file', type=Path)
@@ -1052,7 +1130,7 @@ def main(argv=None):
         p.error('fn1 requires --image or FN_NATIVE_HOST; this driver never builds an image')
     stats = dict(seeds_run=0, sessions=0, commands_compared=0, matches=0,
                  mismatches={}, minimized_reproducers=0, target=args.target,
-                 seed_range=args.seeds, modes=modes, cuts=cuts, steps=args.steps,
+                 seed_range=args.seeds, modes=modes, cuts=cuts, steps=args.steps, focus=args.focus,
                  takethis_probe=args.takethis_probe)
     counts, deadline = Counter(), time.monotonic() + args.seconds
     def dump():
@@ -1067,7 +1145,7 @@ def main(argv=None):
             for mode in modes:
                 if time.monotonic() >= deadline:
                     break
-                items = fz.Gen(seed, mode, fz.PRESENT_IDS).transcript(args.steps)
+                items = generator(seed, mode, args.focus).transcript(args.steps)
                 transport = ('plain', 'starttls', 'implicit')[seed % 3]
                 with SessionRunner(image if args.target == 'fn1' else None,
                                    args.out / f'seed-{seed}-{mode}', plants, ports) as run:

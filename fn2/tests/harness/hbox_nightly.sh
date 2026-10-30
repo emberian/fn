@@ -82,6 +82,15 @@ export FN2_SURFACE_IDENTITY="$T/build/fn-host" FN2_SURFACE_SOURCE="$SOURCE"
 # The E fixture drivers (fn2/tests/surface/fixtures.py; the bp golden row runs the DTN image's bp verbs).
 export FN_NATIVE_DTN_HOST="$T/build/fn-host-dtn"
 for F in NNTP CONSUMER BP TLS_AUTH WEB; do export "FN2_SURFACE_FIXTURE_$F=fn2.tests.surface.fixtures:fixture"; done
+# The F, H and R drivers (H7): fuzz for the eight families besides nntp, history for peering and bp, the
+# tools/load perf cells for every published row.
+for F in CONSUMER OPERATOR WEB PEERING BP TLS_AUTH CONFIG_LIMITS STORE_OPS; do
+  export "FN2_SURFACE_FUZZ_$F=fn2.tests.surface.fuzz:fuzz"
+done
+for F in PEERING BP; do export "FN2_SURFACE_HISTORY_$F=fn2.tests.surface.history_drivers:history"; done
+for F in NNTP CONSUMER OPERATOR WEB PEERING BP TLS_AUTH CONFIG_LIMITS STORE_OPS; do
+  export "FN2_SURFACE_PERF_$F=fn2.tests.surface.perf:perf"
+done
 for opt in ${FN2_NIGHTLY_OPT_INS-FN_RUN_SLOW=1 FN_RUN_RELOCATION_E2E=1}; do export "$opt"; done
 FAMILY=${FN2_NIGHTLY_FAMILIES:+--family $FN2_NIGHTLY_FAMILIES}
 [ -n "$FAMILY" ] || FAMILY=--all

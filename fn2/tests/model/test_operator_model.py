@@ -38,7 +38,8 @@ class FakeTarget:
                 reason, code = 'syntax', 5
             elif a[0] in self.groups and self.groups[a[0]]['active']:
                 reason = 'duplicate-group'
-        elif v in ('group retire', 'group describe', 'group policy', 'group moderate', 'retention expire'):
+        elif v in ('group retire', 'group describe', 'group policy', 'group moderate'):
+            # `retention expire` names a policy for any group or `*` (H7d: fn1 accepts it for an absent one).
             if a[0] not in self.groups or not self.groups[a[0]]['active']:
                 reason = 'no-such-group'
             elif v == 'group moderate' and '--off' not in a:

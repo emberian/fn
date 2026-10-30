@@ -37,6 +37,33 @@ class TestAdjudications(unittest.TestCase):
         for delta in (dict(rule='DATE'), dict(detail='new reason'), dict(reply_hex=b'502 forbidden\r\n'.hex())):
             self.assertEqual(surface.adjudicate_differences([dict(self.row(), **delta)], 'fn1')[0]['disposition'], 'new')
 
+    def test_H7_01_arguments_past_497_within_512(self):
+        reply = b'381 password required\r\n'
+        def judged(arg):
+            row = dict(self.row(b'AUTHINFO user ' + arg + b'\r\n', reply), rule='syntax',
+                       detail='code 381; permitted [501]')
+            return surface.adjudicate_differences([row], 'fn2')[0]['disposition']
+        self.assertEqual(judged(b'x' * 495), 'recorded')     # 500 octets of arguments in a 511-octet line
+        self.assertEqual(judged(b'x' * 492), 'new')          # 497 octets of arguments: not this class
+        self.assertEqual(judged(b'x' * 497), 'new')          # a 513-octet line: past the line bound
+
+    def test_H7_02_to_05_examples_recorded_and_controls_new(self):
+        import json
+        groups = {g['group']: g for g in json.loads(
+            (Path(surface.__file__).parents[1] / 'model/adjudications.json').read_text())['groups']}
+        def judged(group, command, target='fn1', reply=None):
+            g = groups[group]
+            row = dict(command_hex=command.hex(), reply_hex=reply.hex() if reply else g['reply_patterns'][0],
+                       rule=g['rule'], detail=g['detail'], mode='peer')
+            return surface.adjudicate_differences([row], target)[0]['disposition']
+        for group in ('H7-02', 'H7-03', 'H7-04', 'H7-05'):
+            self.assertEqual(judged(group, bytes.fromhex(groups[group]['command_example'])), 'recorded', group)
+        self.assertEqual(judged('H7-03', bytes.fromhex(groups['H7-03']['command_example']), 'fn2'), 'new')  # fn1-bug
+        self.assertEqual(judged('H7-02', b'GROUP fn.test\r\n'), 'new')
+        self.assertEqual(judged('H7-04', b'IHAVE <a@b.c>\r\n'), 'new')
+        self.assertEqual(judged('H7-05', b'Path: x\r\n\r\nclean\r\n.\r\n'), 'new')
+        self.assertEqual(judged('H7-03', b'TAKETHIS <a@b>\r\n'), 'new')
+
     def test_A15_requires_reader_and_malformed_transit_argument(self):
         def row(command, mode):
             return dict(self.row(command, b'502 transit is not permitted on this connection\r\n', mode=mode),

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 FUNCTIONS = {'register', 'poll', 'wait', 'ack', 'position', 'rebase',
-             'unregister', 'post', 'read', 'crash', 'recover', 'withdraw'}
+             'unregister', 'post', 'read', 'crash', 'recover', 'withdraw', 'transfer'}
 
 
 class HistoryError(ValueError):

@@ -1444,8 +1444,9 @@ class Conn:
         if len(args) != 2:
             return self._error()
         if args[0].upper() != "PASS":
-            if not re.fullmatch(r"[0-9a-fA-F]{32}", args[0]):
-                return self._error()
+            # specs/nntp.md:1843,1860: `XREDEEM CODE NAME -> 381` caches whatever CODE says; a code that is
+            # not the operator's 32 hex characters is refused at PASS (482), never at this line (H7: fn1
+            # agrees; the model's former 501 here had no spec line).
             return self._reply("XREDEEM", 381, effect=lambda *_: self._pend(redeem=tuple(args)))
         if self.redeem is None:
             return self._reply("XREDEEM", 482)

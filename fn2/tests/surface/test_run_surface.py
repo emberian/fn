@@ -451,6 +451,38 @@ class SurfaceBudgetTests(unittest.TestCase):
             self.assertEqual(surface.RUN['fuzz_allocations']['consumer'], 300)
         return case.evidence
 
+    def test_focused_differential_of_another_family_is_adjudicated(self):
+        # H7: tls_auth's F hook launches the wire differential; its new mismatches fail as nntp's do,
+        # and a non-differential driver of that family is judged by its exit alone.
+        case = surface.SurfaceCase()
+        case.setUp()
+        row = dict(self.known_difference(), detail='planted new mismatch')
+        def driver(command, directory, seconds):
+            directory.mkdir(parents=True)
+            (directory / 'summary.json').write_text(json.dumps(dict(mismatches={'fixture': 1}, budget_exhausted=True)))
+            (directory / 'differences.jsonl').write_text(json.dumps(row) + '\n')
+            return 1
+        differential = [sys.executable, '-m', 'fn2.tests.model.differential', '--target', 'fn1', '--focus', 'auth']
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop',
+                                            'fuzz_allocations': {'tls_auth': 300}}, clear=True), \
+                mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn1'}), \
+                mock.patch.object(surface, 'hook', return_value=differential), \
+                mock.patch.object(surface, 'driver', side_effect=driver):
+            with self.assertRaisesRegex(AssertionError, 'new wire mismatches'):
+                case.fuzz('tls_auth')
+            self.assertEqual(case.evidence['new_difference_count'], 1)
+        other = surface.SurfaceCase()
+        other.setUp()
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop',
+                                            'fuzz_allocations': {'web': 300}}, clear=True), \
+                mock.patch.dict('os.environ', {'FN2_SURFACE_TARGET': 'fn1'}), \
+                mock.patch.object(surface, 'hook', return_value=[sys.executable, '-m', 'fn2.tests.surface.http_fuzz']), \
+                mock.patch.object(surface, 'driver', return_value=0):
+            other.fuzz('web')
+            self.assertNotIn('differences', other.evidence)
+
     def test_fake_driver_recorded_mismatch_completes(self):
         evidence = self.fake_fuzz([self.known_difference()])
         self.assertEqual(evidence['recorded_difference_count'], 1)

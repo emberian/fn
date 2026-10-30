@@ -136,7 +136,69 @@ def rejected_article_continuation(row):
             and not previous.get('client_half_closed', False))
 
 
+def arguments_over_497(row):
+    """RFC 3977 3.1: a line within 512 octets whose arguments exceed 497 (H7-01)."""
+    command = _command(row)                    # the line without its CRLF
+    if command is None or len(command) + 2 > 512:
+        return False
+    parts = re.split(rb'[ \t]+', command, maxsplit=1)
+    return len(parts) == 2 and len(parts[1]) > 497
+
+
+def group_non_ascii_name(row):
+    """GROUP NAME whose name is UTF-8 beyond ASCII: an RFC 3977 9.8 name no RFC 5536 3.1.4 group can be (H7-02)."""
+    command = _command(row)
+    if command is None:
+        return False
+    parts = re.split(rb'[ \t]+', command)
+    if len(parts) != 2 or parts[0].upper() != b'GROUP' or parts[1].isascii():
+        return False
+    try:
+        parts[1].decode('utf-8')
+    except UnicodeError:
+        return False
+    return True
+
+
+def _article(command):
+    return command is not None and re.match(rb'[!-9;-~]+:', command) is not None
+
+
+def takethis_article_not_received(row):
+    """The TAKETHIS article itself (a header line first), any article: H2d's class widened (H7-03)."""
+    return _article(_octets(row, 'command_hex'))
+
+
+ATEXT = rb"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+"
+DOT_ATOM = ATEXT + rb'(?:\.' + ATEXT + rb')*'
+
+
+def transit_id_rfc3977_not_rfc5536(row):
+    """IHAVE/CHECK/TAKETHIS <id> valid by RFC 3977 9.8 and not by RFC 5536 3.1.3 (H7-04)."""
+    command = _command(row)
+    if command is None:
+        return False
+    parts = re.split(rb'[ \t]+', command)
+    if len(parts) != 2 or parts[0].upper() not in (b'IHAVE', b'CHECK', b'TAKETHIS'):
+        return False
+    ident = parts[1]
+    rfc3977 = re.fullmatch(rb'<[!-=?-~]{1,248}>', ident) is not None
+    rfc5536 = re.fullmatch(rb'<' + DOT_ATOM + rb'@(?:' + DOT_ATOM + rb'|\[[!-Z^-~]*\])>', ident) is not None
+    return rfc3977 and not rfc5536
+
+
+def ihave_article_with_nul_or_bare_lf(row):
+    """An IHAVE article carrying NUL or a bare LF (H7-05)."""
+    command = _octets(row, 'command_hex')
+    return _article(command) and (b'\x00' in command or re.search(rb'(?<!\r)\n', command) is not None)
+
+
 PREDICATES = {
+    'H7-group-non-ascii-name': group_non_ascii_name,
+    'H7-takethis-article-not-received': takethis_article_not_received,
+    'H7-transit-id-rfc3977-not-rfc5536': transit_id_rfc3977_not_rfc5536,
+    'H7-ihave-article-nul-or-bare-lf': ihave_article_with_nul_or_bare_lf,
+    'H7-arguments-over-497': arguments_over_497,
     'A13-invalid-keyword': invalid_keyword,
     'A15-malformed-reader-transit': malformed_reader_transit,
     'H2d-preceding-501-close': preceding_501_close,

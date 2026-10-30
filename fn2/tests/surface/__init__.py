@@ -284,7 +284,10 @@ class SurfaceCase(unittest.TestCase):
         self.evidence.update(fuzz_report=str(directory), fuzz_budget_seconds=budget,
                              fuzz_driver_seconds=seconds)
         status = driver(command, directory, budget)
-        if family == 'nntp':
+        # nntp's F (its differential, or a hook standing in for it) and the wire differential launched by any
+        # family's hook (H7: tls_auth and peering run it with a focus) are adjudicated against the ledger;
+        # every other driver owns its own oracle and exits 0.
+        if family == 'nntp' or command[1:3] == ['-m', 'fn2.tests.model.differential']:
             summary = json.loads((directory / 'summary.json').read_text())
             path = directory / 'differences.jsonl'
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []

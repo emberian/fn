@@ -409,6 +409,9 @@ hbox` under the wall cap (`FN2_NIGHTLY_HOURS`, default 8), and renders `OUT/nigh
 |---|---|---|---|
 | P-UTF8-WS (H6, 2026-10-29) | specs/nntp.md:513-518 (NNT-003: "drain rejected input to a safe protocol boundary or close the connection"); RFC 3977 §3.1 | A command line that is not UTF-8 is **malformed** whatever else is wrong with it: the line is decoded before it has words, so surrounding whitespace on a bad-UTF-8 line does not make it a plain syntax error. The answer is `501`, then the connection closes. A valid-UTF-8 line with leading or trailing whitespace stays a plain `501` with the connection kept. | H: `fn2/tests/model/nntp_model.py` `_dispatch` (decode before the whitespace check), test `test_invalid_utf8_is_malformed_before_whitespace`. D: the grammar's `:malformed` class; `fn2/tests/grammar-fuzz-oracle.py`'s whitespace-order exception now counts 0 on the 4,416 cases (13,501 lines, 0 disagreements) and can be deleted. |
 
+| P-FNCU-HEADER (H7) | specs/consumer-progress.md:45-50 (`fncu`, version 1; "an unknown version is refused") | A cursor whose first five octets are anything but `fncu` 01 is refused as `version`. That includes an empty file, a short file and another magic. | H: `fn2/tests/surface/fncu_fuzz.py`. fn1: books/consumer-position.lisp `fn-cp-cursor-decode`. |
+| P-FNCU-EPOCH (H7) | specs/consumer-progress.md:45-50 (four u32 fields, no positivity stated) | The registration epoch is positive, so an epoch of 0 is refused as `grammar`. The query version, view version and position may be 0. | H: `fncu_fuzz.py`. fn1: `fn-cp-cursorp` (`posp` of the epoch). |
+
 The model still accepts a malformed line's 501 *without* a close (EOF optional, the fn1 tolerance
 `test_malformed_eof_is_optional_and_requires_observed_eof` records); for fn2 the pin is 501 and close, which is what D answers.
 
@@ -516,3 +519,75 @@ The source-corpus row and peering's INN row were removed as fixtures, because th
 row would have been the same construction twice. Unit tests are in `fn2/tests/surface/test_fixtures.py`:
 transcript parsing, the article, empty-group and listing comparators with five mutation controls, the RFC
 vector plus a wrong-password control, and the named skip.
+
+## H7b: the F, H and R drivers, run once against fn1 on hbox
+
+Each driver is reached through one hook module, and hbox_nightly.sh exports all of them (the README's table):
+`fuzz:fuzz` for F in the eight families besides nntp, `history_drivers:history` for H in peering and bp,
+and `perf:perf` for R in every family. Each fuzz module also runs alone (`python3 -m
+fn2.tests.surface.<module> --target fake|fn1`). Its `--target fake --plant P` is a mutation control, and
+its unit test (`test_argv_fuzz`, `test_config_fuzz`, `test_http_fuzz`, `test_codec_fuzz`,
+`test_differential`) checks that every plant is caught and that the unmutated fake agrees. Laptop unit
+acceptance: 395 tests OK.
+
+### F (fuzz), against image set c14e9e8e
+
+| family | driver and oracle | cases | outcome |
+|---|---|---|---|
+| config_limits | `config_fuzz`: specs/native-config.md's sentences through `operator PATH show` (accepted 0, refused usage 5), 23 mutation kinds | 5,659 (surface F, 600 s) | 0 findings |
+| web | `http_fuzz`: RFC 9112/9110 and the face's stated policy (books/web-request.lisp), 27 kinds; /health must stay 200 | 1,000,000 (surface F, 131 s) | 0 findings |
+| consumer | `fncu_fuzz`: the `fncu` v1 encoding through `consumer-inspect`, 11 kinds | 800 | 0 findings, once two pins were taken from fn1's decoder (P-FNCU-HEADER, P-FNCU-EPOCH, above). The FNCT frame half is owed. |
+| bp | `bp_fuzz`: RFC 9171 through `bp decode` on the captured bundles (payload in place, CRC32C flips, truncation, trailing octets, lifetime by clock and by Bundle Age, garbage) | 800 | 0 findings. fn decides expiry by the Bundle Age block whenever one is present (books/clock.lisp; RFC 9171 5.5), so the age is mutated (CRC recomputed), not the clock. The TCPCL segment half is owed. |
+| operator | `argv_fuzz`: the exit table, ARGV-MALFORMED, usage, OperatorModel, 6 mutation kinds | 4,020 calls in the first run | The first runs corrected the model where its tags were provisional: malformed group names are usage (SYNTAX for retire and policy, GROUP-NAME for describe and moderate, RETENTION for expire) before existence; `group policy` with any status other than y/n is usage SYNTAX; `retention expire` names a policy for any group or `*` (no existence check, docs/operator-internals.md:510-514), with counts bounded by u32; `account access` without its two flags is SYNTAX. One fn1 bug, **A01** (ledger below). Rerun: see H7c. |
+| store_ops | `argv_fuzz` with StoreOpsModel | 3,860 calls | Model corrected: `store inspect X`, where X is not a Message-ID, is the sub-verb's usage (INVALID-STORE-COMMAND), not `absent`. A01 applies here too. Rerun: H7c. |
+| tls_auth | wire differential, `--focus auth` | 985 commands compared | Classes found. Long USER (arguments of 498 to 508 octets inside a 512-octet line) gets 381 where the model says 501: **H7-01** spec-ambiguity. `XREDEEM CODE NAME` with a non-hex code: the model's 501 had no spec line, so the model now answers 381 (specs/nntp.md:1843,1860). `GROUP fn.ñ` is 501 where the model says 411: **H7-02** spec-ambiguity (RFC 3977 9.8 names against RFC 5536 3.1.4). *-PLUS mechanisms need the TLS exporter, so the focus sends the plain sibling (harness-side). Rerun: H7c. |
+| peering | wire differential, `--focus feed` (XFNCATCHUP's 291 added to the shape table, specs/peering.md:381) | 337 commands compared | Classes found. TAKETHIS article answered 436 "not received; closing": **H7-03**, H2d's known fn1 bug widened from exact articles to the reply. `IHAVE <a@b.>` gets 501: **H7-04** spec-ambiguity (RFC 3977 against RFC 5536 message-id). An IHAVE article with NUL or bare LF gets 436 where the model says 437: **H7-05** spec-ambiguity. One open harness-side item, H7-OPEN-1: after a 100 KB TAKETHIS article answered 439, fn1 closed before the next IHAVE. specs/nntp.md:530-534 closes after an article cut by its bound, but the differential's model is not given the node's article bound. Rerun: H7c. |
+
+Deep `--out` paths: fn1 refuses a control socket path past 103 octets, so the differential now puts a node
+in a short scratch directory linked from its output (fn2/tests/model/differential.py `owner`).
+
+### H (history)
+
+`history_drivers:history` adapts the E natives' own observation logs with `from_observe` (which now also
+emits IHAVE as a `transfer` op) and runs `convergence.check` (new: V1 accepted twice, V2 accepted then
+absent, V3 changed body, V4 two nodes serving different bodies; unit tests with each kind injected) with
+`durable.check`. Results over fn1's recorded logs: peering H5c, 70 logs, 2,358 operations (2,023 posts, 108
+transfers, 227 reads), 0 anomalies; peering nightly-smoke2, 72 logs, 2,260 operations, 0 anomalies; bp H5c,
+1 log, 2 operations, 0 anomalies. Bundle convergence (F8) is owed, because the bp natives observe no bundle
+operations; every bp report names this.
+
+### R (performance, published, never a gate)
+
+`perf:perf` maps each row to the tools/load cell that measures it and runs each cell once per surface run.
+It returns the headline metric with its unit and profile, every bar metric, and tools/load's own verdicts.
+Run once on hbox (load 10-18, so tools/load marks its time bars NOT-MEASURED):
+
+| family | row | headline | tools/load verdicts |
+|---|---|---|---|
+| nntp | T-CMD | cmd.p99_ms.max 10.8 ms | NOT-MEASURED (box loaded) |
+| nntp | T-READ | article.p50_ms.R16 121.4 ms | NOT-MEASURED |
+| nntp | T-LIN | article.ratio_8n_over_n 10.04 | NOT-MEASURED |
+| nntp | T-POST | post.p50_ms.c1 72.1 ms | NOT-MEASURED |
+| nntp | T-RATE | post.rate_c1r3 11.8 per s | NOT-MEASURED |
+| nntp | T-PUB-STALL | publish.stall_max_s 2.15 s | NOT-MEASURED |
+| nntp | T-ALLOC | alloc.article.exponent 0.589 | T-ALLOC FAIL; T-CALLS, T-SYNC REPORTED |
+| operator, store_ops | T-OPEN / W15 | open_s.checkpoint@50k 12.9 s / 9.8 s | NOT-MEASURED |
+| operator, store_ops | T-PUB | publish.write_octets.exponent 0.948 | FAIL |
+| peering | W6a, L-DIVERGE-* | peers.divergence 0 | L-DIVERGE-CATCHUP PASS, L-DIVERGE-FEED PASS |
+| peering | W6q | b.rss_kib.hwm 131,228 KiB | (no bar) |
+| config_limits | conn-capacity | conn.default.first_refused 64 | (no bar) |
+| config_limits | L-FRESH | fresh.256.ok 0 | FAIL |
+| config_limits | W13 VmHWM | rss_kib.hwm 198,128 KiB | L-HWM FAIL; L-RSS REPORTED |
+
+Named skips. W7 runs through tools.load.w7_extent (adapter owed). The consumer wake and M5 rows, web
+per-page p99, and W3/W4/W5 have no tools/load cell yet. tls_handshake_budget is the native's own row.
+L-CATCHUP and F8 skip with tools/load's own NOT-MEASURED reasons. Rows: `run-h7-perf/rows.json` on hbox.
+
+### fn1 rows from H7 (recorded where the drivers read them)
+
+| row | class | what fn1 does | spec | recorded in |
+|---|---|---|---|---|
+| A01 | fn1-bug | The host refuses a non-ASCII operator argument before ACL2 judges the argv: exit 5 with `fn-host: error: operator argument is not ASCII` and no tagged line. An empty word gets the specified `ARGV-MALFORMED`. | specs/native-admin.md:12-15 (a word that is empty or not ASCII is refused by name, ARGV-MALFORMED) | `argv_fuzz.ADJUDICATIONS` (fn1 only) |
+| H7-03 | fn1-bug | A TAKETHIS article is answered `436 the article was not received; closing` (H2d's class, now matched by reply) | RFC 4644 2.5.2 | model/adjudications.json |
+| H7-01, -02, -04, -05 | spec-ambiguity | as in the F table above; each names the decision layer D makes | as named | model/adjudications.json |
+| observed | not adjudicated | The diagnostic `fn --fn config check PATH` answers a profile over 16,384 octets with a fault (exit 4, `store file exceeds bound`). Every operator verb names the same bound as usage (exit 5), so the fuzz's subject is `operator PATH show`. | specs/native-config.md:6-12 | this note |
