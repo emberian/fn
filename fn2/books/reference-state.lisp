@@ -52,12 +52,6 @@
                 (,(fn2-columns-sym (caar children) "-REF") fn2-ref-core))
             `(,(cadar children) (,(caar children) fn2-core)))
           (fn2-ref-child-bindings (cdr children) refp))))
-(defun fn2-ref-child-copies (children)
-  (if (atom children) nil
-    (let ((name (cadar children)))
-      (cons `(,(fn2-columns-sym name "-REF")
-               (,(fn2-columns-sym name "-COPY") ,name ,(fn2-columns-sym name "-REF")))
-            (fn2-ref-child-copies (cdr children))))))
 (defun fn2-ref-child-diffs (children)
   (if (atom children) nil
     (let ((name (cadar children)))
@@ -65,16 +59,30 @@
               :skip (fn2-pool-data))
             (fn2-ref-child-diffs (cdr children))))))
 
+; One copy function per child, then the chain (a single stobj-let over every
+; child returns them through one MV, at most 32 values).
+(defun fn2-ref-copy-name (field) (fn2-columns-pre "FN2-REF-COPY-" field))
+(defun fn2-ref-child-copy-events (children)
+  (if (atom children) nil
+    (let* ((field (caar children)) (name (cadar children)) (ref (fn2-columns-sym name "-REF")))
+      (cons `(defun ,(fn2-ref-copy-name field) (fn2-core fn2-ref-core)
+               (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+               (stobj-let ((,name (,field fn2-core))) (fn2-ref-core)
+                 (stobj-let ((,ref (,(fn2-columns-sym field "-REF") fn2-ref-core))) (,ref)
+                   (,(fn2-columns-sym name "-COPY") ,name ,ref) fn2-ref-core)
+                 fn2-ref-core))
+            (fn2-ref-child-copy-events (cdr children))))))
+(defun fn2-ref-child-copy-chain (children)
+  (if (atom children) nil
+    (cons `(fn2-ref-core (,(fn2-ref-copy-name (caar children)) fn2-core fn2-ref-core))
+          (fn2-ref-child-copy-chain (cdr children)))))
+(make-event (value (cons 'progn (fn2-ref-child-copy-events *fn2-core-children*))))
 (make-event
- (let* ((children *fn2-core-children*)
-        (bindings (fn2-ref-child-bindings children t)) (refs (strip-cars bindings)))
+ (let* ((children *fn2-core-children*))
    (value `(fn2-defoperation (:operation-set fn2-ref-core) :reference :infer
             (defun fn2-ref-copy-core (fn2-core fn2-ref-core)
              (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
-             (stobj-let ,(fn2-ref-child-bindings children nil) (fn2-ref-core)
-               (stobj-let ,bindings ,refs
-                 (let* ,(fn2-ref-child-copies children) (mv ,@refs)) fn2-ref-core)
-               fn2-ref-core))))))
+             (let* ,(fn2-ref-child-copy-chain children) fn2-ref-core))))))
 (in-theory (disable fn2-ref-copy-core))
 
 (defun fn2-ref-reset (profile fn2-core fn2-ref-core)
