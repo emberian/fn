@@ -39,6 +39,17 @@
   (cons `(,(fn2-decl-get :id (cdar rows))
           (,(fn2-decl-get :compare (cdar rows)) abase bbase ak as ag bk bs bg fn2-fields fn2-pool))
         (fn2-ra-compare-arms (cdr rows)))))
+(defun fn2-ra-merge-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons `(,(fn2-decl-get :id (cdar rows)) ,(fn2-decl-get :merge (cdar rows))) (fn2-ra-merge-arms (cdr rows)))))
+(defun fn2-ra-fold-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom rows) nil)
+       ((fn2-decl-get :fold (cdar rows))
+        (cons `(,(fn2-decl-get :id (cdar rows)) (,(fn2-columns-sym (caar rows) "-FOLD-APPLY") kind vbase abase fn2-fields))
+              (fn2-ra-fold-arms (cdr rows))))
+       (t (fn2-ra-fold-arms (cdr rows)))))
 (defun fn2-ra-ids (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil (cons (fn2-decl-get :id (cdar rows)) (fn2-ra-ids (cdr rows)))))
@@ -75,6 +86,15 @@
                  (<= (+ bbase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
              (ignorable abase bbase ak as ag bk bs bg fn2-fields fn2-pool))
     (case sid ,@(fn2-ra-compare-arms rows) (otherwise (mv :schema :eq))))
+   ;; The schema's merge rule (C-RANGE-NEWEST: a :latest overlay replaces
+   ;; an equal key) and, for a fold, its served step over decoded rows.
+   (defun fn2-run-layout-merge (sid)
+    (declare (xargs :guard t))
+    (case sid ,@(fn2-ra-merge-arms rows) (otherwise :unique)))
+   (defun fn2-fold-apply (sid kind vbase abase fn2-fields)
+    (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase)))
+             (ignorable sid kind vbase abase))
+    (case sid ,@(fn2-ra-fold-arms rows) (otherwise (mv :schema fn2-fields))))
    (defconst *fn2-run-assembled-ids* ',(fn2-ra-ids rows)))))
 
 ; A shape lemma (recognizer, invariant, rows) for each named output, proved
@@ -89,6 +109,13 @@
 ; Shape lemmas, by cases over the arms, from each codec's own lemmas.
 (defmacro fn2-ra-shape-events ()
  '(progn
+   (defthm fn2-fold-apply-shape
+    (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))
+             (and (fn2-fieldsp (mv-nth 1 (fn2-fold-apply sid kind vbase abase fn2-fields)))
+                  (fn2-fields-wfp (mv-nth 1 (fn2-fold-apply sid kind vbase abase fn2-fields)))
+                  (equal (fn2-fields-rows (mv-nth 1 (fn2-fold-apply sid kind vbase abase fn2-fields)))
+                         (fn2-fields-rows fn2-fields))))
+    :hints (("Goal" :in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows))))
    (defthm fn2-run-layout-decode-shape
     (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))
              (and (fn2-fieldsp (mv-nth 2 (fn2-run-layout-decode sid lv base slot gen off end okind oslot ogen fn2-fields fn2-pool)))
@@ -613,8 +640,10 @@
 ;; position POS into rows EB. FN2-OV-LOCATE finds the lower bound of the query
 ;; at QBASE (read under QK QS QG) and how the entry there compares with it
 ;; (:lt never; :eq, :gt, or :end past the last). FN2-OV-INSERT adds the entry
-;; at EBASE (its octets readable under the overlay's owner): :ok, :duplicate
-;; (an equal key is present; nothing changes), :full, or a refusal by name.
+;; at EBASE (its octets readable under the overlay's owner): :ok; for an
+;; equal key present, the entry replaces it when the schema's merge rule is
+;; :latest and is refused :duplicate otherwise (nothing changes); :full, or a
+;; refusal by name.
 (defmacro fn2-ra-overlay-events ()
  '(progn
    (defmacro fn2-ra-ov-guard ()
@@ -685,10 +714,11 @@
     (natp (mv-nth 1 (fn2-ov-locate o eb qbase qk qs qg fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
     :rule-classes :type-prescription)
    (in-theory (disable fn2-ov-locate))
-   ;; Encode the entry at EBASE at the arena's fill and place it at POS.
-   (defun fn2-ov-write (o pos ebase fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+   ;; Encode the entry at EBASE at the arena's fill and place it at POS
+   ;; (REPL: in place of the equal-keyed entry there).
+   (defun fn2-ov-write (o pos ebase repl fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)
-     :guard-hints (("Goal" :in-theory (disable fn2-ov-place)))))
+     :guard-hints (("Goal" :in-theory (disable fn2-ov-place fn2-ov-reput)))))
     (b* (((unless (and (fn2-ov-okp o fn2-overlays fn2-overlay-index) (natp ebase)
                        (<= (+ ebase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
           (mv :bounds fn2-overlays fn2-overlay-index fn2-pool))
@@ -700,7 +730,8 @@
                                  (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays)
                                  (fn2-overlays-ogen o fn2-overlays) fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code fn2-overlays fn2-overlay-index fn2-pool))
-         ((mv code fn2-overlays fn2-overlay-index) (fn2-ov-place o pos at end fn2-overlays fn2-overlay-index)))
+         ((mv code fn2-overlays fn2-overlay-index)
+          (if repl (fn2-ov-reput o pos at end fn2-overlays fn2-overlay-index) (fn2-ov-place o pos at end fn2-overlays fn2-overlay-index))))
      (mv code fn2-overlays fn2-overlay-index fn2-pool)))
    (defun fn2-ov-insert (o ebase eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard (fn2-ra-ov-guard)
@@ -708,14 +739,15 @@
     (b* (((unless (and (fn2-ov-okp o fn2-overlays fn2-overlay-index)
                        (member (fn2-overlays-phase o fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-private*))))
           (mv :state fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         ((unless (< (fn2-overlays-count o fn2-overlays) (fn2-overlays-icap o fn2-overlays)))
-          (mv :full fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((mv code pos order fn2-fields)
           (fn2-ov-locate o eb ebase (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays)
                          (fn2-overlays-ogen o fn2-overlays) fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         ((when (eq order :eq)) (mv :duplicate fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         ((mv code fn2-overlays fn2-overlay-index fn2-pool) (fn2-ov-write o pos ebase fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+         (repl (and (eq order :eq) (eq (fn2-run-layout-merge (fn2-overlays-schema o fn2-overlays)) :latest)))
+         ((when (and (eq order :eq) (not repl))) (mv :duplicate fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (or repl (< (fn2-overlays-count o fn2-overlays) (fn2-overlays-icap o fn2-overlays))))
+          (mv :full fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((mv code fn2-overlays fn2-overlay-index fn2-pool) (fn2-ov-write o pos ebase repl fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
    (in-theory (disable fn2-ov-write fn2-ov-insert))))
 
@@ -995,7 +1027,7 @@
  '(fn2-run-layout-fields fn2-run-layout-keys fn2-run-layout-decode fn2-run-layout-encode
    fn2-run-layout-size fn2-run-layout-compare fn2-run-add-ready fn2-run-add-write fn2-run-add fn2-run-seek fn2-run-build-add
    fn2-run-build-promote fn2-run-build-work fn2-run-build-start fn2-run-build-page fn2-run-build-finish
-   fn2-run-skip fn2-run-nth fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up fn2-run-phase-header fn2-run-phase-seek fn2-run-phase-child fn2-run-phase-deliver fn2-run-phase-up fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step fn2-ov-entry fn2-ov-order fn2-ov-search fn2-ov-locate fn2-ov-write fn2-ov-insert fn2-ov-start fn2-ov-place fn2-ov-insert-at fn2-run-cursor-start fn2-run-cache-install))
+   fn2-run-skip fn2-run-nth fn2-run-step-header fn2-run-step-seek fn2-run-step-child fn2-run-step-deliver fn2-run-step-up fn2-run-phase-header fn2-run-phase-seek fn2-run-phase-child fn2-run-phase-deliver fn2-run-phase-up fn2-run-cursor-step fn2-run-lookup-step fn2-run-scan-step fn2-ov-entry fn2-ov-order fn2-ov-search fn2-ov-locate fn2-ov-write fn2-ov-insert fn2-ov-start fn2-ov-place fn2-ov-reput fn2-ov-insert-at fn2-run-cursor-start fn2-run-cache-install))
 (defconst *fn2-run-glue-old-suffixes*
  '("-ENTRY-ADD" "-INDEX-ADD" "-ENTRY-SEEK" "-INDEX-SEEK" "-BUILD-ADD" "-BUILD-PROMOTE"
    "-INDEX-SKIP" "-INDEX-NTH" "-LOOKUP-STEP"))

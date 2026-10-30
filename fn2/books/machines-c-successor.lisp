@@ -77,7 +77,7 @@
 (fn2-idc-op-shape fn2-ov-start (o schema slot gen ibase icap okind oslot ogen cov fn2-overlays fn2-overlay-index fn2-pool)
  (fn2-overlays fn2-pool) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
 (fn2-idc-op-shape fn2-ov-advance (o from to fn2-overlays) (fn2-overlays) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays)))
-(fn2-idc-op-shape fn2-ov-write (o pos ebase fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-overlays fn2-overlay-index fn2-pool)
+(fn2-idc-op-shape fn2-ov-write (o pos ebase repl fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-overlays fn2-overlay-index fn2-pool)
  ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-indexp fn2-overlay-index)
   (fn2-overlay-index-wfp fn2-overlay-index) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
 (fn2-idc-op-shape fn2-ov-insert (o ebase eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-overlays fn2-overlay-index fn2-fields fn2-pool)

@@ -105,6 +105,24 @@
 (fn2-overlay-index-preserves fn2-ov-place (o pos off end fn2-overlays fn2-overlay-index) :position 2 :prefix "-INDEX-PRESERVES" :raw-rows t)
 (in-theory (disable fn2-ov-place))
 
+; Point sorted position POS at an entry encoded at arena offset OFF, ending
+; at END, in place of the equal-keyed entry there (a :latest schema,
+; C-RANGE-NEWEST): the count stays; the replaced bytes stay in the arena
+; until the overlay is sealed, so its capacity bounds the replacements too.
+(defun fn2-ov-reput (o pos off end fn2-overlays fn2-overlay-index)
+ (declare (xargs :stobjs (fn2-overlays fn2-overlay-index) :guard t))
+ (b* (((unless (fn2-ov-okp o fn2-overlays fn2-overlay-index)) (mv :bounds fn2-overlays fn2-overlay-index))
+      (ibase (fn2-overlays-ibase o fn2-overlays))
+      ((unless (and (natp pos) (natp ibase) (< pos (fn2-overlays-count o fn2-overlays)) (unsigned-byte-p 32 off) (unsigned-byte-p 32 end)
+                    (< (+ ibase pos) (fn2-overlay-index-rows fn2-overlay-index))))
+       (mv :bounds fn2-overlays fn2-overlay-index))
+      (fn2-overlay-index (fn2-overlay-index-set-off (+ ibase pos) off fn2-overlay-index))
+      (fn2-overlays (fn2-overlays-set-fill o end fn2-overlays)))
+  (mv :ok fn2-overlays fn2-overlay-index)))
+(fn2-overlays-preserves fn2-ov-reput (o pos off end fn2-overlays fn2-overlay-index) :position 1 :raw-rows t :disable nil)
+(fn2-overlay-index-preserves fn2-ov-reput (o pos off end fn2-overlays fn2-overlay-index) :position 2 :prefix "-INDEX-PRESERVES" :raw-rows t)
+(in-theory (disable fn2-ov-reput))
+
 ; Specification (logic only): the overlay reads back its entries sorted by
 ; key; inserts of distinct keys all succeed.
 (defun fn2-ov-sort-insert-spec (key e sorted)

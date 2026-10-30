@@ -28,7 +28,10 @@ departure from a decision that is not recorded here is a defect.
 | the served assembly: the production schemas assembled once with the identity decision, then the range reads | `fn2/books/runs-served.lisp`, `fn2/books/range-served.lisp` | C-ONE-ASSEMBLY |
 | C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1), their defcosts and core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp`, materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
 | the batch's private successor (C-S2): the engine row, stage, bind, publish, drop, their defcosts and core wrappers (`fn2-identity-successor-core-events`) | `fn2/books/machines-c-successor.lisp` (includes machines-c; included by `assembly-index`), materialized in `assembly-callbacks-c.lisp` | C-S2 |
-| `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
+| fold declarations (`defrunschema :fold` on the `:schema` row: interpretation, initialization, coverage, observation; the step compiled twice, as a list function and as the served step over decoded rows) | `fn2/books/runs-schema.lisp` | C4a |
+| the folds the clients read: group counts and watermarks, the consumer cursor, principal charges (durable half) | `fn2/books/folds.lisp` (included by runs-served before the assembly) | C4a |
+| the folds' summary contract through the real engine (`fn2-fold-image`) and the generated keystones | `fn2/books/folds-served.lisp`; unit `fn2/tests/folds-unit.lisp` | C4a |
+| registration, read-state, edge-policy and inbox folds; the select-versus-materialize check | `fn2/books/folds.lisp`, `fn2/sim/check-consumer.lisp` | C4b |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
 | acceptance | `fn2/tests/sim-layer-c.lisp` (scenario M3 so far; `fn2/tests/sim-layer-c-sweep.lsp` the 10,000-seed driver) | C2d-C6 |
@@ -123,11 +126,31 @@ declaration.
 | article metadata | article | source/projection/membership refs, birth event, withdrawal state, version | `:latest` | C3 |
 | overview | (group, group-number) | article, commit position, overview fields | `:unique` (a duplicate key is corruption) | C3 |
 | addressing (`addr`) | (principal, position) | event article, arriving stream, reason bits | `:unique` | C3 |
-| fold rows | (table, object) | version, value or value ref | `:latest` (latest-only; pins retain versions, C5) | C4 |
+| group counts (`fn2-group-counts`, id 5) | group | count, low, high | `:latest`, fold | C4a |
+| consumer cursor (`fn2-consumer-cursor`, id 6) | (consumer, epoch) | position, version | `:latest`, fold | C4a |
+| principal charges (`fn2-principal-charges`, id 7) | (principal, dimension) | charged | `:latest`, fold | C4a |
 | operation outcomes | (principal, operation) | request binding digest, outcome, event | `:unique` within the declared retry lifetime | C4 |
 | obligations | obligation | owner, article, state, terms ref, release evidence ref | `:latest` | C4 |
 | locations | logical object | current placement ref | `:latest` | C5 |
 | manifest | (schema, run) | the run descriptor fields | `:latest` | C1 |
+
+**A fold is a schema (C4a; STORAGE §4 decision 1).** `defrunschema ... :merge :latest :fold (:events
+((KIND (ARG ...) [:when TEST] :set ((FIELD EXPR) ...)) ...) :init :empty :coverage :history-start
+:observe (FIELD ...))` declares the fold on the schema's own declaration row; there is no second
+declaration kind. An event is `(KIND ARG-VALUE ...)`, its key the args named by the key fields; a
+row's value is its value fields (integer kinds only, so it fits B's u60 field rows), and an absent
+row reads as zeros. EXPR is a natural, a field or arg name, `+ - min max` or `if` over the tests `= <
+<= and or not`; every set field is computed from the old row. A failed TEST is `:refused`, a result
+outside its field's width `:range`, and neither changes the row (assert, never clamp). From the one
+declaration the schema generates the step twice: `NAME-FOLD-STEP` over list values (with the list
+fold `NAME-FOLD-SPEC` and `NAME-FOLD-OBSERVE`, logic only) and `NAME-FOLD-APPLY` over decoded field
+rows (served, guard-verified, dispatched by the assembly's `fn2-fold-apply`). A bootstrap
+initialization `(:from FN)` and a later coverage start `(:from POSITION)` are refused until a fold
+needs one. The folds of C4a, as D and E read them: group counts (`:accept g n` when `high < n`: count
++1, low the least number, high n; `:withdraw g n` when the group holds an article at or under high:
+count -1, the watermarks stay, RFC 3977's bounds), the consumer cursor (`:ack c e to`, forward only;
+`:rebase c e query start`, a newer query version and its start), principal charges (`:charge`,
+`:refund` of at most what was charged).
 
 **Identity is a Binding (UC §4.3, decision 3).** `B : Message-ID → P_fin(content facts)`, merged by
 union. The schema is `fn2-identity` (id 1): key `(message-id (:octets 250)) (content :digest)`,
@@ -354,9 +377,10 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   (its last field plus one), which needs no stored octets. Every ordered schema of C3 is such.
 - **C-RANGE-NEWEST.** Equal keys in two sources deliver once, newest winning. For a `:unique`
   schema that happens only while an overlay is being sealed into its run (the same entry twice);
-  a `:latest` schema's newer row replaces an older one. The overlay still refuses an equal key
-  (`:duplicate`), so a `:latest` update into a live overlay needs the overlay's replace (C4, with
-  the folds).
+  a `:latest` schema's newer row replaces an older one. In the overlay an equal key replaces the
+  entry for a `:latest` schema (`fn2-ov-reput`: the new entry is encoded at the arena's fill and its
+  index row repointed; the old bytes stay until the overlay is sealed, so the arena bounds
+  replacements too) and is refused `:duplicate` otherwise (C4a).
 - **C-POSITION-SEEK.** `Seek(stream, after = p)` over overview is a bisection over the number:
   each probe is a range read of one entry from `(group, mid)`, narrowing on its position; the
   answer is the number from which a read delivers exactly the entries after `p` (one past the last
@@ -481,7 +505,8 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `fn2-identity-linearizable` | for every seed and at most 64 offers, the M3 scenario's trace (interleaved decisions, records, seals with filters, bodies released, then every pair queried and the Binding scanned) is accepted by the independent IDENTITY checker | positive: 40 seeds pass with races exercised (1,808 stale records) and 722 seals; negative: the same schedules with the stamp and version checks defeated are refused by name (37 of 40) | C2d |
 | `fn2-range-read-exact` | a range read through the real steps over runs and an overlay (at most six sources of 48 sorted entries, any budget, the overlay sealed into a run after any delivery) delivers exactly `fn2-range-spec`: the union, newest entry per key, from lo to hi, cut at the position limit | positive: seven windows (whole group, inner window, position limit, empty, the other group, budget 1 with a seal after the third and after the first delivery), non-vacuous (15 rows, the overlay's row for 4); negative: an unsorted run reads back otherwise | C3 |
 | `fn2-range-seek-position` | within one stream whose positions grow with the number, the seek over runs and an overlay answers `fn2-range-seek-spec`: one past the last entry at or before `p` | positive: group 1 at p = 0, 35, 40, 41, 150 (0 4 5 5 16) and group 2, equal to the spec; negative: positions that do not grow with the number mislead it | C3b |
-| `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
+| `NAME-summary-adequate-KIND` (generated per fold and event kind; 6 rows) | for a state of at most 8 rows (`NAME-fold-statep`), an event of that kind and at most 8 query keys, sealed or not: the rows written through the real insert observe through the real range read as the fold's state (`obs(σ s) = obs s`), and after the event applied by the real step (range read of its key, `fn2-fold-apply`, overlay replace) as the fold's step of it (`σ(δ(s,e)) = δ_Σ(σ s, e)`, observed at every query) | positive: an event on a held key and one on a fresh key or refused, sealed and in the overlay; negative (TRANSPORT §9 tooth 2): an engine whose step adds one to the first value field disagrees | C4a |
+| `NAME-summary-cut` (generated per fold; 3 rows) | for at most 8 events, every cut k, sealed or not: `Fold(Summary_k, E_{k+1..n})` through the real engine observes as the whole list fold | positive: every cut of a six-event scenario, both placements (exhaustive in the tiny profile); negative: a summary that drops a row, and a summary step applied twice (or off by one, for the idempotent cursor); weak (tooth 1): a projection of the observation that is not step-closed, evaluated | C4a |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
 | `fn2-relocation-preserves-lease` | a relocation under a lease publishes the replacement before retiring the old placement and keeps the content identity | relocation that retires first | C5 |
@@ -504,7 +529,8 @@ OWED.md is regenerated when the export is green.
 | C3a | metadata, overview and `addr` schemas; range reads with resume key and version; the read plan | **done**: the keystone's teeth; `addr` read after a position by key; an octet-keyed schema refused `:key-kind` | C2d |
 | C3b | positioned seek (`fn2-seek-start`, `fn2-seek-step`, table `fn2-seeks`) | **done**: keystone fn2-range-seek-position's teeth; 10 probes over [0, 1000) | C3a |
 | M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | needs the cold leg: pages loaded through the storage path (C1c) | C1c |
-| C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
+| C4a | fold declarations on the schema row, overlay replace, group counts, consumer cursor, principal charges, the adequacy and summary-cut keystones | the keystones' teeth (every cut of the tiny scenarios, sealed and not) | C2, C3 |
+| C4b | registration, read-state, edge-policy, inbox folds; CONSUMER checker; `fn2-select-materialize-equivalent`; C-S3 (fold writes in D's transaction through the private successor) | the equivalence's teeth; D6/E reads | C4a |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |
 | C6 | permanent exact-identity retention and reclamation tests; perfect hash measured against sorted search inside a sealed run | 10,000 seeds concrete (nightly row); the measurement table | C5 |
 
