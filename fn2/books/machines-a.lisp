@@ -21,16 +21,19 @@
  :states (:accepting :admitting :closing)
  :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool) (mode :bool)
           ; the admitted kind's ordinal (D 4.5): echo unless :listener-targets names another
-          (target :u8))
+          (target :u8)
+          ; the last Accept's peer record (layer doc 4.1.1), for an admitted kind's :copy
+          (peer-family :u8) (peer-port :u16) (peer-w0 :u32) (peer-w1 :u32) (peer-w2 :u32) (peer-w3 :u32))
  :holds ((:accepting :accept-credit) (:admitting :accept-credit :connection-row) (:closing :accept-credit))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-accept-credits profile)
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (phase *fn2-listener-state-accepting*) (mode 1))
  :observes ((:accept-result fn2-listener-observe-accept
-             :cost (:steps *fn2-work-transition*) :writes (cap-index cap-nonce event-ready account-ref)
+             :cost (:steps *fn2-work-transition*)
+             :writes (cap-index cap-nonce peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3 event-ready account-ref)
              :tables (fn2-core-machines fn2-core-accounts) :from (:admitting) :next (:accepting)
-             :uses (fn2-listener-return-credit fn2-account-unbook-ref))
+             :uses (fn2-core-observed-peer fn2-listener-return-credit fn2-account-unbook-ref))
             (:close-result fn2-listener-observe-close
              :cost (:steps *fn2-work-transition*) :writes (event-ready)
              :from (:closing) :next (:accepting) :uses ()))

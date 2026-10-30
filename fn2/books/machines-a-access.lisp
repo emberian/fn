@@ -220,6 +220,14 @@
       (fn2-machine-set-pool-wait-id id fn2-core))))
 (fn2-core-preserves fn2-machine-park-pool (id class fn2-core) :rows nil :prefix "")
 
+; The peer record of the observation being delivered (layer doc 4.1.1): the
+; ops child's latch, written by every harvest.
+(defun fn2-core-observed-peer (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (family port w0 w1 w2 w3) (fn2-ops-observed-peer fn2-ops)
+    (mv family port w0 w1 w2 w3)))
+
 (defun fn2-machine-op-credit-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))

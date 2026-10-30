@@ -179,6 +179,235 @@ success as a durable core outcome. Future workers/io_uring may reorder freely
 under this same contract; their fence implementation must establish §E.3
 coverage without assuming take order.
 
+### 4.1 A5r: the native adapter redone *(design, statement first; the A5r commits rewrite it as built)*
+
+A5r puts the served core (the listener admitting `fn2-conn`) on a socket, so that H's nntp S
+form runs against a real TCP listener through the same session hook it uses for the simulator,
+with no harness change. It replaces the parked `fn2/a5-native-wip` (6a6170a35, read as compost:
+its FFI and mux are reused after review; its adapter structure is not, because it decided which
+ops to start by kind inside the take loop and had no oracle). Four parts, landing in this order,
+each under the whole-tree gate: the ABI change (4.1.1-4.1.2), the loop (4.1.3), the socket and the
+session (4.1.4); the oracle (4.1.5) and the keystones (4.1.6) arrive with the loop.
+
+#### 4.1.1 The Accept result carries the peer address
+Today an Accept's terminal cell carries `count = 0`, `aux0 = cap index`, `aux1 = cap nonce`, and
+nothing about the peer: D3's declared interim (d-machines-nntp.md §4.4, §8; the owed row
+`fn2-conn-reader-only-interim`) is "every connection a reader, no per-address 400".
+
+**Decision A5R-PEER-RECORD.** The peer address is a fixed-width *named record* posted with the
+Accept's terminal cell, not two more aux words. Reasons: NNT-043 matches trusted ranges on up to
+128 bits of the source address by family, so a word pair cannot carry an IPv6 source; aux0/aux1
+already carry the capability; and widening every cell (or every observer's argument list) would
+change every posting site and every observe callback for one event kind. D asked for "an
+address word pair in the result's aux fields" (§8); this gives D the address with its family
+and port instead, through the same cell and the same harvest.
+
+- **Op-row columns** (vocab.lisp, cell 0 only): `peer-family` (`:enum fn2-peer-family (:none
+  :inet :inet6 :local)`), `peer-port :u16`, `peer-w0 peer-w1 peer-w2 peer-w3 :u32` (the address
+  in network order, most significant word first). `:inet`: `w0` is the IPv4 address and
+  `w1 = w2 = w3 = 0`. `:inet6`: all four words. `:local` (a Unix-domain peer; its credentials
+  are E6's) and `:none`: port and words zero. `fn2-ops-clear-row` zeroes them (family `:none`).
+- **Posting.** `fn2-post-accept-result (slot gen outcome reason cap-index cap-nonce family port
+  w0 w1 w2 w3 fn2-ops)`: bounded validation of the peer record (`fn2-peer-recordp`: family in
+  the enum, port and words in width, the per-family zero rule, `:none` unless the outcome is
+  `:done`), then exactly `fn2-post-result 0 slot gen :accept-result outcome reason 0 cap-index
+  cap-nonce` on an op whose kind is Accept and whose cell 0 is unposted (checked first), then the
+  record into the row's peer columns iff cell 0 became posted (acceptance is read from the cell,
+  never from the stray counter, which saturates). Any refusal is a stray and changes nothing else
+  (T6). The existing `fn2-post-result` with an
+  `:accept-result` leaves the record `:none`: that is the simulator's fixed opaque value and
+  every existing caller (the simulator, the cw adapter, the units) is unchanged, so A's drivers
+  and D's scenario see identical cores.
+- **Harvest.** `fn2-harvest-next`, on harvesting a cell 0, copies that row's peer columns into
+  the ops child's observation latch (`fn2-ops-seen-peer-family`, `-port`, `-w0`..`-w3`, extra
+  fields) before `fn2-op-finish` recycles the row; every delivered cell writes the latch, a
+  release cell `:none`, so it always describes the observation being delivered. The reference
+  turn runs the same `fn2-harvest-one` on its copied core and the columns' generated copy/diff
+  carries the extra fields, so TRACE compares the latch too (shared code: TRACE checks
+  composition here, not peer extraction, which the host unit checks). The latch is in
+  `fn2-ops-nonstray-snapshot`, so a stray provably leaves it unchanged.
+- **Observation.** `fn2-core-observed-peer (fn2-core) -> (mv family port w0 w1 w2 w3)`, a
+  defcost'd core read. The listener gains six fields (`peer-family peer-port peer-w0 .. peer-w3`);
+  `fn2-listener-observe-accept` writes them from the latch with the capability, and a failed
+  Accept leaves them `:none`.
+- **Into the connection.** Admission's `:copy` carries listener fields into the admitted row,
+  from the listener's offer `*fn2-machine-listener-offer*`, which gains the six fields (and
+  `fn2-machine-admit` six arguments, passed by `fn2-listener-admit`). A kind that copies none of
+  them is unchanged. D carries the record by adding the six fields to `fn2-conn` and naming them
+  in its `:copy`; the exact form goes to D through main with the commit. Carrying the address
+  enables D's policy (per-address 400, the peer bit); it establishes neither, so D replaces its
+  interim row when that policy lands, not when the fields arrive.
+
+#### 4.1.2 The result cell format between core and adapter
+One table, the adapter's contract per terminal event (cell 0) and the release (cell 1). "Sets"
+are `fn2-event-statusp`'s per-primitive sets; "zero" means the adapter must post 0 (the core
+validates widths and the listed relations; ENVELOPE, 4.1.5, checks every column).
+
+| event | outcome / reason | count | aux0 | aux1 | peer |
+|---|---|---|---|---|---|
+| accept-result | done, cancelled / failed {exhausted, aborted} | zero | cap index (done), else zero | cap nonce (done), else zero | record if done, else `:none` |
+| connect-result | done, cancelled / failed {refused, unreachable, timed-out, reset} | zero | cap index (done), else zero | cap nonce (done), else zero | `:none` until E4 |
+| receive-result | done, cancelled / failed {reset, closed} | done: octets written at the loan's start, `1..range-len`, and 0 is EOF; failed or cancelled: zero | zero | zero | `:none` |
+| send-result | done, short, cancelled / failed {reset, closed, pipe} | done: `range-len`; short: octets consumed, `< range-len`; failed or cancelled: what was consumed | release-pending (1 only if the op may release) | zero | `:none` |
+| close-result | done | zero | zero | zero | `:none` |
+| read-result | done, short, cancelled / failed {io} | done: `range-len`; short: `< range-len`; failed or cancelled: zero | zero | zero | `:none` |
+| write-result | done, cancelled / failed {io, no-space, uncertain} | done: `range-len`; a partial write is failed/uncertain with its known progress | zero | zero | `:none` |
+| fence-result | done, cancelled / failed {io} | zero | zero | zero | `:none` |
+| cancel-result | done, cancelled, not-found, not-cancellable | zero | zero | zero | `:none` |
+| tls-result | done, cancelled / failed {handshake, reset, timed-out} | zero | zero | zero | `:none` (E1) |
+| entropy-result | done, cancelled | done: octets written, `<= range-len`; cancelled: zero | zero | zero | `:none` |
+| borrow-released (cell 1) | done | zero | zero | zero | `:none` |
+
+The core validates a superset (widths, the per-primitive status sets, `count <= range-len` for
+transfers, the release flag's authority, the peer record); the table is the canonical production
+the adapter must make. The simulator's normalizer `fn2-sim-terminal-values` produces a subset of
+it: it never produces Accept `aborted`, Connect's failures, Send `pipe`, TLS `reset` or
+`timed-out`, or Cancel `not-cancellable`. The native adapter normalizes through the same logical
+function (4.1.3), so every native completion is one the simulator could post. A release may be
+posted, and harvested, before its terminal (vocab.lisp's release-first rule); only the whole op's
+history must agree (a release only where the terminal says release-pending).
+
+Capabilities: a connection capability is `(index, nonce)` issued by the adapter at Accept; an
+index is reused only with a strictly larger nonce, and a nonce never wraps (an index at
+`2^32 - 1` retires). Unsolicited inputs are unchanged: the clock mailbox, the sticky signal word.
+
+#### 4.1.3 The native event loop over the served core
+`fn2/host/ffi.lisp` (syscalls, mux: epoll on Linux, poll(2) on darwin, a self-pipe for signals)
+and `fn2/host/adapter.lisp` (the loop), raw SBCL loaded by a session script behind its trust tag;
+`fn2/books/host-boundary.lisp` (certified) gives the loop scalar entry points over the live
+core: outbox peek/ack, a descriptor's fields, the validated physical span of its loan
+(`fn2-host-op-span`), the posts, the finish of a resultless op, the stop reason and idle
+deadline, and the result normalization `fn2-host-result` (physical kind, syscall return, errno
+class, length -> the cell's words, by the simulator's `fn2-sim-terminal-values`). The loop
+implements physical scheduling and reports observations; ACL2 owns their interpretation.
+One thread; per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
+closed under it: its loan is retained until the core cancels it, and no syscall result is
+invented), `completed`; per capability index an fd, nonce, the physical peer (captured from
+`accept(2)`'s sockaddr) and test counters. One iteration:
+
+1. post the clock reading (the coalesced mailbox); post at most `H` completed results in
+   completion order; post the sticky signal if a handler set it;
+2. `fn2-turn`; `:stop` ends the loop;
+3. take the outbox prefix (at most `Aturn`): peek, copy the descriptor and its validated span,
+   `fn2-host-outbox-ack 1` (from here the op is submitted and the adapter owns its execution);
+   ArmWake/Trace/ServicePosture are `done` at ack and the loop reclaims them with
+   `fn2-host-op-finish` (no result event); every other kind waits;
+4. interests to the mux: a waiting Accept/Receive wants readable, a Send writable, a Close and
+   every non-socket kind is started now (Close: unregister, `close(2)`, then retire every other
+   waiting op on that capability *without* inventing a syscall result: the core cancels and
+   harvests them; storage kinds stop the host by name until the storage backend lands with
+   B's durable POST, because the served core issues none yet; Connect and TlsStart complete
+   `failed`/`refused` and `failed`/`handshake`: no facility, explicit, never simulated; Cancel
+   checks its target's generation and state: a waiting or closed-waiting target gets its
+   terminal `cancelled` result, then the Cancel `done`; else the Cancel `not-found`);
+5. wait: timeout 0 if the turn said `:more` or completions are queued, else until the core's
+   idle deadline (ArmWake) or a control/signal wake;
+6. for each ready descriptor, one syscall for one of its waiting ops (one readiness report is
+   one syscall, never a loop to EAGAIN; several Accepts on one listener share a report and the
+   others stay waiting), its result queued for step 1. EAGAIN after readiness leaves the op
+   waiting (the simulator's zero-progress would-block), never a failure; EINTR is retried at most
+   a fixed number of times, then the op stays waiting. A Receive writes only inside its loan at the
+   span's address; a Send reads only its borrowed span; neither touches the range after posting.
+
+Death cuts: `FN2_KILL_AT=N` exits at the Nth boundary among take, ack, syscall, post (the
+compost's `fn2-native-boundary`), so a kill at every boundary is a test row, not a claim.
+This loop is the simulator's adapter with the physical world choosing the schedule: posting
+order is the completion order (E1), a byte enters the core only at harvest, and nothing else is
+observable.
+
+#### 4.1.4 The socket and the session H speaks
+`fn2/tests/native-session.lsp` (LD script: includes the served books and check-wire/check-envelope,
+`:q`, loads `fn2/host/*.lisp`, initializes the core with `*fn2-conn-wire-profile*`, binds
+`127.0.0.1:0`, prints `@@FN2SS ready <port> 0 0@@`, runs the loop) and
+`fn2/tests/surface/fn2_native_session.py` (the hook
+`FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_native_session:session`, the same `open / send /
+close / stop` as `fn2_sim_session.py`; `sim_target.py` and the S form are untouched). The client
+side is real TCP; a control line on the node's stdin (fd 0 is in the mux) is the only addition:
+
+- `sync PORT SENT EOF` asks the node to answer `@@FN2SS quiet OUT CLOSED CAP@@` at
+  *quiescence for that connection*: the capability whose physical peer port is PORT has posted
+  Receive results for SENT octets (and its EOF when EOF is 1), or the node has closed it; and one
+  whole iteration then ended (after its immediate ops and readiness handling) with no completion
+  queued, the turn `:idle`, the outbox empty, and a zero-timeout wait reporting no descriptor
+  ready for a waiting op. OUT is the cumulative count of octets the node's Sends moved on that
+  capability, CLOSED whether the node closed it, CAP its incarnation (index and nonce).
+- The client never trusts the marker's timing for the bytes: after `quiet` it reads its socket
+  until it holds OUT octets in all (and EOF when CLOSED), so a marker overtaking the socket
+  output cannot cut a reply. It drains its socket concurrently while sending, so the node's
+  Sends never block on a full client queue.
+- `open()`: connect, `sync PORT 0 0`, read what arrived (the greeting, or 400 and EOF).
+- `send(id, octets, chunks)`: per chunk, `sendall` then `sync`: a chunk is a delivery barrier,
+  as in the simulator session (which feeds bounded pipes and may also cut one chunk into several
+  Receive results); TCP keeps no boundary within a chunk, so one chunk may reach the core as
+  several Receives. Then the octets that arrived (read to OUT) and whether the node closed.
+- `close(id)`: `shutdown(SHUT_WR)`, `sync PORT SENT 1`, the octets that arrived.
+- `stop()`: `stop` on the control line; the loop ends; WIRE runs on each connection's client-side
+  transcript (sent, received, closed) sent back as one REPL form, and ENVELOPE on the recorded
+  boundary trace; the same `@@FN2SS wire ID VERDICT@@` lines as the simulator session (an
+  ENVELOPE refusal is reported as every connection's verdict, so the case fails at cleanup).
+
+Replies equal the simulator session's when the core's replies are fragmentation-invariant (T8,
+owed, checked by conn-unit's every-split fixtures) and the schedule is fault-free; DATE reads the
+real clock, so DATE lines (and nothing else: D's profile has no timing-dependent closure before
+D7's deadlines) may differ.
+
+#### 4.1.5 ENVELOPE: the oracle that the native loop refines the simulated one
+`fn2/sim/check-envelope.lisp`, an execution checker. The native loop in test mode records its
+boundary trace in a preallocated ring (overflow refuses the run, never truncates it):
+`(:clock mono real flags)`, `(:signal bits)`, `(:turn status)`, `(:take op gen DESCRIPTOR)` with
+the whole descriptor (kind, capability, range identity, offset and length, storage offset, fua,
+may-release, cancel target, wake payload), `(:ack n)`, `(:finish op gen)`, `(:post cell op gen
+event outcome reason count aux0 aux1 peer octets)` with `octets` the bytes the syscall moved (a
+Receive's written prefix, a Send's sent prefix). ENVELOPE replays the trace into a fresh core
+from the same profile (`fn2-envelope-replay`: each `:turn` a `fn2-turn`, each `:take`/`:ack` a
+peek and ack, each Receive's octets written under its loan through `fn2-pool-adapter-write`,
+each post through the core's own entry) and checks, at every step:
+
+1. **The schedule is legal.** Each take's descriptor equals the replay's outbox head; each post
+   answers a taken and acknowledged op of the replay, at most once per cell, is accepted by the
+   replay's core (no stray), and is in the allowed relation `fn2-host-result-allowedp` (4.1.2's
+   table); the release history agrees per op; Accept capabilities are fresh pairs; a capability
+   posts nothing after its Close result except the core's cancellations.
+2. **The bytes are the clients'.** Per capability, the concatenated Receive octets are what its
+   client sent, in order (all of it and then EOF when the client closed and the node read on);
+   the octets each Send moved are the replay's own borrowed range bytes (read from the replay's
+   pool, not from the trace), and their concatenation is exactly what the client received; the
+   Accept's peer port is the client's local port.
+
+ENVELOPE's controls (each breaks one premise, keeps the others, and is refused): a take whose
+descriptor differs from the replay's; a post to an unacknowledged op; a count over the loan; a
+reused capability; a release on an op whose terminal said no release; one flipped octet in a
+Receive (asserted as an input-transcript mismatch, since many inputs share a reply); a Send whose
+recorded octets differ from the replay's range. What ENVELOPE cannot check is that an
+uninstrumented process records its actions faithfully: that is the environment premise.
+
+#### 4.1.6 Keystones (`fn2/books/owed-host.lisp`, `defthm-owed` with teeth)
+- `fn2-accept-peer-delivered` (family port w0 w1 w2 w3): from the initialized served core, an
+  Accept posted with a valid peer record and harvested leaves the listener row holding exactly
+  that record (runner `fn2-accept-peer-run`). Teeth: the positive record for each family; a
+  negative where an invalid record (an `:inet` with `w1 /= 0`) is a stray and the listener's
+  record stays `:none`.
+- `fn2-native-envelope-refines` (trace): a legal native schedule is, at the wire, the canonical
+  simulated one: `(implies (and (fn2-envelope-steps-ok-p trace) (fn2-envelope-date-free-p
+  trace)) (equal (fn2-envelope-replay-wires trace) (fn2-envelope-canonical-wires trace)))`, where
+  `steps-ok` is ENVELOPE's item 1 (legality only, no byte comparison), `replay-wires` the octets
+  each connection's Sends carry in the replay, and `canonical-wires` the wires of D's
+  `fn2-conn-wire-run` (the subject of T1 and T8) over the same clients' octets and Receive cuts.
+  It says the core's output does not depend on which legal schedule the physical world chose, so
+  T1/T8 proved over the canonical view transfer to the native run; ENVELOPE's item 2 is the
+  per-run evidence that the native process's bytes are the replay's. DATE is excluded because
+  the canonical view posts no clock. Teeth: a recorded native trace (fixtures through the loop,
+  Accept, Receive, a short Send and Close all exercised) where both sides agree; a negative where
+  a post outside the allowed relation makes the replay's wires differ.
+- `fn2-conn-reader-only-interim` is D's row; it is replaced by D when the conn row carries the
+  peer (4.1.1's last item), not by A.
+
+Acceptance of A5r, in order: the ABI commit with A's seven drivers at the 113 A4 blocks
+identical, D's `sim-layer-d-evidence`, every unit book under 60 s; the loop commit with ENVELOPE
+green on a native run of conn-unit's fixture transcripts over socketpairs and its controls
+caught; the socket commit with H's nntp S form (`h8-run.py`, the hook pointed at
+`fn2_native_session`) green against `127.0.0.1` and its WIRE and ENVELOPE verdicts ok.
+
 ## 5. Executor (contract item 5)
 `fn2-turn` calls `fn2-concrete-turn` / `fn2-concrete-loop`, the bounded
 dispatcher over `fn2-transition` and the intrusive scheduler;

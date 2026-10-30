@@ -14,6 +14,8 @@
 (defcost fn2-machine-pool-borrows :doc "A pool slot's outstanding borrows.")
 (defcost fn2-scribe-window-class :doc "The pool class of a 4 KiB window.")
 
+(defcost fn2-core-observed-peer :doc "The harvested observation's peer record.")
+
 ; Issues: one descriptor and one transient op reservation (D0's :operation).
 (defcost fn2-issue-accept :descriptors 1 :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Accept: one outbox descriptor.")

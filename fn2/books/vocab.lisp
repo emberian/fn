@@ -33,6 +33,14 @@
    (c0-count :u32)
    (c0-aux0 :u32)
    (c0-aux1 :u32)
+   ; The peer record an Accept's terminal cell carries (layer doc 4.1.1):
+   ; the address in network order, most significant word first.
+   (peer-family (:enum fn2-peer-family (:none :inet :inet6 :local)))
+   (peer-port :u16)
+   (peer-w0 :u32)
+   (peer-w1 :u32)
+   (peer-w2 :u32)
+   (peer-w3 :u32)
    (c1-posted :bool)
    (c1-harvested :bool)
    (c1-event (:enum fn2-event (:accept-result :connect-result :receive-result :send-result :borrow-released :read-result :write-result :fence-result :cancel-result :close-result :tls-result :entropy-result)))
@@ -66,6 +74,12 @@
    (fn2-ops-clock-rejected :type (unsigned-byte 60) :initially 0 :why "Aggregate invalid clock observations outlive mailbox consumption.")
    (fn2-ops-signals :type (unsigned-byte 8) :initially 0 :why "Sticky host signals are independent of operation ownership.")
    (fn2-ops-stray :type (unsigned-byte 60) :initially 0 :why "Rejected completion count is not owned by any accepted descriptor.")
+   (fn2-ops-seen-peer-family :type (unsigned-byte 8) :initially 0 :why "The observation latch describes the one harvested cell being delivered, not a descriptor row.")
+   (fn2-ops-seen-peer-port :type (unsigned-byte 16) :initially 0 :why "The observation latch outlives the recycled descriptor row it was copied from.")
+   (fn2-ops-seen-peer-w0 :type (unsigned-byte 32) :initially 0 :why "The observation latch outlives the recycled descriptor row it was copied from.")
+   (fn2-ops-seen-peer-w1 :type (unsigned-byte 32) :initially 0 :why "The observation latch outlives the recycled descriptor row it was copied from.")
+   (fn2-ops-seen-peer-w2 :type (unsigned-byte 32) :initially 0 :why "The observation latch outlives the recycled descriptor row it was copied from.")
+   (fn2-ops-seen-peer-w3 :type (unsigned-byte 32) :initially 0 :why "The observation latch outlives the recycled descriptor row it was copied from.")
    (fn2-ops-free-head :type (unsigned-byte 32) :initially 0 :why "One allocation chain spans all descriptor rows.")
    (fn2-ops-free-count :type (unsigned-byte 32) :initially 0 :why "Aggregate free descriptors governs admission.")
    (fn2-ops-gen-limit :type (unsigned-byte 60) :initially 0 :why "One generation-retirement policy applies to all descriptors.")
@@ -134,6 +148,12 @@
     (c0-count 0)
     (c0-aux0 0)
     (c0-aux1 0)
+    (peer-family 0)
+    (peer-port 0)
+    (peer-w0 0)
+    (peer-w1 0)
+    (peer-w2 0)
+    (peer-w3 0)
     (c1-posted 0)
     (c1-harvested 0)
     (c1-event 0)
@@ -650,6 +670,53 @@
 (fn2-ops-preserves fn2-post-result (cell slot gen evkind outcome reason count aux0 aux1 fn2-ops) :position nil :disable nil :raw-rows t)
 (in-theory (disable fn2-post-result))
 
+; The peer record an Accept result carries (layer doc 4.1.1): an :inet
+; address is w0 alone; :local (credentials are E6's) and :none carry no port
+; or words; a refused or cancelled Accept carries :none.
+(defun fn2-peer-recordp (outcome family port w0 w1 w2 w3)
+  (declare (xargs :guard t))
+  (and (unsigned-byte-p 16 port) (unsigned-byte-p 32 w0) (unsigned-byte-p 32 w1)
+       (unsigned-byte-p 32 w2) (unsigned-byte-p 32 w3)
+       (cond ((not (equal outcome *fn2-outcome-done*)) (equal family *fn2-peer-family-none*))
+             (t (or (equal family *fn2-peer-family-inet6*)
+                    (equal family *fn2-peer-family-inet*)
+                    (equal family *fn2-peer-family-local*)
+                    (equal family *fn2-peer-family-none*))))
+       (if (equal family *fn2-peer-family-inet*) (and (= w1 0) (= w2 0) (= w3 0))
+         (implies (not (equal family *fn2-peer-family-inet6*))
+                  (and (= port 0) (= w0 0) (= w1 0) (= w2 0) (= w3 0))))))
+
+; Exactly fn2-post-result's terminal post of an Accept, then the record into
+; the row iff that post was accepted. A refused record is a stray and changes
+; nothing else (T6).
+(defun fn2-post-accept-result (slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (if (not (and (fn2-peer-recordp outcome family port w0 w1 w2 w3)
+                (fn2-op-slotp slot fn2-ops)
+                (equal (fn2-ops-kind slot fn2-ops) *fn2-action-accept*)
+                (equal (fn2-ops-c0-posted slot fn2-ops) 0)))
+      (fn2-count-stray fn2-ops)
+    (let ((fn2-ops (fn2-post-result 0 slot gen *fn2-event-accept-result* outcome reason 0
+                                    cap-index cap-nonce fn2-ops)))
+      (if (and (fn2-op-slotp slot fn2-ops) (equal (fn2-ops-c0-posted slot fn2-ops) 1))
+          (fn2-ops-put slot (peer-family family) (peer-port port)
+                       (peer-w0 w0) (peer-w1 w1) (peer-w2 w2) (peer-w3 w3))
+        fn2-ops))))
+(fn2-ops-preserves fn2-post-accept-result (slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-ops) :position nil :disable nil :raw-rows t)
+(in-theory (disable fn2-post-accept-result))
+
+; The latch: the peer record of the observation being delivered.
+(defun fn2-ops-observed-peer (fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (mv (fn2-ops-seen-peer-family fn2-ops) (fn2-ops-seen-peer-port fn2-ops)
+      (fn2-ops-seen-peer-w0 fn2-ops) (fn2-ops-seen-peer-w1 fn2-ops)
+      (fn2-ops-seen-peer-w2 fn2-ops) (fn2-ops-seen-peer-w3 fn2-ops)))
+(defun fn2-op-peer (slot fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (and (fn2-ops-wfp fn2-ops) (fn2-op-slotp slot fn2-ops))))
+  (mv (fn2-ops-peer-family slot fn2-ops) (fn2-ops-peer-port slot fn2-ops)
+      (fn2-ops-peer-w0 slot fn2-ops) (fn2-ops-peer-w1 slot fn2-ops)
+      (fn2-ops-peer-w2 slot fn2-ops) (fn2-ops-peer-w3 slot fn2-ops)))
+
 ; Release-first observations are allowed by the boundary. Harvesting one
 ; cannot finish an operation whose terminal result has not been harvested.
 (defun fn2-op-harvest-phase (slot fn2-ops)
@@ -684,12 +751,26 @@
             (fn2-ops-owner-gen slot fn2-ops) (fn2-ops-principal slot fn2-ops))
       (mv nil 0 0 0 0))))
 (in-theory (disable fn2-ops-next-owner))
+(defun fn2-ops-latch-peer (cell slot fn2-ops)
+  (declare (xargs :stobjs fn2-ops
+                  :guard (and (fn2-ops-wfp fn2-ops) (natp slot) (< slot (fn2-ops-rows fn2-ops)))))
+  (let* ((c0 (and (equal cell 0) (mbt (fn2-op-slotp slot fn2-ops))))
+         (fn2-ops (update-fn2-ops-seen-peer-family (if c0 (fn2-ops-peer-family slot fn2-ops) 0) fn2-ops))
+         (fn2-ops (update-fn2-ops-seen-peer-port (if c0 (fn2-ops-peer-port slot fn2-ops) 0) fn2-ops))
+         (fn2-ops (update-fn2-ops-seen-peer-w0 (if c0 (fn2-ops-peer-w0 slot fn2-ops) 0) fn2-ops))
+         (fn2-ops (update-fn2-ops-seen-peer-w1 (if c0 (fn2-ops-peer-w1 slot fn2-ops) 0) fn2-ops))
+         (fn2-ops (update-fn2-ops-seen-peer-w2 (if c0 (fn2-ops-peer-w2 slot fn2-ops) 0) fn2-ops)))
+    (update-fn2-ops-seen-peer-w3 (if c0 (fn2-ops-peer-w3 slot fn2-ops) 0) fn2-ops)))
+(fn2-ops-preserves fn2-ops-latch-peer (cell slot fn2-ops) :position nil :disable nil :raw-rows t)
 (defun fn2-harvest-next (fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (mv-let (found slot cell) (fn2-ops-peek-posted fn2-ops)
     (if (not (eq found t)) (mv found 0 0 0 fn2-ops)
       (let* ((gen (fn2-ops-gen slot fn2-ops))
              (fn2-ops (if (= cell 0) (fn2-ops-put slot (c0-harvested 1)) (fn2-ops-put slot (c1-harvested 1))))
+             ; The latch describes this observation: the row's peer record
+             ; for a terminal cell, :none for a release.
+             (fn2-ops (fn2-ops-latch-peer cell slot fn2-ops))
              (phase (fn2-op-harvest-phase slot fn2-ops))
              (fn2-ops (fn2-ops-put slot (phase phase)))
              (fn2-ops (update-fn2-ops-post-head
@@ -858,6 +939,7 @@
     fn2-op-set-cancel-target fn2-op-unreserve fn2-op-enqueue
     fn2-outbox-queued fn2-outbox-peek fn2-outbox-ack
     fn2-post-result fn2-harvest-next fn2-op-finish
+    fn2-peer-recordp fn2-post-accept-result fn2-ops-latch-peer fn2-ops-observed-peer fn2-op-peer
     fn2-op-request-cancel fn2-post-clock fn2-take-clock
     fn2-post-signal fn2-take-signal fn2-ops-stray
     fn2-ops-free-count fn2-ops-outbox-credits fn2-op-cell
@@ -923,6 +1005,12 @@
         (fn2-ops-clock-coalesced fn2-ops)
         (fn2-ops-clock-rejected fn2-ops)
         (fn2-ops-signals fn2-ops)
+        (fn2-ops-seen-peer-family fn2-ops)
+        (fn2-ops-seen-peer-port fn2-ops)
+        (fn2-ops-seen-peer-w0 fn2-ops)
+        (fn2-ops-seen-peer-w1 fn2-ops)
+        (fn2-ops-seen-peer-w2 fn2-ops)
+        (fn2-ops-seen-peer-w3 fn2-ops)
         (fn2-ops-free-head fn2-ops)
         (fn2-ops-free-count fn2-ops)
         (fn2-ops-gen-limit fn2-ops)

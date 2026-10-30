@@ -46,8 +46,11 @@
   ; A failed Accept returns the row credit and releases the booking (D7's S1).
   (let ((target row-target) (ref row-account-ref))
     (if (equal outcome *fn2-outcome-done*)
-        (let ((fn2-core (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))))
-          (mv id fn2-core))
+        (mv-let (family port w0 w1 w2 w3) (fn2-core-observed-peer fn2-core)
+          (let ((fn2-core (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1)
+                            (peer-family family) (peer-port port) (peer-w0 w0) (peer-w1 w1)
+                            (peer-w2 w2) (peer-w3 w3) (event-ready 1))))
+            (mv id fn2-core)))
       (let ((fn2-core (fn2-listener-return-credit target fn2-core)))
         (mv-let (ucode fn2-core) (fn2-account-unbook-ref ref fn2-core)
           (declare (ignore ucode))
@@ -125,9 +128,13 @@
        (nonce row-cap-nonce)
        (mode row-mode)
        (principal row-principal-slot)
-       (ref row-account-ref))
-    ; The admitted row copies the listener's principal and its booking.
-    (mv-let (code fn2-core) (fn2-machine-admit target index nonce mode principal ref fn2-core)
+       (ref row-account-ref)
+       (family row-peer-family) (port row-peer-port)
+       (w0 row-peer-w0) (w1 row-peer-w1) (w2 row-peer-w2) (w3 row-peer-w3))
+    ; The admitted row copies the listener's principal, its booking and the
+    ; Accept's peer record (layer doc 4.1.1), the fields its :copy names.
+    (mv-let (code fn2-core) (fn2-machine-admit target index nonce mode principal ref
+                                               family port w0 w1 w2 w3 fn2-core)
       (if (eq code :ok)
           (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0)
                             (account-ref *fn2-none*))))

@@ -1385,7 +1385,8 @@
 ;; The listener's offer: the fields of a listener row an admitted kind may copy
 ;; (`:copy`), in the dispatcher's argument order. Fixed, so the listener's call
 ;; is one form whatever kinds a build admits.
-(defconst *fn2-machine-listener-offer* '(mode principal-slot account-ref))
+(defconst *fn2-machine-listener-offer*
+  '(mode principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3))
 (defun fn2-machine-admission-copies (kinds world)
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil
