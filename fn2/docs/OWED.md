@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 554; bound statements: 549; admitted proofs: 0; check coverage: 97 rows with a passing, exercised check.
+Requirements: 557; bound statements: 552; admitted proofs: 0; check coverage: 97 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -3583,11 +3583,19 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-CONN-WIRE)`
 
-Requirements: 7; bound statements: 7; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+Requirements: 10; bound statements: 10; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :BOUND)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-CURSOR-RANGE-COST` | :OWED | :BOUND | `(IMPLIES (AND (FN2-CSP-SEEDSP SEEDS (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) NIL) (NATP LO) (NATP HI) (<= LO HI) (<= HI 2147483647)) (AND (EQUAL (FN2-CURSOR-WIRE-SOLO SEEDS (FN2-CURSOR-OVER-LINES LO HI) NIL) (FN2-CURSOR-SPEC-WIRE (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) SEEDS (FN2-CURSOR-OVER-LINES LO HI))) (<= (FN2-CURSOR-VISITS SEEDS (FN2-CURSOR-OVER-LINES LO HI)) (+ *FN2-CURSOR-VISITS-BASE* (* *FN2-CURSOR-VISITS-PER-ENTRY* (LEN (FN2-CSP-IN LO HI (FN2-CSP-ROWS 1 SEEDS 1))))))))` | `(FN2-CURSOR-TEST-RANGE-COST FN2-CURSOR-TEST-RANGE-COST-NEGATIVE)` | Scenario 6 (section 15.4): GROUP then OVER lo-hi is answered exactly, and the core's machine visits for the whole transcript are at most a constant plus a constant per entry in the range, whatever hi - lo is: never a numeric walk. The conjunction keeps it non-vacuous (a node that answers nothing is cheap but not exact). | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ### Case source / schema: `(NIL :INVARIANT)`
 
-Requirements: 7; bound statements: 7; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+Requirements: 9; bound statements: 9; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -3598,6 +3606,8 @@ Requirements: 7; bound statements: 7; admitted proofs: 0; check coverage: 0 rows
 | `FN2-CONN-READER-ONLY-INTERIM` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-GRAM-OCTETSP OCTETS) (NAT-LISTP SIZES)) (FN2-CONN-READER-PREFIX-P (CAR (FN2-CONN-WIRE-SOLO (APPEND *FN2-CONN-MODE-STREAM-LINE* OCTETS) SIZES))))` | `(FN2-CONN-TEST-READER-ONLY FN2-CONN-TEST-READER-ONLY-NEGATIVE)` | Interim until the per-address and peer policy (D5 3/n with E4's peer records, D7 4/n's per-address 400): every connection is a reader, so a first MODE STREAM is answered 501 after the reader greeting, whatever follows, and no per-address 400 exists. A5r's peer record (a-pool-host-sim.md 4.1.1) now reaches the connection row (peer-family, peer-port, peer-w0..w3), but nothing reads it yet. Lifting the interim replaces this row with the per-address refusal and peer statements. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-TXN-ADMISSION-INTERIM` | :OWED | :INVARIANT | `(IMPLIES (NAT-LISTP SIZES) (EQUAL (FN2-TXN-WIRE-SOLO (FN2-TXN-POST-OCTETS *FN2-TXN-ARTICLE*) SIZES) (FN2-TXN-INTERIM-WIRE "441 posting failed")))` | `(FN2-TXN-TEST-ADMISSION-INTERIM FN2-TXN-TEST-ADMISSION-INTERIM-NEGATIVE)` | Interim until B-S2 (B's transaction member, fn2-commit-admit-txn): the transaction stages its slots at :ready and the interim admission answers :not-served, so a valid POST whose Message-ID is unrecorded is refused :not-stored (the generic 441), however it is chunked. The slots it stages are the identity fact, the article row, the operation outcome and one group-count accept per carried group; the overview row (its line) and the addr entries come with D5 2/n. Lifting it replaces this row with T6 (accepted only on durable and published evidence, uncertain from log-write, refused otherwise) and T9. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-TXN-GENERATED-MESSAGE-ID-INTERIM` | :OWED | :INVARIANT | `(IMPLIES (NAT-LISTP SIZES) (EQUAL (FN2-TXN-WIRE-SOLO (FN2-TXN-POST-OCTETS (REMOVE-EQUAL (NTH 3 *FN2-TXN-ARTICLE*) *FN2-TXN-ARTICLE*)) SIZES) (FN2-TXN-INTERIM-WIRE "441 posting failed")))` | `(FN2-TXN-TEST-GENERATED-INTERIM FN2-TXN-TEST-GENERATED-INTERIM-NEGATIVE)` | Interim until injection (D5 2/n: the clock reading, the agent, RFC 5537's injected block): a POST that supplies no Message-ID takes no claim and no identity decision; after the upload's verdict it is refused :not-stored. Lifting it generates the Message-ID from the injection reading (specs/nntp.md 824-856), claims it and decides it like a supplied one. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CURSOR-REPLY-EXACT` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-CSP-SEEDSP SEEDS (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) NIL) (FN2-CSP-LINESP LINES) (POS-LISTP SIZES)) (EQUAL (FN2-CURSOR-WIRE-SOLO SEEDS LINES SIZES) (FN2-CURSOR-SPEC-WIRE (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) SEEDS LINES)))` | `(FN2-CURSOR-TEST-SPEC FN2-CURSOR-TEST-SPEC-NEGATIVE FN2-CURSOR-TEST-SEEDED)` | D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is the current group's or 0). Owed until D6 1/n serves the cursor; today the served core answers the interim 503 to each. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CURSOR-VIEW-PINNED` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-CSP-SEEDSP (APPEND SEEDS LATER) (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) NIL) (FN2-CSP-LINESP LINES) (POS-LISTP SIZES) (EQUAL (STRING-UPCASE (CAR (FN2-CSP-SPLIT (CAR LINES)))) "GROUP") (FN2-CSP-NO-REPIN-P (CDR LINES))) (EQUAL (FN2-CURSOR-WIRE-INTERLEAVED SEEDS LATER LINES SIZES) (FN2-CURSOR-SPEC-WIRE (FN2-PROFILE-GET :GROUPS *FN2-CURSOR-PROFILE*) SEEDS LINES)))` | `(FN2-CURSOR-TEST-PINNED FN2-CURSOR-TEST-PINNED-NEGATIVE)` | STORAGE-DESIGN 4 decision 2 (section 15.1, the model's logical snapshot): a connection that opened with GROUP and does not re-pin reads the view pinned there; batches LATER published after its first reply (between its commands and between the pages of a reply) change none of its replies. FN2-CURSOR-WIRE-INTERLEAVED publishes one seed of LATER after each adapter round once the client holds two reply lines. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-LINEARIZABLE)`
 

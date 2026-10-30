@@ -30,6 +30,7 @@
 (include-book "fn2/tests/host-unit")
 (include-book "fn2/tests/native-unit")
 (include-book "fn2/tests/txn-unit")
+(include-book "fn2/tests/cursor-unit")
 (include-book "fn2/tests/accounts-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")

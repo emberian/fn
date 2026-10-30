@@ -1572,3 +1572,266 @@ successor overlay before the batch seals, never recorded at lookup and never dis
 split unconditional safety from delivery under stated progress, with an accepted witness for T9
 (14.6). Two positions were recorded and Astra's taken: the posting capability stays off until a POST
 can succeed (14.5); the slice order puts the seams first and one durable POST before widening (14.8).
+
+## 15. D6: the query cursor machine `fn2-cursor` *(design, statement first; the D6 commits rewrite it as built)*
+
+The contract is brief item 6, ROUND2 §B.2 row 5 and §B.3, D0's bundles `(:cursor :select)` and
+`(:storage-job :read)`, scenarios 2, 3 and 6, C's read contract and range reads
+(`fn2/docs/c-ordered-runs.md` §6, `fn2/books/range.lisp`) over the schemas of `ordered.lisp` and
+`folds.lisp`, and fn1's reader contract (`specs/nntp.md:182-505`; the oracle is H's model
+`fn2/tests/model/nntp_model.py` `_select_group`, `_move`, `_lookup`, `_retrieve`, `_over`, `_hdr`,
+`_cmd_list`). The connection's decision (§4.3) answers the reader commands with interim 503s today
+(`*fn2-answer-interim*`, rows `:d6`); H's oracle has 15,028 interim replies over seventeen verbs
+waiting on this machine.
+
+### 15.1 What is read, and from where
+
+| reply | rows read | how |
+|---|---|---|
+| GROUP `211 COUNT LOW HIGH GROUP` | `fn2-groups` (name → group), `fn2-group-counts` (group → count low high) | two exact lookups in one run, so the numbers and the pinned view are one instant; count 0 renders `0 high+1 high` (the model's `(0, wm+1, wm)`) |
+| LISTGROUP | as GROUP, then `fn2-overview` over `(group, lo..hi)` | a range read stopping at the pinned view (position limit) |
+| NEXT / LAST | `fn2-overview` | NEXT: a range read from `(group, current+1)`, one entry; LAST: bisection over one-entry range reads below `current` (at most 61 starts for u60 numbers), never a numeric walk |
+| STAT/HEAD/BODY/ARTICLE by number, current | `fn2-overview` exact `(group, n)` at the view, then `fn2-article` (state: `:withdrawn` → 423 `withdrawn-number`) | exact lookups; the Message-ID is the overview line's fourth field |
+| … by Message-ID | `fn2-identity` (accepted fact for the Message-ID octets) → article, then `fn2-article` | C's identity read by Message-ID (C-S4 below); number 0 in the reply (the model admits 0) |
+| OVER/XOVER, HDR/XHDR, XPAT by number or range | `fn2-overview` over `(group, lo..hi)` | resumable range read: at most 32 entries examined and 4 KiB rendered per run (§15.4); HDR's fields from the stored overview line (Subject, From, Date, Message-ID, References, `:bytes`, `:lines`); other fields need the stored header (with bodies, 15.6) |
+| LIST ACTIVE/COUNTS/NEWSGROUPS, wildmat | `fn2-groups` range over every name, `fn2-group-counts` per group | the groups range is an octet-keyed range read (C-S4 asks for it); status `y` while posting is served, else `n` |
+| NEWNEWS | `fn2-overview` by position | a positioned seek per group (`fn2-seek-start`, INBOX 4.1) after the position the date maps to; the date-to-position map is owed (15.6) |
+
+**The pinned view (the model's logical snapshot; Astra's position, taken).** STORAGE-DESIGN §4
+decision 2: a connection reads a logical version, never an old root. A connection's `view` is pinned
+to the engine's published frontier (C-S4 `fn2-read-frontier`, the `:published` position C's engine
+row carries) at its greeting, and re-pinned by every GROUP and every LISTGROUP (the bare form too:
+the model's `_select_group` pins in both); every reader decision then answers as of `view`:
+
+- overview reads (`(group, number)`, a stream whose position grows with the number) stop at the
+  first entry whose position exceeds `view` (the range read's position limit), exact lookups by
+  number included;
+- GROUP's numbers are the group's **at the view**, reconstructed without a historical summary:
+  `high_v` is one less than the positioned seek's answer (`fn2-seek-start` over `(group, ·)` after
+  position `view`: the least number from which every entry is newer than the view), `count_v =
+  count_now − |entries in (high_v, high_now]|` (a range read over the numbers published since the
+  view, so its cost is the publications since the pin, never the group's size), `low_v` the first
+  entry at the view; `count_v = 0` answers `0 high_v+1 high_v` (the model's `(0, wm+1, wm)`);
+- by Message-ID, the accepted fact's `binding ≤ view` (with C-S4's identity read, D6 2/n);
+- LIST's per-group numbers the same way (D6 2/n).
+
+Exact while nothing is withdrawn; withdrawals have no fn2 writer until D5's control transactions,
+which then owe a versioned summary (recorded as `fn2-cursor-withdrawal-view`, 15.7). GROUP's
+lookups are resumable C steps across runs (no single-run atomicity is claimed): every number it
+renders is a function of `view`, which the run that pins it fixes first. **Read contract outcomes as typed replies**: `:read` serves;
+`:gap` and `:unavailable` answer the command's declared 503 (`:no-projection`); `:wait` and
+`:stale` are not reachable for a view taken from the published frontier once C's coverage
+invariant covers untouched schemas (Astra: publication stamps only the batch's own overlays), so
+until C states it the cursor reads with `fn2-range-no-position` semantics plus its own position
+limit and never calls the plan with a position above the frontier; `:refused` stops the core.
+
+### 15.2 The kind: a taken kind, not a field set on `fn2-conn`
+
+Two positions were weighed. Fields on `fn2-conn` would need C's read state (a range row, its
+sources, a field stripe, run cursors) per connection, `C` = 256 of them resident whether reading or
+not, and would make the connection's widest arm wider. A **taken kind** `fn2-cursor` (A-S7, as the
+upload and the transaction are) has its own capacity `X` (ROUND2 B.1: 256; the tiny profile 4) and
+D0 resource `:cursor-row` (rank 12, "a query cursor from its command to its last reply byte"), so a
+reader beyond `X` waits on the kind's FIFO holding only its connection (scenario 2: a stalled reader
+holds its reserved window and nothing else), the read state is per cursor row, and the connection
+keeps only what outlives a command: **the selection** (`group`, `current`, `view` on `fn2-conn`).
+Taken, for admission and ownership (the arm language's read sets already removed the width limit;
+with `X = C` the profile saves no rows, a smaller `X` does).
+
+Phases (the brief's, each with its reason; holds `(:cursor-row)` in every live phase, plus
+`:cache-pin` from 15.6 while a body streams):
+
+| phase | arm | does |
+|---|---|---|
+| `:free` | idle | free chain |
+| `:select` | `fn2-cursor-select` | accept the connection's TX hand (15.3); re-parse the command line (≤ 512 octets of the connection's RX, read under its owner: a cross-row read); resolve the target: the group by name, the Message-ID's article, or the connection's selection |
+| `:seek` | `fn2-cursor-seek` | position the read: exact lookups, a range start, LAST's bisection, NEWNEWS's seek; one bounded C step per call, at most 32 per run |
+| `:need-page` | `fn2-cursor-page` | a run page the read named (`:miss`) is loaded by a storage job (`(:storage-job :read)`); unreached until C1c installs runs in the served core (refuse-phase, as `fn2-conn-unreached`) |
+| `:inspect` | `fn2-cursor-inspect` | the delivered entry against the command's filter (XPAT's wildmat, LIST's wildmat, HDR's field) |
+| `:render` | `fn2-cursor-render` | the status line, then rows into TX until the next row does not fit the run's 4 KiB or TX; the terminator when the read ended |
+| `:send` | `fn2-cursor-wait` | TX handed back to the connection; no work until the connection hands it again (more) or lets the cursor go (finished) |
+| `:finish` | `fn2-cursor-finish` | release the read rows (C-S4 `fn2-read-release`); move to `:draining` |
+| `:failed` | `fn2-cursor-fail` | a failure after the success line was sent (scenario 3): the stream ends incomplete, the connection closes, no fresh refusal is inserted; unreached until bodies (15.6) |
+| `:draining` | `fn2-cursor-drain` | reclaim the row (`fn2-machine-reclaim-fn2-cursor`), waking the kind's FIFO head |
+| `:retired` | idle | generation exhausted |
+
+Fields: `conn :link conn-gen :u60 request :u32` (copied by the take: who to answer; every
+hand-over and every read-back checks both generations and the request), `line-s line-e :u32` (the
+command line in the connection's RX), `group current view :u60` (the connection's selection,
+copied: `group` 0 is none, group identifiers being positive; `current` 0 is none, numbers starting
+at 1; the view is always pinned), `access-ref :u32` (the pinned access rule, W01), `article :u60`
+(an article identifier, distinct from `current`), `tag :u8 reply :u16`, `lo hi next :u60` (the
+range and the first number not yet rendered), `roff :u32` (the rendered prefix of a row longer
+than what is left of TX), `seen :bool` (any entry delivered), `step :u8`, `update (:enum
+fn2-cursor-update (:none :current :selection))` (what the connection copies back), `more :bool
+done :bool`, `tx-slot :link tx-gen :u60`, `stopped :bool next-free :link`. Budget `(:bytes 4096 :steps 32
+:descriptors 4)`; capacity `(fn2-profile-x profile)`, 0 unless the profile serves reading
+(`:reading t`: H's tour and sim-layer-d set it; the served node profile with D9).
+
+### 15.3 The connection's half, and TX by hand-over
+
+`fn2-answer` gains the answer `:query` for every cursor command (after its sub-form checks, which
+stay where they are): nothing is rendered. `fn2-conn` gains the phase `:query` (holds unchanged:
+`:connection-row :rx-range :tx-range`) and the fields `query :link query-gen :u60` and `group article
+view :u60`. The line is **not consumed** until the cursor ends (start/pos stay at the line), so the
+cursor reads its arguments where they are and a refused take re-runs nothing but the take.
+
+The reply is written by the cursor into **the connection's TX slot, handed over** with the pool's
+own `fn2-pool-hand` / `fn2-pool-accept-hand` (pool.lisp). This is an ownership transfer of the
+workspace, not a loan: the D0 reservation stays the connection's (it holds `:tx-range` in every
+phase), while write authority moves with the pool owner; the invariant is that TX's pool owner is
+the connection except between a hand to the matching cursor and that cursor's hand back. The cycle
+(Astra's, taken):
+
+1. the connection owns TX empty (`pending = borrows = 0`) and hands it to the cursor `(*fn2-cursor-kind* id gen)`, waking it;
+2. the cursor accepts, renders a page, hands TX back to `(*fn2-conn-kind* conn conn-gen)`, wakes the connection and waits in `:send`;
+3. the connection accepts, sends (`:reply`, `after = :query`), waits for the borrow's release, resets TX, and returns to `:query`;
+4. `:query` hands TX again while the cursor said `more`; after the **last** page is sent it copies the selection back (per `update`), consumes the line and wakes the cursor to finish: the cursor row lives to the last reply byte (D0's `:cursor-row`).
+
+Cancellation: a failed Send moves the connection to `:closing` while its cursor waits in `:send`
+holding nothing of the connection's; the connection's release wakes its cursor as it wakes its
+upload, and a cursor that finds its connection's generation, `query` or request moved drains.
+`:query`'s arm:
+
+| condition | the run |
+|---|---|
+| no cursor yet | `fn2-machine-take-fn2-cursor` (copies `conn conn-gen request line-s line-e group current view access-ref principal-slot`); `:no-row`/`:pool` parks the connection on the kind's FIFO; `:ok`: hand TX, wake |
+| TX handed back by the matching cursor | accept; `:reply` with `after = :query` |
+| back from `:reply`, the cursor `more` | hand TX again, wake |
+| back from `:reply`, the cursor `done` | copy the selection back, clear `query`, consume the line, wake the cursor, `:command` |
+| otherwise | nothing (parked on the cursor) |
+
+The hand-over operations are D's thin wrappers over pool.lisp in conn.lisp's op events
+(`fn2-conn-hand-tx`, `fn2-cursor-hand-tx`; defcosts with no D0 effect: no hold moves).
+
+### 15.4 Runs, budgets, continuations (scenario 6)
+
+**Pages restart the read.** A page never holds a delivered entry across a yield (an entry's octets
+are references into an overlay arena the sealer may free between runs, C's amendment (b)): each
+`:render` run starts its range read at `next`, the first number not yet rendered, delivers and
+renders rows while they fit, and ends the page at the first that does not; a row longer than what
+TX holds when empty (an overview line may be 1,024 octets and a connection's TX 1,024) is rendered
+in pieces from `roff`, re-delivered by the next page's restart. So one positioned start per page
+(a lower-bound descent) is the price, and the entry lifetime question disappears.
+
+**Budget.** C's range step passes its budget to every source (`fn2-range-advance-all`), so a step
+over `S` sources costs at most `S × budget` reads. A `:render` run takes at most
+`*fn2-cursor-steps*` = 4 range steps of budget 128 over at most 8 sources (4,096 reads) and renders
+at most 2,048 octets; the kind's budget is `(:bytes 8192 :steps 32 :descriptors 4)`, above B.3's
+4 KiB as the transaction's is (recorded departure; performance is published, not a gate).
+
+An OVER over `1-2147483647` (the grammar's article-number cap) on a group of three entries costs
+three deliveries and an `:end`, not two billion steps: C's range read seeks to `lo` and delivers only
+stored keys. LISTGROUP renders numbers only (at most 22 octets a row). OVER renders `NUMBER TAB line`,
+`line` the overview row's stored octets (which D5 2/n writes with its Xref suffix through C-S3a).
+
+### 15.5 Replies (the catalogue's rows; each a fixture)
+
+| command | success | refusals, in the model's order |
+|---|---|---|
+| GROUP g | 211 count low high g | 411 (`fn2-groups` absent), 503 `:no-projection` (`:gap`/`:unavailable`) |
+| LISTGROUP [g [range]] | 211 … list follows, numbers, `.` | 412 (no g, none selected), 411 |
+| NEXT / LAST | 223 n mid | 412, 420 (current not in the view), 421 / 422 |
+| ARTICLE/HEAD/BODY/STAT [n \| mid] | 220/221/222/223 n mid (+ block) | 412, 420, 423 `no-number` / `withdrawn-number`, 430 `no-msgid` / `withdrawn-msgid`; HEAD/BODY/ARTICLE 503 `:no-framing` until 15.6 |
+| OVER/XOVER [range \| mid] | 224 + rows | 412, 420, 423 (OVER) / 420 (XOVER) on an empty range, 430 |
+| HDR/XHDR/XPAT | 225 / 221 + rows | 412, 420, 423/430; a field the overview does not carry: 503 until 15.6 |
+| LIST ACTIVE/COUNTS/NEWSGROUPS [wildmat] | 215 + rows | none beyond §4.3's |
+| NEWGROUPS / NEWNEWS | 231 / 230 + rows | 503 `:no-century` (§4.3); NEWNEWS's date map owed (15.6) |
+
+### 15.6 Slices
+
+| slice | contents | waits on |
+|---|---|---|
+| D6 1/n | C-S4's first half (core children, the stripe, range reads and the exact lookup for read rows); the kind, the connection's `:query`, the TX cycle with cancellation; GROUP, LISTGROUP, NEXT, LAST, STAT by number and current, OVER/XOVER by number and range; the view at the greeting; the units over state seeded through C-S3, WIRE over every transcript, the interim JSON regenerated | C's `:published` frontier column |
+| D6 2/n | C-S4's second half (the identity read with membership visibility, the ordered scan for LIST); STAT/OVER by Message-ID, HDR/XHDR/XPAT over the overview fields, LIST ACTIVE/COUNTS/NEWSGROUPS at the view | D5 2/n's overview rows for a real read-back |
+| D6 3/n | ARTICLE/HEAD/BODY: stored octets through storage jobs (`:need-page`, `(:storage-job :read)`), the lease before the success line, `:failed` (scenario 3), Xref prepended; HDR of any stored field | S-ARTICLE-LOCATION (B, C), D4 3/n |
+| D6 4/n | NEWNEWS and NEWGROUPS by position (the date-to-position map); run pages through `:need-page` | C1c, D5 2/n's injection clock |
+
+### 15.7 Keystones (statement first; `fn2/books/owed-cursor.lisp`, teeth in `tests/cursor-unit.lisp`)
+
+The subject is the served core at its adapter boundary after a seeded published state:
+`fn2-cursor-run (profile seeds later transcripts)`, the wire of each client after `seeds` (one
+article a batch: identity fact, article row, group-count accept, overview row) are recorded and
+published through C-S3's own operations, as `tests/txn-unit.lisp` seeds identity facts, with
+`later` published one per adapter round once the client has received two replies (so after its
+first command's reply), and the core's visit count. The reference is `fn2-cursor-spec-wire`, the
+model's replies over the list view, written from RFC 3977 and the model, not from the cursor.
+
+| name | statement | teeth |
+|---|---|---|
+| `fn2-cursor-reply-exact` | seeded state well formed, a transcript of covered commands ending in QUIT: every chunking gives the reference's bytes | positive: every covered command positive and refused; negative: LOW off by one for an empty group, one entry past the view; the seeded store publishes through C-S3 and the served core still answers the interim 503 (owed) |
+| `fn2-cursor-view-pinned` | a transcript opening with GROUP and naming no other GROUP/LISTGROUP: publications after its first reply change none of its replies | positive: OVER, NEXT, LAST, STAT after a later publication; negative: the reference over the union differs (a reader without the position limit) |
+| `fn2-cursor-range-cost` | GROUP then OVER lo-hi is answered exactly **and** the transcript's machine visits are at most a constant plus a constant per entry in the range, whatever hi − lo (the conjunction keeps it non-vacuous) | positive: `1-2147483647` over three entries; negative: a numeric walk's visits exceed the bound |
+| `fn2-cursor-ownership` *(with the cursor)* | every octet a connection is sent belongs to its own request; no stale cursor writes a reused connection's TX; a disconnect releases the cursor | a Send failure while the cursor waits; a stale-generation hand |
+| `fn2-cursor-withdrawal-view` *(departure, with control transactions)* | a withdrawal after the pin | D5's cancel fixture |
+
+Astra's further witnesses (hypothesis removal beside mutation: rows split across pages, partial
+Sends, run replacement between pages, sparse LAST, the source-capacity boundary) are D6 1/n's unit
+cases.
+
+### 15.8 Seams (sent through main, exact forms)
+
+- **C-S4, served reads for cursor rows** (to C; D offers to write it in `fn2/books/machines-c-read.lisp`
+  as machines-c-groups.lisp is written, C reading the diff, since C1c holds C's seat). A C core child
+  `fn2-reads`, one row per cursor slot (`(fn2-profile-x profile)` rows): an exact lookup's
+  continuation (`lphase lbound lrow lver`, as `fn2-succ-txns`), range row `x` of a served
+  `fn2-ranges`, sources `[x·8, x·8+8)` of a served `fn2-range-sources`, seek row `x` of a served
+  `fn2-seeks`, eight run cursors after the transactions', and a field stripe of
+  `*fn2-read-stride*` rows after B's and the sealer's (`fn2-b-field-rows` gains `+ x·stride`). Every
+  operation `(… fn2-core)`, a defcost each:
+  ```lisp
+  (fn2-read-key x j value fn2-core) -> (mv code fn2-core)          ; integer key field j (j >= arity: hi's)
+  (fn2-read-key-octets x j slot gen off len okind oslot ogen fn2-core) -> (mv code fn2-core)
+  (fn2-read-lookup x sid budget fn2-core) -> (mv code fn2-core)    ; :ok :absent :more :miss (fn2-xl-step)
+  (fn2-read-range x sid pfield plimit fn2-core) -> (mv code fn2-core)   ; fn2-range-start over [lo, hi]
+  (fn2-read-next x budget fn2-core) -> (mv code fn2-core)          ; :entry :end :more :miss
+  (fn2-read-identity x mslot mgen moff mlen okind oslot ogen budget fn2-core) -> (mv code article fn2-core)
+                                                                    ; the accepted fact of a Message-ID
+  (fn2-read-value x f fn2-core) -> value                            ; integer field f of the entry
+  (fn2-read-octets x f dslot dgen okind oslot ogen fn2-core) -> (mv code len fn2-core)
+                                                                    ; append octet field f to a workspace
+  (fn2-read-frontier fn2-core) -> position                         ; the greatest published commit position
+  (fn2-read-release x fn2-core) -> (mv code fn2-core)
+  ```
+  **Ruled (main and C, 2026-10-30): D writes it, C and B read the diff, with C's five amendments,
+  binding.** (a) The stripe: reads stripes sit below the sealer's 1,280-row stripe, which sits just
+  below the transaction stripes anchored at the table's end: `base(x) = rows − 1024·t −
+  *fn2-b-seal-field-rows* − stride·(x+1)`, B's `128·fc-rows` at or below `base(0)`;
+  `fn2-b-field-rows` and `fn2-idc-profilep` gain `+ x·stride`; the stride a named constant of the
+  book, at most 1,024. (b) Staleness: the sealer moves overlays into runs between any two steps and
+  frees the overlay's arena in the same step as it installs the run, so every read continuation
+  re-checks its source at each step (an overlay source its row's phase and arena generation, a run
+  source the schema's run version) and on a change re-seeks from the resume key or answers `:stale`;
+  it never reads a freed arena; `:miss` keeps its word though resident pages cannot raise it before
+  M2's cold leg. (c) `fn2-read-frontier` reads a `:published` position C adds to its engine row
+  (`fn2-id-engine`, set in `fn2-succ-publish`), not the overlays' coverage (a retired overlay's
+  coverage disappears; runs carry no position). (d) LIST over `fn2-groups` is not a range read (the
+  range engine refuses octet keys, `:key-kind`, and is not extended): it is a whole-schema ordered
+  scan, `fn2-read-scan` / `fn2-read-scan-next` over the same read row (C2a's run scan beside the
+  overlay index in key order, newest wins by SEQ then run identifier), bounded per step. (e)
+  `fn2-read-identity` reads the accepted fact through the decision path's own lookup
+  (`fn2-run-lookup-step`, the overlay locate), answering `(:found article)`, `:evidence` or
+  `:absent`, never through the identity adapter.
+- **C-S3a, a late octet argument** (C's; landing): `(fn2-successor-arg-octets-late t i j max)` at `:prepare` (`max` within the slot's octet capacity, else `:bounds`), `(fn2-successor-fill-octets t i j slot gen off len okind oslot ogen)` between stage and bind (`:state` unless staged and unbound, `:bounds` past `max`); bind refuses `:state` while a late argument is unfilled. As asked (for D5 2/n's overview line): the overview line carries the
+  Xref suffix, whose numbers are assigned at stage, so `(fn2-successor-arg-octets-late t i j max
+  fn2-core)` at `:prepare` reserves room for at most MAX octets, and `(fn2-successor-fill-octets t i
+  j slot gen off len okind oslot ogen fn2-core)` between `fn2-successor-stage` and `fn2-successor-bind`
+  supplies them (`len ≤ max`; bind copies them as today).
+- **S-ARTICLE-LOCATION** (to B and C, for D6 2/n): the article row names where its stored octets are
+  (B's payload block references from the batch member, or C5's locations schema), so a cursor can
+  issue `(:storage-job :read)` jobs and take its lease before the success line.
+
+### 15.9 The design review (Astra, `build/d-seat/d6/astra-1.md`)
+
+Astra would build the taken kind, keep the selection on the connection and hand TX over; taken.
+Changed on its reading: the view is the model's logical snapshot (pinned at the greeting, re-pinned
+by every GROUP and LISTGROUP, numbers reconstructed at the view, 15.1), not latest-only reads; the
+cursor lives through the last Send and is cancelled by the connection's release (15.3); pages
+restart the read and long rows render in pieces (15.4); the budget counts sources (15.4); the
+sparse-range witness uses the grammar's cap, 2147483647; `fn2-cursor-view-pinned` is stated for
+transcripts that do not re-pin; an ownership keystone joins. Recorded as two positions: Astra
+would generalize `fn2-xl-step` over an explicit continuation allocation; D extends `fn2-succ-txns`
+and `fn2-run-cursors` by `X` read rows (and `8X` source cursors) so the one lookup serves both, which
+is the same generalization by allocation, with no copy of the code. Deferred with reasons: the
+identity read with membership visibility and LIST's per-group metadata (D6 2/n, C-S4's second
+half), `:miss` with page identity (C1c's runs).
