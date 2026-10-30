@@ -495,8 +495,22 @@ admission) as R6b's item, unchanged.
   reply, a closing reply only on a closed stream, and an unfinished body only on a closed stream. In
   `tests/conn-unit.lisp` it passes every fixture and the 24 random transcripts, and catches its three
   mutation controls (a wrong status byte, a missing reply, a reply after the close).
-- With A's seam: `fn2/tests/sim-layer-d.lisp` scenario 1's plaintext anonymous half under the
-  simulator's network with WIRE, and the fuzz campaign's served half (`fuzz-nntp`).
+- Scenario 1's plaintext anonymous-reader half under the simulator (`fn2/tests/sim-layer-d.lsp`, an
+  LD module; built): the served core with `:listener-targets fn2-conn`, the simulator's adapter
+  (`fn2-sim-take-one`, `fn2-sim-advance-with-clients`) and network pipes, clients writing their
+  transcripts in seeded chunks (1-37 octets per round) and reading everything the node sends; WIRE over
+  every client, and for conn-unit's fixtures the exact reply bytes (the DATE line excepted, which the
+  simulator's clock makes 111 and a date). 15 clients per run (7 fixtures, 8 random) on 4 connection
+  rows; 3 seeds without faults and 8 with network faults (short sends, delays, reordered releases;
+  process death excluded): all quiescent, all WIRE-clean, all fixture bytes exact; 37 s. It found one
+  defect, fixed in conn.lisp: a short send that moved zero octets was taken as a failure and closed the
+  connection; it is progress deferred (ROUND2 D.1: the remainder is a new Send).
+- The surface session (`fn2/tests/sim-session.lsp` with `fn2/tests/surface/fn2_sim_session.py`, the hook
+  `FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_sim_session:session` for H's `sim_target.py`): a
+  long-lived ACL2 process over the same core and network; open, send in chunks (each delivered, then the
+  node runs to quiescence), close (client EOF), stop (WIRE per connection). The interim table as data:
+  `fn2/tests/surface/fn2_conn_interim.json` (from `tests/conn-interim-export.lsp`), each command's
+  interim reply and the quest that replaces it.
 - Keystones admitted (§7): T1 `fn2-turn-served-safety` and T8 `fn2-reply-trace-fragmentation-
   invariant` / `fn2-connection-privacy`, `defthm-owed` over `fn2-conn-wire-run` (the logical view:
   octets and chunk sizes per connection in, the wire record per connection out), with executable

@@ -376,8 +376,11 @@
       (fn2-machine-refuse-observation fn2-core)
     (let* ((off row-tx-off)
            (fn2-core (fn2-conn-put-core id (borrows (fn2-machine-pool-borrows row-tx-slot fn2-core)))))
+      ;; A short send is terminal and the remainder is a new Send (ROUND2
+      ;; D.1); it may have moved zero octets, which is progress deferred,
+      ;; not a failure.
       (if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
-               (natp count) (< 0 count))
+               (natp count))
           (let ((fn2-core (fn2-conn-put-core id (tx-off (+ off count))))) (mv id fn2-core))
         (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-closing*)))) (mv id fn2-core))))))
 

@@ -1,0 +1,135 @@
+{
+  "source": "fn2/books/conn-answer.lisp *fn2-answer-interim*",
+  "served_verbs": [
+    "CAPABILITIES",
+    "HELP",
+    "QUIT",
+    "MODE",
+    "DATE",
+    "AUTHINFO",
+    "XREDEEM"
+  ],
+  "interim": {
+    "ARTICLE": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "BODY": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "CHECK": {
+      "code": 431,
+      "reply": "431 MESSAGE-ID",
+      "quest": "D5"
+    },
+    "COMPRESS": {
+      "code": 503,
+      "reply": "503 compression algorithm not supported",
+      "quest": "E2"
+    },
+    "GROUP": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "HDR": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "HEAD": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "IHAVE": {
+      "code": 436,
+      "reply": "436 retry later; REASON",
+      "quest": "D5"
+    },
+    "LAST": {
+      "code": 412,
+      "reply": "412 no newsgroup selected",
+      "quest": "D6"
+    },
+    "LIST": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "LISTGROUP": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "NEWGROUPS": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "NEWNEWS": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "NEXT": {
+      "code": 412,
+      "reply": "412 no newsgroup selected",
+      "quest": "D6"
+    },
+    "OVER": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "POST": {
+      "code": 440,
+      "reply": "440 posting not permitted",
+      "quest": "D5"
+    },
+    "STARTTLS": {
+      "code": 580,
+      "reply": "580 can not initiate TLS negotiation",
+      "quest": "D7"
+    },
+    "STAT": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "XFN-ZARTICLE": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "XFNCATCHUP": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "E4"
+    },
+    "XHDR": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "XOVER": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    },
+    "XPAT": {
+      "code": 503,
+      "reply": "503 archive projection unavailable",
+      "quest": "D6"
+    }
+  },
+  "notes": {
+    "LIST": "OVERVIEW.FMT, HEADERS and MOTD are served now; DISTRIBUTIONS and DISTRIB.PATS answer 503 data item not stored; the other variants are the interim reply",
+    "IHAVE": "on a reader connection (every D3 connection) the 502 state refusal answers first",
+    "CHECK": "on a reader connection the 502 state refusal answers first",
+    "TAKETHIS": "on a reader connection the 502 state refusal; a peer TAKETHIS waits for D4 and E4"
+  }
+}
