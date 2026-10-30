@@ -491,6 +491,104 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
    again with nothing recorded). An uncertain batch calls neither; recovery resolves it. Release of
    a staged or bound decision is refused `:state`.
 
+8. **C-S3 (to D and B; proposed 2026-10-30, before D5 2/n writes its `:ready` arm). Every engine
+   write of a transaction goes through its batch's private successor, so a POST's group-count
+   accept, its overview row, its article row, its `addr` entries and its operation outcome become
+   readable in the one step that publishes its identity fact.** C-S2 becomes the identity case of
+   this seam; its stage and bind are replaced (no twin), its offer, step and release stay.
+
+   *Why it has this shape.* A fold write reads the key's newest row and writes the step's result
+   (C4a's real step). Two POSTs to one group in one batch, or in a batch and its follower, must
+   chain: the second reads the first's unpublished row. Group numbers must be assigned in commit
+   order (INBOX §4.1: position is monotone in key order within a group, which is what makes the
+   positioned seek exact), so the number is assigned at admission time from the tip, never at
+   `:prepare`. The tip a staged write reads is: the private overlays of every unpublished batch,
+   newest first, then the published overlays, newest first, then the installed runs. The arm that
+   stages, admits and binds is one transition, so nothing else stages or binds between a
+   transaction's stage and its bind.
+
+   *Slots.* Transaction row `t` (= its decision row, as C-S2) owns `W` write slots
+   (`fn2-succ-slots`, a C core child, `T x W` rows; `W` is the profile's `:successor-slots`,
+   default 8; a transaction needing more is refused at `:prepare` by D's word for it). Calls made
+   before `:ready` (at `:prepare`):
+   - `(fn2-successor-put t i sid kind fn2-core) -> (mv code fn2-core)`: slot `i < W` of `t` writes
+     schema `sid` by `kind`: a fold event kind of `sid` (`:accept`, `:withdraw`, `:ack`,
+     `:charge`, ...), `:insert` (a whole entry of a `:unique` or `:latest` schema: key fields then
+     value fields), or `:record` (the identity fact of decision `t`; `sid` = identity; at most one
+     per transaction). `:ok`, `:bounds`, `:schema` (not registered), `:kind` (not an event of
+     that fold, or `:insert` on a fold), `:state` (slot staged or bound).
+   - `(fn2-successor-arg t i j src value fn2-core) -> (mv code fn2-core)`: argument `j` of slot
+     `i` (the event's args in declaration order; for `:insert` the entry's fields; for `:record`
+     the fact's `article` then `principal`) comes from `src`:
+     `:value` (the integer `value`), `:event` (the member's commit position, bound at bind;
+     `value` ignored), or `:out` (`value` = `k * 2^8 + f`, a packed handle: field `f` of slot
+     `k < i`'s row after its step; `f` is the generated `*NAME-FIELD-F*` index). An octet field
+     (the overview line) is `(fn2-successor-arg-octets t i j slot gen off len okind oslot ogen
+     fn2-core) -> (mv code fn2-core)`: readable under that owner until bind, which copies it into
+     the arena (as C-S2's bind copies the Message-ID). An argument the fold declares `:assign`
+     (group counts' `:accept number`, assigned `(+ high 1)` from the tip row) takes no call; the
+     logged event carries the assigned value, so the list fold is unchanged.
+   - `(fn2-successor-resolve t budget fn2-core) -> (mv answer fn2-core)`: reads, for every slot
+     whose key is fully `:value`, the key's newest row in the installed runs (bounded, resumable:
+     `:more`, `:miss` with the page as C-S1, `:ok`), and notes the schema's run version. Until C1c
+     installs runs in the served core it answers `:ok` in one call.
+
+   In the `:ready` arm, in this order, in one transition:
+   - `(fn2-identity-stage t fn2-core)` is replaced by `(fn2-successor-stage t fn2-core) -> (mv
+     code i fn2-core)`: every slot in order against the tip (a key found in an overlay is newer
+     than any run; otherwise the resolved row, if the schema's run version has not moved, else
+     `:stale`, and D resolves again), then the step (assigned args computed, `:out` args read),
+     then room held for every slot (an overlay of the slot's schema already private to the open
+     batch, or a held spare). `code`: `:ok`; `:stale` (resolve again; for `:record` also decide
+     again, as C-S2); `:refused` (slot `i`'s fold test failed: an ack behind the cursor, a refund
+     over the charge; D's word for that operation); `:range` (a field would leave its width);
+     `:duplicate` (a `:unique` key held at the tip, or the identity fact's C-S2 answer),
+     `:evidence`, `:identity-conflict-bound` (the `:record` slot, as C-S2); `:full` (no room now:
+     backpressure, stay `:ready`); `:capacity` (an entry exceeds an arena). `i` names the slot.
+   - `(fn2-successor-out t i f fn2-core) -> value`: field `f` of slot `i`'s row after its staged
+     step (D reads the assigned group number here and writes the membership record into its
+     member workspace before admission).
+   - `(fn2-commit-admit-txn ...)` (B-S2), unchanged, except that it returns the member's commit
+     position (below).
+   - `(fn2-identity-bind t batch article binding principal fn2-core)` is replaced by
+     `(fn2-successor-bind t batch event fn2-core) -> (mv code fn2-core)` right after admission
+     `:ok`: every slot's row (the staged step, `:event` args = `event`) enters `batch`'s private
+     overlay of its schema; a `:latest` key `batch` already holds is replaced in place. A non-`:ok`
+     is an invariant failure. The identity fact's `binding` is `event`.
+   - `(fn2-successor-release t fn2-core) -> (mv code fn2-core)` at the outcome (frees the slots
+     and the decision; `:state` while bound to an unresolved batch), replacing
+     `fn2-identity-release`.
+
+   *Publication.* `fn2-identity-publish` and `fn2-identity-drop` are renamed
+   `(fn2-successor-publish batch fn2-core)` and `(fn2-successor-drop batch fn2-core)`, same
+   arguments, same call sites in B's commit kind (after the root swap, before any member result;
+   for a refused batch). Publish freezes every private overlay of `batch`, of every schema, in
+   one step, sets their coverage to the batch's last event, and moves the identity stamps; drop
+   releases them and returns `batch`'s slots and decisions to staged-before-admission state with
+   nothing recorded. Readers (range reads, the identity decision) see published overlays only.
+   Equal keys in two published overlays resolve to the later one (overlays carry the order they
+   were taken in, which is batch order; the sealer seals them in that order, so run identifiers
+   keep it).
+
+   *Asked of B with this seam.* (a) `fn2-commit-admit-txn` returns `(mv code batch event
+   fn2-core)`, `event` the member's commit position `(domain 0, sequence)`, assigned in admission
+   order and increasing across batches (INBOX §4.1; the overview row's `position` and the `addr`
+   key need it before the batch seals). (b) A batch whose predecessor is dropped is dropped, and
+   drops come in batch order (the follower's successor already names the leader's proposed root;
+   C's tip chains the same way). (c) An uncertain batch's private overlays stay in the tip; a
+   batch chained on it resolves after it (recovery publishes or drops in order).
+
+   *What D's arms become.* `:prepare`: the article's slots (`:record`; `:insert` article row;
+   per group `:accept` and an `:insert` overview row whose `number` is `(:out k high)` of that
+   group's accept and whose `position` is `:event`; `:insert` `addr` per addressee with `:event`;
+   `:insert` operation outcome), then `fn2-successor-resolve` to `:ok`. `:ready`: stage, out,
+   pack, admit, bind. Accept order equals commit order by construction; a cross-posted article
+   holds one accept per group.
+
+   Not in this seam: read-state, registration, edge-policy and inbox folds (C4b) are written by
+   E's ack and registration transactions through the same calls.
+
+
 ## 9. Keystones (defthm-owed, each with teeth)
 
 | name | statement (real entry points) | teeth | quest |
