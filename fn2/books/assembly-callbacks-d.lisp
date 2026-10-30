@@ -2,5 +2,4 @@
 ; keeps each continuation section under the one-minute rule).
 (in-package "ACL2")
 (include-book "assembly-callbacks-c")
-(fn2-account-events)
 (fn2-conn-events)

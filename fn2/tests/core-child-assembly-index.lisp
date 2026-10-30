@@ -4,6 +4,8 @@
 (include-book "core-child-registration")
 (include-book "../books/machine-dispatch")
 (include-book "../books/reference-state")
+; The ledger (D7): the access section's grant source calls its wrappers.
+(include-book "../books/accounts-core")
 
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))

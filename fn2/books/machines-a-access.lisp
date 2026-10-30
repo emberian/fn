@@ -238,7 +238,8 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (or (and (fn2-machine-waiting-p fn2-core) (fn2-machine-op-credit-p fn2-core))
       (fn2-machine-pool-credit-p fn2-core)
-      (fn2-machine-admission-ready-p fn2-core)))
+      (fn2-machine-admission-ready-p fn2-core)
+      (fn2-account-grant-ready-p fn2-core)))
 
 (defun fn2-machine-grant-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -251,6 +252,9 @@
            (mv id fn2-core)))
         ((fn2-machine-admission-ready-ord 0 fn2-core)
          (fn2-machine-grant-admission (fn2-machine-admission-ready-ord 0 fn2-core) fn2-core))
+        ; The ledger's source (D7's S5): one blocked principal head whose
+        ; reservation now fits, acquired, dequeued and its wait cleared by D.
+        ((fn2-account-grant-ready-p fn2-core) (fn2-account-grant-one fn2-core))
         (t (mv *fn2-none* fn2-core))))
 (fn2-core-preserves fn2-machine-grant-one (fn2-core) :position 1 :rows nil)
 
