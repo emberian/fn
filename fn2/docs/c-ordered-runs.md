@@ -22,14 +22,14 @@ departure from a decision that is not recorded here is a defect.
 | installed runs (the resident view of each schema's sealed runs; the manifest makes it durable in C1c) | `fn2/books/runs.lisp` (`fn2-run-installed`) | C2b |
 | active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
-| Ribbon filter per sealed run | `fn2/books/ribbon.lisp` | C2 |
+| Ribbon filter per sealed run: the build (band, insertion, back substitution, page), the probe, the adapter and keystones | `fn2/books/ribbon.lisp`; unit `fn2/tests/ribbon-unit.lisp` | C2c |
 | article metadata, overview, addressing schemas; range cursors | `fn2/books/ordered.lisp`, `fn2/books/cursor.lisp` | C3 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
-| IDENTITY and CONSUMER checkers | `fn2/sim/check-identity.lisp`, `fn2/sim/check-consumer.lisp` | C2, C4 |
-| acceptance | `fn2/tests/sim-layer-c.lisp` (+ driver `.lsp`) | C2-C6 |
+| IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
+| acceptance | `fn2/tests/sim-layer-c.lisp` (scenario M3 so far; `fn2/tests/sim-layer-c-sweep.lsp` the 10,000-seed driver) | C2d-C6 |
 | C's test assembly: the identity schema and the run units' fixture schemas, assembled once; the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
-| units | `fn2/tests/runs-unit.lisp`, `fn2/tests/identity-unit.lisp` (both include the test assembly) | each |
+| units | `fn2/tests/runs-unit.lisp`, `fn2/tests/identity-unit.lisp` (both include the test assembly), `fn2/tests/ribbon-unit.lisp` (the filter alone) | each |
 
 Every C book starts `(fn2-book-layer :c)` after its includes, so its rows count under layer C.
 
@@ -140,6 +140,17 @@ block is read through the scan, one entry per step; a block longer than the boun
 short) and resumable; `:miss` hands the caller the page to load. `:found`/`:absent` come from byte
 comparisons only; no filter decides.
 
+**Concurrency (C2d).** Decisions are resumable, so others record and seal between their steps.
+Two checks make a record safe without locking: the *stamp* of the Message-ID's bucket (a table
+`fn2-id-stamps` indexed by the octets' hash modulo its rows, bumped by every record) and the
+*identity version* (`fn2-id-version`, the greatest live identity run identifier, which every
+installation raises). A decision takes both at start; `fn2-id-record` refuses `:stale` before any
+other verdict when either moved, and the caller decides again. The stamp catches a fact recorded
+after the decision passed the overlay that took it; the version catches a fact that moved from an
+overlay into a new run while the decision was in flight (it would otherwise be met twice, or not at
+all). Layer D's identity reservation keeps same-Message-ID offers from racing at all; the refusal
+is the engine's own guarantee.
+
 The recording (`fn2-id-record`) writes a stored offer as the accepted content and a conflicting
 one as evidence, while the Message-ID holds fewer than `*fn2-identity-contents-max*` = 4 contents
 (the accepted one and three conflicting); past that the offer is refused
@@ -176,6 +187,20 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   the overlay's index capacity). `:active` takes inserts; `:frozen` is being sealed and stays
   readable; then `:free`. An equal key is refused `:duplicate` and changes nothing; no room is
   `:full` (seal and start another). Sealing reads the overlay in order into the run writer.
+- **Filter (C2c).** A sealed run gets one Ribbon filter page (`:partitioned-filter`, FILTERS-2026
+  item 2): homogeneous Ribbon, w = 64 coefficient bits, r = 8 result bits, so the solution Z is one
+  byte per slot. Slots = keys + ceiling(keys/16) + 63. Every key gives one equation c . Z = 0 over
+  GF(2)^8 on the 64 slots from its start s; a homogeneous system is always solvable, so the build
+  never fails or retries. The build (`fn2-ribbon-start`, `-add`, `-finish`, `-work`; table
+  `fn2-ribbon-builds`, band `fn2-ribbon-band`) clears its band rows, inserts each key (shift out
+  low zero bits, store in a free row or eliminate against the row pivoted there; a dependent key
+  reduces to zero; at most 4096 steps per call, the continuation kept in the build row), solves
+  from the top slot down (a free slot's byte from a generator seeded by the run, so pages are
+  reproducible), writes Z through a run writer row opened on the page, closes, writes B's header
+  (`fn2-run-head-b`, shared with run pages) and the filter header (`fn2-ribbon-header`: schema,
+  run, seed, keys, slots, width, bits), and seals through B's sealer into a digest row (the
+  parent-held hash). Its caller (C1c's sealer; the identity adapter today) feeds it the run's
+  Message-IDs as it seals the overlay.
 - **Sealing through the commit protocol.** C's sealer machine (declared through A's `defmachine`)
   reserves extents, writes sealed pages into them and harvests their completions; the commit batch
   then carries a run-replacement record naming old and new manifest refs, lists every new page in
@@ -194,9 +219,15 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 
 - **Lookup.** A lookup cursor names its schema; descend from the run root by lower bound over index pages, then seek inside the data
   page: binary search over restarts, linear decode within one interval. Each call is bounded
-  (≤ 4096 pool reads) and resumable from `(page, restart lo, restart hi, entry)`. Per-run Ribbon
-  filters skip runs on a miss (C2); a per-run perfect hash is measured against this sorted search
-  before it is adopted (C6).
+  (≤ 4096 pool reads) and resumable from `(page, restart lo, restart hi, entry)`. A per-run perfect
+  hash is measured against this sorted search before it is adopted (C6).
+- **Filter probe (C2c).** `fn2-ribbon-probe` reads the filter page's two headers (refusing a
+  malformed one by name), hashes the query's octets with the page's seed, and XORs the bytes at
+  the coefficient's set bits from s: nonzero is `:absent`, zero `:maybe`. The identity decision's
+  run-start phase probes a run that has a filter (`fn2-run-installed` FILTER, FUNIT, FCOUNTER; the
+  page through the verified-page cache, `:filter-miss` when it is not there) and skips the run on
+  `:absent`; the decision row counts READS and SKIPS. `:maybe` reads the run, so `:found` and
+  `:absent` still come only from byte comparisons.
 - **Exactness.** A lookup's `:found` means a byte-equal key was compared; `:absent` means the
   search ended at a lower bound whose key is greater. Neither ever comes from a filter alone.
 - **Scan (C2a).** A cursor notes, at every level of its descent, the page (slot, generation,
@@ -278,6 +309,25 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   enters only after B's checker accepted it under its parent-held hash (or after its own seal). A
   lookup that needs an absent page stops with `:miss` and names the reference; its caller (the
   sealer or reader machine, C1c/C3) loads, verifies and installs it, then steps again.
+- **C-FILTER-ONE-PAGE.** A run's filter is one page: at most `*fn2-ribbon-keys-max*` = 61,472
+  keys (`:filter-capacity` past it). Overlay seals are far below it; runs larger than one page
+  come from compaction (C5), which partitions the filter by hash (one page per partition, a
+  partition directory in the descriptor's FILTER- ref) when it first produces one.
+- **C-FILTER-HASH.** The filter key is a 64-bit hash of the Message-ID octets: two 32-bit FNV-1a
+  streams with bases derived from the run's seed, each finalized by MurmurHash3's fmix32 (32-bit
+  products split so none exceeds 2^49); the start comes from the first word, the coefficient from
+  both. Not cryptographic: a Message-ID aimed at a run's filter costs one extra run read, never a
+  wrong answer (the decision still compares bytes), so an adversary buys read amplification only,
+  which admission already charges.
+- **C-FILTER-INSTALLED (interim until C1c).** Until the run descriptor and the manifest exist, a
+  run's filter page is named in its `fn2-run-installed` row (FUNIT, FCOUNTER) and cached after its
+  own seal, as run pages are; C1c moves it to the descriptor's FILTER- ref with its parent-held hash.
+- **C-IDENTITY-STALE.** Records are linearized by refusal, not by locks: `:stale` when the bucket
+  stamp or the identity version moved since the decision started (§4). Measured on scenario M3
+  (three decisions in flight, a seal one tick in twelve, six Message-IDs): about 45 stale records
+  per 30 offers, so a retry is common under that contention; production seals are far rarer and D's
+  reservation removes same-Message-ID races. Revisit with D's measurement under the concrete
+  profile.
 - **C-LEVELS.** A build has at most `*fn2-run-max-levels*` = 6 levels, a format parameter: with
   64 KiB pages and index entries of at most about 350 bytes, six levels address over 10^13 pages.
   Exhaustion is the named refusal `:levels`.
@@ -317,6 +367,10 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 3. **B: identifier namespaces.** Add `run stream position consumer version` to the `(:id NS)` list
    in `fn2-layout-kindp`.
 4. **A: R6a1's `fn2-pool-compare`** (GC1). Landed at 09ad4a57f; C uses it.
+5. **A: one word book.** `fn2/sim/prng.lisp` holds `fn2-u32`, `fn2-u32-mul` and `fn2-prng-mix32`
+   (fmix32); C's `ribbon.lisp` needed the same in `books/` and has `fn2-ribbon-mul32` and
+   `fn2-ribbon-mix`. Asked: hoist the three into a `fn2/books/` word book that `sim/prng.lisp`
+   includes; C then calls them and deletes its copies.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
@@ -327,6 +381,9 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `NAME-run-lookup-exact` (generated per schema) | for at most 64 sorted well-formed entries and a fill at which every page holds two entries (`fn2-run-run-inputp`), a run built through the real build entry points and searched from its root through the real cursor steps answers `(:found entry)` exactly when an entry's key equals the query's, with that entry, and `(:absent nil)` otherwise (`fn2-run-key-lookup-spec`) | positive: present, between, before, after and empty-octet queries over multi-level runs of both test schemas; negative: unsorted entries make the conclusion false | C1b' |
 | `fn2-exact-identity` (RELEASE-PLAN T9) | offers decided and recorded through the real decision and recording, sealed into runs every `split` offers, the offers' staging workspace released, then queries decided: each answer equals `fn2-id-answers-spec` (`:duplicate` iff recorded, `:conflict` iff another content is, else `:stored`) | positive: the M3-shaped scenario (a conflict, a duplicate, five contents for one Message-ID against the bound of four) at splits 0, 4 and 1; negative: a node whose summary dropped the Message-ID octets answers `:stored` to the re-offer of m1 with another content, where the statement requires `:conflict` | C2b |
 | `fn2-identity-binding-converges` | two nodes whose offered fact sets are equal (any order, duplication or sealing schedule, within the bound) hold equal Bindings, read back by the real scan of every installed run | positive: one fact set in two orders (one with a duplicate) under splits 2 and 3, equal to each other and to `fn2-id-binding-spec`; negative: nodes that refuse a conflict and record nothing hold different Bindings for the two orders | C2b |
+| `fn2-ribbon-no-false-negative` | a filter built through the real start, add, finish and work from at most 256 keys seals, passes B's checker under its parent-held hash, and its probe answers `:absent` only for a query that is no key (`fn2-ribbon-answers-sound`) | positive: 200 keys and 56 others probed, every key `:maybe`, at least 50 others `:absent`; negative: a filter built without key 17 answers `:absent` to it | C2c |
+| `fn2-ribbon-mutation-refused` | any one-byte change (offset in the page, nonzero XOR) of a sealed filter page is refused by B's checker by name | positive: changes in B's header, the filter header, Z and the padding refused while the unchanged page is accepted; negative: a zero change is accepted | C2c |
+| `fn2-identity-linearizable` | for every seed and at most 64 offers, the M3 scenario's trace (interleaved decisions, records, seals with filters, bodies released, then every pair queried and the Binding scanned) is accepted by the independent IDENTITY checker | positive: 40 seeds pass with races exercised (1,808 stale records) and 722 seals; negative: the same schedules with the stamp and version checks defeated are refused by name (37 of 40) | C2d |
 | `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
@@ -345,7 +402,8 @@ OWED.md is regenerated when the export is green.
 | C1c | sealer machine; run descriptor and manifest schema; run sealing through the commit batch (B's GC2 member); retirement through the allocator; the assembly dispatcher (C-GLUE-UNVERIFIED's remedy) | tiny exhaustive death cuts over one run replacement: recovered manifest is old or new, never mixed | B's GC2 member |
 | C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
 | C2b | identity schema, the decision machine, the recording under the bound, the two keystones | **done**: the M3-shaped scenario pinned; both keystones' teeth | C2a |
-| C2 (rest) | Ribbon per sealed run (C2c); IDENTITY checker and M3 in the simulator (C2d) | identity correct after bodies and placements reclaimed; filter bits/key and probe time | C1 |
+| C2c | Ribbon per sealed run, the probe in the identity decision | **done**: no key ever `:absent`; 8.5 bits/key at 60,000 keys (8.75 at 2,000); false positives 0.375% (75 in 20,000) and 0.395% (790 in 200,000 at 60,000 keys) against 2^-8 = 0.39%; the M3-shaped scenario reads only the runs holding the Message-ID (an absent one reads none); both keystones' teeth | C2b |
+| C2d | IDENTITY checker; scenario M3 (interleaved decisions, seals, bodies released); the stamp and version refusal | **done (engine leg)**: 200 seeds of 30 offers all accepted, 9,077 stale records, 3,607 seals; defeated checks refused on 188 of 200; 10,000 seeds in `sim-layer-c-sweep.lsp`. The device leg (run pages through the commit batch, recovery) waits on C1c and B's GC2 | C2c |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |

@@ -101,3 +101,18 @@
  (list nil (cons 1 (make-list 32 :initial-element 0)) 0 0 0 0))
 (fn2-rt-overlay-teeth fn2-identity 1 ((message-id (:octets 250)) (content :digest))
  (fn2-rt-shuffle *fn2-it-good* 0 40) (cons (nth 3 *fn2-it-good*) (fn2-rt-shuffle *fn2-it-good* 0 40)))
+
+;; Read amplification with the per-run Ribbon filters (C2c): each query of
+;; the M3-shaped scenario reads the runs that hold its Message-ID and, at
+;; split 1, one run more for m3 (a filter false positive: the decision reads
+;; that run and answers by its bytes); an absent Message-ID reads no run.
+;; Sealed after every offer (14 runs) and every four (4 runs):
+;; (answer runs-read runs-skipped).
+(assert-event
+ (equal (fn2-identity-cost-image *fn2-it-offers* 1 *fn2-it-queries*)
+        '((:duplicate 1 13) (:duplicate 3 11) (:conflict 3 11) (:stored 0 14) (:conflict 4 10)
+          (:duplicate 4 10) (:duplicate 1 13) (:conflict 1 13) (:stored 0 14))))
+(assert-event
+ (equal (fn2-identity-cost-image *fn2-it-offers* 4 *fn2-it-queries*)
+        '((:duplicate 1 3) (:duplicate 2 2) (:conflict 2 2) (:stored 0 4) (:conflict 2 2)
+          (:duplicate 2 2) (:duplicate 1 3) (:conflict 1 3) (:stored 0 4))))

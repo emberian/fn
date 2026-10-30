@@ -1,64 +1,81 @@
 # fn2 layer C continuation (present state, rewritten whole after every commit)
 
-Seat: Opus, layer C (the ordered-run metadata engine). Method of 2026-10-29
-(`briefs/FN2-SEAT-COMMON.md`): dev is the branch; Opus writes the code; Codex only for bounded
-pieces with real signatures pasted; READY to main per commit. Brief:
+Seat: Opus, layer C (the ordered-run metadata engine). Third seat since 2026-10-30. Method of
+2026-10-29 (`briefs/FN2-SEAT-COMMON.md`): dev is the branch; Opus writes the code; Codex only for
+bounded pieces with real signatures pasted; READY to main per commit (SendMessage to "main"). Brief:
 `briefs/FN2-LAYER-C-ORDERED-RUNS.md`. Layer doc on dev: `fn2/docs/c-ordered-runs.md` (design,
-seams, schemas, read contract, keystones, quest plan, interim decisions §7 incl. C-ASSEMBLY,
-C-ASSEMBLY-THEORY, C-ONE-ASSEMBLY, C-OVERLAY-SORTED). Box safety verbatim in COMMON.
+seams, schemas, read contract, keystones, quest plan, interim decisions §7). Box safety verbatim in
+COMMON.
 
 ## Landed (all READY sent)
-- 181df0df0 C1a, 8dfba6db2 C1b, 1e823b06f C1b', 37ba641da boxes.md hbox fallback.
-- 1c603fcdd **C1c first item, the run assembly** (`fn2/books/runs-assemble.lisp`, macro
-  `fn2-run-assemble`): dispatcher `fn2-run-layout-{fields,keys,decode,encode,size,compare}` (case
-  over schema ids; level 0 entry layout, positive level index layout); generic `fn2-run-add`
-  (`-add-ready` pure + `-add-write`), `fn2-run-seek`, `fn2-run-build-add/-promote`; per-schema
-  keystones generated at assembly; owed `fn2-run-glue-verified` + certify-time check
-  (`fn2-run-glue-check` over `fn2-run-glue-assembled`). defrunschema = 3 deflayouts + compare +
-  registration; refuses after the assembly (table `fn2-run-assembly`).
-- 8db53928a **C2a**: scans (path table `fn2-run-paths`; cursor phases :at :up :end :lost;
-  `fn2-run-nth (sid lv k ...)`), generic overlay (`fn2/books/overlay.lisp` tables + placement;
-  assembly: `fn2-ov-entry/-order/-search/-locate/-write/-insert`). Keystones NAME-RUN-SCAN,
-  NAME-OVERLAY-SORTED.
-- c06369c9d **C2b identity** (`fn2/books/identity.lisp`): schema fn2-identity id 1; spec
-  (`fn2-id-decide-spec`, `-record-spec`, `-answers-spec`, `-binding-spec`, `-within-bound`); macro
-  `fn2-identity-assemble` (decision machine `fn2-id-decides` rows: start, overlay block walk,
-  run-start, run-scan, fold, `fn2-id-decide-step`; `fn2-id-record` under
-  `*fn2-identity-contents-max*` = 4, refusal `:identity-conflict-bound`; adapters
-  `fn2-identity-decide-image (offers split forget queries)`, `fn2-identity-binding-image`;
-  keystones `fn2-exact-identity`, `fn2-identity-binding-converges`). Installed-run registry
-  `fn2-run-installed` (runs.lisp). Test assembly `fn2/tests/runs-assembly.lisp` (identity +
-  fn2-rt-num + fn2-rt-mid, assembled once; teeth makers fn2-rt-teeth/-run-teeth/-scan-teeth/
-  -overlay-teeth); units `runs-unit`, `identity-unit` include it; owed-export.lsp includes both.
-- Cursor step structure now: helpers `fn2-run-step-{header,seek,child,deliver,up}` (scalars),
-  wrappers `fn2-run-phase-*` (read the row via `fn2-ra-with-cursor (vars body)`), dispatcher
-  `fn2-run-cursor-step (scan c ...)`, `fn2-run-lookup-step` / `fn2-run-scan-step`; cursor-start is
-  `(c schema level slot gen unit counter rb okind oslot ogen)`.
-- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev c06369c9d,
-  clean. forge clone `/build/lanes/c` holds the same tree (scp'd files, certified).
+- 181df0df0 C1a, 8dfba6db2 C1b, 1e823b06f C1b', 1c603fcdd run assembly, 8db53928a C2a (scans,
+  overlay), c06369c9d C2b (identity Binding).
+- 37a48f7d0 **C2c** (dev e9cbd926b): `fn2/books/ribbon.lisp`, homogeneous Ribbon w=64 r=8 per sealed
+  run, one `:partitioned-filter` page (slots = keys + keys/16 + 63; max 61,472 keys,
+  C-FILTER-ONE-PAGE). Build: `fn2-ribbon-start` (writer row already opened by `fn2-run-open` on a
+  fresh page, page-kind partitioned-filter), `fn2-ribbon-work` until `:ready`, `fn2-ribbon-add` per
+  key (field row of octets; `:more` = insertion pending, drive work until `:idle`),
+  `fn2-ribbon-finish`, work until `:sealed`. Probe `fn2-ribbon-probe (pslot pgen hb qrow qk qs qg
+  pk ps pg fields pool)` -> `:maybe`/`:absent`/refusal. 32-bit ops are mbe functions with
+  unconditional widths (bitops local to one encapsulate); macro `fn2-ribbon-ub` states a width as
+  predicate + natp + linear bound. runs-page: `fn2-run-head-b` shared B header. runs: installed rows
+  carry FILTER FUNIT FCOUNTER (`fn2-run-install-filter`). identity: run-start probes the filter
+  (`fn2-id-filter`), `:filter-miss` when uncached; decides counts READS SKIPS;
+  `fn2-identity-cost-image`. Keystones fn2-ribbon-no-false-negative, fn2-ribbon-mutation-refused
+  (teeth in tests/ribbon-unit.lisp).
+- 76b82807c **C2d** (dev 4c7c775b4): `fn2/sim/check-identity.lisp` (independent; events `(:offer
+  mid c answer outcome) (:query mid c answer) (:seal n) (:reclaim x) (:binding facts)`;
+  `(fn2-check-identity events bound)`). identity: `fn2-id-stamps` (bucket = FNV hash seed 0 mod
+  rows, bumped per record), `fn2-id-version` (max live identity run id); decide-start snapshots
+  BUCKET STAMP VRUN; `fn2-id-record` (now takes fn2-id-stamps and fn2-run-installed) refuses `:stale`
+  FIRST when either moved (C-IDENTITY-STALE). Adapter run ids start at 1 (row k, run k+1).
+  `fn2/tests/sim-layer-c.lisp`: M3 (`fn2-m3-trace seed n defeat`, `fn2-m3-sweep`), keystone
+  fn2-identity-linearizable; `sim-layer-c-sweep.lsp` 10,000 seeds (not yet run: run it on forge
+  with forge-driver.sh when a box is quiet and report the row).
+- OWED.md regenerated at each (354 requirements at C2d).
+- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev 4c7c775b4.
+  forge clone `/build/lanes/c` at 76b82807c (closure + export recipe below).
 
-## Next (critical path B5 -> C2 -> C3 -> D3)
-1. **C2c Ribbon per sealed run.** Homogeneous Ribbon (w = 64, r = 8 bits; always solvable; free
-   rows from a PRNG seeded by the run id, so pages are reproducible), keyed on a 64-bit hash of the
-   Message-ID octets (FNV in `fn2/books/fnv.lisp`, seeded per run; adversarial FPs cost only extra
-   run reads: record as a decision), built at seal (bounded, resumable Gaussian insertion in key
-   order + back substitution), stored in `:partitioned-filter` pages referenced by the run
-   descriptor's FILTER- ref (and a column in `fn2-run-installed`). The decision's run-start phase
-   probes it and skips the run on a miss; `:found` never comes from it. Owed: no false negative
-   (every recorded Message-ID passes its run's filter), with teeth (positive: all keys of a built
-   run pass; negative: a filter built without one key rejects it). Report bits/key and probe cost.
-   Consider writing the GF(2) insertion by hand first, then a Codex helper for the solver if useful.
-2. **C2d** IDENTITY checker (`fn2/sim/check-identity.lisp`) and M3 in the simulator: read
-   `fn2/sim/` and A/B's checker pattern first (check-*.lisp, sim-layer-b).
-3. **C3** ordered schemas (metadata, overview, addr) + range cursors with resume key and logical
-   version, positioned seek (scan already exists), M2, read contract (exactly-at / at-least,
-   catch-up; UC §12 decision 2). INBOX-DELIVERY §4-5 for addr.
-4. Rest of C1c: descriptor + manifest schema (C-MANIFEST-IS-A-RUN), the sealer machine through A's
-   defmachine with full arm contracts (`lanes/a-to-d-arm-contracts.md`), GC2 member when B5 lands
-   (layer doc §8 item 2), production assembly (C-ONE-ASSEMBLY: C units then move onto it). Then
-   C4-C6.
+## Seam requests outstanding (sent to main)
+- A: hoist `fn2-u32`, `fn2-u32-mul`, `fn2-prng-mix32` from sim/prng.lisp into a books/ word book;
+  then C deletes `fn2-ribbon-mul32`, `fn2-ribbon-mix` and calls them (layer doc §8 item 5).
+- B: GC2 inside B5 (layer doc §8 item 2), still pending; blocks C1c's sealer and M3's device leg.
+
+## Next (critical path C3 -> D6)
+1. **C3** (tell main the moment it is on dev; D6's cursor machine waits). Plan, decided:
+   - C3a: schemas in `fn2/books/ordered.lisp` through defrunschema, included by the test assembly
+     before `fn2-run-assemble`: `fn2-article` (key article; value birth event, state enum
+     live/withdrawn, version, source digest, bytes, lines), `fn2-overview` (key (group, number);
+     value article, position, overview octets), `fn2-addr` (key (principal, position); value
+     article, stream, reason bits). Range cursor in `fn2/books/range.lisp` (NOT cursor.lisp: D6 owns
+     `fn2/books/cursor.lisp`): a k-way merge over the schema's overlays and live runs, one scan
+     cursor + decoded head per source, deliver the least key, merge rule per schema (`:unique`
+     duplicate = corruption refused by name; `:latest` newest source wins), state = resume key +
+     logical version (the schema's max live run id, as fn2-id-version, plus overlay insert count);
+     after a yield or version change re-seek strictly after the resume key. Read contract layer:
+     each read names `:exactly-at p` or `:at-least p` and a fallback `:wait :stale-ok :catch-up`;
+     append-only stream schemas answer exactly-at p for p <= cov by filtering position; latest-only
+     schemas answer exactly-at only at cov, else `:gap`; every outcome returns its position.
+     Keystone: the merged range equals the list spec over the union of facts, with seals mid-read.
+   - C3b: positioned seek (`Seek(stream, after = p)`): overview needs a position fence in index
+     entries (defrunschema option copying a monotone value field into the index layout); addr gets it
+     from its key. M2 (cold sparse groups past cache capacity, charging directory and overlap reads).
+2. Rest of C1c: descriptor + manifest schema, the sealer machine through A's defmachine with full arm
+   contracts (`lanes/a-to-d-arm-contracts.md`), GC2 member, production assembly (C-ONE-ASSEMBLY: C
+   units move onto it), filter ref into the descriptor (C-FILTER-INSTALLED). Then C4-C6.
 
 ## Pitfalls hit (and what worked)
+- Guard proofs and stobj column values: a column read through an enabled accessor becomes raw
+  nth; the type facts may not fire through rewrite chains. Checking the width at run time
+  (`(unsigned-byte-p 32 x)` in a b* `unless`) is the house style and cheap; loops should return
+  only code + stobjs (the caller computes the new index), not an index needing a type lemma.
+- Type facts used by `rationalp`/`integerp` guard goals need :type-prescription or natp+linear
+  forms with no hyps; hyp'd natp rewrite rules do not answer them (`fn2-ribbon-ub` with hyps t).
+- `mv-nth 0` is normalized to `car`: state type-prescriptions on `(car (f ...))`.
+- A `-preserves` macro disables the function unless `:disable nil`; put the type lemma first.
+- Preserves of a setter with computed values needs the values' types as hyps (natp index, u32).
+- Termination of a big stobj loop: split one non-recursive "tick" and a loop that disables it.
+- Never define a constant named `*t*` (built in).
 - Per-schema generated functions must be thin; everything else generic over the dispatcher.
 - **World-dependence of proofs**: deflayout disables fields/pool accessors locally; a world that
   includes a schema's certified book has them enabled → assembly 148 s instead of 17 s. Fixed by
@@ -91,15 +108,35 @@ C-ASSEMBLY-THEORY, C-ONE-ASSEMBLY, C-OVERLAY-SORTED). Box safety verbatim in COM
 - Integration: commit in the worktree; shared tree `git merge --ff-only fn2/c-found`; secrets
   check; `git push origin dev`.
 
-## Certify times (forge, c06369c9d, load 7-8)
+## Commands that work
+- Laptop certify (in the worktree): `sh fn2/tools/certify.sh tests/identity-unit.lisp
+  tests/runs-unit.lisp tests/ribbon-unit.lisp tests/sim-layer-c.lisp sim/check-identity.lisp`.
+- REPL iteration on a book: driver `(include-book "fn2/books/runs-page") (include-book
+  "fn2/books/fnv") (set-inhibit-output-lst '(proof-tree warning observation)) (ld
+  "fn2/books/ribbon.lisp" :ld-error-action :return)` via `tools/acl2 --timeout 600 < drv.lsp > out`;
+  grep `ACL2 Error`. For test bodies: include the certified assembly, `ld` a copy of the test file with
+  its include-book lines stripped.
+- Forge closure + export: in the worktree commit, merge origin/dev, `git push -q -f
+  fn@forge:/build/fn.git HEAD:refs/heads/fn2/c-found`; `ssh forge 'cd /build/lanes/c && git
+  checkout -q -- . && git fetch -q /build/fn.git fn2/c-found && git reset -q --hard FETCH_HEAD &&
+  (setsid nohup sh build/c1.sh > /dev/null 2>&1 & echo $! > build/c1.pid)'`; wait (background
+  until-loop on `kill -0 $(cat build/c1.pid)`); results build/c1-closure.out ("closure rc=0"),
+  build/certify-closure.log, build/c1-export.out ("FN2-OWED-EXPORT PASS"); scp fn2/docs/OWED.md
+  back and commit it alone.
+- Integration: merge origin/dev AND the shared tree's local dev into fn2/c-found, then in
+  /Users/ember/dev/fn: `git merge --ff-only -q fn2/c-found`, `python3 tools/secrets_check.py`,
+  `git push -q origin dev`.
+
+## Certify times (forge, 76b82807c, load 7-8)
 | book | seconds |
 |---|---|
-| books/runs-page | 24.4 |
-| books/runs-schema | 1.7 |
-| books/runs | 16.9 |
-| books/overlay | 4.3 |
-| books/runs-assemble | 2.2 |
-| books/identity | 8.7 |
-| tests/runs-assembly | 40.7 |
-| tests/identity-unit | 3.2 |
-| tests/runs-unit | 7.5 |
+| books/runs-page | 24.4 (c06369c9d) |
+| books/runs | 16.9 (c06369c9d) |
+| books/ribbon | 15.5 |
+| books/identity | 10.1 |
+| tests/runs-assembly | 43.6 |
+| tests/identity-unit | 3.7 |
+| tests/ribbon-unit | 2.3 |
+| tests/sim-layer-c | 17.4 |
+| sim/check-identity | 0.3 |
+| tests/runs-unit | 7.5 (c06369c9d) |

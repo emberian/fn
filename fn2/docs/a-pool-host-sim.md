@@ -195,7 +195,10 @@ reasons are `:issue-unreserve`, `:issue-range`, `:issue-capability`,
 `:harvest-input`, `:harvest-output`, `:harvest-finish`, `:wake-bounds`,
 `:wake-state`, `:machine-write`, `:machine-observation`, `:machine-phase`
 and `:pool-release`. `:signal`, `:clock-exhausted` and `:work-overflow` name
-the other stop paths. Scenarios print the enum keyword and require `:none`
+the other stop paths; `:machine-contract` is a run beyond its arm's certificate, and `:account`
+an invariant failure of the principal ledger (D7: an account operation's `:bounds`, `:underflow`,
+`:state` or a charge overflow, turned into a stop, never absorbed). New reasons are appended, so
+every earlier code is unchanged. Scenarios print the enum keyword and require `:none`
 for a green run; corruption controls require their specific reason. TRACE
 compares this control state and must stop identically. A stopped harvest
 delivers no observation to the machine. A malformed posted-FIFO head stops
@@ -207,7 +210,10 @@ FIFO heads/tails/counts, four service flags, the calendar,
 and its cursor. The concrete calendar is exactly four groups of sixteen
 principals followed by commit, timer/grant, wake and maintenance (80 entries);
 tiny has four principals then those services (eight entries). Tail insertion
-is idempotent. All A4 connections use anonymous principal zero. Listener rows
+is idempotent. `fn2-sched-reattribute machine to` (D7's re-attribution) moves a queued
+machine from its principal's FIFO, at any position, to the tail of `to`'s in one step and
+only sets the principal column of an unqueued one; every link is checked before the first
+write, so `:bounds` and `:state` leave the scheduler unchanged (`tests/sched-unit.lisp`). All A4 connections use anonymous principal zero. Listener rows
 occupy `[0, accept-credits)`, followed by `C` connection rows and one scribe row.
 The `fn2-echo` connection declaration has a per-row mode bit for echo or discard;
 both modes share one free list and one admission count. A listener supplies the mode
