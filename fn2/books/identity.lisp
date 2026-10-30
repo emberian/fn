@@ -124,7 +124,8 @@
  ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done)))
   (src :u32) (qbase :u32) (lbq :u32) (eb :u32) (cursor :u32) (rb :u32)
   (qk :u8) (qs :u32) (qg :u60) (exact :bool) (others :u32) (rexact :bool) (rothers :u32) (seen :u32)
-  (reads :u32) (skips :u32)))
+  (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60)))
+
 
 (defconst *fn2-id-mid* *fn2-identity-entry-field-message-id*)
 (defconst *fn2-id-con* *fn2-identity-entry-field-content*)
@@ -132,6 +133,44 @@
 ; most *fn2-identity-contents-max* contents, so more is corruption or a
 ; peer's surplus, and the count saturates.
 (defconst *fn2-id-block-max* (+ 2 *fn2-identity-contents-max*))
+
+; Identity stamps. A Message-ID's bucket (its octets' hash modulo the rows)
+; counts the facts recorded for the Message-IDs in it. A decision takes its
+; bucket's stamp at start; a record refuses :stale when the stamp moved, so
+; no fact is recorded around one recorded for its Message-ID after the
+; decision passed the overlay that took it. A fact that moves from a frozen
+; overlay into a run cannot be missed: overlays are visited before runs and
+; an overlay is retired only after its run is installed. A bucket shared
+; with a busy Message-ID costs a retry, never a wrong answer.
+(defcolumns fn2-id-stamps ((gen :u60)))
+; The identity version: the greatest run identifier among the live identity
+; runs. Run identifiers only grow, and every installation (a seal, C5's
+; merge) installs a new one, so the version moves whenever facts move from
+; an overlay into a run. A decision takes it at start and its record
+; refuses :stale when it moved: a decision that met a moving fact twice
+; (in the overlay and in its new run) or not at all (its overlay sealed
+; before the decision reached it) never records.
+(defun fn2-id-version (n fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix n)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp n) (<= n (fn2-run-installed-rows fn2-run-installed)))))
+ (if (zp n) 0
+  (let ((r (- n 1)) (rest (fn2-id-version (- n 1) fn2-run-installed)))
+   (if (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+            (equal (fn2-run-installed-schema r fn2-run-installed) 1)
+            (< rest (nfix (fn2-run-installed-run r fn2-run-installed))))
+       (nfix (fn2-run-installed-run r fn2-run-installed)) rest))))
+(defthm fn2-id-version-natp (natp (fn2-id-version n fn2-run-installed)) :rule-classes :type-prescription)
+(defun fn2-id-bucket (qbase qk qs qg fn2-id-stamps fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-id-stamps fn2-fields fn2-pool)
+  :guard (and (fn2-id-stamps-wfp fn2-id-stamps) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* ((rows (fn2-id-stamps-rows fn2-id-stamps))
+      ((unless (and (natp qbase) (< (+ qbase *fn2-id-mid*) (fn2-fields-rows fn2-fields)) (posp rows)))
+       (mv :bounds 0))
+      (row (+ qbase *fn2-id-mid*))
+      (len (fn2-fields-ref-len row fn2-fields)) (off (fn2-fields-ref-off row fn2-fields))
+      ((unless (and (natp len) (<= len *fn2-run-key-octets-max*) (natp off))) (mv :bounds 0))
+      ((mv code h1 &) (fn2-ribbon-hash len (fn2-fields-ref-slot row fn2-fields) (fn2-fields-ref-gen row fn2-fields) off 0 qk qs qg fn2-pool)))
+  (mv code (mod h1 rows))))
 
 ; Copy field row FROM to TO (value, reference, status).
 (defun fn2-id-copy-row (from to fn2-fields)
@@ -226,19 +265,28 @@
    (in-theory (disable fn2-id-overlay-block))
 
    ;; Start a decision.
-   (defun fn2-id-decide-start (d qbase lbq eb cursor rb qk qs qg fn2-id-decides fn2-fields)
-    (declare (xargs :stobjs (fn2-id-decides fn2-fields) :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields))
-     :guard-hints (("Goal" :in-theory (disable fn2-id-lower-query)))))
+   (defun fn2-id-decide-start (d qbase lbq eb cursor rb qk qs qg fn2-id-decides fn2-id-stamps fn2-run-installed fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-id-decides fn2-id-stamps fn2-run-installed fn2-fields fn2-pool)
+     :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-id-stamps-wfp fn2-id-stamps) (fn2-run-installed-wfp fn2-run-installed)
+                 (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+     :guard-hints (("Goal" :in-theory (disable fn2-id-lower-query fn2-id-bucket)))))
     (b* (((unless (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides))
                        (unsigned-byte-p 32 qbase) (unsigned-byte-p 32 lbq) (unsigned-byte-p 32 eb)
                        (unsigned-byte-p 32 cursor) (unsigned-byte-p 32 rb)
                        (unsigned-byte-p 8 qk) (unsigned-byte-p 32 qs) (unsigned-byte-p 60 qg)))
           (mv :bounds fn2-id-decides fn2-fields))
+         ((mv code bucket) (fn2-id-bucket qbase qk qs qg fn2-id-stamps fn2-fields fn2-pool))
+         ((unless (and (eq code :ok) (natp bucket) (< bucket (fn2-id-stamps-rows fn2-id-stamps)) (unsigned-byte-p 32 bucket)))
+          (mv (if (eq code :ok) :bounds code) fn2-id-decides fn2-fields))
+         (stamp (fn2-id-stamps-gen bucket fn2-id-stamps))
+         ((unless (unsigned-byte-p 60 stamp)) (mv :bounds fn2-id-decides fn2-fields))
+         (vrun (fn2-id-version (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
+         ((unless (unsigned-byte-p 60 vrun)) (mv :bounds fn2-id-decides fn2-fields))
          ((mv code fn2-fields) (fn2-id-lower-query qbase lbq fn2-fields))
          ((unless (eq code :ok)) (mv code fn2-id-decides fn2-fields))
          (fn2-id-decides (fn2-id-decides-put d (phase *fn2-id-decide-phase-overlay*) (src 0) (qbase qbase) (lbq lbq) (eb eb)
                            (cursor cursor) (rb rb) (qk qk) (qs qs) (qg qg) (exact 0) (others 0) (rexact 0) (rothers 0) (seen 0)
-                           (reads 0) (skips 0))))
+                           (reads 0) (skips 0) (bucket bucket) (stamp stamp) (vrun vrun))))
      (mv :ok fn2-id-decides fn2-fields)))
 
    ;; Fold a block's counts into the decision and move to source SRC.
@@ -390,10 +438,12 @@
 
    ;; Record a finished decision's offer in overlay O: a stored offer as the
    ;; accepted content, a conflicting one as evidence while the Message-ID
-   ;; holds fewer than the bound; :duplicate records nothing. EBASE is
-   ;; scratch for the entry; the offer's octets must be readable under the
-   ;; overlay's owner (they are copied into its arena).
-   (defun fn2-id-record (d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+   ;; holds fewer than the bound; :duplicate records nothing. A decision
+   ;; whose bucket's stamp or the identity version moved since it started is
+   ;; :stale before anything else (its verdict, refusals included, may be
+   ;; wrong: decide again). EBASE is scratch for the entry; the offer's octets must be
+   ;; readable under the overlay's owner (they are copied into its arena).
+   (defun fn2-id-record-insert (d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
      :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
@@ -402,11 +452,7 @@
                        (natp ebase) (<= (+ ebase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
                        (unsigned-byte-p 60 article) (unsigned-byte-p 60 binding) (unsigned-byte-p 60 principal)))
           (mv :bounds fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         ((unless (equal (fn2-id-decides-phase d fn2-id-decides) *fn2-id-decide-phase-done*))
-          (mv :state fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         ((when (equal (fn2-id-decides-exact d fn2-id-decides) 1)) (mv :duplicate fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          (others (fn2-id-decides-others d fn2-id-decides))
-         ((unless (< others *fn2-identity-contents-max*)) (mv :identity-conflict-bound fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (and (equal (fn2-id-decides-qk d fn2-id-decides) (fn2-overlays-okind o fn2-overlays))
                        (equal (fn2-id-decides-qs d fn2-id-decides) (fn2-overlays-oslot o fn2-overlays))
                        (equal (fn2-id-decides-qg d fn2-id-decides) (fn2-overlays-ogen o fn2-overlays))))
@@ -421,6 +467,31 @@
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-binding*) binding fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-principal*) principal fn2-fields)))
      (fn2-ov-insert o ebase (fn2-id-decides-eb d fn2-id-decides) fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+   (in-theory (disable fn2-id-record-insert))
+   (defun fn2-id-record (d o ebase article binding principal fn2-id-decides fn2-id-stamps fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-id-decides fn2-id-stamps fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+     :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-id-stamps-wfp fn2-id-stamps) (fn2-run-installed-wfp fn2-run-installed) (fn2-overlays-wfp fn2-overlays)
+                 (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+    (b* (((unless (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides))))
+          (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (equal (fn2-id-decides-phase d fn2-id-decides) *fn2-id-decide-phase-done*))
+          (mv :state fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         (bucket (fn2-id-decides-bucket d fn2-id-decides))
+         ((unless (and (natp bucket) (< bucket (fn2-id-stamps-rows fn2-id-stamps)))) (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         (stamp (fn2-id-stamps-gen bucket fn2-id-stamps))
+         ((unless (and (equal stamp (fn2-id-decides-stamp d fn2-id-decides))
+                       (equal (fn2-id-version (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
+                              (fn2-id-decides-vrun d fn2-id-decides))))
+          (mv :stale fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((when (equal (fn2-id-decides-exact d fn2-id-decides) 1)) (mv :duplicate fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (< (fn2-id-decides-others d fn2-id-decides) *fn2-identity-contents-max*))
+          (mv :identity-conflict-bound fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (unsigned-byte-p 60 (+ 1 (nfix stamp)))) (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          (fn2-id-record-insert d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (eq code :ok)) (mv code fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         (fn2-id-stamps (fn2-id-stamps-set-gen bucket (+ 1 (nfix stamp)) fn2-id-stamps)))
+     (mv :ok fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
    (in-theory (disable fn2-id-decide-step fn2-id-record))
    (assert-event (fn2-assert-compliant-p '(fn2-id-decide-start fn2-id-decide-step fn2-id-record) (w state)))
    (fn2-identity-adapters)))
@@ -436,7 +507,7 @@
 (defconst *fn2-ida-stobjs*
  '(fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths
    fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
-   fn2-ribbon-builds fn2-ribbon-band))
+   fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps))
 (defconst *fn2-ida-offer-layout* '((message-id (:octets 250)) (content :digest)))
 ; Field plan: the offer at 1400, its lower bound at 1500, overlay scratch at
 ; 1600, the entry being recorded at 1700, the filter writer's rows from 1800;
@@ -472,6 +543,7 @@
          (fn2-fields (fn2-fields-init 2000 fn2-fields))
          (fn2-ribbon-builds (fn2-ribbon-builds-init 1 fn2-ribbon-builds))
          (fn2-ribbon-band (fn2-ribbon-band-init (fn2-ribbon-slots 256) fn2-ribbon-band))
+         (fn2-id-stamps (fn2-id-stamps-init 64 fn2-id-stamps))
          (fn2-pool (fn2-pool-init '((600 . 65536)) 1 100 fn2-pool))
          (fn2-fc (fn2-fc-init 1 fn2-fc))
          (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
@@ -494,7 +566,7 @@
       (if (eq code :more) (fn2-ida-call fn2-ida-drive (- fuel 1)) (fn2-ida-mv code)))))
    (fn2-ida-defun fn2-ida-decide ()
     (b* (((mv code fn2-id-decides fn2-fields)
-          (fn2-id-decide-start 0 *fn2-ida-q* *fn2-ida-lbq* *fn2-ida-eb* 0 *fn2-run-run-reader* 9 0 1 fn2-id-decides fn2-fields))
+          (fn2-id-decide-start 0 *fn2-ida-q* *fn2-ida-lbq* *fn2-ida-eb* 0 *fn2-run-run-reader* 9 0 1 fn2-id-decides fn2-id-stamps fn2-run-installed fn2-fields fn2-pool))
          ((unless (eq code :ok)) (fn2-ida-mv (list :start code))))
      (fn2-ida-call fn2-ida-drive 10000)))
    ;; Build run K's filter from frozen overlay 0's Message-IDs (read in the
@@ -513,7 +585,7 @@
           ((mv code fn2-ribbon-builds fn2-ribbon-band)
            (fn2-ribbon-add 0 (+ *fn2-ida-eb* *fn2-id-mid*) (fn2-overlays-okind 0 fn2-overlays) (fn2-overlays-oslot 0 fn2-overlays)
                            (fn2-overlays-ogen 0 fn2-overlays) fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool))
-          ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+          ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
            (if (eq code :more) (fn2-ida-call fn2-ida-filter-drive 100000) (fn2-ida-mv code)))
           ((unless (member-eq code '(:ok :idle))) (fn2-ida-mv (list :add code))))
       (fn2-ida-call fn2-ida-filter-adds (+ 1 i) n))))
@@ -522,27 +594,27 @@
          ((mv & pslot pgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
          ((mv & fn2-run-writers) (fn2-run-reset-writers 1 *fn2-run-max-levels* fn2-run-writers))
          ((mv code fn2-run-writers fn2-pool)
-          (fn2-run-open *fn2-run-max-levels* pslot pgen 1 1 0 k 0 *page-kind-partitioned-filter* unit 2 unit 1 1 9 0 1
+          (fn2-run-open *fn2-run-max-levels* pslot pgen 1 1 0 (+ 1 k) 0 *page-kind-partitioned-filter* unit 2 unit 1 1 9 0 1
                         *fn2-ida-fw* *fn2-run-page-size* fn2-run-writers fn2-pool))
          ((unless (eq code :ok)) (fn2-ida-mv (list :open code)))
          ((mv code fn2-ribbon-builds) (fn2-ribbon-start 0 *fn2-run-max-levels* 0 142 0 n fn2-ribbon-builds fn2-ribbon-band fn2-run-writers))
          ((unless (eq code :ok)) (fn2-ida-mv (list :start code)))
-         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
           (fn2-ida-call fn2-ida-filter-drive 100000))
          ((unless (eq code :ready)) (fn2-ida-mv (list :clear code)))
-         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
           (fn2-ida-call fn2-ida-filter-adds 0 n))
          ((unless (eq code :ok)) (fn2-ida-mv code))
          ((mv code fn2-ribbon-builds) (fn2-ribbon-finish 0 fn2-ribbon-builds))
          ((unless (eq code :ok)) (fn2-ida-mv (list :finish code)))
-         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
           (fn2-ida-call fn2-ida-filter-drive 100000))
          ((unless (eq code :sealed)) (fn2-ida-mv (list :seal code)))
          ((mv code fn2-run-cache) (fn2-run-cache-install unit unit pslot pgen fn2-run-cache))
          ((unless (eq code :ok)) (fn2-ida-mv (list :cache code)))
          ((mv code fn2-run-installed) (fn2-run-install-filter k unit unit fn2-run-installed)))
      (fn2-ida-mv code)))
-   ;; Seal overlay 0 into run K (pages from unit 1+1000K), install it, and
+   ;; Seal overlay 0 into run K+1 (row K; pages from unit 1+1000K), install it, and
    ;; start a fresh overlay.
    (fn2-ida-defun fn2-ida-seal (k)
     (b* (((mv code fn2-overlays) (fn2-ov-freeze 0 fn2-overlays))
@@ -553,7 +625,7 @@
          ((mv & src sgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
          ((mv code fn2-run-builds fn2-run-writers fn2-pool)
           (if (consp entries)
-              (fn2-run-build-start 0 1 k 0 0 136 hslot hgen 0 2048 1 1 9 0 1 fn2-run-builds fn2-run-writers fn2-pool)
+              (fn2-run-build-start 0 1 (+ 1 k) 0 0 136 hslot hgen 0 2048 1 1 9 0 1 fn2-run-builds fn2-run-writers fn2-pool)
             (mv :ok fn2-run-builds fn2-run-writers fn2-pool)))
          ((unless (eq code :ok)) (fn2-ida-mv (list :start code)))
          ((mv code pages fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts
@@ -569,10 +641,10 @@
          (root (car pages))
          ((mv code fn2-run-installed)
           (if (consp entries)
-              (fn2-run-install k 1 k (nth 0 root) (nth 3 root) (nth 4 root) (nth 1 root) (nth 2 root) (len entries) 9 0 1 fn2-run-installed)
+              (fn2-run-install k 1 (+ 1 k) (nth 0 root) (nth 3 root) (nth 4 root) (nth 1 root) (nth 2 root) (len entries) 9 0 1 fn2-run-installed)
             (mv :ok fn2-run-installed)))
          ((unless (eq code :ok)) (fn2-ida-mv (list :install code)))
-         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
           (if (consp entries) (fn2-ida-call fn2-ida-filter k (len entries)) (fn2-ida-mv :ok)))
          ((unless (eq code :ok)) (fn2-ida-mv (list :filter code)))
          ((mv code fn2-overlays) (fn2-ov-retire 0 fn2-overlays))
@@ -583,47 +655,47 @@
    ;; Decide and record each offer; seal every SPLIT offers. (answers runs)
    (fn2-ida-defun fn2-ida-offers (offers i split forget slot gen off runs)
     (if (atom offers) (fn2-ida-mv nil runs)
-     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-place (car offers) slot gen off))
+     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-place (car offers) slot gen off))
           ((unless (eq code :ok)) (fn2-ida-mv (list (list :place code)) runs))
-          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-decide))
-          ((mv recorded fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-decide))
+          ((mv recorded fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
            (if (or (eq answer :stored) (and (eq answer :conflict) (not forget)))
-               (fn2-id-record 0 0 *fn2-ida-e* (+ 1 i) (+ 1 i) 7 fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-             (mv :none fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+               (fn2-id-record 0 0 *fn2-ida-e* (+ 1 i) (+ 1 i) 7 fn2-id-decides fn2-id-stamps fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+             (mv :none fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
           (sealp (and (posp split) (equal (mod (+ 1 i) split) 0)))
-          ((mv sealed fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (if sealp (fn2-ida-call fn2-ida-seal runs) (fn2-ida-mv :ok)))
-          ((mv rest runs fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band)
+          ((mv sealed fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (if sealp (fn2-ida-call fn2-ida-seal runs) (fn2-ida-mv :ok)))
+          ((mv rest runs fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)
            (fn2-ida-call fn2-ida-offers (cdr offers) (+ 1 i) split forget slot gen off (if sealp (+ 1 runs) runs))))
       (fn2-ida-mv (cons (if (eq sealed :ok) (list answer recorded) (list answer recorded sealed)) rest) runs))))
    (fn2-ida-defun fn2-ida-queries (queries slot gen off)
     (if (atom queries) (fn2-ida-mv nil)
-     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-place (car queries) slot gen off))
-          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (if (eq code :ok) (fn2-ida-call fn2-ida-decide) (fn2-ida-mv (list :place code))))
-          ((mv rest fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-queries (cdr queries) slot gen off)))
+     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-place (car queries) slot gen off))
+          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (if (eq code :ok) (fn2-ida-call fn2-ida-decide) (fn2-ida-mv (list :place code))))
+          ((mv rest fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-queries (cdr queries) slot gen off)))
       (fn2-ida-mv (cons answer rest)))))
    (fn2-ida-defun fn2-ida-run (offers split forget queries)
-    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-setup))
+    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-setup))
          ((unless (eq code :ok)) (fn2-ida-mv (list :setup code)))
          ((mv & slot gen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv answers & fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-offers offers 0 split forget slot gen 0 0))
+         ((mv answers & fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-offers offers 0 split forget slot gen 0 0))
          ((mv released fn2-pool) (fn2-pool-release slot gen 9 0 1 fn2-pool))
          ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv results fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-queries queries qslot qgen 0)))
+         ((mv results fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-queries queries qslot qgen 0)))
      (fn2-ida-mv (list answers released results))))
    ;; Read amplification: each query's answer with the runs it read and the
    ;; runs its filters skipped.
    (fn2-ida-defun fn2-ida-costs (queries slot gen off)
     (if (atom queries) (fn2-ida-mv nil)
-     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-place (car queries) slot gen off))
-          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (if (eq code :ok) (fn2-ida-call fn2-ida-decide) (fn2-ida-mv (list :place code))))
+     (b* (((mv code off fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-place (car queries) slot gen off))
+          ((mv answer fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (if (eq code :ok) (fn2-ida-call fn2-ida-decide) (fn2-ida-mv (list :place code))))
           (cost (list answer (fn2-id-decides-reads 0 fn2-id-decides) (fn2-id-decides-skips 0 fn2-id-decides)))
-          ((mv rest fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-costs (cdr queries) slot gen off)))
+          ((mv rest fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-costs (cdr queries) slot gen off)))
       (fn2-ida-mv (cons cost rest)))))
    (fn2-ida-defun fn2-ida-cost-run (offers split queries)
-    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-setup))
+    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-setup))
          ((unless (eq code :ok)) (fn2-ida-mv (list :setup code)))
          ((mv & slot gen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv & & fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-offers offers 0 split nil slot gen 0 0))
+         ((mv & & fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-offers offers 0 split nil slot gen 0 0))
          ((mv & fn2-pool) (fn2-pool-release slot gen 9 0 1 fn2-pool))
          ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool)))
      (fn2-ida-call fn2-ida-costs queries qslot qgen 0)))
@@ -653,11 +725,11 @@
            (fn2-run-scan-steps 100000 100000 *fn2-identity-entry* fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
       (fn2-ida-call fn2-ida-scan-runs (+ 1 r) (- rows 1) (fn2-ida-keys got keys)))))
    (fn2-ida-defun fn2-ida-binding (offers split forget)
-    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-setup))
+    (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-setup))
          ((unless (eq code :ok)) (fn2-ida-mv (list :setup code)))
          ((mv & slot gen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
-         ((mv & runs fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-offers offers 0 split forget slot gen 0 0))
-         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band) (fn2-ida-call fn2-ida-seal runs))
+         ((mv & runs fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-offers offers 0 split forget slot gen 0 0))
+         ((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps) (fn2-ida-call fn2-ida-seal runs))
          ((unless (eq code :ok)) (fn2-ida-mv (list :seal code)))
          ;; the scan's least query: empty Message-ID, empty content, owner (10 0 1)
          ((mv & lslot lgen fn2-pool) (fn2-pool-reserve 0 10 0 1 fn2-pool))

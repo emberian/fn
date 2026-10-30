@@ -26,8 +26,8 @@ departure from a decision that is not recorded here is a defect.
 | article metadata, overview, addressing schemas; range cursors | `fn2/books/ordered.lisp`, `fn2/books/cursor.lisp` | C3 |
 | `deffold` (interpretation, initialization, coverage), the folds (cursors, accounts, pins, signer heads, registration, read-state, edge-policy, inbox), the summary cut | `fn2/books/folds.lisp`, `fn2/sim/check-fold.lisp` | C4 |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
-| IDENTITY and CONSUMER checkers | `fn2/sim/check-identity.lisp`, `fn2/sim/check-consumer.lisp` | C2, C4 |
-| acceptance | `fn2/tests/sim-layer-c.lisp` (+ driver `.lsp`) | C2-C6 |
+| IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
+| acceptance | `fn2/tests/sim-layer-c.lisp` (scenario M3 so far; `fn2/tests/sim-layer-c-sweep.lsp` the 10,000-seed driver) | C2d-C6 |
 | C's test assembly: the identity schema and the run units' fixture schemas, assembled once; the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
 | units | `fn2/tests/runs-unit.lisp`, `fn2/tests/identity-unit.lisp` (both include the test assembly), `fn2/tests/ribbon-unit.lisp` (the filter alone) | each |
 
@@ -139,6 +139,17 @@ is recorded, `:conflict` when another content is, else `:stored`. Each step is b
 block is read through the scan, one entry per step; a block longer than the bound plus two is cut
 short) and resumable; `:miss` hands the caller the page to load. `:found`/`:absent` come from byte
 comparisons only; no filter decides.
+
+**Concurrency (C2d).** Decisions are resumable, so others record and seal between their steps.
+Two checks make a record safe without locking: the *stamp* of the Message-ID's bucket (a table
+`fn2-id-stamps` indexed by the octets' hash modulo its rows, bumped by every record) and the
+*identity version* (`fn2-id-version`, the greatest live identity run identifier, which every
+installation raises). A decision takes both at start; `fn2-id-record` refuses `:stale` before any
+other verdict when either moved, and the caller decides again. The stamp catches a fact recorded
+after the decision passed the overlay that took it; the version catches a fact that moved from an
+overlay into a new run while the decision was in flight (it would otherwise be met twice, or not at
+all). Layer D's identity reservation keeps same-Message-ID offers from racing at all; the refusal
+is the engine's own guarantee.
 
 The recording (`fn2-id-record`) writes a stored offer as the accepted content and a conflicting
 one as evidence, while the Message-ID holds fewer than `*fn2-identity-contents-max*` = 4 contents
@@ -311,6 +322,12 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 - **C-FILTER-INSTALLED (interim until C1c).** Until the run descriptor and the manifest exist, a
   run's filter page is named in its `fn2-run-installed` row (FUNIT, FCOUNTER) and cached after its
   own seal, as run pages are; C1c moves it to the descriptor's FILTER- ref with its parent-held hash.
+- **C-IDENTITY-STALE.** Records are linearized by refusal, not by locks: `:stale` when the bucket
+  stamp or the identity version moved since the decision started (§4). Measured on scenario M3
+  (three decisions in flight, a seal one tick in twelve, six Message-IDs): about 45 stale records
+  per 30 offers, so a retry is common under that contention; production seals are far rarer and D's
+  reservation removes same-Message-ID races. Revisit with D's measurement under the concrete
+  profile.
 - **C-LEVELS.** A build has at most `*fn2-run-max-levels*` = 6 levels, a format parameter: with
   64 KiB pages and index entries of at most about 350 bytes, six levels address over 10^13 pages.
   Exhaustion is the named refusal `:levels`.
@@ -350,6 +367,10 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 3. **B: identifier namespaces.** Add `run stream position consumer version` to the `(:id NS)` list
    in `fn2-layout-kindp`.
 4. **A: R6a1's `fn2-pool-compare`** (GC1). Landed at 09ad4a57f; C uses it.
+5. **A: one word book.** `fn2/sim/prng.lisp` holds `fn2-u32`, `fn2-u32-mul` and `fn2-prng-mix32`
+   (fmix32); C's `ribbon.lisp` needed the same in `books/` and has `fn2-ribbon-mul32` and
+   `fn2-ribbon-mix`. Asked: hoist the three into a `fn2/books/` word book that `sim/prng.lisp`
+   includes; C then calls them and deletes its copies.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
@@ -362,6 +383,7 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `fn2-identity-binding-converges` | two nodes whose offered fact sets are equal (any order, duplication or sealing schedule, within the bound) hold equal Bindings, read back by the real scan of every installed run | positive: one fact set in two orders (one with a duplicate) under splits 2 and 3, equal to each other and to `fn2-id-binding-spec`; negative: nodes that refuse a conflict and record nothing hold different Bindings for the two orders | C2b |
 | `fn2-ribbon-no-false-negative` | a filter built through the real start, add, finish and work from at most 256 keys seals, passes B's checker under its parent-held hash, and its probe answers `:absent` only for a query that is no key (`fn2-ribbon-answers-sound`) | positive: 200 keys and 56 others probed, every key `:maybe`, at least 50 others `:absent`; negative: a filter built without key 17 answers `:absent` to it | C2c |
 | `fn2-ribbon-mutation-refused` | any one-byte change (offset in the page, nonzero XOR) of a sealed filter page is refused by B's checker by name | positive: changes in B's header, the filter header, Z and the padding refused while the unchanged page is accepted; negative: a zero change is accepted | C2c |
+| `fn2-identity-linearizable` | for every seed and at most 64 offers, the M3 scenario's trace (interleaved decisions, records, seals with filters, bodies released, then every pair queried and the Binding scanned) is accepted by the independent IDENTITY checker | positive: 40 seeds pass with races exercised (1,808 stale records) and 722 seals; negative: the same schedules with the stamp and version checks defeated are refused by name (37 of 40) | C2d |
 | `fn2-fold-summary-adequate` (per fold) | the summary rule's homomorphism certificate per event kind: `obs(σ s) = obs s` and `σ(δ(s,e)) = δ_Σ(σ s, e)`, hence `Fold(Summary_k, E_{k+1..n})` observes as the full fold | TRANSPORT §9's two teeth: a relation weaker than the observation, an off-by-one summary step | C4 |
 | `fn2-select-materialize-equivalent` | for every policy assignment and materializer schedule, a consumer's observations equal the select-only reference | a materializer that skips an entry; a reader that trusts the fold above `cov` | C4 |
 | `fn2-compaction-preserves-observations` | a compaction step preserves every supported read at every unexpired pin | a merge that drops a pinned version | C5 |
@@ -381,7 +403,7 @@ OWED.md is regenerated when the export is green.
 | C2a | range scan through the cursor path; the generic overlay | **done**: scans and overlays agree with the list specification; both keystones' teeth | C1c first item |
 | C2b | identity schema, the decision machine, the recording under the bound, the two keystones | **done**: the M3-shaped scenario pinned; both keystones' teeth | C2a |
 | C2c | Ribbon per sealed run, the probe in the identity decision | **done**: no key ever `:absent`; 8.5 bits/key at 60,000 keys (8.75 at 2,000); false positives 0.375% (75 in 20,000) and 0.395% (790 in 200,000 at 60,000 keys) against 2^-8 = 0.39%; the M3-shaped scenario reads only the runs holding the Message-ID (an absent one reads none); both keystones' teeth | C2b |
-| C2d | IDENTITY checker and M3 in the simulator | identity correct after bodies and placements reclaimed | C2c |
+| C2d | IDENTITY checker; scenario M3 (interleaved decisions, seals, bodies released); the stamp and version refusal | **done (engine leg)**: 200 seeds of 30 offers all accepted, 9,077 stale records, 3,607 seals; defeated checks refused on 188 of 200; 10,000 seeds in `sim-layer-c-sweep.lsp`. The device leg (run pages through the commit batch, recovery) waits on C1c and B's GC2 | C2c |
 | C3 | metadata, overview, `addr`, range cursors with resume key and version, positioned seek, M2 | XOVER-shaped reads over cold sparse groups charging directory and overlap reads | C1 |
 | C4 | `deffold`, the folds with their three declarations, summary cut exhaustively in tiny, CONSUMER checker, inbox equivalence | the scholar's chapter-1 scenario exhaustively in tiny | C2, C3 |
 | C5 | compaction with reservations and backpressure, relocation under a stalled lease | compaction under a stalled lease; compaction bytes per committed byte | C4, C1c |

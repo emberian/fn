@@ -133,6 +133,13 @@
  (fn2-ribbon-hash-loop n slot gen off (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed)
                        (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-ribbon-mix (fn2-ribbon-xor32 seed #x9e3779b9)))
                        okind oslot ogen fn2-pool))
+(fn2-ribbon-ub fn2-ribbon-hash-h1 32 t (mv-nth 1 (fn2-ribbon-hash n slot gen off seed okind oslot ogen fn2-pool))
+ :hints (("Goal" :use ((:instance fn2-ribbon-hash-loop-h1 (h1 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed))
+                      (h2 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-ribbon-mix (fn2-ribbon-xor32 seed #x9e3779b9)))))))))
+(fn2-ribbon-ub fn2-ribbon-hash-h2 32 t (mv-nth 2 (fn2-ribbon-hash n slot gen off seed okind oslot ogen fn2-pool))
+ :hints (("Goal" :use ((:instance fn2-ribbon-hash-loop-h2 (h1 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed))
+                      (h2 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-ribbon-mix (fn2-ribbon-xor32 seed #x9e3779b9)))))))))
+(in-theory (disable fn2-ribbon-hash))
 ; A key's start S in [0, slots - 64] and its coefficient (hi:lo), bit 0 set.
 (defun fn2-ribbon-place (h1 h2 slots)
  (declare (xargs :guard (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2) (natp slots))))
