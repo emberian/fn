@@ -208,6 +208,20 @@
   (remove-duplicates-equal
    (append (and (member-eq (car case) '(:run :observe)) (list (list :machine (cadr case))))
            (fn2-q1-shared-decls (fn2-q1-shared-functions case) world))))
+;; Each kind's independent contract (fn2/tests/q1-contracts.lisp) and its
+;; shared-handler control (fn2/tests/q1-controls-check.lisp, judging the
+;; four-way runs of fn2/tests/q1-controls.lsp), named by every run and
+;; observe case of the kind. fn2-commit has neither until B5; an executor or
+;; router case shares no machine handler.
+(defconst *fn2-q1-kind-contracts*
+  '((fn2-conn fn2-conn-wire-correct fn2-conn-shared-handler-control)
+    (fn2-echo fn2-echo-replies-its-input fn2-echo-shared-handler-control)
+    (fn2-listener fn2-listener-admits-within-ledger fn2-listener-shared-handler-control)
+    (fn2-scribe fn2-scribe-reads-back fn2-scribe-shared-handler-control)))
+(defun fn2-q1-kind-contract (case)
+  (declare (xargs :verify-guards nil))
+  (and (member-eq (car case) '(:run :observe))
+       (cdr (assoc-eq (cadr case) *fn2-q1-kind-contracts*))))
 (defun fn2-q1-bind-cases (cases index contract sides world)
   (declare (xargs :verify-guards nil))
   (if (atom cases) nil
@@ -217,6 +231,8 @@
              (list :id id :schema :g1 :source (fn2-case-source case world)
                    :claim :representation :shared (fn2-q1-shared case world)
                    :shared-provenance (fn2-q1-shared-functions case)
+                   :independent (car (fn2-q1-kind-contract case))
+                   :shared-handler-mutation (cadr (fn2-q1-kind-contract case))
                    :origin (fn2-case-source case world)
                    :boundary :loop-iteration :vars '(ctx concrete reference lists)
                    :formula (fn2-q1-case-formula case contract sides) :proof '(:owed)

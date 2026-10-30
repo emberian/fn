@@ -78,6 +78,11 @@
 (defun fn2-square-row-event (owner template contract sides case source payload)
   (declare (xargs :verify-guards nil))
   (let* ((contract (or (fn2-decl-get :contract payload) contract))
+         ; A binding's independent contract (decision 1) joins the correspondence's
+         ; contract as metadata; the formula's roles stay the correspondence's.
+         (contract (if (fn2-decl-get :independent payload)
+                       (append contract (list :independent (fn2-decl-get :independent payload)))
+                     contract))
          (sides (or (fn2-decl-get :sides payload) sides))
          (template (or (fn2-decl-get :template payload) template))
          (id (fn2-decl-get :id payload))
