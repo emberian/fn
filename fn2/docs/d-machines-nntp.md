@@ -1119,17 +1119,23 @@ octets per run:
 | the upload is terminated and no outcome yet | nothing: the row is parked on its upload (`wait-reason :completion`); the outcome wakes it |
 | otherwise | `fn2-upload-feed` (below) over `[start, fill)` of RX; at `:need-more` compact or Receive exactly as `:command` does (`fn2-conn-input` is shared); at `:terminator` wake the upload and park |
 
-`fn2-upload-feed (k budget conn-owner upload-id fn2-core) → (mv status start pos overflow fn2-core)` is
-a defcost'd D operation, not an arm: a bounded loop of `fn2-gram-block-step` over RX with the frame
-quantum, copying each `:data` line's unstuffed octets and a CRLF into the upload's current chunk
-(seam A-S8's cross-owner copy) and adding them to the upload's `source-len`. Its declared cost is
-`:bytes 3072` (1,024 framed, 1,024 rescanned by `fn2-gram-block-step`'s line check, 1,024 copied: a
-line is copied only once framed and checked; Astra), `:tables (fn2-core-pool fn2-upload-table)`. The
-upload keeps a producer offset (`filled`, written only by the feed) and consumer offsets (`hashed`,
-`scan-off`, written only by the upload), so neither machine reads a half-written line. It never fails silently: `:bad-line` (a bare CR or LF, a NUL, an
-unescaped leading dot) sets the upload's `discard` with reason `:malformed` and keeps framing to the
-terminator without copying; a line that would pass the article bound sets `discard` with reason
-`:too-large` the same way (RFC 3977 §3.1.1, scenario 4: "bounded discard", never buffered). A
+`fn2-upload-feed (left i mode discard rslot rgen rk rs rg dslot dgen dk ds dg fn2-pool) → (mv status
+i mode discard copied fn2-pool)` (`fn2/books/upload-feed.lisp`, landed with D4's input library) is a
+**streaming octet machine, not a line framer** (a change from the first draft and from
+`fn2-gram-block-step`): a body line may be longer than the connection's 1 KiB RX slot, since H's model
+sets no body-line bound, so nothing is retained between octets but a five-valued `mode` (line start,
+inside a line, after CR, after a leading dot, after ".CR"). Each RX octet is read once under the
+connection's owner and each released octet written once under the upload's (`fn2-gram-read`,
+`fn2-gram-put`), so the declared cost is `:bytes 2 × left` with `left` ≤ 2,048, and there is no rescan
+(Astra's accounting point disappears with the line framer). Statuses: `:terminator` (the octet after
+its LF), `:need-more`, `:budget`, `:full` (the next octet releases more than the chunk holds: switch to
+the other chunk and resume, nothing consumed), `:fault`. The framing is H's `framing.py`
+`decode_block`: a bare CR, a bare LF, a NUL or an unescaped leading dot sets `discard`, after which the
+block is drained to its terminator and nothing more is written. The upload keeps a producer offset
+(`filled`, written only by the feed) and consumer offsets (`hashed`, `scan-off`, written only by the
+upload), so neither machine reads a half-written line. The arm records why: a framing `discard` becomes the upload's
+reason `:framing` (14.5); a `:full` with both chunks full, or a source past the article bound, makes
+the arm pass `discard` t from then on with reason `:too-large` (RFC 3977 §3.1.1, scenario 4: "bounded discard", never buffered). A
 block over the bound keeps the connection open for POST (the model drains it) and closes it after the
 reply for IHAVE/TAKETHIS (`specs/nntp.md:530-534`). EOF or a failed Receive in `:article-input` moves
 the connection to `:closing`; the upload sees its connection gone (14.3 `:aborting`) and the
@@ -1400,11 +1406,13 @@ traces, 14.8).
   ```
   `fn2-txn` declares `:taken (:phase :admit :rows :transaction-row :copy (upload upload-gen conn
   conn-gen))`. If A prefers, D writes it as a foundation commit in a worktree with the whole-tree gate.
-- **A-S8, the cross-owner copy** (pool-ranges.lisp, the sibling of `fn2-pool-compare`):
+- **A-S8, the cross-owner copy** (a performance item, not a correctness one, since the feed reads and
+  writes octet by octet under each owner through checked exports; pool-ranges.lisp, the sibling of
+  `fn2-pool-compare`):
   `(fn2-pool-copy-across src sgen soff sk ss sg dst dgen doff dk ds dg len fn2-pool) -> (mv code
   fn2-pool)`: `[soff, soff+len)` readable under `(sk ss sg)` copied to `doff` of a workspace of `(dk ds
-  dg)`, `doff ≤ fill`, with `fn2-core-copy-across` and a defcost. Until it lands `fn2-upload-feed`
-  copies with `fn2-core-read`/`fn2-core-write` (the D2a precedent; deleted when it lands).
+  dg)`, `doff ≤ fill`, with `fn2-core-copy-across` and a defcost; the feed would then copy the runs
+  between line boundaries in one call.
 - **B-S1, hasher rows** (no code): the served profile sets `:format-slots` to `2 + :large-upload-
   windows`; rows 0-1 are the commit kind's, row `2 + w` window `w`'s. B confirms nothing else indexes
   `fn2-b3` rows by count.
@@ -1439,9 +1447,9 @@ then one real durable POST with its read-back, before anything is widened.
 
 | slice | contents | waits on |
 |---|---|---|
-| D4 1/n | `upload-scan.lisp` (header scan, Message-ID range, definite refusals), `tests/upload-scan-unit.lisp` | nothing (landed 92a31a6dd) |
+| D4 1/n | `upload-scan.lisp` (header scan, Message-ID range, definite refusals), `tests/upload-scan-unit.lisp`; `upload-feed.lisp` (the streaming unstuffing feed), `tests/upload-feed-unit.lisp` | nothing (landed 92a31a6dd and the feed commit) |
 | seams | A-S7, A-S8, B-S1, B-S2, C-S1, C-S2 agreed together, with this section's claim, successor-visibility and evidence semantics | main, A, B, C |
-| D4 2/n | ingestion: `fn2-upload` declared, `fn2-conn` article input (fields, `:block`, `fn2-conn-block`, `fn2-upload-feed`), BLAKE3 over the window, the TAKETHIS token and no-row discard, conn-unit transcripts; POST answered only under `:posting-interim t` (fixtures and sim-layer-d), the public capability off | A-S7, A-S8 (or its interim), B-S1 |
+| D4 2/n | ingestion: `fn2-upload` declared, `fn2-conn` article input (fields, `:block`, `fn2-conn-block` over `fn2-upload-feed`), BLAKE3 over the window, the TAKETHIS token and no-row discard, conn-unit transcripts; POST answered only under `:posting-interim t` (fixtures and sim-layer-d), the public capability off | A-S7, B-S1 |
 | D5 1/n | `fn2-txn` with `fn2-txn-claims`, the claim and its FIFO, a generated Message-ID path for POST, lookup through C-S1 | D4 2/n, C-S1 |
 | D5 2/n | one real durable POST: prepare into the private successor (C-S2), the batch member (B-S2), 240 after publication, uncertain; read-back through D6's ARTICLE by Message-ID or the IDENTITY checker; stale-decision, disconnect and death-cut controls; posting capability on; H's POST interims leave | B-S2, C-S2 |
 | D5 3/n | IHAVE, CHECK, TAKETHIS on the peer path with request/reply queuing (a connection keeps framing the next TAKETHIS while earlier outcomes are pending, replies in request order), evidence operations; scenario 5 | D5 2/n |
