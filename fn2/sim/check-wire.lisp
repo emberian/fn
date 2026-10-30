@@ -19,7 +19,9 @@
 ; closed stream (incomplete-stream behaviour), and then no fresh status
 ; line follows inside it. Commands after the last reply are unanswered
 ; only after a closing reply, or after an article block's refusal that
-; the server closed on; a close never excuses a complete command line.
+; the server closed on; a close never excuses a complete command line. An
+; unterminated tail of 511 octets or more is a (malformed) line already:
+; its 501 and the close answer it.
 (in-package "ACL2")
 
 (defun fn2-wire-lines (octets cur acc)
@@ -219,7 +221,12 @@
       (cond ((not found) (if (and closed (atom wire)) :pass (list :fail :no-greeting 0)))
             ((member code '(200 201))
              (mv-let (lines tail) (fn2-wire-lines client nil nil)
-               (fn2-wire-walk rest lines (consp tail) closed 0 nil (+ 1 (len lines)))))
+               ;; an unterminated tail over the cap (511 octets or more
+               ;; before any CRLF) is already a malformed line: the server
+               ;; may answer it 501 and close before its end arrives (the
+               ;; line-limit pin; seen under 1- and 7-octet delivery)
+               (let ((lines (if (< 510 (len tail)) (append lines (list tail)) lines)))
+                 (fn2-wire-walk rest lines (consp tail) closed 0 nil (+ 1 (len lines))))))
             ((equal code 400) (if (and (atom rest) closed) :pass (list :fail :refusal-not-final 0)))
             (t (list :fail :bad-greeting 0))))))
 

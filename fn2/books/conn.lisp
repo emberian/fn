@@ -50,7 +50,12 @@
           ;; continuation, the outcome word posted back, the posting switch
           (upload :link) (upload-gen :u60) (rule (:enum fn2-conn-rule (:none :post :ihave :takethis)))
           (request :u32) (feed-mode :u8) (feed-discard :u8) (fed :u60) (word :u8) (outcome-ready :bool)
-          (posting :bool))
+          (posting :bool)
+          ;; the peer the Accept reported (A5r, a-pool-host-sim.md 4.1.1):
+          ;; family (the listener's fn2-peer-family code), port, the address
+          ;; in network order; read by the per-address and peer policy
+          ;; (D5 3/n, D7 4/n), which lifts fn2-conn-reader-only-interim
+          (peer-family :u8) (peer-port :u16) (peer-w0 :u32) (peer-w1 :u32) (peer-w2 :u32) (peer-w3 :u32))
  :holds ((:greeting :connection-row :rx-range :tx-range) (:command :connection-row :rx-range :tx-range)
          (:article-input :connection-row :rx-range :tx-range) (:reply :connection-row :rx-range :tx-range)
          (:upgrading :connection-row :rx-range :tx-range) (:closing :connection-row :rx-range :tx-range)
@@ -59,7 +64,8 @@
  :capacity (fn2-profile-c profile)
  ;; The listener admits a connection into :greeting with its RX and TX
  ;; ranges reserved whole (A's generated fn2-machine-admit-fn2-conn).
- :admission (:phase :greeting :ranges (:rx-range :tx-range) :copy (principal-slot account-ref)
+ :admission (:phase :greeting :ranges (:rx-range :tx-range)
+             :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
                      auth-pending access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting))

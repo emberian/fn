@@ -243,6 +243,18 @@
 ; A reply after the closing one.
 (assert-event (not (fn2-wire-pass-p *fn2-cu-wire-client*
                                     (append (nth 0 *fn2-cu-wire-good*) (fn2-cu-text '("201 again"))) t)))
+;; An unterminated line over the cap (600 octets, no CRLF), delivered
+; whole, by 7 and by 1: the node answers 501 and closes before its end,
+; and WIRE reads that 501 as the line's reply (A5r's native finding).
+; Controls: a 500 there, or no reply at all, is refused.
+(defconst *fn2-cu-long-tail* (make-list 600 :initial-element 97))
+(assert-event
+ (and (fn2-cu-wire-ok *fn2-cu-long-tail* nil) (fn2-cu-wire-ok *fn2-cu-long-tail* (make-list 86 :initial-element 7))
+      (fn2-cu-wire-ok *fn2-cu-long-tail* (make-list 600 :initial-element 1))
+      (equal (nth 1 (fn2-conn-wire-solo *fn2-cu-long-tail* (make-list 600 :initial-element 1))) t)))
+(assert-event
+ (and (not (fn2-wire-pass-p *fn2-cu-long-tail* (fn2-cu-text (list *fn2-cu-greeting* "500 command not recognized")) t))
+      (not (fn2-wire-pass-p *fn2-cu-long-tail* (fn2-cu-text (list *fn2-cu-greeting*)) t))))
 ; A dropped closing reply: the wire without its 205, the server closed. A
 ; close excuses no complete command line (the QUIT went unanswered).
 (assert-event (not (fn2-wire-pass-p *fn2-cu-wire-client*

@@ -248,9 +248,10 @@
   :teeth (fn2-conn-test-privacy fn2-conn-test-privacy-negative)
   :doc "T8: a connection's reply bytes and close are those it gets alone, whatever another connection sends.")
 
-; The peer-address interim (layer doc section 8): until A5r's Accept result
-; carries the peer address, every connection is a reader (no peer bit) and
-; no per-address 400 is given. Owed so that it is lifted, not forgotten.
+; The peer-address interim (layer doc section 8): the Accept result carries
+; the peer (A5r) and the connection holds it, but until the per-address and
+; peer policy reads it every connection is a reader (no peer bit) and no
+; per-address 400 is given. Owed so that it is lifted, not forgotten.
 (defun fn2-cw-crlf-octets (lines)
   (declare (xargs :verify-guards nil))
   (if (atom lines) nil
@@ -267,4 +268,4 @@
             (car (fn2-conn-wire-solo (append *fn2-conn-mode-stream-line* octets) sizes))))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-conn-test-reader-only fn2-conn-test-reader-only-negative)
-  :doc "Interim until A5r (the peer address in the Accept result) and E4 (peer records): every connection is a reader, so a first MODE STREAM is answered 501 after the reader greeting, whatever follows, and no per-address 400 exists. Lifting the interim replaces this row with the per-address refusal and peer statements.")
+  :doc "Interim until the per-address and peer policy (D5 3/n with E4's peer records, D7 4/n's per-address 400): every connection is a reader, so a first MODE STREAM is answered 501 after the reader greeting, whatever follows, and no per-address 400 exists. A5r's peer record (a-pool-host-sim.md 4.1.1) now reaches the connection row (peer-family, peer-port, peer-w0..w3), but nothing reads it yet. Lifting the interim replaces this row with the per-address refusal and peer statements.")
