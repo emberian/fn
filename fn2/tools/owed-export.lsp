@@ -23,6 +23,7 @@
 (include-book "fn2/tests/format-check-unit")
 (include-book "fn2/tests/layout-teeth-unit")
 (include-book "fn2/tests/commit-proof-unit")
+(include-book "fn2/tests/recovery-proof-unit")
 (include-book "fn2/tests/grammar-unit")
 (include-book "fn2/tests/owed-d-unit")
 (include-book "fn2/tests/conn-unit")
