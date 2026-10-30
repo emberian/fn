@@ -163,6 +163,38 @@
 (assert-event (and (fn2-conn-test-served-safety) (fn2-conn-test-served-safety-negative)))
 
 ; ------------------------------------------------------------------------
+; Teeth of fn2-account-ledger-matches (D7 3/n): the same mixed runs as T1,
+; with closed and open clients, every chunking; negative: the predicate
+; refuses a view whose holding, received or sent charge is off by one, or
+; whose ledger is not conserved.
+(defun fn2-conn-test-ledger-random (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) t
+    (let ((octets (fn2-cu-random-transcript (+ 7 (* 131 n)))))
+      (and (fn2-conn-ledger-matches-p
+            (nth 3 (fn2-conn-wire-run (list (list octets (list (+ 1 (mod n 9)) 3 5))
+                                            (list (nth 1 (nth 0 *fn2-cu-fixtures*)) nil)))))
+           (fn2-conn-test-ledger-random (- n 1))))))
+(defun fn2-conn-test-ledger-matches ()
+  (declare (xargs :verify-guards nil))
+  (let* ((x *fn2-cu-fixtures*)
+         (view (nth 3 (fn2-conn-wire-run (list (list (nth 1 (nth 1 x)) '(4))
+                                               (list (nth 1 (nth 5 x)) '(1 2 3))
+                                               (list (nth 1 (nth 6 x)) '(100)))))))
+    (and (fn2-conn-ledger-matches-p view)
+         (< 0 (nth 2 view)) (< 0 (nth 3 view))
+         (fn2-conn-test-ledger-random 8))))
+(defun fn2-conn-test-ledger-matches-negative ()
+  (declare (xargs :verify-guards nil))
+  (let ((good (list t 1 10 20 1 10 20)))
+    (and (fn2-conn-ledger-matches-p good)
+         (not (fn2-conn-ledger-matches-p (update-nth 1 2 good)))
+         (not (fn2-conn-ledger-matches-p (update-nth 2 9 good)))
+         (not (fn2-conn-ledger-matches-p (update-nth 3 21 good)))
+         (not (fn2-conn-ledger-matches-p (update-nth 0 nil good))))))
+(assert-event (and (fn2-conn-test-ledger-matches) (fn2-conn-test-ledger-matches-negative)))
+
+; ------------------------------------------------------------------------
 ; The reader-only interim's teeth: a first MODE STREAM gets the reader
 ; greeting and 501, whatever follows and however it is chunked. Negative:
 ; the predicate refuses a streaming answer.
