@@ -24,7 +24,10 @@
 
 (defconst *fn2-ss-profile* (put-assoc-equal :trace nil *fn2-conn-wire-profile*))
 
-; Client records live in a global table (test-side): id -> (nonce sent received closed).
+; Client records live in a global table (test-side): id -> (nonce sent
+; received closed cap). The id is a serial number per open, never the
+; capability slot: a slot's next incarnation is a new connection with its
+; own record and its own WIRE verdict at stop.
 (defun fn2-ss-hex-digit (n) (declare (xargs :verify-guards nil)) (char "0123456789abcdef" n))
 (defun fn2-ss-hex (octets)
   (declare (xargs :verify-guards nil))
@@ -63,11 +66,11 @@
             (got closed fn2-sim-network)
             (if (nth 3 r) (mv nil t fn2-sim-network)
               (mv-let (got fn2-sim-network)
-                (fn2-ss-read *fn2-sim-network-capacity* id nonce nil fn2-sim-network)
-                (mv got (not (eq (fn2-network-cap-code id nonce fn2-sim-network) :ok)) fn2-sim-network)))
+                (fn2-ss-read *fn2-sim-network-capacity* (nth 4 r) nonce nil fn2-sim-network)
+                (mv got (not (eq (fn2-network-cap-code (nth 4 r) nonce fn2-sim-network) :ok)) fn2-sim-network)))
             (mv got closed fn2-sim)))
          (moved (or (consp got) (and closed (not (nth 3 r)))))
-         (r (list nonce (nth 1 r) (append got (nth 2 r)) closed))
+         (r (list nonce (nth 1 r) (append got (nth 2 r)) closed (nth 4 r)))
          ((mv rest any fn2-sim) (fn2-ss-drain (cdr clients) fn2-sim)))
       (mv (cons (cons id r) rest) (or moved any) fn2-sim))))
 
@@ -96,14 +99,19 @@
        (state (f-put-global 'fn2-ss-clients nil state)))
     (prog2$ (fn2-ss-say "started" nil nil seed) (mv fn2-core fn2-sim fn2-own state))))
 
-; The first open network slot not yet tracked.
+; Whether a record tracks slot CAP's incarnation NONCE.
+(defun fn2-ss-known (cap nonce clients)
+  (declare (xargs :verify-guards nil))
+  (and (consp clients)
+       (or (and (equal (nth 4 (cdr (car clients))) cap) (equal (nth 0 (cdr (car clients))) nonce))
+           (fn2-ss-known cap nonce (cdr clients)))))
+; The first open network slot whose incarnation is not yet tracked.
 (defun fn2-ss-fresh (left clients fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :verify-guards nil :measure (nfix left)))
   (if (zp left) (mv nil 0 0)
-    (let* ((cap (- left 1)) (nonce (fn2-sim-network-nonce cap fn2-sim-network))
-           (known (assoc-equal cap clients)))
+    (let* ((cap (- left 1)) (nonce (fn2-sim-network-nonce cap fn2-sim-network)))
       (if (and (eq (fn2-network-cap-code cap nonce fn2-sim-network) :ok)
-               (not (and known (equal (nth 0 (cdr known)) nonce))))
+               (not (fn2-ss-known cap nonce clients)))
           (mv t cap nonce)
         (fn2-ss-fresh cap clients fn2-sim-network)))))
 
@@ -134,11 +142,12 @@
   (b* ((clients (f-get-global 'fn2-ss-clients state))
        ((mv found cap nonce fn2-core fn2-sim fn2-own) (fn2-ss-await 4000 clients fn2-core fn2-sim fn2-own))
        ((unless found) (prog2$ (fn2-ss-say "refused" nil t -1) (mv fn2-core fn2-sim fn2-own state)))
-       (clients (put-assoc-equal cap (list nonce nil nil nil) clients))
+       (id (+ 1 (len clients)))
+       (clients (append clients (list (cons id (list nonce nil nil nil cap)))))
        ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
-       ((mv got closed) (fn2-ss-reply cap 0 clients))
+       ((mv got closed) (fn2-ss-reply id 0 clients))
        (state (f-put-global 'fn2-ss-clients clients state)))
-    (prog2$ (fn2-ss-say "open" got closed cap) (mv fn2-core fn2-sim fn2-own state))))
+    (prog2$ (fn2-ss-say "open" got closed id) (mv fn2-core fn2-sim fn2-own state))))
 
 (defun fn2-ss-chunks (octets chunks fuel)
   ; OCTETS cut at the CHUNKS sizes; the remainder is one chunk.
@@ -154,9 +163,9 @@
          ((when (or (null r) (nth 3 r))) (mv clients fn2-core fn2-sim fn2-own))
          ((mv rest fn2-sim)
           (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))) (rest fn2-sim-network)
-            (fn2-ss-feed (car pieces) id (nth 0 r) fn2-sim-network) (mv rest fn2-sim)))
+            (fn2-ss-feed (car pieces) (nth 4 r) (nth 0 r) fn2-sim-network) (mv rest fn2-sim)))
          (sent (take (- (len (car pieces)) (len rest)) (car pieces)))
-         (clients (put-assoc-equal id (list (nth 0 r) (append (nth 1 r) sent) (nth 2 r) (nth 3 r)) clients))
+         (clients (put-assoc-equal id (list (nth 0 r) (append (nth 1 r) sent) (nth 2 r) (nth 3 r) (nth 4 r)) clients))
          ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
          ; A piece the pipe could not take whole is retried after the node ran.
          (pieces (if (consp rest) (cons rest (cdr pieces)) (cdr pieces))))
@@ -183,11 +192,11 @@
        (r (cdr (assoc-equal id clients)))
        (fn2-sim (if (and r (not (nth 3 r)))
                     (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))) (fn2-sim-network)
-                      (mv-let (code fn2-sim-network) (fn2-network-close id (nth 0 r) fn2-sim-network)
+                      (mv-let (code fn2-sim-network) (fn2-network-close (nth 4 r) (nth 0 r) fn2-sim-network)
                         (declare (ignore code)) fn2-sim-network)
                       fn2-sim)
                   fn2-sim))
-       (clients (if r (put-assoc-equal id (list (nth 0 r) (nth 1 r) (nth 2 r) t) clients) clients))
+       (clients (if r (put-assoc-equal id (list (nth 0 r) (nth 1 r) (nth 2 r) t (nth 4 r)) clients) clients))
        ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
        ((mv got &) (fn2-ss-reply id before clients))
        (state (f-put-global 'fn2-ss-clients clients state)))
