@@ -151,9 +151,9 @@
        ; ORDS: (ord) when the queue is one per admitted kind.
        (fn2-defoperation (:operation-set fn2-machine-resources) :access (fn2-core)
        (defun ,park (id ,@ords fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
-                                                      ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*))))))
-         (if (not (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok))
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         (if (not (and (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
+                       ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*)))))
              (fn2-machine-refuse-write fn2-core)
            (if (equal (fn2-machine-wait-reason id fn2-core) ,reason) fn2-core
            (let* ((tail (,get-tail ,@ords fn2-core))
@@ -162,12 +162,12 @@
                   (fn2-core (if (equal tail *fn2-none*) (,set-head ,@ords id fn2-core)
                               (fn2-machine-write-ready-next tail id fn2-core))))
              (,set-tail ,@ords id fn2-core))))))
-       (fn2-core-preserves ,park (id ,@ords fn2-core) :rows nil :prefix ""
-         ,@(and ords '(:hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp ord) (< ord *fn2-machine-admitted-max*)))))
+       (fn2-core-preserves ,park (id ,@ords fn2-core) :rows nil :prefix "")
        (fn2-defoperation (:operation-set fn2-machine-resources) :access (id fn2-core)
        (defun ,grant (,@ords fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
-                                                      ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*))))))
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         (if (not (and ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*)))))
+             (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv *fn2-none* fn2-core))
          (let ((id (,get-head ,@ords fn2-core)))
            (if (equal id *fn2-none*) (mv id fn2-core)
              (if (not (eq (fn2-machine-ready-next-read-code id fn2-core) :ok))
@@ -178,9 +178,8 @@
                                 (fn2-machine-write-ready-prev next *fn2-none* fn2-core)))
                     (fn2-core (fn2-machine-put id
                                 (wait-reason *fn2-wait-none*) (ready-prev *fn2-none*) (ready-next *fn2-none*))))
-               (mv id fn2-core)))))))
-       (fn2-core-preserves ,grant (,@ords fn2-core) :position 1 :rows nil
-         ,@(and ords '(:hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp ord) (< ord *fn2-machine-admitted-max*))))))))
+               (mv id fn2-core))))))))
+       (fn2-core-preserves ,grant (,@ords fn2-core) :position 1 :rows nil))))
 (fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail *fn2-wait-operation*)
 (fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail *fn2-wait-connection-row* (ord))
 
