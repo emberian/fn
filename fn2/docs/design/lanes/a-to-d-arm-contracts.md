@@ -164,5 +164,28 @@ listener's dispatcher `fn2-machine-admit (target index nonce COPIES... fn2-core)
 `:listener-targets` (a kind name; absent: the first admitted kind, so every existing profile is
 unchanged). A drain arm releases its ranges with `fn2-core-release` (`:effects` per range) and calls
 `fn2-machine-reclaim-K`.
+**The listener's offer and the booking (S1, ba644c1de).** The dispatcher's COPIES are not the
+union of the admitted kinds' `:copy` lists: they are the fixed `*fn2-machine-listener-offer*` =
+`(mode principal-slot account-ref)`, in that order, whatever kinds a build admits, so the listener's
+call is one form: `(fn2-machine-admit target index nonce mode principal ref fn2-core)`, guarded by
+the listener's widths of those fields. A kind's `:copy` names a subset of the offer, in any order;
+a field outside it is a hard error at `fn2-machine-admission-events` ("An admitted kind's :copy
+names a field outside the listener's offer"). Each listener row's `principal-slot` is set at init
+from the profile key `:listener-principals` (a list, one slot per listener, listener i taking element i; absent or not a u16: 0); a slot that is not a principal of the calendar stops the core at the listener's first wake (`:wake-bounds`). A kind whose
+`:copy` includes `account-ref` carries a principal booking: the generated
+`(fn2-machine-admission-books-p target)` (guard t; defcost with no effects) is true exactly for the
+ordinals of those kinds (fn2-conn today; never echo). For such a target the listener's `:accepting`
+arm books one `:connection-row` on its principal (`fn2-account-book`) before the Accept issue and
+stores the principal in its own `account-ref`; `:limit` or `:shared` proceeds unbooked
+(`account-ref` = `*fn2-none*`, and the connection's greeting is the capacity 400); any other ledger
+code stops the core with `:account` (code 22). A failed issue, a failed Accept (the
+`:accept-result` handler) and a refused admission release it with `fn2-account-unbook-ref`; a
+successful admission moves it to the admitted row (copied) and clears the listener's. So a kind
+that copies `account-ref` must release it on every path that frees the row (its drain), and its
+first arm must treat `*fn2-none*` as unbooked. At quiescence a principal's hold is its live booked
+rows plus `(fn2-listener-bookings p fn2-core)` (executor.lisp; checkers only), the listeners with
+an Accept pending on its behalf. The listener's arms declare `account-ref` in `:writes` and
+`fn2-core-accounts` in `:tables`.
+
 Not yet: the peer-address words in the Accept result (an ABI change to the result cell, which
 carries two aux words today: cap-index and cap-nonce); it goes with the adapter work (A5r).

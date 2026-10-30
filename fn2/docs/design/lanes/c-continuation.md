@@ -16,32 +16,32 @@ verbatim in COMMON.
   includes it; assembly-callbacks-c calls `fn2-identity-core-events` and
   `fn2-identity-successor-core-events`). Whole-tree gate on forge: closure rc=0, export PASS, OWED unchanged.
 
-## In flight: C4a (uncommitted, in build/lanes/fn2/c-found)
-- `runs-schema.lisp`: defrunschema `:fold (:events ((KIND (ARGS) [:when TEST] :set ((F EXPR)..))..)
-  :init :empty :coverage :history-start :observe (F..))` on the same :schema row (payload `:fold`).
-  Compiler helpers `fn2-rf-*` are :program mode (logic mode cost 4.8 s of termination proof). The
-  declaration's events: NAME-FOLD-EVENTP (guard t), NAME-FOLD-APPLY (served, fields rows). Beside it
-  (not in the declaration's generated list, because the glue check demands compliance there):
-  preserves lemma, NAME-FOLD-KEY/-STEP/-KEYP/-KEYSP/-ROWSP/-STATEP/-EVENTSP/-VALUE/-APPLY-SPEC/-RUN/
-  -SPEC/-OBSERVE/-OBSERVE-ALL (logic). Variables are FOLD-<name> (CL symbols are illegal variables).
-- `folds.lisp` (new; runs-served includes it before the assembly): fn2-group-counts (id 5),
-  fn2-consumer-cursor (6), fn2-principal-charges (7).
-- `runs-assemble.lisp`: dispatcher `fn2-run-layout-merge sid`, `fn2-fold-apply sid kind vbase abase`
-  (+ shape lemma); `fn2-ov-insert` replaces an equal key for :latest (locate before the :full check);
-  `fn2-ov-write` takes REPL. `overlay.lisp`: `fn2-ov-reput`. machines-c-successor's ov-write shape args.
-- `folds-served.lisp` (new, includes range-served): `fn2-fold-image sid layout key rows events seal qs`
-  (and `-bug` with :plus1/:skip for teeth) over the range adapter stobjs; keystones generated per
-  fold: NAME-SUMMARY-ADEQUATE-KIND and NAME-SUMMARY-CUT (defthm-owed).
-- `tests/folds-unit.lisp` (new): teeth macros fn2-ft-adequate / fn2-ft-cut (positive, negative,
-  weak). Must be added to `fn2/tools/owed-export.lsp`'s C unit list.
-- Smoke test: REPL ld chain in scratch (`drv6.lsp`, stripped copies); then forge gate.
-- Still to do in C4a: layer doc §1/§4/§7/§9 rows (folds, C-RANGE-NEWEST resolved), the export list.
+- 34e106dca + 736247f3d (dev eff0ab945) **C4a**: fold declarations on the :schema row
+  (`defrunschema :fold`, compiler `fn2-rf-*` in runs-schema.lisp, :program mode; generated
+  NAME-FOLD-EVENTP and NAME-FOLD-APPLY in the declaration, the logic family beside it:
+  -KEY -STEP -KEYP -KEYSP -ROWSP -STATEP -EVENTSP -VALUE -APPLY-SPEC -RUN -SPEC -OBSERVE -OBSERVE-ALL);
+  `folds.lisp` (group counts 5, consumer cursor 6, principal charges 7; runs-served includes it);
+  dispatcher `fn2-run-layout-merge`, `fn2-fold-apply`; overlay replace (`fn2-ov-reput`, ov-write REPL
+  arg); `folds-served.lisp` (`fn2-fold-image`, `-bug` :plus1/:skip; keystones NAME-SUMMARY-ADEQUATE-KIND x6,
+  NAME-SUMMARY-CUT x3); `tests/folds-unit.lisp` (teeth, in owed-export.lsp). Gate green at 34e106dca;
+  OWED 411. A confirming gate on the merged eff0ab945 (dev's ba644c1de, A for D7, merged in during
+  my gate) was started on forge (/build/lanes/c, build/c1.pid); if its export differs from OWED.md,
+  commit the regenerated OWED.md.
 
 ## Next
-1. Land C4a under the whole-tree gate; OWED regenerated (9 new keystones).
-2. C4b: `fn2-select-materialize-equivalent` (statement first; INBOX §4.6; CONSUMER checker
-   `fn2/sim/check-consumer.lisp`); registration, read-state, edge-policy and inbox folds; C-S3 seam to
-   D (fold write in a transaction through the private successor, the read through range reads).
+1. Confirm the merged-tree gate (above). Shave machines-c-successor (32.4 s forge; fn2-idc-copy
+   preserves ~4 s, publish-stamps preserves ~2.5 s, record-insert shape 2 s; try reads lists).
+2. C4b, statement first: `fn2-select-materialize-equivalent` (INBOX §4.6). Sketch: list spec of
+   streams (stream -> ascending (position . event)), registration edges (stream, start), the
+   select-only reference (merge entries after max(cursor, start) by position, dedup per event with
+   reasons, cut at a limit, next cursor); the materialized reader (inbox rows keyed (consumer, epoch,
+   position) up to cov on materialized intervals, the source above cov and elsewhere); statement: for
+   every policy assignment and materializer schedule the reader equals the reference. Teeth: a
+   materializer that skips an entry; a reader trusting the fold above cov (two edges, one switch,
+   tiny). CONSUMER checker `fn2/sim/check-consumer.lisp`. Folds: registration, read-state, edge-policy
+   (interval lists may need a value kind beyond integers: decide), inbox as a :unique derived stream.
+   C-S3 seam to D: fold write in D's transaction through the private successor (range read of the
+   key, `fn2-fold-apply`, bind into the batch's private overlay; publish/drop as C-S2).
 3. C1c when B lands GC2; C5; C6. `sim-layer-c-sweep.lsp` (10,000 seeds) not yet run on forge.
 
 ## Seam state
@@ -53,6 +53,10 @@ verbatim in COMMON.
 - Time a lemma in a world that INCLUDES certified books; an ld-built world keeps local theory events.
 - Shape lemmas: fold reads that only feed checks/callee args; keep reads used as write indices.
 - Generated defuns: no CL symbols as variables (`count`, `replace`, `state`).
+- A teeth helper that recurses over a counter with big image calls in its body sent the measure
+  proof into a 20-minute search: enumerate the cases at macro time instead (fn2-ft-cuts).
+- REPL smoke of a changed library chain: ld include-stripped copies in order (drv6.lsp in scratch),
+  then certify on forge; ld keeps local theory events, so times there are not cert times.
 - Everything from earlier seats: child inits as functions; -preserves disables after first use
   (`:disable nil`); pool ops enabled globally; never edit a book inside a running cert chain;
   swarm-build scopes survive killing the wrapper.
@@ -72,11 +76,13 @@ verbatim in COMMON.
 | book | s |
 |---|---|
 | machines-c | 10.7 |
-| machines-c-successor | 28.7 |
+| machines-c-successor | 28.7 (32.4 after C4a's ov-insert branch) |
+| runs-schema | 1.9 |
+| folds / folds-served / folds-unit | 14.5 / 3.9 / 4.0 |
 | assembly-index | 8.3 |
 | assembly-core (A's) | 51.9 |
 | assembly-init | 36.1 |
-| runs-served / range-served (earlier) | 33.7 / 26.4 |
+| runs-served / range-served | 35.3 / 26.8 |
 
 ## C4 design (statement first): folds, their declarations, the summary cut
 
