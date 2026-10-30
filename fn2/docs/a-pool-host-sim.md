@@ -427,9 +427,14 @@ caught; the socket commit with H's nntp S form (`h8-run.py`, the hook pointed at
   `FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_native_session:session`), on forge against
   127.0.0.1: 1,000 examples x 50 steps, RESULT ok in 449 s, 16,730 served replies judged with 0
   disagreements (the simulator session's H8b count, exactly), WIRE and ENVELOPE ok per connection.
+- darwin (the laptop, D9's target), at 424f3f9ef, unchanged code: tests/native-loop.lsp passes
+  on the poll(2) path (21 clients, WIRE clean, ENVELOPE pass on a 26,038-entry trace, the 7
+  controls refused); H's own command `run_surface --target fn2-native --family nntp`
+  (FN2_SURFACE_NATIVE_NNTP = the hook, 1,000 x 50): the S form passes, 16,730 served replies with
+  0 disagreements, WIRE coverage carrier NATIVE: 17,776 connections opened, 17,776 distinct ids,
+  all judged ok.
 - Open: the storage backend (inline pread/pwrite/fdatasync on one preallocated file, the
-  compost's path) lands with B's durable POST; the darwin poll(2) path is written and runs
-  untested until a Mac run; D's WIRE refuses an unterminated 511+ octet line answered 501 and
+  compost's path) lands with B's durable POST; D's WIRE refuses an unterminated 511+ octet line answered 501 and
   close when the client stops at EOF (reported to D; the native driver counts it by name).
 
 ## 5. Executor (contract item 5)
