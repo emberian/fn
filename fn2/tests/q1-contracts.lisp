@@ -333,12 +333,6 @@
         (put-assoc-equal :format-slots 5
           (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*))))))
 (defconst *fn2-q1c-upload-interim* (fn2-cw-chars (coerce "441 posting failed" 'list)))
-; The model cases this row does not claim, each a disagreement between the
-; served text and H's model reported through main: the catalogue's (fn1's)
-; "441 posting failed; From appears more than once" names no ALT of the
-; model's duplicate rule (duplicat|malformed|field|Path). The negative
-; tooth asserts each still disagrees, so a resolution removes it here.
-(defconst *fn2-q1c-upload-open* '("from-duplicate"))
 (defun fn2-q1c-hasher-result (row fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-digests (fn2-core-digests fn2-core))) (d)
@@ -399,23 +393,20 @@
   (declare (xargs :verify-guards nil))
   (make-list (+ 1 (floor n k)) :initial-element k))
 (defthm-owed fn2-upload-judged-and-hashed (case sizes)
-  (implies (and (member-equal case *fn2-upload-model-cases*)
-                (not (member-equal (car case) *fn2-q1c-upload-open*))
-                (nat-listp sizes))
+  (implies (and (member-equal case *fn2-upload-model-cases*) (nat-listp sizes))
            (fn2-q1c-upload-ok case sizes))
   :schema :invariant :claim :semantic
   :teeth (fn2-upload-judged-positive fn2-upload-judged-negative)
-  :doc "For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded; open disagreements with the model are listed by name.")
+  :doc "For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded.")
 (defun fn2-q1c-upload-all (cases k)
-  ; every claimed case whole (K nil) or in K-octet chunks
+  ; every model case whole (K nil) or in K-octet chunks
   (declare (xargs :verify-guards nil))
   (or (atom cases)
-      (and (or (member-equal (car (car cases)) *fn2-q1c-upload-open*)
-               (fn2-q1c-upload-ok (car cases)
+      (and (or (fn2-q1c-upload-ok (car cases)
                                   (and k (fn2-q1c-upload-chunks (len (fn2-q1c-upload-client (nth 1 (car cases)))) k)))
                (cw "UPLOAD CONTRACT ~x0 chunks ~x1 FAIL~%" (car (car cases)) k))
            (fn2-q1c-upload-all (cdr cases) k))))
-; Positive: every claimed model case whole and in 7-octet chunks.
+; Positive: every model case whole and in 7-octet chunks.
 (defun fn2-upload-judged-positive ()
   (declare (xargs :verify-guards nil))
   (and (fn2-q1c-upload-all *fn2-upload-model-cases* nil)
@@ -425,20 +416,13 @@
   (assoc-equal name *fn2-upload-model-cases*))
 ; Negative: without the fixture hypothesis the conclusion is false: the
 ; valid case with its decoded article one octet short (the digest refuses
-; it), the subject-missing case judged admissible (the reply refuses it),
-; and each open case as it stands (the model refuses the served text).
-(defun fn2-q1c-upload-open-fail (names)
-  (declare (xargs :verify-guards nil))
-  (or (atom names)
-      (and (not (fn2-q1c-upload-ok (fn2-q1c-upload-case (car names)) nil))
-           (fn2-q1c-upload-open-fail (cdr names)))))
+; it), and the subject-missing case judged admissible (the reply refuses it).
 (defun fn2-upload-judged-negative ()
   (declare (xargs :verify-guards nil))
   (let ((valid (fn2-q1c-upload-case "valid")) (missing (fn2-q1c-upload-case "subject-missing")))
     (and (consp (nth 2 valid))
          (not (fn2-q1c-upload-ok (update-nth 2 (cdr (nth 2 valid)) valid) nil))
-         (not (fn2-q1c-upload-ok (update-nth 3 '(:accept) missing) nil))
-         (fn2-q1c-upload-open-fail *fn2-q1c-upload-open*))))
+         (not (fn2-q1c-upload-ok (update-nth 3 '(:accept) missing) nil)))))
 
 (fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input fn2-listener-admits-within-ledger
                        fn2-scribe-reads-back fn2-upload-judged-and-hashed)

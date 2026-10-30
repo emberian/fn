@@ -3158,7 +3158,7 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-UPLOAD-JUDGED-AND-HASHED` | :OWED | :INVARIANT | `(IMPLIES (AND (MEMBER-EQUAL CASE *FN2-UPLOAD-MODEL-CASES*) (NOT (MEMBER-EQUAL (CAR CASE) *FN2-Q1C-UPLOAD-OPEN*)) (NAT-LISTP SIZES)) (FN2-Q1C-UPLOAD-OK CASE SIZES))` | `(FN2-UPLOAD-JUDGED-POSITIVE FN2-UPLOAD-JUDGED-NEGATIVE)` | For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded; open disagreements with the model are listed by name. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-UPLOAD-JUDGED-AND-HASHED` | :OWED | :INVARIANT | `(IMPLIES (AND (MEMBER-EQUAL CASE *FN2-UPLOAD-MODEL-CASES*) (NAT-LISTP SIZES)) (FN2-Q1C-UPLOAD-OK CASE SIZES))` | `(FN2-UPLOAD-JUDGED-POSITIVE FN2-UPLOAD-JUDGED-NEGATIVE)` | For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-RESOURCES)`
 
