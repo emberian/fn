@@ -583,6 +583,12 @@ The prewritten prompts change by one line each: R5e registers every generated ar
 
 ---
 
+## 7.4 Q1's honest classification (decision 1 applied to Q1, with DM10's oracles; opened 2026-10-30; statement in lanes/a-dm4-q1-classification.md, accepted by main)
+fn2-ref-transition calls the same harvest, router, dispatch and grant service as the concrete loop; only selection and accounting are independent. So every Q1 case row is a representation refinement of the scheduler over shared handlers, and the rows become :claim :representation with their :shared declarations named per label. The consequential claim about what a machine does lives in one independent contract per kind (conn: WIRE, ACCOUNT, OWN; echo: the client oracle; scribe: read-back; listener: the admission ledger; commit: B's crash differential and HISTORY), named by each of the kind's case rows, and one shared-handler mutation control per kind (a one-site mutation of the generated handler under which TRACE-per-case still passes and the kind's oracle fails, plus the unmutated run passing both), recorded as evidence. A kind lacking either is reported by name, never filled in. This is not the metatheory's DM4 (the column and core kits).
+
+## 7.5 The target's 32-value limit (recorded 2026-10-30)
+ACL2 returns at most 32 values from one mv. It has bitten the generators twice in two days: first the whole-row snapshot a callback received (fixed at 6b2f6ef5b: a callback takes only the fields its body reads), then the generated fn2-core-init over all core children (33 children broke assembly-init; fixed by nesting). Rule for every generator from now: a generated mv over a collection (fields, children, kinds, slots) nests from the first version, in groups that keep the per-element facts closing per element; a generator that emits a flat mv over a declared collection is a defect, found at the collection's 33rd member.
+
 ## 8. Five decisions for ember
 
 *Astra's session-2 draft (`fn2/dsl-astra-2.md` §8), adopted with the Opus positions recorded where they differ. Astra replaced the Opus candidate "SOFT, functional-instantiation kits or FTY" (they are not alternatives at one level; the answer is settled in §4.2: functional-instantiation kits now, SOFT an optional 5-day qualification, FTY a separate data-model choice not recommended) with decision 2 below.*
