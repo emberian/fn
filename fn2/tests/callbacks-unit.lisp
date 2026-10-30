@@ -75,10 +75,10 @@
  (with-local-stobj fn2-core
    (mv-let (ok fn2-core)
      (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core)))
-       (mv-let (phase gen principal account prev next wait deadline cap nonce pending stopped ready mode)
+       (mv-let (phase gen principal account prev next wait deadline cap nonce pending stopped ready mode target)
          (fn2-listener-snapshot 0 fn2-core)
          (fn2-dm-refresh 0 1 phase gen principal account prev next wait deadline
-                         cap nonce pending stopped ready mode fn2-core)))
+                         cap nonce pending stopped ready mode target fn2-core)))
      ok)))
 (assert-event (fn2-dm-refresh-control))
 
