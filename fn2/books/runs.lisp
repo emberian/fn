@@ -446,3 +446,28 @@
       (fn2-digests (fn2-digests-init 150 fn2-digests)))
   (mv fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
       fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+
+; ---------------------------------------------------------------------------
+; Installed runs: the engine's resident view of each schema's sealed runs (the
+; manifest, C1c, makes it durable). A row names a run's root page (its level,
+; cache slot and physical identity, the owner its pages are read under) and
+; its entry count.
+(defcolumns fn2-run-installed
+ ((state (:enum fn2-run-installed-state (:free :live)))
+  (schema :u60) (run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
+  (okind :u8) (oslot :u32) (ogen :u60)))
+(defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+                    (unsigned-byte-p 60 schema) (unsigned-byte-p 60 run) (unsigned-byte-p 8 top)
+                    (< top *fn2-run-max-levels*) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
+                    (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter) (unsigned-byte-p 60 entries)
+                    (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+       (mv :bounds fn2-run-installed))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-free*))
+       (mv :state fn2-run-installed))
+      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-live*) (schema schema) (run run)
+                           (top top) (slot slot) (gen gen) (unit unit) (counter counter) (entries entries)
+                           (okind okind) (oslot oslot) (ogen ogen))))
+  (mv :ok fn2-run-installed)))
+(fn2-run-installed-preserves fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed) :position 1 :raw-rows t)

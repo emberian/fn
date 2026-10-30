@@ -10,7 +10,10 @@
    (and (assoc-eq 'fn2-listener-admit (fn2-decl-get :callbacks owner))
         (equal (fn2-decl-get :calling-convention row)
                (getpropc 'fn2-listener-admit 'formals nil (w state)))
-        (equal (len (fn2-decl-get :row-bindings row)) 15)
+        ; only the fields its body reads, never the whole row
+        (let ((reads (fn2-decl-get :row-bindings row))
+              (all (fn2-machine-row-vars (fn2-machine-property 'fn2-listener :columns (w state)))))
+          (and (consp reads) (subsetp-eq reads all) (< (len reads) (len all))))
         (eq (fn2-decl-get :section row) :callbacks))))
 (assert-event
  (and (equal (fn2-decl-get :owner (fn2-operation-row 'fn2-issue-send (w state)))
@@ -75,10 +78,8 @@
  (with-local-stobj fn2-core
    (mv-let (ok fn2-core)
      (let ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core)))
-       (mv-let (phase gen principal account prev next wait deadline cap nonce pending stopped ready mode target)
-         (fn2-listener-snapshot 0 fn2-core)
-         (fn2-dm-refresh 0 1 phase gen principal account prev next wait deadline
-                         cap nonce pending stopped ready mode target fn2-core)))
+       ; its only read field is event-ready: that is its whole row argument
+       (fn2-dm-refresh 0 1 (fn2-listener-row-event-ready 0 fn2-core) fn2-core))
      ok)))
 (assert-event (fn2-dm-refresh-control))
 

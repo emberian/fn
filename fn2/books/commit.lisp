@@ -57,9 +57,10 @@
  `(if (fn2-commit-idp ,id fn2-core) ,body
    (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) ,refusal)))
 
-(defun fn2-commit-event-forms ()
- '(progn
-(local (in-theory (disable fn2-extentsp fn2-extents-wfp fn2-extents-rows
+; The commit kind's events in two assembly section books (each under the
+; one-minute rule): the same local theory opens both.
+(defun fn2-commit-local-theory ()
+ '(local (in-theory (disable fn2-extentsp fn2-extents-wfp fn2-extents-rows
  fn2-alloc-edgesp fn2-alloc-edges-wfp fn2-alloc-edges-rows
  fn2-fcp fn2-fc-wfp fn2-fc-rows fn2-fc-contextp fn2-fc-context-wfp fn2-fc-context-rows
  fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-fieldsp fn2-fields-wfp fn2-fields-rows
@@ -69,7 +70,9 @@
  fn2-commit-root-installed fn2-commit-root-published
  fn2-commit-root-proposed fn2-commit-root-parent fn2-commit-root-extent fn2-commit-root-first-key fn2-commit-root-members fn2-commit-root-seal-ready fn2-commit-root-barrier-mode
  fn2-digestsp fn2-digests-wfp fn2-digests-rows
- fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal)))
+ fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal))))
+(defun fn2-commit-event-forms ()
+ (list* 'progn (fn2-commit-local-theory) '(
 (make-event
  (value `(defconst *fn2-commit-proof-children*
            ',(fn2-commit-proof-children *fn2-core-children* (w state)))))
@@ -627,6 +630,9 @@
       ((mv c fn2-core) (fn2-commit-io-edge id 2 nil 0 0 fn2-core)))
   (assert$? (and (eq a :ok) (eq b :ok) (eq c :ok)) fn2-core)))
 (fn2-core-preserves fn2-commit-drop-io (id fn2-core) :rows nil :prefix "")
+)))
+(defun fn2-commit-event-forms-2 ()
+ (list* 'progn (fn2-commit-local-theory) '(
 (defmachine-callback fn2-commit-observe fn2-commit (id event outcome reason count aux0 aux1) 1
  ; Every row field is read before the first core rebinding: no later write in
  ; this observer changes cb-bytes or cb-failed, and DM0b inserts no refresh.
@@ -864,5 +870,6 @@
 ; simulator lists. Codec proofs use this theorem explicitly at their boundary.
 (local (in-theory (disable fn2-outbox-peek)))
 (in-theory (disable fn2-layoutp-head))
-))
+)))
 (defmacro fn2-commit-events () (fn2-commit-event-forms))
+(defmacro fn2-commit-events-2 () (fn2-commit-event-forms-2))

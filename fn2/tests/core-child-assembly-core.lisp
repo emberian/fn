@@ -3,3 +3,4 @@
 (include-book "core-child-assembly-index")
 
 (fn2-core-events)
+(fn2-core-init-events)

@@ -84,6 +84,21 @@ path: read the row first); a cost citing an undeclared call. A callback only for
   BODY)
 ```
 
+## Row fields: the read set (no whole-row snapshot; nothing for D to write)
+
+A callback's row arguments are exactly the `ROW-<field>` names its body reads (after `fn2-call`
+expansion), inferred by `defmachine-callback`; its formals are `(ARGS... ROW-READS... fn2-core)` and
+its guard is the declared widths of those fields. The run entry reads only the phase, then each arm
+reads its own fields through the kind's per-field readers `K-ROW-<field> (id fn2-core)` (generated
+with a width lemma each); after a core rebinding the emitter re-reads only the fields still used.
+`K-SNAPSHOT`, `K-SNAPSHOT-READ`, `K-VALUESP` are gone. Consequence: ACL2's 32-value limit no longer
+bounds a row; it bounds one callback's read set (fn2-conn: 30 fields, widest arm `command` reads
+17). A row of any width is declarable. A direct test-side call of a callback passes
+`(K-ROW-f id fn2-core)` for each of its row bindings (read them from
+`(fn2-decl-get :row-bindings (fn2-operation-row 'CB (w state)))`). Owed BOUND/FRAME statements bind
+the same reads. Measured on forge (closure at -j 8, load 4-7): assembly-callbacks-d (fn2-conn) 29.9
+-> 15.5 s, assembly-callbacks-a 24.2 -> 17.2 s.
+
 ## Resources (`:holds`, HIGHER-STRUCTURES entry 2)
 
 A row's holds are a function of its phase. For every source phase S of an arm and successor S'
