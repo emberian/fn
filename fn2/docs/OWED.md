@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 414; bound statements: 409; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
+Requirements: 415; bound statements: 410; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -2634,6 +2634,18 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-LISTENER-ADMITS-WITHIN-LEDGER` | :OWED | :INVARIANT | `(IMPLIES (AND (NATP LIMIT) (<= 1 LIMIT) (<= LIMIT 4) (FN2-CONN-OCTETS-TRANSCRIPTS-P TRANSCRIPTS) (<= (LEN TRANSCRIPTS) 4)) (FN2-Q1C-LEDGER-OK LIMIT TRANSCRIPTS))` | `(FN2-LISTENER-LEDGER-POSITIVE FN2-LISTENER-LEDGER-WITHOUT-CLIENT-BOUND)` | Admission within the ledger: at every round the anonymous principal's ledger is conserved and holds at most its connection-row limit; at quiescence it books exactly the live greeted connections and the listeners' bookings and charges exactly the octets moved; at most LIMIT clients are greeted and every other one gets one 400 line and is closed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-SCRIBE-READS-BACK)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :INVARIANT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-SCRIBE-READS-BACK` | :OWED | :INVARIANT | `(IMPLIES (AND (NATP SEED) (NATP ROUNDS) (<= ROUNDS 3000)) (LET ((R (FN2-SCRIBE-SERVED-CYCLE SEED ROUNDS NIL))) (AND (EQUAL (NTH 0 R) 0) (EQ (NTH 2 R) :OK) (FN2-Q1C-VALID-PREFIX-P (NTH 1 R) (NTH 3 R)))))` | `(FN2-SCRIBE-READS-BACK-POSITIVE FN2-SCRIBE-READS-BACK-CORRUPTED)` | Every sector the scribe acknowledged on the fault-free simulated device decodes valid under recover-stub's independent v1 decoder (magic, version, address, sequence, recomputed checksum); the core never stops. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-RESOURCES)`
 

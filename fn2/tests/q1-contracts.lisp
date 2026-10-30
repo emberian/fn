@@ -5,6 +5,8 @@
 (in-package "ACL2")
 (include-book "conn-unit")
 (include-book "../sim/check-wire")
+(include-book "../sim/sim-recovery")
+(include-book "../sim/echo")
 
 ; ------------------------------------------------------------------------
 ; fn2-conn: WIRE correctness. The served connection, alone, given any client
@@ -195,5 +197,102 @@
   (declare (xargs :verify-guards nil))
   (not (fn2-q1c-ledger-ok 4 (cons (list (nth 1 (nth 1 *fn2-cu-fixtures*)) nil) *fn2-q1c-ledger-clients*))))
 
-(fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input fn2-listener-admits-within-ledger)
-(value-triple (cw "Q1 CONTRACTS: conn, echo and listener teeth PASS~%"))
+; ------------------------------------------------------------------------
+; fn2-scribe: what it acknowledges is on the device in the v1 format. The
+; scribe's own verify reads back through fn2-scribe-byte, the function its
+; writer uses, so it is a twin, not an oracle. The oracle here is
+; recover-stub's independent v1 decoder (fn2-recovery-sector: magic,
+; version, address, sequence = sector + 1, and a checksum it recomputes)
+; over the simulator's device image copied after the run.
+(defconst *fn2-q1c-scribe-profile*
+  (put-assoc-equal :pool-classes `((8 . ,*fn2-format-sector-bytes*) (4 . 65536)) *fn2-profile-tiny*))
+(defun fn2-q1c-outbox (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-outbox-queued fn2-ops) n))
+(defun fn2-q1c-scribe-rounds (fuel fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (mv fn2-core fn2-sim fn2-own)
+    (b* (((mv & fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix (fn2-q1c-outbox fn2-core) 0 fn2-core fn2-sim fn2-own))
+         ((mv & & & & fn2-core) (fn2-turn fn2-core))
+         ((when (not (equal (fn2-core-stop-reason fn2-core) 0))) (mv fn2-core fn2-sim fn2-own))
+         ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix (fn2-q1c-outbox fn2-core) 0 fn2-core fn2-sim fn2-own))
+         ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance-with-clients nil nil fn2-core fn2-sim fn2-own)))
+      (fn2-q1c-scribe-rounds (- fuel 1) fn2-core fn2-sim fn2-own))))
+(defun fn2-q1c-copy-image (left fn2-sim fn2-recovery-image)
+  (declare (xargs :stobjs (fn2-sim fn2-recovery-image) :verify-guards nil :measure (nfix left)))
+  (if (zp left) (mv :ok fn2-recovery-image)
+    (mv-let (code fn2-recovery-image) (fn2-sim-recovery-copy-sector (- left 1) fn2-sim fn2-recovery-image)
+      (if (eq code :ok) (fn2-q1c-copy-image (- left 1) fn2-sim fn2-recovery-image) (mv code fn2-recovery-image)))))
+(defun fn2-q1c-classes (i n fn2-recovery-image)
+  (declare (xargs :stobjs fn2-recovery-image :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (if (or (not (natp i)) (not (natp n)) (>= i n)) nil
+    (cons (fn2-recovery-sector i fn2-recovery-image) (fn2-q1c-classes (+ 1 i) n fn2-recovery-image))))
+; (mv stop acknowledged classes): the scribe on the simulator's fault-free storage for ROUNDS
+; rounds from SEED; the device image after them, decoded sector by sector by recover-stub's
+; independent v1 decoder (CORRUPT, when given, changes one payload byte of sector 0 first).
+(defun fn2-scribe-served-cycle (seed rounds corrupt)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (with-local-stobj fn2-sim
+        (mv-let (answer fn2-core fn2-sim)
+          (with-local-stobj fn2-own
+            (mv-let (answer fn2-core fn2-sim fn2-own)
+              (with-local-stobj fn2-recovery-image
+                (mv-let (answer fn2-core fn2-sim fn2-own fn2-recovery-image)
+                  (b* ((profile *fn2-q1c-scribe-profile*)
+                       (fn2-core (fn2-init-executor profile :null t fn2-core))
+                       (fn2-sim (fn2-sim-init seed :none "q1-contracts" profile fn2-sim))
+                       (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
+                       (fn2-own (fn2-own-init profile fn2-own))
+                       ((mv fn2-core fn2-sim fn2-own) (fn2-q1c-scribe-rounds rounds fn2-core fn2-sim fn2-own))
+                       (id (fn2-machine-scribe-id fn2-core))
+                       (ack (fn2-machine-completed id fn2-core))
+                       (n (fn2-sim-sectors profile))
+                       (fn2-recovery-image (fn2-recovery-init n fn2-recovery-image))
+                       ((mv code fn2-recovery-image) (fn2-q1c-copy-image n fn2-sim fn2-recovery-image))
+                       (fn2-recovery-image (if corrupt
+                                               (fn2-recovery-put-byte (+ *fn2-format-payload-offset* 7) 85 fn2-recovery-image)
+                                             fn2-recovery-image)))
+                    (mv (list (fn2-core-stop-reason fn2-core) ack code (fn2-q1c-classes 0 n fn2-recovery-image))
+                        fn2-core fn2-sim fn2-own fn2-recovery-image))
+                  (mv answer fn2-core fn2-sim fn2-own)))
+              (mv answer fn2-core fn2-sim)))
+          (mv answer fn2-core)))
+      answer)))
+(defun fn2-q1c-valid-prefix-p (k classes)
+  (declare (xargs :verify-guards nil))
+  (or (zp k) (and (consp classes) (eq (car classes) :valid) (fn2-q1c-valid-prefix-p (- k 1) (cdr classes)))))
+; Every sector the scribe acknowledged (fn2-machine-completed) decodes :valid,
+; the core never stopped, and the image copied whole: on the fault-free
+; device, for any seed and up to 3000 rounds.
+(defthm-owed fn2-scribe-reads-back (seed rounds)
+  (implies (and (natp seed) (natp rounds) (<= rounds 3000))
+           (let ((r (fn2-scribe-served-cycle seed rounds nil)))
+             (and (equal (nth 0 r) 0) (eq (nth 2 r) :ok)
+                  (fn2-q1c-valid-prefix-p (nth 1 r) (nth 3 r)))))
+  :schema :invariant :claim :semantic
+  :teeth (fn2-scribe-reads-back-positive fn2-scribe-reads-back-corrupted)
+  :doc "Every sector the scribe acknowledged on the fault-free simulated device decodes valid under recover-stub's independent v1 decoder (magic, version, address, sequence, recomputed checksum); the core never stops.")
+(defun fn2-q1c-scribe-ok (seed rounds)
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-scribe-served-cycle seed rounds nil)))
+    (and (equal (nth 0 r) 0) (eq (nth 2 r) :ok) (fn2-q1c-valid-prefix-p (nth 1 r) (nth 3 r)) (nth 1 r))))
+; Positive: one sector acknowledged after 400 rounds and all four after 2000,
+; on two seeds, each decoding valid.
+(defun fn2-scribe-reads-back-positive ()
+  (declare (xargs :verify-guards nil))
+  (let ((a (fn2-q1c-scribe-ok 1000 400)) (b (fn2-q1c-scribe-ok 1001 2000)))
+    (and a b (<= 1 a) (= b 4))))
+; Negative: the conclusion refuses a damaged device: the same run with one
+; payload byte of the acknowledged sector 0 changed in the image decodes
+; :torn-corrupt, so the acknowledged prefix is not valid.
+(defun fn2-scribe-reads-back-corrupted ()
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-scribe-served-cycle 1001 2000 t)))
+    (and (<= 1 (nth 1 r)) (eq (car (nth 3 r)) :torn-corrupt)
+         (not (fn2-q1c-valid-prefix-p (nth 1 r) (nth 3 r))))))
+
+(fn2-assert-owed-teeth fn2-conn-wire-correct fn2-echo-replies-its-input fn2-listener-admits-within-ledger
+                       fn2-scribe-reads-back)
+(value-triple (cw "Q1 CONTRACTS: conn, echo, listener and scribe teeth PASS~%"))
