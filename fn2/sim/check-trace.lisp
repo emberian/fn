@@ -152,6 +152,40 @@
                 fn2-core fn2-ref-core))))
 (in-theory (disable fn2-check-trace-cases-turn))
 
+; For a driver that keeps no reference (D's sim-layer-d, through
+; q1-case-hook.lsp's turn hook): the reference lists a run starts from, read
+; from the concrete scheduler after its init (cursor and principal FIFOs;
+; the calendar built from WEIGHTS; the service flags as the reference's turn
+; entry has them). The hook carries cursor and FIFOs from turn to turn
+; after that, as the A4 scenarios do, so the "before" difference of every
+; later turn checks the reference's own state, never a copy of the
+; concrete one.
+(defun fn2-ref-queues-of-sched (p fn2-sched)
+  (declare (xargs :stobjs fn2-sched :verify-guards nil :measure (nfix p)))
+  (if (zp p) nil
+    (let ((queue (fn2-ref-concrete-queue (fn2-sched-rows fn2-sched)
+                                         (fn2-sched-headsi (- p 1) fn2-sched) fn2-sched)))
+      (append (fn2-ref-queues-of-sched (- p 1) fn2-sched)
+              (and (consp queue) (list (cons (- p 1) queue)))))))
+(defun fn2-ref-lists-of-core (weights fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (lists)
+    (fn2-ref-lists weights (fn2-sched-cursor fn2-sched)
+                   (fn2-ref-queues-of-sched (fn2-sched-nprincipals fn2-sched) fn2-sched))
+    lists))
+; The trace child is the checker's during a hooked turn (selection is
+; compared from its records): enabled and cleared before, cleared and its
+; flag restored after, so the driver sees the trace as its profile left it.
+(defun fn2-check-trace-set-trace (enabled fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-trace (fn2-core-trace fn2-core))) (fn2-trace)
+    (let ((fn2-trace (update-fn2-trace-enabled enabled fn2-trace)))
+      (fn2-trace-clear fn2-trace))
+    fn2-core))
+(defun fn2-check-trace-enabled (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-trace (fn2-core-trace fn2-core))) (e) (fn2-trace-enabled fn2-trace) e))
+
 ; The checker every Q1 case row names (:checker (:function fn2-q1-check-case
 ; :case C)): its evidence record from a run's tallies. RUN is
 ; (:revision R :profile P :domain D :turns N :transitions M :location L).

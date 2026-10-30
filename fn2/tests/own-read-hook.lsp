@@ -23,17 +23,21 @@
 
 (defun fn2-own-hook-install ()
   (assert (null *fn2-own-hook-originals*))
+  ; fn2-own-check-trace-turn is the A4 scenarios' (echo-scenario.lisp); a
+  ; driver without it (D's sim-layer-d) binds the core and monitor itself.
   (dolist (name '(fn2-core-read fn2-core-write fn2-own-check-trace-turn))
-    (push (cons name (symbol-function name)) *fn2-own-hook-originals*))
+    (when (fboundp name)
+      (push (cons name (symbol-function name)) *fn2-own-hook-originals*)))
   (setf *fn2-own-hook-read-original* (symbol-function 'fn2-core-read)
         (symbol-function 'fn2-core-read) #'fn2-own-hook-read)
   (let ((turn (cdr (assoc 'fn2-own-check-trace-turn *fn2-own-hook-originals*)))
         (write-byte (cdr (assoc 'fn2-core-write *fn2-own-hook-originals*))))
-    (setf (symbol-function 'fn2-own-check-trace-turn)
-          (lambda (profile cursor queues core own reference)
-            (let ((*fn2-own-hook-core* core) (*fn2-own-hook-monitor* own))
-              (funcall turn profile cursor queues core own reference)))
-          (symbol-function 'fn2-core-write)
+    (when turn
+      (setf (symbol-function 'fn2-own-check-trace-turn)
+            (lambda (profile cursor queues core own reference)
+              (let ((*fn2-own-hook-core* core) (*fn2-own-hook-monitor* own))
+                (funcall turn profile cursor queues core own reference)))))
+    (setf (symbol-function 'fn2-core-write)
           (lambda (slot gen index byte kind owner owner-gen core)
             (multiple-value-bind (code core)
                 (funcall write-byte slot gen index byte kind owner owner-gen core)
