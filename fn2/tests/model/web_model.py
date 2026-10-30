@@ -354,6 +354,11 @@ class WebModel:
             return Expect(self, r, 200, page=('Remove my post',))
         post = next(p for p in self.posts if p.ident == r.form()['id'])
         withdraws = post.author == b.login or post.removed
+        # The face's cancel is a served POST under the session's own access, naming the post's group (nightly
+        # 2026-10-30: fn1 answers 441 "a named newsgroup is not carried here" to a login removing a post in a
+        # group it cannot post to): the session's read and post rules decide, as for any POST.
+        if not (b.conn._visible(post.group) and b.conn._access(post.group, 'post')):
+            return Expect(self, r, 403, page=('The server said no',))
         def effect(reply):
             # The face's cancel is a served POST into control.cancel either way;
             # only the author's withdraws (SEC-006). The session's own accepted

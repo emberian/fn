@@ -10,22 +10,27 @@ with no books does exactly that). Syntax notes owned here: `lanes/a-to-d-arm-con
 ## Landed (dev and origin/dev)
 | sha | what |
 |---|---|
-| 6c8f3d1a0 | fix forward: tests/commit-resource-unit.lisp reads both commit sections (my split 71c1fb2f2 had broken it) |
-| 57054a247 | S6: `:account` stop reason (code 22) appended to fn2-stop-reason |
+| 6c8f3d1a0 | fix forward: tests/commit-resource-unit.lisp reads both commit sections |
+| 57054a247 | S6: `:account` stop reason (code 22) |
+| 7fd40d0b7 | S4: `fn2-sched-reattribute machine to fn2-sched -> (mv code fn2-sched)` |
+| 578174649 | C2c seam: `fn2/books/words.lisp` (fn2-u32, fn2-u32-mul, fn2-prng-mix32); C uses it (d2f2ea9e8) |
 
-## In flight (fn2/a-seams3 in worktree build/lanes/fn2/r7-arms; dev locally = 7fd40d0b7, NOT yet pushed)
-| sha | what | state |
-|---|---|---|
-| 7fd40d0b7 | S4 `fn2-sched-reattribute machine to fn2-sched -> (mv code fn2-sched)` (cherry-pick of b02c6e099, accepted on the pre-C base: closure, export identical, 7 drivers, 113 blocks) | on local dev in the shared tree, push after the run below |
-| c95c35ef7 | C2c seam: `fn2/books/words.lisp` (fn2-u32, fn2-u32-mul, fn2-prng-mix32 moved from sim/prng.lisp); C deletes fn2-ribbon-mul32/-mix | forge acceptance in /build/lanes/a3b (PID file build/accept.pid is the process group: stop with `kill -- -PID`) |
-| 427a2dd83 | S3 weighted calendar: `fn2-sched-init profile weights n`, weights = `fn2-profile-weights` (`:accounts` `(SLOT :weight W)`, default 1), pass-interleaved, L = W + 4 ceil(W/16), weighted L <= 4096; `fn2-sched-calendar-validp weights`, starvation statement over weights; reference `fn2-ref-calendar weights`, `fn2-ref-lists weights ...` | same run; S3 changes the owed statement of fn2-sched-starvation, so the regenerated OWED.md (acc/427a2dd83/OWED.md on forge) is amended into the S3 commit before landing |
-
-Landing: `cd /Users/ember/dev/fn; git fetch origin; git merge --ff-only origin/dev` (if dev moved, cherry-pick
-and re-accept), `git merge --ff-only fn2/a-seams3` (or cherry-pick), secrets check, push, READY to main per sha.
+## In flight: branch fn2/a-seams4 (worktree build/lanes/fn2/r7-arms) over dev a98d3c7c5
+| sha | what |
+|---|---|
+| 61ce57fc6 | S3 weighted calendar (`fn2-sched-init profile weights n`; weights from `:accounts` `:weight`; `fn2-profile-weights` DISABLED after its definition, or fn2-core-init's guard loops in assembly-init) |
+| edaea0d84 | S2 run charges: `fn2-exec-charge-run` (executor-access), principal runs and service visits (system row = sched nprincipals); the reference makes the same calls |
+| 5a94dd215 | S5 ledger grant source; `(fn2-account-events)` moved to the head of assembly-access |
+| 59f41e76a | S1: `:listener-principals`; listener books at Accept for targets whose admission copies account-ref (`fn2-machine-admission-books-p`); refused booking admits unbooked (400 at greeting); unbook on failed issue/Accept/refused admission; dispatcher copies (mode principal-slot account-ref); conn.lisp's :admission copies, greeting arm no longer books (main's ruling) |
+Acceptance on forge /build/lanes/a3b (group PID file build/accept.pid): 61ce57fc6 full, S2/S5 certify, S1 full;
+then D's `fn2/tests/sim-layer-d.lsp` at S1 (four sets; flood refuses 10-12 of 15, principal 1 reserve
+intact). S3's commit also needs the regenerated OWED.md (acc/61ce57fc6/OWED.md) amended in before landing
+(the fn2-sched-starvation statement changed). Landing: ff dev (cherry-pick if dev moved), push, READY per sha.
 
 ## Queue
-1. After landing: tell main S3/S4/words shas; D7 doc 13.6 is D's to update.
-2. S1, S2, S5 wait on D's accounts.lisp (fn2-account-book/-unbook, -charge-run, -grant-ready-p/-grant-one).
+1. Land the D7 stack above. A-S7 (taken kinds, D doc 14.7): D writes it as a foundation commit after S1
+   lands; I review its diff. A-S8 (fn2-pool-copy-across + core wrapper + defcost) after, mine.
+2. DM3 2/n below.
 3. DM3 2/n, WIP (uncommitted) in r7-arms, also saved as build/seat-ad/dm3b/{wip.patch,q1-teeth.lisp,sim-layer-d-evidence.lsp}:
    - `fn2/tests/q1-teeth.lisp`: per-label fixtures from the tiny profile (drain the scheduler; run labels:
      row 0 of kind K, `fn2-machine-write-phase`, `fn2-exec-wake`; observe labels: op slot 0 written as a
