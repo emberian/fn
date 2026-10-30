@@ -231,7 +231,7 @@
                   (fn2-account-core-hold p d fn2-core)
                   (fn2-account-core-charged p *fn2-account-charge-rx* fn2-core)
                   (fn2-account-core-charged p *fn2-account-charge-tx* fn2-core)
-                  (fn2-account-core-charged p *fn2-account-charge-requests* fn2-core))
+                  (fn2-account-core-charged p *fn2-account-charge-requests* fn2-core) (fn2-listener-bookings p fn2-core))
             (fn2-sld-ledger-rows (+ 1 p) n fn2-core)))))
 (defun fn2-sld-count-refused (accts)
   (declare (xargs :verify-guards nil))

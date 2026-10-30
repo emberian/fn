@@ -45,7 +45,7 @@
  :capacity (fn2-profile-c profile)
  ;; The listener admits a connection into :greeting with its RX and TX
  ;; ranges reserved whole (A's generated fn2-machine-admit-fn2-conn).
- :admission (:phase :greeting :ranges (:rx-range :tx-range)
+ :admission (:phase :greeting :ranges (:rx-range :tx-range) :copy (principal-slot account-ref)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
                      auth-pending access-ref))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
@@ -69,7 +69,7 @@
    :uses (fn2-machine-idle))
   (:greeting fn2-conn-greet :cost (:bytes 512 :steps *fn2-work-transition*)
    :writes (tx-off after mask refused account-ref) :tables (fn2-core-pool fn2-core-accounts)
-   :next (:greeting :reply) :uses (fn2-account-book-admitted fn2-conn-run-greeting fn2-machine-refuse-phase))
+   :next (:greeting :reply) :uses (fn2-account-unbook-ref fn2-conn-run-greeting fn2-machine-refuse-phase))
   (:command fn2-conn-command
    :cost (:bytes (max (:cost fn2-conn-frame-run :bytes) (:cost fn2-conn-compact-run :bytes))
           :steps (max (:cost fn2-conn-frame-run :steps) (:cost fn2-conn-compact-run :steps))
@@ -198,19 +198,20 @@
   (fn2-machine-refuse-phase id fn2-core))
 
 ;; :greeting renders the greeting (or the capacity 400) and moves to :reply.
-;; :greeting books the connection on its principal (D7, section 13.4: the
-;; interim booking point until the listener books at Accept issue), then
-;; renders the greeting, or the capacity 400 when the admission was into
-;; the partition's reserve row or the principal's entitlement is refused
-;; (:limit, :shared), and moves to :reply.
+;; The listener booked the connection on its principal at Accept issue and
+;; the admission copied principal-slot and account-ref (D7 13.4, A's S1).
+;; An unbooked row (the principal's entitlement was refused, :limit or
+;; :shared) or one admitted into the partition's reserve row gets the
+;; capacity 400; the latter releases its booking first, so a 400'd
+;; connection holds none. Every other greeted row keeps account-ref.
 (defmachine-callback fn2-conn-greet fn2-conn (id budget) 4
   (fn2-machine-with-work 512 *fn2-work-transition* 0
-    (b* ((principal row-principal-slot)
-         ((mv bcode fn2-core) (fn2-account-book-admitted row-refused principal fn2-core)))
-      (if (not (or (eq bcode :ok) (eq bcode :refused) (eq bcode :limit) (eq bcode :shared)))
+    (b* ((ref row-account-ref)
+         (refused (if (and (not (equal ref *fn2-none*)) (equal row-refused 0)) 0 1))
+         ((mv ucode fn2-core) (fn2-account-unbook-ref (if (equal refused 1) ref *fn2-none*) fn2-core)))
+      (if (not (eq ucode :ok))
           (fn2-machine-refuse-phase id fn2-core)
-        (b* ((refused (if (eq bcode :ok) 0 1))
-             ((mv code after fn2-core)
+        (b* (((mv code after fn2-core)
               (fn2-conn-run-greeting refused row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
           (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
             ;; Every D3 connection is a reader and the anonymous principal
@@ -218,7 +219,7 @@
             ;; the other bits.
             (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0) (after after)
                                                (refused refused)
-                                               (account-ref (if (eq bcode :ok) principal *fn2-none*))
+                                               (account-ref (if (equal refused 1) *fn2-none* ref))
                                                (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)))))
               (fn2-machine-result 512 *fn2-work-transition* 0 t fn2-core))))))))
 

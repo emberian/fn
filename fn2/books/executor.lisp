@@ -69,6 +69,7 @@
                           0 *fn2-work-empty* 0 nil *fn2-none* start fn2-core)))
           (mv 0 1 0 0 *fn2-work-empty* fn2-core)))
        ((mv bytes steps actions runnable fn2-core) (fn2-machine-run id budget fn2-core))
+       (fn2-core (fn2-exec-charge-run principal bytes steps fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
        ; New work enters before the running machine's tail requeue. The
        ; trace checker reconstructs this order without consulting links.
@@ -90,6 +91,9 @@
         (if (and (equal service 1) (natp budget) (< 0 budget))
             (fn2-exec-arm fn2-core) (mv 0 fn2-core)))
        (fn2-core (fn2-exec-wake wake fn2-core))
+       (fn2-core (fn2-exec-charge-run (fn2-exec-system-row fn2-core) 0
+                   (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*)
+                   fn2-core))
        (fn2-core (fn2-exec-record *fn2-trace-kind-service* *fn2-none* service position 0
                     (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) actions nil wake start fn2-core)))
     (mv 0 1 actions 0 (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) fn2-core)))
@@ -186,6 +190,21 @@
       (fn2-exec-start-listeners (- left 1) (+ id 1) fn2-core))))
 (fn2-core-preserves fn2-exec-start-listeners (left id fn2-core) :rows nil :prefix "")
 
+; Bookings the listeners hold (D7's S1): a listener with an Accept outstanding
+; holds one :connection-row booking on its principal for the connection it is
+; waiting for, so at quiescence a principal's hold is its live connections plus
+; these (D 13.5). Read by D's checkers; the executor never calls it.
+(defun fn2-listener-bookings-from (left id p fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
+  (if (zp left) 0
+    (+ (if (and (eq (fn2-machine-account-ref-read-code id fn2-core) :ok)
+                (equal (fn2-machine-account-ref id fn2-core) p)) 1 0)
+       (fn2-listener-bookings-from (- left 1) (+ 1 (nfix id)) p fn2-core))))
+(defun fn2-listener-bookings (p fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-listener-bookings-from (fn2-machine-accept-count fn2-core)
+                              (fn2-machine-kind-base *fn2-listener-kind* fn2-core) p fn2-core))
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
@@ -196,6 +215,7 @@
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
                   (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
+       (fn2-core (fn2-listener-set-principals (fn2-profile-get :listener-principals profile) fn2-core))
        (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
                    (fn2-machine-kind-base *fn2-listener-kind* fn2-core) fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))

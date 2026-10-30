@@ -27,7 +27,7 @@
        (fn2-core (fn2-init-executor profile :echo t fn2-core))
        (fn2-ref-core (fn2-init-executor profile :echo t fn2-ref-core))
        (scribe (fn2-machine-global-id *fn2-scribe-kind* 0 profile))
-       (lists (fn2-ref-lists 4 0 (list (list 0 0 1 scribe))))
+       (lists (fn2-ref-lists '(1 1 1 1) 0 (list (list 0 0 1 scribe))))
        ((mv h0 c0 lists fn2-core fn2-ref-core) (fn2-ref-test-turn lists fn2-core fn2-ref-core))
        ; Two remaining runnable machines have different continuations.
        (queue (fn2-ref-queue 0 (nth 2 lists)))
@@ -47,11 +47,56 @@
           (mv answer fn2-core))) answer)))
 (assert-event (fn2-ref-test nil))
 (assert-event (fn2-ref-test t))
-(assert-event (and (= (len (fn2-ref-calendar 64)) 80)
-                   (= (len (fn2-ref-calendar 4)) 8)
-                   (equal (nth 16 (fn2-ref-calendar 64)) '(:service 0))
-                   (equal (nth 79 (fn2-ref-calendar 64)) '(:service 3))
+(assert-event (and (= (len (fn2-ref-calendar (make-list 64 :initial-element 1))) 80)
+                   (= (len (fn2-ref-calendar '(1 1 1 1))) 8)
+                   (equal (nth 16 (fn2-ref-calendar (make-list 64 :initial-element 1))) '(:service 0))
+                   (equal (nth 79 (fn2-ref-calendar (make-list 64 :initial-element 1))) '(:service 3))
+                   (equal (fn2-ref-calendar '(3 1 2 1))
+                          '((:principal 0) (:principal 1) (:principal 2) (:principal 3)
+                            (:principal 0) (:principal 2) (:principal 0)
+                            (:service 0) (:service 1) (:service 2) (:service 3)))
                    (equal (fn2-ref-enqueue 2 0 '((0 1 2 3))) '((0 1 2 3)))))
+
+;; S3: the weighted calendar in lockstep.  Slot 0 of weight 3 and slot 2 of weight 2 give the
+;; eleven-entry calendar (0 1 2 3 0 2 0, the four services); concrete and reference take two turns
+;; from it under the full relation.  Negative: reference lists built from the unweighted calendar
+;; fail the relation on the first entry that differs; a permuted literal calendar (the right counts,
+;; not the specified order) fails as :literal-calendar.
+(defconst *fn2-ref-test-weighted-profile*
+  (put-assoc-equal :accounts '((0 :state :anonymous :weight 3) (2 :state :configured :weight 2))
+                   (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*)))
+(defun fn2-ref-weighted-run (lists-weights permute fn2-core fn2-ref-core)
+  (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil))
+  (b* ((profile *fn2-ref-test-weighted-profile*)
+       (fn2-core (fn2-init-executor profile :echo t fn2-core))
+       (fn2-ref-core (fn2-init-executor profile :echo t fn2-ref-core))
+       (scribe (fn2-machine-global-id *fn2-scribe-kind* 0 profile))
+       (lists (fn2-ref-lists lists-weights 0 (list (list 0 0 1 scribe))))
+       (lists (if permute
+                  (update-nth 0 (cons (cadr (nth 0 lists)) (cons (car (nth 0 lists)) (cddr (nth 0 lists)))) lists)
+                lists))
+       (difference (fn2-ref-difference fn2-core fn2-ref-core lists))
+       (calendar (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (codes)
+                   (list (fn2-sched-calendar-length fn2-sched)
+                         (fn2-sched-calendar-validp '(3 1 2 1) fn2-sched)
+                         (fn2-sched-calendar-validp '(1 1 1 1) fn2-sched))
+                   codes))
+       ((mv h0 c0 lists fn2-core fn2-ref-core) (fn2-ref-test-turn lists fn2-core fn2-ref-core))
+       ((mv h1 c1 & fn2-core fn2-ref-core) (fn2-ref-test-turn lists fn2-core fn2-ref-core)))
+    (mv (list difference calendar (and h0 c0 h1 c1)) fn2-core fn2-ref-core)))
+(defun fn2-ref-weighted (lists-weights permute)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (with-local-stobj fn2-ref-core
+        (mv-let (answer fn2-core fn2-ref-core) (fn2-ref-weighted-run lists-weights permute fn2-core fn2-ref-core)
+          (mv answer fn2-core))) answer)))
+(assert-event
+ (and (equal (fn2-profile-weights *fn2-ref-test-weighted-profile*) '(3 1 2 1))
+      (equal (fn2-profile-calendar-length *fn2-ref-test-weighted-profile*) 11)
+      (equal (fn2-ref-weighted '(3 1 2 1) nil) '(nil (11 t nil) t))
+      (equal (car (fn2-ref-weighted '(1 1 1 1) nil)) '(:calendar-length))
+      (equal (car (fn2-ref-weighted '(3 1 2 1) t)) '(:literal-calendar))))
 
 ; A mutation in each kind's table must break the full-field relation. This
 ; accompanies, and does not replace, the swapped-FIFO scheduling negative.
@@ -92,7 +137,7 @@
   (b* (((mv ready fn2-core) (fn2-core-corruption-setup which t fn2-core))
        (fn2-core (fn2-machine-write-pending 0 2 fn2-core))
        (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
-       (lists (fn2-ref-lists 4 0 nil))
+       (lists (fn2-ref-lists '(1 1 1 1) 0 nil))
        (before (fn2-machine-phase 0 fn2-core))
        ((mv status obs visits actions fn2-core) (fn2-turn fn2-core))
        ((mv rstatus robs rvisits ractions lists fn2-ref-core) (fn2-ref-turn lists fn2-ref-core)))
@@ -120,7 +165,7 @@
   (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
        (fn2-ref-core (fn2-ref-reset *fn2-profile-tiny* fn2-core fn2-ref-core))
        (id (if (eq which :bounds) 999 (if (eq which :none) *fn2-none* 0)))
-       (lists (fn2-ref-lists 4 0 (if (eq which :state) '((0 999)) nil)))
+       (lists (fn2-ref-lists '(1 1 1 1) 0 (if (eq which :state) '((0 999)) nil)))
        (fn2-core (if (eq which :state)
                      (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (fn2-sched)
                        (let* ((fn2-sched (update-fn2-sched-countsi 0 1 fn2-sched))

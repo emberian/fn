@@ -57,8 +57,11 @@
               (+ (if (and (nth 3 r) (eq (fn2-acct-greeting (nth 2 r)) :greeted)) 1 0) (nth 3 rest))
               (+ (if (eq (fn2-acct-greeting (nth 2 r)) :refused) 1 0) (nth 4 rest)))))))
 
-; A ledger row as read: (principal limit reserve hold rx tx requests), for
-; the :connection-row dimension and the three charges.
+; A ledger row as read: (principal limit reserve hold rx tx requests
+; listener-bookings), for the :connection-row dimension and the three
+; charges; listener-bookings counts the listeners holding a booking on the
+; principal for an Accept outstanding (A's S1), part of hold beside the live
+; connections.
 (defun fn2-acct-sum-committed (rows)
   (declare (xargs :verify-guards nil))
   (if (atom rows) 0
@@ -75,7 +78,7 @@
          ((unless (equal (nth 4 row) (nth 0 totals))) (list :fail :rx-charge p (nth 4 row) (nth 0 totals)))
          ((unless (equal (nth 5 row) (nth 1 totals))) (list :fail :tx-charge p (nth 5 row) (nth 1 totals)))
          ((unless (equal (nth 6 row) (nth 2 totals))) (list :fail :requests p (nth 6 row) (nth 2 totals)))
-         ((unless (equal (nth 3 row) (nth 3 totals))) (list :fail :holding p (nth 3 row) (nth 3 totals)))
+         ((unless (equal (nth 3 row) (+ (nth 3 totals) (nfix (nth 7 row))))) (list :fail :holding p (nth 3 row) (nth 3 totals)))
          ; protected: a refused connection of a principal below its reserve
          ((when (and (< 0 (nth 4 totals)) (< (nfix (nth 3 row)) (nfix (nth 2 row)))))
           (list :fail :protected-refused p row)))

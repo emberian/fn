@@ -33,10 +33,40 @@
 (fn2-def-profile-reader fn2-profile-generation-limit :generation-limit)
 (fn2-def-profile-reader fn2-profile-trace :trace)
 (fn2-def-profile-reader fn2-profile-trace-capacity :trace-capacity)
+;; Calendar weights (D7's S3) come from the ledger's configuration, profile key :accounts,
+;; ((SLOT :weight W ...) ...): slot I's weight is W, 1 when unconfigured.  The ledger
+;; (fn2-accounts-profilep) and the scheduler (fn2-sched-profilep) each refuse a weight outside
+;; 1..255; this reader only reads.
+(defun fn2-profile-plist-get (key plist)
+  (declare (xargs :guard t))
+  (cond ((or (atom plist) (atom (cdr plist))) nil)
+        ((equal (car plist) key) (cadr plist))
+        (t (fn2-profile-plist-get key (cddr plist)))))
+(defun fn2-profile-slot-weight (slot accounts)
+  (declare (xargs :guard t))
+  (cond ((atom accounts) 1)
+        ((and (consp (car accounts)) (equal (caar accounts) slot))
+         (let ((w (fn2-profile-plist-get :weight (cdar accounts)))) (if (null w) 1 w)))
+        (t (fn2-profile-slot-weight slot (cdr accounts)))))
+(defun fn2-profile-weights-from (slot p accounts)
+  (declare (xargs :guard (and (natp slot) (natp p)) :measure (nfix (- (nfix p) (nfix slot)))))
+  (if (or (not (natp slot)) (>= slot (nfix p))) nil
+    (cons (fn2-profile-slot-weight slot accounts)
+          (fn2-profile-weights-from (+ 1 slot) p accounts))))
+(defun fn2-profile-weights (profile)
+  (declare (xargs :guard t))
+  (fn2-profile-weights-from 0 (nfix (fn2-profile-p profile)) (fn2-profile-get :accounts profile)))
+(defun fn2-profile-weight-sum (weights)
+  (declare (xargs :guard t))
+  (if (atom weights) 0 (+ (nfix (car weights)) (fn2-profile-weight-sum (cdr weights)))))
+; Closed, so a guard that names (fn2-profile-weights profile) meets lemmas
+; about that term rather than its recursive expansion.
+(in-theory (disable fn2-profile-weights))
+;; L = W + 4*ceiling(W/16) for W the sum of the weights; P + 4*ceiling(P/16) when every weight is 1.
 (defun fn2-profile-calendar-length (profile)
   (declare (xargs :guard t))
-  (let ((p (nfix (fn2-profile-p profile))))
-    (+ p (* *fn2-calendar-services* (ceiling p *fn2-calendar-principals-per-group*)))))
+  (let ((w (fn2-profile-weight-sum (fn2-profile-weights profile))))
+    (+ w (* *fn2-calendar-services* (ceiling w *fn2-calendar-principals-per-group*)))))
 
 ; Initial storage domain: one fence in flight unless explicitly configured.
 (defun fn2-profile-fence-slots (profile)
@@ -185,6 +215,8 @@
     fn2-profile-jread fn2-profile-jwrite fn2-profile-accept-credits
     fn2-profile-pool-classes fn2-profile-generation-start
     fn2-profile-generation-limit fn2-profile-trace fn2-profile-trace-capacity fn2-profile-calendar-length
+    fn2-profile-plist-get fn2-profile-slot-weight fn2-profile-weights-from fn2-profile-weights
+    fn2-profile-weight-sum
     fn2-profile-positive-u32p fn2-profile-positive-fields-p
     fn2-profile-classes-p fn2-profile-pool-slots fn2-profile-pool-bytes)
   (w state)))

@@ -2,4 +2,5 @@
 (in-package "ACL2")
 (include-book "core-child-assembly-core")
 
+(fn2-account-events)
 (fn2-machine-access-events)

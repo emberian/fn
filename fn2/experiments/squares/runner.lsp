@@ -115,7 +115,7 @@
  (let* ((*e1-g1* t)
         (core (fn2-ref-copy-core (e1-world-core world) (fn2-core-init *e1-profile* (create-fn2-core))))
         (ref (fn2-ref-copy-core (e1-world-ref world) (fn2-core-init *e1-profile* (create-fn2-ref-core))))
-        (lists (fn2-ref-lists (fn2-profile-p *e1-profile*) (e1-world-cursor world) (e1-world-queues world)))
+        (lists (fn2-ref-lists (fn2-profile-weights *e1-profile*) (e1-world-cursor world) (e1-world-queues world)))
         (h (fn2-exec-h core)) (k (fn2-exec-k core)) (a (fn2-exec-aturn core))
         (obs 0) (visits 0) (actions 0) (rb 0) (rs 0))
   (setf ref (fn2-ref-import-boundary core ref)

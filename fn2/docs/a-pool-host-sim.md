@@ -348,8 +348,22 @@ separate test instance using the same events, since a certified assembly's
 expansion is closed. Its external test registration never reaches the served
 assembly.
 
-The scheduler accepts the assembled row count, stores no connection/scribe IDs
-or unused weights, and derives calendar length as `p + 4*ceiling(p/16)`. Runtime
+The scheduler accepts the assembled row count and a weight list, stores no connection/scribe
+IDs and no weights (they shape the calendar at init and are not read again), and derives
+calendar length as `W + 4*ceiling(W/16)`, W the sum of the weights (`p + 4*ceiling(p/16)` when
+every weight is 1). **Weights (D7's S3).** `fn2-sched-init profile weights n`; the core passes
+`(fn2-profile-weights profile)`, slot I's `:weight` in the ledger's `:accounts` key, 1 when
+unconfigured. A slot of weight w (1..255) appears w times per round: pass k lists, in slot
+order, the slots whose weight exceeds k; after every sixteen principal entries and after the
+last come the four services. With every weight 1 this is the unweighted calendar entry for
+entry, at any P; a calendar with a weight above 1 has at most 4,096 entries
+(`fn2-sched-profilep` refuses more, and a weight outside 1..255). The owed
+`fn2-sched-starvation (principal weights fn2-sched)` holds over any weights: its hypothesis
+`fn2-sched-calendar-validp weights` says the calendar is the weighted calendar of WEIGHTS, and
+its teeth run every principal from every cursor on the concrete calendar and on a weighted
+tiny one (weights 3 1 2 1, eleven entries). The reference builds the same calendar literally
+(`fn2-ref-calendar weights`) and its relation recovers the weights from the literal calendar
+(each slot's count) and refuses one not in the specified order (`:literal-calendar`). Runtime
 probe IDs come from the directory's generated kind-base map. `fn2-init-executor`
 sets listener admission mode through `fn2-listener-set-mode-all`; admission copies
 that mode into each connection row. Both modes share the connection free list,
@@ -381,7 +395,7 @@ a general timer heap. Trace and ServicePosture action payloads remain out of
 scope.
 
 `books/reference.lisp` supplies the separate reference transition system.
-Its ordinary lists hold the literal ROUND2 §C calendar, cursor, one FIFO per
+Its ordinary lists hold the literal ROUND2 §C calendar (weighted, `fn2-ref-lists weights`), cursor, one FIFO per
 principal and four service flags. `fn2-ref-transition` consumes one posted
 result, clock mailbox or sticky signal, in that order; otherwise it visits
 one calendar entry and runs its selected continuation or service. Empty

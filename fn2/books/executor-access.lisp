@@ -160,3 +160,18 @@
     (if (and (natp actions) (natp start))
         (fn2-exec-trace-actions actions 0 start fn2-core) fn2-core))))
 (fn2-core-preserves fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+
+; Run charges (D7's S2): every principal run's bytes and steps go to its
+; principal's ledger row, a service visit's steps to the system row (row P,
+; past the calendar's principals). The ledger answers :ok or an invariant
+; failure (a u60 overflow, a malformed ledger); failure stops the core with
+; :account, never absorbed. The executor and the reference both call this.
+(defun fn2-exec-system-row (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-sched (fn2-core-sched fn2-core))) (p) (fn2-sched-nprincipals fn2-sched) p))
+(defun fn2-exec-charge-run (principal bytes steps fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (code fn2-core) (fn2-account-charge-run principal bytes steps fn2-core)
+    (if (eq code :ok) fn2-core (fn2-core-stop *fn2-stop-reason-account* fn2-core))))
+(fn2-core-preserves fn2-exec-charge-run (principal bytes steps fn2-core) :rows nil :prefix ""
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))

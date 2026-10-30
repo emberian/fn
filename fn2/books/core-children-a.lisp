@@ -15,7 +15,7 @@
  :init (fn2-ops-init profile fn2-ops) :profilep (fn2-profilep profile)
  :order :foundation :why "Outstanding effects and completion cells.")
 (defcorechild fn2-core-sched fn2-sched
- :init (fn2-sched-init profile (fn2-machine-index-count profile) fn2-sched) :profilep (fn2-sched-profilep profile)
+ :init (fn2-sched-init profile (fn2-profile-weights profile) (fn2-machine-index-count profile) fn2-sched) :profilep (fn2-sched-profilep profile)
  :reference :environment :order :foundation
  :why "Reference uses independent list queues/calendar; reference.lisp compares their semantic relation.")
 (defcorechild fn2-core-machines fn2-machines

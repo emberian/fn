@@ -158,7 +158,7 @@
           (fn2-account-core-hold 0 d fn2-core)
           (fn2-account-core-charged 0 *fn2-account-charge-rx* fn2-core)
           (fn2-account-core-charged 0 *fn2-account-charge-tx* fn2-core)
-          (fn2-cw-live clients) (fn2-cw-delivered transcripts clients) (fn2-cw-sent clients))))
+          (+ (fn2-cw-live clients) (fn2-listener-bookings 0 fn2-core)) (fn2-cw-delivered transcripts clients) (fn2-cw-sent clients))))
 (defun fn2-conn-ledger-matches-p (view)
   (declare (xargs :verify-guards nil))
   (and (equal (nth 0 view) t) (equal (nth 1 view) (nth 4 view))
