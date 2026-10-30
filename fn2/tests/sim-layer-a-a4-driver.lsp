@@ -30,7 +30,9 @@
       (load "fn2/tests/turn-meter.lsp")
       (load "fn2/tests/own-read-hook.lsp")
       (load "fn2/tests/liveness-controls.lsp")
+      (load "fn2/tests/q1-case-hook.lsp")
       (fn2-own-hook-install)
+      (fn2-q1-hook-install)
       (unwind-protect
         (progn
       (fn2-own-hook-control)
@@ -88,6 +90,10 @@
       (fn2-own-hook-reset)
       (defparameter *fn2-device-landings* (fn2-sim-run-device-broad 20261028 16384))
       (assert (eq (car *fn2-device-landings*) :pass))
+      (fn2-q1-hook-restore)
+      (fn2-q1-hook-write "fn2/tests/evidence/q1-a4-tally.lisp" "fn2/tests/sim-layer-a-a4-driver.lsp"
+                         "A4 fixed gate, every TRACE turn before the metered echo run: echo evidence controls, L1 controls and regression, scenario, fault, recovery and replay controls, scribe scenario, device broad"
+                         '(:echo-concrete :tiny :scribe-tiny-4k))
       (fn2-meter-install)
       (unwind-protect
           (progn
@@ -115,6 +121,7 @@
             (fn2-meter-report "ECHO TURN CPU profile=CONCRETE-TRACE adapter-faults=BROAD own-hook=ON"))
         (fn2-meter-restore))))
       (fn2-own-hook-report "ECHO+LIVENESS" t))
+        (fn2-q1-hook-restore)
         (fn2-own-hook-restore))
       (sb-ext:exit :code 0))
   (cl:error (condition)

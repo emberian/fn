@@ -436,6 +436,33 @@ ACCOUNT is not implemented
 `:not-yet` until their layers. (Corrected 2026-10-28 after the Fable review, REVIEW-20261028.md
 finding 2: an earlier revision of this paragraph claimed ACCOUNT was implemented.)
 
+**TRACE per case and the Q1 evidence (DM3).** `fn2-check-trace-cases-turn`
+(`sim/check-trace.lisp`) runs the same turn as `fn2-check-trace-turn`, stepped one
+transition at a time by the two loops themselves (`fn2-concrete-loop` and `fn2-ref-loop`
+with fuel 1, each continuing exactly when its named stop condition,
+`fn2-concrete-loop-stop-p` / `fn2-ref-loop-stop-p`, is false), so the stepped turn is
+`fn2-turn` and `fn2-ref-turn`. Before each transition `fn2-q1-label` names its Q1 case;
+after it, that case's G1 square is checked: both loops continue together, the five
+results agree, and `fn2-ref-difference` is empty with the reference's work counters
+written by its loop exit (the contract's normalisation). A failure is a TRACE failure.
+Per turn it returns the case counts and, for `(:run K P)`, the count of transitions
+after which the core has no stop reason (the generated run entry asserted K's arm
+certificate there non-vacuously). The A4 driver installs `tests/q1-case-hook.lsp`
+(raw instrumentation, as the read hook) around every TRACE turn before the metered
+echo run (the turn meter measures `fn2-turn` itself, so that run stays whole-turn),
+then writes the sums to `tests/evidence/q1-a4-tally.lisp` with the run's revision.
+`tests/q1-evidence.lisp` appends to every Q1 case row the record of the row's own
+checker (`fn2-q1-check-case`) and to every `K-P-BOUND` row the run-time certificate's
+record (`fn2-arm-certificate-check`); an unreached case or arm gets an `:unchecked`
+record with zero exercised. The export lists each correspondence's cases with and
+without a passing, exercised check. At `aa2604ac3` on forge: 21,100 turns, 180,838
+transitions G1-checked, 34 of 54 cases exercised, none outside the catalogue; 19 arm
+certificates exercised. Unexercised: echo and scribe `:free`, echo `:retired`, scribe
+`:stopped`, the fourteen `fn2-commit` cases (B's machine; the A4 gate runs no commit
+scenario), the router fallback and the sticky signal. The scope is the A4 gate's
+scenarios; frame rows (`K-P-FRAME`) get no record: only their next-phase half is
+asserted at run time.
+
 **Real read monitoring (R5b).** Acceptance installs `tests/own-read-hook.lsp`
 around `fn2-core-read` and `fn2-core-write`. Each scenario binds its concrete core
 and OWN monitor; reference-model reads are excluded. The hook checks scribe
