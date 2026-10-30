@@ -1,5 +1,6 @@
 (in-package "ACL2")
 (include-book "../books/profile")
+(include-book "../books/words")
 
 ; xoshiro128**. Four scalar words let the simulator store its state inline.
 ; All runtime products and left shifts are below 2^49 (SBCL fixnums).
@@ -20,27 +21,6 @@
        (defthm ,boundname (implies ,hyp (< ,term ,bound))
          :rule-classes :linear
          :hints (("Goal" :use ,source :in-theory (disable ,source)))))))
-
-(defun fn2-u32 (x)
-  (declare (xargs :guard (integerp x)))
-  (mod (ifix x) 4294967296))
-(defthm fn2-u32-type
-  (unsigned-byte-p 32 (fn2-u32 x)))
-(defthm fn2-u32-natp
-  (natp (fn2-u32 x)) :rule-classes :type-prescription)
-(defthm fn2-u32-bound
-  (< (fn2-u32 x) 4294967296) :rule-classes :linear)
-(in-theory (disable fn2-u32))
-
-(defun fn2-u32-mul (a b)
-  (declare (xargs :guard (and (unsigned-byte-p 32 a) (unsigned-byte-p 32 b))))
-  (let* ((al (mod a 65536)) (ah (floor a 65536))
-         (bl (mod b 65536)) (bh (floor b 65536))
-         (cross (mod (+ (* al bh) (* ah bl)) 65536)))
-    (fn2-u32 (+ (* al bl) (* 65536 cross)))))
-(defthm fn2-u32-mul-type
-  (unsigned-byte-p 32 (fn2-u32-mul a b)))
-(in-theory (disable fn2-u32-mul))
 
 (defun fn2-rotl32 (x n)
   (declare (xargs :guard (and (unsigned-byte-p 32 x) (natp n) (< n 32))))
@@ -81,17 +61,6 @@
 ; not SplitMix64's sequence: it is an explicitly versioned 32-bit expansion.
 ; Seed low/high u32 halves both influence all four words. Natural seeds
 ; are interpreted modulo 2^64 at init; no u64 runtime word is constructed.
-(defun fn2-prng-mix32 (x)
-  (declare (xargs :guard (unsigned-byte-p 32 x)))
-  (let* ((x (fn2-u32 (logxor x (ash x -16))))
-         (x (fn2-u32-mul x 2246822507))
-         (x (fn2-u32 (logxor x (ash x -13))))
-         (x (fn2-u32-mul x 3266489909)))
-    (fn2-u32 (logxor x (ash x -16)))))
-(defthm fn2-prng-mix32-type
-  (unsigned-byte-p 32 (fn2-prng-mix32 x)))
-(in-theory (disable fn2-prng-mix32))
-
 (defun fn2-prng-seed (seed)
   (declare (xargs :guard (natp seed)))
   (let* ((lo (fn2-u32 seed))
