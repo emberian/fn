@@ -25,9 +25,13 @@
 (defconst *fn2-ss-profile* (put-assoc-equal :trace nil *fn2-conn-wire-profile*))
 
 ; Client records live in a global table (test-side): id -> (nonce sent
-; received closed cap). The id is a serial number per open, never the
-; capability slot: a slot's next incarnation is a new connection with its
-; own record and its own WIRE verdict at stop.
+; received closed cap). The id is a serial number per open (the global
+; fn2-ss-serial), never the capability slot: a slot's next incarnation is
+; a new connection with its own record and its own WIRE verdict at stop.
+; Only live records are walked: a record leaves the live table for the
+; retired list (fn2-ss-retired) once its connection closed and its call
+; answered, so every call costs the live connections (at most the network
+; slots), never the opens so far; stop judges retired and live.
 (defun fn2-ss-hex-digit (n) (declare (xargs :verify-guards nil)) (char "0123456789abcdef" n))
 (defun fn2-ss-hex (octets)
   (declare (xargs :verify-guards nil))
@@ -96,7 +100,9 @@
        (fn2-sim (update-fn2-sim-probabilitiesi *fn2-fault-crash* 0 fn2-sim))
        (fn2-sim (update-fn2-sim-fault-budget 100000 fn2-sim))
        (fn2-own (fn2-own-init *fn2-ss-profile* fn2-own))
-       (state (f-put-global 'fn2-ss-clients nil state)))
+       (state (f-put-global 'fn2-ss-clients nil state))
+       (state (f-put-global 'fn2-ss-retired nil state))
+       (state (f-put-global 'fn2-ss-serial 0 state)))
     (prog2$ (fn2-ss-say "started" nil nil seed) (mv fn2-core fn2-sim fn2-own state))))
 
 ; Whether a record tracks slot CAP's incarnation NONCE.
@@ -131,22 +137,36 @@
            ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance-with-clients nil t fn2-core fn2-sim fn2-own)))
         (fn2-ss-await (- fuel 1) clients fn2-core fn2-sim fn2-own)))))
 
-(defun fn2-ss-reply (id before clients)
-  ; The octets ID received since BEFORE (its record's received list).
+(defun fn2-ss-reply (id before clients retired)
+  ; The octets ID received since BEFORE (its record's received list); a
+  ; retired id (closed) is found in the retired list.
   (declare (xargs :verify-guards nil))
-  (let ((r (cdr (assoc-equal id clients))))
+  (let ((r (cdr (or (assoc-equal id clients) (assoc-equal id retired)))))
     (mv (reverse (take (- (len (nth 2 r)) before) (nth 2 r))) (nth 3 r))))
 
+;; Split the live table: closed records join RETIRED (consed, no append).
+(defun fn2-ss-retire (clients live retired)
+  (declare (xargs :verify-guards nil))
+  (if (atom clients) (mv (reverse live) retired)
+    (if (nth 3 (cdr (car clients)))
+        (fn2-ss-retire (cdr clients) live (cons (car clients) retired))
+      (fn2-ss-retire (cdr clients) (cons (car clients) live) retired))))
+(defun fn2-ss-keep (clients state)
+  (declare (xargs :stobjs state :verify-guards nil))
+  (mv-let (live retired) (fn2-ss-retire clients nil (f-get-global 'fn2-ss-retired state))
+    (let ((state (f-put-global 'fn2-ss-retired retired state)))
+      (f-put-global 'fn2-ss-clients live state))))
 (defun fn2-ss-open (fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((clients (f-get-global 'fn2-ss-clients state))
        ((mv found cap nonce fn2-core fn2-sim fn2-own) (fn2-ss-await 4000 clients fn2-core fn2-sim fn2-own))
        ((unless found) (prog2$ (fn2-ss-say "refused" nil t -1) (mv fn2-core fn2-sim fn2-own state)))
-       (id (+ 1 (len clients)))
-       (clients (append clients (list (cons id (list nonce nil nil nil cap)))))
+       (id (+ 1 (nfix (f-get-global 'fn2-ss-serial state))))
+       (state (f-put-global 'fn2-ss-serial id state))
+       (clients (cons (cons id (list nonce nil nil nil cap)) clients))
        ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
-       ((mv got closed) (fn2-ss-reply id 0 clients))
-       (state (f-put-global 'fn2-ss-clients clients state)))
+       ((mv got closed) (fn2-ss-reply id 0 clients (f-get-global 'fn2-ss-retired state)))
+       (state (fn2-ss-keep clients state)))
     (prog2$ (fn2-ss-say "open" got closed id) (mv fn2-core fn2-sim fn2-own state))))
 
 (defun fn2-ss-chunks (octets chunks fuel)
@@ -174,19 +194,19 @@
 (defun fn2-ss-send (id octets chunks fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((clients (f-get-global 'fn2-ss-clients state))
-       (before (len (nth 2 (cdr (assoc-equal id clients)))))
+       (before (len (nth 2 (cdr (or (assoc-equal id clients) (assoc-equal id (f-get-global 'fn2-ss-retired state)))))))
        ((mv clients fn2-core fn2-sim fn2-own)
         (fn2-ss-deliver (+ 64 (* 4 (len octets))) (fn2-ss-chunks octets chunks (len octets)) id clients
                         fn2-core fn2-sim fn2-own))
-       ((mv got closed) (fn2-ss-reply id before clients))
-       (state (f-put-global 'fn2-ss-clients clients state)))
+       ((mv got closed) (fn2-ss-reply id before clients (f-get-global 'fn2-ss-retired state)))
+       (state (fn2-ss-keep clients state)))
     (prog2$ (fn2-ss-say "reply" got closed id) (mv fn2-core fn2-sim fn2-own state))))
 
 (defun fn2-ss-close (id fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((clients (f-get-global 'fn2-ss-clients state))
        (r (cdr (assoc-equal id clients)))
-       (before (len (nth 2 r)))
+       (before (len (nth 2 (or r (cdr (assoc-equal id (f-get-global 'fn2-ss-retired state)))))))
        ; Drain what the node already sent before the client's EOF.
        ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
        (r (cdr (assoc-equal id clients)))
@@ -198,8 +218,8 @@
                   fn2-sim))
        (clients (if r (put-assoc-equal id (list (nth 0 r) (nth 1 r) (nth 2 r) t (nth 4 r)) clients) clients))
        ((mv clients fn2-core fn2-sim fn2-own) (fn2-ss-run 20000 0 nil clients fn2-core fn2-sim fn2-own))
-       ((mv got &) (fn2-ss-reply id before clients))
-       (state (f-put-global 'fn2-ss-clients clients state)))
+       ((mv got &) (fn2-ss-reply id before clients (f-get-global 'fn2-ss-retired state)))
+       (state (fn2-ss-keep clients state)))
     (prog2$ (fn2-ss-say "closed" got t id) (mv fn2-core fn2-sim fn2-own state))))
 
 (defun fn2-ss-verdict-lines (clients)
@@ -213,7 +233,8 @@
 (defun fn2-ss-stop (fn2-core state)
   (declare (xargs :stobjs (fn2-core state) :verify-guards nil))
   (let ((clients (f-get-global 'fn2-ss-clients state)))
-    (progn$ (fn2-ss-verdict-lines clients)
+    (progn$ (fn2-ss-verdict-lines (f-get-global 'fn2-ss-retired state))
+            (fn2-ss-verdict-lines clients)
             (fn2-ss-say "stopped" nil nil (fn2-core-stop-reason fn2-core))
             state)))
 (value-triple (cw "@@FN2SS ready - 0 0@@~%"))
