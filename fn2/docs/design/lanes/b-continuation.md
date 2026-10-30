@@ -1,85 +1,67 @@
 # fn2 layer B continuation (present state, rewritten whole after every commit)
 
-Seat: Opus, layer B. Method (`briefs/FN2-SEAT-COMMON.md`, last sections): dev is the branch; Opus
-WRITES the code; Codex only for bounded pieces with real signatures, every line read; READY to
-main per commit (SendMessage "main"). Box safety verbatim in COMMON. One-minute rule binding.
+Seat: Opus, layer B. Method: briefs/FN2-SEAT-COMMON.md (dev is the branch; Opus writes; Codex only for
+bounded pieces with real signatures, every line read; READY to main per commit via SendMessage "main").
+Main's ruling 2026-10-30 (REVIEW-20261030.md §1, §6): B5, GC2 and B-S2 are B's only work, in order, each
+landed under the whole-tree gate (every unit book; A's seven drivers with the A4 summary blocks identical
+to a dev baseline; books under 60 s), nothing interleaved.
 
 ## On dev
-- 12cd1031f: B library merged (B1, B2a-f, B4a/b, B3a, BR1, BH1, BR2, BM1 port). READY sent.
-- 19149d32e: **B3b-1** = converged commit machine (B3b + B3c + DM0b callbacks) ported to R5e1/R5e2,
-  with A seams: `assembly-callbacks-a.lisp` (A's continuations; split for the 60 s rule),
-  interim `fn2-commit` holds row in resources.lisp (R7 4/n moves holds into defmachine :holds and
-  deletes the table; it ports fn2-commit's declaration to arm contracts and keeps the split),
-  q1 pin 54. READY sent; layer C started on it.
+- 717bec1c3 **B5-1**: defcolumns init fresh (resize 0 then n; extras emptied/reset/cleared); controls in
+  columns-unit; sim/check-death.lisp (fn2-b-death-difference, -plant-survivor, -death-control) and
+  tests/death-unit.lisp. READY sent. Gate: forge /build/lanes/b51 (closure 194 rc 0; drivers 7 rc 0;
+  A4 123 summary lines identical to /build/lanes/bdev = dev b25c1ea51 baseline).
+- Earlier: B library 12cd1031f, B3b-1 19149d32e, B3b-2 49ffcd6af, seams 810a4c376.
 
-## Also on dev
-- 810a4c376: B seams for C and A (fn2-digest-store, run namespaces, named charges :advance 16 and :stage 32).
-- 49ffcd6af: **B3b-2** (commit-proof keystones + unit, OWED 196, sim-layer-b a forge nightly row).
-  READY sent with the concrete sweep: S13 10000 PASS, S14 10000 PASS (2000 per fault class),
-  768 B/ack at 16 members, 2,736 s wall on forge.
-- Branches: b-durability, b-commit, b-done and b-machine are deleted (local and origin). Archive tags
-  `archive/fn2-b-durability` (be4bf39ee), `archive/fn2-b-durability-local` (f30d8d387),
-  `archive/fn2-b-commit` (ea950f50a) keep the shas the docs cite. Worktrees b-verify, b-commit and
-  b-durability are removed. The one lane worktree is `build/lanes/fn2/b-machine` on local branch `fn2/b`;
-  rebase it on origin/dev and push `HEAD:refs/heads/dev`.
-- Forge clones: /build/lanes/b (dev 19149d32e, sweep), b2 (scratch), b3 (49ffcd6af certified).
-- Pending from the DSL seat: a generic contract-assert factoring for generated run/handler
-  preservation lemmas (assembly-callbacks 48 s, assembly-core 43 s on forge come from fn2-commit's
-  run/handler). Apply it to the commit kind when the form arrives.
+## In flight (worktree /Users/ember/dev/fn/build/lanes/fn2/b-machine, branch fn2/b)
+fn2/b = origin/dev 294055805 + three LOCAL commits (rebased 2026-10-30; nothing pushed):
+- 903680244 **B5-3** (msg b-quests/b53.msg; GATE_LINES placeholder: amend after the gate).
+- 34d0ec870 **B5-2** (b52.msg; EXPORT_LINE placeholder). Content = what was GREEN at 84e6bb293 on
+  forge b5w; rebase conflict only in exec-state.lisp's stop reasons (C's :engine-genesis first, then
+  :recovery-bounds :recovery-release).
+- 55bca6279 **B5-4a WIP** (reword before landing; never push as is). Not certified past
+  machines-b.lisp (the assembly needs the nesting fix: children now 35+).
+**WAITING** for main's sha of the DSL mv-nesting commit. Then: `git rebase <sha>`; push fn2/b to
+forge (`git push fn@forge:/build/fn.git fn2/b:refs/heads/fn2-b`); gate B5-3+B5-2 on forge b5w checked
+out at the B5-2 commit (gate2.sh: bdev pulled to dev, certify, drivers both trees, tiny gate, export;
+detached under setsid with a group-leader PID file), diff A4 (a4blocks.sh), amend messages, secrets
+check, push the two commits to dev (`git push origin <B5-2 sha>:refs/heads/dev`), READY each.
+Then B5-4a: a second forge tree b54 at the WIP commit: closure, commit-member-unit, sim-layer-b tiny.
 
-## GC2 (agreed with C; build with B5)
-Member kind :run-replacement. C's workspace: fn2-format-run-replacement body at 0 (<=167 B),
-N in 1..31 fn2-format-dependency-entry records from offset 256 (<=121 B each). Admission
-`(fn2-commit-admit-runs schema slot gen body-len entry-bytes entry-count okind oslot ogen fn2-core)
--> (mv code batch fn2-core)`; codes :ok (workspace handed to commit kind) / :exhausted /
-:admission (bad decode, N range, an entry extent still has :outstanding-io, schema mismatch).
-Record packed with record kind :run-replacement; entries go verbatim into the dependency page;
-fence/preflush covers them. Install after root swap calls the constrained hook
-`(fn2-runs-install schema batch slot gen okind oslot ogen fn2-core) -> (mv code fn2-core)`
-(C amendment a, ruled yes), passing the commit kind's owner triple, read-only by contract; C attaches via defattach; the
-default attachment refuses :unregistered; a non-:ok makes the batch uncertain. Uncertain batches never
-call it; B5 replays the hook for a durable, uninstalled member. More than 31 pages: an entry whose
-TARGET page-kind is :dependency-manifest is a C-sealed page of entries; recovery follows it
-exactly one level and checks every listed target.
-
-## Owed / notes
-- HELD-NOTIFICATION control is a lock-order inversion; an EXEC §7a-shaped control is a B7 item.
-- fn2-exec-now stays unreachable from continuations; B reads scalar fn2-control-now (A ruled).
-- Laptop load is 70-250 today; laptop wall times are not measurements. Time on forge.
-
-## Next (handoff point: the seat hit its context ceiling here, 2026-10-29 ~17:00 forge time)
-1. **B5 recovery + GC2**, written by the seat (no Codex insulation). The scope is the prewritten
-   `b-quests/B5.prompt` (25 lines: read list = b-durability.md whole; STORAGE-DESIGN-ASTRA concrete parts
-   F/G/H/I + the recovery-invariants section; ROUND2 §E.4/E.5/F.1/F.2 rows 15-16; SCHOLAR ch. 4 §4.3-4.6).
-   The worktree is now `build/lanes/fn2/b-machine` (branch fn2/b), not b-durability. Statement-first: write
-   the three keystones as defthm-owed with teeth BEFORE code (`fn2-recovery-never-shortens-intact`,
-   `fn2-recovery-broad-bad-tail-unknown`, `fn2-recovery-rollback-needs-witness`). They replace
-   `sim/commit-history.lisp`'s stand-in (`fn2-b-recover`) in HISTORY, the delete-the-twin rule.
-   Add GC2 (section above, with C's two amendments): `fn2-commit-admit-runs`, the :run-replacement
-   member, the constrained `fn2-runs-install` hook (defattach seam; default :unregistered), replay
-   of the hook for a durable, uninstalled member, and following :dependency-manifest pages one level.
-   Split it into READY-sized commits (machine + checker; scenarios; GC2), each < 60 s per book,
-   timed on forge. The tiny sweep is the gate; the concrete sweep is the forge nightly row.
-2. When the DSL seat sends its generic contract-assert form, apply it to fn2-commit's generated
-   run/handler (assembly-callbacks 50 s and assembly-core 45 s on forge are near the line).
-3. B6 checkpoint + cleaner (`b-quests/` has prompts), B7 decisive scenario (STORAGE-DESIGN §7;
-   refine the HELD-NOTIFICATION control to EXEC §7a's shape).
+## B5-4 (statement: b-quests/b54-design.md, after Astra's read b54-astra.md; C said YES to the rename)
+B5-4a as written in the WIP commit:
+- books/commit-members.lisp: fn2-commit-member (32 rows) and fn2-commit-settled (64 rows; reserve,
+  settle, free, take, free-count); certifies locally.
+- machines-b.lisp: children fn2-core-commit-members/-settled; commit fields cb-wrote cb-open dep-bytes
+  rec-bytes; state :dropping (holds batch-membership storage-window; -> :draining); root columns
+  aborting abort-event; reason :install 7. exec-state: stop reasons :commit-publish :commit-drop
+  :commit-settle.
+- commit.lisp: hooks (fn2-commit-hook-events: encapsulate + -UNREGISTERED default + defattach for
+  fn2-runs-install, fn2-successor-publish, fn2-successor-drop, fn2-member-replay; constraint
+  -CONSTRAINT = corep/wfp + frame over *fn2-commit-hook-frame*); fn2-commit-pick, -admit-keyed
+  (n mode okind oslot ogen -> (mv code id batch event)), -put-members, -take, -abort-state, -refuse,
+  -fail, abort-aware partner-state (:failed when aborting <= batch), stop-follower refuses unwritten;
+  collect closes (cb-open 0); seal failure -> fail (runnable t); writes: follower waits for leader's
+  first write, cb-wrote set on issue, issue failure -> fail; publish calls the hook then stops
+  :commit-publish on non-:ok; notify settles accepted; drain settles uncertain first and lets a
+  dropped batch drain whatever its partner; fn2-commit-drop arm (wait for leader, drop hook, unprepare,
+  settle refused, end-abort, -> draining).
+- assembly chain now a -> b -> c -> d -> r -> s -> t (-b expands the hooks then part 1).
+- machines-c-bind.lisp: C's wrappers renamed fn2-succ-core-publish/-drop, defattach'd (C agreed;
+  C's frame proof may need hints at defattach: if it fails, ask C).
+- harness: fn2-b-start goes through admit-keyed (checks the row and event it expected, :harness-row
+  otherwise); busy-row refusal is now :exhausted (sim-layer-b expectation changed).
+- tests/commit-member-unit.lisp: refused leader, refused pair (draft; expectations to be pinned).
+Not yet: B5-4b (run member, envelopes, dependency verification, replay), then the commit port, B-S2.
 
 ## Commands that work
-- Forge: `git push fn@forge:/build/fn.git origin/dev:refs/heads/dev`; clones /build/lanes/{b,b2};
-  `rsync -aR <files> forge:/build/lanes/b2/` for uncommitted files (never laptop .cert files);
-  `swarm-build sh fn2/tools/forge-certify.sh [books]`; drivers `forge-driver.sh NAME` or
-  `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k tools/acl2 < fn2/tests/X.lsp`.
-  ssh to forge drops sometimes: retry.
-- Laptop certify (zsh array): `T=(...); (nohup timeout -k 5 3000 sh fn2/tools/certify.sh -j 6
-  "${T[@]}" --export-owed > build/X.log 2>&1 & echo $! > build/X.pid)`.
-- Per-event profile: REPL `(ld (cdr (fn2-commit-event-forms)) :ld-error-action :continue)` after
-  including assembly-callbacks-a; `build/evtimes.py <log>` sorts event times.
-- `git reset` is refused by permissions; amend, `git restore --staged`, rebase work.
-
-## API later quests rely on
-- `fn2-commit-start id members first-key mode partner fn2-core` -> `(mv code fn2-core)`
-  (refuses :admission for non-commit ids); `fn2-commit-run id budget fn2-core`.
-- `fn2-commit-idp`, `fn2-commit-partner-state` (:invalid/:failed/:ok), `fn2-commit-checked` macro.
-- `fn2-commit-proof-step` in sim/commit-proof-step.lisp; `fn2-digest-store` in format-check.
-- B1 `fn2-cm-*`, `fn2-lm-*`; sim/commit-history.lisp = recovery stand-in until B5.
+- Forge trees: bdev (dev baseline, certified), b51 (B5-1, done), b5w (B5 work). Sync uncommitted:
+  `rsync -a --exclude '*.cert' --exclude '*.cert.out' --exclude '*.fasl' --exclude '*.port' --exclude docs/ fn2/ forge:/build/lanes/b5w/fn2/`.
+- Detached certify (group leader = $!): `ssh forge 'cd /build/lanes/T && setsid sh -c "swarm-build sh
+  fn2/tools/forge-certify.sh > build/run.out 2>&1; echo rc=\$? >> build/run.out" </dev/null >/dev/null 2>&1 &
+  echo $! > build/run.pid'`; times: `python3 fn2/tools/certify-times.py`.
+- Drivers: scratch drivers.sh (copied to /build/lanes/b51/build/drivers.sh): seven drivers under setsid,
+  one PID file and .rc each. A4 blocks: /build/lanes/b51/build/a4blocks.sh LOG (summary lines, timing
+  stripped); diff against bdev's.
+- Commit in the worktree: `git add <new files>; git commit --no-gpg-sign -F msg -- <paths>`; secrets
+  check; `git push origin HEAD:refs/heads/dev`; then push dev to forge.
