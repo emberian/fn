@@ -512,5 +512,45 @@
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-listener-set-target-all))
 
+; Each listener's principal slot (D7's S1), from the profile key
+; :listener-principals, one slot per listener in listener order (default 0):
+; its Accept bookings go to that principal, and the admitted row copies it.
+; A slot that is not a principal of the calendar makes the listener's first
+; wake stop the core (:wake-bounds).
+(defun fn2-listener-principal-rows (left slots fn2-listener)
+  (declare (xargs :stobjs fn2-listener :measure (nfix left)
+                  :guard (and (fn2-listener-wfp fn2-listener) (natp left)
+                              (<= left (fn2-listener-rows fn2-listener)))))
+  (if (zp left) fn2-listener
+    (let* ((slot (nth (- left 1) (true-list-fix slots)))
+           (fn2-listener (fn2-listener-set-principal-slot (- left 1)
+                           (if (unsigned-byte-p 16 slot) slot 0) fn2-listener)))
+      (fn2-listener-principal-rows (- left 1) slots fn2-listener))))
+(defthm fn2-listener-principal-rows-type
+  (implies (and (fn2-listenerp fn2-listener) (fn2-listener-wfp fn2-listener)
+                (natp left) (<= left (fn2-listener-rows fn2-listener)))
+           (fn2-listenerp (fn2-listener-principal-rows left slots fn2-listener))))
+(defthm fn2-listener-principal-rows-wfp
+  (implies (and (fn2-listener-wfp fn2-listener) (natp left)
+                (<= left (fn2-listener-rows fn2-listener)))
+           (fn2-listener-wfp (fn2-listener-principal-rows left slots fn2-listener))))
+(in-theory (disable fn2-listener-principal-rows))
+(defun fn2-listener-set-principals (slots fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
+    (fn2-listener-principal-rows (fn2-listener-rows fn2-listener) slots fn2-listener) fn2-core))
+(defthm fn2-listener-set-principals-type
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-corep (fn2-listener-set-principals slots fn2-core)))
+  :hints (("Goal" :use ((:instance fn2-listener-principal-rows-type
+                         (fn2-listener (fn2-listener-table fn2-core))
+                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
+                  :in-theory (enable fn2-core-wfp))))
+(defthm fn2-listener-set-principals-wfp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-core-wfp (fn2-listener-set-principals slots fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-listener-set-principals))
+
 (fn2-resolve :access)
 ))

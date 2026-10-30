@@ -1304,6 +1304,10 @@
 ; credit (unless it retires). fn2-machine-admit dispatches on the target
 ; ordinal a listener row carries. Each K's operation declares its exact
 ; effects and target, checked against K's :holds here.
+;; The listener's offer: the fields of a listener row an admitted kind may copy
+;; (`:copy`), in the dispatcher's argument order. Fixed, so the listener's call
+;; is one form whatever kinds a build admits.
+(defconst *fn2-machine-listener-offer* '(mode principal-slot account-ref))
 (defun fn2-machine-admission-copies (kinds world)
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil
@@ -1414,20 +1418,38 @@
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil
     (cons (fn2-columns-sym 'fn2-machine-admit- (symbol-name (car kinds))) (fn2-machine-admit-names (cdr kinds)))))
+(defun fn2-machine-books-arms (kinds o world)
+  ; ordinals of the admitted kinds whose admission copies account-ref (D7's S1)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil
+    (append (and (member-eq 'account-ref (fn2-arm-get :copy (fn2-machine-property (car kinds) :admission world)))
+                 (list o))
+            (fn2-machine-books-arms (cdr kinds) (+ 1 (nfix o)) world))))
 (defun fn2-machine-admission-events-form (world)
   (declare (xargs :verify-guards nil))
   (let* ((kinds (fn2-machine-admitted world))
-         (copies (fn2-machine-admission-copies kinds world)))
+         (copies *fn2-machine-listener-offer*))
+    (if (not (subsetp-eq (fn2-machine-admission-copies kinds world) copies))
+        (er hard 'fn2-machine-admission "An admitted kind's :copy names a field outside the listener's offer ~x0: ~x1."
+            copies (fn2-machine-admission-copies kinds world))
     `(progn
        ,@(fn2-machine-admission-all-events kinds 0 world)
        (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
         (defun fn2-machine-admit (target index nonce ,@copies fn2-core)
           (declare (xargs :stobjs fn2-core
                           :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)
-                                      ,@(fn2-machine-copy-guards copies (car kinds) world)))
+                                      ,@(fn2-machine-copy-guards copies 'fn2-listener world)))
                    (ignorable ,@copies))
           (case target ,@(fn2-machine-admit-arms kinds 0 world) (otherwise (mv :no-row fn2-core)))))
        (fn2-core-preserves fn2-machine-admit (target index nonce ,@copies fn2-core) :position 1 :rows nil :prefix "")
+       ; D7's S1: a listener books its principal's :connection-row at Accept
+       ; issue only for a target kind whose admission copies account-ref (the
+       ; row then carries the booking and releases it at drain).
+       (defun fn2-machine-admission-books-p (target)
+         (declare (xargs :guard t))
+         (if (member-equal target ',(fn2-machine-books-arms kinds 0 world)) t nil))
+       (defcost fn2-machine-admission-books-p
+         :doc "Whether the listener's target kind carries a principal booking (its admission copies account-ref).")
        ; The listener sees one transfer of its reserved row; each kind's own
        ; operation carries the exact effects, checked against its :holds below.
        (defcost fn2-machine-admit :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables)
@@ -1436,6 +1458,6 @@
        (make-event
         (let ((problem (fn2-arm-target-problem ',(fn2-machine-admit-names kinds) (w state))))
           (if problem (er soft 'fn2-machine-admission "~@0" problem)
-            (value '(value-triple :admission-effects-checked))))))))
+            (value '(value-triple :admission-effects-checked)))))))))
 (defmacro fn2-machine-admission-events ()
   '(make-event (value (fn2-machine-admission-events-form (w state)))))

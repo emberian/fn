@@ -28,24 +28,25 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (phase *fn2-listener-state-accepting*) (mode 1))
  :observes ((:accept-result fn2-listener-observe-accept
-             :cost (:steps *fn2-work-transition*) :writes (cap-index cap-nonce event-ready)
-             :tables (fn2-core-machines) :from (:admitting) :next (:accepting)
-             :uses (fn2-listener-return-credit))
+             :cost (:steps *fn2-work-transition*) :writes (cap-index cap-nonce event-ready account-ref)
+             :tables (fn2-core-machines fn2-core-accounts) :from (:admitting) :next (:accepting)
+             :uses (fn2-listener-return-credit fn2-account-unbook-ref))
             (:close-result fn2-listener-observe-close
              :cost (:steps *fn2-work-transition*) :writes (event-ready)
              :from (:closing) :next (:accepting) :uses ()))
  :continuations
  ((:accepting fn2-listener-accept
    :cost (:steps *fn2-work-transition* :descriptors 1)
-   :writes (pending stopped wait-reason ready-prev ready-next)
-   :tables (fn2-core-ops fn2-core-machines fn2-core-machine-tables)
+   :writes (pending stopped wait-reason ready-prev ready-next account-ref)
+   :tables (fn2-core-ops fn2-core-machines fn2-core-machine-tables fn2-core-accounts)
    :next (:accepting :admitting)
    :uses (fn2-machine-admission-credits fn2-machine-park-admission fn2-issue-accept
-          fn2-listener-take-credit fn2-machine-issue-result fn2-machine-refuse-phase))
+          fn2-listener-take-credit fn2-machine-issue-result fn2-machine-refuse-phase
+          fn2-machine-admission-books-p fn2-account-book fn2-account-unbook-ref fn2-core-stop))
   (:admitting fn2-listener-admitting
    :cost (:steps (:cost fn2-listener-admit :steps))
-   :writes (event-ready)
-   :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables)
+   :writes (event-ready account-ref)
+   :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables fn2-core-accounts)
    :next (:admitting :accepting :closing)
    :uses (fn2-listener-admit fn2-machine-refuse-phase)
    :on-refusal (:close-and-release :to :closing :releases (:connection-row)))

@@ -41,12 +41,17 @@
 ; Handlers own their storage policy; generic routing never overwrites a
 ; machine event cell before its handler has consumed the completion.
 (defmachine-callback fn2-listener-observe-accept fn2-listener (id event outcome reason count aux0 aux1) 1
-  (let ((fn2-core
-         (if (equal outcome *fn2-outcome-done*)
-             (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))
-           (let ((fn2-core (fn2-listener-return-credit row-target fn2-core)))
-             (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))))
-    (mv id fn2-core)))
+  ; A failed Accept returns the row credit and releases the booking (D7's S1).
+  (let ((target row-target) (ref row-account-ref))
+    (if (equal outcome *fn2-outcome-done*)
+        (let ((fn2-core (fn2-listener-put-core id (cap-index aux0) (cap-nonce aux1) (event-ready 1))))
+          (mv id fn2-core))
+      (let ((fn2-core (fn2-listener-return-credit target fn2-core)))
+        (mv-let (ucode fn2-core) (fn2-account-unbook-ref ref fn2-core)
+          (declare (ignore ucode))
+          (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0)
+                                                 (account-ref *fn2-none*))))
+            (mv id fn2-core)))))))
 
 (defmachine-callback fn2-echo-observe-receive fn2-echo (id event outcome reason count aux0 aux1) 1
   (let ((fn2-core
@@ -109,22 +114,29 @@
 
 ; The listener reads its own row once, before any write.
 (defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
-  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready)
-             :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables) :next (:accepting :closing)
-             :uses (fn2-machine-admit fn2-listener-return-credit))
+  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready account-ref)
+             :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables fn2-core-accounts) :next (:accepting :closing)
+             :uses (fn2-machine-admit fn2-listener-return-credit fn2-account-unbook-ref))
   (fn2-machine-with-work 0 *fn2-work-transition* 0
   (b* ((target row-target)
        (index row-cap-index)
        (nonce row-cap-nonce)
-       (mode row-mode))
-    (mv-let (code fn2-core) (fn2-machine-admit target index nonce mode fn2-core)
+       (mode row-mode)
+       (principal row-principal-slot)
+       (ref row-account-ref))
+    ; The admitted row copies the listener's principal and its booking.
+    (mv-let (code fn2-core) (fn2-machine-admit target index nonce mode principal ref fn2-core)
       (if (eq code :ok)
-          (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0))))
+          (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-accepting*) (event-ready 0)
+                            (account-ref *fn2-none*))))
             (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
-        (let* ((fn2-core (fn2-listener-return-credit target fn2-core))
-               (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*))))
-          (fn2-machine-result 0 (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) 0 t
-                              fn2-core)))))))
+        (let ((fn2-core (fn2-listener-return-credit target fn2-core)))
+          (mv-let (ucode fn2-core) (fn2-account-unbook-ref ref fn2-core)
+            (declare (ignore ucode))
+            (let ((fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-closing*)
+                              (account-ref *fn2-none*))))
+              (fn2-machine-result 0 (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) 0 t
+                                  fn2-core)))))))))
 
 ; :accepting holds only the accept credit. A successful Accept issue takes
 ; one row credit (the reservation the admission will spend) and moves to
@@ -139,14 +151,30 @@
            (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
         ((not (and (natp budget) (< 0 budget))) (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
         (t
-         (mv-let (code op opgen fn2-core)
-           (fn2-issue-accept 0 0 *fn2-listener-kind* id row-generation 0 fn2-core)
-           (declare (ignore op opgen))
-           (let ((fn2-core (if (eq code :ok)
-                               (let ((fn2-core (fn2-listener-take-credit row-target fn2-core)))
-                                 (fn2-listener-put-core id (phase *fn2-listener-state-admitting*)))
-                             fn2-core)))
-             (fn2-machine-issue-result id code 0 fn2-core)))))))
+         ; D7's S1: for a target that carries a booking, the listener books
+         ; its principal's :connection-row before the Accept issue. A refused
+         ; booking (:limit, :shared) admits the connection unbooked (its
+         ; greeting is the capacity 400); a ledger failure stops the core.
+         (b* ((principal row-principal-slot)
+              (target row-target)
+              ((mv bcode fn2-core)
+               (if (fn2-machine-admission-books-p target) (fn2-account-book principal fn2-core)
+                 (mv :limit fn2-core))))
+           (if (not (or (eq bcode :ok) (eq bcode :limit) (eq bcode :shared)))
+               (let ((fn2-core (fn2-core-stop *fn2-stop-reason-account* fn2-core)))
+                 (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
+             (mv-let (code op opgen fn2-core)
+               (fn2-issue-accept 0 0 *fn2-listener-kind* id row-generation 0 fn2-core)
+               (declare (ignore op opgen))
+               (if (eq code :ok)
+                   (let* ((fn2-core (fn2-listener-take-credit target fn2-core))
+                          (fn2-core (fn2-listener-put-core id (phase *fn2-listener-state-admitting*)
+                                      (account-ref (if (eq bcode :ok) principal *fn2-none*)))))
+                     (fn2-machine-issue-result id code 0 fn2-core))
+                 (mv-let (ucode fn2-core)
+                   (fn2-account-unbook-ref (if (eq bcode :ok) principal *fn2-none*) fn2-core)
+                   (declare (ignore ucode))
+                   (fn2-machine-issue-result id code 0 fn2-core))))))))))
 
 ; :admitting holds the accept credit and one reserved row credit, with the
 ; Accept pending or its capability ready. Reached without either, the row is

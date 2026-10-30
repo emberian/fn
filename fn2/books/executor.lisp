@@ -190,6 +190,21 @@
       (fn2-exec-start-listeners (- left 1) (+ id 1) fn2-core))))
 (fn2-core-preserves fn2-exec-start-listeners (left id fn2-core) :rows nil :prefix "")
 
+; Bookings the listeners hold (D7's S1): a listener with an Accept outstanding
+; holds one :connection-row booking on its principal for the connection it is
+; waiting for, so at quiescence a principal's hold is its live connections plus
+; these (D 13.5). Read by D's checkers; the executor never calls it.
+(defun fn2-listener-bookings-from (left id p fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix left)))
+  (if (zp left) 0
+    (+ (if (and (eq (fn2-machine-account-ref-read-code id fn2-core) :ok)
+                (equal (fn2-machine-account-ref id fn2-core) p)) 1 0)
+       (fn2-listener-bookings-from (- left 1) (+ 1 (nfix id)) p fn2-core))))
+(defun fn2-listener-bookings (p fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-listener-bookings-from (fn2-machine-accept-count fn2-core)
+                              (fn2-machine-kind-base *fn2-listener-kind* fn2-core) p fn2-core))
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
@@ -200,6 +215,7 @@
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
                   (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
+       (fn2-core (fn2-listener-set-principals (fn2-profile-get :listener-principals profile) fn2-core))
        (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
                    (fn2-machine-kind-base *fn2-listener-kind* fn2-core) fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))
