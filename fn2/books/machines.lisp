@@ -1271,12 +1271,14 @@
        (defthm ,(fn2-columns-sym get "-BOUND")
          (implies (fn2-corep fn2-core) (< (,get fn2-core) ,(expt 2 width)))
          :rule-classes :linear)
+       ; An over-width value is a caller's bug: the core stops with the
+       ; machine-write reason, never a dropped write (REVIEW-20261030).
        (defun ,put (value fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
-           (fn2-machines)
-           (if (unsigned-byte-p ,width value) (,writer value fn2-machines) fn2-machines)
-           fn2-core))
+         (if (not (unsigned-byte-p ,width value))
+             (fn2-core-stop *fn2-stop-reason-machine-write* fn2-core)
+           (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+             (fn2-machines) (,writer value fn2-machines) fn2-core)))
        (defthm ,(fn2-columns-sym put "-TYPE")
          (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                   (fn2-corep (,put value fn2-core))))

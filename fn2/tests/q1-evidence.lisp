@@ -3,11 +3,14 @@
 ; computes from the A4 driver's per-case tallies (tests/evidence/, written by
 ; q1-case-hook.lsp), and every arm's K-P-BOUND row gets the record of the
 ; run-time certificate the generated run entry asserted at each (:run K P)
-; transition. Unreached cases and arms are recorded :unchecked with zero
-; exercised. A checked row stays owed.
+; transition. D's scenario (sim-layer-d-evidence.lsp, every turn a reseeded
+; per-case TRACE) adds a second record from evidence/q1-d-tally.lisp, so
+; fn2-conn's cases count. Unreached cases and arms are recorded :unchecked
+; with zero exercised. A checked row stays owed.
 (in-package "ACL2")
 (include-book "../sim/check-trace")
 (include-book "evidence/q1-a4-tally")
+(include-book "evidence/q1-d-tally")
 
 (defun fn2-q1-evidence-case-events (rows)
   (declare (xargs :verify-guards nil))
@@ -18,7 +21,9 @@
                    `((fn2-square-append-evidence
                       ,(caar rows)
                       (list (,(fn2-decl-get :function checker) ',(fn2-decl-get :case checker)
-                             *fn2-q1-a4-cases* *fn2-q1-a4-run*)))))
+                             *fn2-q1-a4-cases* *fn2-q1-a4-run*)
+                            (,(fn2-decl-get :function checker) ',(fn2-decl-get :case checker)
+                             *fn2-q1-d-cases* *fn2-q1-d-run*)))))
               (fn2-q1-evidence-case-events (cdr rows))))))
 (defun fn2-q1-evidence-arm-events (labels world)
   (declare (xargs :verify-guards nil))
@@ -29,7 +34,9 @@
       (append (and id (fn2-decl-get :statement (fn2-decl-row (list :square id) world))
                    `((fn2-square-append-evidence
                       ,id (list (fn2-arm-certificate-check ',(cadr label) *fn2-q1-a4-certified*
-                                                           ',label *fn2-q1-a4-run*)))))
+                                                           ',label *fn2-q1-a4-run*)
+                                (fn2-arm-certificate-check ',(cadr label) *fn2-q1-d-certified*
+                                                           ',label *fn2-q1-d-run*)))))
               (fn2-q1-evidence-arm-events (cdr labels) world)))))
 (make-event
  (value (cons 'progn
@@ -41,6 +48,13 @@
   (if (atom labels) nil
     (append (and (assoc-equal (car labels) tally) (list (car labels)))
             (fn2-q1-evidence-exercised (cdr labels) tally))))
+(value-triple
+ (cw "Q1 EVIDENCE ~x0: cases exercised ~x1/~x2; with ~x3 also ~x4/~x2~%"
+     (fn2-decl-get :location *fn2-q1-a4-run*)
+     (len (fn2-q1-evidence-exercised *fn2-q1-catalogue* *fn2-q1-a4-cases*))
+     (len *fn2-q1-catalogue*)
+     (fn2-decl-get :location *fn2-q1-d-run*)
+     (len (fn2-q1-evidence-exercised *fn2-q1-catalogue* (append *fn2-q1-a4-cases* *fn2-q1-d-cases*)))))
 (value-triple
  (cw "Q1 EVIDENCE ~x0: cases exercised ~x1/~x2, arms certified ~x3; turns ~x4 transitions ~x5~%"
      (fn2-decl-get :location *fn2-q1-a4-run*)

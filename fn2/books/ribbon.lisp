@@ -704,12 +704,12 @@
  (implies (and (fn2-ribbon-keysp keys) (consp keys) (<= (len keys) 256) (fn2-ribbon-keysp queries) (<= (len queries) 256))
           (let ((r (fn2-ribbon-image keys nil queries nil)))
            (and (equal (car r) :sealed) (equal (cadr r) :ok) (fn2-ribbon-answers-sound keys queries (caddr r)))))
- :teeth (fn2-ribbon-no-false-negative-positive fn2-ribbon-no-false-negative-negative)
+ :teeth (fn2-ribbon-no-false-negative-positive fn2-ribbon-no-false-negative-negative) :schema :invariant
  :doc "A filter built through the real build from a run's keys seals, passes B's checker under its parent-held hash, and its probe answers :absent only for a query that is no key of the run: a filter may skip a run, never hide a key.")
 (defthm-owed fn2-ribbon-mutation-refused (keys off x)
  (implies (and (fn2-ribbon-keysp keys) (consp keys) (<= (len keys) 256)
                (natp off) (< off *fn2-run-page-size*) (unsigned-byte-p 8 x) (not (equal x 0)))
           (let ((check (cadr (fn2-ribbon-image keys nil nil (cons off x)))))
            (and (keywordp check) (not (equal check :ok)))))
- :teeth (fn2-ribbon-mutation-refused-positive fn2-ribbon-mutation-refused-negative)
+ :teeth (fn2-ribbon-mutation-refused-positive fn2-ribbon-mutation-refused-negative) :schema :invariant
  :doc "Any one-byte change anywhere in a sealed filter page (header, filter header, solution bytes or padding) is refused by name by B's checker before a probe can read it.")

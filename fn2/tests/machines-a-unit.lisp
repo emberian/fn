@@ -226,6 +226,25 @@
 (assert-event (fn2-machine-refusal-control))
 (value-triple (cw "MACHINE UNIT: lifetimes/null/retirement, declaration layout, ID roundtrip, :machine-phase STOP PASS~%"))
 
+; An over-width directory value stops the core with :machine-write and leaves
+; the field as it was (a scalar and a per-partition field); a fitting one is written.
+(defun fn2-machine-width-control (which value)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (answer fn2-core)
+      (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+           (before (if (eq which :scalar) (fn2-machine-accept-count fn2-core) (fn2-machine-free-head 0 fn2-core)))
+           (fn2-core (if (eq which :scalar) (fn2-machine-set-accept-count value fn2-core)
+                       (fn2-machine-set-free-head 0 value fn2-core)))
+           (after (if (eq which :scalar) (fn2-machine-accept-count fn2-core) (fn2-machine-free-head 0 fn2-core))))
+        (mv (if (unsigned-byte-p 32 value)
+                (and (= (fn2-core-stop-reason fn2-core) 0) (= after value))
+              (and (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*) (= after before)))
+            fn2-core)) answer)))
+(assert-event (and (fn2-machine-width-control :scalar 4294967296) (fn2-machine-width-control :scalar 3)
+                   (fn2-machine-width-control :partition 4294967296) (fn2-machine-width-control :partition 1)))
+(value-triple (cw "MACHINE UNIT: over-width scalar and partition writes STOP :machine-write PASS~%"))
+
 (include-book "std/testing/must-fail" :dir :system)
 ; These are rejected programs, not failed theorem searches. Echo COMMAND
 ; and listener ADMITTING both encode 1: the first control checks provenance.

@@ -518,6 +518,9 @@
   (implies (fn2-layout-roundtrip-hyps layout slot gen off okind oslot ogen f p)
            (fn2-layout-roundtrip-conclusion layout slot gen off okind oslot ogen f p))
   :teeth (fn2-layout-interpreter-teeth)
+  ; The interpreter against the list codec, both over a layout value: a
+  ; representation refinement whose sides share no declaration.
+  :schema :g1 :claim :representation
   :doc "Accepted one-shot runtime encode, runtime decode, source reference values and exact model bytes; proof owed.")
 (defun fn2-layout-canonical-hyps (layout code fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
@@ -535,6 +538,9 @@
   (implies (fn2-layout-canonical-hyps layout (mv-nth 0 (fn2-layout-decode layout slot gen off end okind oslot ogen f p)) f p)
            (fn2-layout-canonical-conclusion layout slot gen off end okind oslot ogen f p))
   :teeth (fn2-layout-interpreter-teeth)
+  ; The interpreter against the list codec, both over a layout value: a
+  ; representation refinement whose sides share no declaration.
+  :schema :g1 :claim :representation
   :doc "Accepted consumed prefix is exactly the encoding of runtime decoded values; trailing bytes are not part of this prefix. Proof owed.")
 
 (assert-event (eq (symbol-class 'fn2-layout-copy (w state)) :common-lisp-compliant))
@@ -874,6 +880,8 @@
                  (fn2-layout-values ',layout base f2 p2)
                  (fn2-pool-logical-octets (- end off) (+ (fn2-pool-base slot p2) off) p2))))))
        :teeth (fn2-layout-generated-teeth)
+       :schema :g1 :claim :representation :shared ((:layout ,name))
+       :sides (:concrete (,encode ,decode) :reference (fn2-layout-values fn2-layout-octets))
        :doc "Generated one-shot exports refine the list specification when the complete transition count fits their 4096-step budget. General proof owed; larger inputs use decode-step.")
      (defthm-owed ,(fn2-codec-symbol name "-CANONICAL")
        (base slot gen off end okind oslot ogen f p)
@@ -885,6 +893,8 @@
              (fn2-layout-values ',layout base f2 p)
              (fn2-pool-logical-octets (- next off) (+ (fn2-pool-base slot p) off) p))))
        :teeth (fn2-layout-generated-teeth)
+       :schema :g1 :claim :representation :shared ((:layout ,name))
+       :sides (:concrete (,decode) :reference (fn2-layout-values fn2-layout-octets))
        :doc "Actual generated decoder's accepted consumed prefix equals the specification encoding of its decoded values. General proof owed."))))
 
 (defun fn2-codec-events (name layout value-width)
