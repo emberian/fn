@@ -68,5 +68,36 @@ Measured 2026-10-29 on the box, all seven started together at `615dfde78` (they 
 | sim-layer-a-a4-driver | 91 s (last log write) | `OWN READS ECHO+LIVENESS ... total=53257` |
 | crash-model-differential | 12 s of evaluation (3 min wall with startup) | ends after the timing block |
 
+## Fallback: hbox over the SaaS tailnet (when forge is down)
+forge has gone down twice in a day (sshd dies before its banner when the box's `/dev` is wiped; a
+reboot by ember restores it, and the trees under `/build` persist). The fallback is hbox.
+
+| | |
+|---|---|
+| `ssh hbox-saas` | user `hbox`; 24 cores, load about 5-7 from its own work; about 95 GB free on `/` |
+| toolchain | `/tank/fn/toolchains/w28/acl2-literal-4g-tls64k` (the same launcher identity as forge), system books `/tank/fn/acl2-8.7/books`; hbox has no `~/.config/fn/acl2`, so set `FN_ACL2` |
+| scratch | `/tank/fn/scratch/fn2-<lane>` per seat or lane (`fn2-c`, `fn2-h-harness`, ...); the tree in `tree/` under it |
+| wrapper | `swarm-build <cmd>` (`/usr/local/bin/swarm-build`): every build, with a PID file |
+
+Ship a tree (committed state, as H does, or a working tree including named untracked files):
+```sh
+git archive --prefix=tree/ HEAD | gzip | ssh hbox-saas 'mkdir -p /tank/fn/scratch/fn2-<lane> && cd /tank/fn/scratch/fn2-<lane> && rm -rf tree && tar xzf -'
+(git ls-files; echo fn2/books/NEW.lisp) | tar czf - -T - | ssh hbox-saas 'mkdir -p /tank/fn/scratch/fn2-<lane>/tree && cd /tank/fn/scratch/fn2-<lane>/tree && tar xzf -'
+```
+Certify, detached, with a PID file (this is `/tank/fn/scratch/fn2-c/cert.sh`):
+```sh
+cd /tank/fn/scratch/fn2-<lane>/tree
+export FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k ACL2_SYSTEM_BOOKS=/tank/fn/acl2-8.7/books TIME_CERT=1
+swarm-build sh fn2/tools/certify.sh -j 8 tests/runs-unit.lisp > ../cert.log 2>&1; echo "rc=$?" >> ../cert.log
+```
+started as `(nohup sh ../cert.sh BOOKS > /dev/null 2>&1 & echo $! > ../cert.pid)`. `cert.pl` prints
+nothing until it finishes, so poll the PID, not the log. Measured 2026-10-30 at load 5-7: the C
+closure from a fresh tree (26 books, declare through runs-unit) in 2 min 30 s at `-j 8`; runs-page
+19.3 s, runs 10.8 s, runs-unit 26.8 s. Add `--export-owed` (with no books, after the closure) to
+regenerate `fn2/docs/OWED.md` in that tree; the export needs every unit book named in
+`fn2/tools/owed-export.lsp` certified first. LD drivers run the same way as on forge
+(`tools/acl2 < fn2/tests/NAME.lsp` with `FN_ACL2` set) under `swarm-build` with a timeout and a PID
+file. Stop a run only by the PID in its file. Nothing in the scratch directory is a record.
+
 ## Ending
 The row expires 2026-11-30 (`~/.config/fn/boxes.json`). The box is the dregg demo's, so nothing here tears it down; when the work ends, delete `/build/lanes/*`, `/build/fn.git`, `/tank/fn` and the `fn` user's slice, and remove the `Host forge` block from `~/.ssh/fn-boxes.conf`. Nothing on the box is a record: certificates are rebuilt by a closure run, and there is nothing to pull back to hbox.
