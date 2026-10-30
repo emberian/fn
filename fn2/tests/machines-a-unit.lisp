@@ -295,6 +295,25 @@
                    (fn2-machine-dec-control :pending 0) (fn2-machine-dec-control :pending 1)))
 (value-triple (cw "MACHINE UNIT: credit take and terminal with nothing held STOP :machine-write PASS~%"))
 
+; A defcost's (:layers L ...) group names every core child a layer-L book
+; declared, a machine kind's table by its machine's layer; a malformed group
+; is refused.
+(assert-event
+ (let ((c (fn2-cost-tables '((:layers :c)) (w state)))
+       (d (fn2-cost-tables '((:layers :d)) (w state)))
+       (b (fn2-cost-tables '((:layers :b)) (w state))))
+   (and (consp c) (consp d) (consp b)
+        (member-eq 'fn2-conn-table d) (member-eq 'fn2-core-accounts d)
+        (member-eq 'fn2-commit-table b) (not (member-eq 'fn2-conn-table b))
+        (not (intersectp-eq c d)) (not (intersectp-eq b c))
+        (not (member-eq 'fn2-core-pool (append b c d)))
+        (equal (fn2-cost-tables '(fn2-core-pool (:layers :c)) (w state)) (cons 'fn2-core-pool c))
+        (fn2-cost-tables-p '(fn2-core-pool (:layers :c :d)))
+        (not (fn2-cost-tables-p '((:layers))))
+        (not (fn2-cost-tables-p '((:layer :c))))
+        (not (fn2-cost-tables-p '(:c))))))
+(value-triple (cw "MACHINE UNIT: defcost :tables (:layers ...) groups resolve per layer PASS~%"))
+
 (include-book "std/testing/must-fail" :dir :system)
 ; These are rejected programs, not failed theorem searches. Echo COMMAND
 ; and listener ADMITTING both encode 1: the first control checks provenance.
