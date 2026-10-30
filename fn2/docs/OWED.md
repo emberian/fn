@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 411; bound statements: 406; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
+Requirements: 412; bound statements: 407; admitted proofs: 0; check coverage: 67 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1681,481 +1681,481 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-IDENTITY-ENTRY* META ENTRIES))))` | `(FN2-IDENTITY-PAGE-ROUNDTRIP-POSITIVE FN2-IDENTITY-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-IDENTITY-ENTRY* META ENTRIES))))` | `(FN2-IDENTITY-PAGE-ROUNDTRIP-POSITIVE FN2-IDENTITY-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-IDENTITY))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-IDENTITY-SEEK-LOWER-BOUND-POSITIVE FN2-IDENTITY-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 1 *FN2-IDENTITY-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-IDENTITY-SEEK-LOWER-BOUND-POSITIVE FN2-IDENTITY-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-IDENTITY))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-IDENTITY-RUN-LOOKUP-EXACT-POSITIVE FN2-IDENTITY-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-IDENTITY-RUN-LOOKUP-EXACT-POSITIVE FN2-IDENTITY-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-IDENTITY))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q N)))` | `(FN2-IDENTITY-RUN-SCAN-POSITIVE FN2-IDENTITY-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-IDENTITY-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q N)))` | `(FN2-IDENTITY-RUN-SCAN-POSITIVE FN2-IDENTITY-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-IDENTITY))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES) (EQUAL (FN2-OV-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES)))` | `(FN2-IDENTITY-OVERLAY-SORTED-POSITIVE FN2-IDENTITY-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-IDENTITY-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES) (EQUAL (FN2-OV-IMAGE 1 *FN2-IDENTITY-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES)))` | `(FN2-IDENTITY-OVERLAY-SORTED-POSITIVE FN2-IDENTITY-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-IDENTITY))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ARTICLE-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ARTICLE-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 2 *FN2-ARTICLE-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-ARTICLE-ENTRY* META ENTRIES))))` | `(FN2-ARTICLE-PAGE-ROUNDTRIP-POSITIVE FN2-ARTICLE-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ARTICLE-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 2 *FN2-ARTICLE-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-ARTICLE-ENTRY* META ENTRIES))))` | `(FN2-ARTICLE-PAGE-ROUNDTRIP-POSITIVE FN2-ARTICLE-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-ARTICLE))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ARTICLE-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ARTICLE-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 2 *FN2-ARTICLE-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q 0)))` | `(FN2-ARTICLE-SEEK-LOWER-BOUND-POSITIVE FN2-ARTICLE-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ARTICLE-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 2 *FN2-ARTICLE-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q 0)))` | `(FN2-ARTICLE-SEEK-LOWER-BOUND-POSITIVE FN2-ARTICLE-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-ARTICLE))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ARTICLE-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ARTICLE-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q)))` | `(FN2-ARTICLE-RUN-LOOKUP-EXACT-POSITIVE FN2-ARTICLE-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ARTICLE-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q)))` | `(FN2-ARTICLE-RUN-LOOKUP-EXACT-POSITIVE FN2-ARTICLE-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-ARTICLE))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ARTICLE-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ARTICLE-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q N)))` | `(FN2-ARTICLE-RUN-SCAN-POSITIVE FN2-ARTICLE-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ARTICLE-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ARTICLE-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES Q N)))` | `(FN2-ARTICLE-RUN-SCAN-POSITIVE FN2-ARTICLE-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-ARTICLE))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ARTICLE-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ARTICLE-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES) (EQUAL (FN2-OV-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES)))` | `(FN2-ARTICLE-OVERLAY-SORTED-POSITIVE FN2-ARTICLE-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ARTICLE-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-ARTICLE-ENTRY* '((ARTICLE (:ID ARTICLE))) ENTRIES) (EQUAL (FN2-OV-IMAGE 2 *FN2-ARTICLE-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((ARTICLE (:ID ARTICLE))) ENTRIES)))` | `(FN2-ARTICLE-OVERLAY-SORTED-POSITIVE FN2-ARTICLE-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-ARTICLE))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-OVERVIEW-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-OVERVIEW-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 3 *FN2-OVERVIEW-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-OVERVIEW-ENTRY* META ENTRIES))))` | `(FN2-OVERVIEW-PAGE-ROUNDTRIP-POSITIVE FN2-OVERVIEW-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-OVERVIEW-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 3 *FN2-OVERVIEW-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-OVERVIEW-ENTRY* META ENTRIES))))` | `(FN2-OVERVIEW-PAGE-ROUNDTRIP-POSITIVE FN2-OVERVIEW-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-OVERVIEW))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-OVERVIEW-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-OVERVIEW-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 3 *FN2-OVERVIEW-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q 0)))` | `(FN2-OVERVIEW-SEEK-LOWER-BOUND-POSITIVE FN2-OVERVIEW-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-OVERVIEW-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 3 *FN2-OVERVIEW-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q 0)))` | `(FN2-OVERVIEW-SEEK-LOWER-BOUND-POSITIVE FN2-OVERVIEW-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-OVERVIEW))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-OVERVIEW-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-OVERVIEW-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-OVERVIEW-RUN-LOOKUP-EXACT-POSITIVE FN2-OVERVIEW-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-OVERVIEW-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-OVERVIEW-RUN-LOOKUP-EXACT-POSITIVE FN2-OVERVIEW-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-OVERVIEW))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-OVERVIEW-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-OVERVIEW-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q N)))` | `(FN2-OVERVIEW-RUN-SCAN-POSITIVE FN2-OVERVIEW-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-OVERVIEW-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-OVERVIEW-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q N)))` | `(FN2-OVERVIEW-RUN-SCAN-POSITIVE FN2-OVERVIEW-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-OVERVIEW))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-OVERVIEW-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-OVERVIEW-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES) (EQUAL (FN2-OV-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES)))` | `(FN2-OVERVIEW-OVERLAY-SORTED-POSITIVE FN2-OVERVIEW-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-OVERVIEW-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES) (EQUAL (FN2-OV-IMAGE 3 *FN2-OVERVIEW-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES)))` | `(FN2-OVERVIEW-OVERLAY-SORTED-POSITIVE FN2-OVERVIEW-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-OVERVIEW))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ADDR-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ADDR-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 4 *FN2-ADDR-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-ADDR-ENTRY* META ENTRIES))))` | `(FN2-ADDR-PAGE-ROUNDTRIP-POSITIVE FN2-ADDR-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ADDR-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 4 *FN2-ADDR-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-ADDR-ENTRY* META ENTRIES))))` | `(FN2-ADDR-PAGE-ROUNDTRIP-POSITIVE FN2-ADDR-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-ADDR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ADDR-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ADDR-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 4 *FN2-ADDR-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q 0)))` | `(FN2-ADDR-SEEK-LOWER-BOUND-POSITIVE FN2-ADDR-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ADDR-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 4 *FN2-ADDR-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q 0)))` | `(FN2-ADDR-SEEK-LOWER-BOUND-POSITIVE FN2-ADDR-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-ADDR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ADDR-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ADDR-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q)))` | `(FN2-ADDR-RUN-LOOKUP-EXACT-POSITIVE FN2-ADDR-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ADDR-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q)))` | `(FN2-ADDR-RUN-LOOKUP-EXACT-POSITIVE FN2-ADDR-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-ADDR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ADDR-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ADDR-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q N)))` | `(FN2-ADDR-RUN-SCAN-POSITIVE FN2-ADDR-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ADDR-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-ADDR-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES Q N)))` | `(FN2-ADDR-RUN-SCAN-POSITIVE FN2-ADDR-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-ADDR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-ADDR-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-ADDR-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES) (EQUAL (FN2-OV-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES)))` | `(FN2-ADDR-OVERLAY-SORTED-POSITIVE FN2-ADDR-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-ADDR-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-ADDR-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES) (EQUAL (FN2-OV-IMAGE 4 *FN2-ADDR-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (POSITION (:ID POSITION))) ENTRIES)))` | `(FN2-ADDR-OVERLAY-SORTED-POSITIVE FN2-ADDR-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-ADDR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-GROUP-COUNTS-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-GROUP-COUNTS-ENTRY* META ENTRIES))))` | `(FN2-GROUP-COUNTS-PAGE-ROUNDTRIP-POSITIVE FN2-GROUP-COUNTS-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-GROUP-COUNTS-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-GROUP-COUNTS-ENTRY* META ENTRIES))))` | `(FN2-GROUP-COUNTS-PAGE-ROUNDTRIP-POSITIVE FN2-GROUP-COUNTS-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-GROUP-COUNTS-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP))) ENTRIES Q 0)))` | `(FN2-GROUP-COUNTS-SEEK-LOWER-BOUND-POSITIVE FN2-GROUP-COUNTS-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-GROUP-COUNTS-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP))) ENTRIES Q 0)))` | `(FN2-GROUP-COUNTS-SEEK-LOWER-BOUND-POSITIVE FN2-GROUP-COUNTS-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP))) ENTRIES Q)))` | `(FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT-POSITIVE FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP))) ENTRIES Q)))` | `(FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT-POSITIVE FN2-GROUP-COUNTS-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-GROUP-COUNTS-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((GROUP (:ID GROUP))) ENTRIES Q N)))` | `(FN2-GROUP-COUNTS-RUN-SCAN-POSITIVE FN2-GROUP-COUNTS-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-GROUP-COUNTS-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-GROUP-COUNTS-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((GROUP (:ID GROUP))) ENTRIES Q N)))` | `(FN2-GROUP-COUNTS-RUN-SCAN-POSITIVE FN2-GROUP-COUNTS-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-GROUP-COUNTS-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES) (EQUAL (FN2-OV-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((GROUP (:ID GROUP))) ENTRIES)))` | `(FN2-GROUP-COUNTS-OVERLAY-SORTED-POSITIVE FN2-GROUP-COUNTS-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-GROUP-COUNTS-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ENTRIES) (EQUAL (FN2-OV-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((GROUP (:ID GROUP))) ENTRIES)))` | `(FN2-GROUP-COUNTS-OVERLAY-SORTED-POSITIVE FN2-GROUP-COUNTS-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES))))` | `(FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP-POSITIVE FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES))))` | `(FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP-POSITIVE FN2-CONSUMER-CURSOR-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-CONSUMER-CURSOR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q 0)))` | `(FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND-POSITIVE FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q 0)))` | `(FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND-POSITIVE FN2-CONSUMER-CURSOR-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-CONSUMER-CURSOR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q)))` | `(FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT-POSITIVE FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q)))` | `(FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT-POSITIVE FN2-CONSUMER-CURSOR-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-CONSUMER-CURSOR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-CONSUMER-CURSOR-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-CONSUMER-CURSOR-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q N)))` | `(FN2-CONSUMER-CURSOR-RUN-SCAN-POSITIVE FN2-CONSUMER-CURSOR-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONSUMER-CURSOR-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-CONSUMER-CURSOR-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES Q N)))` | `(FN2-CONSUMER-CURSOR-RUN-SCAN-POSITIVE FN2-CONSUMER-CURSOR-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-CONSUMER-CURSOR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-CONSUMER-CURSOR-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-CONSUMER-CURSOR-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES) (EQUAL (FN2-OV-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES)))` | `(FN2-CONSUMER-CURSOR-OVERLAY-SORTED-POSITIVE FN2-CONSUMER-CURSOR-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONSUMER-CURSOR-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-CONSUMER-CURSOR-ENTRY* '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES) (EQUAL (FN2-OV-IMAGE 6 *FN2-CONSUMER-CURSOR-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((CONSUMER (:ID CONSUMER)) (EPOCH :U32)) ENTRIES)))` | `(FN2-CONSUMER-CURSOR-OVERLAY-SORTED-POSITIVE FN2-CONSUMER-CURSOR-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-CONSUMER-CURSOR))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP` | :OWED | :ASSERTION | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES))))` | `(FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP-POSITIVE FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP` | :OWED | :G1 | `(IMPLIES (FN2-RUN-PAGE-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) META ENTRIES) (EQUAL (FN2-RUN-PAGE-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES) (LIST :OK :OK :OK (FN2-RUN-PAGE-SPEC *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES))))` | `(FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP-POSITIVE FN2-PRINCIPAL-CHARGES-PAGE-ROUNDTRIP-NEGATIVE)` | The real writer, sealer and B's checker produce and accept exactly the specified page octets. | `NIL` | `((:SCHEMA FN2-PRINCIPAL-CHARGES))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q 0)))` | `(FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND-POSITIVE FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q)) (EQUAL (FN2-RUN-SEEK-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q 0)))` | `(FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND-POSITIVE FN2-PRINCIPAL-CHARGES-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `((:SCHEMA FN2-PRINCIPAL-CHARGES))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q)))` | `(FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT-POSITIVE FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q)) (EQUAL (FN2-RUN-LOOKUP-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q)))` | `(FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT-POSITIVE FN2-PRINCIPAL-CHARGES-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `((:SCHEMA FN2-PRINCIPAL-CHARGES))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-PRINCIPAL-CHARGES-RUN-SCAN)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-PRINCIPAL-CHARGES-RUN-SCAN` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q N)))` | `(FN2-PRINCIPAL-CHARGES-RUN-SCAN-POSITIVE FN2-PRINCIPAL-CHARGES-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-PRINCIPAL-CHARGES-RUN-SCAN` | :OWED | :G1 | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-PRINCIPAL-CHARGES-ENTRY* Q) (NATP N)) (EQUAL (FN2-RUN-SCAN-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES LIMIT Q N) (FN2-RUN-SCAN-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES Q N)))` | `(FN2-PRINCIPAL-CHARGES-RUN-SCAN-POSITIVE FN2-PRINCIPAL-CHARGES-RUN-SCAN-NEGATIVE)` | A scan positioned at the lower bound of the query through the real cursor steps delivers the run's entries in key order, across pages and levels, and ends exactly when they do. | `NIL` | `((:SCHEMA FN2-PRINCIPAL-CHARGES))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED` | :OWED | :ASSERTION | `(IMPLIES (FN2-OV-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES) (EQUAL (FN2-OV-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES)))` | `(FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED-POSITIVE FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED` | :OWED | :G1 | `(IMPLIES (FN2-OV-INPUTP *FN2-PRINCIPAL-CHARGES-ENTRY* '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES) (EQUAL (FN2-OV-IMAGE 7 *FN2-PRINCIPAL-CHARGES-ENTRY* ENTRIES) (FN2-OV-IMAGE-SPEC '((PRINCIPAL (:ID PRINCIPAL)) (DIMENSION :U8)) ENTRIES)))` | `(FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED-POSITIVE FN2-PRINCIPAL-CHARGES-OVERLAY-SORTED-NEGATIVE)` | Entries inserted into the active overlay in any order through the real insert all succeed when their keys are distinct, and read back in key order. | `NIL` | `((:SCHEMA FN2-PRINCIPAL-CHARGES))` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RUN-GLUE-VERIFIED)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :INVARIANT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RUN-GLUE-VERIFIED` | :OWED | :ASSERTION | `(EQUAL (FN2-RUN-GLUE-CHECK (FN2-RUN-GLUE-ASSEMBLED)) :OK)` | `(FN2-RUN-GLUE-VERIFIED-POSITIVE FN2-RUN-GLUE-VERIFIED-NEGATIVE)` | Every assembled schema's build and lookup path (generic entry points, dispatcher, codecs, key order, generated functions, any per-schema glue) is guard-verified; the assembly refuses otherwise, by name. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RUN-GLUE-VERIFIED` | :OWED | :INVARIANT | `(EQUAL (FN2-RUN-GLUE-CHECK (FN2-RUN-GLUE-ASSEMBLED)) :OK)` | `(FN2-RUN-GLUE-VERIFIED-POSITIVE FN2-RUN-GLUE-VERIFIED-NEGATIVE)` | Every assembled schema's build and lookup path (generic entry points, dispatcher, codecs, key order, generated functions, any per-schema glue) is guard-verified; the assembly refuses otherwise, by name. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-EXACT-IDENTITY)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :INVARIANT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-EXACT-IDENTITY` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-ID-OFFERSP OFFERS) (<= (LEN OFFERS) 40) (FN2-ID-OFFERSP QUERIES) (NATP SPLIT)) (EQUAL (CADDR (FN2-IDENTITY-DECIDE-IMAGE OFFERS SPLIT NIL QUERIES)) (FN2-ID-ANSWERS-SPEC OFFERS QUERIES)))` | `(FN2-EXACT-IDENTITY-POSITIVE FN2-EXACT-IDENTITY-NEGATIVE)` | The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded as the accepted content, :evidence iff it is recorded only as conflict evidence, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-EXACT-IDENTITY` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-ID-OFFERSP OFFERS) (<= (LEN OFFERS) 40) (FN2-ID-OFFERSP QUERIES) (NATP SPLIT)) (EQUAL (CADDR (FN2-IDENTITY-DECIDE-IMAGE OFFERS SPLIT NIL QUERIES)) (FN2-ID-ANSWERS-SPEC OFFERS QUERIES)))` | `(FN2-EXACT-IDENTITY-POSITIVE FN2-EXACT-IDENTITY-NEGATIVE)` | The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded as the accepted content, :evidence iff it is recorded only as conflict evidence, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-BINDING-CONVERGES)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :ROUTE)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-BINDING-CONVERGES` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-ID-OFFERSP O1) (FN2-ID-OFFERSP O2) (<= (LEN O1) 40) (<= (LEN O2) 40) (NATP S1) (NATP S2) (EQUAL (FN2-ID-BINDING-SPEC O1) (FN2-ID-BINDING-SPEC O2)) (FN2-ID-WITHIN-BOUND O1)) (EQUAL (FN2-IDENTITY-BINDING-IMAGE O1 S1 NIL) (FN2-IDENTITY-BINDING-IMAGE O2 S2 NIL)))` | `(FN2-IDENTITY-BINDING-CONVERGES-POSITIVE FN2-IDENTITY-BINDING-CONVERGES-NEGATIVE)` | Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-BINDING-CONVERGES` | :OWED | :ROUTE | `(IMPLIES (AND (FN2-ID-OFFERSP O1) (FN2-ID-OFFERSP O2) (<= (LEN O1) 40) (<= (LEN O2) 40) (NATP S1) (NATP S2) (EQUAL (FN2-ID-BINDING-SPEC O1) (FN2-ID-BINDING-SPEC O2)) (FN2-ID-WITHIN-BOUND O1)) (EQUAL (FN2-IDENTITY-BINDING-IMAGE O1 S1 NIL) (FN2-IDENTITY-BINDING-IMAGE O2 S2 NIL)))` | `(FN2-IDENTITY-BINDING-CONVERGES-POSITIVE FN2-IDENTITY-BINDING-CONVERGES-NEGATIVE)` | Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RANGE-READ-EXACT)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RANGE-READ-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP LO) (EQUAL (LEN LO) 2) (TRUE-LISTP HI) (EQUAL (LEN HI) 2)) (EQUAL (FN2-RANGE-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES LO HI PIDX PLIMIT BUDGET SEALAT) (FN2-RANGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES LO HI PIDX PLIMIT)))` | `(FN2-RANGE-READ-EXACT-POSITIVE FN2-RANGE-READ-EXACT-NEGATIVE)` | A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RANGE-READ-EXACT` | :OWED | :G1 | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP LO) (EQUAL (LEN LO) 2) (TRUE-LISTP HI) (EQUAL (LEN HI) 2)) (EQUAL (FN2-RANGE-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES LO HI PIDX PLIMIT BUDGET SEALAT) (FN2-RANGE-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES LO HI PIDX PLIMIT)))` | `(FN2-RANGE-READ-EXACT-POSITIVE FN2-RANGE-READ-EXACT-NEGATIVE)` | A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed. | `NIL` | `NIL` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-RANGE-SEEK-POSITION)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G1)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-RANGE-SEEK-POSITION` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP PREFIX) (EQUAL (LEN PREFIX) 1) (NATP P) (POSP HI) (UNSIGNED-BYTE-P 59 HI) (FN2-RANGE-MONOTONEP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX 3)) (EQUAL (CAR (FN2-RANGE-SEEK-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES PREFIX P HI 3 BUDGET)) (FN2-RANGE-SEEK-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX P HI 3)))` | `(FN2-RANGE-SEEK-POSITION-POSITIVE FN2-RANGE-SEEK-POSITION-NEGATIVE)` | Within one stream (a group's overview, positions growing with numbers), the positioned seek over the overlay and runs answers the number from which a read delivers exactly the entries after commit position p: one past the last entry at or before p. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-RANGE-SEEK-POSITION` | :OWED | :G1 | `(IMPLIES (AND (FN2-RANGE-INPUTP *FN2-OVERVIEW-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES BUDGET) (TRUE-LISTP PREFIX) (EQUAL (LEN PREFIX) 1) (NATP P) (POSP HI) (UNSIGNED-BYTE-P 59 HI) (FN2-RANGE-MONOTONEP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX 3)) (EQUAL (CAR (FN2-RANGE-SEEK-IMAGE 3 *FN2-OVERVIEW-ENTRY* SOURCES PREFIX P HI 3 BUDGET)) (FN2-RANGE-SEEK-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) SOURCES PREFIX P HI 3)))` | `(FN2-RANGE-SEEK-POSITION-POSITIVE FN2-RANGE-SEEK-POSITION-NEGATIVE)` | Within one stream (a group's overview, positions growing with numbers), the positioned seek over the overlay and runs answers the number from which a read delivers exactly the entries after commit position p: one past the last entry at or before p. | `NIL` | `NIL` | `:REPRESENTATION` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:OPERATION-SET FN2-GRAMMAR)`
 
@@ -2279,10 +2279,10 @@ Requirements: 6; bound statements: 6; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-LISTENER-PHASE-TOTALITY` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK)) (< (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-COUNT*))` | `(FN2-LISTENER-ARM-CERTIFICATE-POSITIVE FN2-LISTENER-ARM-CERTIFICATE-NEGATIVE)` | Every reachable FN2-LISTENER row is in a declared phase, each of which has an arm. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-LISTENER-ACCEPTING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-ACCEPTING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-LISTENER-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-LISTENER-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-PENDING (FN2-LISTENER-ROW-PENDING ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-ACCEPT ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-PENDING ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-ARM-NEXT-OK-P *FN2-LISTENER-STATE-ACCEPTING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 10 11 6 4 5 3) '(1 3 29 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-LISTENER-ARM-NEXT-POSITIVE FN2-LISTENER-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm ACCEPTING of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-LISTENER-ADMITTING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-ADMITTING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-PRINCIPAL-SLOT (FN2-LISTENER-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-LISTENER-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-CAP-INDEX (FN2-LISTENER-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-LISTENER-ROW-CAP-NONCE ID FN2-CORE)) (ROW-PENDING (FN2-LISTENER-ROW-PENDING ID FN2-CORE)) (ROW-EVENT-READY (FN2-LISTENER-ROW-EVENT-READY ID FN2-CORE)) (ROW-MODE (FN2-LISTENER-ROW-MODE ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-ADMITTING ID BUDGET ROW-PRINCIPAL-SLOT ROW-ACCOUNT-REF ROW-CAP-INDEX ROW-CAP-NONCE ROW-PENDING ROW-EVENT-READY ROW-MODE ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-ARM-NEXT-OK-P *FN2-LISTENER-STATE-ADMITTING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 12 3) '(3 0 29 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-LISTENER-ARM-NEXT-POSITIVE FN2-LISTENER-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm ADMITTING of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-LISTENER-ACCEPTING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-ACCEPTING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-LISTENER-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-LISTENER-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-PENDING (FN2-LISTENER-ROW-PENDING ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-ACCEPT ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-PENDING ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-ARM-NEXT-OK-P *FN2-LISTENER-STATE-ACCEPTING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 10 11 6 4 5 3) '(1 3 31 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-LISTENER-ARM-NEXT-POSITIVE FN2-LISTENER-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm ACCEPTING of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-LISTENER-ADMITTING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-ADMITTING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-PRINCIPAL-SLOT (FN2-LISTENER-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-LISTENER-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-CAP-INDEX (FN2-LISTENER-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-LISTENER-ROW-CAP-NONCE ID FN2-CORE)) (ROW-PENDING (FN2-LISTENER-ROW-PENDING ID FN2-CORE)) (ROW-EVENT-READY (FN2-LISTENER-ROW-EVENT-READY ID FN2-CORE)) (ROW-MODE (FN2-LISTENER-ROW-MODE ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-ADMITTING ID BUDGET ROW-PRINCIPAL-SLOT ROW-ACCOUNT-REF ROW-CAP-INDEX ROW-CAP-NONCE ROW-PENDING ROW-EVENT-READY ROW-MODE ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-ARM-NEXT-OK-P *FN2-LISTENER-STATE-ADMITTING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 12 3) '(3 0 31 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-LISTENER-ARM-NEXT-POSITIVE FN2-LISTENER-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm ADMITTING of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-LISTENER-CLOSING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-LISTENER-STATE-CLOSING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-LISTENER-ROW-GENERATION ID FN2-CORE)) (ROW-CAP-INDEX (FN2-LISTENER-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-LISTENER-ROW-CAP-NONCE ID FN2-CORE)) (ROW-PENDING (FN2-LISTENER-ROW-PENDING ID FN2-CORE))) (FN2-LISTENER-CLOSE ID BUDGET ROW-GENERATION ROW-CAP-INDEX ROW-CAP-NONCE ROW-PENDING FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-ARM-NEXT-OK-P *FN2-LISTENER-STATE-CLOSING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 10 11 6 4 5) '(1 3 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-LISTENER-ARM-NEXT-POSITIVE FN2-LISTENER-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm CLOSING of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-LISTENER-OBSERVE-ACCEPT-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-ACCOUNT-REF (FN2-LISTENER-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-OBSERVE-ACCEPT ID 0 OUTCOME REASON COUNT AUX0 AUX1 ROW-ACCOUNT-REF ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-OBSERVE-NEXT-OK-P 0 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 8 9 12 3) '(3 29 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler ACCEPT-RESULT of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-LISTENER-OBSERVE-ACCEPT-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-ACCOUNT-REF (FN2-LISTENER-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-TARGET (FN2-LISTENER-ROW-TARGET ID FN2-CORE))) (FN2-LISTENER-OBSERVE-ACCEPT ID 0 OUTCOME REASON COUNT AUX0 AUX1 ROW-ACCOUNT-REF ROW-TARGET FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-OBSERVE-NEXT-OK-P 0 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 8 9 12 3) '(3 31 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler ACCEPT-RESULT of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-LISTENER-OBSERVE-CLOSE-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-LISTENER-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (FN2-LISTENER-OBSERVE-CLOSE ID 9 OUTCOME REASON COUNT AUX0 AUX1 FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-LISTENER-OBSERVE-NEXT-OK-P 9 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 6 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 12) '(5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler CLOSE-RESULT of FN2-LISTENER changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:MACHINE FN2-ECHO)`
@@ -2398,16 +2398,16 @@ Requirements: 14; bound statements: 14; admitted proofs: 0; check coverage: 0 ro
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-CONN-PHASE-TOTALITY` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK)) (< (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-COUNT*))` | `(FN2-CONN-ARM-CERTIFICATE-POSITIVE FN2-CONN-ARM-CERTIFICATE-NEGATIVE)` | Every reachable FN2-CONN row is in a declared phase, each of which has an arm. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-FREE-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-FREE*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (FN2-CONN-IDLE ID BUDGET FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-FREE* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm FREE of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-CONN-GREETING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-GREETING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-CONN-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-MASK (FN2-CONN-ROW-MASK ID FN2-CORE)) (ROW-REFUSED (FN2-CONN-ROW-REFUSED ID FN2-CORE))) (FN2-CONN-GREET ID BUDGET ROW-GENERATION ROW-ACCOUNT-REF ROW-TX-SLOT ROW-TX-GEN ROW-MASK ROW-REFUSED FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-GREETING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 19 20 23 27 3) '(0 29 5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm GREETING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-CONN-COMMAND-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-COMMAND*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-CAP-INDEX (FN2-CONN-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-CONN-ROW-CAP-NONCE ID FN2-CORE)) (ROW-RX-SLOT (FN2-CONN-ROW-RX-SLOT ID FN2-CORE)) (ROW-RX-GEN (FN2-CONN-ROW-RX-GEN ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-START (FN2-CONN-ROW-START ID FN2-CORE)) (ROW-POS (FN2-CONN-ROW-POS ID FN2-CORE)) (ROW-OVERFLOW (FN2-CONN-ROW-OVERFLOW ID FN2-CORE)) (ROW-COMPACTING (FN2-CONN-ROW-COMPACTING ID FN2-CORE)) (ROW-CURSOR (FN2-CONN-ROW-CURSOR ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE)) (ROW-MASK (FN2-CONN-ROW-MASK ID FN2-CORE)) (ROW-ORDINAL (FN2-CONN-ROW-ORDINAL ID FN2-CORE)) (ROW-AUTH-PENDING (FN2-CONN-ROW-AUTH-PENDING ID FN2-CORE))) (FN2-CONN-COMMAND ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-CAP-INDEX ROW-CAP-NONCE ROW-RX-SLOT ROW-RX-GEN ROW-TX-SLOT ROW-TX-GEN ROW-START ROW-POS ROW-OVERFLOW ROW-COMPACTING ROW-CURSOR ROW-PENDING ROW-MASK ROW-ORDINAL ROW-AUTH-PENDING FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-COMMAND* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 14 15 16 17 18 19 20 26 24 21 28 6 4 5) '(1 0 3 29 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm COMMAND of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONN-GREETING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-GREETING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-CONN-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-MASK (FN2-CONN-ROW-MASK ID FN2-CORE)) (ROW-REFUSED (FN2-CONN-ROW-REFUSED ID FN2-CORE))) (FN2-CONN-GREET ID BUDGET ROW-GENERATION ROW-ACCOUNT-REF ROW-TX-SLOT ROW-TX-GEN ROW-MASK ROW-REFUSED FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-GREETING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 19 20 23 27 3) '(0 31 5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm GREETING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONN-COMMAND-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-COMMAND*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-CAP-INDEX (FN2-CONN-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-CONN-ROW-CAP-NONCE ID FN2-CORE)) (ROW-RX-SLOT (FN2-CONN-ROW-RX-SLOT ID FN2-CORE)) (ROW-RX-GEN (FN2-CONN-ROW-RX-GEN ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-START (FN2-CONN-ROW-START ID FN2-CORE)) (ROW-POS (FN2-CONN-ROW-POS ID FN2-CORE)) (ROW-OVERFLOW (FN2-CONN-ROW-OVERFLOW ID FN2-CORE)) (ROW-COMPACTING (FN2-CONN-ROW-COMPACTING ID FN2-CORE)) (ROW-CURSOR (FN2-CONN-ROW-CURSOR ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE)) (ROW-MASK (FN2-CONN-ROW-MASK ID FN2-CORE)) (ROW-ORDINAL (FN2-CONN-ROW-ORDINAL ID FN2-CORE)) (ROW-AUTH-PENDING (FN2-CONN-ROW-AUTH-PENDING ID FN2-CORE))) (FN2-CONN-COMMAND ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-CAP-INDEX ROW-CAP-NONCE ROW-RX-SLOT ROW-RX-GEN ROW-TX-SLOT ROW-TX-GEN ROW-START ROW-POS ROW-OVERFLOW ROW-COMPACTING ROW-CURSOR ROW-PENDING ROW-MASK ROW-ORDINAL ROW-AUTH-PENDING FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-COMMAND* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 14 15 16 17 18 19 20 26 24 21 28 6 4 5) '(1 0 3 31 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm COMMAND of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-ARTICLE-INPUT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-ARTICLE-INPUT*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (FN2-CONN-UNREACHED ID BUDGET FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-ARTICLE-INPUT* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm ARTICLE-INPUT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-REPLY-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-REPLY*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-CAP-INDEX (FN2-CONN-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-CONN-ROW-CAP-NONCE ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-TX-OFF (FN2-CONN-ROW-TX-OFF ID FN2-CORE)) (ROW-AFTER (FN2-CONN-ROW-AFTER ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE)) (ROW-BORROWS (FN2-CONN-ROW-BORROWS ID FN2-CORE))) (FN2-CONN-REPLY ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-CAP-INDEX ROW-CAP-NONCE ROW-TX-SLOT ROW-TX-GEN ROW-TX-OFF ROW-AFTER ROW-PENDING ROW-BORROWS FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-REPLY* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 19 22 21 28 6 4 5) '(1 0 3 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm REPLY of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-UPGRADING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-UPGRADING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (FN2-CONN-UNREACHED ID BUDGET FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-UPGRADING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm UPGRADING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-CLOSING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-CLOSING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-CAP-INDEX (FN2-CONN-ROW-CAP-INDEX ID FN2-CORE)) (ROW-CAP-NONCE (FN2-CONN-ROW-CAP-NONCE ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE))) (FN2-CONN-CLOSE ID BUDGET ROW-GENERATION ROW-PRINCIPAL-SLOT ROW-CAP-INDEX ROW-CAP-NONCE ROW-PENDING FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-CLOSING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 21 28 6 4 5) '(1 3 5 6 7 8 9 10) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm CLOSING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-CONN-DRAINING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-DRAINING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-CONN-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-RX-SLOT (FN2-CONN-ROW-RX-SLOT ID FN2-CORE)) (ROW-RX-GEN (FN2-CONN-ROW-RX-GEN ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE)) (ROW-BORROWS (FN2-CONN-ROW-BORROWS ID FN2-CORE))) (FN2-CONN-DRAIN ID BUDGET ROW-GENERATION ROW-ACCOUNT-REF ROW-RX-SLOT ROW-RX-GEN ROW-TX-SLOT ROW-TX-GEN ROW-PENDING ROW-BORROWS FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-DRAINING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 1 10 11 12 13 8 9 14 15 16 17 18 19 24 26 27 29 6 3) '(0 3 29 5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm DRAINING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONN-DRAINING-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-DRAINING*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (LET ((ROW-GENERATION (FN2-CONN-ROW-GENERATION ID FN2-CORE)) (ROW-ACCOUNT-REF (FN2-CONN-ROW-ACCOUNT-REF ID FN2-CORE)) (ROW-RX-SLOT (FN2-CONN-ROW-RX-SLOT ID FN2-CORE)) (ROW-RX-GEN (FN2-CONN-ROW-RX-GEN ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-GEN (FN2-CONN-ROW-TX-GEN ID FN2-CORE)) (ROW-PENDING (FN2-CONN-ROW-PENDING ID FN2-CORE)) (ROW-BORROWS (FN2-CONN-ROW-BORROWS ID FN2-CORE))) (FN2-CONN-DRAIN ID BUDGET ROW-GENERATION ROW-ACCOUNT-REF ROW-RX-SLOT ROW-RX-GEN ROW-TX-SLOT ROW-TX-GEN ROW-PENDING ROW-BORROWS FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-DRAINING* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 1 10 11 12 13 8 9 14 15 16 17 18 19 24 26 27 29 6 3) '(0 3 31 5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm DRAINING of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-RETIRED-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-MACHINE-PHASE ID FN2-CORE) *FN2-CONN-STATE-RETIRED*) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 4 (FN2-CONN-IDLE ID BUDGET FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-ARM-NEXT-OK-P *FN2-CONN-STATE-RETIRED* (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(5) FN2-CORE AFTER))))` | `(FN2-CONN-ARM-NEXT-POSITIVE FN2-CONN-ARM-NEXT-NEGATIVE FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Arm RETIRED of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-CONN-OBSERVE-RECEIVE-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE))) (FN2-CONN-OBSERVE-RECEIVE ID 2 OUTCOME REASON COUNT AUX0 AUX1 ROW-PRINCIPAL-SLOT FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 2 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(29 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler RECEIVE-RESULT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
-| `FN2-CONN-OBSERVE-SEND-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-OFF (FN2-CONN-ROW-TX-OFF ID FN2-CORE))) (FN2-CONN-OBSERVE-SEND ID 3 OUTCOME REASON COUNT AUX0 AUX1 ROW-PRINCIPAL-SLOT ROW-TX-SLOT ROW-TX-OFF FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 3 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 19 22) '(29 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler SEND-RESULT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONN-OBSERVE-RECEIVE-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE))) (FN2-CONN-OBSERVE-RECEIVE ID 2 OUTCOME REASON COUNT AUX0 AUX1 ROW-PRINCIPAL-SLOT FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 2 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(31 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler RECEIVE-RESULT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-CONN-OBSERVE-SEND-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-PRINCIPAL-SLOT (FN2-CONN-ROW-PRINCIPAL-SLOT ID FN2-CORE)) (ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE)) (ROW-TX-OFF (FN2-CONN-ROW-TX-OFF ID FN2-CORE))) (FN2-CONN-OBSERVE-SEND ID 3 OUTCOME REASON COUNT AUX0 AUX1 ROW-PRINCIPAL-SLOT ROW-TX-SLOT ROW-TX-OFF FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 3 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 19 22) '(31 5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler SEND-RESULT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-OBSERVE-BORROW-RELEASED-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (LET ((ROW-TX-SLOT (FN2-CONN-ROW-TX-SLOT ID FN2-CORE))) (FN2-CONN-OBSERVE-RELEASE ID 4 OUTCOME REASON COUNT AUX0 AUX1 ROW-TX-SLOT FN2-CORE))))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 4 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0 22) '(5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler BORROW-RELEASED of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 | `FN2-CONN-OBSERVE-CLOSE-RESULT-FRAME` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-COREP FN2-CORE) (FN2-CORE-WFP FN2-CORE) (EQ (FN2-CONN-SNAPSHOT-READ-CODE ID FN2-CORE) :OK) (EQUAL (FN2-CORE-STOP-REASON FN2-CORE) *FN2-STOP-REASON-NONE*)) (LET ((AFTER (MV-NTH 1 (FN2-CONN-OBSERVE-CLOSE ID 9 OUTCOME REASON COUNT AUX0 AUX1 FN2-CORE)))) (AND (OR (NOT (EQUAL (FN2-CORE-STOP-REASON AFTER) *FN2-STOP-REASON-NONE*)) (FN2-CONN-OBSERVE-NEXT-OK-P 9 (FN2-MACHINE-PHASE ID FN2-CORE) (FN2-MACHINE-PHASE ID AFTER))) (FN2-ARM-FRAMEP 10 (FN2-MACHINE-SLOT ID FN2-CORE) '(0) '(5) FN2-CORE AFTER))))` | `(FN2-ARM-FRAME-POSITIVE FN2-ARM-FRAME-NEGATIVE)` | Handler CLOSE-RESULT of FN2-CONN changes only its declared fields and children and moves only to a declared phase. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
@@ -2915,13 +2915,13 @@ Requirements: 5; bound statements: 5; admitted proofs: 0; check coverage: 0 rows
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
-### Case source / schema: `(NIL :ASSERTION)`
+### Case source / schema: `(NIL :G2)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FN2-IDENTITY-LINEARIZABLE` | :OWED | :ASSERTION | `(IMPLIES (AND (NATP SEED) (NATP N) (<= N 64)) (EQUAL (CAR (FN2-CHECK-IDENTITY (FN2-M3-TRACE SEED N NIL) *FN2-IDENTITY-CONTENTS-MAX*)) :OK))` | `(FN2-IDENTITY-LINEARIZABLE-POSITIVE FN2-IDENTITY-LINEARIZABLE-NEGATIVE)` | Offers decided by up to three interleaved decisions, recorded as each finishes, sealed into filtered runs at arbitrary points, their bodies then released: the trace (every answer and record outcome, every later query, the Binding read back by the real scan) is accepted by the independent IDENTITY checker. A :stale record (decided around a later record of its bucket or a seal) records nothing and is offered again. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+| `FN2-IDENTITY-LINEARIZABLE` | :OWED | :G2 | `(IMPLIES (AND (NATP SEED) (NATP N) (<= N 64)) (EQUAL (CAR (FN2-CHECK-IDENTITY (FN2-M3-TRACE SEED N NIL) *FN2-IDENTITY-CONTENTS-MAX*)) :OK))` | `(FN2-IDENTITY-LINEARIZABLE-POSITIVE FN2-IDENTITY-LINEARIZABLE-NEGATIVE)` | Offers decided by up to three interleaved decisions, recorded as each finishes, sealed into filtered runs at arbitrary points, their bodies then released: the trace (every answer and record outcome, every later query, the Binding read back by the real scan) is accepted by the independent IDENTITY checker. A :stale record (decided around a later record of its bucket or a seal) records nothing and is offered again. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-SUMMARY-ADEQUATE-ACCEPT)`
 
@@ -2946,6 +2946,18 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-GROUP-COUNTS-SUMMARY-ADEQUATE-WITHDRAW` | :OWED | :G1 | `(IMPLIES (AND (FN2-GROUP-COUNTS-FOLD-STATEP ROWS) (<= (LEN ROWS) 8) (FN2-GROUP-COUNTS-FOLD-EVENTP E) (EQ (CAR E) :WITHDRAW) (FN2-GROUP-COUNTS-FOLD-KEYSP QS) (<= (LEN QS) 8) (BOOLEANP SEAL)) (AND (EQUAL (FN2-FOLD-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ROWS NIL SEAL QS) (FN2-GROUP-COUNTS-FOLD-OBSERVE-ALL ROWS QS)) (EQUAL (FN2-FOLD-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ROWS (LIST E) SEAL QS) (FN2-GROUP-COUNTS-FOLD-OBSERVE-ALL (FN2-GROUP-COUNTS-FOLD-APPLY-SPEC ROWS E) QS))))` | `(FN2-GROUP-COUNTS-SUMMARY-ADEQUATE-WITHDRAW-POSITIVE FN2-GROUP-COUNTS-SUMMARY-ADEQUATE-WITHDRAW-NEGATIVE)` | The summary rule's certificate for FN2-GROUP-COUNTS and event kind WITHDRAW: the rows read back through the real engine observe as the fold's state, and after one such event applied by the real step they observe as the fold's step of that state, whether the rows are sealed in a run or held in an overlay. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:COMPILER` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-ASSIGN-ADEQUATE-ACCEPT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :G1)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-GROUP-COUNTS-ASSIGN-ADEQUATE-ACCEPT` | :OWED | :G1 | `(IMPLIES (AND (FN2-GROUP-COUNTS-FOLD-STATEP ROWS) (<= (LEN ROWS) 8) (FN2-GROUP-COUNTS-FOLD-EVENTP E) (EQ (CAR E) :ACCEPT) (BOOLEANP SEAL)) (EQUAL (FN2-FOLD-ASSIGN-IMAGE 5 *FN2-GROUP-COUNTS-ENTRY* '((GROUP (:ID GROUP))) ROWS E SEAL) (FN2-GROUP-COUNTS-FOLD-ASSIGN-SPEC (FN2-GROUP-COUNTS-FOLD-VALUE ROWS (FN2-GROUP-COUNTS-FOLD-KEY E)) E)))` | `(FN2-GROUP-COUNTS-ASSIGN-ADEQUATE-ACCEPT-POSITIVE FN2-GROUP-COUNTS-ASSIGN-ADEQUATE-ACCEPT-NEGATIVE)` | The assignment of FN2-GROUP-COUNTS's ACCEPT events: the args the private successor's stage computes from the key's newest row, read back through the real engine (sealed in a run or held in an overlay), are the declaration's, so the logged event the list fold reads is the one the engine applied. | `NIL` | `((:SCHEMA FN2-GROUP-COUNTS))` | `:COMPILER` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-GROUP-COUNTS-SUMMARY-CUT)`
 
