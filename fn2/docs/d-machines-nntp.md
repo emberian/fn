@@ -850,5 +850,186 @@ natives skip the row by name. A row leaves this table only when E's test is gree
 | D2a | defgrammar, the NNTP table, parser, renderer, obligation stubs, every-split test, H-model table check | A only | done |
 | D2b | generator, mutator, fuzzer, the three mutation controls, H's model over the cases | D2a | done |
 | D2c | framer onto R6a1's scan (drop-prefix is the connection's compaction) | R6a1 | done |
-| D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8 | R7, the admission seam a20fac18f | decision table af591acec; machine assembled (2/n); next WIRE, T1/T8, scenario 1 |
-| D4-D9 | per the brief | per the brief | |
+| D3 | connection machine (§4.2-4.6): conn.lisp, the decision table, the deferred sub-form fixtures, WIRE, T1 and T8, scenario 1's plaintext half, the surface session hook | R7, the admission seam a20fac18f | done (ec9b96173) |
+| D7 | the ledger, the scheduler over principals, the services, TLS admission (§13, six slices) | A's seam S1-S4 for 4/n | 1/n design |
+| D4-D6, D8, D9 | per the brief | D4: A's assembly split and read-set snapshot; D5: C2; D6: C3 | |
+
+## 13. D7: principals, the ledger and the scheduler over them *(design; D7's commits rewrite it as built)*
+
+The contract is brief item 7 over EXECUTION-MODEL rule 5, ROUND2 §B.2 (principal accounts are shared
+ledger rows), §C (the calendar, turn bounds, starvation) and D0's `:principal-reservation` (rank 6,
+reserve `:system`) and `:connection :request` bundle. Reviewed with Astra before the first line of
+code (`build/d-seat/d7-astra-1.md`); every change it asked for is taken below, and where it named a
+choice D defers, both positions are recorded. The slices, in the order they land:
+
+| slice | contents | waits on |
+|---|---|---|
+| D7 1/n | this section; the seam request to A (13.6) | nothing |
+| D7 2/n | `fn2/books/accounts.lisp`: the ledger as a library (columns, configuration, operations, the local keystones proved), `fn2/tests/accounts-unit.lisp` | nothing |
+| D7 3/n | the ledger registered as a core child; `fn2-conn` booked at its greeting (interim, 13.4) and charged from its first byte; the ACCOUNT checker `fn2/sim/check-account.lisp`; scenario 11's anonymous-flood half under the simulator | 2/n |
+| D7 4/n | booking at Accept issue; the request bundle with its wait and the grant service; run charges; calendar weights; re-attribution | A's seam S1-S5 |
+| D7 5/n | the timer service: the deadlines of 4.4 and the earliest-deadline `ArmWake`; scenario 18's expiry half | 3/n |
+| D7 6/n | the TLS admission machine (`fn2/books/tls-admit.lisp`, `Ltls` 16, the simulator's TLS stub); scenario 18's admission half; scenario 10 | 5/n |
+
+### 13.1 What stands (A4's scheduler, `fn2/books/sched.lisp`)
+
+The calendar of `L = P + 4·ceil(P/16)` entries (16 principal slots, then commit, timer/grant, wake,
+maintenance), one cursor, a FIFO of runnable machines per principal slot keyed by the row's common
+`principal-slot`, four service bits, and the owed `fn2-sched-starvation` (a continuously eligible
+principal is visited within L visits). Every machine today runs on slot 0. Missing: the ledger, any
+attribution, any charge, weights, the request bundle and its wait, protected reservations.
+
+### 13.2 The ledger `fn2-accounts` (`fn2/books/accounts.lisp`, D's core child)
+
+One row per principal slot, `P + 1` rows: slots `0 .. P-1` are the calendar's principal slots (slot 0
+is the anonymous principal every unauthenticated connection shares, ROUND2 §C.2); row `P` is the
+**system row**, never in the calendar: recovery and control book there, and the system reserve
+(D0's `:system`) is simply its reserve. The scheduler's runnable heads, tails and counts are already
+indexed by the same slot; the ledger does not copy them (ROUND2 §B.2's "runnable-list heads" are
+sched's arrays read through the slot).
+
+Per row: `state` (`:free :anonymous :configured :system`; E2 adds `:authenticated`), `weight` (u8,
+calendar entries per round, at least 1), `wait-head wait-tail` (the request FIFO, 4/n), and, in
+dimension-major arrays, per **holding dimension** `d` a `limit`, `reserve` and `hold` (u32), per
+**charge dimension** `c` a `charge` (u60, monotone). Per dimension: `capacity` N and `committed`. The
+dimensions are data (`*fn2-account-holdings*`, `*fn2-account-charges*`), and every use names its
+dimension by keyword through `(fn2-account-holding :connection-row)` / `(fn2-account-charge-dim
+:rx-octets)`, resolved at expansion (an unknown name is refused):
+
+| holding dimension (a D0 kind) | unit | capacity N | booked by | why it is its own dimension |
+|---|---|---|---|---|
+| `:connection-row` | row | `C` | `fn2-conn` (13.4) | the entitlement to a connection; RX and TX ranges are held one each per row for its lifetime, so this dimension accounts them too; they get their own dimension when a holder can hold a varying amount (D6's output windows) |
+| `:principal-reservation` | request | `C` (one per holder; today only connections hold one) | the request bundle (4/n) | concurrent requests of a principal; D0's bound column says `(:profile :p)`, which counts principals, not requests; corrected with 4/n |
+
+D4-D6 add `:upload-row :chunk-window :transaction-row :cursor-row :cache-pin :storage-job`, one line
+each. Charge dimensions: `:rx-octets` and `:tx-octets` (settled from completion counts), `:requests`
+(replies rendered for framed lines), `:run-steps` and `:run-bytes` (per scheduled run, 4/n).
+Maintenance debt joins with the cleaner's quest (13.3's rule (c)), not before.
+
+**Configuration.** Profile key `:accounts` (optional, read with `fn2-profile-get`; A's `profile.lisp`
+is untouched): `((SLOT :state S :weight W :limits ((DIM . N) ...) :reserves ((DIM . N) ...)) ...)`,
+SLOT a slot below P or `:system`. Unconfigured: slot 0 `:anonymous` and the system row with every
+limit the dimension's capacity and no reserve, every other slot `:free` with limits 0.
+`fn2-accounts-profilep` refuses an unknown dimension, a slot outside P, a duplicate slot, a reserve
+over its limit, a weight outside 1..255, and reserves summing over a capacity.
+
+**The admission rule** (protected reservations). `committed-d = Σ_{q=0..P} max(hold_q, reserve_q)`,
+the system row included; the invariant `fn2-accounts-conservedp` is, for every dimension, `committed =`
+that sum `≤ N` and `hold_q ≤ limit_q` on every row. `acquire(p, d, a)`: with `h' = hold_p + a`,
+refuse `:limit` when `h' > limit_p`; with `extra = max(h', reserve_p) − max(hold_p, reserve_p)` (the
+part above p's own reserve, exactly the change in committed), refuse `:shared` when `committed + extra
+> N`; else hold and committed move together. `release(p, d, a)` subtracts `max(h, r) − max(h − a, r)`
+from committed: releasing below one's reserve frees no shared capacity. A release of more than is
+held is `:underflow`, and the caller stops the core (assert, never absorb). `acquire2` takes two
+dimensions whole or not at all. Codes are keywords; `:bounds`, `:underflow` and `:state` are
+invariant failures the caller turns into a stop.
+
+### 13.3 Rule 5, operation by operation
+
+| rule 5 clause | where it is enforced |
+|---|---|
+| reserve before issuing work | a holder books or reserves before the transition that uses the resource; on refusal it holds nothing new |
+| settle on completion | charges are added from completion counts (`count` of a Receive or Send result), never from requested lengths |
+| disconnecting erases no charge | `release` touches holdings only; no operation decreases a charge (proved, 13.5); a drained connection's charges stay on its principal |
+| authentication transfers attribution without laundering | `fn2-account-attribute (from to ...)` is **one net change**: release on FROM, acquire on TO, and on TO's refusal acquire back on FROM (which cannot be refused), so a capacity-neutral transfer is never refused for want of shared room (Astra) and a refused one leaves the ledger as it was; charges stay on FROM. The machine's `principal-slot` and its scheduler membership, runnable or parked, move with it (S4). E2's authentication arm calls it |
+| shared costs have an explicit allocation rule | stated here, implemented by the quests that create the costs: (a) a commit batch's padding and fence work is divided among its members in proportion to their packed bytes, the rounding remainder to the system row (B, D5); (b) cache occupancy is `:cache-pin` holdings of the pinning principal while pinned and the system row's when unpinned (D6); (c) cleaning, relocation and checkpoint work is maintenance debt of the principal whose live extents it moves or covers, executed by the maintenance service class; a principal whose debt exceeds its debt limit is refused new storage writes with the transient refusal (backpressure, never loss) |
+| a system reserve covers recovery and control | recovery and control book on the system row; its reserve is the system reserve; no principal can draw it |
+
+### 13.4 The connection, charged from its first byte
+
+`account-ref` (a common row field, unused until now) names the ledger row the row's holdings are
+booked on, `*fn2-none*` while nothing is booked; `principal-slot` names the calendar slot it runs
+under. They are equal once booked.
+
+- **Where the booking belongs (Astra; adopted for 4/n).** A booking at the greeting leaves a hole:
+  the listener has already spent a physical connection row and RX/TX ranges before `fn2-conn-greet`
+  runs, so unbooked admissions and refused connections draining their 400 occupy capacity no principal
+  was charged for. The right point is the listener's Accept issue: the listener's accept bundle
+  reserves its principal's `:connection-row` entitlement beside the physical credit, the admission
+  transfers that booking to the admitted row, a failed Accept releases it (S1). A listener labelled
+  with a protected principal must itself be a trusted entrance (an operator socket, a configured peer
+  address), or anonymous callers spend that principal's reserve.
+- **3/n, the interim.** Until S1 lands, `fn2-conn-greet` books `:connection-row 1` on its slot (0)
+  before rendering; refused (`:limit` or `:shared`) it renders the capacity 400 exactly as the
+  partition's reserve row does today (A keeps one physical row for it) and books nothing. The hole
+  above is open by at most the physical rows between Accept and greeting; it is recorded as the owed
+  interim `fn2-account-greeting-booking-interim` and closed by S1.
+- **Charges.** The receive-result handler adds the completion's `count` to `:rx-octets` of the row's
+  principal (before the greeting too: the first byte is charged); the send-result handler adds to
+  `:tx-octets`; the frame run adds 1 to `:requests` per answered line.
+- **Drain.** `fn2-conn-release` releases `:connection-row 1` from `account-ref` and resets it to
+  `*fn2-none*` before reclaiming the row; its charges stay.
+- **The request bundle (4/n).** D0's `:connection :request`: `:principal-reservation`, held from the
+  framed line to the reply's last octet. Two positions on the reply that carries no request (the
+  greeting, the capacity 400): Astra would give it its own phase `:control-reply`, charged to a
+  bounded control allocation, sharing the send continuation with `:reply`; D's first draft made the
+  greeting request-bearing and gave only the 400 a phase `:refusing`. Either is exact under per-phase
+  holds; D takes `:control-reply` (it also bounds refusal traffic, which `:refusing` left unaccounted).
+  **The wait:** a refused reservation parks the row on its principal's FIFO in the same transition
+  that refused it (failed acquisition and enqueue are one step; the framed line's `start pos` are kept
+  as the continuation). A direct hand-off from the releasing row is not enough (Astra's example:
+  request capacity 3, B holds 2, C reserves 1, A waits on `:shared`; B's release must reach A), so
+  grants are the timer/grant service's: a release that lowers committed marks the service, which
+  visits blocked principal heads in calendar order and, for each head whose acquisition now fits,
+  acquires on its behalf, dequeues it and makes it runnable in one transition (no barging). A zero
+  request limit is refused by name, never parked. Cancellation unlinks a parked waiter before its links
+  or row are reused, and settles a granted reservation exactly once. This needs S5.
+
+Ledger operations used by arms have defcosts beside their core wrappers. Booking operations declare no
+D0 effect (they attribute a resource the admission already acquired); the request operations (4/n)
+declare `(:acquire (:principal-reservation))` / `(:release (:principal-reservation))`. fn2-conn gains
+no field (22 of 24 stay used).
+
+### 13.5 Keystones
+
+| statement | status | over | teeth |
+|---|---|---|---|
+| `fn2-account-acquire-protected`: from a ledger with committed ≤ capacity, `acquire(q, d, a)` with `hold_q + a ≤ reserve_q` and `≤ limit_q` is `:ok`, whatever every other row holds | **proved** (2/n) | the ledger stobj | the unit exhausts shared capacity first, then acquires positive amounts within a reserve (slot 1 and the system row) |
+| `fn2-account-{acquire,release,attribute}-charges`, `fn2-account-charge-monotone`: holding operations leave every charge unchanged; a charge only adds | **proved** (2/n) | the ledger stobj | the unit's disconnect and attribution keep the 100 charged octets on slot 0 |
+| `fn2-account-ops-conserve`: acquire, release, charge, acquire2, release2 and attribute preserve `fn2-accounts-conservedp` | owed (2/n): the sum over the dimension-major array under one update | the ledger stobj | positive: 600 pseudo-random operations of every kind, conserved after each; negative: committed off by one, a holding over its limit |
+| `fn2-account-ledger-matches` (`:invariant` over the assembled core): the core's ledger is conserved and its holdings equal the explicit booking ownership of the rows (each `fn2-conn` row whose `account-ref` is the slot, from the greeting through `:draining`; with S1, listener-owned admission bookings too; with 4/n, each request token holder by its holding phase) | owed (3/n) | the assembled core | ACCOUNT over the simulator runs (positive), a core whose drain skips the release (negative) |
+| the weighted starvation bound | A's `fn2-sched-starvation`, its hypothesis `fn2-sched-calendar-validp` generalised to the weighted calendar (otherwise weighted cases are vacuous); still a visit bound, not request completion (4/n) | sched | A's teeth |
+
+### 13.6 The seam request to A (sched.lisp, machines-a*.lisp, executor.lisp are A's; sent through main)
+
+- **S1, booking at Accept.** Profile key `:listener-principals` (one slot per listener, default 0)
+  sets each listener row's `principal-slot` at init. `fn2-listener-accept` acquires `:connection-row 1`
+  on that slot through `fn2-account-book` (D's core wrapper, `(mv code fn2-core)`) with the credit;
+  refused, the listener parks on the admission FIFO as for a missing credit. The admission copies
+  `principal-slot` and `account-ref` into the row (`fn2-conn`'s `:admission` gains `:copy
+  (principal-slot account-ref)`), and a refused admission or failed Accept calls `fn2-account-unbook`.
+- **S2, run charges.** In `fn2-exec-principal`, after `fn2-machine-run`: `(fn2-account-charge-run
+  principal bytes steps fn2-core)` (D's wrapper: `:run-bytes`, `:run-steps`, a stop on u60 overflow);
+  in `fn2-exec-service`, the same on the system row.
+- **S3, weights.** `fn2-sched-init` takes a weight list; a slot of weight `w` appears `w` times per
+  round, groups of 16 principal entries keep the four service entries between them, `L = Σw +
+  4·ceil(Σw/16)` at most 4,096; with every weight 1 the calendar is today's, entry for entry;
+  `fn2-sched-calendar-validp` and the starvation hypotheses follow the weighted geometry.
+- **S4, re-attribution.** `(fn2-sched-reattribute machine to fn2-sched) → (mv code fn2-sched)`: a
+  queued machine is unlinked from its FIFO and appended to `to`'s tail; its `principal` column is set.
+- **S5, ledger grants.** `fn2-machine-grant-ready-p` and `fn2-machine-grant-one` gain a fourth source
+  after admission: `(fn2-account-grant-ready-p fn2-core)` and `(fn2-account-grant-one fn2-core) → (mv
+  id fn2-core)` (D's: one blocked principal head whose reservation now fits, acquired, dequeued, its
+  wait reason cleared). The grant is persisted work, drained by the service class, never the
+  observation path's single wake id (Astra: a release in a send-failure handler would overwrite it).
+
+### 13.7 ACCOUNT (`fn2/sim/check-account.lisp`) and scenario 11
+
+ACCOUNT reads none of the ledger's code. Its inputs are the simulator's own records per connection
+(octets delivered by Receive completions, octets reported by Send completions, its greeting or 400,
+when it closed), WIRE's parse of each client's replies, and the ledger rows read through their column
+readers at every boundary the scenario stops at (after admission, after each delivery, after drain),
+not only at quiescence. It checks: (1) per principal, `:rx-octets` equals the octets delivered to its
+connections and `:tx-octets` the octets reported sent; `:requests` equals the rendered replies, which
+the simulator records independently of what reached the client (a reply lost on a failed Send was
+still rendered); (2) the `:connection-row` holding equals the principal's booked connections, counted
+from the simulator's records (greeted and not yet reclaimed, draining included); (3) per dimension,
+`Σ max(hold, reserve) ≤ N` and `hold ≤ limit`; (4) a connection of a principal below its reserve is
+never refused the 400 by the ledger; (5) after every connection has closed and drained, every holding
+is 0 and every charge equals (1)'s totals. Mutation controls: a reading with a charge dropped, a drain
+that also clears charges, a refusal of a protected principal; each must be caught.
+
+Scenario 11's half that 3/n can run: anonymous clients beyond slot 0's connection limit get the 400
+and close while every greeted one is served; a principal with a connection reserve (attributed by the
+test fixture standing for E2) keeps it while the anonymous flood holds the shared remainder. WIRE and
+ACCOUNT over every client. The request-wait half and FAIR join with 4/n.
