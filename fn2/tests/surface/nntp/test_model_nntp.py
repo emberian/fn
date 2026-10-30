@@ -102,6 +102,30 @@ def machine(case):
 class TestSurface(SurfaceCase):
     family, form = 'nntp', 'S'
 
-    @serving('nntp')
     def test_live_state_machine(self):
-        run_live_machine(self, 'nntp', machine(self))
+        import os
+        from fn2.tests.surface import MANIFEST
+        target = os.environ.get('FN2_SURFACE_TARGET', 'fn2')
+        if target == 'fn2' and 'nntp' in MANIFEST.get('serves_sim', {}).get('fn2', []):
+            return self.sim_state_machine()
+        return serving('nntp')(lambda self: run_live_machine(self, 'nntp', machine(self)))(self)
+
+    def sim_state_machine(self):
+        """fn2 under the simulator (M1a): served verbs judged by the model, interim replies named OWED."""
+        import os
+        from hypothesis import Phase, settings
+        from hypothesis.stateful import run_state_machine_as_test
+        from fn2.tests.surface import output
+        from fn2.tests.surface.nntp import sim_nntp
+        from fn2.tests.surface.sim_target import SimTarget
+        from fn2.tests.surface.live_evidence import failure_context
+        target = SimTarget(self, 'nntp', out=str(output('nntp')))
+        owed, served = {}, {}
+        self.evidence['owed_interim'], self.evidence['served_checked'] = owed, served
+        examples = int(os.environ.get('FN2_SIM_EXAMPLES', '100'))
+        with failure_context(self, 'nntp'):
+            run_state_machine_as_test(sim_nntp.machine(self, target, owed, served), settings=settings(
+                max_examples=examples, stateful_step_count=int(os.environ.get('FN2_SIM_STEPS', '30')),
+                deadline=None, database=None, derandomize=True, phases=(Phase.explicit, Phase.generate),
+                report_multiple_bugs=False))
+        self.evidence['sim_examples'] = examples

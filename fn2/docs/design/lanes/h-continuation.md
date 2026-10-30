@@ -14,8 +14,9 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   harvest; control_across_peers = memory ceiling; nightly floor + world-deps), a1167fc24 (H7a fixture drivers),
   cfdeb5e6f (H7b F/H/R drivers + first runs), e495a7b55 (H7c reruns: every F form passes on fn1; P-SASL-LINE,
   H7-07, H7-08, the node's article bound in the differential), 4f931bd74 (H7d: reply window grows with segments
-  sent; H7-08 withdrawn), 4ed372d1e (H7e: FNCT frame fuzz after fncu, TCPCL session fuzz after BPv7). Nothing of H
-  uncommitted.
+  sent; H7-08 withdrawn), 4ed372d1e (H7e: FNCT frame fuzz after fncu, TCPCL session fuzz after BPv7), 8ae997f07 (H8a: SimTarget, the Target
+  over D's simulator session), 524e30869 (H8b: nntp S vs fn2 under the simulator, M1a gate: 16,730 served 0
+  disagreements, 15,741 interim named, WIRE ok). Nothing of H uncommitted.
 - RUNNING on hbox: the full nightly on e495a7b55 (tree nightly-e495a7b55, 64 GiB, every family, every driver),
   started 2026-10-30 01:44 hbox time, cap 8 h. PID file /tank/fn/scratch/fn2-h-harness/nightly-20261030/nightly.pid,
   log nightly-20261030.log, report nightly-20261030/nightly.md when the log's last line is DONE. Harvest: copy
@@ -31,7 +32,7 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   fn2.tests.surface.test_run_surface fn2.tests.surface.tls_auth.test_model_tls_auth_unit
   fn2.tests.surface.test_adjudications fn2.tests.surface.test_live_evidence fn2.tests.surface.test_fixtures
   fn2.tests.surface.test_perf fn2.tests.surface.test_argv_fuzz fn2.tests.surface.test_config_fuzz
-  fn2.tests.surface.test_http_fuzz fn2.tests.surface.test_codec_fuzz`.
+  fn2.tests.surface.test_http_fuzz fn2.tests.surface.test_codec_fuzz fn2.tests.surface.test_sim_target` (406 OK at 524e30869).
 
 ## The drivers (H7; table in fn2/tests/surface/README.md, results in fn2/docs/h-harness.md H7a/H7b)
 - FIXTURE `fixtures:fixture` (rfc3977 live replay, consumer-position, bp golden, scram RFC 7677; web and
@@ -53,15 +54,11 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 1. Harvest the running nightly (above) -> commit + READY with per-family numbers.
 2. Owed pieces: bp bundle convergence (F8, the simulator); the W7
    perf adapter; perf rows with no tools/load cell (consumer wake/M5, web p99, W3-W5).
-3. Surface runs against layer D as D serves (main will say). Agreed shape, sent to main 2026-10-30: D provides
-   one hook `FN2_SURFACE_SIM_NNTP=module:callable` -> a session with open(peer)->(id, greeting octets),
-   send(id, octets, chunks)->(server octets, closed) running the sim to quiescence for that connection, close(id),
-   stop()->WIRE verdicts, deterministic per seed (an ACL2 process on stdin/stdout: OPEN / SEND id hex chunks /
-   CLOSE id / STOP); plus `*fn2-conn-interim-tags*` as JSON (tag -> reply, replacing quest). H then writes the
-   Target over the session (Client-like: greeting, command, line, close), restricts the fn2 S machine to served
-   verbs, and reports interim replies as OWED with their quest. Start when D reports scenario 1's plaintext half
-   green (D doc: fn2/docs/d-machines-nntp.md §4, conn.lisp, sim/check-wire.lisp): `serves.fn2` gains the family; `--target fn2`; only
-   spec-ambiguity rows and spec pins apply to fn2.
+3. fn2 surface under the simulator: nntp S runs via serves_sim.fn2 (H8b). Rerun after each D quest lands
+   (the interim table shrinks; regenerate fn2_conn_interim.json is D's); run: build/h-venv/bin/python
+   build/coordinator/fn2/lanes/h-quests/h8-run.py OUTDIR with PYTHONPATH=/Users/ember/dev/fn, FN2_SIM_EXAMPLES,
+   FN2_SIM_STEPS; needs certified fn2/tests/conn-unit, sim/echo, sim/check-wire (fn2/tools/certify.sh, PID file).
+   Peer connections (IHAVE/TAKETHIS on a peer) wait for E4: open(peer=True) raises NotImplementedError.
 
 ## The nightly recipe (fn2/tests/harness/hbox_nightly.sh; documented in fn2/docs/h-harness.md "The hbox nightly")
 - Ship the commit: `git archive --prefix=nightly-<sha>/ <sha> | gzip -1 | ssh hbox 'cd /tank/fn/scratch/fn2-h-harness
@@ -139,6 +136,8 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 | H7c F reruns | operator 5,145 / store_ops 4,911 calls 0 findings; tls_auth 1,348 / peering 346 compared 0 new | e495a7b55 |
 | H7d reply window (H7-08 fixed) | peering F rerun 346 compared, 0 new | 4f931bd74 |
 | H7e FNCT + TCPCL fuzz | fnct 300 / tcpcl 80 cases vs fn1, 0 findings | 4ed372d1e |
+| H8a SimTarget over D's sim session | fake-session unit tests + WIRE refusal control | 8ae997f07 |
+| H8b nntp S vs fn2 under the sim (M1a gate) | 1,000 ex x 50 steps: 16,730 served 0 disagreements; 15,741 interim named; WIRE ok | 524e30869 |
 | H6 pin P-UTF8-WS (D seat's request) + one pending auth slot | seat-written; D oracle 0 disagreements; 148 unit OK | 22de14c4d |
 | H6 H5c harvest, control_across_peers adjudication, nntp s_timeout, nightly world-deps + memory floor | seat-written; reruns: across_peers 4/4 at 64/96 GiB, image_differential 20/20 | 3ea9d2f8d |
 | HZ2 live on fn1: tagged-line reason parsing, fn1 tags where docs name only the class, operator-form import, O01 effect row | seat-written; probe 0 disagreements; operator S 5 ex 173 s, store_ops S 5 ex 46 s PASS | 8a4875e89 |

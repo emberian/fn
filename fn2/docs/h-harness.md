@@ -628,3 +628,28 @@ Side effect for layer D's oracle: the model answers 381 to `XREDEEM CODE NAME` f
   segment without START, a short segment, a flipped bundle or a 2**62 length are never delivered. The
   receiver must exit within 30 s with no crash. fn1: 80 cases, 0 findings. Mutation controls:
   `accept-bad-magic`, `accept-no-start`, checked against an independent receiver over bp_fuzz's reader.
+
+## H8: the first surface run against fn2, the nntp S form under the simulator (milestone M1a's gate)
+
+D's hook is `FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_sim_session:session` (a95478bce: a long-lived ACL2
+session over the served core and the simulator's network, with WIRE verdicts at stop). H's side is
+`sim_target.SimTarget` (H8a). When the manifest's `serves_sim.fn2` names nntp, `--target fn2` runs the nntp S
+form as `sim_nntp.machine`: one simulated node per test and one connection per example. Every command goes
+in a random two-chunk cut, so every reply is also a fragmentation case. Commands fall into two kinds:
+
+- **served**: CAPABILITIES, HELP, QUIT, MODE, DATE, LIST OVERVIEW.FMT/HEADERS/MOTD/DISTRIBUTIONS/DISTRIB.PATS,
+  AUTHINFO, XREDEEM, STARTTLS, COMPRESS, reader IHAVE/CHECK/TAKETHIS, and malformed or unknown lines. These
+  are judged by H2's model under D3's profile (`D3_POLICY`: posting off, no TLS, no credentials, no
+  mechanism, no AUTHINFO label until E2).
+- **interim**: the 18 verbs of `fn2_conn_interim.json` with a projection or posting form. Each reply must be
+  the table's code and is counted as OWED with its quest (D6, or D5 for POST).
+
+Run on the laptop (certified `tests/conn-unit`, `sim/echo`, `sim/check-wire`; h-quests/h8-run.py):
+1,000 examples of up to 50 steps in 75 s.
+- **16,730 served replies, 0 disagreements.**
+- 15,741 interim replies across 18 verbs, all named: POST 713 as D5, the other 17 verbs as D6.
+- Every connection's WIRE verdict ok.
+
+One model change came from the first run. A node that offers no SASL mechanism answers `AUTHINFO SASL
+PLAIN` with 503, not 483. 483 is for a mechanism the node would accept under TLS (RFC 4643 2.4). The CAPABILITIES rule
+gains `advertise_authinfo` for a node with no credential store.
