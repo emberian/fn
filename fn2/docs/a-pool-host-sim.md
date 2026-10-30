@@ -684,3 +684,15 @@ top of the world, in `fn2/tools/owed-export.lsp` after every layer's unit and
 checker books are included, never inside a library book: a seal in a library
 would make include order refuse rows (B's commit keystones must include
 `sim/sim` before they can be stated).
+
+**Row read sets and assembly sections (2026-10-30, for D4).** A machine callback takes only the
+row fields its body reads (inferred after `fn2-call` expansion) through per-field readers
+`K-ROW-<field>`; the whole-row `K-SNAPSHOT` (one mv of every field) is deleted, so ACL2's 32-value
+limit bounds a callback's read set, not a row (fn2-conn: 30 fields, widest read set 17). The
+assembly's sections split further so no book nears the minute: the core's init (one guard over
+every child's capacity arithmetic, 24 s alone) is `assembly-init`, and the commit kind's events
+are two section books (`assembly-callbacks-b`, then `assembly-callbacks`). Forge, closure at -j 8
+(load 4-7), before -> after: assembly-core 51.1 -> 25.6 (+ assembly-init 29.3), assembly-callbacks
+56.6 -> 49.1 before the commit split, assembly-callbacks-d 29.9 -> 15.5, assembly-callbacks-a
+24.2 -> 17.2, assembly-access 33.6 -> 40.4 (the per-field readers and their width lemmas live there).
+

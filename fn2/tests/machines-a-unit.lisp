@@ -429,14 +429,16 @@
   (if (atom term) 0
     (+ (if (eq (car term) fn) 1 0)
        (fn2-machine-call-count fn (car term)) (fn2-machine-call-count fn (cdr term)))))
+; The run entry reads the phase once through the kind's own row reader, and
+; each arm reads only its fields (no whole-row snapshot).
 (assert-event
  (let ((run (getpropc 'fn2-echo-run 'unnormalized-body nil (w state)))
-       (snapshot (getpropc 'fn2-echo-snapshot 'unnormalized-body nil (w state))))
-   (and (= (fn2-machine-call-count 'fn2-echo-snapshot run) 1)
-        (= (fn2-machine-call-count 'fn2-echo-length snapshot) 1)
-        (= (fn2-machine-call-count 'fn2-echo-generation snapshot) 1)
+       (length (getpropc 'fn2-echo-row-length 'unnormalized-body nil (w state))))
+   (and (= (fn2-machine-call-count 'fn2-echo-row-phase run) 1)
+        (= (fn2-machine-call-count 'fn2-echo-length length) 1)
+        (not (getpropc 'fn2-echo-snapshot 'formals nil (w state)))
         (= (fn2-machine-call-count 'fn2-machine-length run) 0))))
-(value-triple (cw "R5a OWN-TABLE: one snapshot at run entry, own accessors, wrong-kind guard refusal PASS~%"))
+(value-triple (cw "R5a OWN-TABLE: one phase read at run entry, per-field own readers, wrong-kind guard refusal PASS~%"))
 
 ; A new kind may own ID or SLOT columns: values must not shadow the
 ; batch writer's directory ID/SLOT temporaries.

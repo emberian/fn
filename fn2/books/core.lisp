@@ -103,24 +103,7 @@
                     fn2-pool-copy-range fn2-pool-drop-prefix fn2-pool-compare fn2-pool-fold fn2-pool-scan
                     fn2-op-cell fn2-op-range fn2-op-phase))
 
-(make-event
- (value `(defun fn2-core-init (profile fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                  :guard-hints (("Goal" :in-theory (enable fn2-machines-profilep fn2-profilep)))))
-  (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
-    ,(strip-cars (strip-cdrs *fn2-core-children*))
-    (let* ,(fn2-core-registered-inits (fn2-core-child-registry (w state)))
-      (mv ,@(strip-cars (strip-cdrs *fn2-core-children*))))
-    fn2-core))))
-(defthm fn2-core-init-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
-           (fn2-corep (fn2-core-init profile fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
-(defthm fn2-core-init-wfp
-  (implies (fn2-core-profilep profile)
-           (fn2-core-wfp (fn2-core-init profile fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-machines-profilep))))
-(in-theory (disable fn2-core-init fn2-core-profilep))
+(in-theory (disable fn2-core-profilep))
 
 ; First corruption wins: later cleanup cannot erase the diagnostic.
 (in-theory (disable fn2-control-stop fn2-control-stop-reason
@@ -403,7 +386,7 @@
 
 (assert-event
  (fn2-assert-compliant-p
-  '(fn2-core-init fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
+  '(fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix
     fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-issue fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
@@ -529,4 +512,30 @@
 
 (fn2-resolve :core)
 
+))
+
+; The core's init has its own assembly section book (assembly-init): its guard
+; covers every child's capacity arithmetic at once and is the largest single
+; proof of the core section, so it certifies beside it, not inside it.
+(defmacro fn2-core-init-events ()
+ '(progn
+(make-event
+ (value `(defun fn2-core-init (profile fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep fn2-profilep)))))
+  (stobj-let ,(fn2-core-child-bindings *fn2-core-children*)
+    ,(strip-cars (strip-cdrs *fn2-core-children*))
+    (let* ,(fn2-core-registered-inits (fn2-core-child-registry (w state)))
+      (mv ,@(strip-cars (strip-cdrs *fn2-core-children*))))
+    fn2-core))))
+(defthm fn2-core-init-type
+  (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
+           (fn2-corep (fn2-core-init profile fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))
+(defthm fn2-core-init-wfp
+  (implies (fn2-core-profilep profile)
+           (fn2-core-wfp (fn2-core-init profile fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))
+(in-theory (disable fn2-core-init))
+(assert-event (fn2-assert-compliant-p '(fn2-core-init) (w state)))
 ))
