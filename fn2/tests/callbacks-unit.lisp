@@ -10,7 +10,7 @@
    (and (assoc-eq 'fn2-listener-admit (fn2-decl-get :callbacks owner))
         (equal (fn2-decl-get :calling-convention row)
                (getpropc 'fn2-listener-admit 'formals nil (w state)))
-        (equal (len (fn2-decl-get :row-bindings row)) 14)
+        (equal (len (fn2-decl-get :row-bindings row)) 15)
         (eq (fn2-decl-get :section row) :callbacks))))
 (assert-event
  (and (equal (fn2-decl-get :owner (fn2-operation-row 'fn2-issue-send (w state)))
