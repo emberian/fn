@@ -59,7 +59,10 @@
            (fn2-machines (update-fn2-machines-admission-headi o *fn2-none* fn2-machines))
            (fn2-machines (update-fn2-machines-admission-taili o *fn2-none* fn2-machines)))
       (fn2-machines-init-partitions o profile fn2-machines))))
+; The partition capacities and bases are opaque here: the stores check their widths.
+(in-theory (disable fn2-machine-admitted-capacity fn2-machine-admitted-base))
 (fn2-machines-preserves fn2-machines-init-partitions (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
+(in-theory (enable fn2-machine-admitted-capacity fn2-machine-admitted-base))
 (defun fn2-machines-admitted-capacities-p (left profile)
   (declare (xargs :guard (natp left) :measure (nfix left)))
   (if (zp left) t
@@ -71,7 +74,7 @@
   (and (fn2-profilep profile)
        (unsigned-byte-p 32 (fn2-profile-accept-credits profile))
        (unsigned-byte-p 32 (fn2-profile-c profile))
-       (fn2-machines-admitted-capacities-p (len *fn2-machine-admitted*) profile)
+       (fn2-machines-admitted-capacities-p (len *fn2-machine-partitioned*) profile)
        (< (fn2-machine-index-count profile)
           4294967296)))
 
@@ -82,7 +85,7 @@
          (fn2-machines (fn2-machines-columns-init n fn2-machines))
          (fn2-machines (fn2-machines-init-bases 256 profile fn2-machines))
          (fn2-machines (update-fn2-machines-accept-count a fn2-machines))
-         (fn2-machines (fn2-machines-init-partitions (len *fn2-machine-admitted*) profile fn2-machines))
+         (fn2-machines (fn2-machines-init-partitions (len *fn2-machine-partitioned*) profile fn2-machines))
          (fn2-machines (update-fn2-machines-refusals 0 fn2-machines))
          (fn2-machines (update-fn2-machines-gen-limit
                         (fn2-profile-generation-limit profile) fn2-machines))

@@ -6,10 +6,6 @@
 
 (defmacro fn2-machine-a-events ()
  '(progn
-(defun fn2-machine-dec (n)
-  (declare (xargs :guard (natp n)))
-  (if (zp n) 0 (- n 1)))
-
 ; One credit per unretired row, held from successful Accept issue through
 ; admission and echo reclamation. Failed Accept/admission returns its credit.
 ; Thus free rows = credits + outstanding admission reservations. Only listener
@@ -26,15 +22,21 @@
 (defun fn2-listener-take-credit (ord fn2-core)
   ; ORD is a listener's target ordinal; one outside the admitted kinds stops.
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (and (natp ord) (< ord *fn2-machine-admitted-max*))) (fn2-machine-refuse-write fn2-core)
+  ; Taking a credit the partition does not hold is a caller's bug: stop
+  ; before the field changes, never a count clamped at zero.
+  (if (or (not (and (natp ord) (< ord *fn2-machine-admitted-max*)))
+          (zp (fn2-machine-admission-credits ord fn2-core)))
+      (fn2-machine-refuse-write fn2-core)
     (fn2-machine-set-admission-credits ord
-      (fn2-machine-dec (fn2-machine-admission-credits ord fn2-core)) fn2-core))))
+      (- (fn2-machine-admission-credits ord fn2-core) 1) fn2-core))))
 (fn2-core-preserves fn2-listener-take-credit (ord fn2-core) :rows nil :prefix "")
 
 (defun fn2-machine-observe-terminal (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (eq (fn2-machine-pending-read-code id fn2-core) :ok)
-      (fn2-machine-write-pending id (fn2-machine-dec (fn2-machine-pending id fn2-core)) fn2-core)
+  ; A terminal for a row with nothing pending is a caller's bug: stop.
+  (if (and (eq (fn2-machine-pending-read-code id fn2-core) :ok)
+           (not (zp (fn2-machine-pending id fn2-core))))
+      (fn2-machine-write-pending id (- (fn2-machine-pending id fn2-core) 1) fn2-core)
     (fn2-machine-refuse-write fn2-core)))
 (fn2-core-preserves fn2-machine-observe-terminal (id fn2-core) :rows nil :prefix "")
 

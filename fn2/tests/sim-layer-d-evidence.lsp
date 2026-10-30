@@ -51,11 +51,15 @@
       (load "fn2/tests/own-read-hook.lsp")
       (load "fn2/tests/q1-case-hook.lsp")
       (fn2-own-hook-install)
+      (fn2-own-hook-range-control)
       (fn2-q1-hook-install-turn)
       (unwind-protect (funcall run-ld verdicts)
         (fn2-q1-hook-restore)
         (fn2-own-hook-restore))
       (fn2-own-hook-report "SIM-LAYER-D")
+      (format t "OWN READS BY KIND ~S~%"
+              (sort (loop for k being the hash-keys of *fn2-own-hook-reads* using (hash-value n) collect (cons k n))
+                    #'< :key #'car))
       (format t "OWN CHECKS ~D~%" *fn2-q1-hook-own-checks*)
       (fn2-q1-hook-write "fn2/tests/evidence/q1-d-tally.lisp" "fn2/tests/sim-layer-d.lsp"
                          (coerce (format nil "D's sim-layer-d, every turn under TRACE per case and OWN: ~{~A~^; ~}" domain)

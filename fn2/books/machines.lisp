@@ -250,7 +250,39 @@
                with P a phase, a :free phase, the range fields its own, and cap-index, cap-nonce, ~
                next-free fields." name admission))
         (t nil)))
-(defun fn2-machine-events (name states fields budget continuations observes capacity initial holds admission)
+;; :taken (:phase P :rows ROWKIND :ranges RANGES [:copy (FIELD ...)] [:clear (FIELD ...)])
+;; (D's A-S7, layer doc 14.7): the kind's rows are taken by another machine's
+;; arm, not by the listener. It owns a partition like an admitted kind (free
+;; chain, credits, active count, FIFO of parked takers), and gets
+;; fn2-machine-take-K (WAITER COPIES... fn2-core) -> (mv code id fn2-core)
+;; and fn2-machine-reclaim-K. ROWKIND is the D0 kind its row stands for; a
+;; range is (KIND :slot F :gen F :class N) with KIND a D0 kind.
+(defun fn2-machine-taken-ranges-p (specs own)
+  (declare (xargs :verify-guards nil))
+  (if (atom specs) t
+    (and (consp (car specs)) (assoc-eq (caar specs) *fn2-resource-order*)
+         (member-eq (fn2-arm-get :slot (cdar specs)) own) (member-eq (fn2-arm-get :gen (cdar specs)) own)
+         (natp (fn2-arm-get :class (cdar specs)))
+         (fn2-machine-taken-ranges-p (cdr specs) own))))
+(defun fn2-machine-taken-problem (name taken admission states own)
+  (declare (xargs :verify-guards nil))
+  (cond ((null taken) nil)
+        (admission (msg "~x0: a kind is admitted by the listener or taken by a machine, not both." name))
+        ((not (and (fn2-arm-plistp taken '(:phase :rows :ranges :copy :clear))
+                   (member-eq (fn2-arm-get :phase taken) states) (member-eq :free states)
+                   (assoc-eq (fn2-arm-get :rows taken) *fn2-resource-order*)
+                   (fn2-machine-taken-ranges-p (fn2-machine-range-specs (fn2-arm-get :ranges taken)) own)
+                   (fn2-arm-namesp (fn2-arm-get :copy taken))
+                   (fn2-arm-subsetp (fn2-arm-get :copy taken) own)
+                   (fn2-arm-namesp (fn2-arm-get :clear taken))
+                   (fn2-arm-subsetp (fn2-arm-get :clear taken) own)
+                   ;; the run dispatcher and the router read every row's stopped bit
+                   (member-eq 'next-free own) (member-eq 'stopped own)))
+         (msg "~x0: :taken ~x1 is (:phase P :rows ROWKIND :ranges ((KIND :slot F :gen F :class N) ...) ~
+               [:copy (F ...)] [:clear (F ...)]) with P a phase, a :free phase, ROWKIND and each KIND ~
+               D0 kinds, the range fields its own, and next-free and stopped fields." name taken))
+        (t nil)))
+(defun fn2-machine-events (name states fields budget continuations observes capacity initial holds admission taken)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
@@ -259,7 +291,7 @@
          (steps (cadr (member-eq :steps budget)))
          (descriptors (cadr (member-eq :descriptors budget))))
     (fn2-declare (list :machine name)
-      `(:states ,states :columns ,cols :holds ,holds :admission ,admission :budget ,budget
+      `(:states ,states :columns ,cols :holds ,holds :admission ,admission :taken ,taken :budget ,budget
                 :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
@@ -284,14 +316,15 @@
            (mv nil nil nil)))
 
        (defun ,(fn2-columns-sym name "-OBSERVES-P") (phase event)
-         (declare (xargs :guard t) ,@(if (or (member-eq :free states) (member-eq :retired states)) nil '((ignore phase))))
+         ;; a kind with no observation handler reads no event (A-S7's taken kinds may observe nothing)
+         (declare (xargs :guard t) (ignorable phase event))
          (and ,(if (member-eq :free states) `(not (equal phase ,(position-eq :free states))) t)
               ,(if (member-eq :retired states) `(not (equal phase ,(position-eq :retired states))) t)
               (case event ,@(fn2-machine-observe-event-guards observes) (otherwise nil))))
 
        ,@(fn2-machine-prepare-events name cols initial)))))
 
-(defmacro defmachine (name &key states fields budget continuations observes (capacity '1) initial holds admission)
+(defmacro defmachine (name &key states fields budget continuations observes (capacity '1) initial holds admission taken)
   (if (and (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
@@ -312,10 +345,11 @@
              (problem (or (fn2-arm-contracts-problem name continuations states own nil)
                           (fn2-arm-contracts-problem name observes states own t)
                           (fn2-arm-holds-problem-syntax name holds states)
-                          (fn2-machine-admission-problem name admission states own))))
+                          (fn2-machine-admission-problem name admission states own)
+                          (fn2-machine-taken-problem name taken admission states own))))
         (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
           (fn2-machine-events name states fields budget continuations observes capacity initial holds
-                              admission)))
+                              admission taken)))
     (er hard 'defmachine "Invalid machine declaration ~x0." name)))
 
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
@@ -478,7 +512,7 @@
         (declare (xargs :guard t))
         (case phase ,@(fn2-machine-next-cases arms states 0 states) (otherwise nil)))
       (defun ,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") (event from next)
-        (declare (xargs :guard t) (ignorable from next))
+        (declare (xargs :guard t) (ignorable event from next))
         (case event ,@(fn2-machine-observe-next-cases observes states) (otherwise nil)))
       ; The asserts' conditions as opaque calls, so the generated entries'
       ; shape proofs never open them.
@@ -967,7 +1001,9 @@
            (declare (xargs :stobjs fn2-core
                     :guard (and (fn2-core-wfp fn2-core)
                      (case event ,@(fn2-machine-observe-event-guards
-                                    (fn2-machine-property name :observes world)) (otherwise nil)))))
+                                    (fn2-machine-property name :observes world)) (otherwise nil))))
+                    ;; a kind with no handler (A-S7's taken kinds may observe nothing) reads no payload
+                    (ignorable outcome reason count aux0 aux1))
            ,@(fn2-callback-checked-body `((let ((row-phase (,(fn2-machine-row-reader name 'phase) id fn2-core)))
              (mv-let (wake fn2-core)
                (case event
@@ -1010,9 +1046,10 @@
                (if (not (and (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
                              (eq (fn2-machine-stopped-read-code id fn2-core) :ok)))
                    (fn2-machine-refuse-observation fn2-core)
-               (mv (if (or (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-operation*)
-                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-storage-window*)
-                           (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-connection-row*)
+               ;; a row parked on a resource (any D0 kind: an operation, a pool
+               ;; window, a partition's row) stays parked; its grant wakes it
+               (mv (if (or (not (or (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-none*)
+                                    (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-completion*)))
                            (equal (fn2-machine-stopped id fn2-core) 1)) *fn2-none* wake)
                    fn2-core))))))
        (fn2-core-preserves ,router (okind id gen event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)))))
@@ -1043,6 +1080,21 @@
 (defun fn2-machine-admitted (world)
   (declare (xargs :verify-guards nil))
   (fn2-machine-admitted-in (fn2-machine-names world) world))
+; The kinds taken by a machine (A-S7), in declaration order.
+(defun fn2-machine-taken-in (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (if (fn2-machine-property (car names) :taken world)
+        (cons (car names) (fn2-machine-taken-in (cdr names) world))
+      (fn2-machine-taken-in (cdr names) world))))
+(defun fn2-machine-taken (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-taken-in (fn2-machine-names world) world))
+; Every kind with a partition: the admitted kinds (ordinals 0..), then the
+; taken kinds, sharing the directory's arrays.
+(defun fn2-machine-partitioned (world)
+  (declare (xargs :verify-guards nil))
+  (append (fn2-machine-admitted world) (fn2-machine-taken world)))
 (defun fn2-machine-admission-cases (kinds n world what)
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil
@@ -1056,23 +1108,48 @@
   (if (atom kinds) nil
     (cons `(defconst ,(fn2-columns-pre "*" (fn2-columns-sym (car kinds) "-ADMISSION-ORDINAL*")) ,n)
           (fn2-machine-admission-ordinal-constants (cdr kinds) (+ 1 (nfix n))))))
-(defun fn2-machine-admission-index-events (kinds world)
+(defun fn2-machine-spec-classes (specs)
   (declare (xargs :verify-guards nil))
-  (if (> (len kinds) *fn2-machine-admitted-max*)
-      (er hard 'defmachine "At most ~x0 kinds may be admitted by the listener: ~x1." *fn2-machine-admitted-max* kinds)
+  (if (atom specs) nil
+    (cons (fn2-arm-get :class (cdar specs)) (fn2-machine-spec-classes (cdr specs)))))
+(defun fn2-machine-class-tally (classes acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom classes) acc
+    (let ((hit (assoc (car classes) acc)))
+      (fn2-machine-class-tally (cdr classes)
+                               (put-assoc (car classes) (+ 1 (if hit (cdr hit) 0)) acc)))))
+(defun fn2-machine-taken-class-cases (kinds n world)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil
+    (let* ((specs (fn2-machine-range-specs (fn2-arm-get :ranges (fn2-machine-property (car kinds) :taken world))))
+           (classes (fn2-machine-class-tally (fn2-machine-spec-classes specs) nil)))
+      (cons `(,n ',classes) (fn2-machine-taken-class-cases (cdr kinds) (+ 1 (nfix n)) world)))))
+(defun fn2-machine-admission-index-events (kinds world)
+  ; KINDS: the admitted kinds; the taken kinds follow them in the partition arrays.
+  (declare (xargs :verify-guards nil))
+  (let ((parts (append kinds (fn2-machine-taken world))))
+  (if (> (len parts) *fn2-machine-admitted-max*)
+      (er hard 'defmachine "At most ~x0 kinds may own a partition (admitted or taken): ~x1." *fn2-machine-admitted-max* parts)
     `((defconst *fn2-machine-admitted* ',kinds)
-      ,@(fn2-machine-admission-ordinal-constants kinds 0)
+      (defconst *fn2-machine-partitioned* ',parts)
+      ,@(fn2-machine-admission-ordinal-constants parts 0)
       (defun fn2-machine-admitted-capacity (ord profile)
         (declare (xargs :guard t) (ignorable profile))
-        (case ord ,@(fn2-machine-admission-cases kinds 0 world :capacity) (otherwise 0)))
+        (case ord ,@(fn2-machine-admission-cases parts 0 world :capacity) (otherwise 0)))
+      ; The pool rows a partition's take reserves, as ((CLASS . COUNT) ...): the
+      ; grant service wakes a parked taker only when they are free (A-S7), so a
+      ; pool shortage is a wait, never a re-park loop. Admitted kinds: none.
+      (defun fn2-machine-partition-classes (ord)
+        (declare (xargs :guard t) (ignorable ord))
+        (case ord ,@(fn2-machine-taken-class-cases (fn2-machine-taken world) (len kinds) world) (otherwise nil)))
       (defun fn2-machine-admitted-base (ord profile)
         (declare (xargs :guard t) (ignorable profile))
-        (case ord ,@(fn2-machine-admission-cases kinds 0 world :base) (otherwise *fn2-none*)))
+        (case ord ,@(fn2-machine-admission-cases parts 0 world :base) (otherwise *fn2-none*)))
       ; A profile names the kind its listeners admit (:listener-targets);
       ; absent or unknown, the first admitted kind (echo in layer A).
       (defun fn2-machine-admission-ordinal-of (name)
         (declare (xargs :guard t))
-        (case name ,@(fn2-machine-admission-cases kinds 0 world :ordinal) (otherwise 0))))))
+        (case name ,@(fn2-machine-admission-cases kinds 0 world :ordinal) (otherwise 0)))))))
 (defmacro fn2-machine-index-events ()
   '(progn (fn2-seal :machines :index :machine)
     (make-event
@@ -1390,12 +1467,16 @@
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
-                (fn2-core (if retire fn2-core
-                            (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
-                                                               fn2-core)))
-                (active (fn2-machine-active-count ,o fn2-core)))
-           (fn2-machine-set-active-count ,o (if (zp active) 0 (- active 1)) fn2-core))))
+         ;; A reclaim with no active row of the kind is a caller's bug: the core
+         ;; stops (:machine-write) before any partition field changes, never a
+         ;; count clamped at zero (REVIEW-20261030).
+         (let ((active (fn2-machine-active-count ,o fn2-core)))
+           (if (zp active) (fn2-machine-refuse-write fn2-core)
+             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
+                    (fn2-core (if retire fn2-core
+                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
+                                                                   fn2-core))))
+               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,admit :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE"))
         :effects ((:transfer (:connection-row) :to ,kind)
@@ -1404,6 +1485,101 @@
         :doc ,(concatenate 'string "Admit an accepted connection as a " (symbol-name kind) " row."))
       (defcost ,reclaim :tables (fn2-core-machines) :effects ((:release (:connection-row)))
         :doc ,(concatenate 'string "Return a drained " (symbol-name kind) " row to its partition.")))))
+;; As fn2-machine-range-reserves, for a take: a refused reservation releases
+;; what it reserved, parks the taker and answers :pool.
+(defun fn2-machine-taken-reserves (specs n kind install park)
+  (declare (xargs :verify-guards nil))
+  (if (atom specs) install
+    (let ((code (packn-pos (list 'code n) 'fn2-core)))
+      `(mv-let (,code ,(packn-pos (list 'slot n) 'fn2-core) ,(packn-pos (list 'pgen n) 'fn2-core) fn2-core)
+         (fn2-core-reserve ,(fn2-arm-get :class (cdar specs)) ,kind target gen fn2-core)
+         (if (not (eq ,code :ok))
+             ,(fn2-machine-range-releases n kind `(let ((fn2-core ,park)) (mv :pool *fn2-none* fn2-core)))
+           ,(fn2-machine-taken-reserves (cdr specs) (+ 1 (nfix n)) kind install park))))))
+;; A taken kind K with ordinal O (A-S7): fn2-machine-take-K takes O's free
+;; head and a credit, reserves K's ranges (all or none), installs the row in
+;; its :taken phase with the taker's copies, and wakes it; when no row,
+;; credit or range is free, WAITER (a machine id, or *fn2-none*) is parked on
+;; O's FIFO with the row kind as its wait reason, and the grant service wakes
+;; it once a credit returns. fn2-machine-reclaim-K returns the row and its
+;; credit (as an admitted kind's reclaim does).
+(defun fn2-machine-taken-kind-events (kind o world)
+  (declare (xargs :verify-guards nil))
+  (let* ((tk (fn2-machine-property kind :taken world))
+         (specs (fn2-machine-range-specs (fn2-arm-get :ranges tk)))
+         (copies (fn2-arm-get :copy tk))
+         (rowkind (fn2-arm-get :rows tk))
+         (reason (fn2-columns-pre "*" (fn2-columns-sym 'fn2-wait- (concatenate 'string (symbol-name rowkind) "*"))))
+         (kconst (fn2-columns-pre "*" (fn2-columns-sym kind "-KIND*")))
+         (phase (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym kind "-STATE")
+                                                                           (fn2-arm-get :phase tk)) "*")))
+         (take (fn2-columns-sym 'fn2-machine-take- (symbol-name kind)))
+         (reclaim (fn2-columns-sym 'fn2-machine-reclaim- (symbol-name kind)))
+         (install
+          `(let* ((fn2-core (fn2-machine-set-free-head ,o next fn2-core))
+                  (fn2-core (fn2-machine-set-active-count ,o (+ 1 (fn2-machine-active-count ,o fn2-core)) fn2-core))
+                  (fn2-core (fn2-machine-set-admission-credits ,o (- (fn2-machine-admission-credits ,o fn2-core) 1) fn2-core))
+                  (fn2-core (,(fn2-columns-sym kind "-PUT-CORE") target
+                             (phase ,phase)
+                             ,@(fn2-machine-range-puts specs 0)
+                             ,@(fn2-machine-copy-puts copies)
+                             ,@(fn2-machine-zero-puts (fn2-arm-get :clear tk))
+                             (wait-reason *fn2-wait-none*)))
+                  (fn2-core (fn2-machine-set-wake-id target fn2-core)))
+             (mv :ok target fn2-core)))
+         ;; WAITER *fn2-none* parks nothing; any other waiter must be a
+         ;; machine not already waiting (else the caller is wrong: refused)
+         (park `(cond ((equal waiter *fn2-none*) fn2-core)
+                      ((and (fn2-machine-idp waiter fn2-core)
+                            (eq (fn2-machine-wait-reason-read-code waiter fn2-core) :ok)
+                            (equal (fn2-machine-wait-reason waiter fn2-core) *fn2-wait-none*))
+                       (let ((fn2-core (fn2-machine-park-admission waiter ,o fn2-core)))
+                         (fn2-machine-write-wait-reason waiter ,reason fn2-core)))
+                      (t (fn2-machine-refuse-write fn2-core)))))
+    `((fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+       (defun ,take (waiter ,@copies fn2-core)
+         (declare (xargs :stobjs fn2-core
+                         :guard (and (fn2-core-wfp fn2-core) ,@(fn2-machine-copy-guards copies kind world))))
+         (let ((target (fn2-machine-free-head ,o fn2-core)))
+           (if (or (equal target *fn2-none*)
+                   (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
+                   (not (eq (fn2-machine-next-free-read-code target fn2-core) :ok))
+                   (zp (fn2-machine-admission-credits ,o fn2-core))
+                   (>= (fn2-machine-active-count ,o fn2-core) (fn2-machine-connection-count ,o fn2-core)))
+               (let ((fn2-core ,park)) (mv :no-row *fn2-none* fn2-core))
+             (let ((gen (fn2-machine-generation target fn2-core))
+                   (next (fn2-machine-next-free target fn2-core)))
+               ,(fn2-machine-taken-reserves specs 0 kconst install park))))))
+      (fn2-core-preserves ,take (waiter ,@copies fn2-core) :position 2 :rows nil :prefix "")
+      (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+       (defun ,reclaim (id retire fn2-core)
+         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+         ;; A reclaim with no active row of the kind is a caller's bug: the core
+         ;; stops (:machine-write) before any partition field changes, never a
+         ;; count clamped at zero (REVIEW-20261030).
+         (let ((active (fn2-machine-active-count ,o fn2-core)))
+           (if (zp active) (fn2-machine-refuse-write fn2-core)
+             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
+                    (fn2-core (if retire fn2-core
+                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
+                                                                   fn2-core))))
+               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
+      (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
+      (defcost ,take :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
+        :effects ((:acquire (,rowkind) :for ,kind) (:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))
+        :target (,kind :free ,(fn2-arm-get :phase tk))
+        :doc ,(concatenate 'string "Take a " (symbol-name kind) " row and its ranges, or park the taker."))
+      (defcost ,reclaim :tables (fn2-core-machines) :effects ((:release (,rowkind)))
+        :doc ,(concatenate 'string "Return a drained " (symbol-name kind) " row to its partition.")))))
+(defun fn2-machine-taken-all-events (kinds o world)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil
+    (append (fn2-machine-taken-kind-events (car kinds) o world)
+            (fn2-machine-taken-all-events (cdr kinds) (+ 1 (nfix o)) world))))
+(defun fn2-machine-take-names (kinds)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil
+    (cons (fn2-columns-sym 'fn2-machine-take- (symbol-name (car kinds))) (fn2-machine-take-names (cdr kinds)))))
 (defun fn2-machine-admission-all-events (kinds o world)
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil
@@ -1435,6 +1611,7 @@
             copies (fn2-machine-admission-copies kinds world))
     `(progn
        ,@(fn2-machine-admission-all-events kinds 0 world)
+       ,@(fn2-machine-taken-all-events (fn2-machine-taken world) (len kinds) world)
        (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
         (defun fn2-machine-admit (target index nonce ,@copies fn2-core)
           (declare (xargs :stobjs fn2-core
@@ -1457,7 +1634,9 @@
          :effects ((:transfer (:connection-row) :to :admitted))
          :doc "Admit into the listener's target kind (dispatch on the admitted-kind ordinal).")
        (make-event
-        (let ((problem (fn2-arm-target-problem ',(fn2-machine-admit-names kinds) (w state))))
+        (let ((problem (fn2-arm-target-problem ',(append (fn2-machine-admit-names kinds)
+                                                          (fn2-machine-take-names (fn2-machine-taken world)))
+                                               (w state))))
           (if problem (er soft 'fn2-machine-admission "~@0" problem)
             (value '(value-triple :admission-effects-checked)))))))))
 (defmacro fn2-machine-admission-events ()
