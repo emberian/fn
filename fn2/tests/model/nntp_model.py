@@ -1187,7 +1187,9 @@ class Conn:
             reason, definite = "malformed|missing|required|syntax", True
         elif any(len(re.findall(rb"(?im)^" + f + rb":", data.partition(b"\r\n\r\n")[0])) > 1
                  for f in (b"from", b"subject", b"newsgroups", b"message-id", b"date", b"path")):
-            reason, definite = "duplicat|malformed|field|Path", True
+            # Pin P-DUP-FIELD: fn1's catalogue (books/protocol-table.lisp) and D's grammar both say
+            # "441 posting failed; <Field> appears more than once"; the spec names no wording.
+            reason, definite = "duplicat|appears more than once|malformed|field|Path", True
         elif not transit and "path" in fields and (b"POSTED" in fields["path"].upper() or
                 not re.fullmatch(rb"[^\s!]+(?:![^\s!]+)*", fields["path"])):
             reason, definite = "Path|path", True

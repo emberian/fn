@@ -738,6 +738,19 @@ class H2dRecordedReplyTests(unittest.TestCase):
                 self.assertFalse(c.quit)
                 send(c, "LAST", "412 no newsgroup selected")
 
+    def test_duplicate_field_reason_is_the_catalogue_wording(self):
+        # Pin P-DUP-FIELD: the catalogue's wording for every duplicated required field (fn1
+        # books/protocol-table.lisp; fn2 books/nntp-grammar.lisp :refused-from-duplicate and its siblings).
+        for name in (b"From", b"Subject", b"Newsgroups", b"Message-ID", b"Date"):
+            first = re.search(rb"(?im)^" + name + rb":[^\r\n]*\r\n", article()) or None
+            row = first[0] if first else name + b": <dup@example.test>\r\n"
+            c = connect(model())
+            send(c, "POST", "340 send article")
+            e = c.send_block(encode_block(article(extra=row)))
+            self.assertFalse(e.check(b"240 article received OK\r\n", None).ok)
+            self.assertFalse(e.check(b"441 posting failed; the group is closed\r\n", None).ok)
+            accept(e, b"441 posting failed; " + name + b" appears more than once\r\n")
+
     def test_invalid_post_path_keeps_named_reason(self):
         # H2d shard-1/repro-206-peer-whole-00060 has ALSO ': empty name'.
         # A16 leaves compound-defect precedence open; specs905-909,930-935
