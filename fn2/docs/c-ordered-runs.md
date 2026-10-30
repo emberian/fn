@@ -630,7 +630,7 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
 | `NAME-seek-lower-bound` (generated per schema) | the real page seek returns `(:found i)` or `(:absent i)` equal to `fn2-run-lower-bound-spec` over the spec key order | positive: queries before, inside, between, after and at restart boundaries, including empty octets and a query held by another owner; negative: the unsorted page disagrees with the spec | C1 |
 | `NAME-run-lookup-exact` (generated per schema) | for at most 64 sorted well-formed entries and a fill at which every page holds two entries (`fn2-run-run-inputp`), a run built through the real build entry points and searched from its root through the real cursor steps answers `(:found entry)` exactly when an entry's key equals the query's, with that entry, and `(:absent nil)` otherwise (`fn2-run-key-lookup-spec`) | positive: present, between, before, after and empty-octet queries over multi-level runs of both test schemas; negative: unsorted entries make the conclusion false | C1b' |
 | `fn2-exact-identity` (RELEASE-PLAN T9) | offers decided and recorded through the real decision and recording, sealed into runs every `split` offers, the offers' staging workspace released, then queries decided: each answer equals `fn2-id-answers-spec` (`:duplicate` iff recorded as the accepted content, `:evidence` iff recorded only as evidence, `:conflict` iff another content is, else `:stored`) | positive: the M3-shaped scenario (a conflict, a duplicate, five contents for one Message-ID against the bound of four; two queries answer `:evidence`) at splits 0, 4 and 1; negative: a node whose summary dropped the Message-ID octets answers `:stored` to the re-offer of m1 with another content, where the statement requires `:conflict` | C2b |
-| `fn2-identity-binding-converges` | two nodes whose offered fact sets are equal (any order, duplication or sealing schedule, within the bound) hold equal Bindings, read back by the real scan of every installed run | positive: one fact set in two orders (one with a duplicate) under splits 2 and 3, equal to each other and to `fn2-id-binding-spec`; negative: nodes that refuse a conflict and record nothing hold different Bindings for the two orders | C2b |
+| `fn2-identity-binding-converges` (`:route`) | two nodes whose offers record the same facts with the same states (each Message-ID's first-arriving content accepted, the rest evidence; any order otherwise, duplication or sealing schedule, within the bound) hold equal Bindings with states, read back by the real scan of every installed run, and each is `fn2-id-state-binding-spec`'s; the IDENTITY checker's `:binding` event compares states too (departure 2) | positive: one fact set in two orders keeping first arrivals (one with a duplicate) under splits 2 and 3, equal to each other and to the spec; negative: the review's (m,a),(m,b) against (m,b),(m,a), equal key sets but different Bindings; a node that refuses a conflict and records nothing differs from the spec | C2b, strengthened after C-S3 ||
 | `fn2-ribbon-no-false-negative` | a filter built through the real start, add, finish and work from at most 256 keys seals, passes B's checker under its parent-held hash, and its probe answers `:absent` only for a query that is no key (`fn2-ribbon-answers-sound`) | positive: 200 keys and 56 others probed, every key `:maybe`, at least 50 others `:absent`; negative: a filter built without key 17 answers `:absent` to it | C2c |
 | `fn2-ribbon-mutation-refused` | any one-byte change (offset in the page, nonzero XOR) of a sealed filter page is refused by B's checker by name | positive: changes in B's header, the filter header, Z and the padding refused while the unchanged page is accepted; negative: a zero change is accepted | C2c |
 | `fn2-identity-linearizable` | for every seed and at most 64 offers, the M3 scenario's trace (interleaved decisions, records, seals with filters, bodies released, then every pair queried and the Binding scanned) is accepted by the independent IDENTITY checker | positive: 40 seeds pass with races exercised (1,808 stale records) and 722 seals; negative: the same schedules with the stamp and version checks defeated are refused by name (37 of 40) | C2d |
@@ -669,3 +669,23 @@ OWED.md is regenerated when the export is green.
 
 Every C book under 60 s on the laptop (the one-minute rule); the table lives in
 `build/coordinator/fn2/lanes/c-continuation.md`, refreshed after every quest.
+
+## 12. Departures (numbered; each with its remedy and its state)
+
+1. **The fold compiler ran in `:program` mode** (C4a, `runs-schema.lisp`'s `fn2-rf-*` and
+   `fn2-defrunschema`, 43 functions), against the brief's and both layer docs' "no `:program`"
+   (REVIEW-20261030 §1). Remedy: logic mode with `:verify-guards nil`, as every other generator
+   in fn2/books (the generators run at macro time and are never served); the one function whose
+   termination needed a change is `fn2-rf-test`, which now answers nil on an atom (its callers pass
+   only tests `fn2-rf-testp` accepted). State: applied; no `:program` function is left in fn2.
+2. **`fn2-identity-binding-converges` was weaker than its name** (REVIEW-20261030 §1): it compared
+   key sets, so two nodes offered (m,a),(m,b) in opposite orders "converged" while answering one
+   query `:duplicate` on one and `:evidence` on the other; the IDENTITY checker's `:binding` event
+   dropped the state the same way. Remedy: the Binding image carries each fact's state, the
+   premise is equality of the recorded states (`fn2-id-state-binding-spec`, sensitive to first
+   arrival), the conclusion adds that the image is that spec, and the checker's `:binding` facts
+   are (mid c state) with a control refusing exchanged states. Which content wins when nodes saw
+   different first arrivals is the served choice: first arrival, stated per offer sequence by
+   `fn2-exact-identity`; converging it across peers is E4's (peering), not this row's. State:
+   applied.
+

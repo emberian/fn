@@ -16,8 +16,10 @@
 ; every other outcome is judged against the Binding at the record, its
 ; linearization point. Queries are judged at their point; seals and
 ; reclaims (staged bodies, journal placements) change nothing a query may
-; observe; a :binding event (a node's scanned facts) must equal the
-; checker's Binding as a set.
+; observe; a :binding event (a node's scanned facts, each (mid c state))
+; must equal the checker's Binding as a set, states included: the first
+; content recorded for a Message-ID is :accepted, the rest :conflict (the
+; served choice a peer's node must reproduce, REVIEW-20261030).
 ;
 ; Events: (:offer mid c answer outcome) (:query mid c answer) (:seal n)
 ; (:reclaim what) (:binding facts), facts a list of (mid c).
@@ -44,13 +46,13 @@
   (cond ((and (consp cs) (equal c (car cs))) :duplicate)
         ((member-equal c (true-list-fix cs)) :evidence)
         ((consp cs) :conflict) (t :stored))))
-(defun fn2-ci-facts-of (mid cs)
+(defun fn2-ci-facts-of (mid cs st)
  (declare (xargs :guard t))
- (if (atom cs) nil (cons (list mid (car cs)) (fn2-ci-facts-of mid (cdr cs)))))
+ (if (atom cs) nil (cons (list mid (car cs) st) (fn2-ci-facts-of mid (cdr cs) :conflict))))
 (defun fn2-ci-facts (binding)
  (declare (xargs :guard t))
  (cond ((atom binding) nil)
-       ((consp (car binding)) (append (fn2-ci-facts-of (caar binding) (cdar binding)) (fn2-ci-facts (cdr binding))))
+       ((consp (car binding)) (append (fn2-ci-facts-of (caar binding) (cdar binding) :accepted) (fn2-ci-facts (cdr binding))))
        (t (fn2-ci-facts (cdr binding)))))
 (defun fn2-ci-same-set (a b)
  (declare (xargs :guard (and (true-listp a) (true-listp b))))
@@ -104,8 +106,13 @@
    (:offer m2 a :stored :stale) (:offer m2 a :stored :ok) (:seal 1) (:reclaim :bodies)
    (:offer m1 c :conflict :identity-conflict-bound)
    (:query m1 b :evidence) (:query m1 a :duplicate) (:query m1 z :conflict) (:query m3 a :stored)
-   (:binding ((m2 a) (m1 b) (m1 a)))))
-(assert-event (equal (fn2-check-identity *fn2-ci-good* 2) '(:ok ((m1 a) (m1 b) (m2 a)) 1 1 1)))
+   (:binding ((m2 a :accepted) (m1 b :conflict) (m1 a :accepted)))))
+(assert-event (equal (fn2-check-identity *fn2-ci-good* 2) '(:ok ((m1 a :accepted) (m1 b :conflict) (m2 a :accepted)) 1 1 1)))
+;; The same facts with the accepted and the evidence content exchanged (a
+;; node that served the other choice) are refused.
+(assert-event (equal (car (fn2-check-identity (append (butlast *fn2-ci-good* 1)
+                                                      '((:binding ((m2 a :accepted) (m1 b :accepted) (m1 a :conflict))))) 2))
+                     :identity-error))
 (assert-event (equal (car (fn2-check-identity (cons '(:offer m9 a :conflict :ok) *fn2-ci-good*) 2)) :identity-error))
 (assert-event (equal (fn2-check-identity (append (take 7 *fn2-ci-good*) '((:offer m1 c :conflict :ok))) 2)
                      '(:identity-error 7 :outcome m1 c :conflict :ok)))

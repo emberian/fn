@@ -97,6 +97,17 @@
  (declare (xargs :verify-guards nil))
  (if (atom facts) nil
   (fn2-id-insert-key (list (fn2-id-mid (car facts)) (fn2-id-content (car facts))) (fn2-id-binding-spec (cdr facts)))))
+; The Binding with each fact's state (:accepted, or :conflict for evidence),
+; as the offers in order record it: sorted, without repeats. Its states
+; depend on which content of a Message-ID arrived first (the served choice).
+(defun fn2-id-state-insert (facts keys)
+ (declare (xargs :verify-guards nil))
+ (if (atom facts) keys
+  (fn2-id-state-insert (cdr facts)
+   (fn2-id-insert-key (list (fn2-id-mid (car facts)) (fn2-id-content (car facts)) (fn2-id-state (car facts))) keys))))
+(defun fn2-id-state-binding-spec (offers)
+ (declare (xargs :verify-guards nil))
+ (fn2-id-state-insert (fn2-id-record-spec offers nil) nil))
 (defun fn2-id-mid-count (mid keys)
  (declare (xargs :verify-guards nil))
  (cond ((atom keys) 0) ((equal (fn2-id-mid (car keys)) mid) (+ 1 (fn2-id-mid-count mid (cdr keys))))
@@ -716,13 +727,18 @@
     (declare (xargs :verify-guards nil))
     (fn2-ida-local fn2-ida-run offers split forget queries))
 
-   ;; The Binding a node holds: every key of every installed run, sorted,
-   ;; without repeats, read by the real scan from the least key.
+   ;; The Binding a node holds: every fact of every installed run with its
+   ;; state (:accepted or :conflict), sorted, without repeats, read by the
+   ;; real scan from the least key.
    (defun fn2-ida-keys (entries keys)
     (declare (xargs :verify-guards nil))
     (if (atom entries) keys
      (fn2-ida-keys (cdr entries)
-      (if (consp (car entries)) (fn2-id-insert-key (list (car (car entries)) (cdr (cadr (car entries)))) keys) keys))))
+      (if (consp (car entries))
+          (fn2-id-insert-key (list (car (car entries)) (cdr (cadr (car entries)))
+                                   (if (equal (caddr (car entries)) *fn2-identity-state-accepted*) :accepted :conflict))
+                             keys)
+        keys))))
    (fn2-ida-defun fn2-ida-scan-runs (r rows keys) :measure (nfix rows)
     (if (zp rows) (fn2-ida-mv keys)
      (b* (((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
@@ -759,8 +775,9 @@
     :doc "The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded as the accepted content, :evidence iff it is recorded only as conflict evidence, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs.")
    (defthm-owed fn2-identity-binding-converges (o1 s1 o2 s2)
     (implies (and (fn2-id-offersp o1) (fn2-id-offersp o2) (<= (len o1) 40) (<= (len o2) 40) (natp s1) (natp s2)
-                  (equal (fn2-id-binding-spec o1) (fn2-id-binding-spec o2)) (fn2-id-within-bound o1))
-             (equal (fn2-identity-binding-image o1 s1 nil) (fn2-identity-binding-image o2 s2 nil)))
+                  (equal (fn2-id-state-binding-spec o1) (fn2-id-state-binding-spec o2)) (fn2-id-within-bound o1))
+             (and (equal (fn2-identity-binding-image o1 s1 nil) (fn2-identity-binding-image o2 s2 nil))
+                  (equal (fn2-identity-binding-image o1 s1 nil) (fn2-id-state-binding-spec o1))))
     :teeth (fn2-identity-binding-converges-positive fn2-identity-binding-converges-negative)
     :schema :route
-    :doc "Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates.")))
+    :doc "Two nodes whose offers record the same facts with the same states (each Message-ID's first-arriving content accepted, the rest evidence; any other order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, states included, and each is the specification's; so they answer every query alike. Which content is accepted when nodes saw different first arrivals is the served choice, not converged here.")))

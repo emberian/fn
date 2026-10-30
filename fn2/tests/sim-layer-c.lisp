@@ -148,7 +148,7 @@
    (cons (list (fn2-m3-mid (floor i 5)) (fn2-m3-content (+ 1 (mod i 5)))) (fn2-m3-pairs (- k 1))))))
 (defun fn2-m3-binding-facts (keys)
  (declare (xargs :verify-guards nil))
- (if (atom keys) nil (cons (list (car (car keys)) (cadr (car keys))) (fn2-m3-binding-facts (cdr keys)))))
+ (if (atom keys) nil (cons (list (car (car keys)) (cadr (car keys)) (caddr (car keys))) (fn2-m3-binding-facts (cdr keys)))))
 
 (fn2-ida-defun fn2-m3-run (seed n defeat)
  (b* (((mv code fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ribbon-builds fn2-ribbon-band fn2-id-stamps)

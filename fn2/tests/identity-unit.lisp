@@ -52,25 +52,34 @@
                    (fn2-id-answers-spec *fn2-it-offers* q))))))
 (fn2-assert-owed-teeth fn2-exact-identity)
 
-;; Teeth for fn2-identity-binding-converges. Positive: one fact set within
-;; the bound, delivered in two orders (the second with a duplicate) under two
-;; sealing schedules, gives one Binding. Negative: nodes that refuse a
-;; conflicting offer and record nothing hold different Bindings for the two
-;; orders, and neither learns of the conflict.
+;; Teeth for fn2-identity-binding-converges (strengthened per REVIEW-20261030:
+;; the Binding carries each fact's state). Positive: one fact set within the
+;; bound, delivered in two orders that keep each Message-ID's first content
+;; first (the second with a duplicate), under two sealing schedules, gives one
+;; Binding, with states, and it is the specification's. Negative: (1) the
+;; review's pair, (m,a),(m,b) against (m,b),(m,a): equal key sets (the old
+;; premise) but Bindings that differ in which content is accepted, so the key
+;; set alone does not determine what a node serves; (2) a node that refuses a
+;; conflicting offer and records nothing holds a Binding other than the
+;; specification's (the evidence is missing).
 (defconst *fn2-it-bind*
  (list (fn2-it-offer 1 1) (fn2-it-offer 2 1) (fn2-it-offer 1 2) (fn2-it-offer 3 1) (fn2-it-offer 2 3) (fn2-it-offer 4 1)))
 (defconst *fn2-it-bind-2*
- (append (reverse *fn2-it-bind*) (list (fn2-it-offer 2 1))))
+ (list (fn2-it-offer 2 1) (fn2-it-offer 1 1) (fn2-it-offer 3 1) (fn2-it-offer 4 1) (fn2-it-offer 2 3) (fn2-it-offer 1 2)
+       (fn2-it-offer 2 1)))
+(defconst *fn2-it-ab* (list (fn2-it-offer 9 1) (fn2-it-offer 9 2)))
 (defun fn2-identity-binding-converges-positive ()
  (declare (xargs :verify-guards nil))
  (and (fn2-id-offersp *fn2-it-bind*) (fn2-id-offersp *fn2-it-bind-2*)
-      (equal (fn2-id-binding-spec *fn2-it-bind*) (fn2-id-binding-spec *fn2-it-bind-2*))
+      (equal (fn2-id-state-binding-spec *fn2-it-bind*) (fn2-id-state-binding-spec *fn2-it-bind-2*))
       (fn2-id-within-bound *fn2-it-bind*)
       (equal (fn2-identity-binding-image *fn2-it-bind* 2 nil) (fn2-identity-binding-image *fn2-it-bind-2* 3 nil))
-      (equal (fn2-identity-binding-image *fn2-it-bind* 2 nil) (fn2-id-binding-spec *fn2-it-bind*))))
+      (equal (fn2-identity-binding-image *fn2-it-bind* 2 nil) (fn2-id-state-binding-spec *fn2-it-bind*))))
 (defun fn2-identity-binding-converges-negative ()
  (declare (xargs :verify-guards nil))
- (not (equal (fn2-identity-binding-image *fn2-it-bind* 2 t) (fn2-identity-binding-image *fn2-it-bind-2* 3 t))))
+ (and (equal (fn2-id-binding-spec *fn2-it-ab*) (fn2-id-binding-spec (reverse *fn2-it-ab*)))
+      (not (equal (fn2-identity-binding-image *fn2-it-ab* 1 nil) (fn2-identity-binding-image (reverse *fn2-it-ab*) 1 nil)))
+      (not (equal (fn2-identity-binding-image *fn2-it-bind* 2 t) (fn2-id-state-binding-spec *fn2-it-bind*)))))
 (fn2-assert-owed-teeth fn2-identity-binding-converges)
 
 ;; The identity schema's generated keystones (page, seek, run lookup, scan,
