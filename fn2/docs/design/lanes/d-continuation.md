@@ -25,8 +25,8 @@ built), section 10 the open items, section 12 the quest table.
 | quest | commit | one line |
 |---|---|---|
 | D7 1/n | 7b12faab9 (dev 1d6cce7ca) | layer doc 13: ledger and scheduler-over-principals design, Astra-reviewed (`build/d-seat/d7-astra-1.md`), seam S1-S6 to A |
-| D7 2/n | 424312db7 | `fn2/books/accounts.lisp`: the ledger library; acquire-protected and the charge lemmas proved; ops-conserve owed; `tests/accounts-unit.lisp` |
-| D7 3/n | 792a36bd3 + acceptance commit | `accounts-core.lisp` (core child, wrappers, seam entry points), fn2-conn booked at the greeting and charged rx/tx/requests, `sim/check-account.lisp` (ACCOUNT), sim-layer-d ACCOUNT + scenario 11 flood half, `fn2-account-ledger-matches` owed with teeth in conn-unit |
+| D7 2/n | 424312db7 (dev a98d3c7c5) | `fn2/books/accounts.lisp`: the ledger library; acquire-protected and the charge lemmas proved; ops-conserve owed; `tests/accounts-unit.lisp` |
+| D7 3/n | 792a36bd3, 703b5503a, edbda1d0b, OWED d15c0b3c1 (dev a98d3c7c5) | `accounts-core.lisp` (core child, wrappers, seam entry points), fn2-conn booked at the greeting and charged rx/tx/requests, `sim/check-account.lisp` (ACCOUNT), sim-layer-d ACCOUNT + scenario 11 flood half, `fn2-account-ledger-matches` owed with teeth in conn-unit |
 Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
 
 ## D7 as built (for the next slice)
@@ -48,15 +48,29 @@ Earlier seats: D0, D1a, D2a-c, D3 (see layer doc section 12).
   `fn2-account-controls` (third control `:n/a` without reserves).
 
 ## Next
-0. Report READY 3/n after sim-layer-b, ff dev. Tell main: commit-resource-unit (B's) fails its callback
-   audit on the merged tree after A's split (assembly-callbacks-b) — not D's code.
-1. D4 (upload) and D5 (transaction) are unblocked (A's read-set 6b2f6ef5b, assembly split 71c1fb2f2;
+0. (done) READY 2/n+3/n sent with the seam names. A landed S4 (fn2-sched-reattribute, 7fd40d0b7)
+   and S6 (:account, used at drain). Main asked A to move `(fn2-account-events)` ahead of its callers
+   when it wires S1/S2/S5.
+1. D5 first (main/C, 2026-10-30): C's identity decision is linearizable by per-bucket stamps and an
+   identity version; `fn2-id-record` refuses `:stale` before any other verdict when either moved since
+   the decision began, and a stale offer is offered again. D5's `:identity-reservation` (D0 kind,
+   serializing same-Message-ID offers on one node) bounds the retry count: declare it as an arm with
+   its cost; WIRE stays one reply per POST/IHAVE/TAKETHIS; run D5's scenario with
+   `fn2/sim/check-identity.lisp` on (C's IDENTITY checker, scenario M3). Then D4.
+2. D4 (upload) and D5 (transaction) are unblocked (A's read-set 6b2f6ef5b, assembly split 71c1fb2f2;
    C2 identity c06369c9d; doc: `fn2/docs/c-ordered-runs.md`). H's M1a oracle has 713 POST interims for
    D5. Order: D4 then D5, or D5's POST path first if D4's upload machine is the smaller bottleneck.
-2. D7 4/n once A lands S1-S5: booking at Accept (move the book from greet), the request bundle
+3. S1 ruling (main, 2026-10-30): the DSL seat lands S1 as ONE commit: the listener books at Accept only
+   when the target kind's :admission copies account-ref (echo copies nothing, so A4 never touches the
+   ledger); admission copies principal-slot and account-ref and unbooks on a failed Accept or refused
+   admission; and it changes fn2-conn-greet to stop booking and keep account-ref as copied (nothing else
+   in conn.lisp). Its gate runs sim-layer-d (all four sets) and conn-unit. READ THAT DIFF when main sends
+   the sha. S2 (charge-run in the executor, principal and service visits, non-:ok stops :account) and S5
+   (grant source fourth; fn2-account-events at the head of assembly-access) are in A's acceptance.
+   D7 4/n builds on S1: booking at Accept (move the book from greet), the request bundle
    (`:control-reply` phase, per-principal FIFOs, grant service), run charges, weights, reattribute.
    Then 5/n timers, 6/n TLS admission.
-3. Prove `fn2-account-ops-conserve` when cheap (sum over the dimension-major array under one update).
+4. Prove `fn2-account-ops-conserve` when cheap (sum over the dimension-major array under one update).
 
 ## Certify times (forge, merged tree b587be19f + 3/n)
 | book | s |

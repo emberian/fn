@@ -71,6 +71,9 @@ forge (`ssh forge`, user fn) is the quiet measurement box when it is up; hbox is
 ## Where builds run (ember, 2026-10-29: "we are permitted to use hbox & local mac to their absolute utmost for our present project")
 The Mac and hbox, both, to their utmost: ACL2 certifies, the simulator, the natives and fresh Lean projects on the Mac; hbox for anything larger or longer, under `swarm-build` with a PID file, lanes in parallel. No cloud build box exists (dregg-build and dregg-ref are gone) and none is created without ember's yes. Research seats may run ACL2 and Lean on the Mac. Disk pressure stays a pause-and-tell condition.
 
+## Detached runs (2026-10-30: three orphans on forge in one day)
+A detached run (certify, driver, sweep) starts under `setsid` and its PID file holds the GROUP LEADER's pid (the setsid child, not the shell that forked it); stop it with `kill -- -<pgid>` from that file and nothing else. A PID file naming a dead wrapper is the cause of every orphan this week: the wrapper died, its children certified on for hours holding a tree lock and an ACL2 slot, and nobody could stop them by the rule. Verify the file before launching the next run: `kill -0 $(cat run.pid)` and `ps -o pgid= -p $(cat run.pid)` must agree.
+
 ## Box safety (verbatim; every Codex prompt quotes it)
 - Never kill a process by pattern (no `pkill -f`, `pkill -x`, `killall`, `kill -u`). Stop only by the PID in a PID file you wrote; no PID file: report it.
 - Never `git stash`, never `git add -A`; named files only; Codex never pushes.

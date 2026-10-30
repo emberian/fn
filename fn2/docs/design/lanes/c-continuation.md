@@ -32,37 +32,40 @@ COMMON.
   `fn2/tests/sim-layer-c.lisp`: M3 (`fn2-m3-trace seed n defeat`, `fn2-m3-sweep`), keystone
   fn2-identity-linearizable; `sim-layer-c-sweep.lsp` 10,000 seeds (not yet run: run it on forge
   with forge-driver.sh when a box is quiet and report the row).
-- OWED.md regenerated at each (354 requirements at C2d).
-- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev 4c7c775b4.
-  forge clone `/build/lanes/c` at 76b82807c (closure + export recipe below).
+- d2f2ea9e8 ribbon uses A's word book (`fn2/books/words.lisp`: fn2-u32, fn2-u32-mul,
+  fn2-prng-mix32); fn2-ribbon-mul32/-mix deleted; width lemma `fn2-ribbon-mix32-width`.
+- ab5662b34 **C3a** (dev 654d1fd39): `fn2/books/ordered.lisp` (fn2-article id 2 :latest,
+  fn2-overview id 3 key (group number) value (article position line (:octets 1024)), fn2-addr id 4
+  key (principal position)); `fn2/books/range.lisp`: `fn2-read-plan` (pure, the read contract),
+  tables `fn2-ranges` / `fn2-range-sources`, `fn2-range-start (g sid qbase hbase sbase smax cbase
+  rbase pfield plimit qk qs qg ranges sources overlays installed)`, macro `fn2-range-assemble`
+  generating `fn2-range-step (g budget ranges sources overlays overlay-index installed cursors
+  paths cache fields pool)` -> :entry (rows at fn2-ranges-out, owner ok os og) / :end / :more /
+  :miss / refusal; adapters `fn2-range-image (sid layout sources lo hi pidx plimit budget sealat)`,
+  spec `fn2-range-spec`, keystone fn2-range-read-exact. Moves: `fn2-run-copy-row` (runs-page),
+  `fn2-run-version sid` (runs), overlay COV column + `fn2-ov-cover`; `fn2-ov-start` takes cov.
+  Test world `tests/range-assembly.lisp` (runs-assembly + range, calls fn2-range-assemble); unit
+  `tests/range-unit.lisp`. Told main D6 can start.
+- OWED.md regenerated at each (390 requirements at C3a, other seats' rows included).
+- Worktree `/Users/ember/dev/fn/build/lanes/fn2/c-found` (branch fn2/c-found) = dev 654d1fd39.
+  forge clone `/build/lanes/c` at d42bff1d2.
 
 ## Seam requests outstanding (sent to main)
-- A: hoist `fn2-u32`, `fn2-u32-mul`, `fn2-prng-mix32` from sim/prng.lisp into a books/ word book;
-  then C deletes `fn2-ribbon-mul32`, `fn2-ribbon-mix` and calls them (layer doc §8 item 5).
 - B: GC2 inside B5 (layer doc §8 item 2), still pending; blocks C1c's sealer and M3's device leg.
 
-## Next (critical path C3 -> D6)
-1. **C3** (tell main the moment it is on dev; D6's cursor machine waits). Plan, decided:
-   - C3a: schemas in `fn2/books/ordered.lisp` through defrunschema, included by the test assembly
-     before `fn2-run-assemble`: `fn2-article` (key article; value birth event, state enum
-     live/withdrawn, version, source digest, bytes, lines), `fn2-overview` (key (group, number);
-     value article, position, overview octets), `fn2-addr` (key (principal, position); value
-     article, stream, reason bits). Range cursor in `fn2/books/range.lisp` (NOT cursor.lisp: D6 owns
-     `fn2/books/cursor.lisp`): a k-way merge over the schema's overlays and live runs, one scan
-     cursor + decoded head per source, deliver the least key, merge rule per schema (`:unique`
-     duplicate = corruption refused by name; `:latest` newest source wins), state = resume key +
-     logical version (the schema's max live run id, as fn2-id-version, plus overlay insert count);
-     after a yield or version change re-seek strictly after the resume key. Read contract layer:
-     each read names `:exactly-at p` or `:at-least p` and a fallback `:wait :stale-ok :catch-up`;
-     append-only stream schemas answer exactly-at p for p <= cov by filtering position; latest-only
-     schemas answer exactly-at only at cov, else `:gap`; every outcome returns its position.
-     Keystone: the merged range equals the list spec over the union of facts, with seals mid-read.
-   - C3b: positioned seek (`Seek(stream, after = p)`): overview needs a position fence in index
-     entries (defrunschema option copying a monotone value field into the index layout); addr gets it
-     from its key. M2 (cold sparse groups past cache capacity, charging directory and overlap reads).
-2. Rest of C1c: descriptor + manifest schema, the sealer machine through A's defmachine with full arm
-   contracts (`lanes/a-to-d-arm-contracts.md`), GC2 member, production assembly (C-ONE-ASSEMBLY: C
-   units move onto it), filter ref into the descriptor (C-FILTER-INSTALLED). Then C4-C6.
+## Next
+1. **C3b** positioned seek over overview: `Seek(stream, after = p)` = first entry of group g with
+   position > p. Plan: a schema option naming a monotone value field as a fence (with the stream
+   prefix length), copied into index entries at promotion (runs-schema index layout +
+   `fn2-run-build-promote`), and a seek variant comparing (prefix, fence) at index levels and
+   (prefix, value) at level 0; a range read then starts at a position. Fallback if the format
+   change is too costly: binary search over numbers by lookups. Then M2 (cold sparse groups past
+   cache capacity, charging directory and overlap reads; report reads per delivered row).
+2. Rest of C1c once B5/GC2 lands (sealer machine through defmachine, descriptor + manifest,
+   production assembly, filter ref in the descriptor). C4 (deffold, folds, summary cut, overlay
+   replace for :latest) does not wait on GC2.
+3. Watch: tests/runs-assembly 52 s on forge; split the identity assembly into its own book if it
+   passes 55.
 
 ## Pitfalls hit (and what worked)
 - Guard proofs and stobj column values: a column read through an enabled accessor becomes raw
@@ -97,18 +100,6 @@ COMMON.
 - Before an OWED export, merge origin/dev into the worktree (others' rows), or the export drops them.
 
 ## Commands that work
-- Certify (laptop): `sh fn2/tools/certify.sh tests/identity-unit.lisp tests/runs-unit.lisp`.
-- Per-event timing: REPL driver with `(set-inhibit-output-lst '(prove proof-tree warning
-  observation event))` and `ld` of the forms; sort `Form:`/`Time:` pairs.
-- Detached: `nohup tools/acl2 --timeout 900 < drv.lsp > out 2>&1 & echo $! > pid` (foreground call).
-- Forge: `git push -q -f fn@forge:/build/fn.git HEAD:refs/heads/fn2/c-found`; on forge in
-  /build/lanes/c: `git checkout -q -- . && git fetch -q /build/fn.git fn2/c-found && git reset -q
-  --hard FETCH_HEAD`; scp changed files; `(setsid nohup sh build/c1.sh > /dev/null 2>&1 & echo $! >
-  build/c1.pid)`; results in build/c1-closure.out, build/c1-export.out, fn2/docs/OWED.md.
-- Integration: commit in the worktree; shared tree `git merge --ff-only fn2/c-found`; secrets
-  check; `git push origin dev`.
-
-## Commands that work
 - Laptop certify (in the worktree): `sh fn2/tools/certify.sh tests/identity-unit.lisp
   tests/runs-unit.lisp tests/ribbon-unit.lisp tests/sim-layer-c.lisp sim/check-identity.lisp`.
 - REPL iteration on a book: driver `(include-book "fn2/books/runs-page") (include-book
@@ -127,16 +118,19 @@ COMMON.
   /Users/ember/dev/fn: `git merge --ff-only -q fn2/c-found`, `python3 tools/secrets_check.py`,
   `git push -q origin dev`.
 
-## Certify times (forge, 76b82807c, load 7-8)
+## Certify times (forge, d42bff1d2)
 | book | seconds |
 |---|---|
 | books/runs-page | 24.4 (c06369c9d) |
 | books/runs | 16.9 (c06369c9d) |
-| books/ribbon | 15.5 |
-| books/identity | 10.1 |
-| tests/runs-assembly | 43.6 |
-| tests/identity-unit | 3.7 |
+| books/ribbon | 16.2 |
+| books/ordered | 16.1 |
+| books/identity | 11.1 |
+| books/range | 24.2 |
+| tests/runs-assembly | 52.1 |
+| tests/range-assembly | 27.0 |
+| tests/identity-unit | 4.0 |
 | tests/ribbon-unit | 2.3 |
-| tests/sim-layer-c | 17.4 |
+| tests/range-unit | 3.1 |
+| tests/sim-layer-c | 18.9 |
 | sim/check-identity | 0.3 |
-| tests/runs-unit | 7.5 (c06369c9d) |
