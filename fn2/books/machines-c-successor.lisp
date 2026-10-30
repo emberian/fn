@@ -79,16 +79,20 @@
 (fn2-idc-op-shape fn2-ov-advance (o from to fn2-overlays) (fn2-overlays) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays)))
 (fn2-idc-op-shape fn2-ov-write (o pos ebase repl fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-overlays fn2-overlay-index fn2-pool)
  ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-indexp fn2-overlay-index)
-  (fn2-overlay-index-wfp fn2-overlay-index) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
+  (fn2-overlay-index-wfp fn2-overlay-index) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ nil (fn2-ov-okp fn2-overlays-schema fn2-overlays-fill fn2-overlays-cap fn2-overlays-slot fn2-overlays-gen
+      fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen fn2-run-layout-size))
 (fn2-idc-op-shape fn2-ov-insert (o ebase eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-indexp fn2-overlay-index)
-  (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
+  (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ nil (fn2-ov-okp fn2-overlays-phase fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen fn2-overlays-count
+      fn2-overlays-icap fn2-overlays-schema fn2-run-layout-merge))
 (fn2-idc-op-shape fn2-id-record-insert (d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-id-decidesp fn2-id-decides) (fn2-id-decides-wfp fn2-id-decides)
   (fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-indexp fn2-overlay-index)
   (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :min)
+ :min (fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen))
 (in-theory (disable fn2-ov-start fn2-ov-advance))
 
 ;; Each function's output shapes (type, wfp, rows), proved right after it.
@@ -113,7 +117,8 @@
        ((mv code fn2-pool) (fn2-pool-write dslot dgen doff byte *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
        ((unless (eq code :ok)) (mv code fn2-pool)))
    (fn2-idc-copy (- n 1) sslot sgen (+ 1 soff) sk ss sg dslot dgen (+ 1 doff) fn2-pool))))
-(fn2-pool-preserves fn2-idc-copy (n sslot sgen soff sk ss sg dslot dgen doff fn2-pool) :position 1)
+(fn2-pool-preserves fn2-idc-copy (n sslot sgen soff sk ss sg dslot dgen doff fn2-pool) :position 1
+ :hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-write fn2-pool-rows))))
 
 ; Hold the bind scratch (once): :ok, or :full when the pool has none.
 (defun fn2-idc-scratch (fn2-id-engine fn2-pool)
@@ -310,7 +315,7 @@
   (mv :ok fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
 (fn2-idc-fn-shape fn2-idc-bind (d b article binding principal fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-id-decides-phase))
+ (fn2-id-decides-phase fn2-idc-find-overlay))
 (in-theory (disable fn2-idc-bind))
 
 ; Publication of batch B: every fact bound to B moves its bucket's stamp
@@ -331,7 +336,8 @@
                ((unless (unsigned-byte-p 60 stamp)) (mv :bounds fn2-id-stamps))
                (fn2-id-stamps (fn2-id-stamps-set-gen bucket stamp fn2-id-stamps)))
            (fn2-idc-publish-stamps (- k 1) (+ 1 d) b fn2-id-decides fn2-id-stamps)))))
-(fn2-id-stamps-preserves fn2-idc-publish-stamps (k d b fn2-id-decides fn2-id-stamps) :position 1)
+(fn2-id-stamps-preserves fn2-idc-publish-stamps (k d b fn2-id-decides fn2-id-stamps) :position 1
+ :hints (("Goal" :in-theory (disable fn2-id-decides-phase fn2-id-decides-batch fn2-id-decides-bucket fn2-id-decides-rows))))
 (defun fn2-idc-publish-marks (k d b fn2-id-decides)
  (declare (xargs :stobjs fn2-id-decides :measure (nfix k) :guard (and (fn2-id-decides-wfp fn2-id-decides) (natp k) (natp d))))
  (cond ((or (zp k) (not (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides))))) fn2-id-decides)
