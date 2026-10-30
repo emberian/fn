@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 483; bound statements: 478; admitted proofs: 0; check coverage: 77 rows with a passing, exercised check.
+Requirements: 484; bound statements: 479; admitted proofs: 0; check coverage: 77 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -3422,6 +3422,18 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-ACCEPT-PEER-DELIVERED` | :OWED | :INVARIANT | `(IMPLIES (FN2-PEER-RECORDP *FN2-OUTCOME-DONE* FAMILY PORT W0 W1 W2 W3) (EQUAL (FN2-ACCEPT-PEER-RUN FAMILY PORT W0 W1 W2 W3) (LIST 0 5 9 FAMILY PORT W0 W1 W2 W3)))` | `(FN2-HOST-TEST-PEER-DELIVERED FN2-HOST-TEST-PEER-DELIVERED-NEGATIVE)` | A5r's ABI: an Accept result posted with a valid peer record (any family) is harvested into the observing listener row exactly, beside its capability, with no stray; the peer address reaches the core only through the Accept's own cell. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:OPERATION-SET FN2-NATIVE-BOUNDARY)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :INVARIANT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-NATIVE-ENVELOPE-REFINES` | :OWED | :INVARIANT | `(IMPLIES (AND (FN2-ENVELOPE-STEPS-OK-P TRACE) (FN2-ENVELOPE-DATE-FREE-P TRACE) (<= (LEN (FN2-ENV-TRACE-CONNS TRACE NIL NIL)) 4)) (EQUAL (FN2-ENVELOPE-REPLAY-WIRES TRACE) (FN2-ENVELOPE-CANONICAL-WIRES TRACE)))` | `(FN2-NATIVE-TEST-REFINES FN2-NATIVE-TEST-REFINES-NEGATIVE)` | A5r: a native adapter schedule that ENVELOPE finds legal (each take the replay's outbox head, each post an allowed, accepted completion of an acknowledged op) sends every connection, at the wire, what D's canonical adapter view fn2-conn-wire-run sends for the same client octets and Receive cuts; so T1 and T8 over the canonical view transfer to the native run. DATE is excluded (the canonical view posts no clock); at most C connections. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
 ## Correspondence / owner: `(:SQUARE FN2-IDENTITY-LINEARIZABLE)`
 

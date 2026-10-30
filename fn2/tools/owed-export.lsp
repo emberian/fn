@@ -27,6 +27,7 @@
 (include-book "fn2/tests/owed-d-unit")
 (include-book "fn2/tests/conn-unit")
 (include-book "fn2/tests/host-unit")
+(include-book "fn2/tests/native-unit")
 (include-book "fn2/tests/accounts-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")
