@@ -145,6 +145,48 @@
  (declare (xargs :verify-guards nil))
  (car (fn2-fold-image-bug sid layout key rows events seal qs nil)))
 
+;; The assignment through the real engine (C-S3's stage computes an
+;; event's assigned args from the key's newest row): ROWS materialized as for
+;; the image, the key's row read back by the range read, the event's args
+;; loaded, the served assignment run, the args read back: (code event). BUG
+;; (teeth only) :plus1 adds one to the event's last arg after the assignment.
+(defun fn2-fia-read-args (n i fn2-fields)
+ (declare (xargs :stobjs fn2-fields :verify-guards nil :measure (nfix n)))
+ (if (zp n) nil (cons (fn2-fields-value (+ *fn2-fia-args* (nfix i)) fn2-fields) (fn2-fia-read-args (- n 1) (+ 1 (nfix i)) fn2-fields))))
+(fn2-rga-defun fn2-fia-assign (sid layout key rows e seal bug)
+ (b* (((mv & fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths
+           fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+       (fn2-rga-call fn2-rga-setup))
+      (nk (len key)) (nf (fn2-run-layout-fields sid 0)) (n (len (cdr e)))
+      (entries (fn2-ov-sort-spec key (fn2-fia-entries rows)))
+      ((mv code fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths
+           fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+       (if seal (fn2-rga-call fn2-rga-build sid layout entries 0) (fn2-rga-mv :ok)))
+      ((unless (eq code :ok)) (fn2-rga-mv (list :seal code)))
+      ((mv code fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths
+           fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+       (fn2-rga-call fn2-rga-overlay sid layout (if seal nil entries)))
+      ((unless (eq code :ok)) (fn2-rga-mv (list :overlay code)))
+      (k (fn2-fold-key-spec sid e))
+      ((mv got fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths
+           fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+       (fn2-rga-call fn2-fia-read sid layout k))
+      ((unless (or (null got) (fn2-fia-found got nf))) (fn2-rga-mv (list :read got)))
+      (row (if got (car got) (append k (fn2-fia-zeros (- nf nk)))))
+      ((mv & & fn2-fields fn2-pool) (fn2-run-load-values layout row *fn2-fia-wb* 0 0 0 9 0 1 fn2-fields fn2-pool))
+      (fn2-fields (fn2-fia-load-args (cdr e) 0 fn2-fields))
+      ((mv code fn2-fields) (fn2-fold-assign sid (car e) *fn2-fia-wb* *fn2-fia-args* fn2-fields))
+      (fn2-fields (if (and (eq bug :plus1) (posp n))
+                      (fn2-fields-set-value (+ *fn2-fia-args* (- n 1)) (+ 1 (fn2-fields-value (+ *fn2-fia-args* (- n 1)) fn2-fields)) fn2-fields)
+                    fn2-fields)))
+  (fn2-rga-mv (list code (cons (car e) (fn2-fia-read-args n 0 fn2-fields))))))
+(defun fn2-fold-assign-image-bug (sid layout key rows e seal bug)
+ (declare (xargs :verify-guards nil))
+ (fn2-rga-local fn2-fia-assign sid layout key rows e seal bug))
+(defun fn2-fold-assign-image (sid layout key rows e seal)
+ (declare (xargs :verify-guards nil))
+ (fn2-fold-assign-image-bug sid layout key rows e seal nil))
+
 ; ---------------------------------------------------------------------------
 ; Keystones, generated per fold from its declaration. Premises: a state of at
 ; most 8 rows whose keys and values fit the schema (NAME-FOLD-STATEP), events
@@ -184,6 +226,29 @@
     :doc ,(concatenate 'string "State = Fold(Summary_k, Events_{k+1..n}) for " (symbol-name name)
                        ": the summary at any cut k, materialized as rows sealed into a run or held in an overlay, "
                        "with the rest of the events applied by the real step, observes as the whole fold."))))
+(defun fn2-fold-assign-kinds (evs)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom evs) nil)
+       ((cadr (member-eq :assign (cddar evs))) (cons (caar evs) (fn2-fold-assign-kinds (cdr evs))))
+       (t (fn2-fold-assign-kinds (cdr evs)))))
+(defun fn2-fold-assign-events (name sid layout key kinds)
+ (declare (xargs :verify-guards nil))
+ (if (atom kinds) nil
+  (let ((thm (fn2-columns-sym name (concatenate 'string "-ASSIGN-ADEQUATE-" (symbol-name (car kinds))))))
+   (cons `(defthm-owed ,thm (rows e seal)
+           (implies (and (,(fn2-columns-sym name "-FOLD-STATEP") rows) (<= (len rows) 8)
+                         (,(fn2-columns-sym name "-FOLD-EVENTP") e) (eq (car e) ,(car kinds)) (booleanp seal))
+                    (equal (fn2-fold-assign-image ,sid ,layout ',key rows e seal)
+                           (,(fn2-columns-sym name "-FOLD-ASSIGN-SPEC")
+                            (,(fn2-columns-sym name "-FOLD-VALUE") rows (,(fn2-columns-sym name "-FOLD-KEY") e)) e)))
+           :teeth (,(fn2-columns-sym thm "-POSITIVE") ,(fn2-columns-sym thm "-NEGATIVE"))
+           ; As the summary rows: both sides are compiled from the one fold declaration.
+           :schema :g1 :claim :compiler :shared ((:schema ,name))
+           :doc ,(concatenate 'string "The assignment of " (symbol-name name) "'s " (symbol-name (car kinds))
+                              " events: the args the private successor's stage computes from the key's newest row, read "
+                              "back through the real engine (sealed in a run or held in an overlay), are the declaration's, "
+                              "so the logged event the list fold reads is the one the engine applied."))
+         (fn2-fold-assign-events name sid layout key (cdr kinds))))))
 (defun fn2-fold-keystone-events (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
@@ -191,6 +256,7 @@
          (layout (fn2-codec-constant (car (fn2-decl-get :layouts row)) ""))
          (kinds (fn2-fold-kinds (cadr (member-eq :events (fn2-decl-get :fold row))))))
    (append (fn2-fold-adequate-events name sid layout key kinds)
+           (fn2-fold-assign-events name sid layout key (fn2-fold-assign-kinds (cadr (member-eq :events (fn2-decl-get :fold row)))))
            (list (fn2-fold-cut-event name sid layout key))
            (fn2-fold-keystone-events (cdr rows))))))
 (make-event (value (cons 'progn (fn2-fold-keystone-events (fn2-fold-rows (fn2-decl-rows :schema (w state)))))))

@@ -55,11 +55,12 @@
   (<= (fn2-b-digest-minimum profile) (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile)))
  :why "Hasher stripes and immutable predecessor seals survive commit yields and row reuse.")
 ; Field rows: a 128-row stripe per format slot from row 0 (commit.lisp), then
-; layer C's 256-row identity-decision stripe per transaction at the table's end
-; (C-S1, machines-c.lisp).
+; layer C's 1024-row transaction stripe (the private successor's write slots
+; and the identity decision, C-S3, machines-c.lisp) per transaction at the
+; table's end.
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
- (+ (* 128 (nfix (fn2-b-capacity :format-slots 2 profile))) (* 256 (nfix (fn2-profile-t profile)))))
+ (+ (* 128 (nfix (fn2-b-capacity :format-slots 2 profile))) (* 1024 (nfix (fn2-profile-t profile)))))
 (in-theory (disable fn2-b-field-rows))
 (defcorechild fn2-core-fields fn2-fields
  :init (fn2-fields-init (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile) fn2-fields)

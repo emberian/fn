@@ -80,11 +80,16 @@
 ; Folds (C4; STORAGE-DESIGN §4 decision 1, scholar ch. 1). A fold is a run
 ; schema with :merge :latest whose declaration row also carries the fold's
 ; properties (no new declaration kind):
-;   :fold (:events ((KIND (ARG ...) [:when TEST] :set ((FIELD EXPR) ...)) ...)
+;   :fold (:events ((KIND (ARG ...) [:assign ((ARG EXPR) ...)] [:when TEST]
+;                    :set ((FIELD EXPR) ...)) ...)
 ;          :init :empty  :coverage :history-start  :observe (FIELD ...))
 ; An event is the list (KIND ARG-VALUE ...); its key is the args named by the
 ; key fields. A row's value is its value fields (an absent row reads as
-; zeros). EXPR is a natural constant, a value field or arg name, or
+; zeros). An :assign arg (never a key arg) is computed by the engine from the
+; key's newest row when the event is staged (group counts' accept number is
+; high + 1), so a writer never supplies it and the logged event carries the
+; value assigned: the list fold reads it as any other arg. Its EXPR ranges
+; over the value fields and the args not assigned. EXPR is a natural constant, a value field or arg name, or
 ; (+ a b) (- a b) (min a b) (max a b) (if TEST a b); TEST is (= a b) (< a b)
 ; (<= a b) (and s t) (or s t) (not s). Each set field is computed from the
 ; old row; an event whose TEST fails is :refused and one whose result leaves
@@ -156,14 +161,24 @@
  (if (atom sets) (null sets)
   (and (true-listp (car sets)) (equal (len (car sets)) 2) (member-eq (caar sets) vnames)
        (fn2-rf-exprp (cadar sets) names) (fn2-rf-sets-okp (cdr sets) vnames names))))
+(defun fn2-rf-assigns-okp (assigns args knames names)
+ (declare (xargs :mode :program))
+ (if (atom assigns) (null assigns)
+  (and (true-listp (car assigns)) (equal (len (car assigns)) 2) (member-eq (caar assigns) args)
+       (not (member-eq (caar assigns) knames)) (fn2-rf-exprp (cadar assigns) names)
+       (fn2-rf-assigns-okp (cdr assigns) args knames names))))
 (defun fn2-rf-event-okp (ev knames vnames)
  (declare (xargs :mode :program))
  (and (true-listp ev) (keywordp (car ev)) (symbol-listp (cadr ev)) (no-duplicatesp-eq (cadr ev))
       (subsetp-eq knames (cadr ev)) (not (intersectp-eq (cadr ev) vnames))
-      (let ((names (append vnames (cadr ev))) (when (fn2-rf-opt :when ev)) (sets (fn2-rf-opt :set ev)))
+      (let* ((names (append vnames (cadr ev))) (when (fn2-rf-opt :when ev)) (sets (fn2-rf-opt :set ev))
+             (assigns (fn2-rf-opt :assign ev))
+             (anames (append vnames (set-difference-eq (cadr ev) (strip-cars assigns)))))
        (and (or (null when) (fn2-rf-testp when names))
             (consp sets) (fn2-rf-sets-okp sets vnames names)
-            (no-duplicatesp-eq (strip-cars sets))))))
+            (no-duplicatesp-eq (strip-cars sets))
+            (true-listp assigns) (fn2-rf-assigns-okp assigns (cadr ev) knames anames)
+            (no-duplicatesp-eq (strip-cars assigns))))))
 (defun fn2-rf-events-okp (evs knames vnames)
  (declare (xargs :mode :program))
  (if (atom evs) (null evs)
@@ -248,6 +263,53 @@
                   ((not (and ,@(fn2-rf-fits value))) (mv :range fn2-fields))
                   (t (let* ,(fn2-rf-row-writes value nk 'vbase) (mv :ok fn2-fields)))))))
         (fn2-rf-apply-arms (cdr evs) value nk))))
+;; Assigned args: the served arm writes each into its arg row from the row's
+;; old values (all computed before any is written); the list arm puts it in
+;; the event. An assigned arg is an ordinary arg, so 60 bits wide.
+(defun fn2-rf-assign-fits (assigns)
+ (declare (xargs :mode :program))
+ (if (atom assigns) nil (cons `(unsigned-byte-p 60 ,(fn2-rf-new (caar assigns))) (fn2-rf-assign-fits (cdr assigns)))))
+(defun fn2-rf-assign-binds (assigns)
+ (declare (xargs :mode :program))
+ (if (atom assigns) nil (cons `(,(fn2-rf-new (caar assigns)) ,(fn2-rf-expr (cadar assigns))) (fn2-rf-assign-binds (cdr assigns)))))
+(defun fn2-rf-assign-row-writes (assigns args)
+ (declare (xargs :mode :program))
+ (if (atom assigns) nil
+  (cons `(fn2-fields (fn2-fields-set-value (+ abase ,(fn2-rf-index (caar assigns) args)) ,(fn2-rf-new (caar assigns)) fn2-fields))
+        (fn2-rf-assign-row-writes (cdr assigns) args))))
+(defun fn2-rf-assign-list-puts (assigns args form)
+ (declare (xargs :mode :program))
+ (if (atom assigns) form
+  (fn2-rf-assign-list-puts (cdr assigns) args `(update-nth ,(fn2-rf-index (caar assigns) args) ,(fn2-rf-new (caar assigns)) ,form))))
+(defun fn2-rf-assign-apply-arms (evs)
+ (declare (xargs :mode :program))
+ (cond ((atom evs) nil)
+       ((null (fn2-rf-opt :assign (car evs))) (fn2-rf-assign-apply-arms (cdr evs)))
+       (t (let ((args (cadar evs)) (assigns (fn2-rf-opt :assign (car evs))))
+           (cons `(,(caar evs)
+                   (let ,(fn2-rf-row-binds args 0 'abase)
+                    (declare (ignorable ,@(fn2-rf-vars args)))
+                    (let ,(fn2-rf-assign-binds assigns)
+                     (if (not (and ,@(fn2-rf-assign-fits assigns))) (mv :range fn2-fields)
+                      (let* ,(fn2-rf-assign-row-writes assigns args) (mv :ok fn2-fields))))))
+                 (fn2-rf-assign-apply-arms (cdr evs)))))))
+(defun fn2-rf-assign-list-arms (evs)
+ (declare (xargs :mode :program))
+ (cond ((atom evs) nil)
+       ((null (fn2-rf-opt :assign (car evs))) (fn2-rf-assign-list-arms (cdr evs)))
+       (t (let ((args (cadar evs)) (assigns (fn2-rf-opt :assign (car evs))))
+           (cons `(,(caar evs)
+                   (let ,(fn2-rf-list-binds args 0 '(cdr e))
+                    (declare (ignorable ,@(fn2-rf-vars args)))
+                    (let ,(fn2-rf-assign-binds assigns)
+                     (if (not (and ,@(fn2-rf-assign-fits assigns))) (list :range e)
+                      (list :ok (cons (car e) ,(fn2-rf-assign-list-puts assigns args '(cdr e))))))))
+                 (fn2-rf-assign-list-arms (cdr evs)))))))
+(defun fn2-rf-plain-kinds (evs)
+ (declare (xargs :mode :program))
+ (cond ((atom evs) nil)
+       ((fn2-rf-opt :assign (car evs)) (fn2-rf-plain-kinds (cdr evs)))
+       (t (cons (caar evs) (fn2-rf-plain-kinds (cdr evs))))))
 (defun fn2-rf-obs-list (obs vnames)
  (declare (xargs :mode :program))
  (if (atom obs) nil (cons `(nth ,(fn2-rf-index (car obs) vnames) vals) (fn2-rf-obs-list (cdr obs) vnames))))
@@ -266,6 +328,19 @@
       (let ,(fn2-rf-row-binds vnames nk 'vbase)
        (declare (ignorable ,@(fn2-rf-vars vnames)))
        (case kind ,@(fn2-rf-apply-arms evs value nk) (otherwise (mv :event fn2-fields))))))
+    ;; The assigned args of event KIND from the decoded row at VBASE into
+    ;; the arg rows at ABASE: :ok (a kind without assigns writes nothing),
+    ;; :range, :event (not an event of the fold), :bounds.
+    (defun ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields)
+     (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp vbase) (natp abase))))
+     (if (not (and (natp vbase) (natp abase)
+                   (<= (+ vbase ,(+ nk nv)) (fn2-fields-rows fn2-fields)) (<= (+ abase ,(fn2-rf-max-args evs)) (fn2-fields-rows fn2-fields))))
+         (mv :bounds fn2-fields)
+      (let ,(fn2-rf-row-binds vnames nk 'vbase)
+       (declare (ignorable ,@(fn2-rf-vars vnames)))
+       (case kind ,@(fn2-rf-assign-apply-arms evs)
+        ,@(let ((plain (fn2-rf-plain-kinds evs))) (and plain `((,plain (mv :ok fn2-fields)))))
+        (otherwise (mv :event fn2-fields))))))
     )))
 ;; The interpretation in the logic (never executed on a served path) and the
 ;; served step's shape, emitted beside the declaration.
@@ -274,6 +349,16 @@
  (let* ((evs (cadr (member-eq :events fold))) (vnames (strip-cars value)) (nv (len value))
         (obs (cadr (member-eq :observe fold))))
   `((fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-APPLY") (kind vbase abase fn2-fields) :position 1)
+    (fn2-fields-preserves ,(fn2-rs-sym name "-FOLD-ASSIGN") (kind vbase abase fn2-fields) :position 1)
+    ;; The list side of the assignment: event E with its assigned args
+    ;; computed from the key's value VALS, as (code event).
+    (defun ,(fn2-rs-sym name "-FOLD-ASSIGN-SPEC") (vals e)
+     (declare (xargs :verify-guards nil) (ignorable vals))
+     (let ,(fn2-rf-list-binds vnames 0 'vals)
+      (declare (ignorable ,@(fn2-rf-vars vnames)))
+      (case (car e) ,@(fn2-rf-assign-list-arms evs)
+       ,@(let ((plain (fn2-rf-plain-kinds evs))) (and plain `((,plain (list :ok e)))))
+       (otherwise (list :event e)))))
     (defun ,(fn2-rs-sym name "-FOLD-KEY") (e)
      (declare (xargs :verify-guards nil))
      (case (car e) ,@(fn2-rf-key-arms evs key) (otherwise nil)))

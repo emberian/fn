@@ -125,12 +125,14 @@
 ; probed first and skipped when the filter answers :absent (SKIPS counts
 ; those, READS the runs read). Each step is bounded; :more resumes; :miss
 ; asks the caller to load the page the cursor names, :filter-miss the
-; filter page of the installed run SRC names.
+; filter page of the installed run SRC names. A done decision whose fact a
+; transaction bound into its batch's private successor (C-S3) is :held until
+; the transaction is released: no offer restarts it.
 (defcolumns fn2-id-decides
- ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done :staged :bound :published)))
+ ((phase (:enum fn2-id-decide-phase (:idle :overlay :run-start :run-scan :done :held)))
   (src :u32) (qbase :u32) (lbq :u32) (eb :u32) (cursor :u32) (rb :u32)
   (qk :u8) (qs :u32) (qg :u60) (exact :u8) (others :u32) (rexact :u8) (rothers :u32) (seen :u32)
-  (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60) (batch :u60)))
+  (reads :u32) (skips :u32) (bucket :u32) (stamp :u60) (vrun :u60)))
 
 
 (defconst *fn2-id-mid* *fn2-identity-entry-field-message-id*)
@@ -444,26 +446,24 @@
    ;; holds fewer than the bound; :duplicate records nothing. A decision
    ;; whose bucket's stamp or the identity version moved since it started is
    ;; :stale before anything else (its verdict, refusals included, may be
-   ;; wrong: decide again); :evidence records nothing either. EBASE is scratch for the entry; the offer's octets must be
-   ;; readable under the overlay's owner (they are copied into its arena).
-   (defun fn2-id-record-insert (d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+   ;; wrong: decide again); :evidence records nothing either. EBASE is
+   ;; scratch for the entry. The offer's octets are the rows at SBASE
+   ;; (Message-ID, content), readable under the overlay's owner (they are
+   ;; copied into its arena): the decision's own offer rows (fn2-id-record),
+   ;; or the successor's copies of them (C-S3's bind).
+   (defun fn2-id-record-insert (d o ebase sbase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
     (declare (xargs :stobjs (fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
      :guard (and (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
      :guard-hints (("Goal" :in-theory (disable fn2-run-copy-row fn2-ov-insert fn2-fields-rows)))))
     (b* (((unless (and (natp d) (< d (fn2-id-decides-rows fn2-id-decides)) (natp o) (< o (fn2-overlays-rows fn2-overlays))
                        (natp ebase) (<= (+ ebase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
+                       (natp sbase) (< (+ sbase 1) (fn2-fields-rows fn2-fields))
                        (unsigned-byte-p 60 article) (unsigned-byte-p 60 binding) (unsigned-byte-p 60 principal)))
           (mv :bounds fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          (others (fn2-id-decides-others d fn2-id-decides))
-         ((unless (and (equal (fn2-id-decides-qk d fn2-id-decides) (fn2-overlays-okind o fn2-overlays))
-                       (equal (fn2-id-decides-qs d fn2-id-decides) (fn2-overlays-oslot o fn2-overlays))
-                       (equal (fn2-id-decides-qg d fn2-id-decides) (fn2-overlays-ogen o fn2-overlays))))
-          (mv :owner fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         (q (fn2-id-decides-qbase d fn2-id-decides))
-         ((unless (< (+ q 1) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-         (fn2-fields (fn2-run-copy-row (+ q *fn2-id-mid*) (+ ebase *fn2-id-mid*) fn2-fields))
-         (fn2-fields (fn2-run-copy-row (+ q *fn2-id-con*) (+ ebase *fn2-id-con*) fn2-fields))
+         (fn2-fields (fn2-run-copy-row (+ sbase *fn2-id-mid*) (+ ebase *fn2-id-mid*) fn2-fields))
+         (fn2-fields (fn2-run-copy-row (+ sbase *fn2-id-con*) (+ ebase *fn2-id-con*) fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-state*)
                                            (if (zp others) *fn2-identity-state-accepted* *fn2-identity-state-conflict*) fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ ebase *fn2-identity-entry-field-article*) article fn2-fields))
@@ -491,8 +491,14 @@
          ((unless (< (fn2-id-decides-others d fn2-id-decides) *fn2-identity-contents-max*))
           (mv :identity-conflict-bound fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (unsigned-byte-p 60 (+ 1 (nfix stamp)))) (mv :bounds fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((unless (and (natp o) (< o (fn2-overlays-rows fn2-overlays))
+                       (equal (fn2-id-decides-qk d fn2-id-decides) (fn2-overlays-okind o fn2-overlays))
+                       (equal (fn2-id-decides-qs d fn2-id-decides) (fn2-overlays-oslot o fn2-overlays))
+                       (equal (fn2-id-decides-qg d fn2-id-decides) (fn2-overlays-ogen o fn2-overlays))))
+          (mv :owner fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-          (fn2-id-record-insert d o ebase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+          (fn2-id-record-insert d o ebase (fn2-id-decides-qbase d fn2-id-decides) article binding principal
+                                fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
          (fn2-id-stamps (fn2-id-stamps-set-gen bucket (+ 1 (nfix stamp)) fn2-id-stamps)))
      (mv :ok fn2-id-stamps fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
@@ -749,10 +755,12 @@
     (implies (and (fn2-id-offersp offers) (<= (len offers) 40) (fn2-id-offersp queries) (natp split))
              (equal (caddr (fn2-identity-decide-image offers split nil queries)) (fn2-id-answers-spec offers queries)))
     :teeth (fn2-exact-identity-positive fn2-exact-identity-negative)
+    :schema :invariant
     :doc "The identity decision for (mid, c) is :duplicate iff (mid, c) is recorded as the accepted content, :evidence iff it is recorded only as conflict evidence, :conflict iff another content of mid is, else :stored; it stays exact after the offers' bodies are released and after any split of the facts between the overlay and sealed runs.")
    (defthm-owed fn2-identity-binding-converges (o1 s1 o2 s2)
     (implies (and (fn2-id-offersp o1) (fn2-id-offersp o2) (<= (len o1) 40) (<= (len o2) 40) (natp s1) (natp s2)
                   (equal (fn2-id-binding-spec o1) (fn2-id-binding-spec o2)) (fn2-id-within-bound o1))
              (equal (fn2-identity-binding-image o1 s1 nil) (fn2-identity-binding-image o2 s2 nil)))
     :teeth (fn2-identity-binding-converges-positive fn2-identity-binding-converges-negative)
+    :schema :route
     :doc "Two nodes whose offered fact sets are equal (any order, any duplication, any sealing schedule, within the conflict bound) hold equal Bindings, hence equal conflicted predicates.")))

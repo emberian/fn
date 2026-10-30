@@ -11,7 +11,9 @@
 ; resume key; when an overlay took an insert its source is located again.
 ; Equal keys in two sources (an overlay and the run it is being sealed into)
 ; deliver once, the newest source winning: an overlay is newer than any
-; run, a run with a greater identifier newer than one with a smaller.
+; run, a run with a greater identifier newer than one with a smaller, an
+; overlay taken later (its SEQ: batch order, C-S3) newer than one taken
+; earlier.
 ; Range reads take schemas whose key fields are integers (C-RANGE-KEYS).
 ; Every step is bounded; :more resumes, :miss names the page a run source's
 ; cursor waits for.
@@ -103,7 +105,7 @@
                     (member (fn2-overlays-phase o fn2-overlays) (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))))
        (fn2-range-add-overlays (- n 1) i g sid fn2-ranges fn2-range-sources fn2-overlays))
       ((mv code fn2-range-sources)
-       (fn2-range-add-source g i *fn2-range-kind-overlay* o 0 (fn2-overlays-okind o fn2-overlays)
+       (fn2-range-add-source g i *fn2-range-kind-overlay* o (fn2-overlays-seq o fn2-overlays) (fn2-overlays-okind o fn2-overlays)
                              (fn2-overlays-oslot o fn2-overlays) (fn2-overlays-ogen o fn2-overlays) fn2-ranges fn2-range-sources))
       ((unless (eq code :ok)) (mv code i fn2-range-sources)))
   (fn2-range-add-overlays (- n 1) (+ 1 i) g sid fn2-ranges fn2-range-sources fn2-overlays)))
@@ -381,14 +383,14 @@
      (fn2-run-layout-compare sid ea eb (fn2-range-sources-okind a fn2-range-sources) (fn2-range-sources-oslot a fn2-range-sources)
                              (fn2-range-sources-ogen a fn2-range-sources) (fn2-range-sources-okind b fn2-range-sources)
                              (fn2-range-sources-oslot b fn2-range-sources) (fn2-range-sources-ogen b fn2-range-sources) fn2-fields fn2-pool)))
-   ;; Source A is newer than B: an overlay than a run; a later run than an earlier.
+   ;; Source A is newer than B: an overlay than a run; a later run than an
+   ;; earlier; an overlay taken later (its SEQ, C-S3) than an earlier.
    (defun fn2-range-newer (a b fn2-range-sources)
     (declare (xargs :stobjs fn2-range-sources :guard (fn2-range-sources-wfp fn2-range-sources)))
     (and (natp a) (< a (fn2-range-sources-rows fn2-range-sources)) (natp b) (< b (fn2-range-sources-rows fn2-range-sources))
          (or (and (equal (fn2-range-sources-kind a fn2-range-sources) *fn2-range-kind-overlay*)
                   (not (equal (fn2-range-sources-kind b fn2-range-sources) *fn2-range-kind-overlay*)))
-             (and (equal (fn2-range-sources-kind a fn2-range-sources) *fn2-range-kind-run*)
-                  (equal (fn2-range-sources-kind b fn2-range-sources) *fn2-range-kind-run*)
+             (and (equal (fn2-range-sources-kind a fn2-range-sources) (fn2-range-sources-kind b fn2-range-sources))
                   (< (fn2-range-sources-run b fn2-range-sources) (fn2-range-sources-run a fn2-range-sources))))))
    (in-theory (disable fn2-range-order fn2-range-newer))
    ;; The least head among sources BASE+N-1 .. BASE (absolute rows), the
@@ -826,6 +828,7 @@
              (equal (fn2-range-image 3 *fn2-overview-entry* sources lo hi pidx plimit budget sealat)
                     (fn2-range-spec '((group (:id group)) (number (:id group-number))) sources lo hi pidx plimit)))
     :teeth (fn2-range-read-exact-positive fn2-range-read-exact-negative)
+    :schema :g1 :claim :representation
     :doc "A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed.")
    ;; Positioned seek adapter: the range image's sources; range 0 holds the
    ;; prefix (with a zero last field); seek row 0 bisects [0, HI).
@@ -872,5 +875,6 @@
              (equal (car (fn2-range-seek-image 3 *fn2-overview-entry* sources prefix p hi 3 budget))
                     (fn2-range-seek-spec '((group (:id group)) (number (:id group-number))) sources prefix p hi 3)))
     :teeth (fn2-range-seek-position-positive fn2-range-seek-position-negative)
+    :schema :g1 :claim :representation
     :doc "Within one stream (a group's overview, positions growing with numbers), the positioned seek over the overlay and runs answers the number from which a read delivers exactly the entries after commit position p: one past the last entry at or before p.")
    ))

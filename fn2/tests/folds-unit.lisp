@@ -35,6 +35,35 @@
            (not (equal (car (fn2-fold-image-bug ,sid ,layout ',key ',rows (list ',bad) t ',qs :plus1)) want)))))
     (fn2-assert-owed-teeth ,thm))))
 
+;; Teeth for NAME-ASSIGN-ADEQUATE-KIND. Positive: at each witness event (on a
+;; key the rows hold, on a fresh key), sealed and held in the overlay, the
+;; premise holds and the engine's assignment is the declaration's. Negative:
+;; an engine that adds one to the assigned arg disagrees, sealed or not.
+(defmacro fn2-ft-assign (name kind sid key rows events)
+ (let* ((thm (fn2-columns-sym name (concatenate 'string "-ASSIGN-ADEQUATE-" (symbol-name kind))))
+        (holds (fn2-columns-sym thm "-HOLDS"))
+        (layout (fn2-codec-constant (fn2-columns-sym name "-ENTRY") ""))
+        (statep (fn2-columns-sym name "-FOLD-STATEP")) (eventp (fn2-columns-sym name "-FOLD-EVENTP"))
+        (spec (fn2-columns-sym name "-FOLD-ASSIGN-SPEC")) (value (fn2-columns-sym name "-FOLD-VALUE"))
+        (fkey (fn2-columns-sym name "-FOLD-KEY")))
+  `(progn
+    (defun ,holds (rows es seal)
+     (declare (xargs :verify-guards nil))
+     (or (atom es)
+         (and (,statep rows) (<= (len rows) 8) (,eventp (car es)) (eq (car (car es)) ,kind)
+              (equal (fn2-fold-assign-image ,sid ,layout ',key rows (car es) seal) (,spec (,value rows (,fkey (car es))) (car es)))
+              (,holds rows (cdr es) seal))))
+    (defun ,(fn2-columns-sym thm "-POSITIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (,holds ',rows ',events nil) (,holds ',rows ',events t)))
+    (defun ,(fn2-columns-sym thm "-NEGATIVE") ()
+     (declare (xargs :verify-guards nil))
+     (let* ((e ',(car events)) (want (,spec (,value ',rows (,fkey e)) e)))
+      (and (,eventp e)
+           (not (equal (fn2-fold-assign-image-bug ,sid ,layout ',key ',rows e nil :plus1) want))
+           (not (equal (fn2-fold-assign-image-bug ,sid ,layout ',key ',rows e t :plus1) want)))))
+    (fn2-assert-owed-teeth ,thm))))
+
 ;; Teeth for NAME-SUMMARY-CUT. Positive, exhaustive over the tiny scenario:
 ;; every cut k of EVENTS, the summary sealed and held in the overlay.
 ;; Negative: at cut K a summary that drops its first row, and a summary step
@@ -79,6 +108,10 @@
 ;; Group counts: group 1 holds 2 articles, numbers 3..5.
 (fn2-ft-adequate fn2-group-counts :accept 5 ((group (:id group))) (((1) 2 3 5)) ((:accept 1 7) (:accept 2 4)) ((1) (2) (3)) (:accept 1 7))
 (fn2-ft-adequate fn2-group-counts :withdraw 5 ((group (:id group))) (((1) 2 3 5)) ((:withdraw 1 3) (:withdraw 2 1)) ((1) (2)) (:withdraw 1 3))
+;; The accept's number is assigned high + 1: 6 in group 1, 1 in the empty group 2.
+(fn2-ft-assign fn2-group-counts :accept 5 ((group (:id group))) (((1) 2 3 5)) ((:accept 1 0) (:accept 2 9)))
+(assert-event (equal (fn2-fold-assign-image 5 *fn2-group-counts-entry* '((group (:id group))) '(((1) 2 3 5)) '(:accept 1 0) t)
+                     '(:ok (:accept 1 6))))
 ;; Six events over two groups (one withdrawal refused: group 2 is empty
 ;; then); the weak relation observes LOW alone.
 (fn2-ft-cut fn2-group-counts 5 ((group (:id group)))

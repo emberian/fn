@@ -196,6 +196,7 @@
  (implies (and (natp seed) (natp n) (<= n 64))
           (equal (car (fn2-check-identity (fn2-m3-trace seed n nil) *fn2-identity-contents-max*)) :ok))
  :teeth (fn2-identity-linearizable-positive fn2-identity-linearizable-negative)
+ :schema :g2
  :doc "Offers decided by up to three interleaved decisions, recorded as each finishes, sealed into filtered runs at arbitrary points, their bodies then released: the trace (every answer and record outcome, every later query, the Binding read back by the real scan) is accepted by the independent IDENTITY checker. A :stale record (decided around a later record of its bucket or a seal) records nothing and is offered again.")
 ;; Positive: 40 seeds of 30 offers pass, with races exercised (stale
 ;; records) and runs sealed mid-flight. Negative: the same schedules with

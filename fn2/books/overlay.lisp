@@ -6,6 +6,9 @@
 ; batch's private successor (C-S2) is :private, taking that batch's facts and
 ; invisible to every reader until the batch's publication freezes it; a
 ; :spare overlay holds an arena for the next batch that needs one. The
+; overlay's SEQ is the order it was taken in (C-S3: an engine counter, set
+; when a spare becomes a batch's), so it follows batch order: of two overlays
+; holding a key, the one with the greater SEQ holds its newest row. The
 ; operations that decode, encode or compare entries are generated at the run
 ; assembly (runs-assemble.lisp); this book holds the tables and the parts that
 ; touch only them.
@@ -16,7 +19,7 @@
 (defcolumns fn2-overlays
  ((phase (:enum fn2-overlay-phase (:free :active :frozen :private :spare)))
   (schema :u60) (slot :u32) (gen :u60) (fill :u32) (cap :u32)
-  (count :u32) (ibase :u32) (icap :u32) (okind :u8) (oslot :u32) (ogen :u60) (cov :u60) (batch :u60)))
+  (count :u32) (ibase :u32) (icap :u32) (okind :u8) (oslot :u32) (ogen :u60) (cov :u60) (batch :u60) (seq :u60)))
 (defcolumns fn2-overlay-index ((off :u32)))
 
 ; An overlay row whose index range lies inside the index table.
@@ -50,7 +53,7 @@
       ((unless (eq code :ok)) (mv code fn2-overlays fn2-pool))
       (fn2-overlays (fn2-overlays-put o (phase *fn2-overlay-phase-active*) (schema schema) (slot slot) (gen gen)
                       (fill 0) (cap cap) (count 0) (ibase ibase) (icap icap)
-                      (okind okind) (oslot oslot) (ogen ogen) (cov cov) (batch 0))))
+                      (okind okind) (oslot oslot) (ogen ogen) (cov cov) (batch 0) (seq 0))))
   (mv :ok fn2-overlays fn2-pool)))
 
 ; Advance active overlay O's coverage to P (the commit install that fed it

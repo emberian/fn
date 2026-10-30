@@ -11,13 +11,15 @@
 ; Group counts and watermarks: GROUP's COUNT LOW HIGH (RFC 3977 §6.1.1). An
 ; accepted article is numbered by the group; a withdrawal lowers the count and
 ; leaves the watermarks (the reply's low and high are bounds, not exact).
-; D5's transaction writes the accept in the article's own batch; D6's GROUP
-; and LIST ACTIVE read it; high + 1 is the next number.
+; D5's transaction writes the accept in the article's own batch through the
+; private successor (C-S3), which assigns the number, high + 1, from the
+; group's newest row when the transaction is staged, so numbers follow commit
+; order; D6's GROUP and LIST ACTIVE read it.
 (defrunschema fn2-group-counts :id 5
  :key ((group (:id group)))
  :value ((count :u60) (low :u60) (high :u60))
  :merge :latest
- :fold (:events ((:accept (group number) :when (< high number)
+ :fold (:events ((:accept (group number) :assign ((number (+ high 1))) :when (< high number)
                   :set ((count (+ count 1)) (low (if (= count 0) number (min low number))) (high number)))
                  (:withdraw (group number) :when (and (< 0 count) (<= number high))
                   :set ((count (- count 1)))))

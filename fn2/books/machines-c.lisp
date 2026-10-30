@@ -1,10 +1,13 @@
 ; Layer C in the served core (C-ONE-ASSEMBLY; seam C-S1, fn2/docs/c-ordered-runs.md
 ; §4 and §8): the engine's resident tables registered as core children, the
-; identity decision over them (one decision row per transaction, each with
-; its own field-row stripe), the defcosts of the operations layer D's
-; transaction machine calls, and their core wrappers (fn2-identity-core-events,
-; materialized after the core instance in assembly-callbacks-c.lisp). The
-; run, identity and range assemblies are range-served.lisp's.
+; identity decision over them (one decision row per transaction, each in its
+; transaction's field-row stripe), the defcosts of the decision's operations
+; layer D's transaction machine calls, and their core wrappers
+; (fn2-identity-core-events, materialized after the core instance in
+; assembly-callbacks-c.lisp). A transaction's writes, the decision's fact
+; among them, go through the private successor (C-S3,
+; machines-c-successor.lisp), which releases the decision. The run, identity
+; and range assemblies are range-served.lisp's.
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
@@ -12,25 +15,32 @@
 
 ; ---------------------------------------------------------------------------
 ; Field rows. B's format work uses a 128-row stripe per format slot from row 0
-; (commit.lisp: base = 128 * row); C's decision D uses the 256-row stripe
-; ending (decisions - D) stripes before the table's end. machines-b sizes the
-; table for both (fn2-b-field-rows). In a stripe: the offer at +0 (Message-ID,
-; content), its lower bound at +2, the decoded entry at +4, the run reader at
-; +84 (its rows also take the entry a bind writes).
-(defconst *fn2-idc-stride* 256)
+; (commit.lisp: base = 128 * row); transaction T's stripe is the 1024-row
+; stripe ending (transactions - T) stripes before the table's end. machines-b
+; sizes the table for both (fn2-b-field-rows). In a stripe (C-STRIPE): the
+; successor's write slots from +0, one 48-row block each (C-S3,
+; machines-c-successor.lisp), then the identity decision from +768: its offer
+; at +0 (Message-ID, content), its lower bound at +2, the decoded entry at
+; +4, the run reader at +84 (its rows also take the entry a bind writes).
+(defconst *fn2-idc-stride* 1024)
 (defconst *fn2-idc-b-stripe* 128)
-(defconst *fn2-idc-q* 0)
-(defconst *fn2-idc-lbq* 2)
-(defconst *fn2-idc-eb* 4)
+(defconst *fn2-succ-slots* 16)
+(defconst *fn2-succ-block* 48)
+(defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
+(defconst *fn2-idc-q* *fn2-idc-ident*)
+(defconst *fn2-idc-lbq* (+ *fn2-idc-ident* 2))
+(defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))
 (defconst *fn2-idc-rb* (+ *fn2-idc-eb* *fn2-run-entry-rows*))
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
+                   (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*)))))
 
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (nfix (fn2-profile-t profile))))
+      (unsigned-byte-p 32 (* *fn2-succ-slots* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-stamps 4096 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-overlays 8 profile))
       (unsigned-byte-p 32 (* (nfix (fn2-b-capacity :identity-overlays 8 profile))
@@ -121,7 +131,8 @@
 
 ; Offer (Message-ID octets [MOFF, MOFF+MLEN) of MSLOT/MGEN, content digest
 ; [DOFF, DOFF+32) of DSLOT/DGEN, both readable under OKIND OSLOT OGEN for the
-; decision's life) to decision row D, which must be idle or done.
+; decision's life) to decision row D, which must be idle or done (a :held
+; decision's fact waits on its transaction's batch: refused :state).
 (defun fn2-idc-offer (d mslot mgen moff mlen dslot dgen doff okind oslot ogen fcrows
                       fn2-id-decides fn2-id-stamps fn2-run-installed fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-decides fn2-id-stamps fn2-run-installed fn2-fields fn2-pool) :guard t))
@@ -131,7 +142,7 @@
       ((mv code q) (fn2-idc-stripe d fcrows fn2-id-decides fn2-fields))
       ((unless (eq code :ok)) (mv code fn2-id-decides fn2-fields))
       ((unless (member (fn2-id-decides-phase d fn2-id-decides)
-                       (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done* *fn2-id-decide-phase-published*)))
+                       (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*)))
        (mv :state fn2-id-decides fn2-fields))
       ((mv code fn2-fields) (fn2-idc-place q mslot mgen moff mlen dslot dgen doff fn2-fields))
       ((unless (eq code :ok)) (mv code fn2-id-decides fn2-fields)))
@@ -192,18 +203,6 @@
                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields) nil nil)
 
-; Release decision row D (idle again); a staged or bound decision, whose
-; fact waits on its batch, is refused :state.
-(defun fn2-idc-release (d fn2-id-decides)
- (declare (xargs :stobjs fn2-id-decides :guard t))
- (cond ((not (and (fn2-id-decides-wfp fn2-id-decides) (natp d) (< d (fn2-id-decides-rows fn2-id-decides))))
-        (mv :bounds fn2-id-decides))
-       ((member (fn2-id-decides-phase d fn2-id-decides) (list *fn2-id-decide-phase-staged* *fn2-id-decide-phase-bound*))
-        (mv :state fn2-id-decides))
-       (t (let ((fn2-id-decides (fn2-id-decides-set-phase d *fn2-id-decide-phase-idle* fn2-id-decides)))
-           (mv :ok fn2-id-decides)))))
-(fn2-id-decides-preserves fn2-idc-release (d fn2-id-decides) :position 1 :rows nil)
-
 (defcost fn2-identity-offer :bytes 256
  :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-run-installed fn2-core-fields fn2-core-pool fn2-core-fc)
  :doc "Stage an offer's Message-ID and content into its decision row and start the decision (hashes at most 250 octets).")
@@ -211,8 +210,6 @@
  :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed
           fn2-core-run-cursors fn2-core-run-paths fn2-core-run-cache fn2-core-fields fn2-core-pool)
  :doc "One bounded step of an identity decision: at most 4,096 pool reads and one overlay block or 32 run entries.")
-(defcost fn2-identity-release :tables (fn2-core-id-decides)
- :doc "Return a decision row to idle.")
 (defmacro fn2-identity-core-events ()
  '(progn
    (defun fn2-identity-offer (d mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)
@@ -239,13 +236,5 @@
      (mv answer fn2-core)))
    (fn2-core-preserves fn2-identity-step (d budget fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-   (defun fn2-identity-release (d fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core)))
-     (code fn2-id-decides)
-     (fn2-idc-release d fn2-id-decides)
-     (mv code fn2-core)))
-   (fn2-core-preserves fn2-identity-release (d fn2-core)
-    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-   (in-theory (disable fn2-identity-offer fn2-identity-step fn2-identity-release))
-   (assert-event (fn2-assert-compliant-p '(fn2-identity-offer fn2-identity-step fn2-identity-release) (w state)))))
+   (in-theory (disable fn2-identity-offer fn2-identity-step))
+   (assert-event (fn2-assert-compliant-p '(fn2-identity-offer fn2-identity-step) (w state)))))
