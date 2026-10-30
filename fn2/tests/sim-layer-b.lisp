@@ -1,7 +1,7 @@
 ; Actual commit continuations, adapter descriptors, and harvested observations.
 ; Test evidence uses lists; the served machine never calls these functions.
 (in-package "ACL2")
-(include-book "../sim/commit-history")
+(include-book "../sim/check-recovery")
 (include-book "../sim/sim")
 (include-book "../books/executor")
 (include-book "../sim/commit-proof-step")
@@ -22,7 +22,7 @@
   fn2-b-result-fault fn2-b-result-reorders fn2-b-result-dirty
   fn2-b-result-fence-max fn2-b-result-history fn2-b-result-write-bytes
   fn2-b-result-acks fn2-b-result-phases fn2-b-result-events fn2-b-result-payload-bytes
-  fn2-b-result-write-target)
+  fn2-b-result-write-target fn2-b-result-recovery-class fn2-b-result-witness fn2-b-result-recovered-count)
 
 ; Count queued, submitted and posted-but-unharvested fences independently.
 (defun fn2-b-fence-count-aux (left fn2-ops)
@@ -345,9 +345,11 @@
     (+ (nfix (fn2-b-manifest-record-bytes (car manifests)))
        (fn2-b-payload-total (cdr manifests)))))
 
-(defun fn2-b-case (profile seed cut scenario mode members fn2-core fn2-sim fn2-own)
+; POST is nil (scenarios 13/14) or (model faults sectors): B5's scenarios 15/16
+; choose the fault profile, the post-death faults and the device size.
+(defun fn2-b-case (profile seed cut scenario mode members post fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
-  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors 8 profile) mode))
+  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) 8) profile) mode))
        (fn2-core (fn2-core-init profile fn2-core))
        ; Recovery fixture: the preceding writer epoch fence has completed.
        ; B3 does not implement or claim this bootstrap protocol.
@@ -374,26 +376,26 @@
        (payload (fn2-b-payload-total manifests))
        (units (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
                 (units) (fn2-b-unit-snapshots (floor (fn2-sim-storage-rows fn2-sim-storage) 512) fn2-sim-storage) units))
-       ((mv fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own))
+       ; Broad error runs cannot infer that an invalid tail is merely torn:
+       ; recovery takes the profile's assumption bits as inputs.
+       (model (if post (car post) (fn2-cm-profile (if hit :broad :crash-only) t t nil 0 0)))
+       ((mv rstatus class outcome recovered events fn2-core fn2-sim fn2-own)
+        (fn2-b-crash-recover profile model (cadr post) manifests (reverse events) *fn2-fault-none* 0
+                             fn2-core fn2-sim fn2-own))
        (dirty (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
                 (count) (fn2-b-tears-after units fn2-sim-storage) count))
-       ((mv class recovered evidence fn2-core) (fn2-b-recover manifests fn2-core fn2-sim))
-       (events (append (reverse events) (list '(:crash)) evidence))
-       ; Only crash-only runs call an incomplete final frame a torn tail.
-       ; Broad error runs cannot infer that the invalid tail is merely torn.
-       (class (if (and hit (eq class :torn-tail)) :unknown class))
-       (history (fn2-check-history events (fn2-cm-profile (if hit :broad :crash-only)
-                                                       t t nil 0 0) class recovered))
+       (history (and (eq rstatus :done) (fn2-check-recovery events model class recovered outcome)))
        (pass (and (member-eq status '(:cut :done :uncertain)) history (<= maximum 1)
                   (not (eq hit :cache-control-failed))
                   (or (eq scenario :none) (eq hit scenario)
                       (and (eq status :cut) (not hit))))))
-    (mv (list (if pass :pass (list :fail status class hit)) steps (fn2-sim-deaths fn2-sim)
+    (mv (list (if pass :pass (list :fail status rstatus class outcome hit)) steps (fn2-sim-deaths fn2-sim)
               hit reorders dirty maximum history bytes acks phases (if pass nil events) payload
-              (and (member-eq hit '(:partial :eio :enospc)) (fn2-b-write-fault-target seed)))
+              (and (member-eq hit '(:partial :eio :enospc)) (fn2-b-write-fault-target seed))
+              class outcome (len recovered))
         fn2-core fn2-sim fn2-own)))
 
-(defun fn2-b-one (profile seed cut scenario mode members)
+(defun fn2-b-one (profile seed cut scenario mode members post)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (answer fn2-core)
@@ -401,7 +403,7 @@
         (mv-let (answer fn2-core fn2-sim)
           (with-local-stobj fn2-own
             (mv-let (answer fn2-core fn2-sim fn2-own)
-              (fn2-b-case profile seed cut scenario mode members fn2-core fn2-sim fn2-own)
+              (fn2-b-case profile seed cut scenario mode members post fn2-core fn2-sim fn2-own)
               (mv answer fn2-core fn2-sim)))
           (mv answer fn2-core)))
       answer)))
@@ -490,10 +492,11 @@
                   (= (fn2-machine-phase b fn2-core) *fn2-commit-state-free*)))
        (okay (and okay (= next old-next) (= key old-key) (= capacity old-capacity) (= config old-mode) (eq refusal :exhausted) (not refused) (= (fn2-b-free-workspaces fn2-core) 8)
                    (not (fn2-b-outbox fn2-core)) (= (fn2-machine-batch-no a fn2-core) 3)))
-       ((mv fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own))
-       ((mv class recovered evidence fn2-core) (fn2-b-recover manifests fn2-core fn2-sim))
-       (history (fn2-check-history (append (reverse events) (list '(:crash)) evidence)
-                  (fn2-cm-profile :crash-only t t nil 0 0) class recovered)))
+       (model (fn2-cm-profile :crash-only t t nil 0 0))
+       ((mv rstatus class outcome recovered events fn2-core fn2-sim fn2-own)
+        (fn2-b-crash-recover profile model nil manifests (reverse events) *fn2-fault-none* 0
+                             fn2-core fn2-sim fn2-own))
+       (history (and (eq rstatus :done) (fn2-check-recovery events model class recovered outcome))))
     (mv (list (and (eq ec :ok) (eq ca :ok) (eq cb :ok) okay history (= (len recovered) 4))
               mode class (len recovered) refusal) fn2-core fn2-sim fn2-own)))
 (defun fn2-b-reuse-control (mode)

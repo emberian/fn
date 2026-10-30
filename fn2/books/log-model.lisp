@@ -100,8 +100,10 @@
            (:corrupt-required
             (and (equal (len event) 2) (member-equal arg (fn2-lm-state-fenced s))
                  (not (member-equal arg (fn2-lm-state-corrupt s)))))
+           ; B5: the first defective batch of a dirty tail, not necessarily
+           ; the final one (a follower may land before its torn leader).
            (:bad-tail
-            (and (equal (len event) 2) crashed (posp n) (equal arg n)))
+            (and (equal (len event) 2) crashed (posp arg) (<= arg n)))
            (:rollback
             (and (equal (len event) 2) crashed (natp arg) (< arg n)))
            (:present-frontier
@@ -206,7 +208,8 @@
 ; :damaged/:unknown histories are the verified prefix for diagnosis, never a
 ; permission to resume service. Complete unacknowledged batches may be adopted.
 ; :survives witnesses a complete batch that landed without a write completion.
-; An unexplained bad final batch is :unknown under broad/lying profiles.
+; An unexplained dirty tail (first defective batch named) is :unknown under
+; broad/lying profiles.
 ; No independent witness => no rollback-detection claim, even if several local
 ; superblock copies agree on the older image. Fail-slow is latency and absent
 ; from this timeless safety model (papers table row 19).
@@ -262,4 +265,4 @@
            (fn2-lm-acknowledged-in-historyp
             (fn2-lm-state-acknowledged (fn2-lm-trace-state trace)) recovered-history))
   :teeth (fn2-lm-ack-positive fn2-lm-ack-fence-negative fn2-lm-ack-destruction-negative fn2-lm-ack-recovery-negative)
-  :doc "B1 specification obligation for HISTORY/RECOVERY; not a proof of B3 commit or B5 recovery.")
+  :schema :crash :doc "B1 specification obligation for HISTORY/RECOVERY; not a proof of B3 commit or B5 recovery.")

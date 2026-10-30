@@ -17,26 +17,21 @@
 (defun fn2-commit-child-events (children)
  (declare (xargs :verify-guards nil))
  (if (atom children) nil
-  (let* ((field (caar children)) (wfp (fn2-columns-sym (cadar children) "-WFP"))
-         (update (fn2-columns-pre "UPDATE-" field)))
+  (let ((field (caar children)))
    (append
     `((defthm ,(fn2-commit-child-lemma-name field "-CHILD-TYPE")
        (implies (fn2-corep c) (,(fn2-columns-sym (cadar children) "P") (,field c)))
-       :rule-classes :forward-chaining)
-      (defthm ,(fn2-commit-child-lemma-name field "-CHILD-WFP")
-       (implies (fn2-core-wfp c) (,wfp (,field c)))
-       :rule-classes (:rewrite :forward-chaining)
-       :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-      (defthm ,(fn2-commit-child-lemma-name field "-UPDATE-WFP")
-       (implies (and (fn2-core-wfp c) (,wfp p))
-                (fn2-core-wfp (,update p c)))
-       :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+       :rule-classes :forward-chaining))
     (fn2-commit-child-events (cdr children))))))
+; The child-type rules and core.lisp's per-child WFP facts in their
+; forward-chaining class: on in the commit and recovery sections only.
 (defun fn2-commit-child-forward-runes (children)
  (declare (xargs :verify-guards nil))
  (if (atom children) nil
   (list* (list :forward-chaining (fn2-commit-child-lemma-name (caar children) "-CHILD-TYPE"))
-         (list :forward-chaining (fn2-commit-child-lemma-name (caar children) "-CHILD-WFP"))
+         ; core.lisp's T-WFP-OF-FIELD, in its forward-chaining class
+         (list :forward-chaining (fn2-columns-sym (fn2-columns-sym (cadar children) "-WFP")
+                                                  (concatenate 'string "-OF-" (symbol-name (caar children)))))
          (fn2-commit-child-forward-runes (cdr children)))))
 
 ; R5e2 (A9): a machine field read needs its read code :ok in the guard. A commit
@@ -71,12 +66,17 @@
  fn2-commit-root-proposed fn2-commit-root-parent fn2-commit-root-extent fn2-commit-root-first-key fn2-commit-root-members fn2-commit-root-seal-ready fn2-commit-root-barrier-mode
  fn2-digestsp fn2-digests-wfp fn2-digests-rows
  fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal))))
+; Both commit sections read child bounds from a core hypothesis by forward
+; chaining through core.lisp's per-child facts.
+(defun fn2-commit-local-forward ()
+ '(make-event (value `(local (in-theory (enable ,@(fn2-commit-child-forward-runes *fn2-commit-proof-children*)))))))
 (defun fn2-commit-event-forms ()
  (list* 'progn (fn2-commit-local-theory) '(
 (make-event
  (value `(defconst *fn2-commit-proof-children*
            ',(fn2-commit-proof-children *fn2-core-children* (w state)))))
 (make-event (value (cons 'progn (fn2-commit-child-events *fn2-commit-proof-children*))))
+(make-event (value `(local (in-theory (enable ,@(fn2-commit-child-forward-runes *fn2-commit-proof-children*))))))
 (defun fn2-commit-idp (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (eq (fn2-commit-snapshot-read-code id fn2-core) :ok))
@@ -632,7 +632,7 @@
 (fn2-core-preserves fn2-commit-drop-io (id fn2-core) :rows nil :prefix "")
 )))
 (defun fn2-commit-event-forms-2 ()
- (list* 'progn (fn2-commit-local-theory) '(
+ (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
 (defmachine-callback fn2-commit-observe fn2-commit (id event outcome reason count aux0 aux1) 1
  ; Every row field is read before the first core rebinding: no later write in
  ; this observer changes cb-bytes or cb-failed, and DM0b inserts no refresh.

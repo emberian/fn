@@ -102,9 +102,20 @@
                 :hints (("Goal" :in-theory (enable fn2-core-wfp))))
              `(defthm ,(fn2-columns-sym wfp (concatenate 'string "-OF-" (symbol-name field)))
                 (implies (fn2-core-wfp fn2-core) (,wfp (,field fn2-core)))
+                :rule-classes (:rewrite :forward-chaining)
                 :hints (("Goal" :in-theory (enable fn2-core-wfp))))
              (fn2-core-child-wfp-facts (cdr children))))))
+; The forward-chaining class of each child fact is off by default; a section
+; whose guard proofs read child bounds from a core hypothesis (B's commit and
+; recovery sections) enables it locally.
+(defun fn2-core-child-wfp-forward-runes (children)
+  (if (atom children) nil
+    (cons (list :forward-chaining
+                (fn2-columns-sym (fn2-columns-sym (cadar children) "-WFP")
+                                 (concatenate 'string "-OF-" (symbol-name (caar children)))))
+          (fn2-core-child-wfp-forward-runes (cdr children)))))
 (make-event (value `(progn ,@(fn2-core-child-wfp-facts *fn2-core-children*))))
+(make-event (value `(in-theory (disable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*)))))
 (in-theory (disable fn2-core-wfp))
 
 ; The pool has at most sixteen size classes; general profile validity alone

@@ -1,7 +1,7 @@
-; B3 simulator-only recovery stand-in, NOT B5 discovery. The caller snapshots
-; allocated locations/identities before death. Contents, records and predecessor
-; seals are then read back from the simulator's durable image. No ack, fence,
-; completion or cached/pending-byte field participates in recovery.
+; The HISTORY projection of B3's commit fixture, and the harness's independent
+; reader of what each submitted batch meant to write. Recovery itself is B5's
+; machine (sim/check-recovery.lisp drives it); fn2-b-recover-images is the
+; ground-truth reader RECOVERY compares the machine against, never a recovery.
 ; Lists and local checker stobjs are test adapters, never served operations.
 ; fn2-fc-acceptedp reaches fn2-format-run through the BH1 image adapter,
 ; which loads named context references into its local fn2-digests workspace.
@@ -217,31 +217,6 @@
                           (fn2-lm-batch-dependencies (fn2-b-manifest-batch manifest)))))
   (mv :ok batch (nth *fn2-format-sealed-batch-field-final-seal* seal))))
 
-(defun fn2-b-recover-loop (manifests previous fn2-sim)
- (declare (xargs :stobjs fn2-sim :verify-guards nil))
- (if (atom manifests) (mv :intact nil nil)
-  (b* ((manifest (car manifests)) (e (fn2-b-manifest-extent manifest))
-       ((mv pc page) (fn2-b-durable-image e 0 fn2-sim))
-       ((mv rc records) (fn2-b-durable-image e 1 fn2-sim))
-       ((mv sc seal) (fn2-b-durable-image e 2 fn2-sim))
-       ((unless (and (eq pc :ok) (eq rc :ok) (eq sc :ok))) (mv :unknown nil nil))
-       ((mv code batch next) (fn2-b-recover-images manifest previous page records seal))
-       ((unless (eq code :ok))
-        ; Incomplete earlier speculative slots do not manufacture a final-tail
-        ; witness at the submitted frontier. No later batch crosses the gap.
-        (if (and (endp (cdr manifests)) (not (and (fn2-b-zeros-p records) (fn2-b-zeros-p seal))))
-            (mv :torn-tail nil (list (list :evidence
-                                         (list :bad-tail (fn2-lm-batch-number (fn2-b-manifest-batch manifest))))))
-          (mv :intact nil nil)))
-       ((mv classification recovered evidence) (fn2-b-recover-loop (cdr manifests) next fn2-sim)))
-   (mv classification (cons batch recovered)
-       (cons (list :evidence (list :survives (fn2-lm-batch-number batch))) evidence)))))
-
-(defun fn2-b-recover (manifests fn2-core fn2-sim)
- (declare (xargs :stobjs (fn2-core fn2-sim) :verify-guards nil))
- (mv-let (classification recovered evidence)
-  (fn2-b-recover-loop manifests *fn2-b-zero-digest* fn2-sim)
-  (mv classification recovered evidence fn2-core)))
 (fn2-cm-defreaders fn2-b-descriptor-token fn2-b-descriptor-kind
   fn2-b-descriptor-owner fn2-b-descriptor-offset fn2-b-descriptor-length
   fn2-b-descriptor-fua fn2-b-descriptor-owner-generation fn2-b-descriptor-owner-kind)

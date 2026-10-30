@@ -264,6 +264,24 @@
                     (fn2-extents (update-fn2-alloc-next-counter (+ 1 counter) fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
                (mv :ok nil i epoch counter fn2-extents)))))))
+; B5 recovery adopts a replayed allocation identity in arena order. The extent
+; must be the free head (genesis FIFO order: B6's checkpoint map replaces this
+; with the recorded map); the identity is the recorded one, never a fresh
+; counter, and the internal reservation is discharged by commit or quarantine.
+(defun fn2-alloc-adopt (i epoch counter fn2-extents)
+  (declare (xargs :stobjs fn2-extents
+    :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))))
+  (if (not (and (fn2-alloc-slotp i fn2-extents) (equal i (fn2-alloc-free-head fn2-extents))
+                (equal (fn2-extents-state i fn2-extents) *fn2-extent-state-free*)
+                (fn2-alloc-link-statep (fn2-extents-next-free i fn2-extents) *fn2-extent-state-free* fn2-extents)))
+      (mv :state fn2-extents)
+    (let* ((fn2-extents (update-fn2-alloc-free-head (fn2-extents-next-free i fn2-extents) fn2-extents))
+           (fn2-extents (fn2-extents-set-state i *fn2-extent-state-reserved* fn2-extents))
+           (fn2-extents (fn2-extents-set-epoch i epoch fn2-extents))
+           (fn2-extents (fn2-extents-set-counter i counter fn2-extents))
+           (fn2-extents (fn2-extents-set-reservation i 1 fn2-extents))
+           (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
+      (mv :ok fn2-extents))))
 
 ; Edges are individually owned rows. Capacity is a supported-profile resource;
 ; exhaustion is admission pressure, never permission to drop another holder.
@@ -621,7 +639,7 @@
            (and (fn2-alloc-releasablep i p)
                 (equal (fn2-extents-state i (mv-nth 1 (fn2-alloc-release i epoch counter p))) *fn2-extent-state-free*)))
   :teeth (fn2-alloc-keystone-teeth fn2-alloc-release-protection-teeth)
-  :doc "Successful release checks every typed edge and checkpoint coverage at the actual export.")
+  :schema :invariant :doc "Successful release checks every typed edge and checkpoint coverage at the actual export.")
 (defun-nx fn2-alloc-id-step (op i epoch counter arg p edges)
   (case op
     (:reserve (mv-nth 5 (fn2-alloc-reserve p)))
@@ -654,4 +672,4 @@
 (defthm-owed fn2-alloc-ids-never-repeat (op i epoch counter arg p edges)
   (implies (fn2-alloc-invp p) (fn2-alloc-id-progress op i epoch counter arg p edges))
   :teeth (fn2-alloc-keystone-teeth)
-  :doc "All issuing/lifetime transitions monotonically advance the epoch/counter watermark; each successful issue consumes its old watermark strictly. Init is construction, never a restart transition; relocation only changes edge columns.")
+  :schema :invariant :doc "All issuing/lifetime transitions monotonically advance the epoch/counter watermark; each successful issue consumes its old watermark strictly. Init is construction, never a restart transition; relocation only changes edge columns.")

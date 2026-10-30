@@ -23,9 +23,9 @@ recorded here is a defect.
 | semantic Merkle event frontier and proof verification | `fn2/books/merkle.lisp` | B2e |
 | commit-batch machine (declared through layer A's `defmachine`) | `fn2/books/commit.lisp` (**owed**) | B3 |
 | allocator with typed edges | `fn2/books/alloc.lisp` | B4 |
-| recovery | `fn2/books/recovery.lisp` (**owed**) | B5 |
+| recovery | `fn2/books/recovery.lisp` (table level), `recovery-machine.lisp` (continuations), the `fn2-recovery-machine` declaration in `machines-b.lisp`; keystones `recovery-proof.lisp` | B5 |
 | checkpoint and cleaner machines | `fn2/books/checkpoint.lisp`, `fn2/books/cleaner.lisp` (**owed**) | B6 |
-| HISTORY, RECOVERY, RECLAIM checkers | `fn2/sim/check-history.lisp`, `check-recovery.lisp` (**owed**), `check-reclaim.lisp` | B3-B6 |
+| HISTORY, RECOVERY, RECLAIM checkers | `fn2/sim/check-history.lisp`, `check-recovery.lisp`, `check-reclaim.lisp` | B3-B6 |
 | acceptance | `fn2/tests/sim-layer-b.lisp` (+ driver `.lsp`, **owed**) | B3-B7 |
 
 ## 2. Decisions inside the contract
@@ -901,7 +901,7 @@ constitute the composed persistence boundary. This does not assume that an
 ordinary earlier write is covered by a later FUA write. An unresolved predecessor
 fences the follower.
 
-### HISTORY and recovery stand-in
+### HISTORY
 
 `fn2-history-translate` consumes projected manifest, issue, completion,
 publication, acknowledgement, timeout and crash events. Successful admission
@@ -925,15 +925,10 @@ three acknowledged batches recover. This is separate from physical durability;
 the durability obligation checks writes, completions, barriers and recovery
 without adding that freshness premise.
 
-`fn2/sim/commit-history.lisp` is explicitly a **recovery stand-in until B5**.
-It knows allocation locations/identities captured before death; it does not
-implement disk discovery. It independently reads durable sectors, decodes
-records, checks dependency pages, both frames and the inner seal through
-`fn2-format-run`'s B2 test adapter, and follows the actual predecessor-seal chain.
-Recovered history comes from those bytes. The fixture compares complete keyed
-mutation records, including their effects and references, rather than only IDs.
-Malformed final bytes may supply bad-tail evidence; an unreadable device does
-not manufacture corruption evidence.
+Recovery after each death is B5's machine (§11); `fn2/sim/commit-history.lisp`
+keeps only the projection and `fn2-b-recover-images`, the harness's independent
+reader of what each submitted batch meant to write (the RECOVERY checker's ground
+truth, never a recovery). The B3 stand-in `fn2-b-recover` is deleted.
 
 Scenarios 13/14 enumerate every microstep death cut of their tiny-profile
 pilot schedules: one schedule per barrier mode for 13, and five fault classes
@@ -1043,9 +1038,145 @@ current-closure certification times, verbatim acceptance and any remaining red
 are recorded in `build/REPORT.md`; an earlier checkpoint's green is not current
 acceptance. B5 discovery and B6 reclamation remain separate quests.
 
+## 11. Recovery (B5)
+
+### Machine
+`fn2-recovery-machine` (declared in `machines-b.lisp`, continuations in `recovery-machine.lisp`,
+expanded by `assembly-callbacks-s`, `-t` and `assembly-callbacks` after the commit continuations) is one row with phases
+`free read read-result verify search install done`, the 4096-byte / 32-step / 4-descriptor run
+budget, and holds the recovery bundle (`:storage-job :storage-window`, resources.lisp's
+`(:recovery :start)`) from `:read` through `:install`; the arm that reaches `:done` releases it.
+Each run reads or verifies at most one 4 KiB unit (ROUND2 §B.3). Its scratch state is the core
+child `fn2-core-rec-cand` (one row per arena position: status `unread empty invalid unreadable
+candidate chained`, the claimed commit, writer epoch, allocation counter, event interval, seal
+offset and length) and a digest region after the commit directory (per position: final seal,
+previous seal, record-stream commitment, dependency hash; then the chain's previous seal, the
+presented witness, one scratch row). It verifies through B2d's `fn2-format-run` on its own checker
+continuation (format row 2; `:format-slots` now defaults to 3, `:format-field-slots` to 384).
+
+Every arm is in the checked arm language with its full contract (cost, own-field writes, core
+children, successors, uses; no `:language :unchecked`): the arm reads its own fields, moves its
+phase and writes its row; the table work is a set of defcost'd operations of
+`recovery-machine.lisp` (`fn2-recovery-discover-unit`, `-chain-unit`, `-cand-mark`, `-link`,
+`-scan`, `-dirty-scan`, `-witness-match`, `-adopt`, `-finish`) that take the row's owner triple
+explicitly and report a refused bound as `:bounds`. A refused bound stops the core with the named
+reason `:recovery-bounds`, a refused release of the bundle with `:recovery-release` (both appended
+to `fn2-stop-reason`); nothing in recovery absorbs.
+
+API: `fn2-recovery-present-witness-word i word fn2-core` (before start; eight words of a receipt's
+seal), `fn2-recovery-start id assume witness fn2-core -> (mv code fn2-core)` (`assume` is the
+profile's assumption bits, `witness` the receipt's commit, 0 for none). Results are the row's
+`rc-class` (`*fn2-rec-classes*`), `rc-witness-outcome` (`*fn2-rec-witness-outcomes*`) and
+`rc-chain`; the commit root rows name each recovered batch's extent.
+
+### Algorithm (STORAGE-DESIGN-ASTRA parts G, H, I over the genesis arena)
+1. **Discovery.** Every position of the arena (the allocator's extent table) is read at its seal
+   unit, and, when that unit is all zero, at its records frame and dependency page too: a position is
+   `empty` only when all three units are zero, and debris in either other unit beside an empty seal
+   unit is `invalid` (dirt). A nonzero seal unit's frame header is decoded and must name this position,
+   the genesis lineage (history 1, incarnation 1) and a seal frame; the frame hash is checked with
+   the header's own identity; the sealed batch is decoded and must repeat that identity, and its
+   previous seal, final seal, record-stream commitment and dependency hash are loaded. A failed
+   check is `invalid`; a failed read is `unreadable`. No length or next pointer from an unchecked
+   frame is trusted, and discovery never stops at the first bad position.
+2. **Chain.** Starting from the zero genesis seal, the unique candidate whose commit is the next
+   number and whose previous seal equals the chain's is verified whole: the seal checker with the
+   chain's previous seal, the records frame and its exact equality with the seal's record-stream
+   commitment, the dependency page under the seal's hash. Two such candidates are a branch
+   (`ambiguous`); a failed unit or read ends the chain.
+3. **Classification** with the assumption bits as inputs (B-ASSUMPTIONS-AS-PARAMETERS):
+   `damaged` when a credited witness contradicts the chain; `unknown` when the chain branched or a
+   read could not be established, or the arena is dirty (a position that is neither empty nor
+   chained) under a profile that is not crash-only with honest fences; `torn-tail` for a dirty arena
+   under crash-only with A-PERSISTENCE-FENCE; `intact` otherwise. Checksums alone never yield
+   `damaged`: the commit fixture lets the follower write before its leader's fence, so a valid
+   successor beside an invalid predecessor is also an ordinary torn tail (a departure from part E's
+   step 6, recorded here).
+4. **Witness** (scholar ch. 4 item 10): a presented receipt is `uncredited` without
+   A-INDEPENDENT-FRONTIER; with it, `rollback-detected` beyond the chain, `consistent` when the
+   chain's seal at that commit matches, `discontinuity` otherwise.
+5. **Install once**, only for `intact` and `torn-tail`: the allocator adopts every position below
+   the high water in arena order with its recorded identity (`fn2-alloc-adopt`, new in alloc.lisp):
+   chained extents become ALLOCATED to their commit with an installed-root edge, every other one
+   is quarantined with a recovery-candidate edge and never reused; the commit directory, root
+   recipe rows and admission frontier are restored; the writer epoch begins above every adopted
+   identity. `damaged` and `unknown` install nothing: the allocator's epoch stays unbegun, so every
+   mutation is refused until repair.
+
+### Departures and owed items
+- **B-RECOVERY-GENESIS.** No anchor bank or checkpoint descriptor exists until B6 writes them, so
+  root selection (part I steps 1-3) reduces to the genesis base and its arena is the whole extent
+  table; allocator adoption assumes the genesis allocation order. B6 replaces both with the
+  promoted checkpoint's arena and allocation map.
+- The journaled BEGIN_WRITER_EPOCH batch (part H) is owed: recovery begins the epoch in memory.
+- Read misdirection (scenario 15's "misdirect a read") is not covered: a misdirected read is
+  indistinguishable from damage without a re-read, and the row has no field left for a retry
+  (24 of 24 used). Write misdirection is covered.
+- GC2 (`:run-replacement`, `fn2-runs-install`, following one level of `:dependency-manifest`
+  pages) is the next B5 commit.
+
+### Death is a fresh process
+B5 found that `fn2-sim-crash`'s `fn2-core-init` did not give a fresh process: defcolumns'
+generated init resized each column, which keeps earlier rows, so pre-crash allocator edges
+survived and blocked adoption (and A's outbox generations and the control's stop reason survived
+in extra fields). The generated init now resizes each column to 0 and then to n, empties resizable
+extra arrays, resets scalar extras to their declared initial values and clears hash-table extras;
+fixed arrays and nested stobj fields keep their own init (`columns.lisp`, agreed with the DSL seat). Every RECOVERY case first compares the post-death core
+with a newly created core (`fn2-b-death-difference`, the reference model's comparison); the
+planted-survivor control (`fn2-b-death-control`) leaves one live edge row and must be reported.
+
+### RECOVERY and the ground truth
+`sim/check-recovery.lisp` drives the row through the executor, the simulated adapter and the
+router (`fn2-b-rec-run`), applies post-death faults to the durable image (`:corrupt`,
+`:corrupt-last`, `:misdirect`, `:rollback`, `:witness`), and computes the harness's ground truth
+from the manifests captured before death: every batch whose bytes landed exactly `:survives`; a
+fenced batch damaged after its fence is `:corrupt-required`; a dirty arena names its first
+defective, non-injected batch as `:bad-tail`. B1's `:bad-tail` therefore names the first defective
+batch of a dirty tail, at most the last submitted (log-model change; a follower may land before
+its torn leader). The recovered history is rebuilt by the harness from the chained extents and the
+durable bytes, so a chained extent the harness cannot confirm fails HISTORY.
+`fn2-check-recovery` is `fn2-lm-recovery-allowedp` plus the witness outcome: detection exactly when
+a credited presented witness lies beyond the recovered history, `none` exactly without a witness,
+`uncredited` exactly without A-INDEPENDENT-FRONTIER.
+
+### Acceptance (tiny gate, forge, 2026-10-30)
+`FN2_B_PROFILE=tiny sh fn2/tools/forge-driver.sh sim-layer-b`, both barrier modes, every case through
+the real recovery and RECOVERY:
+- death control: fresh after init, planted survivor reported.
+- scenario 15: 336 cases, classes `corrupt-middle -> unknown` 12, `corrupt-tail` (every death cut of
+  the pilot, then one byte in the last batch's seal unit) `intact` 134 / `unknown` 182,
+  `misdirect-write -> unknown` 4, `older-image -> intact` 4; RECOVERY pass.
+- scenario 16: 12 cases; witnessed rollback detected and `damaged`, unwitnessed and uncredited make
+  no claim, covered witnesses `consistent`.
+- scenarios 13/14 (now with the real recovery): 316 and 1,882 death cuts, HISTORY/RECOVERY pass;
+  the whole tiny gate in 22.8 s.
+- recovery time: 0.78 s per MiB of scanned arena (simulator and ACL2 hashing: the difference of an
+  intact recovery over 64 and 5 extents, 5-run means 0.215 s and 0.036 s). Not a device number.
+The concrete 10,000-seed sweep stays the nightly row (scenarios 13/14; 15/16 concrete seeds owed).
+
+Certify times on forge (closure at -j 8 on 84e6bb293, load 3-6): the commit kind's second section
+is its own book `assembly-callbacks-r` (34 s); recovery's table-level operations are
+`assembly-callbacks-s` (31 s), its first arms (refusals, observation, read, result, verify)
+`assembly-callbacks-t` (40 s), the rest of the arms and the dispatch resolution
+`assembly-callbacks` (29 s); `recovery.lisp` 5 s, `recovery-machine.lisp` 2 s. The one wall on the
+way (113 s) was the install arm's classification proofs case-splitting through the inlined
+classification and witness rules: the arm now sees them only through their type facts, and
+install is four forwarded callbacks (scan, classify, adopt, finish).
+
+### Keystones (owed, `books/recovery-proof.lisp`, teeth in `tests/recovery-proof-unit.lisp`)
+- `fn2-recovery-never-shortens-intact`: honest fences and no later destruction ⇒ every acknowledged
+  batch is in the recovered history. Teeth: baseline and preflush/FUA positives; a lying flush
+  (fence removal) and an at-rest corruption (destruction removal) each lose an acknowledged batch.
+- `fn2-recovery-broad-bad-tail-unknown`: not crash-only and a ground-truth bad tail ⇒ `unknown` or
+  `damaged`. Teeth: a death after the leader's writes and before its fence with one byte of dirt is
+  `unknown` under broad and `torn-tail` under crash-only.
+- `fn2-recovery-rollback-needs-witness`: detection ⇒ A-INDEPENDENT-FRONTIER and a presented witness
+  beyond the recovered history. Teeth: witnessed rollback detected and `damaged`; unwitnessed
+  rollback recovered `intact` with no claim; uncredited receipt; covered witness `consistent`.
+
 ## 14. Delivery record: the B3b slip review (2026-10-29)
 
-§9 is the event log, so the slip finding lives here. Sections 11-13 stay reserved for recovery,
+§9 is the event log, so the slip finding lives here. Section 11 is recovery; 12-13 stay reserved for
 checkpoint/cleaner and acceptance.
 
 **Finding: the main cause was integration and base churn. Scope was a secondary cause. No design

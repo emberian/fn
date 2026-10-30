@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../books/executor")
 (include-book "sim")
-(include-book "commit-history")
+(include-book "check-recovery")
 (fn2-book-layer :b)
 
 (fn2-cm-defreaders fn2-commit-proof-tag fn2-commit-proof-arg

@@ -6,6 +6,7 @@
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "format-check")
+(include-book "recovery")
 (fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
  (declare (xargs :guard t))
@@ -28,24 +29,25 @@
       (fn2-b-capacity :alloc-edge-slots (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))) profile)))
  :why "Commit work survives scheduler yields.")
 (defcorechild fn2-core-fc fn2-fc
- :init (fn2-fc-init (fn2-b-capacity :format-slots 2 profile) fn2-fc)
- :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 2 profile))
-                (<= 2 (fn2-b-capacity :format-slots 2 profile)))
+ :init (fn2-fc-init (fn2-b-capacity :format-slots 3 profile) fn2-fc)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 3 profile))
+                (<= 3 (fn2-b-capacity :format-slots 3 profile)))
  :why "Commit work survives scheduler yields.")
 (defcorechild fn2-core-fc-context fn2-fc-context
- :init (fn2-fc-context-init (fn2-b-capacity :format-slots 2 profile) fn2-fc-context)
- :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 2 profile))
-                (<= 2 (fn2-b-capacity :format-slots 2 profile)))
+ :init (fn2-fc-context-init (fn2-b-capacity :format-slots 3 profile) fn2-fc-context)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 3 profile))
+                (<= 3 (fn2-b-capacity :format-slots 3 profile)))
  :why "Commit work survives scheduler yields.")
 (defcorechild fn2-core-b3 fn2-b3
- :init (fn2-b3-table-init (fn2-b-capacity :format-slots 2 profile) fn2-b3)
- :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 2 profile))
-                (<= 2 (fn2-b-capacity :format-slots 2 profile)))
+ :init (fn2-b3-table-init (fn2-b-capacity :format-slots 3 profile) fn2-b3)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-slots 3 profile))
+                (<= 3 (fn2-b-capacity :format-slots 3 profile)))
  :why "Commit work survives scheduler yields.")
 (defun fn2-b-digest-minimum (profile)
  (declare (xargs :guard t))
- (+ (* *fn2-digest-stride* (nfix (fn2-b-capacity :format-slots 2 profile)))
-    1 (nfix (fn2-b-capacity :extent-slots 16 profile))))
+ (+ (* *fn2-digest-stride* (nfix (fn2-b-capacity :format-slots 3 profile)))
+    1 (nfix (fn2-b-capacity :extent-slots 16 profile))
+    (fn2-rec-digest-rows (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defthm fn2-b-digest-minimum-natural
  (natp (fn2-b-digest-minimum profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-b-digest-minimum))
@@ -54,19 +56,23 @@
  :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile))
   (<= (fn2-b-digest-minimum profile) (fn2-b-capacity :digest-slots (fn2-b-digest-minimum profile) profile)))
  :why "Hasher stripes and immutable predecessor seals survive commit yields and row reuse.")
-; Field rows: a 128-row stripe per format slot from row 0 (commit.lisp), then
-; layer C's 1024-row transaction stripe (the private successor's write slots
-; and the identity decision, C-S3, machines-c.lisp) per transaction at the
-; table's end.
+; Field rows: a 128-row stripe per format slot from row 0 (commit.lisp; row 2
+; is recovery's checker, so at least 384), then layer C's 1024-row
+; transaction stripe (the private successor's write slots and the identity
+; decision, C-S3, machines-c.lisp) per transaction at the table's end.
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
- (+ (* 128 (nfix (fn2-b-capacity :format-slots 2 profile))) (* 1024 (nfix (fn2-profile-t profile)))))
+ (+ (* 128 (nfix (fn2-b-capacity :format-slots 3 profile))) (* 1024 (nfix (fn2-profile-t profile)))))
 (in-theory (disable fn2-b-field-rows))
 (defcorechild fn2-core-fields fn2-fields
  :init (fn2-fields-init (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile) fn2-fields)
  :profilep (and (unsigned-byte-p 32 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile))
-                (<= 256 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
+                (<= 384 (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))
  :why "Commit work survives scheduler yields.")
+(defcorechild fn2-core-rec-cand fn2-rec-cand
+ :init (fn2-rec-cand-init (fn2-b-capacity :extent-slots 16 profile) fn2-rec-cand)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Recovery's per-position discovery survives its yields; one row per arena extent.")
 ; Each resource row retains its exact issuing op generation as edge holder.
 (defcolumns fn2-commit-io
  ((extent :u32) (epoch :u60) (counter :u60) (pool-slot :u32) (pool-gen :u60)
@@ -179,13 +185,100 @@
  (equal ',(strip-cars *fn2-commit-holds*)
         ',(fn2-machine-property 'fn2-commit :states (w state))))))
 (include-book "commit")
+;
+; B5 recovery (STORAGE-DESIGN-ASTRA parts G and I over the genesis arena): one
+; row, one 4 KiB unit read and verified at a time. Discovery reads every seal
+; frame position; search finds the unique successor of the chain; verify
+; checks seal, records frame and dependency page; install adopts allocator
+; state and the commit frontier once, only for :intact or :torn-tail. The row
+; takes its whole bundle at start (resources.lisp's (:recovery :start)) and
+; holds it to :done.
+(defconst *fn2-recovery-transitions*
+ '((:free :read) (:read :read-result :search) (:read-result :verify :read :install)
+   (:verify :read :search :install) (:search :read :install) (:install :done) (:done)))
+(defmachine fn2-recovery-machine
+ :states (:free :read :read-result :verify :search :install :done)
+ :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
+          (rc-mode :u8) (rc-pos :u32) (rc-role :u8) (rc-stage :u32) (rc-filled :u32)
+          (rc-ready :bool) (rc-outcome :u8) (rc-count :u32)
+          (rc-chain :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
+          (rc-class :u8) (rc-witness :u60) (rc-witness-outcome :u8) (rc-assume :u8)
+          (rc-epoch :u60) (rc-found :u32))
+ :holds ((:read :storage-job :storage-window) (:read-result :storage-job :storage-window)
+         (:verify :storage-job :storage-window) (:search :storage-job :storage-window)
+         (:install :storage-job :storage-window))
+ :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :capacity 1
+ :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :observes ((:read-result fn2-recovery-observe :cost (:steps *fn2-work-empty*)
+             :writes (rc-outcome rc-count rc-ready) :from (:read-result) :next (:read-result) :uses ()))
+ :continuations
+ ((:free fn2-recovery-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
+   :uses (fn2-machine-idle))
+  (:read fn2-recovery-read
+   :cost (:bytes 4096 :steps *fn2-work-advance* :descriptors (:cost fn2-issue-read :descriptors))
+   :writes (rc-chain rc-pos rc-found rc-filled rc-stage pending rc-ready)
+   :tables (fn2-core-pool fn2-core-ops fn2-core-control)
+   :next (:read :read-result :search)
+   :uses (fn2-core-reset fn2-issue-read fn2-recovery-stop-bounds))
+  (:read-result fn2-recovery-result :cost (:steps *fn2-work-mailbox*)
+   :writes (rc-filled rc-stage rc-ready rc-pos rc-high rc-role rc-ambiguous rc-found)
+   :tables (fn2-core-rec-cand fn2-core-control)
+   :next (:read-result :verify :read :install)
+   :uses (fn2-recovery-cand-mark fn2-recovery-stop-bounds))
+  (:verify fn2-recovery-verify
+   :cost (:bytes (:cost fn2-recovery-discover-unit :bytes) :steps *fn2-work-stage*)
+   :writes (rc-stage rc-role rc-filled rc-pos rc-high rc-epoch rc-ready rc-chain rc-found rc-ambiguous)
+   :tables (fn2-core-pool fn2-core-fields fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
+            fn2-core-rec-cand fn2-core-commit-root fn2-core-control)
+   :next (:verify :read :search :install)
+   :uses (fn2-recovery-discover-unit fn2-recovery-chain-unit fn2-recovery-cand-epoch fn2-recovery-cand-mark
+          fn2-recovery-link fn2-recovery-stop-bounds))
+  (:search fn2-recovery-search :cost (:steps *fn2-work-advance*)
+   :writes (rc-ambiguous rc-stage rc-found rc-ready rc-pos rc-mode rc-role rc-filled)
+   :tables (fn2-core-control)
+   :next (:search :read :install)
+   :uses (fn2-recovery-scan fn2-recovery-stop-bounds))
+  (:install fn2-recovery-install :cost (:steps *fn2-work-transition*)
+   :writes (rc-found rc-dirty rc-stage rc-class rc-witness-outcome stopped)
+   :tables (fn2-core-pool fn2-core-extents fn2-core-alloc-edges fn2-core-commit-root fn2-core-control)
+   :next (:install :done)
+   :uses (fn2-recovery-install-scan fn2-recovery-install-classify fn2-recovery-install-adopt
+          fn2-recovery-install-finish fn2-recovery-stop-bounds))
+  (:done fn2-recovery-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:done)
+   :uses (fn2-machine-idle))))
+(make-event (value `(assert-event
+ (equal ',(strip-cars *fn2-recovery-transitions*)
+        ',(fn2-machine-property 'fn2-recovery-machine :states (w state))))))
+
+; Declared costs of recovery's outside calls. Each is a table-level operation
+; of recovery-machine.lisp over the row's owner triple; none writes the row.
+(defcost fn2-recovery-discover-unit :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
+   fn2-core-fc-context fn2-core-b3 fn2-core-digests fn2-core-rec-cand)
+ :doc "One discovery stage over the filled seal-frame unit (at most 4 KiB verified).")
+(defcost fn2-recovery-chain-unit :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
+   fn2-core-fc-context fn2-core-b3 fn2-core-digests)
+ :doc "One chain-verification stage over the filled unit of the found position.")
+(defcost fn2-recovery-cand-epoch :doc "A candidate row's writer epoch.")
+(defcost fn2-recovery-cand-mark :tables (fn2-core-rec-cand) :doc "Record a position's discovery status.")
+(defcost fn2-recovery-link :tables (fn2-core-digests fn2-core-commit-root fn2-core-rec-cand)
+ :doc "Link a verified position into the chain, the commit directory and the root recipe.")
+(defcost fn2-recovery-scan :doc "Search 32 candidate rows for the chain's unique successor.")
+(defcost fn2-recovery-dirty-scan :doc "Scan 32 candidate rows for anything beyond the chain.")
+(defcost fn2-recovery-witness-match :doc "Compare the presented witness seal with the chain's.")
+(defcost fn2-rec-witness-outcome :doc "The witness outcome (scholar ch. 4 item 10) from the assumption bits.")
+(defcost fn2-rec-classify :doc "The recovery class from the assumption bits and the evidence words.")
+(defcost fn2-recovery-adopt :tables (fn2-core-extents fn2-core-alloc-edges)
+ :doc "Adopt one arena position into the allocator with its recorded identity.")
+(defcost fn2-recovery-finish :tables (fn2-core-commit-root fn2-core-extents)
+ :doc "Install the commit frontier and begin the writer epoch above every adopted identity.")
 
 ; Keep child array bodies opaque only while admitting this declaration book.
 (local (in-theory (disable fn2-extents-rows
  fn2-alloc-edges-rows
  fn2-fc-rows fn2-fc-context-rows
  fn2-b3-rows fn2-fields-rows
- fn2-commit-io-rows
+ fn2-commit-io-rows fn2-rec-cand-rows
  fn2-commit-io-extent fn2-commit-io-epoch fn2-commit-io-counter fn2-commit-io-pool-slot fn2-commit-io-pool-gen fn2-commit-io-op-slot fn2-commit-io-op-gen fn2-commit-io-ready fn2-commit-io-lent
  fn2-commit-root-rows
  fn2-commit-root-installed fn2-commit-root-published

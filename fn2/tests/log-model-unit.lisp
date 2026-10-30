@@ -137,6 +137,13 @@
         (fn2-lm-recovery-allowedp (append trace '((:crash))) *fn2-lm-test-broad*
                                   :unknown (list *fn2-lm-test-b1*)))))
 
+; B5: a dirty tail names its first defective batch, at most the last submitted.
+(assert-event
+ (let* ((s (fn2-lm-step (list :submit-batch *fn2-lm-test-b1*) (fn2-lm-initial)))
+        (s (fn2-lm-step (list :submit-batch *fn2-lm-test-b2*) s))
+        (s (fn2-lm-step '(:crash) s)))
+   (and (fn2-lm-event-allowedp '(:bad-tail 1) s) (fn2-lm-event-allowedp '(:bad-tail 2) s)
+        (not (fn2-lm-event-allowedp '(:bad-tail 3) s)) (not (fn2-lm-event-allowedp '(:bad-tail 0) s)))))
 ; Every transition checks its ordering, predecessor and dependency premises.
 (assert-event
  (let* ((s (fn2-lm-step (list :submit-batch *fn2-lm-test-b1*) (fn2-lm-initial)))

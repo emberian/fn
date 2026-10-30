@@ -48,7 +48,7 @@
       (unsigned-byte-p 32 (fn2-b-capacity :identity-runs 64 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :run-cache 1024 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-arena-bytes 65536 profile))
-      (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-capacity :format-slots 2 profile)))
+      (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-capacity :format-slots 3 profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 

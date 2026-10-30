@@ -31,6 +31,9 @@
   (format t "B3C CONSERVATION actual-phase-write-audit=PASS injected-notify-free=REFUSED leak-cycle=~S~%"
    (fn2-cru-cycle :baseline-missing-vpool
     (fn2-cru-drop-release (fn2-cr-commit-word 0) :pool) *fn2-commit-resource-retained*))
+  (let ((d (fn2-b-death-control (fn2-b-test-profile *fn2-profile-tiny* 0))))
+    (format t "B5 DEATH CONTROL fresh-after-init=~S planted-survivor-reported=~S~%" (car d) (and (cadr d) t))
+    (assert (and (car d) (cadr d))))
   (assert (fn2-b-fence-control))
   (format t "B3 FENCE CONTROL: second queued fence detected before adapter admission PASS~%")
   (dolist (mode '(0 1))
@@ -44,11 +47,69 @@
     (let ((r (fn2-b-resource-refusal short)))
       (format t "B3 ADMISSION resource=~A rollback/proposal-control=~S~%" (if short :pool :allocator) r)
       (assert (fn2-b-control-pass r))))
+;; B5 scenarios 15 (damage vs tail) and 16 (independent witness), tiny profile,
+  ;; both barrier modes; every case runs the real recovery and RECOVERY.
+  (labels ((post (kind frontier budget faults) (list (fn2-cm-profile kind t t frontier 0 budget) faults 16))
+           (run15 (mode cut faults)
+             (let ((r (fn2-b-one *fn2-profile-tiny* 20261028 cut :none mode 2 (post :broad nil 1 faults))))
+               (unless (eq (fn2-b-result-status r) :pass)
+                 (format t "B5 CASE RED scenario=15 mode=~D cut=~D faults=~S result=~S~%" mode cut faults
+                         (fn2-b-result-status r))
+                 (error "B5 RECOVERY failure"))
+               r)))
+    (let ((hist nil) (cases 0) (started (get-internal-real-time)))
+      (flet ((note (class r) (incf cases)
+               (let* ((key (list class (fn2-b-result-recovery-class r))) (cell (assoc key hist :test #'equal)))
+                 (if cell (incf (cdr cell)) (push (cons key 1) hist)))))
+        (dotimes (mode 2)
+          (let ((steps (fn2-b-result-steps (run15 mode 1000000 nil))))
+            (dolist (unit '(0 1 2))
+              (dolist (off '(100 3000))
+                (note :corrupt-middle (run15 mode 1000000 (list (list :corrupt 1 unit off))))))
+            (dotimes (cut (+ steps 1))
+              (note :corrupt-tail (run15 mode cut '((:corrupt-last 2 100)))))
+            (note :misdirect-write (run15 mode 1000000 '((:misdirect 2 2 3))))
+            (note :misdirect-write (run15 mode 1000000 '((:misdirect 1 1 4))))
+            (note :older-image (run15 mode 1000000 '((:rollback 1))))
+            (note :older-image (run15 mode 1000000 '((:rollback 0)))))))
+      (format t "B5 SCENARIO 15 profile=TINY-4K modes=baseline,preflush-fua cases=~D classes=~S RECOVERY=PASS elapsed-seconds=~,3F~%"
+              cases (reverse hist) (/ (- (get-internal-real-time) started) internal-time-units-per-second))
+      (assert (every (lambda (c) (assoc c (mapcar #'car hist) :test #'eq))
+                     '(:corrupt-middle :corrupt-tail :misdirect-write :older-image))))
+    (let ((outcomes nil) (started (get-internal-real-time)))
+      (dotimes (mode 2)
+        (dolist (c '((t ((:witness 2) (:rollback 1)) :rollback-detected :damaged)
+                     (t ((:rollback 1)) :none :intact)
+                     (nil ((:witness 2) (:rollback 1)) :uncredited :intact)
+                     (t ((:witness 1) (:rollback 1)) :consistent :intact)
+                     (t ((:witness 2)) :consistent :intact)
+                     (t ((:witness 2) (:rollback 0)) :rollback-detected :damaged)))
+          (let ((r (fn2-b-one *fn2-profile-tiny* 20261028 1000000 :none mode 2
+                              (post :broad (first c) 0 (second c)))))
+            (unless (and (eq (fn2-b-result-status r) :pass) (eq (fn2-b-result-witness r) (third c))
+                         (eq (fn2-b-result-recovery-class r) (fourth c)))
+              (format t "B5 CASE RED scenario=16 mode=~D case=~S result=~S ~S ~S~%" mode c
+                      (fn2-b-result-status r) (fn2-b-result-witness r) (fn2-b-result-recovery-class r))
+              (error "B5 RECOVERY witness failure"))
+            (push (list mode (second c) (fn2-b-result-witness r) (fn2-b-result-recovery-class r)) outcomes))))
+      (format t "B5 SCENARIO 16 profile=TINY-4K cases=~D witnessed=detected unwitnessed=no-claim uncredited=no-claim covered=consistent RECOVERY=PASS elapsed-seconds=~,3F~%"
+              (length outcomes) (/ (- (get-internal-real-time) started) internal-time-units-per-second)))
+    ;; Recovery time per MiB of scanned arena: the same intact run on 16 and
+    ;; 192 simulated sectors (5 and 64 extents); the difference is 59 empty
+    ;; seal-frame scans of 4 KiB each.
+    (flet ((timed (sectors)
+             (let ((start (get-internal-real-time)))
+               (dotimes (i 5) (fn2-b-one *fn2-profile-tiny* 20261028 1000000 :none 0 2
+                                         (list (fn2-cm-profile :crash-only t t nil 0 0) nil sectors)))
+               (/ (- (get-internal-real-time) start) internal-time-units-per-second 5.0))))
+      (let* ((small (timed 16)) (large (timed 192)) (mib (/ (* 59 4096) 1048576.0)))
+        (format t "B5 RECOVERY TIME arena-scan seconds-per-MiB=~,3F (5-run means: 5 extents ~,3Fs, 64 extents ~,3Fs; simulator, ACL2 hashing)~%"
+                (/ (- large small) mib) small large))))
   (let ((seeds (parse-integer (or (sb-ext:posix-getenv "FN2_B_SEEDS") "10000")))
         (faults '(:late-success :partial :eio :enospc :failed-barrier)))
     (labels
       ((checked (profile seed cut fault mode members)
-         (let ((r (fn2-b-one profile seed cut fault mode members)))
+         (let ((r (fn2-b-one profile seed cut fault mode members nil)))
            (unless (eq (fn2-b-result-status r) :pass)
              (format t "B3 CASE RED seed=~D cut=~D fault=~S mode=~D result=~S~%"
                      seed cut fault mode r)

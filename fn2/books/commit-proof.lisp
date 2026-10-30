@@ -1,8 +1,8 @@
 ; Executed-trace obligations for B3's keyed-mutation fixture with row reuse. Every
 ; epoch initializes/adopts the real core and runs the real dispatch/harvester
 ; and simulated adapter. This is not a theorem for arbitrary host adapters.
-; Recovery is the B3 image stand-in; the epoch excludes recovery transitions
-; until its final death. Evidence comes from outbox/FIFO/visibility boundaries,
+; Recovery is B5's machine on the post-death core; the epoch excludes recovery
+; transitions until its final death. Evidence comes from outbox/FIFO/visibility boundaries,
 ; never cb-deps-ok/cb-log-ok/cb-fence-ok. Owed statements are NOT proofs.
 (in-package "ACL2")
 (include-book "../sim/commit-proof-step")
@@ -12,7 +12,7 @@
 (fn2-cm-defreaders fn2-commit-proof-admitted fn2-commit-proof-events
  fn2-commit-proof-recovered fn2-commit-proof-classification
  fn2-commit-proof-stable fn2-commit-proof-saw-uncertain fn2-commit-proof-acks
- fn2-commit-proof-replies fn2-commit-proof-fresh)
+ fn2-commit-proof-replies fn2-commit-proof-fresh fn2-commit-proof-outcome)
 
 ; Preserve actual replies by immutable batch, independently of HISTORY's event
 ; projection. A reused row resetting its counters cannot erase accepted work.
@@ -76,11 +76,12 @@
     (or saw (fn2-commit-proof-uncertainp after)) (fn2-commit-proof-observe-replies after replies) seen manifests (if (eq code :ok) events (cons (list :projection-error code) events))
     fn2-core fn2-sim fn2-own))))
 
-(defun fn2-commit-proof-execute (commands model-profile mode members seed fn2-core fn2-sim fn2-own)
+; FAULTS act on the durable image after the final death (B5's scenarios 15/16).
+(defun fn2-commit-proof-execute (commands model-profile mode members seed faults fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* (((unless (and (fn2-cm-profilep model-profile) (member-equal mode '(0 1))
                     (posp members) (<= members 16) (unsigned-byte-p 32 seed)))
-       (mv (list nil nil nil :unknown t nil '(0 0) nil t) fn2-core fn2-sim fn2-own))
+       (mv (list nil nil nil :unknown t nil '(0 0) nil t :none) fn2-core fn2-sim fn2-own))
       (profile (fn2-b-test-profile *fn2-profile-tiny* mode))
       (fn2-core (fn2-core-init profile fn2-core))
       ((mv ec fn2-core)
@@ -100,12 +101,13 @@
        (fn2-commit-proof-replay commands 0 (list a b) model-profile admitted t nil t nil nil nil nil (reverse (append ea eb))
                                 fn2-core fn2-sim fn2-own))
       (acks (list (fn2-machine-cb-acks a fn2-core) (fn2-machine-cb-acks b fn2-core)))
-      ((mv fn2-core fn2-sim fn2-own) (fn2-sim-crash profile fn2-core fn2-sim fn2-own))
-      ((mv classification recovered evidence fn2-core) (fn2-b-recover manifests fn2-core fn2-sim)))
-  (mv (list admitted (append events (list '(:crash)) evidence) recovered classification stable saw acks replies fresh)
+      ; A recovery that does not finish recovers nothing: never an admission exception.
+      ((mv rstatus classification outcome recovered events fn2-core fn2-sim fn2-own)
+       (fn2-b-crash-recover profile model-profile faults manifests events *fn2-fault-none* 0 fn2-core fn2-sim fn2-own)))
+  (mv (list admitted events (if (eq rstatus :done) recovered nil) classification stable saw acks replies fresh outcome)
       fn2-core fn2-sim fn2-own)))
 
-(defun fn2-commit-proof-run (commands profile mode members seed)
+(defun fn2-commit-proof-run-faults (commands profile mode members seed faults)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
   (mv-let (result fn2-core)
@@ -113,9 +115,12 @@
     (mv-let (result fn2-core fn2-sim)
      (with-local-stobj fn2-own
       (mv-let (result fn2-core fn2-sim fn2-own)
-       (fn2-commit-proof-execute commands profile mode members seed fn2-core fn2-sim fn2-own)
+       (fn2-commit-proof-execute commands profile mode members seed faults fn2-core fn2-sim fn2-own)
        (mv result fn2-core fn2-sim)))
      (mv result fn2-core))) result)))
+(defun fn2-commit-proof-run (commands profile mode members seed)
+ (declare (xargs :verify-guards nil))
+ (fn2-commit-proof-run-faults commands profile mode members seed nil))
 
  ; The physical durability obligation does not claim client refusal consistency.
 ; Remove ONLY terminal refusal events; preserve every request, issued identity,
@@ -163,10 +168,10 @@
          fn2-commit-proof-fence-removal fn2-commit-proof-follower-first
          fn2-commit-proof-reuse-baseline fn2-commit-proof-reuse-fua
          fn2-commit-proof-duplicate-start fn2-commit-proof-refused-retry-contract)
- :doc "Actual B3 replay on the B-owned tiny profile, including explicit starts and reused rows under supported adapter faults and fixed test transactions; exact write identities/completions, baseline or preflush/FUA boundary, and required durable-image prefix. Only terminal :refuse events are removed for this physical claim; full HISTORY retains them. No flag premises; a persistent client refusal/idempotency ledger is a proposed layer-C integration need, and B5 discovery and arbitrary host adapters remain outside scope.")
+ :schema :crash :doc "Actual B3 replay on the B-owned tiny profile, including explicit starts and reused rows under supported adapter faults and fixed test transactions; exact write identities/completions, baseline or preflush/FUA boundary, and required durable-image prefix. Only terminal :refuse events are removed for this physical claim; full HISTORY retains them. No flag premises; a persistent client refusal/idempotency ledger is a proposed layer-C integration need, and B5 discovery and arbitrary host adapters remain outside scope.")
 (defthm-owed fn2-commit-uncertain-persists (commands profile mode members seed)
  (let ((result (fn2-commit-proof-run commands profile mode members seed)))
   (implies (fn2-commit-proof-admitted result) (fn2-commit-proof-stable result)))
  :teeth (fn2-commit-proof-timeout-baseline fn2-commit-proof-timeout-fua
          fn2-commit-proof-dispatch-removal fn2-commit-proof-uncertain-rearm)
- :doc "Every supported replay transition preserves uncertain once entered; final process death/recovery is explicitly outside the epoch. No recovery transition is implemented by this claim.")
+ :schema :invariant :doc "Every supported replay transition preserves uncertain once entered; final process death/recovery is explicitly outside the epoch. No recovery transition is implemented by this claim.")
