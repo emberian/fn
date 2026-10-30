@@ -56,3 +56,35 @@
 ;; A schema with an octet key is refused by name.
 (assert-event (equal (fn2-range-image 1 *fn2-identity-entry* (list nil nil) (list nil (cons 1 nil)) (list nil (cons 1 nil)) nil 0 8 nil)
                      '(:key-kind)))
+
+;; Teeth for fn2-range-seek-position. Positive: group 1 of the sources above
+;; (position 10n for number n, the overlay's rows too), after positions 0,
+;; 35, 40 and 41, and past every entry; group 2. Negative: positions that
+;; do not grow with the number (premise false) mislead the bisection.
+(defun fn2-rgt-seeks (prefix ps)
+ (declare (xargs :verify-guards nil))
+ (if (atom ps) nil
+  (cons (car (fn2-range-seek-image 3 *fn2-overview-entry* *fn2-rgt-sources* prefix (car ps) 1000 3 8))
+        (fn2-rgt-seeks prefix (cdr ps)))))
+(defun fn2-rgt-seek-specs (prefix ps)
+ (declare (xargs :verify-guards nil))
+ (if (atom ps) nil
+  (cons (fn2-range-seek-spec *fn2-rgt-key* *fn2-rgt-sources* prefix (car ps) 1000 3) (fn2-rgt-seek-specs prefix (cdr ps)))))
+(defun fn2-range-seek-position-positive ()
+ (declare (xargs :verify-guards nil))
+ (and (fn2-range-monotonep *fn2-rgt-key* *fn2-rgt-sources* '(1) 3) (fn2-range-monotonep *fn2-rgt-key* *fn2-rgt-sources* '(2) 3)
+      (equal (fn2-rgt-seeks '(1) '(0 35 40 41 150)) '(0 4 5 5 16))
+      (equal (fn2-rgt-seeks '(1) '(0 35 40 41 150)) (fn2-rgt-seek-specs '(1) '(0 35 40 41 150)))
+      (equal (fn2-rgt-seeks '(2) '(0 205 400)) (fn2-rgt-seek-specs '(2) '(0 205 400)))))
+(defconst *fn2-rgt-unordered*
+ (list (list (list 1 1 101 10 (list 65)) (list 1 2 102 20 (list 65)) (list 1 3 103 30 (list 65)) (list 1 4 104 40 (list 65))
+             (list 1 5 105 50 (list 65)) (list 1 6 106 60 (list 65)) (list 1 7 107 70 (list 65)) (list 1 8 108 5 (list 65)))
+       nil))
+(defun fn2-range-seek-position-negative ()
+ (declare (xargs :verify-guards nil))
+ (and (not (fn2-range-monotonep *fn2-rgt-key* *fn2-rgt-unordered* '(1) 3))
+      (not (equal (car (fn2-range-seek-image 3 *fn2-overview-entry* *fn2-rgt-unordered* '(1) 45 1000 3 8))
+                  (fn2-range-seek-spec *fn2-rgt-key* *fn2-rgt-unordered* '(1) 45 1000 3)))))
+(fn2-assert-owed-teeth fn2-range-seek-position)
+;; Probes per seek (bisection over [0, 1000): about log2 1000).
+(value-triple (cw "fn2-range seek probes: ~x0~%" (cadr (fn2-range-seek-image 3 *fn2-overview-entry* *fn2-rgt-sources* '(1) 35 1000 3 8))))

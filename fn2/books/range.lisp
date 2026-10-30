@@ -200,6 +200,27 @@
   (fn2-range-enumerate g fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed)))
 (assert-event (fn2-assert-compliant-p '(fn2-range-start fn2-range-recheck) (w state)))
 
+; A positioned seek (INBOX 4.1, Seek(stream, after = p)) over a stream whose
+; position grows with its key's last field (overview within a group): the
+; least last-field value N from which every entry carries a position above
+; P, found by bisection over range reads of one entry each (C-POSITION-SEEK). A row
+; drives range G: its query and hi regions hold the stream's key prefix;
+; the seek writes only their last key field.
+(defcolumns fn2-seeks
+ ((phase (:enum fn2-seek-phase (:idle :probe :read :entry :end :done)))
+  (g :u32) (lo :u60) (hi :u60) (mid :u60) (after :u60) (pfield :u32) (probes :u32)))
+; Start positioned seek K over range row G (already started by the caller
+; on the stream's prefix: its query and hi regions hold the prefix fields):
+; the answer is the least last-field value in [LO, HI] from which every
+; entry has a position above P. PFIELD names the position field.
+(defun fn2-seek-start (k g lo hi p pfield fn2-seeks)
+ (declare (xargs :stobjs fn2-seeks :guard (fn2-seeks-wfp fn2-seeks)))
+ (b* (((unless (and (natp k) (< k (fn2-seeks-rows fn2-seeks)) (unsigned-byte-p 32 g) (unsigned-byte-p 60 lo)
+                    (unsigned-byte-p 60 hi) (unsigned-byte-p 60 p) (unsigned-byte-p 32 pfield)))
+       (mv :bounds fn2-seeks))
+      (fn2-seeks (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (g g) (lo lo) (hi hi) (mid lo) (after p)
+                                            (pfield pfield) (probes 0))))
+  (mv :ok fn2-seeks)))
 ; Copy N field rows from FROM to TO (value, reference, status).
 (defun fn2-range-copy-rows (n from to fn2-fields)
  (declare (xargs :stobjs fn2-fields :measure (nfix n)
@@ -450,6 +471,7 @@
      :guard-hints (("Goal" :in-theory (disable fn2-range-pick fn2-range-consume fn2-range-successor fn2-range-past)))))
     (b* (((unless (fn2-rg-ok g)) (mv :bounds fn2-ranges fn2-range-sources fn2-fields))
          (sid (fn2-ranges-schema g fn2-ranges)) (sbase (fn2-ranges-sbase g fn2-ranges)) (n (fn2-ranges-scount g fn2-ranges))
+         ((unless (and (natp sbase) (natp n))) (mv :bounds fn2-ranges fn2-range-sources fn2-fields))
          ((mv code best) (fn2-range-pick n sbase sid nil fn2-range-sources fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code fn2-ranges fn2-range-sources fn2-fields))
          ((unless (and (natp best) (< best (fn2-range-sources-rows fn2-range-sources))))
@@ -503,6 +525,92 @@
      (mv code fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
    (in-theory (disable fn2-range-step))
    (assert-event (fn2-assert-compliant-p '(fn2-range-step fn2-range-keys-ok) (w state)))
+   ;; The positioned seek's step, over range row G's regions.
+   (defun fn2-seek-probe (k fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+    (declare (xargs :stobjs (fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+     :guard (and (fn2-seeks-wfp fn2-seeks) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources)
+                 (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields))
+     :guard-hints (("Goal" :in-theory (disable fn2-range-start)))))
+    (b* (((unless (and (natp k) (< k (fn2-seeks-rows fn2-seeks)))) (mv :bounds fn2-seeks fn2-ranges fn2-range-sources fn2-fields))
+         (g (fn2-seeks-g k fn2-seeks))
+         ((unless (fn2-rg-ok g)) (mv :bounds fn2-seeks fn2-ranges fn2-range-sources fn2-fields))
+         (lo (fn2-seeks-lo k fn2-seeks)) (hi (fn2-seeks-hi k fn2-seeks))
+         ((when (<= hi lo)) (let ((fn2-seeks (fn2-seeks-set-phase k *fn2-seek-phase-done* fn2-seeks)))
+                              (mv :done fn2-seeks fn2-ranges fn2-range-sources fn2-fields)))
+         (mid (floor (+ lo hi) 2))
+         (sid (fn2-ranges-schema g fn2-ranges)) (nk (fn2-run-layout-keys sid))
+         (qbase (fn2-ranges-qbase g fn2-ranges)) (hbase (fn2-ranges-hbase g fn2-ranges))
+         ((unless (and (posp nk) (< (+ qbase nk -1) (fn2-fields-rows fn2-fields)) (< (+ hbase nk -1) (fn2-fields-rows fn2-fields))
+                       (unsigned-byte-p 60 mid) (posp hi)))
+          (mv :bounds fn2-seeks fn2-ranges fn2-range-sources fn2-fields))
+         (fn2-fields (fn2-fields-set-value (+ qbase nk -1) mid fn2-fields))
+         (fn2-fields (fn2-fields-set-value (+ hbase nk -1) (- hi 1) fn2-fields))
+         ((mv code fn2-ranges fn2-range-sources)
+          (fn2-range-start g sid qbase hbase (fn2-ranges-sbase g fn2-ranges) (fn2-ranges-smax g fn2-ranges)
+                           (fn2-ranges-cbase g fn2-ranges) (fn2-ranges-rbase g fn2-ranges) *fn2-range-no-position* 0
+                           (fn2-ranges-qk g fn2-ranges) (fn2-ranges-qs g fn2-ranges) (fn2-ranges-qg g fn2-ranges)
+                           fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed))
+         ((unless (eq code :ok)) (mv code fn2-seeks fn2-ranges fn2-range-sources fn2-fields))
+         (probes (+ 1 (fn2-seeks-probes k fn2-seeks)))
+         ((unless (unsigned-byte-p 32 probes)) (mv :bounds fn2-seeks fn2-ranges fn2-range-sources fn2-fields))
+         (fn2-seeks (fn2-seeks-put k (phase *fn2-seek-phase-read*) (mid mid) (probes probes))))
+     (mv :more fn2-seeks fn2-ranges fn2-range-sources fn2-fields)))
+   ;; After a probe's range step answered CODE (the delivered entry still at
+   ;; the range's OUT): narrow [lo, hi).
+   (defun fn2-seek-narrow (k code fn2-seeks fn2-ranges fn2-fields)
+    (declare (xargs :stobjs (fn2-seeks fn2-ranges fn2-fields)
+     :guard (and (fn2-seeks-wfp fn2-seeks) (fn2-ranges-wfp fn2-ranges) (fn2-fields-wfp fn2-fields))))
+    (b* (((unless (and (natp k) (< k (fn2-seeks-rows fn2-seeks)))) (mv :bounds fn2-seeks))
+         (g (fn2-seeks-g k fn2-seeks))
+         ((unless (fn2-rg-ok g)) (mv :bounds fn2-seeks))
+         ((when (eq code :end))
+          (let ((fn2-seeks (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (hi (fn2-seeks-mid k fn2-seeks)))))
+           (mv :more fn2-seeks)))
+         ((unless (eq code :entry)) (mv code fn2-seeks))
+         (out (fn2-ranges-out g fn2-ranges)) (nk (fn2-run-layout-keys (fn2-ranges-schema g fn2-ranges)))
+         (pf (fn2-seeks-pfield k fn2-seeks))
+         ((unless (and (posp nk) (< pf *fn2-run-entry-rows*) (< (+ out pf) (fn2-fields-rows fn2-fields))
+                       (< (+ out nk -1) (fn2-fields-rows fn2-fields))))
+          (mv :bounds fn2-seeks))
+         (n (nfix (fn2-fields-value (+ out nk -1) fn2-fields)))
+         (pos (nfix (fn2-fields-value (+ out pf) fn2-fields)))
+         ((unless (unsigned-byte-p 60 (+ 1 n))) (mv :bounds fn2-seeks))
+         (fn2-seeks (if (< (fn2-seeks-after k fn2-seeks) pos)
+                              (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (hi n))
+                            (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (lo (+ 1 n))))))
+     (mv :more fn2-seeks)))
+   ;; One bounded step: :more, :miss, :done (the answer is the row's LO), or a refusal.
+   (defun fn2-seek-step (k budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+                           fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (declare (xargs :stobjs (fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+                             fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+     :guard (and (fn2-seeks-wfp fn2-seeks) (fn2-rga-guard) (natp budget))
+     :guard-hints (("Goal" :in-theory (disable fn2-seek-probe fn2-seek-narrow fn2-range-step)))))
+    (b* (((unless (and (natp k) (< k (fn2-seeks-rows fn2-seeks))))
+          (mv :bounds fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
+         (phase (fn2-seeks-phase k fn2-seeks)))
+     (cond
+      ((equal phase *fn2-seek-phase-done*) (mv :done fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
+      ((equal phase *fn2-seek-phase-probe*)
+       (mv-let (code fn2-seeks fn2-ranges fn2-range-sources fn2-fields)
+         (fn2-seek-probe k fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+        (mv code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
+      ((equal phase *fn2-seek-phase-read*)
+       (b* (((mv code fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+             (fn2-range-step (fn2-seeks-g k fn2-seeks) budget fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+                             fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+            (fn2-seeks (case code
+                         (:entry (fn2-seeks-set-phase k *fn2-seek-phase-entry* fn2-seeks))
+                         (:end (fn2-seeks-set-phase k *fn2-seek-phase-end* fn2-seeks))
+                         (otherwise fn2-seeks))))
+        (mv (if (member-eq code '(:entry :end)) :more code) fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
+      ((or (equal phase *fn2-seek-phase-entry*) (equal phase *fn2-seek-phase-end*))
+       (mv-let (code fn2-seeks)
+         (fn2-seek-narrow k (if (equal phase *fn2-seek-phase-entry*) :entry :end) fn2-seeks fn2-ranges fn2-fields)
+        (mv code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))
+      (t (mv :state fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))))
+   (in-theory (disable fn2-seek-step))
+   (assert-event (fn2-assert-compliant-p '(fn2-seek-step) (w state)))
    (fn2-range-adapters)))
 
 ; ---------------------------------------------------------------------------
@@ -544,6 +652,35 @@
 (defun fn2-range-inputp (layout key sources budget)
  (declare (xargs :verify-guards nil))
  (and (fn2-layoutp layout) (consp sources) (<= (len sources) 6) (fn2-range-listsp layout key sources) (posp budget)))
+
+
+; Positioned seek specification: over the union, among the entries whose
+; first key fields equal PREFIX and whose last key field is below HI, the
+; answer is one more than the last key field of the last entry whose field
+; PIDX is at most P, or 0 when none is: reading from there delivers exactly
+; the entries after position P. Positions grow with the key within a prefix.
+(defun fn2-range-prefixp (prefix e)
+ (declare (xargs :verify-guards nil))
+ (or (atom prefix) (and (consp e) (equal (car prefix) (car e)) (fn2-range-prefixp (cdr prefix) (cdr e)))))
+(defun fn2-range-seek-scan (es prefix nk p hi pidx acc)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom es) acc)
+       ((and (fn2-range-prefixp prefix (car es)) (< (nfix (nth (- nk 1) (car es))) hi) (<= (nfix (nth pidx (car es))) p))
+        (fn2-range-seek-scan (cdr es) prefix nk p hi pidx (+ 1 (nfix (nth (- nk 1) (car es))))))
+       (t (fn2-range-seek-scan (cdr es) prefix nk p hi pidx acc))))
+(defun fn2-range-seek-spec (key sources prefix p hi pidx)
+ (declare (xargs :verify-guards nil))
+ (fn2-range-seek-scan (fn2-range-union-spec key sources nil) prefix (len key) p hi pidx 0))
+(defun fn2-range-monotone-scan (es prefix pidx last)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom es) t)
+       ((fn2-range-prefixp prefix (car es))
+        (and (< last (nfix (nth pidx (car es)))) (fn2-range-monotone-scan (cdr es) prefix pidx (nfix (nth pidx (car es))))))
+       (t (fn2-range-monotone-scan (cdr es) prefix pidx last))))
+; Positions strictly grow with the key within PREFIX in the union.
+(defun fn2-range-monotonep (key sources prefix pidx)
+ (declare (xargs :verify-guards nil))
+ (fn2-range-monotone-scan (fn2-range-union-spec key sources nil) prefix pidx -1))
 
 ; ---------------------------------------------------------------------------
 ; Logic adapter. RUNS (oldest first) are built through the real build and
@@ -689,4 +826,51 @@
              (equal (fn2-range-image 3 *fn2-overview-entry* sources lo hi pidx plimit budget sealat)
                     (fn2-range-spec '((group (:id group)) (number (:id group-number))) sources lo hi pidx plimit)))
     :teeth (fn2-range-read-exact-positive fn2-range-read-exact-negative)
-    :doc "A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed.")))
+    :doc "A range read over a schema's overlay and runs (its key's successor as the resume point, its sources found again when they move) delivers, in key order, the newest entry of each key between lo and hi, up to the position limit, whatever the step budget and whenever the overlay is sealed.")
+   ;; Positioned seek adapter: the range image's sources; range 0 holds the
+   ;; prefix (with a zero last field); seek row 0 bisects [0, HI).
+   (defun fn2-rgs-drive (fuel budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+    (declare (xargs :stobjs (fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) :verify-guards nil :measure (nfix fuel)))
+    (if (zp fuel) (mv :fuel fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+     (mv-let (code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+       (fn2-seek-step 0 budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+                      fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+      (if (eq code :more)
+          (fn2-rgs-drive (- fuel 1) budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+        (mv code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)))))
+   (defun fn2-rgs-run (sid layout sources prefix p hi pidx budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+    (declare (xargs :stobjs (fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) :verify-guards nil))
+    (b* ((fn2-seeks (fn2-seeks-init 1 fn2-seeks))
+         ((mv & fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) (fn2-rga-call fn2-rga-setup))
+         ((mv code & fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) (fn2-rga-call fn2-rga-builds sid layout (butlast sources 1) 0))
+         ((unless (eq code :ok)) (mv (list code) fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
+         ((mv code fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) (fn2-rga-call fn2-rga-overlay sid layout (car (last sources))))
+         ((unless (eq code :ok)) (mv (list code) fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
+         (key-layout (take (fn2-run-layout-keys sid) layout))
+         ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 0 10 0 1 fn2-pool))
+         ((mv & off fn2-fields fn2-pool) (fn2-run-load-values key-layout (append prefix (list 0)) *fn2-rga-lo* qslot qgen 0 10 0 1 fn2-fields fn2-pool))
+         ((mv & & fn2-fields fn2-pool) (fn2-run-load-values key-layout (append prefix (list 0)) *fn2-rga-hi* qslot qgen off 10 0 1 fn2-fields fn2-pool))
+         ((mv code fn2-ranges fn2-range-sources)
+          (fn2-range-start 0 sid *fn2-rga-lo* *fn2-rga-hi* 0 *fn2-rga-smax* 0 *fn2-rga-heads* *fn2-range-no-position* 0 10 0 1
+                           fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed))
+         ((unless (eq code :ok)) (mv (list :start code) fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
+         ((mv code fn2-seeks) (fn2-seek-start 0 0 0 hi p pidx fn2-seeks))
+         ((unless (eq code :ok)) (mv (list :seek code) fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
+         ((mv code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
+          (fn2-rgs-drive 10000 budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+     (mv (if (eq code :done) (list (fn2-seeks-lo 0 fn2-seeks) (fn2-seeks-probes 0 fn2-seeks)) (list code))
+         fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+   (defun fn2-range-seek-image (sid layout sources prefix p hi pidx budget)
+    (declare (xargs :verify-guards nil))
+    (fn2-run-with-local (fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+     (fn2-rgs-run sid layout sources prefix p hi pidx budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+   ;; Keystone (INBOX 4.1, Seek(stream, after = p)).
+   (defthm-owed fn2-range-seek-position (sources prefix p hi budget)
+    (implies (and (fn2-range-inputp *fn2-overview-entry* '((group (:id group)) (number (:id group-number))) sources budget)
+                  (true-listp prefix) (equal (len prefix) 1) (natp p) (posp hi) (unsigned-byte-p 59 hi)
+                  (fn2-range-monotonep '((group (:id group)) (number (:id group-number))) sources prefix 3))
+             (equal (car (fn2-range-seek-image 3 *fn2-overview-entry* sources prefix p hi 3 budget))
+                    (fn2-range-seek-spec '((group (:id group)) (number (:id group-number))) sources prefix p hi 3)))
+    :teeth (fn2-range-seek-position-positive fn2-range-seek-position-negative)
+    :doc "Within one stream (a group's overview, positions growing with numbers), the positioned seek over the overlay and runs answers the number from which a read delivers exactly the entries after commit position p: one past the last entry at or before p.")
+   ))
