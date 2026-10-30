@@ -188,22 +188,21 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) *fn2-none*)))
 ; The first admitted kind with a parked listener and a free credit, or nil.
-(defun fn2-machine-admission-ready-ord (left fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix left)
-                  :guard (and (fn2-core-wfp fn2-core) (natp left) (<= left *fn2-machine-admitted-max*))))
-  (if (or (zp left) (> left *fn2-machine-admitted-max*)) nil
-    (let ((o (- *fn2-machine-admitted-max* left)))
-      (if (and (not (equal (fn2-machine-admission-head o fn2-core) *fn2-none*))
-               (< 0 (fn2-machine-admission-credits o fn2-core)))
-          o
-        (fn2-machine-admission-ready-ord (- left 1) fn2-core)))))
+(defun fn2-machine-admission-ready-ord (o fn2-core)
+  (declare (xargs :stobjs fn2-core :measure (nfix (- *fn2-machine-admitted-max* (nfix o)))
+                  :guard (and (fn2-core-wfp fn2-core) (natp o))))
+  (if (or (not (natp o)) (>= o *fn2-machine-admitted-max*)) nil
+    (if (and (not (equal (fn2-machine-admission-head o fn2-core) *fn2-none*))
+             (< 0 (fn2-machine-admission-credits o fn2-core)))
+        o
+      (fn2-machine-admission-ready-ord (+ 1 o) fn2-core))))
 (defthm fn2-machine-admission-ready-ord-range
-  (implies (fn2-machine-admission-ready-ord left fn2-core)
-           (and (natp (fn2-machine-admission-ready-ord left fn2-core))
-                (< (fn2-machine-admission-ready-ord left fn2-core) *fn2-machine-admitted-max*))))
+  (implies (fn2-machine-admission-ready-ord o fn2-core)
+           (and (natp (fn2-machine-admission-ready-ord o fn2-core))
+                (< (fn2-machine-admission-ready-ord o fn2-core) *fn2-machine-admitted-max*))))
 (defun fn2-machine-admission-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (fn2-machine-admission-ready-ord *fn2-machine-admitted-max* fn2-core) t nil))
+  (if (fn2-machine-admission-ready-ord 0 fn2-core) t nil))
 
 ; Only scribe waits for pool capacity: listeners close an accepted capability
 ; if its admission bundle is unavailable. Its reserved singleton wait link
@@ -251,8 +250,8 @@
                 (fn2-core (fn2-machine-set-pool-wait-id *fn2-none* fn2-core))
                 (fn2-core (fn2-machine-write-wait-reason id *fn2-wait-none* fn2-core)))
            (mv id fn2-core)))
-        ((fn2-machine-admission-ready-ord *fn2-machine-admitted-max* fn2-core)
-         (fn2-machine-grant-admission (fn2-machine-admission-ready-ord *fn2-machine-admitted-max* fn2-core) fn2-core))
+        ((fn2-machine-admission-ready-ord 0 fn2-core)
+         (fn2-machine-grant-admission (fn2-machine-admission-ready-ord 0 fn2-core) fn2-core))
         (t (mv *fn2-none* fn2-core))))
 (fn2-core-preserves fn2-machine-grant-one (fn2-core) :position 1 :rows nil)
 
