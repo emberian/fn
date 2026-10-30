@@ -137,6 +137,9 @@
 
 ; The listener reads its own row once, before any write.
 (defmachine-callback fn2-listener-admit fn2-listener (id budget) 4
+  :contract (:cost (:steps *fn2-work-transition*) :writes (event-ready)
+             :tables (fn2-core-machines fn2-core-pool fn2-echo-table) :next (:accepting :closing)
+             :uses (fn2-machine-admit-connection fn2-listener-return-credit))
   (fn2-machine-with-work 0 *fn2-work-transition* 0
   (b* ((index row-cap-index)
        (nonce row-cap-nonce)
@@ -193,12 +196,28 @@
            (fn2-machine-issue-result id code 0 fn2-core))))))
 
 
+;; Reclamation of a drained connection (the allocator side of the echo
+;; row's release): back on the free list with its credit, unless it retires.
+(fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+(defun fn2-machine-reclaim-connection (id retire fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head id fn2-core)))
+         (fn2-core (if retire fn2-core (fn2-listener-return-credit fn2-core))))
+    (fn2-machine-set-active-count (fn2-machine-dec (fn2-machine-active-count fn2-core)) fn2-core))))
+(fn2-core-preserves fn2-machine-reclaim-connection (id retire fn2-core) :rows nil :prefix "")
+
 (defmachine-callback fn2-connection-release fn2-echo (id budget) 4
+  :contract (:cost (:steps *fn2-work-release*)
+             :writes (generation pool-slot pool-gen cap-index cap-nonce off length next-free wait-reason)
+             :tables (fn2-core-pool fn2-core-machines) :next (:free :retired)
+             :uses ((fn2-core-release :effects ((:release (:rx-range)))) fn2-machine-gen-limit
+                    fn2-machine-free-head fn2-machine-reclaim-connection fn2-core-stop))
   (let* ((kind *fn2-echo-kind*)
-         (gen row-generation))
+         (gen row-generation)
+         (slot row-pool-slot)
+         (pool-gen row-pool-gen))
     (mv-let (code fn2-core)
-      (fn2-core-release row-pool-slot
-        row-pool-gen kind id gen fn2-core)
+      (fn2-core-release slot pool-gen kind id gen fn2-core)
       (if (not (or (eq code :ok) (eq code :retired)))
           (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
             (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core))
@@ -210,14 +229,13 @@
                            (pool-slot *fn2-none*) (pool-gen 0)
                            (cap-index 0) (cap-nonce 0) (off 0) (length 0)
                            (next-free next) (wait-reason *fn2-wait-none*)))
-               (fn2-core (if retire fn2-core (fn2-machine-set-free-head id fn2-core)))
-               (fn2-core (if retire fn2-core (fn2-listener-return-credit fn2-core)))
-               (fn2-core (fn2-machine-set-active-count
-                           (fn2-machine-dec (fn2-machine-active-count fn2-core)) fn2-core)))
+               (fn2-core (fn2-machine-reclaim-connection id retire fn2-core)))
           (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core))))))
 
 
 (defmachine-callback fn2-connection-reset fn2-echo (id budget) 4
+  :contract (:cost (:steps *fn2-work-mailbox*) :writes (off length) :tables (fn2-core-pool)
+             :next (:command :closing) :uses (fn2-core-reset))
   (mv-let (code fn2-core)
     (fn2-core-reset row-pool-slot
       row-pool-gen *fn2-echo-kind* id
@@ -228,6 +246,11 @@
 
 
 (defmachine-callback fn2-connection-issue fn2-echo (id budget) 4
+  :contract (:cost (:bytes *fn2-echo-run-bytes* :steps *fn2-work-mailbox* :descriptors 1)
+             :writes (borrows pending stopped wait-reason ready-prev ready-next)
+             :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables) :next ()
+             :uses (fn2-machine-pool-capacity-read-code fn2-machine-pool-capacity fn2-machine-refuse-phase
+                    fn2-issue-receive fn2-issue-send fn2-issue-close fn2-machine-issue-result))
   (fn2-machine-with-work *fn2-echo-run-bytes* *fn2-work-mailbox* 1
   (let* ((kind *fn2-echo-kind*)
          (gen row-generation)

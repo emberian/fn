@@ -343,6 +343,21 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
 (fn2-core-preserves fn2-machine-yield (id fn2-core) :position 4 :rows nil)
+; The arm contract asserted after every run and handler (R7): OK is the
+; kind's certificate on the run's charge and the row's next phase. Its shape
+; is proved once here, so the generated run entries do not re-prove it.
+(defun fn2-machine-contract-check (ok bytes steps descriptors runnable fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if ok (mv bytes steps descriptors runnable fn2-core)
+    (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
+      (mv bytes steps descriptors nil fn2-core))))
+(fn2-core-preserves fn2-machine-contract-check (ok bytes steps descriptors runnable fn2-core) :position 4 :rows nil)
+(defun fn2-machine-observe-contract-check (ok wake fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if ok (mv wake fn2-core)
+    (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-contract* fn2-core)))
+      (mv *fn2-none* fn2-core))))
+(fn2-core-preserves fn2-machine-observe-contract-check (ok wake fn2-core) :position 1 :rows nil)
 (defun fn2-machine-refuse-phase (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   ; Named invalid-phase refusal; retained stopped evidence, never an idle arm.

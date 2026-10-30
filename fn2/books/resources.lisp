@@ -229,63 +229,22 @@
   '(:connection-row :rx-range :tx-range :principal-reservation :transaction-row :wait-row
     :subscription-edge :control-output :batch-membership))
 
-; Interim, A's three kinds only: the kinds a machine of each phase may hold
-; (pending operations are the outstanding table's and are not listed: a
-; completion wait is not a resource wait), and A's wait reasons by the kind
-; they await. R7 moves the holds into each defmachine's :holds and deletes
-; this table; the wait-reason enum then names D0's kinds directly.
-(defconst *fn2-resource-a-holds*
-  '((fn2-listener (:accepting :accept-credit) (:admitting :accept-credit :connection-row)
-                 (:closing :accept-credit))
-    (fn2-echo (:free) (:command :connection-row :rx-range) (:reply :connection-row :rx-range)
-              (:closing :connection-row :rx-range) (:draining :connection-row :rx-range) (:retired))
-    (fn2-scribe (:free) (:reserve :storage-job)
-                (:fill :storage-job :storage-window) (:patch :storage-job :storage-window)
-                (:write :storage-job :storage-window) (:write-result :storage-job :storage-window)
-                (:fence :storage-job :storage-window) (:fence-result :storage-job :storage-window)
-                (:reset :storage-job :storage-window) (:read :storage-job :storage-window)
-                (:read-result :storage-job :storage-window) (:verify :storage-job :storage-window)
-                (:next :storage-job :storage-window) (:stopped :storage-job :storage-window))
-    ; Layer B's commit batch (interim row until R7 moves holds into defmachine):
-    ; membership from admission to publish, its pool workspaces until drained,
-    ; its storage job while writes and the fence are outstanding, and the
-    ; domain fence slot in fence. Uncertain retains what it held (B3c).
-    (fn2-commit (:free) (:collect :batch-membership :storage-window)
-                (:seal :batch-membership :storage-window)
-                (:dependencies :batch-membership :storage-job :storage-window)
-                (:log-write :batch-membership :storage-job :storage-window)
-                (:fence :batch-membership :storage-job :storage-window :fence-slot)
-                (:durable :batch-membership :storage-window)
-                (:install :batch-membership :storage-window)
-                (:publish :batch-membership :storage-window)
-                (:notify :storage-window) (:draining :storage-window)
-                (:uncertain :batch-membership :storage-job :storage-window :fence-slot))))
-; A's wait reasons are no longer integers mapped here: defmachine's common
-; wait-reason enum is (:none :completion . the kinds of *fn2-resource-order*).
+; Per-phase holds live in each defmachine's :holds (R7); resources-owed reads
+; them from the machine rows.
 
-;; Declared resource effects of an operation that moves resources between
-;; rows (the form both seats use; R7 declares these on its allocator
-;; operations). Effect forms, applied in order within one run:
+;; Resource effects are declared by each operation's defcost (R7,
+;; fn2/books/machines-a-costs.lisp) in this book's effect forms, applied in
+;; order within one run:
 ;;   (:acquire KINDS)               for the acting row
 ;;   (:acquire KINDS :for TARGET)   on behalf of a row of machine kind TARGET
 ;;   (:release KINDS)               from the acting row, descending rank
 ;;   (:transfer KINDS :to TARGET)   from the acting row to a TARGET row
-;; :holds-before is what the acting row holds when the operation starts.
 ;; A transfer adds no wait-for edge: neither row waits during it, and the
 ;; target (a :free row) waits for nothing. An acquisition inside an operation
 ;; ranks above everything the acting row holds, so refusing it is a wait
 ;; that satisfies rule (c); a refused operation applies no effect at all.
-;; A's listener today keeps one :accepting phase; R7 splits it into
-;; :accepting (:accept-credit) and :admitting (:accept-credit :connection-row).
-(defconst *fn2-resource-effects*
-  '(((fn2-listener :accept-issue) :holds-before (:accept-credit)
-     :effects ((:acquire (:connection-row :operation))))
-    ((fn2-listener :admit) :holds-before (:accept-credit :connection-row)
-     :effects ((:transfer (:connection-row) :to fn2-echo) (:acquire (:rx-range) :for fn2-echo)))
-    ((fn2-listener :admit-refused) :holds-before (:accept-credit :connection-row)
-     :effects ((:release (:connection-row))))
-    ((fn2-echo :reclaim) :holds-before (:connection-row :rx-range)
-     :effects ((:release (:rx-range :connection-row))))))
+;; resources-owed assembles every arm's rows as *fn2-resource-arm-effects*
+;; and checks them with fn2-resource-effects-p.
 
 ; ------------------------------------------------------------------------
 ; Guard-verified readers and predicates over the tables. Every function
@@ -535,8 +494,6 @@
 (assert-event (fn2-resource-batch-phases-p *fn2-resource-batch-phases* *fn2-resource-order*
                                            *fn2-resource-per-recipient*))
 (assert-event (fn2-resource-kinds-known-p *fn2-resource-per-recipient* *fn2-resource-order*))
-(assert-event (fn2-resource-machine-holds-p *fn2-resource-a-holds* *fn2-resource-order*))
-(assert-event (fn2-resource-effects-p *fn2-resource-effects* *fn2-resource-order*))
 
 ; ------------------------------------------------------------------------
 ; (g) Why no cycle, proved over the abstract wait-for structure. A waiter is

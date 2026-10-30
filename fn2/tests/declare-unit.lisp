@@ -5,9 +5,9 @@
 (fn2-book-layer :b)
 (must-fail (fn2-book-layer :a) :expected :soft)
 
-(defmachine fn2-x :states (:free) :fields nil :accounts nil
-  :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:free fn2-x-free))
-  :observes ((:read-result fn2-x-read)))
+(defmachine fn2-x :states (:free) :fields nil 
+  :budget (:bytes 0 :steps 1 :descriptors 0) :continuations ((:free fn2-x-free :cost (:steps 0) :writes () :next (:free) :uses ()))
+  :observes ((:read-result fn2-x-read :cost (:steps 0) :writes () :next () :uses ())))
 (assert-event (and (fn2-decl-row '(:machine fn2-x) (w state))
                    (fn2-decl-row '(:columns fn2-x) (w state))))
 (defcorechild fn2-x-table fn2-x :init fn2-x :profilep t :why "Registry control.")

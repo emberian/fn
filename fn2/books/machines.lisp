@@ -2,7 +2,7 @@
 ; Continuation calls are finite tags, never function-valued resident fields.
 (in-package "ACL2")
 (include-book "vocab")
-(include-book "resources")
+(include-book "arms")
 
 ; A wait reason names what the row waits for: nothing, an operation's
 ; completion (not a resource: its result cells were reserved at issue), or
@@ -124,7 +124,7 @@
 (defun fn2-machine-continuationsp (entries observationp)
   (declare (xargs :verify-guards nil))
   (if (atom entries) (null entries)
-    (and (true-listp (car entries)) (equal (len (car entries)) 2)
+    (and (true-listp (car entries)) (<= 2 (len (car entries)))
          (keywordp (caar entries)) (symbolp (cadar entries)) (cadar entries) (not (eq (cadar entries) t))
          (not (keywordp (cadar entries)))
          (or (not observationp) (fn2-event-keyword->code (caar entries)))
@@ -183,7 +183,7 @@
     (cons (list :function (cadar entries) :at :callbacks)
           (fn2-machine-requirements (cdr entries)))))
 
-(defun fn2-machine-events (name states fields accounts budget continuations observes capacity initial)
+(defun fn2-machine-events (name states fields budget continuations observes capacity initial holds)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
@@ -192,7 +192,7 @@
          (steps (cadr (member-eq :steps budget)))
          (descriptors (cadr (member-eq :descriptors budget))))
     (fn2-declare (list :machine name)
-      `(:states ,states :columns ,cols :accounts ,accounts :budget ,budget
+      `(:states ,states :columns ,cols :holds ,holds :budget ,budget
                 :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
@@ -224,13 +224,13 @@
 
        ,@(fn2-machine-prepare-events name cols initial)))))
 
-(defmacro defmachine (name &key states fields accounts budget continuations observes (capacity '1) initial)
+(defmacro defmachine (name &key states fields budget continuations observes (capacity '1) initial holds)
   (if (and (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
            (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*)
                                       (strip-cars fields)))
-           (true-listp accounts) (fn2-machine-continuationsp continuations nil)
+           (fn2-machine-continuationsp continuations nil)
            (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
            (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
            (fn2-machine-initialp name
@@ -241,7 +241,12 @@
            (natp (cadr (member-eq :bytes budget)))
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
-      (fn2-machine-events name states fields accounts budget continuations observes capacity initial)
+      (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
+             (problem (or (fn2-arm-contracts-problem name continuations states own nil)
+                          (fn2-arm-contracts-problem name observes states own t)
+                          (fn2-arm-holds-problem-syntax name holds states))))
+        (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
+          (fn2-machine-events name states fields budget continuations observes capacity initial holds)))
     (er hard 'defmachine "Invalid machine declaration ~x0." name)))
 
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
@@ -251,6 +256,391 @@
 (defun fn2-machine-property (name key world)
   (declare (xargs :verify-guards nil))
   (cadr (member-eq key (fn2-decl-row (list :machine name) world))))
+
+; ----------------------------------------------------------------------
+; Arm contracts in the registry (R7). The contract of a callback: an arm
+; entry's (the union over the arms naming it) or its own :contract.
+(defun fn2-machine-arm-union (name entries acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) acc
+    (fn2-machine-arm-union name (cdr entries)
+      (if (eq (cadar entries) name)
+          (let ((c (cddar entries)))
+            (if (null acc) c
+              (list :cost (fn2-arm-get :cost acc)
+                    :writes (union-eq (fn2-arm-get :writes c) (fn2-arm-get :writes acc))
+                    :tables (union-eq (fn2-arm-get :tables c) (fn2-arm-get :tables acc))
+                    :next (union-eq (fn2-arm-get :next c) (fn2-arm-get :next acc))
+                    :uses (union-equal (fn2-arm-get :uses c) (fn2-arm-get :uses acc))
+                    :language (or (fn2-arm-get :language c) (fn2-arm-get :language acc)))))
+        acc))))
+(defun fn2-machine-arm-cost-max (name entries world acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) acc
+    (fn2-machine-arm-cost-max name (cdr entries) world
+      (if (eq (cadar entries) name)
+          (let ((v (fn2-cost-values (fn2-arm-get :cost (cddar entries)) world)))
+            (if (and acc (natp (car v)) (natp (cadr v)) (natp (caddr v)))
+                (list (max (car v) (car acc)) (max (cadr v) (cadr acc)) (max (caddr v) (caddr acc)))
+              (or acc v)))
+        acc))))
+(defun fn2-machine-phase-map (name states)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (cons (cons (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE")
+                                                                           (car states)) "*"))
+                (car states))
+          (fn2-machine-phase-map name (cdr states)))))
+(defun fn2-machine-row-map (columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom columns) nil
+    (cons (cons (fn2-columns-col-name 'row (caar columns)) (caar columns))
+          (fn2-machine-row-map (cdr columns)))))
+(defun fn2-machine-arm-env (kind contract world)
+  (declare (xargs :verify-guards nil))
+  (list :kind kind :put (fn2-columns-sym kind "-PUT-CORE")
+        :rows (fn2-machine-row-map (fn2-machine-property kind :columns world))
+        :phases (fn2-machine-phase-map kind (fn2-machine-property kind :states world))
+        :writes (fn2-arm-get :writes contract) :next (fn2-arm-get :next contract)
+        :uses (fn2-arm-use-names (fn2-arm-get :uses contract))
+        :tables (append (fn2-arm-get :tables contract) *fn2-arm-implicit-tables*)
+        :world world))
+; The effective contract and its evaluated bound, or a refusal message.
+(defun fn2-machine-callback-contract (name kind own body world)
+  (declare (xargs :verify-guards nil))
+  (let* ((arms (append (fn2-machine-property kind :continuations world)
+                       (fn2-machine-property kind :observes world)))
+         (entry (fn2-machine-arm-union name arms nil))
+         (contract (or own entry))
+         (states (fn2-machine-property kind :states world))
+         (fields (remove-eq 'phase (strip-cars (fn2-machine-property kind :columns world))))
+         (values (if own (fn2-cost-values (fn2-arm-get :cost own) world)
+                   (fn2-machine-arm-cost-max name arms world nil))))
+    (cond ((and own entry)
+           (mv (msg "~x0 is an arm of ~x1: its contract is the arm entry, not :contract." name kind) nil nil))
+          ((not contract)
+           (mv (msg "~x0 has no contract: declare it as an arm of ~x1 or give :contract." name kind) nil nil))
+          ((and own (fn2-arm-contract-problem name (list* name name own) states fields nil))
+           (mv (fn2-arm-contract-problem name (list* name name own) states fields nil) nil nil))
+          ((not (and (natp (car values)) (natp (cadr values)) (natp (caddr values))))
+           (mv (msg "~x0's cost ~x1 cites a call with no declared cost." name (fn2-arm-get :cost contract)) nil nil))
+          ((eq (fn2-arm-get :language contract) :unchecked) (mv nil contract values))
+          (t (let ((problem (fn2-arm-walk-list body nil (fn2-machine-arm-env kind contract world)
+                                            (+ 16 (* 4 (acl2-count body))))))
+               (if problem (mv (msg "~x0 ~@1" name problem) nil nil)
+                 (mv nil contract values)))))))
+
+; Per-kind certificates: each phase's declared bound and successors, as
+; guard-true functions the generated run entry asserts and the owed rows cite.
+(defun fn2-machine-charge-cases (arms states n world)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (let ((v (fn2-cost-values (fn2-arm-get :cost (cddr (assoc-eq (car states) arms))) world)))
+      (cons `(,n (and (<= bytes ,(car v)) (<= steps ,(cadr v)) (<= descriptors ,(caddr v))))
+            (fn2-machine-charge-cases arms (cdr states) (+ 1 (nfix n)) world)))))
+(defun fn2-machine-bound-cases (arms states n world)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (let ((v (fn2-cost-values (fn2-arm-get :cost (cddr (assoc-eq (car states) arms))) world)))
+      (cons `(,n ,(+ (car v) (cadr v)))
+            (fn2-machine-bound-cases arms (cdr states) (+ 1 (nfix n)) world)))))
+(defun fn2-machine-phase-indices (phases states)
+  (declare (xargs :verify-guards nil))
+  (if (atom phases) nil
+    (cons (position-eq (car phases) states) (fn2-machine-phase-indices (cdr phases) states))))
+(defun fn2-machine-next-cases (arms states n all)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (cons `(,n (member-equal next ',(fn2-machine-phase-indices
+                                      (fn2-arm-get :next (cddr (assoc-eq (car states) arms))) all)))
+          (fn2-machine-next-cases arms (cdr states) (+ 1 (nfix n)) all))))
+(defun fn2-machine-observe-default-from (states)
+  (declare (xargs :verify-guards nil))
+  (remove-eq :free (remove-eq :retired states)))
+(defun fn2-machine-observe-next-cases (observes states)
+  (declare (xargs :verify-guards nil))
+  (if (atom observes) nil
+    (let ((c (cddar observes)))
+      (cons `(,(fn2-event-keyword->code (caar observes))
+              (and (member-equal from ',(fn2-machine-phase-indices
+                                          (or (fn2-arm-get :from c) (fn2-machine-observe-default-from states))
+                                          states))
+                   (or (equal next from)
+                       (member-equal next ',(fn2-machine-phase-indices (fn2-arm-get :next c) states)))))
+            (fn2-machine-observe-next-cases (cdr observes) states)))))
+(defun fn2-machine-certificate-events (name world)
+  (declare (xargs :verify-guards nil))
+  (let ((arms (fn2-machine-property name :continuations world))
+        (observes (fn2-machine-property name :observes world))
+        (states (fn2-machine-property name :states world)))
+    `((defun ,(fn2-columns-sym name "-ARM-CHARGE-OK-P") (phase bytes steps descriptors)
+        (declare (xargs :guard t))
+        (and (natp bytes) (natp steps) (natp descriptors)
+             (case phase ,@(fn2-machine-charge-cases arms states 0 world) (otherwise nil))))
+      (defun ,(fn2-columns-sym name "-ARM-BOUND") (phase)
+        (declare (xargs :guard t))
+        (case phase ,@(fn2-machine-bound-cases arms states 0 world) (otherwise 0)))
+      (defun ,(fn2-columns-sym name "-ARM-NEXT-OK-P") (phase next)
+        (declare (xargs :guard t))
+        (case phase ,@(fn2-machine-next-cases arms states 0 states) (otherwise nil)))
+      (defun ,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") (event from next)
+        (declare (xargs :guard t) (ignorable from next))
+        (case event ,@(fn2-machine-observe-next-cases observes states) (otherwise nil)))
+      ; The asserts' conditions as opaque calls, so the generated entries'
+      ; shape proofs never open them.
+      (defun ,(fn2-columns-sym name "-ARM-OK-P") (id phase bytes steps descriptors fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
+            (and (,(fn2-columns-sym name "-ARM-CHARGE-OK-P") phase bytes steps descriptors)
+                 (eq (fn2-machine-phase-read-code id fn2-core) :ok)
+                 (,(fn2-columns-sym name "-ARM-NEXT-OK-P") phase (fn2-machine-phase id fn2-core)))))
+      (defun ,(fn2-columns-sym name "-OBSERVE-OK-P") (id event from fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (or (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*))
+            (and (eq (fn2-machine-phase-read-code id fn2-core) :ok)
+                 (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") event from (fn2-machine-phase id fn2-core)))))
+      (in-theory (disable ,(fn2-columns-sym name "-ARM-OK-P") ,(fn2-columns-sym name "-OBSERVE-OK-P"))))))
+
+; Semantic checks over every arm once its callbacks exist (the :callbacks
+; section): the evaluated cost within the kind's caps, a cap-reaching arm
+; that can continue in its own phase, every use resolvable, the resource
+; moves its phases imply, D0's effect rows, and its refusal posture.
+(defun fn2-machine-unresolved-use (name uses world)
+  (declare (xargs :verify-guards nil))
+  (if (atom uses) nil
+    (let ((u (fn2-arm-use-name (car uses))))
+      (if (or (fn2-decl-row (list :cost u) world)
+              (equal (fn2-decl-get :owner (fn2-operation-row u world)) (list :machine name)))
+          (fn2-machine-unresolved-use name (cdr uses) world)
+        u))))
+(defconst *fn2-arm-postures* '(:close-and-release :discard-to-terminator :refuse-by-word :stop))
+(defun fn2-machine-arm-problem (name entry observationp world)
+  (declare (xargs :verify-guards nil))
+  (let* ((tag (car entry)) (c (cddr entry))
+         (budget (fn2-machine-property name :budget world))
+         (caps (list (fn2-arm-get :bytes budget) (fn2-arm-get :steps budget) (fn2-arm-get :descriptors budget)))
+         (v (fn2-cost-values (fn2-arm-get :cost c) world))
+         (states (fn2-machine-property name :states world))
+         (holds (fn2-machine-property name :holds world))
+         (sources (if observationp (or (fn2-arm-get :from c) (fn2-machine-observe-default-from states))
+                    (list tag)))
+         (uses (fn2-arm-get :uses c))
+         (posture (fn2-arm-get :on-refusal c)))
+    (cond
+     ((not (and (natp (car v)) (natp (cadr v)) (natp (caddr v))))
+      (msg "~x0: arm ~x1's cost ~x2 cites a call with no declared cost." name tag (fn2-arm-get :cost c)))
+     ((not (and (<= (car v) (car caps)) (<= (cadr v) (cadr caps)) (<= (caddr v) (caddr caps))))
+      (msg "~x0: arm ~x1 costs ~x2 (bytes steps descriptors), over the per-run caps ~x3."
+           name tag v caps))
+     ((and (not observationp)
+           (or (equal (car v) (car caps)) (equal (cadr v) (cadr caps)) (equal (caddr v) (caddr caps)))
+           (not (member-eq tag (fn2-arm-get :next c))))
+      (msg "~x0: arm ~x1 can reach a per-run cap (~x2 of ~x3) and must list its own phase in :next ~
+            to continue there." name tag v caps))
+     ((fn2-machine-unresolved-use name uses world)
+      (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
+           name tag (fn2-machine-unresolved-use name uses world)))
+     ((and (not (eq (fn2-arm-get :language c) :unchecked))
+           (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world))
+      (msg "~x0: arm ~x1 ~@2" name tag (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world)))
+     ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-arm-effect-rows name sources uses holds world))
+                                   *fn2-resource-order*))
+      (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
+           (fn2-arm-effect-rows name sources uses holds world)))
+     ((and posture
+           (not (and (true-listp posture) (member-eq (car posture) *fn2-arm-postures*)
+                     (member-eq (fn2-arm-get :to (cdr posture)) (fn2-arm-get :next c)))))
+      (msg "~x0: arm ~x1's :on-refusal ~x2 is (POSTURE :to PHASE [:releases KINDS]) with POSTURE in ~x3 ~
+            and PHASE in its :next." name tag posture *fn2-arm-postures*))
+     ((and posture
+           (let ((released (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
+                                          (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
+             (not (and (fn2-arm-subsetp released (fn2-arm-get :releases (cdr posture)))
+                       (fn2-arm-subsetp (fn2-arm-get :releases (cdr posture)) released)))))
+      (msg "~x0: arm ~x1's :on-refusal releases ~x2, but moving ~x3 -> ~x4 gives up ~x5." name tag
+           (fn2-arm-get :releases (cdr posture)) (car sources) (fn2-arm-get :to (cdr posture))
+           (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
+                          (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
+     (t nil))))
+(defun fn2-machine-arms-problem (name entries observationp world)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (or (fn2-machine-arm-problem name (car entries) observationp world)
+        (fn2-machine-arms-problem name (cdr entries) observationp world))))
+
+; ----------------------------------------------------------------------
+; Owed obligations per arm (D's section 4 item 4), into fn2-squares with
+; :from (:machine K): :bound, the arm's charge within its certificate;
+; :invariant, its frame (only declared fields of its row and declared
+; children change) and its continuation (the row's next phase is declared);
+; per kind, phase totality. Teeth evaluate the certificates and the frame
+; predicate on witnesses that satisfy and that falsify them.
+(defun fn2-machine-child-index (field world)
+  (declare (xargs :verify-guards nil))
+  (position-eq field (strip-cars (unquote (getpropc '*fn2-core-children* 'const nil world)))))
+(defun fn2-machine-table-children (names)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons (fn2-columns-sym (car names) "-TABLE") (fn2-machine-table-children (cdr names)))))
+(defun fn2-machine-machine-tables (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-table-children (fn2-machine-names world)))
+(defun fn2-machine-child-indices-of (tables world)
+  (declare (xargs :verify-guards nil))
+  (if (atom tables) nil
+    (let ((i (fn2-machine-child-index (car tables) world)))
+      (append (and i (list i)) (fn2-machine-child-indices-of (cdr tables) world)))))
+; fn2-core-machine-tables names every machine kind's table child.
+(defun fn2-machine-child-indices (tables world)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-child-indices-of
+   (if (member-eq 'fn2-core-machine-tables tables)
+       (append (remove-eq 'fn2-core-machine-tables tables) (fn2-machine-machine-tables world))
+     tables)
+   world))
+(defun fn2-machine-column-indices (fields columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let ((i (position-eq (car fields) (strip-cars columns))))
+      (append (and i (list i)) (fn2-machine-column-indices (cdr fields) columns)))))
+(defun fn2-machine-arm-pre (name phase-constant)
+  (declare (xargs :verify-guards nil))
+  `(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+        (eq (,(fn2-columns-sym name "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
+        ,@(and phase-constant `((equal (fn2-machine-phase id fn2-core) ,phase-constant)))
+        (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*)))
+(defun fn2-machine-arm-rows (name arms world)
+  (declare (xargs :verify-guards nil))
+  (if (atom arms) nil
+    (let* ((tag (caar arms)) (fn (cadar arms)) (c (cddar arms))
+           (vars (fn2-machine-row-vars (fn2-machine-property name :columns world)))
+           (phase (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE") tag) "*")))
+           (cols (fn2-machine-property name :columns world))
+           (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
+           (columns (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
+           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) *fn2-arm-implicit-tables*) world))
+           (charge (fn2-columns-sym name "-ARM-CHARGE-OK-P"))
+           (next (fn2-columns-sym name "-ARM-NEXT-OK-P"))
+           (stem (fn2-columns-sym (fn2-columns-col-name name tag) "")))
+      (append
+       (list
+       `(defthm-owed ,(fn2-columns-sym stem "-BOUND") (id budget fn2-core)
+          (implies ,(fn2-machine-arm-pre name phase)
+                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+                     (mv-let (bytes steps descriptors runnable after) (,fn id budget ,@vars fn2-core)
+                       (declare (ignore runnable after))
+                       (,charge ,phase bytes steps descriptors))))
+          :schema :bound :from (:machine ,name)
+          :teeth (,(fn2-columns-sym name "-ARM-CERTIFICATE-POSITIVE") ,(fn2-columns-sym name "-ARM-CERTIFICATE-NEGATIVE"))
+          :doc ,(concatenate 'string "Arm " (symbol-name tag) " of " (symbol-name name)
+                             " charges within its declared cost (the scalar-work certificate).")))
+       ; An arm declared :language :unchecked states no frame: its body was not
+       ; checked against :writes and :tables.
+       (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
+       `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id budget fn2-core)
+          (implies ,(fn2-machine-arm-pre name phase)
+                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+                     (let ((after (mv-nth 4 (,fn id budget ,@vars fn2-core))))
+                       (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
+                                (,next ,phase (fn2-machine-phase id after)))
+                            (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
+                                            fn2-core after)))))
+          :schema :invariant :from (:machine ,name)
+          :teeth (,(fn2-columns-sym name "-ARM-NEXT-POSITIVE") ,(fn2-columns-sym name "-ARM-NEXT-NEGATIVE")
+                  fn2-arm-frame-positive fn2-arm-frame-negative)
+          :doc ,(concatenate 'string "Arm " (symbol-name tag) " of " (symbol-name name)
+                             " changes only its declared fields and children and moves only to a declared phase."))))
+       (fn2-machine-arm-rows name (cdr arms) world)))))
+(defun fn2-machine-observe-rows (name observes world)
+  (declare (xargs :verify-guards nil))
+  (if (atom observes) nil
+    (let* ((tag (caar observes)) (fn (cadar observes)) (c (cddar observes))
+           (vars (fn2-machine-row-vars (fn2-machine-property name :columns world)))
+           (cols (fn2-machine-property name :columns world))
+           (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
+           (columns (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
+           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) *fn2-arm-implicit-tables*) world))
+           (event (fn2-event-keyword->code tag))
+           (stem (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-OBSERVE") tag) "")))
+      (append (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
+       `(defthm-owed ,(fn2-columns-sym stem "-FRAME") (id outcome reason count aux0 aux1 fn2-core)
+          (implies ,(fn2-machine-arm-pre name nil)
+                   (mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
+                     (let ((after (mv-nth 1 (,fn id ,event outcome reason count aux0 aux1 ,@vars fn2-core))))
+                       (and (or (not (equal (fn2-core-stop-reason after) *fn2-stop-reason-none*))
+                                (,(fn2-columns-sym name "-OBSERVE-NEXT-OK-P") ,event
+                                 (fn2-machine-phase id fn2-core) (fn2-machine-phase id after)))
+                            (fn2-arm-framep ,table (fn2-machine-slot id fn2-core) ',columns ',children
+                                            fn2-core after)))))
+          :schema :invariant :from (:machine ,name)
+          :teeth (fn2-arm-frame-positive fn2-arm-frame-negative)
+          :doc ,(concatenate 'string "Handler " (symbol-name tag) " of " (symbol-name name)
+                             " changes only its declared fields and children and moves only to a declared phase."))))
+       (fn2-machine-observe-rows name (cdr observes) world)))))
+
+; Teeth: the certificates accept every declared bound and successor and
+; refuse one step beyond, an undeclared successor and an out-of-range phase.
+(defun fn2-machine-certificate-positive-terms (charge arms states n world)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (let ((v (fn2-cost-values (fn2-arm-get :cost (cddr (assoc-eq (car states) arms))) world)))
+      (cons `(,charge ,n ,(car v) ,(cadr v) ,(caddr v))
+            (fn2-machine-certificate-positive-terms charge arms (cdr states) (+ 1 (nfix n)) world)))))
+(defun fn2-machine-certificate-negative-terms (charge arms states n world)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (let ((v (fn2-cost-values (fn2-arm-get :cost (cddr (assoc-eq (car states) arms))) world)))
+      (list* `(not (,charge ,n ,(+ 1 (car v)) ,(cadr v) ,(caddr v)))
+             `(not (,charge ,n ,(car v) ,(+ 1 (cadr v)) ,(caddr v)))
+             `(not (,charge ,n ,(car v) ,(cadr v) ,(+ 1 (caddr v))))
+             (fn2-machine-certificate-negative-terms charge arms (cdr states) (+ 1 (nfix n)) world)))))
+(defun fn2-machine-next-each (next n targets positivep)
+  (declare (xargs :verify-guards nil))
+  (if (atom targets) nil
+    (cons (if positivep `(,next ,n ,(car targets)) `(not (,next ,n ,(car targets))))
+          (fn2-machine-next-each next n (cdr targets) positivep))))
+(defun fn2-machine-next-positive-terms (next arms states n all)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (append (fn2-machine-next-each next n (fn2-machine-phase-indices
+                                           (fn2-arm-get :next (cddr (assoc-eq (car states) arms))) all) t)
+            (fn2-machine-next-positive-terms next arms (cdr states) (+ 1 (nfix n)) all))))
+(defun fn2-machine-next-negative-terms (next arms states n count all)
+  (declare (xargs :verify-guards nil))
+  (if (atom states) nil
+    (append (fn2-machine-next-each next n
+              (cons count (fn2-arm-minus (fn2-machine-phase-indices all all)
+                                         (fn2-machine-phase-indices
+                                          (fn2-arm-get :next (cddr (assoc-eq (car states) arms))) all)))
+              nil)
+            (fn2-machine-next-negative-terms next arms (cdr states) (+ 1 (nfix n)) count all))))
+(defun fn2-machine-teeth-events (name world)
+  (declare (xargs :verify-guards nil))
+  (let* ((arms (fn2-machine-property name :continuations world))
+         (states (fn2-machine-property name :states world))
+         (charge (fn2-columns-sym name "-ARM-CHARGE-OK-P"))
+         (next (fn2-columns-sym name "-ARM-NEXT-OK-P")))
+    `((defun ,(fn2-columns-sym name "-ARM-CERTIFICATE-POSITIVE") ()
+        (declare (xargs :guard t))
+        (and ,@(fn2-machine-certificate-positive-terms charge arms states 0 world)))
+      (defun ,(fn2-columns-sym name "-ARM-CERTIFICATE-NEGATIVE") ()
+        (declare (xargs :guard t))
+        (and (not (,charge ,(len states) 0 0 0))
+             ,@(fn2-machine-certificate-negative-terms charge arms states 0 world)))
+      (defun ,(fn2-columns-sym name "-ARM-NEXT-POSITIVE") ()
+        (declare (xargs :guard t))
+        (if (and ,@(fn2-machine-next-positive-terms next arms states 0 states)) t nil))
+      (defun ,(fn2-columns-sym name "-ARM-NEXT-NEGATIVE") ()
+        (declare (xargs :guard t))
+        (and ,@(fn2-machine-next-negative-terms next arms states 0 (len states) states)))
+      (defthm-owed ,(fn2-columns-sym name "-PHASE-TOTALITY") (id fn2-core)
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                      (eq (,(fn2-columns-sym name "-SNAPSHOT-READ-CODE") id fn2-core) :ok))
+                 (< (fn2-machine-phase id fn2-core) ,(fn2-columns-pre "*" (fn2-columns-sym name "-STATE-COUNT*"))))
+        :schema :invariant :from (:machine ,name)
+        :teeth (,(fn2-columns-sym name "-ARM-CERTIFICATE-POSITIVE") ,(fn2-columns-sym name "-ARM-CERTIFICATE-NEGATIVE"))
+        :doc ,(concatenate 'string "Every reachable " (symbol-name name)
+                           " row is in a declared phase, each of which has an arm.")))))
 
 (defun fn2-machine-capacities (names world)
   (declare (xargs :verify-guards nil))
@@ -327,7 +717,9 @@
             (fn2-machine-all-snapshots (cdr names) world))))
 ; The submitted spelling check ignores quoted data and shadowed row names.
 (defun fn2-callback-forwarding (form vars world)
-  (declare (xargs :verify-guards nil))
+  ; The registry lookup in a ruler is opaque to the termination proof.
+  (declare (xargs :verify-guards nil :measure (acl2-count form)
+                  :hints (("Goal" :in-theory (disable fn2-operation-row)))))
   (cond ((atom form) nil) ((eq (car form) 'quote) nil)
         ((and (symbolp (car form)) (fn2-decl-get :row-bindings (fn2-operation-row (car form) world))
               (intersection-eq vars (cdr form))) (car form))
@@ -428,7 +820,7 @@
         ((and (eq (car form) 'b*) (fn2-callback-bad-binder (cadr form))) form)
         (t (or (fn2-callback-input-error (car form) world)
                (fn2-callback-input-error (cdr form) world)))))
-(defun fn2-machine-callback-event (name kind args position body world)
+(defun fn2-machine-callback-event (name kind args position own body world)
   (declare (xargs :verify-guards nil))
   (let* ((vars (butlast (cddr (fn2-decl-get :run
                                 (fn2-machine-property kind :calling-convention world))) 1))
@@ -441,23 +833,36 @@
         `(make-event (er soft 'defmachine-callback
                        "~x0 calls callback ~x1 with positional row fields; use fn2-call."
                        ',name ',problem)))
-          (t (fn2-operation-events (list :machine kind) name 'fn2-core args
+          (t (mv-let (refusal contract values) (fn2-machine-callback-contract name kind own body world)
+           (if refusal `(make-event (er soft 'defmachine-callback "~@0" ',refusal))
+            (fn2-operation-events (list :machine kind) name 'fn2-core args
           (append (make-list position :initial-element :value) '(fn2-core)) vars :callbacks
           `(declare (xargs :stobjs fn2-core
                      :guard (and (fn2-core-wfp fn2-core) (,(fn2-columns-sym kind "-VALUESP") ,@vars)))
                     (ignorable ,@args ,@vars))
           (fn2-callback-checked-body
            (fn2-callback-refresh (fn2-call-expand body world) kind vars vars position (* 3 (acl2-count (fn2-call-expand body world)))) kind position)
-          `((fn2-core-preserves ,name (,@args ,@vars fn2-core) :position ,position :rows nil)) nil)))))
+          `((fn2-core-preserves ,name (,@args ,@vars fn2-core) :position ,position :rows nil))
+          (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
+                :refusal (fn2-arm-get :on-refusal contract) :contract contract :cost-values values))))))))
 ; ROW-<field> is the public scalar argument vocabulary, in declaration order.
 ; No resident list and no child/core alias crosses the callback boundary.
+; An arm's callback takes its contract from its arm entry; a callback only
+; forwarded to (fn2-call) gives :contract (:cost :writes :next :uses ...).
 (defmacro defmachine-callback (name kind args position &rest body)
-  `(make-event (value (fn2-machine-callback-event ',name ',kind ',args ',position ',body (w state)))))
+  (let ((own (and (eq (car body) :contract) (cadr body)))
+        (body (if (eq (car body) :contract) (cddr body) body)))
+    `(make-event (value (fn2-machine-callback-event ',name ',kind ',args ',position ',own ',body (w state))))))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
   (let* ((vars (butlast (cddr (fn2-decl-get :run (fn2-machine-property name :calling-convention world))) 1))
-         (run (fn2-columns-sym name "-RUN")))
-    (fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
+         (run (fn2-columns-sym name "-RUN"))
+         (problem (or (fn2-machine-arms-problem name (fn2-machine-property name :continuations world) nil world)
+                      (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world))))
+    (if problem `(make-event (er soft 'defmachine-run "~@0" ',problem))
+    `(progn
+       ,@(fn2-machine-certificate-events name world)
+       ,(fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
       '(bytes steps descriptors runnable fn2-core) nil :callbacks
       `(declare (xargs :stobjs fn2-core
                     :guard-hints (("Goal" :use ((:instance ,(fn2-columns-sym name "-SNAPSHOT-VALUES")))
@@ -467,11 +872,21 @@
                    (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))))))
       (fn2-callback-checked-body `((mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
-           (case row-phase
-             ,@(fn2-machine-state-arms (fn2-machine-property name :states world)
-                (fn2-machine-property name :continuations world) 0 `(id budget ,@vars fn2-core))
-             (otherwise (fn2-machine-refuse-phase id fn2-core))))) name 4)
-      `((fn2-core-preserves ,run (id budget fn2-core) :position 4 :rows nil)) nil)))
+           (mv-let (bytes steps descriptors runnable fn2-core)
+             (case row-phase
+               ,@(fn2-machine-state-arms (fn2-machine-property name :states world)
+                  (fn2-machine-property name :continuations world) 0 `(id budget ,@vars fn2-core))
+               (otherwise (fn2-machine-refuse-phase id fn2-core)))
+             ; The arm's contract, asserted where it holds: its charge is
+             ; within its certificate and its row moves only to a declared
+             ; phase, or the core stops with a named reason.
+             (fn2-machine-contract-check
+              (,(fn2-columns-sym name "-ARM-OK-P") id row-phase bytes steps descriptors fn2-core)
+              bytes steps descriptors runnable fn2-core)))) name 4)
+      `((fn2-core-preserves ,run (id budget fn2-core) :position 4 :rows nil)) nil)
+       ,@(fn2-machine-teeth-events name world)
+       ,@(fn2-machine-arm-rows name (fn2-machine-property name :continuations world) world)
+       ))))
 (defmacro defmachine-run (name)
   `(make-event (value (fn2-machine-run-event ',name (w state)))))
 (defun fn2-machine-observe-handlers (router names world)
@@ -488,12 +903,22 @@
                      (case event ,@(fn2-machine-observe-event-arms
                                     (fn2-machine-property name :observes world) t nil) (otherwise nil)))))
            ,@(fn2-callback-checked-body `((mv-let ,vars (,(fn2-columns-sym name "-SNAPSHOT") id fn2-core)
-             (case event
-               ,@(fn2-machine-observe-event-arms (fn2-machine-property name :observes world) nil
-                  `(id event outcome reason count aux0 aux1 ,@vars fn2-core))
-               (otherwise (fn2-machine-refuse-observation fn2-core))))) name 1))
+             (mv-let (wake fn2-core)
+               (case event
+                 ,@(fn2-machine-observe-event-arms (fn2-machine-property name :observes world) nil
+                    `(id event outcome reason count aux0 aux1 ,@vars fn2-core))
+                 (otherwise (fn2-machine-refuse-observation fn2-core)))
+               (fn2-machine-observe-contract-check
+                (,(fn2-columns-sym name "-OBSERVE-OK-P") id event row-phase fn2-core)
+                wake fn2-core)))) name 1))
          (fn2-core-preserves ,handler (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil))
        (fn2-machine-observe-handlers router (cdr names) world)))))
+; The handlers' owed rows, once for the served router (machine-dispatch).
+(defun fn2-machine-all-observe-rows (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append (fn2-machine-observe-rows (car names) (fn2-machine-property (car names) :observes world) world)
+            (fn2-machine-all-observe-rows (cdr names) world))))
 (defun fn2-machine-observe-events (router names world)
   (declare (xargs :verify-guards nil))
   (let ((accepts (fn2-columns-sym router "-ACCEPTS-P")))
@@ -568,6 +993,12 @@
   (if (atom names) nil
     (cons `(,tag (,(fn2-columns-sym (car names) "-RUN") id budget fn2-core))
           (fn2-machine-run-arms (cdr names) (+ 1 (nfix tag))))))
+(defun fn2-machine-arm-certificate-arms (names tag boundp)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons (if boundp `(,tag (,(fn2-columns-sym (car names) "-ARM-BOUND") phase))
+            `(,tag (,(fn2-columns-sym (car names) "-ARM-CHARGE-OK-P") phase bytes steps descriptors)))
+          (fn2-machine-arm-certificate-arms (cdr names) (+ 1 (nfix tag)) boundp))))
 (defun fn2-machine-charge-arms (names tag)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil

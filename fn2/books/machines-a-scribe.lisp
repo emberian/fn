@@ -2,7 +2,7 @@
 ; Each byte loop yields after sixteen bytes. Its only acknowledgement point
 ; is its own successful FenceResult; a failed write/fence result never retries I/O.
 (in-package "ACL2")
-(include-book "machines-a-access")
+(include-book "machines-a-costs")
 (include-book "fnv")
 
 (defmacro fn2-scribe-events ()
@@ -86,17 +86,24 @@
 (in-theory (disable fn2-scribe-start))
 
 (defmachine-callback fn2-scribe-stop fn2-scribe (id budget) 4
+  :contract (:cost (:steps *fn2-work-state*) :writes (stopped event-ready) :next (:stopped) :uses ())
   (let ((fn2-core (fn2-scribe-put-core id
                     (phase *fn2-scribe-state-stopped*) (stopped 1) (event-ready 0))))
     (fn2-machine-result 0 *fn2-work-state* 0 nil fn2-core)))
 
 
 (defmachine-callback fn2-scribe-park fn2-scribe (id budget) 4
+  :contract (:cost (:steps *fn2-work-mailbox*) :writes (wait-reason ready-prev ready-next)
+             :tables (fn2-core-machines fn2-core-machine-tables) :next () :uses (fn2-machine-park))
   (let ((fn2-core (fn2-machine-park id fn2-core)))
     (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
 
 
 (defmachine-callback fn2-scribe-refused fn2-scribe (code id budget) 4
+  :contract (:cost (:steps (max (:cost fn2-scribe-park :steps) (:cost fn2-scribe-stop :steps)))
+             :writes (wait-reason ready-prev ready-next stopped event-ready)
+             :tables (fn2-core-machines fn2-core-machine-tables) :next (:stopped)
+             :uses (fn2-scribe-park fn2-scribe-stop))
   (if (eq code :exhausted)
       (fn2-call fn2-scribe-park id budget)
     (fn2-call fn2-scribe-stop id budget)))

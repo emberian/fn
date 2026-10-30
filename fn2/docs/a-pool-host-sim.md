@@ -251,26 +251,44 @@ execution-quanta fields. Resident capacities and `:trace-capacity` remain
 profile parameters. `fn2-control` contains scalar fields; the recovery image
 contains a byte-array field without a dummy column.
 
-`defmachine` owns both phase dispatch and `:observes` event routing. Declarations
-name functions, never pasted code forms. The fixed run convention is
-`(id budget ROW-fields... fn2-core)`; observation handlers receive
-`(id event outcome reason count aux0 aux1 ROW-fields... fn2-core)` and return
-`(mv wake fn2-core)`. `ROW-fields...` are scalar values in declared column order,
-recorded in the machine world table's `:calling-convention`. The generated entry
-binds its own table once and reads its own accessors; it releases the child before
-calling code that may update the parent core. Per-kind writes bind that child once
-for the whole field batch. Initial values are constants or named functions of
-`(slot base n gen)`. Each `:obligations` entry is explicitly `:owed`, references a
-registered `defthm-owed`, or names a registered obligation generator; unknown hooks
-are refused at expansion. The router validates the row's kind, generation and non-free
-state before invoking the handler, then performs generic pending accounting.
-Handlers see every completion before the pending decrement and own any event-cell
-store; a handler may accumulate several completions before its machine runs.
-Scribe retains its single event cell by storing in its own handler. An unrouted
-event or a write to a field absent from the target kind stops the executor.
-Per-kind phase-write macros reject another kind's
-constants. Global field setters guard both the declared width and the presence
-of that field in the target kind. Unknown kinds cannot pass the charge guard.
+`defmachine` owns phase dispatch, `:observes` event routing and the arm contracts (R7;
+`build/coordinator/fn2/lanes/a-to-d-arm-contracts.md` is the full syntax layer D writes). Every
+continuation and handler is `(TAG FN :cost (:bytes F :steps F :descriptors F) :writes (FIELD ...)
+:tables (CHILD ...) :next (PHASE ...) :uses (OP ...) [:from ...] [:on-refusal ...]
+[:language :unchecked])`; the bare `(TAG FN)` form is refused. `:holds ((PHASE KIND ...) ...)`
+names each phase's resources in D0's order (`fn2/books/resources.lisp`). Outside calls declare
+their work, the children they change, the row fields they write and their resource effects with
+`defcost` (`fn2/books/machines-a-costs.lisp` for layer A's). `defmachine-callback` checks every
+body in the restricted arm language (`fn2/books/arms.lisp`): scalar primitives, bindings,
+`fn2-call` of contracted same-kind callbacks, the kind's `PUT-CORE` on its own row for declared
+fields and declared successor phases, and declared operations; an undeclared write, an undeclared
+move, a call outside `:uses` or without a defcost (a helper hiding a foreign-table write), a stale
+row read and a cost citing an undeclared call are refused at expansion, each with its message
+(`tests/core-child-assembly-callbacks.lisp` carries the controls). When a kind's run is generated
+(the `:callbacks` section) every arm's evaluated cost must be within the declared caps, an arm
+whose cost reaches a cap must name its own phase in `:next` (the row's fields are its continuation),
+and its operations must make exactly the resource moves its phases imply (D0's
+`fn2-resource-effects-p` checks the same rows). The run entry and each handler assert the arm's
+certificate (`K-ARM-CHARGE-OK-P`, `K-ARM-NEXT-OK-P`, `K-OBSERVE-NEXT-OK-P`) and stop with
+`:machine-contract` otherwise; each arm contributes owed `:bound` and `:invariant` (frame and
+continuation) rows to fn2-squares with `:from (:machine K)` and evaluated teeth, each kind a
+phase-totality row; `fn2-arm-cost-composition` and `fn2-arm-residual-budget` state the turn bound
+as composition over the arms' certificates. The machine contributes its case catalogue (one label
+per phase, then per observed event); correspondences (Q1) bind statements to it. The listener has
+three phases so that its holds are a function of its phase: `:accepting` (the accept credit),
+`:admitting` (plus a reserved connection row, while its Accept is in flight or ready) and `:closing`;
+admission is the allocator operation `fn2-machine-admit-connection`, so no layer-A arm writes
+another kind's columns. Declarations name functions, never pasted code forms. The fixed run
+convention is `(id budget ROW-fields... fn2-core)`; observation handlers receive `(id event outcome
+reason count aux0 aux1 ROW-fields... fn2-core)` and return `(mv wake fn2-core)`; `ROW-fields...`
+are scalar values in declared column order, recorded in the machine row's `:calling-convention`.
+The generated entry binds its own table once; per-kind writes bind that child once for the whole
+field batch. Initial values are constants or named functions of `(slot base n gen)`. The router
+validates the row's kind, generation and non-free state before invoking the handler, then performs
+generic pending accounting; handlers see every completion before the pending decrement and own any
+event-cell store. An unrouted event or a write to a field absent from the target kind stops the
+executor. Per-kind phase-write macros reject another kind's constants. Global field setters guard
+both the declared width and the presence of that field in the target kind.
 
 `books/assembly.lisp` is the sole served core instance. `defcorechild FIELD
 STOBJ :init FORM :profilep FORM :why "reason"` in `core-children.lisp` records

@@ -38,6 +38,8 @@
                     :writes (or (fn2-decl-get :writes contracts) :unchecked)
                     :cost (or (fn2-decl-get :cost contracts) :unchecked)
                     :refusal (or (fn2-decl-get :refusal contracts) :unchecked)
+                    :contract (fn2-decl-get :contract contracts)
+                    :cost-values (fn2-decl-get :cost-values contracts)
                     :section section :definition events)))
     `(make-event
       (let ((old (fn2-operation-row ',name (w state))))

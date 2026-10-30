@@ -5,6 +5,21 @@
 (fn2-resolve :callbacks)
 (make-event
  (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-observe (fn2-machine-names (w state)) (w state)))))
+(make-event
+ (value (cons 'progn (fn2-machine-all-observe-rows (fn2-machine-names (w state)) (w state)))))
+
+; The kinds' arm certificates under one dispatch, for the cost-composition
+; obligation over a word of runs (executor.lisp).
+(make-event
+ (value `(progn
+           (defun fn2-machine-arm-charge-ok-p (kind phase bytes steps descriptors)
+             (declare (xargs :guard t))
+             (case kind ,@(fn2-machine-arm-certificate-arms (fn2-machine-names (w state)) 0 nil)
+               (otherwise nil)))
+           (defun fn2-machine-arm-bound (kind phase)
+             (declare (xargs :guard t))
+             (case kind ,@(fn2-machine-arm-certificate-arms (fn2-machine-names (w state)) 0 t)
+               (otherwise 0))))))
 
 (make-event
  (value `(defun fn2-machine-run (id budget fn2-core)

@@ -323,6 +323,9 @@
   :rule-classes :type-prescription)
 (in-theory (disable fn2-machine-test-saturate))
 (defmachine-callback fn2-machine-test-accumulate fn2-scribe (id event outcome reason count aux0 aux1) 1
+  ; A test-only handler calling a test helper: the declared escape.
+  :contract (:cost (:steps 1) :writes (completed verified checksum cursor) :next () :uses ()
+             :language :unchecked)
   (let ((fn2-core (fn2-scribe-put-core id
           (completed (fn2-machine-test-saturate (+ 1 row-completed)))
           (verified (fn2-machine-test-saturate (+ (nfix count) row-verified)))
@@ -410,9 +413,8 @@
              '((:run fn2-listener :accepting) (:run fn2-listener :admitting) (:run fn2-listener :closing)
                (:observe fn2-listener :accept-result) (:observe fn2-listener :close-result)))
       (equal (getpropc 'fn2-listener-run 'formals nil (w state)) '(id budget fn2-core))
-      (equal (fn2-machine-property 'fn2-listener :continuations (w state))
-             '((:accepting fn2-listener-accept) (:admitting fn2-listener-admitting)
-               (:closing fn2-listener-close)))))
+      (equal (strip-cadrs (fn2-machine-property 'fn2-listener :continuations (w state)))
+             '(fn2-listener-accept fn2-listener-admitting fn2-listener-close))))
 (value-triple (cw "R5a DECLARATION: named callbacks and initializers; case catalogue; code and :obligations refusals PASS~%"))
 
 (must-fail

@@ -78,7 +78,10 @@
                                *fn2-resource-order* *fn2-resource-per-recipient*))
 
 ; Effects: transfer and release only what is held; acquisitions ascend.
-(assert-event (fn2-resource-effects-p *fn2-resource-effects* *fn2-resource-order*))
+(assert-event (fn2-resource-effects-p
+               '(((fn2-listener :admit) :holds-before (:accept-credit :connection-row)
+                  :effects ((:transfer (:connection-row) :to fn2-echo) (:acquire (:rx-range) :for fn2-echo))))
+               *fn2-resource-order*))
 (fn2-resource-rejects :transfer-unheld
   (fn2-resource-effects-p '(((fn2-test :admit) :holds-before (:accept-credit)
                              :effects ((:transfer (:connection-row) :to fn2-echo))))
