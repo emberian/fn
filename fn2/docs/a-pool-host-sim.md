@@ -195,7 +195,10 @@ reasons are `:issue-unreserve`, `:issue-range`, `:issue-capability`,
 `:harvest-input`, `:harvest-output`, `:harvest-finish`, `:wake-bounds`,
 `:wake-state`, `:machine-write`, `:machine-observation`, `:machine-phase`
 and `:pool-release`. `:signal`, `:clock-exhausted` and `:work-overflow` name
-the other stop paths. Scenarios print the enum keyword and require `:none`
+the other stop paths; `:machine-contract` is a run beyond its arm's certificate, and `:account`
+an invariant failure of the principal ledger (D7: an account operation's `:bounds`, `:underflow`,
+`:state` or a charge overflow, turned into a stop, never absorbed). New reasons are appended, so
+every earlier code is unchanged. Scenarios print the enum keyword and require `:none`
 for a green run; corruption controls require their specific reason. TRACE
 compares this control state and must stop identically. A stopped harvest
 delivers no observation to the machine. A malformed posted-FIFO head stops
