@@ -3,6 +3,7 @@
 ; order, then the restart directory; B checks the zero padding after it.
 (in-package "ACL2")
 (include-book "format-check")
+(include-book "pool-ranges")
 (fn2-book-layer :c)
 
 (defconst *fn2-run-page-size* *fn2-format-page-size*)
@@ -18,6 +19,9 @@
 ; restarts at interval 16; the interval is a page field, never below 16.
 (defconst *fn2-run-restart-interval* 16)
 (defconst *fn2-run-restart-capacity* 4096)
+; A writer's fill limit (bytes of entries plus directory, from the page start)
+; is a page-fill parameter like a block size; the encoded page stays 64 KiB.
+(defconst *fn2-run-min-fill* 256)
 (assert-event (<= (floor *fn2-run-page-size* *fn2-run-restart-interval*) *fn2-run-restart-capacity*))
 ; Per-writer field rows: the checker's decode range, the previous key, scratch.
 (defconst *fn2-run-check-fields* *fn2-format-sealed-batch-num-fields*)
@@ -33,7 +37,7 @@
  ((phase (:enum fn2-run-writer-phase (:idle :open :closing :heading :sealing :sealed :failed)))
   (schema :u60) (schema-version :u8) (level :u8) (run :u60) (ordinal :u60)
   (page-kind :u8) (slot :u32) (gen :u60) (cursor :u32) (entries :u32) (restarts :u32)
-  (pos :u32) (prev :bool) (fields :u32)
+  (pos :u32) (prev :bool) (fields :u32) (limit :u32)
   (unit :u60) (epoch :u60) (counter :u60) (history :u60) (incarnation :u60)
   (okind :u8) (oslot :u32) (ogen :u60)))
 (defcolumns fn2-run-restarts ((offset :u32)))
@@ -62,7 +66,7 @@
 ; Open a page in a fresh C-owned workspace: reset it, zero the header area and
 ; the reserved C header region. Entries start at *fn2-run-entries-base*.
 (defun fn2-run-open (w slot gen schema version level run ordinal page-kind
-                       unit epoch counter history incarnation okind oslot ogen fields
+                       unit epoch counter history incarnation okind oslot ogen fields limit
                        fn2-run-writers fn2-pool)
  (declare (xargs :stobjs (fn2-run-writers fn2-pool)
   :guard (and (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
@@ -73,7 +77,8 @@
                     (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter)
                     (unsigned-byte-p 60 history) (unsigned-byte-p 60 incarnation)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
-                    (unsigned-byte-p 32 fields)))
+                    (unsigned-byte-p 32 fields) (unsigned-byte-p 32 limit)
+                    (<= (+ *fn2-run-entries-base* *fn2-run-min-fill*) limit) (<= limit *fn2-run-page-size*)))
        (mv :bounds fn2-run-writers fn2-pool))
       ((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-idle*))
        (mv :state fn2-run-writers fn2-pool))
@@ -88,7 +93,7 @@
       (fn2-run-writers (fn2-run-writers-put w
         (phase *fn2-run-writer-phase-open*) (schema schema) (schema-version version) (level level)
         (run run) (ordinal ordinal) (page-kind page-kind) (slot slot) (gen gen)
-        (cursor *fn2-run-entries-base*) (entries 0) (restarts 0) (pos 0) (prev 0) (fields fields)
+        (cursor *fn2-run-entries-base*) (entries 0) (restarts 0) (pos 0) (prev 0) (fields fields) (limit limit)
         (unit unit) (epoch epoch) (counter counter) (history history) (incarnation incarnation)
         (okind okind) (oslot oslot) (ogen ogen))))
   (mv :ok fn2-run-writers fn2-pool)))
@@ -121,7 +126,7 @@
         (restarts (+ (fn2-run-writers-restarts w fn2-run-writers)
                      (if (equal (mod entries *fn2-run-restart-interval*) 0) 1 0))))
   (<= (+ (fn2-run-writers-cursor w fn2-run-writers) size (* *fn2-run-restart-bytes* restarts))
-      *fn2-run-page-size*)))
+      (min (fn2-run-writers-limit w fn2-run-writers) *fn2-run-page-size*))))
 
 ; Restarts J .. J+K-1 of writer W, encoded at CURSOR + 4j through the
 ; generated restart codec (one scratch field row).
@@ -190,17 +195,17 @@
             (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-closing* fn2-run-writers)))
       (mv :ok fn2-run-writers))
   (mv :state fn2-run-writers)))
-(fn2-run-writers-preserves fn2-run-close (w fn2-run-writers) :position 1
+(fn2-run-writers-preserves fn2-run-close (w fn2-run-writers) :position 1 :raw-rows t
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields fn2-run-writers fn2-pool) :position 1 :disable nil
+(fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
-(fn2-run-writers-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 1 :disable nil
+(fn2-pool-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 2 :prefix "-POOL-PRESERVES")
+(fn2-run-writers-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
-(fn2-run-restarts-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 2 :prefix "-RESTARTS-PRESERVES"
+(fn2-run-restarts-preserves fn2-run-note-restart (w fn2-run-writers fn2-run-restarts) :position 2 :prefix "-RESTARTS-PRESERVES" :raw-rows t
  :hyps ((fn2-run-restartsp fn2-run-restarts) (fn2-run-restarts-wfp fn2-run-restarts) (fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
         (<= (* (+ 1 w) *fn2-run-restart-capacity*) (fn2-run-restarts-rows fn2-run-restarts))))
-(fn2-run-writers-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :disable nil
+(fn2-run-writers-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
 (fn2-fields-preserves fn2-run-close-step (w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
  :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-restartsp fn2-run-restarts) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
@@ -252,7 +257,7 @@
       ((unless (eq code :ok)) (mv code fn2-run-writers fn2-fields fn2-pool))
       (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-sealing* fn2-run-writers)))
   (mv :ok fn2-run-writers fn2-fields fn2-pool)))
-(fn2-run-writers-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :disable nil
+(fn2-run-writers-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
 (fn2-fields-preserves fn2-run-head (w fn2-run-writers fn2-run-restarts fn2-fields fn2-pool) :position 2 :prefix "-FIELDS-PRESERVES" :disable nil
  :hyps ((fn2-fieldsp fn2-fields) (fn2-run-writersp fn2-run-writers) (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)))
@@ -386,28 +391,20 @@
 (fn2-fields-preserves fn2-run-restart-offset (j slot gen base okind oslot ogen fn2-fields fn2-pool) :position 2
  :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
 
-; C-COMPARE-INTERIM (GC1): lexicographic order of two pool ranges read under
-; two explicit owners, at most *fn2-run-compare-max* byte pairs. Replaced by
-; A's fn2-pool-compare (R6a1) when it lands; this function is then deleted.
-(defconst *fn2-run-compare-max* 512)
-(defun fn2-run-octets-loop (n i aslot agen aoff bslot bgen boff ak as ag bk bs bg fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix n)
-  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp aoff) (natp boff))))
- (if (zp n) (mv :ok :eq)
-  (b* (((mv code x) (fn2-pool-read aslot agen (+ aoff i) ak as ag fn2-pool))
-       ((unless (eq code :ok)) (mv code :eq))
-       ((mv code y) (fn2-pool-read bslot bgen (+ boff i) bk bs bg fn2-pool))
-       ((unless (eq code :ok)) (mv code :eq)))
-   (cond ((< (nfix x) (nfix y)) (mv :ok :lt)) ((< (nfix y) (nfix x)) (mv :ok :gt))
-         (t (fn2-run-octets-loop (- n 1) (+ 1 i) aslot agen aoff bslot bgen boff ak as ag bk bs bg fn2-pool))))))
+; A key's octet fields are at most this long, so one key comparison stays
+; inside a run's 4096-byte quantum.
+(defconst *fn2-run-key-octets-max* 512)
+; Lexicographic order of two pool ranges, each read under its own owner:
+; A's fn2-pool-compare over the common prefix, then the shorter first.
 (defun fn2-run-octets-compare (aslot agen aoff alen bslot bgen boff blen ak as ag bk bs bg fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
- (if (not (and (natp aoff) (natp boff) (natp alen) (natp blen)
-               (<= alen *fn2-run-compare-max*) (<= blen *fn2-run-compare-max*)))
+ (if (not (and (natp aoff) (natp boff) (natp alen) (natp blen)))
      (mv :bounds :eq)
-  (mv-let (code order) (fn2-run-octets-loop (min alen blen) 0 aslot agen aoff bslot bgen boff ak as ag bk bs bg fn2-pool)
+  (mv-let (code result at)
+    (fn2-pool-compare aslot agen aoff ak as ag bslot bgen boff bk bs bg (min alen blen) fn2-pool)
+   (declare (ignore at))
    (cond ((not (eq code :ok)) (mv code :eq))
-         ((not (eq order :eq)) (mv :ok order))
+         ((eq result :less) (mv :ok :lt)) ((eq result :greater) (mv :ok :gt))
          ((< alen blen) (mv :ok :lt)) ((< blen alen) (mv :ok :gt)) (t (mv :ok :eq))))))
 (defun fn2-run-octets-field-compare (a b ak as ag bk bs bg fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -418,6 +415,7 @@
                          (fn2-fields-ref-slot b fn2-fields) (fn2-fields-ref-gen b fn2-fields)
                          (fn2-fields-ref-off b fn2-fields) (fn2-fields-ref-len b fn2-fields)
                          ak as ag bk bs bg fn2-pool))
+(in-theory (disable fn2-run-octets-compare fn2-run-octets-field-compare))
 (defun fn2-run-value-compare (a b fn2-fields)
  (declare (xargs :stobjs fn2-fields
   :guard (and (fn2-fields-wfp fn2-fields) (natp a) (natp b)
@@ -454,7 +452,7 @@
        (mv :ok fn2-run-writers))
    (let ((fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-failed* fn2-run-writers)))
     (mv (if (eq code :ok) :bounds code) fn2-run-writers)))))
-(fn2-run-writers-preserves fn2-run-add-commit (w code end fn2-run-writers) :position 1
+(fn2-run-writers-preserves fn2-run-add-commit (w code end fn2-run-writers) :position 1 :raw-rows t
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (in-theory (disable fn2-run-roomp))
 (defthm fn2-run-restart-offset-natp
@@ -632,3 +630,18 @@
    (if (eq code :more)
        (fn2-run-adapter-drive kind (- fuel 1) fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
      (mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))))
+; Spec values of the decoded entry at field row ROW (logic adapter).
+(defun fn2-run-unload-values (layout row fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
+ (if (atom layout) nil
+  (let* ((k (cadar layout)) (v (fn2-fields-value row fn2-fields))
+         (bytes (fn2-run-read-bytes (fn2-fields-ref-len row fn2-fields) (fn2-fields-ref-slot row fn2-fields)
+                                    (fn2-fields-ref-gen row fn2-fields) (fn2-fields-ref-off row fn2-fields) 9 0 1 fn2-pool)))
+   (cons (cond ((eq k :digest) (cons v bytes)) ((and (consp k) (eq (car k) :octets)) bytes) (t v))
+         (fn2-run-unload-values (cdr layout) (+ 1 row) fn2-fields fn2-pool)))))
+; The entry whose key equals Q's, or :absent.
+(defun fn2-run-key-lookup-spec (key entries q)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom entries) (list :absent nil))
+       ((eq (fn2-run-key-order-spec key (car entries) q) :eq) (list :found (car entries)))
+       (t (fn2-run-key-lookup-spec key (cdr entries) q))))

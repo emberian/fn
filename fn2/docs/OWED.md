@@ -12,7 +12,7 @@ Cases are proof obligations, not independent semantic guarantees. Turn compositi
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
 
-Requirements: 289; bound statements: 284; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+Requirements: 291; bound statements: 286; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
 
 ## Correspondence / owner: `(:COLUMNS FN2-POOL)`
 
@@ -1882,6 +1882,18 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-NUM-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER)) (ARTICLE (:ID ARTICLE))) Q)) (EQUAL (FN2-RT-NUM-SEEK-IMAGE META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q 0)))` | `(FN2-RT-NUM-SEEK-LOWER-BOUND-POSITIVE FN2-RT-NUM-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
 
+## Correspondence / owner: `(:SQUARE FN2-RT-NUM-RUN-LOOKUP-EXACT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-NUM-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-NUM-ENTRY* '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-NUM-ENTRY* Q)) (EQUAL (FN2-RT-NUM-RUN-LOOKUP-IMAGE ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((GROUP (:ID GROUP)) (NUMBER (:ID GROUP-NUMBER))) ENTRIES Q)))` | `(FN2-RT-NUM-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-NUM-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
 ## Correspondence / owner: `(:SQUARE FN2-RT-MID-ENTRY-ROUNDTRIP)`
 
 Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
@@ -1977,3 +1989,15 @@ Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows
 | Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FN2-RT-MID-SEEK-LOWER-BOUND` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-PAGE-INPUTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) META ENTRIES) (FN2-RUN-VALUES-LAYOUTP '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST) (ARTICLE (:ID ARTICLE))) Q)) (EQUAL (FN2-RT-MID-SEEK-IMAGE META ENTRIES Q) (FN2-RUN-LOWER-BOUND-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q 0)))` | `(FN2-RT-MID-SEEK-LOWER-BOUND-POSITIVE FN2-RT-MID-SEEK-LOWER-BOUND-NEGATIVE)` | The real page seek returns the first entry whose key is at least the query, and whether it is equal. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |
+
+## Correspondence / owner: `(:SQUARE FN2-RT-MID-RUN-LOOKUP-EXACT)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+### Case source / schema: `(NIL :ASSERTION)`
+
+Requirements: 1; bound statements: 1; admitted proofs: 0; check coverage: 0 rows with a passing, exercised check.
+
+| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `FN2-RT-MID-RUN-LOOKUP-EXACT` | :OWED | :ASSERTION | `(IMPLIES (AND (FN2-RUN-RUN-INPUTP *FN2-RT-MID-ENTRY* '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES LIMIT) (FN2-RUN-VALUES-LAYOUTP *FN2-RT-MID-ENTRY* Q)) (EQUAL (FN2-RT-MID-RUN-LOOKUP-IMAGE ENTRIES LIMIT Q) (FN2-RUN-KEY-LOOKUP-SPEC '((MESSAGE-ID (:OCTETS 250)) (CONTENT :DIGEST)) ENTRIES Q)))` | `(FN2-RT-MID-RUN-LOOKUP-EXACT-POSITIVE FN2-RT-MID-RUN-LOOKUP-EXACT-NEGATIVE)` | A run built through the real build entry points and searched through the real cursor steps finds the entry whose key equals the query, and only that; otherwise it answers :absent. | `NIL` | `NIL` | `:SEMANTIC` | `NIL` | `NIL` |

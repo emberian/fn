@@ -1,7 +1,7 @@
 ; Layer C1 unit: one run page written, sealed by B's sealer, accepted by B's
 ; checker, refused after a flipped byte, and searched by the generated seek.
 (in-package "ACL2")
-(include-book "../books/runs-schema")
+(include-book "../books/runs")
 (include-book "std/util/bstar" :dir :system)
 
 (defrunschema fn2-rt-num :id 900
@@ -114,7 +114,7 @@
       ((mv code slot gen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :reserve code)))
       ((mv code fn2-run-writers fn2-pool)
-       (fn2-run-open 0 slot gen 900 1 0 7 0 *page-kind-run-data* 5 2 3 1 1 9 0 1 *fn2-rt-writer-base* fn2-run-writers fn2-pool))
+       (fn2-run-open 0 slot gen 900 1 0 7 0 *page-kind-run-data* 5 2 3 1 1 9 0 1 *fn2-rt-writer-base* *fn2-run-page-size* fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :open code)))
       ((mv add count fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rt-num-add-loop (if (zp n) 100000 n) 0 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
@@ -228,7 +228,7 @@
       ((mv & src sgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
       ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 1 10 0 1 fn2-pool))
       ((mv code fn2-run-writers fn2-pool)
-       (fn2-run-open 0 slot gen 901 1 0 8 0 *page-kind-run-data* 6 2 4 1 1 9 0 1 *fn2-rt-writer-base* fn2-run-writers fn2-pool))
+       (fn2-run-open 0 slot gen 901 1 0 8 0 *page-kind-run-data* 6 2 4 1 1 9 0 1 *fn2-rt-writer-base* *fn2-run-page-size* fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :open code)))
       ((mv add count off fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rt-mid-add-loop n 0 src sgen 0 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
@@ -333,5 +333,53 @@
        (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 2)) 0)
        (list (fn2-rt-mid-octets 19) (cons 1 (make-list 32 :initial-element 1)) 0)
        (list (fn2-rt-mid-octets 20) (cons 1 (make-list 32 :initial-element 0)) 0)
+       (list nil (cons 1 (make-list 32 :initial-element 0)) 0))
+ (nth 10 *fn2-rt-mid-good*))
+
+; Multi-page runs through the real build and lookup entry points. 3,000
+; numeric entries at a 400-byte fill: present, absent between, before and
+; after; and a run of one entry.
+(defconst *fn2-rt-num-3000* (fn2-rt-num-entries 0 3000))
+(assert-event
+ (equal (list (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 2 0))
+              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 6000 0))
+              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 3000 0))
+              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 3001 0))
+              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(1 6001 0))
+              (fn2-rt-num-run-lookup-image *fn2-rt-num-3000* 400 '(0 9 0))
+              (fn2-rt-num-run-lookup-image (fn2-rt-num-entries 0 1) 400 '(1 2 0))
+              (fn2-rt-num-run-lookup-image (fn2-rt-num-entries 0 1) 400 '(1 4 0)))
+        '((:found (1 2 100)) (:found (1 6000 3099)) (:found (1 3000 1599)) (:absent nil)
+          (:absent nil) (:absent nil) (:found (1 2 100)) (:absent nil))))
+
+; Run-lookup teeth. Positive: inhabited premise (checked), every query in a
+; list agrees with the spec. Negative: without sortedness the conclusion fails.
+(defmacro fn2-rt-run-teeth (name key good bad limit queries badq)
+ (let ((entry (fn2-columns-sym name "-ENTRY")) (image (fn2-columns-sym name "-RUN-LOOKUP-IMAGE")))
+  `(progn
+    (defun ,(fn2-columns-sym name "-RUN-LOOKUPS-HOLD") (qs)
+     (declare (xargs :verify-guards nil))
+     (or (atom qs)
+         (and (fn2-run-values-layoutp ,(fn2-codec-constant entry "") (car qs))
+              (equal (,image ,good ,limit (car qs)) (fn2-run-key-lookup-spec ',key ,good (car qs)))
+              (,(fn2-columns-sym name "-RUN-LOOKUPS-HOLD") (cdr qs)))))
+    (defun ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT-POSITIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (fn2-run-run-inputp ,(fn2-codec-constant entry "") ',key ,good ,limit)
+          (,(fn2-columns-sym name "-RUN-LOOKUPS-HOLD") ,queries)))
+    (defun ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT-NEGATIVE") ()
+     (declare (xargs :verify-guards nil))
+     (and (not (fn2-run-run-inputp ,(fn2-codec-constant entry "") ',key ,bad ,limit))
+          (not (equal (,image ,bad ,limit ,badq) (fn2-run-key-lookup-spec ',key ,bad ,badq)))))
+    (fn2-assert-owed-teeth ,(fn2-columns-sym name "-RUN-LOOKUP-EXACT")))))
+(defconst *fn2-rt-num-64* (fn2-rt-num-entries 0 64))
+(fn2-rt-run-teeth fn2-rt-num ((group (:id group)) (number (:id group-number)))
+ *fn2-rt-num-64* (append (list (nth 5 *fn2-rt-num-64*)) (take 5 *fn2-rt-num-64*) (nthcdr 6 *fn2-rt-num-64*)) 400
+ '((1 2 0) (1 3 0) (1 64 0) (1 128 0) (1 129 0) (1 0 0) (0 7 0) (2 2 0)) '(1 40 0))
+(fn2-rt-run-teeth fn2-rt-mid ((message-id (:octets 250)) (content :digest))
+ *fn2-rt-mid-good* *fn2-rt-mid-bad* 1024
+ (list (nth 0 *fn2-rt-mid-good*) (nth 17 *fn2-rt-mid-good*) (nth 39 *fn2-rt-mid-good*)
+       (list (fn2-rt-mid-octets 7) (cons 1 (make-list 32 :initial-element 2)) 0)
+       (list (fn2-rt-mid-octets 25) (cons 1 (make-list 32 :initial-element 0)) 0)
        (list nil (cons 1 (make-list 32 :initial-element 0)) 0))
  (nth 10 *fn2-rt-mid-good*))
