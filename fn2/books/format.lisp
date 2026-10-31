@@ -15,6 +15,7 @@
     (list 'frame-trailer *fn2-format-frame-trailer*)
     (list 'maintenance-header *fn2-format-maintenance-header*)
     (list 'record-header *fn2-format-record-header*)
+    (list 'txn-record *fn2-format-txn-record*)
     (list 'operation-header *fn2-format-operation-header*)
     (list 'article-acceptance *fn2-format-article-acceptance*)
     (list 'cursor-advance *fn2-format-cursor-advance*)

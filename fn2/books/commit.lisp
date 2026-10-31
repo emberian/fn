@@ -9,6 +9,12 @@
 ; *fn2-commit-no-extent* is the resource reader's not-u32 extent, which every
 ; caller's u32 check turns into its own stop.
 (defconst *fn2-commit-no-extent* 4294967296)
+; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
+; record frames; the records frame's payload bounds a batch's records, each
+; counted at its largest sealed size (header 83 octets plus its body).
+(defconst *fn2-commit-txn-records-max* 8)
+(defconst *fn2-commit-records-room* 3900)
+(defconst *fn2-commit-txn-header-room* 83)
 (defmacro fn2-commit-require (ok reason)
  `(if ,ok fn2-core (fn2-core-stop ,reason fn2-core)))
 (defmacro fn2-commit-stop-arm (reason)
@@ -122,6 +128,9 @@
    ,(fn2-commit-hook-form 'fn2-runs-install '(schema batch slot gen okind oslot ogen fn2-core))
    ,(fn2-commit-hook-form 'fn2-successor-publish '(batch fn2-core))
    ,(fn2-commit-hook-form 'fn2-successor-drop '(batch fn2-core))
+   ; E's served consumer (K4b): wake the consumer waits whose streams the
+   ; published batch touched; unattached, nothing parks on a stream.
+   ,(fn2-commit-hook-form 'fn2-commit-stream-wake '(batch fn2-core))
    ,(fn2-commit-hook-form 'fn2-member-replay '(batch event slot gen len okind oslot ogen fn2-core))))
 (defun fn2-commit-event-forms ()
  (list* 'progn (fn2-commit-local-theory) '(
@@ -457,6 +466,209 @@
   (if (fn2-commit-idp id fn2-core) (mv :ok id (fn2-machine-batch-no id fn2-core) key fn2-core)
    (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 0 fn2-core)))))
 (fn2-core-preserves fn2-commit-admit-keyed (n mode okind oslot ogen fn2-core) :position 4 :rows nil)
+; B-S2 S2: decode one record frame of a transaction workspace (owned by OKIND
+; OSLOT OGEN) at OFF, into the fields stripe at BASE: (mv code rkind len next).
+(defun fn2-commit-txn-frame (base slot gen off end okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+  (code rkind len next fn2-fields)
+  (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+           (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
+           (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+   (mv-let (code next fn2-fields)
+    (fn2-format-txn-record-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+    (mv code (fn2-fields-value (+ base *fn2-format-txn-record-field-record-kind*) fn2-fields)
+        (fn2-fields-value (+ base *fn2-format-txn-record-field-length*) fn2-fields) next fn2-fields))
+   (mv :bounds 0 0 0 fn2-fields))
+  (mv code (nfix rkind) (nfix len) (nfix next) fn2-core)))
+(fn2-core-preserves fn2-commit-txn-frame (base slot gen off end okind oslot ogen fn2-core) :position 4 :rows nil)
+(defthm fn2-commit-txn-frame-natp-1
+ (natp (mv-nth 1 (fn2-commit-txn-frame base slot gen off end okind oslot ogen fn2-core)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame))))
+(defthm fn2-commit-txn-frame-natp-2
+ (natp (mv-nth 2 (fn2-commit-txn-frame base slot gen off end okind oslot ogen fn2-core)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame))))
+(defthm fn2-commit-txn-frame-natp-3
+ (natp (mv-nth 3 (fn2-commit-txn-frame base slot gen off end okind oslot ogen fn2-core)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame))))
+(in-theory (disable fn2-commit-txn-frame))
+; A body in its kind's encoding, exactly [OFF, END). Each kind is admitted with
+; its producer (D46): :article-acceptance with D's POST transaction.
+(defun fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (equal rkind *record-kind-article-acceptance*)) (mv :kind fn2-core)
+  (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+   (code fn2-fields)
+   (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+            (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
+            (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+    (mv-let (code next fn2-fields)
+     (fn2-format-article-acceptance-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+     (mv (if (and (eq code :ok) (equal next end)) :ok :body) fn2-fields))
+    (mv :bounds fn2-fields))
+   (mv code fn2-core))))
+(fn2-core-preserves fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-commit-txn-body))
+; Every frame of [OFF, END) with its body: (mv code count need), NEED the
+; largest sealed size of its records. The workspace is read where it is,
+; never cached (D's amendment 1).
+(defun fn2-commit-txn-scan (left base slot gen off end okind oslot ogen count need fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix left) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp off) (natp end) (natp count) (natp need))))
+ (cond ((>= (nfix off) (nfix end))
+        (mv (if (and (posp count) (equal (nfix off) (nfix end))) :ok :admission) (nfix count) (nfix need) fn2-core))
+       ((zp left) (mv :admission (nfix count) (nfix need) fn2-core))
+       (t (b* (((mv code rkind len next fn2-core) (fn2-commit-txn-frame base slot gen off end okind oslot ogen fn2-core))
+               ((unless (and (eq code :ok) (< next end) (<= (+ next len) (nfix end)))) (mv :admission (nfix count) (nfix need) fn2-core))
+               ((mv code fn2-core) (fn2-commit-txn-body rkind base slot gen next (+ next len) okind oslot ogen fn2-core))
+               ((unless (eq code :ok)) (mv :admission (nfix count) (nfix need) fn2-core)))
+           (fn2-commit-txn-scan (- left 1) base slot gen (+ next len) end okind oslot ogen (+ 1 (nfix count))
+                                (+ (nfix need) *fn2-commit-txn-header-room* len) fn2-core)))))
+(defthm fn2-commit-txn-scan-shape
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+  (and (fn2-corep (mv-nth 3 (fn2-commit-txn-scan left base slot gen off end okind oslot ogen count need fn2-core)))
+       (fn2-core-wfp (mv-nth 3 (fn2-commit-txn-scan left base slot gen off end okind oslot ogen count need fn2-core)))
+       (natp (mv-nth 1 (fn2-commit-txn-scan left base slot gen off end okind oslot ogen count need fn2-core)))
+       (natp (mv-nth 2 (fn2-commit-txn-scan left base slot gen off end okind oslot ogen count need fn2-core))))))
+(in-theory (disable fn2-commit-txn-scan))
+(verify-guards fn2-commit-txn-scan :guard-debug t)
+; One :txn member row at M of ROW with a reserved settled row for its owner.
+(defun fn2-commit-put-txn-member (row m slot gen len okind oslot ogen event fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp row) (natp m))))
+ (b* ((r (+ (* *fn2-commit-members-per-batch* row) m))
+      ((mv code settled fn2-core)
+       (stobj-let ((fn2-commit-settled (fn2-core-commit-settled fn2-core)))
+        (code settled fn2-commit-settled) (fn2-cs-reserve okind oslot ogen fn2-commit-settled)
+        (mv code settled fn2-core)))
+      ((unless (eq code :ok)) (mv code fn2-core)))
+  (stobj-let ((fn2-commit-member (fn2-core-commit-members fn2-core))) (code fn2-commit-member)
+   (if (and (< r (fn2-commit-member-rows fn2-commit-member)) (unsigned-byte-p 32 r)
+            (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 32 len)
+            (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot)
+            (unsigned-byte-p 60 ogen) (unsigned-byte-p 60 event) (unsigned-byte-p 32 settled))
+       (let ((fn2-commit-member (fn2-commit-member-put r (kind *fn2-commit-member-kind-txn*) (slot slot) (gen gen) (len len)
+                                  (okind okind) (oslot oslot) (ogen ogen) (entries 0) (entry-bytes 0)
+                                  (schema 0) (event event) (settled settled))))
+        (mv :ok fn2-commit-member))
+    (mv :bounds fn2-commit-member))
+   (mv code fn2-core))))
+(fn2-core-preserves fn2-commit-put-txn-member (row m slot gen len okind oslot ogen event fn2-core) :position 1 :rows nil)
+; A member joining batch BATCH: the batch's root row and the frontier grow by one.
+(defun fn2-commit-root-grow (batch fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (ok fn2-commit-root)
+  (if (and (posp batch) (< batch (fn2-commit-root-rows fn2-commit-root))
+           (unsigned-byte-p 32 (+ 1 (fn2-commit-root-members batch fn2-commit-root)))
+           (unsigned-byte-p 60 (+ 1 (fn2-commit-root-first-key 0 fn2-commit-root))))
+   (let* ((members (+ 1 (fn2-commit-root-members batch fn2-commit-root)))
+          (frontier (+ 1 (fn2-commit-root-first-key 0 fn2-commit-root)))
+          (fn2-commit-root (fn2-commit-root-set-members batch members fn2-commit-root))
+          (fn2-commit-root (fn2-commit-root-set-first-key 0 frontier fn2-commit-root)))
+    (mv t fn2-commit-root))
+   (mv nil fn2-commit-root))
+  (fn2-commit-require ok *fn2-stop-reason-commit-root*)))
+(fn2-core-preserves fn2-commit-root-grow (batch fn2-core) :rows nil :prefix "")
+; B-S2 S1: admit a transaction member: (mv code batch event fn2-core), code
+; :ok (the member is in the open collector at EVENT, its commit position),
+; :exhausted (backpressure; nothing changed) or :admission (the workspace
+; does not decode; nothing changed). A free row opens a batch that stays open
+; (cb-open) until its collect arm runs; members admitted meanwhile join it.
+(defun fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (posp len) (<= len *fn2-commit-records-room*) (unsigned-byte-p 32 slot)
+                    (unsigned-byte-p 60 gen) (posp okind) (unsigned-byte-p 8 okind)
+                    (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+       (mv :admission 0 0 fn2-core))
+      ((mv pick id partner) (fn2-commit-pick fn2-core))
+      ((when (eq pick :exhausted)) (mv :exhausted 0 0 fn2-core))
+      ((unless (fn2-commit-settled-room 1 fn2-core)) (mv :exhausted 0 0 fn2-core))
+      ((unless (fn2-commit-idp id fn2-core))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
+      (base (* 128 (fn2-commit-row id fn2-core)))
+      ((mv code & need fn2-core)
+       (fn2-commit-txn-scan *fn2-commit-txn-records-max* base slot gen 0 len okind oslot ogen 0 0 fn2-core))
+      ((unless (eq code :ok)) (mv :admission 0 0 fn2-core))
+      ((unless (<= need *fn2-commit-records-room*)) (mv :admission 0 0 fn2-core))
+      ((unless (fn2-commit-idp id fn2-core))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
+      ((when (eq pick :open))
+       (b* (((mv & key & mode) (fn2-commit-frontier fn2-core))
+            ((mv code fn2-core) (fn2-commit-start id 1 (nfix key) mode partner fn2-core))
+            ((unless (eq code :ok)) (mv (if (eq code :exhausted) :exhausted :admission) 0 0 fn2-core))
+            ((unless (fn2-commit-idp id fn2-core))
+             (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
+            ((mv code fn2-core) (fn2-commit-put-txn-member (fn2-commit-row id fn2-core) 0 slot gen len okind oslot ogen (nfix key) fn2-core))
+            ((unless (eq code :ok))
+             (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))) (mv :admission 0 0 fn2-core)))
+            ((unless (fn2-commit-idp id fn2-core))
+             (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
+            (batch (fn2-machine-batch-no id fn2-core))
+            (fn2-core (fn2-commit-put-core id (cb-open 1) (rec-bytes need))))
+        (mv :ok batch (nfix key) fn2-core)))
+      ; :join: the open collector takes one more member.
+      (m (fn2-machine-member-count id fn2-core))
+      (used (fn2-machine-rec-bytes id fn2-core))
+      ((unless (and (< m *fn2-commit-members-per-batch*) (<= (+ used need) *fn2-commit-records-room*)))
+       (mv :exhausted 0 0 fn2-core))
+      (batch (fn2-machine-batch-no id fn2-core))
+      (event (+ (fn2-machine-first-key id fn2-core) m))
+      ((mv code fn2-core) (fn2-commit-put-txn-member (fn2-commit-row id fn2-core) m slot gen len okind oslot ogen event fn2-core))
+      ((unless (eq code :ok))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))) (mv :admission 0 0 fn2-core)))
+      (fn2-core (fn2-commit-root-grow batch fn2-core))
+      ((unless (fn2-commit-idp id fn2-core))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
+      (fn2-core (fn2-commit-put-core id (member-count (+ 1 m)) (rec-bytes (+ used need)))))
+  (mv :ok batch event fn2-core)))
+(fn2-core-preserves fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core) :position 3 :rows nil)
+; B-S2 S9: the article's source reference from an admitted workspace's first
+; :article-acceptance record, for the transaction to bind into fn2-article's
+; location: (mv code physical-unit writer-epoch allocation encoded-length).
+; It decodes on recovery's stripe (row 2), idle once the node serves.
+(defun fn2-commit-txn-source (slot gen len okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* ((base 256)
+      ((mv code rkind blen next fn2-core) (fn2-commit-txn-frame base slot gen 0 len okind oslot ogen fn2-core))
+      ((unless (and (eq code :ok) (equal rkind *record-kind-article-acceptance*) (natp len) (<= (+ next blen) len)))
+       (mv :none 0 0 0 0 fn2-core)))
+  (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+   (code pu epoch alloc elen fn2-fields)
+   (if (and (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+            (unsigned-byte-p 32 next) (unsigned-byte-p 32 (+ next blen)) (unsigned-byte-p 8 okind)
+            (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+    (mv-let (code end fn2-fields)
+     (fn2-format-article-acceptance-decode base slot gen next (+ next blen) okind oslot ogen fn2-fields fn2-pool)
+     (declare (ignore end))
+     (mv code
+         (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-physical-unit*) fn2-fields)
+         (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-writer-epoch*) fn2-fields)
+         (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-allocation*) fn2-fields)
+         (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-encoded-length*) fn2-fields)
+         fn2-fields))
+    (mv :bounds 0 0 0 0 fn2-fields))
+   (mv code (nfix pu) (nfix epoch) (nfix alloc) (nfix elen) fn2-core))))
+(fn2-core-preserves fn2-commit-txn-source (slot gen len okind oslot ogen fn2-core) :position 5 :rows nil)
+; B-S2 S10: read [OFF, OFF+LEN) of a stored reference (physical unit, writer
+; epoch, allocation) into the caller's lease. The allocation handle must still
+; name the unit's extent (:stale otherwise); the read result arrives as the
+; caller's :read-result. (mv code slot gen fn2-core), as fn2-issue-read's.
+(defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (natp pu) (natp off) (natp len) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)))
+       (mv :bounds 0 0 fn2-core))
+      (code (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code)
+             (fn2-alloc-handle-code (floor pu *fn2-commit-write-resources*) epoch alloc fn2-extents) code))
+      ((unless (eq code :ok)) (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-core))
+      ((mv code slot gen fn2-core)
+       (fn2-issue-read (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal fn2-core)))
+  (mv (cond ((eq code :ok) :ok) ((eq code :exhausted) :exhausted) (t :bounds)) slot gen fn2-core)))
+(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core) :position 3 :rows nil)
+; The read's completion: every requested octet arrived (:ok) or not (:io).
+; Until D4 3/n names payload blocks by content there is no block hash to
+; check here; a stored reference's expected hash is checked then.
+(defun fn2-block-read-done (bytes len)
+ (declare (xargs :guard t))
+ (if (and (natp bytes) (natp len) (equal bytes len)) :ok :io))
 ; The owner's settled outcome (b54 M6): (mv code batch event outcome fn2-core),
 ; :ok (the row is freed), :pending or :none.
 (defun fn2-commit-take (okind oslot ogen fn2-core)
@@ -470,6 +682,44 @@
 ; edges, refusal, and the collect and seal arms.
 (defun fn2-commit-event-forms-1b ()
  (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
+; B-S2 S6: the :batch-membership wait kind's source (machines-b's defwait). A
+; transaction answered :exhausted parks with that wait; the source is ready
+; when a batch could take a member (an open collector or a free row, and a
+; free settled row) and a row is parked, and its grant clears the first
+; parked row's wait. The scan visits rows in id order and stops at the first
+; id past the directory.
+(defun fn2-commit-batch-waiter (i left fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix left) :guard (and (fn2-core-wfp fn2-core) (natp i) (natp left))))
+ (cond ((zp left) *fn2-none*)
+       ((not (fn2-machine-idp i fn2-core)) *fn2-none*)
+       ((and (eq (fn2-machine-wait-reason-read-code i fn2-core) :ok)
+             (equal (fn2-machine-wait-reason i fn2-core) *fn2-wait-batch-membership*)) i)
+       (t (fn2-commit-batch-waiter (+ 1 (nfix i)) (- left 1) fn2-core))))
+(defun fn2-commit-batchable-ready (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (pick id partner) (fn2-commit-pick fn2-core)
+  (declare (ignore id partner))
+  (and (not (eq pick :exhausted)) (fn2-commit-settled-room 1 fn2-core)
+       (not (equal (fn2-commit-batch-waiter 0 65536 fn2-core) *fn2-none*)))))
+(defun fn2-commit-batchable-grant (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (fn2-commit-batchable-ready fn2-core)
+     (let* ((id (fn2-commit-batch-waiter 0 65536 fn2-core))
+            (fn2-core (fn2-machine-write-wait-reason id *fn2-wait-none* fn2-core)))
+      (mv id fn2-core))
+  (mv *fn2-none* fn2-core)))
+(fn2-core-preserves fn2-commit-batchable-grant (fn2-core) :position 1 :rows nil)
+(defthm fn2-commit-batchable-grant-live
+ (implies (fn2-commit-batchable-ready fn2-core)
+          (not (equal (mv-nth 0 (fn2-commit-batchable-grant fn2-core)) *fn2-none*)))
+ :hints (("Goal" :in-theory (e/d (fn2-commit-batchable-grant fn2-commit-batchable-ready)
+                                 (fn2-commit-batch-waiter fn2-commit-pick fn2-commit-settled-room fn2-machine-write-wait-reason)))))
+(defthm fn2-commit-batchable-grant-type
+ (and (consp (fn2-commit-batchable-grant fn2-core)) (true-listp (fn2-commit-batchable-grant fn2-core)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn2-commit-batchable-grant) (fn2-commit-batchable-ready fn2-machine-write-wait-reason)))))
+(in-theory (disable fn2-commit-batch-waiter fn2-commit-batchable-ready fn2-commit-batchable-grant))
+(defattach (fn2-batchable-ready-p fn2-commit-batchable-ready) (fn2-batchable-grant-one fn2-commit-batchable-grant))
 (defun fn2-commit-root-edge (id install fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
@@ -746,6 +996,61 @@
 ; A stage performs at most one 4 KiB fill/hash or one record encoding.
 ; The packing cursor holds the seal start after record packing has finished;
 ; these disjoint lifetimes keep the generated snapshot within ACL2's 32 values.
+; B-S2 S4: a member's records copied verbatim from its owner's workspace
+; (owner FKIND FID FGEN) into the commit row's frame, octet by octet until A's
+; cross-owner range copy exists (departure B-TXN-COPY; fn2-core-copy-range
+; copies within one owner only).
+(defun fn2-commit-copy-in (left dst dg off from fg at fkind fid fgen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix left)
+  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp off) (natp at))))
+ (if (zp left) (mv :ok fn2-core)
+  (b* (((mv code byte) (fn2-core-read from fg at fkind fid fgen fn2-core))
+       ((unless (eq code :ok)) (mv code fn2-core))
+       ((mv code fn2-core) (fn2-core-write dst dg off byte *fn2-commit-kind* id ogen fn2-core)))
+   (if (eq code :ok) (fn2-commit-copy-in (- left 1) dst dg (+ off 1) from fg (+ at 1) fkind fid fgen id ogen fn2-core)
+    (mv code fn2-core)))))
+(fn2-core-preserves fn2-commit-copy-in (left dst dg off from fg at fkind fid fgen id ogen fn2-core) :position 1 :rows nil)
+; The workspace of member row R: (mv ok kind slot gen len okind oslot ogen).
+(defun fn2-commit-member-ws (r fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-commit-member (fn2-core-commit-members fn2-core))) (ok kind slot gen len okind oslot ogen)
+  (if (< (nfix r) (fn2-commit-member-rows fn2-commit-member))
+      (mv t (fn2-commit-member-kind (nfix r) fn2-commit-member) (fn2-commit-member-slot (nfix r) fn2-commit-member)
+          (fn2-commit-member-gen (nfix r) fn2-commit-member) (fn2-commit-member-len (nfix r) fn2-commit-member)
+          (fn2-commit-member-okind (nfix r) fn2-commit-member) (fn2-commit-member-oslot (nfix r) fn2-commit-member)
+          (fn2-commit-member-ogen (nfix r) fn2-commit-member))
+    (mv nil 0 0 0 0 0 0 0))
+  (mv ok kind slot gen len okind oslot ogen)))
+(in-theory (disable fn2-commit-member-ws))
+; Each record of a member's workspace [WOFF, WEND) as a record header at the
+; member's EVENT and its body verbatim, from CURSOR: (mv code end).
+(defun fn2-commit-seal-txn (left id base wslot wgen woff wend okind oslot ogen event dst dg cursor fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix left) :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp woff) (natp wend) (natp cursor))))
+ (cond ((>= (nfix woff) (nfix wend)) (mv :ok (nfix cursor) fn2-core))
+       ((zp left) (mv :state (nfix cursor) fn2-core))
+       ((not (fn2-commit-idp id fn2-core)) (mv :state (nfix cursor) fn2-core))
+       (t (b* ((ogen-self (fn2-machine-generation id fn2-core))
+               (scratch (fn2-machine-pool-slot id fn2-core)) (sg (fn2-machine-pool-gen id fn2-core))
+               ((mv code rkind len next fn2-core) (fn2-commit-txn-frame base wslot wgen woff wend okind oslot ogen fn2-core))
+               ((unless (and (eq code :ok) (<= (+ next len) (nfix wend)))) (mv :state (nfix cursor) fn2-core))
+               ((mv code end fn2-core)
+                (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+                 (code end fn2-fields fn2-pool)
+                 (fn2-commit-pack-txn-header rkind event base dst dg cursor scratch sg *fn2-commit-kind* id ogen-self fn2-fields fn2-pool)
+                 (mv code end fn2-core)))
+               ((unless (eq code :ok)) (mv code (nfix cursor) fn2-core))
+               ((mv code fn2-core) (fn2-commit-copy-in len dst dg (nfix end) wslot wgen next okind oslot ogen id ogen-self fn2-core))
+               ((unless (eq code :ok)) (mv code (nfix cursor) fn2-core)))
+           (fn2-commit-seal-txn (- left 1) id base wslot wgen (+ next len) wend okind oslot ogen event dst dg
+                                (+ (nfix end) len) fn2-core)))))
+(defthm fn2-commit-seal-txn-shape
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+  (and (fn2-corep (mv-nth 2 (fn2-commit-seal-txn left id base wslot wgen woff wend okind oslot ogen event dst dg cursor fn2-core)))
+       (fn2-core-wfp (mv-nth 2 (fn2-commit-seal-txn left id base wslot wgen woff wend okind oslot ogen event dst dg cursor fn2-core)))
+       (natp (mv-nth 1 (fn2-commit-seal-txn left id base wslot wgen woff wend okind oslot ogen event dst dg cursor fn2-core))))))
+(in-theory (disable fn2-commit-seal-txn))
+(verify-guards fn2-commit-seal-txn :guard-debug t)
 (defun fn2-commit-seal-step (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
@@ -776,10 +1081,18 @@
   ((= stage *fn2-commit-seal-stage-records*)
    (b* ((index (fn2-machine-cb-issued id fn2-core))
         (members (fn2-machine-member-count id fn2-core))
-        ((mv code end fn2-core) (fn2-commit-pack-core id :record-header 1 index (fn2-machine-cb-cursor id fn2-core) fn2-core))
+        (cursor (fn2-machine-cb-cursor id fn2-core))
+        ((mv & mkind wslot wgen wlen okind oslot wogen)
+         (fn2-commit-member-ws (+ (* *fn2-commit-members-per-batch* (fn2-commit-row id fn2-core)) (nfix index)) fn2-core))
+        ((mv code end fn2-core)
+         (if (equal mkind *fn2-commit-member-kind-txn*)
+             (fn2-commit-seal-txn *fn2-commit-txn-records-max* id (* 128 (fn2-commit-row id fn2-core)) wslot wgen 0 (nfix wlen)
+                                  okind oslot wogen (+ (fn2-machine-first-key id fn2-core) (nfix index)) slot gen cursor fn2-core)
+          (b* (((mv code end fn2-core) (fn2-commit-pack-core id :record-header 1 index cursor fn2-core))
+               ((unless (eq code :ok)) (mv code end fn2-core)))
+           (fn2-commit-pack-core id :record 1 index end fn2-core))))
         ((unless (eq code :ok)) (mv code fn2-core))
-        ((mv code end fn2-core) (fn2-commit-pack-core id :record 1 index end fn2-core))
-        ((unless (eq code :ok)) (mv code fn2-core))
+        ((unless (fn2-commit-idp id fn2-core)) (mv :state fn2-core))
         (fn2-core (fn2-commit-put-core id (cb-cursor end) (cb-issued (+ 1 index)))))
     (mv (if (< (+ 1 index) members) :more :ok) fn2-core)))
   ((or (= stage *fn2-commit-seal-stage-hash-records*) (= stage *fn2-commit-seal-stage-hash-seal-frame*)) (fn2-commit-format-core id :frame role 0 *fn2-commit-unit-bytes* fn2-core))
@@ -1174,8 +1487,11 @@
     (if (not (eq code :ok))
      (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-publish* fn2-core)))
       (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-     (let ((fn2-core (fn2-commit-put-core id (cb-published 1) (phase *fn2-commit-state-notify*))))
-      (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))))))
+     (mv-let (code fn2-core) (fn2-commit-stream-wake row-batch-no fn2-core)
+      (if (not (member-eq code '(:ok :unregistered)))
+       (fn2-commit-stop-arm *fn2-stop-reason-commit-publish*)
+       (let ((fn2-core (fn2-commit-put-core id (cb-published 1) (phase *fn2-commit-state-notify*))))
+        (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))))))))
 
 (defmachine-callback fn2-commit-notify fn2-commit (id budget) 4
  (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
