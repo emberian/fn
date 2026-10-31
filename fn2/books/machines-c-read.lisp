@@ -28,9 +28,10 @@
 ;     fn2-read-octets) only while its schema's run version is the one it was
 ;     delivered under, else :stale: no read touches a freed arena. :miss
 ;     keeps its word though resident pages cannot raise it before M2.
-; (c) fn2-read-frontier reads the :published position C adds to
-;     fn2-id-engine in fn2-succ-publish; until C lands it the frontier is the
-;     fn2-cursor-view-pinned stays owed and no operation here answers it.
+; (c) fn2-read-frontier: the view a connection pins, C's :published
+;     position (fn2-id-engine, written by fn2-succ-publish as max(published,
+;     batch cov)), read through C's fn2-successor-published; (mv code
+;     position), every published batch at or below the position.
 ; (d) LIST's whole-schema ordered scan (fn2-read-scan, -scan-next): the
 ;     range read's sources and merge over any schema, octet keys included,
 ;     its resume key the delivered key itself (copied into the caller's
@@ -992,6 +993,8 @@
  :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One step of an identity read: its start, or one scan step over the identity schema and one Message-ID comparison (at most 250 octets); the answer is (code article candidates).")
+(defcost fn2-read-frontier :child fn2-succ-published :answers (:ok :state) :tables (fn2-core-id-engine)
+ :doc "The served frontier, C's :published position: (mv code position). Pure: reads the engine, writes nothing.")
 (defcost fn2-read-release :child fn2-read-release-children :answers (:bounds :ok :state)
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
  :doc "Idle a read row's range, seek and lookup.")
@@ -1234,6 +1237,9 @@
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-release (x fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (defun fn2-read-frontier (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (fn2-successor-published fn2-core))
    (defun fn2-read-scan (x sid wslot wgen wk ws wg fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))

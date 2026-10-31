@@ -986,8 +986,9 @@ losing conflict whose winner was dropped.
    (b) Every range or seek step re-finds its sources from the resume key when the schema's run
    version moved or an overlay source's row no longer holds the taking it located (phase active or
    frozen, schema, SEQ: a SEQ is issued once per taking); a delivered entry is read only under the
-   run version it was delivered under, else `:stale`. (c) `fn2-read-frontier` waits on the
-   `:published` column (until then `fn2-cursor-view-pinned` stays owed). (d) LIST's ordered scan,
+   run version it was delivered under, else `:stale`. (c) `fn2-read-frontier (fn2-core) -> (mv
+   code position)`, a pure read of `fn2-successor-published` (C's `:published`, 93ede3b02); the view a
+   connection pins (`fn2-cursor-view-pinned` turns live with the cursor). (d) LIST's ordered scan,
    `fn2-read-scan x sid wslot wgen wk ws wg` / `fn2-read-scan-next x budget`: the range read's
    sources and merge over any schema, octet keys included, from the schema's least key; its resume
    key is the delivered key itself, copied into the caller's workspace (WSLOT/WGEN under WK WS WG, the

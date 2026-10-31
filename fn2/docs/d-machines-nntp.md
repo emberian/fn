@@ -1947,7 +1947,7 @@ cases.
   (fn2-read-value x f fn2-core) -> value                            ; integer field f of the entry
   (fn2-read-octets x f dslot dgen okind oslot ogen fn2-core) -> (mv code len fn2-core)
                                                                     ; append octet field f to a workspace
-  (fn2-read-frontier fn2-core) -> position                         ; the greatest published commit position
+  (fn2-read-frontier fn2-core) -> (mv code position)              ; the greatest published commit position (built)
   (fn2-read-release x fn2-core) -> (mv code fn2-core)
   ```
   **Ruled (main and C, 2026-10-30): D writes it, C and B read the diff, with C's five amendments,
