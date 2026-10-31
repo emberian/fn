@@ -279,6 +279,22 @@ The catalog in `books/format.lisp` joins independently certified declarations in
 Neither establishes semantic folding, query completeness, availability, freshness, authority,
 or the predecessor-cut restriction (STORAGE-DESIGN §4.4).
 
+### Geometry is bound into the page hash: a resize is an import
+
+The hash contexts bind the arena geometry in two ways:
+- The bootstrap carries a `geometry-hash`, and the anchor checker matches every geometry digest byte.
+- Every frame hash covers the frame's `location` and `allocation`, which are arena positions under
+  that geometry (sector size, page size, extent layout).
+
+So a journal read under another geometry neither verifies its anchor nor finds a frame where that
+frame's hash says it is, and it is never reinterpreted. This is intended. The consequence is that an arena is
+never resized in place, and the fn1 → fn2 migration is not a conversion of fn1's files. Both are a
+logical stream import into a freshly formatted arena of the new geometry: catch-up, or a TAKETHIS
+feed from the old node, through the ordinary admission and commit path. Imported records carry
+their origin's envelope fields (occurrence, lineage, domain, incarnation) verbatim. The old arena
+stays readable under its own geometry until the import's frontier passes it. The operator notes
+say the same.
+
 ### Integrity readers and sealing
 
 `fn2-fc-init(n, fc)` and `fn2-fc-context-init(n, context)` allocate checker
@@ -1522,6 +1538,37 @@ declares `:answers`.
   `:borrow` edge.
 A cursor's `:need-page` issues the same pair. The caller owns the lease, so B writes no other kind's
 row.
+
+**S11. The serving posture (Argon §9.7, ruled 2026-10-31).** An `:uncertain` batch holds its
+rows, uploads, windows, reservations and claims until recovery. Later offers of the same
+Message-ID park behind its claims, and with both commit rows uncertain nothing new can commit. So
+once any batch is `:uncertain` the node's posture is `:draining`.
+- The commit kind exposes the posture as a read op derived from the rows, not a stored flag that
+  could go stale: `(fn2-commit-posture fn2-core) -> code`, with a defcost naming `fn2-machines` and
+  `:answers (:serving :draining)`. It answers `:draining` exactly when some commit row's phase is
+  `:uncertain`.
+- D's `:ready` reads it before staging. While it answers `:draining`, a new POST, append or IHAVE
+  is refused by word (`:unaffordable` with the uncertain reason) instead of parking. Work already
+  admitted drains as usual.
+- Recovery clears the posture by resolving the batch. A restarted node's rows start free, and
+  recovery classifies the uncertain batch, so the posture returns to `:serving` with no write of
+  its own.
+- It lands with D's txn port, after admission's own `:exhausted` on an uncertain partner (S7),
+  which stays.
+
+**S12. One encoding of a transaction (Argon §9.6, ruled 2026-10-31).** A transaction's journal
+records are exactly what it staged, so replay rebuilds C's state from the journal alone.
+- C's `fn2-successor-out` emits the member workspace from the staged slots, every slot and not a
+  subset, in B's record kinds, each through its generated encoder. D passes that workspace to
+  `fn2-commit-admit-txn` unchanged.
+- `fn2-member-replay` (B's hook, attached by C) feeds the decoded records back through the same
+  installer.
+- `*fn2-commit-txn-record-kinds*` therefore grows to every schema a transaction stages: the
+  overview, addr, C's §4a identity records, and the folds' events. C names the list and its
+  layouts. B adds each kind to the record-kind enum, the admission decoder (`fn2-commit-txn-body`)
+  and the seal at D's txn port, when the kind's producer serves (D46).
+- `:article-acceptance` stays as the acceptance record. Its two digests are named apart, per D's
+  amendment (4).
 
 **Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-txn-unit.lisp`).** Each is stated
 over `fn2-commit-txn-proof-run (workspaces commands mode plant)`: the real core and executor with the
