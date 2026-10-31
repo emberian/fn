@@ -1,0 +1,111 @@
+; Layer C1c: the sealer machine in the served core (machines-c-sealer.lisp).
+; The real executor over the tiny profile with a group directory: genesis
+; publishes the groups overlay (frozen) and leaves the sealer's row parked
+; on :sealable; the grant service's fifth source wakes it, its :sealing arm
+; seals the overlay into a run through the engine (one 64 KiB page under the
+; sealer's row as owner) and installs it, retiring the overlay; the row
+; parks again. Every group then answers through the run leg of the lookup.
+; Without the checker row 3 + :large-upload-windows in the profile
+; (C-SEAL-NO-ROW, until B5-4a) the row is stopped and the overlay stays.
+; Run: sh fn2/tools/certify.sh tests/sealer-machine-unit.lisp
+(in-package "ACL2")
+(include-book "../books/executor")
+(include-book "std/util/bstar" :dir :system)
+
+(defconst *fn2-smu-groups* '(("comp.lang.lisp" . 7) ("alt.test" . 9) ("misc.misc" . 11)))
+;; Until B5-4a: :format-slots set to 4 + the windows, so the checker row exists.
+(defconst *fn2-smu-profile*
+ (put-assoc-equal :groups *fn2-smu-groups*
+  (put-assoc-equal :identity-arena-bytes 4096
+   (put-assoc-equal :large-upload-windows 1
+    (put-assoc-equal :format-slots 5
+     (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096) (4 . 65536)) *fn2-profile-tiny*))))))
+(defconst *fn2-smu-norow*
+ (put-assoc-equal :groups *fn2-smu-groups*
+  (put-assoc-equal :identity-arena-bytes 4096
+   (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096) (4 . 65536)) *fn2-profile-tiny*))))
+
+(defun fn2-smu-turns (n fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp n) fn2-core
+  (mv-let (status nobs nvisits nactions fn2-core) (fn2-turn fn2-core)
+   (declare (ignore nobs nvisits nactions))
+   (if (eq status :stop) fn2-core (fn2-smu-turns (- n 1) fn2-core)))))
+;; (schema run entries filter) of each live run; the overlay phases.
+(defun fn2-smu-runs (r k fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix k)))
+ (if (zp k) nil
+  (let ((row (stobj-let ((fn2-run-installed (fn2-core-run-installed fn2-core)))
+              (v) (if (< (nfix r) (fn2-run-installed-rows fn2-run-installed))
+                      (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+                           (list (fn2-run-installed-schema r fn2-run-installed) (fn2-run-installed-run r fn2-run-installed)
+                                 (fn2-run-installed-entries r fn2-run-installed) (fn2-run-installed-filter r fn2-run-installed)))
+                    :end)
+              v)))
+   (cond ((eq row :end) nil) (row (cons row (fn2-smu-runs (+ 1 (nfix r)) (- k 1) fn2-core)))
+         (t (fn2-smu-runs (+ 1 (nfix r)) (- k 1) fn2-core))))))
+(defun fn2-smu-phases (o k fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix k)))
+ (if (zp k) nil
+  (let ((p (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core)))
+            (v) (if (< (nfix o) (fn2-overlays-rows fn2-overlays)) (fn2-overlays-phase o fn2-overlays) :end) v)))
+   (if (eq p :end) nil (cons p (fn2-smu-phases (+ 1 (nfix o)) (- k 1) fn2-core))))))
+(defun fn2-smu-row (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (let ((id (fn2-machine-kind-base *fn2-sealer-kind* fn2-core)))
+  (list (fn2-machine-phase id fn2-core) (fn2-machine-wait-reason id fn2-core))))
+;; Look a group up through the transaction-0 lookup until it answers.
+(defun fn2-smu-write (bytes slot gen off fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (atom bytes) (mv :ok fn2-core)
+  (mv-let (code fn2-core) (fn2-core-write slot gen off (car bytes) 5 1 1 fn2-core)
+   (if (eq code :ok) (fn2-smu-write (cdr bytes) slot gen (+ 1 off) fn2-core) (mv code fn2-core)))))
+(defun fn2-smu-drive (fuel slot gen len fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp fuel) (mv :fuel 0 fn2-core)
+  (mv-let (code group fn2-core) (fn2-group-lookup 0 slot gen 0 len 5 1 1 4096 fn2-core)
+   (if (eq code :more) (fn2-smu-drive (- fuel 1) slot gen len fn2-core) (mv code group fn2-core)))))
+(defun fn2-smu-chars (cs) (declare (xargs :verify-guards nil)) (if (atom cs) nil (cons (char-code (car cs)) (fn2-smu-chars (cdr cs)))))
+(defun fn2-smu-lookup (name fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv & slot gen fn2-core) (fn2-core-reserve 1 5 1 1 fn2-core))
+      (octets (fn2-smu-chars (coerce name 'list)))
+      ((mv & fn2-core) (fn2-smu-write octets slot gen 0 fn2-core))
+      ((mv code group fn2-core) (fn2-smu-drive 40 slot gen (len octets) fn2-core))
+      ((mv & fn2-core) (fn2-core-release slot gen 5 1 1 fn2-core)))
+  (mv (list code group) fn2-core)))
+
+(defun fn2-smu-run (profile n fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor profile :null nil fn2-core))
+      (before (list (fn2-smu-runs 0 64 fn2-core) (fn2-smu-phases 0 1 fn2-core) (fn2-smu-row fn2-core)))
+      (fn2-core (fn2-smu-turns n fn2-core))
+      (after (list (fn2-smu-runs 0 64 fn2-core) (fn2-smu-phases 0 1 fn2-core) (fn2-smu-row fn2-core)
+                   (fn2-exec-status fn2-core) (fn2-core-stop-reason fn2-core)))
+      ((mv l1 fn2-core) (fn2-smu-lookup "comp.lang.lisp" fn2-core))
+      ((mv l2 fn2-core) (fn2-smu-lookup "misc.misc" fn2-core))
+      ((mv l3 fn2-core) (fn2-smu-lookup "alt.tests" fn2-core)))
+  (mv (list before after (list l1 l2 l3)) fn2-core)))
+(defun fn2-smu-result (profile n)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-smu-run profile n fn2-core) r)))
+
+(assert-event (equal *fn2-sealer-kind* *fn2-idc-owner-kind*))
+;; With the checker row: before, no run, the groups overlay frozen, the row
+;; parked on :sealable; after, one groups run of three entries (no filter),
+;; the overlay free, the row parked again, the executor idle and nothing
+;; stopped; the lookups
+;; answer from the run. (Evaluated in assert-event, not defconst: the grant
+;; source's attachment is ignored in a defconst's evaluation.)
+(defun fn2-smu-check (got want)
+ (declare (xargs :verify-guards nil))
+ (or (equal got want) (cw "sealer machine: got ~x0~%" got)))
+(assert-event
+ (fn2-smu-check (fn2-smu-result *fn2-smu-profile* 400)
+                `((nil (,*fn2-overlay-phase-frozen*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*))
+                  (((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*) :idle ,*fn2-stop-reason-none*)
+                  ((:ok 7) (:ok 11) (:absent 0)))))
+;; Without it: the row is stopped at genesis and the overlay stays frozen.
+(assert-event
+ (fn2-smu-check (butlast (cadr (fn2-smu-result *fn2-smu-norow* 40)) 2)
+                `(nil (,*fn2-overlay-phase-frozen*) (,*fn2-sealer-state-stopped* ,*fn2-wait-none*))))

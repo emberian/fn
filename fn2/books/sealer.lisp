@@ -625,7 +625,9 @@
 ; One bounded step of the sealer (BUDGET at most 4,096 bytes of page work):
 ; :idle (nothing sealable), :more, :retired (an empty overlay freed), :done
 ; (a run installed and its overlay retired), :full or :cache (backpressure:
-; step again later), or a refusal (the row goes :failed; an invariant).
+; step again later), or a refusal (an invariant: the sealer machine's arm,
+; fn2-sealer-seal, stops the executor with reason :sealer and the row goes
+; :stopped; the step itself never sets a phase on refusal).
 (defmacro fn2-seal-mv (code) `(mv ,code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                                   fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
                                   fn2-fc fn2-fc-context fn2-b3 fn2-digests))

@@ -3,6 +3,8 @@
 ; D's machines, which call them.
 (in-package "ACL2")
 (include-book "assembly-callbacks-a")
+(include-book "machines-c-sealer-events")
 (fn2-identity-core-events)
 (fn2-successor-core-events)
 (fn2-groups-core-events)
+(fn2-sealer-core-events)

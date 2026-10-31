@@ -481,9 +481,31 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   the verified-page cache. The cache is direct mapped by unit, so a seal whose next unit's cache
   row is occupied refuses `:cache` (backpressure) and evicts nothing: served capacity is the
   cache's rows of pages until the cold leg reloads pages through the storage path.
-- **C-ENGINE-OWNER (interim until C1c).** The engine's workspaces are owned by the MRef
-  (`*fn2-idc-owner-kind*` = 254, 0, 1); no machine kind takes that number. C1c's sealer machine row
-  becomes the owner.
+- **C-ENGINE-OWNER (as built, C1c).** The engine's workspaces (overlay arenas, the bind scratch,
+  the sealer's pages and hash workspace) are owned by the sealer machine's row:
+  `*fn2-idc-owner-kind*` is `fn2-sealer`'s position in the machine registry (declared in
+  `machines-c-sealer-kind.lisp`, after A's kinds and `fn2-commit`, before C's successor books),
+  local slot 0, generation 1. The local slot, not the global id, because the owner constants are
+  used before the index exists; the core events assert `*fn2-sealer-kind*` equals it.
+- **C-SEALER-MACHINE (C1c).** `fn2-sealer` (capacity 1; phases `:sealing :stopped`) drives
+  `fn2-seal-step` through the core wrapper `fn2-sealer-step` (defcost 4,096 bytes over the 16
+  tables): `:more :retired :done` keep it runnable; `:idle :full :cache` park it on the D0 wait
+  kind `:sealable`; any other answer stops the core (`:sealer`). It is woken by the grant
+  service's fifth source (main's ruling: a D0 wait and a grant, never a direct wake id): C attaches
+  `fn2-sealer-ready` (the row parked on `:sealable` in `:sealing`, the seal row idle, an overlay
+  sealable) and `fn2-sealer-grant` (clear the wait, wake the row) to the constrained pair together,
+  proving its liveness constraint. Its tables (seal row, run build, seven writers and their
+  restarts, Ribbon build and band) are C's core children; its field rows the sealer stripe of B's
+  fields table (`*fn2-b-seal-field-rows*` = 1,280, just below the transactions' stripes, which are
+  anchored at the table's end); its checker row 3 + `:large-upload-windows`. Genesis
+  (`fn2-engine-genesis`: the group directory, then the seal row) runs in `fn2-init-engine`.
+  Measured (tests/sealer-machine-unit): the tiny profile's genesis groups overlay is sealed into a
+  three-entry run by the real executor, the overlay retired, the row parked again, the executor
+  idle, and every group answers through the lookup's run leg.
+- **C-SEAL-NO-ROW (interim until B5-4a).** A profile without the checker row 3 + windows (today
+  every profile that does not set `:format-slots` to at least 4 + windows) stops the sealer's row
+  at genesis: overlays then accumulate as before C1c (backpressure at stage). B5-4a sizes the
+  format tables for the row in every profile and refuses a lower setting; this interim goes then.
 - **C-DECISION-STRIPES (C-S1, C-S3).** The decision rows are the profile's `:t` (one per
   transaction) and share B's `fn2-fields` table: B's 128-row stripe per format slot from row 0,
   then one 1024-row stripe per transaction ending at the table's end (`fn2-b-field-rows` sizes the
@@ -759,4 +781,9 @@ Every C book under 60 s on the laptop (the one-minute rule); the table lives in
    different first arrivals is the served choice: first arrival, stated per offer sequence by
    `fn2-exact-identity`; converging it across peers is E4's (peering), not this row's. State:
    applied.
-
+3. **The sealer kind declares the other kinds' descriptor cap (4)** although it issues nothing
+   (C1c). A's callers' guard proofs (`fn2-scribe-write`) range over every kind's caps and cannot
+   show a row's kind is kept across an issue, so a registered kind whose
+   descriptor cap is below another's charge broke them. Remedy: A proves the issue paths keep
+   `fn2-machine-kind` (or states the charge check per the row's own kind), and the sealer's cap
+   drops to 0. State: open, named to the A5r seat.

@@ -13,7 +13,7 @@
 ; stage and out; machines-c-bind bind, release, publication, the defcosts
 ; and the wrappers (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
-(include-book "machines-c")
+(include-book "machines-c-sealer-kind")
 (fn2-book-layer :c)
 ;; The assembly's dispatchers case-split over every schema id when open; the
 ;; successor treats them as opaque (their type facts are the assembly's).
@@ -22,11 +22,15 @@
                            fn2-run-layout-value-ok fn2-run-layout-fold-p fn2-run-version)))
 
 ; ---------------------------------------------------------------------------
-; C-ENGINE-OWNER (interim until C1c declares the sealer machine, whose row
-; becomes the owner): the engine's workspaces (overlay arenas, the bind
-; scratch) are owned by the MRef (*fn2-idc-owner-kind* 0 1); no machine kind
-; takes that number (kinds are assigned from 0 by the machine index).
-(defconst *fn2-idc-owner-kind* 254)
+; C-ENGINE-OWNER (as built, C1c): the engine's workspaces (overlay arenas,
+; the bind scratch, the sealer's pages) are owned by the sealer machine's row:
+; kind = fn2-sealer's position in the registry (the index's *FN2-SEALER-KIND*,
+; asserted equal in machines-c-sealer.lisp), local slot 0, generation 1. The
+; local slot, not the global id, because these constants are used before the
+; index exists.
+(make-event (value `(defconst *fn2-idc-owner-kind*
+                     ,(let ((pos (position-eq 'fn2-sealer (fn2-machine-names (w state))))) (if (natp pos) pos 254)))))
+(assert-event (not (equal *fn2-idc-owner-kind* 254)))
 (defconst *fn2-idc-owner-slot* 0)
 (defconst *fn2-idc-owner-gen* 1)
 ; The bind scratch takes one slot's octets at a time: an identity fact's

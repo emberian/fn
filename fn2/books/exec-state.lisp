@@ -11,7 +11,7 @@
       :harvest-output :harvest-finish :wake-bounds :wake-state :machine-write
       :machine-observation :machine-phase :pool-release :signal
       :clock-exhausted :work-overflow :issue-wake :machine-contract :account :engine-genesis
-      :recovery-bounds :recovery-release))))))))
+      :recovery-bounds :recovery-release :sealer))))))))
 (defcolumns fn2-control nil
   :init-name fn2-control-columns-init
   :extra-fields

@@ -205,11 +205,12 @@
   (fn2-listener-bookings-from (fn2-machine-accept-count fn2-core)
                               (fn2-machine-kind-base *fn2-listener-kind* fn2-core) p fn2-core))
 
-;; Layer C's genesis (the profile's group directory, S-GROUP) right after the
-;; core init; a refusal stops the core before anything runs.
+;; Layer C's genesis (the profile's group directory, S-GROUP; the sealer's
+;; seal row, C1c) right after the core init; a refusal stops the core before
+;; anything runs.
 (defun fn2-init-engine (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (genesis fn2-core) (fn2-groups-genesis profile fn2-core)
+  (mv-let (genesis fn2-core) (fn2-engine-genesis profile fn2-core)
     (if (eq genesis :ok) fn2-core (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))))
 (defthm fn2-init-engine-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (fn2-init-engine profile fn2-core))))

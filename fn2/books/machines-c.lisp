@@ -34,7 +34,7 @@
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
-                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*)))))
+                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*))))
 
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
@@ -49,7 +49,7 @@
       (unsigned-byte-p 32 (fn2-b-capacity :run-cache 1024 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-arena-bytes 65536 profile))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-capacity :format-slots 3 profile)))
-             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))))
+             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*)
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
