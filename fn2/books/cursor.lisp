@@ -286,43 +286,71 @@
              ((:evidence :absent) (:do (rc) (fn2-read-release row-slot) :accept (:ok))
                                   (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))
              (:otherwise (:stop :machine-phase)))))
+  ;; the range's end, by what was read (render-step's :end, one sub-arm a branch)
+  (end-last :on-refusal ((:stop :machine-phase))
+     ;; LAST walked its range: read the last entry again
+     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+     (:set (lo row-found) (hi row-found) (step 7)) (:goto range))
+  (end-single :on-refusal ((:stop :machine-phase))
+     ;; NEXT/LAST: no next or previous article; STAT n: no such number;
+     ;; STAT: the current article is gone
+     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+     (:set (reply (fn2-cursor-reply-of row-tag (if (or (equal row-k0 *fn2-cursor-arg-range*)
+                                                       (not (equal row-tag *fn2-nntp-command-stat*)))
+                                                   :none :no-current))))
+     (:goto refuse))
+  (end-empty :on-refusal ((:stop :machine-phase))
+     ;; an empty overview range: the 224 line goes, the refusal replaces it
+     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+     (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:set (reply (fn2-cursor-reply-of row-tag (if (equal row-k0 *fn2-cursor-arg-range*) :none :no-current))))
+     (:goto refuse))
+  (end-list :on-refusal ((:stop :machine-phase))
+     ;; the rows' terminator
+     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+     (:do (code) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen
+                                      :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:set (done 1)) (:goto hand))
   (render-step :on-refusal ((:stop :machine-phase))
      (:do (nc) (fn2-read-next row-slot *fn2-cursor-step-budget*)
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:entry) (:set (have 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-             ((:end)
-              (:cond
-               ;; LAST walked its range: read the last entry again
-               ((and (equal row-step 6) (< 0 row-found))
-                (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-                (:set (lo row-found) (hi row-found) (step 7)) (:goto range))
-               ;; NEXT/LAST: no next or previous article; STAT n: no such number;
-               ;; STAT: the current article is gone
-               ((fn2-cursor-single-p row-tag)
-                (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-                (:set (reply (fn2-cursor-reply-of row-tag (if (or (equal row-k0 *fn2-cursor-arg-range*)
-                                                                  (not (equal row-tag *fn2-nntp-command-stat*)))
-                                                              :none :no-current))))
-                (:goto refuse))
-               ;; an empty overview range
-               ((equal row-seen 0)
-                (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-                (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-                 :accept (:ok))
-                (:set (reply (fn2-cursor-reply-of row-tag (if (equal row-k0 *fn2-cursor-arg-range*) :none :no-current))))
-                (:goto refuse))
-               (t (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-                  (:do (code) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen
-                                                   :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-                   :accept (:ok))
-                  (:set (done 1)) (:goto hand))))
+             ((:end) (:cond ((and (equal row-step 6) (< 0 row-found)) (:goto end-last))
+                            ((fn2-cursor-single-p row-tag) (:goto end-single))
+                            ((equal row-seen 0) (:goto end-empty))
+                            (t (:goto end-list))))
              (:otherwise (:stop :machine-phase)))))
   (render-walk :on-refusal ((:stop :machine-phase))
      (:do (vc n) (fn2-read-value row-slot *fn2-overview-entry-field-number*) :accept (:ok :stale)
       :why ":stale: the walk restarts after the last number it remembered")
      (:if (eq vc :ok) ((:set (found n) (have 0) (next (+ 1 (nfix n)))) (:charge :steps *fn2-work-transition* :runnable t))
           ((:set (lo row-next)) (:goto range))))
+  ;; NEXT, LAST, STAT: the 223 line after the copied line [LPOS, ROFF) of TX,
+  ;; its Message-ID found there
+  (render-say :on-refusal ((:stop :machine-phase))
+     (:do (mc ms ml) (fn2-cursor-mid row-tx-slot row-tx-gen row-lpos row-roff
+                                     :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok)
+      ;; :refused: no Message-ID field in the part of the line TX holds
+      :case (((:refused) (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+                         (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn
+                                                     :ogen row-conn-gen)
+                          :accept (:ok))
+                         (:set (reply (fn2-cursor-reply-of row-tag :no-projection)) (lpos 0)) (:goto refuse))))
+     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask row-ncurrent 0 0
+                                 row-tx-slot row-tx-gen (nfix ms) (nfix ml) row-tx-slot row-tx-gen
+                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
+     (:set (done 1) (lpos 0)
+           (update (if (or (equal row-tag *fn2-nntp-command-next*) (equal row-tag *fn2-nntp-command-last*)
+                           (equal row-k0 *fn2-cursor-arg-range*))
+                       *fn2-cursor-update-current* *fn2-cursor-update-none*)))
+     (:goto hand))
+  ;; the line copied into TX with room left for the 223 line
   (render-single :on-refusal ((:stop :machine-phase))
      (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
      (:do (vc n) (fn2-read-value row-slot *fn2-overview-entry-field-number*) :accept (:ok))
@@ -331,25 +359,8 @@
                                                                (+ at *fn2-cursor-single-room*))))
                                             row-tx-slot row-tx-gen at row-conn-kind row-conn row-conn-gen)
       :accept (:ok))
-     (:do (mc ms ml) (fn2-cursor-mid row-tx-slot row-tx-gen at (+ at (nfix copied))
-                                     :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-      :accept (:ok)
-      ;; :refused: no Message-ID field in the part of the line TX holds
-      :case (((:refused) (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-                         (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn
-                                                     :ogen row-conn-gen)
-                          :accept (:ok))
-                         (:set (reply (fn2-cursor-reply-of row-tag :no-projection))) (:goto refuse))))
-     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask (nfix n) 0 0
-                                 row-tx-slot row-tx-gen (nfix ms) (nfix ml) row-tx-slot row-tx-gen
-                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-      :accept (:ok))
-     (:do (rc) (fn2-read-release row-slot) :accept (:ok))
-     (:set (roff (+ at (nfix copied))) (done 1) (ncurrent n)
-           (update (if (or (equal row-tag *fn2-nntp-command-next*) (equal row-tag *fn2-nntp-command-last*)
-                           (equal row-k0 *fn2-cursor-arg-range*))
-                       *fn2-cursor-update-current* *fn2-cursor-update-none*)))
-     (:goto hand))
+     (:set (ncurrent n) (lpos at) (roff (+ at (nfix copied))))
+     (:goto render-say))
   (render-number :on-refusal ((:stop :machine-phase))
      (:do (vc n) (fn2-read-value row-slot *fn2-overview-entry-field-number*) :accept (:ok :stale)
       :why ":stale: the range restarts at the next number")

@@ -181,7 +181,6 @@
   '((list :no-projection :d6)
     (newgroups :no-projection :d6) (newnews :no-projection :d6)
     (article :no-projection :d6) (head :no-projection :d6) (body :no-projection :d6)
-    (stat :no-projection :d6) (over :no-projection :d6) (xover :no-projection :d6)
     (hdr :no-projection :d6) (xhdr :no-projection :d6) (xpat :no-projection :d6)
     (xfn-zarticle :no-projection :d6) (xfncatchup :no-projection :e4)
     (post :not-permitted :d5) (ihave :retry :d5) (check :later :d5)
@@ -305,8 +304,6 @@
                  (fn2-answer-say c *fn2-nntp-reply-list-not-stored* mask 0 tslot tgen okind oslot ogen fn2-pool))
                 (t (fn2-answer-say c (fn2-answer-interim-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)))
           (mv code :command pending fn2-pool))))
-     ;; POST where posting is served: no reply yet; the connection takes an
-     ;; upload and renders 340, or waits for one (section 14.2).
      ;; a reader command: no reply here; the connection takes a query cursor
      ;; (section 15.3), or answers as a node with no archive
      ((fn2-answer-query-p tag)
@@ -314,6 +311,8 @@
         (mv-let (code fn2-pool)
           (fn2-answer-say c (fn2-answer-unread-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
           (mv code :command pending fn2-pool))))
+     ;; POST where posting is served: no reply yet; the connection takes an
+     ;; upload and renders 340, or waits for one (section 14.2).
      ((and posting (equal tag *fn2-nntp-command-post*))
       (mv :ok :article-input pending fn2-pool))
      ((equal tag *fn2-nntp-command-takethis*)
