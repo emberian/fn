@@ -7,8 +7,8 @@
 ; private overlays; release frees the slots at the outcome. B's commit kind
 ; publishes a batch (its private overlays, of every schema, readable in one
 ; step) or drops it. The tables, the engine row, the defcosts and the core
-; wrappers (fn2-successor-core-events, materialized in
-; assembly-callbacks-c.lisp) are three books': this one holds the tables,
+; wrappers (fn2-successor-prepare-events and -commit-events, materialized in
+; assembly-callbacks-c-prepare and -commit) are three books': this one holds the tables,
 ; the declaring calls (put, arg, arg-octets) and resolve; machines-c-stage
 ; stage and out; machines-c-bind bind, release, publication, the defcosts
 ; and the wrappers (C-SUCCESSOR-BOOK).
@@ -85,7 +85,9 @@
 ; T * 16 + I): schema, kind (:insert, :record, or one of the folds' event
 ; kinds), the masks of args given (SET), given :event (EVENTS) and given
 ; :out (OUTS), what resolve found (FOUND, the schema's run version VRUN), the
-; staged entry's SIZE, and the owner its octet args are read under.
+; staged entry's SIZE, the owner its octet args are read under, the args
+; declared late (LATE, C-S3a: octets given between stage and bind) and the
+; late args filled since the last stage (FILLED).
 (defcolumns fn2-id-engine ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60)))
 (defun fn2-id-engine-init-arena (bytes fn2-id-engine)
  (declare (xargs :stobjs fn2-id-engine :guard (unsigned-byte-p 32 bytes)))
@@ -103,7 +105,7 @@
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
     (sid :u60) (kind (:enum fn2-succ-kind ,(append '(:insert :record) *fn2-run-fold-kinds*)))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
-    (oset :bool) (sk :u8) (ss :u32) (sg :u60))))
+    (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32))))
 (fn2-idc-child fn2-core-succ-txns fn2-succ-txns (fn2-succ-txns-init (fn2-profile-t profile) fn2-succ-txns)
  "A transaction's writes survive its yields between :prepare and its outcome (C-S3).")
 (fn2-idc-child fn2-core-succ-slots fn2-succ-slots (fn2-succ-slots-init (* *fn2-succ-slots* (nfix (fn2-profile-t profile))) fn2-succ-slots)
@@ -256,7 +258,7 @@
        (mv :kind fn2-succ-txns fn2-succ-slots))
       (s (+ (* tx *fn2-succ-slots*) i))
       (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-put*) (sid sid) (kind code) (set 0) (events 0) (outs 0)
-                                          (found 0) (vrun 0) (size 0) (oset 0) (sk 0) (ss 0) (sg 0)))
+                                          (found 0) (vrun 0) (size 0) (oset 0) (sk 0) (ss 0) (sg 0) (late 0) (filled 0)))
       (rec (cond ((equal code *fn2-succ-kind-record*) (+ 1 i)) ((equal rec (+ 1 i)) 0) (t rec)))
       (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (record rec) (ri 0)
                                         (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
@@ -265,15 +267,15 @@
  (fn2-succ-txns-phase fn2-succ-txns-record))
 
 ;; An arg change: the slot is :put (resolve it again), the transaction :open.
-(defun fn2-succ-touch (tx s set events outs fn2-succ-txns fn2-succ-slots)
+(defun fn2-succ-touch (tx s set events outs late fn2-succ-txns fn2-succ-slots)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots) :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots))))
  (if (not (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots))
-               (unsigned-byte-p 32 set) (unsigned-byte-p 32 events) (unsigned-byte-p 32 outs)))
+               (unsigned-byte-p 32 set) (unsigned-byte-p 32 events) (unsigned-byte-p 32 outs) (unsigned-byte-p 32 late)))
      (mv :bounds fn2-succ-txns fn2-succ-slots)
-  (let* ((fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-put*) (set set) (events events) (outs outs)))
+  (let* ((fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-put*) (set set) (events events) (outs outs) (late late)))
          (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (ri 0) (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
    (mv :ok fn2-succ-txns fn2-succ-slots))))
-(fn2-idc-fn-shape fn2-succ-touch (tx s set events outs fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots))
+(fn2-idc-fn-shape fn2-succ-touch (tx s set events outs late fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots))
 
 ; The slot row of slot I of TX when it is declared and TX is :open or
 ; :staged: (mv code s sid code arity).
@@ -336,15 +338,16 @@
       (set (logior (nfix (fn2-succ-slots-set s fn2-succ-slots)) bit))
       (events (logand (nfix (fn2-succ-slots-events s fn2-succ-slots)) (- #xffffffff bit)))
       (outs (logand (nfix (fn2-succ-slots-outs s fn2-succ-slots)) (- #xffffffff bit)))
+      (late (logand (nfix (fn2-succ-slots-late s fn2-succ-slots)) (- #xffffffff bit)))
       (fn2-fields (fn2-fields-put row (value (if (eq src :event) 0 value)) (ref-len 0)))
       ((mv code fn2-succ-txns fn2-succ-slots)
-       (fn2-succ-touch tx s set (if (eq src :event) (logior events bit) events) (if (eq src :out) (logior outs bit) outs)
+       (fn2-succ-touch tx s set (if (eq src :event) (logior events bit) events) (if (eq src :out) (logior outs bit) outs) late
                        fn2-succ-txns fn2-succ-slots)))
   (mv code fn2-succ-txns fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-arg (tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-slots-phase fn2-succ-slots-kind fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-events fn2-succ-slots-outs
-  fn2-run-layout-octets-max fn2-fold-assigned-p fn2-succ-key-arg-p fn2-run-layout-fields fn2-run-layout-keys))
+  fn2-succ-slots-late fn2-run-layout-octets-max fn2-fold-assigned-p fn2-succ-key-arg-p fn2-run-layout-fields fn2-run-layout-keys))
 
 ; Octet arg J of insert slot I of TX: LEN octets at [OFF, OFF+LEN) of
 ; SLOT/GEN, readable under OKIND OSLOT OGEN until bind (which copies them
@@ -383,13 +386,52 @@
       ; of 0 tells it apart from (:octets 32).
       (digest (not (fn2-run-layout-value-ok sid j 0)))
       (fn2-fields (fn2-fields-put row (value (if digest 1 0)) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
+      (late (logand (nfix (fn2-succ-slots-late s fn2-succ-slots)) (- #xffffffff bit)))
       (fn2-succ-slots (fn2-succ-slots-put s (oset 1) (sk okind) (ss oslot) (sg ogen)))
-      ((mv code fn2-succ-txns fn2-succ-slots) (fn2-succ-touch tx s set events outs fn2-succ-txns fn2-succ-slots)))
+      ((mv code fn2-succ-txns fn2-succ-slots) (fn2-succ-touch tx s set events outs late fn2-succ-txns fn2-succ-slots)))
   (mv code fn2-succ-txns fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-arg-octets (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-set fn2-succ-slots-events
-  fn2-succ-slots-outs fn2-run-layout-octets-max fn2-run-layout-value-ok))
+  fn2-succ-slots-outs fn2-succ-slots-late fn2-run-layout-octets-max fn2-run-layout-value-ok))
+
+; Late octet arg J of insert slot I of TX (C-S3a): at most MAX octets,
+; given by fn2-succ-fill-octets after stage and before bind. Stage sizes
+; the entry by MAX (the raw row's length), so the room held covers any fill.
+; A key field (the tip and resolve read keys at stage) and a digest field
+; are :kind; MAX past the field's octet bound is :bounds.
+(defun fn2-succ-arg-octets-late (tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
+                                             fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
+                                             fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-fields))
+      ((mv code s sid kcode n) (fn2-succ-declared tx i fn2-succ-txns fn2-succ-slots))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-fields))
+      ((unless (and (natp tx) (natp i) (< i *fn2-succ-slots*) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots))
+                    (natp j) (< j n) (< j *fn2-succ-fields-max*) (natp b0)
+                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 32 max)))
+       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
+      ((unless (and (equal kcode *fn2-succ-kind-insert*) (fn2-run-layout-octets-max sid j)
+                    (fn2-run-layout-value-ok sid j 0) (<= (nfix (fn2-run-layout-keys sid)) j)))
+       (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
+      ((unless (fn2-run-layout-value-ok sid j max)) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
+      (row (+ b0 (* *fn2-succ-block* i) *fn2-succ-raw* j))
+      ((unless (< row (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
+      (bit (fn2-succ-bit j))
+      (set (logior (nfix (fn2-succ-slots-set s fn2-succ-slots)) bit))
+      (events (logand (nfix (fn2-succ-slots-events s fn2-succ-slots)) (- #xffffffff bit)))
+      (outs (logand (nfix (fn2-succ-slots-outs s fn2-succ-slots)) (- #xffffffff bit)))
+      (late (logior (nfix (fn2-succ-slots-late s fn2-succ-slots)) bit))
+      (fn2-fields (fn2-fields-put row (value 0) (ref-slot 0) (ref-gen 0) (ref-off 0) (ref-len max)))
+      ((mv code fn2-succ-txns fn2-succ-slots) (fn2-succ-touch tx s set events outs late fn2-succ-txns fn2-succ-slots)))
+  (mv code fn2-succ-txns fn2-succ-slots fn2-fields)))
+(fn2-idc-fn-shape fn2-succ-arg-octets-late (tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t
+ (fn2-succ-slots-set fn2-succ-slots-events fn2-succ-slots-outs fn2-succ-slots-late fn2-run-layout-octets-max
+  fn2-run-layout-value-ok fn2-run-layout-keys))
 
 ; ---------------------------------------------------------------------------
 ; Resolve (at :prepare): for every slot that reads its key's row (a fold's,

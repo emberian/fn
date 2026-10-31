@@ -1,10 +1,9 @@
-; Materialize layer C's core operations (identity decisions, C-S1; the
-; batch's private successor, C-S3) after the core instance and before layer
-; D's machines, which call them.
+; Materialize layer C's core operations after the core instance and before
+; layer D's machines, which call them: the identity decisions and the
+; private successor (assembly-callbacks-c-prepare, -commit), then the group
+; directory (S-GROUP) and the sealer (C1c).
 (in-package "ACL2")
-(include-book "assembly-callbacks-a")
+(include-book "assembly-callbacks-c-commit")
 (include-book "machines-c-sealer-events")
-(fn2-identity-core-events)
-(fn2-successor-core-events)
 (fn2-groups-core-events)
 (fn2-sealer-core-events)

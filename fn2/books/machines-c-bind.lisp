@@ -1,7 +1,7 @@
 ; Layer C in the served core, seam C-S3 (fn2/docs/c-ordered-runs.md §8 item 8):
 ; bind (every staged row into the batch's private overlays), release at the
 ; outcome, B's publish and drop, the defcosts, and the core wrappers of the
-; whole seam (fn2-successor-core-events, materialized in
+; whole seam (fn2-successor-prepare-events and -commit-events, materialized in
 ; assembly-callbacks-c.lisp). The tables and the :prepare half are
 ; machines-c-successor.lisp's, stage machines-c-stage.lisp's (C-SUCCESSOR-BOOK).
 (in-package "ACL2")
@@ -206,8 +206,23 @@
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t (fn2-succ-bind-slot))
 
+; Whether some slot of TX from I (K of them) has a late octet arg not filled
+; since its stage (C-S3a).
+(defun fn2-succ-unfilled (k i tx fn2-succ-slots)
+ (declare (xargs :stobjs fn2-succ-slots :measure (nfix k) :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (natp i) (natp tx))))
+ (and (posp k) (natp i) (< i *fn2-succ-slots*)
+      (let ((s (+ (* (nfix tx) *fn2-succ-slots*) i)))
+       (or (and (< s (fn2-succ-slots-rows fn2-succ-slots))
+                (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                (not (equal (logand (nfix (fn2-succ-slots-late s fn2-succ-slots))
+                                    (lognot (nfix (fn2-succ-slots-filled s fn2-succ-slots))))
+                            0)))
+           (fn2-succ-unfilled (- k 1) (+ 1 i) tx fn2-succ-slots)))))
+(in-theory (disable fn2-succ-unfilled))
+
 ; Bind staged TX into BATCH at commit position EVENT (its :event args and
-; its identity fact's binding): :ok, or an invariant failure by name.
+; its identity fact's binding): :ok, :state while a late octet arg is
+; unfilled (C-S3a; nothing is bound), or an invariant failure by name.
 (defun fn2-succ-bind (tx b event b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-succ-bind-slots)))))
@@ -218,7 +233,8 @@
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
                     (posp b) (unsigned-byte-p 60 b) (unsigned-byte-p 60 event) (natp b0)))
        (mv :bounds fn2-succ-txns fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*))
+      ((unless (and (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*)
+                    (not (fn2-succ-unfilled *fn2-succ-slots* 0 tx fn2-succ-slots))))
        (mv :state fn2-succ-txns fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (fn2-succ-bind-slots *fn2-succ-slots* 0 tx b0 b event fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index
@@ -231,7 +247,7 @@
 (fn2-idc-fn-shape fn2-succ-bind (tx b event b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-txns-phase fn2-succ-txns-record fn2-succ-bind-slots))
+ (fn2-succ-txns-phase fn2-succ-txns-record fn2-succ-bind-slots fn2-succ-unfilled))
 
 ; Release TX at its outcome: its slots and its decision free again. A
 ; transaction bound to a batch not yet published or dropped is :state.
@@ -388,6 +404,10 @@
  :doc "Give one argument of a write slot: a value, the member's commit position, or a field of an earlier slot's row.")
 (defcost fn2-successor-arg-octets :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one octet argument of an insert slot by reference.")
+(defcost fn2-successor-arg-octets-late :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+ :doc "Declare one octet argument of an insert slot given after stage, with its bound.")
+(defcost fn2-successor-fill-octets :tables (fn2-core-succ-slots fn2-core-fields)
+ :doc "Give a staged slot's late octet argument by reference.")
 (defcost fn2-successor-resolve :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
@@ -419,7 +439,7 @@
      ,call
      (mv ,@prefix ,code fn2-core)))
    (fn2-core-preserves ,name (,@args fn2-core) :position ,(+ 1 (len prefix)) :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))))
-(defmacro fn2-successor-core-events ()
+(defmacro fn2-successor-prepare-events ()
  '(progn
    (fn2-succ-wrap fn2-successor-put (tx i sid kind)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core)))
@@ -439,6 +459,13 @@
     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
      (if (eq c :ok) (fn2-succ-arg-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
        (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
+   (fn2-succ-wrap fn2-successor-arg-octets-late (tx i j max)
+    ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+     (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+    (fn2-succ-txns fn2-succ-slots fn2-fields)
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-arg-octets-late tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-resolve (tx budget)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
@@ -452,6 +479,12 @@
                            fn2-run-cache fn2-fields fn2-pool)
        (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
     answer)
+   (in-theory (disable fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-arg-octets-late fn2-successor-resolve))
+   (assert-event (fn2-assert-compliant-p '(fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-arg-octets-late fn2-successor-resolve) (w state)))))
+; The stage-side wrappers, in their own assembly book (assembly-callbacks-c-
+; commit): the one-minute rule (C-SUCCESSOR-BOOK).
+(defmacro fn2-successor-commit-events ()
+ '(progn
    (fn2-succ-wrap fn2-successor-stage (tx)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-id-stamps (fn2-core-id-stamps fn2-core))
@@ -473,6 +506,13 @@
      (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok) (fn2-succ-out tx i f b0 fn2-succ-txns fn2-succ-slots fn2-fields) (mv c 0)))
      (mv code value)))
+   (fn2-succ-wrap fn2-successor-fill-octets (tx i j slot gen off len okind oslot ogen)
+    ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+     (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+    (fn2-succ-slots fn2-fields)
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-fill-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-bind (tx batch event)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-id-engine (fn2-core-id-engine fn2-core))
@@ -499,8 +539,5 @@
      (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (fn2-succ-txns fn2-id-decides fn2-overlays fn2-pool)
     (fn2-succ-drop batch fn2-succ-txns fn2-id-decides fn2-overlays fn2-pool))
-   (in-theory (disable fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-resolve fn2-successor-stage
-                       fn2-successor-out fn2-successor-bind fn2-successor-release fn2-successor-publish fn2-successor-drop))
-   (assert-event (fn2-assert-compliant-p '(fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-resolve
-                                           fn2-successor-stage fn2-successor-out fn2-successor-bind fn2-successor-release
-                                           fn2-successor-publish fn2-successor-drop) (w state)))))
+   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-successor-publish fn2-successor-drop))
+   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-successor-publish fn2-successor-drop) (w state)))))

@@ -238,3 +238,71 @@
         '(:decide :stored :octets :ok :refusals (:kind :kind :kind :schema :kind :kind :kind) :unresolved :state
           :post :ok :ok :ok 1 1 :ok 10 :chained :ok 2 :ok :ok :ok :ok
           :withdraw (:refused 0) :ok 1 :ok :ok :ok :next :ok 3 3 :identity :duplicate)))
+
+; C-S3a, a late octet arg: an overview row whose line is declared at
+; :prepare with its bound (20) and given only after stage. Declaring a late
+; key field or integer field is :kind, a bound past the field's 1,024 is
+; :bounds; a fill before stage is :state, of a field not declared late
+; :kind, longer than the bound :bounds; bind before the fill is :state;
+; the fill is :ok and a second one under another owner :owner. A stage
+; again needs the fill again (bind :state, fill :ok). Bound and published,
+; the overview overlay's arena holds the 20 line octets (S) and none of the
+; 20 octets past them in the source (T).
+(defun fn2-icu-overlay-of (k o sid fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix k)))
+ (if (zp k) (mv 0 0 0)
+  (mv-let (hit slot gen fl)
+   (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core)))
+    (hit slot gen fl)
+    (if (< o (fn2-overlays-rows fn2-overlays))
+        (mv (and (equal (fn2-overlays-schema o fn2-overlays) sid)
+                 (equal (fn2-overlays-phase o fn2-overlays) *fn2-overlay-phase-frozen*))
+            (fn2-overlays-slot o fn2-overlays) (fn2-overlays-gen o fn2-overlays) (fn2-overlays-fill o fn2-overlays))
+      (mv nil 0 0 0))
+    (mv hit slot gen fl))
+   (if hit (mv slot gen fl) (fn2-icu-overlay-of (- k 1) (+ 1 o) sid fn2-core)))))
+(defun fn2-icu-count-byte (n byte slot gen idx fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix n)))
+ (if (zp n) 0
+  (mv-let (code b) (fn2-core-read slot gen idx *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-core)
+   (+ (if (and (eq code :ok) (equal b byte)) 1 0) (fn2-icu-count-byte (- n 1) byte slot gen (+ 1 idx) fn2-core)))))
+(defun fn2-icu-late (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-icu-profile* fn2-core))
+      ((mv & lslot lgen fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-icu-write (append (make-list 20 :initial-element 83) (make-list 20 :initial-element 84))
+                                      lslot lgen 0 fn2-core))
+      ((mv & fn2-core) (fn2-icu-accept 0 0 9 fn2-core))
+      ((mv & fn2-core) (fn2-successor-put 0 1 3 :insert fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 1 0 :value 9 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 1 1 :out *fn2-icu-high* fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 1 2 :value 200 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 1 3 :event 0 fn2-core))
+      ((mv k1 fn2-core) (fn2-successor-arg-octets-late 0 1 0 20 fn2-core))
+      ((mv k2 fn2-core) (fn2-successor-arg-octets-late 0 1 2 20 fn2-core))
+      ((mv k3 fn2-core) (fn2-successor-arg-octets-late 0 1 4 2000 fn2-core))
+      ((mv l1 fn2-core) (fn2-successor-arg-octets-late 0 1 4 20 fn2-core))
+      ((mv f0 fn2-core) (fn2-successor-fill-octets 0 1 4 lslot lgen 0 20 5 1 1 fn2-core))
+      ((mv r1 fn2-core) (fn2-icu-resolve 40 0 fn2-core))
+      ((mv s1 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv f1 fn2-core) (fn2-successor-fill-octets 0 1 3 lslot lgen 0 20 5 1 1 fn2-core))
+      ((mv f2 fn2-core) (fn2-successor-fill-octets 0 1 4 lslot lgen 0 21 5 1 1 fn2-core))
+      ((mv b0 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv f3 fn2-core) (fn2-successor-fill-octets 0 1 4 lslot lgen 0 20 5 1 1 fn2-core))
+      ((mv f4 fn2-core) (fn2-successor-fill-octets 0 1 4 lslot lgen 0 20 5 1 2 fn2-core))
+      ((mv s2 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv b1 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv f5 fn2-core) (fn2-successor-fill-octets 0 1 4 lslot lgen 0 20 5 1 1 fn2-core))
+      ((mv b2 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv p4 fn2-core) (fn2-successor-publish 4 fn2-core))
+      ((mv aslot agen fl) (fn2-icu-overlay-of 64 0 3 fn2-core)))
+  (mv (list :declare k1 k2 k3 l1 :early f0 :staged r1 s1 :fill f1 f2 b0 f3 f4 :again s2 b1 f5 b2 p4
+            :arena (fn2-icu-count-byte fl 83 aslot agen 0 fn2-core) (fn2-icu-count-byte fl 84 aslot agen 0 fn2-core))
+      fn2-core)))
+(defun fn2-icu-late-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-icu-late fn2-core) r)))
+(assert-event
+ (equal (fn2-icu-late-result)
+        '(:declare :kind :kind :bounds :ok :early :state :staged :ok :ok :fill :kind :bounds :state :ok :owner
+          :again :ok :state :ok :ok :ok :arena 20 0)))

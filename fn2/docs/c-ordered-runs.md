@@ -27,7 +27,7 @@ departure from a decision that is not recorded here is a defect.
 | range reads (merge over overlays and runs, resume key, version) and the read plan; assembled by `fn2-range-assemble` | `fn2/books/range.lisp`; unit `fn2/tests/range-unit.lisp` | C3 |
 | the served assembly: the production schemas assembled once with the identity decision, then the range reads | `fn2/books/runs-served.lisp`, `fn2/books/range-served.lisp` | C-ONE-ASSEMBLY |
 | C in the served core: the engine's tables as core children, the decision rows' field stripes, the identity operations layer D calls (C-S1), their defcosts and core wrappers (`fn2-identity-core-events`) | `fn2/books/machines-c.lisp`, materialized in `fn2/books/assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S1 |
-| the batch's private successor (C-S3, which replaced C-S2): the transaction and write-slot tables, the engine row, put / arg / arg-octets / resolve / stage / out / bind / release / publish / drop over every schema, their defcosts and core wrappers (`fn2-successor-core-events`) | `fn2/books/machines-c-successor.lisp` (tables, put, arg, arg-octets, resolve; includes machines-c), `machines-c-stage.lisp` (stage, out), `machines-c-bind.lisp` (bind, release, publish, drop, defcosts, wrappers), materialized in `assembly-callbacks-c.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S3 |
+| the batch's private successor (C-S3, which replaced C-S2): the transaction and write-slot tables, the engine row, put / arg / arg-octets / arg-octets-late / resolve / stage / fill-octets / out / bind / release / publish / drop over every schema, their defcosts and core wrappers (`fn2-successor-prepare-events`, `fn2-successor-commit-events`) | `fn2/books/machines-c-successor.lisp` (tables, put, arg, arg-octets, arg-octets-late, resolve; includes machines-c), `machines-c-stage.lisp` (stage, out, fill-octets), `machines-c-bind.lisp` (bind, release, publish, drop, defcosts, wrappers), materialized in `assembly-callbacks-c-prepare.lisp` (with the identity decisions) and `assembly-callbacks-c-commit.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C-S3 |
 | the group directory's genesis and lookup, the generic exact lookup over overlays and runs (S-GROUP), their defcost and core wrappers (`fn2-groups-core-events`) | `fn2/books/machines-c-groups.lisp` (includes machines-c-bind; included by `assembly-index`); unit `fn2/tests/groups-unit.lisp` (with S-OUTCOME and S-ARTICLE-ID) | D5 seams |
 | fold declarations (`defrunschema :fold` on the `:schema` row: interpretation, initialization, coverage, observation; the step compiled twice, as a list function and as the served step over decoded rows) | `fn2/books/runs-schema.lisp` | C4a |
 | the folds the clients read: group counts and watermarks, the consumer cursor, principal charges (durable half) | `fn2/books/folds.lisp` (included by runs-served before the assembly) | C4a |
@@ -454,6 +454,12 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   calls, resolve), `machines-c-stage.lisp` (stage, out) and `machines-c-bind.lisp` (bind, release,
   publish, drop, the defcosts and the core wrappers), the last included by `assembly-index`: as
   one book it certified in 197 s on forge, 115 s of it one lemma no guard needed (deleted).
+  The core wrappers are materialized the same way, in two books: `assembly-callbacks-c-prepare`
+  (the identity decisions, put, arg, arg-octets, arg-octets-late, resolve) and
+  `assembly-callbacks-c-commit` (stage, out, fill-octets, bind, release, publish, drop). Then
+  `assembly-callbacks-c` holds the group directory and the sealer. With C-S3a's two wrappers, the
+  one book read 69.4 s on forge: each wrapper is about 6.5-7 s, two preservation lemmas over
+  fn2-core-wfp.
 - **C-SHAPE-READS.** A helper's shape lemma (type, wfp and rows of every stobj it returns) folds
   the row reads whose values only feed run-time checks and callee arguments (`fn2-fields-ref-*`,
   the decision's owner triple, the engine's scratch row, the stage's stamp and version reads):
@@ -712,6 +718,23 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
    commit position. The article row's key takes it by `:event` (an insert's integer field; built
    in C-S3), and so does the identity record's article (arg 0 of the `:record` slot: added with
    this seam; its principal stays `:value`); bind writes the same `event` into both.
+12. **C-S3a, a late octet argument (to D, for D5 2/n's overview line; built).** The overview
+   line carries the Xref suffix, whose numbers are assigned at stage, so its octets exist only
+   after stage. `(fn2-successor-arg-octets-late tx i j max fn2-core) -> (mv code fn2-core)` at
+   `:prepare` declares octet arg J of insert slot I with at most MAX octets: `:kind` for a key
+   field (stage and resolve read keys), a digest or an integer field, or a slot that is not an
+   `:insert`; `:bounds` for MAX past the field's octet bound. Stage counts the entry at MAX, so the
+   room it holds covers any fill. `(fn2-successor-fill-octets tx i j slot gen off len okind oslot
+   ogen fn2-core) -> (mv code fn2-core)` between `fn2-successor-stage` and `fn2-successor-bind`
+   gives the octets by reference: `:state` unless the transaction is staged and not bound,
+   `:kind` unless J is a late arg of the slot, `:bounds` for LEN past MAX, `:owner` for an owner
+   other than the slot's other octet args'. The transaction stays staged. Bind refuses `:state`,
+   binding nothing, while a late arg is unfilled since the last stage: every stage (a re-stage,
+   or the stage after a dropped batch) recopies the entry from the raw rows, which hold only the
+   bound, so the fill follows the last stage. Columns LATE and FILLED of `fn2-succ-slots`; unit
+   `fn2/tests/identity-core-unit.lisp` (`fn2-icu-late`: every refusal above, a re-stage that needs
+   the fill again, and the published overview overlay's arena holding the 20 filled octets and
+   none of the source's octets past them).
 
 ## 9. Keystones (defthm-owed, each with teeth)
 

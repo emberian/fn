@@ -123,7 +123,8 @@
 ; Stage insert slot S (slot I) of TX: its entry from its args, its integer
 ; fields within their widths (:range), and, for a key resolve read, not held
 ; at the tip (:duplicate; a key with an :out or :event arg is fresh by
-; construction and bind's insert refuses a duplicate); its size.
+; construction and bind's insert refuses a duplicate); its size, a late
+; octet arg counted at its bound (C-S3a); its late args unfilled.
 (defun fn2-succ-stage-insert (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed) (fn2-overlays-wfp fn2-overlays)
@@ -162,7 +163,9 @@
       ((unless (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
       (size (fn2-run-layout-size sid 0 entry fn2-fields))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
-      (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots)))
+      ; A late arg is filled again after every stage (its entry row was just
+      ; recopied from the raw row, which holds only its bound).
+      (fn2-succ-slots (fn2-succ-slots-put s (size size) (filled 0))))
   (mv :ok fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-stage-insert (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
@@ -430,3 +433,44 @@
       (mv :ok (fn2-fields-value (+ b0 (* *fn2-succ-block* i) f) fn2-fields))
     (mv :bounds 0))))
 
+; Fill late octet arg J of insert slot I of TX (C-S3a): LEN octets at [OFF,
+; OFF+LEN) of SLOT/GEN, readable under OKIND OSLOT OGEN until bind (every
+; octet arg of a slot under one owner: :owner). TX must be :staged (else
+; :state: a later stage needs the fill again); J a late arg of the slot
+; (else :kind); LEN at most the declared bound (else :bounds). The staged
+; entry row takes the reference; TX stays :staged and its room is unchanged
+; (stage counted the bound).
+(defun fn2-succ-fill-octets (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)))
+       (mv :state fn2-succ-slots fn2-fields))
+      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp i) (< i *fn2-succ-slots*)
+                    (natp j) (< j *fn2-succ-fields-max*) (natp b0)
+                    (< (+ (* tx *fn2-succ-slots*) i) (fn2-succ-slots-rows fn2-succ-slots))
+                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
+                    (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)
+                    (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+       (mv :bounds fn2-succ-slots fn2-fields))
+      ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*)) (mv :state fn2-succ-slots fn2-fields))
+      (s (+ (* tx *fn2-succ-slots*) i))
+      (bit (fn2-succ-bit j))
+      ((unless (and (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                    (equal (fn2-succ-slots-kind s fn2-succ-slots) *fn2-succ-kind-insert*)
+                    (fn2-succ-has (fn2-succ-slots-late s fn2-succ-slots) j)))
+       (mv :kind fn2-succ-slots fn2-fields))
+      (raw (+ b0 (* *fn2-succ-block* i) *fn2-succ-raw* j)) (row (+ b0 (* *fn2-succ-block* i) j))
+      ((unless (and (< raw (fn2-fields-rows fn2-fields)) (< row (fn2-fields-rows fn2-fields)))) (mv :bounds fn2-succ-slots fn2-fields))
+      ((unless (<= len (nfix (fn2-fields-ref-len raw fn2-fields)))) (mv :bounds fn2-succ-slots fn2-fields))
+      ((when (and (equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
+                  (not (and (equal (fn2-succ-slots-sk s fn2-succ-slots) okind) (equal (fn2-succ-slots-ss s fn2-succ-slots) oslot)
+                            (equal (fn2-succ-slots-sg s fn2-succ-slots) ogen)))))
+       (mv :owner fn2-succ-slots fn2-fields))
+      (filled (logior (nfix (fn2-succ-slots-filled s fn2-succ-slots)) bit))
+      ((unless (unsigned-byte-p 32 filled)) (mv :bounds fn2-succ-slots fn2-fields))
+      (fn2-fields (fn2-fields-put row (value 0) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
+      (fn2-succ-slots (fn2-succ-slots-put s (oset 1) (sk okind) (ss oslot) (sg ogen) (filled filled))))
+  (mv :ok fn2-succ-slots fn2-fields)))
+(fn2-idc-fn-shape fn2-succ-fill-octets (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+ (fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t
+ (fn2-succ-txns-phase fn2-succ-slots-phase fn2-succ-slots-kind fn2-succ-slots-late fn2-succ-slots-filled fn2-succ-slots-oset
+  fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-fields-ref-len))
