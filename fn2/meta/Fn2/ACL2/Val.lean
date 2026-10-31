@@ -137,6 +137,14 @@ def coerce (x y : Val) : Val :=
     | .str s => Val.ofList (s.toList.map Val.chr)
     | _ => Val.nil
   | _ => .str (String.ofList (x.toList.map fun | .chr c => c | _ => Char.ofNat 0))
+/-- `CHAR-CODE`: a character's code; a non-character is 0 (ACL2's completion). -/
+def charCode : Val → Val
+  | .chr c => .int c.toNat
+  | _ => .int 0
+/-- `CODE-CHAR`: the character of a code below 256; anything else is `(code-char 0)`. -/
+def codeChar : Val → Val
+  | .int i => if 0 ≤ i ∧ i < 256 then .chr (Char.ofNat i.toNat) else .chr (Char.ofNat 0)
+  | _ => .chr (Char.ofNat 0)
 
 end Prim
 
@@ -186,6 +194,10 @@ def logorc1 (a b : Val) : Val := logior (lognot a) b
 def floor (a b : Val) : Val :=
   let j := b.toInt
   if j = 0 then .int 0 else .int (Int.fdiv a.toInt j)
+/-- `CEILING` on the subset's numbers: the least integer not below `i / j`; `j = 0` gives 0. -/
+def ceiling (a b : Val) : Val :=
+  let j := b.toInt
+  if j = 0 then .int 0 else .int (-(Int.fdiv (-a.toInt) j))
 /-- `MOD`: `(- x (* y (floor x y)))`. -/
 def mod (a b : Val) : Val :=
   .int (a.toInt - b.toInt * (floor a b).toInt)
@@ -282,6 +294,9 @@ def nativeCall (f : String) (args : List Val) : Option Val :=
   | "LOGNOT", [a] => some (lognot a)
   | "LOGORC1", [a, b] => some (logorc1 a b)
   | "FLOOR", [a, b] => some (floor a b)
+  | "CEILING", [a, b] => some (ceiling a b)
+  | "CHAR-CODE", [a] => some (charCode a)
+  | "CODE-CHAR", [a] => some (codeChar a)
   | "MOD", [a, b] => some (mod a b)
   | "EVENP", [a] => some (evenp a)
   | "NONNEGATIVE-INTEGER-QUOTIENT", [a, b] => some (niq a b)
