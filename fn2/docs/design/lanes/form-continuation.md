@@ -10,6 +10,7 @@ sections 1-5 (main/ember), **section 6 = this seat's design** (6.2 syntax, 6.3 d
 | sha | what |
 |---|---|
 | d04660248 | G1: `fn2/books/machine-arms.lisp` (step language + generator over today's fn2-core carrier); listener, echo, scribe declared in it (`machines-a.lisp`); 32 hand callbacks deleted; `:answers` defcost key; tests ported (callbacks-unit onto fn2-conn-frame-run, machines-a-unit, executor-unit composition tooth, core-child-assembly-callbacks, q1-controls mutation sites). A drivers identical to base modulo rune counts and the now-exact D0 effect table. Intended failure change: listener's 3 ignored unbook results stop with :account |
+| 516c2daf3 | P1: ready-prev/ready-next/wait-reason are directory columns (`*fn2-machine-directory-fields*`, kind `:table` = the rest); PUT-CORE / ROW-F / dispatchers route them; frame rows name the directory; sixth grant source `fn2-batchable-*` (B attaches in -b2) |
 | 6f05dbba0 | placement probe: `tests/form-probe-kind.lisp` (arm over echo table + pool + ops, no core, 0.74 s) and `tests/form-probe-unit.lisp` (its fn2-core wrapper, guard + PRESERVES in 0.02 s prover) |
 
 Measure after G1 (three probes): kind lines 817 -> 483, hand callbacks 32 -> 0, :unchecked 0; assembly-callbacks-a
@@ -31,38 +32,20 @@ the assembly).
 - Then `defmachine-run K` (unchanged) builds K-RUN, certificates, teeth, owed rows from the derived contracts.
 
 ## Next (in order)
-1. **P1: row control into the directory** (foundation commit, whole-tree gate). Fields `phase pending stopped generation
-   principal-slot account-ref ready-prev ready-next wait-reason deadline` become columns of `fn2-machines`
-   (machines-directory.lisp; rows = index count) indexed by global id. In machines.lisp: kind tables get only declared
-   fields (drop `*fn2-machine-common-fields*` from `cols`; kinds stop declaring pending/stopped); `K-PUT-CORE` routes
-   row-control fields to the directory and the rest to K's table, checking the WHOLE batch before either child changes;
-   `K-ROW-F` for them reads the directory; `fn2-machine-field-events` emits directory reads (no kind case) for them;
-   parks/grants (machines-a-access `fn2-machine-wait-queue`) become directory-only (pool parking still writes the
-   scribe's `cursor`); `K-PREPARE`'s initial values for these fields move into the directory init as a generated case
-   over kinds (each kind's `:initial`); admission `:copy`/`:clear` of principal-slot/account-ref write the directory;
-   port `fn2-listener-principal-rows` (direct setter, machines-a-access 569); regenerate the frame rows (column indices
-   now split across two children); `resources-owed.lisp:63` reads the wait-reason enum from the common fields. Gate:
-   `build/gate.sh NAME full` + `build/extra.sh` in a forge clone, `build/cmp.sh` against `/build/lanes/form-base/build/acc/base`.
-2. **P2**: give each operation an A arm calls a body over its children (`fn2-core-issue` over pool+ops returning a stop
-   reason; pool wrappers; parks over the directory; `fn2-core-stop` over control; ledger ops over accounts); the
-   fn2-core faces become generated one-stobj-let wrappers (as in the probe).
-3. **P3/P4**: generator emits arms over the children read from the operations' `stobjs-in` (+ K's table) into the
-   kind's own book; assembly emits per kind one wrapper + the rewrite `kind = K implies fn2-machine-run = K-RUN`
-   (with the stopped-row interception moved into K-RUN); registry arms (the listener's admit) in the registry section.
-   Then the probes certify alone.
-4. Ports: conn, commit (B's twelve arms), recovery-machine, upload, txn (after ember's T1/T8), sealer (needs `:sub`,
-   `:genesis`, an attached `:sealable` wait kind, kind-declared stop reasons: not yet in the language) — or seats port
-   their own kinds from 6.7, per main.
+Workflow is WORKFLOW-20261031 W1: certify my changed books + touched units + the scenario for what I touched; read the diff; push; READY; main gates the tip nightly. No whole-tree gates of mine. At ~400K distill myself and continue.
+1. **P2**: each operation an A arm calls gets a body over its children (`fn2-core-issue` over pool+ops returning a stop reason; pool range ops by handle incl. copy-range (B-TXN-COPY switches to it); parks/grants over the directory; stop over control; finish/charge; ledger ops over accounts); fn2-core faces generated one-stobj-let wrappers. Kind-declared stop reasons go in here: exec-state gets the generic reason :kind and control fields stop-kind/stop-detail; defmachine `:stops (R ...)`; `(:stop R)` routes. Say in P2's READY whether the language expresses identity ruling 6 (committed write with a refusal reply; :uncertain outcome) or which step adds it.
+2. **P3/P4**: arms over children (stobjs from the ops' `stobjs-in`), K-RUN wrapper + per-kind rewrite in the assembly; registry arms; `:sealable`/`:batchable` become declared wait kinds with named wakers. Probes certify alone.
+3. Ports: conn, commit + recovery, upload, txn (rulings 1, 6, 8 of IDENTITY-ACROSS-PEERS), sealer (`:sub`, `:genesis`, attached wait kind, kind stops).
 
 ## Boxes and scripts
 Forge clones (`ssh forge`): `/build/lanes/form` (G1 at base plus fixes; acc/g1, g1b, x1) and `/build/lanes/form-base`
-(at the rebased G1 + probe books; `build/acc/base` = the cee416335 baseline: certify 1784 s, the seven A driver logs;
+(at 747afb64c + P1 working files, certified through assembly.lisp; `build/acc/base` = the cee416335 baseline: certify 1784 s, the seven A driver logs;
 `build/acc/g1r` = rebased recertify). In each clone's build/: `gate.sh NAME [nodrivers|full]`, `fin.sh NAME` (closure +
 q1 evidence + export), `extra.sh NAME` (q1-controls + judge, crash-model-differential), `cmp.sh BASE NEW [N]`,
 `detach.py PIDFILE LOG cmd...` (setsid; PID file = group leader; stop with `kill -- -$(cat PIDFILE)`). Laptop has no
 setsid: `lanes/form-quests/launch.py`. A full closure on forge is ~30 min at load 3-6 (the serial assembly chain);
 a generator-only edit recertifies from callbacks-a (~20 min to the end).
-No detached runs of mine are live.
+No detached runs of mine are live (base747 gate in /build/lanes/form was stopped by its PID file; its partial certs are at 747afb64c).
 
 ## Pitfalls hit
 - Paren balance in long generator functions: check per-clause depth before certifying.

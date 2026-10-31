@@ -154,7 +154,7 @@
                    (pool-slot *fn2-none*) (pool-gen 0) (cap-index 0) (cap-nonce 0) (off 0) (length 0)
                    (next-free next) (wait-reason *fn2-wait-none*))
              (:next (:if retire :retired :free))
-             (:do () (fn2-machine-reclaim-fn2-echo id retire))
+             (:do () (fn2-machine-reclaim id *fn2-echo-admission-ordinal* retire))
              (:charge :steps *fn2-work-release*))))
   (:retired (:idle)))
  :observes
@@ -223,24 +223,24 @@
    (:let class (fn2-scribe-window-class))
    (:if (null class)
         ((:set (stopped 1)) (:next :stopped) (:charge :steps *fn2-work-release*))
-        ((:do (code slot gen) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
+        ((:do (code wslot wgen) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
           :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
                  (:otherwise (:set (stopped 1) (event-ready 0)) (:next :stopped) (:charge :steps *fn2-work-transition*))))
-         (:set (pool-slot slot) (pool-gen gen) (cursor 0) (checksum *fn2-fnv-offset-basis*))
+         (:set (pool-slot wslot) (pool-gen wgen) (cursor 0) (checksum *fn2-fnv-offset-basis*))
          (:next :fill)
          (:charge :steps *fn2-work-transition* :runnable t))))
   ;; each byte loop yields after a chunk; conservative byte work includes an
   ;; attempted access on refusal
   (:fill
    (:do (code cursor hash) (fn2-scribe-fill *fn2-scribe-chunk-bytes* row-cursor row-sequence row-checksum
-                                            row-pool-slot row-pool-gen id row-generation)
+                                            row-pool-slot row-pool-gen)
     :case (((:ok) (:set (cursor cursor) (checksum hash) (stopped 0))
                   (:next (:if (equal cursor *fn2-format-sector-bytes*) :patch :fill))
                   (:charge :bytes *fn2-scribe-chunk-bytes* :steps *fn2-work-transition* :runnable t))
            (:otherwise (:set (cursor cursor) (checksum hash) (stopped 1)) (:next :stopped)
                        (:charge :bytes *fn2-scribe-chunk-bytes* :steps *fn2-work-transition*)))))
   (:patch
-   (:do (code) (fn2-scribe-patch-loop 4 0 row-checksum row-pool-slot row-pool-gen id row-generation)
+   (:do (code) (fn2-scribe-patch-loop 4 0 row-checksum row-pool-slot row-pool-gen)
     :case (((:ok) (:set (stopped 0)) (:next :write)
                   (:charge :bytes *fn2-format-word-bytes* :steps *fn2-work-small* :runnable t))
            (:otherwise (:set (stopped 1)) (:next :stopped)
@@ -273,7 +273,7 @@
   (:read-result (:goto result))
   (:verify
    (:do (ok cursor) (fn2-scribe-verify *fn2-scribe-chunk-bytes* row-cursor row-sequence row-checksum
-                                       row-pool-slot row-pool-gen id row-generation))
+                                       row-pool-slot row-pool-gen))
    (:set (cursor cursor) (stopped (if ok 0 1)))
    (:next (:if ok (:if (equal cursor *fn2-format-sector-bytes*) :next :verify) :stopped))
    (:charge :bytes *fn2-scribe-chunk-bytes* :steps *fn2-work-transition* :runnable ok))

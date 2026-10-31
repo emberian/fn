@@ -5,8 +5,8 @@
 (include-book "machines-a-costs")
 (include-book "fnv")
 
-(defmacro fn2-scribe-events ()
- '(progn
+; The probe's operations, over the pool only (MACHINE-FORM 6.5 P2): its
+; arms are in child form (machines-a-run.lisp).
 (defun fn2-scribe-u32-byte (word index)
   (declare (xargs :guard (and (natp word) (natp index))))
   (mod (floor word (case index (0 1) (1 256) (2 65536)
@@ -36,33 +36,50 @@
   :rule-classes :linear)
 (in-theory (disable fn2-scribe-byte))
 
-(defun fn2-scribe-fill (left cursor sequence hash slot gen id owner-gen fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix left)
-                  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp cursor)
+(defun fn2-scribe-fill (left cursor sequence hash slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp cursor)
                               (natp sequence) (unsigned-byte-p 32 hash))))
   (if (or (zp left) (>= cursor *fn2-format-sector-bytes*))
-      (mv :ok cursor hash fn2-core)
+      (mv :ok cursor hash fn2-pool)
     (let ((byte (fn2-scribe-byte sequence 0 cursor)))
-      (mv-let (code fn2-core)
-        (fn2-core-write slot gen cursor byte *fn2-scribe-kind* id owner-gen fn2-core)
-        (if (not (eq code :ok)) (mv code cursor hash fn2-core)
+      (mv-let (code fn2-pool)
+        (fn2-pool-write slot gen cursor byte okind oslot ogen fn2-pool)
+        (if (not (eq code :ok)) (mv code cursor hash fn2-pool)
           (fn2-scribe-fill (- left 1) (+ cursor 1) sequence
-                           (fn2-fnv-step hash byte) slot gen id owner-gen fn2-core))))))
-(fn2-core-preserves fn2-scribe-fill (left cursor sequence hash slot gen id owner-gen fn2-core) :position 3 :rows nil)
+                           (fn2-fnv-step hash byte) slot gen okind oslot ogen fn2-pool))))))
+(fn2-pool-preserves fn2-scribe-fill (left cursor sequence hash slot gen okind oslot ogen fn2-pool) :position 3)
 
-(defun fn2-scribe-verify (left cursor sequence checksum slot gen id owner-gen fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix left)
-                  :guard (and (fn2-core-wfp fn2-core) (natp left) (natp cursor)
+(defun fn2-scribe-verify (left cursor sequence checksum slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp cursor)
                               (natp sequence) (natp checksum))))
   (if (or (zp left) (>= cursor *fn2-format-sector-bytes*)) (mv t cursor)
-    (mv-let (code byte) (fn2-core-read slot gen cursor *fn2-scribe-kind* id owner-gen fn2-core)
+    (mv-let (code byte) (fn2-pool-read slot gen cursor okind oslot ogen fn2-pool)
       (if (or (not (eq code :ok))
               (not (equal byte (fn2-scribe-byte sequence checksum cursor))))
           (mv nil cursor)
         (fn2-scribe-verify (- left 1) (+ cursor 1) sequence checksum
-                           slot gen id owner-gen fn2-core)))))
+                           slot gen okind oslot ogen fn2-pool)))))
 (in-theory (disable fn2-scribe-verify))
 
+(defun fn2-scribe-window-class-of (fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (fn2-pool-class-for *fn2-format-sector-bytes* fn2-pool))
+(defun fn2-scribe-patch-loop (left cursor hash slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left)
+                              (natp cursor) (natp hash))))
+  (if (or (zp left) (>= cursor 4)) (mv :ok fn2-pool)
+    (mv-let (code fn2-pool)
+      (fn2-pool-write slot gen (+ *fn2-format-checksum-offset* cursor)
+        (fn2-scribe-u32-byte hash cursor) okind oslot ogen fn2-pool)
+      (if (not (eq code :ok)) (mv code fn2-pool)
+        (fn2-scribe-patch-loop (- left 1) (+ cursor 1) hash slot gen okind oslot ogen fn2-pool)))))
+(fn2-pool-preserves fn2-scribe-patch-loop (left cursor hash slot gen okind oslot ogen fn2-pool) :position 1)
+
+(defmacro fn2-scribe-events ()
+ '(progn
 (defun fn2-scribe-start (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((id (fn2-machine-scribe-id fn2-core)))
@@ -88,31 +105,21 @@
 (defun fn2-scribe-window-class (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-    (class) (fn2-pool-class-for *fn2-format-sector-bytes* fn2-pool) class))
+    (class) (fn2-scribe-window-class-of fn2-pool) class))
 (in-theory (disable fn2-scribe-window-class))
 
-(defun fn2-scribe-patch-loop (left cursor hash slot gen id owner-gen fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix left)
-                  :guard (and (fn2-core-wfp fn2-core) (natp left)
-                              (natp cursor) (natp hash))))
-  (if (or (zp left) (>= cursor 4)) (mv :ok fn2-core)
-    (mv-let (code fn2-core)
-      (fn2-core-write slot gen (+ *fn2-format-checksum-offset* cursor)
-        (fn2-scribe-u32-byte hash cursor) *fn2-scribe-kind* id owner-gen fn2-core)
-      (if (not (eq code :ok)) (mv code fn2-core)
-        (fn2-scribe-patch-loop (- left 1) (+ cursor 1) hash slot gen id owner-gen fn2-core)))))
-(fn2-core-preserves fn2-scribe-patch-loop (left cursor hash slot gen id owner-gen fn2-core) :position 1 :rows nil)
 
 
 
-(defmachine-arms fn2-scribe)
+
+(defmachine-arms fn2-scribe :wrappers)
 (defmachine-run fn2-scribe)
 
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-scribe-start fn2-scribe-run fn2-scribe-byte fn2-fnv-step
     fn2-scribe-fill fn2-scribe-verify fn2-scribe-window-class fn2-scribe-patch-loop
-    fn2-scribe-sub-stop fn2-scribe-sub-result fn2-scribe-run-reserve fn2-scribe-run-fill
+    fn2-scribe-sub-stop-children fn2-scribe-sub-result-children fn2-scribe-run-reserve fn2-scribe-run-fill
     fn2-scribe-run-patch fn2-scribe-run-write fn2-scribe-run-fence fn2-scribe-run-reset
     fn2-scribe-run-read fn2-scribe-run-verify fn2-scribe-run-next fn2-scribe-on-write-result) (w state)))
 

@@ -196,47 +196,35 @@
 
 ; Both resource queues use the dormant row's ready links. Separate FIFO
 ; heads prevent a row waiter from hiding an operation needed for reclamation.
-(defmacro fn2-machine-wait-queue (park grant head tail reason &optional ords)
-  (let ((get-head (fn2-columns-sym 'fn2-machine- (symbol-name head)))
-        (get-tail (fn2-columns-sym 'fn2-machine- (symbol-name tail)))
-        (set-head (fn2-columns-sym 'fn2-machine-set- (symbol-name head)))
-        (set-tail (fn2-columns-sym 'fn2-machine-set- (symbol-name tail))))
-    `(progn
-       ; ORDS: (ord) when the queue is one per admitted kind.
-       (fn2-defoperation (:operation-set fn2-machine-resources) :access (fn2-core)
-       (defun ,park (id ,@ords fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (if (not (and (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
-                       ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*)))))
-             (fn2-machine-refuse-write fn2-core)
-           (if (equal (fn2-machine-wait-reason id fn2-core) ,reason) fn2-core
-           (let* ((tail (,get-tail ,@ords fn2-core))
-                  (fn2-core (fn2-machine-put id
-                              (wait-reason ,reason) (ready-prev tail) (ready-next *fn2-none*)))
-                  (fn2-core (if (equal tail *fn2-none*) (,set-head ,@ords id fn2-core)
-                              (fn2-machine-write-ready-next tail id fn2-core))))
-             (,set-tail ,@ords id fn2-core))))))
-       (fn2-core-preserves ,park (id ,@ords fn2-core) :rows nil :prefix "")
-       (fn2-defoperation (:operation-set fn2-machine-resources) :access (id fn2-core)
-       (defun ,grant (,@ords fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (if (not (and ,@(and ords '((natp ord) (< ord *fn2-machine-admitted-max*)))))
-             (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv *fn2-none* fn2-core))
-         (let ((id (,get-head ,@ords fn2-core)))
-           (if (equal id *fn2-none*) (mv id fn2-core)
-             (if (not (eq (fn2-machine-ready-next-read-code id fn2-core) :ok))
-                 (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv *fn2-none* fn2-core))
-               (let* ((next (fn2-machine-ready-next id fn2-core))
-                    (fn2-core (,set-head ,@ords next fn2-core))
-                    (fn2-core (if (equal next *fn2-none*) (,set-tail ,@ords *fn2-none* fn2-core)
-                                (fn2-machine-write-ready-prev next *fn2-none* fn2-core)))
-                    (fn2-core (fn2-machine-put id
-                                (wait-reason *fn2-wait-none*) (ready-prev *fn2-none*) (ready-next *fn2-none*))))
-               (mv id fn2-core))))))))
-       (fn2-core-preserves ,grant (,@ords fn2-core) :position 1 :rows nil))))
-(fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op wait-head wait-tail *fn2-wait-operation*)
-(fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission admission-head admission-tail *fn2-wait-connection-row* (ord))
+(defmacro fn2-machine-wait-queue (park grant child-park child-grant &optional ords)
+  ; The core faces of the directory's FIFO operations (arm-children.lisp).
+  ; ORDS: (ord) when the queue is one per admitted kind.
+  `(progn
+     (fn2-defoperation (:operation-set fn2-machine-resources) :access (fn2-core)
+     (defun ,park (id ,@ords fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+                   (fn2-control (fn2-core-control fn2-core)))
+         (fn2-machines fn2-control) (,child-park id ,@ords fn2-machines fn2-control) fn2-core)))
+     (fn2-core-preserves ,park (id ,@ords fn2-core) :rows nil :prefix "")
+     (fn2-defoperation (:operation-set fn2-machine-resources) :access (id fn2-core)
+     (defun ,grant (,@ords fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+                   (fn2-control (fn2-core-control fn2-core)))
+         (id fn2-machines fn2-control) (,child-grant ,@ords fn2-machines fn2-control) (mv id fn2-core))))
+     (fn2-core-preserves ,grant (,@ords fn2-core) :position 1 :rows nil)))
+(fn2-machine-wait-queue fn2-machine-park fn2-machine-grant-op fn2-machines-park fn2-machines-grant-op)
+(fn2-machine-wait-queue fn2-machine-park-admission fn2-machine-grant-admission
+                        fn2-machines-park-admission fn2-machines-grant-admission (ord))
 
+; A drained row's return to its partition ORD (fn2-machines-reclaim).
+(defun fn2-machine-reclaim (id ord retire fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (fn2-machines fn2-control) (fn2-machines-reclaim id ord retire fn2-machines fn2-control) fn2-core))
+(fn2-core-preserves fn2-machine-reclaim (id ord retire fn2-core) :rows nil :prefix "")
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) *fn2-none*)))
@@ -278,8 +266,10 @@
 (defun fn2-machine-park-pool (id class fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (not (fn2-machine-idp id fn2-core)) fn2-core
-    (let ((fn2-core (fn2-machine-put id (wait-reason *fn2-wait-storage-window*) (cursor class))))
-      (fn2-machine-set-pool-wait-id id fn2-core))))
+    (let ((fn2-core (fn2-machine-write-cursor id class fn2-core)))
+      (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+                  (fn2-control (fn2-core-control fn2-core)))
+        (fn2-machines fn2-control) (fn2-machines-park-pool id fn2-machines fn2-control) fn2-core))))
 (fn2-core-preserves fn2-machine-park-pool (id class fn2-core) :rows nil :prefix "")
 
 ; The peer record of the observation being delivered (layer doc 4.1.1): the
@@ -349,7 +339,7 @@
      '(stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code)
         (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))) :ok :bounds) code)
      '(stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (value)
-        (fn2-pool-cap slot fn2-pool) value)))))
+        (fn2-pool-slot-capacity slot fn2-pool) value)))))
 (defthm fn2-machine-pool-capacity-natp
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (natp (fn2-machine-pool-capacity slot fn2-core)))
@@ -372,7 +362,7 @@
      '(stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code)
         (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))) :ok :bounds) code)
      '(stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (value)
-        (fn2-pool-out-count slot fn2-pool) value)))))
+        (fn2-pool-slot-borrows slot fn2-pool) value)))))
 (defthm fn2-machine-pool-borrows-natp
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (natp (fn2-machine-pool-borrows slot fn2-core)))

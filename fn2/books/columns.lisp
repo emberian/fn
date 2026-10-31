@@ -154,7 +154,8 @@
   (declare (xargs :verify-guards nil))
   (if (atom specs) nil
     (let* ((spec (car specs)) (position (caddr spec))
-           (result (if position `(mv-nth ,position ,call) call))
+           ; (mv-nth 0 x) simplifies to (car x): a rule about it is stated so.
+           (result (cond ((not position) call) ((eql position 0) `(car ,call)) (t `(mv-nth ,position ,call))))
            (options (cdddr spec)) (frame (fn2-decl-get :frame options))
            (premise (if (member-eq :hyps options) (fn2-decl-get :hyps options) hyps))
            (fact-hints (if (member-eq :hints options) (fn2-decl-get :hints options) hints)))

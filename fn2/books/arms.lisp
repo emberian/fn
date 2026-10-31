@@ -145,7 +145,10 @@
 ; :answers (CODE ...) or t: the call's first result is an answer code (the
 ; whole set, or an open one); an arm's :do of it routes every answer
 ; (machine-arms.lisp).
-(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :tables :own-writes :effects :target :answers :doc))
+; :child names the operation's body over the core children it touches
+; (MACHINE-FORM 6.5 P2): the same formals with fn2-core replaced by those
+; children, the same results with fn2-core replaced likewise.
+(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :tables :own-writes :effects :target :answers :child :doc))
 (defun fn2-cost-boundp (x)
   (declare (xargs :verify-guards nil))
   (or (natp x) (and (symbolp x) x (not (keywordp x)) (not (eq x t)))))
@@ -220,6 +223,8 @@
         ((not (or (null (fn2-arm-get :answers args)) (eq (fn2-arm-get :answers args) t)
                   (and (keyword-listp (fn2-arm-get :answers args)) (member-eq :ok (fn2-arm-get :answers args)))))
          (msg "defcost ~x0: :answers is t or a list of answer codes including :ok." fn))
+        ((not (symbolp (fn2-arm-get :child args)))
+         (msg "defcost ~x0: :child names a function." fn))
         ((not (stringp (fn2-arm-get :doc args)))
          (msg "defcost ~x0 needs a one-line :doc." fn))
         (t nil)))
@@ -232,7 +237,7 @@
               :descriptors (or (fn2-arm-get :descriptors args) 0)
               :tables (fn2-arm-get :tables args) :own-writes (fn2-arm-get :own-writes args)
               :effects (fn2-arm-get :effects args) :target (fn2-arm-get :target args)
-              :answers (fn2-arm-get :answers args)
+              :answers (fn2-arm-get :answers args) :child (fn2-arm-get :child args)
               :doc (fn2-arm-get :doc args) :proof '(:owed))
         (list (list :function fn :at :callbacks)) nil))))
 

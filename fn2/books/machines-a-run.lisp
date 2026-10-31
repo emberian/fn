@@ -3,6 +3,14 @@
 (in-package "ACL2")
 (include-book "machines-a-access")
 (include-book "machines-a-scribe")
+(include-book "machines-a")
+(include-book "machine-arms")
+
+; MACHINE-FORM 6.5 P3: echo's and scribe's arms in child form, over their
+; tables and the core children their operations take, defined here before
+; any core exists; their core faces are made in the callbacks section.
+(defmachine-arms fn2-echo :children)
+(defmachine-arms fn2-scribe :children)
 
 (defmacro fn2-machine-a-events ()
  '(progn
@@ -65,7 +73,7 @@
 ; then their run entries and certificates.
 (defmachine-arms fn2-listener)
 (defmachine-run fn2-listener)
-(defmachine-arms fn2-echo)
+(defmachine-arms fn2-echo :wrappers)
 (defmachine-run fn2-echo)
 
 ))
