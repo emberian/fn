@@ -1389,6 +1389,103 @@ all twelve arms with their full contracts and turns every `assert$?` in commit.l
    scenario in sim-layer-b with a recording test attachment.
 3. Commit port (ruling 3), then B-S2 (M8) with D.
 
+## 11b. B-S2: the transaction member (statement first, 2026-10-31)
+
+Status: statement, before code. It refines §11a M7/M8 against the seam D states (d-machines-nntp.md
+14.4.4 and the B-S2 bullet), C's asks (c-ordered-runs.md §8 C-S3 (a)-(c), already met by B5-4a), and
+IDENTITY-ACROSS-PEERS ruling 2 (the origin fields). The twelve arms' port waits for MACHINE-FORM.
+None of this needs the port: the new code is admission, a record kind, seal stages and a grant
+source, and the arms they touch stay in the language they are in until the form arrives.
+
+**S1. The call.** `(fn2-commit-admit-txn slot gen len okind oslot ogen fn2-core) -> (mv code batch
+event fn2-core)`. D's interim of that name is deleted (the twin). D passes a workspace it owns
+(`slot gen` under `okind oslot ogen`, read-only to B from admission to settlement) holding
+`[0, len)` of member records (S2). Codes:
+- `:ok`: the member is in the open collector. `batch` is its batch number and `event` its commit
+  position (the global next event, C-S3 (a)). A settled row is reserved for the owner.
+- `:exhausted`: backpressure. There is no open or free row, the records or dependency room is short,
+  the batch is at 16 members, no settled row is free, or an abort is in progress. Nothing changed,
+  and the owner may park on `:batch-membership` (S6).
+- `:admission`: the workspace does not decode (S2). Nothing changed. D refuses the POST by its own
+  word.
+An abort or an uncertain predecessor never changes a member that was already admitted; B5-4a's suffix
+abort settles it `:refused`, and a batch whose first journal write happened settles `:uncertain`.
+
+**S2. The member records.** The workspace is a sequence of `count >= 1` records. Each one is
+`fn2-format-member-record` (`(record-kind (:enum record-kind ...)) (length :varint)`) followed by
+`length` body octets, and the whole is exactly `len` octets. The kinds are
+`*fn2-commit-txn-record-kinds*`, D's four from 14.4.4: `:article-acceptance` (the existing
+`fn2-format-article-acceptance`: the stored octets by reference, the content and source digests, the
+stored length), `:identity-fact`, `:membership` and `:operation-outcome`. Each body is decoded by its
+kind's generated decode step to exactly `length`. The decoders accept one encoding per value, so
+replay can rebuild the stream byte for byte. Admission decodes and checks everything; seal trusts it.
+Room: the frame's records payload is 3,900 bytes, which holds about four POSTs per batch until D4 3/n
+moves bodies into payload blocks. The article octets themselves stay in D's window: the
+acceptance record references them, and until D4 3/n the reference is the window's durable extent
+written by the upload (B-S1).
+
+**S3. The envelope and its origin (ruling 2).** Every member's records are preceded in the frame by
+`fn2-format-member-envelope`, which B5-4b lands for the run member. It is extended now, while
+adding a field is cheap: `(kind (:enum fn2-commit-member-kind ...)) (count :u8) (length :varint)
+(schema (:id schema)) (lineage (:id lineage)) (domain (:id domain)) (incarnation (:id incarnation))
+(position (:id event))`. For a member committed here, the origin is this node's lineage, its single
+commit domain (ruling 13), the history incarnation from the anchor (STORAGE §3 identities), and
+the member's event. A peer-imported acceptance (E4) carries its originating values instead. That is
+why the origin sits in the member envelope and not in the batch seal. Record headers keep `event`
+only. The revision stamp C's records carry sits beside it in the record bodies, untouched. Recovery
+checks that `position` equals the member's event in the chain, so a reordered or spliced member is
+damage.
+
+**S4. Seal, verbatim.** For each `:txn` member in member order, the seal's records stage writes the
+envelope, then for each record a record header (`record-kind`, version 1, the member's event) and
+the body copied from the workspace. The copy goes through `fn2-commit-copy-bytes`, the per-octet
+loop the 10-30 review names, until A's pool range copy exists (owed ask A-S8; a recorded departure,
+B-TXN-COPY). The records hash and the seal cover every byte, as for keyed members.
+
+**S5. The outcome.** It is settled per member (B5-4a M6). `:accepted` comes after publish: the batch
+is durable, `fn2-runs-install` and `fn2-successor-publish` both returned `:ok`, and the settled row
+carries the published root as evidence. `:uncertain` means the journal write was reached and the
+fate is unknown; the uncertain drain settles it before waiting for completions. `:refused` means
+the batch was dropped before any journal write. A member that is known durable but not yet
+published is never `:refused`: it stays pending until publish or until recovery replays it (B5-4b).
+The owner reads the outcome with `(fn2-commit-take okind oslot ogen fn2-core)`; D's arm takes it
+before any connection or output wait (the consumer-progress assumption of M6). The settling arm
+wakes the owner row only through `fn2-sched-make-runnable`, with the owner's generation checked.
+This is the outcome wake, distinct from S6.
+
+**S6. The `:exhausted` waiter through the grant service.** A sixth grant source is asked of A
+(machines-a-access, the sealer's pattern): `fn2-batchable-ready-p` / `fn2-batchable-grant-one`,
+default nothing. B attaches them in `-b2`: the source is ready when `fn2-commit-pick` would not
+answer `:exhausted` and a settled row is free, and a grant wakes the oldest row parked on wait
+reason `:batch-membership`. D's `:ready`, on `:exhausted`, parks with that wait reason and stays
+`:ready` instead of busy-retrying. No arm writes another row's wake id.
+
+**S7. Fencing.** An unresolved (`:uncertain`) batch keeps its storage scope fenced. Admission answers
+`:exhausted` while the pick finds the partner uncertain (B5-4a), so no later member can commit past
+an unresolved one. Recovery resolves it by classification and replay, never by waiting.
+
+**S8. The format floor.** `:format-slots` defaults to `4 + w`, and that is also its floor, with
+`w = fn2-b-upload-windows` (landed in B5-4a). Every profile therefore has the sealer's checker row.
+A profile that names fewer slots is refused.
+
+**Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-member-unit.lisp`).**
+- `fn2-commit-txn-outcome-evidence`: every settled `:txn` outcome matches its batch's evidence:
+  `:accepted` implies published, `:uncertain` implies the journal write was reached, `:refused`
+  implies no journal write. Teeth: the three outcomes on one fixture each, plus a planted
+  `:refused` after a journal write, which must fail.
+- `fn2-commit-txn-records-verbatim`: the sealed records frame decodes to the admitted workspace
+  records with the envelope's position equal to the event. Teeth: two members of mixed kinds, plus a
+  planted body octet flip after admission, which must fail.
+- `fn2-commit-txn-admission-total`: admission either answers `:ok` with exactly one member row
+  changed, or leaves the core unchanged. Teeth: a malformed length, an unknown kind, a short
+  workspace, a full batch.
+
+**Order.** (1) The `assert$?` to named-stop commit (it touches helper bodies, not the arms'
+language). (2) B-S2 itself, landed with D's switch from the interim and A's grant source as one
+seam: the record kinds, admission, seal stages, envelope with origin, and the controls. (3) B5-4b
+replay, which re-runs install and publish for a batch that is durable but unpublished. (4) The port,
+in MACHINE-FORM.
+
 ## 14. Delivery record: the B3b slip review (2026-10-29)
 
 §9 is the event log, so the slip finding lives here. Section 11 is recovery; 12-13 stay reserved for
