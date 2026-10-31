@@ -27,8 +27,12 @@ Astra's read: `build/coordinator/fn2/lanes/e-quests/astra-1.md` (§15 says what 
 | big-endian layout kinds `:u16be :u32be :u64be (:octets16 n) (:octets32 n)`, codes 12-16, every earlier code unchanged (main's ruling: E builds them, B reads the diff) | `fn2/books/layout.lisp` | the interpreter, the generated codec and the list spec; teeth in `layout-unit` (exact octets, `:wide`, `:length`, `:truncated`), the 10,000-assignment roundtrip campaign with mutations over a big-endian layout |
 | the frames: FNCT (header layout, BLAKE3 trailer), `fncu` v1 and v2, kind 4 codes 0-18, replies 5, 6, 9 and 28, page items, results; what each code is (§4.2) | `fn2/books/consumer-codec.lisp` | every form a `deflayout`; the code table checked against the port and both carriers |
 | fn1's bytes as fixtures | `fn2/tests/consumer-codec-unit.lisp` | fn1's three `.fncu` vectors read from `tests/fixtures/consumer-position/` and re-encoded exactly; fn1's eleven request payloads decoded and re-encoded; fn1's twenty-one refusal words; BLAKE3 at a known answer; every fixture through the generated codec |
-Owed, in order: peering and BP designed (§13); then, when D5 2/n serves a durable POST and D6 an article,
-the served kind `fn2-cns` and the XFNC block (§14).
+| the port as a declaration: `(:port P)` on the shared registry (`declare.lisp`'s `fn2-ports`), its generated readers as its manifest, beside its verbs' `(:command ...)` rows (the form seat's read) | `fn2/books/port.lisp` | certifies; the consumer books and fixtures recertified over it |
+| the peer reference model: nodes with attributed acceptance receipts, evidence by identity, foreign receipts, gaps and funding, custody obligations, feed work with phases, deferrals, losses and terminal dispositions; eight faults | `fn2/books/peer-model.lisp` | the meaning §13 states; an oracle, not served evidence |
+| K-P1, K-P3a, K-P4, K-P5, K-P6 owed with teeth (K-P2 and K-P3b are stated over D5 3/n's served path) | `fn2/books/owed-peer.lisp` | 0 proved; every tooth evaluates |
+| witnesses W1, W2, W3, W7, the offer rule, F1, F2, each asserting its antecedent; each fault caught | `fn2/tests/peer-witnesses.lisp` | all hold; eight faults caught |
+Owed, in order: the rest of §13.8's matrix as the records they need land (W4, W5, W6, W8-W10, F3-F7);
+then, when D5 2/n serves a durable POST and D6 an article, the served kind `fn2-cns` and the XFNC block (§14).
 
 ## 1. What the consumer port is
 One port, `fn2-consumer`, is the interface every application speaks: Mini, helm's seats, akapug's
@@ -382,7 +386,7 @@ after a crash" is a correctness acceptance, gated in the tiny profile above.
 - **C (accepted, amended):** `fn2-outcome` (id 9) keyed `((principal (:id principal)) (operation (:octets
   64)))`, value `((request :digest) (outcome :u16) (result (:id object)) (evidence (:enum (:none :committed
   :uncertain :refused))) (event (:id event)))`, `:unique`, written in the append's batch, the result an
-  immutable reference. The key is the local principal id on the condition that a principal id is never
+  immutable reference. The key is the local principal id on the premise (D7's allocator guarantees it; C states it in the outcome keystone) that a principal id is never
   reused within a store; a retry across peers, if §13 admits one, makes it ruling 2's origin digest.
   `operation-expired` is a pure comparison (the row's event plus the retry lifetime at or below the
   published frontier); C5 reclaims only rows that already read expired. Per-edge starts in C4b. The
@@ -563,7 +567,7 @@ decision is what makes cancel-before-target, across a crash, order-independent (
 Each keystone's positive fixture asserts its full antecedent (K-P2 accepts something; K-P5 releases
 something) and a fault per keystone is caught.
 
-### 13.8 The witnesses as fixtures, and what they establish
+### 13.8 The witnesses as fixtures, and what they establish (W1, W2, W3, W7, F1, F2 built in `tests/peer-witnesses.lisp`)
 A **witness-to-property matrix** names, per fixture, which keystones it exercises non-vacuously. The
 reference model is extended to several nodes with evidence, obligations, feed work and gaps; its fixtures
 are executable obligations and checker oracles, **not served acceptance evidence**.
@@ -596,7 +600,15 @@ are executable obligations and checker oracles, **not served acceptance evidence
 - **C:** the typed obligations contract (§13.6); the cancel intent record (§13.5); the position-ordered
   admission index with an intra-commit ordinal; the `feed-work` schema keyed by delivery identity; the
   bundle, submission, attempt, outcome and handoff schemas.
-- **B:** the ADU as a record subject; evidence identity preserved across import.
+- **B (accepted):** the ADU is a record subject (a payload kind in the commit stream, its envelope through
+  the record header); an imported record carries the origin's occurrence id, lineage, domain and
+  incarnation verbatim, and only a locally committed event gets occurrence = event, so a re-export never
+  mints a new observation.
+- **A:** outbound `Connect` is A's adapter primitive (vocabulary action, simulator host, native loop,
+  carrying Accept's peer record), placed after the form's P4; the peer model does not need it sooner.
+- **C (accepted in principle):** the five §13 seams, in C's order after the spine and §4a: the
+  intra-commit ordinal, the cancel intent, the obligations contract (with C4/C5), feed-work, then the
+  bundle, submission, attempt, outcome and handoff schemas.
 
 ## 14. Order of the build
 1. Done: the port form, the consumer port and carriers, the model, the keystones, the two fixtures.

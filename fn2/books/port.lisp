@@ -142,10 +142,18 @@
 (defun fn2-port-events (port fields reasons verbs)
   (declare (xargs :verify-guards nil))
   `(progn
+     ,@(fn2-port-verb-declarations port verbs)
+     ; The port itself is a declaration (:port P), its generated readers its
+     ; manifest, beside the (:command ...) rows of its verbs.
+     ,(fn2-declare (list :port port)
+        (list :verbs (strip-cars verbs) :fields fields
+              :reasons (append *fn2-port-precondition-reasons* reasons)
+              :outcomes '(:accepted :refused :uncertain))
+        nil
+      `(
        (defconst ,(fn2-gram-const port "-verbs") ',(strip-cars verbs))
        (defconst ,(fn2-gram-const port "-fields") ',fields)
        (defconst ,(fn2-gram-const port "-reasons") ',(append *fn2-port-precondition-reasons* reasons))
-       ,@(fn2-port-verb-declarations port verbs)
        (defun ,(fn2-gram-sym port "-verb-p") (verb)
          (declare (xargs :guard t))
          (if (member-eq verb ,(fn2-gram-const port "-verbs")) t nil))
@@ -185,8 +193,8 @@
                ((eq meter :limit) '(:refused meter))
                ((eq meter :shared) :park)
                ((eq meter :ok) :proceed)
-               (t '(:refused meter))))
-       (make-event (value (fn2-declare '(:operation-set ,port) nil nil nil)))))
+               (t '(:refused meter))))))
+     (make-event (value (fn2-declare '(:operation-set ,port) nil nil nil)))))
 
 (defmacro defport (port &key fields reasons verbs)
   (let ((problem (and (symbolp port) (fn2-port-problem fields reasons verbs))))
