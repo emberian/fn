@@ -1,4 +1,4 @@
-# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 afternoon, the ninth Opus seat (distilled once))
+# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 evening, the ninth Opus seat (distilled twice))
 
 Seat: Opus, layer D. The seat writes the code itself. Codex (`codex exec -m gpt-6-astra -C /Users/ember/dev/fn`) is used only for
 bounded pieces with real signatures. Briefs: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md` and FN2-SEAT-COMMON.md.
@@ -34,58 +34,115 @@ bounded pieces with real signatures. Briefs: `build/coordinator/briefs/FN2-LAYER
     coverage), never from :duplicate/:evidence/:conflict/:stored alone.
 
 ## State
-- dev: **721f7a50b** (D7 4/n statement, doc only), on 80ff68ab2, the C-S4 second half (this seat, on 516c2daf3). Before it, 89d31a51d was the first half.
-- `fn2/books/machines-c-read.lisp` (37 s on forge) is C-S4 whole except the frontier.
-  - First half: rows `R = fn2-b-read-rows` (`:x` when `:reading`); children reads/ranges/range-sources(8R)/seeks.
-  - Ops: key, key-octets, lookup, range, next, seek, seek-step, value, octets, release.
-  - (d) `fn2-read-scan x sid wslot wgen wk ws wg` / `fn2-read-scan-next x budget`: a whole-schema
-    ordered scan. The resume key is the delivered key, copied into the caller's workspace and skipped once.
-  - (e) `fn2-read-identity x mslot mgen moff mlen okind oslot ogen budget -> (mv code article candidates)`
-    gives the selection and evidence status of ruling 8.
-  - Owed: `fn2-read-identity-typed-exact` (owed-cursor.lisp). Availability, coverage and authorization
-    are `:not-served` until §4a's records and S-ARTICLE-LOCATION; rewrite the read over §4a's exact
-    lookup, per-name summary and evidence cursor when main sends the sha.
-  - (c) `fn2-read-frontier (fn2-core) -> (mv code position)` is a thin read of C's `(fn2-successor-published
-    fn2-core) -> (mv code position)`. It is written as a patch with read-unit's frontier case:
-    `build/coordinator/fn2/lanes/d-quests/frontier.patch`,
-    applied with `git apply` at C's sha. To land it: certify machines-c-read and read-unit, then push.
-    `fn2-cursor-view-pinned` stays owed until the cursor lands.
-- Units:
-  - `tests/read-unit.lisp` (18 s, in owed-export) covers: lookups; ranges with and without a
-    position limit; the seek (31 probes over [1, 2^31), so bound it by the group's high); reads
-    across seals (`:stale`); LIST across a seal; identity with conflict evidence; refusals.
-  - `*fn2-read-profile*` (owed-cursor.lisp) is the reading profile.
-- Answered to B through main: B-S2 §11b, yes with four amendments.
-  - :ready order: resolve, stage, out, records, late fill, admit, bind.
-  - Re-stage after a park rewrites the fill and the records.
-  - Evidence-only members are admissible (ruling 6).
-  - Identity records carry C's §4a encodings.
-  - The acceptance record's content digest is the subject's digest (ruling 1).
-  - Add `:batch-membership` to resources.lisp when the txn ports, with A's sixth grant source.
-- C-S3a is on dev (ebcc65eea). Late octet args, fill after the last stage.
-- Trees:
-  - Mac worktree `build/lanes/fn2/d6` is on branch `fn2/d6-read` = 80ff68ab2.
-  - Forge `/build/lanes/d6` is on branch d6-read, its certs warm at the pre-rebase base. Push with
-    `git push fn@forge:/build/fn.git HEAD:refs/heads/d6-read`, then on forge
-    `git fetch /build/fn.git d6-read && git checkout -B d6-read FETCH_HEAD`.
-  - Certify on forge with `setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh <books> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" & echo $! > build/rN.pid`.
-    The export is `FN_ACL2=... ACL2_SYSTEM_BOOKS=/tank/fn/acl2-8.7/books swarm-build sh fn2/tools/certify.sh --export-owed`.
-  - REPL: `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k python3 tools/acl2 --timeout N < build/rd-repl.lsp`.
-- Orphan to report: on forge, pid 3122923 is a stuck `bash -c` from my own ssh at about 02:40.
-  It has no PID file and holds no lock.
+- **In flight: D6 1/n, the cursor (spine-only ruling: nothing else from D until it lands).** It is
+  uncommitted in the Mac worktree `build/lanes/fn2/d6` on dev 24fce1ecd, and copied to forge
+  `/build/lanes/d6`, which is at d6-read = 24fce1ecd plus those files.
+  - Files:
+    - new: `fn2/books/cursor.lisp` and `fn2/books/assembly-callbacks-d-cursor.lisp` (the op core
+      faces, `:wrappers`, `defmachine-run`), both `git add -N` (intent only);
+    - edited: conn.lisp (`:query` phase and fields; `fn2-conn-serve-query`; frame-run routing;
+      `:reply` after `:query`; the drain cancels a cursor), conn-answer.lisp (`reading` argument,
+      `*fn2-answer-unread*`, 7 rows out of the interim), assembly-index (+cursor),
+      assembly-callbacks-r (includes d-cursor), machines-c-read (preservation facts for the read
+      children, generated), owed-cursor (profile `:reading t :x 2`, STAT <id> = 0, the harness renamed
+      `fn2-cursor-serve-run`), the cursor-unit teeth (served = reference), conn-answer-unit (+reading
+      arg), tests/core-child-assembly-access (runs `fn2-account-request-events`: the nightly red
+      routed to D), and the layer doc §15.0 "As built".
+  - Last forge run r40 (PID file build/r40.pid): the units over the fixed render-row (rows split
+    across pages: TX is smaller than a row).
+  - Green before that: read-unit, conn-unit, conn-answer-unit; cursor-unit's seeded GROUP tooth.
+  - Then commit by path (pathspec file), push, READY. After the push: split render-single and
+    render-step per branch.
+- **Cursor book time:** 1,339 s with the kind-wide tuple, 501 s with per-arm tuples (24fce1ecd).
+- **Arrived for the txn port (P.4):**
+  - B-S2 at 6d4e7f977: `fn2-commit-admit-txn (slot gen len okind oslot ogen) -> (mv code batch
+    event)` `(:ok :exhausted :admission)`; records are `fn2-format-txn-record` frames;
+    `fn2-commit-take (:ok :pending :none)`; S9 `fn2-commit-txn-source`; S10 `fn2-block-read` /
+    `-done`. B edited txn.lisp: `:ready` refuses `:not-stored` on `:admission`.
+  - C §4a (landing; main sends the sha): `fn2-identity-decide-start tx mslot mgen moff mlen dslot
+    dgen doff okind oslot ogen`; `fn2-identity-decide tx budget`; `fn2-identity-facts tx -> (mv code
+    verdict selection h evidence coverage)`. Slots: evidence 1, history 11, summary 13, candidate
+    12, article 14 (the slot count goes 16 to 24, the stripe 2048). Origin: lineage 0, domain 0,
+    incarnation 1, occurrence = event. C edits txn.lisp's identity part; D reads the diff.
+  - The form seat's note: a child-form `(:park :principal-reservation)` needs
+    `fn2-account-request-park`'s defcost to name a `:child`. Add it at the conn port.
+- dev has two commits from this seat on 523f747c6:
+  - **c7972899d**: the frontier.
+  - **00c493d32**: D7 4/n-a.
+  - Earlier: 721f7a50b (the D7 4/n statement), 80ff68ab2 (C-S4 second half), 89d31a51d (C-S4 first half).
+- **D7 4/n-a as built** (§13.8). accounts.lisp:
+  - `fn2-account-request`, with no-barging proved;
+  - `fn2-account-fits`, the grant scan, and the cursor `grant-at` on the system row;
+  - the `incarnation` column, `fn2-account-principal-id` = slot·2^32 + incarnation (u60), and
+    `fn2-account-rebind`; principal-id-unique and rebind-fresh are proved. C keys fn2-outcome's
+    principal on it.
+- accounts-core.lisp: `(defwait :principal-reservation :ready fn2-account-grant-ready-p :grant
+  fn2-account-grant-one :park fn2-account-request-park)`.
+  - `fn2-account-request-events` are materialized in assembly-access: the park, `-park-on`, and the
+    source `fn2-account-grant-take`, whose liveness is proved.
+  - owed-accounts.lisp has grant-exact, request-bounded-wait and request-once; their teeth are in
+    tests/request-unit.lisp.
+  - Not yet built: cancel (5/n), and ledger-matches over requests (it comes with 4/n-b).
+- **E's dimensions.** `:durable-octets` is D0 rank 7, with the kinds after it renumbered 8..24.
+  `:wait-row` is 14 and `:subscription-edge` 15, the latter bounded by `(:profile :esub)` with default
+  4096.
+  - `:peer-credit` (E's row, the rank right after `:principal-reservation`) lands with D5 3/n, its
+    producer. Name the renumbering in that READY.
+- **The frontier.** `fn2-read-frontier (fn2-core) -> (mv code position)`, defcost `:child
+  fn2-succ-published :answers (:ok :state)`.
+- **C's reads in child form** (381507ecd): `fn2-read-X-children` for all thirteen read ops, each with
+  computed `:answers`, which are larger than the doc's. Route the extras to `:on-refusal`.
+  - Five ops say `:answers t` because they never answer `:ok`: `fn2-read-next`, `-seek-step`,
+    `-scan-next`, `-identity` and `fn2-identity-step`.
+  - E's widened arm tuple (65ebca019): an arm's stobjs are the five plus its `:child` ops' children.
+  - The article location (186a84b7d, C §8 item 14) is one `fn2-format-ref` per article, read by
+    `fn2-read-value` and then B's `fn2-block-read (ref-row lease-slot lease-gen off len okind oslot
+    ogen)` → `(:ok :exhausted :stale :bounds)`. `fn2-block-read-done` → `(:ok :hash :io)`. These two
+    make D6 3/n's `:need-page`.
+- **G2** (7a0edee7a, MACHINE-FORM §6.10):
+  - F1: sub-arm `:on-refusal`.
+  - F2: a take answers `(:ok :no-row :pool)` and returns `(mv code target gen core)`; `(:park :taken
+    K)`. Delete `fn2-upload-gen-of` / `fn2-txn-gen-of` at the port.
+  - F3, and F4: `defwait`. Declare `:identity-reservation` with it.
+  - F5 `(:wake-row E)`, F6 `(:repeat N (STEP ...) :until E)`, F7 `row-slot`, and F9
+    `fn2-core-hand`/`-accept-hand`.
+  - F12 `:unreached`, and `:stops (R ...)` per kind.
+  - Worked example: tests/machine-arms-unit.lisp. `(defmachine-arms K :children)` goes in the kind's
+    book and `(defmachine-arms K :wrappers)` in its callbacks section (machines-a-run.lisp, for echo
+    and scribe).
+- **C's §4a plan, ruled.** It lands as one commit, written by C, which also edits txn.lisp's identity
+  part (D reads the diff).
+  - A `:union` insert. Its stage answers `:new` or `:already-present` (binds nothing), or
+    `:inconsistent` (refused).
+  - `(:new-of k)` fold args, the evidence record (id 1) and the history record (id 11).
+  - `fn2-identity-decide`: an exact candidate read plus the summary. It replaces identity-offer/-step
+    and the block walk.
+  - The txn moves from the `:record` slot to four slots: evidence, history, candidate and summary.
+  - Write P.4's `:lookup`/`:prepare` rows against that API now, and port the txn after C's sha.
+  - The location bind arrives with B-S2's member result (at the port); the outcome widening arrives
+    when E's op id exists.
+- B's event envelope (c0ae11af4) sits in the record header: revision, occurrence, origin, author,
+  payer and grant. Rebase over it before the txn port; it touches no D book today.
+- E's D8 edges stand at 63172fea2. Notes for P4: profilep rows ≥ `:esub`; the book takes 64 s.
+- **Trees:**
+  - Mac worktree `build/lanes/fn2/d6`, branch `fn2/d6-read` = c7972899d.
+  - Forge `/build/lanes/d6`, branch d6-read at 3928f4554 (the same content before the last
+    disjoint rebase), certs warm.
+  - Sync: `git push -f fn@forge:/build/fn.git HEAD:refs/heads/d6-read`, then on forge
+    `git checkout -q -- . ; git fetch -q /build/fn.git d6-read && git checkout -q -B d6-read FETCH_HEAD`.
+  - Certify, detached:
+    `rm -f build/rN.status; (setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh -j 12 <tests...> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" > /dev/null 2>&1 < /dev/null &); sleep 2; ps -eo pgid,cmd | grep "<unique>" | grep -v grep | awk "{print \$1}" | head -1 > build/rN.pid`
+  - Export: `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k ACL2_SYSTEM_BOOKS=/tank/fn/acl2-8.7/books swarm-build sh fn2/tools/certify.sh --export-owed`.
+    Every listed unit must be certified first.
 
-## Next, in order (D's own order while the form lands)
-1. Done: the ports and asks F1-F13 (this file), sent to main for the form seat.
-2. Done: D7 4/n statement-first, d-machines-nntp.md §13.8, dev 721f7a50b. Next is **4/n-a**,
-   the ledger's request operations, the grant pair's bodies, and owed-accounts.lisp with the
-   keystones and teeth in accounts-unit. These are core operations, so they land now. 4/n-b lands
-   at conn's port.
-3. `fn2-read-frontier` when C's `:published` sha arrives. Then `fn2-cursor-view-pinned` turns live.
-4. H14's WIRE items that are D's: read fn2/docs/h-harness.md H14, list D's rows, and do the ones
-   that need no new arm.
-5. At P4: port conn, upload and txn (one commit each, scenarios unchanged), then D6 1/n (P.5),
-   then D5 2/n (P.4, needs B-S2 and C §4a).
-6. When C lands §4a: rewrite fn2-read-identity over its exact lookup, per-name summary and evidence cursor.
+## Next, in order (spine only)
+1. Land D6 1/n (above); READY; H confirms the flip on both carriers. Then split render-single and
+   render-step per branch.
+2. The txn port P.4 on B-S2 plus C's §4a: write the four records in B's encodings, bind C's
+   location from `fn2-commit-txn-source`, the `:consumer` mode, the `:batch-membership` park, and
+   the durable POST with posting advertised.
+3. D6 1/n-b (LIST ACTIVE; LISTGROUP with no name; OVER <id>), then 3/n (ARTICLE/HEAD/BODY over
+   `fn2-block-read`).
 
 ## Pitfalls hit (this seat)
 - Shape lemmas outside an assembly:
@@ -802,6 +859,27 @@ confirmed against their shas.
 - **`:uncertain`:** a declared stop of the kind (P2's `:stops (:txn-uncertain ...)` in this
   `defmachine`). The batch's journal write was reached and its fate is unknown. The core stops and
   recovery classifies it; B-S2 S7 fences the scope meanwhile.
+- **`mode :consumer`** (E's E.P1 seam, e-continuation.md; one transaction path, D's).
+  - Fields gained: `cns :link cns-gen :u60 cevent (:enum fn2-txn-cevent (:ack :rebase)) cid :u60 cepoch
+    :u32 ca :u60 cb :u60 op :u60`.
+  - **Amendment: one take.** `fn2-machine-take-fn2-txn` has one copy list, so `:taken`'s `:copy` is the
+    union with `mode` copied too. The article taker (the upload) passes `*fn2-none*`/0 for the consumer
+    fields; `fn2-cns` passes `*fn2-none*`/0 for `upload upload-gen conn conn-gen rule`.
+  - `:admit` routes on `row-mode`: `(:if (equal row-mode *fn2-txn-mode-consumer*) ((:next :prepare)
+    (:charge ...)) ...)`. That skips `:admit`, `:reserve` and `:lookup`, with no Message-ID and no
+    claim, so `:releasing` skips the claim release by the same test.
+  - `:prepare` (consumer) puts slot 0, `fn2-consumer-cursor`, by `cevent` with args `(cid cepoch ca)`
+    or `(cid cepoch ca cb)`, and slot 1, `fn2-outcome ':insert (principal op request outcome event)`.
+    Then it resolves.
+  - `:ready` is the same stage, admit and bind; there are no records beyond B's encodings of the two
+    slots.
+  - **Amendment: the outcome reaches `cns` by a declared operation, not by a wake alone.** The reply
+    sub-arm for `:consumer` does `(:do (pcode) (fn2-cns-post-outcome row-cns row-cns-gen row-op
+    outcome) :accept (:ok :dropped) :why "a cancelled request takes no outcome")`. That is E's op,
+    generation-checked, on the post-word pattern. Then it does `(:wake-row row-cns)` (F5). The cns row
+    reads its outcome in its own fields, because the txn drains right after.
+  - C's `:applied` / `:unchanged` per fold slot, E's seam to C, comes back through `fn2-successor-stage`.
+    The txn maps `:unchanged` on slot 0 to the outcome word `behind`, never `accepted`.
 - **Keystones owed:**
   - `fn2-txn-evidence-committed`: under ruling 6, a valid competing binding always commits its
     evidence or is reported uncertain, and is never refused silently;

@@ -29,6 +29,8 @@ fn2 is ember's rebuild of fn as "the thing a world is kept in": the persistent e
 - **REVIEW-20261030.md**, main's five rulings at its head (their present status is recorded there).
 - **REGROUND-20261030.md** §5: main's reorientation, proposed for ember to amend and not yet amended: keep the spine to a durable POST and a readable article; stop new evidence machinery and fn1-surface breadth until then; start now the envelope fields, the consumer port's design, the FLOOR run and the range-copy path, the live plane's edge class, the BP/peering design, and the DSL pass (now MACHINE-FORM); M2 is redefined as "a consumer appends, reads, waits and acks on the laptop, and an NNTP reader sees the same article".
 
+- **Wire words; a kind lands with its producer (ember 10-31, D46 enforced).** Every record kind, fact or schema in a design names the protocol verb that writes it and the one that reads it, in the protocol's words (a history entry per RFC 5537 §3.3, a forward pin released by the receipt ADU, a catch-up batch), with the RFC or fn1 reference beside it; a kind without a serving writer is design, never a schema, and does not land until its producer serves. "Attributed receipts" and the like are renamed to the thing.
+
 ## 3. Where the tree is (origin/dev 747afb64c; the layer docs and lane continuations carry the detail)
 | layer | built (sha) | owed |
 |---|---|---|
@@ -43,10 +45,7 @@ fn2 is ember's rebuild of fn as "the thing a world is kept in": the persistent e
 Not yet in the tree at all: a durable served POST; reading an article back; the consumer port (append/read/wait/ack) and CNS frames; the live plane; Grant; Revision stamps; Transport and fork; BP and peering; any FLOOR measurement against fn2. Proof status: 0 proved, by ember's ruling (fn2/docs/OWED.md is the ledger, regenerated and committed by the nightly).
 
 ## 4. The order now
-1. **The machine form** (MACHINE-FORM §4, §6.6): P1, P2, P3/P4 with the probes certifying alone; then conn, commit, recovery-machine, upload, txn (carrying IDENTITY rulings 1, 6, 8), sealer (its seal row as `:sub`); fn2-cursor written in the new form from its arm table and never in the old. Each migration preserves the machines (every scenario unchanged; the nightly's drivers are the regression) except where a ruling changes behaviour, named in the commit.
-2. **The spine through the form**: B-S2 → D5 2/n (a durable POST) → D6 (the cursor; an article reads back) → D9; "serve" means both.
-3. **In parallel with both** (REGROUND §5, main's direction): the origin fields and revision stamp in the envelope before more layouts freeze; the consumer port's design (CNS wire, cursor/ack, INBOX-DELIVERY's selection) with Mini's processing transaction as the first fixture; the FLOOR run and range copies by handle; the live plane's edge class; BP and peering designed against the one engine as record kinds and ports, before transport code.
-4. **Then** M2 as REGROUND redefines it, E, and the release (RELEASE-PLAN §5). Assurance comes when the implementation is one we want assurance from; the top-level statements are written now as `defthm-owed` with teeth.
+BRICKS-20261031.md §5 is the order, kept as present state: the form's G2 first (it unlocks the cursor, the transaction port and the consumer machine), then those three in parallel with C's records and B's envelope, then P4 and the connection port, the article's octets, the durable POST advertised, the consumer machine served over the local socket, which is M2; peering, TLS, credentials, checkpoints, BP and operator verbs behind it. The served surface is measured by the interim table (`fn2/tests/surface/fn2_conn_interim.json`) shrinking and H's nightly families.
 
 ## 5. The documents (build/coordinator/fn2/ unless noted; mirrored in fn2/docs/design/)
 **Settled decisions** (read first):

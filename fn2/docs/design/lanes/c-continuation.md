@@ -1,50 +1,110 @@
 # fn2 layer C continuation (present state, rewritten whole after every commit)
 
-Seat: Opus, layer C (the ordered-run metadata engine). Ninth seat (2026-10-30 night; the eighth handed off near its ceiling). Method of
-2026-10-29 (`briefs/FN2-SEAT-COMMON.md`, path `build/coordinator/briefs/`): dev is the branch; Opus
-writes the code; Codex only for bounded pieces with real signatures pasted; READY to main per
-commit (SendMessage to "main"). Brief: `build/coordinator/briefs/FN2-LAYER-C-ORDERED-RUNS.md`. Layer
-doc on dev: `fn2/docs/c-ordered-runs.md`. Spine (REVIEW-20261030): **C1c the sealer** is C's one
-quest; C4b, C5, C6 wait until a POST is durable. New rule (main, 2026-10-30, "Landing on a moved
-tip"): a commit gated whole at its base lands on a moved tip without a second whole gate when the
-commits in between touched nothing in its dependency closure and carried their own gates (rebase,
-recertify own books and the export, fast-forward); overlap (B5-3: machines-b, owed-export; B5-4:
-the commit kind) means regate whole.
+Seat: Opus, layer C (the ordered-run metadata engine). Ninth seat, distilled once (2026-10-31) and
+adopted into the live session after a harness restart. I own C and decide inside it; main carries
+cross-layer seams. Order: `build/coordinator/fn2/BRICKS-20261031.md` §5. Layer doc on dev:
+`fn2/docs/c-ordered-runs.md`. Lane worktree: `/Users/ember/dev/fn/build/lanes/fn2/c-wake` (branch
+fn2/c-wake, rebased onto origin/dev before each landing, pushed as HEAD:dev). Forge tree:
+`/build/lanes/c` (rsync fn2/ minus certs; certify with `build/c4.sh` / `build/c5.sh` under setsid,
+PID files `build/c4.pid` / `build/c5.pid`).
 
 ## Landed (READY sent for each)
-- Earlier seats: C1a .. C-S3 c82104671, D5's seams 294055805, :sealable source 83ced3bf9, C1c engine
-  half 30ead9b23.
-- C1c sealer machine 429702ef1; C-S3a late octet args ebcc65eea (callbacks-c split into -prepare /
-  -commit / -c); sealer backpressure named stops e2448ef3b (C-SEAL-BACKPRESSURE: :sealer-full,
-  :sealer-cache; four controls in sealer-machine-unit); identity record statement 219184b5d (layer
-  doc §4a, Astra-read, doc only).
-- D landed C-S4 first half 89d31a51d (machines-c-read.lisp). My read of it: sound, with one
-  observation. Without a position limit, a range is not a cut: a publication after the range starts
-  is missed, unless the sealer retires an older source, in which case the re-enumerate picks it up.
-  The :published frontier column C owes closes that (C adds it in fn2-id-engine, set by publish).
+- Earlier: C1a .. C-S3 c82104671, D5's seams 294055805, :sealable source 83ced3bf9, C1c engine half
+  30ead9b23, sealer machine 429702ef1, C-S3a ebcc65eea, sealer named stops e2448ef3b, §4a statement
+  219184b5d and its refinement b0fbb77e9.
+- 93ede3b02: octet fold keys (runs-schema, the successor's arg / resolve / stage / bind), the
+  summary (id 13) and candidate (id 12) folds in identity-records.lisp (served), the id kinds
+  namespace and candidate, and the :published frontier (fn2-id-engine column, max(published,
+  batch cov) at publish, `(fn2-successor-published fn2-core) -> (mv code position)`).
+- 381507ecd: :answers on every C op that returns a code, computed over the certified world (scratch
+  tool: dump every translated body from ACL2, then a least-fixpoint abstract interpretation of the
+  first result; scripts in the session scratchpad `answers/`, dump.lsp + absint.py). Five ops never
+  answer :ok (read-next, -seek-step, -scan-next, -identity, identity-step): :answers t with the set
+  in a comment, until A's defcost check takes a list without :ok (asked). Every read op names
+  :child fn2-read-X-children (the wrapper body over its children; the wrapper calls it).
+- 186a84b7d (doc): S-ARTICLE-LOCATION, §8 item 14 (one fn2-format-ref per article, LOCATION-*,
+  copied at bind from B §11b S9's source reference; a multi-block article through its
+  :source-manifest); §4a receipts renamed fn2-identity-history (RFC 5537 §3.3).
 
-## Method (WORKFLOW-20261031.md, binding)
-No whole-tree gate per commit, no OWED regeneration, no export per commit. Land on: my changed
-books certify, the units I touched, the REPL on the tiny profile, and my own reading of the diff.
-Then push and send a one-line READY. I own C (the identity record is mine to design and build). At
-~400K: distill (`cv distill`) and continue; never hand off from this file.
+- 523f747c6: C-FOLD-UNCHANGED (E.P1): `:unless-when :unchanged` on a fold event; slot column
+  `unchanged`; `fn2-successor-applied`; the cursor's :ack declares it.
+
+- 80bd41b85: C-UNION-STAGE (§4a vocabulary): :union inserts read the key at the tip (same payload =
+  already present, binds nothing; other = :inconsistent); :union values must be integers;
+  *fn2-succ-fresh* row 44; arg source (:new K).
+- 89f965079: the five open :answers exact on P4 (cb903f15c); stage's list gains :inconsistent.
+
+## Method (WORKFLOW-20261031, binding)
+No whole-tree gate, no OWED regeneration, no export per commit. Land on: my changed books certify,
+my units pass, my own reading of the diff; rebase on dev; secrets check (`python3
+tools/secrets_check.py`, NOT a .sh); push; one-line READY. Fix forward. At ~400K ask main for the
+distill.
+
+## Rulings in force (main, 10-31)
+- Ember: spine only until D's cursor and B's member land. §4a's single landing IS the spine (D's
+  txn port is written against fn2-identity-decide and the four slots), so it goes on. Paused: E's
+  peering seams, coverage gaps, funded admission, any breadth. The location field's bind comes
+  with D's txn port when D asks.
+- A kind lands with its producer (D46). E's five peering schemas stay design (e-surface.md §13).
+  fn2-withdrawals waits for the cancel verb (D5 3/n). The fn2-outcome widening stays in my order
+  (the txn writes it today).
+- fn2-outcome's principal key: D7's (b). (:id principal) keys on fn2-account-principal-id =
+  slot*2^32 + incarnation (u60). The outcome keystone takes D's fn2-account-principal-id-unique as
+  its premise. D7 4/n-a 00c493d32 PROVED fn2-account-principal-id-unique and -rebind-fresh, so the
+  premise is a theorem; key on it when the widening lands with E's op id. D's fn2-read-frontier
+  (c7972899d) reads my published column.
+- Wire words: record kinds are named by the protocol verb that writes and reads them.
+- G2 (7a0edee7a): :sealable is a defwait in my sealer kind book. Kind :stops exist, so the sealer's
+  :sealer-full / :sealer-cache and inner-phase stops leave exec-state's enum at the sealer's port,
+  which waits for G3's :sub and :genesis.
 
 ## Next (in order)
-1. **Build §4a, in its order.**
-   (1) The vocabulary: typed octet/digest fold keys and values; the successor's union insert with
-   :new / :already-present / :inconsistent; stage-result fold args; late-bound integers; full-key
-   exclusive resume; layouts resized.
-   (2) The five records, deleting fn2-identity, its :record slot kind, *fn2-identity-contents-max*,
-   *fn2-id-block-max* and :identity-conflict-bound everywhere (D's txn takes the word changes).
-   (3) The decision and the three reads.
-   (4) The checker, then the teeth, then the owed rows.
-2. The :published frontier column (fn2-id-engine, set by fn2-succ-publish) for D's frontier read.
-3. C-SEAL-NO-ROW is dead since B5-4a (a profile can no longer omit the row): delete the :no-row
-   branch in machines-c-sealer / -events and the doc's interim entry.
-4. No new arms in the old form (ember's ruling); the sealer's arms wait for MACHINE-FORM (its §2
-   carries my seven gaps; the seal row's inner phases must be a declared machine).
-5. The device half when B5-4's :run-replacement member is usable; then C5.
-6. Owed: the machines-c-stage shave (55 s); the sealer's descriptor cap 4 -> 0 after A's frame lemmas.
+1. **§4a as ONE landing (ruled by main 10-31: no twin; I edit txn.lisp's identity part, D reads
+   it; D ports the txn after it lands on dev). The location field and the outcome widening are NOT
+   in it: each waits for its producer (B-S2's member result in D's port; E's op id).** Build order
+   in the lane:
+   (a) `:union` insert stage. fn2-succ-reads-key reads the key for :union as for :unique
+       (machines-c-successor ~485). In fn2-succ-stage-insert (machines-c-stage ~128), when the key is
+       found at the tip (overlay `best`, or resolve's `found`=1), a :unique insert stays :duplicate.
+       A :union insert compares the payload: equal answers :ok with the slot marked `unchanged`
+       (size 0, bind skips it; the C-FOLD-UNCHANGED column); unequal answers :inconsistent. A found
+       overlay entry is decoded with fn2-ov-entry into the query scratch (+ b0 *fn2-idc-eb*). A
+       run-found entry is copied to (+ entry *fn2-succ-res*) by resolve (check
+       machines-c-successor ~603 for insert slots). Octet fields compare with fn2-pool-compare
+       (pool-ranges.lisp:122). The overlay insert already treats :union as unique
+       (runs-assemble ~862).
+   (b) Two stage-result arg sources in fn2-successor-arg, each a slot mask column like OUTS/EVENTS:
+       `:new k` = 1 when earlier slot k staged fresh (not `unchanged`), else 0; `:old (k, f)` = the
+       TIP value of field f of earlier slot k's key before any staged step (k's tip located with
+       the same tip-scan as stage-fold; 0 when absent). The circularity: the summary's :admit needs
+       the candidate's old ordinal, and the candidate's :admit needs the summary's assigned one.
+       It breaks with :old. Summary :admit (namespace name ne nr est oldh) with :assign
+       ((h (if (= oldh 0) (+ candidates 1) oldh))), candidates += (if (= oldh 0) 1 0), ne/nr from
+       :new of the evidence/history slots. Candidate :admit takes ch = :out of the summary slot's
+       assigned h. Slot order in the txn: evidence, history, summary, candidate. Rework
+       identity-records.lisp's two folds to this signature (the landed :admit has nc/oldh as args).
+   (c) Records: fn2-identity-evidence (id 1, :union, replaces fn2-identity in identity.lisp) and
+       fn2-identity-history (id 11, :union), keys and fields per §4a's table. The origin O =
+       lineage/domain :digest, incarnation, position; position comes by :event at bind.
+   (d) fn2-identity-decide: the exact read of the candidate row plus the summary read. The verdict
+       :duplicate/:evidence/:conflict/:stored plus the facts. It replaces fn2-identity-offer/-step and
+       fn2-id-decides' block walk; delete *fn2-identity-contents-max*, *fn2-id-block-max*,
+       :identity-conflict-bound, the :record slot kind, and fn2-xl's identity use. Then the reads
+       fn2-identity-exact / -summary-read / -evidence-start/-step.
+   (e) txn.lisp: fn2-txn-put-article's :record slot becomes the four slots; the decision call becomes
+       fn2-identity-decide. owed-cursor.lisp's record slot likewise.
+   (f) Units: identity-core-unit rewritten over the new decision; the keystones' statements stay as
+       in §4a; the teeth evaluate.
+   Funded admission and coverage gaps follow the spine.
+   **Lane state:** (a) and (b)'s `:new` LANDED (80bd41b85). The lane worktree is clean at 89f965079.
+   NOT yet written: `:old
+   (k, f)`. Its plan: a mask column `olds`. At slot i's stage, for each olds bit, evaluate slot k's
+   key args (they must not be :out), run key-rows and tip-scan for k, and take field f from the
+   decoded overlay entry (ov-entry into b0+eb), else k's res area when k's found=1, else 0. Write it
+   into slot i's EVAL row j after eval-args.
+3. C-SEAL-NO-ROW is dead since B5-4a: delete the :no-row branch and the doc's interim entry.
+4. The device half when B5-4's :run-replacement is usable; then C5.
+5. Owed: the machines-c-stage shave; the sealer's descriptor cap 4 -> 0 after A's frame lemmas.
 
 ## The fn2-sealer arm table (as built at 429702ef1; input to the new form)
 The machine has one row (capacity 1, gen 1, local slot 0). Its fields are `stopped :bool` plus the
@@ -57,7 +117,7 @@ machine is the seal row's, below the machine's contract.
 
 | arm (machine phase) | reads | writes | effects | cost | next | refusals |
 |---|---|---|---|---|---|---|
-| `fn2-sealer-seal` (:sealing) | the row's id; through fn2-sealer-step, the seal row and 16 core children (seals, overlays, overlay-index, run-installed, run-builds, run-writers, run-restarts, run-cache, ribbon-builds, ribbon-band, fields, pool, fc, fc-context, b3, digests) | row: wait-reason (park on :sealable), phase (-> :stopped), stopped; the 16 children through the step | one seal step; pool reserve/release (64 KiB page workspaces, the hash workspace, the overlay arena on retire), page writes and seals, cache installs, the run install and the overlay retire; on refusal `fn2-core-stop :sealer` | fn2-sealer-step 4096 bytes + transition steps; 0 descriptors | :sealing (runnable on :more/:retired/:done; parked on :sealable on :idle/:full/:cache), :stopped on any other code | every non-listed code (:bounds, :state, :capacity, and callee codes) stops the core (:sealer) and moves the row to :stopped |
+| `fn2-sealer-seal` (:sealing) | the row's id; through fn2-sealer-step, the seal row and 16 core children (seals, overlays, overlay-index, run-installed, run-builds, run-writers, run-restarts, run-cache, ribbon-builds, ribbon-band, fields, pool, fc, fc-context, b3, digests) | row: wait-reason (park on :sealable), phase (-> :stopped), stopped; the 16 children through the step | one seal step; pool reserve/release (64 KiB page workspaces, the hash workspace, the overlay arena on retire), page writes and seals, cache installs, the run install and the overlay retire; on refusal `fn2-core-stop :sealer` | fn2-sealer-step 4096 bytes + transition steps; 0 descriptors | :sealing (runnable on :more/:retired/:done; parked on :sealable on :idle), :stopped on any other code (:full stops :sealer-full, :cache :sealer-cache, since e2448ef3b) | every non-listed code (:bounds, :state, :capacity, and callee codes) stops the core (:sealer) and moves the row to :stopped |
 | `fn2-sealer-idle` (:stopped) | the row | nothing | fn2-machine-idle | fn2-machine-idle's steps | :stopped | none |
 
 The seal row's phases are what one `fn2-seal-step` does, by phase. These are the candidate arms

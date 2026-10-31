@@ -21,28 +21,24 @@ fn2-commit is its first B kind. The port's input in any form is the arm table an
   Message: b-quests/b54a-final.msg + the gate paragraph (worktree build/b54a.msg).
 - B5-3 2062b2f74, B5-2 5674cae12, B5-1 717bec1c3; earlier B library 12cd1031f, B3b 19149d32e/49ffcd6af.
 
-## Next (owned order; WORKFLOW-20261031: changed books certify, touched scenarios pass on tiny, read the diff, push, READY, fix forward)
-Landed: the named stops 75adea036 (seven reasons on exec-state after C's :sealer-full/:sealer-cache;
-move to the kind's :stops at P2/the port; tests/commit-stop-unit.lisp; post-landing check green).
-1. **Envelope fields (in flight).** The record header (one record = one event) gains revision,
-   occurrence, lineage, domain, incarnation, author (:id key), payer (:id principal), grant; event =
-   position. layout.lisp's id list gains revision occurrence lineage domain grant. Values for a local
-   keyed event: occurrence = event, incarnation 1, the rest 0. max size 11 -> 83. Certifying on forge
-   b54 (75adea036 + build/env.diff; PID build/env.pid, log build/env.out, done build/env.done).
-   E's consumer events (register/rebase/ack/unregister) become record kinds that inherit this
-   header (answered yes); E's layout kinds (:u16be.. :fixed :octets16) come to B for review after.
-2. **B-S2** per b-durability §11b with D's four amendments (in §11b): one :identity kind carrying C's
-   §4a records by tag; acceptance optional (evidence-only commit); workspace decoded at admission,
-   never cached across a park; two digests named apart; defcost :answers (:ok :exhausted :admission)
-   for admit-txn, (:ok :pending :none) for take. P1 is on dev (516c2daf3): attach the
-   :batchable pair in -b2 like machines-c-sealer-events.lisp:82, prove -live/-shape, clear the wait
-   with fn2-machine-write-wait-reason id *fn2-wait-none*. P2 brings copy-range by handle: switch the
-   seal to it then and retire B-TXN-COPY.
-3. B5-4b replay. 4. The twelve arms' port in MACHINE-FORM.
+## Next (owned order; WORKFLOW-20261031; BRICKS-20261031 §5 is the program order)
+Landed: named stops 75adea036; the envelope c0ae11af4 (record header = event envelope; §11b S9/S10).
+Landed: B-S2 6d4e7f977; the section split c4dde2215 (assembly-callbacks-bt between -b and -b2;
+forge -b 45 s, -bt 41 s, -b2 48 s); B-S2's three keystones ca3aded2b (commit-proof.lisp over
+fn2-commit-txn-proof-run; teeth in tests/commit-txn-unit.lisp; b-durability.md 11b).
+1. **PARKED (ember's spine-only ruling, 2026-10-31).** No B5-4b, B6 or commit port until main wakes
+   the seat (the port follows G3). Open items when woken: rebase over C's *fn2-b-txn-field-rows*
+   (machines-b's fn2-b-field-rows; txn stripe 1024 -> 2048) when main sends C's sha; the cross-owner
+   copy-range is queued at the form seat (then retire B-TXN-COPY); S10's borrow edge and block hash
+   come with D4 3/n. The post-landing check at ca3aded2b on forge b54 is green (commit-txn,
+   sim-layer-b, commit-proof units over the rebuilt tree). Nothing of B's runs on forge.
+2. B5-4b replay. 3. The twelve arms' port in the form (stops to :stops).
+Forge: tree /build/lanes/b54 (at c0ae11af4's parent + diff). Sync by copying changed files, NOT
+git checkout + apply (that touches every file and recertifies the whole chain, ~40 min).
 Asks out: C (sealer profilep demands its pool class; C-SEAL-NO-ROW unreachable).
-Lesson: in mv and stobj-let producers a stobj position must be the variable itself; bind
-(let ((fn2-core (fn2-core-stop ...)))) first. A stop inside an arm returns at once
-(fn2-commit-stop-arm); continuing after it fails the arm's guard. zp needs natp; use posp.
+Lessons: stobj positions in mv / stobj-let producers must be the variable; a stop in an arm
+returns at once (fn2-commit-stop-arm); zp needs natp, use posp; expected-member fixtures in
+sim/commit-history move with the record header.
 
 ## fn2-commit's twelve arms as built (input to the port in any form)
 Every arm except idle and observe begins with the partner gate: `fn2-commit-partner-state (batch-no, partner)`

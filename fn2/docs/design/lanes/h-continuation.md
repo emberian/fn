@@ -32,9 +32,21 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   outcomes are named host contracts is an owed skip (evidence owed_host). serves.fn2-native = [nntp]. Whole nntp at
   f794c78f3: S PASS; E 30 tests, 0 failures (24 owed, 3 intended, 1 opt-in, fixture hook unset); F and H named
   skips; exit 3. Evidence: build/h8/native-whole/.
-- WAITING ON: D5/D6 READYs from main. At each one, rerun `--target fn2 --family nntp` and `--target fn2-native
-  --family nntp` (whole), and report served / interim / WIRE plus the E rows that turned live. D6 (init with
-  groups) is the first E unlock; F needs an fn2 owner with groups and a login. Nothing of H is running.
+- Then 5fa5a09f6 (H15: the laptop nightly, fn2/tests/harness/laptop_nightly.sh + fn2.tests.surface.nightly_nntp),
+  1619a6146 (H16: h-harness.md rewritten as present state; a fixture's owed setup is owed; nightly exports the
+  rfc3977 hook) and ac08f845f (H17: the summary opens with the served surface from fn2_conn_interim.json by owner).
+- THE FLOW (WORKFLOW-20261031): no per-commit gates, no reruns per READY. The nightly is the rerun: crontab
+  `30 3 * * * /bin/sh /Users/ember/dev/fn/fn2/tests/harness/laptop_nightly.sh`, worktree build/lanes/h-nightly,
+  output build/h8/nightly/<date>-<sha>/ (table.md, summary.txt, sim/, native/, cert.log), line in
+  build/h8/nightly/LATEST.txt, PID build/h8/nightly/running.pid (stop: kill -- -<pid>). A READY that flips verbs
+  is the trigger to confirm the family on both carriers. h-harness.md is present state: rewrite it whole, never
+  append.
+- H18 555faa655: nntp laptop s_timeout 1800 (the socket S under load passed 300 s), driver() tolerates EPERM
+  on a zombie-only group kill (macOS). The proving nightly at 555faa655 passed: both targets S ok, 16,730 / 0 /
+  15,741, WIRE 17,776 judged ok; served surface 7 verbs, 23 interim rows (D6 17, D5 3, D7 1, E2 1, E4 1). READY sent.
+- STANDING BY on events. A READY that flips verbs triggers a confirm of the nntp family on both carriers
+  (one run of the nightly script by hand, detached: `nohup env -i HOME=$HOME USER=$USER /bin/sh
+  fn2/tests/harness/laptop_nightly.sh &`). A certify after a foundation move takes about 50 min under load.
 - When dev moves under another seat's unpushed local commit, do not merge over it: use a detached worktree
   at origin/dev (git worktree add --detach build/lanes/h-native origin/dev), certify there and copy the H files in.
   A worktree's full certify is about 25 min on the laptop.
