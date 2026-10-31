@@ -21,51 +21,28 @@ fn2-commit is its first B kind. The port's input in any form is the arm table an
   Message: b-quests/b54a-final.msg + the gate paragraph (worktree build/b54a.msg).
 - B5-3 2062b2f74, B5-2 5674cae12, B5-1 717bec1c3; earlier B library 12cd1031f, B3b 19149d32e/49ffcd6af.
 
-## Next (owned order, WORKFLOW-20261031 W1: own books + touched units + export include check, push, READY)
-1. **The named-stop commit (in progress, nothing edited yet; worktree fn2/b at 880e5edad = dev).**
-   New stop reasons (exec-state enum, after :commit-follower): :commit-resource :commit-pool
-   :commit-root :commit-format :commit-io :commit-edge :alloc-links. Per site (commit.lisp line numbers
-   at 880e5edad), four classes:
-   - A, core in scope, assertion on a code: replace `(assert$? C fn2-core)` with
-     `(if C fn2-core (fn2-core-stop REASON fn2-core))`: reserve-pools :266 (:commit-pool),
-     release-pools :279 (:commit-pool), ready :326 (:commit-root, make-runnable refused),
-     collect :552 (:commit-edge), drop-io :832 (:commit-io), writes :915 (:commit-io),
-     install :1136 (:commit-edge), drain :1194 (:commit-pool).
-   - B, child-level code already returned: drop the assert$?, keep :bounds, and in the core-level
-     function convert :bounds to a stop after the stobj-let: reserve-extent :200 (:commit-resource),
-     format-core :630, page-hash :642, seal-context :674 (:commit-format), io-edge :807 (:commit-io).
-   - C, child-level with no code (stobj returned unchanged): make the stobj-let return (ok child) and
-     stop when not ok: save-pool :227, release-pool :249 (:commit-pool), prepare-root :320
-     (:commit-root), context :609 (:commit-format).
-   - D, readers: resource :160 returns extent (expt 2 32) (not u32) instead of 0, so every caller's
-     u32 check trips: writes :903 becomes a stop :commit-resource, root-edge :461 a stop
-     :commit-edge; frontier :289 and root-swap :986 (no root row 0): the readers keep their values
-     and their callers (start, admit-keyed, install, publish) stop :commit-root when
-     (fn2-commit-root-rows) is 0, which the profile rules out.
-   - alloc.lisp :1481 :1606 :1636 :1654 :1693 (list-link shape checks inside fn2-extents-only
-     functions): return a code (:links) instead of absorbing, and the commit/recovery callers stop
-     :alloc-links on it (fn2-alloc-reserve's caller reserve-extent; retire/unlink/free/checkpoint-drain
-     through commit-alloc's wrappers).
-   Controls (tests/commit-member-unit.lisp or a new tests/commit-stop-unit.lisp): one per reason,
-   each by planting the impossible state (e.g. a commit-io row count cut to 0, an extent list with a
-   broken link) and checking the core stops with that reason, not a value. Certify on forge b54 (it
-   holds 747afb64c certified): own books + commit-*-unit + recovery-proof-unit + sim-layer-b's book.
-   State: edits written (exec-state enum +7; commit.lisp: macros fn2-commit-require /
-   fn2-commit-shape-stop, *fn2-commit-no-extent*, every assert$? gone; alloc.lisp: :links codes,
-   fn2-alloc-free-linksp in release/cancel; tests/commit-stop-unit.lisp eight controls; alloc-unit's
-   link witnesses now assert :links, alloc-random.lsp keeps only :counter loud). Whole closure
-   certifying on forge b54 (dev 880e5edad + build/stops.diff; PID build/stops.pid, log
-   build/stops.out, done build/stops.done).
-2. B-S2 per b-durability §11b, with D (records in the workspace, park on :batch-membership) and A
-   (the sixth grant source), as one seam.
+## Next (owned order; WORKFLOW-20261031: changed books certify, touched scenarios pass on tiny, read the diff, push, READY, fix forward)
+Landed: the named stops 75adea036 (seven reasons on exec-state after C's :sealer-full/:sealer-cache;
+move to the kind's :stops at P2/the port; tests/commit-stop-unit.lisp; post-landing check green).
+1. **Envelope fields (in flight).** The record header (one record = one event) gains revision,
+   occurrence, lineage, domain, incarnation, author (:id key), payer (:id principal), grant; event =
+   position. layout.lisp's id list gains revision occurrence lineage domain grant. Values for a local
+   keyed event: occurrence = event, incarnation 1, the rest 0. max size 11 -> 83. Certifying on forge
+   b54 (75adea036 + build/env.diff; PID build/env.pid, log build/env.out, done build/env.done).
+   E's consumer events (register/rebase/ack/unregister) become record kinds that inherit this
+   header (answered yes); E's layout kinds (:u16be.. :fixed :octets16) come to B for review after.
+2. **B-S2** per b-durability §11b with D's four amendments (in §11b): one :identity kind carrying C's
+   §4a records by tag; acceptance optional (evidence-only commit); workspace decoded at admission,
+   never cached across a park; two digests named apart; defcost :answers (:ok :exhausted :admission)
+   for admit-txn, (:ok :pending :none) for take. P1 is on dev (516c2daf3): attach the
+   :batchable pair in -b2 like machines-c-sealer-events.lisp:82, prove -live/-shape, clear the wait
+   with fn2-machine-write-wait-reason id *fn2-wait-none*. P2 brings copy-range by handle: switch the
+   seal to it then and retire B-TXN-COPY.
 3. B5-4b replay. 4. The twelve arms' port in MACHINE-FORM.
-Form seat (via main): the :batchable grant source lands in P1 (machines-a-access, encapsulate like
-:sealable with -type/-live/-shape; sixth source after :sealable). B attaches its pair in -b2 as
-machines-c-sealer-events.lisp:82 does and proves -live and -shape; the grant clears the parked row's
-wait with fn2-machine-write-wait-reason id *fn2-wait-none* (P1 moves wait-reason into the directory).
-copy-range by handle lands in P2: switch the seal to it then and retire B-TXN-COPY. Main sends shas.
-Asks out: A (grant source, now P1), D (§11b S2/S6), C (sealer profilep demands its pool class;
-C-SEAL-NO-ROW unreachable).
+Asks out: C (sealer profilep demands its pool class; C-SEAL-NO-ROW unreachable).
+Lesson: in mv and stobj-let producers a stobj position must be the variable itself; bind
+(let ((fn2-core (fn2-core-stop ...)))) first. A stop inside an arm returns at once
+(fn2-commit-stop-arm); continuing after it fails the arm's guard. zp needs natp; use posp.
 
 ## fn2-commit's twelve arms as built (input to the port in any form)
 Every arm except idle and observe begins with the partner gate: `fn2-commit-partner-state (batch-no, partner)`

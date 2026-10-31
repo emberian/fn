@@ -1,265 +1,1137 @@
-# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 early, the ninth Opus seat)
+# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 afternoon, the ninth Opus seat (distilled once))
 
-Seat: Opus, layer D. The seat writes the code itself. Codex (`codex exec -m gpt-6-astra -C /Users/ember/dev/fn`)
-is used only for bounded pieces given real signatures. Briefs: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md`
-over `FN2-SEAT-COMMON.md`. Layer doc: `fn2/docs/d-machines-nntp.md` §15 (D6). macOS has no `setsid`:
-use `nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' CMD ... & echo $! > X.pid`. On forge,
-`setsid sh script & echo $! > X.pid` gives a group-leader pid; check that pid = pgid.
+Seat: Opus, layer D. The seat writes the code itself. Codex (`codex exec -m gpt-6-astra -C /Users/ember/dev/fn`) is used only for
+bounded pieces with real signatures. Briefs: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md` and FN2-SEAT-COMMON.md.
+**The flow is `build/coordinator/fn2/WORKFLOW-20261031.md`**, binding:
+- A commit establishes three things: the books you changed certify; the scenarios for what you
+  touched pass in the REPL on the tiny profile; you read your diff.
+- Then push and fix forward.
+- None of these per commit: whole closures, sim-layer-d-evidence (it is a nightly row), the A4
+  baseline, OWED regeneration, gate tables in a READY.
+- Main gates dev's tip in batches and routes reds by file.
+- Do not hand off at the ceiling: distill and continue.
 
-## Ruling in force (ember, 2026-10-31, via main): binding
-The machine form (defmachine with hand-written defmachine-callback arms, one shared assembly,
-per-octet exports) is being redesigned before more code goes on it. "The way we are building it"
-outranks the functionality spine.
-- **Do not write D6's arms or D5 2/n's arms in the old form.**
-- Core children and ops (like machines-c-read) may still land.
-- Main is writing the new form's statement. D's four kinds (conn, upload, txn, cursor) are its
-  first migration. Stand by for it. Its input is the arm tables below.
+## Rulings in force
+- **Machine form (ember, 10-31).** Write no arms in the old form (defmachine with
+  defmachine-callback). Main's new form is landing in parts:
+  - P1 is on dev at 516c2daf3: ready links and wait-reason are directory columns.
+  - P2, next: kind-declared `:stops` in a kind's own defmachine. txn's `:uncertain` (ruling 6) and
+    conn's and upload's stops are declared in their books at the port.
+  - D's four kinds are its first migration. Their ports are written below in §6.7's syntax
+    (P.1-P.5). Each port waits for P4 and for asks F1-F3.
+  - Core children and ops may land now.
+- **Standing order (main, 10-31 afternoon).** Never stand by. While P2-P4 land, D's own order is:
+  (1) the ports (done here, sent to main with the asks); (2) D7 4/n statement-first in
+  d-machines-nntp.md (the request bundle and grants over S1-S6, and the ledger grant pair's liveness
+  statement); (3) `fn2-read-frontier` when main sends C's `:published` sha; (4) the WIRE items in
+  H14's owed host contracts that are D's. At about 400K tokens, ask main for a distill. The forge
+  orphan (pid 3122923) is main's to handle.
+- **Identity across peers** (`build/coordinator/fn2/IDENTITY-ACROSS-PEERS-20261030.md`, fourteen rulings).
+  - D owns rulings 1, 6 and 8. In the txn port: the identity subject digest (1); the evidence-only
+    committed transaction with a separate article refusal (6); replies chosen from the typed read result (8).
+  - C's §4a (dev 219184b5d, then b0fbb77e9) brings five records and attributed receipts. Replies are
+    decided from the separate facts a decision or read returns (selection relation, evidence status,
+    coverage), never from :duplicate/:evidence/:conflict/:stored alone.
 
 ## State
-- dev: **89d31a51d** "fn2 C-S4 first half: served reads for query cursor rows" (this seat; on
-  cee416335). Gate:
-  - On forge at efc213188 (on ebcc65eea), the whole closure had rc=0 and the export passed.
-  - A's six drivers and sim-layer-d-evidence passed. The A4 output matched b54's log apart from
-    paths, HEAD stamps, rune counts and the Q1 catalogue line (dev's sealer).
-  - After the rebase over cee416335 (disjoint files), the own books and the export were green.
-- C-S4 as built is in `fn2/books/machines-c-read.lisp` (C doc §8 item 13; D doc §15.8 "Built, first half").
-  - Read rows `R = (fn2-b-read-rows profile)` (opaque; `:x` when `:reading`).
-  - Children `fn2-reads fn2-ranges fn2-range-sources(8R) fn2-seeks`, each with its own profile
-    predicate `fn2-read-profilep`. Keep it separate: putting R products into fn2-idc-profilep's
-    child lemmas cost machines-c 121 s.
-  - `fn2-succ-txns` has t+R rows; run-cursors and paths have t+9R.
-  - Stripe `rows-1024t-1280-1024(x+1)`; `*fn2-read-stride*` is 952.
-  - Ops are `fn2-read-key x region j value`, `-key-octets`, `-lookup x sid budget`,
-    `-range x sid pfield plimit`, `-next x budget`, `-seek x sid lo hi p pfield`,
-    `-seek-step x budget -> (mv code answer)`, `-value x f -> (mv code value)`,
-    `-octets x f from n dslot dgen doff dk ds dg -> (mv code copied left)`, and `-release x`.
-  - Staleness: a source re-check per step; an entry reads `:stale` after its schema's run version moves.
-  - range.lisp's source column is `src` (was `ref`: it collided with the reference view's NAME-REF).
-- Measured in read-unit:
-  - C-POSITION-SEEK over [1, 2^31) takes 31 probes: 93 steps on overlays and 431 on four runs.
-    The cursor should bound hi by the group's high.
-  - The sealer makes one run per frozen overlay (four overview runs from four seeds).
-- Book times (forge, load 3-6): machines-c-read 22.9 s, read-unit 17.8 s, machines-c 14.7 s.
-  - RED, not D's: assembly-init 64.7, assembly-access 73.2, assembly-callbacks-a 67.3,
-    assembly-callbacks-d 78.5, executor 67.9, machines-a-unit 61.8.
-- Earlier: D6 statement-first c01f87b6a (owed-cursor.lisp: three owed rows; cursor-unit teeth); D4 2/n 57601292a;
-  D5 1/n 4ed6172b1.
-- C-S3a is on dev at ebcc65eea: `fn2-successor-arg-octets-late tx i j max` at :prepare, and
-  `fn2-successor-fill-octets tx i j slot gen off len okind oslot ogen` between stage and bind.
-  - Every stage clears the fill, so fill after the last stage.
-  - Bind refuses `:state` while a late arg is unfilled.
-  - D5 2/n's use of it is recorded in the txn table below. It is not built, by the ruling.
+- dev: **721f7a50b** (D7 4/n statement, doc only), on 80ff68ab2, the C-S4 second half (this seat, on 516c2daf3). Before it, 89d31a51d was the first half.
+- `fn2/books/machines-c-read.lisp` (37 s on forge) is C-S4 whole except the frontier.
+  - First half: rows `R = fn2-b-read-rows` (`:x` when `:reading`); children reads/ranges/range-sources(8R)/seeks.
+  - Ops: key, key-octets, lookup, range, next, seek, seek-step, value, octets, release.
+  - (d) `fn2-read-scan x sid wslot wgen wk ws wg` / `fn2-read-scan-next x budget`: a whole-schema
+    ordered scan. The resume key is the delivered key, copied into the caller's workspace and skipped once.
+  - (e) `fn2-read-identity x mslot mgen moff mlen okind oslot ogen budget -> (mv code article candidates)`
+    gives the selection and evidence status of ruling 8.
+  - Owed: `fn2-read-identity-typed-exact` (owed-cursor.lisp). Availability, coverage and authorization
+    are `:not-served` until §4a's records and S-ARTICLE-LOCATION; rewrite the read over §4a's exact
+    lookup, per-name summary and evidence cursor when main sends the sha.
+  - (c) `fn2-read-frontier (fn2-core) -> (mv code position)` is a thin read of C's `(fn2-successor-published
+    fn2-core) -> (mv code position)`. It is written as a patch with read-unit's frontier case:
+    `build/coordinator/fn2/lanes/d-quests/frontier.patch`,
+    applied with `git apply` at C's sha. To land it: certify machines-c-read and read-unit, then push.
+    `fn2-cursor-view-pinned` stays owed until the cursor lands.
+- Units:
+  - `tests/read-unit.lisp` (18 s, in owed-export) covers: lookups; ranges with and without a
+    position limit; the seek (31 probes over [1, 2^31), so bound it by the group's high); reads
+    across seals (`:stale`); LIST across a seal; identity with conflict evidence; refusals.
+  - `*fn2-read-profile*` (owed-cursor.lisp) is the reading profile.
+- Answered to B through main: B-S2 §11b, yes with four amendments.
+  - :ready order: resolve, stage, out, records, late fill, admit, bind.
+  - Re-stage after a park rewrites the fill and the records.
+  - Evidence-only members are admissible (ruling 6).
+  - Identity records carry C's §4a encodings.
+  - The acceptance record's content digest is the subject's digest (ruling 1).
+  - Add `:batch-membership` to resources.lisp when the txn ports, with A's sixth grant source.
+- C-S3a is on dev (ebcc65eea). Late octet args, fill after the last stage.
 - Trees:
-  - Mac worktree `build/lanes/fn2/d6` is on branch `fn2/d6-read` = 89d31a51d.
-  - Forge tree `/build/lanes/d6` is on branch d6-read at 89d31a51d, certs warm. Push with
+  - Mac worktree `build/lanes/fn2/d6` is on branch `fn2/d6-read` = 80ff68ab2.
+  - Forge `/build/lanes/d6` is on branch d6-read, its certs warm at the pre-rebase base. Push with
     `git push fn@forge:/build/fn.git HEAD:refs/heads/d6-read`, then on forge
     `git fetch /build/fn.git d6-read && git checkout -B d6-read FETCH_HEAD`.
-  - Gate scripts on forge: `build/g1.sh` runs the whole closure, the export, A's six drivers and
-    sim-layer-d-evidence, writing build/g1.status. `build/g2.sh` runs the own books and the export.
-  - The A4 reference log is `/build/lanes/b54/build/sim-layer-a-a4-driver.log`.
-    Compare after filtering ACL2/us=/Time/HEAD=/rune lines and tree paths.
-  - REPL-first: `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k python3 tools/acl2 --timeout N < build/rd-repl.lsp`
-    includes machines-c-sealer, then lds the book.
-- Orphan to report: on forge, pid 3122923 is a stuck `bash -c` from my own ssh session at about 02:40.
-  It has no PID file and holds no lock. It was left alone under the PID-file rule.
+  - Certify on forge with `setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh <books> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" & echo $! > build/rN.pid`.
+    The export is `FN_ACL2=... ACL2_SYSTEM_BOOKS=/tank/fn/acl2-8.7/books swarm-build sh fn2/tools/certify.sh --export-owed`.
+  - REPL: `FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k python3 tools/acl2 --timeout N < build/rd-repl.lsp`.
+- Orphan to report: on forge, pid 3122923 is a stuck `bash -c` from my own ssh at about 02:40.
+  It has no PID file and holds no lock.
 
-## Next, in order
-1. Stand by for main's new machine form. Its first migration is D's four kinds, from the tables below.
-2. Once the form exists:
-   - D6 1/n: the cursor as a taken kind, the TX hand-over, GROUP/LISTGROUP/NEXT/LAST/STAT/OVER/XOVER
-     over C-S4, and the interim JSON regenerated. H reruns both targets at READY, and the oracle's E
-     rows change too: "init with groups and profile limits" and "store init" (H14).
-   - D5 2/n: the overview row with its Xref line through C-S3a, addr entries, a generated Message-ID.
-     Then the durable POST at B-S2's sha.
-3. C-S4's second half, which is core ops and so allowed now:
-   - (d) LIST's ordered scan over fn2-groups (`fn2-read-scan` / `-scan-next`).
-   - (e) `fn2-read-identity` through the decision path's lookup.
-   - (c) `fn2-read-frontier` once C adds `:published` to fn2-id-engine.
-4. D7 4/n.
+## Next, in order (D's own order while the form lands)
+1. Done: the ports and asks F1-F13 (this file), sent to main for the form seat.
+2. Done: D7 4/n statement-first, d-machines-nntp.md §13.8, dev 721f7a50b. Next is **4/n-a**,
+   the ledger's request operations, the grant pair's bodies, and owed-accounts.lisp with the
+   keystones and teeth in accounts-unit. These are core operations, so they land now. 4/n-b lands
+   at conn's port.
+3. `fn2-read-frontier` when C's `:published` sha arrives. Then `fn2-cursor-view-pinned` turns live.
+4. H14's WIRE items that are D's: read fn2/docs/h-harness.md H14, list D's rows, and do the ones
+   that need no new arm.
+5. At P4: port conn, upload and txn (one commit each, scenarios unchanged), then D6 1/n (P.5),
+   then D5 2/n (P.4, needs B-S2 and C §4a).
+6. When C lands §4a: rewrite fn2-read-identity over its exact lookup, per-name summary and evidence cursor.
 
 ## Pitfalls hit (this seat)
 - Shape lemmas outside an assembly:
-  - Fold every stobj's `-ROWS`.
-  - Fold the accessors a body reads before a callee changes that stobj (C-SHAPE-READS).
-  - Keep `-ROWS` enabled (`(:keep ...)` in fn2-rd-shape) where an element is read from a stobj
-    the function also writes.
-  - A mismatch between `(fn2-X-rows x)` and `(nth *X-ROWS* x)` cost 200 s and failed proofs.
-  - After a callee returns, re-check read values at run time (`unsigned-byte-p`) rather than
-    proving their types through it.
-- A new core child must not have a column named `ref`, `diff` or `copy`: the reference view
-  generates `<stobj>-REF` etc.
-- A dev landing can renumber a doc's seam list under you: C-S3a took §8 item 12.
-- Plus the eighth seat's: `substitute :test` is not ACL2; certs churn in the shared tree; run the
-  export on forge.
-- Plus the seventh seat's: `(mv :x (f fn2-core))` is illegal; one wake slot per run; arm names
-  must avoid K-<table op>.
+  - Fold every stobj's `-ROWS`, and the accessors read for checks (C-SHAPE-READS).
+  - Keep `-ROWS` enabled (`(:keep ...)` in fn2-rd-shape) only where no callee returns that stobj.
+  - After a callee returns, re-check read values at run time (`unsigned-byte-p`, `nfix`).
+  - Split a function whose shape lemma passes ten seconds: two halves, each with its own lemma.
+    This turned 191 s into 4 s, and 52 s into under 1 s.
+- Product terms in fn2-idc-profilep cost 121 s: make the function opaque and give new children
+  their own profile predicate.
+- No core child may have a column named `ref`, `diff` or `copy`.
+- A dev landing can renumber a doc's seam list (C-S3a took §8 item 12; C-S4 is item 13).
+- Earlier seats: `substitute :test` is not ACL2; `(mv :x (f fn2-core))` is illegal; one wake slot
+  per run; run the export on forge.
 
-## Arm tables (input to the machine-form redesign)
-Extracted from the books at dev ebcc65eea by a sub-agent that cited file:line; the seat spot-checked
-the unreachable-phase findings. Re-verify any row before relying on it.
+## Ports: D's four kinds in MACHINE-FORM §6.2/§6.7 syntax (written against G1's generator, dev 80ff68ab2)
 
+These replace the arm tables. Each block is the kind's `defmachine` as it lands at the port, written
+against the generator as it reads at dev 80ff68ab2 (`fn2/books/machine-arms.lisp`). Nothing here has
+been through `defmachine-arms` yet: the operation edits listed for each kind come first. Then a port
+is a paste plus those edits. Ports keep behaviour: every scenario is unchanged, and the few
+behaviour changes are named where they occur. D5 2/n and D6 1/n are separate blocks, written after
+the ports.
 
-Source: the worktree `/Users/ember/dev/fn/build/lanes/fn2/d6`, dev branch. All paths below are under
-`fn2/books/` unless written out. `file:N` is the line where something is declared or defined. In
-the tables "decl" is the arm entry in `defmachine`, and "cb" is the `defmachine-callback` body. "Own
-reads" are the `row-<field>` names the body uses (the inferred read set, machines.lisp:137-154).
-Reads that a helper makes through the kind's `K-ROW-f` readers are listed separately, because the
-read set does not see them.
+### P.0 Conventions (how today's bodies map to steps)
+- `fn2-machine-refuse-phase` → `(:stop :machine-phase)`; `fn2-machine-refuse-observation` →
+  `(:stop :machine-observation)`; `fn2-core-stop *fn2-stop-reason-R*` → `(:stop :R :steps ...)`.
+- `(fn2-machine-result B S D R)` → `(:charge :bytes B :steps S :descriptors D :runnable R)`.
+  `fn2-machine-with-work` disappears: its preflight is statically true once the generator
+  checks the cost (§6.4).
+- `(fn2-call K-X id budget)` → `(:goto x)` to a sub-arm. The sub-arm reads the row fresh after the
+  path's writes are flushed. That is what today's `fn2-call` after a PUT does.
+- An issue followed by `fn2-machine-issue-result` → `(:issue (OP ...) :ok ((... (:wait :completion
+  :bytes E))))`.
+  - `:exhausted` parks on `:operation`.
+  - Any other answer goes to the arm's `:on-refusal`, defaulting to `(:halt)`: today's retained R6
+    row stop (`stopped 1`).
+  - So an **issuing arm or sub-arm declares no `:on-refusal`**, and routes its other operations'
+    refusals with an explicit `:case ((:otherwise (:stop :machine-phase))))`. Otherwise its issue
+    refusals would stop the core instead of halting the row.
+  - The other arms declare `:on-refusal ((:stop :machine-phase))` once, and an unrouted answer goes
+    there.
+- A `:do` whose `:case` covers every answer it continues on, with no steps after it, writes
+  `:accept ()`. Otherwise the generator defaults `:accept (:ok)` and refuses "accepted answers have no
+  continuation" (machine-arms.lisp `fn2-arms-do-body`).
+- A keyword argument value is quoted (`':insert`, `':value`). `fn2-arms-split-call` ends the
+  positional arguments at the first keyword, so an unquoted `:insert` would be read as a formal's
+  name.
+- Acting for another row's owner (gap 8) is an explicit override: `:okind *fn2-upload-kind* :oslot
+  row-upload :ogen row-upload-gen`. Unoverridden, the generator fills the row's own triple.
+- `row-slot` (the row's slot in its kind: the claim row, successor tx, decision row and read row x)
+  is ask F7. Until it lands, each kind declares `(defcost K-slot-of ...)` over `fn2-machine-slot`
+  and writes `(K-slot-of id)`.
 
-Conventions used in every table:
-- **refuse-phase** is `fn2-machine-refuse-phase`. It stops the core with `*fn2-stop-reason-machine-phase*`, charges `*fn2-work-empty*` and leaves the row not runnable (machines-a-access.lisp:469).
-- **issue-result** is `fn2-machine-issue-result` (machines-a-run.lisp:106). On `:ok` it writes `pending 1` and `wait-reason :completion`. On `:exhausted` it parks the row on the operation-credit FIFO. On any other code it writes **`stopped 1`**, which is a retained row stop (TODO R6-NONEXHAUSTION-REFUSAL).
-- **with-work B S D** is `fn2-machine-with-work`. Its preflight compares constants with the kind's static caps (machines-a-access.lisp:375-389). On refusal it yields: the phase is unchanged and the row stays runnable.
-- Typed replies are written as `CMD :keyword` from the grammar's reply rows (`*fn2-nntp-reply-CMD-KW*`), or as a bare `:keyword` for the general rows (`*fn2-nntp-reply-KW*`, nntp-grammar.lisp:26-35). Every reply is rendered by `fn2-answer-say` → `fn2-nntp-render` into the connection's TX, under the owner `(*fn2-conn-kind* id generation)`.
-- Outcome words are `*fn2-upload-words*` (upload.lisp:52), carried as u8 codes by `fn2-upload-word-code`.
+### P.1 fn2-conn (the port; `conn.lisp`)
+**D's operation edits** (conn.lisp, upload.lisp, accounts-core.lisp; all D's books):
+- (a) In every wrapper, rename the owner formals `id owner-gen` to `oslot ogen`, adding `okind`
+  where it is `*fn2-conn-kind*` today. The generator then fills them.
+- (b) Give `:answers t` to `fn2-conn-frame`, `-run-answer`, `-run-greeting`, `-run-overflow`,
+  `-run-block-open`, `-run-outcome`, `-feed-run`, and to D7's `fn2-account-charge-core`. Today each
+  returns a code that no declaration names.
+- (c) Add `(defconst *fn2-conn-mask-greeted* (logior *fn2-nntp-state-reader*
+  *fn2-nntp-state-anonymous*))`.
+- (d) `fn2-conn-feed-run` returns `copied` as a natural, and the arm adds it.
+- (e) **Behaviour change (gap 19):** the feed's `:need-more` path reports the feed's own work.
+  `block-input` charges `*fn2-conn-feed-cost*` plus the receive. Today it charges 0 or `len` after
+  2,048 octets of feed. Within the 4,096 cap.
 
----
+```lisp
+(defmachine fn2-conn
+ :phases (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired)
+ :fields ( ... unchanged (conn.lisp:41-60) ... )
+ :holds ( ... unchanged ... )
+ :budget (:bytes 4096 :steps 32 :descriptors 4)
+ :capacity (fn2-profile-c profile)
+ :admission ( ... unchanged ... )
+ :initial ( ... unchanged ... )
+ :subarms
+ (;; RX exhausted between lines (was fn2-conn-input): reset when every octet was
+  ;; consumed, compact a retained partial line next run, refuse a slot smaller
+  ;; than the line cap, else Receive at the fill
+  (input
+   (:let nfill (fn2-conn-fill row-rx-slot))
+   (:let cap (fn2-conn-cap row-rx-slot))
+   (:cond ((and (equal row-start nfill) (< 0 nfill))
+           (:do (code) (fn2-core-reset row-rx-slot row-rx-gen) :case ((:otherwise (:stop :machine-phase))))
+           (:set (start 0) (pos 0))
+           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+          ((and (<= cap nfill) (< 0 row-start))
+           (:set (compacting 1) (cursor 0))
+           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+          ((<= cap nfill)
+           (:do (code) (fn2-conn-run-overflow row-mask row-tx-slot row-tx-gen)
+            :case ((:otherwise (:stop :machine-phase))))
+           (:set (tx-off 0) (after *fn2-conn-after-closing*))
+           (:next :reply)
+           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+          (t (:let len (min *fn2-conn-receive-bytes* (nfix (- cap nfill))))
+             (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
+                                        :principal row-principal-slot)
+              :ok ((:wait :completion :bytes (+ *fn2-conn-frame-bytes* len)))))))
+  ;; frame from the row's continuation; at a line, charge the request and answer
+  ;; it (was fn2-conn-frame-run)
+  (frame
+   (:do (status s p o) (fn2-conn-frame row-rx-slot row-rx-gen row-start row-pos row-overflow)
+    :accept ()
+    :case (((:line)
+            (:do (ccode) (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1)
+             :case ((:otherwise (:stop :machine-phase))))
+            (:do (code after next) (fn2-conn-run-answer s p row-mask row-auth-pending row-posting
+                                                        row-rx-slot row-rx-gen row-tx-slot row-tx-gen)
+             :case ((:otherwise (:stop :machine-phase))))
+            ;; POST where posting is served: nothing rendered; the next run takes an upload
+            (:if (equal after *fn2-conn-after-article-input*)
+                 ((:set (start p) (pos p) (overflow 0) (auth-pending next) (rule *fn2-conn-rule-post*)
+                        (request row-ordinal) (ordinal (+ 1 row-ordinal)))
+                  (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
+                 ((:set (start p) (pos p) (overflow 0) (tx-off 0) (after after) (auth-pending next)
+                        (ordinal (+ 1 row-ordinal)))
+                  (:next :reply)
+                  (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))))
+           ((:overflow :long-line)
+            (:do (ccode) (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1)
+             :case ((:otherwise (:stop :machine-phase))))
+            (:do (code) (fn2-conn-run-overflow row-mask row-tx-slot row-tx-gen)
+             :case ((:otherwise (:stop :machine-phase))))
+            (:set (start s) (pos p) (overflow o) (tx-off 0) (after *fn2-conn-after-closing*))
+            (:next :reply)
+            (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
+           ((:budget)
+            (:set (start s) (pos p) (overflow o))
+            (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-transition* :runnable t))
+           ((:need-more) (:set (start s) (pos p) (overflow o)) (:goto input))
+           (:otherwise (:stop :machine-phase)))))
+  ;; move a retained partial line to the front of RX (was fn2-conn-compact-run)
+  (compact
+   (:do (code cursor) (fn2-core-drop-prefix row-rx-slot row-rx-gen row-start row-cursor *fn2-conn-compact-bytes*)
+    :case (((:more) (:set (cursor cursor))
+                    (:charge :bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition* :runnable t))
+           ((:ok) (:set (compacting 0) (cursor 0) (start 0) (pos cursor))
+                  (:charge :bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:stop :machine-phase)))))
+  ;; a POST line was answered :article-input: take an upload and render 340, or
+  ;; park on the upload kind's FIFO (was fn2-conn-open-block; ask F2)
+  (open-block
+   (:do (tcode u) (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
+                                               row-principal-slot)
+    :case (((:no-row) (:park :taken fn2-upload :steps *fn2-work-transition*))
+           (:otherwise (:stop :machine-phase))))
+   (:let ugen (fn2-upload-gen-of u))
+   (:do (code) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen) :case ((:otherwise (:stop :machine-phase))))
+   (:set (tx-off 0) (after *fn2-conn-after-article-input*) (upload u) (upload-gen ugen)
+         (feed-mode 0) (feed-discard 0) (fed 0) (word 0) (outcome-ready 0))
+   (:next :reply)
+   (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+  ;; RX exhausted during a block (was fn2-conn-block-input)
+  (block-input
+   (:let nfill (fn2-conn-fill row-rx-slot))
+   (:let cap (fn2-conn-cap row-rx-slot))
+   (:cond ((and (equal row-start nfill) (< 0 nfill))
+           (:do (code) (fn2-core-reset row-rx-slot row-rx-gen) :case ((:otherwise (:stop :machine-phase))))
+           (:set (start 0) (pos 0))
+           (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-mailbox* :runnable t))
+          ((<= cap nfill) (:stop :machine-phase))
+          (t (:let len (min *fn2-conn-receive-bytes* (nfix (- cap nfill))))
+             (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
+                                        :principal row-principal-slot)
+              :ok ((:wait :completion :bytes (+ *fn2-conn-feed-cost* len)))))))
+  ;; one quantum of the block into the upload, and wake it (was fn2-conn-feed-step)
+  (feed
+   (:do (status start mode why copied)
+        (fn2-conn-feed-run row-start row-feed-mode row-feed-discard row-fed row-rx-slot row-rx-gen
+                           row-upload row-upload-gen)
+    :accept (:terminator :need-more :budget)
+    :why "a feed step ends at the terminator, short of input, or at its quantum; :full is folded into :budget"
+    :case ((:otherwise (:stop :machine-phase))))
+   (:let fed (+ row-fed copied))
+   (:do () (fn2-conn-wake row-upload))
+   (:cond ((not (and (unsigned-byte-p 32 start) (unsigned-byte-p 8 mode) (unsigned-byte-p 8 why)
+                     (unsigned-byte-p 60 fed)))
+           (:stop :machine-phase))
+          ((eq status :terminator)
+           (:set (start start) (pos start) (feed-mode *fn2-conn-feed-done*) (feed-discard why) (fed fed))
+           (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition*))
+          ((eq status :need-more)
+           (:set (start start) (pos start) (feed-mode mode) (feed-discard why) (fed fed))
+           (:goto block-input))
+          (t (:set (start start) (pos start) (feed-mode mode) (feed-discard why) (fed fed))
+             (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition* :runnable t)))))
+ :arms
+ ((:free (:idle))
+  ;; the greeting, or the capacity 400 (an unbooked row or the partition's
+  ;; reserve row releases its booking first)
+  (:greeting :on-refusal ((:stop :machine-phase))
+   (:let ref row-account-ref)
+   (:let refused (if (and (not (equal ref *fn2-none*)) (equal row-refused 0)) 0 1))
+   (:do (ucode) (fn2-account-unbook-ref (if (equal refused 1) ref *fn2-none*)))
+   (:let posting (fn2-conn-posting-p))
+   (:do (code after) (fn2-conn-run-greeting refused posting row-mask row-tx-slot row-tx-gen))
+   (:set (tx-off 0) (after after) (refused refused) (posting posting)
+         (account-ref (if (equal refused 1) *fn2-none* ref)) (mask *fn2-conn-mask-greeted*))
+   (:next :reply)
+   (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+  (:command
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((not (equal row-rule *fn2-conn-rule-none*)) (:goto open-block))
+          ((equal row-compacting 1) (:goto compact))
+          (t (:goto frame))))
+  ;; feed the block; once the outcome word is posted, render it
+  (:article-input
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((equal row-outcome-ready 1)
+           (:do (code after) (fn2-conn-run-outcome row-word row-mask row-tx-slot row-tx-gen)
+            :case ((:otherwise (:stop :machine-phase))))
+           (:set (tx-off 0) (after after) (upload *fn2-none*) (upload-gen 0) (rule *fn2-conn-rule-none*)
+                 (word 0) (outcome-ready 0) (feed-mode 0) (feed-discard 0) (fed 0))
+           (:next :reply)
+           (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+          ((equal row-feed-mode *fn2-conn-feed-done*) (:charge :steps *fn2-work-empty*))
+          (t (:goto feed))))
+  ;; send [tx-off, fill) by loan; once sent and released, reset TX and move to AFTER
+  (:reply
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
+          (t (:let nfill (fn2-conn-fill row-tx-slot))
+             (:if (< row-tx-off nfill)
+                  ((:let len (min *fn2-conn-send-bytes* (nfix (- nfill row-tx-off))))
+                   (:issue (fn2-issue-send row-cap-index row-cap-nonce row-tx-slot row-tx-gen row-tx-off len 1
+                                           :principal row-principal-slot)
+                    :ok ((:set (borrows 1)) (:wait :completion :bytes len))))
+                  ((:do (code) (fn2-core-reset row-tx-slot row-tx-gen) :case ((:otherwise (:stop :machine-phase))))
+                   (:set (tx-off 0))
+                   (:next (:if (equal row-after *fn2-conn-after-closing*) :closing
+                            (:if (equal row-after *fn2-conn-after-article-input*) :article-input :command)))
+                   (:charge :steps *fn2-work-mailbox* :runnable t))))))
+  (:upgrading (:stop :machine-phase))
+  (:closing
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          (t (:issue (fn2-issue-close row-cap-index row-cap-nonce :principal row-principal-slot)
+              :ok ((:wait :completion :bytes 0))))))
+  ;; release TX, then RX (D0's descending order), the booking, then the row; an
+  ;; upload this row fed is woken so it drains
+  (:draining
+   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
+          (t (:do (tcode) (fn2-core-release row-tx-slot row-tx-gen) :effects ((:release (:tx-range)))
+              :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+              :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+             (:do (rcode) (fn2-core-release row-rx-slot row-rx-gen) :effects ((:release (:rx-range)))
+              :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+              :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+             ;; the booking goes; the charges stay with the principal (rule 5)
+             (:do (acode) (fn2-account-unbook-ref row-account-ref)
+              :case ((:otherwise (:stop :account :steps *fn2-work-state*))))
+             (:do () (fn2-conn-wake row-upload))
+             (:let next (fn2-machine-free-head *fn2-conn-admission-ordinal*))
+             (:let retire (>= row-generation (fn2-machine-gen-limit)))
+             (:set (generation (if retire row-generation (+ 1 row-generation)))
+                   (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0) (cap-index 0) (cap-nonce 0)
+                   (start 0) (pos 0) (overflow 0) (compacting 0) (cursor 0) (tx-off 0) (ordinal 0)
+                   (auth-pending *fn2-conn-auth-none*) (refused 0) (next-free next) (wait-reason *fn2-wait-none*)
+                   (account-ref *fn2-none*) (upload *fn2-none*))
+             (:next (:if retire :retired :free))
+             (:do () (fn2-machine-reclaim-fn2-conn id retire))
+             (:charge :steps *fn2-work-release*))))
+  (:retired (:idle)))
+ :observes
+ (;; a completed Receive is charged to the principal from its first byte (D7 13.4)
+  (:receive-result :from (:command :article-input)
+   (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*)) (natp count) (< 0 count))
+        ((:do (code) (fn2-account-charge-core row-principal-slot *fn2-account-charge-rx* count)
+          :case ((:otherwise (:stop :machine-observation))))
+         (:wake))
+        ((:next :closing) (:wake))))
+  ;; a short Send is terminal and the remainder is a new Send (ROUND2 D.1)
+  (:send-result :from (:reply)
+   (:if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot) :ok))
+        ((:stop :machine-observation))
+        ((:let borrows (fn2-machine-pool-borrows row-tx-slot))
+         (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*)) (natp count))
+              ((:do (code) (fn2-account-charge-core row-principal-slot *fn2-account-charge-tx* count)
+                :case ((:otherwise (:stop :machine-observation))))
+               (:set (borrows borrows) (tx-off (+ row-tx-off count)))
+               (:wake))
+              ((:set (borrows borrows)) (:next :closing) (:wake))))))
+  (:borrow-released
+   (:if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot) :ok))
+        ((:stop :machine-observation))
+        ((:set (borrows (fn2-machine-pool-borrows row-tx-slot))) (:wake))))
+  (:close-result :from (:closing) (:next :draining) (:wake))))
+```
+Deleted with the port: the 16 `defmachine-callback`s and `:continuations`, `fn2-conn-input`'s
+contract, `fn2-machine-issue-result`'s use, and the `fn2-conn-feed-step` `:need-more` under-charge.
+The conn's ops (`fn2-conn-frame` … `fn2-conn-wake`) stay as declared operations until P2 gives them
+bodies over the pool. One more behaviour change: `:frame` now stops on a refused charge before it
+renders the answer. Today it renders and then stops. Either way the core stops, so no scenario sees
+the difference.
 
-## 1. fn2-conn (conn.lisp:39)
+### P.2 fn2-upload (the port; `upload.lisp`)
+`fn2-upload-advance` (one defcost hiding the transition relation, gap 1/2) and `fn2-upload-finish`
+are unrolled into the `work`, `discard` and `finish` sub-arms. The 13 hand writes of
+`fn2-upload-scan-run` (gap 25) become one `:set`.
 
-`:states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired)`.
-Fields: `cap-index cap-nonce rx-slot rx-gen tx-slot tx-gen start pos overflow compacting cursor tx-off after(:enum fn2-conn-after (:command :article-input :upgrading :closing)) pending borrows mask ordinal access-ref auth-pending(:enum (:none :user :sasl :redeem)) refused stopped next-free upload upload-gen rule(:enum (:none :post :ihave :takethis)) request feed-mode feed-discard fed word outcome-ready posting peer-family peer-port peer-w0..w3`, plus the common fields. `:holds` is `(:connection-row :rx-range :tx-range)` in each of :greeting :command :article-input :reply :upgrading :closing :draining. `:budget (:bytes 4096 :steps 32 :descriptors 4)`, `:capacity (fn2-profile-c profile)`, `:admission (:phase :greeting :ranges (:rx-range :tx-range) :copy (principal-slot account-ref peer-*) :clear (...))` (conn.lisp:67-71).
+**D's operation edits:**
+- (a) New pure cross-row readers with defcosts (stobj in, none out):
+  - `fn2-conn-fed-of (conn)`, `fn2-conn-feed-mode-of (conn)`, `fn2-conn-feed-discard-of (conn)`:
+    the conn row's `fed`, `feed-mode`, `feed-discard`, 0 when unreadable;
+  - `fn2-upload-hasher ()`, which takes the hasher row from `row-slot` (F7): `3 + slot`.
+- (b) Defcosts:
+  - `fn2-upload-hash-run (row c0 g0 c1 g1 cap0 hashed filled okind oslot ogen)` with `:answers t
+    :bytes *fn2-upload-hash-bytes*`, returning `(code hashed)`;
+  - `fn2-upload-scan-run (c0 g0 hs off field visible fields lines seen mo ml no nl po pl okind oslot
+    ogen)` with `:answers t :bytes *fn2-upload-scan-bytes*`. It returns `(st hs off field visible
+    fields lines seen mo ml no nl po pl)`, all widths checked: `:fault` on a bad width, `:skip` with
+    the inputs when HS is not scanning, `visible` a bit. It writes nothing;
+  - `fn2-upload-digest (row hashed)`, `fn2-upload-word-now (c0 g0 cap0 cap1 filled okind oslot
+    ogen)` returning `(code w inj)`, and `fn2-upload-digest-store (row slot gen off okind oslot
+    ogen)`, each `:answers t`;
+  - `fn2-upload-digest-at` (pure, no stobj);
+  - `fn2-conn-post-word` with `:answers (:ok :dropped)`.
+- (c) Word constants `*fn2-upload-word-W*` for each of `*fn2-upload-words*` (one `make-event`). The
+  arms name words as constants, never by `fn2-upload-word-code`.
+- (d) The dead field `filled` is deleted (gap 26). The truth is the conn's `fed`.
 
-| phase | arm | reads | writes | effects | cost | next | refusals | typed replies |
-|---|---|---|---|---|---|---|---|---|
-| :free | `fn2-conn-idle` decl :90, cb :320 | none | none | `fn2-machine-idle` (an empty, unrunnable run) | `(:steps (:cost fn2-machine-idle :steps))` | (:free) | none | none |
-| :greeting | `fn2-conn-greet` decl :92, cb :332 | own: account-ref refused mask tx-slot tx-gen generation. Core: `fn2-core-input-config` row 0 (`fn2-conn-posting-p` :229) | decl `(tx-off after mask refused account-ref posting)`. Body: phase :reply, tx-off 0, after (from the renderer), refused, posting, account-ref (`*fn2-none*` if refused), mask `reader∨anonymous` | with-work 512/transition/0. `fn2-account-unbook-ref` (the booking released when refused). `fn2-conn-run-greeting` → `fn2-answer-greeting` (TX) | `(:bytes 512 :steps *fn2-work-transition*)` | (:greeting :reply) | unbook code ≠ :ok → refuse-phase. Render code ≠ :ok → refuse-phase | `:greeting` 201, `:greeting-posting` 200, `:busy` 400 (sets after :closing) |
-| :command | `fn2-conn-command` decl :96, cb :555 (dispatcher) | own: pending rule compacting | decl (union): `start pos overflow compacting cursor tx-off after auth-pending ordinal pending stopped wait-reason ready-prev ready-next rule request upload upload-gen feed-mode feed-discard fed word outcome-ready` | pending ≠ 0 → an empty, unrunnable run. rule ≠ :none → `fn2-call fn2-conn-open-block`. compacting → `fn2-call fn2-conn-compact-run`. Otherwise `fn2-call fn2-conn-frame-run`. Tables: ops pool machines machine-tables accounts fn2-upload-table | `(max (:cost frame-run) (:cost compact-run) (:cost open-block))` per dimension. Descriptors `(:cost fn2-conn-frame-run :descriptors)` | (:command :reply) | none of its own | those of its callees |
-| :command (via) | `fn2-conn-frame-run` cb :394, contract :395-403 | own: ordinal mask auth-pending rx-slot rx-gen tx-slot tx-gen generation start pos overflow principal-slot posting. RX octets (`fn2-gram-frame`, ≤ 2048). The clock mailbox `fn2-core-ops` clock-seen/flags/real (`fn2-conn-clock` :179) | contract `(start pos overflow compacting cursor tx-off after auth-pending ordinal pending stopped wait-reason ready-prev ready-next rule request)`. Body: start pos overflow auth-pending ordinal+1. Then phase :reply with tx-off 0 and after, **or** (POST served) rule :post with request = ordinal, staying :command | with-work 4096/transition/1. `fn2-conn-frame`. On :line: `fn2-account-charge-core p *fn2-account-charge-requests* 1`, then `fn2-conn-run-answer` → `fn2-answer` (parse with `fn2-nntp-parse-line` and render). On :overflow/:long-line: charge, then `fn2-conn-run-overflow`. On :need-more: `fn2-call fn2-conn-input` | `(:bytes *fn2-conn-run-bytes*(4096) :steps (max transition (:cost fn2-conn-input :steps)) :descriptors (:cost fn2-conn-input :descriptors))` | (:command :reply) | Answer or charge code ≠ :ok (including `fn2-answer-ok`'s `:untabled`) → refuse-phase. A frame status outside {:line :overflow :long-line :budget :need-more} → refuse-phase. The parse's :discard, :malformed, QUIT and TAKETHIS give after :closing (a refusal carried as the next phase) | `fn2-answer` conn-answer.lisp:321 and `fn2-answer-ok` :230: `capabilities :list`, `help :text`, `quit :closing`, `mode :posting/:no-posting/:streaming`, `date :date/:no-observation/:no-wall/:out-of-range`, `authinfo :password/:failed/:sequence/:no-mechanism`, `xredeem :password/:refused/:sequence`, `list :overview-fmt/:headers/:motd/:not-stored`, the `*fn2-answer-interim*` rows (:180: `group/listgroup/list/newgroups/newnews/article/head/body/stat/over/xover/hdr/xhdr/xpat/xfn-zarticle/xfncatchup :no-projection`, `next/last :no-group-selected`, `post :not-permitted`, `ihave :retry`, `check :later`, `starttls :cannot`, `compress :algorithm`), the state refusals (`fn2-nntp-state-refusal tag`), `:unknown` 500, `:syntax` 501, `:fault` 403. Overflow and long lines answer `:syntax`, then close |
-| :command (via) | `fn2-conn-input` cb :354, contract :355-361 | own: rx-slot start rx-gen generation mask tx-slot tx-gen cap-index cap-nonce principal-slot. The pool's fill and cap of RX (`fn2-conn-fill`, `fn2-conn-cap`) | contract `(start pos compacting cursor tx-off after pending stopped wait-reason ready-prev ready-next)`. Body: start/pos 0 (reset), or compacting 1 + cursor 0, or phase :reply + tx-off + after :closing, or issue-result's fields | `fn2-core-reset` RX. `fn2-issue-receive cap-index cap-nonce rx-slot rx-gen len ...` (Receive, len ≤ 1024, acquires `:operation`), then issue-result. `fn2-conn-run-overflow` | `(:bytes (+ *fn2-conn-frame-bytes* (max *fn2-conn-receive-bytes* (:cost fn2-conn-run-overflow :bytes))) :steps (max *fn2-work-mailbox* (:cost fn2-machine-issue-result :steps)) :descriptors 1)` | (:command :reply) | Reset ≠ :ok → refuse-phase. Overflow render ≠ :ok → refuse-phase. Issue code other than :ok/:exhausted → `stopped 1` | `:syntax`, only when the slot is smaller than the line cap, then close |
-| :command (via) | `fn2-conn-compact-run` cb :443 | own: rx-slot rx-gen start cursor generation | contract `(start pos compacting cursor)` | with-work 1024/transition/0. `fn2-core-drop-prefix rx-slot rx-gen start cursor 1024 ...` (a continuation over cursor) | `(:bytes *fn2-conn-compact-bytes* :steps *fn2-work-transition*)` | (:command) | A code other than :more/:ok → refuse-phase | none |
-| :command (via) | `fn2-conn-open-block` cb :462 | own: generation request principal-slot mask tx-slot tx-gen. Cross-row: the new upload's generation (`fn2-upload-gen-of` :235) | contract `(tx-off after upload upload-gen feed-mode feed-discard fed word outcome-ready rule)`. Body: phase :reply, tx-off 0, after :article-input, upload, upload-gen, feed-mode/feed-discard/fed/word/outcome-ready 0. It never writes rule. **Unstated:** the take's park writes this row's wait-reason, ready-prev and ready-next, and the FIFO tail's ready-next | with-work 512/transition/0. `fn2-machine-take-fn2-upload id id row-generation row-request *fn2-upload-rule-post* row-principal-slot`. This acquires `(:upload-row)` and `(:chunk-window)` for fn2-upload, installs the row in :head with c0/c1 reserved, and wakes it. Or it parks this row on the upload FIFO. Then `fn2-conn-run-block-open` | `(:bytes (:cost fn2-conn-run-block-open :bytes) :steps *fn2-work-transition*)` | (:command :reply) | Take ≠ :ok → parked (0 bytes, not runnable, stays :command). A waiter already waiting on anything but completion → core stop `:machine-write` (machines.lisp:1542). Render ≠ :ok → refuse-phase | `post :send` 340 |
-| :article-input | `fn2-conn-block` decl :108, cb :541 | own: pending outcome-ready word mask tx-slot tx-gen generation feed-mode | decl `(start pos tx-off after upload upload-gen rule word outcome-ready feed-mode feed-discard fed pending stopped wait-reason ready-prev ready-next)`. On the outcome: phase :reply, tx-off 0, after, upload `*fn2-none*`, upload-gen 0, rule :none, and word/outcome-ready/feed-* all 0 | pending ≠ 0 → empty. outcome-ready = 1 → with-work 512, then `fn2-conn-run-outcome` → `fn2-answer-outcome`. feed-mode = `*fn2-conn-feed-done*` → wait (not runnable). Otherwise `fn2-call fn2-conn-feed-step` | `(:bytes (max (:cost fn2-conn-feed-step :bytes) (:cost fn2-conn-run-outcome :bytes)) :steps (max (:cost fn2-conn-feed-step :steps) *fn2-work-transition*) :descriptors (:cost fn2-conn-feed-step :descriptors))` | (:article-input :reply) | Render ≠ :ok → refuse-phase. The word `:framing` gives after :closing | `fn2-answer-post-reply` conn-answer.lisp:380: `post :received` 240, `:uncertain`, `:refused-unparsable` (:malformed :framing), `:refused-oversize`, `:refused-line-length`, `:refused-header-fields-limit/-lines-limit/-octets-limit`, `:refused-{from,subject,newsgroups}-missing`, `:refused-{from,subject,newsgroups,message-id,date,path}-duplicate`, `:refused-path-malformed`, `:refused-message-id-invalid`, `:refused-xref`, `:refused-injection-info`, `:refused-injection-date-present`, `:refused-clock-unusable`, `:refused-unknown-group`, `:refused-duplicate`, `:refused-conflict` (:conflict :identity-conflict-bound), `:refused-unaffordable`. Everything else (:not-stored :mismatch :missing ...) gets `:refused-unnamed` |
-| :article-input (via) | `fn2-conn-feed-step` cb :508 | own: upload start feed-mode feed-discard fed rx-slot rx-gen generation upload-gen. **Cross-row** (`fn2-conn-feed-run` :280): the upload's snapshot code, generation, c0-slot c0-gen c1-slot c1-gen. The pool caps of both chunks. `fn2-core-input-config` article-max (`fn2-upload-bound`). RX octets | contract `(start pos feed-mode feed-discard fed pending stopped wait-reason ready-prev ready-next)`. Body: start = pos, feed-mode (`*fn2-conn-feed-done*` at the terminator), feed-discard, fed. **Pool writes into the upload's chunk under the owner `(*fn2-upload-kind* u ugen)`** (`fn2-conn-feed-pool` :270 → `fn2-upload-feed`) | `fn2-conn-feed-run` (≤ 1024 RX octets, unstuffed; it switches chunk 0 → 1 when :full). `fn2-conn-wake u` (**wakes the upload row**). On :need-more: `fn2-call fn2-conn-block-input` | `(:bytes (max (:cost fn2-conn-feed-run :bytes) (:cost fn2-conn-block-input :bytes)) :steps (max transition (:cost block-input :steps)) :descriptors (:cost block-input :descriptors))` | Width check fails → refuse-phase. Feed :fault, or `:bounds` (the upload's generation ≠ upload-gen, conn.lisp:284-287) → refuse-phase. A full chunk 1 or a block past the bound gives why 2 (too large), and the block is drained from then on | none (the outcome comes back as a word) |
-| :article-input (via) | `fn2-conn-block-input` cb :485 | as `fn2-conn-input` | contract `(start pos pending stopped wait-reason ready-prev ready-next)` | `fn2-core-reset` RX, or `fn2-issue-receive` + issue-result | `(:bytes *fn2-conn-receive-bytes* :steps (max mailbox (:cost issue-result :steps)) :descriptors 1)` | (:article-input) | Reset ≠ :ok → refuse-phase. RX full (cap ≤ fill) → refuse-phase. Issue → `stopped 1` | none |
-| :reply | `fn2-conn-reply` decl :117, cb :563 | own: pending borrows tx-off after tx-slot tx-gen cap-index cap-nonce generation principal-slot. The pool fill of TX | decl `(tx-off borrows pending stopped wait-reason ready-prev ready-next)`. Body: borrows 1 on a send issue. Or tx-off 0 and **phase computed from row-after** (:579-582) | pending ≠ 0 → empty. borrows ≠ 0 → poll (not runnable). off < fill → `fn2-issue-send cap-index cap-nonce tslot tgen off len 1 ...` (a loan, len ≤ 4096) + issue-result. Otherwise `fn2-core-reset` TX and move to the `after` phase | `(:bytes *fn2-conn-send-bytes* :steps (+ *fn2-work-mailbox* *fn2-work-mailbox*) :descriptors 1)` | (:reply :command :article-input :closing) | Reset ≠ :ok → refuse-phase. Issue → `stopped 1` | none (it sends what TX holds) |
-| :upgrading | `fn2-conn-unreached` decl :123, cb :322 | none | none | refuse-phase | `(:steps (:cost fn2-machine-refuse-phase :steps))` | (:upgrading) | always refuses (core stop) | none |
-| :closing | `fn2-conn-close` decl :125, cb :585 | own: pending cap-index cap-nonce generation principal-slot | decl `(pending stopped wait-reason ready-prev ready-next)` | with-work 0/transition/1. `fn2-issue-close` + issue-result. The move to :draining comes from the `:close-result` handler | `(:steps *fn2-work-transition* :descriptors 1)` | (:closing) | Issue → `stopped 1` | none |
-| :draining | `fn2-conn-drain` decl :129, cb :635 → `fn2-conn-release` cb :595 | drain: pending borrows. Release: generation account-ref tx-slot tx-gen rx-slot rx-gen upload | contract `(generation rx-slot rx-gen tx-slot tx-gen cap-index cap-nonce start pos overflow compacting cursor tx-off ordinal auth-pending refused next-free wait-reason account-ref upload)`. Body: phase :free/:retired and all of these | `fn2-core-release` TX then RX (one use entry, `(:release (:tx-range :rx-range))`). `fn2-account-unbook-ref`. `fn2-conn-wake row-upload` (**wakes the upload**). `fn2-machine-gen-limit`, `fn2-machine-free-head *fn2-conn-admission-ordinal*`. `fn2-machine-reclaim-fn2-conn` (`(:release (:connection-row))`) | drain `(:steps (:cost fn2-conn-release :steps))`. Release `(:steps *fn2-work-release*)` | drain (:draining :free :retired). Release (:free :retired) | pending ≠ 0 → empty. borrows ≠ 0 → poll. Release code not :ok/:retired → `fn2-core-stop *fn2-stop-reason-pool-release*` (and `fn2-core-release` also stops, core.lisp:193). Unbook ≠ :ok → `fn2-core-stop *fn2-stop-reason-account*`. Reclaim with no active row → `:machine-write` | none |
-| :retired | `fn2-conn-idle` decl :134 | none | none | idle | as :free | (:retired) | none | none |
-| obs `:receive-result` from (:command :article-input) | `fn2-conn-observe-receive` decl :75, cb :643 | own: principal-slot. Event: outcome count | `:writes ()`. Body: phase :closing on failure | `fn2-account-charge-core p *fn2-account-charge-rx* count` | `(:steps *fn2-work-transition*)` | (:command :article-input :closing) | Charge ≠ :ok → `fn2-machine-refuse-observation`. A failed or zero-count Receive → :closing (a refusal carried as a phase) | none |
-| obs `:send-result` from (:reply) | `fn2-conn-observe-send` decl :79, cb :651 | own: tx-slot tx-off principal-slot. The pool borrows of TX | `(tx-off borrows)`, and phase :closing on failure | `fn2-account-charge-core p *fn2-account-charge-tx* count` | as above | (:reply :closing) | Borrows unreadable or charge ≠ :ok → refuse-observation. A failed Send → :closing | none |
-| obs `:borrow-released` | `fn2-conn-observe-release` decl :84, cb :666 | own: tx-slot. The pool borrows | `(borrows)` | none | as above | () | Unreadable → refuse-observation | none |
-| obs `:close-result` from (:closing) | `fn2-conn-observe-close` decl :87, cb :672 | none | phase | none | as above | (:draining) | none | none |
+```lisp
+(defmachine fn2-upload
+ :phases (:free :head :identity :receiving :validating :discard :sealed :aborting :draining :retired)
+ :fields ( ... unchanged less filled ... )
+ :holds ( ... unchanged ... )   :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :capacity (fn2-upload-capacity profile)
+ :taken ( ... unchanged, :clear less filled ... )
+ :initial ( ... unchanged ... )
+ :subarms
+ (;; the conn discards the block (framing or too large): once its terminator is
+  ;; framed, the word goes to the transaction if one was taken, else to the conn
+  (discard :on-refusal ((:stop :machine-phase))
+   (:let reason (fn2-conn-feed-discard-of row-conn))
+   (:cond ((not (equal (fn2-conn-feed-mode-of row-conn) *fn2-conn-feed-done*))
+           (:next :discard) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
+          (t (:let w (if (equal reason 1) *fn2-upload-word-framing* *fn2-upload-word-too-large*))
+             (:if (not (equal row-txn *fn2-none*))
+                  ((:set (word w) (inj 0))
+                   (:do () (fn2-upload-wake row-txn))
+                   (:next :sealed)
+                   (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
+                  ((:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request w)
+                    :accept (:ok :dropped) :why "a connection that moved on takes no word; its release woke this row")
+                   (:next :draining)
+                   (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))))))
+  ;; every octet fed and hashed: the digest, the verdict, and its delivery
+  (finish :on-refusal ((:stop :machine-phase))
+   (:let filled (fn2-conn-fed-of row-conn))
+   (:let cap0 (fn2-upload-chunk-cap row-c0-slot))
+   (:do (ecode) (fn2-upload-digest (fn2-upload-hasher) row-hashed))
+   (:do (wcode w inj) (fn2-upload-word-now row-c0-slot row-c0-gen cap0 (fn2-upload-chunk-cap row-c1-slot) filled))
+   (:cond ((and (equal row-txn *fn2-none*) (equal w 0)) (:stop :machine-phase))
+          ((equal row-txn *fn2-none*)
+           (:set (word w))
+           (:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request w)
+            :accept (:ok :dropped) :why "a connection that moved on takes no word; its release woke this row")
+           (:next :draining)
+           (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
+          (t (:do (in1 doff) (fn2-upload-digest-at filled cap0))
+             (:do (scode) (fn2-upload-digest-store (fn2-upload-hasher) (if in1 row-c1-slot row-c0-slot)
+                                                   (if in1 row-c1-gen row-c0-gen) doff))
+             (:set (word w) (inj inj))
+             (:do () (fn2-upload-wake row-txn))
+             (:next :sealed)
+             (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))))
+  ;; one run of hashing and header scan (was fn2-upload-advance)
+  (work :on-refusal ((:stop :machine-phase))
+   (:cond
+    ((not (fn2-upload-conn-live-p row-conn row-conn-gen id row-generation))
+     (:next :aborting) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
+    ((not (equal (fn2-conn-feed-discard-of row-conn) 0)) (:goto discard))
+    (t
+     (:let filled (fn2-conn-fed-of row-conn))
+     (:do (hcode hashed) (fn2-upload-hash-run (fn2-upload-hasher) row-c0-slot row-c0-gen row-c1-slot row-c1-gen
+                                              (fn2-upload-chunk-cap row-c0-slot) row-hashed filled))
+     (:set (hashed hashed))
+     (:do (st hs off field visible fields lines seen mo ml no nl po pl)
+          (fn2-upload-scan-run row-c0-slot row-c0-gen row-head-status row-scan-off row-ofield row-visible
+                               row-nfields row-nlines row-seen row-mo row-ml row-no row-nl row-po row-pl)
+      :accept (:more :budget :header-done :malformed :line-length :header-fields :header-lines :header-octets :skip)
+      :why "every scan status but :fault is a header state the verdict reads")
+     (:set (scan-off off) (ofield field) (visible visible) (nfields fields) (nlines lines) (seen seen)
+           (mo mo) (ml ml) (no no) (nl nl) (po po) (pl pl) (head-status hs))
+     (:cond ((and (equal hs *fn2-upload-head-done*) (equal row-txn *fn2-none*))
+             (:next :identity) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
+            ((and (equal (fn2-conn-feed-mode-of row-conn) *fn2-conn-feed-done*) (<= filled hashed))
+             (:goto finish))
+            ((or (< hashed filled) (eq st :budget))
+             (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
+            ((and (not (equal hs *fn2-upload-head-scanning*)) (equal row-phase *fn2-upload-state-head*))
+             (:next :receiving) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
+            (t (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*)))))))
+ :arms
+ ((:free (:idle))
+  (:head (:goto work))
+  ;; the header is complete: take the transaction (bundle :transaction :admit)
+  (:identity :on-refusal ((:stop :machine-phase))
+   (:cond ((not (fn2-upload-conn-live-p row-conn row-conn-gen id row-generation))
+           (:next :aborting) (:charge :steps *fn2-work-transition* :runnable t))
+          (t (:do (code tid) (fn2-machine-take-fn2-txn *fn2-none* id row-generation row-conn row-conn-gen row-request
+                                                       row-rule row-principal-slot)
+              :case (((:no-row) (:park :taken fn2-txn :steps *fn2-work-transition*))))
+             (:set (txn tid) (txn-gen (fn2-txn-gen-of tid)))
+             (:next :receiving)
+             (:charge :steps *fn2-work-transition* :runnable t))))
+  (:receiving (:goto work))
+  (:validating (:goto work))
+  (:discard (:goto work))
+  ;; the transaction holds the octets until its outcome, then lets the upload drain
+  (:sealed
+   (:if (fn2-upload-txn-live-p row-txn row-txn-gen id)
+        ((:charge :steps *fn2-work-transition*))
+        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+  (:aborting
+   (:if (fn2-upload-txn-live-p row-txn row-txn-gen id)
+        ((:do () (fn2-upload-wake row-txn)) (:charge :steps *fn2-work-transition*))
+        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+  (:draining
+   (:do (c1code) (fn2-core-release row-c1-slot row-c1-gen) :effects ((:release (:chunk-window)))
+    :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+    :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+   (:do (c0code) (fn2-core-release row-c0-slot row-c0-gen) :effects ((:release (:chunk-window)))
+    :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+    :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+   (:let next (fn2-machine-free-head *fn2-upload-admission-ordinal*))
+   (:let retire (>= row-generation (fn2-machine-gen-limit)))
+   (:set (generation (if retire row-generation (+ 1 row-generation)))
+         (c0-slot *fn2-none*) (c0-gen 0) (c1-slot *fn2-none*) (c1-gen 0) (conn *fn2-none*) (conn-gen 0)
+         (hashed 0) (txn *fn2-none*) (next-free next) (wait-reason *fn2-wait-none*))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-upload id retire))
+   (:charge :steps *fn2-work-release*))
+  (:retired (:idle))))
+```
+`:descriptors 0` (the upload issues nothing: C's cap-0 ruling) is new and costs nothing; the
+generator then refuses any `:issue`. The `:identity` take's `:case` lists only `:no-row`, so
+anything else goes to `:on-refusal`, and `:ok` continues.
 
-## 2. fn2-upload (upload.lisp:131)
+### P.3 fn2-txn (the port; `txn.lisp`)
+The seven staged helpers (`fn2-txn-begin`, `-claim-walk`, `-decide`, `-declare-1`, `-commit-1`,
+`-finish`, `-unclaim-run`) and the checked wrappers `fn2-txn-checked` (gap 15) become steps.
+`fn2-txn-put-article`'s 17-call `fn2-txn-chain` (gap 14) becomes the `article` sub-arm, one `:do`
+per successor call. Each step's cost is then a sum the generator can see.
 
-`:states (:free :head :identity :receiving :validating :discard :sealed :aborting :draining :retired)`.
-Fields: `conn conn-gen request rule(:enum fn2-upload-rule (:post :ihave :takethis)) c0-slot c0-gen c1-slot c1-gen filled hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status(:enum (:scanning :done :malformed :line-length :header-fields :header-lines :header-octets)) word inj txn txn-gen stopped next-free`. `:holds` is `(:upload-row :chunk-window)` in each of :head :identity :receiving :validating :discard :sealed :aborting :draining. `:budget (:bytes 4096 :steps 32 :descriptors 4)`, `:capacity (fn2-upload-capacity profile)` (min(u, 16, format-slots - 3) under `:posting-interim`, else 0). `:taken (:phase :head :rows :upload-row :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1) (:chunk-window :slot c1-slot :gen c1-gen :class 1)) :copy (conn conn-gen request rule principal-slot) :clear (...))`. No `:observes`.
+**D's operation edits:**
+- (a) Pure cross-row reader `fn2-txn-upload-view (u)` returning `(ml mo c0 g0 c1 g1 hashed scanned
+  no nl)` (gap 6: one declared read set of the upload). It joins `fn2-txn-upload-live-p (u ugen
+  oslot ogen)`, `-sealed-p (u)`, `-aborting-p (u)` and `-words (u)`, which return `(w inj)`.
+- (b) Defcosts with `:answers t`:
+  - `fn2-txn-hash`, `fn2-claim-begin-core`, `fn2-claim-walk-core` (`:claimed :wait :more`),
+    `fn2-claim-release-core`;
+  - `fn2-txn-offer (d u ugen)`, `fn2-txn-count-run (from to lines c0 g0 c1 g1 cap0 okind oslot ogen)`
+    and `fn2-txn-next-name (base cur end skip slot gen okind oslot ogen)`, each with its byte bound;
+  - C's `fn2-identity-step`, `fn2-group-lookup`, `fn2-successor-*` and B's `fn2-commit-admit-txn`
+    gain `:answers t` in their own books. That is a seam request to C and B, sent with these ports.
+- (c) `fn2-txn-claim-state (c)`, a pure reader.
 
-| phase | arm | reads | writes | effects | cost | next | refusals | words posted |
-|---|---|---|---|---|---|---|---|---|
-| :free, :retired | `fn2-upload-idle` decl :159/:193, cb :539 | none | none | idle | `(:steps (:cost fn2-machine-idle :steps))` | (:free) / (:retired) | none | none |
-| :head :receiving :validating :discard | `fn2-upload-work` decl :161/:171/:175/:179, cb :572 → `fn2-upload-advance` :465 (defcost :211) | Own row read none; the helper reads everything through `fn2-upload-row-*`: generation c0/c1 slot+gen conn conn-gen request hashed txn phase head-status scan-off ofield visible nfields nlines seen mo ml no nl po pl rule. **Cross-row conn**: snapshot code, generation, upload, upload-gen, `fed` (used as `filled`), feed-mode, feed-discard, and in `fn2-conn-post-word` request and phase. Chunk caps. Input-config article-max. Hasher row `3 + slot` (`fn2-upload-hasher` :225). Chunk octets | decl `(hashed scan-off ofield visible nfields nlines seen mo ml no nl po pl head-status word inj)` = the defcost's `:own-writes`. Body: phase from the helper's keyword. Helper: `fn2-machine-write-hashed`, the 13 scan writes (:357-369), word and inj (`fn2-upload-hand-over` :420, `fn2-upload-deliver-word` :427). **Cross-row: the conn's word and outcome-ready** (`fn2-conn-post-word` :311). The digest's 32 octets go into a chunk (`fn2-upload-digest-store` :400) | with-work 4096/transition/0. `fn2-upload-hash-run` (`fn2-upload-hash-begin/step/end`, BLAKE3 ≤ 2048). `fn2-upload-scan-run` (`fn2-upload-scan` ≤ 2048, by lines). At the end `fn2-upload-finish` :440: digest, `fn2-upload-word-now` (`fn2-upload-verdict`), then store + hand over (**wakes the txn**) or post the word (**wakes the conn**) | `(:bytes *fn2-upload-run-bytes*(4096) :steps *fn2-work-transition*)`, always charged in full | :head `(:head :identity :receiving :validating :discard :sealed :aborting :draining)`. :receiving `(:receiving :validating :discard :sealed :aborting :draining)`. :validating `(:validating :sealed :aborting :draining)`. :discard `(:discard :sealed :aborting :draining)`. The helper's keyword maps :run → stay (runnable), :idle → stay (unrunnable) | Helper `:stop` → refuse-phase. The `:stop` cases: row unreadable, hash fault, scan :fault, digest/store ≠ :ok, verdict unreadable, a clean verdict without a txn. The conn moved on (generation, upload or upload-gen) → `:aborting`. A post-word `:dropped` is ignored. **No producer of `:validating`** | Discard at the terminator: `:framing` (why 1) or `:too-large` (why 2), handed to the txn if there is one, else posted. Verdict (`fn2-upload-word-by-field` :61): `:too-large :malformed :line-length :header-fields :header-lines :header-octets :from-missing :subject-missing :newsgroups-missing :missing :{from,subject,newsgroups,message-id,date,path}-duplicate :path :mismatch :message-id`. inj: `:xref :injection-info :injection-date`. With a txn, word and inj are only written to the row; the txn posts |
-| :identity | `fn2-upload-claim` decl :167, cb :559 | own: conn conn-gen generation request rule principal-slot. **Cross-row**: `fn2-upload-conn-live-p` :516 (the conn's generation, upload, upload-gen), and `fn2-txn-gen-of` :529 | decl `(txn txn-gen wait-reason)`. Body: phase, txn, txn-gen. **Unstated:** the park writes ready-prev and ready-next here, plus the FIFO tail's ready-next | `fn2-machine-take-fn2-txn id id row-generation row-conn row-conn-gen row-request row-rule row-principal-slot`. This acquires `(:transaction-row)` for fn2-txn, installs the txn in :admit and wakes it, or parks this row on the txn FIFO | `(:steps *fn2-work-transition*)` | (:identity :receiving :aborting) | Conn gone → :aborting. Take ≠ :ok → parked, stays :identity, not runnable | none |
-| :sealed | `fn2-upload-hold` decl :185, cb :551 | own: txn txn-gen. **Cross-row**: `fn2-upload-txn-live-p` :524 (the txn's generation and upload) | phase | none | `(:steps *fn2-work-transition*)` | (:sealed :draining) | none | none |
-| :aborting | `fn2-upload-abort` decl :187, cb :544 | as :sealed | phase | `fn2-upload-wake row-txn` (**wakes the txn**) | `(:steps *fn2-work-transition*)` | (:aborting :draining) | none | none |
-| :draining | `fn2-upload-drain` decl :189, cb :615 → `fn2-upload-release` cb :593 | own: generation c1-slot c1-gen c0-slot c0-gen | contract `(generation c0-slot c0-gen c1-slot c1-gen conn conn-gen filled hashed txn next-free wait-reason)` | `fn2-core-release` c1 then c0 (one use entry, `(:release (:chunk-window))`), gen-limit, `fn2-machine-free-head *fn2-upload-admission-ordinal*`, `fn2-machine-reclaim-fn2-upload` (`(:release (:upload-row))`) | `(:steps (:cost fn2-upload-release :steps))`. Release `(:steps *fn2-work-release*)` | (:free :retired) | Release not :ok/:retired → `fn2-core-stop *fn2-stop-reason-pool-release*` | none |
+```lisp
+(defmachine fn2-txn
+ :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
+ :fields ( ... unchanged ... )   :holds ( ... unchanged ... )
+ :budget (:bytes 16384 :steps 32 :descriptors 0)
+ :capacity (fn2-txn-capacity profile)
+ :taken ( ... unchanged ... )    :initial ( ... unchanged ... )
+ :subarms
+ (;; the article's records into the batch's private successor (was fn2-txn-put-article)
+  (article :on-refusal ((:stop :machine-phase))
+   (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+   (:do (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0)))
+   (:let ds (if in1 c1 c0)) (:let dg (if in1 g1 g0))
+   (:do (c) (fn2-successor-put row-slot *fn2-txn-slot-article* *fn2-txn-article-sid* ':insert))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-article* ':event 0))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-birth* ':event 0))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-state* ':value *fn2-txn-article-live*))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-version* ':value *fn2-txn-article-version*))
+   (:do (c) (fn2-successor-arg-octets row-slot *fn2-txn-slot-article* *fn2-article-entry-field-source* ds dg doff
+                                      *fn2-upload-digest-octets* :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-bytes* ':value hashed))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-article* *fn2-article-entry-field-lines* ':value row-lines))
+   (:do (c) (fn2-successor-put row-slot *fn2-txn-slot-record* *fn2-txn-identity-sid* ':record))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-record* 0 ':event 0))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-record* 1 ':value row-principal-slot))
+   (:do (c) (fn2-successor-put row-slot *fn2-txn-slot-outcome* *fn2-txn-outcome-sid* ':insert))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-outcome* *fn2-outcome-entry-field-principal* ':value row-principal-slot))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-outcome* *fn2-outcome-entry-field-operation* ':event 0))
+   (:do (c) (fn2-successor-arg-octets row-slot *fn2-txn-slot-outcome* *fn2-outcome-entry-field-request* ds dg doff
+                                      *fn2-upload-digest-octets* :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-outcome* *fn2-outcome-entry-field-outcome* ':value *fn2-txn-outcome-accepted*))
+   (:do (c) (fn2-successor-arg row-slot *fn2-txn-slot-outcome* *fn2-outcome-entry-field-event* ':event 0))
+   (:set (prepared 1))
+   (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+  ;; one Newsgroups name: look it up, declare its group-count accept (was fn2-txn-group-step)
+  (group :on-refusal ((:stop :machine-phase))
+   (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+   (:do (status start len next skip2) (fn2-txn-next-name no row-gcur nl (equal row-gskip 1) c0 g0
+                                                         :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+    :accept (:run :end :name) :why "the name scan's three continuations; :fault goes to :on-refusal")
+   (:cond ((not (unsigned-byte-p 32 next)) (:stop :machine-phase))
+          ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
+                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+          ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+          (t (:do (code group) (fn2-group-lookup row-slot c0 g0 (+ no start) len 4096
+                                                 :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+              :accept ()
+              :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                     ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                     ((:ok)
+                      (:cond ((>= row-ngroups *fn2-txn-groups-max*)
+                              (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                             (t (:let i (+ *fn2-txn-slot-accepts* row-ngroups))
+                                (:do (c) (fn2-successor-put row-slot i *fn2-txn-counts-sid* ':accept))
+                                (:do (c) (fn2-successor-arg row-slot i 0 ':value group))
+                                (:set (ngroups (+ 1 row-ngroups)) (gcur next))
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))
+  ;; the outcome: the word to the connection (waking it), the successor released
+  (reply
+   (:if (not (equal row-word 0))
+        ((:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request row-word)
+          :accept (:ok :dropped) :why "a connection that moved on takes no word; its release woke the upload")
+         (:do (rcode) (fn2-successor-release row-slot) :case ((:otherwise (:stop :machine-phase))))
+         (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t))
+        ((:do (rcode) (fn2-successor-release row-slot) :case ((:otherwise (:stop :machine-phase))))
+         (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t)))))
+ :arms
+ ((:free (:idle))
+  ;; wait for the verdict when no Message-ID was scanned (posting the upload's
+  ;; word, or :not-stored); else hash it and begin the claim
+  (:admit :on-refusal ((:stop :machine-phase))
+   (:cond ((not (fn2-txn-upload-live-p row-upload row-upload-gen id row-generation))
+           (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+          (t (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+             (:cond ((and (equal ml 0) (fn2-txn-upload-sealed-p row-upload))
+                     (:do (w inj) (fn2-txn-upload-words row-upload))
+                     (:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request
+                                                      (cond ((not (equal w 0)) w) ((not (equal inj 0)) inj)
+                                                            (t *fn2-upload-word-not-stored*)))
+                      :accept (:ok :dropped) :why "a connection that moved on takes no word")
+                     (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+                    ((and (equal ml 0) (fn2-txn-upload-aborting-p row-upload))
+                     (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+                    ((equal ml 0) (:charge :bytes 256 :steps *fn2-work-transition*))
+                    (t (:do (hcode hash) (fn2-txn-hash ml c0 g0 mo :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen))
+                       (:do (bcode) (fn2-claim-begin-core row-slot hash c0 g0 mo ml
+                                                          :ok *fn2-upload-kind* :os row-upload :og row-upload-gen))
+                       (:next :reserve) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))))))
+  ;; the claim walk: held, waiting in the holder's FIFO (ask F5), or more
+  (:reserve :on-refusal ((:stop :machine-phase))
+   (:let s (fn2-txn-claim-state row-slot))
+   (:cond ((equal s *fn2-claim-state-held*) (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((equal s *fn2-claim-state-waiting*) (:charge :bytes 4096 :steps *fn2-work-transition*))
+          (t (:do (code holder) (fn2-claim-walk-core row-slot *fn2-txn-claim-steps*)
+              :accept ()
+              :case (((:claimed) (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     ((:wait) (:charge :bytes 4096 :steps *fn2-work-transition*))
+                     ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))
+  ;; the upload's verdict, then the identity offer (one run) or one decision step
+  (:lookup :on-refusal ((:stop :machine-phase))
+   (:cond ((not (and (fn2-txn-upload-live-p row-upload row-upload-gen id row-generation)
+                     (not (fn2-txn-upload-aborting-p row-upload))))
+           (:set (word 0)) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((not (fn2-txn-upload-sealed-p row-upload)) (:charge :bytes 4096 :steps *fn2-work-transition*))
+          (t (:do (w inj) (fn2-txn-upload-words row-upload))
+             (:cond ((not (equal w 0)) (:set (word w)) (:next :refused)
+                                       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    ((not (equal row-offered 1))
+                     (:do (code) (fn2-txn-offer row-slot row-upload row-upload-gen))
+                     (:set (offered 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (t (:do (answer) (fn2-identity-step row-slot 4096)
+                        :accept ()
+                        :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                               ((:stored) (:next :prepare) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                               ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
+                                             (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                               ((:conflict :evidence) (:set (word *fn2-upload-word-conflict*)) (:next :refused)
+                                                      (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))))))
+  ;; count the body's lines, look each group up, refuse :group or the injected
+  ;; fields, declare the slots; then resolve them
+  (:prepare :on-refusal ((:stop :machine-phase))
+   (:if (equal row-prepared 1)
+        ((:do (answer) (fn2-successor-resolve row-slot 4096)
+          :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                 ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
+        ((:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+         (:let counted (max scanned row-counted))
+         (:cond ((< counted hashed)
+                 (:do (code counted2 lines2) (fn2-txn-count-run counted hashed row-lines c0 g0 c1 g1 (fn2-upload-chunk-cap c0)
+                                                                :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen))
+                 (:if (and (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))
+                      ((:set (counted counted2) (lines lines2)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                      ((:stop :machine-phase))))
+                ((< row-gcur nl) (:goto group))
+                ((equal row-ngroups 0) (:set (word *fn2-upload-word-group*)) (:next :refused)
+                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                (t (:do (w inj) (fn2-txn-upload-words row-upload))
+                   (:if (not (equal inj 0))
+                        ((:set (word inj)) (:next :refused) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                        ((:goto article))))))))
+  ;; stage every slot against the tip, admit the member, bind on :ok (one run)
+  (:ready :on-refusal ((:stop :machine-phase))
+   (:do (scode i) (fn2-successor-stage row-slot)
+    :accept ()
+    :case (((:ok)
+            (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+            (:do (acode batch event) (fn2-commit-admit-txn c0 g0 hashed
+                                                          :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+             :accept ()
+             :case (((:ok) (:do (bcode) (fn2-successor-bind row-slot batch event))
+                           (:next :batched) (:charge :bytes 16384 :steps *fn2-work-transition*))
+                    ((:not-served) (:set (word *fn2-upload-word-not-stored*)) (:next :refused)
+                                   (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+                    ((:exhausted) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t)))))
+           ((:full) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:stale) (:set (offered 0)) (:next :lookup) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
+                         (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:evidence) (:set (word *fn2-upload-word-conflict*)) (:next :refused)
+                        (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:identity-conflict-bound) (:set (word *fn2-upload-word-identity-conflict-bound*)) (:next :refused)
+                                       (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                        (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t)))))
+  (:batched (:stop :machine-phase))        ; reached only once B-S2 admits (D5 2/n)
+  (:accepted (:goto reply))
+  (:refused (:goto reply))
+  (:uncertain (:stop :machine-phase))      ; D5 2/n: a kind-declared stop (P2)
+  ;; release the claim; its FIFO's head takes it and is woken (the run's one wake)
+  (:releasing :on-refusal ((:stop :machine-phase))
+   (:do (code) (fn2-claim-release-core row-slot))
+   (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
+  (:draining
+   (:let u row-upload) (:let gen row-generation)
+   (:let next (fn2-machine-free-head *fn2-txn-admission-ordinal*))
+   (:let retire (>= gen (fn2-machine-gen-limit)))
+   (:set (generation (if retire gen (+ 1 gen))) (upload *fn2-none*) (upload-gen 0) (conn *fn2-none*) (conn-gen 0)
+         (next-free next) (wait-reason *fn2-wait-none*))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-txn id retire))
+   (:do () (fn2-txn-wake-upload u id gen))
+   (:charge :steps *fn2-work-release*))
+  (:retired (:idle))))
+```
+The `:ready` `:ok` bind path routes `bcode` to `:on-refusal` (a core stop), as today's `:stop`. Once
+admission has succeeded, bind cannot fail (B-S2 S1). That makes this the stop C3 names, not an
+absorb.
 
-## 3. fn2-txn (txn.lisp:97)
+### P.4 fn2-txn, D5 2/n (written in the form after the port; rulings 1, 6, 8; C §4a; B-S2 §11b with D's amendments)
+These are the changed arms only. The signatures marked † land with C's §4a and B-S2, and get
+confirmed against their shas.
+- **Fields gained:** `mode (:enum fn2-txn-mode (:article :evidence))`, the ruling 6 path;
+  `outcome (:enum fn2-txn-outcome (:none :committed :uncertain :refused))`, the evidence commit's
+  outcome, reported apart from `word`; `batch :u60 event :u60`; `ws :link wsgen :u60`, the member
+  workspace slot, a pool range of the upload class reserved at `:prepare`.
+- **Holds:** `:batched` holds `:batch-membership`, as declared today. `:ready` parks on it, ask F4.
+- **`:lookup` (ruling 8, C §4a).**
+  - The decision returns the separate facts: `(:do (answer sel evid cov) (fn2-identity-step row-slot
+    4096))`†, where `sel` is the selection relation, `evid` the evidence status (the locally known
+    candidates at this cut) and `cov` the coverage.
+  - The reply is chosen from those facts, never from `answer` alone:
+    - `sel` = accepted under this name → `:duplicate`, mode stays `:article` (435/437 by rule);
+    - `evid` = a valid competing binding → `mode :evidence`, `word *fn2-upload-word-conflict*`, and
+      `:next :prepare`. Ruling 6: the evidence is committed, never dropped;
+    - an invalid signature or out-of-scope evidence → its own words, `:evidence-invalid` and
+      `:evidence-scope`, each with `mode :evidence`. Known evidence → `mode :evidence`, which is
+      idempotent at C's decision;
+    - `answer :stored` → `mode :article`, `:next :prepare`.
+- **`:prepare`.**
+  - `mode :article`: as in the port, plus three things:
+    - the overview slot with `(fn2-successor-arg-octets-late row-slot i *f-line* *fn2-txn-xover-max*)`,
+      C-S3a;
+    - the addr entries, one per carried group: `(fn2-successor-arg row-slot i f ':out ...)`, from
+      `fn2-successor-out` at `:ready`;
+    - the identity record's subject digest, D25's authored source (ruling 1), not the upload's raw
+      digest.
+  - `mode :evidence`: only the identity record (C §4a's record encoding, by schema and version) and
+    the operation outcome; no article, membership or overview slots.
+  - Both modes reserve `ws` with `(:do (code slot gen) (fn2-core-reserve *fn2-upload-chunk-class*)
+    :effects ((:acquire (:txn-workspace))) :case (((:exhausted) (:park :pool *fn2-upload-chunk-class*))))`.
+    D0 gains `:txn-workspace`; resources.lisp is D's book.
+  - The Message-ID is generated when the article carried none.
+- **`:ready`, in B-S2's amended order.** In one run, because nothing may stage or bind between this
+  transaction's stage and its bind:
+  1. stage;
+  2. `fn2-successor-out`, the group numbers;
+  3. write the member records into `ws` in B's encodings (`fn2-txn-write-records`, D's op, `:bytes
+     4096`);
+  4. `fn2-successor-fill-octets` with the Xref line, rendered into `ws` after the records;
+  5. `fn2-commit-admit-txn ws wsgen len`†;
+  6. on `:ok`, bind with the returned event, which cannot fail;
+  7. on `:exhausted`, `(:park :batch-membership)`, ask F4. The waker is B's sixth grant source. The
+     re-stage on wake clears the fill, so steps 2-4 rerun after every stage;
+  8. on `:admission`, `:next :refused` with `*fn2-upload-word-not-stored*`, a D defect stop in the
+     tiny profile.
+  The run is stage 4,096 + out 512 + records 4,096 + fill 2,048 + admit 4,096 + bind 8,192 =
+  23,040 bytes. **C ruled (10-31): the budget becomes `(:bytes 24576 ...)`,** recorded as a
+  departure beside 16,384. There is no C-S3b now: holding a stage across runs would need bind to
+  re-check each slot's tip witness and replan on staleness, which is a seam of the new form's run
+  model. C builds C-S3b only if the form's cost model makes 24 KiB matter.
+- **`:batched`:**
+  `(:do (code outcome) (fn2-commit-take row-batch row-event :okind ...)† :case (((:pending) (:charge
+  :steps *fn2-work-empty*)) ((:accepted) ...) ((:uncertain) ...) ((:refused) ...)))`, with B-S2's
+  generation-checked wake, so no busy wait.
+  - `mode :article`: `:accepted` → word `:accepted`, `:next :accepted`; `:refused` → word
+    `:not-stored`, `:next :refused`; `:uncertain` → `:next :uncertain`.
+  - `mode :evidence`: the word stays the article refusal, and `outcome` records the commit's answer.
+    The connection renders both, as ruling 6 asks.
+- **`:accepted` / `:refused`:** the `reply` sub-arm also posts `outcome`.
+  `fn2-conn-post-word (conn conn-gen request word outcome)` gains its fifth argument;
+  `fn2-answer-outcome` renders "437 … (evidence recorded | evidence uncertain | evidence refused)".
+- **`:uncertain`:** a declared stop of the kind (P2's `:stops (:txn-uncertain ...)` in this
+  `defmachine`). The batch's journal write was reached and its fate is unknown. The core stops and
+  recovery classifies it; B-S2 S7 fences the scope meanwhile.
+- **Keystones owed:**
+  - `fn2-txn-evidence-committed`: under ruling 6, a valid competing binding always commits its
+    evidence or is reported uncertain, and is never refused silently;
+  - `fn2-txn-reply-from-facts`: the reply is a function of `(sel evid cov)`;
+  - `fn2-txn-no-double-charge`: a replayed offer charges once.
+  Their teeth go in txn-unit.
 
-`:states (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)`.
-Fields: `upload upload-gen conn conn-gen request rule(:enum fn2-txn-rule (:post :ihave :takethis)) word offered prepared counted lines gcur gskip ngroups stopped next-free`. `:holds`: :admit and :reserve `(:transaction-row)`. :lookup :prepare :ready :accepted :refused :uncertain :releasing `(:transaction-row :identity-reservation)`. :batched `(:transaction-row :identity-reservation :batch-membership)`. :draining `(:transaction-row)`. `:budget (:bytes 16384 :steps 32 :descriptors 4)`, `:capacity (fn2-txn-capacity profile)`, `:taken (:phase :admit :rows :transaction-row :ranges () :copy (upload upload-gen conn conn-gen request rule principal-slot) :clear (word offered prepared counted lines gcur gskip ngroups stopped))`. No `:observes`.
+### P.5 fn2-cursor, D6 1/n (new; written in the form, never in the old)
+Its home is the new book `fn2/books/cursor.lisp`, after `machines-c-read`.
+- The budget is `(:bytes 8192 :steps 32 :descriptors 0)`. §15.2's 4,096 is stale and §15.4's 8,192
+  holds; the doc is fixed with this commit. The cursor issues nothing (cap 0).
+- `:need-page`, `:inspect` and `:failed` are declared by the slices that reach them (D6 2/n and
+  3/n), never as unreached phases.
+- The read row x is `row-slot` (F7).
 
-Every working arm has the same shape: with-work, then `(mv-let (next fn2-core) (HELPER id fn2-core) (case next ...))`, where HELPER returns a keyword that the body maps to a PUT-CORE phase. The helper reads its own row through `fn2-txn-row-*` and keys its C state by `(fn2-machine-slot id)`: that is the claim row c, the successor tx and the decision d.
+```lisp
+(defmachine fn2-cursor
+ :phases (:free :select :seek :render :send :finish :draining :retired)
+ :fields ((conn :link) (conn-gen :u60) (request :u32) (line-s :u32) (line-e :u32)
+          (group :u60) (current :u60) (view :u60) (access-ref :u32)
+          (tag :u8) (reply :u16) (arg-off :u32) (arg-len :u32) (lo :u60) (hi :u60) (next :u60) (roff :u32)
+          (count :u60) (low :u60) (high :u60) (seen :bool) (step :u8)
+          (update (:enum fn2-cursor-update (:none :current :selection))) (more :bool) (done :bool)
+          (tx-slot :link) (tx-gen :u60) (stopped :bool) (next-free :link))
+ :holds ((:select :cursor-row) (:seek :cursor-row) (:render :cursor-row) (:send :cursor-row)
+         (:finish :cursor-row) (:draining :cursor-row))
+ :budget (:bytes 8192 :steps 32 :descriptors 0)
+ :capacity (fn2-profile-x profile)
+ :taken (:phase :select :rows :cursor-row :ranges ()
+         :copy (conn conn-gen request line-s line-e group current view access-ref principal-slot)
+         :clear (tag reply arg-off arg-len lo hi next roff count low high seen step update more done tx-slot tx-gen stopped))
+ :initial ((generation fn2-machine-initial-generation) (conn *fn2-none*) (tx-slot *fn2-none*)
+           (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
+ :subarms
+ (;; the connection moved on (generation, query or request): drain (15.3)
+  (cancel (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+  ;; TX back to the connection, the connection woken; wait in :send (15.3 step 2)
+  (hand-back :on-refusal ((:stop :machine-phase))
+   (:do (code) (fn2-cursor-hand-tx row-tx-slot row-tx-gen row-conn row-conn-gen))
+   (:do () (fn2-conn-wake row-conn))
+   (:next :send) (:charge :bytes 512 :steps *fn2-work-transition*))
+  ;; a refusal line (411, 412, 420-423, 503 :no-projection) is a one-line page
+  (refuse :on-refusal ((:stop :machine-phase))
+   (:do (code) (fn2-cursor-render-status row-tag row-reply 0 0 0 0 row-tx-slot row-tx-gen))
+   (:set (more 0) (done 1)) (:goto hand-back)))
+ :arms
+ ((:free (:idle))
+  ;; accept TX, re-parse the line (<= 512 octets of the conn's RX under its
+  ;; owner, ask F9), pin the view at GROUP/LISTGROUP, choose the read
+  (:select :on-refusal ((:stop :machine-phase))
+   (:cond ((not (fn2-cursor-conn-live-p row-conn row-conn-gen row-request id row-generation)) (:goto cancel))
+          (t (:do (code tslot tgen) (fn2-cursor-accept-tx row-conn row-conn-gen)
+              :accept (:ok :none) :why ":none is a hand not yet made: the take and the hand are one conn run")
+             (:if (eq code :none) ((:charge :steps *fn2-work-empty*))
+               ((:do (pcode tag aoff alen lo hi) (fn2-cursor-parse row-conn row-conn-gen row-line-s row-line-e))
+                (:set (tx-slot tslot) (tx-gen tgen) (tag tag) (arg-off aoff) (arg-len alen) (lo lo) (hi hi) (step 0))
+                (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))))
+  ;; position the read: one bounded C step per call (C-S4), at most 32 calls a
+  ;; run (ask F6); the tag chooses the read
+  (:seek :on-refusal ((:stop :machine-phase))
+   (:cond
+    ((not (fn2-cursor-conn-live-p row-conn row-conn-gen row-request id row-generation)) (:goto cancel))
+    ;; GROUP g / LISTGROUP g: the name in fn2-groups, then its counts at the view
+    ((and (fn2-cursor-names-group-p row-tag) (equal row-step 0))
+     (:do (kcode) (fn2-read-key-octets row-slot 0 (fn2-conn-rx-slot-of row-conn) (fn2-conn-rx-gen-of row-conn)
+                                       row-arg-off row-arg-len :okind *fn2-conn-kind* :oslot row-conn :ogen row-conn-gen))
+     (:do (lcode) (fn2-read-lookup row-slot *fn2-read-groups-sid* 4096)
+      :accept ()
+      :case (((:ok) (:do (fcode view) (fn2-read-frontier))
+                    (:set (group (fn2-read-value-or-0 row-slot *fn2-groups-field-id*)) (view view) (step 1))
+                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:absent) (:set (reply *fn2-nntp-reply-group-no-group*)) (:goto refuse))
+             ((:miss) (:set (reply *fn2-nntp-reply-no-projection*)) (:goto refuse)))))
+    ((and (fn2-cursor-names-group-p row-tag) (equal row-step 1))
+     (:do (kcode) (fn2-read-key row-slot 0 row-group))
+     (:do (lcode) (fn2-read-lookup row-slot *fn2-read-group-counts-sid* 4096)
+      :accept ()
+      :case (((:ok) (:set (count (fn2-read-value-or-0 row-slot *fn2-counts-field-count*))
+                          (low (fn2-read-value-or-0 row-slot *fn2-counts-field-low*))
+                          (high (fn2-read-value-or-0 row-slot *fn2-counts-field-high*))
+                          (current (fn2-read-value-or-0 row-slot *fn2-counts-field-low*))
+                          (update *fn2-cursor-update-selection*) (step 2) (next 0))
+                    (:next :render) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:absent :miss) (:set (reply *fn2-nntp-reply-no-projection*)) (:goto refuse)))))
+    ;; every other cursor command needs a selected group (412)
+    ((equal row-group 0) (:set (reply *fn2-nntp-reply-no-group-selected*)) (:goto refuse))
+    ;; STAT n / NEXT / LAST / OVER range: the overview range over (group, [lo, hi])
+    ;; with hi bounded by the group's high (31 probes over [1, 2^31) otherwise,
+    ;; read-unit)
+    (t (:do (rcode) (fn2-read-range row-slot *fn2-read-overview-sid* *fn2-overview-field-number*
+                                    (min row-hi (fn2-cursor-group-high row-group row-view))))
+        (:set (next row-lo) (step 2))
+        (:next :render) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+  ;; a page: restart the read at NEXT, render rows into TX while they fit (a row
+  ;; longer than TX splits at ROFF); then hand TX back (15.4)
+  (:render :on-refusal ((:stop :machine-phase))
+   (:cond
+    ((not (fn2-cursor-conn-live-p row-conn row-conn-gen row-request id row-generation)) (:goto cancel))
+    (t (:do (code next roff seen done) (fn2-cursor-page row-slot row-tag row-next row-hi row-roff row-seen
+                                                        row-count row-low row-high row-group
+                                                        row-tx-slot row-tx-gen)
+        :accept (:ok :stale) :why ":stale is a page whose overlay was sealed under it; the next page restarts at NEXT")
+       (:set (next next) (roff roff) (seen seen) (done done) (more (if done 0 1)))
+       (:goto hand-back))))
+  ;; TX is the connection's; nothing to do until it hands it again (more) or
+  ;; wakes this row to finish
+  (:send
+   (:cond ((not (fn2-cursor-conn-live-p row-conn row-conn-gen row-request id row-generation)) (:goto cancel))
+          ((equal row-done 1) (:if (fn2-cursor-released-p row-conn row-conn-gen id)
+                                   ((:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
+                                   ((:charge :steps *fn2-work-empty*))))
+          (t (:do (code tslot tgen) (fn2-cursor-accept-tx row-conn row-conn-gen)
+              :accept (:ok :none) :why ":none: the connection has not handed the next page's TX yet")
+             (:if (eq code :ok)
+                  ((:set (tx-slot tslot) (tx-gen tgen)) (:next :render)
+                   (:charge :steps *fn2-work-transition* :runnable t))
+                  ((:charge :steps *fn2-work-empty*))))))
+  (:finish :on-refusal ((:stop :machine-phase))
+   (:do (code) (fn2-read-release row-slot))
+   (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
+  (:draining
+   (:let next (fn2-machine-free-head *fn2-cursor-admission-ordinal*))
+   (:let retire (>= row-generation (fn2-machine-gen-limit)))
+   (:set (generation (if retire row-generation (+ 1 row-generation))) (conn *fn2-none*) (conn-gen 0)
+         (tx-slot *fn2-none*) (tx-gen 0) (next-free next) (wait-reason *fn2-wait-none*))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-cursor id retire))
+   (:charge :steps *fn2-work-release*))
+  (:retired (:idle))))
+```
+**D's operations for the cursor** (cursor.lisp, each a defcost; pure ones stobj in, none out):
+- pure: `fn2-cursor-conn-live-p (conn conn-gen request oslot ogen)` (the conn's generation,
+  `query`, `query-gen` and request still name this row), `fn2-cursor-released-p`,
+  `fn2-cursor-gen-of`, `fn2-cursor-names-group-p (tag)`, `fn2-cursor-group-high (group view)`,
+  `fn2-read-value-or-0 (x f)` (C-S4's value, 0 unless `:ok`), `fn2-conn-rx-slot-of`, `fn2-conn-rx-gen-of`;
+- with `:answers t`:
+  - `fn2-cursor-accept-tx (conn conn-gen) -> (code tslot tgen)` and `fn2-cursor-hand-tx (tslot tgen
+    conn conn-gen)`, which wrap pool.lisp's hand ops;
+  - `fn2-cursor-parse (conn conn-gen s e) -> (code tag aoff alen lo hi)`, ≤ 512 octets under the
+    conn's owner;
+  - `fn2-cursor-render-status`, `fn2-cursor-page`, `fn2-cursor-selection -> (upd g c v)`;
+  - on the conn's side, `fn2-conn-hand-tx`, `fn2-conn-accept-tx` and the pure
+    `fn2-conn-query-state -> :handed | :more | :done | :gone | :busy`.
 
-| phase | arm | reads | writes | effects | cost | next | refusals | words posted |
-|---|---|---|---|---|---|---|---|---|
-| :free, :retired | `fn2-txn-idle` cb :716 | none | none | idle | `(:steps (:cost fn2-machine-idle :steps))` | (:free) / (:retired) | none | none |
-| :admit | `fn2-txn-admit` decl :122, cb :721 → `fn2-txn-begin` :307 (defcost :179) | Helper, own: generation upload upload-gen conn conn-gen request. **Cross-row upload** (`fn2-txn-upload-live-p` :268): generation, txn, txn-gen, ml, phase (sealed/aborting :274/:278), word, inj, c0-slot, c0-gen, mo. Message-ID octets under the upload's owner (`fn2-txn-hash` → `fn2-ribbon-hash`, ≤ 250) | decl `(word upload)`, never written. **Cross-row: the conn's word and outcome-ready** (when ml = 0 and the upload is sealed) | with-work 256/transition/0. `fn2-claim-begin-core slot hash c0 g0 mo ml *fn2-upload-kind* u ugen` (fn2-core-claims), or `fn2-conn-post-word` (**wakes the conn**) | `(:bytes (:cost fn2-txn-begin :bytes)(256) :steps *fn2-work-transition*)` | (:admit :reserve :draining) | `:stop` (unreadable, hash ≠ :ok, begin ≠ :ok) → refuse-phase. Upload gone → :draining. No Message-ID and no verdict yet → :idle (stay, unrunnable). No Message-ID, upload aborting → :draining | No Message-ID: the upload's w, else inj, else `:not-stored` |
-| :reserve | `fn2-txn-reserve` decl :125, cb :732 → `fn2-txn-claim-walk` :336 | claim state of c (`fn2-claim-state-core`). Pool octets compared (≤ 16 × 250) | none | with-work 4096. `fn2-claim-walk-core c 16` (acquires `:identity-reservation` on :claimed). :wait enqueues on the **claim table's own FIFO** | `(:bytes (:cost fn2-txn-claim-walk :bytes)(4096) :steps transition)` | (:reserve :lookup) | Code outside {:claimed :wait :more} → :stop → refuse-phase. :wait → :idle (unrunnable) | none |
-| :lookup | `fn2-txn-lookup` decl :128, cb :742 → `fn2-txn-decide` :362 | own: generation upload upload-gen offered. **Cross-row upload**: live-p fields, phase, word, c0/c1 slot+gen, hashed, mo, ml. Chunk cap | decl `(word offered)` via `fn2-machine-write-word` / `-offered` | with-work 4096. First run: `fn2-txn-offer` :352 → `fn2-identity-offer slot c0 g0 mo ml dslot dgen doff *fn2-upload-kind* u ugen` (Message-ID and digest by reference under the upload's owner). Later runs: `fn2-identity-step slot 4096` | `(:bytes (:cost fn2-txn-decide :bytes)(4096) :steps transition)` | (:lookup :prepare :refused) | Unreadable, offer ≠ :ok, or an unknown answer → :stop → refuse-phase. Upload gone or aborting → word 0, :refused. Upload word ≠ 0 → that word, :refused. :duplicate → `:duplicate`. :conflict/:evidence → `:conflict`. Not sealed yet → :idle | `:duplicate`, `:conflict`, or the upload's word |
-| :prepare | `fn2-txn-slots` decl :133, cb :754 → `fn2-txn-declare` (`fn2-txn-checked` :682 over `fn2-txn-declare-1` :584) | own: prepared upload upload-gen counted lines gcur gskip ngroups principal-slot. **Cross-row upload**: hashed (source length), scan-off, no nl (the Newsgroups span), c0/c1 slot+gen, inj. Body and Newsgroups octets under the upload's owner (`fn2-txn-count-loop` :390, `fn2-txn-skip-loop` :475, `fn2-txn-name-loop` :483) | decl `(word counted lines prepared gcur gskip ngroups)`, through per-field writers | with-work 8192. One step of the following, in order. (a) Prepared: `fn2-successor-resolve tx 4096`. (b) `fn2-txn-count-step` (≤ 2048 octets, LF count). (c) `fn2-txn-group-step`: `fn2-txn-next-name` (≤ 1024 + 251 octets), then `fn2-group-lookup tx c0 g0 off len *fn2-upload-kind* u ugen 4096`; on :ok `fn2-txn-put-accept` (`fn2-successor-put tx 3+k 5 :accept`, `fn2-successor-arg`). (d) `fn2-txn-put-article` :436 (17 `fn2-successor-put/arg/arg-octets` calls chained by `fn2-txn-chain` :432: slot 1 article, slot 0 identity record, slot 2 outcome). Then `prepared 1`. **D5 2/n (C-S3a):** the overview row's slot gains `(fn2-successor-arg-octets-late tx i j max)` here (Xref suffix, max ≤ the slot's octet capacity, else :bounds) | `(:bytes (:cost fn2-txn-declare :bytes)(8192) :steps transition)` | (:prepare :ready :refused) | `:stop` (any helper code ≠ :ok, unreadable rows, kind check `fn2-txn-kind-ok` :654 after the run) → refuse-phase. No group carried → `:group`. More than `*fn2-txn-groups-max*` (6) → `:unaffordable`. inj ≠ 0 → that word | `:group`, `:unaffordable`, `:xref/:injection-info/:injection-date` |
-| :ready | `fn2-txn-ready` decl :137, cb :765 → `fn2-txn-commit` (`fn2-txn-checked` :683 over `fn2-txn-commit-1` :619) | slot. **Cross-row upload**: c0-slot c0-gen hashed | decl `(word offered)` | with-work 16384, one transition: `fn2-successor-stage tx`; on :ok, `fn2-commit-admit-txn c0 g0 hashed *fn2-upload-kind* u ugen` (B-S2 interim: `:not-served`); on :ok, `fn2-successor-bind tx batch event` (acquires `:batch-membership`). **D5 2/n (C-S3a):** `(fn2-successor-fill-octets tx i j slot gen off len okind oslot ogen)` after the stage :ok. Every stage clears the fill, so the fill follows the last stage in the same run. It must precede `fn2-commit-admit-txn`, because after admission bind cannot fail and a fill `:bounds` would strand an admitted member. Bind refuses `:state` while a late argument is unfilled | `(:bytes (:cost fn2-txn-commit :bytes) = *fn2-txn-ready-bytes* = 16384 = the cap :steps transition)`. Any Xref rendering added here exceeds the cap | (:ready :lookup :batched :refused) | Stage :full or admit :exhausted → :run (stay). :stale → offered 0 → :lookup. :duplicate → `:duplicate`. :evidence → `:conflict`. :identity-conflict-bound → `:identity-conflict-bound`. :capacity → `:unaffordable`. :not-served → `:not-stored`. Other, or bind ≠ :ok → :stop → refuse-phase | as listed. In D5 1/n every valid article ends `:not-stored` |
-| :batched, :uncertain | `fn2-txn-unreached` cb :718 | none | none | refuse-phase | `(:steps (:cost fn2-machine-refuse-phase :steps))` | (:batched) / (:uncertain) | always refuses | none |
-| :accepted, :refused | `fn2-txn-reply` decl :144/:147, cb :778 → `fn2-txn-finish` :689 | own: word conn conn-gen request, slot | none of its own. **Cross-row: the conn's word and outcome-ready** | with-work 0. `fn2-conn-post-word` if word ≠ 0 (**wakes the conn**). `fn2-successor-release tx` | `(:steps (:cost fn2-txn-finish :steps))` | (:releasing) | Release ≠ :ok → :stop → refuse-phase. A post-word `:dropped` is ignored. No arm's :next names :accepted | its own word (0: nothing posted) |
-| :releasing | `fn2-txn-unclaim` decl :154, cb :785 → `fn2-txn-unclaim-run` :702 → `fn2-claim-release-core` :247 | claim c = slot. The claim FIFO head w | none | `fn2-claim-release` (releases `:identity-reservation`, the FIFO head takes the claim). **Wakes txn row `kind-base(*fn2-txn-kind*) + w`** | `(:steps (:cost fn2-txn-unclaim-run :steps))` | (:draining) | Release ≠ :ok, or waiter not a txn row (`:bounds`) → refuse-phase | none |
-| :draining | `fn2-txn-drain` decl :157, cb :810 → `fn2-txn-release` cb :794 | own: generation upload | contract `(generation upload upload-gen conn conn-gen next-free wait-reason)` | gen-limit, `fn2-machine-free-head *fn2-txn-admission-ordinal*`, `fn2-machine-reclaim-fn2-txn` (`(:release (:transaction-row))`), `fn2-txn-wake-upload u id gen` (**cross-row read** of the upload's txn and txn-gen, then a wake) | `(:steps (:cost fn2-txn-release :steps))` | (:free :retired) | Reclaim with no active row → `:machine-write` | none |
+**The page operation.** `fn2-cursor-page` is a declared D operation (`:bytes 6144 :answers t`):
+`*fn2-cursor-steps*` = 4 range steps of budget 128 over ≤ 8 sources (`fn2-read-next`), each entry
+read by `fn2-read-value` / `fn2-read-octets` into TX by C-S4's copy, at most 2,048 octets rendered.
+- The status line comes first on the first page (`next = lo`): GROUP 211, LISTGROUP 211 + list,
+  STAT 223, NEXT/LAST 223, OVER 224 + rows.
+- Then come numbers (LISTGROUP) or `NUMBER TAB line` (OVER), and the terminator when the read ends.
+- NEXT/LAST/STAT also set `current` and `update :current`. The arm's `:set` then carries them, so
+  the page returns them too.
 
-## 4. fn2-cursor (planned; fn2/docs/d-machines-nntp.md section 15)
+The loop lives in the operation until F6 gives the form a bounded `:repeat`. LAST's bisection
+(≤ 61 starts) lives in the same operation's `:last` case.
 
-From 15.2: a taken kind (A-S7) with D0 resource `:cursor-row` (rank 12). It holds `(:cursor-row)` in every live phase, plus `:cache-pin` while a body streams (15.6).
-Phases: `:free :select :seek :need-page :inspect :render :send :finish :failed :draining :retired`.
-Fields: `conn conn-gen request line-s line-e group current view access-ref article tag reply lo hi next roff seen step update(:enum fn2-cursor-update (:none :current :selection)) more done tx-slot tx-gen stopped next-free`.
-Capacity `(fn2-profile-x profile)`, which is 0 unless `:reading t`. The budget is `(:bytes 4096 ...)` in 15.2 but `(:bytes 8192 :steps 32 :descriptors 4)` in 15.4: **the doc contradicts itself**.
-The take is done by the connection's `:query` with copies `conn conn-gen request line-s line-e group current view access-ref principal-slot`.
-The doc does not declare `:next`. The "next" column gives the doc's prose.
+**fn2-conn's half (D6 1/n, the same commit):**
+- **Fields and enum.** `fn2-conn` gains `:query`, the fields `query :link query-gen :u60 group
+  current view :u60`, and `after :query`. §15.3 says `group article view` and §15.2 says `group
+  current view`: the current article number is `current`, and the doc is fixed with this commit.
+- **The answer and `:reply`.** `fn2-answer` answers `:query` for every cursor command, with nothing
+  rendered. Frame's `:line` branch gains `((equal after *fn2-conn-after-query*) (:set (pos p)
+  (auth-pending next) (request row-ordinal) (ordinal (+ 1 row-ordinal))) (:next :query) (:charge
+  ...))`, where the line `[start, p)` is not consumed. `:reply`'s `:next` gains `:query`.
+- **`:greeting`** pins the view: `(:do (fcode view) (fn2-read-frontier))` then `(:set ... (view
+  view))`. `fn2-read-frontier (fn2-core) -> (mv code position)` is C-S4 (c), a pure read of C's
+  `fn2-successor-published`. It is written and waits as a patch (State).
 
-| phase | arm | reads | writes | effects | cost (15.4) | next (prose) | refusals | typed replies (15.5) |
-|---|---|---|---|---|---|---|---|---|
-| :free, :retired | idle | none | none | none | idle | stays | none | none |
-| :select | `fn2-cursor-select` | **cross-row: ≤ 512 octets of the conn's RX [line-s, line-e) under the conn's owner**. Own group current view | tag, reply, article, lo, hi, update | `fn2-pool-accept-hand` of TX (15.3 step 1). Resolve the group by name or the Message-ID (`fn2-read-key/-key-octets`, `fn2-read-lookup`, `fn2-read-identity` C-S4) | ≤ 4096/8192 bytes | :seek or :render | 411, 412, 430; read `:refused` stops the core | none yet |
-| :seek | `fn2-cursor-seek` | own lo hi next current view | next, step | `fn2-read-lookup`, `fn2-read-range x sid pfield plimit`, `fn2-read-next`. LAST's bisection (≤ 61 starts). NEWNEWS's seek. "One bounded C step per call, at most 32 per run" | S × budget reads | :inspect / :render / :need-page | `:gap`/`:unavailable` → 503 `:no-projection`. 420/421/422/423 | refusal lines |
-| :need-page | `fn2-cursor-page` | none | none | `(:storage-job :read)`. Unreached until C1c: refuse-phase | none | none | refuse-phase | none |
-| :inspect | `fn2-cursor-inspect` | the delivered entry (`fn2-read-value`, `fn2-read-octets`) | seen | wildmat (XPAT, LIST), HDR's field | not stated | :render | `:stale` from read-value → asserted, never absorbed | none |
-| :render | `fn2-cursor-render` | own next roff lo hi tag reply view. The entry's octets | next, roff, more, done | Restart the range read at `next` each run (pages restart). Render the status line and then rows into **the conn's TX** until a row does not fit, so a long row splits at `roff`. Then `fn2-pool-hand` TX back to `(*fn2-conn-kind* conn conn-gen)` and wake the conn | 4 range steps × budget 128 × ≤ 8 sources = 4096 reads, ≤ 2048 rendered | :send | asserted read codes | `group :211`, `listgroup :211 + list`, `next/last :223`, `stat :223` (`article/head/body` 220/221/222 + block; 503 `:no-framing` until 15.6), `over :224 + rows`, `hdr :225`/`xhdr :221`, `list :215`, `newgroups :231`, `newnews :230` |
-| :send | `fn2-cursor-wait` | own conn conn-gen request. Cross-row: the conn's generation, query, request | none | none. It waits until the conn hands TX again (more) or wakes it to finish | empty | :render or :finish | Conn generation, query or request moved → drain | none |
-| :finish | `fn2-cursor-finish` | none | none | `fn2-read-release x` | small | :draining | none | none |
-| :failed | `fn2-cursor-fail` | none | none | The stream ends incomplete and the conn closes (scenario 3). Unreached until 15.6 | none | :draining | none | none |
-| :draining | `fn2-cursor-drain` | none | generation, next-free | `fn2-machine-reclaim-fn2-cursor`, which wakes the FIFO head | release | :free/:retired | none | none |
-| **fn2-conn `:query`** (new conn phase, holds unchanged) | `:query`'s arm (15.3 table) | own query query-gen request. **Cross-row: the cursor's phase, more, done, update, group, current, view** | query, query-gen, group, article, view. start/pos consumed only at the end | No cursor: `fn2-machine-take-fn2-cursor`, which parks the conn on :no-row/:pool; on :ok, `fn2-conn-hand-tx` and a wake. Handed back: accept, then :reply with `after = :query`. Back with more: hand again and wake. Back with done: copy the selection back, clear query, consume the line, wake the cursor, :command | none stated | :reply / :command / stay | Take refusal parks the conn. A failed Send leads to :closing, and the conn's release wakes the cursor | none (the cursor renders) |
+```lisp
+  (:query :on-refusal ((:stop :machine-phase))
+   (:cond
+    ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+    ;; no cursor yet: take one (it is woken by the take) and hand it TX (15.3 step 1)
+    ((equal row-query *fn2-none*)
+     (:do (tcode x) (fn2-machine-take-fn2-cursor *fn2-none* id row-generation row-request row-start row-pos
+                                                 row-group row-current row-view row-access-ref row-principal-slot)
+      :case (((:no-row) (:park :taken fn2-cursor :steps *fn2-work-transition*))))
+     (:let xgen (fn2-cursor-gen-of x))
+     (:do (hcode) (fn2-conn-hand-tx row-tx-slot row-tx-gen x xgen))
+     (:set (query x) (query-gen xgen))
+     (:charge :steps *fn2-work-transition*))
+    (t (:case (fn2-conn-query-state row-query row-query-gen row-request row-tx-slot row-tx-gen)
+        ;; TX handed back by the matching cursor: send the page (15.3 step 3)
+        ((:handed) (:do (code) (fn2-conn-accept-tx row-tx-slot row-tx-gen))
+                   (:set (tx-off 0) (after *fn2-conn-after-query*)) (:next :reply)
+                   (:charge :steps *fn2-work-transition* :runnable t))
+        ;; back from :reply and the cursor has more: hand TX again
+        ((:more) (:do (code) (fn2-conn-hand-tx row-tx-slot row-tx-gen row-query row-query-gen))
+                 (:do () (fn2-conn-wake row-query))
+                 (:charge :steps *fn2-work-transition*))
+        ;; the last page was sent: copy the selection back, consume the line, let the cursor finish
+        ((:done) (:let x row-query)
+                 (:do (upd g c v) (fn2-cursor-selection row-query row-query-gen))
+                 (:set (group (if (equal upd *fn2-cursor-update-selection*) g row-group))
+                       (current (if (equal upd *fn2-cursor-update-none*) row-current c))
+                       (view (if (equal upd *fn2-cursor-update-selection*) v row-view))
+                       (query *fn2-none*) (query-gen 0) (start row-pos))
+                 (:do () (fn2-conn-wake x))
+                 (:next :command) (:charge :steps *fn2-work-transition* :runnable t))
+        ;; a cursor gone while named: the query invariant broke
+        ((:gone) (:stop :machine-phase))
+        (:otherwise (:charge :steps *fn2-work-empty*))))))
+```
+- **Cancellation.** `:draining`'s wake becomes `(:do () (fn2-conn-wake (if (equal row-upload
+  *fn2-none*) row-query row-upload)))`. One wake suffices because an upload and a query are never
+  both live: `upload` is set only in `:article-input`, `query` only in `:query`, and neither phase
+  reaches the other without passing `:reply` → `:command`, which clears both. That is owed row
+  `fn2-conn-one-dependant`, and it answers gap 34 without a second wake slot.
+- **The oracle's E rows** H turns live at this landing: "init with groups and profile limits" and
+  "store init" (H14).
 
----
+## Asks of the form seat (through main), from the 35 gaps
+Each item maps gaps to an ask, or to D's own fix where the syntax already says it. Asks are in order
+of need: F1-F3 block the ports, F4-F9 block D5 2/n and D6 1/n, and F10-F13 can come later.
 
-## 5. What the arm language cannot say today
+**F1. Sub-arms take `:on-refusal`.** `fn2-arms-subs` builds the env with refusal nil
+(machine-arms.lisp, `fn2-arms-env kind nil nil nil`). Every sub-arm above that declares
+`:on-refusal` needs this: two lines, the options parse that arms already use.
+- With it, a sub-arm's unrouted answer goes to its posture instead of `:machine-contract`.
+- Until then, each `:do` in those sub-arms carries `:case ((:otherwise (:stop :machine-phase)))`.
 
-The language (arms.lisp:309-449) checks only the **callback body**. It allows variables, let/b*/mv-let/if/cond/case, the scalar primitives, `fn2-call` to a contracted same-kind callback, the kind's PUT-CORE on `id` (phase only to a constant in `:next`), `fn2-machine-result`, `fn2-machine-with-work`, and calls of `:uses` operations that have a defcost. A defcost declares a constant cost, `:tables`, `:own-writes` and `:effects`. It is never checked against the defcost's body (it is `:proof (:owed)`, arms.lisp:229). Everything below happens in those unchecked bodies, or the declarations cannot state it.
+**F2. A taken kind's take is a plain answer, and its park a step (gap 10).**
+- Today `fn2-machine-take-K` parks the waiter inside itself (machines.lisp:1704-1714). Its defcost
+  declares no `:own-writes`, so the waiter's `wait-reason ready-prev ready-next` writes are invisible
+  and the owed FRAME rows fail on the park path.
+- Asked:
+  - the take's defcost gains `:answers (:ok :no-row)`;
+  - with waiter `*fn2-none*` (already supported) it parks nothing;
+  - a step `(:park :taken K [:steps E])` parks the row on K's ordinal FIFO with K's row kind as its
+    wait reason: the generated `park` form, emitted as the step's call.
+- Also asked: the take returns the target's generation, `(mv code id gen)`, which deletes
+  `fn2-upload-gen-of`, `fn2-txn-gen-of` and `fn2-cursor-gen-of` (gap 11).
 
-1. **Helpers are where the arms live.** `fn2-upload-advance` (upload.lisp:465, defcost :211), `fn2-txn-begin/claim-walk/decide/declare/commit/finish/unclaim-run` (txn.lisp:307-707, defcosts :179-205), `fn2-conn-feed-run` (conn.lisp:280, defcost upload.lisp:196) and `fn2-conn-run-answer` (conn.lisp:201) are ordinary ACL2. Each arm body in upload-work and txn-* is a dispatcher over the helper's keyword (upload.lisp:575-590; txn.lisp:724-791). The checker sees one declared call. The loops, cross-row access and pool writes inside it go unchecked.
-2. **The next phase is computed by a helper and returned as a keyword.** `fn2-upload-advance` returns `:run :idle :identity :receiving :sealed :discard :aborting :draining :stop` (upload.lisp:461-464). The txn helpers return `:reserve :lookup :prepare :ready :batched :refused :releasing :draining :run :idle :stop`. The body maps each keyword to a phase constant and to a runnable bit: `:sealed` and `:discard` run with runnable nil (upload.lisp:583-585), and `:idle` is a wait. The language sees only the constants. The transition relation lives in the helper.
-3. **One callback serves several phases, so the check is against the union.** `fn2-upload-work` serves :head/:receiving/:validating/:discard, each with a different `:next`. `fn2-machine-arm-union` (machines.lisp:391-404) checks the body against the union of `:next`. Each phase's own `:next` is enforced only at run time by `K-ARM-OK-P`, which stops the core with `:machine-contract` (machines.lisp:986-988, machines-a-access.lisp:457). For example, `fn2-upload-advance` can return `:identity` from :receiving when txn is `*fn2-none*`. Only the protocol rules this out, and nothing states it. The same holds for `fn2-txn-reply` (:accepted/:refused) and `fn2-conn-idle` (:free/:retired).
-4. **Declared phases with no producer.** `fn2-upload` :validating appears in the `:next` of :head and :receiving (upload.lisp:164, :174), but `fn2-upload-advance` never returns it. `fn2-txn` :accepted and :uncertain are in no arm's `:next`, and :batched's arm is refuse-phase (txn.lisp:142-151). `fn2-conn` :upgrading is unreachable: `fn2-conn-after` has `:upgrading`, but `fn2-conn-after-code` (conn.lisp:194) never yields it. The form has no reachability claim. A phase table that names each phase's producer would expose these.
-5. **The continuation is stored as data in a second enum.** `fn2-conn-reply` sets phase from `row-after` through a hand-written nested `if` (conn.lisp:579-582). `after` is the enum `fn2-conn-after (:command :article-input :upgrading :closing)`, a copy of part of the states that the renderers set (`fn2-conn-after-code`; greet :346, frame-run :421, block :548, input :378). The release picks `(if retire :retired :free)` (conn.lisp:625, upload.lisp:608, txn.lisp:803). The language accepts these only because constants appear in the phase form (arms.lisp:326). It cannot state the after→phase map, or that only the renderer chooses `after`.
-6. **Cross-row reads, invisible to the read sets.** The read sets (machines.lisp:137-154) cover the acting row only. Every other read goes through another kind's `K-ROW-f` inside a helper:
-   - conn reads the upload: `fn2-conn-feed-run` (conn.lisp:284-291) and `fn2-upload-gen-of` (:235);
-   - the upload reads the conn: `fn2-upload-advance` (upload.lisp:482-489, including the conn's `fed` as its own `filled`), `fn2-conn-post-word` (:313-316, the conn's request and **phase**) and `fn2-upload-conn-live-p` (:516);
-   - the upload reads the txn: `fn2-upload-txn-live-p` (:524) and `fn2-txn-gen-of` (:529);
-   - the txn reads the upload: `fn2-txn-upload-live-p/-sealed-p/-aborting-p/-upload-words` (txn.lisp:268-289), and in begin/decide/declare-1/commit-1 the fields ml mo no nl hashed scan-off c0/c1 slot+gen word inj (:314, :324-325, :355-359, :559, :595-605, :632-633).
-7. **Cross-row writes.** `fn2-conn-post-word` writes another row's `word` and `outcome-ready` with the generic per-field writers (upload.lisp:318-319). It is called from the upload (:430, :497) and the txn (txn.lisp:321, :697). The declarations say only `fn2-conn-table` or `fn2-core-machine-tables` in `:tables`. No field set, no generation guard and no phase precondition can be stated, and the comment at conn.lisp:266 ("no cross-row write") is true only of the feed.
-8. **Pool access under another row's owner.** The conn writes the upload's chunk octets with the owner `(*fn2-upload-kind* u ugen)` (conn.lisp:274-275, `fn2-upload-feed`). The txn reads the upload's chunk octets under the upload's owner (txn.lisp:326, :328, :358, :420, :445, :455, :562, :570, :607). The owner triple is a plain argument. The language has no notion of which row an access acts for, and no notion of a range lent between rows.
-9. **Waking other rows, through one wake slot per run.** The wakes: `fn2-conn-wake` (conn.lisp:305; used at :521 and :612), `fn2-upload-wake` (upload.lisp:412), `fn2-txn-wake-upload` (txn.lisp:292), the wake inside post-word (upload.lisp:320), the claim hand-over's wake of the computed id `kind-base + w` (txn.lisp:254-257), and the take's wake of the target (machines.lisp:1529). A wake is `fn2-machine-set-wake-id`, a single slot, so a second wake in the same run would overwrite the first. "One wake per run" is a comment (txn.lisp:152), not a declared or checked effect.
-10. **A take writes rows its contract does not name.** `fn2-machine-take-K` (machines.lisp:1544-1558) installs a row of another kind through that kind's PUT-CORE (:1523-1528). When it parks, it writes the waiter's `wait-reason ready-prev ready-next` and the FIFO tail row's `ready-next` (machines-a-access.lisp:182-185). Its generated defcost (machines.lisp:1574) has no `:own-writes`. As a result:
-    - `fn2-conn-open-block`'s contract `:writes` (conn.lisp:464) omits wait-reason, ready-prev and ready-next;
-    - upload `:identity` declares `(txn txn-gen wait-reason)` (upload.lisp:168) but not ready-prev or ready-next;
-    - on the park path, the owed `-FRAME` row of upload :identity (machines.lisp:666-677: declared columns change only at ROW) would not hold as stated. The same applies to conn :command when the FIFO tail is another conn row.
-11. **Generation checks are written by hand at every link.** They appear at conn.lisp:284-287 (`:bounds`), upload.lisp:313-316, :482-486, :516-521, :524-528 and txn.lisp:268-273, :292-297. The take returns only the id, so the taker reads the new row's generation in a separate call (`fn2-upload-gen-of`, `fn2-txn-gen-of`). Neither returns a code: both return 0 when the row is unreadable. There is no typed link `(kind slot gen [request])` with a declared liveness test.
-12. **Snapshot read codes are checked by hand.** Helpers test `fn2-upload-snapshot-read-code`, `fn2-conn-snapshot-read-code` and `fn2-txn-snapshot-read-code` themselves (for example upload.lisp:229, :342, :387; txn.lisp:309, :354, :545). The generated checked body does this for the acting row only (machines.lisp:858-867).
-13. **Per-octet pool loops.** These loops live in D's books, outside any arm: `fn2-upload-feed-loop` (upload-feed.lisp:94, one `fn2-gram-read` and ≤ 2 `fn2-gram-put` per octet), `fn2-txn-count-loop`/`-skip-loop`/`-name-loop` (txn.lisp:390, :475, :483), the scan's `fn2-upload-octets`/`-name`/`-field-code-loop`/`-line` and `fn2-upload-scan`'s line recursion (upload-scan.lisp:79-234), and the verdict's `fn2-upload-dot-atom`/`-dtext`/`-trim`/`-path-loop` (upload-scan.lisp:262-335). Each terminates on a natural measure, and its bound is the argument its caller passes. The language has no range or loop form, and no "at most N octets of slot S under owner O".
-14. **Sequencing with early exit is a private macro.** `fn2-txn-chain` (txn.lisp:432) chains 17 successor calls in `fn2-txn-put-article` (:436-458) and 2 in `fn2-txn-put-accept` (:462). Each successor defcost declares 0 bytes, so the chain's cost is unstated.
-15. **Stop-the-core paths are spread through the bodies.** About 30 sites map an unexpected code to refuse-phase (`:machine-phase`). Others: `fn2-core-stop *fn2-stop-reason-pool-release*` (conn.lisp:615, upload.lisp:603, and inside `fn2-core-release`, core.lisp:193), `*fn2-stop-reason-account*` (conn.lisp:619), `fn2-machine-refuse-observation`, the take/park and reclaim's `fn2-machine-refuse-write` (`:machine-write`, machines.lisp:1542, :1567), and `fn2-txn-checked`'s kind assertion (txn.lisp:650-683). Postures exist (`:on-refusal`, machines.lisp:544), but **none of conn, upload or txn declares one**. Every posture is in a body.
-16. **A retained row stop is folded into the issue helper.** `fn2-machine-issue-result` writes `stopped 1` for any issue code other than :ok/:exhausted (machines-a-run.lisp:115-118, TODO R6). This affects conn input, block-input, reply and close. It is a third stop kind: the core runs on, and the row is dead.
-17. **Refusals become phase changes.** Examples: a failed Receive or a zero-count Receive → :closing (conn.lisp:648); a failed Send → :closing (:664); overflow → :reply with after :closing (:377, :430); the answer's :discard, :malformed, QUIT and TAKETHIS → after :closing (conn-answer.lisp:306, :341, :344); the outcome `:framing` → :closing (:420); the upload's conn moved on → :aborting (upload.lisp:486); the txn's upload left → :refused with word 0 (txn.lisp:370); refusal words are written and then :refused. None of these declares what is released or kept. A :closing conn still holds everything and releases it only in :draining.
-18. **A dropped delivery is an untyped outcome.** `fn2-conn-post-word` returns `:dropped`, and every caller discards it with `(mv & fn2-core)` (upload.lisp:430, :497; txn.lisp:321, :695). This is "the one place a word is legitimately not delivered" (upload.lisp:308-310), but no declaration records the outcome.
-19. **Charges are self-reported, so cost is not bounded by work.**
-    - The certificate checks that the charge passed to `fn2-machine-result` is at most the declared cost (machines.lisp:504-507). It does not check that the work done is at most the charge.
-    - `fn2-conn-feed-step`'s :need-more path forwards to `fn2-conn-block-input`, which charges 0 or `len` bytes (conn.lisp:498, :505), after this run's feed already read and wrote up to `*fn2-conn-feed-cost*` (2048) pool octets (:517-519).
-    - `fn2-upload-work` always charges 4096, and `fn2-txn-slots` always charges 8192, whatever the step did. A step's real cost can be up to 1275 scanned octets plus a 4096-read lookup, or 17 successor calls. That composition is argued in prose, not derived.
-    - The residual `budget` argument is never read by any D arm. It is only passed on through `fn2-call`.
-    - `fn2-machine-with-work` compares constants with the kind's static caps (machines-a-access.lisp:375-389), so it cannot fail for an arm that declares within its caps. `fn2-conn-feed-step`, `fn2-conn-input`, `fn2-conn-block-input` and `fn2-conn-reply` have no preflight at all.
-20. **A run reaches its cap.** The txn's `:budget` is 16384 because `:ready` stages, admits and binds in one run (txn.lisp:88-94). The arm sits exactly at the cap, so it must list `:ready` in its own `:next` (machines.lisp:563-567). `fn2-txn-checked` exists because the charge guard is over the row's kind after the run (txn.lisp:650-653). D5 2/n's fill-octets, and any Xref rendering, must fit inside that same run.
-21. **Holds are sets, and effects attach to operation names.**
-    - The upload holds two `:chunk-window` ranges, declared once (upload.lisp:142, :150-151). The take removes the duplicate (machines.lisp:1576). The drain's single use entry `(:release (:chunk-window))` covers two calls (upload.lisp:597-601).
-    - The conn's one `fn2-core-release` entry covers TX then RX (conn.lisp:602-607).
-    - The check is per arm, not per path (a-to-d-arm-contracts.md:107-110, :144). A multiset of holds and per-call effects cannot be stated.
-22. **A second wait structure outside D0.** The claim table keeps its own FIFO (`fn2-core-claims`, txn.lisp:76). :reserve's `:idle` waits there, and `fn2-claim-release-core` wakes `kind-base + w` (txn.lisp:254). This rests on an index identity used by convention: claim row = txn slot = successor tx = decision d (`fn2-machine-slot id` at txn.lisp:328, :339, :358, :378, :588, :623, :694), and hasher row = 3 + upload slot (upload.lisp:229). None of these identities is declared.
-23. **Enums cross kinds by code.** The take passes `row-rule` of `fn2-upload-rule` into `fn2-txn-rule` (upload.lisp:564), and the two agree only by order. The conn's `rule` enum is offset by `:none` from the upload's, so open-block passes the constant `*fn2-upload-rule-post*` (conn.lisp:470). Outcome words are bare u8 on three kinds (`word` on conn, upload and txn). `feed-mode` is a u8 whose value 5 = `*fn2-conn-feed-done*` (conn.lisp:35) extends upload-feed's modes 0..4.
-24. **Phase protocols between kinds.** The txn waits for the upload's phase `:sealed` or `:aborting` (txn.lisp:277, :281). Post-word delivers only while the conn's phase is `:article-input` (upload.lisp:316). The upload deliberately does not read the conn's phase (upload.lisp:477-481). No declaration relates one kind's phases to another's.
-25. **Writes bypass PUT-CORE.** Helpers write their own fields one at a time with the generic `fn2-machine-write-<field>`: the 13 scan fields (upload.lisp:357-369), hashed (:501), word/inj (:422-423), counted/lines/gcur/gskip/ngroups/prepared/offered/word (txn.lisp:370-643). This is allowed through the defcost `:own-writes`, but the writes are never checked against a body.
-26. **Over-declared and dead fields.** txn `:admit` and `fn2-txn-begin` declare `(word upload)` and write neither (txn.lisp:123, :180). `fn2-conn-open-block` declares `rule` and never writes it. The upload's `filled` is only ever cleared (upload.lisp:153, :611): the true value is the conn's `fed`. The check is ⊆ only, so a declaration can be stale without any refusal.
-27. **Observation handlers write phase under `:writes ()`.** `fn2-conn-observe-receive` and `fn2-conn-observe-close` move the phase. That is allowed, because phase moves are `:next`. `:borrow-released` declares `:next ()` and takes the default `:from`, which is every phase but :free and :retired.
+**F3. `:answers` on A's code-returning operations used by D.** `fn2-core-drop-prefix`
+(machines-a-costs.lisp:79: `(:ok :more ...)`) and `fn2-machine-pool-borrows-read-code`, plus
+`fn2-account-charge-core` (D's own; D adds it). C and B add theirs (P.3 (b)).
 
-**What the planned cursor needs that the language lacks (section 15):**
+**F4. D0 wait kinds attached by their owners, the `:sealable` pattern, as steps (gap 22; B-S2
+S6).**
+- `(:park :batch-membership)`: B attaches the ready/grant pair (§11b S6). D adds the kind to
+  resources.lisp.
+- `(:park :identity-reservation)`: the claim table's FIFO. D attaches it, replacing `:reserve`'s
+  `:wait` charge and the hand-computed waiter id `kind-base + w` in `fn2-claim-release-core`
+  (txn.lisp:254).
+- The ask: `:park` accepts any wait kind whose owner declared `(K-ready-p, K-grant-one)` in its
+  own book, not only the three built-ins (machine-arms.lisp `:park` case).
 
-28. **The TX hand-over.** `fn2-pool-hand` and `fn2-pool-accept-hand` (pool.lisp:306, :315) transfer write authority over a range that stays in the conn's `:holds`. The cursor then writes another row's held range. Neither the frame (`fn2-arm-framep` covers the acting row's columns and named children) nor `:holds` can say "handed to row R" or state the invariant "TX's owner is the conn except between a hand and the matching hand back". The defcosts the doc plans "with no D0 effect" would hide it as item 10 hides the take.
-29. **The cross-row line read.** The cursor re-parses ≤ 512 octets of the conn's RX under the conn's owner (15.2 :select). The conn must not consume the line while its cursor lives (15.3). This is a constraint on another kind's fields `start`/`pos` that no arm of either kind can state.
-30. **The cross-row selection copy-back and the :query dispatch.** The conn's `:query` arm chooses its branch from the cursor's phase, `more`, `done` and `update`, then copies `group current view` back (15.3 table). These are cross-row reads (item 6) used as the condition of a phase move.
-31. **Page restarts and resumable continuations.** Each `:render` restarts its range read at `next` and may split a row at `roff` (15.4). GROUP's numbers at the view take several resumable C steps across runs. LAST bisects in ≤ 61 starts. The continuation is the row's fields plus C's `fn2-reads` row x, indexed by the cursor's slot: another undeclared index identity (item 22).
-32. **C-S4 read calls with multi-valued codes.** `fn2-read-lookup` → `:ok :absent :more :miss`; `fn2-read-next` → `:entry :end :more :miss`; `fn2-read-value`/`-octets` → `:stale`; plan outcomes `:read :gap :unavailable :wait :stale :refused`. Each maps to a typed reply (503 `:no-projection`) or to a core stop (15.1). The language has no code→reply table. Cost is S sources × budget, a product of runtime-bounded counts that a constant defcost can only over-approximate.
-33. **The view pin.** `fn2-read-frontier` at :greeting and at every GROUP/LISTGROUP writes the conn's `view`. The conn's `:greeting` arm gains a C read and a write. The pin's meaning (every later reply is a function of `view`) is a keystone (`fn2-cursor-view-pinned`), not something an arm states.
-34. **Cancellation from both sides.** The conn's release must wake its cursor as it wakes its upload (item 9), and a cursor that finds `conn-gen`, `query` or `request` moved drains (15.3). This is two more hand-written generation tests (item 11) and a second wake from `fn2-conn-release` in the same run, which collides with the single wake slot if the conn holds both an upload and a cursor.
-35. **Unreached phases by design.** `:need-page` (`(:storage-job :read)`) and `:failed` (scenario 3), plus the `:cache-pin` hold, are declared now and unreached until C1c and 15.6 (item 4).
+**F5. A wake of another row is a step, counted (gap 9; cursor gap 34).**
+- `(:wake-row E)` lowers to `fn2-machine-set-wake-id` after `fn2-machine-idp`. The generator refuses
+  a path with two wakes, whether the run's own or another's. The slot is single, and today "one wake
+  per run" is a comment (txn.lisp:152).
+- D's `fn2-conn-wake`, `fn2-upload-wake`, `fn2-txn-wake-upload` and post-word's wake become this
+  step plus a liveness expression.
 
-## 6. Seams each kind calls (signatures as in the books)
+**F6. A bounded repeat (gaps 13, 19, 31, 32).**
+- The step is `(:repeat N (STEP ...) :until E)`, with derived cost N × the body's bound.
+- With it:
+  - `fn2-cursor-page`'s 4 range steps and `:seek`'s 32 C steps a run become arms;
+  - the feed's and the count's per-octet loops can move into the range primitives by handle (A's
+    copy-range/scan), rather than living as hand loops;
+  - the "charges are self-reported" gap closes, because the charge becomes the sum of the called
+    operations' declared bounds.
+- Until then the loops stay inside declared D operations whose defcosts state the bound.
+
+**F7. `row-slot` (gap 22).** The row's slot in its kind as an expression, read from the directory
+like `id`. Claim row, successor tx, decision d, read row x and hasher row (3 + slot) are all
+"indexed by the machine slot", by convention. The asked fact, `(K-row-slot id)` = the slot the take
+or admission gave, is the index identity stated once.
+
+**F8. Typed links (gaps 6, 11, 12, 24).**
+- Declared as `:links ((upload :kind fn2-upload :slot upload :gen upload-gen [:back txn txn-gen])
+  ...)`. The generator emits the liveness test (snapshot read code, generation, back-reference),
+  and `(:live L)` is an expression.
+- An owner override `:okind/:oslot/:ogen` is accepted only as a declared link's triple (gap 8).
+  Cross-row reads go through the link's declared reader set, `(:read L F)`, which is the read set
+  §2's frame theorems need.
+- The phase protocols between kinds become a declared precondition of a link, e.g. `:when-phase
+  (:article-input)` for post-word.
+
+**F9. A range handed between rows (gaps 28, 29).**
+- Asked: a hold `(:tx-range :handed-to fn2-cursor)`, plus the steps `(:hand RANGE L)` and
+  `(:accept-hand RANGE L)`. They lower to `fn2-pool-hand` / `fn2-pool-accept-hand`.
+- The D0 reservation stays with the holder while write authority moves with the pool owner.
+- The invariant "owner = holder except between hand and hand-back" becomes a generated owed row.
+- Reading the conn's RX line from the cursor is a link read of a range (`(:read-range conn
+  rx-slot line-s line-e)`) with the conn's `:pinned (start pos)` while the link lives.
+- Until then D writes the thin wrappers named in P.5. Their defcosts carry no D0 effect, which is the
+  hidden hand the gap names.
+
+**F10. A phase-valued field (gap 5).** `after` typed as `(:phase-subset (:command :article-input
+:query :closing))`, so `(:next row-after)` is allowed and checked against the phases. Today the
+nested `:if` in `:reply` says it.
+
+**F11. Per-phase precision through a shared sub-arm (gap 3).** `(:goto work :from (:head
+:receiving))`, or the generator recording each arm's `:next` as the reachable subset of the
+sub-arm's leaves given `row-phase` tests. Today `(:head (:goto work))` derives the union, so `:head`
+can be declared to reach `:sealed`.
+
+**F12. Reachability (gaps 4, 35).** The generator reports a phase that no `:next` names, other than
+the taken/admission phase and `:free`.
+- D then deletes upload `:validating` and conn `:upgrading` in the port's follow-up commit.
+- txn `:accepted`/`:uncertain` become reachable at D5 2/n.
+
+**F13. Holds as multisets (gap 21).** Two `:chunk-window` ranges and two `fn2-core-release` calls
+already say the multiset in the port, one `:effects` per call. Asked: the D0 check counts per call,
+not per name, so the upload's two releases match its two takes.
+
+**F14. Holds per path (D7 4/n-b, d-machines-nntp.md 13.8).** `:command` holds
+`:principal-reservation` only while `reserved = :held`. D0 checks holds per arm
+(a-to-d-arm-contracts.md:107); the asked change makes the posture each path ends in carry its holds,
+as §6.3 already derives for refusal paths. The fallback is a phase `:requesting`.
+
+**Already said by the syntax (D's own fixes at the port, no ask):**
+- gaps 1, 2, 14, 25: the helpers are unrolled into steps;
+- gap 15: postures come from `:on-refusal` and `:case`;
+- gap 16: R6 is the `:issue` default `(:halt)`, kept on purpose;
+- gap 17: refusal-as-phase is a routed `:case`;
+- gap 18: `:dropped` is a `:why`'d `:accept`;
+- gap 19: the conn feed charge, in P.1 (e);
+- gap 20: the txn budget, in P.4;
+- gap 23: rule enums. The port keeps the shared order; ask F8's link carries `:map` later;
+- gap 26: the dead `filled` field;
+- gap 27: handlers' `:next` is derived;
+- gap 30: the selection copy-back is a `:do` of a pure reader;
+- gap 33: the view pin is a `:set` from `fn2-read-frontier`;
+- gap 34: cancellation, answered by `fn2-conn-one-dependant`.
+
+## Seams each kind calls (signatures as in the books)
 
 **fn2-conn.**
 - A's pool and host primitives:
