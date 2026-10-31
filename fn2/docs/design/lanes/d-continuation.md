@@ -13,6 +13,19 @@ the lane clone is `~/fn2-d6-lane/work` on `hbox-saas`); forge is the measurement
   function 82eb2bfc2). D's four kinds port to it (P.1-P.4 below); the cursor is already child form.
 - **Identity across peers** (`IDENTITY-ACROSS-PEERS-20261030.md`): D owns rulings 1, 6, 8 in the txn port;
   replies are decided from the separate facts C's decision returns, never from a summary code.
+- **Argon review rulings for the txn port (main, 10-31 night; REVIEW-ARGON-RESPONSE-20261031.md):**
+  (1) one encoding: C's `fn2-successor-out` emits the member workspace from the staged slots in B's
+  record kinds (article acceptance, identity records, memberships, overview, addr, the folds' events,
+  the outcome); `:ready` passes that workspace to `fn2-commit-admit-txn`, never a hand-serialized
+  subset (this replaces P.4's `fn2-txn-write-records` step); replay feeds the same slots back.
+  (2) stage-time `:refused` is reachable (catch-up, generated-Message-ID POSTs without a claim,
+  resolution statements): `:ready` replans to evidence-only on stage `:refused`, never a stop; restate
+  claim stability accordingly. (3) once any batch is `:uncertain` the node's serving posture is
+  `:draining`: new POST/append/IHAVE are refused by word at admission (`:unaffordable` with the
+  uncertain reason), never parked behind the uncertain claim; the commit kind exposes the posture
+  and the txn reads it (D9's ServicePosture brought forward). (4) small, any time: `fn2-resource-rank`
+  = 1 + position in `*fn2-resource-order*`, the hand `:rank` keys and the length pin go; the twin
+  bundle/release tables are deleted at the conn port once every kind declares `:holds`/`:effects`.
 - **Never stand by.** While the txn port waits on C's §4a sha, do D's breadth that waits on nothing.
 
 ## State (dev)
