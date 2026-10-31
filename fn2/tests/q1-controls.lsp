@@ -13,6 +13,7 @@
 ;   FN_ACL2=... tools/acl2 < fn2/tests/q1-controls.lsp > build/q1-controls.log
 (in-package "ACL2")
 (include-book "fn2/tests/q1-contracts")
+(include-book "fn2/tests/q1-contracts-b")
 (set-guard-checking nil)
 :q
 (handler-case
@@ -110,6 +111,18 @@
                             (note core)
                             (values code (if (member code '(:ok :more)) (+ 1 consumed) consumed) core))
                         (funcall orig row slot gen off len id ogen core)))))
+                ; fn2-recovery-machine: a presented witness never matches the recovered chain
+                ; (the classification then reports a rollback where there is none).
+                (run-kind 'fn2-recovery-machine
+                  (lambda () (and (fn2-q1r-ok 0 t 0 '((:witness 1) (:rollback 1)))
+                                  (fn2-q1r-ok 0 t 0 '((:witness 2)))))
+                  'fn2-recovery-witness-match
+                  (lambda (orig)
+                    (lambda (witness chain arena core)
+                      (multiple-value-bind (code matched) (funcall orig witness chain arena core)
+                        (if (and (active core) matched)
+                            (progn (note core) (values code nil))
+                          (values code matched))))))
                 ; fn2-scribe: the checksum the patch writes is off by one bit.
                 (run-kind 'fn2-scribe (lambda () (fn2-q1c-scribe-ok 1001 2000)) 'fn2-scribe-patch-loop
                   (lambda (orig)

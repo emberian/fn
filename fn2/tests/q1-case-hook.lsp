@@ -46,6 +46,10 @@
 (defvar *fn2-q1-hook-turn* nil)
 (defvar *fn2-q1-hook-init* nil)
 (defvar *fn2-q1-hook-own-init* nil)
+; Host calls outside the arms that change a core between turns (fn2-recovery-start: the
+; host starts recovery on a fresh core, as fn2-scribe-start inside fn2-init-executor):
+; the reference is re-read from the concrete core after each, as after init.
+(defvar *fn2-q1-hook-host-calls* nil)
 (defvar *fn2-q1-hook-ref* nil)
 (defvar *fn2-q1-hook-profile* :none)
 (defvar *fn2-q1-hook-cursor* 0)
@@ -67,6 +71,18 @@
         *fn2-q1-hook-ref* (create-fn2-ref-core) *fn2-q1-hook-profile* :none
         *fn2-q1-hook-monitor* nil *fn2-q1-hook-own-checks* 0
         *fn2-q1-cases* nil *fn2-q1-certified* nil *fn2-q1-turns* 0 *fn2-q1-hook-failures* nil)
+  (dolist (name '(fn2-recovery-start))
+    (when (fboundp name)
+      (let ((original (symbol-function name)))
+        (push (cons name original) *fn2-q1-hook-host-calls*)
+        (setf (symbol-function name)
+              (lambda (&rest args)
+                (let* ((results (multiple-value-list (apply original args)))
+                       (core (car (last results)))
+                       (lists (fn2-ref-lists-of-core (fn2-profile-weights *fn2-q1-hook-profile*) core)))
+                  (setf *fn2-q1-hook-ref* (fn2-ref-reset *fn2-q1-hook-profile* core *fn2-q1-hook-ref*)
+                        *fn2-q1-hook-cursor* (nth 1 lists) *fn2-q1-hook-queues* (nth 2 lists))
+                  (values-list results)))))))
   (let ((init *fn2-q1-hook-init*) (own-init *fn2-q1-hook-own-init*))
     (setf (symbol-function 'fn2-init-executor)
           (lambda (profile mode scribe-p core)
@@ -113,7 +129,10 @@
   (when *fn2-q1-hook-init*
     (setf (symbol-function 'fn2-init-executor) *fn2-q1-hook-init* *fn2-q1-hook-init* nil))
   (when *fn2-q1-hook-own-init*
-    (setf (symbol-function 'fn2-own-init) *fn2-q1-hook-own-init* *fn2-q1-hook-own-init* nil)))
+    (setf (symbol-function 'fn2-own-init) *fn2-q1-hook-own-init* *fn2-q1-hook-own-init* nil))
+  (dolist (entry *fn2-q1-hook-host-calls*)
+    (setf (symbol-function (car entry)) (cdr entry)))
+  (setf *fn2-q1-hook-host-calls* nil))
 
 ; PATH is a book under fn2/tests/evidence/ (outside the tests digest of
 ; scenario-revision.py). LOCATION names the driver, DOMAIN its segments,
