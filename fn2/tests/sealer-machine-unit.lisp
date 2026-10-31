@@ -19,8 +19,8 @@
 (include-book "std/util/bstar" :dir :system)
 
 (defconst *fn2-smu-groups* '(("comp.lang.lisp" . 7) ("alt.test" . 9) ("misc.misc" . 11)))
-;; :format-slots is derived (B5-4a: 4 + the windows), so the checker row
-;; 3 + windows exists in every profile.
+;; :format-slots is derived (4 + the windows + the control connections,
+;; default 2), so the checker row 3 + windows exists in every profile.
 (defconst *fn2-smu-profile*
  (put-assoc-equal :groups *fn2-smu-groups*
   (put-assoc-equal :identity-arena-bytes 4096
@@ -114,8 +114,8 @@
 ;; The row cannot be missing: the default windows (16) give 20 format slots,
 ;; and a profile naming fewer slots than 4 + windows is refused.
 (assert-event
- (and (equal (fn2-b-format-slots *fn2-smu-norow*) 20)
-      (equal (fn2-b-format-slots *fn2-smu-profile*) 5)
+ (and (equal (fn2-b-format-slots *fn2-smu-norow*) 22)
+      (equal (fn2-b-format-slots *fn2-smu-profile*) 7)
       (fn2-core-profilep *fn2-smu-profile*)
       (not (fn2-core-profilep (put-assoc-equal :format-slots 4 *fn2-smu-profile*)))))
 

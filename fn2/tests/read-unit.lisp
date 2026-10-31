@@ -10,8 +10,8 @@
 (include-book "std/util/bstar" :dir :system)
 
 ; Reading served with two read rows (two transactions: rows t + 2 and
-; t + 18), three groups; the sealer's checker row (3 + one window, below
-; :format-slots 5) and 64 KiB pages for its runs, which stay resident
+; t + 18), three groups; the sealer's checker row (3 + one window;
+; :format-slots derived) and 64 KiB pages for its runs, which stay resident
 ; (C-SEAL-RESIDENT): owed-cursor.lisp's *fn2-read-profile*.
 (defconst *fn2-rdu-profile* *fn2-read-profile*)
 (defconst *fn2-rdu-seeds*
