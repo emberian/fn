@@ -1342,6 +1342,13 @@ all twelve arms with their full contracts and turns every `assert$?` in commit.l
   `4 + w` (rows 0-1 commit, 2 recovery, 3..2+w D's upload windows, 3+w C's sealer), D's
   `fn2-upload-capacity` is `min(u, 16, w)` and C's sealer row is `3 + w`. A profile naming fewer
   slots is refused, so the sealer's row exists in every profile (C-SEAL-NO-ROW's case is unreachable).
+  Since 2026-10-31 the floor is `4 + w + c`: `fn2-b-ctl-rows` (`:control-connections`, default 2, the
+  tiny profile's) gives E's control connections rows `4+w .. 3+w+c`. `fn2-b-ctl-slot s` is control
+  connection S's slot: its b3 row hashes the FNCT trailer, and its 128-row field stripe (at
+  `128 * slot`, B's per-slot stripes from row 0) holds the generated codec's FNCT decode and encode.
+  That is E's ask in amended form: the slot's own stripe already gives 128 rows, more than the 64
+  asked for, so no separate stripe sits below the read stripes. E's `fn2-ctl-capacity` reads
+  `fn2-b-ctl-rows`.
 - **Section books under the one-minute rule.** The commit kind's events are four section books:
   `-b` (hooks, admission), `-b2` (root edges, refusal, collect, seal), `-r` (observe, writes, fence,
   durable), `-r2` (install, publish, settlement, drop, notify, drain, the run); settlement is three

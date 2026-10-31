@@ -30,20 +30,31 @@
       (fn2-b-capacity :alloc-edge-slots (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))) profile)))
  :why "Commit work survives scheduler yields.")
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
-; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer; the count is
-; derived, so every profile has every row (main's ruling, 2026-10-30); w's
-; default is resources.lisp's round-2 bound (16); D's upload capacity and C's
-; sealer row read the same function.
+; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
+; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
+; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
+; both at fn2-b-ctl-slot); the count is derived, so every profile has every
+; row (main's ruling, 2026-10-30); w's default is resources.lisp's round-2
+; bound (16), c's the tiny profile's 2; D's upload capacity, C's sealer row
+; and E's control capacity read these functions.
 (defun fn2-b-upload-windows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+(defun fn2-b-ctl-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-b-capacity :control-connections 2 profile)))
+(defun fn2-b-ctl-slot (s profile)
+ (declare (xargs :guard t))
+ (+ 4 (fn2-b-upload-windows profile) (nfix s)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 4 (fn2-b-upload-windows profile)))
+ (+ 4 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
-(in-theory (disable fn2-b-upload-windows fn2-b-format-floor fn2-b-format-slots))
+(defthm fn2-b-ctl-slot-below-floor
+ (implies (< (nfix s) (fn2-b-ctl-rows profile)) (< (fn2-b-ctl-slot s profile) (fn2-b-format-floor profile))))
+(in-theory (disable fn2-b-upload-windows fn2-b-ctl-rows fn2-b-ctl-slot fn2-b-format-floor fn2-b-format-slots))
 (defcorechild fn2-core-fc fn2-fc
  :init (fn2-fc-init (fn2-b-format-slots profile) fn2-fc)
  :profilep (and (unsigned-byte-p 32 (fn2-b-format-slots profile))

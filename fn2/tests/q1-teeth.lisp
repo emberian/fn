@@ -15,15 +15,13 @@
 (include-book "../sim/check-trace")
 
 ; Posting is served (D4 2/n) so that every kind, the upload included, has
-; rows: an upload row needs a hasher row (:format-slots 3 + windows, B-S1),
-; and the sealer its checker row 3 + :large-upload-windows (C1c; until B5-4a
-; derives :format-slots from the windows): two windows, rows 3-4 the
-; uploads', row 5 the sealer's.
+; rows: an upload row needs a hasher row and the sealer its checker row
+; (:format-slots is derived, machines-b): two windows, rows 3-4 the
+; uploads', row 5 the sealer's, rows 6-7 the control connections'.
 (defconst *fn2-q1-teeth-profile*
   (put-assoc-equal :posting-interim t
     (put-assoc-equal :large-upload-windows 2
-      (put-assoc-equal :format-slots 6
-        (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*)))))
+      (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))))
 
 (defun fn2-q1-teeth-position (x xs)
   (declare (xargs :guard t))
