@@ -874,7 +874,7 @@ choice D defers, both positions are recorded. The slices, in the order they land
 | D7 1/n | this section; the seam request to A (13.6) | nothing |
 | D7 2/n | `fn2/books/accounts.lisp`: the ledger as a library (columns, configuration, operations, the local keystones proved), `fn2/tests/accounts-unit.lisp` | nothing |
 | D7 3/n | the ledger registered as a core child; `fn2-conn` booked at its greeting (interim, 13.4) and charged from its first byte; the ACCOUNT checker `fn2/sim/check-account.lisp`; scenario 11's anonymous-flood half under the simulator | 2/n |
-| D7 4/n | booking at Accept issue; the request bundle with its wait and the grant service; run charges; calendar weights; re-attribution | A's seam S1-S5 |
+| D7 4/n | booking at Accept issue; the request bundle with its wait and the grant service; run charges; calendar weights; re-attribution (S1-S5 landed by A; D's half is 13.8: 4/n-a the ledger's request operations and grants, 4/n-b the connection's bundle at its port) | 4/n-a nothing; 4/n-b the form (P4) |
 | D7 5/n | the timer service: the deadlines of 4.4 and the earliest-deadline `ArmWake`; scenario 18's expiry half | 3/n |
 | D7 6/n | the TLS admission machine (`fn2/books/tls-admit.lisp`, `Ltls` 16, the simulator's TLS stub); scenario 18's admission half; scenario 10 | 5/n |
 
@@ -1040,6 +1040,115 @@ Scenario 11's half that 3/n can run: anonymous clients beyond slot 0's connectio
 and close while every greeted one is served; a principal with a connection reserve (attributed by the
 test fixture standing for E2) keeps it while the anonymous flood holds the shared remainder. WIRE and
 ACCOUNT over every client. The request-wait half and FAIR join with 4/n.
+### 13.8 D7 4/n, statement first (2026-10-31): the request bundle and the ledger's grants
+
+**What stands.** A's seam is on dev whole:
+- S1: the listener books `:connection-row` at Accept issue (`fn2-account-book` in the listener's
+  arm), and the admission copies `principal-slot account-ref`.
+- S2: `fn2-exec-charge-run` charges `:run-steps`/`:run-bytes` per principal run.
+- S3: the weighted calendar in sched.lisp.
+- S4: `fn2-sched-reattribute`.
+- S5: the grant service's ledger source, `fn2-account-grant-ready-p` / `-grant-one`. Its bodies are
+  `nil` / `(mv *fn2-none* fn2-core)` in accounts-core.lisp: "no row parks on a principal's request
+  FIFO before 4/n".
+
+The grant service now has six sources: operation credit, pool, admission, ledger, sealable and
+batchable. What 4/n adds is D's own, in two commits:
+- **4/n-a, the ledger's request operations and the grant pair's bodies.** These are core operations,
+  so they land now, under the machine-form ruling.
+- **4/n-b, the connection's request bundle.** These are arms, so they land at fn2-conn's port, in
+  the new form (d-continuation.md P.1). The changed arms are written below in the form's syntax.
+
+**The ledger's request operations** (accounts.lisp over the stobj, accounts-core.lisp the core
+wrappers, each with a defcost). The FIFO links are the parked rows' directory links (`ready-prev
+ready-next`, P1). The FIFO's ends are the ledger row's `wait-head wait-tail`.
+
+| operation | answers | effect |
+|---|---|---|
+| `fn2-account-request (p id)` | `:ok` | acquired: `hold(p, :principal-reservation) + 1`, committed per 13.2 |
+| | `:queued` | p's FIFO is non-empty: nothing acquired (no barging, even when it would fit) |
+| | `:limit` / `:shared` | does not fit: nothing acquired |
+| | `:refused` | p's request limit is 0: refused by name, never parked |
+| | `:bounds` `:state` | an invariant failure; the caller stops |
+| `fn2-account-request-park (p id)` | `:ok` `:bounds` | ID joins p's FIFO tail with wait reason `:principal-reservation`, in the transition that was refused (the park step of F4) |
+| `fn2-account-request-release (p)` | `:ok` `:underflow` | the hold leaves; when committed or p's hold dropped, the ledger's grant source becomes ready (persisted, never a wake id) |
+| `fn2-account-request-cancel (p id)` | `:ok` `:absent` | ID unlinked before its links or row are reused (the timer's deadline, 5/n); nothing acquired or released |
+
+**The grant pair.** It visits the principals in calendar order from a grant cursor (`grant-at`, a
+field of the ledger's configuration row) for a head whose acquisition now fits.
+- `fn2-account-grant-ready-p` holds when some principal p has a non-empty FIFO whose head's
+  acquisition would answer `:ok` with the FIFO ignored.
+- `fn2-account-grant-one`, for the first such p from the cursor:
+  - acquires on the head's behalf;
+  - dequeues it and clears its wait reason;
+  - moves the cursor past p;
+  - returns the head's id.
+- It does all of that in one transition, as 13.4's Astra example needs. The example has request
+  capacity 3, where B holds 2, C reserves 1, and A waits on `:shared`. B's release reaches A through
+  the source, not through B.
+
+**Keystones** (owed, `fn2/books/owed-accounts.lisp`; teeth in `fn2/tests/accounts-unit.lisp`, which
+drives the ledger stobj with no machine):
+
+| statement | teeth |
+|---|---|
+| `fn2-account-grant-live`: `(fn2-account-grant-ready-p c)` implies the id `fn2-account-grant-one` returns is not `*fn2-none*`. This is the shape the sealable and batchable sources already export to A's service | positive: Astra's example. Negative: a ready-p that answers t on an empty FIFO |
+| `fn2-account-grant-exact`: the granted id was the head of some principal p's FIFO. The ledger after the grant equals `acquire(p, :principal-reservation, 1)` with that head dequeued and its wait reason none. No other row, hold or charge changes | positive: two principals queued, each granted its head. Negative: a grant that skips a head, and a grant that acquires twice |
+| `fn2-account-grant-ready-exact`: `ready-p` holds exactly when some p has a non-empty FIFO whose head fits | positive: a FIFO that fits and one that does not. Negative: ready-p true for a head over its limit |
+| `fn2-account-request-no-barging`: while p's FIFO is non-empty, `fn2-account-request p id'` answers `:queued` for every other id' | negative: a request that acquires past a queued head |
+| `fn2-account-request-bounded-wait` (the liveness statement). Take any state in which p's head h fits, and every later step is a grant, a release, or a request that answers `:queued`/`:limit`/`:shared`/`:refused`, so nothing else acquires. Then h is granted within P calls of `fn2-account-grant-one`, P the number of principals, because the cursor passes each principal at most once before reaching p. With A's weighted starvation bound (the grant service is visited within L calendar entries), a fitting head is granted within P·L entries. This is a bound on visits, not on request completion, as 13.5 says of the starvation bound | positive: P principals with full FIFOs, every head granted within P grants. Negative: a cursor that restarts at slot 0 starves slot P-1, and the bound must fail |
+| `fn2-account-request-once`: each parked request is settled once, granted (`hold + 1`) or cancelled (unlinked, hold unchanged), never both and never twice | negative: a cancel after a grant that releases, and a second grant of one id |
+| `fn2-account-ledger-matches` (13.5) gains the request dimension: `hold(p, :principal-reservation)` equals the number of p's connections in a request-holding phase, `:command` while `reserved = 1`, `:article-input`, `:reply` or `:query` | as 13.5's, with a conn granted while parked |
+
+**4/n-b, the connection's request bundle** (written for fn2-conn's port). It uses D0's
+`(:connection :request)` bundle, held from the framed line to the reply's last octet.
+- **Fields and phase.** The connection gains the field `reserved (:enum fn2-conn-reserved (:none
+  :waiting :held))` and the phase `:control-reply`.
+  - `:control-reply` holds `:connection-row :rx-range :tx-range`, with no `:principal-reservation`.
+    It is 13.4's choice for the greeting and the capacity 400.
+  - It shares `:reply`'s send sub-arm. Only `:reply`'s end releases the reservation.
+- **Acquiring at a framed line.** The frame sub-arm's `:line` branch acquires before it answers:
+  ```lisp
+  (:if (equal row-reserved *fn2-conn-reserved-held*)
+       ((:goto answer))                ; a grant acquired it while this row was parked
+       ((:do (rcode) (fn2-account-request row-principal-slot id)
+         :accept ()
+         :case (((:ok) (:set (reserved *fn2-conn-reserved-held*)) (:goto answer))
+                ((:queued :limit :shared)
+                 (:set (reserved *fn2-conn-reserved-waiting*))
+                 (:park :principal-reservation row-principal-slot :steps *fn2-work-transition*))
+                ((:refused) (:goto refuse-request))))))
+  ```
+  The line's `start pos` are kept, so the woken row re-frames the same line. A row parked on
+  `:principal-reservation` is woken only by its grant: it has nothing pending, and the grant source
+  is the only waker of that reason. So `reserved = :waiting` in a running row means the grant
+  acquired for it. The frame's first step turns `:waiting` into `:held` without a second acquire:
+  that is the "settled exactly once".
+- **`:refuse-request`.** Renders `400 request limit` (a new `fn2-answer-request-refused`), with
+  `after :closing`, `:next :control-reply`.
+- **Releasing.** The end of `:reply`, where TX is reset and the row moves to `after`, gains
+  `(:do (qcode) (fn2-account-request-release row-principal-slot) :case ((:otherwise (:stop
+  :account))))` and `(:set (reserved *fn2-conn-reserved-none*))`, on the paths that do not return to
+  `:article-input` or `:query`. A block or a query keeps its request until its own last reply.
+- **Draining.** `:draining` releases a held reservation (a failed Send left it) before the booking.
+  A `:waiting` row cannot drain, because it is parked. Its cancellation is 5/n's deadline, through
+  `fn2-account-request-cancel`.
+- **Holds** (D0's bundle per phase):
+  - `:command` holds the reservation only while `reserved = :held`;
+  - `:reply`, `:article-input` and `:query` hold it;
+  - `:greeting`, `:control-reply`, `:closing` and `:draining` do not, after the release.
+  `:command`'s split hold is per path, not per phase. That needs the form's per-path holds, which
+  D0 checks per arm today (a-to-d-arm-contracts.md:107): D asks the form seat (F14, through main)
+  for path postures. The fallback is a second phase `:requesting` for the parked line, which is
+  exact under per-phase holds and costs one phase.
+
+**ACCOUNT and FAIR.**
+- ACCOUNT's check (2) gains the request dimension, from the simulator's own record of which
+  connections have a line framed and its reply not yet fully sent.
+- FAIR, scenario 11's request half: one principal floods requests past its limit while another
+  holds a request reserve. The reserved principal's requests are never refused `:shared`, and every
+  parked request of the flooder is granted within the bound above.
+
 ## 14. D4 + D5: article input, the upload machine, the transaction machine *(design; the D4/D5 commits rewrite it as built)*
 
 The contract is brief items 4 and 5, ROUND2 §B.2 rows 3-4, §B.3, §E.1-E.2 and scenarios 4, 5 and 13,
@@ -1664,16 +1773,16 @@ at 1; the view is always pinned), `access-ref :u32` (the pinned access rule, W01
 range and the first number not yet rendered), `roff :u32` (the rendered prefix of a row longer
 than what is left of TX), `seen :bool` (any entry delivered), `step :u8`, `update (:enum
 fn2-cursor-update (:none :current :selection))` (what the connection copies back), `more :bool
-done :bool`, `tx-slot :link tx-gen :u60`, `stopped :bool next-free :link`. Budget `(:bytes 4096 :steps 32
-:descriptors 4)`; capacity `(fn2-profile-x profile)`, 0 unless the profile serves reading
+done :bool`, `tx-slot :link tx-gen :u60`, `stopped :bool next-free :link`. Budget `(:bytes 8192 :steps 32
+:descriptors 0)` (15.4's run; the cursor issues nothing, cap 0); capacity `(fn2-profile-x profile)`, 0 unless the profile serves reading
 (`:reading t`: H's tour and sim-layer-d set it; the served node profile with D9).
 
 ### 15.3 The connection's half, and TX by hand-over
 
 `fn2-answer` gains the answer `:query` for every cursor command (after its sub-form checks, which
 stay where they are): nothing is rendered. `fn2-conn` gains the phase `:query` (holds unchanged:
-`:connection-row :rx-range :tx-range`) and the fields `query :link query-gen :u60` and `group article
-view :u60`. The line is **not consumed** until the cursor ends (start/pos stay at the line), so the
+`:connection-row :rx-range :tx-range`) and the fields `query :link query-gen :u60` and `group current
+view :u60` (15.2's selection; `current` is the current article number). The line is **not consumed** until the cursor ends (start/pos stay at the line), so the
 cursor reads its arguments where they are and a refused take re-runs nothing but the take.
 
 The reply is written by the cursor into **the connection's TX slot, handed over** with the pool's
