@@ -1516,17 +1516,37 @@ declares `:answers`.
 A cursor's `:need-page` issues the same pair. The caller owns the lease, so B writes no other kind's
 row.
 
-**Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-member-unit.lisp`).**
-- `fn2-commit-txn-outcome-evidence`: every settled `:txn` outcome matches its batch's evidence:
-  `:accepted` implies published, `:uncertain` implies the journal write was reached, `:refused`
-  implies no journal write. Teeth: the three outcomes on one fixture each, plus a planted
-  `:refused` after a journal write, which must fail.
-- `fn2-commit-txn-records-verbatim`: the sealed records frame decodes to the admitted workspace
-  records with the envelope's position equal to the event. Teeth: two members of mixed kinds, plus a
-  planted body octet flip after admission, which must fail.
-- `fn2-commit-txn-admission-total`: admission either answers `:ok` with exactly one member row
-  changed, or leaves the core unchanged. Teeth: a malformed length, an unknown kind, a short
-  workspace, a full batch.
+**Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-txn-unit.lisp`).** Each is stated
+over `fn2-commit-txn-proof-run (workspaces commands mode plant)`: the real core and executor with the
+simulated adapter on the tiny profile, members owned by `(9, 3+i, 5)`, the stepper's commands plus
+`(:admit i)`. Evidence is read at the boundaries: journal writes from the outbox (counted per batch),
+publication from the visibility rows, the sealed records frame from the pool image after the seal and
+before the pools are released. The statements take `plant` nil; the teeth plant one mutation each.
+- `fn2-commit-txn-outcome-evidence`: every settled outcome matches its batch's evidence: `:accepted`
+  ⇒ the batch was published; `:uncertain` ⇒ the batch issued its first journal write; `:refused` ⇒
+  it issued none. ("Journal write" is any write of the batch, the dependency unit first: that is
+  when `cb-wrote` makes refusal impossible.) Teeth: one batch of two members, clean completions, both
+  `:accepted`; one member whose writes fail (`:no-space`), `:uncertain`; two batches where the
+  leader's write fails before the follower writes, `:uncertain` and `:refused`; and member 0's
+  outcome planted `:refused` after its batch wrote, which fails.
+- `fn2-commit-txn-records-verbatim`: each sealed records frame is its members' admitted records in
+  event order, each a record header at the member's event (occurrence = event) and the body
+  verbatim, and only the frame's zero padding after. Only `:article-acceptance` is admitted until its siblings land with
+  their producers, so the two members carry different acceptance bodies (three records). Teeth: the
+  two-member batch; a body octet of member 0's workspace flipped after admission, which fails.
+- `fn2-commit-txn-admission-total`: `:ok` changes exactly one member row, which holds the admitted
+  workspace and owner; `:exhausted` / `:admission` change nothing in the member and settled tables,
+  the two rows' admission columns, the frontier or the stop reason. Teeth: a frame longer than its
+  workspace, an unknown kind, a body one octet short (`:admission` each), then members until the
+  batch's records room runs out (`:exhausted`); and a refusal planted to reserve a settled row, which
+  fails.
+
+**As built (one-minute rule).** The B-S2 code is its own section book, `assembly-callbacks-bt`
+(admission, the source reference, the block read, the seal's verbatim copy), between `-b` and `-b2`.
+Admission's two endings (`fn2-commit-txn-open`, `fn2-commit-txn-join`), the seal's per-member,
+records and frame-header stages, refusal's root write (`fn2-commit-mark-abort`) and the reserve
+loop's two steps are functions of their own, so each caller's proofs see preserved calls instead of
+their case splits. Forge: `-b` 45 s, `-bt` 41 s, `-b2` 48 s.
 
 **Order.** (1) The `assert$?` to named-stop commit (it touches helper bodies, not the arms'
 language). (2) B-S2 itself, landed with D's switch from the interim and A's grant source as one

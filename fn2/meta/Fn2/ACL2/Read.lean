@@ -78,6 +78,12 @@ partial def readVal (p : P) : Except String (Val × P) := do
         | some ch => pure (.chr ch, { p with i := j })
         | none => throw s!"unknown character {sub p p.i j}"
       else throw "eof after #"
+    else if c == 124 then
+      -- |...|: a symbol printed with bars, kept as printed
+      let rec bar (j : Nat) : Nat :=
+        if h : j < p.s.size then (if p.s[j] == 124 then j + 1 else bar (j + 1)) else j
+      let j := bar (p.i + 1)
+      pure (.sym (sub p p.i j), { p with i := j })
     else
       let rec scan (j : Nat) : Nat :=
         if h : j < p.s.size then (if isDelim p.s[j] then j else scan (j + 1)) else j

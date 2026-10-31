@@ -23,7 +23,9 @@
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2))
   (put-assoc-equal :identity-overlays 32
    (put-assoc-equal :large-upload-windows 1
-    (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-txn-posting-profile*)))))
+    (put-assoc-equal :reading t
+     (put-assoc-equal :x 2
+      (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-txn-posting-profile*)))))))
 
 ; ---------------------------------------------------------------------------
 ; A seed is (GROUP MID LINE): an article accepted into group GROUP (an
@@ -137,7 +139,7 @@
 ; The served core after SEEDS, then the clients of TRANSCRIPTS (octets and
 ; chunk sizes), with LATER published while they read: (seeded status wires
 ; stop-reason visits).
-(defun fn2-cursor-run (profile seeds later transcripts)
+(defun fn2-cursor-serve-run (profile seeds later transcripts)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -150,7 +152,7 @@
       result)))
 (defun fn2-cursor-wire-run (profile seeds transcripts)
   (declare (xargs :verify-guards nil))
-  (fn2-cursor-run profile seeds nil transcripts))
+  (fn2-cursor-serve-run profile seeds nil transcripts))
 
 ; ---------------------------------------------------------------------------
 ; The reference. State: the profile's groups ((NAME . GROUP) ...) and the
@@ -260,8 +262,8 @@
      ((equal verb "STAT")
       (cond ((and args (fn2-csp-msgidp (car args)))
              (if (fn2-csp-seeded-mid-p (car args) seeds)
-                 (let ((r (fn2-csp-row-by-mid (car args) rows)))
-                   (mv (list (fn2-csp-cat (list "223 " (fn2-csp-str (if r (car r) 0)) " " (car args) " retrieved"))) sel nil))
+                 ;; by Message-ID the number is 0 (RFC 3977 6.2.4; H's model accepts 0)
+                 (mv (list (fn2-csp-cat (list "223 0 " (car args) " retrieved"))) sel nil)
                (mv (list "430 no article with that message-id") sel nil)))
             ((not gname) (mv (list "412 no newsgroup selected") sel nil))
             ((and (not args) (not cur)) (mv (list "420 no current article") sel nil))
@@ -306,13 +308,13 @@
 ; with LATER published while it reads; and the core's visits for it.
 (defun fn2-cursor-wire-interleaved (seeds later lines sizes)
   (declare (xargs :verify-guards nil))
-  (car (nth 2 (fn2-cursor-run *fn2-cursor-profile* seeds later (list (list (fn2-cw-crlf-octets lines) sizes))))))
+  (car (nth 2 (fn2-cursor-serve-run *fn2-cursor-profile* seeds later (list (list (fn2-cw-crlf-octets lines) sizes))))))
 (defun fn2-cursor-wire-solo (seeds lines sizes)
   (declare (xargs :verify-guards nil))
   (fn2-cursor-wire-interleaved seeds nil lines sizes))
 (defun fn2-cursor-visits (seeds lines)
   (declare (xargs :verify-guards nil))
-  (nth 4 (fn2-cursor-run *fn2-cursor-profile* seeds nil (list (list (fn2-cw-crlf-octets lines) nil)))))
+  (nth 4 (fn2-cursor-serve-run *fn2-cursor-profile* seeds nil (list (list (fn2-cw-crlf-octets lines) nil)))))
 
 ; The premises: seeds name carried groups with distinct Message-IDs and
 ; overview lines of printable octets and TAB (no CR or LF); lines are covered
@@ -352,7 +354,7 @@
                   (fn2-cursor-spec-wire (fn2-profile-get :groups *fn2-cursor-profile*) seeds lines)))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-cursor-test-spec fn2-cursor-test-spec-negative fn2-cursor-test-seeded)
-  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is the current group's or 0). Owed until D6 1/n serves the cursor; today the served core answers the interim 503 to each.")
+  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is 0, which RFC 3977 and H's model admit). D6 1/n serves all but LISTGROUP with no name and OVER <id> (1/n-b), and tests/cursor-unit.lisp checks served = reference over the transcript less those two, whole and chunked; the row stays owed until 1/n-b.")
 
 ; OVER over [LO, HI] after GROUP local.test (group 1).
 (defun fn2-cursor-over-lines (lo hi)

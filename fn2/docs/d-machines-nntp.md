@@ -1741,6 +1741,48 @@ The contract is brief item 6, ROUND2 §B.2 row 5 and §B.3, D0's bundles `(:curs
 (`*fn2-answer-interim*`, rows `:d6`); H's oracle has 15,028 interim replies over seventeen verbs
 waiting on this machine.
 
+### 15.0 As built: D6 1/n (`fn2/books/cursor.lisp`, the first kind in the machine form's child form)
+
+This subsection is the present state; 15.1-15.9 are the design it was built from, and where they
+differ this one holds.
+
+- **The kind.** `fn2-cursor` is a taken kind (`(defmachine-registry fn2-cursor)`, P4). Its rows are
+  the read rows: `:capacity (fn2-b-read-rows profile)`, so read row X is the row's slot (`row-slot`).
+  Phases are `:free :select :seek :render :send :finish :draining :retired`, and it holds
+  `:cursor-row`. Its arms are child form over C-S4's read children; 15 sub-arms carry the branches
+  of `:seek` and `:render`.
+- **TX is written under the connection's owner, not handed.** The take copies the connection's
+  owner triple (`conn conn-gen conn-kind`), its RX place (`rx-slot rx-gen line-s line-e`), its TX
+  range, its mask and its selection (`group current pin`).
+  - The cursor reads the line and renders every page into the connection's TX under that triple.
+    Nothing is handed: the connection touches neither RX nor TX while it is in `:query`.
+  - `turn` says whose move it is. The cursor clears it and wakes the connection when a page is ready
+    (`roff` is where the page starts). The connection sends the page and sets `turn` again, waking
+    the cursor, which renders the next page or, once `done`, finishes.
+  - The connection copies the selection back (`update sel ncurrent spin`) after the last page.
+  - `cancel`: a connection that drains with a cursor waiting sets it and wakes the cursor (one wake:
+    an upload and a query are never both live).
+- **Selection.** The view is `pin`, set to C's published frontier at GROUP/LISTGROUP (15.1's `view`;
+  `view` is a reserved column name).
+- **Served:** GROUP, LISTGROUP name [range], NEXT, LAST, STAT [n | <id>] and OVER/XOVER [range],
+  with their 411/412/420/421/422/423/430 refusals.
+  - STAT <id> answers `223 0 <id>` through `fn2-read-identity`, visible when its article is at or
+    below the pin.
+  - LAST walks [1, current-1] forward and reads the last entry again. That is linear in the articles
+    before current; a positioned seek replaces it.
+- **Not yet served (1/n-b), each answering 503 meanwhile:**
+  - LISTGROUP with no name: the selected group's name is not read back from `fn2-groups`.
+  - OVER <id>: the article's number in the group comes with D5 2/n's address entries.
+  - The LIST variants.
+  - ARTICLE/HEAD/BODY are 3/n, over B's `fn2-block-read`.
+- **The interim table.** It loses GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER. These answer
+  `:query` where the profile serves reading. Without reading, `*fn2-answer-unread*` gives the 503,
+  or 412 for NEXT and LAST.
+- **Book time.** `cursor.lisp` took 1,339 s on forge with a kind-wide stobj tuple (920 shape lemmas)
+  and 501 s with the form's per-arm tuple (24fce1ecd). The remainder is the cursor's own shape:
+  `render-single`'s guard, `render-step`, and `:seek` writing 12 children through C's read ops. What
+  removes it: split those sub-arms per branch, and have C's read ops return only what they change.
+
 ### 15.1 What is read, and from where
 
 | reply | rows read | how |
@@ -1907,7 +1949,7 @@ stored keys. LISTGROUP renders numbers only (at most 22 octets a row). OVER rend
 ### 15.7 Keystones (statement first; `fn2/books/owed-cursor.lisp`, teeth in `tests/cursor-unit.lisp`)
 
 The subject is the served core at its adapter boundary after a seeded published state:
-`fn2-cursor-run (profile seeds later transcripts)`, the wire of each client after `seeds` (one
+`fn2-cursor-serve-run (profile seeds later transcripts)`, the wire of each client after `seeds` (one
 article a batch: identity fact, article row, group-count accept, overview row) are recorded and
 published through C-S3's own operations, as `tests/txn-unit.lisp` seeds identity facts, with
 `later` published one per adapter round once the client has received two replies (so after its

@@ -11,9 +11,12 @@ runnable . tuple)` for a run arm and `(wake . tuple)` for a handler, so it compa
 what ACL2 returns.
 
 What is ACL2's and what is this file's:
-* every expression is a **translated ACL2 term** (`Fn2.ACL2.Term`), produced by ACL2 itself from
-  the declaration (the generator's expression rewrite `fn2-arms-expr`, then `translate`), and every
-  operation an arm calls is a translated ACL2 function (the generated `Fn2.Instances.*World`);
+* every expression is **the declaration's own S-expression** (`Expr`, as written in `defmachine`),
+  read into an ACL2 term by this file's reader (`readExpr`), written from ACL2's definitions of the
+  arm vocabulary's macros and MACHINE-FORM §6.3, independently of the generator's rewrite
+  (`fn2-arms-expr`, then `translate`), so a defect in that rewrite is not shared (LEAN-METATHEORY
+  §12, decision 7); every function an expression or arm calls is a translated ACL2 function (the
+  generated `Fn2.Instances.*World`);
 * the **control** of the step language (the order of writes, the checked batch write, answer
   routing, the issue's three outcomes, the terminals, sub-arms and loops) is this file's, written
   from MACHINE-FORM §6.2-6.10 and the generator `machine-arms.lisp`, and is the subject the
@@ -27,31 +30,39 @@ and fuel exhaustion is an error, never a value.
 namespace Fn2.Arms
 open Fn2.ACL2
 
+/-- An expression of the step language as the declaration writes it (an ACL2 S-expression),
+read by `readExpr` when the arm runs. -/
+abbrev Expr := Val
+
+/-- `(QUOTE v)`, for the expressions the interpreter writes itself. -/
+def Expr.q (v : Val) : Expr := Val.ofList [.sym "QUOTE", v]
+
 /-- A call of a declared operation: positional arguments, then `:FORMAL E` keywords. -/
 structure Call where
   op : String
-  args : List Term
-  keys : List (String × Term)
+  args : List Expr
+  keys : List (String × Expr)
   deriving Inhabited, Repr
 
 /-- MACHINE-FORM §6.2: everything an arm may say. A `:case` arm whose codes are `none` is the
 `:otherwise` arm. -/
 inductive Step where
-  | let_ (v : String) (e : Term)
-  | set (pairs : List (String × Term))
-  | next (phase : Term)
+  | let_ (v : String) (e : Expr)
+  | set (pairs : List (String × Expr))
+  /-- a phase form: a phase keyword, `(:if E N N)` or `(:case V ((CODE ...) N) ... (:otherwise N))` -/
+  | next (phase : Expr)
   | do_ (vars : List String) (call : Call) (acceptGiven : Bool) (accept : List Val)
-        (when_ : Option Term) (else_ : List Term) (cases : List (Option (List Val) × List Step))
+        (when_ : Option Expr) (else_ : List Expr) (cases : List (Option (List Val) × List Step))
   | issue (call : Call) (ok refused : List Step)
-  | repeat_ (n : Term) (body : List Step) (until_ : Term)
-  | wakeRow (e : Term)
-  | if_ (c : Term) (a b : List Step)
-  | cond (clauses : List (Term × List Step))
-  | case_ (key : Term) (arms : List (Option (List Val) × List Step))
-  | charge (bytes steps descriptors runnable : Option Term)
-  | wait (bytes steps : Option Term)
-  | park (wait : String) (arg : Option Term) (kind : Option String) (steps : Option Term)
-  | stop (reason : String) (steps : Option Term)
+  | repeat_ (n : Expr) (body : List Step) (until_ : Expr)
+  | wakeRow (e : Expr)
+  | if_ (c : Expr) (a b : List Step)
+  | cond (clauses : List (Expr × List Step))
+  | case_ (key : Expr) (arms : List (Option (List Val) × List Step))
+  | charge (bytes steps descriptors runnable : Option Expr)
+  | wait (bytes steps : Option Expr)
+  | park (wait : String) (arg : Option Expr) (kind : Option String) (steps : Option Expr)
+  | stop (reason : String) (steps : Option Expr)
   | halt | idle | yield | wake | nowake
   | goto (name : String)
   /-- the end of a `:repeat` pass (the generator's `:repeat-next`); never written by a kind -/
@@ -97,6 +108,8 @@ structure Kind where
   childForm : Bool
   tuple : List String
   states : List String
+  /-- each phase's value, from the kind's state constants -/
+  phases : List (String × Int)
   columns : List (String × ColType)
   table : List String
   stops : List String
@@ -141,8 +154,10 @@ def directoryFields : List String := ["READY-PREV", "READY-NEXT", "WAIT-REASON"]
 structure St where
   stobjs : List (String × Val)
   vars : Env
-  pending : List (String × Val) := []
-  next : Option Val := none
+  /-- pending writes, as expressions: the generator evaluates them inside the checked write, at flush -/
+  pending : List (String × Expr) := []
+  /-- the path's phase form, read and evaluated at flush -/
+  next : Option Expr := none
   nextDone : Bool := false
   woken : Bool := false
 
@@ -173,11 +188,196 @@ def callFn (f : String) (args : List Val) : Except String Val :=
     | some v => .ok v
     | none => .error s!"no function {f}/{args.length}"
 
-def ev (st : St) (t : Term) : Except String Val := t.eval w.fns (st.vars ++ st.stobjs)
+/-! ### The expression reader (decision 7)
 
-def evOpt (st : St) (t : Option Term) (dflt : Val) : Except String Val :=
-  match t with
-  | some t => ev w st t
+`readExpr k x` reads a step-language expression of kind `k` into an ACL2 term, from ACL2's own
+definitions of the vocabulary (`*fn2-arm-primitives*`, `*fn2-arm-control*`, `member-eq`) and
+MACHINE-FORM §6.3, never from the generator's output:
+* a number, string, character, keyword, `T`, `NIL` or `(QUOTE v)` is itself;
+* `ROW-SLOT` is the arm's `SLOT` formal; `*K-KIND*` and `*K-ADMISSION-ORDINAL*` are the `KIND` and
+  `ORDINAL` formals (index-time constants, child form); another `*C*` is the constant's value;
+  every other symbol is a variable (`ROW-F`, a formal, a `:let`);
+* the macros as ACL2 defines them: `+ *` (right-associated, `0`/`1` empty), `-`, `1+ 1-`,
+  `< <= > >=`, `= /= eq eql` (as `EQUAL`), `not null`, `and or`, `cond`, `case` (`eql` on an
+  atom key, membership on a list), `logand logior` (binary, right-associated), `mv` (a list),
+  `prog2$ progn` (the last form), `member-eq` (`MEMBER-EQUAL`);
+* a function of the vocabulary (`nfix ifix zp zip natp posp integerp unsigned-byte-p floor mod
+  ash min max binary-+ binary-* unary--`) is a call;
+* `(OP a ...)` for a declared pure operation (its `:child` returns no child) is a call of the
+  `:child` with the positional arguments in its value formals and the kind's children, by name,
+  in its stobj formals;
+* anything else is refused by name. -/
+
+def vocabularyFns : List String :=
+  ["NFIX", "IFIX", "ZP", "ZIP", "NATP", "POSP", "INTEGERP", "UNSIGNED-BYTE-P", "FLOOR", "MOD",
+   "ASH", "MIN", "MAX", "BINARY-+", "BINARY-*", "UNARY--"]
+
+private def tIf (c a b : Term) : Term := .app "IF" [c, a, b]
+private def tNot (a : Term) : Term := tIf a (.quote Val.nil) (.quote Val.t)
+
+partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
+  let rd := readExpr k
+  let rds (xs : List Val) : Except String (List Term) := xs.mapM rd
+  let foldR (f : String) (unit : Val) (xs : List Val) : Except String Term := do
+    match xs with
+    | [] => pure (.quote unit)
+    | [a] => pure (.app f [.quote unit, ← rd a])
+    | _ =>
+      let ts ← rds xs
+      let last := ts.getLast!
+      pure ((ts.dropLast).foldr (fun a acc => .app f [a, acc]) last)
+  let arity (f : String) (args : List Val) (n : Nat) : Except String Unit :=
+    if args.length == n then pure () else throw s!"{f} takes {n} arguments: {x.render}"
+  match x with
+  | .int _ | .str _ | .chr _ => pure (.quote x)
+  | .sym n =>
+    if n == "T" || n == "NIL" || n.startsWith ":" then pure (.quote x)
+    else if n == "ROW-SLOT" then pure (.var "SLOT")
+    else if n == "*" ++ k.name ++ "-KIND*" then pure (.var "KIND")
+    else if n == "*" ++ k.name ++ "-ADMISSION-ORDINAL*" then pure (.var "ORDINAL")
+    else if n.length > 2 && n.startsWith "*" && n.endsWith "*" then
+      match w.consts.find? (·.1 == n) with
+      | some (_, v) => pure (.quote (.int v))
+      | none => throw s!"the constant {n} was not printed"
+    else pure (.var n)
+  | .cons (.sym f) rest =>
+    let args := rest.toList
+    match f with
+    | "QUOTE" => do arity f args 1; pure (.quote args.head!)
+    | "IF" => do arity f args 3; pure (.app "IF" (← rds args))
+    | "+" => foldR "BINARY-+" (.int 0) args
+    | "*" => foldR "BINARY-*" (.int 1) args
+    | "-" => match args with
+      | [a] => do pure (.app "UNARY--" [← rd a])
+      | [a, b] => do pure (.app "BINARY-+" [← rd a, .app "UNARY--" [← rd b]])
+      | _ => throw s!"- takes one or two arguments: {x.render}"
+    | "1+" => do arity f args 1; pure (.app "BINARY-+" [.quote (.int 1), ← rd args.head!])
+    | "1-" => do arity f args 1; pure (.app "BINARY-+" [.quote (.int (-1)), ← rd args.head!])
+    | "<" => do arity f args 2; pure (.app "<" (← rds args))
+    | ">" => do arity f args 2; let ts ← rds args; pure (.app "<" [ts[1]!, ts[0]!])
+    | "<=" => do arity f args 2; let ts ← rds args; pure (tNot (.app "<" [ts[1]!, ts[0]!]))
+    | ">=" => do arity f args 2; let ts ← rds args; pure (tNot (.app "<" [ts[0]!, ts[1]!]))
+    | "=" | "EQ" | "EQL" | "EQUAL" => do arity f args 2; pure (.app "EQUAL" (← rds args))
+    | "/=" => do arity f args 2; pure (tNot (.app "EQUAL" (← rds args)))
+    | "NOT" | "NULL" => do arity f args 1; pure (tNot (← rd args.head!))
+    | "AND" => match args with
+      | [] => pure (.quote Val.t)
+      | _ => do
+        let ts ← rds args
+        pure ((ts.dropLast).foldr (fun a acc => tIf a acc (.quote Val.nil)) ts.getLast!)
+    | "OR" => match args with
+      | [] => pure (.quote Val.nil)
+      | _ => do
+        let ts ← rds args
+        pure ((ts.dropLast).foldr (fun a acc => tIf a a acc) ts.getLast!)
+    | "COND" => do
+      let cls ← args.mapM fun c => match c.toList with
+        | [t] => do let tt ← rd t; pure (tt, tt)
+        | [t, e] => do pure (← rd t, ← rd e)
+        | _ => throw s!"a cond clause has one or two forms: {c.render}"
+      pure (cls.foldr (fun (t, e) acc => tIf t e acc) (.quote Val.nil))
+    | "CASE" => do
+      let key ← rd args.head!
+      let arms := args.tail
+      let rec go : List Val → Except String Term
+        | [] => pure (.quote Val.nil)
+        | a :: more => do
+          let (keys, body) := (a.car, a.cdr)
+          let e ← match body.toList with
+            | [e] => rd e
+            | _ => throw s!"a case arm has one form: {a.render}"
+          if keys == .sym "OTHERWISE" || keys == Val.t then
+            if more.isEmpty then pure e else throw s!"otherwise is not last: {x.render}"
+          else
+            let test := if keys.isCons || keys == Val.nil then .app "MEMBER-EQUAL" [key, .quote keys]
+              else .app "EQUAL" [key, .quote keys]
+            pure (tIf test e (← go more))
+      go arms
+    | "LOGAND" | "LOGIOR" => do
+      if args.length < 2 then throw s!"{f} with fewer than two arguments: {x.render}"
+      foldR ("BINARY-" ++ f) (.int 0) args
+    | "MV" => do
+      let ts ← rds args
+      pure (ts.foldr (fun a acc => .app "CONS" [a, acc]) (.quote Val.nil))
+    | "PROG2$" | "PROGN" => do
+      if args.isEmpty then throw s!"{f} without forms"
+      let ts ← rds args
+      pure ts.getLast!
+    | "MEMBER-EQ" | "MEMBER-EQUAL" => do arity f args 2; pure (.app "MEMBER-EQUAL" (← rds args))
+    | _ =>
+      if vocabularyFns.contains f then do pure (.app f (← rds args))
+      else match w.ops.find? (·.name == f) with
+        | some { callee := some callee, formals, stobjsIn, stobjsOut, .. } => do
+          if !stobjsOut.all (·.isNone) then throw s!"{f} returns a child; it is not a pure operation"
+          let rec fill : List String → List (Option String) → List Val → Except String (List Term)
+            | [], _, [] => pure []
+            | [], _, _ => throw s!"too many arguments: {x.render}"
+            | _ :: fs, some c :: ss, as => do
+              if !k.tuple.contains c then throw s!"{f} takes {c}, outside {k.name}'s tuple"
+              pure (.var c :: (← fill fs ss as))
+            | _ :: fs, _ :: ss, a :: as => do pure ((← rd a) :: (← fill fs ss as))
+            | _ :: _, _, [] => throw s!"too few arguments: {x.render}"
+            | _ :: _, [], _ => throw s!"{f}: stobjs-in shorter than formals"
+          pure (.app callee (← fill formals stobjsIn args))
+        | _ => throw s!"{f} is neither in the arm vocabulary nor a declared pure operation: {x.render}"
+  | _ => throw s!"not an expression: {x.render}"
+
+/-- A phase form: a phase keyword, `(:if E N N)`, `(:case V ((CODE ...) N) ... (:otherwise N))`. -/
+partial def readNext (k : Kind) (n : Expr) : Except String Term := do
+  match n with
+  | .sym p =>
+    match k.phases.find? (·.1 == p) with
+    | some (_, v) => pure (.quote (.int v))
+    | none => throw s!":next names {p}, not a phase of {k.name}"
+  | .cons (.sym ":IF") rest => match rest.toList with
+    | [e, a, b] => do pure (tIf (← readExpr w k e) (← readNext k a) (← readNext k b))
+    | _ => throw s!"malformed :next {n.render}"
+  | .cons (.sym ":CASE") rest => do
+    let key ← readExpr w k rest.car
+    let rec go : List Val → Except String Term
+      | [] => throw s!"a :next :case needs an :otherwise: {n.render}"
+      | a :: more => do
+        let e ← readNext k a.cdr.car
+        if a.car == .sym ":OTHERWISE" then pure e
+        else pure (tIf (.app "MEMBER-EQUAL" [key, .quote a.car]) e (← go more))
+    go rest.cdr.toList
+  | _ => throw s!"malformed :next {n.render}"
+
+/-- Every expression and phase form of a path, unexercised branches included (`true`: a phase
+form), so the reader can be run over a whole kind before any arm runs. -/
+partial def Step.exprs : Step → List (Bool × Expr)
+  | .let_ _ e | .wakeRow e => [(false, e)]
+  | .set ps => ps.map ((false, ·.2))
+  | .next n => [(true, n)]
+  | .do_ _ c _ _ w el cs =>
+    callExprs c ++ (w.toList ++ el).map ((false, ·)) ++ cs.flatMap fun (_, ss) => ss.flatMap Step.exprs
+  | .issue c ok rf => callExprs c ++ (ok ++ rf).flatMap Step.exprs
+  | .repeat_ n b u => [(false, n), (false, u)] ++ b.flatMap Step.exprs
+  | .if_ c a b => (false, c) :: (a ++ b).flatMap Step.exprs
+  | .cond cl => cl.flatMap fun (c, ss) => (false, c) :: ss.flatMap Step.exprs
+  | .case_ key arms => (false, key) :: arms.flatMap fun (_, ss) => ss.flatMap Step.exprs
+  | .charge a b c d => [a, b, c, d].flatMap fun o => o.toList.map ((false, ·))
+  | .wait a b => [a, b].flatMap fun o => o.toList.map ((false, ·))
+  | .park _ a _ st => [a, st].flatMap fun o => o.toList.map ((false, ·))
+  | .stop _ st => st.toList.map ((false, ·))
+  | _ => []
+where callExprs (c : Call) : List (Bool × Expr) := (c.args ++ c.keys.map (·.2)).map ((false, ·))
+
+/-- The reader over every expression of a kind's arms, handlers and sub-arms: the refusals, by
+arm and expression. -/
+def readKind (k : Kind) : List String :=
+  (k.subarms ++ k.arms ++ k.observes).flatMap fun a =>
+    ((a.onRefusal ++ a.steps).flatMap Step.exprs).filterMap fun (ph, e) =>
+      match (if ph then readNext w k e else readExpr w k e) with
+      | .ok _ => none
+      | .error m => some s!"{a.fn}: {m}"
+
+def ev (k : Kind) (st : St) (e : Expr) : Except String Val := do
+  (← readExpr w k e).eval w.fns (st.vars ++ st.stobjs)
+
+def evOpt (k : Kind) (st : St) (e : Option Expr) (dflt : Val) : Except String Val :=
+  match e with
+  | some e => ev w k st e
   | none => .ok dflt
 
 def stobj (st : St) (n : String) : Except String Val :=
@@ -237,13 +437,17 @@ def put (f : Frame) (st : St) (pairs : List (String × Val)) : Except String St 
     let control ← callFn w "FN2-CONTROL-RECORD-STOP" [r, control]
     pure (setStobj st "FN2-CONTROL" control)
 
-/-- Write the pending fields and the path's phase before an operation call or a terminal. -/
+/-- Write the pending fields and the path's phase before an operation call or a terminal; their
+terms are evaluated here, as the generator's checked write evaluates them. -/
 def flush (f : Frame) (st : St) : Except String St := do
-  let pairs := st.pending ++ (match st.next with | some n => [("PHASE", n)] | none => [])
+  let pairs ← st.pending.mapM fun (n, e) => do pure (n, ← ev w f.kind st e)
+  let pairs ← match st.next with
+    | some n => do pure (pairs ++ [("PHASE", ← (← readNext w f.kind n).eval w.fns (st.vars ++ st.stobjs))])
+    | none => pure pairs
   let st' ← if pairs.isEmpty then pure st else put w f st pairs
   pure { st' with pending := [], next := none, nextDone := st.nextDone || st.next.isSome }
 
-def pend (st : St) (pairs : List (String × Val)) : Except String St :=
+def pend (st : St) (pairs : List (String × Expr)) : Except String St :=
   if pairs.any (fun p => st.pending.any (·.1 == p.1)) then
     .error s!"a field is written twice before the next operation"
   else .ok { st with pending := st.pending ++ pairs }
@@ -251,29 +455,29 @@ def pend (st : St) (pairs : List (String × Val)) : Except String St :=
 /-- The actuals of a call: positional arguments fill the leading value formals, the stobj formals
 take the tuple's children, the owner triple `okind oslot ogen` comes from the row (`KIND`, `ID`,
 `ROW-GENERATION`), and any other formal is a `:FORMAL E` keyword. -/
-def actuals (st : St) (formals : List String) (stobjsIn : List (Option String))
-    (pos : List Term) (keys : List (String × Term)) : Except String (List Val) :=
+def actuals (k : Kind) (st : St) (formals : List String) (stobjsIn : List (Option String))
+    (pos : List Expr) (keys : List (String × Expr)) : Except String (List Val) :=
   match formals, stobjsIn with
   | [], _ => if pos.isEmpty then .ok [] else .error "too many arguments"
   | _ :: fs, some s :: ss => do
     let v ← stobj st s
-    let rest ← actuals st fs ss pos keys
+    let rest ← actuals k st fs ss pos keys
     pure (v :: rest)
   | fm :: fs, _ :: ss => do
     match pos with
     | p :: ps =>
-      let v ← ev w st p
-      let rest ← actuals st fs ss ps keys
+      let v ← ev w k st p
+      let rest ← actuals k st fs ss ps keys
       pure (v :: rest)
     | [] =>
       let v ← match keys.find? (·.1 == ":" ++ fm) with
-        | some (_, e) => ev w st e
+        | some (_, e) => ev w k st e
         | none =>
           if fm == "OKIND" then var st "KIND"
           else if fm == "OSLOT" then var st "ID"
           else if fm == "OGEN" then var st "ROW-GENERATION"
           else throw s!"no argument for the formal {fm}"
-      let rest ← actuals st fs ss [] keys
+      let rest ← actuals k st fs ss [] keys
       pure (v :: rest)
   | _ :: _, [] => .error "stobjs-in shorter than formals"
 
@@ -300,12 +504,12 @@ def findOp (n : String) : Except String Op :=
   | none => .error s!"no declared operation {n}"
 
 /-- Call a declared operation through its `:child`, returning the raw result. -/
-def callOp (st : St) (c : Call) : Except String (Op × Val) := do
+def callOp (k : Kind) (st : St) (c : Call) : Except String (Op × Val) := do
   let op ← findOp w c.op
   let callee ← match op.callee with
     | some f => pure f
     | none => throw s!"{c.op} names no :child (not in child form)"
-  let args ← actuals w st op.formals op.stobjsIn c.args c.keys
+  let args ← actuals w k st op.formals op.stobjsIn c.args c.keys
   let r ← callFn w callee args
   pure (op, r)
 
@@ -321,9 +525,9 @@ def wakeResult (f : Frame) (st : St) (v : Val) : Except String Res := do
   pure (.done (Val.ofList (v :: t)))
 
 /-- A stop's ending: a handler answers no wake; a run arm charges the stop's steps. -/
-def stopEnd (f : Frame) (st : St) (steps : Option Term) : Except String Res := do
+def stopEnd (f : Frame) (st : St) (steps : Option Expr) : Except String Res := do
   if f.observe then wakeResult f st (← const w "*FN2-NONE*")
-  else chargeResult f st (.int 0) (← evOpt w st steps (← const w "*FN2-WORK-EMPTY*")) (.int 0) Val.nil
+  else chargeResult f st (.int 0) (← evOpt w f.kind st steps (← const w "*FN2-WORK-EMPTY*")) (.int 0) Val.nil
 
 def codeIn (code : Val) (codes : List Val) : Bool := codes.contains code
 
@@ -334,26 +538,23 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
   | fuel + 1, st, s :: rest =>
     match s with
     | .let_ v e => do
-      let x ← ev w st e
+      let x ← ev w f.kind st e
       run f fuel { st with vars := (v, x) :: st.vars } rest
-    | .set pairs => do
-      let vs ← pairs.mapM fun (n, e) => do pure (n, ← ev w st e)
-      run f fuel (← pend st vs) rest
+    | .set pairs => do run f fuel (← pend st pairs) rest
     | .next ph => do
       if st.next.isSome || st.nextDone then throw "a path has two :next steps"
-      let p ← ev w st ph
-      run f fuel { st with next := some p } rest
+      run f fuel { st with next := some ph } rest
     | .do_ vars c acceptGiven accept when_ else_ cases => do
       let st ← flush w f st
       let op ← findOp w c.op
       let skip ← match when_ with
-        | some e => do pure !(← ev w st e).truthy
+        | some e => do pure !(← ev w f.kind st e).truthy
         | none => pure false
       let st ← if skip then do
-          let vs ← else_.mapM (ev w st)
+          let vs ← else_.mapM (ev w f.kind st)
           pure { st with vars := vars.zip vs ++ st.vars }
         else do
-          let (_, r) ← callOp w st c
+          let (_, r) ← callOp w f.kind st c
           bindOuts st op.stobjsOut vars r
       match op.answers with
       | .none => run f fuel st rest
@@ -379,7 +580,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
               else run f fuel st [.stop "MACHINE-CONTRACT" none]
     | .issue c ok refused => do
       let st ← flush w f st
-      let (op, r) ← callOp w st c
+      let (op, r) ← callOp w f.kind st c
       let st ← bindOuts st op.stobjsOut ["FN2-ISSUE-CODE", "FN2-ISSUE-OP", "FN2-ISSUE-OPGEN"] r
       let code ← var st "FN2-ISSUE-CODE"
       if code == Val.kw "OK" then run f fuel st ok
@@ -387,8 +588,9 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
         run f fuel st (refused ++ [.park "OPERATION" none none none])
       else run f fuel st (refused ++ (if f.refusal.isEmpty then [.halt] else f.refusal))
     | .repeat_ n body until_ => do
+      let st0 := st
       let st ← flush w f st
-      let k := (← ev w st n).nfix
+      let k := (← ev w f.kind st n).nfix
       let rec loop : Nat → Nat → St → Except String St
         | 0, _, st => .ok st
         | _, 0, st => .ok st
@@ -397,29 +599,32 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
           let slot ← var st "SLOT"
           let reads ← rowReads w f.kind st.stobjs id slot
           let pass : St := { stobjs := st.stobjs, vars := reads ++ f.base }
-          if (← ev w pass until_).truthy then pure st
+          if (← ev w f.kind pass until_).truthy then pure st
           else match ← run f fuel' pass (body ++ [.repeatNext]) with
             | .again st' => loop fuel' k { st with stobjs := st'.stobjs }
             | .done _ => throw "a :repeat pass ended in a terminal"
       let st' ← loop fuel k st
-      run f fuel { st with stobjs := st'.stobjs, pending := [] } rest
+      -- the generator's continuation keeps a :next declared before the loop (written again at
+      -- the path's terminal) and clears only the pending fields
+      run f fuel { st with stobjs := st'.stobjs, pending := [], next := st0.next,
+                           nextDone := st0.nextDone } rest
     | .repeatNext => do
       let st ← flush w f st
       pure (.again st)
     | .wakeRow e => do
       if st.woken then throw "a path wakes at most one row"
-      let v ← ev w st e
+      let v ← ev w f.kind st e
       let r ← callFn w "FN2-MACHINES-WAKE-ROW" [v, ← stobj st "FN2-MACHINES", ← stobj st "FN2-CONTROL"]
       let st := setStobj (setStobj st "FN2-MACHINES" r.car) "FN2-CONTROL" r.cdr.car
       run f fuel { st with woken := true } rest
     | .if_ c a b => do
-      if (← ev w st c).truthy then run f fuel st a else run f fuel st b
+      if (← ev w f.kind st c).truthy then run f fuel st a else run f fuel st b
     | .cond clauses => do
-      match ← clauses.findM? (fun (c, _) => do pure (← ev w st c).truthy) with
+      match ← clauses.findM? (fun (c, _) => do pure (← ev w f.kind st c).truthy) with
       | some (_, steps) => run f fuel st steps
       | none => throw ":cond without a true clause"
     | .case_ key arms => do
-      let kv ← ev w st key
+      let kv ← ev w f.kind st key
       match arms.find? (fun (cs, _) => match cs with
           | some l => codeIn kv l
           | none => true) with
@@ -427,8 +632,8 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       | none => throw ":case without :otherwise"
     | .charge b s d r => do
       let st ← flush w f st
-      chargeResult f st (← evOpt w st b (.int 0)) (← evOpt w st s (.int 0))
-        (← evOpt w st d (.int 0)) (← evOpt w st r Val.nil)
+      chargeResult f st (← evOpt w f.kind st b (.int 0)) (← evOpt w f.kind st s (.int 0))
+        (← evOpt w f.kind st d (.int 0)) (← evOpt w f.kind st r Val.nil)
     | .idle => do
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-EMPTY*") (.int 0) Val.nil
@@ -436,41 +641,41 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-EMPTY*") (.int 0) Val.t
     | .wait b s => do
-      let st ← pend st [("PENDING", .int 1), ("WAIT-REASON", ← const w "*FN2-WAIT-COMPLETION*")]
+      let st ← pend st [("PENDING", Expr.q (.int 1)), ("WAIT-REASON", Expr.q (← const w "*FN2-WAIT-COMPLETION*"))]
       let st ← flush w f st
-      chargeResult f st (← evOpt w st b (.int 0)) (← evOpt w st s (← const w "*FN2-WORK-MAILBOX*"))
+      chargeResult f st (← evOpt w f.kind st b (.int 0)) (← evOpt w f.kind st s (← const w "*FN2-WORK-MAILBOX*"))
         (.int 1) Val.nil
     | .halt => do
-      let st ← pend st [("STOPPED", .int 1), ("WAIT-REASON", ← const w "*FN2-WAIT-NONE*")]
+      let st ← pend st [("STOPPED", Expr.q (.int 1)), ("WAIT-REASON", Expr.q (← const w "*FN2-WAIT-NONE*"))]
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-MAILBOX*") (.int 0) Val.nil
     | .park wait arg kind steps => do
       let mailbox ← const w "*FN2-WORK-MAILBOX*"
-      let viaOp (st : St) (op : String) (args : List Term) : Except String Res := do
+      let viaOp (st : St) (op : String) (args : List Expr) : Except String Res := do
         let st ← flush w f st
-        let (o, r) ← callOp w st ⟨op, args, []⟩
+        let (o, r) ← callOp w f.kind st ⟨op, args, []⟩
         let st ← bindOuts st o.stobjsOut [] r
-        chargeResult f st (.int 0) (← evOpt w st steps mailbox) (.int 0) Val.nil
+        chargeResult f st (.int 0) (← evOpt w f.kind st steps mailbox) (.int 0) Val.nil
       match wait with
-      | "OPERATION" => viaOp st "FN2-MACHINE-PARK" [.var "ID"]
-      | "ADMISSION" => viaOp st "FN2-MACHINE-PARK-ADMISSION" ([.var "ID"] ++ arg.toList)
-      | "TAKEN" => viaOp st ("FN2-MACHINE-PARK-TAKEN-" ++ kind.getD "") [.var "ID"]
+      | "OPERATION" => viaOp st "FN2-MACHINE-PARK" [.sym "ID"]
+      | "ADMISSION" => viaOp st "FN2-MACHINE-PARK-ADMISSION" ([.sym "ID"] ++ arg.toList)
+      | "TAKEN" => viaOp st ("FN2-MACHINE-PARK-TAKEN-" ++ kind.getD "") [.sym "ID"]
       | "POOL" => do
         let cls ← match arg with
-          | some a => ev w st a
+          | some a => pure a
           | none => throw "(:park :pool) without a class"
         let st ← pend st [("CURSOR", cls)]
         let st ← flush w f st
         let r ← callFn w "FN2-MACHINES-PARK-POOL"
           [← var st "ID", ← stobj st "FN2-MACHINES", ← stobj st "FN2-CONTROL"]
         let st := setStobj (setStobj st "FN2-MACHINES" r.car) "FN2-CONTROL" r.cdr.car
-        chargeResult f st (.int 0) (← evOpt w st steps mailbox) (.int 0) Val.nil
+        chargeResult f st (.int 0) (← evOpt w f.kind st steps mailbox) (.int 0) Val.nil
       | other => match w.waits.find? (·.kind == other) with
-        | some ⟨_, some parker⟩ => viaOp st parker [.var "ID"]
+        | some ⟨_, some parker⟩ => viaOp st parker [.sym "ID"]
         | some ⟨_, none⟩ => do
-          let st ← pend st [("WAIT-REASON", ← const w ("*FN2-WAIT-" ++ other ++ "*"))]
+          let st ← pend st [("WAIT-REASON", Expr.q (← const w ("*FN2-WAIT-" ++ other ++ "*")))]
           let st ← flush w f st
-          chargeResult f st (.int 0) (← evOpt w st steps mailbox) (.int 0) Val.nil
+          chargeResult f st (.int 0) (← evOpt w f.kind st steps mailbox) (.int 0) Val.nil
         | none => throw s!"(:park :{other}) names no declared wait kind"
     | .stop reason steps => do
       if st.next.isSome then throw "a stop follows a :next"
@@ -482,6 +687,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
           callFn w "FN2-CONTROL-RECORD-STOP" [← const w ("*FN2-STOP-REASON-" ++ reason ++ "*"), control]
       stopEnd w f (setStobj st "FN2-CONTROL" control) steps
     | .wake => do
+      if st.woken then throw "the path already woke a row (:wake-row); a path wakes at most one row"
       let st ← flush w f st
       wakeResult f st (← var st "ID")
     | .nowake => do

@@ -180,14 +180,13 @@ class SimTargetUnit(unittest.TestCase):
                     case.fixture('nntp', dict(path='x', reason='y'))
 
     def test_sim_machine_lines_against_the_interim_table(self):
-        # Every interim line names a verb the table holds; no served line names an interim verb with its
-        # projection form (a served line may carry an interim verb only as a sub-form error, e.g. bare GROUP).
+        # The interim lines cover the reader and posting verbs; one whose verb has left the table is judged by
+        # the model as served (sim_nntp.SimNntp.interim), so the lines need not be a subset of the table.
         import re
         from fn2.tests.surface.nntp import sim_nntp
         text = Path(sim_nntp.__file__).read_text()
         interim = re.search(r"interim_lines = st.sampled_from\(\[(.*?)\]\)", text, re.S).group(1)
         verbs = set(re.findall(r"b'([A-Z-]+)", interim))
-        self.assertLessEqual(verbs, set(sim_nntp.INTERIM['interim']))
         self.assertGreaterEqual(len(verbs), 18)
         self.assertEqual(sim_nntp.D3_POLICY['posting'], False)
 

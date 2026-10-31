@@ -178,8 +178,7 @@
 ;; emptiness is a D9 acceptance check (section 4.3), so no interim outlives
 ;; its quest. NEXT and LAST answer 412: no D3 connection has a group.
 (defconst *fn2-answer-interim*
-  '((group :no-projection :d6) (listgroup :no-projection :d6) (list :no-projection :d6)
-    (next :no-group-selected :d6) (last :no-group-selected :d6)
+  '((list :no-projection :d6)
     (newgroups :no-projection :d6) (newnews :no-projection :d6)
     (article :no-projection :d6) (head :no-projection :d6) (body :no-projection :d6)
     (stat :no-projection :d6) (over :no-projection :d6) (xover :no-projection :d6)
@@ -199,6 +198,20 @@
   (if (atom arms) (list (list t '*fn2-nntp-reply-none*))
     (cons (list (list 'equal 'tag (car (car arms))) (cadr (car arms)))
           (fn2-answer-interim-conds (cdr arms)))))
+;; The reader commands the query cursor serves (D6 1/n, cursor.lisp): the
+;; connection moves to :query and takes a cursor when the profile serves
+;; reading (read rows, :reading); without reading, the reply each gives a
+;; node that serves no archive (NEXT and LAST: no group can be selected).
+(defconst *fn2-answer-unread*
+  '((group :no-projection) (listgroup :no-projection) (next :no-group-selected) (last :no-group-selected)
+    (stat :no-projection) (over :no-projection) (xover :no-projection)))
+(make-event
+ (value `(defun fn2-answer-unread-reply (tag)
+           (declare (xargs :guard t))
+           (cond ,@(fn2-answer-interim-conds (fn2-answer-interim-arms *fn2-answer-unread*))))))
+(defun fn2-answer-query-p (tag)
+  (declare (xargs :guard t))
+  (not (equal (fn2-answer-unread-reply tag) *fn2-nntp-reply-none*)))
 (make-event
  (value `(defun fn2-answer-interim-reply (tag)
            (declare (xargs :guard t))
@@ -227,7 +240,7 @@
 ;; (:none :user :redeem; H's model: starting any exchange replaces the
 ;; others). With no credential store and no invitations until E2, every
 ;; completed exchange fails by its declared word.
-(defun fn2-answer-ok (tag f0 a0 b0 mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer-ok (tag f0 a0 b0 mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0))))
   (let ((c tag))
@@ -294,6 +307,13 @@
           (mv code :command pending fn2-pool))))
      ;; POST where posting is served: no reply yet; the connection takes an
      ;; upload and renders 340, or waits for one (section 14.2).
+     ;; a reader command: no reply here; the connection takes a query cursor
+     ;; (section 15.3), or answers as a node with no archive
+     ((fn2-answer-query-p tag)
+      (if reading (mv :ok :query pending fn2-pool)
+        (mv-let (code fn2-pool)
+          (fn2-answer-say c (fn2-answer-unread-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
+          (mv code :command pending fn2-pool))))
      ((and posting (equal tag *fn2-nntp-command-post*))
       (mv :ok :article-input pending fn2-pool))
      ((equal tag *fn2-nntp-command-takethis*)
@@ -311,14 +331,14 @@
      (t
       ;; A tag outside the table: the decision table missed a command.
       (mv :untabled :closing pending fn2-pool)))))
-(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
 (in-theory (disable fn2-answer-ok))
 
 (local (in-theory (disable fn2-nntp-parse-line)))
 ;; One complete command line [s, e) of the RX slot, answered into the TX
 ;; slot. Returns (mv code after pending fn2-pool); CODE :ok or the failing
 ;; renderer's code (the machine stops on any other).
-(defun fn2-answer (s e mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer (s e mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp e))))
   (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
     (fn2-nntp-parse-line s e mask rslot rgen okind oslot ogen fn2-pool)
@@ -327,7 +347,7 @@
       (case code
         (:ok (if (fn2-answer-subform-p tag (nfix nargs) f0 (nfix a0) (nfix b0) f1 (nfix a1) (nfix b1)
                                      f2 (nfix a2) (nfix b2) mask rslot rgen okind oslot ogen fn2-pool)
-                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) mask pending posting seen flags real
+                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) mask pending posting reading seen flags real
                                      rslot rgen tslot tgen okind oslot ogen fn2-pool)
                (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                  (mv rc :command pending fn2-pool))))
@@ -342,7 +362,7 @@
         ;; :malformed (H pin P-UTF8-WS): 501, then close.
         (otherwise (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                      (mv rc :closing pending fn2-pool)))))))
-(fn2-pool-preserves fn2-answer (s e mask pending posting seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer (s e mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
 (in-theory (disable fn2-answer))
 
 ;; Every command tag is answered by the table: no tag reaches :untabled.
@@ -351,6 +371,7 @@
   (or (member-equal tag (list *fn2-nntp-command-capabilities* *fn2-nntp-command-help* *fn2-nntp-command-quit*
                               *fn2-nntp-command-mode* *fn2-nntp-command-date* *fn2-nntp-command-authinfo*
                               *fn2-nntp-command-xredeem* *fn2-nntp-command-list* *fn2-nntp-command-takethis*))
+      (fn2-answer-query-p tag)
       (not (equal (fn2-answer-interim-reply tag) *fn2-nntp-reply-none*))))
 (defun fn2-answer-all-tabled-p (n)
   (declare (xargs :guard (natp n)))
