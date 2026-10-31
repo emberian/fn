@@ -312,7 +312,8 @@
 ; taking it located (phase active or frozen, the range's schema, its SEQ).
 (defun fn2-rd-sources-live (n g fn2-ranges fn2-range-sources fn2-overlays)
  (declare (xargs :stobjs (fn2-ranges fn2-range-sources fn2-overlays) :measure (nfix n)
-  :guard (and (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (natp n))))
+  :guard (and (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays)
+   (natp n))))
  (b* (((when (zp n)) t)
       ((unless (and (natp g) (< g (fn2-ranges-rows fn2-ranges)))) nil)
       (s (+ (fn2-ranges-sbase g fn2-ranges) (- n 1)))
@@ -391,7 +392,8 @@
 ; every entry has a position above P (PFIELD the position field).
 (defun fn2-rd-seek (x sid lo hi p pfield b0 tn fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays
                     fn2-run-installed fn2-fields)
- (declare (xargs :stobjs (fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields) :guard t
+ (declare (xargs :stobjs (fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+   :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-rd-range fn2-seek-start fn2-reads-rows fn2-ranges-rows fn2-range-sources-rows fn2-seeks-rows fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-pool-rows)))))
  (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-seeks-wfp fn2-seeks) (fn2-ranges-wfp fn2-ranges)
                     (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays)
@@ -418,7 +420,8 @@
 ; :miss, or a refusal; :state when the row holds no seek.
 (defun fn2-rd-seek-step (x budget fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
                          fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+ (declare (xargs :stobjs (fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+   fn2-run-installed
                           fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-seek-step fn2-rd-refresh fn2-seeks-lo fn2-reads-rows fn2-ranges-rows fn2-range-sources-rows fn2-seeks-rows fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-pool-rows)))))
  (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-seeks-wfp fn2-seeks) (fn2-rga-guard)))
@@ -932,36 +935,191 @@
 
 ; ---------------------------------------------------------------------------
 ; Costs and the core wrappers.
-(defcost fn2-read-key :tables (fn2-core-reads fn2-core-fields)
+(defcost fn2-read-key :child fn2-read-key-children :answers (:bounds :ok :state)
+ :tables (fn2-core-reads fn2-core-fields)
  :doc "Write one integer key field of a read row's lo or hi key.")
-(defcost fn2-read-key-octets :tables (fn2-core-reads fn2-core-fields)
+(defcost fn2-read-key-octets :child fn2-read-key-octets-children :answers (:bounds :ok :owner :state)
+ :tables (fn2-core-reads fn2-core-fields)
  :doc "Point one octet key field of a read row's lo key at a caller's workspace.")
-(defcost fn2-read-lookup :bytes 4096
+(defcost fn2-read-lookup :child fn2-read-lookup-children :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+  :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
+ :bytes 4096
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One source of a read row's exact lookup: one overlay search or one run step of at most 4,096 pool reads.")
-(defcost fn2-read-range :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources)
+(defcost fn2-read-range :child fn2-read-range-children :answers (:bounds :key-kind :ok :sources :state)
+ :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's range read: enumerate the schema's overlays and live runs into at most eight sources.")
-(defcost fn2-read-next :bytes 4096
+; fn2-read-next never answers :ok, so :answers is open (t) until defcost takes a
+; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length
+;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
+;   :unknown-tag :wide
+(defcost fn2-read-next :child fn2-read-next-children :answers t
+ :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One range step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered.")
-(defcost fn2-read-seek :bytes 256 :tables (fn2-core-reads fn2-core-seeks fn2-core-ranges fn2-core-range-sources)
+(defcost fn2-read-seek :child fn2-read-seek-children :answers (:bounds :key-kind :ok :sources :state)
+ :bytes 256 :tables (fn2-core-reads fn2-core-seeks fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's positioned seek over its range row.")
-(defcost fn2-read-seek-step :bytes 4096
+; fn2-read-seek-step never answers :ok, so :answers is open (t) until defcost takes a
+; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length
+;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
+;   :unknown-tag :wide
+(defcost fn2-read-seek-step :child fn2-read-seek-step-children :answers t
+ :bytes 4096
  :tables (fn2-core-seeks fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a positioned seek: a probe's range start or one range step.")
-(defcost fn2-read-value :doc "Read one integer field of the delivered entry.")
-(defcost fn2-read-octets :bytes 4096 :tables (fn2-core-pool)
+(defcost fn2-read-value :child fn2-read-value-children :answers (:bounds :ok :stale :state)
+ :doc "Read one integer field of the delivered entry.")
+(defcost fn2-read-octets :child fn2-read-octets-children :answers (:bounds :ok :owner :stale :state)
+ :bytes 4096 :tables (fn2-core-pool)
  :doc "Copy at most 4,096 octets of the delivered entry's octet field into a workspace.")
-(defcost fn2-read-scan :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
+(defcost fn2-read-scan :child fn2-read-scan-children :answers (:bounds :ok :sources :state)
+ :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
  :doc "Start a read row's whole-schema ordered scan: the least key, the schema's overlays and live runs into at most eight sources.")
-(defcost fn2-read-scan-next :bytes 4096
+; fn2-read-scan-next never answers :ok, so :answers is open (t) until defcost takes a
+; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :length :miss :more
+;   :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
+;   :wide
+(defcost fn2-read-scan-next :child fn2-read-scan-next-children :answers t
+ :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One scan step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered and its key (at most 512 octets a field) saved.")
-(defcost fn2-read-identity :bytes 4096
+; fn2-read-identity never answers :ok, so :answers is open (t) until defcost takes a
+; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :evidence :format :found :invariant :length
+;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
+;   :unknown-tag :wide
+(defcost fn2-read-identity :child fn2-read-identity-children :answers t
+ :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One step of an identity read: its start, or one scan step over the identity schema and one Message-ID comparison (at most 250 octets); the answer is (code article candidates).")
-(defcost fn2-read-release :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
+(defcost fn2-read-release :child fn2-read-release-children :answers (:bounds :ok :state)
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
  :doc "Idle a read row's range, seek and lookup.")
+
+; Each read operation over the core children it touches (MACHINE-FORM 6.5 P2):
+; the defcost names it as :child, so an arm in child form calls it directly,
+; and the core wrapper below is one stobj-let around it.
+(defun fn2-read-key-children (x region j value fn2-reads fn2-id-decides fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields) (fn2-fc-wfp
+   fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok) (fn2-rd-key x region j value b0 fn2-reads fn2-fields) (mv c fn2-reads fn2-fields))))
+(defun fn2-read-key-octets-children (x j slot gen off len okind oslot ogen fn2-reads fn2-id-decides fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields) (fn2-fc-wfp
+   fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok) (fn2-rd-key-octets x j slot gen off len okind oslot ogen b0 fn2-reads fn2-fields)
+    (mv c fn2-reads fn2-fields))))
+(defun fn2-read-lookup-children (x sid budget fn2-reads fn2-id-decides fn2-succ-txns fn2-overlays fn2-overlay-index
+  fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed
+   fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-succ-txns-wfp fn2-succ-txns)
+   (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+   (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-lookup x sid budget b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-succ-txns fn2-overlays
+                     fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (mv c fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))))
+(defun fn2-read-range-children (x sid pfield plimit fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays
+  fn2-run-installed fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed
+   fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges)
+   (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-range x sid pfield plimit b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-range-sources
+                    fn2-overlays fn2-run-installed fn2-fields)
+    (mv c fn2-reads fn2-ranges fn2-range-sources))))
+(defun fn2-read-next-children (x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+  fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+   fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources)
+   (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+   (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (fn2-rd-next x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+              fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+(defun fn2-read-seek-children (x sid lo hi p pfield fn2-reads fn2-id-decides fn2-seeks fn2-ranges fn2-range-sources
+  fn2-overlays fn2-run-installed fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-seeks fn2-ranges fn2-range-sources fn2-overlays
+   fn2-run-installed fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-seeks-wfp fn2-seeks) (fn2-ranges-wfp
+   fn2-ranges) (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp
+   fn2-run-installed) (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-seek x sid lo hi p pfield b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-seeks fn2-ranges
+                   fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+    (mv c fn2-reads fn2-seeks fn2-ranges fn2-range-sources))))
+(defun fn2-read-seek-step-children (x budget fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays
+  fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+   fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-seeks-wfp fn2-seeks) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp
+   fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp
+   fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp
+   fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (fn2-rd-seek-step x budget fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+                   fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+(defun fn2-read-value-children (x f fn2-reads fn2-run-installed fn2-fields)
+ (declare (xargs :stobjs (fn2-reads fn2-run-installed fn2-fields)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields))))
+ (fn2-rd-value x f fn2-reads fn2-run-installed fn2-fields))
+(defun fn2-read-octets-children (x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-run-installed fn2-fields fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields)
+   (fn2-pool-wfp fn2-pool))))
+ (fn2-rd-octets x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool))
+(defun fn2-read-release-children (x fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges) (fn2-seeks-wfp
+   fn2-seeks) (fn2-succ-txns-wfp fn2-succ-txns))))
+ (fn2-rd-release x (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-seeks fn2-succ-txns))
+(defun fn2-read-scan-children (x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
+  fn2-overlays fn2-run-installed fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed
+   fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges)
+   (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-scan x sid wslot wgen wk ws wg b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-range-sources
+                   fn2-overlays fn2-run-installed fn2-fields)
+    (mv c fn2-reads fn2-ranges fn2-range-sources fn2-fields))))
+(defun fn2-read-scan-next-children (x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+  fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+   fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources)
+   (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+   (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (fn2-rd-scan-next x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
+                   fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+(defun fn2-read-identity-children (x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-ranges
+  fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+  fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+   fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges)
+   (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
+   (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths)
+   (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads
+                       fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors
+                       fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+    (mv c 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))))
 
 (defmacro fn2-read-core-events ()
  '(progn
@@ -970,8 +1128,7 @@
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-fields)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok) (fn2-rd-key x region j value b0 fn2-reads fn2-fields) (mv c fn2-reads fn2-fields)))
+     (fn2-read-key-children x region j value fn2-reads fn2-id-decides fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-key (x region j value fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -980,9 +1137,7 @@
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-fields)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok) (fn2-rd-key-octets x j slot gen off len okind oslot ogen b0 fn2-reads fn2-fields)
-        (mv c fn2-reads fn2-fields)))
+     (fn2-read-key-octets-children x j slot gen off len okind oslot ogen fn2-reads fn2-id-decides fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-key-octets (x j slot gen off len okind oslot ogen fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -995,11 +1150,8 @@
                 (fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
                 (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-rd-lookup x sid budget b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-succ-txns fn2-overlays
-                         fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+     (fn2-read-lookup-children x sid budget fn2-reads fn2-id-decides fn2-succ-txns fn2-overlays fn2-overlay-index
+       fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-lookup (x sid budget fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1010,11 +1162,8 @@
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-ranges fn2-range-sources)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-rd-range x sid pfield plimit b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-range-sources
-                        fn2-overlays fn2-run-installed fn2-fields)
-        (mv c fn2-reads fn2-ranges fn2-range-sources)))
+     (fn2-read-range-children x sid pfield plimit fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays
+       fn2-run-installed fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-range (x sid pfield plimit fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1027,8 +1176,8 @@
                 (fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
                 (fn2-pool (fn2-core-pool fn2-core)))
      (code fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
-     (fn2-rd-next x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
-                  fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+     (fn2-read-next-children x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+       fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-next (x budget fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1040,11 +1189,8 @@
                 (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
                 (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-seeks fn2-ranges fn2-range-sources)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-rd-seek x sid lo hi p pfield b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-seeks fn2-ranges
-                       fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
-        (mv c fn2-reads fn2-seeks fn2-ranges fn2-range-sources)))
+     (fn2-read-seek-children x sid lo hi p pfield fn2-reads fn2-id-decides fn2-seeks fn2-ranges fn2-range-sources
+       fn2-overlays fn2-run-installed fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-seek (x sid lo hi p pfield fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1057,8 +1203,8 @@
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
      (code answer fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
-     (fn2-rd-seek-step x budget fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
-                       fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+     (fn2-read-seek-step-children x budget fn2-reads fn2-seeks fn2-ranges fn2-range-sources fn2-overlays
+       fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
      (mv code answer fn2-core)))
    (fn2-core-preserves fn2-read-seek-step (x budget fn2-core) :position 2 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1067,14 +1213,14 @@
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)))
      (code value)
-     (fn2-rd-value x f fn2-reads fn2-run-installed fn2-fields)
+     (fn2-read-value-children x f fn2-reads fn2-run-installed fn2-fields)
      (mv code value)))
    (defun fn2-read-octets (x f from n dslot dgen doff dk ds dg fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
      (code copied left fn2-pool)
-     (fn2-rd-octets x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool)
+     (fn2-read-octets-children x f from n dslot dgen doff dk ds dg fn2-reads fn2-run-installed fn2-fields fn2-pool)
      (mv code copied left fn2-core)))
    (fn2-core-preserves fn2-read-octets (x f from n dslot dgen doff dk ds dg fn2-core) :position 3 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1084,7 +1230,7 @@
                 (fn2-ranges (fn2-core-ranges fn2-core)) (fn2-seeks (fn2-core-seeks fn2-core))
                 (fn2-succ-txns (fn2-core-succ-txns fn2-core)))
      (code fn2-reads fn2-ranges fn2-seeks fn2-succ-txns)
-     (fn2-rd-release x (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-seeks fn2-succ-txns)
+     (fn2-read-release-children x fn2-reads fn2-id-decides fn2-ranges fn2-seeks fn2-succ-txns)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-release (x fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1095,11 +1241,8 @@
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-reads fn2-ranges fn2-range-sources fn2-fields)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-rd-scan x sid wslot wgen wk ws wg b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-range-sources
-                       fn2-overlays fn2-run-installed fn2-fields)
-        (mv c fn2-reads fn2-ranges fn2-range-sources fn2-fields)))
+     (fn2-read-scan-children x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
+       fn2-overlays fn2-run-installed fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-scan (x sid wslot wgen wk ws wg fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1112,8 +1255,8 @@
                 (fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
                 (fn2-pool (fn2-core-pool fn2-core)))
      (code fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
-     (fn2-rd-scan-next x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
-                       fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+     (fn2-read-scan-next-children x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+       fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-read-scan-next (x budget fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
@@ -1126,12 +1269,9 @@
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code article candidates fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
-     (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads
-                           fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors
-                           fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
+     (fn2-read-identity-children x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-ranges
+       fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+       fn2-fields fn2-pool fn2-fc)
      (mv code article candidates fn2-core)))
    (fn2-core-preserves fn2-read-identity (x mslot mgen moff mlen okind oslot ogen budget fn2-core) :position 3 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))

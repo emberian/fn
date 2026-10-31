@@ -211,10 +211,16 @@
                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields) nil nil)
 
-(defcost fn2-identity-offer :bytes 256
+(defcost fn2-identity-offer :answers (:bounds :ok :owner :stale :state)
+ :bytes 256
  :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-run-installed fn2-core-fields fn2-core-pool fn2-core-fc)
  :doc "Stage an offer's Message-ID and content into its decision row and start the decision (hashes at most 250 octets).")
-(defcost fn2-identity-step :bytes 4096
+; fn2-identity-step never answers :ok, so :answers is open (t) until defcost takes a
+; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :filter-miss
+;   :format :found :invariant :length :lost :maybe :miss :more :noncanonical :none :owner :part
+;   :payload :schema :stale :state :stored :truncated :unknown-tag :wide
+(defcost fn2-identity-step :answers t
+ :bytes 4096
  :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed
           fn2-core-run-cursors fn2-core-run-paths fn2-core-run-cache fn2-core-fields fn2-core-pool)
  :doc "One bounded step of an identity decision: at most 4,096 pool reads and one overlay block or 32 run entries.")

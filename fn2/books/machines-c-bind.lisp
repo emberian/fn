@@ -421,34 +421,49 @@
 
 ; ---------------------------------------------------------------------------
 ; Costs (the bases: fn2/docs/c-ordered-runs.md §7 C-SUCCESSOR).
-(defcost fn2-successor-put :tables (fn2-core-succ-txns fn2-core-succ-slots)
+(defcost fn2-successor-put :answers (:bounds :kind :ok :schema :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots)
  :doc "Declare one write slot of a transaction (schema and kind).")
-(defcost fn2-successor-arg :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-successor-arg :answers (:bounds :kind :ok :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one argument of a write slot: a value, the member's commit position, or a field of an earlier slot's row.")
-(defcost fn2-successor-arg-octets :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-successor-arg-octets :answers (:bounds :kind :ok :owner :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one octet argument of an insert slot by reference.")
-(defcost fn2-successor-arg-octets-late :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-successor-arg-octets-late :answers (:bounds :kind :ok :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Declare one octet argument of an insert slot given after stage, with its bound.")
-(defcost fn2-successor-fill-octets :tables (fn2-core-succ-slots fn2-core-fields)
+(defcost fn2-successor-fill-octets :answers (:bounds :kind :ok :owner :state)
+ :tables (fn2-core-succ-slots fn2-core-fields)
  :doc "Give a staged slot's late octet argument by reference.")
-(defcost fn2-successor-resolve :bytes 4096
+(defcost fn2-successor-resolve :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
+  :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
+ :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
-(defcost fn2-successor-stage :bytes 4096
+(defcost fn2-successor-stage :answers (:bounds :capacity :done :duplicate :event :evidence :full :identity-conflict-bound :invariant
+  :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
+  :truncated :unknown-tag :wide)
+ :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool)
  :doc "Stage every write slot against the tip (one located entry per overlay of its schema), apply its fold step, and hold room (at most one arena per schema written).")
-(defcost fn2-successor-out
+(defcost fn2-successor-out :answers (:bounds :kind :ok :state)
  :doc "Read one field of a staged write slot's row.")
-(defcost fn2-successor-bind :bytes 8192
+(defcost fn2-successor-bind :answers (:bounds :done :duplicate :full :invariant :length :more :noncanonical :ok :overlap :owner :part
+  :payload :schema :spare :stale :state :truncated :unknown-tag :value :wide)
+ :bytes 8192
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
-(defcost fn2-successor-release :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
+(defcost fn2-successor-release :answers (:bounds :ok :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
  :doc "Free a transaction's write slots and its decision at its outcome.")
-(defcost fn2-successor-published
+(defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
-(defcost fn2-successor-publish :tables (fn2-core-succ-txns fn2-core-id-stamps fn2-core-overlays fn2-core-id-engine)
+(defcost fn2-successor-publish :answers (:bounds :ok :state)
+ :tables (fn2-core-succ-txns fn2-core-id-stamps fn2-core-overlays fn2-core-id-engine)
  :doc "Make a batch's private overlays of every schema readable and move its identity facts' bucket stamps (one pass over transaction and overlay rows).")
-(defcost fn2-successor-drop :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-overlays fn2-core-pool)
+(defcost fn2-successor-drop :answers (:bounds :ok :owner :retired :stale :state)
+ :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-overlays fn2-core-pool)
  :doc "Free a refused batch's private overlays; its transactions stage again.")
 
 ; Core wrappers, materialized after the core instance (assembly-callbacks-c,
