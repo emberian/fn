@@ -5,10 +5,10 @@ Input: the `(:embed ...)` part of the S-expression print-world.lisp writes. Outp
 
   WORLD.lean  every function of the closure as a Lean `def` over `Fn2.ACL2.Val` (its translated
               ACL2 body, read term for term), its guard as `F.guard`, and the dispatch `fns`;
-  KINDS.lean  the kinds declared in the step language and defined in child form, as
-              `Fn2.Arms.Kind` terms (every expression a translated `Term`), the declared
-              operations they call, the declared wait kinds and the constants the step language
-              names, assembled as `world : Fn2.Arms.World`.
+  KINDS.lean  the kinds declared in the step language, as `Fn2.Arms.Kind` terms (every
+              expression as the declaration writes it, a `Val` that `Fn2.Arms.readExpr` reads),
+              each kind's phase values, the declared operations they call, the declared wait
+              kinds and the constants the arms name, assembled as `world : Fn2.Arms.World`.
 
 The subset is closed and its edge is named, never guessed:
   * a function whose body calls something neither translated nor native stops the emission
@@ -266,10 +266,11 @@ def plist(xs):
 
 
 def tm(x):
+    # an expression as the declaration writes it; Fn2.Arms.readExpr reads it
     xs = as_list(x)
-    if not (len(xs) == 2 and xs[0] == ":TERM"):
-        die(f"expected (:TERM t), got {show(x)}")
-    return term(xs[1])
+    if not (len(xs) == 2 and xs[0] == ":RAW"):
+        die(f"expected (:RAW e), got {show(x)}")
+    return val(xs[1])
 
 
 def opt_tm(d, key):
@@ -393,6 +394,7 @@ def kind(e):
             f"    childForm := {'true' if str(d[':FORM']) == ':CHILDREN' else 'false'},\n"
             f"    tuple := [{', '.join(lean_str(str(x)) for x in as_list(d[':TUPLE']))}],\n"
             f"    states := [{', '.join(lean_str(str(x)) for x in as_list(d[':STATES']))}],\n"
+            f"    phases := [{', '.join(f'({lean_str(str(as_list(p)[0]))}, {as_list(p)[1]})' for p in as_list(d[':PHASES']))}],\n"
             f"    columns := [{', '.join(f'({lean_str(str(c[0]))}, {coltype(c[1])})' for c in cols)}],\n"
             f"    table := [{', '.join(lean_str(str(as_list(c)[0])) for c in as_list(d[':TABLE']))}],\n"
             f"    stops := [{', '.join(lean_str(str(x).lstrip(':')) for x in as_list(d[':STOPS']))}],\n"

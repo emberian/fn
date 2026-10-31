@@ -1,5 +1,6 @@
 import Fn2.ACL2.Read
 import Fn2.Arms
+import Fn2.Pathway
 import Fn2.Instances.LayerAKinds
 
 /-!
@@ -21,6 +22,9 @@ computations on the same arguments:
   function does not return must leave the interpreter as it entered. A child the function takes
   enters with its recorded value; a child it does not take enters as a sentinel symbol no
   operation accepts, so a declaration that reads or writes it differs (in the results or here).
+
+The interpreter's arguments and result go through `Fn2.Pathway`'s `widen` and `project`, the maps
+PW3 is stated with, so each recorded call is one instance of `Fn2.Pathway.ArmCorrect`.
 
 Each is equal to the recorded result or a named difference (the first result position that
 differs; for a child, the first field and element). Performance is printed, never a gate.
@@ -97,6 +101,16 @@ def main (args : List String) : IO UInt32 := do
   let mut tallies : Std.HashMap String Tally := {}
   let mut order : Array String := #[]
   let mut lines := 0
+  -- the reader over every expression of every child-form kind, exercised or not
+  let mut exprs := 0
+  let mut refusals : Array String := #[]
+  for k in w.kinds do
+    if !k.childForm then continue
+    for a in k.subarms ++ k.arms ++ k.observes do
+      exprs := exprs + ((a.onRefusal ++ a.steps).flatMap Step.exprs).length
+    refusals := refusals ++ (readKind w k).toArray
+  IO.println s!"READ {exprs} expressions of the child-form kinds, {refusals.size} refused"
+  for r in refusals do IO.println s!"  refused: {r}"
   let t0 ← IO.monoMsNow
   for line in text.splitOn "\n" do
     if line.trim.isEmpty then continue
@@ -110,20 +124,15 @@ def main (args : List String) : IO UInt32 := do
     let want := rec_.cdr.cdr.car
     let some (k, a, observe) := findArm w fn
       | do IO.eprintln s!"{fn}: no arm in the translated kinds"; return 2
-    let nOuts := if observe then 1 else 4
-    let nPre := if observe then 10 else 5
+    let nOuts := Fn2.Pathway.nOuts observe
+    let nPre := Fn2.Pathway.nPre observe
     -- a narrowed function takes and returns a subset of the kind's tuple (Fn2.Arms.Sig)
-    let takes := (a.sig.map (·.takes)).getD k.tuple
-    let returns := (a.sig.map (·.returns)).getD k.tuple
-    let given := takes.zip (argv.drop nPre)
+    let takes := Fn2.Pathway.takes k a
+    let returns := Fn2.Pathway.returns k a
     let sentinel (c : String) : Val := .sym s!"FN2-META-UNTAKEN-{c}"
-    let entering := k.tuple.map fun c => ((given.find? (·.1 == c)).map (·.2)).getD (sentinel c)
-    let full := argv.take nPre ++ entering
-    let project (v : Val) : Val :=
-      let xs := (listOf v).toList
-      let tup := k.tuple.zip (xs.drop nOuts)
-      Val.ofList (xs.take nOuts ++ returns.map fun c => ((tup.find? (·.1 == c)).map (·.2)).getD Val.nil)
-    let bare := nOuts + returns.length == 1
+    let entering := Fn2.Pathway.entering k a (argv.drop nPre) sentinel
+    let full := Fn2.Pathway.widen k a (argv.take nPre) (argv.drop nPre) sentinel
+    let project := Fn2.Pathway.project k a observe
     let names := (if observe then ["wake"] else ["bytes", "steps", "descriptors", "runnable"]) ++ returns
     let ran := runArm w k a observe full
     let interp := match ran with
@@ -141,7 +150,7 @@ def main (args : List String) : IO UInt32 := do
           some s!"{c} (not returned{if takes.contains c then "" else ", not taken"}) changed: {(toString o).take 120} (entered {(toString i).take 60})"
       | .error e => some s!"error: {e}"
     let gen := match w.fns fn argv with
-      | some v => let p := if bare then Val.ofList [v] else v
+      | some v => let p := Fn2.Pathway.normalize k a observe v
         if same p want then none else some (diff names p want)
       | none => some "no translated function"
     let guard := match Fn2.Instances.LayerAWorld.guardOf fn argv with
@@ -177,7 +186,7 @@ def main (args : List String) : IO UInt32 := do
     if let some d := t.firstGen then IO.println s!"    generated differs: {d}"
     if let some d := t.firstFrame then IO.println s!"    frame differs: {d}"
   IO.println s!"MEASURE TOTAL calls {calls} interp-equal {ie} generated-equal {ge} guard-true {gt} frame-kept {fo}"
-  return (if ie == calls && ge == calls && gt == calls && fo == calls then 0 else 1)
+  return (if ie == calls && ge == calls && gt == calls && fo == calls && refusals.isEmpty then 0 else 1)
 
 end Fn2.Measure
 
