@@ -37,6 +37,15 @@ abbrev Expr := Val
 /-- `(QUOTE v)`, for the expressions the interpreter writes itself. -/
 def Expr.q (v : Val) : Expr := Val.ofList [.sym "QUOTE", v]
 
+/-- `n` unfoldings of `F`, then `dflt`: the readers are total (structural on `n`), so the kernel
+unfolds them on a declaration's concrete syntax (PW3); `readDepth` is far beyond any arm's
+nesting, and running out is an error, never a value. -/
+def fixN {α β : Type} : Nat → ((α → β) → α → β) → (α → β) → α → β
+  | 0, _, dflt => dflt
+  | n + 1, F, dflt => F (fixN n F dflt)
+
+def readDepth : Nat := 10000
+
 /-- A call of a declared operation: positional arguments, then `:FORMAL E` keywords. -/
 structure Call where
   op : String
@@ -137,7 +146,8 @@ def readCodes (cs : Val) : Option (List Val) :=
 
 def stepOpt (key : String) (pl : List Val) : Option Expr := plistGet key pl
 
-partial def readSteps (ss : Val) : Except String (List Step) := do
+def readStepsF (readSteps : Val → Except String (List Step)) (ss : Val) :
+    Except String (List Step) := do
   if !ss.properList then throw s!"steps with a dotted tail: {ss.render}"
   ss.toList.mapM readStep
 where
@@ -218,6 +228,10 @@ where
     | ":GOTO" => do pure (.goto (← symName (← one)))
     | _ => throw s!"unknown step {s.render}"
 
+/-- The step reader: `readStepsF` unfolded `readDepth` times. -/
+def readSteps : Val → Except String (List Step) :=
+  fixN readDepth readStepsF (fun ss => .error s!"steps nested too deep: {ss.render}")
+
 /-- An arm's declaration read: `:from` and `:on-refusal` (in any order, as `fn2-arms-options`
 reads them), then the steps. -/
 structure ArmDecl where
@@ -225,7 +239,7 @@ structure ArmDecl where
   onRefusal : List Step
   steps : List Step
 
-partial def Arm.read (a : Arm) : Except String ArmDecl := do
+def Arm.read (a : Arm) : Except String ArmDecl := do
   let rec opts : Val → Except String (List String × Val × Val)
     | .cons (.sym ":FROM") (.cons f rest) => do
       let (_, r, ss) ← opts rest
@@ -368,14 +382,17 @@ private def tIf (c a b : Term) : Term := .app "IF" [c, a, b]
 private def tNot (a : Term) : Term := tIf a (.quote Val.nil) (.quote Val.t)
 
 /-- The free variables of a term (a closed `LAMBDA`'s are its actuals'). -/
-partial def termFreeVars : Term → List String
+def termFreeVars : Term → List String
   | .var x => [x]
   | .quote _ => []
-  | .app _ as => as.flatMap termFreeVars
-  | .lam _ _ as => as.flatMap termFreeVars
+  | .app _ as => as.attach.flatMap fun ⟨a, _⟩ => termFreeVars a
+  | .lam _ _ as => as.attach.flatMap fun ⟨a, _⟩ => termFreeVars a
+termination_by t => sizeOf t
+decreasing_by all_goals (simp_wf; have := List.sizeOf_lt_of_mem ‹_›; omega)
 
-partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
-  let rd := readExpr k
+def readExprF (k : Kind) (readExpr : Expr → Except String Term) (x : Expr) :
+    Except String Term := do
+  let rd := readExpr
   let rds (xs : List Val) : Except String (List Term) := xs.mapM rd
   let foldR (f : String) (xs : List Val) : Except String Term := do
     let ts ← rds xs
@@ -494,46 +511,56 @@ partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
         | _ => throw s!"{f} is neither in the arm vocabulary nor a declared pure operation: {x.render}"
   | _ => throw s!"not an expression: {x.render}"
 
+/-- The expression reader: `readExprF` unfolded `readDepth` times. -/
+def readExpr (k : Kind) : Expr → Except String Term :=
+  fixN readDepth (readExprF w k) (fun x => .error s!"an expression nested too deep: {x.render}")
+
 /-- A phase form: a phase keyword, `(:if E N N)`, `(:case V ((CODE ...) N) ... (:otherwise N))`. -/
-partial def readNext (k : Kind) (n : Expr) : Except String Term := do
+def readNextF (k : Kind) (readNext : Expr → Except String Term) (n : Expr) :
+    Except String Term := do
   match n with
   | .sym p =>
     match k.phases.find? (·.1 == p) with
     | some (_, v) => pure (.quote (.int v))
     | none => throw s!":next names {p}, not a phase of {k.name}"
   | .cons (.sym ":IF") rest => match rest.toList with
-    | [e, a, b] => do pure (tIf (← readExpr w k e) (← readNext k a) (← readNext k b))
+    | [e, a, b] => do pure (tIf (← readExpr w k e) (← readNext a) (← readNext b))
     | _ => throw s!"malformed :next {n.render}"
   | .cons (.sym ":CASE") rest => do
     let key ← readExpr w k rest.car
     let rec go : List Val → Except String Term
       | [] => throw s!"a :next :case needs an :otherwise: {n.render}"
       | a :: more => do
-        let e ← readNext k a.cdr.car
+        let e ← readNext a.cdr.car
         if a.car == .sym ":OTHERWISE" then pure e
         else pure (tIf (.app "MEMBER-EQUAL" [key, .quote a.car]) e (← go more))
     go rest.cdr.toList
   | _ => throw s!"malformed :next {n.render}"
 
+def readNext (k : Kind) : Expr → Except String Term :=
+  fixN readDepth (readNextF w k) (fun n => .error s!"a phase form nested too deep: {n.render}")
+
 /-- Every expression and phase form of a path, unexercised branches included (`true`: a phase
 form), so the reader can be run over a whole kind before any arm runs. -/
-partial def Step.exprs : Step → List (Bool × Expr)
+def Step.exprsF (exprs : Step → List (Bool × Expr)) : Step → List (Bool × Expr)
   | .let_ _ e | .wakeRow e => [(false, e)]
   | .set ps => ps.map ((false, ·.2))
   | .next n => [(true, n)]
   | .do_ _ c _ _ w el cs =>
-    callExprs c ++ (w.toList ++ el).map ((false, ·)) ++ cs.flatMap fun (_, ss) => ss.flatMap Step.exprs
-  | .issue c ok rf => callExprs c ++ (ok ++ rf).flatMap Step.exprs
-  | .repeat_ n b u => [(false, n), (false, u)] ++ b.flatMap Step.exprs
-  | .if_ c a b => (false, c) :: (a ++ b).flatMap Step.exprs
-  | .cond cl => cl.flatMap fun (c, ss) => (false, c) :: ss.flatMap Step.exprs
-  | .case_ key arms => (false, key) :: arms.flatMap fun (_, ss) => ss.flatMap Step.exprs
+    callExprs c ++ (w.toList ++ el).map ((false, ·)) ++ cs.flatMap fun (_, ss) => ss.flatMap exprs
+  | .issue c ok rf => callExprs c ++ (ok ++ rf).flatMap exprs
+  | .repeat_ n b u => [(false, n), (false, u)] ++ b.flatMap exprs
+  | .if_ c a b => (false, c) :: (a ++ b).flatMap exprs
+  | .cond cl => cl.flatMap fun (c, ss) => (false, c) :: ss.flatMap exprs
+  | .case_ key arms => (false, key) :: arms.flatMap fun (_, ss) => ss.flatMap exprs
   | .charge a b c d => [a, b, c, d].flatMap fun o => o.toList.map ((false, ·))
   | .wait a b => [a, b].flatMap fun o => o.toList.map ((false, ·))
   | .park _ a _ st => [a, st].flatMap fun o => o.toList.map ((false, ·))
   | .stop _ st => st.toList.map ((false, ·))
   | _ => []
 where callExprs (c : Call) : List (Bool × Expr) := (c.args ++ c.keys.map (·.2)).map ((false, ·))
+
+def Step.exprs : Step → List (Bool × Expr) := fixN readDepth Step.exprsF (fun _ => [])
 
 /-- The reader over every expression of a kind's arms, handlers and sub-arms: the refusals, by
 arm and expression. -/

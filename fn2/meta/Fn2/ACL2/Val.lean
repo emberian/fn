@@ -329,9 +329,10 @@ abbrev Env := List (String × Val)
 
 def Env.get? (env : Env) (x : String) : Option Val := (env.find? (·.1 == x)).map (·.2)
 
-/-- Evaluate a translated term. `IF` is lazy; `RETURN-LAST` is its third argument (ACL2's
+/-- Evaluate a translated term (total: structural on the term, so the kernel unfolds it for PW3).
+`IF` is lazy; `RETURN-LAST` is its third argument (ACL2's
 logical meaning of `mbe`, `prog2$` and their kin). -/
-partial def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
+def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
   | .var x => match env.get? x with
     | some v => .ok v
     | none => .error s!"unbound variable {x}"
@@ -341,14 +342,16 @@ partial def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
     if cv.truthy then Term.eval fns env a else Term.eval fns env b
   | .app "RETURN-LAST" [_, _, c] => Term.eval fns env c
   | .app f args => do
-    let vs ← args.mapM (Term.eval fns env)
+    let vs ← args.attach.mapM (fun ⟨a, _⟩ => Term.eval fns env a)
     match nativeCall f vs with
     | some v => .ok v
     | none => match fns f vs with
       | some v => .ok v
       | none => .error s!"no function {f} of arity {vs.length}"
   | .lam formals body actuals => do
-    let vs ← actuals.mapM (Term.eval fns env)
+    let vs ← actuals.attach.mapM (fun ⟨a, _⟩ => Term.eval fns env a)
     Term.eval fns (formals.zip vs) body
+termination_by t => sizeOf t
+decreasing_by all_goals (simp_wf; first | omega | (have := List.sizeOf_lt_of_mem ‹_›; omega))
 
 end Fn2.ACL2
