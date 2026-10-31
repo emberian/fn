@@ -8,13 +8,13 @@
 
 - §13 peering/BP stated, revised after Astra-2 (lanes/e-quests/astra-2.md; §16); seams sent to main (D :peer-credit, D5 3/n table, exhaustion split, TAKETHIS 400 default + fn-compat; C obligations contract, cancel intent, feed-work, bundle schemas, admission ordinal; B ADU subject, evidence identity across import).
 
-## In flight at 5be98c474
-- whole-tree recertify (build/e-seat/cert-all.pid, log cert-all.log) and layout campaign rerun with :octets32 (roundtrip2.pid/.out, expect "LAYOUT ROUNDTRIP ... PASS"). Fix forward if red.
+- E4a (8754482a1): books/peer-model.lisp (8 faults), owed-peer.lisp (K-P1, K-P3a, K-P4, K-P5, K-P6), tests/peer-witnesses.lisp (W1 W2 W3 W7 offer F1 F2); port.lisp registers (:port P) via fn2-declare (declare.lisp: fn2-ports), per the form seat.
+- Layout campaign with :octets32: PASS. Whole-tree recert at 5be98c474 stopped on a machines-a hash race (tree moved under the run), not E's change.
 
 ## Next
-1. The multi-node reference model (§13.8): nodes, evidence, obligations, feed work, gaps; witness matrix W1-W10, F1-F7; K-P1..K-P6 owed with teeth (owed-peer.lisp), positive fixtures asserting full antecedents.
-2. Owed codec pieces with their first sender (served kind): fn1 kind 18 reasoned reply (enum is 1-based there, statuses list in books/native-control.lisp), FNWD/FNRB forms.
-3. Served fn2-cns + XFNC rows + edge rows (D8, mine) when D5 2/n and D6 land; K10.
+1. Remaining §13.8 matrix as the records land: W4, W5 (authority dependencies), W6 (cancel intent, C), W8-W10, F3-F7.
+2. Owed codec pieces with their first sender: fn1 kind 18 (1-based enum), FNWD/FNRB forms; the evidence page codec (§13.4).
+3. Served fn2-cns + XFNC rows (D's block declaration landed in grammar.lisp? check) + D8 edge rows (mine, new machine form after P2-P4) when D5 2/n and D6 land; K10; K-P2/K-P3b over D5 3/n.
 
 ## Pitfalls / commands
 - REPL: `python3 tools/acl2 --timeout 400 < build/e-seat/<x>.lsp > build/e-seat/<x>.out 2>&1` (drivers: codec.lsp, cct.lsp, mini2.lsp, helm.lsp).
