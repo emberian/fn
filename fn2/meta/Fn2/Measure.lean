@@ -15,7 +15,12 @@ computations on the same arguments:
 * **generated**: the translation of the function ACL2 generated for that arm (`FN` itself, read
   from its translated body like every other function);
 * **guard**: the translation of `FN`'s guard (the children's well-formedness, the slot and id
-  bounds) on the recorded arguments, which ACL2's guard-verified caller established.
+  bounds) on the recorded arguments, which ACL2's guard-verified caller established;
+* **frame**: a child-form function takes and returns only the children its paths touch
+  (`fn2-arms-child-sigs`); the interpreter runs on the kind's whole tuple, so every child the
+  function does not return must leave the interpreter as it entered. A child the function takes
+  enters with its recorded value; a child it does not take enters as a sentinel symbol no
+  operation accepts, so a declaration that reads or writes it differs (in the results or here).
 
 Each is equal to the recorded result or a named difference (the first result position that
 differs; for a child, the first field and element). Performance is printed, never a gate.
@@ -70,6 +75,8 @@ structure Tally where
   interpEq : Nat := 0
   genEq : Nat := 0
   guardT : Nat := 0
+  frameOk : Nat := 0
+  firstFrame : Option String := none
   firstInterp : Option String := none
   firstGen : Option String := none
 
@@ -109,15 +116,29 @@ def main (args : List String) : IO UInt32 := do
     let takes := (a.sig.map (·.takes)).getD k.tuple
     let returns := (a.sig.map (·.returns)).getD k.tuple
     let given := takes.zip (argv.drop nPre)
-    let full := argv.take nPre ++ k.tuple.map fun c => ((given.find? (·.1 == c)).map (·.2)).getD Val.nil
+    let sentinel (c : String) : Val := .sym s!"FN2-META-UNTAKEN-{c}"
+    let entering := k.tuple.map fun c => ((given.find? (·.1 == c)).map (·.2)).getD (sentinel c)
+    let full := argv.take nPre ++ entering
     let project (v : Val) : Val :=
       let xs := (listOf v).toList
       let tup := k.tuple.zip (xs.drop nOuts)
       Val.ofList (xs.take nOuts ++ returns.map fun c => ((tup.find? (·.1 == c)).map (·.2)).getD Val.nil)
     let bare := nOuts + returns.length == 1
     let names := (if observe then ["wake"] else ["bytes", "steps", "descriptors", "runnable"]) ++ returns
-    let interp := match runArm w k a observe full with
+    let ran := runArm w k a observe full
+    let interp := match ran with
       | .ok v => let p := project v; if same p want then none else some (diff names p want)
+      | .error e => some s!"error: {e}"
+    -- the frame: every child outside the function's returns leaves as it entered
+    let frame : Option String := match ran with
+      | .ok v =>
+        let outs := ((listOf v).toList.drop nOuts)
+        let bad := (k.tuple.zip (entering.zip outs)).filter fun (c, i, o) =>
+          !(returns.contains c) && !(same i o)
+        match bad.head? with
+        | none => none
+        | some (c, i, o) =>
+          some s!"{c} (not returned{if takes.contains c then "" else ", not taken"}) changed: {(toString o).take 120} (entered {(toString i).take 60})"
       | .error e => some s!"error: {e}"
     let gen := match w.fns fn argv with
       | some v => let p := if bare then Val.ofList [v] else v
@@ -133,6 +154,8 @@ def main (args : List String) : IO UInt32 := do
         interpEq := t.interpEq + (if interp.isNone then 1 else 0),
         genEq := t.genEq + (if gen.isNone then 1 else 0),
         guardT := t.guardT + (if guard then 1 else 0),
+        frameOk := t.frameOk + (if frame.isNone then 1 else 0),
+        firstFrame := t.firstFrame <|> frame,
         firstInterp := t.firstInterp <|> interp,
         firstGen := t.firstGen <|> gen }
   let t1 ← IO.monoMsNow
@@ -140,6 +163,7 @@ def main (args : List String) : IO UInt32 := do
   let mut ie := 0
   let mut ge := 0
   let mut gt := 0
+  let mut fo := 0
   IO.println s!"MEASURE {path}: {lines} recorded calls, {order.size} arm functions, {t1 - t0} ms"
   for fn in order.qsort (· < ·) do
     let t := (tallies.get? fn).getD {}
@@ -147,11 +171,13 @@ def main (args : List String) : IO UInt32 := do
     ie := ie + t.interpEq
     ge := ge + t.genEq
     gt := gt + t.guardT
-    IO.println s!"  {fn}: calls {t.calls} interp= {t.interpEq} generated= {t.genEq} guard-true {t.guardT}"
+    fo := fo + t.frameOk
+    IO.println s!"  {fn}: calls {t.calls} interp= {t.interpEq} generated= {t.genEq} guard-true {t.guardT} frame-kept {t.frameOk}"
     if let some d := t.firstInterp then IO.println s!"    interp differs: {d}"
     if let some d := t.firstGen then IO.println s!"    generated differs: {d}"
-  IO.println s!"MEASURE TOTAL calls {calls} interp-equal {ie} generated-equal {ge} guard-true {gt}"
-  return (if ie == calls && ge == calls && gt == calls then 0 else 1)
+    if let some d := t.firstFrame then IO.println s!"    frame differs: {d}"
+  IO.println s!"MEASURE TOTAL calls {calls} interp-equal {ie} generated-equal {ge} guard-true {gt} frame-kept {fo}"
+  return (if ie == calls && ge == calls && gt == calls && fo == calls then 0 else 1)
 
 end Fn2.Measure
 
