@@ -442,7 +442,7 @@
  :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
-(defcost fn2-successor-stage :answers (:bounds :capacity :done :duplicate :event :evidence :full :identity-conflict-bound :invariant
+(defcost fn2-successor-stage :answers (:bounds :capacity :done :duplicate :event :evidence :full :identity-conflict-bound :inconsistent :invariant
   :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
   :truncated :unknown-tag :wide)
  :bytes 4096

@@ -950,22 +950,18 @@
 (defcost fn2-read-range :child fn2-read-range-children :answers (:bounds :key-kind :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's range read: enumerate the schema's overlays and live runs into at most eight sources.")
-; fn2-read-next never answers :ok, so :answers is open (t) until defcost takes a
-; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length
-;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
-;   :unknown-tag :wide
-(defcost fn2-read-next :child fn2-read-next-children :answers t
+(defcost fn2-read-next :child fn2-read-next-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length :miss
+  :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
+  :wide)
  :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One range step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered.")
 (defcost fn2-read-seek :child fn2-read-seek-children :answers (:bounds :key-kind :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-seeks fn2-core-ranges fn2-core-range-sources)
  :doc "Start a read row's positioned seek over its range row.")
-; fn2-read-seek-step never answers :ok, so :answers is open (t) until defcost takes a
-; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length
-;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
-;   :unknown-tag :wide
-(defcost fn2-read-seek-step :child fn2-read-seek-step-children :answers t
+(defcost fn2-read-seek-step :child fn2-read-seek-step-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :key-kind :length :miss
+  :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
+  :wide)
  :bytes 4096
  :tables (fn2-core-seeks fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a positioned seek: a probe's range start or one range step.")
@@ -977,19 +973,14 @@
 (defcost fn2-read-scan :child fn2-read-scan-children :answers (:bounds :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
  :doc "Start a read row's whole-schema ordered scan: the least key, the schema's overlays and live runs into at most eight sources.")
-; fn2-read-scan-next never answers :ok, so :answers is open (t) until defcost takes a
-; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :format :found :invariant :length :miss :more
-;   :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
-;   :wide
-(defcost fn2-read-scan-next :child fn2-read-scan-next-children :answers t
+(defcost fn2-read-scan-next :child fn2-read-scan-next-children :answers (:absent :bad-magic :bounds :done :end :entry :format :found :invariant :length :miss :more
+  :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One scan step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered and its key (at most 512 octets a field) saved.")
-; fn2-read-identity never answers :ok, so :answers is open (t) until defcost takes a
-; list without :ok. Its answers, from the code: :absent :bad-magic :bounds :done :end :entry :evidence :format :found :invariant :length
-;   :miss :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated
-;   :unknown-tag :wide
-(defcost fn2-read-identity :child fn2-read-identity-children :answers t
+(defcost fn2-read-identity :child fn2-read-identity-children :answers (:absent :bad-magic :bounds :done :end :entry :evidence :format :found :invariant :length :miss
+  :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
+  :wide)
  :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One step of an identity read: its start, or one scan step over the identity schema and one Message-ID comparison (at most 250 octets); the answer is (code article candidates).")
