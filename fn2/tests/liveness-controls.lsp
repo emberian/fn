@@ -19,25 +19,28 @@
     (assert (= (fn2-machine-grant-one core) 1))
     (assert (= (nth-value 2 (fn2-machine-run 1 4 core)) 1))
     (assert (zerop (fn2-machine-admission-credits *fn2-echo-admission-ordinal* core))))
-  (let ((reserve (symbol-function 'fn2-core-reserve))
+  ;; The reservation is the pool's own (fn2-pool-reserve): since MACHINE-FORM
+  ;; P4 an admission reserves in the kind's child-form operation, which calls
+  ;; the pool directly, never the core face fn2-core-reserve.
+  (let ((reserve (symbol-function 'fn2-pool-reserve))
         (abi (symbol-function 'fn2-abi-landings))
         (refuse (symbol-function 'fn2-network-refuse))
         (profile (put-assoc-equal :c 1 (put-assoc-equal :accept-credits 1 *fn2-profile-tiny*))))
     (unwind-protect
         (progn
-          (setf (symbol-function 'fn2-core-reserve)
-                (lambda (class kind owner generation core)
-                  (if (= kind *fn2-echo-kind*) (values :exhausted 0 0 core)
-                    (funcall reserve class kind owner generation core))))
+          (setf (symbol-function 'fn2-pool-reserve)
+                (lambda (class kind owner generation pool)
+                  (if (= kind *fn2-echo-kind*) (values :exhausted 0 0 pool)
+                    (funcall reserve class kind owner generation pool))))
           ; The refusal mutation targets the workload. Physical ABI evidence
           ; still executes every probe using the real reservation operation.
           (setf (symbol-function 'fn2-abi-landings)
                 (lambda (core sim own)
-                  (let ((injected-reserve (symbol-function 'fn2-core-reserve)))
+                  (let ((injected-reserve (symbol-function 'fn2-pool-reserve)))
                     (unwind-protect
-                        (progn (setf (symbol-function 'fn2-core-reserve) reserve)
+                        (progn (setf (symbol-function 'fn2-pool-reserve) reserve)
                                (funcall abi core sim own))
-                      (setf (symbol-function 'fn2-core-reserve) injected-reserve)))))
+                      (setf (symbol-function 'fn2-pool-reserve) injected-reserve)))))
           (let* ((result (fn2-sim-run-echo 20261028 0 profile)) (live (nth 9 result)))
             (assert (equal (first result) '(:fail :liveness-drops)))
             (assert (equal (first live) '(:fail :liveness-drops)))
@@ -49,10 +52,10 @@
           (let ((result (fn2-sim-run-echo 20261028 1 profile)))
             (assert (equal (first result) '(:fail :unattributed-drops)))
             (assert (= (fn2-echo-stat :unattributed (nth 7 result)) 1))))
-      (setf (symbol-function 'fn2-core-reserve) reserve
+      (setf (symbol-function 'fn2-pool-reserve) reserve
             (symbol-function 'fn2-abi-landings) abi
             (symbol-function 'fn2-network-refuse) refuse))
-    (assert (and (eq (symbol-function 'fn2-core-reserve) reserve)
+    (assert (and (eq (symbol-function 'fn2-pool-reserve) reserve)
                  (eq (symbol-function 'fn2-abi-landings) abi)
                  (eq (symbol-function 'fn2-network-refuse) refuse))))
   (format t "L1 CONTROLS reservation=PASS FIFO-wake=PASS admission-refused=200 live-drop=REJECTED unattributed-safety=REJECTED~%"))

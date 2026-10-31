@@ -491,48 +491,69 @@
 ; (the 33rd child stopped D4 2/n). Each child's init sees only its own child.
 (defmacro fn2-core-init-events ()
  '(progn
-; The init in groups of at most 16 children, then the chain: one stobj-let
-; over every child would return them all through one MV, and ACL2 allows at
-; most 32 values (the 33rd child stopped D4 2/n). Each group's guard is the
-; old single proof's, over its own children only.
-(defun fn2-core-init-chunks (xs acc out)
-  ; XS in consecutive groups of at most 16, in order (structural on XS).
-  (cond ((atom xs) (reverse (if (consp acc) (cons (reverse acc) out) out)))
-        ((equal (len acc) 15) (fn2-core-init-chunks (cdr xs) nil (cons (reverse (cons (car xs) acc)) out)))
-        (t (fn2-core-init-chunks (cdr xs) (cons (car xs) acc) out))))
-(defun fn2-core-init-group-name (k)
-  (packn-pos (list 'fn2-core-init-group- k) 'fn2-core))
-(defun fn2-core-init-group-events (groups igroups k)
-  (if (or (atom groups) (atom igroups)) nil
-    (let* ((cs (car groups)) (is (car igroups)) (stobjs (strip-cars (strip-cdrs cs))))
-      (list* `(defun ,(fn2-core-init-group-name k) (profile fn2-core)
-               (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
-                               :guard-hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep fn2-profilep))))
-                        (ignorable profile))
-               (stobj-let ,(fn2-core-child-bindings cs) ,stobjs
-                 (let* ,is ,(if (consp (cdr stobjs)) `(mv ,@stobjs) (car stobjs)))
-                 fn2-core))
-             `(defthm ,(fn2-columns-sym (fn2-core-init-group-name k) "-TYPE")
-                (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
-                         (fn2-corep (,(fn2-core-init-group-name k) profile fn2-core)))
-                :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))
-             (fn2-core-init-group-events (cdr groups) (cdr igroups) (+ 1 (nfix k)))))))
-(defun fn2-core-init-group-chain (n k)
-  (if (zp n) nil
-    (cons `(fn2-core (,(fn2-core-init-group-name k) profile fn2-core))
-          (fn2-core-init-group-chain (- n 1) (+ 1 (nfix k))))))
+;; One init function per child (MACHINE-FORM 6.5, the per-child facts): its
+;; guard is that child's init guard alone, so no proof covers two children's
+;; capacity arithmetic; fn2-core-init is the chain. (A stobj-let over every
+;; child would also return them all through one MV, at most 32 values.)
+(defun fn2-core-init-child-name (field)
+  (fn2-columns-pre "INIT-" field))
+(defun fn2-core-init-child-events (children inits entries)
+  ;; ENTRIES: the core-child registry, for each child's :profilep. Its init's
+  ;; guard is proved from that child's profile facts alone with the profile
+  ;; predicate closed (0.1 s against 12-24 s with fn2-profilep open); a child
+  ;; whose init needs the open predicate falls back to it (make-event :or).
+  (if (or (atom children) (atom inits)) nil
+    (let* ((c (car children)) (name (fn2-core-init-child-name (car c))) (stobj (cadr c))
+           (prof (fn2-columns-sym name "-PROFILE"))
+           (q (fn2-core-child-property (assoc-eq (car c) entries) :profilep))
+           (body `(stobj-let ((,stobj (,(car c) fn2-core))) (,stobj) ,(cadr (car inits)) fn2-core)))
+      (list* `(defthm ,prof
+                (implies (fn2-core-profilep profile) (and (fn2-profilep profile) ,q))
+                :hints (("Goal" :in-theory (union-theories '(fn2-core-profilep) (theory 'minimal-theory)))) :rule-classes nil)
+             `(make-event
+               '(:or (defun ,name (profile fn2-core)
+                       (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
+                                       :guard-hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                                (ignorable profile))
+                       ,body)
+                     (defun ,name (profile fn2-core)
+                       (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
+                                       :guard-hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep fn2-profilep))))
+                                (ignorable profile))
+                       ,body)))
+             `(make-event
+               '(:or (defthm ,(fn2-columns-sym name "-TYPE")
+                       (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
+                                (fn2-corep (,name profile fn2-core)))
+                       :hints (("Goal" :use ,prof :in-theory (disable fn2-core-profilep fn2-profilep))))
+                     (defthm ,(fn2-columns-sym name "-TYPE")
+                       (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
+                                (fn2-corep (,name profile fn2-core)))
+                       :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))))
+             (fn2-core-init-child-events (cdr children) (cdr inits) entries)))))
+(defun fn2-core-init-child-names (children)
+  (if (atom children) nil
+    (cons (fn2-core-init-child-name (caar children)) (fn2-core-init-child-names (cdr children)))))
+(defun fn2-core-init-child-chain (children)
+  (if (atom children) nil
+    (cons `(fn2-core (,(fn2-core-init-child-name (caar children)) profile fn2-core))
+          (fn2-core-init-child-chain (cdr children)))))
 (make-event
- (value (cons 'progn (fn2-core-init-group-events
-                       (fn2-core-init-chunks *fn2-core-children* nil nil)
-                       (fn2-core-init-chunks (fn2-core-registered-inits (fn2-core-child-registry (w state))) nil nil) 0))))
+ (value (cons 'progn (fn2-core-init-child-events
+                       *fn2-core-children*
+                       (fn2-core-registered-inits (fn2-core-child-registry (w state)))
+                       (fn2-core-child-registry (w state))))))
 (make-event
  (value `(defun fn2-core-init (profile fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)))
-  (let* ,(fn2-core-init-group-chain (len (fn2-core-init-chunks *fn2-core-children* nil nil)) 0) fn2-core))))
-(defthm fn2-core-init-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
-           (fn2-corep (fn2-core-init profile fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-profilep fn2-machines-profilep))))
+  (let* ,(fn2-core-init-child-chain *fn2-core-children*) fn2-core))))
+(make-event
+ (value `(defthm fn2-core-init-type
+           (implies (and (fn2-corep fn2-core) (fn2-core-profilep profile))
+                    (fn2-corep (fn2-core-init profile fn2-core)))
+           ;; the chain of the children's own type facts
+           :hints (("Goal" :in-theory (disable fn2-core-profilep
+                                               ,@(fn2-core-init-child-names *fn2-core-children*)))))))
 (defthm fn2-core-init-wfp
   (implies (fn2-core-profilep profile)
            (fn2-core-wfp (fn2-core-init profile fn2-core)))

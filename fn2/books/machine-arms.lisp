@@ -802,6 +802,80 @@
                        (equal (nth ,raw ,r) (nth ,raw ,(car outs)))
                        :hints (("Goal" :in-theory (enable ,fn))))))
               (fn2-arms-narrow-rows-facts fn call (cdr outs) (+ 1 pos) total kind)))))
+;; One shape theorem per function (main's ruling, 10-31): the arm's paths are
+;; walked once for every child it returns. The conclusion is one predicate per
+;; result signature, FN2-ARMS-OK-K-C1-...-CN (K values, then the children),
+;; opened only on an explicit result tuple (the leaves of the paths, after
+;; the if-lifting splits them), so the walk is not repeated per child; a
+;; leaf that is a call with the same signature is the callee's own theorem.
+;; Per-child corollaries follow by the definition, for callers that bind.
+(defun fn2-arms-ok-suffix (outs)
+  (declare (xargs :verify-guards nil))
+  (if (atom outs) "" (concatenate 'string "-" (symbol-name (car outs)) (fn2-arms-ok-suffix (cdr outs)))))
+(defun fn2-arms-ok-name (k outs)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-sym (fn2-columns-sym 'fn2-arms-ok- (coerce (explode-nonnegative-integer k 10 nil) 'string))
+                   (fn2-arms-ok-suffix outs)))
+(defun fn2-arms-ok-vars (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil (append (fn2-arms-ok-vars (- n 1)) (list (packn-pos (list 'fn2-arms-x (- n 1)) 'fn2-arms-x)))))
+(defun fn2-arms-ok-terms (outs vars)
+  (declare (xargs :verify-guards nil))
+  (if (atom outs) nil
+    (list* `(,(fn2-columns-sym (car outs) "P") ,(car vars)) `(,(fn2-columns-sym (car outs) "-WFP") ,(car vars))
+           (fn2-arms-ok-terms (cdr outs) (cdr vars)))))
+(defun fn2-arms-ok-events (k outs world)
+  ; the signature's predicate and its opening on an explicit tuple, once
+  (declare (xargs :verify-guards nil))
+  (let* ((ok (fn2-arms-ok-name k outs)) (n (+ k (len outs))) (vars (fn2-arms-ok-vars n)))
+    (if (function-symbolp ok world) nil
+      `((defun-nx ,ok (r)
+          (declare (xargs :verify-guards nil))
+          (and ,@(fn2-arms-narrow-shape-terms outs k n 'r)))
+        (defthm ,(fn2-columns-sym ok "-OF-TUPLE")
+          (equal (,ok (list ,@vars)) (and ,@(fn2-arms-ok-terms outs (nthcdr k vars)))))
+        (defthm ,(fn2-columns-sym ok "-OPEN")
+          (equal (,ok r) (and ,@(fn2-arms-narrow-shape-terms outs k n 'r)))
+          :hints (("Goal" :in-theory (enable ,ok))))
+        (in-theory (disable ,ok ,(fn2-columns-sym ok "-OPEN")))))))
+(defun fn2-arms-ok-corollaries (name call outs pos hyps ok)
+  (declare (xargs :verify-guards nil))
+  (if (atom outs) nil
+    (let ((r (if (eql pos 0) `(car ,call) `(mv-nth ,pos ,call)))
+          (stem (fn2-columns-sym name (concatenate 'string "-" (symbol-name (car outs))))))
+      (list* `(defthm ,(fn2-columns-sym stem "-TYPE")
+                (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "P") ,r))
+                :hints (("Goal" :use ,(fn2-columns-sym name "-SHAPE")
+                                 :in-theory (e/d (,(fn2-columns-sym ok "-OPEN")) (,name ,(fn2-columns-sym name "-SHAPE"))))))
+             `(defthm ,(fn2-columns-sym stem "-WFP")
+                (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "-WFP") ,r))
+                :hints (("Goal" :use ,(fn2-columns-sym name "-SHAPE")
+                                 :in-theory (e/d (,(fn2-columns-sym ok "-OPEN")) (,name ,(fn2-columns-sym name "-SHAPE"))))))
+             (fn2-arms-ok-corollaries name call (cdr outs) (+ 1 pos) hyps ok)))))
+(defun fn2-arms-ok-shape-events (name call k outs ins readers callees ubp-open world)
+  (declare (xargs :verify-guards nil))
+  (let* ((ok (fn2-arms-ok-name k outs)) (hyps (fn2-arms-child-shape-hyps ins)))
+    (append (fn2-arms-ok-events k outs world)
+            `((defthm ,(fn2-columns-sym name "-SHAPE")
+                (implies (and ,@hyps) (,ok ,call))
+                :hints (("Goal" :in-theory (e/d (,name ,(fn2-columns-sym ok "-OF-TUPLE"))
+                                                (,ok (:executable-counterpart tau-system)
+                                                 ,@(if ubp-open nil '(unsigned-byte-p)) min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
+                                                 ,@(remove-duplicates-eq callees)))
+                         :do-not '(generalize fertilize eliminate-destructors)))))
+            (fn2-arms-ok-corollaries name call outs k hyps ok))))
+(defun fn2-arms-stobj-callees (fns world)
+  ; the callees that return a child (their shape facts carry a proof); a pure
+  ; one stays open, its value's type comes from its definition
+  (declare (xargs :verify-guards nil))
+  (cond ((atom fns) nil)
+        ((fn2-arms-stobjs-of (getpropc (car fns) 'stobjs-out nil world))
+         (cons (car fns) (fn2-arms-stobj-callees (cdr fns) world)))
+        (t (fn2-arms-stobj-callees (cdr fns) world))))
+(defun fn2-arms-rows-fns (tuple)
+  ; each child's row count, closed in a guard proof (the readers' facts are stated over it)
+  (declare (xargs :verify-guards nil))
+  (if (atom tuple) nil (cons (fn2-columns-sym (car tuple) "-ROWS") (fn2-arms-rows-fns (cdr tuple)))))
 (defun fn2-arms-child-emit-events (name prefix k kind tuple body guard measure callees readers rowsp world)
   (declare (xargs :verify-guards nil))
   (mv-let (reads writes) (fn2-arms-scan body tuple name world 1000000)
@@ -817,17 +891,26 @@
                           :guard (and ,@guard (,(fn2-arms-sym kind "-WFP") ,kind)
                                       ,@(fn2-arms-extra-wfps (cdr ins))
                                       (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))
-                                      (natp id) (< id (fn2-machines-rows fn2-machines))))
+                                      (natp id) (< id (fn2-machines-rows fn2-machines)))
+                          ;; the guard walks the paths with the row readers, the
+                          ;; children's predicates and the callees closed: their own
+                          ;; facts (widths, shapes, sizes) carry every obligation
+                          :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system)
+                                                                    ,@readers ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns (list kind 'fn2-machines))
+                                                                    ,@(fn2-arms-stobj-callees (remove-duplicates-eq callees) world))
+                                         :do-not '(generalize fertilize eliminate-destructors))))
                    (ignorable ,@formals))
           ,code)
         (table fn2-arms-child-sigs ',name ',sig)
         (in-theory (disable ,name))
-        ,@(fn2-arms-child-shape-thms name (fn2-arms-narrow-shape-terms outs k total call)
-            (fn2-arms-child-shape-hyps ins)
-            `(("Goal" :in-theory (e/d (,name) (unsigned-byte-p min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
-                                                ,@(remove-duplicates-eq callees)))
-                      :do-not '(generalize fertilize eliminate-destructors)))
-            0)
+        ,@(if (< total 2)
+              (fn2-arms-child-shape-thms name (fn2-arms-narrow-shape-terms outs k total call)
+                (fn2-arms-child-shape-hyps ins)
+                `(("Goal" :in-theory (e/d (,name) (unsigned-byte-p min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
+                                                    ,@(remove-duplicates-eq callees)))
+                          :do-not '(generalize fertilize eliminate-destructors)))
+                0)
+            (fn2-arms-ok-shape-events name call k outs ins readers callees nil world))
         ,@(and rowsp (fn2-arms-narrow-rows-facts name call outs k total kind))))))
 (defmacro fn2-arms-child-emit (name prefix k kind tuple body guard measure callees readers rowsp)
   `(make-event (value (cons 'progn (fn2-arms-child-emit-events ',name ',prefix ',k ',kind ',tuple ',body ',guard
@@ -1433,20 +1516,20 @@
                                       (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control)
                                       ,@(and adm '((unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)))
                                       ,@(fn2-machine-copy-guards copies kind world))
-                          :guard-hints (("Goal" :in-theory (disable ,@*fn2-arms-registry-callees*))))
+                          :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system)
+                                                                    ,@*fn2-arms-registry-callees*
+                                                                    fn2-machines-slot fn2-machines-kind
+                                                                    ,@(fn2-arms-rows-fns tuple)
+                                                                    ,@(fn2-arms-column-readers kind (fn2-machine-property kind :table world))))))
                    (ignorable ,@formals))
           ,body)
-        ;; as an arm's shape theorems, but with unsigned-byte-p open: an
+        ;; one shape theorem, as an arm's, but with unsigned-byte-p open: an
         ;; enum copy's guard is (< v COUNT) and the setter's rule wants its width
         (in-theory (disable ,name))
-        ,@(fn2-arms-child-shape-thms name (fn2-arms-child-shape-terms tuple (if adm 1 3) (cons name formals))
-            (fn2-arms-child-shape-hyps tuple)
-            `(("Goal" :in-theory (e/d (,name) (min nfix nth ,@(fn2-arms-shape-fns tuple)
-                                               fn2-machines-slot fn2-machines-kind ,(fn2-arms-sym kind "-ROWS")
-                                               ,@(fn2-arms-column-readers kind (fn2-machine-property kind :table world))
-                                               ,@(fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*)
-                                               ,@*fn2-arms-registry-callees*))
-                      :do-not '(generalize fertilize eliminate-destructors)))
-            0)))))
+        ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple tuple
+            (append (list 'fn2-machines-slot 'fn2-machines-kind (fn2-arms-sym kind "-ROWS"))
+                    (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
+                    (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
+            *fn2-arms-registry-callees* t world)))))
 (defmacro defmachine-registry (kind)
   `(make-event (value (cons 'progn (fn2-arms-registry-events ',kind (w state))))))
