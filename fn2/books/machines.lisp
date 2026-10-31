@@ -818,6 +818,30 @@
                (if (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))) :ok :kind)))) nil nil)
       ,@(fn2-machine-row-reader-events name columns code))))
+; Row readers by layer (assembly-rows-*): a section book materializes the
+; readers of its own layer's kinds only, so its cost does not grow with the
+; kinds other layers add. :other is every kind outside :a, :b and :c.
+(defun fn2-machine-names-in-layer (names layer world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let ((l (fn2-machine-property (car names) :layer world)))
+      (if (if (eq layer :other) (not (member-eq l '(:a :b :c))) (eq l layer))
+          (cons (car names) (fn2-machine-names-in-layer (cdr names) layer world))
+        (fn2-machine-names-in-layer (cdr names) layer world)))))
+(defun fn2-machine-names-in-layers (names layers world)
+  (declare (xargs :verify-guards nil))
+  (if (atom layers) nil
+    (append (fn2-machine-names-in-layer names (car layers) world)
+            (fn2-machine-names-in-layers names (cdr layers) world))))
+(defmacro fn2-machine-row-events (&rest layers)
+  ; No LAYERS: every kind (a test instance in one book).
+  `(make-event
+    (value (cons 'progn
+                 (fn2-machine-all-snapshots
+                  ,(if layers
+                       `(fn2-machine-names-in-layers (fn2-machine-names (w state)) ',layers (w state))
+                     '(fn2-machine-names (w state)))
+                  (w state))))))
 (defun fn2-machine-all-snapshots (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil

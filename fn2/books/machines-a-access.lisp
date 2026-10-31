@@ -157,8 +157,8 @@
  (value (cons 'progn (fn2-machine-all-field-events (fn2-machine-names (w state))
                        (fn2-machine-names (w state)) (w state) nil))))
 
-(make-event
- (value (cons 'progn (fn2-machine-all-snapshots (fn2-machine-names (w state)) (w state)))))
+; The per-kind row readers (K-ROW-<field>) are materialized after this
+; section, one book per layer (assembly-rows-a .. -other): fn2-machine-row-events.
 
 (make-event (value (fn2-declare '(:operation-set fn2-machine-resources) nil nil nil)))
 

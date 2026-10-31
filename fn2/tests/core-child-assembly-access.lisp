@@ -4,3 +4,4 @@
 
 (fn2-account-events)
 (fn2-machine-access-events)
+(fn2-machine-row-events)
