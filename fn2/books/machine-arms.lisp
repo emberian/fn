@@ -124,6 +124,9 @@
       ((symbolp x)
        (let ((f (fn2-arms-row-field x env)))
          (cond ((fn2-arms-index-constant x env) (mv nil (fn2-arms-index-constant x env) acc))
+               ;; the row's slot in its kind's table (D F7): the directory's, as the take or admission gave it
+               ((eq x 'row-slot)
+                (mv nil (if (fn2-arm-get :children env) 'slot '(fn2-machine-slot id fn2-core)) acc))
                ((null f) (mv nil x acc))
                ((member-eq f (fn2-arm-get :written env))
                 (mv (msg "reads ~x0 after writing ~x1 on the same path; bind it with :let before the write." x f) x acc))
@@ -286,7 +289,7 @@
 ; ----------------------------------------------------------------------
 ; The step walker. (mv err code acc). A branch step (:if :cond :case) or a
 ; terminal ends its step list; every path ends in exactly one terminal.
-(defconst *fn2-arms-terminals* '(:charge :wait :park :stop :halt :goto :idle :yield :wake :nowake))
+(defconst *fn2-arms-terminals* '(:charge :wait :park :stop :halt :goto :idle :yield :wake :nowake :repeat-next))
 ; Writes are batched: a path's :set fields (and the row-control fields its
 ; terminal writes) are written by one checked PUT before the next operation
 ; call or the terminal, with the phase at the terminal.
@@ -354,6 +357,8 @@
   (declare (xargs :verify-guards nil))
   (let* ((kind (fn2-arm-get :kind env)) (observe (fn2-arm-get :observe env)) (args (cdr step)))
     (cond
+     ((and (fn2-arm-get :helper env) (not (eq (car step) :repeat-next)))
+      (mv (msg "~x0 ends a path inside a :repeat; its steps end in no terminal." step) nil acc))
      ((and observe (member-eq (car step) '(:charge :idle :yield :wait :park :halt :goto)))
       (mv (msg "a handler ends in :wake, :nowake or :stop, not ~x0." step) nil acc))
      ((and (not observe) (member-eq (car step) '(:wake :nowake)))
@@ -381,7 +386,40 @@
              (argp (member-eq wait '(:admission :pool)))
              (opts (if argp (cdr rest) rest)))
         (cond
-         ((null op) (mv (msg "~x0 parks on an undeclared wait kind ~x1." step wait) nil acc))
+         ;; (:park :taken K): park on taken kind K's ordinal FIFO (D F2)
+         ((eq wait :taken)
+          (let ((parker (fn2-columns-sym 'fn2-machine-park-taken- (symbol-name (car rest)))))
+            (if (not (fn2-arms-op-row parker (fn2-arm-get :world env)))
+                (mv (msg "~x0: ~x1 is not a taken kind (no ~x2)." step (car rest) parker) nil acc)
+              (mv-let (err call acc) (fn2-arms-call (list parker 'id) nil env acc fuel)
+                (mv-let (err2 form acc)
+                  (fn2-arms-charge-form 0 (fn2-arms-kw :steps (cdr rest) '*fn2-work-mailbox*) 0 nil env acc fuel)
+                  (mv-let (code acc)
+                    (fn2-arms-flush env acc
+                      (fn2-arms-rebind (fn2-arms-stobjs-of (getpropc (car call) 'stobjs-out nil (fn2-arm-get :world env)))
+                                       call form))
+                    (mv (or err err2) code acc)))))))
+         ;; an owner-declared wait kind (defwait, D F4): its park operation, or
+         ;; the wait reason alone (the owner's grant finds the row)
+         ((and (null op) (fn2-decl-row (fn2-machine-wait-id wait) (fn2-arm-get :world env)))
+          (let ((parker (fn2-decl-get :park (fn2-decl-row (fn2-machine-wait-id wait) (fn2-arm-get :world env))))
+                (reason (fn2-columns-pre "*" (fn2-columns-sym 'fn2-wait- (concatenate 'string (symbol-name wait) "*")))))
+            (if parker
+                (mv-let (err call acc) (fn2-arms-call (list parker 'id) nil env acc fuel)
+                  (mv-let (err2 form acc)
+                    (fn2-arms-charge-form 0 (fn2-arms-kw :steps rest '*fn2-work-mailbox*) 0 nil env acc fuel)
+                    (mv-let (code acc)
+                      (fn2-arms-flush env acc
+                        (fn2-arms-rebind (fn2-arms-stobjs-of (getpropc (car call) 'stobjs-out nil (fn2-arm-get :world env)))
+                                         call form))
+                      (mv (or err err2) code acc))))
+              (mv-let (err env) (fn2-arms-pend (list (cons 'wait-reason reason)) env)
+                (mv-let (err2 form acc)
+                  (fn2-arms-charge-form 0 (fn2-arms-kw :steps rest '*fn2-work-mailbox*) 0 nil env
+                                        (fn2-arms-add :writes '(wait-reason) acc) fuel)
+                  (mv-let (code acc) (fn2-arms-flush env acc form)
+                    (mv (or err err2) code acc)))))))
+         ((null op) (mv (msg "~x0 parks on an undeclared wait kind ~x1 (built in: :operation :admission :pool; or a defwait)." step wait) nil acc))
          ((and (eq wait :pool) (fn2-arm-get :children env))
           ;; child form: the class goes to the row's own cursor with the batch;
           ;; the directory takes the wait (fn2-machines-park-pool)
@@ -403,10 +441,24 @@
                   (fn2-arms-rebind (fn2-arms-stobjs-of (getpropc (car call) 'stobjs-out nil (fn2-arm-get :world env)))
                                    call form))
                 (mv (or err err2) code acc))))))))
+     ((and (eq (car step) :stop)
+           (member-eq (car args) (fn2-machine-declared kind :stops (fn2-arm-get :world env))))
+      ;; a kind's own reason: its index in the kind's :stops
+      (let ((idx (position-eq (car args) (fn2-machine-declared kind :stops (fn2-arm-get :world env)))))
+        (if (fn2-arm-get :next env) (mv (msg "~x0 follows a :next; a stop writes no phase." step) nil acc)
+          (let* ((acc (fn2-arms-add :uses '(fn2-core-kind-stop) acc))
+                 (wrap (if (fn2-arm-get :children env)
+                           `(let ((fn2-control (fn2-control-record-kind-stop kind ,idx fn2-control))) :form)
+                         `(let ((fn2-core (fn2-core-kind-stop ,(fn2-columns-pre "*" (fn2-columns-sym kind "-KIND*")) ,idx fn2-core))) :form))))
+            (if observe
+                (mv nil (fn2-arms-wrap-writes env (subst `(mv *fn2-none* ,@(fn2-arms-tuple env)) :form wrap)) acc)
+              (mv-let (err form acc)
+                (fn2-arms-charge-form 0 (fn2-arms-kw :steps (cdr args) '*fn2-work-empty*) 0 nil env acc fuel)
+                (mv err (fn2-arms-wrap-writes env (subst form :form wrap)) (fn2-decl-set :stay t acc))))))))
      ((eq (car step) :stop)
       (let ((reason (fn2-columns-pre "*" (fn2-columns-sym 'fn2-stop-reason- (concatenate 'string (symbol-name (car args)) "*")))))
         (cond ((not (and (keywordp (car args)) (fn2-cost-constant reason (fn2-arm-get :world env))))
-               (mv (msg "~x0 names no stop reason (~x1)." step reason) nil acc))
+               (mv (msg "~x0 names no stop reason (~x1): a foundation reason, or one in the kind's :stops." step reason) nil acc))
               ((fn2-arm-get :next env) (mv (msg "~x0 follows a :next; a stop writes no phase." step) nil acc))
               (t (let ((acc (fn2-arms-add :uses '(fn2-core-stop) acc)))
                    (if observe
@@ -432,6 +484,17 @@
                                (fn2-arms-add :writes (fn2-arm-get :writes d)
                                  (fn2-arms-add :uses (fn2-arm-get :uses d)
                                    (fn2-arms-add :tables (fn2-arm-get :tables d) acc)))))))))))))
+     ((eq (car step) :repeat-next)
+      (cond ((null (fn2-arm-get :helper env)) (mv (msg "~x0 is not a step." step) nil acc))
+            ((or (fn2-arm-get :next env) (fn2-arm-get :next-done env))
+             (mv (msg "a :repeat's steps declare no :next.") nil acc))
+            (t (mv nil (fn2-arms-wrap-writes env
+                         (if (fn2-arm-get :children env)
+                             `(,(fn2-arm-get :helper env) (1- n) id slot kind ordinal budget ,@(fn2-arms-tuple env))
+                           `(,(fn2-arm-get :helper env) (1- n) id budget fn2-core)))
+                   acc))))
+     ((and (eq (car step) :wake) (fn2-arm-get :woken env))
+      (mv (msg "~x0: the path already woke a row (:wake-row); a path wakes at most one row." step) nil acc))
      ((eq (car step) :wake)
       (mv-let (code acc) (fn2-arms-flush env acc `(mv id ,@(fn2-arms-tuple env))) (mv nil code acc)))
      ((eq (car step) :nowake)
@@ -449,6 +512,137 @@
   (cond ((atom cases) nil) ((eq (caar cases) :otherwise) (car cases))
         (t (fn2-arms-case-otherwise (cdr cases)))))
 
+(defconst *fn2-arms-observe-args* '(id event outcome reason count aux0 aux1))
+; Child form: the arm over (K fn2-machines fn2-pool fn2-ops fn2-control),
+; its row read by SLOT in K's table and by ID in the directory.
+(defun fn2-arms-child-name (name)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-sym name "-CHILDREN"))
+(defun fn2-arms-child-formals (observe tuple)
+  (declare (xargs :verify-guards nil))
+  (append '(id slot kind ordinal) (if observe (cdr *fn2-arms-observe-args*) '(budget)) tuple))
+(defun fn2-arms-child-bindings (kind reads columns)
+  (declare (xargs :verify-guards nil))
+  (if (atom reads) nil
+    (let ((field (car (fn2-machine-var-column (car reads) columns))))
+      (cons `(,(car reads) ,(if (fn2-machine-directory-fieldp field)
+                                `(,(fn2-columns-col-name 'fn2-machines field) id fn2-machines)
+                              `(,(fn2-columns-col-name kind field) slot ,kind)))
+            (fn2-arms-child-bindings kind (cdr reads) columns)))))
+(defun fn2-arms-child-carriers (tuple pos)
+  (declare (xargs :verify-guards nil))
+  (if (atom tuple) nil
+    (cons (list (car tuple) pos :prefix (concatenate 'string "-" (symbol-name (car tuple))))
+          (fn2-arms-child-carriers (cdr tuple) (+ 1 pos)))))
+; One proof that the arm keeps every child well formed (one walk of its
+; paths), stated per child as corollaries for the callers' rewriting.
+(defun fn2-arms-child-shape-terms (tuple pos call)
+  (declare (xargs :verify-guards nil))
+  (if (atom tuple) nil
+    (let ((r (if (eql pos 0) `(car ,call) `(mv-nth ,pos ,call))))
+      (list* `(,(fn2-columns-sym (car tuple) "P") ,r) `(,(fn2-columns-sym (car tuple) "-WFP") ,r)
+             (fn2-arms-child-shape-terms (cdr tuple) (+ 1 pos) call)))))
+(defun fn2-arms-child-shape-hyps (tuple)
+  (declare (xargs :verify-guards nil))
+  (if (atom tuple) nil
+    (list* `(,(fn2-columns-sym (car tuple) "P") ,(car tuple)) `(,(fn2-columns-sym (car tuple) "-WFP") ,(car tuple))
+           (fn2-arms-child-shape-hyps (cdr tuple)))))
+(defun fn2-arms-child-corollaries (hyps terms)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+    (cons `(:rewrite :corollary (implies (and ,@hyps) ,(car terms)))
+          (fn2-arms-child-corollaries hyps (cdr terms)))))
+(defun fn2-arms-shape-fns (tuple)
+  ; the children's recognizers and invariants, closed: the callees' rules are about them
+  (declare (xargs :verify-guards nil))
+  (if (atom tuple) nil
+    (list* (fn2-columns-sym (car tuple) "P") (fn2-columns-sym (car tuple) "-WFP")
+           (fn2-arms-shape-fns (cdr tuple)))))
+(defun fn2-arms-child-callees (uses world)
+  ; the child functions an arm calls, kept closed in its shape proof (their
+  ; own shape rules carry it)
+  (declare (xargs :verify-guards nil))
+  (if (atom uses) nil
+    (let* ((op (fn2-arm-use-name (car uses)))
+           (fn (fn2-decl-get :child (fn2-decl-row (list :cost op) world))))
+      (append (and fn (not (eq fn op)) (list fn)) (and fn (list fn))
+              (fn2-arms-child-callees (cdr uses) world)))))
+(defun fn2-arms-child-shape-thms (fn terms hyps hint n)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+    (cons `(defthm ,(fn2-columns-sym fn (concatenate 'string "-SHAPE-" (coerce (explode-nonnegative-integer n 10 nil) 'string)))
+             (implies (and ,@hyps) ,(car terms))
+             :hints ,hint)
+          (fn2-arms-child-shape-thms fn (cdr terms) hyps hint (+ 1 n)))))
+(defun fn2-arms-column-readers (name cols)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (cons (fn2-columns-col-name name (caar cols)) (fn2-arms-column-readers name (cdr cols)))))
+(defun fn2-arms-child-preserves (fn formals tuple pos callees readers)
+  ; one theorem per child's recognizer and invariant, each a walk of the arm
+  ; with its callees, the row readers, the width tests and the children's
+  ; predicates closed (the callees' rules are about them, and a row value
+  ; never matters to a shape); FN is closed outside its own proofs
+  (declare (xargs :verify-guards nil))
+  (let* ((call (cons fn formals)) (hyps (fn2-arms-child-shape-hyps tuple))
+         (terms (fn2-arms-child-shape-terms tuple pos call)))
+    (cons `(in-theory (disable ,fn))
+          (fn2-arms-child-shape-thms fn terms hyps
+            `(("Goal" :in-theory (e/d (,fn) (unsigned-byte-p min nfix nth ,@(fn2-arms-shape-fns tuple) ,@readers
+                                             ,@(remove-duplicates-eq callees)))
+                      :do-not '(generalize fertilize eliminate-destructors)))
+            0))))
+(defun fn2-arms-child-guard (kind)
+  (declare (xargs :verify-guards nil))
+  `(and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool)
+        (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control)
+        (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))
+        (natp id) (< id (fn2-machines-rows fn2-machines))))
+(defun fn2-arms-rows-facts (fn call kind)
+  (declare (xargs :verify-guards nil))
+  (let ((krows (fn2-arms-sym kind "-ROWS")) (kraw (fn2-columns-pre "*" (fn2-arms-sym kind "-ROWS*"))))
+    `((defthm ,(fn2-columns-sym fn "-TABLE-ROWS")
+        (equal (,krows (car ,call)) (,krows ,kind))
+        :hints (("Goal" :in-theory (enable ,fn))))
+      (defthm ,(fn2-columns-sym fn "-TABLE-RAW-ROWS")
+        (equal (nth ,kraw (car ,call)) (nth ,kraw ,kind))
+        :hints (("Goal" :in-theory (enable ,fn))))
+      (defthm ,(fn2-columns-sym fn "-MACHINES-ROWS")
+        (equal (fn2-machines-rows (mv-nth 1 ,call)) (fn2-machines-rows fn2-machines))
+        :hints (("Goal" :in-theory (enable ,fn))))
+      (defthm ,(fn2-columns-sym fn "-MACHINES-RAW-ROWS")
+        (equal (nth *fn2-machines-rows* (mv-nth 1 ,call)) (nth *fn2-machines-rows* fn2-machines))
+        :hints (("Goal" :in-theory (enable ,fn)))))))
+;; A :repeat's pass function (child form over the arm's children, or core form).
+(defun fn2-arms-repeat-events (helper kind ucode bcode bacc env)
+  (declare (xargs :verify-guards nil))
+  (let* ((world (fn2-arm-get :world env)) (reads (fn2-arm-get :reads bacc))
+         (cols (fn2-machine-property kind :columns world)))
+    (if (fn2-arm-get :children env)
+        (let* ((tuple (fn2-arms-tuple env)) (formals (append '(n id slot kind ordinal budget) tuple))
+               (bindings (fn2-arms-child-bindings kind reads cols))
+               (inner `(if ,ucode (mv ,@tuple) ,bcode)))
+          `((defun ,helper ,formals
+              (declare (xargs :stobjs ,tuple :measure (nfix n)
+                              :guard (and (natp n) ,@(cdr (fn2-arms-child-guard kind))))
+                       (ignorable ,@formals))
+              (if (zp n) (mv ,@tuple)
+                ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
+            ,@(fn2-arms-child-preserves helper formals tuple 0
+                (fn2-arms-child-callees (fn2-arm-get :uses bacc) world)
+                (append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
+                        (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*)))
+            ;; the loop keeps the row's table and the directory their sizes (the
+            ;; arm's later writes are checked against them)
+            ,@(fn2-arms-rows-facts helper (cons helper formals) kind)))
+      (let* ((bindings (fn2-machine-read-bindings kind reads cols))
+             (inner `(if ,ucode fn2-core ,bcode)))
+        `((defun ,helper (n id budget fn2-core)
+            (declare (xargs :stobjs fn2-core :measure (nfix n) :guard (and (natp n) (fn2-core-wfp fn2-core)))
+                     (ignorable id budget))
+            (if (or (zp n) (not (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok))) fn2-core
+              ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
+          (fn2-core-preserves ,helper (n id budget fn2-core) :rows nil))))))
 (mutual-recursion
  (defun fn2-arms-steps (steps env acc fuel)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -528,6 +722,45 @@
                                    (t `(mv-let ,(fn2-arms-binders outs vars) ,call2
                                          ,@(and vars `((declare (ignorable ,@vars)))) ,body))))
                             acc))))))))))
+         ;; (:repeat N (STEP ...) :until E) (D F6): at most N passes of the
+         ;; steps, each reading the row afresh and stopping once E holds at a
+         ;; pass's start; the steps end in no terminal, route every answer by
+         ;; :accept, and see only the row, id and budget (the pass is its own
+         ;; function, K-REPEAT-SITE-I). After the loop no row field is read.
+         (:repeat
+          (let* ((world (fn2-arm-get :world env)) (n (cadr step)) (body (caddr step))
+                 (until (fn2-arms-kw :until (cdddr step) nil))
+                 (helper (fn2-arms-sym (fn2-arm-get :kind env)
+                           (concatenate 'string "-REPEAT-" (fn2-arm-get :site env) "-"
+                                        (coerce (explode-nonnegative-integer (len (fn2-arm-get :aux acc)) 10 nil) 'string))))
+                 (benv (fn2-decl-set :helper helper (fn2-decl-set :refusal nil
+                         (fn2-decl-set :pending nil (fn2-decl-set :next nil (fn2-decl-set :next-done nil
+                           (fn2-decl-set :written nil (fn2-decl-set :bound nil (fn2-decl-set :lets nil env))))))))))
+            (cond
+             ((fn2-arm-get :observe env) (mv (msg "~x0: a handler does not loop." step) nil acc))
+             ((fn2-arm-get :helper env) (mv (msg "~x0: a :repeat does not nest." step) nil acc))
+             ((not (and (fn2-arms-bound n nil world 64) (true-listp body) (consp body) until)) 
+              (mv (msg "~x0 is (:repeat N (STEP ...) :until E), N statically bounded." step) nil acc))
+             (t
+              (mv-let (err0 ucode bacc) (fn2-arms-expr until benv nil fuel)
+                (mv-let (err1 bcode bacc) (fn2-arms-steps (append body '((:repeat-next))) benv bacc (1- fuel))
+                  (if (or err0 err1) (mv (or err0 err1) nil acc)
+                    (let* ((events (fn2-arms-repeat-events helper (fn2-arm-get :kind env) ucode bcode bacc env))
+                           (acc (fn2-decl-set :aux (append (fn2-arm-get :aux acc) (fn2-arm-get :aux bacc) events)
+                                  (fn2-arms-add :uses (fn2-arm-get :uses bacc)
+                                    (fn2-arms-add :tables (fn2-arm-get :tables bacc)
+                                      (fn2-arms-add :writes (fn2-arm-get :writes bacc)
+                                        (fn2-decl-set :issues (or (fn2-arm-get :issues acc) (fn2-arm-get :issues bacc)) acc))))))
+                           (call (if (fn2-arm-get :children env)
+                                     `(,helper ,n id slot kind ordinal budget ,@(fn2-arms-tuple env))
+                                   `(,helper ,n id budget fn2-core))))
+                      (mv-let (err2 rest-code acc)
+                        (fn2-arms-steps rest (fn2-decl-set :pending nil
+                                               (fn2-decl-set :written (strip-cars (fn2-arm-get :columns env)) env))
+                                        acc (1- fuel))
+                        (mv err2
+                            (fn2-arms-wrap-writes env (fn2-arms-rebind (fn2-arms-tuple env) call rest-code))
+                            acc))))))))))
          (:issue
           (let* ((call (cadr step)) (opts (cddr step))
                  (code-var 'fn2-issue-code)
@@ -555,6 +788,19 @@
                                       ((eq ,code-var :exhausted) ,exc)
                                       (t ,otc))))
                             (fn2-decl-set :issues t acc)))))))))))
+         ;; (:wake-row E): wake the row E (D F5). The wake slot is single: a
+         ;; path wakes at most once, counting a handler's own :wake.
+         (:wake-row
+          (cond ((not (equal (len step) 2)) (mv (msg "~x0 is (:wake-row E)." step) nil acc))
+                ((fn2-arm-get :woken env) (mv (msg "~x0: a path wakes at most one row." step) nil acc))
+                (t (mv-let (err e acc) (fn2-arms-expr (cadr step) env acc fuel)
+                     (mv-let (err2 body acc)
+                       (fn2-arms-steps rest (fn2-decl-set :woken t env) acc (1- fuel))
+                       (mv (or err err2)
+                           (if (fn2-arm-get :children env)
+                               `(mv-let (fn2-machines fn2-control) (fn2-machines-wake-row ,e fn2-machines fn2-control) ,body)
+                             `(let ((fn2-core (fn2-machine-wake-row ,e fn2-core))) ,body))
+                           (fn2-arms-add :uses '(fn2-machine-wake-row) acc)))))))
          (:if
           (if (or rest (not (equal (len step) 4)))
               (mv (msg "~x0 is (:if E (STEP ...) (STEP ...)) and ends its path." step) nil acc)
@@ -679,7 +925,6 @@
                                     (fn2-machine-directory-child (fn2-arm-get :writes acc)))
                   :next next :uses (fn2-arm-get :uses acc))
             (and observe from (list :from from)))))
-(defconst *fn2-arms-observe-args* '(id event outcome reason count aux0 aux1))
 (defun fn2-arms-fn-events (name kind observe acc body contract world)
   (declare (xargs :verify-guards nil))
   (let* ((args (if observe *fn2-arms-observe-args* '(id budget)))
@@ -703,91 +948,6 @@
                   :refusal nil :contract contract
                   :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))
 
-; Child form: the arm over (K fn2-machines fn2-pool fn2-ops fn2-control),
-; its row read by SLOT in K's table and by ID in the directory.
-(defun fn2-arms-child-name (name)
-  (declare (xargs :verify-guards nil))
-  (fn2-columns-sym name "-CHILDREN"))
-(defun fn2-arms-child-formals (observe tuple)
-  (declare (xargs :verify-guards nil))
-  (append '(id slot kind ordinal) (if observe (cdr *fn2-arms-observe-args*) '(budget)) tuple))
-(defun fn2-arms-child-bindings (kind reads columns)
-  (declare (xargs :verify-guards nil))
-  (if (atom reads) nil
-    (let ((field (car (fn2-machine-var-column (car reads) columns))))
-      (cons `(,(car reads) ,(if (fn2-machine-directory-fieldp field)
-                                `(,(fn2-columns-col-name 'fn2-machines field) id fn2-machines)
-                              `(,(fn2-columns-col-name kind field) slot ,kind)))
-            (fn2-arms-child-bindings kind (cdr reads) columns)))))
-(defun fn2-arms-child-carriers (tuple pos)
-  (declare (xargs :verify-guards nil))
-  (if (atom tuple) nil
-    (cons (list (car tuple) pos :prefix (concatenate 'string "-" (symbol-name (car tuple))))
-          (fn2-arms-child-carriers (cdr tuple) (+ 1 pos)))))
-; One proof that the arm keeps every child well formed (one walk of its
-; paths), stated per child as corollaries for the callers' rewriting.
-(defun fn2-arms-child-shape-terms (tuple pos call)
-  (declare (xargs :verify-guards nil))
-  (if (atom tuple) nil
-    (let ((r `(mv-nth ,pos ,call)))
-      (list* `(,(fn2-columns-sym (car tuple) "P") ,r) `(,(fn2-columns-sym (car tuple) "-WFP") ,r)
-             (fn2-arms-child-shape-terms (cdr tuple) (+ 1 pos) call)))))
-(defun fn2-arms-child-shape-hyps (tuple)
-  (declare (xargs :verify-guards nil))
-  (if (atom tuple) nil
-    (list* `(,(fn2-columns-sym (car tuple) "P") ,(car tuple)) `(,(fn2-columns-sym (car tuple) "-WFP") ,(car tuple))
-           (fn2-arms-child-shape-hyps (cdr tuple)))))
-(defun fn2-arms-child-corollaries (hyps terms)
-  (declare (xargs :verify-guards nil))
-  (if (atom terms) nil
-    (cons `(:rewrite :corollary (implies (and ,@hyps) ,(car terms)))
-          (fn2-arms-child-corollaries hyps (cdr terms)))))
-(defun fn2-arms-shape-fns (tuple)
-  ; the children's recognizers and invariants, closed: the callees' rules are about them
-  (declare (xargs :verify-guards nil))
-  (if (atom tuple) nil
-    (list* (fn2-columns-sym (car tuple) "P") (fn2-columns-sym (car tuple) "-WFP")
-           (fn2-arms-shape-fns (cdr tuple)))))
-(defun fn2-arms-child-callees (uses world)
-  ; the child functions an arm calls, kept closed in its shape proof (their
-  ; own shape rules carry it)
-  (declare (xargs :verify-guards nil))
-  (if (atom uses) nil
-    (let* ((op (fn2-arm-use-name (car uses)))
-           (fn (fn2-decl-get :child (fn2-decl-row (list :cost op) world))))
-      (append (and fn (not (eq fn op)) (list fn)) (and fn (list fn))
-              (fn2-arms-child-callees (cdr uses) world)))))
-(defun fn2-arms-child-shape-thms (fn terms hyps hint n)
-  (declare (xargs :verify-guards nil))
-  (if (atom terms) nil
-    (cons `(defthm ,(fn2-columns-sym fn (concatenate 'string "-SHAPE-" (coerce (explode-nonnegative-integer n 10 nil) 'string)))
-             (implies (and ,@hyps) ,(car terms))
-             :hints ,hint)
-          (fn2-arms-child-shape-thms fn (cdr terms) hyps hint (+ 1 n)))))
-(defun fn2-arms-column-readers (name cols)
-  (declare (xargs :verify-guards nil))
-  (if (atom cols) nil
-    (cons (fn2-columns-col-name name (caar cols)) (fn2-arms-column-readers name (cdr cols)))))
-(defun fn2-arms-child-preserves (fn formals tuple pos callees readers)
-  ; one theorem per child's recognizer and invariant, each a walk of the arm
-  ; with its callees, the row readers, the width tests and the children's
-  ; predicates closed (the callees' rules are about them, and a row value
-  ; never matters to a shape); FN is closed outside its own proofs
-  (declare (xargs :verify-guards nil))
-  (let* ((call (cons fn formals)) (hyps (fn2-arms-child-shape-hyps tuple))
-         (terms (fn2-arms-child-shape-terms tuple pos call)))
-    (cons `(in-theory (disable ,fn))
-          (fn2-arms-child-shape-thms fn terms hyps
-            `(("Goal" :in-theory (e/d (,fn) (unsigned-byte-p min nfix nth ,@(fn2-arms-shape-fns tuple) ,@readers
-                                             ,@(remove-duplicates-eq callees)))
-                      :do-not '(generalize fertilize eliminate-destructors)))
-            0))))
-(defun fn2-arms-child-guard (kind)
-  (declare (xargs :verify-guards nil))
-  `(and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool)
-        (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control)
-        (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))
-        (natp id) (< id (fn2-machines-rows fn2-machines))))
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
   (let* ((tuple (cons kind *fn2-arms-children*))
@@ -863,17 +1023,21 @@
   (declare (xargs :verify-guards nil))
   (if (atom entries) (mv nil subs events)
     (let ((name (caar entries)))
+      (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
+      (declare (ignore from))
       (mv-let (err code acc)
-        (fn2-arms-steps (cdar entries) (fn2-arms-env kind nil nil nil subs (not (eq mode :core)) world) nil 100000)
+        (fn2-arms-steps steps (fn2-decl-set :site (concatenate 'string "SUB-" (symbol-name name))
+                                (fn2-arms-env kind nil nil refusal subs (not (eq mode :core)) world)) nil 100000)
         (if err (mv (msg "~x0 sub-arm ~x1: ~@2" kind name err) nil nil)
           (fn2-arms-subs kind (cdr entries) (append subs (list (cons name acc)))
             (append events
+                    (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
                     (case mode
                       (:core (fn2-arms-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code
                                                  (fn2-arms-contract kind nil nil nil acc world) world))
                       (:children (fn2-arms-child-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code world))
                       (otherwise nil)))
-            mode world))))))
+            mode world)))))))
 (defun fn2-arms-arms (kind entries observe subs entries-out events mode world)
   ; (mv err contract-entries events)
   (declare (xargs :verify-guards nil))
@@ -881,14 +1045,36 @@
     (let ((tag (caar entries)))
       (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
         (mv-let (err code acc)
-          (fn2-arms-steps steps (fn2-arms-env kind tag observe refusal subs (not (eq mode :core)) world) nil 100000)
+          (fn2-arms-steps steps (fn2-decl-set :site (symbol-name tag)
+                                  (fn2-arms-env kind tag observe refusal subs (not (eq mode :core)) world)) nil 100000)
           (if err (mv (msg "~x0 ~s1 ~x2: ~@3" kind (if observe "handler" "arm") tag err) nil nil)
             (let* ((name (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") tag))
                    (contract (fn2-arms-contract kind tag observe from acc world)))
               (fn2-arms-arms kind (cdr entries) observe subs
                              (append entries-out (list (list* tag name contract)))
-                             (append events (fn2-arms-mode-events mode name kind observe acc code contract world))
+                             (append events (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
+                                     (fn2-arms-mode-events mode name kind observe acc code contract world))
                              mode world))))))))
+; Reachability (D F12): the phases no arm or handler's :next names, other
+; than the entry phases (the first, :free, the admission's and the take's,
+; and an :initial phase), reported when the contracts are registered.
+(defun fn2-arms-nexts (entries)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil (union-eq (fn2-arm-get :next (cddar entries)) (fn2-arms-nexts (cdr entries)))))
+(defun fn2-arms-initial-phase (kind states initial)
+  (declare (xargs :verify-guards nil))
+  (let ((v (cadr (assoc-eq 'phase initial))))
+    (if (atom states) nil
+      (if (eq v (fn2-arms-phase-constant kind (car states))) (list (car states))
+        (fn2-arms-initial-phase kind (cdr states) initial)))))
+(defun fn2-arms-unreached (kind conts obs world)
+  (declare (xargs :verify-guards nil))
+  (let* ((states (fn2-machine-property kind :states world))
+         (entry (append (and (consp states) (list (car states))) '(:free)
+                        (list (fn2-arm-get :phase (fn2-machine-property kind :admission world))
+                              (fn2-arm-get :phase (fn2-machine-property kind :taken world)))
+                        (fn2-arms-initial-phase kind states (fn2-machine-property kind :initial world)))))
+    (set-difference-eq states (union-eq entry (union-eq (fn2-arms-nexts conts) (fn2-arms-nexts obs))))))
 (defun fn2-arms-events (kind mode world)
   ; (mv err form)
   (declare (xargs :verify-guards nil))
@@ -902,7 +1088,11 @@
             (fn2-arms-arms kind (fn2-machine-declared kind :observe-arms world) t subs nil nil mode world)
             (if err (mv err nil)
               (mv nil `(progn ,@(and (not (eq mode :children))
-                                     `((table fn2-machine-arm-contracts ',kind '(:continuations ,conts :observes ,obs))))
+                                     (let ((unreached (fn2-arms-unreached kind conts obs world)))
+                                       `((table fn2-machine-arm-contracts ',kind
+                                                '(:continuations ,conts :observes ,obs :unreached ,unreached))
+                                         ,@(and unreached
+                                                `((value-triple (cw "~x0: no arm reaches the phases ~x1.~%" ',kind ',unreached)))))))
                               ,@sub-events ,@run-events ,@obs-events)))))))))
 ; The kind's arms, generated in its callbacks section (before defmachine-run).
 ; (defmachine-arms K): arms over the core; (defmachine-arms K :children) in

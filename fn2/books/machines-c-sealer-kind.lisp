@@ -28,6 +28,10 @@
 (defcost fn2-sealer-refuse :tables (fn2-core-control)
  :doc "Stop the core by name: a seal step refused for want of a pool slot (:sealer-full), a cache row (:sealer-cache), or as an invariant (:sealer).")
 
+;; The :sealable wait kind is C's: the sealer parks on it and C's pair
+;; (machines-c-sealer-events) wakes it (MACHINE-FORM 6.10, defwait).
+(defwait :sealable :ready fn2-sealable-ready-p :grant fn2-sealable-grant-one
+  :doc "The parked sealer, woken once a published overlay is sealable.")
 (defmachine fn2-sealer
  :states (:sealing :stopped)
  ;; stopped: 1 once the row is :stopped. The budget's descriptor cap is the

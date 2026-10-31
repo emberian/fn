@@ -188,6 +188,10 @@
    (:fence :log-write :durable :uncertain) (:durable :install :uncertain)
    (:install :publish :uncertain) (:publish :notify :uncertain)
    (:notify :draining :uncertain) (:draining :free :uncertain) (:uncertain) (:dropping :draining :uncertain)))
+;; The :batch-membership wait kind is B's (B-S2, b-durability 11b): a
+;; transaction parked for room in a commit batch; B attaches the pair in -b2.
+(defwait :batch-membership :ready fn2-batchable-ready-p :grant fn2-batchable-grant-one
+  :doc "A transaction parked until a commit batch has room for it.")
 (defmachine fn2-commit
  :states (:free :collect :seal :dependencies :log-write :fence :durable
           :install :publish :notify :draining :uncertain :dropping)

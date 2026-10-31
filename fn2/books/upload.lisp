@@ -560,11 +560,11 @@
   (if (not (fn2-upload-conn-live-p row-conn row-conn-gen id row-generation fn2-core))
       (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-aborting*))))
         (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
-    (mv-let (code tid fn2-core)
+    (mv-let (code tid tgen fn2-core)
       (fn2-machine-take-fn2-txn id id row-generation row-conn row-conn-gen row-request row-rule row-principal-slot fn2-core)
       (if (eq code :ok)
           (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-receiving*) (txn tid)
-                                               (txn-gen (fn2-txn-gen-of tid fn2-core)))))
+                                               (txn-gen tgen))))
             (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
         (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)))))
 

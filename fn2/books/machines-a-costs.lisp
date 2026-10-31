@@ -10,7 +10,7 @@
 (defcost fn2-machine-gen-limit :child fn2-machines-gen-limit :doc "The profile's generation limit.")
 (defcost fn2-machine-pool-capacity-read-code :child fn2-pool-slot-read-code :doc "Whether a pool slot's capacity is readable.")
 (defcost fn2-machine-pool-capacity :child fn2-pool-slot-capacity :doc "A pool slot's capacity in bytes.")
-(defcost fn2-machine-pool-borrows-read-code :child fn2-pool-slot-read-code :doc "Whether a pool slot's borrow count is readable.")
+(defcost fn2-machine-pool-borrows-read-code :answers (:ok :bounds) :child fn2-pool-slot-read-code :doc "Whether a pool slot's borrow count is readable.")
 (defcost fn2-machine-pool-borrows :child fn2-pool-slot-borrows :doc "A pool slot's outstanding borrows.")
 (defcost fn2-scribe-window-class :child fn2-scribe-window-class-of :doc "The pool class of a 4 KiB window.")
 
@@ -48,11 +48,14 @@
 (defcost fn2-machine-refuse-phase :steps *fn2-work-empty* :tables (fn2-core-control)
   :doc "Stop on an inconsistent row.")
 (defcost fn2-machine-refuse-observation :tables (fn2-core-control) :doc "Stop on an undeliverable observation.")
+(defcost fn2-core-kind-stop :child fn2-control-record-kind-stop :tables (fn2-core-control) :doc "Record the first stop with a kind's own reason.")
 (defcost fn2-core-stop :child fn2-control-record-stop :tables (fn2-core-control) :doc "Record the first stop reason.")
 
 ; The admission bundle's moves (D0's effect rows, declared here as their source).
 (defcost fn2-machine-reclaim :child fn2-machines-reclaim :tables (fn2-core-machines)
   :effects ((:release (:connection-row))) :doc "Return a drained row to its partition's free chain.")
+(defcost fn2-machine-wake-row :child fn2-machines-wake-row :tables (fn2-core-machines)
+  :doc "Wake another row through the directory's single wake slot.")
 (defcost fn2-listener-take-credit :tables (fn2-core-machines) :effects ((:acquire (:connection-row)))
   :doc "Reserve one connection row at Accept issue.")
 (defcost fn2-listener-return-credit :tables (fn2-core-machines) :effects ((:release (:connection-row)))
@@ -78,4 +81,8 @@
 (defcost fn2-core-compare :child fn2-pool-compare :doc "Compare two ranges, each under its own owner.")
 (defcost fn2-core-fold :child fn2-pool-fold :doc "FNV-1a over a range.")
 (defcost fn2-core-scan :child fn2-pool-scan :doc "First byte or CR LF in a range.")
-(defcost fn2-core-drop-prefix :child fn2-pool-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")
+(defcost fn2-core-hand :answers t :child fn2-pool-hand :tables (fn2-core-pool)
+  :doc "Hand a held workspace range to a target row (the target's acceptance makes it the owner).")
+(defcost fn2-core-accept-hand :answers t :child fn2-pool-accept-own :tables (fn2-core-pool)
+  :doc "Accept a range handed to this row.")
+(defcost fn2-core-drop-prefix :answers t :child fn2-pool-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")

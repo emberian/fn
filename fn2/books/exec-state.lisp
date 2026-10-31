@@ -12,7 +12,9 @@
       :machine-observation :machine-phase :pool-release :signal
       :clock-exhausted :work-overflow :issue-wake :machine-contract :account :engine-genesis
       :recovery-bounds :recovery-release :sealer :commit-publish :commit-drop :commit-settle :commit-follower :sealer-full :sealer-cache
-      :commit-resource :commit-pool :commit-root :commit-format :commit-io :commit-edge :alloc-links))))))))
+      :commit-resource :commit-pool :commit-root :commit-format :commit-io :commit-edge :alloc-links
+      ;; a kind's own reason (MACHINE-FORM 6.10): the kind and the reason's index in its :stops
+      :kind))))))))
 (defcolumns fn2-control nil
   :init-name fn2-control-columns-init
   :extra-fields
@@ -21,6 +23,8 @@
    (fn2-control-aturn :type (unsigned-byte 32) :initially 0 :why "One turn descriptor cap shared by all machines.")
    (fn2-control-stop :type (unsigned-byte 1) :initially 0 :why "One terminal posture for the composed core.")
    (fn2-control-stop-reason :type (unsigned-byte 8) :initially 0 :why "First failure reason belongs to the core, not a machine row.")
+   (fn2-control-stop-kind :type (unsigned-byte 8) :initially 0 :why "The machine kind whose own reason (stop reason :kind) stopped the core.")
+   (fn2-control-stop-detail :type (unsigned-byte 8) :initially 0 :why "That reason's index in the kind's :stops.")
    (fn2-control-idle-deadline :type (unsigned-byte 60) :initially *fn2-no-deadline* :why "Earliest wake request across the core.")
    (fn2-control-wake-generation :type (unsigned-byte 60) :initially 0 :why "Global host wake incarnation prevents stale delivery.")
    (fn2-control-armed-deadline :type (unsigned-byte 60) :initially *fn2-no-deadline* :why "The single outstanding host wake deadline.")
@@ -37,6 +41,8 @@
          (fn2-control (update-fn2-control-k (fn2-profile-k profile) fn2-control))
          (fn2-control (update-fn2-control-aturn (fn2-profile-aturn profile) fn2-control))
          (fn2-control (update-fn2-control-stop 0 fn2-control))
+         (fn2-control (update-fn2-control-stop-kind 0 fn2-control))
+         (fn2-control (update-fn2-control-stop-detail 0 fn2-control))
          (fn2-control (update-fn2-control-idle-deadline *fn2-no-deadline* fn2-control))
          (fn2-control (update-fn2-control-wake-generation 0 fn2-control))
          (fn2-control (update-fn2-control-armed-deadline *fn2-no-deadline* fn2-control))

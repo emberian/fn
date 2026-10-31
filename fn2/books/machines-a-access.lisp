@@ -5,36 +5,11 @@
 
 (defmacro fn2-machine-access-events ()
  '(progn
-; The grant service's fifth source (C1c): a sealer parked on the :sealable
-; wait kind is woken when a published overlay is sealable. Layer C attaches
-; the readiness and the grant (assembly-callbacks-c); an assembly without the
-; sealer keeps these defaults, which grant nothing.
-(encapsulate
- (((fn2-sealable-ready-p fn2-core) => * :formals (fn2-core) :guard (fn2-core-wfp fn2-core))
-  ((fn2-sealable-grant-one fn2-core) => (mv * fn2-core) :formals (fn2-core) :guard (fn2-core-wfp fn2-core)))
- (local (defun fn2-sealable-ready-p (fn2-core)
-          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core)) nil))
- (local (defun fn2-sealable-grant-one (fn2-core)
-          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))) (mv *fn2-none* fn2-core)))
- (defthm fn2-sealable-grant-one-type
-   (and (consp (fn2-sealable-grant-one fn2-core)) (true-listp (fn2-sealable-grant-one fn2-core)))
-   :rule-classes :type-prescription)
- ;; Liveness: a ready source grants a row, so the grant service never sees a
- ;; ready source forever (an attachment must prove this of its pair).
- (defthm fn2-sealable-grant-one-live
-   (implies (fn2-sealable-ready-p fn2-core)
-            (not (equal (mv-nth 0 (fn2-sealable-grant-one fn2-core)) *fn2-none*))))
- (defthm fn2-sealable-grant-one-shape
-   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-            (and (fn2-corep (mv-nth 1 (fn2-sealable-grant-one fn2-core)))
-                 (fn2-core-wfp (mv-nth 1 (fn2-sealable-grant-one fn2-core)))))))
-(defun fn2-sealable-ready-none (fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core))
-  nil)
-(defun fn2-sealable-grant-none (fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv *fn2-none* fn2-core))
-(defattach (fn2-sealable-ready-p fn2-sealable-ready-none) (fn2-sealable-grant-one fn2-sealable-grant-none))
+; The grant service's owner-declared sources (defwait, machines.lisp): per
+; registered wait kind, its ready/grant pair constrained with the liveness
+; and shape facts and attached to defaults that grant nothing; the owner
+; attaches its own pair in its callbacks section.
+(make-event (value (cons 'progn (fn2-machine-wait-source-events (fn2-machine-waits (w state)) (w state)))))
 (make-event
  (value `(defthm fn2-machine-core-child-shapes
            (implies (fn2-core-wfp fn2-core)
@@ -51,36 +26,6 @@
 
 (make-event (value `(in-theory (disable ,@(fn2-machine-row-readers (fn2-machine-names (w state)))))))
 
-; The grant service's sixth source (B-S2, b-durability 11b): a transaction
-; parked on the :batch-membership wait kind is woken when a commit batch has
-; room for it. Layer B attaches the readiness and the grant
-; (assembly-callbacks-b2); without the attachment these defaults grant nothing.
-(encapsulate
- (((fn2-batchable-ready-p fn2-core) => * :formals (fn2-core) :guard (fn2-core-wfp fn2-core))
-  ((fn2-batchable-grant-one fn2-core) => (mv * fn2-core) :formals (fn2-core) :guard (fn2-core-wfp fn2-core)))
- (local (defun fn2-batchable-ready-p (fn2-core)
-          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core)) nil))
- (local (defun fn2-batchable-grant-one (fn2-core)
-          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))) (mv *fn2-none* fn2-core)))
- (defthm fn2-batchable-grant-one-type
-   (and (consp (fn2-batchable-grant-one fn2-core)) (true-listp (fn2-batchable-grant-one fn2-core)))
-   :rule-classes :type-prescription)
- ;; Liveness: a ready source grants a row, so the grant service never sees a
- ;; ready source forever (an attachment must prove this of its pair).
- (defthm fn2-batchable-grant-one-live
-   (implies (fn2-batchable-ready-p fn2-core)
-            (not (equal (mv-nth 0 (fn2-batchable-grant-one fn2-core)) *fn2-none*))))
- (defthm fn2-batchable-grant-one-shape
-   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-            (and (fn2-corep (mv-nth 1 (fn2-batchable-grant-one fn2-core)))
-                 (fn2-core-wfp (mv-nth 1 (fn2-batchable-grant-one fn2-core)))))))
-(defun fn2-batchable-ready-none (fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core))
-  nil)
-(defun fn2-batchable-grant-none (fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv *fn2-none* fn2-core))
-(defattach (fn2-batchable-ready-p fn2-batchable-ready-none) (fn2-batchable-grant-one fn2-batchable-grant-none))
 (defun fn2-machine-idp (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
@@ -225,6 +170,13 @@
               (fn2-control (fn2-core-control fn2-core)))
     (fn2-machines fn2-control) (fn2-machines-reclaim id ord retire fn2-machines fn2-control) fn2-core))
 (fn2-core-preserves fn2-machine-reclaim (id ord retire fn2-core) :rows nil :prefix "")
+; Wake another row (fn2-machines-wake-row).
+(defun fn2-machine-wake-row (id fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (fn2-machines fn2-control) (fn2-machines-wake-row id fn2-machines fn2-control) fn2-core))
+(fn2-core-preserves fn2-machine-wake-row (id fn2-core) :rows nil :prefix "")
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) *fn2-none*)))
@@ -301,14 +253,16 @@
                 (< 0 (fn2-pool-class-countsi class fn2-pool)))
            yes)))))
 
+(make-event
+ (value
+  `(progn
 (defun fn2-machine-grant-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (or (and (fn2-machine-waiting-p fn2-core) (fn2-machine-op-credit-p fn2-core))
       (fn2-machine-pool-credit-p fn2-core)
       (fn2-machine-admission-ready-p fn2-core)
       (fn2-account-grant-ready-p fn2-core)
-      (fn2-sealable-ready-p fn2-core)
-      (fn2-batchable-ready-p fn2-core)))
+      ,@(fn2-machine-wait-ready-calls (fn2-machine-waits (w state)) (w state))))
 
 (defun fn2-machine-grant-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -324,13 +278,10 @@
         ; The ledger's source (D7's S5): one blocked principal head whose
         ; reservation now fits, acquired, dequeued and its wait cleared by D.
         ((fn2-account-grant-ready-p fn2-core) (fn2-account-grant-one fn2-core))
-        ; The sealer's source (C1c): the parked sealer, once an overlay is
-        ; sealable, its wait cleared by C's attachment.
-        ((fn2-sealable-ready-p fn2-core) (fn2-sealable-grant-one fn2-core))
-        ; The commit batch's source (B-S2): the parked transaction, its wait
-        ; cleared by B's attachment.
-        ((fn2-batchable-ready-p fn2-core) (fn2-batchable-grant-one fn2-core))
-        (t (mv *fn2-none* fn2-core))))
+        ; The owners' sources (defwait), in registration order: C's sealer,
+        ; B's commit batch, D's claims; each clears its row's wait.
+        ,@(fn2-machine-wait-grant-clauses (fn2-machine-waits (w state)) (w state))
+        (t (mv *fn2-none* fn2-core)))))))
 (fn2-core-preserves fn2-machine-grant-one (fn2-core) :position 1 :rows nil)
 
 (make-event

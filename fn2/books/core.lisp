@@ -157,6 +157,20 @@
                 (unsigned-byte-p 8 reason))
            (fn2-core-wfp (fn2-core-stop reason fn2-core))))
 (in-theory (disable fn2-core-stop))
+; A kind's own reason (fn2-control-record-kind-stop).
+(defun fn2-core-kind-stop (kind detail fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-control (fn2-core-control fn2-core)))
+    (fn2-control) (fn2-control-record-kind-stop kind detail fn2-control) fn2-core))
+(fn2-core-preserves fn2-core-kind-stop (kind detail fn2-core) :rows nil :prefix "")
+(defun fn2-core-stop-kind (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-control (fn2-core-control fn2-core)))
+    (v) (fn2-control-stop-kind fn2-control) v))
+(defun fn2-core-stop-detail (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-control (fn2-core-control fn2-core)))
+    (v) (fn2-control-stop-detail fn2-control) v))
 (defun fn2-core-stop-reason (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-control (fn2-core-control fn2-core)))
@@ -194,6 +208,11 @@
 ; The range primitives through the parent (R6a1): one check, one loop.
 (fn2-core-pool-wrapper fn2-core-copy-range fn2-pool-copy-range
   (src sgen soff dst dgen doff len okind oslot ogen) (code) 1)
+; A range handed to another row, and its acceptance by that row (D F9).
+(fn2-core-pool-wrapper fn2-core-hand fn2-pool-hand
+  (slot gen okind oslot ogen tkind tslot tgen) (code) 1)
+(fn2-core-pool-wrapper fn2-core-accept-hand fn2-pool-accept-own
+  (slot gen okind oslot ogen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-drop-prefix fn2-pool-drop-prefix
   (slot gen k cursor limit okind oslot ogen) (code cursor) 2)
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer

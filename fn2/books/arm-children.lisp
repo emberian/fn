@@ -23,6 +23,20 @@
 (fn2-control-preserves fn2-control-record-stop (reason fn2-control) :rows nil
   :hyps ((fn2-controlp fn2-control) (fn2-control-wfp fn2-control) (unsigned-byte-p 8 reason)))
 
+; A kind's own stop reason (defmachine :stops): the generic reason :kind,
+; with the kind and the reason's index; an out-of-width pair is a :kind stop
+; with neither recorded.
+(defun fn2-control-record-kind-stop (kind detail fn2-control)
+  (declare (xargs :stobjs fn2-control :guard (fn2-control-wfp fn2-control)))
+  (if (= (fn2-control-stop fn2-control) 1) fn2-control
+    (let ((fn2-control (fn2-control-record-stop *fn2-stop-reason-kind* fn2-control)))
+      (if (and (unsigned-byte-p 8 kind) (unsigned-byte-p 8 detail))
+          (let* ((fn2-control (update-fn2-control-stop-kind kind fn2-control))
+                 (fn2-control (update-fn2-control-stop-detail detail fn2-control)))
+            fn2-control)
+        fn2-control))))
+(fn2-control-preserves fn2-control-record-kind-stop (kind detail fn2-control) :rows nil)
+
 ; ----------------------------------------------------------------------
 ; Issue: validate the scalar widths before any mutation, reserve a
 ; descriptor, lease the range, fill and enqueue it. The only
@@ -151,6 +165,14 @@
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))) (fn2-pool-out-count slot fn2-pool) 0))
 
+; A range handed between rows (D F9): the holder hands its workspace to a
+; target row (fn2-pool-hand), which takes it as its own; the accept is the
+; row's own, so its owner triple is the accepting row's.
+(defun fn2-pool-accept-own (slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (fn2-pool-accept-hand slot gen okind oslot ogen fn2-pool))
+(fn2-pool-preserves fn2-pool-accept-own (slot gen okind oslot ogen fn2-pool) :position 1)
+
 ; ----------------------------------------------------------------------
 ; The directory's checked writes: a write the directory cannot take (an id
 ; outside it, a value wider than its column) stops the core, as the core's
@@ -202,6 +224,10 @@
          (equal (fn2-machines-rows (car (,park id ,@ords fn2-machines fn2-control)))
                 (fn2-machines-rows fn2-machines))
          :hints (("Goal" :in-theory (enable ,park))))
+       (defthm ,(fn2-columns-sym park "-RAW-ROWS")
+         (equal (nth *fn2-machines-rows* (car (,park id ,@ords fn2-machines fn2-control)))
+                (nth *fn2-machines-rows* fn2-machines))
+         :hints (("Goal" :in-theory (enable ,park))))
        (defun ,grant (,@ords fn2-machines fn2-control)
          (declare (xargs :stobjs (fn2-machines fn2-control)
                          :guard (and (fn2-machines-wfp fn2-machines) (fn2-control-wfp fn2-control))))
@@ -245,6 +271,10 @@
   (equal (fn2-machines-rows (car (fn2-machines-park-pool id fn2-machines fn2-control)))
          (fn2-machines-rows fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-park-pool))))
+(defthm fn2-machines-park-pool-raw-rows
+  (equal (nth *fn2-machines-rows* (car (fn2-machines-park-pool id fn2-machines fn2-control)))
+         (nth *fn2-machines-rows* fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-park-pool))))
 
 ; An admitted kind's partition (D 4.5), by its ordinal ORD.
 (defun fn2-machines-free-head-of (ord fn2-machines)
@@ -276,10 +306,32 @@
   (equal (fn2-machines-rows (car (fn2-machines-reclaim id ord retire fn2-machines fn2-control)))
          (fn2-machines-rows fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-reclaim))))
+(defthm fn2-machines-reclaim-raw-rows
+  (equal (nth *fn2-machines-rows* (car (fn2-machines-reclaim id ord retire fn2-machines fn2-control)))
+         (nth *fn2-machines-rows* fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-reclaim))))
+
+; Wake another row (the arm language's :wake-row): the directory's single
+; wake slot takes the row if it is one; anything else is no wake.
+(defun fn2-machines-wake-row (id fn2-machines fn2-control)
+  (declare (xargs :stobjs (fn2-machines fn2-control)
+                  :guard (and (fn2-machines-wfp fn2-machines) (fn2-control-wfp fn2-control))))
+  (if (not (fn2-machines-row-ok id)) (mv fn2-machines fn2-control)
+    (fn2-machines-checked (unsigned-byte-p 32 id) (update-fn2-machines-wake-id id fn2-machines))))
+(fn2-machines-preserves fn2-machines-wake-row (id fn2-machines fn2-control)
+  :carriers ((fn2-machines 0 :prefix "-MACHINES") (fn2-control 1 :prefix "-CONTROL")))
+(defthm fn2-machines-wake-row-rows
+  (equal (fn2-machines-rows (car (fn2-machines-wake-row id fn2-machines fn2-control)))
+         (fn2-machines-rows fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-wake-row))))
+(defthm fn2-machines-wake-row-raw-rows
+  (equal (nth *fn2-machines-rows* (car (fn2-machines-wake-row id fn2-machines fn2-control)))
+         (nth *fn2-machines-rows* fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-wake-row))))
 
 (assert-event
  (fn2-assert-compliant-p
-  '(fn2-machines-free-head-of fn2-machines-reclaim) (w state)))
+  '(fn2-machines-free-head-of fn2-machines-reclaim fn2-machines-wake-row) (w state)))
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-control-record-stop fn2-issue-children fn2-core-release-children

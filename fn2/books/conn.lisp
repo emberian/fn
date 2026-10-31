@@ -466,13 +466,12 @@
              :next (:command :reply)
              :uses (fn2-machine-take-fn2-upload fn2-upload-gen-of fn2-conn-run-block-open fn2-machine-refuse-phase))
   (fn2-machine-with-work 512 *fn2-work-transition* 0
-    (b* (((mv tcode u fn2-core)
+    (b* (((mv tcode u ugen fn2-core)
           (fn2-machine-take-fn2-upload id id row-generation row-request *fn2-upload-rule-post* row-principal-slot fn2-core)))
       (if (not (eq tcode :ok))
           ;; parked by the take: no work until the grant wakes this row
           (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
-        (b* ((ugen (fn2-upload-gen-of u fn2-core))
-             ((mv code fn2-core) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
+        (b* (((mv code fn2-core) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
           (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
             (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0)
                                                (after *fn2-conn-after-article-input*)
