@@ -681,9 +681,11 @@ class Conn:
         if len(args) > (2 if listing else 1) or (not listing and not args):
             return self._error()
         group = args[0] if args else self.current_group
+        bounds = number_range(args[1], self.model.watermarks.get(group or "", 0)) if len(args) == 2 else None
+        if not self._archive():
+            return self._reply(rule, 503)
         if group is None:
             return self._reply(rule, 412)
-        bounds = number_range(args[1], self.model.watermarks.get(group, 0)) if len(args) == 2 else None
         if not self._visible(group, live=True):
             return self._reply(rule, 411)
         rows = self._available(group, live=True)
@@ -703,6 +705,13 @@ class Conn:
         return self._reply(rule, 211, pattern=prefix + rb"(?: .*)?",
                            multiline=listing, content=content if listing else None,
                            effect=effect)
+
+    def _archive(self):
+        # A node that serves no archive (policy archive False; fn2's profile without read rows,
+        # books/conn-answer.lisp *fn2-answer-unread*): a well-formed GROUP, LISTGROUP, STAT, OVER, XOVER, HDR
+        # or XPAT answers 503 (RFC 3977 §3.2.1, not supported here), and NEXT and LAST 412, since no group can
+        # ever be selected.
+        return self.policy.get("archive", True)
 
     def _cmd_group(self, args):
         return self._select_group(args, False)
@@ -739,6 +748,8 @@ class Conn:
             ident = args[0]
             if not msgid(ident) or rule == "XOVER":
                 return self._error()
+            if not self._archive():
+                return self._reply(rule, 503)
             readable = any(self._visible(g) and any(m == ident for _, m in entries)
                            for g, entries in self.view_groups.items())
             if not readable or ident not in self.view_articles:
@@ -750,6 +761,8 @@ class Conn:
         bounds = number_range(args[0], self.view_watermarks.get(self.current_group, 0)) if args else None
         if args and not ranges and "-" in args[0]:
             return self._error()
+        if not self._archive():
+            return self._reply(rule, 503)
         if not self.current_group:
             return self._reply(rule, 412)
         if not args and self.current_article_number is None:

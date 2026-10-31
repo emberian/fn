@@ -12,7 +12,8 @@ for line in sys.stdin:
 if not rows:
     sys.exit('no INTERIM lines')
 out = {'source': 'fn2/books/conn-answer.lisp *fn2-answer-interim*',
-       'served_verbs': ['CAPABILITIES', 'HELP', 'QUIT', 'MODE', 'DATE', 'AUTHINFO', 'XREDEEM'],
+       'served_verbs': ['CAPABILITIES', 'HELP', 'QUIT', 'MODE', 'DATE', 'AUTHINFO', 'XREDEEM',
+                        'GROUP', 'LISTGROUP', 'NEXT', 'LAST', 'STAT', 'OVER', 'XOVER'],
        'interim': dict(sorted(rows.items())),
        'notes': {'LIST': 'OVERVIEW.FMT, HEADERS and MOTD are served now; DISTRIBUTIONS and DISTRIB.PATS answer 503 data item not stored; the other variants are the interim reply',
                  'IHAVE': 'on a reader connection (every D3 connection) the 502 state refusal answers first',

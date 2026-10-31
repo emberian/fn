@@ -738,6 +738,22 @@ class H2dRecordedReplyTests(unittest.TestCase):
                 self.assertFalse(c.quit)
                 send(c, "LAST", "412 no newsgroup selected")
 
+    def test_a_node_without_an_archive_answers_503_after_syntax(self):
+        # fn2's session profile without read rows (books/conn-answer.lisp *fn2-answer-unread*).
+        c = connect(model(archive=False))
+        for line, reply in [(b"GROUP test", b"503 no projection\r\n"), (b"LISTGROUP", b"503 no projection\r\n"),
+                            (b"LISTGROUP test 1-", b"503 no projection\r\n"),
+                            (b"STAT <a@b>", b"503 no projection\r\n"), (b"STAT 1", b"503 no projection\r\n"),
+                            (b"OVER 1-", b"503 no projection\r\n"), (b"XOVER 1-", b"503 no projection\r\n"),
+                            (b"NEXT", b"412 no newsgroup selected\r\n"), (b"LAST", b"412 no newsgroup selected\r\n"),
+                            (b"GROUP", b"501 syntax error\r\n"), (b"STAT <bad", b"501 syntax error\r\n")]:
+            with self.subTest(line=line):
+                e = c.send(line + b"\r\n")
+                self.assertFalse(e.check(b"211 0 0 0 test\r\n", None).ok)
+                accept(e, reply)
+        # With an archive the same GROUP selects the group.
+        accept(connect(model()).send(b"GROUP test\r\n"), b"211 0 1 0 test\r\n")
+
     def test_duplicate_field_reason_is_the_catalogue_wording(self):
         # Pin P-DUP-FIELD: the catalogue's wording for every duplicated required field (fn1
         # books/protocol-table.lisp; fn2 books/nntp-grammar.lisp :refused-from-duplicate and its siblings).

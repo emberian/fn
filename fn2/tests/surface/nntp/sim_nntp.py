@@ -24,8 +24,11 @@ INTERIM = json.loads((Path(__file__).resolve().parents[1] / 'fn2_conn_interim.js
 # D3's profile, stated where the model reads it: posting off (greeting 201, MODE READER 201), no TLS (STARTTLS
 # 580, no STARTTLS label), no credential store and no SASL mechanism (AUTHINFO USER 381, PASS 481/482,
 # SASL 503), and no AUTHINFO/SASL capability lines until E2 renders them.
+# The sessions' profile has no read rows, so the node serves no archive: the cursor's verbs, once out of the
+# interim table, answer *fn2-answer-unread* (503; NEXT and LAST 412), which the model states as archive False.
+# A session profile with read rows and a published group turns this to True with the model's groups set to it.
 D3_POLICY = {'posting': False, 'starttls': False, 'sasl_mechanisms': [], 'advertise_authinfo': False,
-             'clock': 'unknown'}
+             'clock': 'unknown', 'archive': False}
 
 
 def machine(case, target, owed, served=None):
