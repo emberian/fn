@@ -1,20 +1,20 @@
-; The consumer port (layer E3; fn2/docs/e-surface.md sections 1-6). Nine verbs
+; The consumer port (layer E3; fn2/docs/e-surface.md sections 1-6). Ten verbs
 ; over the one engine, and the three carriers that speak them: L, the owner's
-; control socket with fn1's FNCT frames unchanged (kind 4 request codes 0-10;
-; append and rebase added as 11 and 12); R, the authenticated NNTP connection
-; (XFNC and one framed FNCT body; the same frames, the remote whitelist); N,
-; the NNTP convention (append is POST, a one-item read is ARTICLE), with its
-; losses declared.
+; control socket (FNCT kind 4; the port's codes, and fn1's codes 0-10 with
+; fn1's payloads, translated: consumer-codec.lisp section 5); R, the
+; authenticated NNTP connection (XFNC and one framed FNCT body; the port's
+; codes only, scoped to the login by the grant step); N, the NNTP convention
+; (append is POST, fetch is ARTICLE), with its losses declared.
 (in-package "ACL2")
 (include-book "port")
 (include-book "nntp-grammar")
 (fn2-book-layer :e)
 
 (defport fn2-consumer
-  :fields ((consumer (:octets 64)) (query :edges) (cursor (:octets 346)) (limits :limits)
+  :fields ((consumer (:octets 64)) (query :edges) (cursor (:octets 366)) (limits :limits)
            (timeout :u32) (stream :stream) (article :handle) (op (:octets 64))
            (position :position) (frontier :position) (counters :counters) (reference :reference)
-           (items :items) (more :u8) (next (:octets 346))
+           (items :items) (more :u8) (next (:octets 366))
            (message-id (:octets 250)) (numbers :numbers) (receipt :receipt))
   :reasons (scope behind beyond-frontier rebase-required unknown-consumer query
             waiters cursor-version operation-reused operation-expired frame addressees
@@ -66,23 +66,20 @@
                      malformed-article)
            :spec "e-surface.md 3.3; d-machines-nntp.md 14.4-14.5; IDENTITY ruling 6; INBOX 4.2")))
 
-; L: the owner's 0600 socket, FNCT kind 4 request codes. fn1's codes 0-10
-; keep fn1's request payloads, which the carrier translates (fn1's poll names
-; a consumer and reads from its recorded position: READ of POSITION's
-; cursor); new codes carry the port's own payloads. Bootstrap (4) is answered
-; by the carrier as an accepted no-op once init has minted the store's
-; identities, and the bound forms (7, 8, 10) are read, ack and wait under the
-; bound account: carrier forms, not verbs.
+; L: the owner's 0600 socket, FNCT kind 4. A verb's code is the port's own
+; payload (consumer-codec.lisp section 3); ack (1) and position (2) keep fn1's
+; codes because their payloads already are the port's. fn1's other codes are
+; carrier forms translated to these verbs (consumer-codec.lisp section 5).
 (defcarrier fn2-consumer-local :port fn2-consumer :frame :fnct
-  :binds ((register 4 0) (ack 4 1) (position 4 2) (unregister 4 3) (read 4 5) (status 4 6)
-          (wait 4 9) (append 4 11) (rebase 4 12) (fetch 4 13)))
+  :binds ((register 4 14) (ack 4 1) (position 4 2) (unregister 4 17) (read 4 15) (status 4 18)
+          (wait 4 16) (append 4 11) (rebase 4 12) (fetch 4 13)))
 
-; R: XFNC on the authenticated connection; the same frames; every verb of
-; the remote whitelist (e-surface.md 3), scoped to the login's own consumers
-; by the grant step.
+; R: XFNC on the authenticated connection; the same frames and codes; every
+; verb of the remote whitelist (e-surface.md 3), scoped to the login's own
+; consumers by the grant step. fn1's legacy codes are not carried.
 (defcarrier fn2-consumer-remote :port fn2-consumer :frame :fnct
-  :binds ((register 4 0) (ack 4 1) (position 4 2) (unregister 4 3) (read 4 5) (status 4 6)
-          (wait 4 9) (append 4 11) (rebase 4 12) (fetch 4 13)))
+  :binds ((register 4 14) (ack 4 1) (position 4 2) (unregister 4 17) (read 4 15) (status 4 18)
+          (wait 4 16) (append 4 11) (rebase 4 12) (fetch 4 13)))
 
 ; N: the NNTP convention. An NNTP reader sees the same articles; what the
 ; translation loses is declared, so a bridge's loss is computed.

@@ -10,10 +10,10 @@
   (if (atom layout) nil
     (mv-let (word s0 s1 s2 s3) (fn2-prng-next s0 s1 s2 s3)
       (let* ((k (cadar layout)) (bytes (make-list (mod word 18) :initial-element (mod s0 256)))
-             (v (cond ((eq k :u8) (mod word 256)) ((eq k :u16) (mod word 65536))
-                      ((eq k :u32) word)
+             (v (cond ((eq k :u8) (mod word 256)) ((member-eq k '(:u16 :u16be)) (mod word 65536))
+                      ((member-eq k '(:u32 :u32be)) word)
                       ((eq k :bool) (mod word 2)) ((and (consp k) (eq (car k) :enum)) (mod word (len (caddr k))))
-                      ((and (consp k) (eq (car k) :zero)) nil) ((and (consp k) (eq (car k) :octets)) bytes)
+                      ((and (consp k) (eq (car k) :zero)) nil) ((and (consp k) (member-eq (car k) '(:octets :octets16 :octets32))) bytes)
                       ((eq k :digest) (cons 1 (make-list 32 :initial-element (mod word 256))))
                       (t (+ word (* (mod s0 268435456) 4294967296))))))
         (cons v (fn2-layout-test-random (cdr layout) s0 s1 s2 s3))))))
@@ -89,7 +89,7 @@
       (fn2-layout-test-positions (- n 1) end layout values bytes counts fn2-fields fn2-pool))))
 (defund fn2-layout-test-case (n counts fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
-  (b* ((layout (if (evenp n) *fn2-layout-test-header* *fn2-layout-test-anchor*))
+  (b* ((layout (case (mod n 3) (0 *fn2-layout-test-header*) (1 *fn2-layout-test-anchor*) (otherwise *fn2-layout-test-be*)))
          ((mv s0 s1 s2 s3) (fn2-prng-seed (+ 20261028 n)))
          (values (fn2-layout-test-random layout s0 s1 s2 s3))
          ; Include the largest resident u64 value in the assignment campaign.

@@ -19,7 +19,7 @@
   (if (atom layout) nil
     (mv-let (word s0 s1 s2 s3) (fn2-prng-next s0 s1 s2 s3)
       (let* ((k (cadar layout))
-             (limit (cond ((eq k :u8) 255) ((eq k :u32) 4294967295)
+             (limit (cond ((eq k :u8) 255) ((member-eq k '(:u32 :u32be)) 4294967295) ((eq k :u16be) 65535)
                           ((and (consp k) (eq (car k) :enum)) (- (len (caddr k)) 1))
                           (t 1152921504606846975)))
              (number (cond ((eq mode :min) 0) ((eq mode :max) limit)
@@ -28,7 +28,7 @@
                            ((= (mod word 8) 3) limit)
                            (t (mod (+ word (* (mod s0 268435456) 4294967296)) (+ 1 limit)))))
              (value (cond ((eq k :digest) (cons 1 (fn2-format-test-bytes 32 word)))
-                          ((and (consp k) (eq (car k) :octets))
+                          ((and (consp k) (member-eq (car k) '(:octets :octets16 :octets32)))
                            (fn2-format-test-bytes
                             (cond ((eq mode :min) 0) ((eq mode :max) (cadr k))
                                   (t (mod word (+ 1 (cadr k))))) s0))

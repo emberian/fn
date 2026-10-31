@@ -24,8 +24,11 @@ Astra's read: `build/coordinator/fn2/lanes/e-quests/astra-1.md` (§15 says what 
 | Mini's processing transaction, twelve cuts | `fn2/tests/consumer-mini.lisp` | all accepted; K0-K8 hold on each; six faults caught |
 | helm's rooms, tiny profile | `fn2/tests/consumer-helm.lisp` | accepted; K0-K8 hold; three faults caught |
 | the form's refusals (eight malformed ports and carriers refused; the bridge loss computed) | `fn2/tests/port-unit.lisp` | certifies |
-Owed, in order: the FNCT and `fncu` codecs from `deflayout` with fn1's bytes as fixtures; then, when D5 2/n
-serves a durable POST and D6 an article, the served kind `fn2-cns` and the XFNC block (§14).
+| big-endian layout kinds `:u16be :u32be :u64be (:octets16 n) (:octets32 n)`, codes 12-16, every earlier code unchanged (main's ruling: E builds them, B reads the diff) | `fn2/books/layout.lisp` | the interpreter, the generated codec and the list spec; teeth in `layout-unit` (exact octets, `:wide`, `:length`, `:truncated`), the 10,000-assignment roundtrip campaign with mutations over a big-endian layout |
+| the frames: FNCT (header layout, BLAKE3 trailer), `fncu` v1 and v2, kind 4 codes 0-18, replies 5, 6, 9 and 28, page items, results; what each code is (§4.2) | `fn2/books/consumer-codec.lisp` | every form a `deflayout`; the code table checked against the port and both carriers |
+| fn1's bytes as fixtures | `fn2/tests/consumer-codec-unit.lisp` | fn1's three `.fncu` vectors read from `tests/fixtures/consumer-position/` and re-encoded exactly; fn1's eleven request payloads decoded and re-encoded; fn1's twenty-one refusal words; BLAKE3 at a known answer; every fixture through the generated codec |
+Owed, in order: peering and BP designed (§13); then, when D5 2/n serves a durable POST and D6 an article,
+the served kind `fn2-cns` and the XFNC block (§14).
 
 ## 1. What the consumer port is
 One port, `fn2-consumer`, is the interface every application speaks: Mini, helm's seats, akapug's
@@ -36,7 +39,7 @@ answer is C's `fn2-outcome` (S-OUTCOME). The port adds no store, no queue and no
 
 | carrier | where | bytes | who |
 |---|---|---|---|
-| **L**, local control | the owner's 0600 Unix socket, peer UID checked | FNCT frames; fn1's codes 0-10 with fn1's payloads, translated (§4.2); new codes 11-13 | `fn consumer`, `fn-agent`, local scripts |
+| **L**, local control | the owner's 0600 Unix socket, peer UID checked | FNCT frames; fn1's codes 0-10 with fn1's payloads, translated (§4.2); the port's codes 11-18 | `fn consumer`, `fn-agent`, local scripts |
 | **R**, remote | the authenticated (TLS) NNTP connection: `XFNC <length>` and one framed FNCT body (§5) | the port's own FNCT payloads | Mini on another box, helm's seats, any remote agent |
 | **N**, the NNTP convention | POST, ARTICLE | RFC 3977 | any newsreader; it sees the same articles |
 
@@ -113,8 +116,9 @@ stale view version answers `rebase-required` everywhere (read, wait, ack); an un
 `cursor-version`, never guessed. fn2's position is `(domain, sequence)`, domain 0 in 5.1.1. **v2:** while
 every field fits, v1 cursors are issued; past any u32 field (position, epoch, query or view version) the
 node issues `fncu` v2 with domain u32 and every counter u64 (≤ 366 octets), and a v1 cursor beyond the
-bound is refused `cursor-version`, never truncated. The `cursor` field's declared width becomes v2's when
-the codec lands. Every ownership and retry key is the durable principal identity (account and its
+bound is refused `cursor-version`, never truncated. The wire's counters are eight octets; a resident value
+is at most 2^60 - 1 (B's value column), and a larger one is refused `:wide` by the codec. A v2 form of a
+cursor that fits v1 is refused, so each cursor has one form. The `cursor` field is v2's width (366). Every ownership and retry key is the durable principal identity (account and its
 incarnation), never a D7 scheduler slot.
 
 ### 3.2 The ack contract (fn1's, bound to the account)
@@ -174,19 +178,53 @@ retention policy reclaimed). Each with its position, the streams it was selected
 when a limit stopped the page; the next cursor proposal is the position through which the walk is
 complete; the current query and view versions. Never on the wire: materialization, coverage, lag.
 
-### 4.2 The local frames
-FNCT: `FNCT`, version 1, kind, u32 payload length (10 octets), the payload, BLAKE3-256 over the
-protected prefix (32). fn1's kind-4 codes 0-10 keep **fn1's request payloads** (Astra: poll names a
-consumer, not a cursor; unregister names a consumer; wait a consumer and a timeout), so L translates them:
-fn1's poll is `read` from `position`'s cursor; its unregister is `unregister` of `position`'s cursor;
-its register's two IDs are (consumer, group) with start `:history`. New codes carry the port's payloads:
-11 append, 12 rebase, 13 fetch, and a code for read and wait by cursor with limits (`read-cursor`,
-`wait-cursor`; numbered when the codec lands). New reply items (FNRF1, gaps, reasons) appear only to a
-client that asked with a new code. fn1's codec fixtures and traces are the fixtures
-(`fn2/tests/fixtures/consumer/`, owed with the codec).
+### 4.2 The local frames (`fn2/books/consumer-codec.lisp`)
+FNCT: `FNCT`, version 1, kind, a four-octet big-endian payload length (10 octets), the payload, BLAKE3-256
+over the protected prefix (32). The header is a layout; the trailer is computed and compared, never a
+field. A frame is exactly its extent (no trailing octets); the payload ceiling is the code's.
+
+Kind 4, one code octet and its fields. fn1's codes keep **fn1's payloads and refusal words** (the field
+that failed: `consumer group secret timeout cursor`; `size`, `kind`, `bootstrap`), and the port's codes
+carry the port's payloads:
+
+| code | word | fields after the code | verb (L translation) |
+|---|---|---|---|
+| 0 | register | consumer, group | register, query (group), start `:history` |
+| 1 | ack | the cursor's octets (v1 or v2) | ack |
+| 2 | position | consumer | position |
+| 3 | unregister | consumer | unregister of position's cursor |
+| 4 | bootstrap | none | accepted no-op once init minted the identities |
+| 5 | poll | consumer | read of position's cursor, fn1's one-article limits |
+| 6 | status | consumer | status, fn1's kind 9 reply |
+| 7, 8, 10 | bound-poll, bound-ack, bound-wait | as 5, 1, 9 with the account's secret (two-octet length, 1-496) | as the configured account; L only |
+| 9 | wait | consumer, seconds (≤ 3600) | wait on position's cursor |
+| 11 | append | stream, op (≤ 64, empty for none), article (four-octet length) | append |
+| 12 | rebase | cursor, streams, start (`:keep :now :history`) | rebase |
+| 13 | fetch | Message-ID, domain, position | fetch |
+| 14 | register-query | consumer, streams, start (`:now :history`) | register |
+| 15 | read | cursor, max items, max octets | read |
+| 16 | wait-cursor | cursor, max items, max octets, seconds | wait |
+| 17 | unregister-cursor | cursor | unregister |
+| 18 | status-wide | consumer | status, eight-octet positions |
+
+A cursor followed by other fields carries a two-octet length; streams are the canonical concatenation of
+stream names. Both carriers bind each verb to its port code (register 14, rebase 12, unregister 17, read
+15, wait 16, ack 1, position 2, status 18, fetch 13, append 11; ack and position keep fn1's codes
+because their payloads already are the port's), and the codec asserts that the table, the port and both
+carriers agree. R carries no legacy code; kind 22 (fn1's reasoned request) is the same payload.
+
+Replies: fn1's kind 5 (status octet 0-3, the cursor when accepted), kind 6 (status, four-octet-prefixed
+cursor and report) and kind 9 (status; accepted carries ack, frontier and their difference), unchanged;
+kind 28 for the port's codes: the class, the reason word (≤ 64), and the verb's result (a cursor's own
+octets; ack's `(domain, position)`; status's position, frontier and gap; append's Message-ID, position,
+numbers, receipt and evidence outcome; fetch's article; a page's `more`, next cursor, count and items).
+An item is its type (record, withdrawn, reference, gap), `(domain, position)`, the reasons bit set (room
+1, dm 2, mention 4, group-address 8, backfill 16), the streams it was selected through, its Message-ID
+and its body (a reference's body is its octet count and content identity). fn1's kind 18 (the reasoned
+reply) and the FNWD and FNRB forms are owed with the served kind, where their first sender is.
 
 ## 5. The remote carrier: `XFNC` over the authenticated connection (the recommendation to main)
-A maximal `fncu` (346) inside an FNCT frame (+42) is 388 octets before the request's other fields; base64
+A maximal `fncu` v2 (366) inside an FNCT frame (+42) is 408 octets before the request's other fields; base64
 and `XFNCT `+CRLF exceed 512. **(a), taken:** a short command and an explicitly framed body on the
 connection that already has TLS, a login and an accounting principal.
 ```
@@ -329,31 +367,39 @@ edges a seat (a modelling assumption: about 300 edges against `Esub` = 4,096); r
 over 2 GB), bytes per isolated ack (M5), and the waiter bound at 30. "An acked row is never redelivered
 after a crash" is a correctness acceptance, gated in the tiny profile above.
 
-## 11. Seams (exact forms, through main)
-- **D, grammar.lisp:** the block declaration generalized to `(:block (:mode :immediate|:after CODE)
-  (:delimiter :dot|(:count ARG :max POLICY)) (:refusal :discard|:close))`, TAKETHIS unchanged; the XFNC
-  row in `fn2-nntp` (`:states (:authenticated)`, a `:digits` length, replies 290/490/491, the 480/483
-  refusals with close). E writes the rows; D owns the framer.
-- **D8:** the wait machine's edge rows (ROUND2 §B.2) and the wake service; E's served kind `fn2-cns` (a
-  taken kind, as `fn2-cursor`, in the new form) parks on them. If D8 sits behind D9, E builds the edge
-  rows in its own book with D reviewing.
-- **D7, accounts.lisp:** holding dimensions `:durable-octets`, `:waiter`, `:subscription-edges` beside
-  the charges `:requests` and `:tx-octets` (today charges, not holdings), one line each in
-  `*fn2-account-holdings*`.
-- **C:** S-OUTCOME (`fn2-outcome`, id 9) widened: key (durable principal identity, op octets ≤ 64),
-  value (request digest, the semantic result or an immutable reference to it, the evidence outcome,
-  event); written in the append's batch; retention under C5 with `operation-expired` after it. C4b's
-  registration fold gains per-edge starts. The cancel's positioned withdrawal entry in each of the
-  target's streams (C3, written by D5's control path). Equal acks never reach the fold.
-- **B:** the consumer events (register, rebase, ack, unregister) as commit-stream records with ruling 2's
-  origin fields and the revision stamp.
+## 11. Seams (exact forms, through main; owners' answers taken)
+- **D, grammar.lisp (accepted, amended):** the block declaration `(:block (:mode :immediate|:after CODE)
+  (:delimiter :dot|(:count ARG :max BOUND)) (:refusal :discard|:close))`, TAKETHIS unchanged; BOUND names a
+  profile key or a constant (the framer's feed quantum needs a static bound): XFNC's is
+  `(:profile :max-consumer-request-octets)`. The XFNC row (`:authenticated`, a `:digits` length,
+  290/490/491, close after 480/483 through `after :closing`): E writes the rows, D owns the framer.
+- **D8 (ruled):** the wait machine's edge rows are E's, in E's book, declared in the new machine form when
+  its placement steps land; D reviews the diff.
+- **D7 (accepted, amended):** every holding dimension is a D0 kind. `:waiter` is `:wait-row` (capacity
+  `:w`, limit `max-waiters`); `:subscription-edges` is `:subscription-edge` (capacity `:esub`, a profile
+  key with ROUND2's 4096 as default; limit `max-subscription-edges`); `:durable-octets` is a new kind ranked
+  after `:principal-reservation`, unit 4096-octet blocks, bound and capacity `:dstore`, reserve `:system`.
+- **C (accepted, amended):** `fn2-outcome` (id 9) keyed `((principal (:id principal)) (operation (:octets
+  64)))`, value `((request :digest) (outcome :u16) (result (:id object)) (evidence (:enum (:none :committed
+  :uncertain :refused))) (event (:id event)))`, `:unique`, written in the append's batch, the result an
+  immutable reference. The key is the local principal id on the condition that a principal id is never
+  reused within a store; a retry across peers, if §13 admits one, makes it ruling 2's origin digest.
+  `operation-expired` is a pure comparison (the row's event plus the retry lifetime at or below the
+  published frontier); C5 reclaims only rows that already read expired. Per-edge starts in C4b. The
+  withdrawal is a stream schema `fn2-withdrawals` (id 15) keyed `((stream (:id stream)) (position (:id
+  position)))`, value `((article (:id article)) (number (:id group-number)))`, one row per stream of the
+  cancelled article in the cancel's transaction; no overview tombstone. Equal acks never reach the fold.
+- **B (accepted):** register, rebase, ack and unregister are commit-stream record kinds whose envelope (the
+  record header) carries revision, occurrence, lineage, domain, incarnation, author key, payer and grant;
+  each kind lands with its producer, E, with the served machine.
+- **The form seat:** `port.lisp` read as a declaration kind in the registry, one notion with the others.
 - **E2 (mine):** `fn2-grant-allows` over the access rules; the principal binding at authentication.
 
 ## 12. Dispositions of fn1's consumer rows (RELEASE-PLAN §1 rows 63-70)
 | fn1 row | disposition |
 |---|---|
 | `fncu` v1, nine fields, foreign cursor refused before mutation | carried; v2 past any u32 field (§3.1) |
-| k4 codes 0-10 and k22 | carried with fn1's payloads, translated by L (§4.2); bootstrap a no-op; `bound-*` L only; codes 11-13 and the cursor forms added |
+| k4 codes 0-10 and k22 | carried with fn1's payloads, translated by L (§4.2); bootstrap a no-op; `bound-*` L only; the port's codes 11-18 added |
 | k5, k6 (FNWD1, FNRB1), k9, k18, k23 | carried; FNRF1, gap items and reasons added for new codes |
 | one group, 16 events, one article per poll | replaced by the selection (§7) with policy limits |
 | 12 waiters, every commit wakes every waiter (CNS-007) | replaced by `max-waiters` and per-edge wake; CNS-007's meaning kept as K4 |
@@ -362,16 +408,203 @@ after a crash" is a correctness acceptance, gated in the tiny profile above.
 | the remote consumer (CNS-011, PKT-673), never served | carried as specified here |
 | the consumer's exactly-once contract | carried as the client's (§10.1); the clients ship (E6) |
 
-## 13. Peering and BP *(owed: designed next, against the same engine)*
-Item 4 under IDENTITY rulings 4, 5, 11, 12 and Astra's ten witnesses; item 5 with custody as C's
-obligations and the bundle machine in the machine form. Written in this file after the consumer port's
-codecs.
+## 13. Peering and BP *(statement, revised after Astra's read `lanes/e-quests/astra-2.md`)*
+Brief items 4 and 5 over the same engine. Sources: IDENTITY rulings 2-14 and Astra's ten witnesses
+(IDENTITY-ASTRA, "What E4 must prove"); fn1's `specs/peering.md` and `specs/bp-*.md` (the meaning kept);
+D's peer rows (§11 `peering`, `peer_catchup`; the reply-word table; D5 3/n owed); C's §4a identity records
+and the `obligations` schema. The one idea: **a peer is a principal, an outbound feed is consumer
+machinery, and a bundle is a carrier**. No second store and no second decision path, but every
+responsibility fn1's separate journals carried (FNFD, FNBS) is kept, as typed records in the common store.
+
+### 13.1 A peer is a principal with a peer grant
+- **Identity.** A peer authenticates as a principal (TLS, then AUTHINFO; or a BP neighbor admitted in
+  fn1's order: observed channel, configured peer, allowed EID, admitted principal, which is a conditional
+  authority resting on the boundary assumption, never cryptographic origin). fn1's source-address peer
+  (A-PEER) is retired: it made every loopback client the peer. The role is fixed at authentication by the
+  grant, never by `MODE`; STARTTLS resets it.
+- **Current authority at every decision.** The role stays fixed for the connection; the grant and the peer
+  policy are rechecked at each offer and each transfer (an offer can check only what it carries; groups,
+  Distribution, Path and evidence wait for the body; a `238` never exempts a transfer). Revocation stops
+  later offers and transfers and never rewrites an earlier admission or confiscates an obligation. This
+  replaces D's "pinned until reauthentication" for peer operations (seam to D).
+- **The peer row is policy over the principal:** accept-groups, feed-groups, `max-inflight`, streaming,
+  carried count and octets, distributions, path identity, transport, the reply profile (§13.2).
+- **Charges.** A peer's offers are charged to the peer principal (transfer octets, evidence admission,
+  durable octets). Per-principal limits compose with the aggregate capacity and the reserved settlement
+  capacity, so many funded peers still cannot exhaust what settling existing work needs.
+
+### 13.2 Inbound transit is the shared acceptance transaction
+Transit runs D5's transaction after **carrier-specific preparation**: POST injects; transit keeps the
+authored fields byte-exact and updates Path once at acceptance (fn1 §2.3) and Xref; the loop check reads
+the received Path and the provenance. BP ingress reaches the same transaction (fn1's K6, built from the
+start). Decisions and words:
+| point | decision | IHAVE / CHECK / TAKETHIS |
+|---|---|---|
+| offer, **local acceptance history** for the name (accepted, withdrawn or reclaimed) or a local not-wanted decision | `:have` | 435 / 438 / — |
+| offer, evidence-only knowledge, a foreign receipt, a pending authority dependency | not suppressing: `:want` (subject to the rest) | 335 / 238 / — |
+| offer, staged, or the window full | `:defer` | 436 / 431 / — |
+| transfer, identical subject | `:duplicate`; new evidence still admitted, funded, no article, membership or retention promise | 437 / — / 439 |
+| transfer, a different authored subject under a name with local acceptance | ruling 6: evidence commits separately, the article is refused | 437 / — / 439 `conflict` |
+| transfer, contention (`:contended`) or account exhaustion (`:exhausted`) | retryable | 436 / — / default 400 and close; profile `fn-compat`: 436 |
+| transfer, structurally impossible for this profile (`:incompatible`) | permanent | 437 / — / 439 |
+| transfer, uncertain commit | fence | 436 then close / — / 400 and close |
+| transfer, accepted | 2xx only after `:durable` | 235 / — / 239 |
+TAKETHIS's default follows RFC 4644 (400 and close on a temporary failure); fn1's `436 <id>` (chosen after
+INN's retry behavior) is the named `fn-compat` profile; uncertainty closes in both. **Declared losses
+(ruling 11):** CHECK and IHAVE suppress by Message-ID before the body, so neither a conflicting body nor new
+evidence beside identical bytes is learned that way; the legacy codes cannot report the article result and
+the evidence result separately, so settlement of the evidence is through the evidence stream (§13.4).
+`239`/`235` are transmission receipts, never retention receipts.
+**The window.** `max-inflight` CHECK credits per streaming connection (IHAVE is never pipelined), a D0
+holding kind `:peer-credit` charged to the peer; a CHECK credit becomes the transfer's holding by transfer,
+not a second charge; unsolicited TAKETHIS, abandoned credits, duplicate offers, timeouts and policy
+lowering each have a stated disposition; replies leave in request order (D5 3/n's queue), and a reply
+settles only its own (phase, Message-ID).
+
+### 13.3 An outbound feed: a node-owned consumer installing delivery work
+- **Discovery** is a consumer owned by the node (a service consumer), accounted to the peer, whose query is
+  the peer's feed selection: an article matches by its Newsgroups, and a control article also by its
+  target's groups (fn1 NNT-033: a peer subscribed to the room receives its cancel without subscribing to
+  `control.cancel`), minus loops (the peer's identity in Path, or the peer as provenance). The peer cannot
+  rebase, unregister or acknowledge it: managed consumers are outside the remote whitelist.
+- **Its processing transaction installs delivery work and acknowledges** (Astra's position, taken): for
+  each selected occurrence a `feed-work` row keyed by the stable **delivery identity** (feed epoch,
+  occurrence), with the destination, the immutable object reference and the query version; then the
+  cursor's ack, in one batch. A changed feed query is a rebase, a new epoch; the work already installed
+  keeps its epoch's responsibility; a removed peer's work drains or is explicitly dropped (fn1's
+  busy-feed drain). Selection is a pure function of the occurrence and the epoch's query, so the target set
+  is fixed as fn1's acceptance-time intents fixed it, without a feed write in every POST transaction.
+- **Delivery** is a scheduled fold over feed-work rows, fair across them: a deferred head never blocks
+  ready later work. A row carries its phase (offered by CHECK/IHAVE, sent), attempt identity (connection
+  incarnation, request), deferral count, loss count, backoff deadline (restart-safe), and terminal
+  disposition: `accepted` (235 239), `not-wanted` (435 438), `rejected` (437 439), `dropped` with its
+  reason when losses reach the bound (only losses with an attempt in flight count; 431/436 never do), or
+  `withdrawn` (the target was withdrawn before delivery: never offered after). Offer backoff and link-redial
+  backoff stay distinct. An operator waiver ends permanently deferred work explicitly.
+- **Restart** retires every unresolved attempt and re-offers by CHECK/IHAVE, sending only after a new
+  affirmative answer, never a blind TAKETHIS; a terminal disposition is durable before anything depends on
+  it (fn1's honest exactly-once, P:1290).
+
+### 13.4 fn2 peers exchange evidence, not only articles
+XFNCATCHUP is carried for fn1 peers with its declared loss (skips across a view reshape undetected) and is
+not extended (ruling 11). An fn2 peer reads, over R, an **evidence page**: a result type distinct from the
+consumer page (§4.1's "no coverage on the wire" is the consumer page's rule), read through C's
+position-ordered admission index (never the per-name key cursor; a commit's several facts are paged with
+an ordinal or kept whole). The page carries:
+- **history identity:** origin domain, incarnation or lineage relation, revision, an advertised cut (a
+  commitment identifies the history; it never proves honest disclosure);
+- **scope:** namespace, streams, fact interpretation version, disclosure scope, authority and view version;
+- **traversal:** start, next, advertised end, and why it stopped (limit, unavailable history, completion);
+- **exceptions:** source coverage gaps, withheld or unavailable dependencies;
+- **completion, two claims kept apart:** examined through this cut, and durably incorporated every eligible
+  fact and required dependency through this cut. `more = false` is never evidence completeness.
+Each item is portable evidence (namespace, name, typed content identity, evidence identity, issuer,
+dependencies); its identity survives import, so re-export never mints a new observation and evidence does
+not amplify around a cycle. The receiver admits through C's `:admit` and `:receipt-import` (which never
+selects); a refused or unfunded admission is a durable local gap (C's funded or coarse gap mechanism);
+persisting a gap may advance the **scan** cursor, never the **incorporation** claim, and a repair pass
+revisits gaps when funding or dependencies arrive. Dependency and proof references are fetched by an
+authorized evidence fetch, not the article `fetch`. The first evidence protocol is scoped to connected
+peers over R; evidence over BP is a third ADU kind, owed. Catch-up for an fn2 peer is `register :history`
+and pages: the same port.
+**The peer claim** (K-P1): within a named namespace and fact interpretation, replicas that durably
+incorporated the same eligible evidence and dependencies have equal evidence Bindings and equal conflict
+predicates; local acceptance receipts stay attributed; served choices agree only when policy and decision
+inputs agree; eventual incorporation is a separate claim under its connectivity, availability,
+authorization and resource assumptions.
+
+### 13.5 Control across peers
+Control articles relay as articles; every receiver decides again under its own authority (ruling 10). A
+cancel's decision is a **durable cancel intent** independent of the target: target namespace and name,
+cause, issuer, authority basis and the decision-time grant context (seam to C: a record beside
+`fn2-withdrawals`, whose rows need the target and are materialized when the target is known). That retained
+decision is what makes cancel-before-target, across a crash, order-independent (fn1 P:1948).
+
+### 13.6 BP: one store, carrier lifecycle distinct from custody
+- **Ingress** decodes fn1's ADU (request and receipt kinds; the ADU bound is the profile's, with codec width,
+  admission profile and bounded continuation stated separately, not a fixed 32,768) and reaches §13.2's
+  transaction. Custody is taken only over an admitted channel.
+- **One store, typed records.** fn1's FNBS journal is replaced by records in the common store: **bundle**
+  (bundle identity), **submission**, **attempt**, **outcome**, **handoff** and **obligation**, the four
+  identities never substituted. A held bundle may be a fragment, a transit object, an application receipt or
+  an administrative report, with no accepted article at all. Carried over from FNBS as obligations of the
+  engine: the five budgets (live objects and octets, staged family reservations, authoritative history,
+  publication capacity) separately accounted; the **cleanup debt** (admission reserves the future writes
+  that settle attempts, publish receipts, end families and reclaim; exhausted admission credit never blocks
+  paying existing debt); recovery and compaction preserving held objects, outcomes, handoffs, family
+  reservations, age evidence and non-reused frontiers; fragment families with outcomes for every child;
+  the expire, dispatch, deliver and discard classes independently eligible.
+- **Custody is an obligation**, distinct from the carrier: carrier expiry or deletion leaves the
+  application obligation outstanding and a new carrier may retry it. C's `obligations` needs a typed
+  contract (seam to C): stable identity and kind; the exact subject reference; obligor, beneficiary, payer
+  and authorization provenance; immutable terms (promised action, receipt authority, release predicate,
+  retry, expiry and waiver); state with discharge evidence scoped to that obligation; reserved resources and
+  remaining cleanup liability. An imported foreign obligation is evidence, never adoption.
+- **Receipts** have an outbox: `(receipt fact, triggering carrier) → owed | handed-off`; losing a receipt's
+  carrier does not erase the fact; a status report is never evidence and never stops the requester's
+  receipt timer; the final TCPCL ACK follows durable reception (or an exact durable duplicate), and a
+  refusal or uncertainty never sends a successful final ACK.
+- **Egress** is a feed (§13.3) whose transport is a convergence layer and whose destination is chosen by the
+  operator's route table; no route keeps the work held and reported. A contact is a wake source for the
+  fair selector, never a scheduler of its own.
+- **The bundle machine** is declared in the machine form with fn1's events and effects as vocabulary, after
+  the served consumer kind.
+
+### 13.7 Keystones (statement first, owed with teeth)
+| id | statement |
+|---|---|
+| K-P1 | the peer claim (§13.4), checked against an independent fold of the retained evidence and conflict observations; conditional equality separate from eventual exchange |
+| K-P2 | transit refines the shared acceptance transaction after carrier-specific preparation: identity, admission, membership, charges and durability effects agree (not stored-byte equality) |
+| K-P3a (safety) | every installed delivery responsibility is pending or has exactly one terminal disposition; no cursor advance loses one |
+| K-P3b (progress) | settlement only under stated scheduling, availability, resource and peer-response assumptions (an infinite `431` refutes the unconditional claim) |
+| K-P4 | at most one durable terminal disposition per delivery identity across restarts, duplicate replies, stale sessions and compaction; a re-feed is a new identity linked to the old outcome |
+| K-P5 | a local custody obligation is discharged only by its authorized, exactly bound receipt or an authorized durable waiver; transport ACKs, reports, carrier expiry, cancellation and another obligation's receipt cannot |
+| K-P6 | a reoffer matching a local acceptance whose body was reclaimed is `:duplicate`, allocates no publication, discharges no unrelated obligation; evidence-only or foreign-receipt knowledge is not this case |
+Each keystone's positive fixture asserts its full antecedent (K-P2 accepts something; K-P5 releases
+something) and a fault per keystone is caught.
+
+### 13.8 The witnesses as fixtures, and what they establish
+A **witness-to-property matrix** names, per fixture, which keystones it exercises non-vacuously. The
+reference model is extended to several nodes with evidence, obligations, feed work and gaps; its fixtures
+are executable obligations and checker oracles, **not served acceptance evidence**.
+| fixture | exercises |
+|---|---|
+| W1 opposite first arrivals | K-P1 |
+| W2 two candidate sets meet with funded capacity exhausted: partial import, gap, restart, later funding, completion after repair | K-P1 (incorporation vs scan) |
+| W3 identical content with new evidence | K-P2, K-P6 |
+| W4 a forged arbitrary-key signature (authority logic, not signature security) | K-P1 |
+| W5 an object before its authority dependencies | K-P1 |
+| W6 cancel before target with a crash between | §13.5 |
+| W7 reclamation with identity and evidence surviving; a reoffer | K-P6, K-P5 |
+| W8 the evidence commit before persistence, after it, before the reply (semantics only; physical cuts need the served machine) | K-P2 |
+| W9 one article through two routing projections, through the real subject extraction and relay transforms | K-P2 |
+| W10 a transported domain against old-incarnation decisions (a specified model, not transport implemented) | ruling 12 |
+| F1 A→B→C→A propagation, evidence circulating with its identity | K-P1, loops |
+| F2 a deferred head, later successes, mixed CHECK/TAKETHIS phases, stale replies, restart with attempts unresolved | K-P3a, K-P4 |
+| F3 conflict visibility at an authorized typed read under incomplete coverage and disclosure limits | K-P1 |
+| F4 carried count and carried octets exhausted independently; lower, refuse, raise, restart with usage kept | charges |
+| F5 cleanup credit exhausted for admissions while existing attempts, handoffs and reclamation settle | BP debt |
+| F6 fragment replacement at full capacity, a family across a crash, a receipt lost after a delivery report | K-P5 |
+| F7 grant or query changes while an offer, an evidence page or feed work is pending | §13.1 |
+
+### 13.9 Seams this needs
+- **D:** the `:peer-credit` holding kind; D5 3/n answering §13.2's table (the exhaustion reasons split
+  into `:contended`, `:exhausted`, `:incompatible`; `:unaffordable` today names the last); current
+  authority per peer decision; the reply profile row; D's identity text reconciled with rulings 6-7 before
+  its peer path is coded (the fifth-content bound, POST conflicts writing nothing, transit deciding by
+  Message-ID after receipt, d-machines-nntp.md around line 1414); A's outbound `Connect`.
+- **C:** the typed obligations contract (§13.6); the cancel intent record (§13.5); the position-ordered
+  admission index with an intra-commit ordinal; the `feed-work` schema keyed by delivery identity; the
+  bundle, submission, attempt, outcome and handoff schemas.
+- **B:** the ADU as a record subject; evidence identity preserved across import.
 
 ## 14. Order of the build
 1. Done: the port form, the consumer port and carriers, the model, the keystones, the two fixtures.
-2. The FNCT and `fncu` codecs from `deflayout` (v1 and v2, the new codes), fn1's bytes as fixtures; the
-   L carrier's legacy translation as data.
-3. When D5 2/n and D6 land: `fn2-cns` in the new form over C's reads and folds, the XFNC block, the local
+2. Done: the big-endian layout kinds; the FNCT and `fncu` codecs (v1 and v2, codes 0-18, replies 5, 6,
+   9 and 28) with fn1's bytes as fixtures; the legacy translation as data.
+3. Peering and BP: §13 stated and revised after Astra's read; seams to main; then the multi-node model
+   with the witness matrix and K-P1..K-P6 owed with teeth.
+4. When D5 2/n and D6 land: `fn2-cns` in the new form over C's reads and folds, the XFNC block, the local
    socket, the CONSUMER checker over the model, scenarios 7, 8, 9, K10 stated.
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
@@ -390,3 +623,23 @@ pagination and coalesced wake; the numbers' provenance stated (§10); v2 widths 
 (§8). Two positions recorded: on (b), Astra holds it need not duplicate authentication and would value
 independent scheduling; E keeps (a) for the first slice (§5). On K4, Astra notes a waiter polling only at
 its timeout satisfies "wait is read"; E answers with K4b rather than weakening K4.
+
+## 16. Astra's second read (`lanes/e-quests/astra-2.md`, §13): what it changed
+Taken: the feed acknowledges once its processing transaction installs delivery work, scheduled by a fair
+fold (no head-of-line hole), with a stable delivery identity, attempt phases, separate deferral and loss
+counts, explicit drops and an operator waiver; the feed consumer is node-owned and outside the remote
+whitelist; control matched by its target's groups; CHECK/IHAVE suppress only on local acceptance history or
+a local not-wanted decision, never on evidence alone; the exhaustion reasons split three ways; TAKETHIS's
+default follows RFC 4644 with fn1's 436 as a named profile; phase-aware reply matching; the evidence page
+as its own result with history identity, scope, traversal, exceptions and two completion claims, scan
+cursor apart from incorporation, repair of gaps, evidence identity preserved across import; BP as typed
+bundle, submission, attempt, outcome, handoff and obligation records carrying FNBS's budgets, cleanup debt,
+recovery, fragments and progress classes; custody distinct from the carrier; the typed obligations
+contract; the receipt outbox and the final-ACK boundary; the profile's ADU bound; current authority at
+every peer decision; aggregate capacity beside per-peer charges; the sharpened K-P1..K-P6 with full
+antecedents; the witness-to-property matrix and fixtures F1-F7; model fixtures labeled oracles, not
+served evidence; the durable cancel intent; withdrawn feed work as a terminal disposition.
+One position recorded: Astra notes acceptance-time installation (feed work in the POST batch) would fix the
+target set at acceptance; E installs at the feed consumer's processing transaction instead, because the
+epoch's query makes selection a pure function of the occurrence (the same target set) and keeps a feed
+write out of every POST transaction as peers multiply.

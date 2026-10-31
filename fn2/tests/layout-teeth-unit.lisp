@@ -24,7 +24,7 @@
                   ((eq kind :bool) 1)
                   ((and (consp kind) (eq (car kind) :enum)) 0)
                   ((and (consp kind) (eq (car kind) :zero)) nil)
-                  ((and (consp kind) (eq (car kind) :octets))
+                  ((and (consp kind) (member-eq (car kind) '(:octets :octets16 :octets32)))
                    (make-list (min 3 (cadr kind)) :initial-element 42))
                   (t 42))
             (fn2-layout-teeth-values (cdr layout))))))
