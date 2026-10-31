@@ -5,7 +5,8 @@
 ;
 ; The state is an alist of named parts:
 ;   :log       events in position order (positions 1, 2, ...):
-;              (POS :article STREAMS MID OCTETS TO AUTHOR NUMBERS) or (POS :withdraw STREAMS TARGET AUTHOR)
+;              (POS :article STREAMS MID OCTETS TO AUTHOR NUMBERS), (POS :withdraw STREAMS TARGET AUTHOR),
+;              or (POS :commit): a commit nothing selects, which still takes its position
 ;   :regs      (principal . consumer) -> (EPOCH QV VV EDGES GRANTS-AT-REGISTRATION)
 ;   :acks      (principal consumer epoch) -> acknowledged position
 ;   :outcomes  (principal . op) -> (DIGEST OUTCOME): the retry table (C's S-OUTCOME)
@@ -121,15 +122,33 @@
       (and target (fn2-cns-article-reasons (fn2-cns-ev-streams target) (fn2-cns-ev-to target) edges grants p
                                            (fn2-cns-ev-pos target))))))
 
-; The item an event is delivered as (e-surface.md 3.4, 4.1): (POS TYPE MID PAYLOAD REASONS).
-(defun fn2-cns-item (e reasons st octet-limit)
+; The streams an event is selected through (e-surface.md 4.1): the live
+; edges' streams the principal may read among the article's own, and its addr
+; stream for a mention; a withdrawal is selected through its target's.
+(defun fn2-cns-live-filter (readable edges pos)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom readable) nil)
+        ((fn2-cns-edge-live (car readable) edges pos) (cons (car readable) (fn2-cns-live-filter (cdr readable) edges pos)))
+        (t (fn2-cns-live-filter (cdr readable) edges pos))))
+(defun fn2-cns-article-through (streams to edges grants p pos)
+  (declare (xargs :verify-guards nil))
+  (let ((readable (fn2-cns-readable grants p streams)))
+    (append (fn2-cns-live-filter readable edges pos)
+            (and readable (fn2-cns-edge-live (list :addr p) edges pos) (member-equal p to) (list (list :addr p))))))
+(defun fn2-cns-through (e edges grants p log)
+  (declare (xargs :verify-guards nil))
+  (let ((a (if (eq (fn2-cns-ev-kind e) :article) e (fn2-cns-article-of (fn2-cns-ev-mid e) log))))
+    (and a (fn2-cns-article-through (fn2-cns-ev-streams a) (fn2-cns-ev-to a) edges grants p (fn2-cns-ev-pos a)))))
+
+; The item an event is delivered as (e-surface.md 3.4, 4.1): (POS TYPE MID PAYLOAD REASONS THROUGH).
+(defun fn2-cns-item (e reasons through st octet-limit)
   (declare (xargs :verify-guards nil))
   (let ((pos (fn2-cns-ev-pos e)) (mid (fn2-cns-ev-mid e)) (octets (fn2-cns-ev-octets e)))
-    (cond ((eq (fn2-cns-ev-kind e) :withdraw) (list pos :withdrawal mid nil reasons))
-          ((member pos (fn2-cns-get :reclaimed st)) (list pos :gap mid :unavailable reasons))
-          ((fn2-cns-withdrawn-p mid (fn2-cns-get :log st)) (list pos :withdrawn mid nil reasons))
-          ((< (nfix octet-limit) (length octets)) (list pos :ref mid (length octets) reasons))
-          (t (list pos :record mid octets reasons)))))
+    (cond ((eq (fn2-cns-ev-kind e) :withdraw) (list pos :withdrawal mid nil reasons through))
+          ((member pos (fn2-cns-get :reclaimed st)) (list pos :gap mid :unavailable reasons through))
+          ((fn2-cns-withdrawn-p mid (fn2-cns-get :log st)) (list pos :withdrawn mid nil reasons through))
+          ((< (nfix octet-limit) (length octets)) (list pos :ref mid (length octets) reasons through))
+          (t (list pos :record mid octets reasons through)))))
 (defun fn2-cns-item-pos (i) (declare (xargs :verify-guards nil)) (nfix (nth 0 i)))
 (defun fn2-cns-item-type (i) (declare (xargs :verify-guards nil)) (nth 1 i))
 (defun fn2-cns-item-mid (i) (declare (xargs :verify-guards nil)) (nth 2 i))
@@ -152,7 +171,7 @@
             ((<= (nfix items) (len acc))
              (mv (reverse (if (and (eq fault :skip) (consp acc)) (cdr acc) acc)) t last))
             (t (fn2-cns-walk (cdr events) p edges grants principal st items octet-limit
-                             (cons (fn2-cns-item e reasons st octet-limit) acc) (fn2-cns-ev-pos e) fault))))))
+                             (cons (fn2-cns-item e reasons (fn2-cns-through e edges grants principal (fn2-cns-get :log st)) st octet-limit) acc) (fn2-cns-ev-pos e) fault))))))
 
 ;; Registrations and cursors --------------------------------------------------
 (defun fn2-cns-reg-epoch (r) (declare (xargs :verify-guards nil)) (nth 0 r))
@@ -420,6 +439,10 @@
 
 ;; The world's own steps (not port verbs): an operator's grants and limits, a
 ;; cancel, a reclamation, a timeout, a crash.
+(defun fn2-cns-pad (log from to)
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix to)) (nfix from)))))
+  (if (or (zp from) (< (nfix to) from)) log
+    (fn2-cns-pad (append log (list (list from :commit))) (+ 1 from) to)))
 (defun fn2-cns-withdraw (st p mid)
   (declare (xargs :verify-guards nil))
   (let ((a (fn2-cns-article-of mid (fn2-cns-get :log st))))
@@ -451,6 +474,11 @@
       (:withdraw (mv :done (fn2-cns-withdraw st p a)))
       (:reclaim (mv :done (fn2-cns-put :reclaimed (cons a (fn2-cns-get :reclaimed st)) st)))
       (:crash (mv :done (fn2-cns-put :waits nil st)))
+      ; A commit no consumer selects (another consumer's ack, a register, any
+      ; batch outside the selection) still takes its position: the log is
+      ; padded with (POS :commit) through position P, so the model's positions
+      ; are the store's commit positions (the CONSUMER checker's alignment).
+      (:commit (mv :done (fn2-cns-put :log (fn2-cns-pad (fn2-cns-get :log st) (+ 1 (fn2-cns-frontier st)) p) st)))
       (otherwise (mv '(:refused :no-such-verb) st)))))
 (defun fn2-cns-step (op st fault)
   (declare (xargs :verify-guards nil))

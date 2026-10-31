@@ -47,6 +47,7 @@
 (include-book "fn2/books/owed-consumer")
 (include-book "fn2/tests/consumer-mini")
 (include-book "fn2/tests/consumer-helm")
+(include-book "fn2/tests/sim-layer-e")
 (include-book "fn2/books/owed-peer")
 (include-book "fn2/tests/peer-witnesses")
 ; Other layers' unit and checker books are included above this line.

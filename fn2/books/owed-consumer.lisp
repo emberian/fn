@@ -1,11 +1,12 @@
 ; The consumer port's keystones (layer E3; fn2/docs/e-surface.md section 9),
 ; statement first over the reference model (consumer-model.lisp), each owed
 ; with teeth: the Mini and helm fixtures as the satisfiable runs, and a
-; deliberately wrong node (a FAULT of the model) that falsifies it. The
-; served machine's refinement of the model through crashes (K10) is stated
-; when D5 2/n serves a durable POST.
+; deliberately wrong node (a FAULT of the model) that falsifies it. K10, the
+; served machine's refinement of the model through crashes, is stated over
+; CONSUMER (sim/check-consumer.lisp).
 (in-package "ACL2")
 (include-book "consumer-model")
+(include-book "../sim/check-consumer")
 (fn2-book-layer :e)
 
 (defun fn2-cns-limits-p (limits)
@@ -66,3 +67,30 @@
   :schema :invariant :from (:operation-set fn2-consumer)
   :teeth (fn2-cns-test-helm fn2-cns-test-helm-negative)
   :doc "K8 (the admission order of section 6): a refused verb leaves the state, the meter included, as it was, but for the conflict evidence IDENTITY ruling 6 commits beside an article's refusal. Teeth: helm's post into a room the seat may not post to; a meter that charges before the grant check and keeps it (:meter-first).")
+;; K10 ----------------------------------------------------------------------
+; The observations the simulator records from fn2-ctl and fn2-cns at the L
+; carrier for SCRIPT (a tests/sim-layer-e.lisp script) under SEED and FAULTS,
+; and the store's history and incarnation. Constrained here, defined by the
+; simulator's adapter when the kinds certify (e-surface.md 14); the statement
+; does not change when it is.
+(encapsulate
+  (((fn2-cns-served-observations * * *) => *)
+   ((fn2-cns-served-identity *) => *))
+  (local (defun fn2-cns-served-observations (script seed faults) (declare (ignore script seed faults)) nil))
+  (local (defun fn2-cns-served-identity (seed) (declare (ignore seed)) (list nil nil)))
+  (defthm fn2-cns-served-observations-true-listp
+    (true-listp (fn2-cns-served-observations script seed faults)) :rule-classes :type-prescription))
+; What the served node answers `unavailable` until its source lands: register
+; and ack with D's :consumer transaction, append with D5 2/n, fetch with D6
+; 2/n, rebase and unregister with C4b, a register beyond the principal's addr
+; stream with C4b's group edges.
+(defconst *fn2-cns-served-interims* '(register ack append fetch rebase unregister register-groups))
+
+(defthm-owed fn2-cns-served-refines (script seed faults)
+  (equal (fn2-consumer-check (fn2-cns-served-observations script seed faults)
+                             (car (fn2-cns-served-identity seed)) (cadr (fn2-cns-served-identity seed))
+                             *fn2-cns-served-interims*)
+         :pass)
+  :schema :invariant :from (:operation-set fn2-consumer)
+  :teeth (fn2-sle-test-oracle fn2-sle-test-controls)
+  :doc "K10: the served consumer port refines the model through crashes: every reply the L carrier delivers is an answer the model gives at some moment between its request and its reply, a mutation takes effect once or (after a lost reply or a crash) not at all, the consumer-cursor fold reads as the model's acknowledged positions at every boundary, no parked wait is left with a due read once the node settles (K4b), and no wait-row is held for a wait that has answered or died with its connection. Teeth: the oracle node passes CONSUMER on scenarios 7-9, the lost ack and the paging scenario, each shown to exercise its path; a node that drops a page's last item, answers a read uncertain, reads a cursor behind its ack, never answers a woken wait, or leaks a wait-row is caught. The producer is the simulator's adapter, owed with the kinds.")
