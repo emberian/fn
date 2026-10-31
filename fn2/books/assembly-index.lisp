@@ -9,6 +9,8 @@
 (include-book "conn")
 (include-book "upload")
 (include-book "txn")
+(include-book "cursor")
+(include-book "cns")
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
 (fn2-machine-directory-events)

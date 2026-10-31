@@ -56,7 +56,7 @@
                                   (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                             fn2-pool))))
                 (mv-let (code after pending fn2-pool)
-                  (fn2-answer 0 (len octets) mask pending nil seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
+                  (fn2-answer 0 (len octets) mask pending nil nil seen flags real slot gen tslot tgen 1 1 1 fn2-pool)
                   (mv (list code after pending
                             (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
                       fn2-pool)))))))

@@ -1,9 +1,10 @@
 ; B-S2 controls (b-durability.md §11b): a transaction member's workspace is
 ; admitted whole or not at all, a second member joins the open collector at
 ; the next event, and the seal writes each record verbatim after a record
-; header at its member's event.
+; header at its member's event. Then the teeth of B-S2's three keystones
+; (commit-proof.lisp) over the real machines and the simulated adapter.
 (in-package "ACL2")
-(include-book "../sim/commit-history")
+(include-book "../books/commit-proof")
 (local (defthm fn2-ctu-countdown
  (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))) :rule-classes nil))
 (local (defthm fn2-ctu-count-op (o-p (nfix left)) :rule-classes nil))
@@ -86,3 +87,100 @@
 ; Teeth: a workspace one octet short is refused whole; no batch opens.
 (assert-event (equal (cadr *fn2-ctu-results*)
  (list :ok :ok :admission *fn2-commit-state-free* *fn2-commit-state-free* :none)))
+
+; ---- B-S2 keystone teeth -------------------------------------------------
+(defun fn2-ctu-seeded (layout n)
+ (declare (xargs :verify-guards nil :measure (len layout)))
+ (if (atom layout) nil
+  (let ((k (cadar layout)))
+   (cons (cond ((eq k :digest) (cons 1 (make-list 32 :initial-element (+ 7 (nfix n)))))
+               ((and (consp k) (eq (car k) :octets)) (list 60 (+ 97 (nfix n)) 64 98 62))
+               ((and (consp k) (eq (car k) :enum)) 0)
+               (t (+ 1 (nfix n))))
+         (fn2-ctu-seeded (cdr layout) n)))))
+(defun fn2-ctu-acceptance (n)
+ (declare (xargs :verify-guards nil))
+ (cons *record-kind-article-acceptance*
+       (fn2-layout-octets *fn2-format-article-acceptance* (fn2-ctu-seeded *fn2-format-article-acceptance* n))))
+(defconst *fn2-ctu-two-members*
+ (list (list (fn2-ctu-acceptance 0) (fn2-ctu-acceptance 1)) (list (fn2-ctu-acceptance 2))))
+(defun fn2-ctu-auto (fault) (make-list 600 :initial-element (list :auto fault)))
+(defun fn2-ctu-outcomes (result)
+ (declare (xargs :verify-guards nil))
+ (if (atom result) nil
+  (cons (list (nth 1 (car result)) (nth 4 (car result))) (fn2-ctu-outcomes (cdr result)))))
+; One batch of two members, every completion clean: both :accepted.
+(defun fn2-ctu-accepted-run (plant)
+ (declare (xargs :verify-guards nil))
+ (fn2-commit-txn-proof-run *fn2-ctu-two-members* (append '((:admit 0) (:admit 1)) (fn2-ctu-auto 26)) 0 plant))
+(defun fn2-commit-txn-accepted ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ctu-accepted-run nil)))
+  (and (fn2-ctp-initialized r)
+       (equal (fn2-ctu-outcomes (fn2-ctp-outcome-list r)) '((:ok 1) (:ok 1)))
+       (fn2-commit-txn-outcome-evidencep r))))
+; One member whose writes all fail (:no-space): :uncertain after its first write.
+(defun fn2-commit-txn-uncertain ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-commit-txn-proof-run *fn2-ctu-two-members* (cons '(:admit 0) (fn2-ctu-auto 12)) 0 nil)))
+  (and (fn2-ctp-initialized r)
+       (equal (fn2-ctu-outcomes (fn2-ctp-outcome-list r)) '((:ok 2)))
+       (fn2-commit-txn-outcome-evidencep r))))
+; Two batches: the first's write fails before the follower writes, so the
+; follower is refused (a suffix abort) with no journal write of its own.
+(defun fn2-commit-txn-refused ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-commit-txn-proof-run *fn2-ctu-two-members*
+           (append '((:admit 0) (:run 0) (:admit 1)) (fn2-ctu-auto 12)) 0 nil)))
+  (and (fn2-ctp-initialized r)
+       (equal (fn2-ctu-outcomes (fn2-ctp-outcome-list r)) '((:ok 2) (:ok 3)))
+       (fn2-commit-txn-outcome-evidencep r))))
+(defun fn2-commit-txn-refused-after-write ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ctu-accepted-run :refuse-written)))
+  (and (fn2-ctp-initialized r)
+       (equal (car (fn2-ctu-outcomes (fn2-ctp-outcome-list r))) '(:ok 3))
+       (not (fn2-commit-txn-outcome-evidencep r)))))
+(defun fn2-commit-txn-two-members ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ctu-accepted-run nil)))
+  (and (fn2-ctp-initialized r) (equal (len (fn2-ctp-images r)) 1)
+       (fn2-commit-txn-records-verbatimp r) (fn2-commit-txn-admission-totalp r))))
+(defun fn2-commit-txn-flipped ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ctu-accepted-run :flip)))
+  (and (fn2-ctp-initialized r) (equal (len (fn2-ctp-images r)) 1)
+       (not (fn2-commit-txn-records-verbatimp r)))))
+; Admission's refusals: a frame longer than its workspace, an unknown record
+; kind, a body one octet short, and a batch with no records room left.
+(defconst *fn2-ctu-refusals*
+ (let* ((good (fn2-ctu-acceptance 0)) (body (cdr good)))
+  (append
+   (list (list good)
+         (list (cons *record-kind-article-acceptance* (append body '(0))))
+         (list (cons 2 body))
+         (list (cons *record-kind-article-acceptance* (butlast body 1))))
+   (make-list 14 :initial-element (list good good good)))))
+(defun fn2-ctu-admit-all (i left)
+ (declare (xargs :verify-guards nil :measure (nfix left)
+  :hints (("Goal" :use (fn2-ctu-countdown fn2-ctu-count-op) :in-theory nil))))
+ (if (zp left) nil (cons (list :admit (nfix i)) (fn2-ctu-admit-all (+ 1 (nfix i)) (- left 1)))))
+(defun fn2-ctu-refusal-run (plant)
+ (declare (xargs :verify-guards nil))
+ (fn2-commit-txn-proof-run *fn2-ctu-refusals* (fn2-ctu-admit-all 0 (len *fn2-ctu-refusals*)) 0 plant))
+(defun fn2-ctu-codes (admissions)
+ (declare (xargs :verify-guards nil))
+ (if (atom admissions) nil (cons (nth 1 (car admissions)) (fn2-ctu-codes (cdr admissions)))))
+(defun fn2-commit-txn-refusals-change-nothing ()
+ (declare (xargs :verify-guards nil))
+ (let* ((r (fn2-ctu-refusal-run nil)) (codes (fn2-ctu-codes (fn2-ctp-admissions r))))
+  (and (fn2-ctp-initialized r)
+       (equal (take 4 codes) '(:ok :admission :admission :admission))
+       (member-eq :exhausted codes)
+       (fn2-commit-txn-admission-totalp r))))
+(defun fn2-commit-txn-leaked-refusal ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ctu-refusal-run :leak)))
+  (and (fn2-ctp-initialized r) (not (fn2-commit-txn-admission-totalp r)))))
+(fn2-assert-owed-teeth fn2-commit-txn-outcome-evidence fn2-commit-txn-records-verbatim
+                       fn2-commit-txn-admission-total)
