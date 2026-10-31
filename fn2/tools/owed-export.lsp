@@ -44,6 +44,9 @@
 (include-book "fn2/tests/range-unit")
 (include-book "fn2/tests/folds-unit")
 (include-book "fn2/tests/sealer-unit")
+(include-book "fn2/books/owed-consumer")
+(include-book "fn2/tests/consumer-mini")
+(include-book "fn2/tests/consumer-helm")
 ; Other layers' unit and checker books are included above this line.
 ; The obligation input closes here, at the top of the world, never inside a
 ; library book (DSL-METATHEORY section 2.4): include order cannot refuse a row.
