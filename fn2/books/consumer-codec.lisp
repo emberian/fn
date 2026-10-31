@@ -84,8 +84,9 @@
   (declare (xargs :verify-guards nil))
   (if (atom ids) t (and (consp (car ids)) (fn2-fncu-ids-ok (cdr ids)))))
 ; (:ok CURSOR) or (:refused WORD) with fn1's words (octets, version,
-; grammar). A v1 cursor whose fields would need v2 cannot exist; a v2 cursor
-; whose fields fit v1 is refused (one form per cursor).
+; grammar). A v1 cursor whose fields would need v2 cannot exist. A client may
+; offer v2 for any cursor, one that fits v1 included (the node issues v1 while
+; it fits): both decode to the same cursor (Argon review, e-surface 3.1).
 (defun fn2-fncu-decode (octets)
   (declare (xargs :verify-guards nil))
   (b* (((unless (and (true-listp octets) (<= (len octets) 512))) '(:refused :octets))
@@ -97,8 +98,7 @@
        (ids (take 5 (cddr vs)))
        (tail (nthcdr 7 vs))
        (c (append (list :cursor (if v1 0 (car tail))) ids (if v1 tail (cdr tail))))
-       ((unless (and (fn2-fncu-ids-ok ids) (posp (nth 9 c)))) '(:refused :grammar))
-       ((unless (or v1 (not (fn2-fncu-v1-fits c)))) '(:refused :grammar)))
+       ((unless (and (fn2-fncu-ids-ok ids) (posp (nth 9 c)))) '(:refused :grammar)))
     (list :ok c)))
 
 ;; ---------------------------------------------------------------------------

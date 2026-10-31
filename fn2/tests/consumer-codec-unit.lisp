@@ -34,7 +34,8 @@
       (equal (fn2-fncu-encode (cadr (fn2-fncu-decode *fn2-cct-max-cursor*))) *fn2-cct-max-cursor*)
       (equal (fn2-fncu-encode (cadr (fn2-fncu-decode *fn2-cct-zero-position*))) *fn2-cct-zero-position*)))
 
-;; 2. Past a v1 field the cursor is v2, never truncated; one form per cursor.
+;; 2. Past a v1 field the cursor is v2, never truncated; a client's v2 form of a
+;; cursor that fits v1 is the same cursor.
 (defconst *fn2-cct-wide* '(:cursor 0 (1) (2) (3) (4) (5) 1 1 1 4294967296))
 (defconst *fn2-cct-domain* '(:cursor 7 (1) (2) (3) (4) (5) 1 1 1 5))
 (assert-event
@@ -43,10 +44,11 @@
       (equal (fn2-fncu-decode (fn2-fncu-encode *fn2-cct-wide*)) (list :ok *fn2-cct-wide*))
       (equal (fn2-fncu-decode (fn2-fncu-encode *fn2-cct-domain*)) (list :ok *fn2-cct-domain*))
       (equal (fn2-layout-max-size *fn2-fncu-v2-layout*) 366)
-      ; a v2 form of a cursor that fits v1
+      ; a v2 form of a cursor that fits v1: accepted, the cursor v1 encodes
       (equal (fn2-fncu-decode (fn2-layout-octets *fn2-fncu-v2-layout*
                                 (list *fn2-fncu-magic* 2 '(1) '(2) '(3) '(4) '(5) 0 1 1 1 5)))
-             '(:refused :grammar))))
+             '(:ok (:cursor 0 (1) (2) (3) (4) (5) 1 1 1 5)))
+      (equal (nth 4 (fn2-fncu-encode '(:cursor 0 (1) (2) (3) (4) (5) 1 1 1 5))) 1)))
 
 ;; 3. fn1's cursor refusals, word for word.
 (assert-event
