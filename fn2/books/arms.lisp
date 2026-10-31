@@ -48,6 +48,18 @@
   (if (atom a) nil
     (if (member-equal (car a) b) (fn2-arm-minus (cdr a) b)
       (cons (car a) (fn2-arm-minus (cdr a) b)))))
+;; Holds and effects as multisets (G3, D F13): two ranges of one kind are two
+;; holdings, and two calls that each release one are two releases.
+(defun fn2-arm-mminus (a b)
+  ; A less one occurrence of each element of B
+  (declare (xargs :verify-guards nil))
+  (if (atom b) a
+    (fn2-arm-mminus (if (member-equal (car b) a) (remove1-equal (car b) a) a) (cdr b))))
+(defun fn2-arm-msubsetp (a b)
+  ; every element of A, as often as A has it, is in B
+  (declare (xargs :verify-guards nil))
+  (if (atom a) t
+    (and (member-equal (car a) b) (fn2-arm-msubsetp (cdr a) (remove1-equal (car a) b)))))
 
 ; ----------------------------------------------------------------------
 ; Cost forms: F ::= nat | *CONSTANT* | (+ F ...) | (max F ...) | (* nat F)
@@ -557,8 +569,8 @@
   (declare (xargs :verify-guards nil))
   (if (atom nexts) nil
     (let ((h (fn2-arm-holds-of s holds)) (h1 (fn2-arm-holds-of (car nexts) holds)))
-      (cons (list s (car nexts) (fn2-arm-minus (fn2-arm-minus h1 h) *fn2-arm-transient-kinds*)
-                  (fn2-arm-minus h h1))
+      (cons (list s (car nexts) (fn2-arm-minus (fn2-arm-mminus h1 h) *fn2-arm-transient-kinds*)
+                  (fn2-arm-mminus h h1))
             (fn2-arm-moves-from s (cdr nexts) holds)))))
 (defun fn2-arm-moves (sources nexts holds)
   ; ((S S' acquired released) ...) over every source and successor
@@ -569,12 +581,12 @@
 (defun fn2-arm-moves-problem (moves acquires releases)
   (declare (xargs :verify-guards nil))
   (cond ((atom moves) nil)
-        ((not (fn2-arm-subsetp (caddar moves) acquires))
+        ((not (fn2-arm-msubsetp (caddar moves) acquires))
          (msg "moves ~x0 -> ~x1 without acquiring ~x2." (caar moves) (cadar moves)
-              (fn2-arm-minus (caddar moves) acquires)))
-        ((not (fn2-arm-subsetp (car (cdddar moves)) releases))
+              (fn2-arm-mminus (caddar moves) acquires)))
+        ((not (fn2-arm-msubsetp (car (cdddar moves)) releases))
          (msg "moves ~x0 -> ~x1 without releasing ~x2." (caar moves) (cadar moves)
-              (fn2-arm-minus (car (cdddar moves)) releases)))
+              (fn2-arm-mminus (car (cdddar moves)) releases)))
         (t (fn2-arm-moves-problem (cdr moves) acquires releases))))
 (defun fn2-arm-moved-kinds (moves acquiredp)
   (declare (xargs :verify-guards nil))
