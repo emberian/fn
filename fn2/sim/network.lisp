@@ -1,18 +1,24 @@
 (in-package "ACL2")
 (include-book "../books/profile")
 (include-book "../books/columns")
+(include-book "../books/vocab")
 
 ; A connection owns two bounded pipes. A full pipe returns :would-block;
 ; its consumer must drain it before more bytes can arrive. It never silently
 ; drops or truncates bytes. The server->client pipe is the unread wire record.
 ; Delays, fragmentation, and short operation lengths are chosen by sim.lisp;
 ; these one-byte physical transitions admit every byte boundary as a cut.
+; A capability's peer is the simulated host's configuration of who connects
+; there: family (vocab's fn2-peer-family, :none by default or :local) and,
+; for :local, the credentials the kernel would report at accept (uid, gid).
+; An Accept that lands on the capability carries that record.
 (defcolumns fn2-sim-network
   ((nonce :u32) (base :u60) (cap :u32)
    (phase (:enum fn2-network-phase (:closed :open :reset :admission-refused)))
    (rx-head :u32) (rx-count :u32) (tx-head :u32) (tx-count :u32)
    (half-open :bool) (nonreading :bool)
-   (reset-armed :bool) (reset-left :u60))
+   (reset-armed :bool) (reset-left :u60)
+   (peer-family :u8) (peer-uid :u32) (peer-gid :u32))
   :init-name fn2-network-columns-init
   :extra-fields
   ((fn2-network-rx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Connection receive pipes have byte capacity independent of row count.")
@@ -34,7 +40,8 @@
             (fn2-sim-network-put slot (nonce 0) (base (if (unsigned-byte-p 60 base) base 0))
                              (cap window) (phase *fn2-network-phase-closed*)
                              (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
-                             (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0))))
+                             (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0)
+                             (peer-family *fn2-peer-family-none*) (peer-uid 0) (peer-gid 0))))
       (fn2-network-init-rows (+ 1 slot) window fn2-sim-network))))
 (defthm fn2-network-init-rows-type
   (implies (and (fn2-sim-networkp fn2-sim-network)
@@ -88,6 +95,37 @@
                                     (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0))))
              (mv :ok nonce fn2-sim-network)))))
 (fn2-sim-network-preserves fn2-network-accept (slot fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
+
+; Configure capability SLOT's peer: :none, or :local with its uid and gid
+; (a record fn2-peer-recordp accepts). Anything else is refused by name and
+; changes nothing.
+(defun fn2-network-set-peer (slot family uid gid fn2-sim-network)
+  (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
+  (cond ((not (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))))
+         (mv :bounds fn2-sim-network))
+        ((not (and (or (equal family *fn2-peer-family-none*) (equal family *fn2-peer-family-local*))
+                   (fn2-peer-recordp *fn2-outcome-done* family 0 uid gid 0 0)))
+         (mv :peer fn2-sim-network))
+        (t (let ((fn2-sim-network (fn2-sim-network-put slot (peer-family family) (peer-uid uid) (peer-gid gid))))
+             (mv :ok fn2-sim-network)))))
+(fn2-sim-network-preserves fn2-network-set-peer (slot family uid gid fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
+
+; The peer record an Accept that landed on capability SLOT carries: (mv
+; family port w0 w1 w2 w3), :none for a slot outside the table.
+(defun fn2-network-peer (slot fn2-sim-network)
+  (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
+  (if (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))
+           (equal (fn2-sim-network-peer-family slot fn2-sim-network) *fn2-peer-family-local*)
+           (fn2-peer-recordp *fn2-outcome-done* *fn2-peer-family-local* 0
+                             (fn2-sim-network-peer-uid slot fn2-sim-network)
+                             (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0))
+      (mv *fn2-peer-family-local* 0 (fn2-sim-network-peer-uid slot fn2-sim-network)
+          (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0)
+    (mv *fn2-peer-family-none* 0 0 0 0 0)))
+(defthm fn2-network-peer-recordp
+  (mv-let (family port w0 w1 w2 w3) (fn2-network-peer slot fn2-sim-network)
+    (fn2-peer-recordp *fn2-outcome-done* family port w0 w1 w2 w3)))
+(in-theory (disable fn2-network-peer))
 
 (defun fn2-network-close (slot nonce fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
@@ -390,7 +428,7 @@
 (fn2-sim-network-preserves fn2-network-restart (fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
 
 (assert-event (fn2-assert-compliant-p
-  '(fn2-network-init fn2-network-accept fn2-network-close fn2-network-refuse
+  '(fn2-network-init fn2-network-accept fn2-network-set-peer fn2-network-peer fn2-network-close fn2-network-refuse
     fn2-network-faults fn2-network-transfer-tick fn2-network-queue-put fn2-network-queue-get
     fn2-network-client-byte fn2-network-client-read fn2-network-receive-byte fn2-network-send-byte
     fn2-network-drop-all fn2-network-restart) (w state)))

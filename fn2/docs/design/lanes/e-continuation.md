@@ -20,6 +20,12 @@ cannot be written inside E without another layer's sizing or records:
    field base from the slot (128 x slot), not from a separate stripe below the read stripes.
 2. **Read rows** (C, D): C's read row X is "one per query cursor slot", `(fn2-b-read-rows profile)` = :x when
    :reading; D6 1/n's cursor kind (cursor.lisp, on dev eee0eb09e) owns [0, x) by its slot. Ask: read rows = x + cns capacity, cns row S uses x + S.
+- **A's :local listener: LANDED at 371c48e4e.** `fn2-peer-recordp` lets a :local peer carry w0 = uid, w1 = gid (port, w2, w3
+  zero); `fn2-host-listener-bind` returns `:listener-path` (absolute, no NUL, <= 103 octets, else startup refuses
+  :listener-path); the native side binds the Unix socket 0600 before listen, removes it at stop, refuses an existing file,
+  fills credentials by getpeereid/SO_PEERCRED. In the simulator, `fn2-network-set-peer` gives a capability its peer and
+  its Accept posts that record through the native boundary. The fixture peer record RETIRES: the paste and the
+  scenarios use `fn2-network-set-peer` (a :local record, w0 = the owner uid) instead.
 3. **Consumer ids** (C, D): the cursor fold's key is `(:id consumer)` (u60); the wire's consumer is 1-64
    octets per principal. Nothing maps one to the other. Ask: a fold `fn2-consumer-names` keyed ((principal
    (:id principal)) (name (:octets 64))) value ((consumer (:id consumer))), `:unique`, written by register's
@@ -38,8 +44,8 @@ So before D's txn port and D6 3/n, a served ctl/cns pair could only refuse; BRIC
 
 ## Next
 1. When main answers seams 1-4 (exact forms above): E's config child, then fn2-ctl (admission through the
-   listener with `:listener-targets fn2-ctl` in the simulator profile and the fixture peer record standing
-   in for A's :local listener; owner check; FNCT framing by deflayout over the stripe; take of fn2-cns
+   listener with `:listener-targets fn2-ctl` in the simulator profile and A's :local listener (371c48e4e), its peer set per
+   capability by fn2-network-set-peer; owner check; FNCT framing by deflayout over the stripe; take of fn2-cns
    core-form; TX hand), then fn2-cns (decode, Grant/Meter interims, cursor lookup, read/park on the edge,
    answer), the hook attached, then the simulator adapter as K10's producer and sim-layer-e's scenarios
    against it. register/ack/append/fetch/rebase/unregister refuse `unavailable` until their sources land.
@@ -266,7 +272,7 @@ and never answers an empty page before the deadline.
 
 
 ### Acceptance (K10 owed)
-The scenarios of tests/sim-layer-e.lisp against the served kinds over the simulator (L carrier, the fixture
-peer record for the :local listener), each run's observations checked by CONSUMER; K10's producer
+The scenarios of tests/sim-layer-e.lisp against the served kinds over the simulator (L carrier through A's :local listener,
+each client's peer set by fn2-network-set-peer), each run's observations checked by CONSUMER; K10's producer
 `fn2-cns-served-observations` becomes that run. Until register serves, the served node can only refuse, so
 the run is meaningful from D's txn port and D6 3/n on.

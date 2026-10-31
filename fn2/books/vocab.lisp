@@ -671,8 +671,10 @@
 (in-theory (disable fn2-post-result))
 
 ; The peer record an Accept result carries (layer doc 4.1.1): an :inet
-; address is w0 alone; :local (credentials are E6's) and :none carry no port
-; or words; a refused or cancelled Accept carries :none.
+; address is w0 alone; a :local peer (a Unix-domain connection on the
+; listener's owner-only socket) is its credentials, w0 = uid and w1 = gid as
+; the kernel reports them at accept, with no port; :none carries no port or
+; words; a refused or cancelled Accept carries :none.
 (defun fn2-peer-recordp (outcome family port w0 w1 w2 w3)
   (declare (xargs :guard t))
   (and (unsigned-byte-p 16 port) (unsigned-byte-p 32 w0) (unsigned-byte-p 32 w1)
@@ -682,9 +684,10 @@
                     (equal family *fn2-peer-family-inet*)
                     (equal family *fn2-peer-family-local*)
                     (equal family *fn2-peer-family-none*))))
-       (if (equal family *fn2-peer-family-inet*) (and (= w1 0) (= w2 0) (= w3 0))
-         (implies (not (equal family *fn2-peer-family-inet6*))
-                  (and (= port 0) (= w0 0) (= w1 0) (= w2 0) (= w3 0))))))
+       (cond ((equal family *fn2-peer-family-inet6*) t)
+             ((equal family *fn2-peer-family-inet*) (and (= w1 0) (= w2 0) (= w3 0)))
+             ((equal family *fn2-peer-family-local*) (and (= port 0) (= w2 0) (= w3 0)))
+             (t (and (= port 0) (= w0 0) (= w1 0) (= w2 0) (= w3 0))))))
 
 ; Exactly fn2-post-result's terminal post of an Accept, then the record into
 ; the row iff that post was accepted. A refused record is a stray and changes

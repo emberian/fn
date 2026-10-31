@@ -19,13 +19,18 @@
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil))
 
-;; A capability: index 0 is the listener; connections from 1.
+;; A capability: index 0 is the listener (its TCP socket, and the owner-only
+;; Unix-domain socket beside it when the profile names :listener-path: one
+;; capability, so the listener machine is the same for both); connections from 1.
 (defstruct fn2-ncap
   (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
   (rx 0) (eof nil) (tx 0) (closed nil) (seq 0))
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
+  ;; the Unix-domain listener socket (-1: none), its path, and which of the
+  ;; two sockets an Accept tries first when both are ready (alternating)
+  (local-fd -1 :type fixnum) (local-path nil) (local-first nil)
   completions (chead 0 :type fixnum) (ctail 0 :type fixnum) (pending 0 :type fixnum)
   (harvest-limit 1) (action-limit 1)
   ;; test instruments: the boundary trace (ENVELOPE), death cuts, the session
@@ -118,7 +123,7 @@
     (fn2-n-boundary host "syscall")
     (cond
       ((= kind *fn2-action-accept*)
-       (multiple-value-bind (new errno family port w0 w1 w2 w3) (fn2-native-accept fd)
+       (multiple-value-bind (new errno family port w0 w1 w2 w3) (fn2-n-accept host cap)
          (cond ((and (minusp new) (fn2-n-again-p errno)) nil)
                ((minusp new) (fn2-n-complete host slot :failed 0))
                (t (multiple-value-bind (index nonce) (fn2-n-new-cap host new family port w0 w1 w2 w3)
@@ -141,6 +146,17 @@
                  (t (incf (fn2-ncap-tx cap) n)
                     (fn2-n-complete host slot :ok n 0 nil (fn2-n-octets host (fn2-nop-address op) n)))))))
       (t (error "fn2 native: op kind ~d is not readiness-driven" kind)))))
+
+;;; The listener capability's Accept: one accept(2) on whichever of its two
+;;; sockets is ready, alternating when both are, so neither starves. A
+;;; connection on the Unix socket carries its peer's uid and gid.
+(defun fn2-n-accept (host cap)
+  (let* ((mux (fn2-nhost-mux host)) (local (fn2-nhost-local-fd host))
+         (tcp-ready (fn2-native-mux-ready-p mux 0 1))
+         (local-ready (and (>= local 0) (fn2-native-mux-ready-p mux (fn2-native-mux-local-index mux) 1)))
+         (use-local (if (and tcp-ready local-ready) (fn2-nhost-local-first host) local-ready)))
+    (when (and tcp-ready local-ready) (setf (fn2-nhost-local-first host) (not use-local)))
+    (if use-local (fn2-native-accept-local local) (fn2-native-accept (fn2-ncap-fd cap)))))
 
 ;;; Ops started at take: Close, Cancel, and the kinds with no facility.
 (defun fn2-n-start-now (host slot)
@@ -256,7 +272,17 @@
                  (setf (aref masks (fn2-nop-cap op))
                        (logior (aref masks (fn2-nop-cap op)) (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))))
     (dotimes (i (length caps))
-      (fn2-native-mux-interest (fn2-nhost-mux host) i (fn2-ncap-fd (aref caps i)) (aref masks i)))))
+      (fn2-native-mux-interest (fn2-nhost-mux host) i (fn2-ncap-fd (aref caps i)) (aref masks i)))
+    ;; The Unix-domain socket is capability 0's: it wants what the listener wants.
+    (when (>= (fn2-nhost-local-fd host) 0)
+      (fn2-native-mux-interest (fn2-nhost-mux host) (fn2-native-mux-local-index (fn2-nhost-mux host))
+                               (fn2-nhost-local-fd host) (aref masks 0)))))
+
+(defun fn2-n-cap-ready-p (host index mask)
+  (let ((mux (fn2-nhost-mux host)))
+    (or (fn2-native-mux-ready-p mux index mask)
+        (and (= index 0) (>= (fn2-nhost-local-fd host) 0)
+             (fn2-native-mux-ready-p mux (fn2-native-mux-local-index mux) mask)))))
 
 ;;; For each ready capability, one syscall for one of its waiting ops.
 (defun fn2-n-ready (host)
@@ -266,8 +292,7 @@
         (when (and (= (fn2-nop-state op) +fn2-n-waiting+) (fn2-n-readiness-p (fn2-nop-kind op)))
           (let ((cap (fn2-n-cap host op)) (index (fn2-nop-cap op)))
             (when (and cap (not (aref used index))
-                       (fn2-native-mux-ready-p (fn2-nhost-mux host) index
-                                               (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
+                       (fn2-n-cap-ready-p host index (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
               (setf (aref used index) t any t)
               (fn2-n-start-ready host slot cap))))))
     any))
@@ -383,8 +408,9 @@ otherwise the bound one. Values: (index . cap) or nil."
 
 (defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0))
   "Initialize the live core with PROFILE, bind its configured listener (:listener-address,
-:listener-port; default 127.0.0.1 and an ephemeral port), and return the host."
-  (multiple-value-bind (bind address port) (fn2-host-listener-bind profile)
+:listener-port; default 127.0.0.1 and an ephemeral port; and :listener-path, the owner-only
+Unix socket, when named), and return the host."
+  (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
          (n (fn2-profile-o profile))
@@ -405,6 +431,9 @@ otherwise the bound one. Values: (index . cap) or nil."
                    :control-window (fn2-native-window 4096))))
         (assert (typep (fn2-nhost-bytes host) '(simple-array (unsigned-byte 8) (*))))
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
+        (when path
+          (setf (fn2-nhost-local-fd host) (fn2-native-listen-local path)
+                (fn2-nhost-local-path host) path))
         (when (>= control-fd 0) (fn2-native-mux-watch-control (fn2-nhost-mux host) control-fd))
         (setf *fn2-n-signal* 0 *fn2-n-signal-mux* (fn2-nhost-mux host))
         (sb-sys:enable-interrupt sb-unix:sigterm #'fn2-n-signal-handler)
@@ -420,5 +449,8 @@ otherwise the bound one. Values: (index . cap) or nil."
   ;; No completion claims at teardown; socket operations die with the descriptors.
   (setf *fn2-n-signal-mux* nil)
   (loop for cap across (fn2-nhost-caps host) when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
+  (when (>= (fn2-nhost-local-fd host) 0)
+    (fn2-native-close (fn2-nhost-local-fd host))
+    (fn2-native-unlink-local (fn2-nhost-local-path host)))
   (fn2-native-unmap (fn2-nhost-control-window host) 4096)
   (fn2-native-mux-destroy (fn2-nhost-mux host)))
