@@ -402,7 +402,8 @@
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (code fn2-ops fn2-own)
     (fn2-own-post-result 0 slot gen *fn2-event-fence-result*
-                         *fn2-outcome-done* *fn2-reason-none* 0 0 0 stale fn2-ops fn2-own)
+                         *fn2-outcome-done* *fn2-reason-none* 0 0 0
+                         *fn2-peer-family-none* 0 0 0 0 0 stale fn2-ops fn2-own)
     (mv code fn2-core fn2-own)))
 (in-theory (disable fn2-scenario-post-fence))
 (defun fn2-scenario-op-retirement (left fn2-core fn2-own)

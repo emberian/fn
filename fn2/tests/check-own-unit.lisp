@@ -72,7 +72,8 @@
        (fn2-pool (update-fn2-pool-datai (fn2-pool-base slot fn2-pool) 65 fn2-pool))
        (fn2-own (update-fn2-own-error 0 fn2-own))
        ((mv code fn2-ops fn2-own)
-        (fn2-own-post-result 0 op og *fn2-event-send-result* *fn2-outcome-done* 0 1 0 0 t fn2-ops fn2-own))
+        (fn2-own-post-result 0 op og *fn2-event-send-result* *fn2-outcome-done* 0 1 0 0
+                             *fn2-peer-family-none* 0 0 0 0 0 t fn2-ops fn2-own))
        ((unless (and (eq code :ok) (= (fn2-ops-stray fn2-ops) 1)
                      (eq (fn2-own-status fn2-own) :pass)))
         (mv :queued-stray fn2-pool fn2-ops fn2-own))

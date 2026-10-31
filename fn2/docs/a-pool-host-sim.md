@@ -205,8 +205,10 @@ and port instead, through the same cell and the same harvest.
 - **Op-row columns** (vocab.lisp, cell 0 only): `peer-family` (`:enum fn2-peer-family (:none
   :inet :inet6 :local)`), `peer-port :u16`, `peer-w0 peer-w1 peer-w2 peer-w3 :u32` (the address
   in network order, most significant word first). `:inet`: `w0` is the IPv4 address and
-  `w1 = w2 = w3 = 0`. `:inet6`: all four words. `:local` (a Unix-domain peer; its credentials
-  are E6's) and `:none`: port and words zero. `fn2-ops-clear-row` zeroes them (family `:none`).
+  `w1 = w2 = w3 = 0`. `:inet6`: all four words. `:local` (a Unix-domain peer on the listener's
+  owner-only socket): `w0` is the peer's uid and `w1` its gid as the kernel reports them at accept
+  (getpeereid on Darwin, SO_PEERCRED on Linux), port, `w2` and `w3` zero. `:none`: port and words
+  zero. `fn2-ops-clear-row` zeroes them (family `:none`).
 - **Posting.** `fn2-post-accept-result (slot gen outcome reason cap-index cap-nonce family port
   w0 w1 w2 w3 fn2-ops)`: bounded validation of the peer record (`fn2-peer-recordp`: family in
   the enum, port and words in width, the per-family zero rule, `:none` unless the outcome is
@@ -367,6 +369,25 @@ refused configuration prints `REFUSED listener-port` (or `listener-address`) and
 `fn2/tests/native-serve-check.py` is its check (a configured port, NNTP over it, the stop by
 group, no listener left after it, the refusal), and the native loop serves two fixtures on a
 configured port.
+
+**The owner-only Unix socket (E's local carrier L).** `:listener-path` names a Unix-domain
+socket served beside the TCP one: absolute, no NUL, at most 103 octets (sockaddr_un's sun_path
+with its terminator on Darwin); anything else is the named refusal `:listener-path`. It is the
+same listener capability (index 0): the mux watches both sockets for capability 0's interest and
+an Accept takes one connection from whichever is ready, alternating when both are, so the
+listener machine and the core see one listener. bind creates the file, chmod makes it 0600 before
+listen (no connection is taken while it is wider), and the node removes it at stop; an existing
+file at the path is a refusal to start, never removed. A connection on it posts the `:local` peer
+record with its uid and gid, which reaches the listener row and the connection row like any peer
+record. `FN2_LISTENER_PATH` sets the key for native-serve, which then also prints
+`LISTENING-LOCAL <path>`; native-serve-check serves a reader session over the socket, checks its
+mode and its removal at stop, and the refusal of a relative path. The simulator's network model
+carries a peer per capability (`fn2-network-set-peer slot family uid gid`: `:none`, the default,
+or `:local` with credentials; any other record is refused by name), and an Accept that lands on a
+capability posts that record through the boundary's own `fn2-post-accept-result`
+(`fn2-own-post-result` takes the record), so a kind that serves local peers is driven on the
+simulated host exactly as on the native one (tests/host-unit.lisp: uid and gid reach the listener
+row; an unconfigured capability carries `:none`).
 
 Replies equal the simulator session's when the core's replies are fragmentation-invariant (T8,
 owed, checked by conn-unit's every-split fixtures) and the schedule is fault-free; DATE reads the

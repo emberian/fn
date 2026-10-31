@@ -133,21 +133,35 @@
   (declare (xargs :guard (natp len)))
   (fn2-sim-terminal-values kind code count aux len nil cancelled))
 
-; The configured listener (layer doc 4.1.4): the served profile's
-; :listener-address (an IPv4 address as a u32, network order; default
-; 127.0.0.1) and :listener-port (a u16; 0 asks the kernel for an ephemeral
-; port, which the node reports). Read like :listener-targets, by key; a value
-; outside its width is a named refusal to start, never a clamp.
+;; The configured listeners (layer doc 4.1.4): the served profile's
+;; :listener-address (an IPv4 address as a u32, network order; default
+;; 127.0.0.1) and :listener-port (a u16; 0 asks the kernel for an ephemeral
+;; port, which the node reports), and :listener-path, the owner-only (0600)
+;; Unix-domain socket beside it (absent: none). The path is absolute, has no
+;; NUL and fits sockaddr_un's sun_path with its terminator on both targets
+;; (103 octets: Darwin's 104). Read like :listener-targets, by key; a value
+;; outside its width is a named refusal to start, never a clamp. Both sockets
+;; are the one listener capability: an Accept takes whichever is ready.
 (defconst *fn2-host-loopback* #x7f000001)
+(defconst *fn2-host-path-max* 103)
+(defun fn2-host-listener-pathp (path)
+  (declare (xargs :guard t))
+  (and (stringp path) (< 1 (length path)) (<= (length path) *fn2-host-path-max*)
+       (eql (char path 0) #\/)
+       (not (member (code-char 0) (coerce path 'list)))))
 (defun fn2-host-listener-bind (profile)
   (declare (xargs :guard t))
-  (let ((address (if (assoc-equal :listener-address (and (alistp profile) profile))
-                     (fn2-profile-get :listener-address profile) *fn2-host-loopback*))
-        (port (if (assoc-equal :listener-port (and (alistp profile) profile))
-                  (fn2-profile-get :listener-port profile) 0)))
-    (cond ((not (unsigned-byte-p 32 address)) (mv :listener-address 0 0))
-          ((not (unsigned-byte-p 16 port)) (mv :listener-port 0 0))
-          (t (mv :ok address port)))))
+  (let* ((profile (and (alistp profile) profile))
+         (address (if (assoc-equal :listener-address profile)
+                      (fn2-profile-get :listener-address profile) *fn2-host-loopback*))
+         (port (if (assoc-equal :listener-port profile)
+                   (fn2-profile-get :listener-port profile) 0))
+         (pathp (consp (assoc-equal :listener-path profile)))
+         (path (fn2-profile-get :listener-path profile)))
+    (cond ((not (unsigned-byte-p 32 address)) (mv :listener-address 0 0 nil))
+          ((not (unsigned-byte-p 16 port)) (mv :listener-port 0 0 nil))
+          ((and pathp (not (fn2-host-listener-pathp path))) (mv :listener-path 0 0 nil))
+          (t (mv :ok address port (and pathp path))))))
 
 (defun fn2-host-stop-reason (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -161,4 +175,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-listener-bind fn2-host-stop-reason fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-stop-reason fn2-host-idle-deadline) (w state)))

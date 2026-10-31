@@ -8,6 +8,9 @@ new session, writes that session leader's PID to build/native-serve-check.pid, w
 (tools/acl2 is a wrapper whose child is SBCL; a signal to the wrapper alone never reaches the node)
 and expects `STOPPED`, ENVELOPE's legality verdict :PASS, and exit 0, and that
 nothing listens on the port afterwards. On any failure the group is stopped the same way. A port out of range must be refused: `REFUSED listener-port`, exit 2.
+The same node also binds FN2_LISTENER_PATH (build/native-serve-check.sock): the socket file is mode 0600, a
+connection on it is the listener's (the reader greeting, QUIT), and the file is gone after the stop. A
+relative path must be refused: `REFUSED listener-path`, exit 2.
 """
 import os
 import signal
@@ -62,11 +65,28 @@ def main():
     probe.bind(('127.0.0.1', 0))
     port = probe.getsockname()[1]
     probe.close()
-    proc = start({'FN2_LISTENER_PORT': str(port), 'FN2_ENVELOPE_TRACE': '200000'})
+    path = os.path.join(ROOT, 'build', 'native-serve-check.sock')
+    if os.path.exists(path):
+        raise SystemExit(f'{path} exists (a previous run\'s node is live, or its stop failed): not removed')
+    proc = start({'FN2_LISTENER_PORT': str(port), 'FN2_LISTENER_PATH': path, 'FN2_ENVELOPE_TRACE': '200000'})
     ok = False
     try:
         line, _ = wait_line(proc, b'LISTENING ')
         assert line == f'LISTENING {port}\n'.encode(), line
+        line, _ = wait_line(proc, b'LISTENING-LOCAL ')
+        assert line == f'LISTENING-LOCAL {path}\n'.encode(), line
+        mode = os.stat(path).st_mode & 0o777
+        assert mode == 0o600, oct(mode)
+        u = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        u.settimeout(30)
+        u.connect(path)
+        uf = u.makefile('rb')
+        greeting = uf.readline()
+        assert greeting.startswith(b'201 '), greeting
+        u.sendall(b'QUIT\r\n')
+        assert uf.readline().startswith(b'205 ')
+        assert uf.read() == b''
+        u.close()
         c = socket.create_connection(('127.0.0.1', port), timeout=30)
         f = c.makefile('rb')
         greeting = f.readline()
@@ -84,6 +104,7 @@ def main():
         envelope, _ = wait_line(proc, b'ENVELOPE ')
         assert envelope.strip() == b'ENVELOPE :PASS', envelope
         assert proc.wait(timeout=60) == 0
+        assert not os.path.exists(path), f'{path} left after the stop'
         ok = True
     finally:
         if not ok:
@@ -95,6 +116,13 @@ def main():
         assert refused.wait(timeout=60) == 2
     finally:
         stop_group(refused, signal.SIGKILL)
+    refused = start({'FN2_LISTENER_PATH': 'native-serve-check.sock'}, '-refused-path')
+    try:
+        line, _ = wait_line(refused, b'REFUSED ')
+        assert line.strip() == b'REFUSED listener-path', line
+        assert refused.wait(timeout=60) == 2
+    finally:
+        stop_group(refused, signal.SIGKILL)
     # Control: the check's stop ended the node: nothing listens on the port any more.
     try:
         socket.create_connection(('127.0.0.1', port), timeout=5).close()
@@ -102,7 +130,7 @@ def main():
     except ConnectionRefusedError:
         pass
     print(f'NATIVE SERVE PASS port={port} {stopped.decode().strip()} {envelope.decode().strip()}; '
-          f'port 70000 refused')
+          f'port 70000 refused; unix {path} 0600 served and removed; relative path refused')
 
 
 if __name__ == '__main__':

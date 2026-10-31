@@ -309,14 +309,21 @@
 
 ; EXPECTED-STRAY is a workload assertion, not the implementation's validator.
 ; The exact preallocated snapshot includes all nonstray state, not a hash.
+; An Accept's terminal post goes through the boundary's own entry with the
+; peer record (FAMILY PORT W0..W3) the host saw; every other post (and every
+; expected stray, which delivers no record) through fn2-post-result.
 (defun fn2-own-post-result
-  (cell slot gen evkind outcome reason count aux0 aux1 expected-stray fn2-ops fn2-own)
+  (cell slot gen evkind outcome reason count aux0 aux1 family port w0 w1 w2 w3
+        expected-stray fn2-ops fn2-own)
   (declare (xargs :stobjs (fn2-ops fn2-own)
                   :guard (and (fn2-ops-wfp fn2-ops) (fn2-own-wfp fn2-own))))
   (let* ((words (fn2-own-ops-word-count fn2-ops))
          (stray (fn2-ops-stray fn2-ops))
          (fn2-own (if expected-stray (fn2-own-copy-ops words fn2-ops fn2-own) fn2-own))
-         (fn2-ops (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-ops))
+         (fn2-ops (if (and (equal cell 0) (equal evkind *fn2-event-accept-result*) (not expected-stray))
+                      (fn2-post-accept-result slot gen outcome reason aux0 aux1
+                                              family port w0 w1 w2 w3 fn2-ops)
+                    (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-ops)))
          (ok (if expected-stray
                  (and (equal (fn2-ops-stray fn2-ops) (fn2-saturating-inc60 stray))
                       (equal words (fn2-own-ops-word-count fn2-ops))
@@ -324,18 +331,18 @@
                (equal stray (fn2-ops-stray fn2-ops))))
          (fn2-own (if ok fn2-own (fn2-own-fail 6 fn2-own))))
     (mv (if ok :ok :stray-contract) fn2-ops fn2-own)))
-(fn2-own-preserves fn2-own-post-result (cell slot gen evkind outcome reason count aux0 aux1 expected-stray fn2-ops fn2-own) :position 2 :rows nil
+(fn2-own-preserves fn2-own-post-result (cell slot gen evkind outcome reason count aux0 aux1 family port w0 w1 w2 w3 expected-stray fn2-ops fn2-own) :position 2 :rows nil
   :hyps ((fn2-ownp fn2-own) (fn2-own-wfp fn2-own) (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)))
 
 (defthm fn2-own-post-result-preserves-ops-type
   (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops))
            (fn2-opsp (mv-nth 1 (fn2-own-post-result
-             cell slot gen evkind outcome reason count aux0 aux1 expected-stray fn2-ops fn2-own))))
+             cell slot gen evkind outcome reason count aux0 aux1 family port w0 w1 w2 w3 expected-stray fn2-ops fn2-own))))
   :hints (("Goal" :in-theory (enable fn2-own-post-result))))
 (defthm fn2-own-post-result-preserves-ops-wfp
   (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops))
            (fn2-ops-wfp (mv-nth 1 (fn2-own-post-result
-             cell slot gen evkind outcome reason count aux0 aux1 expected-stray fn2-ops fn2-own))))
+             cell slot gen evkind outcome reason count aux0 aux1 family port w0 w1 w2 w3 expected-stray fn2-ops fn2-own))))
   :hints (("Goal" :in-theory (enable fn2-own-post-result))))
 
 ; The following independent scans are test-only. A submitted send whose
