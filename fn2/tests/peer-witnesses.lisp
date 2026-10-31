@@ -10,21 +10,21 @@
 
 ;; W1: opposite first arrivals. A accepts a under N, B accepts b; they
 ;; exchange pages. Equal portable evidence, equal bindings with N in
-;; conflict, and each local receipt still attributed to its own subject.
+;; conflict, and each node's history entry still its own subject.
 (defun fn2-pmt-w1 (faults)
   (declare (xargs :verify-guards nil))
   (b* ((a (fn2-pm-node 'a 10 faults)) (b (fn2-pm-node 'b 10 faults))
        ((mv oa a) (fn2-pm-accept "<n@x>" 'sa 'e1 nil a))
        ((mv ob b) (fn2-pm-accept "<n@x>" 'sb 'e2 nil b))
-       (pa (fn2-pm-page a)) (pb (fn2-pm-page b))
+       (pa (fn2-pm-batch a)) (pb (fn2-pm-batch b))
        (a (fn2-pm-import pb a)) (b (fn2-pm-import pa b)))
     (list :premise (and (eq oa :accepted) (eq ob :accepted)
                         (equal (fn2-pm-sort-names (fn2-pm-get :evidence a)) (fn2-pm-sort-names (fn2-pm-get :evidence b)))
                         (null (fn2-pm-get :gaps a)) (null (fn2-pm-get :gaps b)))
           :kp1 (fn2-pm-kp1 a b)
           :conflict (and (fn2-pm-conflict-p "<n@x>" a) (fn2-pm-conflict-p "<n@x>" b))
-          :attributed (and (equal (cadr (fn2-pm-local "<n@x>" a)) 'sa) (equal (cadr (fn2-pm-local "<n@x>" b)) 'sb)
-                           (member-equal '(b "<n@x>" sb 1) (fn2-pm-get :foreign a))))))
+          :own-history (and (equal (cadr (fn2-pm-history-entry "<n@x>" a)) 'sa) (equal (cadr (fn2-pm-history-entry "<n@x>" b)) 'sb)
+                           (member-equal '(b "<n@x>" sb 1) (fn2-pm-get :peer-history a))))))
 
 ;; W2: two candidate sets meet with B's funded capacity exhausted. B imports
 ;; part, records gaps, claims no incorporation; funded later, it repairs and
@@ -40,10 +40,10 @@
   (b* ((names '("<1@x>" "<2@x>" "<3@x>" "<4@x>" "<5@x>"))
        (a (fn2-pmt-accept-many names 'sa 0 (fn2-pm-node 'a 100 faults)))
        (b (fn2-pmt-accept-many names 'sb 0 (fn2-pm-node 'b 7 faults)))
-       (b1 (fn2-pm-import (fn2-pm-page a) b))
+       (b1 (fn2-pm-import (fn2-pm-batch a) b))
        (short (and (consp (fn2-pm-get :gaps b1)) (not (fn2-pm-complete-p b1))))
-       (b2 (fn2-pm-import (fn2-pm-page a) (fn2-pm-fund 10 b1)))
-       (a2 (fn2-pm-import (fn2-pm-page b2) a)))
+       (b2 (fn2-pm-import (fn2-pm-batch a) (fn2-pm-fund 10 b1)))
+       (a2 (fn2-pm-import (fn2-pm-batch b2) a)))
     (list :premise (and (null (fn2-pm-get :gaps b2)) (null (fn2-pm-get :gaps a2)))
           :honest-short short
           :complete-after-repair (fn2-pm-complete-p b2)
@@ -62,22 +62,22 @@
           :no-allocation (equal (fn2-pm-get :allocations a) alloc)
           :learned (fn2-pm-has-eid 'e2 (fn2-pm-get :evidence a)))))
 
-;; W7 with K-P5 and K-P6: a held body under a custody obligation is
-;; reclaimed; a reoffer is a duplicate, allocates nothing and discharges no
-;; obligation; then only the obligation's own receipt from its authority
-;; releases it (a transport ack, another obligation's receipt, a receipt from
+;; W7 with K-P5 and K-P6: a held body under a forward pin is reclaimed; a
+;; reoffer is a duplicate, allocates nothing and releases no pin; then only
+;; the pin's own receipt ADU from its destination releases it (an XFER_ACK,
+;; another pin's receipt, a receipt from
 ;; another issuer do not).
 (defun fn2-pmt-w7 (faults)
   (declare (xargs :verify-guards nil))
   (b* ((a (fn2-pm-node 'a 10 faults))
        ((mv & a) (fn2-pm-accept "<n@x>" 'sa 'e1 nil a))
-       (a (fn2-pm-oblige 'o1 "<n@x>" 'dest a))
-       (a (fn2-pm-oblige 'o2 "<m@x>" 'dest a))
+       (a (fn2-pm-pin 'o1 "<n@x>" 'dest a))
+       (a (fn2-pm-pin 'o2 "<m@x>" 'dest a))
        (a (fn2-pm-reclaim "<n@x>" a))
        (alloc (fn2-pm-get :allocations a))
        ((mv re a) (fn2-pm-accept "<n@x>" 'sa 'e1 nil a))
-       (held (equal (cadddr (assoc-equal 'o1 (fn2-pm-get :obligations a))) :held))
-       ((mv r1 a) (fn2-pm-release 'o1 '(:ack o1) a))
+       (held (equal (cadddr (assoc-equal 'o1 (fn2-pm-get :pins a))) :held))
+       ((mv r1 a) (fn2-pm-release 'o1 '(:xfer-ack o1) a))
        ((mv r2 a) (fn2-pm-release 'o1 '(:receipt o2 dest) a))
        ((mv r3 a) (fn2-pm-release 'o1 '(:receipt o1 elsewhere) a))
        ((mv r4 a) (fn2-pm-release 'o1 '(:receipt o1 dest) a))
@@ -85,15 +85,15 @@
     (list :kp6 (and (eq re :duplicate) (equal (fn2-pm-get :allocations a) alloc) held)
           :kp5-refusals (and (eq r1 :refused) (eq r2 :refused) (eq r3 :refused))
           :kp5-release (and (eq r4 :released) (eq r5 :refused))
-          :o2-untouched (equal (cadddr (assoc-equal 'o2 (fn2-pm-get :obligations a))) :held))))
+          :o2-untouched (equal (cadddr (assoc-equal 'o2 (fn2-pm-get :pins a))) :held))))
 
-;; Offers are suppressed only by local acceptance history: evidence alone
+;; Offers are suppressed only by the node's history: evidence alone
 ;; (here a foreign binding learned by import) never makes a node decline.
 (defun fn2-pmt-offer (faults)
   (declare (xargs :verify-guards nil))
   (b* ((a (fn2-pm-node 'a 10 faults)) (b (fn2-pm-node 'b 10 faults))
        ((mv & a) (fn2-pm-accept "<n@x>" 'sa 'e1 nil a))
-       (b (fn2-pm-import (fn2-pm-page a) b)))
+       (b (fn2-pm-import (fn2-pm-batch a) b)))
     (list :premise (consp (assoc-equal "<n@x>" (fn2-pm-bindings b)))
           :wants (eq (fn2-pm-offer "<n@x>" b) :want)
           :has (eq (fn2-pm-offer "<n@x>" a) :have))))
@@ -110,8 +110,8 @@
   (b* ((c (fn2-pm-node 'c 10 faults))
        (c (fn2-pm-install 'a 1 '((7 . (b a))) c))
        (c (fn2-pm-install 'd 1 '((7 . (b a))) c)))
-    (list :premise (equal (len (fn2-pm-get :work c)) 1)
-          :no-loop (not (assoc-equal '(1 . 7) (fn2-pmt-rows-for 'a (fn2-pm-get :work c)))))))
+    (list :premise (equal (len (fn2-pm-get :feed c)) 1)
+          :no-loop (not (assoc-equal '(1 . 7) (fn2-pmt-rows-for 'a (fn2-pm-get :feed c)))))))
 
 
 ;; F2: a deferred head while later work succeeds; mixed phases; a stale reply
@@ -124,7 +124,7 @@
        (a (fn2-pm-offer-row '(1 . 1) a)) (a (fn2-pm-reply '(1 . 1) 431 a))
        (a (fn2-pm-offer-row '(1 . 1) a)) (a (fn2-pm-reply '(1 . 1) 436 a))
        (a (fn2-pm-offer-row '(1 . 1) a)) (a (fn2-pm-reply '(1 . 1) 431 a))
-       (next (fn2-pm-next (fn2-pm-get :work a)))
+       (next (fn2-pm-next (fn2-pm-get :feed a)))
        (a (fn2-pm-offer-row '(1 . 2) a)) (a (fn2-pm-reply '(1 . 2) 239 a))
        (a (fn2-pm-reply '(1 . 2) 439 a))                 ; stale reply after the terminal
        (a (fn2-pm-offer-row '(1 . 3) a))                 ; unresolved at the restart
@@ -133,8 +133,8 @@
        (a (fn2-pm-offer-row '(1 . 4) a)) (a (fn2-pm-reply '(1 . 4) :lost a))
        (a (fn2-pm-offer-row '(1 . 4) a)) (a (fn2-pm-reply '(1 . 4) :lost a))
        (a (fn2-pm-offer-row '(1 . 4) a)) (a (fn2-pm-reply '(1 . 4) :lost a))
-       (rows (fn2-pm-get :work a)))
-    (list :premise (equal (len (fn2-pm-get :terminals a)) 3)
+       (rows (fn2-pm-get :feed a)))
+    (list :premise (equal (len (fn2-pm-get :dispositions a)) 3)
           :head-pending (eq (nth 2 (fn2-pm-row '(1 . 1) rows)) :pending)
           :not-blocked (equal next '(1 . 2))
           :states (list (nth 2 (fn2-pm-row '(1 . 2) rows)) (nth 2 (fn2-pm-row '(1 . 3) rows))
@@ -164,7 +164,7 @@
 (assert-event (fn2-pmt-caught (fn2-pmt-w1 '(:first-arrival)) :kp1))
 (assert-event (not (cadr (member-eq :honest-short (fn2-pmt-w2 '(:false-complete))))))
 (assert-event (not (cadr (member-eq :kp6 (fn2-pmt-w7 '(:resurrect))))))
-(assert-event (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:ack-releases))))))
+(assert-event (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:xfer-ack-releases))))))
 (assert-event (fn2-pmt-caught (fn2-pmt-offer '(:evidence-suppresses)) :wants))
 (assert-event (not (cadr (member-eq :no-loop (fn2-pmt-f1 '(:no-loop-check))))))
 (assert-event (not (cadr (member-eq :kp4 (fn2-pmt-f2 '(:double-terminal))))))
@@ -178,6 +178,6 @@
 (defun fn2-pmt-negative () (declare (xargs :verify-guards nil))
   (and (fn2-pmt-caught (fn2-pmt-w1 '(:first-arrival)) :kp1)
        (not (cadr (member-eq :kp6 (fn2-pmt-w7 '(:resurrect)))))
-       (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:ack-releases)))))
+       (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:xfer-ack-releases)))))
        (not (cadr (member-eq :no-loop (fn2-pmt-f1 '(:no-loop-check)))))
        (not (cadr (member-eq :kp4 (fn2-pmt-f2 '(:double-terminal)))))))

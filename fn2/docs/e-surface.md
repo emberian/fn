@@ -28,7 +28,7 @@ Astra's read: `build/coordinator/fn2/lanes/e-quests/astra-1.md` (§15 says what 
 | the frames: FNCT (header layout, BLAKE3 trailer), `fncu` v1 and v2, kind 4 codes 0-18, replies 5, 6, 9 and 28, page items, results; what each code is (§4.2) | `fn2/books/consumer-codec.lisp` | every form a `deflayout`; the code table checked against the port and both carriers |
 | fn1's bytes as fixtures | `fn2/tests/consumer-codec-unit.lisp` | fn1's three `.fncu` vectors read from `tests/fixtures/consumer-position/` and re-encoded exactly; fn1's eleven request payloads decoded and re-encoded; fn1's twenty-one refusal words; BLAKE3 at a known answer; every fixture through the generated codec |
 | the port as a declaration: `(:port P)` on the shared registry (`declare.lisp`'s `fn2-ports`), its generated readers as its manifest, beside its verbs' `(:command ...)` rows (the form seat's read) | `fn2/books/port.lisp` | certifies; the consumer books and fixtures recertified over it |
-| the peer reference model: nodes with attributed acceptance receipts, evidence by identity, foreign receipts, gaps and funding, custody obligations, feed work with phases, deferrals, losses and terminal dispositions; eight faults | `fn2/books/peer-model.lisp` | the meaning §13 states; an oracle, not served evidence |
+| the peer reference model: each node's history (its entries with their origin), identity evidence by identity, peers' history entries from catch-up, coverage gaps and funding, forward pins, the feed queue with phases, deferrals, losses and dispositions; eight faults | `fn2/books/peer-model.lisp` | the meaning §13 states; an oracle, not served evidence |
 | K-P1, K-P3a, K-P4, K-P5, K-P6 owed with teeth (K-P2 and K-P3b are stated over D5 3/n's served path) | `fn2/books/owed-peer.lisp` | 0 proved; every tooth evaluates |
 | witnesses W1, W2, W3, W7, the offer rule, F1, F2, each asserting its antecedent; each fault caught | `fn2/tests/peer-witnesses.lisp` | all hold; eight faults caught |
 Owed, in order: the rest of §13.8's matrix as the records they need land (W4, W5, W6, W8-W10, F3-F7);
@@ -412,210 +412,186 @@ after a crash" is a correctness acceptance, gated in the tiny profile above.
 | the remote consumer (CNS-011, PKT-673), never served | carried as specified here |
 | the consumer's exactly-once contract | carried as the client's (§10.1); the clients ship (E6) |
 
-## 13. Peering and BP *(statement, revised after Astra's read `lanes/e-quests/astra-2.md`)*
-Brief items 4 and 5 over the same engine. Sources: IDENTITY rulings 2-14 and Astra's ten witnesses
-(IDENTITY-ASTRA, "What E4 must prove"); fn1's `specs/peering.md` and `specs/bp-*.md` (the meaning kept);
-D's peer rows (§11 `peering`, `peer_catchup`; the reply-word table; D5 3/n owed); C's §4a identity records
-and the `obligations` schema. The one idea: **a peer is a principal, an outbound feed is consumer
-machinery, and a bundle is a carrier**. No second store and no second decision path, but every
-responsibility fn1's separate journals carried (FNFD, FNBS) is kept, as typed records in the common store.
+## 13. Peering and BP *(statement; each record kind lands with the verb that writes it, D46)*
+Brief items 4 and 5 over the one engine. The protocols served: NNTP transit (IHAVE, RFC 3977 §6.3.2;
+streaming CHECK and TAKETHIS, RFC 4644; Path, history and control, RFC 5537 §3.3, §3.5, §5); catch-up
+between fn2 nodes, the successor of fn1's XFNCATCHUP (`specs/peering.md` NNT-053), carried in XFNC (§5);
+and BPv7 (RFC 9171) over TCPCLv4 (RFC 9174) with fn1's ADU (`specs/bp-adu.md`) and its application receipt
+(`specs/bp-receipt.md`). Sources: IDENTITY rulings 2-14 and Astra's witnesses (IDENTITY-ASTRA); fn1's
+`specs/peering.md` and `specs/bp-*.md`; D's peer rows (§11) and D5 3/n; C's §4a identity records. Astra's
+read is `lanes/e-quests/astra-2.md` (§16).
+
+Every record kind below carries one line: **written by** VERB on PROTOCOL, **read by** VERB on PROTOCOL.
+A kind without such a line is not in the design. A kind that no served verb writes yet stays here as
+design; C lands it with the verb that writes it (main's ruling 2026-10-31, D46).
 
 ### 13.1 A peer is a principal with a peer grant
-- **Identity.** A peer authenticates as a principal (TLS, then AUTHINFO; or a BP neighbor admitted in
-  fn1's order: observed channel, configured peer, allowed EID, admitted principal, which is a conditional
-  authority resting on the boundary assumption, never cryptographic origin). fn1's source-address peer
-  (A-PEER) is retired: it made every loopback client the peer. The role is fixed at authentication by the
-  grant, never by `MODE`; STARTTLS resets it.
-- **Current authority at every decision.** The role stays fixed for the connection; the grant and the peer
-  policy are rechecked at each offer and each transfer (an offer can check only what it carries; groups,
-  Distribution, Path and evidence wait for the body; a `238` never exempts a transfer). Revocation stops
-  later offers and transfers and never rewrites an earlier admission or confiscates an obligation. This
-  replaces D's "pinned until reauthentication" for peer operations (seam to D).
-- **The peer row is policy over the principal:** accept-groups, feed-groups, `max-inflight`, streaming,
-  carried count and octets, distributions, path identity, transport, the reply profile (§13.2).
-- **Charges.** A peer's offers are charged to the peer principal (transfer octets, evidence admission,
-  durable octets). Per-principal limits compose with the aggregate capacity and the reserved settlement
-  capacity, so many funded peers still cannot exhaust what settling existing work needs.
+- A peer authenticates as a principal: AUTHINFO (RFC 4643) over TLS (RFC 8143) for NNTP; a BP neighbor in
+  fn1's order (observed TCPCL channel, configured peer, allowed EID, admitted principal: an authority resting
+  on the boundary assumption, never cryptographic origin). fn1's source-address peer (A-PEER) is retired. The
+  role is fixed at authentication by the grant, never by `MODE STREAM`; STARTTLS resets it.
+- The grant and the peer policy are rechecked at each offer (IHAVE, CHECK) and each transfer (the IHAVE
+  body, TAKETHIS) (D: yes). An offer checks what it carries; groups, Distribution and Path wait for the
+  body; a `238` never exempts a transfer. Revocation stops later offers and transfers and never rewrites an
+  earlier acceptance or a held pin.
+- The peer row is policy over the principal (fn1's `fn peer add`, peering.md §1.1): accept-groups,
+  feed-groups, `max-inflight`, streaming, carried count and octets, Path identity, transport, the reply
+  profile (§13.2). A peer's offers are charged to the peer principal; per-principal limits compose with the
+  aggregate capacity and the system reserve.
+- **The window.** `max-inflight` CHECK credits per streaming connection (IHAVE is never pipelined), the D0
+  holding `:peer-credit` on the peer principal. A `238` turns a credit into the transfer's holding by one
+  ledger net change on `fn2-account-attribute`'s pattern (release the credit, acquire the transfer's holding
+  on the same principal, re-acquire the credit if the acquire is refused), so nothing is charged twice (D's
+  amendment). Replies leave in request order; a reply settles only its own (phase, Message-ID).
 
-### 13.2 Inbound transit is the shared acceptance transaction
-Transit runs D5's transaction after **carrier-specific preparation**: POST injects; transit keeps the
-authored fields byte-exact and updates Path once at acceptance (fn1 §2.3) and Xref; the loop check reads
-the received Path and the provenance. BP ingress reaches the same transaction (fn1's K6, built from the
-start). Decisions and words:
+### 13.2 Inbound transit is the acceptance transaction POST uses
+IHAVE and TAKETHIS run D5's transaction after carrier preparation: POST injects; transit keeps the authored
+fields byte-exact and prepends the node to Path once at acceptance (fn1 §2.3) and writes Xref. BP ingress
+reaches the same transaction (fn1's K6). D5 3/n takes this table whole (D: yes):
 | point | decision | IHAVE / CHECK / TAKETHIS |
 |---|---|---|
-| offer, **local acceptance history** for the name (accepted, withdrawn or reclaimed) or a local not-wanted decision | `:have` | 435 / 438 / — |
-| offer, evidence-only knowledge, a foreign receipt, a pending authority dependency | not suppressing: `:want` (subject to the rest) | 335 / 238 / — |
-| offer, staged, or the window full | `:defer` | 436 / 431 / — |
-| transfer, identical subject | `:duplicate`; new evidence still admitted, funded, no article, membership or retention promise | 437 / — / 439 |
-| transfer, a different authored subject under a name with local acceptance | ruling 6: evidence commits separately, the article is refused | 437 / — / 439 `conflict` |
-| transfer, contention (`:contended`) or account exhaustion (`:exhausted`) | retryable | 436 / — / default 400 and close; profile `fn-compat`: 436 |
-| transfer, structurally impossible for this profile (`:incompatible`) | permanent | 437 / — / 439 |
-| transfer, uncertain commit | fence | 436 then close / — / 400 and close |
-| transfer, accepted | 2xx only after `:durable` | 235 / — / 239 |
-TAKETHIS's default follows RFC 4644 (400 and close on a temporary failure); fn1's `436 <id>` (chosen after
-INN's retry behavior) is the named `fn-compat` profile; uncertainty closes in both. **Declared losses
-(ruling 11):** CHECK and IHAVE suppress by Message-ID before the body, so neither a conflicting body nor new
-evidence beside identical bytes is learned that way; the legacy codes cannot report the article result and
-the evidence result separately, so settlement of the evidence is through the evidence stream (§13.4).
-`239`/`235` are transmission receipts, never retention receipts.
-**The window.** `max-inflight` CHECK credits per streaming connection (IHAVE is never pipelined), a D0
-holding kind `:peer-credit` charged to the peer; a CHECK credit becomes the transfer's holding by transfer,
-not a second charge; unsolicited TAKETHIS, abandoned credits, duplicate offers, timeouts and policy
-lowering each have a stated disposition; replies leave in request order (D5 3/n's queue), and a reply
-settles only its own (phase, Message-ID).
+| offer; the Message-ID is in this node's **history** (accepted, withdrawn or reclaimed) or locally not wanted | `:have` | 435 / 438 / — |
+| offer; only identity evidence or a peer's history entry knows the name, or an authority dependency is pending | `:want` | 335 / 238 / — |
+| offer; the name is staged, or the window is full | `:defer` | 436 / 431 / — |
+| transfer; the same authored subject | `:duplicate`: new evidence still admitted and funded; no article, number or retention | 437 / — / 439 |
+| transfer; a different authored subject under a name in the history | ruling 6: the evidence commits, the article is refused | 437 / — / 439 |
+| transfer; `:contended` or `:exhausted` | retryable | 436 / — / 400 and close (RFC 4644); profile `fn-compat`: `436 <id>` |
+| transfer; `:incompatible` with this profile | permanent | 437 / — / 439 |
+| transfer; the commit's outcome uncertain | fence | 436 then close / — / 400 and close |
+| transfer; accepted | 2xx only after the commit is durable | 235 / — / 239 |
+Declared losses (ruling 11): CHECK and IHAVE decide by Message-ID before the body, so a conflicting body or
+new evidence beside identical bytes is not learned that way; the legacy codes cannot report the article and
+the evidence separately, so evidence settles through catch-up (§13.4). `235` and `239` are transmission
+receipts, never retention (fn1 RET-003).
 
-### 13.3 An outbound feed: a node-owned consumer installing delivery work
-- **Discovery** is a consumer owned by the node (a service consumer), accounted to the peer, whose query is
-  the peer's feed selection: an article matches by its Newsgroups, and a control article also by its
-  target's groups (fn1 NNT-033: a peer subscribed to the room receives its cancel without subscribing to
-  `control.cancel`), minus loops (the peer's identity in Path, or the peer as provenance). The peer cannot
-  rebase, unregister or acknowledge it: managed consumers are outside the remote whitelist.
-- **Its processing transaction installs delivery work and acknowledges** (Astra's position, taken): for
-  each selected occurrence a `feed-work` row keyed by the stable **delivery identity** (feed epoch,
-  occurrence), with the destination, the immutable object reference and the query version; then the
-  cursor's ack, in one batch. A changed feed query is a rebase, a new epoch; the work already installed
-  keeps its epoch's responsibility; a removed peer's work drains or is explicitly dropped (fn1's
-  busy-feed drain). Selection is a pure function of the occurrence and the epoch's query, so the target set
-  is fixed as fn1's acceptance-time intents fixed it, without a feed write in every POST transaction.
-- **Delivery** is a scheduled fold over feed-work rows, fair across them: a deferred head never blocks
-  ready later work. A row carries its phase (offered by CHECK/IHAVE, sent), attempt identity (connection
-  incarnation, request), deferral count, loss count, backoff deadline (restart-safe), and terminal
-  disposition: `accepted` (235 239), `not-wanted` (435 438), `rejected` (437 439), `dropped` with its
-  reason when losses reach the bound (only losses with an attempt in flight count; 431/436 never do), or
-  `withdrawn` (the target was withdrawn before delivery: never offered after). Offer backoff and link-redial
-  backoff stay distinct. An operator waiver ends permanently deferred work explicitly.
-- **Restart** retires every unresolved attempt and re-offers by CHECK/IHAVE, sending only after a new
-  affirmative answer, never a blind TAKETHIS; a terminal disposition is durable before anything depends on
-  it (fn1's honest exactly-once, P:1290).
+**The history entry** (fn1 peering.md §2.5, RFC 5537 §3.3, with its origin). C's `fn2-identity-evidence`
+and `fn2-identity-receipts` (id 1, 11; on dev), the identity summary their fold.
+- written by POST, IHAVE and TAKETHIS on NNTP and by BP ingress on TCPCL (D5's acceptance transaction);
+  for a peer's entries, by the catch-up import on XFNC (§13.4).
+- read by the offer decision of IHAVE and CHECK (the `:have` row), by ARTICLE/HEAD/STAT by Message-ID
+  (the selected subject), and by the catch-up batch on XFNC.
 
-### 13.4 fn2 peers exchange evidence, not only articles
-XFNCATCHUP is carried for fn1 peers with its declared loss (skips across a view reshape undetected) and is
-not extended (ruling 11). An fn2 peer reads, over R, an **evidence page**: a result type distinct from the
-consumer page (§4.1's "no coverage on the wire" is the consumer page's rule), read through C's
-position-ordered admission index (never the per-name key cursor; a commit's several facts are paged with
-an ordinal or kept whole). The page carries:
-- **history identity:** origin domain, incarnation or lineage relation, revision, an advertised cut (a
-  commitment identifies the history; it never proves honest disclosure);
-- **scope:** namespace, streams, fact interpretation version, disclosure scope, authority and view version;
-- **traversal:** start, next, advertised end, and why it stopped (limit, unavailable history, completion);
-- **exceptions:** source coverage gaps, withheld or unavailable dependencies;
-- **completion, two claims kept apart:** examined through this cut, and durably incorporated every eligible
-  fact and required dependency through this cut. `more = false` is never evidence completeness.
-Each item is portable evidence (namespace, name, typed content identity, evidence identity, issuer,
-dependencies); its identity survives import, so re-export never mints a new observation and evidence does
-not amplify around a cycle. The receiver admits through C's `:admit` and `:receipt-import` (which never
-selects); a refused or unfunded admission is a durable local gap (C's funded or coarse gap mechanism);
-persisting a gap may advance the **scan** cursor, never the **incorporation** claim, and a repair pass
-revisits gaps when funding or dependencies arrive. Dependency and proof references are fetched by an
-authorized evidence fetch, not the article `fetch`. The first evidence protocol is scoped to connected
-peers over R; evidence over BP is a third ADU kind, owed. Catch-up for an fn2 peer is `register :history`
-and pages: the same port.
-**The peer claim** (K-P1): within a named namespace and fact interpretation, replicas that durably
-incorporated the same eligible evidence and dependencies have equal evidence Bindings and equal conflict
-predicates; local acceptance receipts stay attributed; served choices agree only when policy and decision
-inputs agree; eventual incorporation is a separate claim under its connectivity, availability,
-authorization and resource assumptions.
+### 13.3 The outbound feed (fn1's FNFD, peering.md §4)
+- **Selection** is a consumer the node owns for the peer (the port's `register`, §3, node-authored),
+  whose query is the peer's feed-groups: an article matches by Newsgroups, a control article also by its
+  target's groups (fn1 NNT-033), minus loops (the peer's name in Path, or the peer as the arriving
+  connection). The peer cannot rebase, unregister or ack it: it is outside the remote whitelist (§5).
+- **The feed entry**, keyed by the delivery identity (feed epoch, occurrence): destination, the article's
+  position, the query version, the phase (offered by CHECK or IHAVE, then sent by TAKETHIS or the IHAVE
+  body), the attempt (connection incarnation, request), deferral and loss counts, the backoff deadline, and
+  one terminal disposition: `accepted` (235, 239), `not-wanted` (435, 438), `rejected` (437, 439),
+  `dropped` (losses with an attempt in flight reached the bound; 431 and 436 never count; or the peer's
+  grant no longer covers it), `withdrawn` (the target was cancelled before delivery).
+  - written by the feed consumer's processing transaction (the port's `read` then `ack`, one batch: install
+    the entries, then advance the cursor) and by each IHAVE, CHECK and TAKETHIS reply on NNTP (phase,
+    counts, disposition); by the operator's drop (`fn peer drop`, fn1's busy-feed drain).
+  - read by the feeder's fair selection (fewest deferrals first, oldest among equals: a deferred head
+    neither blocks later entries nor starves) that sends CHECK/TAKETHIS (RFC 4644) or IHAVE (RFC 3977) to
+    the peer; at restart, every unresolved attempt is retired and re-offered by CHECK or IHAVE, never a
+    blind TAKETHIS (fn1 P:1290).
+  - design until the feeder serves (D5 3/n's peer path with E's served consumer).
+- A changed feed-groups is a rebase: a new epoch; the entries installed keep their epoch. Selection is a
+  pure function of the occurrence and the epoch's query, so the target set is the one fn1's acceptance-time
+  intents fixed, without a feed write in every POST transaction.
 
-### 13.5 Control across peers
-Control articles relay as articles; every receiver decides again under its own authority (ruling 10). A
-cancel's decision is a **durable cancel intent** independent of the target: target namespace and name,
-cause, issuer, authority basis and the decision-time grant context (seam to C: a record beside
-`fn2-withdrawals`, whose rows need the target and are materialized when the target is known). That retained
-decision is what makes cancel-before-target, across a crash, order-independent (fn1 P:1948).
+### 13.4 Catch-up between fn2 nodes (the successor of XFNCATCHUP)
+fn1 peers keep XFNCATCHUP with its declared loss (a view reshape skips undetected; ruling 11), unextended.
+An fn2 peer catches up over XFNC with the port: `register :history` on the peer grant's view, then `read`.
+A **catch-up batch** is a read page whose items are the view's entries in commit order, each with its
+history entry and its identity evidence (namespace, Message-ID, subject identity, evidence identity, issuer,
+dependencies), and whose header carries what XFNCATCHUP's `291` line carried and more: the sender's
+history identity (domain, incarnation, revision) and its chain at the batch's end, the scope (view and its
+version, the evidence interpretation version), NEXT and END, and why it stopped. `more = false` claims
+nothing about completeness. Evidence keeps its identity across import, so a re-export never mints a new
+observation and evidence does not circulate as new around a ring (B: yes).
+- The receiver admits each item through C's `:admit` (evidence) and `:receipt-import` (a peer's history
+  entry, which never selects). An item it cannot fund or whose dependency is absent is a coverage gap in the
+  identity summary (C's `coverage` field); the batch cursor may pass a gap, the receiver's coverage claim
+  may not, and a later batch or funding repairs it.
+- **No new record kind**: the batch is a read result; what it writes are the history entries and evidence
+  of §13.2, written by the catch-up import on XFNC, read as there.
+- **The peer claim** (K-P1): within one namespace and evidence interpretation, nodes whose coverage includes
+  the same evidence have equal Message-ID bindings and equal conflict predicates, whatever their own history
+  entries say; served choices agree when policy agrees; eventual coverage is a separate claim under
+  connectivity, authority and funding.
 
-### 13.6 BP: one store, carrier lifecycle distinct from custody
-- **Ingress** decodes fn1's ADU (request and receipt kinds; the ADU bound is the profile's, with codec width,
-  admission profile and bounded continuation stated separately, not a fixed 32,768) and reaches §13.2's
-  transaction. Custody is taken only over an admitted channel.
-- **One store, typed records.** fn1's FNBS journal is replaced by records in the common store: **bundle**
-  (bundle identity), **submission**, **attempt**, **outcome**, **handoff** and **obligation**, the four
-  identities never substituted. A held bundle may be a fragment, a transit object, an application receipt or
-  an administrative report, with no accepted article at all. Carried over from FNBS as obligations of the
-  engine: the five budgets (live objects and octets, staged family reservations, authoritative history,
-  publication capacity) separately accounted; the **cleanup debt** (admission reserves the future writes
-  that settle attempts, publish receipts, end families and reclaim; exhausted admission credit never blocks
-  paying existing debt); recovery and compaction preserving held objects, outcomes, handoffs, family
-  reservations, age evidence and non-reused frontiers; fragment families with outcomes for every child;
-  the expire, dispatch, deliver and discard classes independently eligible.
-- **Custody is an obligation**, distinct from the carrier: carrier expiry or deletion leaves the
-  application obligation outstanding and a new carrier may retry it. C's `obligations` needs a typed
-  contract (seam to C): stable identity and kind; the exact subject reference; obligor, beneficiary, payer
-  and authorization provenance; immutable terms (promised action, receipt authority, release predicate,
-  retry, expiry and waiver); state with discharge evidence scoped to that obligation; reserved resources and
-  remaining cleanup liability. An imported foreign obligation is evidence, never adoption.
-- **Receipts** have an outbox: `(receipt fact, triggering carrier) → owed | handed-off`; losing a receipt's
-  carrier does not erase the fact; a status report is never evidence and never stops the requester's
-  receipt timer; the final TCPCL ACK follows durable reception (or an exact durable duplicate), and a
-  refusal or uncertainty never sends a successful final ACK.
-- **Egress** is a feed (§13.3) whose transport is a convergence layer and whose destination is chosen by the
-  operator's route table; no route keeps the work held and reported. A contact is a wake source for the
-  fair selector, never a scheduler of its own.
-- **The bundle machine** is declared in the machine form with fn1's events and effects as vocabulary, after
-  the served consumer kind.
+### 13.5 Control across peers (RFC 5537 §5)
+Control articles relay as articles; every receiver decides again under its own authority (ruling 10).
+- **The withdrawal** (C's `fn2-withdrawals`, id 15, answered): written by the cancel's acceptance on NNTP
+  (D5's control path, one row per stream of the target, positioned by the event); read by ARTICLE, OVER and
+  the consumer `read` (an absent article; a positioned withdrawal entry in each stream).
+- **The cancel intent** (target namespace and Message-ID, cause, issuer, authority basis, the grant in force
+  at decision): written by a cancel accepted by POST, IHAVE or TAKETHIS whose target is not here; read by
+  the target's acceptance on POST, IHAVE or TAKETHIS, which writes its withdrawal rows in the same
+  transaction. It makes cancel-before-target order-independent across a crash (fn1 P:1948). Design until
+  D5's control path serves.
 
-### 13.7 Keystones (statement first, owed with teeth)
+### 13.6 BP (RFC 9171 over TCPCLv4, RFC 9174)
+The bundle is the carrier; the article is the subject (fn1 bp-design.md §1.1). RFC 9171 has no custody
+(Appendix A removes RFC 5050's) and fn2 imports none. What fn1 calls custody is the **forward pin**.
+- **The bundle** (RFC 9171 §3.1's bundle store; fn1's FNBS journal; a fragment is a bundle with its
+  offset, RFC 9171 §5.8):
+  - written by TCPCL reception (XFER_SEGMENT to the final XFER_ACK, RFC 9174 §5.2) at BP ingress, and by
+    the BP feeder's encoding of a feed entry whose destination is an EID;
+  - read by TCPCL transmission (the feeder's attempt), by reassembly (RFC 9171 §5.9), and by delivery to
+    the application agent, which is the acceptance transaction of §13.2 for the ADU;
+  - the final XFER_ACK follows the durable write (or an exact durable duplicate); a refusal or an uncertain
+    commit never sends a successful final XFER_ACK.
+- **The forward pin** (fn1 `fn-bprl-undertake`): written by the BP feeder when a feed entry to an EID is
+  first attempted; released only by the receipt ADU naming it from its destination, read by BP ingress on
+  TCPCL (fn1 bp-receipt.md), or by the operator's waiver (fn1 `carry drop WORK --abandon`, PRF-950). A
+  TCPCL XFER_ACK, a "delivered" status report (RFC 9171 §6.1.1; fn1 T5), carrier expiry or deletion, and
+  another pin's receipt release nothing; a new bundle may carry the subject again.
+- **The receipt the node owes** is a feed entry whose object is a receipt ADU: written by BP ingress's
+  acceptance of an ADU that requests one, read by the BP feeder; losing its bundle does not lose it.
+- Submission, attempt, outcome and handoff are not kinds: a submission is a feed entry, an attempt and its
+  outcome are the feed entry's phase and disposition, and a handoff is the ADU's acceptance transaction.
+- FNBS's five budgets and its cleanup debt are Meter dimensions (D0 holding kinds), not records: admission
+  reserves the writes that settle what it admits; exhausted admission credit never blocks a settlement.
+- Egress is a feed (§13.3) whose transport is a convergence layer and whose next hop is the operator's route
+  table; no route keeps the entry pending and reported. A contact is a wake for the feeder, never a
+  scheduler of its own.
+- All of 13.6 is design until BP ingress serves (after the served consumer kind).
+
+### 13.7 Keystones (statement first, owed with teeth; `fn2/books/owed-peer.lisp`)
 | id | statement |
 |---|---|
-| K-P1 | the peer claim (§13.4), checked against an independent fold of the retained evidence and conflict observations; conditional equality separate from eventual exchange |
-| K-P2 | transit refines the shared acceptance transaction after carrier-specific preparation: identity, admission, membership, charges and durability effects agree (not stored-byte equality) |
-| K-P3a (safety) | every installed delivery responsibility is pending or has exactly one terminal disposition; no cursor advance loses one |
-| K-P3b (progress) | settlement only under stated scheduling, availability, resource and peer-response assumptions (an infinite `431` refutes the unconditional claim) |
-| K-P4 | at most one durable terminal disposition per delivery identity across restarts, duplicate replies, stale sessions and compaction; a re-feed is a new identity linked to the old outcome |
-| K-P5 | a local custody obligation is discharged only by its authorized, exactly bound receipt or an authorized durable waiver; transport ACKs, reports, carrier expiry, cancellation and another obligation's receipt cannot |
-| K-P6 | a reoffer matching a local acceptance whose body was reclaimed is `:duplicate`, allocates no publication, discharges no unrelated obligation; evidence-only or foreign-receipt knowledge is not this case |
-Each keystone's positive fixture asserts its full antecedent (K-P2 accepts something; K-P5 releases
-something) and a fault per keystone is caught.
+| K-P1 | the peer claim (§13.4), against an independent fold of the evidence and conflict observations |
+| K-P2 | IHAVE and TAKETHIS refine POST's acceptance transaction after carrier preparation: identity, admission, membership, charges and durability agree (stated over D5 3/n's served path) |
+| K-P3a | every installed feed entry is pending or has exactly one terminal disposition; no cursor advance loses one |
+| K-P3b | settlement only under stated scheduling, availability, resource and peer-reply assumptions (an endless `431` refutes the unconditional claim); stated over the served feeder |
+| K-P4 | at most one durable terminal disposition per delivery identity across restarts, duplicate and stale replies; a re-feed is a new identity |
+| K-P5 | a forward pin is released only by its receipt ADU from its destination or the operator's waiver |
+| K-P6 | an IHAVE or TAKETHIS matching a history entry whose body was reclaimed is a duplicate (435/439), allocates no article number and releases no pin; evidence or a peer's history entry alone is not this case |
 
-### 13.8 The witnesses as fixtures, and what they establish (W1, W2, W3, W7, F1, F2 built in `tests/peer-witnesses.lisp`)
-A **witness-to-property matrix** names, per fixture, which keystones it exercises non-vacuously. The
-reference model is extended to several nodes with evidence, obligations, feed work and gaps; its fixtures
-are executable obligations and checker oracles, **not served acceptance evidence**.
-| fixture | exercises |
-|---|---|
-| W1 opposite first arrivals | K-P1 |
-| W2 two candidate sets meet with funded capacity exhausted: partial import, gap, restart, later funding, completion after repair | K-P1 (incorporation vs scan) |
-| W3 identical content with new evidence | K-P2, K-P6 |
-| W4 a forged arbitrary-key signature (authority logic, not signature security) | K-P1 |
-| W5 an object before its authority dependencies | K-P1 |
-| W6 cancel before target with a crash between | §13.5 |
-| W7 reclamation with identity and evidence surviving; a reoffer | K-P6, K-P5 |
-| W8 the evidence commit before persistence, after it, before the reply (semantics only; physical cuts need the served machine) | K-P2 |
-| W9 one article through two routing projections, through the real subject extraction and relay transforms | K-P2 |
-| W10 a transported domain against old-incarnation decisions (a specified model, not transport implemented) | ruling 12 |
-| F1 A→B→C→A propagation, evidence circulating with its identity | K-P1, loops |
-| F2 a deferred head, later successes, mixed CHECK/TAKETHIS phases, stale replies, restart with attempts unresolved | K-P3a, K-P4 |
-| F3 conflict visibility at an authorized typed read under incomplete coverage and disclosure limits | K-P1 |
-| F4 carried count and carried octets exhausted independently; lower, refuse, raise, restart with usage kept | charges |
-| F5 cleanup credit exhausted for admissions while existing attempts, handoffs and reclamation settle | BP debt |
-| F6 fragment replacement at full capacity, a family across a crash, a receipt lost after a delivery report | K-P5 |
-| F7 grant or query changes while an offer, an evidence page or feed work is pending | §13.1 |
+### 13.8 The reference model and its witnesses (`peer-model.lisp`, `tests/peer-witnesses.lisp`)
+The model's fixtures are checker oracles, not served evidence. Built: W1 (opposite first arrivals, K-P1),
+W2 (two nodes meet with funding exhausted: partial import, gap, later funding, repair; K-P1), W3 (identical
+content with new evidence; K-P6's premise), W7 (reclamation under a forward pin and a reoffer; K-P5, K-P6),
+the offer rule (evidence alone never answers 435/438), F1 (a ring A→B→C with the loop excluded by Path),
+F2 (a deferred head, later successes, mixed CHECK and TAKETHIS phases, a stale reply, a restart with an
+attempt unresolved, losses reaching the bound; K-P3a, K-P4). Each asserts its antecedent and catches its
+fault. The other witnesses of Astra's matrix (a forged authority, an object before its authority, cancel
+before target across a crash, the commit cuts, two routing projections, an old incarnation, conflict
+visibility under disclosure, carried count and octets, cleanup debt, fragments, a grant change under
+pending work) land with the served verb each exercises.
 
-### 13.9 Seams this needs
-- **D:** the `:peer-credit` holding kind; D5 3/n answering §13.2's table (the exhaustion reasons split
-  into `:contended`, `:exhausted`, `:incompatible`; `:unaffordable` today names the last); current
-  authority per peer decision; the reply profile row; D's identity text reconciled with rulings 6-7 before
-  its peer path is coded (the fifth-content bound, POST conflicts writing nothing, transit deciding by
-  Message-ID after receipt, d-machines-nntp.md around line 1414); A's outbound `Connect`.
-- **C:** the typed obligations contract (§13.6); the cancel intent record (§13.5); the position-ordered
-  admission index with an intra-commit ordinal; the `feed-work` schema keyed by delivery identity; the
-  bundle, submission, attempt, outcome and handoff schemas.
-- **B (accepted):** the ADU is a record subject (a payload kind in the commit stream, its envelope through
-  the record header); an imported record carries the origin's occurrence id, lineage, domain and
-  incarnation verbatim, and only a locally committed event gets occurrence = event, so a re-export never
-  mints a new observation.
-- **A:** outbound `Connect` is A's adapter primitive (vocabulary action, simulator host, native loop,
-  carrying Accept's peer record), placed after the form's P4; the peer model does not need it sooner.
-- **C (accepted in principle):** the five §13 seams, in C's order after the spine and §4a: the
-  intra-commit ordinal, the cancel intent, the obligations contract (with C4/C5), feed-work, then the
-  bundle, submission, attempt, outcome and handoff schemas.
+### 13.9 Seams, with the owners' answers
+- **D (answered):** §13.2's table whole in D5 3/n; authority rechecked at each offer and transfer;
+  §14.4.3's identity text rewritten to rulings 6/7/8/11 in D's next push; `:peer-credit` as a ledger net
+  change (its D0 row sent through main).
+- **C (ruled):** the feed entry, the cancel intent and the forward pin land with their producers; C's
+  intra-commit ordinal on the position-ordered admission index lands with the catch-up batch's reader.
+- **B (answered):** the BP ADU is a record subject (a payload kind in the commit stream, its envelope by
+  the record header); an imported record keeps the origin's occurrence, lineage, domain and incarnation.
+- **A:** outbound `Connect` for the feeder, after the form's P4.
 
 ## 14. Order of the build
 1. Done: the port form, the consumer port and carriers, the model, the keystones, the two fixtures.
 2. Done: the big-endian layout kinds; the FNCT and `fncu` codecs (v1 and v2, codes 0-18, replies 5, 6,
    9 and 28) with fn1's bytes as fixtures; the legacy translation as data.
-3. Peering and BP: §13 stated and revised after Astra's read; seams to main; then the multi-node model
-   with the witness matrix and K-P1..K-P6 owed with teeth.
+3. Done: peering and BP stated in wire words (§13); the peer model, K-P1, K-P3a, K-P4, K-P5, K-P6 owed
+   with teeth, six witnesses.
 4. When D5 2/n and D6 land: `fn2-cns` in the new form over C's reads and folds, the XFNC block, the local
    socket, the CONSUMER checker over the model, scenarios 7, 8, 9, K10 stated.
 
@@ -637,21 +613,16 @@ independent scheduling; E keeps (a) for the first slice (§5). On K4, Astra note
 its timeout satisfies "wait is read"; E answers with K4b rather than weakening K4.
 
 ## 16. Astra's second read (`lanes/e-quests/astra-2.md`, §13): what it changed
-Taken: the feed acknowledges once its processing transaction installs delivery work, scheduled by a fair
-fold (no head-of-line hole), with a stable delivery identity, attempt phases, separate deferral and loss
-counts, explicit drops and an operator waiver; the feed consumer is node-owned and outside the remote
-whitelist; control matched by its target's groups; CHECK/IHAVE suppress only on local acceptance history or
-a local not-wanted decision, never on evidence alone; the exhaustion reasons split three ways; TAKETHIS's
-default follows RFC 4644 with fn1's 436 as a named profile; phase-aware reply matching; the evidence page
-as its own result with history identity, scope, traversal, exceptions and two completion claims, scan
-cursor apart from incorporation, repair of gaps, evidence identity preserved across import; BP as typed
-bundle, submission, attempt, outcome, handoff and obligation records carrying FNBS's budgets, cleanup debt,
-recovery, fragments and progress classes; custody distinct from the carrier; the typed obligations
-contract; the receipt outbox and the final-ACK boundary; the profile's ADU bound; current authority at
-every peer decision; aggregate capacity beside per-peer charges; the sharpened K-P1..K-P6 with full
-antecedents; the witness-to-property matrix and fixtures F1-F7; model fixtures labeled oracles, not
-served evidence; the durable cancel intent; withdrawn feed work as a terminal disposition.
-One position recorded: Astra notes acceptance-time installation (feed work in the POST batch) would fix the
-target set at acceptance; E installs at the feed consumer's processing transaction instead, because the
-epoch's query makes selection a pure function of the occurrence (the same target set) and keeps a feed
-write out of every POST transaction as peers multiply.
+Taken, in §13's words: the feed consumer installs feed entries and acks in one processing transaction; the
+feeder's fair selection; the delivery identity, phases, separate deferral and loss counts, explicit drops;
+the feed consumer outside the remote whitelist; control matched by its target's groups; 435/438 only from
+the node's history or a not-wanted decision; the exhaustion reasons split three ways; TAKETHIS's RFC 4644
+default with fn1's `436 <id>` as `fn-compat`; replies matched by (phase, Message-ID); the catch-up batch's
+history identity, scope, stop reason and the coverage claim kept apart from the batch's end; evidence
+identity kept across import; the carrier distinct from the forward pin; the final XFER_ACK after the durable
+write; the profile's ADU bound; authority rechecked at every peer decision; aggregate capacity beside
+per-peer charges; K-P1..K-P6 with full antecedents. Dropped under main's ruling (a kind lands with its
+producer): Astra's typed bundle, submission, attempt, outcome, handoff and generic obligation records, which
+§13.6 reduces to the bundle and the forward pin. One position kept: Astra would install feed entries in the
+POST batch; E installs them in the feed consumer's processing transaction, because selection is a pure
+function of the occurrence and a feed write stays out of every POST as peers multiply.
