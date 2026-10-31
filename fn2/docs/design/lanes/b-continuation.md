@@ -7,38 +7,24 @@ landed under the whole-tree gate (every unit book; A's seven drivers with the A4
 to a dev baseline; books under 60 s), nothing interleaved.
 
 ## On dev
-- 717bec1c3 **B5-1**: defcolumns init fresh (resize 0 then n; extras emptied/reset/cleared); controls in
-  columns-unit; sim/check-death.lisp (fn2-b-death-difference, -plant-survivor, -death-control) and
-  tests/death-unit.lisp. READY sent. Gate: forge /build/lanes/b51 (closure 194 rc 0; drivers 7 rc 0;
-  A4 123 summary lines identical to /build/lanes/bdev = dev b25c1ea51 baseline).
-- Earlier: B library 12cd1031f, B3b-1 19149d32e, B3b-2 49ffcd6af, seams 810a4c376.
+- 2062b2f74 **B5-3** and 5674cae12 **B5-2** (landed 2026-10-30 on cd2b74e48; READY sent). Whole gate on
+  323c9da1d (forge b5i): closure, drivers 8/8, A4 identical but exercised=34/98 (dev 34/90), tiny S15 336
+  S16 12 S13 316 S14 1882, export 554/549/97; Q1 judge does not refuse the recovery kind (no control
+  record, owed).
+- 717bec1c3 B5-1; earlier B library 12cd1031f, B3b-1 19149d32e, B3b-2 49ffcd6af, seams 810a4c376.
 
-## In flight
-**Landing B5-3/B5-2** from the scratch worktree
-/private/tmp/claude-501/-Users-ember-dev-minidregg/01a18d5d-691b-72d0-9a7c-08f584d470bb/scratchpad/land
-(detached; `git worktree list` in /Users/ember/dev/fn shows it): f5017f2d0 B5-3, 8ce8cb872 B5-2 over
-dev 323c9da1d; messages b-quests/b53.msg/b52.msg filled into scratchpad b53.final/b52.final (GATE_LINES
-names base 57601292a; refresh it to the final base). Gate history: green at 6bde0055b (b5g), e3573e0af
-(b5h), 57601292a (b5i: drivers 7/7, A4 identical but exercised 34/85 vs 34/77, tiny S15 336 S16 12 S13
-316 S14 1882, export PASS 509); own books+export green at 762c94853 (511); now the whole gate3 again on
-323c9da1d at forge b5i (PID file build/gate.pid) because D5 1/n also edited q1-unit.lisp (catalogue now
-98 = 90 + 8 recovery). When green: copy b5i's fn2/docs/OWED.md into B5-2 (`git commit --amend -F
-b52.final -- fn2/docs/OWED.md`), amend B5-3's message (needs the B5-3 commit amended first: checkout
-the B5-3 sha, amend, cherry-pick B5-2, amend), secrets check (python3 tools/secrets_check.py),
-`git push origin HEAD:refs/heads/dev`, READY with both shas. Q1 judge: does not refuse the recovery
-kind (it names conn/echo/listener/scribe only; recovery has no control record, owed like fn2-commit).
-Forge scripts: /build/lanes/b51/build/gate3.sh (T=<tree>), drivers.sh, a4blocks.sh.
-
-**B5-4a** in /Users/ember/dev/fn/build/lanes/fn2/b-machine (branch fn2/b: WIP commit 60cf26a47 plus
-uncommitted fixes) still on the OLD base 6bde0055b + old B5-3/B5-2; after landing, rebase it onto dev
-(drop the two old commits). It certifies locally through the whole assembly and
-tests/commit-member-unit.lisp passes (refused leader/pair, outcomes :refused, frontier restored).
-Uncommitted on top of the WIP: commit-alloc.lisp cancel/free shape lemmas (Codex, read and certified),
-commit.lisp fixes (abort-state nfix, pick disabled, end-abort guards, hook -RESULT-CONSP, abort event
-from the root recipe), machines-b.lisp :format-slots default/floor (+ 4 :large-upload-windows) (main's
-ruling; absent windows key = 0), machines-c-bind defattach hints, the unit's expectations.
-Still to do in B5-4a: hook defcosts with (:layers :c :d) for fn2-runs-install and fn2-member-replay
-(e3573e0af); the whole gate (S13/S14 counts may change); b-durability.md §11 B5-4 from b54-design.md.
+## In flight: B5-4a
+Worktree /Users/ember/dev/fn/build/lanes/fn2/b-machine, branch fn2/b = dev 5674cae12 + two local WIP
+commits (e74e6c178, 7900ca65d; squash/reword at landing) + uncommitted hook defcosts in machines-b.lisp
+((:layers :c) / (:layers :c :d), e3573e0af). Assembly chain on dev is a -> c -> d -> d-conn -> d-conn2 ->
+d-upload -> d-txn -> b -> r; B5-4a makes it a -> b -> c -> ... -> d-txn -> r (-b includes -a, -c
+includes -b, -r includes -d-txn). Before the rebase it certified locally through the whole assembly and
+tests/commit-member-unit.lisp passed. Next: local recertify on the new base, then whole gate on forge
+(gate3.sh with T=<new tree>), S13/S14 counts compared, b-durability.md §11 B5-4 from b54-design.md,
+squash into one commit, land, READY. Then B5-4b (run member, envelopes, dependency verification,
+replay), the commit port (ruling 3), B-S2 (D's :ready calls (fn2-commit-admit-txn slot gen bytes okind
+oslot ogen fn2-core) -> (mv code batch event fn2-core); D's interim of that name exists on dev and is
+replaced; a :full/:exhausted waiter is woken through the grant service, form stated with B-S2).
 
 ## B5-4 (statement: b-quests/b54-design.md, after Astra's read b54-astra.md; C said YES to the rename)
 B5-4a as written in the WIP commit:

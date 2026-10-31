@@ -7,7 +7,10 @@ Astra's review folded in, rulings recorded in §15.8). macOS has no `setsid`: de
 `nohup perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' CMD ... & echo $! > X.pid` (the pid is the group leader).
 
 ## State
-- dev (this seat): D6 statement commit (see git log: "fn2 D6: the query cursor, statement first") —
+- dev (this seat): **c01f87b6a** "fn2 D6: the query cursor, statement first" on origin/dev (on
+  f794c78f3; gate: whole closure + export green at e9acc2c5b, own books + export green at f794c78f3).
+  It is the rebase of the shared tree's local 5b65f7154 (same files but OWED.md); the shared tree's
+  dev still carried 5b65f7154 on cd2b74e48: main resets it to origin/dev (`git reset --keep`) —
   §15 of the layer doc, `fn2/books/owed-cursor.lisp` (subject `fn2-cursor-run profile seeds later
   transcripts`: articles seeded and published through C-S3, one batch each; reference
   `fn2-cursor-spec-wire`; owed rows `fn2-cursor-reply-exact`, `fn2-cursor-range-cost`,
@@ -26,7 +29,10 @@ Astra's review folded in, rulings recorded in §15.8). macOS has no `setsid`: de
   identity read through the decision path's lookup). C-S3a is C's (landing; C sends the sha).
   S-ARTICLE-LOCATION recorded for B-S2/C5. The taken-kind + TX hand-over design is accepted.
 - Worktree `build/lanes/fn2/d6` (branch fn2/d6, from dev cd2b74e48) for the C-S4 foundation commit;
-  nothing written there yet. Forge tree `/build/lanes/d6` (clone of /build/fn.git; push dev there
+  the branch was re-pointed at origin/dev + the D6 commit; the machines-b draft (`*fn2-b-read-stride*`,
+  `fn2-b-read-rows`, the `+ stride·R` term in `fn2-b-field-rows`) is saved as
+  build/coordinator/fn2/lanes/d-quests/d6-machines-b-draft.diff
+  (re-apply by hand: B5 changed machines-b.lisp since). Forge tree `/build/lanes/d6` (clone of /build/fn.git; push dev there
   with `git push fn@forge:/build/fn.git dev:refs/heads/dev`, then `git -C /build/lanes/d6 pull
   --ff-only /build/fn.git dev`; rsync uncommitted files). Its `build/c1.sh` = own books + the whole
   closure + export (status in build/c1.status). Forge `/build/lanes/d5` deleted (dead scaffold).
@@ -59,6 +65,9 @@ Astra's review folded in, rulings recorded in §15.8). macOS has no `setsid`: de
      `fn2-read-seek-step x budget`, `fn2-read-frontier` (C's `:published`), `fn2-read-release x`.
    - range.lisp exports no shape lemmas for fn2-range-start/step or fn2-seek-start/step (its adapters
      use local stobjs): prove them with `fn2-ra-shape` as range.lisp does for advance-all.
+   - **Base it on C's sealer machine (7a6680f71, landing on 5674cae12) when main sends the sha, not
+     before** (main, 2026-10-30): the sealer's six children and its field stripe are what the read
+     stripe sits below; then SEAL = `*fn2-b-seal-field-rows*`.
    - gate: whole tree on forge (`build/c1.sh` pattern: every unit book + A's seven drivers with the
      113 A4 blocks identical + export), then land; C and B read the diff.
 2. **D6 1/n** (D's books): `fn2/books/cursor.lisp` (the taken kind, §15.2; own section book

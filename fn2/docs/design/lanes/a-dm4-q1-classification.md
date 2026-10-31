@@ -53,7 +53,7 @@ unused formula role.
 | fn2-conn | `fn2-conn-wire-correct` | WIRE's model oracle over client octets; T1 (safe execution) and T8 (fragmentation/privacy) are not WIRE correctness | new row binding WIRE (WIRE is permissive: codes and framing, not exact text; the row says so) |
 | fn2-upload | `fn2-upload-judged-and-hashed` | the judgement and the decoded article are H's model's (tests/upload-model-export.py over tests/model/nntp_model.py, pinned in tests/evidence/upload-model.lisp); the digest reference is B's list-level `fn-blake3`; WIRE's two-phase POST read | built (D4 2/n); one open disagreement listed by name (`from-duplicate`: the catalogue's "From appears more than once" names none of the model's duplicate reasons) |
 | fn2-commit | B's rows | the crash-model differential and HISTORY | reported by name as waiting for B5 |
-| fn2-recovery-machine | the RECOVERY checker and tests/death-unit's death control | | reported by name as waiting for B5, with fn2-commit |
+| fn2-recovery-machine | `fn2-recovery-machine-recovers` (tests/q1-contracts-b.lisp) | B's RECOVERY checker over the harness's own decoding of the durable image, and the death control; recovery driven through fn2-turn (B's own runner steps the executor's parts, outside TRACE) | built after B5; control: `fn2-recovery-witness-match` never matches |
 
 The three rows main named, as statements (helper names are new; the runners execute the served path,
 the predicates read external evidence only):
