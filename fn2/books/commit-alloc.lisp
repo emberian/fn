@@ -70,6 +70,41 @@
  (equal (fn2-extents-rows (mv-nth 5 (fn2-alloc-reserve fn2-extents))) (fn2-extents-rows fn2-extents)))
 (in-theory (disable fn2-alloc-reserve))
 
+(defthm fn2-alloc-free-head-range
+ (implies (fn2-extentsp fn2-extents)
+          (unsigned-byte-p 32 (fn2-alloc-free-head fn2-extents)))
+ :hints (("Goal" :in-theory (enable fn2-alloc-free-head))))
+(defthm fn2-alloc-free-type
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-slotp i fn2-extents) (unsigned-byte-p 32 i))
+          (fn2-extentsp (fn2-alloc-free i fn2-extents)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-free fn2-alloc-slotp)
+                                (fn2-alloc-unlink)))))
+(defthm fn2-alloc-free-wfp
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents)
+               (fn2-alloc-slotp i fn2-extents) (unsigned-byte-p 32 i))
+          (fn2-extents-wfp (fn2-alloc-free i fn2-extents)))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-free fn2-alloc-slotp)
+                                (fn2-alloc-unlink)))))
+(defthm fn2-alloc-free-rows
+ (equal (fn2-extents-rows (fn2-alloc-free i fn2-extents))
+        (fn2-extents-rows fn2-extents))
+ :hints (("Goal" :in-theory (e/d (fn2-alloc-free) (fn2-alloc-unlink)))))
+(in-theory (disable fn2-alloc-free))
+
+(defthm fn2-alloc-cancel-reservation-type
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (unsigned-byte-p 32 i))
+  (fn2-extentsp (mv-nth 1 (fn2-alloc-cancel-reservation i epoch counter fn2-extents))))
+ :hints (("Goal" :in-theory (enable fn2-alloc-slotp fn2-alloc-handle-code))))
+(defthm fn2-alloc-cancel-reservation-wfp
+ (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (unsigned-byte-p 32 i))
+  (fn2-extents-wfp (mv-nth 1 (fn2-alloc-cancel-reservation i epoch counter fn2-extents))))
+ :hints (("Goal" :in-theory (enable fn2-alloc-slotp fn2-alloc-handle-code))))
+(defthm fn2-alloc-cancel-reservation-rows
+ (equal (fn2-extents-rows (mv-nth 1 (fn2-alloc-cancel-reservation i epoch counter fn2-extents))) (fn2-extents-rows fn2-extents))
+ :hints (("Goal" :in-theory (enable fn2-alloc-slotp fn2-alloc-handle-code))))
+(in-theory (disable fn2-alloc-cancel-reservation))
+
 (defthm fn2-alloc-commit-allocation-type
  (implies (and (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (unsigned-byte-p 8 owner-kind) (unsigned-byte-p 60 owner-id))
   (fn2-extentsp (mv-nth 1 (fn2-alloc-commit-allocation i epoch counter owner-kind owner-id fn2-extents)))))

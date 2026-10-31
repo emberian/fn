@@ -97,7 +97,7 @@
        (or (not (fn2-profile-get :posting-interim profile))
            (and (true-listp (fn2-profile-get :pool-classes profile))
                 (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))
-                (< 3 (nfix (fn2-b-capacity :format-slots 2 profile)))))
+                (< 0 (fn2-b-upload-windows profile))))
        (or (null (fn2-profile-get :article-max profile))
            (unsigned-byte-p 32 (fn2-profile-get :article-max profile)))))
 (defun fn2-input-config-from (profile fn2-input-config)
@@ -117,13 +117,13 @@
  :why "The node's article-input settings: the posting switch and the article bound, read by the connection and the upload.")
 
 ;; One row per window, and none unless the profile serves article input
-;; (B-S1: hasher rows 2.. of fn2-b3 are the windows'). Opaque to the
+;; (B-S1: hasher rows 3 .. 2+w of fn2-b3 are the windows', B's row map). Opaque to the
 ;; directory's proofs (a capacity is a natural).
 (defun fn2-upload-capacity (profile)
   (declare (xargs :guard t))
   (if (fn2-profile-get :posting-interim profile)
       (min (min (nfix (fn2-profile-u profile)) *fn2-upload-windows*)
-           (nfix (- (nfix (fn2-b-capacity :format-slots 2 profile)) 3)))
+           (fn2-b-upload-windows profile))
     0))
 (defthm fn2-upload-capacity-natp (natp (fn2-upload-capacity profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-upload-capacity))

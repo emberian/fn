@@ -49,7 +49,8 @@
 ; Host calls outside the arms that change a core between turns (fn2-recovery-start: the
 ; host starts recovery on a fresh core, as fn2-scribe-start inside fn2-init-executor;
 ; fn2-tu-seed-all: txn-unit's fixture seeds identity facts through C-S3's operations before
-; the clients connect): the reference is re-read from the concrete core after each, as after
+; the clients connect; fn2-b-start / fn2-b-admit: B's harness admits a keyed batch and wakes
+; its row): the reference is re-read from the concrete core after each, as after
 ; init.
 (defvar *fn2-q1-hook-host-calls* nil)
 (defvar *fn2-q1-hook-ref* nil)
@@ -73,7 +74,7 @@
         *fn2-q1-hook-ref* (create-fn2-ref-core) *fn2-q1-hook-profile* :none
         *fn2-q1-hook-monitor* nil *fn2-q1-hook-own-checks* 0
         *fn2-q1-cases* nil *fn2-q1-certified* nil *fn2-q1-turns* 0 *fn2-q1-hook-failures* nil)
-  (dolist (name '(fn2-recovery-start fn2-tu-seed-all))
+  (dolist (name '(fn2-recovery-start fn2-tu-seed-all fn2-b-start fn2-b-admit))
     (when (fboundp name)
       (let ((original (symbol-function name)))
         (push (cons name original) *fn2-q1-hook-host-calls*)

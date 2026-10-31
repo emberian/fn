@@ -21,7 +21,7 @@
 (defconst *fn2-cursor-profile*
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2))
   (put-assoc-equal :identity-overlays 32
-   (put-assoc-equal :pool-classes '((8 . 1024) (48 . 4096)) *fn2-txn-posting-profile*))))
+   (put-assoc-equal :pool-classes '((8 . 1024) (48 . 4096) (4 . 65536)) *fn2-txn-posting-profile*))))
 
 ; ---------------------------------------------------------------------------
 ; A seed is (GROUP MID LINE): an article accepted into group GROUP (an

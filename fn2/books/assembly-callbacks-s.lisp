@@ -2,6 +2,6 @@
 ; (they reuse its opaque invariant interface); the arms follow in
 ; assembly-callbacks.lisp.
 (in-package "ACL2")
-(include-book "assembly-callbacks-r")
+(include-book "assembly-callbacks-r2")
 (include-book "recovery-machine")
 (fn2-recovery-events)

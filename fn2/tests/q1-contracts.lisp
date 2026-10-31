@@ -330,8 +330,8 @@
   (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
     (put-assoc-equal :identity-arena-bytes 4096
       (put-assoc-equal :posting-interim t
-        (put-assoc-equal :format-slots 5
-          (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*))))))
+        (put-assoc-equal :large-upload-windows 2
+          (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-conn-wire-profile*))))))
 (defconst *fn2-q1c-upload-interim* (fn2-cw-chars (coerce "441 posting failed" 'list)))
 (defun fn2-q1c-hasher-result (row fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))

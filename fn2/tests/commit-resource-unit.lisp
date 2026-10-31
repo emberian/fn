@@ -71,9 +71,11 @@
    (and (assoc-eq name defs)
         (subsetp-eq (fn2-cru-targets (fn2-cru-closure (len defs) (list name) defs) defs) allowed)
         (fn2-cru-audit (cdr callbacks) defs)))))
-;; The commit kind's events are two sections since the assembly split (71c1fb2f2); the audit reads both.
+;; The commit kind's events are four sections (71c1fb2f2, B5-4a's splits); the audit reads all.
 (defconst *fn2-cru-defs* (fn2-cru-definitions (append (cdr (fn2-commit-event-forms))
-                                                      (cdr (fn2-commit-event-forms-2)))))
+                                                      (cdr (fn2-commit-event-forms-1b))
+                                                      (cdr (fn2-commit-event-forms-2))
+                                                      (cdr (fn2-commit-event-forms-2b)))))
 (defconst *fn2-cru-callbacks* (remove-duplicates-equal
  (append (strip-cars (strip-cdrs *fn2-cru-arms*)) (strip-cars (strip-cdrs *fn2-cru-observers*)))))
 (assert-event (fn2-cru-audit *fn2-cru-callbacks* *fn2-cru-defs*))

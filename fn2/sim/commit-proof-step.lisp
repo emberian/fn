@@ -56,7 +56,9 @@
                        (= (fn2-machine-cb-stage (car ids) fn2-core) 18)
                        (or (member-equal follower (list *fn2-commit-state-collect* *fn2-commit-state-seal*))
                            (and (= follower *fn2-commit-state-dependencies*)
-                                (= (fn2-machine-cb-issued (cadr ids) fn2-core) 0)))) 1)
+                                (= (fn2-machine-cb-issued (cadr ids) fn2-core) 0)
+                                ; b54 M3: a gated follower cannot write first; the leader runs
+                                (not (fn2-commit-follower-waits (cadr ids) (car ids) fn2-core))))) 1)
                  (t (mod (nfix turn) 2))))))
         (t (list :run (mod (nfix turn) 2))))))
 

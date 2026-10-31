@@ -16,27 +16,45 @@
 (defun fn2-b-rec-flight (left fn2-sim)
  (declare (xargs :stobjs fn2-sim :verify-guards nil :measure (nfix left)))
  (if (zp left) nil
-  (if (equal (fn2-sim-active (- left 1) fn2-sim) 1) (- left 1)
+  ; a storage flight only: the executor's listeners (:null mode) are not B's
+  (if (and (equal (fn2-sim-active (- left 1) fn2-sim) 1)
+           (member (fn2-sim-kind (- left 1) fn2-sim) (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*)))
+      (- left 1)
    (fn2-b-rec-flight (- left 1) fn2-sim))))
 (defun fn2-b-rec-posted (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-post-count fn2-ops) (not (zp n))))
 
-; One adapter or scheduler action per step: harvest, hand over, complete
-; (READ-FAULT applies to the first READS completions), or run principal 0.
+; One executor turn (fn2-turn: harvest, mailbox, principal visits, the
+; loop that serves): (mv status harvested fn2-core), HARVESTED the result
+; events the turn consumed, in harvest order. Completions are posted only by
+; the simulator, so the turn consumes a prefix of the posted FIFO.
+(defun fn2-b-turn (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((before (fn2-b-posted-results fn2-core))
+      ((mv status & & & fn2-core) (fn2-turn fn2-core))
+      (left (len (fn2-b-posted-results fn2-core))))
+  (mv status (take (nfix (- (len before) left)) before) fn2-core)))
+; The harness's admission (a host call between turns, as a D arm's will be):
+; the keyed fixture, then the executor's wake for the admitted row.
+(defun fn2-b-admit (id members first-key mode partner fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv code events request fn2-core) (fn2-b-start id members first-key mode partner fn2-core))
+      (fn2-core (if (eq code :ok) (fn2-exec-wake id fn2-core) fn2-core)))
+  (mv code events request fn2-core)))
+
+; One adapter action or one executor turn per step: hand over, complete
+; (READ-FAULT applies to the first READS completions), or turn.
 (defun fn2-b-rec-drive (fuel id read-fault reads fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)
   :hints (("Goal" :use ((:instance fn2-b-rec-countdown (left fuel)) (:instance fn2-b-rec-count-op (left fuel))) :in-theory nil))))
  (cond
   ((zp fuel) (mv :fuel fn2-core fn2-sim fn2-own))
   ((= (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-done*) (mv :done fn2-core fn2-sim fn2-own))
-  ((fn2-b-rec-posted fn2-core)
-   (b* (((mv & & & & & fn2-core) (fn2-exec-harvest fn2-core)))
-    (fn2-b-rec-drive (- fuel 1) id read-fault reads fn2-core fn2-sim fn2-own)))
-  ((consp (fn2-b-outbox fn2-core))
+  ((and (not (fn2-b-rec-posted fn2-core)) (consp (fn2-b-outbox fn2-core)))
    (b* (((mv & fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own)))
     (fn2-b-rec-drive (- fuel 1) id read-fault reads fn2-core fn2-sim fn2-own)))
-  ((fn2-b-rec-flight (fn2-sim-rows fn2-sim) fn2-sim)
+  ((and (not (fn2-b-rec-posted fn2-core)) (fn2-b-rec-flight (fn2-sim-rows fn2-sim) fn2-sim))
    (b* ((slot (fn2-b-rec-flight (fn2-sim-rows fn2-sim) fn2-sim))
         (fault (if (posp reads) read-fault *fn2-fault-none*))
         (fn2-sim (fn2-sim-clock (fn2-sim-due slot fn2-sim) *fn2-fault-none* fn2-sim))
@@ -44,10 +62,13 @@
         ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-complete slot fault 1 fn2-core fn2-sim fn2-own)))
     (fn2-b-rec-drive (- fuel 1) id read-fault (if (posp reads) (- reads 1) 0) fn2-core fn2-sim fn2-own)))
   (t (b* ((before (fn2-machine-phase id fn2-core))
-          ((mv & & actions & steps fn2-core) (fn2-exec-principal 0 0 4 fn2-core)))
-      (if (and (zp actions) (zp steps) (= before (fn2-machine-phase id fn2-core)))
-          (mv :stuck fn2-core fn2-sim fn2-own)
-       (fn2-b-rec-drive (- fuel 1) id read-fault reads fn2-core fn2-sim fn2-own))))))
+          (posted (fn2-b-rec-posted fn2-core))
+          ((mv status & fn2-core) (fn2-b-turn fn2-core)))
+      (cond ((eq status :stop) (mv :stop fn2-core fn2-sim fn2-own))
+            ((and (not posted) (eq status :idle) (= before (fn2-machine-phase id fn2-core))
+                  (not (consp (fn2-b-outbox fn2-core))))
+             (mv :stuck fn2-core fn2-sim fn2-own))
+            (t (fn2-b-rec-drive (- fuel 1) id read-fault reads fn2-core fn2-sim fn2-own)))))))
 
 (defun fn2-b-rec-extents (c chain fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix (- (+ 1 (nfix chain)) (nfix c)))))
@@ -287,6 +308,9 @@
       ; Every scenario first checks that death left a fresh process.
       (stale (fn2-b-death-difference profile fn2-core))
       ((when stale) (mv (list :stale-death stale) :unknown :none nil events fn2-core fn2-sim fn2-own))
+      ; The host's executor on the fresh core (listeners :null: no network
+      ; operation), then recovery through its turns.
+      (fn2-core (fn2-init-executor profile :null nil fn2-core))
       ((mv code events excluded witness fn2-sim)
        (fn2-b-rec-inject faults manifests (reverse (append events (list '(:crash)))) nil nil fn2-sim))
       ((unless (eq code :ok)) (mv (list :inject code) :unknown :none nil events fn2-core fn2-sim fn2-own))

@@ -1,4 +1,4 @@
 ; The commit kind's continuations (second section), before recovery's.
 (in-package "ACL2")
-(include-book "assembly-callbacks-b")
+(include-book "assembly-callbacks-d-txn")
 (fn2-commit-events-2)

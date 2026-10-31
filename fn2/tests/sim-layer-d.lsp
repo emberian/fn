@@ -59,8 +59,8 @@
   (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
-      (put-assoc-equal :format-slots 5
-        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-sld-profile*))))))
+      (put-assoc-equal :large-upload-windows 2
+        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-sld-profile*))))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by

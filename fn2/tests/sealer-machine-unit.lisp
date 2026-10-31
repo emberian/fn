@@ -13,13 +13,13 @@
 (include-book "std/util/bstar" :dir :system)
 
 (defconst *fn2-smu-groups* '(("comp.lang.lisp" . 7) ("alt.test" . 9) ("misc.misc" . 11)))
-;; Until B5-4a: :format-slots set to 4 + the windows, so the checker row exists.
+;; :format-slots is derived (B5-4a: 4 + the windows), so the checker row
+;; 3 + windows exists in every profile.
 (defconst *fn2-smu-profile*
  (put-assoc-equal :groups *fn2-smu-groups*
   (put-assoc-equal :identity-arena-bytes 4096
    (put-assoc-equal :large-upload-windows 1
-    (put-assoc-equal :format-slots 5
-     (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096) (4 . 65536)) *fn2-profile-tiny*))))))
+     (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096) (4 . 65536)) *fn2-profile-tiny*)))))
 (defconst *fn2-smu-norow*
  (put-assoc-equal :groups *fn2-smu-groups*
   (put-assoc-equal :identity-arena-bytes 4096
@@ -105,7 +105,10 @@
                 `((nil (,*fn2-overlay-phase-frozen*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*))
                   (((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*) :idle ,*fn2-stop-reason-none*)
                   ((:ok 7) (:ok 11) (:absent 0)))))
-;; Without it: the row is stopped at genesis and the overlay stays frozen.
+;; The row cannot be missing: the default windows (16) give 20 format slots,
+;; and a profile naming fewer slots than 4 + windows is refused.
 (assert-event
- (fn2-smu-check (butlast (cadr (fn2-smu-result *fn2-smu-norow* 40)) 2)
-                `(nil (,*fn2-overlay-phase-frozen*) (,*fn2-sealer-state-stopped* ,*fn2-wait-none*))))
+ (and (equal (fn2-b-format-slots *fn2-smu-norow*) 20)
+      (equal (fn2-b-format-slots *fn2-smu-profile*) 5)
+      (fn2-core-profilep *fn2-smu-profile*)
+      (not (fn2-core-profilep (put-assoc-equal :format-slots 4 *fn2-smu-profile*)))))

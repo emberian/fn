@@ -20,7 +20,7 @@
 (defconst *fn2-sealer-fill* *fn2-run-page-size*)
 (defun fn2-sealer-windows (profile)
  (declare (xargs :guard t))
- (nfix (fn2-b-capacity :large-upload-windows 16 profile)))
+ (fn2-b-upload-windows profile))
 (defun fn2-sealer-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-b-capacity :identity-overlay-entries 256 profile))

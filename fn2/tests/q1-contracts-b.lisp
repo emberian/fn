@@ -5,9 +5,9 @@
 ; (sim/check-death.lisp: death leaves every core child at its init values). Nothing on the checking
 ; side calls a recovery handler.
 ;
-; Why this book has its own runner: B's scenarios drive recovery by stepping the executor's parts
-; (fn2-exec-harvest, fn2-exec-principal; check-recovery's fn2-b-rec-drive), so no fn2-turn runs and
-; Q1's TRACE per case never sees a recovery transition. Here the same pre-death workload
+; Why this book has its own runner: until B5-4a, B's scenarios stepped the executor's parts
+; (fn2-exec-harvest, fn2-exec-principal), so no fn2-turn ran and Q1's TRACE per case never saw a
+; recovery transition; since B5-4a fn2-b-rounds and fn2-b-rec-drive run fn2-turn as well. Here the same pre-death workload
 ; (sim-layer-b's fn2-b-rounds), death, post-death faults and ground truth are B's, and recovery runs
 ; on an executor-initialized core through fn2-turn, the served loop, with the simulator completing
 ; I/O between turns as the scribe's contract does.
@@ -48,16 +48,14 @@
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
   (b* ((model (nth 0 post)) (faults (nth 1 post))
        (profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (nth 2 post) profile) mode))
-       (fn2-core (fn2-core-init profile fn2-core))
+       (fn2-core (fn2-init-executor profile :null nil fn2-core))
        ((mv epoch-code fn2-core)
         (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
           (code fn2-extents) (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
        (a (fn2-machine-global-id *fn2-commit-kind* 0 profile))
        (b (fn2-machine-global-id *fn2-commit-kind* 1 profile))
-       ((mv ca ea & fn2-core) (fn2-b-start a members 1 mode b fn2-core))
-       ((mv cb eb & fn2-core) (fn2-b-start b members (+ 1 members) mode a fn2-core))
-       (fn2-core (fn2-exec-wake a fn2-core))
-       (fn2-core (fn2-exec-wake b fn2-core))
+       ((mv ca ea & fn2-core) (fn2-b-admit a members 1 mode b fn2-core))
+       ((mv cb eb & fn2-core) (fn2-b-admit b members (+ 1 members) mode a fn2-core))
        (fn2-sim (fn2-sim-init seed :none "B3b" profile fn2-sim))
        (fn2-own (fn2-own-init profile fn2-own))
        ((unless (and (eq epoch-code :ok) (eq ca :ok) (eq cb :ok)))

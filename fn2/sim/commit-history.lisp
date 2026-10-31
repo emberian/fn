@@ -258,7 +258,21 @@
 (defun fn2-b-start (id members first-key mode partner fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv & frontier & &) (fn2-commit-frontier fn2-core))
-      ((mv code fn2-core) (fn2-commit-start id members first-key mode partner fn2-core))
+      ; B5-4: admission picks the row and assigns the events; the fixture
+      ; names the row and first event it expects (partner is the other row).
+      ; A stale (replayed) first key is refused before admission, as the old
+      ; start did (a key past the frontier admits and answers :harness-row).
+      ; No row could take it (both busy, or an abort): the fresh operation is
+      ; refused; a row that could take it but is at its generation or
+      ; capacity limit refuses nothing new (dev's :exhausted, no event).
+      ((mv pick & &) (fn2-commit-pick fn2-core))
+      ((mv code got & event fn2-core)
+       (if (or (not (natp frontier)) (< (nfix first-key) frontier)) (mv :admission 0 0 0 fn2-core)
+         (fn2-commit-admit-keyed members mode 0 0 0 fn2-core)))
+      (code (cond ((not (eq code :ok)) code)
+                  ((and (equal got id) (equal event first-key)
+                        (equal (fn2-machine-partner id fn2-core) partner)) :ok)
+                  (t :harness-row)))
       (bounded (and (posp members) (<= members 16) (unsigned-byte-p 60 first-key)
                     (unsigned-byte-p 60 (+ first-key members))))
       (identities (and bounded (fn2-b-member-identities members first-key)))
@@ -266,7 +280,8 @@
       (tag (cond ((equal mode 0) :baseline) ((equal mode 1) :preflush-fua) (t :invalid-mode)))
       (events (cond ((eq code :ok) (list (list :request batch identities tag)))
                     ; A stale/replayed identity is not a newly refused operation.
-                    ((and (eq code :admission) bounded (natp frontier) (<= frontier first-key))
+                    ((and (or (eq code :admission) (and (eq code :exhausted) (eq pick :exhausted)))
+                          bounded (natp frontier) (<= frontier first-key))
                      (fn2-b-refusal-events identities))
                     (t nil)))
       (request (and (eq code :ok) (list batch first-key members mode))))
@@ -297,6 +312,9 @@
          ((when (member-equal token seen))
           (fn2-b-project-issues (cdr descriptors) seen manifests events bytes fn2-core))
          (owner (fn2-b-descriptor-owner d))
+         ; Another kind's operation (the executor's :null listeners) is not B's.
+         ((unless (equal (fn2-b-descriptor-owner-kind d) *fn2-commit-kind*))
+          (fn2-b-project-issues (cdr descriptors) seen manifests events bytes fn2-core))
          ; A reusable row is not the identity of a batch. Match the actual
          ; issuing incarnation before consulting its current immutable batch.
          ((unless (and (equal (fn2-b-descriptor-owner-kind d) *fn2-commit-kind*)
@@ -354,21 +372,29 @@
         ((= reason *fn2-reason-io*) :eio)
         (t :failed)))
 
+; A posted completion cell INDEX (slot 2i+cell) as a HISTORY result event.
+(defun fn2-b-result-at (index fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (let* ((slot (floor (nfix index) 2)) (cell (mod (nfix index) 2))
+         (token (list slot (fn2-ops-gen slot fn2-ops))))
+    (b* (((mv & & event outcome reason count & &) (fn2-op-cell cell slot fn2-ops)))
+      (cond ((= event *fn2-event-write-result*)
+             (list :write-result token (fn2-b-result-outcome outcome reason) count))
+            ((= event *fn2-event-fence-result*)
+             (list :fence-result token (fn2-b-result-outcome outcome reason) count))
+            (t (list :unexpected-completion token event))))))
+(defun fn2-b-results-at (indices fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (if (atom indices) nil
+    (cons (fn2-b-result-at (car indices) fn2-ops) (fn2-b-results-at (cdr indices) fn2-ops))))
+; Every posted result, harvest order first.
+(defun fn2-b-posted-results (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (results)
+    (fn2-b-results-at (fn2-ops-posted-list fn2-ops) fn2-ops) results))
 (defun fn2-b-next-result (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-    (event)
-    (if (zp (fn2-ops-post-count fn2-ops)) nil
-      (let* ((index (fn2-ops-posted-fifoi (fn2-ops-post-head fn2-ops) fn2-ops))
-             (slot (floor index 2)) (cell (mod index 2))
-             (token (list slot (fn2-ops-gen slot fn2-ops))))
-        (b* (((mv & & event outcome reason count & &) (fn2-op-cell cell slot fn2-ops)))
-          (cond ((= event *fn2-event-write-result*)
-                 (list :write-result token (fn2-b-result-outcome outcome reason) count))
-                ((= event *fn2-event-fence-result*)
-                 (list :fence-result token (fn2-b-result-outcome outcome reason) count))
-                (t (list :unexpected-completion token event))))))
-    event))
+  (car (fn2-b-posted-results fn2-core)))
 
 (defun fn2-b-visibility (ids fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))

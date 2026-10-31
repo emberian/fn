@@ -1174,6 +1174,221 @@ install is four forwarded callbacks (scan, classify, adopt, finish).
   beyond the recovered history. Teeth: witnessed rollback detected and `damaged`; unwitnessed
   rollback recovered `intact` with no claim; uncredited receipt; covered witness `consistent`.
 
+## 11a. The commit kind's members (B5-4: GC2's run member, B-S2's transaction member)
+
+Statement first (2026-10-30; read once by Astra, build/coordinator/fn2/lanes/b-quests/b54-astra.md).
+B5-4a (this commit) builds M1-M4 and M6 for the keyed fixture: the member and settled tables, admission
+through `fn2-commit-admit-keyed`, the suffix abort and `:dropping`, the four hooks, and settlement with
+`fn2-commit-take`; its controls are tests/commit-member-unit.lisp. M5, M7 (B5-4b), the commit port (M9)
+and M8 (B-S2) follow in that order.
+
+### 0. What exists
+The batch is B3's fixture: the harness calls `fn2-commit-start (id members first-key mode partner)`;
+seal synthesizes N keyed mutations (object = first + index); the dependency page is a page header plus
+`fn2-commit-manifest-node`. No member, workspace, admission or refusal exists: every failure is
+`:uncertain`.
+
+### 1. Decisions
+
+**M1. Member table and settled outcomes, two core children.** `fn2-core-commit-members` (defcolumns
+`fn2-commit-member`, books/commit-members.lisp): `2 x 16` rows, member `m` of batch row `r` at `16r+m`;
+columns `kind` (`:none :keyed-mutation :run-replacement :txn`), `slot gen len` (workspace),
+`okind oslot ogen` (owner: reads are under it; it is told the outcome), `entries entry-bytes`, `schema`,
+`event`. `fn2-core-commit-settled` (defcolumns `fn2-commit-settled`, 64 rows, a free list): `okind oslot
+ogen batch event outcome` (`:accepted :uncertain :refused`) plus the settlement evidence (`phase` the
+batch reached, `published` root at settlement). Admission reserves one settled row per owned member, so
+settlement never fails; notify moves the outcome there; the batch row's reuse never waits for a client.
+The batch row gains `cb-wrote :bool` (a journal write was ever issued; never reset within a batch),
+`dep-bytes :u32`, `rec-bytes :u32`, `cb-open :bool` (collection open). `:keyed-mutation` is the
+harness's kind (records synthesized at seal as today; no workspace, no owner, no settled row).
+
+**M2. One open collector; events in admission order.** Admission picks the row: a row in `:collect`
+with `cb-open` takes the member when the member rows, the records room and the dependency room have
+space, else `:exhausted`. With no open collector, a `:free` row opens a batch (today's start body:
+pools, extent, batch `proposed + 1`, proposal published) when its partner is not `:collect` with
+`cb-open`, not aborting (M3) and not `:uncertain`; otherwise `:exhausted`. The member's event is the
+global next event (`fn2-commit-root` row 0 `first-key`), advanced by one per member. Collection closes
+when the batch row's `:collect` arm runs (the scheduler's next visit after the opening admission made
+it runnable: group commit by construction). The keyed fixture `(fn2-commit-admit-keyed n mode fn2-core)
+-> (mv code id batch event fn2-core)` admits n members and closes at once, so the harness's two
+back-to-back batches stay two batches. Events of the members of any one batch are contiguous, and a
+follower opens only after its leader closed, so events increase in admission order across batches
+(C-S3 (a)); an aborted suffix's positions are reissued (M3), so the claim is over published batches.
+
+**M3. Refusal is a suffix abort.** A batch is *refused* exactly when it fails while `cb-wrote` is 0
+(in `:collect`, `:seal`, or the first issue of `:dependencies`), or it has `cb-wrote` 0 when its
+predecessor becomes uncertain or refused. A follower may not issue its first journal write until its
+leader has `cb-wrote` 1 (one condition in `fn2-commit-writes`), so a refused leader's follower has
+written nothing to the journal and is refused with it (C-S3 (b), no exception). Protocol: the first
+refused batch `k` records `aborting = k` and its first event in root row 0 (admission answers
+`:exhausted` while `aborting` is set); each refused batch moves to `:dropping`, whose arm, in
+increasing batch order (a follower waits while its leader is still `:dropping`), calls
+`(fn2-successor-drop batch fn2-core)` once, settles its members `:refused`, clears the batch's root
+row, seal digest and seal-ready, and releases through the drain path; the last batch of the suffix (the
+one whose number is `proposed`) restores `proposed := k - 1` and the next event, then clears
+`aborting`. From `cb-wrote` 1 on, a failure is `:uncertain` (persistent, as today); an uncertain batch
+calls neither drop nor publish, so its private overlays stay in C's tip (C-S3 (c)). The uncertain arm
+settles its members `:uncertain` before it waits for pending completions (the outcome is known; a lost
+completion must not hide it). *Pages C wrote before a refused admission* are C's: they lie in
+extents C reserved, are referenced by no chained entry, and recovery treats them as M7's unreferenced
+well-formed pages (quarantined, not dirt). *HISTORY:* `fn2-history-request` forbids a repeated batch
+number and `fn2-history-step` a refusal of requested members, so an abort needs an explicit abort-attempt
+transition (attempt identity distinct from the reusable batch number and events); the harness's keyed
+batches never refuse today (no scenario injects a pre-write failure), so the transition lands with the
+first scenario that does, and the refusal path is covered by the unit's controls until then.
+*Positions:* Astra would move settled outcomes into the owner's row; B keeps them in its own settled
+table (M1), because B writing a D row crosses the seam, and the bounded table gives the same property
+(batch rows reuse without waiting for a client).
+
+**M4. Hooks: constrained functions, refusing default attachments, frame constraints.** B's first commit
+section moves to directly after A's (the chain a -> b -> c -> d -> r -> s -> t: one include line each
+in `-b`, `-c`, `-d`, `-r`), so admission, take and the hooks precede C's and D's sections. `-b` expands
+`(fn2-commit-hook-events)`: one `encapsulate` per hook, guard `(fn2-core-wfp fn2-core)`, and constraints
+(i) valid input gives valid output (`fn2-corep` and `fn2-core-wfp` under `(and (fn2-corep fn2-core)
+(fn2-core-wfp fn2-core))`), (ii) **frame:** the machine table and every B child (`fn2-core-commit-io`,
+`-commit-root`, `-commit-members`, `-commit-settled`, `-extents`, `-alloc-edges`, `-rec-cand`, `-digests`,
+`-fc`, `-fc-context`, `-b3`) are unchanged, and the pool is unchanged at the workspace handle; then a
+default attachment answering `(mv :unregistered fn2-core)` (the attachment is outside the encapsulate):
+- `(fn2-runs-install schema batch slot gen okind oslot ogen fn2-core) -> (mv code fn2-core)` (GC2);
+- `(fn2-successor-publish batch fn2-core)`, `(fn2-successor-drop batch fn2-core)` -> `(mv code fn2-core)` (C-S3);
+- `(fn2-member-replay batch event slot gen len okind oslot ogen fn2-core) -> (mv code fn2-core)` (M7).
+**C's change (for C's yes through main, in the same foundation commit):** C's wrappers in
+`fn2-successor-core-events` are renamed `fn2-succ-core-publish` / `-drop`, C proves the two frame
+constraints for them, and `-c` attaches them (`(defattach fn2-successor-publish fn2-succ-core-publish)`,
+drop likewise); C's defcosts keep the hook names; C attaches `fn2-runs-install` with C1c and
+`fn2-member-replay` with D5 2/n. Existing callers (identity-core-unit) are unchanged. Proofs use only
+the constraints (attachments give no equations), so keystones about hook calls are evaluated over
+attached runs, never proved from an attachment. The hooks' defcosts name the attacher's tables (a
+declaration; the frame constraint is what is proved); asked of the DSL seat: a layer group
+`:tables (:layers :c :d)` so a lower layer never spells an upper layer's child names.
+
+**M5. GC2's member as agreed.** `(fn2-commit-admit-runs schema slot gen body-len entry-bytes
+entry-count okind oslot ogen fn2-core) -> (mv code batch fn2-core)`: one 4 KiB workspace under
+`(okind oslot ogen)`, the `fn2-format-run-replacement` body at 0 (`body-len <= 167`), `entry-count`
+(1..31) contiguous dependency entries from 256 totalling `entry-bytes`. Admission decodes the body and
+each entry with their generated decode steps: exact lengths, the body's `schema` equal to the
+argument, entries contiguous; else `:admission`, nothing changed. Room per M2.
+- *Records:* M7's member envelope, then a record header (`:run-replacement`, version 1, the event)
+  and the body copied verbatim.
+- *Dependencies:* after the manifest node, per run member in member order, exactly one group
+  `fn2-commit-dependency-group` (`(event (:id event)) (count :u8) (bytes :varint)`) and the entries
+  verbatim; page payload length `73 + dep-bytes`; the page hash (and so the seal) covers it. Room:
+  `4096 - 96 - 73 = 3927` bytes (one 31-entry member: at most 3,751 + 21).
+- *Barrier:* C harvested every listed write `:ok` before admission, and both barrier modes issue their
+  flush after admission, so the batch's barrier covers them (completion-time ABI).
+- *Install:* after the `:install` root swap, one run member per run in member order,
+  `fn2-runs-install`; a code other than `:ok` makes the batch `:uncertain`, new reason `:install`
+  (code 7: durable, possibly partly installed; recovery replays it whole).
+
+**M6. Publish, then settle; the owner takes.** `:publish` swaps the published root and calls
+`fn2-successor-publish` once, before any outcome; a code other than `:ok` stops the core with the new
+named reason `:commit-publish`. `:notify` settles one member per run (`:accepted`, the batch, the phase
+and published root as evidence), then wakes the owner row (`fn2-sched-make-runnable` with its
+`principal-slot`) when its generation still equals `ogen`. The owner reads `(fn2-commit-take okind
+oslot ogen fn2-core) -> (mv code batch event outcome fn2-core)`: `:ok` (and frees the settled row),
+`:pending`, `:none`. Settled rows of an owner whose generation moved are freed by the next admission's
+scan (one row per admission). The consumer-progress assumption, stated: D's woken arm takes and saves
+the outcome before any connection or output wait, on every path including disconnect; otherwise its
+settled row stays (bounded: admission answers `:exhausted` only for want of a settled row).
+
+**M7. Recovery: verify dependencies one level; replay every chained member in order.**
+- *Envelope:* every member's records are preceded in the records frame by a member envelope, a new
+  record kind `:member` appended to `record-kind` (codes unchanged): `fn2-format-member-envelope`
+  (`(kind (:enum fn2-commit-member-kind ...)) (count :u8) (length :varint) (schema (:id schema))`); a
+  batch has exactly `event-last - event-first + 1` envelopes, so the stream ends without trusting
+  padding.
+- *Verify:* every dependency entry's target unit is read and its BLAKE3 compared with the entry's
+  digest; a `:dependency-manifest` target is verified and each of its entries' targets too, exactly one
+  level (a second-level `:dependency-manifest` fails). A failed target ends the chain at that batch.
+  The row keeps the parent traversal state across reads (`rc-dep` cursor, `rc-level`, the parent's
+  entry offset in its scratch digest rows).
+- *Dirt:* a position referenced by a chained entry is chained data; an unreferenced position whose
+  unit is a well-formed page naming its own position and the lineage is quarantined and is not dirt;
+  everything else is as B5-3 classifies.
+- *Replay:* classification first (a hook never changes the class); then, for every chained batch in
+  order and every member in member order, recovery rebuilds the member's workspace in its window,
+  equal to the admitted one on the defined slices (run: `[0, body-len)` and `[256, 256 +
+  entry-bytes)`; txn: `[0, len)`), and calls `fn2-runs-install` or `fn2-member-replay`, then
+  `fn2-successor-publish` for the batch. A code other than `:ok` stops the core with the named reason
+  `:recovery-replay` after a replayed prefix (the default attachment stops recovery of any history
+  holding a served member; the keyed fixture replays nothing). Replay is O(chain) and bounded by C's
+  overlay capacity until B6's checkpoint records C's installed roots and replay starts after it
+  (recorded departure B-REPLAY-WHOLE-CHAIN; C's `:full` from a replay hook is a stop, not a yield).
+
+**M8. B-S2's transaction member (lands after the commit port).** `(fn2-commit-admit-txn slot gen len
+okind oslot ogen fn2-core) -> (mv code batch event fn2-core)`: the workspace holds `count >= 1` records,
+each `fn2-commit-member-record` (`(record-kind (:enum record-kind ...)) (length :varint)`) then its
+body; kinds in `*fn2-commit-txn-record-kinds*`; each body decoded by its kind's decode step to exactly
+`length`, the whole to exactly `len`. Seal writes the envelope, then per record a record header (its
+kind, the member's event) and the body verbatim; replay rebuilds the wrappers from the headers and
+envelope (canonical: the decoders accept exactly one encoding of each length). The frame's records room
+is its 3,900-byte payload; an article acceptance is at most 885 bytes with its header, so four
+transactions fill a batch until D4 3/n moves bodies to payload blocks. What a replayed stream means
+(identity facts, memberships, outcomes, C's assigned fold values; references in an article acceptance
+resolved through their durable targets) is the attacher's specification, owed by C and D with the
+attachment; B guarantees the stream's identity and order.
+
+**M9. The commit port follows at once.** B5-4a's new and changed arm bodies stay in `:language
+:unchecked` beside their eleven siblings (one language per kind until the port, so no arm half-checks
+against an unchecked forwarded callback); the commit port (ruling 3) is the next commit and converts
+all twelve arms with their full contracts and turns every `assert$?` in commit.lisp and alloc.lisp into
+`fn2-core-stop` with a named reason and a control, before M8 lands. (Revised from "rides along".)
+
+### 1a. As built in B5-4a (beside M1-M9)
+- **Events start at 1.** Root row 0's `first-key` is 1 at genesis (`fn2-commit-root-init-for`), so 0,
+  every member and settled row's initial event, names no event; an empty-chain recovery keeps it.
+- **The format rows are derived.** `fn2-b-upload-windows` (`:large-upload-windows`, default 16, the
+  round-2 bound of resources.lisp) is the one window count: B's `:format-slots` floor and default are
+  `4 + w` (rows 0-1 commit, 2 recovery, 3..2+w D's upload windows, 3+w C's sealer), D's
+  `fn2-upload-capacity` is `min(u, 16, w)` and C's sealer row is `3 + w`. A profile naming fewer
+  slots is refused, so the sealer's row exists in every profile (C-SEAL-NO-ROW's case is unreachable).
+- **Section books under the one-minute rule.** The commit kind's events are four section books:
+  `-b` (hooks, admission), `-b2` (root edges, refusal, collect, seal), `-r` (observe, writes, fence,
+  durable), `-r2` (install, publish, settlement, drop, notify, drain, the run); settlement is three
+  one-child helpers (`fn2-commit-member-owner`, `-settle-row`, `-wake-owner`) and the follower gate is
+  `fn2-commit-follower-waits`.
+- **The harness runs the served turn.** `fn2-b-rounds` and `fn2-b-rec-drive` step `fn2-turn` (through
+  `fn2-b-turn`, which records every result the turn harvests) on an executor-initialized core
+  (`fn2-init-executor ... :null`), so Q1's TRACE sees B's transitions; `fn2-b-admit` is the
+  harness's admission plus the row's wake, and the q1 case hook re-reads its reference after
+  `fn2-b-start` / `fn2-b-admit` as after `fn2-recovery-start`. The keystones' command language
+  (`fn2-commit-proof-step`: explicit `:run` row, `:harvest`, `:complete`) keeps its explicit
+  interleavings: it is the adversary over orders the turn's calendar never chooses, and it runs the
+  same generated arm dispatch (`fn2-commit-run`).
+
+### 2. Keystones (owed; `books/commit-proof.lisp`, teeth evaluated in `tests/commit-member-unit.lisp`)
+- `fn2-commit-published-events-ordered`: over a run, the events of the members of published batches,
+  read in admission-attempt order, are strictly increasing and contiguous from the first. Teeth:
+  leader + follower; a refused leader with its follower aborted and both positions reissued; a planted
+  swap of two events fails.
+- `fn2-commit-abort-suffix`: every dropped batch has `cb-wrote` 0 throughout; within each abort the
+  drops are the suffix `k..proposed` in increasing order; after it `proposed = k - 1` and the next
+  event is `k`'s first; no batch below `k` changes. Teeth: refused leader with a sealing follower;
+  refused follower alone; an uncertain leader drops nothing; a planted early follower write is caught.
+- `fn2-commit-hooks-before-outcomes`: for every published batch, `fn2-runs-install` returned `:ok`
+  once per run member in member order after the root swap, and `fn2-successor-publish` returned `:ok`
+  before any of its outcomes was settled; B's children are unchanged across each hook call. Teeth: an
+  attachment refusing the second member leaves the batch uncertain with outcomes `:uncertain` only; the
+  default attachment makes every run batch uncertain; an attachment that writes the commit root is
+  refused by the frame constraint at `defattach`.
+- `fn2-recovery-replays-prefix`: after recovery of class intact or torn-tail, the hook calls are a
+  prefix of the ordered fold (each chained batch: its members in order, then its publish), complete
+  unless a hook refused, in which case the core stopped `:recovery-replay` right after it; each call's
+  workspace equals the admitted one on the defined slices. Teeth: a three-batch chain of mixed members
+  against a recording attachment; a corrupted dependency target ends the chain before its batch and
+  replays nothing of it; a second-level `:dependency-manifest` fails verification; a refusing
+  attachment stops after the prefix.
+- Plus evaluated controls: delayed take, a vanished owner, a missing completion on an uncertain batch
+  (outcomes still settled), malformed member boundaries (each refused `:admission`).
+
+### 3. Commits (each under the whole-tree gate; every book under 60 s)
+1. B5-4a: M1 tables, M2 with `fn2-commit-admit-keyed`, M3 suffix abort and `:dropping`, M4 hook section
+   with publish/drop (C's rename and attachment in the same commit after C's yes), M6 settlement and
+   take; harness on admission; S13/S14 re-measured (collection closing on a run changes the cuts).
+2. B5-4b: M5 run member, M7 envelope, dependency verification, dirt rule and replay; a run-member
+   scenario in sim-layer-b with a recording test attachment.
+3. Commit port (ruling 3), then B-S2 (M8) with D.
+
 ## 14. Delivery record: the B3b slip review (2026-10-29)
 
 §9 is the event log, so the slip finding lives here. Section 11 is recovery; 12-13 stay reserved for

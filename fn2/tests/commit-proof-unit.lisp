@@ -48,7 +48,9 @@
         (r (fn2-commit-proof-run
              (make-list 600 :initial-element '(:auto-follower-first 26)) p 0 2 1)))
   (and (fn2-commit-ack-hyps p r) (equal (fn2-commit-proof-acks r) '(2 2))
-       (equal (fn2-commit-proof-first-write (fn2-commit-proof-events r)) 2)
+       ; b54 M3: a follower may not issue its first journal write before its
+       ; leader has, so a follower-first schedule still writes batch 1 first.
+       (equal (fn2-commit-proof-first-write (fn2-commit-proof-events r)) 1)
        (fn2-commit-ack-evidencep r))))
 
 (defun fn2-commit-proof-reuse-positive (mode)
