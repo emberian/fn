@@ -179,10 +179,25 @@
                  (let ((fn2-pool (fn2-pool-set-fill slot tail fn2-pool)))
                    (mv :ok tail fn2-pool)))))))))
 
+(fn2-defoperation (:columns fn2-pool) :core :infer
+(defun fn2-pool-truncate (slot gen n okind oslot ogen fn2-pool)
+  ; Keep the first N filled bytes of a workspace (its fill becomes
+  ; min(fill, N)); the bytes kept are untouched. A reply window that keeps a
+  ; prefix of its own across sends (layer D's query cursor keeps its scan
+  ; key there) truncates instead of resetting; N 0 is a reset.
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (let ((code (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool)))
+    (cond ((not (eq code :ok)) (mv code fn2-pool))
+          ((not (natp n)) (mv :bounds fn2-pool))
+          ((<= (fn2-pool-fill slot fn2-pool) n) (mv :ok fn2-pool))
+          (t (let ((fn2-pool (fn2-pool-set-fill slot n fn2-pool)))
+               (mv :ok fn2-pool)))))))
+
 (fn2-pool-preserves fn2-pool-copy-range (src sgen soff dst dgen doff len okind oslot ogen fn2-pool) :position 1 :disable nil)
 (fn2-pool-preserves fn2-pool-drop-prefix (slot gen k cursor limit okind oslot ogen fn2-pool) :position 2 :disable nil)
+(fn2-pool-preserves fn2-pool-truncate (slot gen n okind oslot ogen fn2-pool) :position 1)
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-pool-copy-up fn2-pool-copy-down fn2-pool-compare-loop fn2-pool-fold-loop fn2-pool-scan-loop
-    fn2-pool-copy-range fn2-pool-compare fn2-pool-fold fn2-pool-scan fn2-pool-drop-prefix)
+    fn2-pool-copy-range fn2-pool-compare fn2-pool-fold fn2-pool-scan fn2-pool-drop-prefix fn2-pool-truncate)
   (w state)))

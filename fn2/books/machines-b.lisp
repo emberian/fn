@@ -91,17 +91,32 @@
 ;; Layer C's sealer stripe (C1c) below the transactions' stripes: a format
 ;; constant (C asserts its *fn2-seal-field-rows* fits).
 (defconst *fn2-b-seal-field-rows* 1280)
-;; Layer C's read rows (C-S4, machines-c-read.lisp): one per query cursor
-;; slot of a profile that serves reading, each with a stripe of
-;; *fn2-b-read-stride* rows below the sealer's (layer D's cursor kind takes
-;; its capacity from the same function; C asserts its *fn2-read-stride*
-;; fits).
+;; Layer C's read rows (C-S4, machines-c-read.lisp), each with a stripe of
+;; *fn2-b-read-stride* rows below the sealer's (C asserts its
+;; *fn2-read-stride* fits). Rows [0, 2X) are layer D's query cursors', two a
+;; cursor slot S of a profile that serves reading: 2S its read, 2S+1 the
+;; lookups beside a scan (LIST's per-group counts). Rows [2X, 2X+N) are
+;; layer E's consumer requests', request row S using read row 2X+S (N the
+;; profile's :cns, 0 until fn2-cns serves). D's cursor kind and E's request
+;; kind take their capacities from these functions.
 (defconst *fn2-b-read-stride* 1024)
-(defun fn2-b-read-rows (profile)
+(defun fn2-b-cursor-rows (profile)
  (declare (xargs :guard t))
  (if (fn2-profile-get :reading profile) (nfix (fn2-profile-x profile)) 0))
+(defun fn2-b-cns-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :cns profile)))
+(defun fn2-b-read-rows (profile)
+ (declare (xargs :guard t))
+ (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile)))
+(defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
+(defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
-(in-theory (disable fn2-b-read-rows))
+(defthm fn2-b-read-rows-parts
+ (and (<= (* 2 (fn2-b-cursor-rows profile)) (fn2-b-read-rows profile))
+      (<= (fn2-b-cns-rows profile) (fn2-b-read-rows profile)))
+ :rule-classes :linear :hints (("Goal" :in-theory (enable fn2-b-read-rows))))
+(in-theory (disable fn2-b-cursor-rows fn2-b-cns-rows fn2-b-read-rows))
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
  (+ (* 128 (nfix (fn2-b-format-slots profile))) (* 1024 (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*

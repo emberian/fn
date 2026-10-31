@@ -32,7 +32,7 @@ Astra's read: `build/coordinator/fn2/lanes/e-quests/astra-1.md` (§15 says what 
 | K-P1, K-P3a, K-P4, K-P5, K-P6 owed with teeth (K-P2 and K-P3b are stated over D5 3/n's served path) | `fn2/books/owed-peer.lisp` | 0 proved; every tooth evaluates |
 | witnesses W1, W2, W3, W7, the offer rule, F1, F2, each asserting its antecedent; each fault caught | `fn2/tests/peer-witnesses.lisp` | all hold; eight faults caught |
 | CONSUMER: a refinement checker over the L carrier's FNCT frames, the world steps, the published frontier and the ledger's rows (the consumer-cursor fold, the `:wait-row` holdings); every model state the observations allow, mutations linearized at any boundary before their reply (orphans after a lost reply or a crash, until the next settle), a wait answering the read at a moment while pending (K4), a due parked wait at a settle failing `:lost-wake` (K4b) | `fn2/sim/check-consumer.lisp` | certifies; the model's items carry the streams they are selected through, and its log is padded with commits nothing selects, so its positions are commit positions |
-| scenarios 7, 8, 9, the lost ack and paging, as FNCT clients against the oracle node; five wrong nodes caught | `fn2/tests/sim-layer-e.lisp` | all pass, each shown to exercise its path |
+| scenarios 7, 8, 9, the lost ack and paging, as FNCT clients against the oracle node; six wrong nodes caught (the sixth: a read after an ack answered from the run head, not the cursor's position) | `fn2/tests/sim-layer-e.lisp` | all pass, each shown to exercise its path |
 | K10 stated over CONSUMER and the served producer (constrained until the simulator's adapter lands with the kinds) | `fn2/books/owed-consumer.lisp` | owed; the oracle and the controls as teeth |
 | the subscription-edge table as a core child (`fn2-core-cns-edges`, rows = the ledger's `:subscription-edge` capacity, `:profilep` stating it); link and unlink declared for the request kind's arms; the `:wait-row` wait kind (`defwait`) with the table's ready/grant pair attached in the access section | `fn2/books/cns.lisp` | certifies with the assembly; nothing parks on it until the request kind serves |
 Owed, in order: the rest of §13.8's matrix as the records they need land (W4, W5, W6, W8-W10, F3-F7);
@@ -121,19 +121,24 @@ on R by the absence of a binding.
 principal, query; four u32 query version, view version, registration epoch, position). A cursor from
 another store, incarnation, consumer, principal, query or epoch is refused `scope` before any mutation; a
 stale view version answers `rebase-required` everywhere (read, wait, ack); an unknown version
-`cursor-version`, never guessed. fn2's position is `(domain, sequence)`, domain 0 in 5.1.1. **v2:** while
-every field fits, v1 cursors are issued; past any u32 field (position, epoch, query or view version) the
-node issues `fncu` v2 with domain u32 and every counter u64 (≤ 366 octets), and a v1 cursor beyond the
-bound is refused `cursor-version`, never truncated. The wire's counters are eight octets; a resident value
-is at most 2^60 - 1 (B's value column), and a larger one is refused `:wide` by the codec. A v2 form of a
-cursor that fits v1 is refused, so each cursor has one form. The `cursor` field is v2's width (366). Every ownership and retry key is the durable principal identity (account and its
+`cursor-version`, never guessed. fn2's position is `(domain, sequence)`, domain 0 in 5.1.1. **v2:** the
+node issues v1 while every field fits and `fncu` v2 (domain u32, every counter u64, ≤ 366 octets) past any
+u32 field (position, epoch, query or view version); a v1 cursor is never truncated. A client may offer v2
+whenever it likes, including for a cursor that would fit v1: either form is accepted, decoded, and compared
+field by field against the server's own record of that cursor (its octets re-encoded in the offered form
+compared exactly), so the check is the same for both. The wire's counters are eight octets; a resident value
+is at most 2^60 - 1 (B's value column), and a larger one is refused `:wide` by the codec. The `cursor` field
+is v2's width (366). Every ownership and retry key is the durable principal identity (account and its
 incarnation), never a D7 scheduler slot.
 
 ### 3.2 The ack contract (fn1's, bound to the account)
 An ack is the consumer's durable declaration that its own transaction finished through the proposal's
-prefix. Forward only: a higher position is recorded (C's `:ack c e to`); an equal one is accepted with no
-write and no durable reservation; a lower one is refused `behind` without rewind; past the committed
-frontier `beyond-frontier`. Delivery is at-least-once until ack; exactly-once is the consumer's (§10.1).
+prefix. Forward only, decided by the request row, not by the fold: C's `:ack` fold answers `:unchanged`
+for an equal and a lower position alike, so the arm reads the recorded position before staging anything.
+Equal: accepted with no transaction, no write and no durable reservation. Lower: refused `behind` without
+rewind. Past the committed frontier: `beyond-frontier`. Only a greater position stages a consumer
+transaction (C's `:ack c e to`). An `:unchanged` after the stage (another ack won the race) re-reads the
+position and answers by the same rule. Delivery is at-least-once until ack; exactly-once is the consumer's (§10.1).
 A rebase is a new registration epoch: `:keep` keeps the recorded position and the starts of the streams
 that stay, a new stream added from now (INBOX §4.3, so joining a room never rescans); `:now` moves to the
 frontier; `:history` to 0. A recorded position is therefore monotone per (principal, consumer, epoch).
@@ -154,8 +159,9 @@ write path exists to diverge.
   different Message-IDs). The table keeps its meaning for a declared retry lifetime (C5's retention row);
   after it a retry answers `operation-expired` and is never executed anew. What is stored is the semantic
   result (Message-ID, position, numbers, receipt, the evidence outcome) or an immutable reference to it.
-  An owner who has lost append authority cannot settle an existing operation by retrying it (the grant
-  step refuses first); an `outcome(op)` lookup of the principal's own retry table is owed for that case.
+  The append reads `fn2-outcome(principal, op)` before the stream's write grant (§6): reading one's own
+  recorded outcome needs authentication only, so a retry after the principal's grant narrowed (Mini's c2)
+  still gets its committed outcome; only an op with no recorded outcome goes on to the grant and the meter.
 - **Message-ID.** An article without one gets `<op-PRINCIPAL-OP@node>`, so a retry is the same article
   on every carrier; with neither, POST's injection rule applies and N's `:retry-by-message-id` is what the
   client has.
@@ -266,6 +272,9 @@ S: 491 37<CRLF><frame>                               uncertain
   real value would be independent scheduling and no head-of-line blocking behind a parked wait on the
   same connection. Neither justifies a second listener for the first slice; a client wanting both waits
   and requests opens two connections.
+- **Client guidance (beside cancellation).** A consumer waits on a connection with nothing pipelined
+  behind the wait, or opens two connections (one for waits, one for everything else): any octet sent
+  after a wait ends it (above).
 
 ## 6. The preconditions: Grant first, then Meter
 WIDEST §2's order, generated by `NAME-admit` for every verb and emitted for the served kind as staged
@@ -280,7 +289,9 @@ visibility is the pullback along the grant, checked per item against the article
 (over its limit with nothing held, or a zero limit) is refused `meter`; one that could fit later parks on
 the principal's FIFO (D7's request bundle), with its timeout still running; settled on completion from
 actual counts, an unconsumed reservation rolled back; (4) **receipts** named by the verb (none for these
-ten in 5.1.1); (5) the verb's **domain predicate**; (6) the work. Bounded parsing and the grant
+ten in 5.1.1); (5) the verb's **domain predicate**; (6) the work. One verb inserts a step: `append` looks
+up its own recorded outcome `fn2-outcome(principal, op)` between (1) and (2), and a hit answers that outcome
+without the grant or the meter (§3.3); its order is principal, outcome lookup, grant, meter. Bounded parsing and the grant
 evaluation itself are funded work charged before step 2. A parked wait holds its priced wait row and
 edges, never a maximal report allocation; an append under shared exhaustion keeps a bounded input
 continuation and rechecks authority when resumed; a disconnect before commit eligibility cancels, after
@@ -480,19 +491,23 @@ and `fn2-identity-receipts` (id 1, 11; on dev), the identity summary their fold.
   whose query is the peer's feed-groups: an article matches by Newsgroups, a control article also by its
   target's groups (fn1 NNT-033), minus loops (the peer's name in Path, or the peer as the arriving
   connection). The peer cannot rebase, unregister or ack it: it is outside the remote whitelist (§5).
-- **The feed entry**, keyed by the delivery identity (feed epoch, occurrence): destination, the article's
-  position, the query version, the phase (offered by CHECK or IHAVE, then sent by TAKETHIS or the IHAVE
-  body), the attempt (connection incarnation, request), deferral and loss counts, the backoff deadline, and
-  one terminal disposition: `accepted` (235, 239), `not-wanted` (435, 438), `rejected` (437, 439),
+- **The feed entry**, keyed by the delivery identity (feed epoch, occurrence), keeps durably only its one
+  terminal disposition (the window above holds the rest: the destination, position, query version, phase,
+  attempt, deferral and loss counts, backoff deadline): `accepted` (235, 239), `not-wanted` (435, 438), `rejected` (437, 439),
   `dropped` (losses with an attempt in flight reached the bound; 431 and 436 never count; or the peer's
   grant no longer covers it), `withdrawn` (the target was cancelled before delivery).
-  - written by the feed consumer's processing transaction (the port's `read` then `ack`, one batch: install
-    the entries, then advance the cursor) and by each IHAVE, CHECK and TAKETHIS reply on NNTP (phase,
-    counts, disposition); by the operator's drop (`fn peer drop`, fn1's busy-feed drain).
-  - read by the feeder's fair selection (fewest deferrals first, oldest among equals: a deferred head
-    neither blocks later entries nor starves) that sends CHECK/TAKETHIS (RFC 4644) or IHAVE (RFC 3977) to
-    the peer; at restart, every unresolved attempt is retired and re-offered by CHECK or IHAVE, never a
-    blind TAKETHIS (fn1 P:1290).
+  - durable state is only the feed consumer's cursor and, per delivery identity, the one terminal
+    disposition, written once. In flight there is an in-memory window of offers (phase, attempt,
+    deferral counts, backoff); no reply commits on its own. The feed acks its cursor once the window's
+    contiguous prefix has terminal replies, batched every N replies or T seconds, in the same batch as
+    those prefix entries' terminal dispositions. A reconnect or restart resumes from the durable cursor and
+    re-offers by CHECK (or IHAVE) everything after it, never a blind TAKETHIS; a terminal disposition
+    already written is not offered again.
+  - written by that batched ack (dispositions and cursor together) and by the operator's drop (`fn peer
+    drop`, fn1's busy-feed drain).
+  - read by the feeder's fair selection over the window (fewest deferrals first, oldest among equals: a
+    deferred head neither blocks later entries nor starves) that sends CHECK/TAKETHIS (RFC 4644) or IHAVE
+    (RFC 3977) to the peer (fn1 P:1290 for the restart rule).
   - design until the feeder serves (D5 3/n's peer path with E's served consumer).
 - A changed feed-groups is a rebase: a new epoch; the entries installed keep their epoch. Selection is a
   pure function of the occurrence and the epoch's query, so the target set is the one fn1's acceptance-time
@@ -597,10 +612,18 @@ pending work) land with the served verb each exercises.
 3. Done: peering and BP stated in wire words (§13); the peer model, K-P1, K-P3a, K-P4, K-P5, K-P6 owed
    with teeth, six witnesses.
 4. Done: the CONSUMER checker over the model, scenarios 7, 8, 9 over the oracle node, K10 stated.
-5. `fn2-ctl` and `fn2-cns` pasted as certifying kinds (E.P1, the form's G2 with the extra-children
-   tuple, C's read `:child` faces), driven at the adapter boundary with a fixture peer record until A's
-   `:local` listener; register and ack answer `unavailable` until D's txn port carries `:consumer`;
-   the simulator adapter that defines K10's producer; then the XFNC block.
+5. Done: the subscription-edge table as a core child and the `:wait-row` wait kind (`cns.lisp`).
+6. After D's txn port and D6 3/n (the bricks order): `fn2-ctl` and `fn2-cns` as certifying kinds. Rows from
+   the owners' answers: the field base and BLAKE3 row from the control connection's format slot (B,
+   cd45d4719), read rows at 2X + S (D, 12410f1b9), A's `:local` listener with each simulated client's peer
+   set by `fn2-network-set-peer` (371c48e4e), the `fn2-consumer-names` fold and `fn2-successor-stream-member`
+   (C). A wait's read, first and after every wake, starts at the cursor's position through C's positioned
+   seek (`fn2-read-seek`), never at the run head; CONSUMER compares every page exactly with the model's at
+   that position, and the control "a read after an ack answered from the run head" is caught (`:reply`).
+   Then the simulator adapter that defines K10's producer, then the XFNC block.
+7. **The progress number is M2 spine cuts:** Mini's twelve cuts and helm's room run through `fn2-turn` over
+   the real core (sim-layer-e against the served machines), reported n/12 on H's line; sim-layer-e is its
+   source. Today 0/12 served (the oracle node passes all five scenarios).
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's

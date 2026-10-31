@@ -1746,11 +1746,13 @@ waiting on this machine.
 This subsection is the present state; 15.1-15.9 are the design it was built from, and where they
 differ this one holds.
 
-- **The kind.** `fn2-cursor` is a taken kind (`(defmachine-registry fn2-cursor)`, P4). Its rows are
-  the read rows: `:capacity (fn2-b-read-rows profile)`, so read row X is the row's slot (`row-slot`).
-  Phases are `:free :select :seek :render :send :finish :draining :retired`, and it holds
-  `:cursor-row`. Its arms are child form over C-S4's read children; 15 sub-arms carry the branches
-  of `:seek` and `:render`.
+- **The kind.** `fn2-cursor` is a taken kind (`(defmachine-registry fn2-cursor)`, P4), with
+  `:capacity (fn2-b-cursor-rows profile)` (X where the profile serves reading). A cursor in slot S
+  reads through read row 2S and, beside a scan, looks LIST's per-group counts up through 2S+1:
+  `fn2-b-read-rows` = 2X + N (machines-b.lisp), where rows [2X, 2X+N) are E's consumer requests'
+  (`fn2-b-cns-rows`, the profile's `:cns`; request row S reads through 2X+S). Phases are `:free
+  :select :seek :render :send :finish :draining :retired`, and it holds `:cursor-row`. Its arms are
+  child form over C-S4's read children; 29 sub-arms carry the branches of `:seek` and `:render`.
 - **TX is written under the connection's owner, not handed.** The take copies the connection's
   owner triple (`conn conn-gen conn-kind`), its RX place (`rx-slot rx-gen line-s line-e`), its TX
   range, its mask and its selection (`group current pin`).
@@ -1759,25 +1761,42 @@ differ this one holds.
   - `turn` says whose move it is. The cursor clears it and wakes the connection when a page is ready
     (`roff` is where the page starts). The connection sends the page and sets `turn` again, waking
     the cursor, which renders the next page or, once `done`, finishes.
+  - **TX's prefix `[0, roff)` is the cursor's across pages.** After sending a page the connection
+    truncates TX to `roff` (`fn2-core-truncate`, A's pool primitive: keep the first N filled octets)
+    rather than emptying it, and empties it only after the last page. A whole-schema scan (LIST,
+    LISTGROUP with no name) saves its resume key at the front of its workspace (C-S4 (d)), so the
+    cursor pads TX to a 256-octet key area, gives TX as the scan's workspace and starts its pages
+    after it: the key survives every page, and a scan whose sources went stale between pages is
+    found again from it.
   - The connection copies the selection back (`update sel ncurrent spin`) after the last page.
   - `cancel`: a connection that drains with a cursor waiting sets it and wakes the cursor (one wake:
     an upload and a query are never both live).
 - **Selection.** The view is `pin`, set to C's published frontier at GROUP/LISTGROUP (15.1's `view`;
   `view` is a reserved column name).
-- **Served:** GROUP, LISTGROUP name [range], NEXT, LAST, STAT [n | <id>] and OVER/XOVER [range],
-  with their 411/412/420/421/422/423/430 refusals.
+- **Served:** GROUP, LISTGROUP [name [range]], NEXT, LAST, STAT [n | <id>], OVER/XOVER [range]
+  and LIST ACTIVE / COUNTS / NEWSGROUPS without a wildmat, with their 411/412/420/421/422/423/430
+  refusals.
+  - LIST scans the group directory (`fn2-groups`) in name order. Each delivered name is copied into
+    TX; ACTIVE and COUNTS then look the group's counts up through the second read row and render
+    `high low [count] status`, the status `y` where the connection serves posting (copied at the
+    take), else `n`; NEWSGROUPS renders `(no description)` (no description is stored). A row needs
+    336 octets of room, else the page breaks before it.
+  - LISTGROUP with no name reads the selected group's name back by the same scan (the directory is
+    keyed by name; the scan stops at the selected group), then selects it again as LISTGROUP by
+    name does, re-pinning the view. Its cost is the directory's names before the group's: a reverse
+    index (group to name) would make it a lookup, and is the change if directories grow.
   - STAT <id> answers `223 0 <id>` through `fn2-read-identity`, visible when its article is at or
     below the pin.
   - LAST walks [1, current-1] forward and reads the last entry again. That is linear in the articles
     before current; a positioned seek replaces it.
-- **Not yet served (1/n-b), each answering 503 meanwhile:**
-  - LISTGROUP with no name: the selected group's name is not read back from `fn2-groups`.
+- **Not yet served, each answering 503 meanwhile:**
   - OVER <id>: the article's number in the group comes with D5 2/n's address entries.
-  - The LIST variants.
+  - LIST with a wildmat, ACTIVE.TIMES and SUBSCRIPTIONS (the interim row).
   - ARTICLE/HEAD/BODY are 3/n, over B's `fn2-block-read`.
 - **The interim table.** It loses GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER. These answer
   `:query` where the profile serves reading. Without reading, `*fn2-answer-unread*` gives the 503,
-  or 412 for NEXT and LAST.
+  or 412 for NEXT and LAST. LIST keeps its interim row for the variants above; its pattern-less
+  ACTIVE, COUNTS and NEWSGROUPS answer `:query` where the profile serves reading.
 - **Book time.** `cursor.lisp` took 1,339 s on forge with a kind-wide stobj tuple (920 shape lemmas)
   and 501 s with the form's per-arm tuple (24fce1ecd). The remainder is the cursor's own shape:
   `render-single`'s guard, `render-step`, and `:seek` writing 12 children through C's read ops. What

@@ -239,7 +239,7 @@
 ;; (:none :user :redeem; H's model: starting any exchange replaces the
 ;; others). With no credential store and no invitations until E2, every
 ;; completed exchange fails by its declared word.
-(defun fn2-answer-ok (tag f0 a0 b0 mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+(defun fn2-answer-ok (tag f0 a0 b0 rest mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0))))
   (let ((c tag))
@@ -291,6 +291,12 @@
           (mv *fn2-nntp-reply-xredeem-password* :redeem))
         (mv-let (code fn2-pool) (fn2-answer-say c reply mask 0 tslot tgen okind oslot ogen fn2-pool)
           (mv code :command next fn2-pool))))
+     ;; LIST ACTIVE, COUNTS and NEWSGROUPS with no wildmat read the group
+     ;; directory: the query cursor answers them (section 15.0), as it does
+     ;; the reader commands
+     ((and reading (equal tag *fn2-nntp-command-list*)
+           (member (if (eq f0 :keyword) a0 0) '(0 2 7)) (not rest))
+      (mv :ok :query pending fn2-pool))
      ((equal tag *fn2-nntp-command-list*)
       (let ((variant (if (eq f0 :keyword) a0 0)))
         (mv-let (code fn2-pool)
@@ -330,7 +336,7 @@
      (t
       ;; A tag outside the table: the decision table missed a command.
       (mv :untabled :closing pending fn2-pool)))))
-(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
+(fn2-pool-preserves fn2-answer-ok (tag f0 a0 b0 rest mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil)
 (in-theory (disable fn2-answer-ok))
 
 (local (in-theory (disable fn2-nntp-parse-line)))
@@ -346,7 +352,7 @@
       (case code
         (:ok (if (fn2-answer-subform-p tag (nfix nargs) f0 (nfix a0) (nfix b0) f1 (nfix a1) (nfix b1)
                                      f2 (nfix a2) (nfix b2) mask rslot rgen okind oslot ogen fn2-pool)
-                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) mask pending posting reading seen flags real
+                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) (eq f1 :span) mask pending posting reading seen flags real
                                      rslot rgen tslot tgen okind oslot ogen fn2-pool)
                (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
                  (mv rc :command pending fn2-pool))))

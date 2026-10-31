@@ -122,9 +122,10 @@
   (:reply fn2-conn-reply
    :cost (:bytes *fn2-conn-send-bytes* :steps (+ *fn2-work-mailbox* *fn2-work-mailbox*) :descriptors 1)
    :writes (tx-off borrows pending stopped wait-reason ready-prev ready-next)
-   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
+   :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-cursor-table)
    :next (:reply :command :article-input :closing :query)
-   :uses (fn2-conn-fill fn2-issue-send fn2-core-reset fn2-machine-issue-result fn2-machine-refuse-phase))
+   :uses (fn2-conn-fill fn2-issue-send fn2-core-reset fn2-core-truncate fn2-conn-cursor-roff fn2-machine-issue-result
+          fn2-machine-refuse-phase))
   (:upgrading fn2-conn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
    :next (:upgrading) :uses (fn2-machine-refuse-phase))
   (:closing fn2-conn-close :cost (:steps *fn2-work-transition* :descriptors 1)
@@ -143,7 +144,7 @@
    :tables (fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-cursor-table)
    :next (:query :reply :command)
    :uses (fn2-machine-take-fn2-cursor fn2-conn-query-state fn2-conn-cursor-roff fn2-conn-cursor-go
-          fn2-conn-cursor-selection fn2-conn-wake fn2-machine-refuse-phase))))
+          fn2-conn-cursor-selection fn2-conn-wake fn2-core-reset fn2-machine-refuse-phase))))
 
 ;; Declared costs of the connection's outside calls (section 4.2). Each is a
 ;; thin stobj-let wrapper over a pool-level function; none builds a list.
@@ -421,11 +422,14 @@
   (and (unsigned-byte-p 32 x) (not (equal x *fn2-none*))
        (eq (fn2-cursor-snapshot-read-code x fn2-core) :ok)
        (equal (fn2-machine-generation x fn2-core) xgen)))
+;; A page is TX past ROFF: the cursor keeps [0, ROFF) of TX across its pages
+;; (a scan's resume key, the 223 line's scratch), and the connection keeps
+;; it after each send (section 15.0).
 (defun fn2-conn-query-state (x xgen tslot fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (cond ((not (fn2-conn-cursor-live-p x xgen fn2-core)) :gone)
         ((equal (fn2-cursor-row-turn x fn2-core) 1) :busy)
-        ((< 0 (nfix (fn2-conn-fill tslot fn2-core))) :page)
+        ((< (nfix (fn2-cursor-row-roff x fn2-core)) (nfix (fn2-conn-fill tslot fn2-core))) :page)
         ((equal (fn2-cursor-row-done x fn2-core) 1) :done)
         (t :more)))
 (defun fn2-conn-cursor-roff (x xgen fn2-core)
@@ -460,7 +464,7 @@
        (b* (((mv tcode x xgen fn2-core)
              (fn2-machine-take-fn2-cursor id id row-generation *fn2-conn-kind* row-mask row-rx-slot row-rx-gen
                                           row-line-s row-line-e row-tx-slot row-tx-gen row-group row-current
-                                          row-pin fn2-core)))
+                                          row-pin row-posting fn2-core)))
          (if (not (eq tcode :ok))
              ;; parked by the take: no work until the grant wakes this row
              (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
@@ -476,14 +480,19 @@
          (:more (let* ((fn2-core (fn2-conn-cursor-go x xgen fn2-core))
                        (fn2-core (fn2-conn-wake x fn2-core)))
                   (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)))
-         (:done (b* (((mv upd g c v) (fn2-conn-cursor-selection x xgen fn2-core))
-                     (fn2-core (fn2-conn-cursor-go x xgen fn2-core))
-                     (fn2-core (fn2-conn-wake x fn2-core))
-                     (sel (equal upd 2)) (cur (or sel (equal upd 1)))
-                     (fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-command*) (query *fn2-none*) (query-gen 0)
-                                                  (group (if sel g row-group)) (current (if cur c row-current))
-                                                  (pin (if sel v row-pin)))))
-                  (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core)))
+         ;; the last page was sent: TX is emptied of what the cursor kept,
+         ;; the selection copied back, the line consumed
+         (:done (mv-let (rcode fn2-core)
+                  (fn2-core-reset row-tx-slot row-tx-gen *fn2-conn-kind* id row-generation fn2-core)
+                  (if (not (eq rcode :ok)) (fn2-machine-refuse-phase id fn2-core)
+                    (b* (((mv upd g c v) (fn2-conn-cursor-selection x xgen fn2-core))
+                         (fn2-core (fn2-conn-cursor-go x xgen fn2-core))
+                         (fn2-core (fn2-conn-wake x fn2-core))
+                         (sel (equal upd 2)) (cur (or sel (equal upd 1)))
+                         (fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-command*) (query *fn2-none*) (query-gen 0)
+                                                      (group (if sel g row-group)) (current (if cur c row-current))
+                                                      (pin (if sel v row-pin)))))
+                      (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core)))))
          ;; a cursor gone while named: the query invariant broke
          (otherwise (fn2-machine-refuse-phase id fn2-core)))))))
 ;; Frame from the row's continuation; at a line, answer it and move to :reply.
@@ -677,7 +686,13 @@
                      (declare (ignore op opgen))
                      (let ((fn2-core (if (eq code :ok) (fn2-conn-put-core id (borrows 1)) fn2-core)))
                        (fn2-machine-issue-result id code len fn2-core))))
-               (mv-let (code fn2-core) (fn2-core-reset tslot tgen *fn2-conn-kind* id row-generation fn2-core)
+               ;; sent: TX is emptied, or, after a query page, kept up to
+               ;; where the cursor's page started
+               (mv-let (code fn2-core)
+                 (if (equal after *fn2-conn-after-query*)
+                     (fn2-core-truncate tslot tgen (fn2-conn-cursor-roff row-query row-query-gen fn2-core)
+                                        *fn2-conn-kind* id row-generation fn2-core)
+                   (fn2-core-reset tslot tgen *fn2-conn-kind* id row-generation fn2-core))
                  (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
                    (let ((fn2-core (fn2-conn-put-core id (tx-off 0)
                                      (phase (if (equal after *fn2-conn-after-closing*)
