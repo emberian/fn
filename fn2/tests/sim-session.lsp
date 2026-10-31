@@ -15,14 +15,30 @@
 ; client octets moved (every round observes a clock reading). Network
 ; faults follow the seed; process death is excluded (probability 0).
 (in-package "ACL2")
-(include-book "../books/owed-conn")
+(include-book "../books/owed-cursor")
 (include-book "../sim/echo")
 (include-book "../sim/check-wire")
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 (set-fmt-hard-right-margin 1000000 state)
 (set-fmt-soft-right-margin 1000000 state)
 
-(defconst *fn2-ss-profile* (put-assoc-equal :trace nil *fn2-conn-wire-profile*))
+;; The session serves reading (D6): the cursor's profile (read rows, x 2;
+;; the groups local.test 1 and local.empty 2) less its posting, so the
+;; posting replies stay the reader-only node's. Before any client opens,
+;; the store holds three articles in local.test, published through C-S3 as
+;; tests/cursor-unit.lisp seeds them (numbers 1-3, Message-IDs <a|b|c@
+;; example.invalid>); local.empty holds none.
+(defconst *fn2-ss-profile*
+  (put-assoc-equal :trace nil (remove1-assoc-equal :posting-interim *fn2-cursor-profile*)))
+(defun fn2-ss-tab () (declare (xargs :verify-guards nil)) (coerce (list (code-char 9)) 'string))
+(defun fn2-ss-line (subject mid)
+  (declare (xargs :verify-guards nil))
+  (fn2-csp-cat (list subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
+                     (fn2-ss-tab) mid (fn2-ss-tab) "" (fn2-ss-tab) "120" (fn2-ss-tab) "1")))
+(defconst *fn2-ss-seeds*
+  (list (list 1 "<a@example.invalid>" (fn2-ss-line "one" "<a@example.invalid>"))
+        (list 1 "<b@example.invalid>" (fn2-ss-line "two" "<b@example.invalid>"))
+        (list 1 "<c@example.invalid>" (fn2-ss-line "three" "<c@example.invalid>"))))
 
 ; Client records live in a global table (test-side): id -> (nonce sent
 ; received closed cap). The id is a serial number per open (the global
@@ -95,6 +111,8 @@
 (defun fn2-ss-start (seed fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((fn2-core (fn2-init-executor *fn2-ss-profile* :echo nil fn2-core))
+       ((mv seeded fn2-core) (fn2-cs-seed-all *fn2-ss-seeds* 1 fn2-core))
+       (- (or (eq seeded :ok) (cw "@@FN2SS seeding ~x0@@~%" seeded)))
        (fn2-sim (fn2-sim-init seed :crash-only "sim-session" *fn2-ss-profile* fn2-sim))
        (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
        (fn2-sim (update-fn2-sim-probabilitiesi *fn2-fault-crash* 0 fn2-sim))

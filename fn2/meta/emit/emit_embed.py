@@ -17,7 +17,11 @@ The subset is closed and its edge is named, never guessed:
     its measure is not a natural-number term, or it is mutually recursive, it stops the emission;
   * a quoted object outside the subset (a rational, a complex) stops the emission.
 
-Usage: emit_embed.py WORLD.sexp WORLD.lean KINDS.lean NAMESPACE
+  EQNS.lean   the dispatch equations `fns "F" [a0 ...] = some («F» a0 ...)` and
+              `guardOf "F" [a0 ...] = some («F».guard a0 ...)`, each by `rfl`, split over the
+              files given (PW3 rewrites by them instead of unfolding the dispatch).
+
+Usage: emit_embed.py WORLD.sexp WORLD.lean KINDS.lean NAMESPACE [EQNS.lean ...]
 """
 import re
 import sys
@@ -169,7 +173,6 @@ def emit_world(emb, path, ns):
     L.append(f"-- {len(kept)} functions translated, {len(natives)} natives, refused {refused},")
     L.append(f"-- dropped as callers of a refused function {dropped}.")
     L.append("import Fn2.ACL2.Val")
-    L.append("import Std.Data.HashMap")
     L.append("")
     L.append("set_option maxRecDepth 100000")
     L.append("set_option maxHeartbeats 0")
@@ -217,37 +220,36 @@ def emit_world(emb, path, ns):
     L.append(f"def nativeTranslated : List String := [{', '.join(lean_str(n) for n in nd_in)}]")
     L.append(f"def nativeOutside : List (String × List String) := [{', '.join(f'({lean_str(n)}, [{chr(44).join(lean_str(c) for c in cs)}])' for n, cs in nd_out)}]")
     L.append("")
-    L.append("/-- The translated functions by ACL2 name, for the term evaluator and the interpreter. -/")
-    L.append("def fnTable : Std.HashMap String (List Val → Option Val) := Std.HashMap.ofList [")
-    rows = []
+    # the dispatch: a binary search tree keyed by `nameKey` (Fn2.ACL2.Val), so each function's
+    # dispatch equation holds by `rfl` (PW3); the equations themselves go to the EQNS files
+    fn_rows = []
     for f in kept:
         vs = [f"a{i}" for i in range(len(f.formals))]
-        pat = "[" + ", ".join(vs) + "]"
         call = f"{ident(f.name)}{' ' if vs else ''}{' '.join(vs)}"
-        rows.append(f"  ({lean_str(f.name)}, fun (xs : List Val) => match xs with | {pat} => some ({call}) | _ => none)")
-    L.append(",\n".join(rows))
-    L.append("]")
-    L.append("")
-    L.append("def guardTable : Std.HashMap String (List Val → Option Val) := Std.HashMap.ofList [")
-    rows = []
+        fn_rows.append((f.name, vs, call))
+    guard_rows = []
     for f in guards:
         vs = [f"a{i}" for i in range(len(f.formals))]
-        pat = "[" + ", ".join(vs) + "]"
         call = f"{ident(f.name)}.guard{' ' if vs else ''}{' '.join(vs)}"
-        rows.append(f"  ({lean_str(f.name)}, fun (xs : List Val) => match xs with | {pat} => some ({call}) | _ => none)")
-    L.append(",\n".join(rows))
-    L.append("]")
+        guard_rows.append((f.name, vs, call))
+    L.append("set_option maxHeartbeats 0 in")
+    L.append("/-- The translated functions by ACL2 name, for the term evaluator and the interpreter. -/")
+    L.append(f"def fnTree : Dispatch :=\n  {dispatch_tree(fn_rows)}")
     L.append("")
-    L.append("def fns : Fns := fun f args => match fnTable.get? f with")
+    L.append("set_option maxHeartbeats 0 in")
+    L.append("/-- The stated guards by ACL2 name. -/")
+    L.append(f"def guardTree : Dispatch :=\n  {dispatch_tree(guard_rows)}")
+    L.append("")
+    L.append("def fns : Fns := fun f args => match fnTree.find (nameKey f) with")
     L.append("  | some g => g args")
     L.append("  | none => none")
     L.append("")
     L.append(f"def guardOutside : List String := [{', '.join(lean_str(n) for n in guard_outside)}]")
     L.append("")
     L.append("/-- A function's guard on its arguments (`T` for a function with no stated guard). -/")
-    L.append("def guardOf (f : String) (args : List Val) : Option Val := match guardTable.get? f with")
+    L.append("def guardOf (f : String) (args : List Val) : Option Val := match guardTree.find (nameKey f) with")
     L.append("  | some g => g args")
-    L.append("  | none => if fnTable.contains f && !guardOutside.contains f then some Val.t else none")
+    L.append("  | none => if (fnTree.find (nameKey f)).isSome && !guardOutside.contains f then some Val.t else none")
     L.append("")
     L.append(f"def refused : List String := [{', '.join(lean_str(r) for r in refused)}]")
     L.append(f"def dropped : List String := [{', '.join(lean_str(r) for r in dropped)}]")
@@ -256,7 +258,63 @@ def emit_world(emb, path, ns):
     L.append(f"end {ns}")
     L.append("")
     open(path, "w").write("\n".join(L))
-    return len(kept), refused, dropped, len(guards)
+    return len(kept), refused, dropped, len(guards), fn_rows, guard_rows
+
+
+def name_key(n):
+    """`Fn2.ACL2.nameKey`: the name's UTF-8 bytes as a base-256 numeral."""
+    k = 0
+    for b in n.encode():
+        if b == 0:
+            die(f"a NUL byte in the name {n!r}: nameKey would not be injective")
+        k = k * 256 + b
+    return k
+
+
+def dispatch_tree(rows):
+    """A balanced `Fn2.ACL2.Dispatch` over the rows `(name, formals, call)`."""
+    rows = sorted(rows, key=lambda r: name_key(r[0]))
+    for a, b in zip(rows, rows[1:]):
+        if name_key(a[0]) == name_key(b[0]):
+            die(f"two dispatch rows for {a[0]}")
+
+    def go(lo, hi, ind):
+        if lo >= hi:
+            return ".leaf"
+        mid = (lo + hi) // 2
+        name, vs, call = rows[mid]
+        pat = "[" + ", ".join(vs) + "]"
+        fn = f"fun (xs : List Val) => match xs with | {pat} => some ({call}) | _ => none"
+        return (f"(.node {name_key(name)} ({fn})\n{ind}{go(lo, mid, ind + ' ')}\n"
+                f"{ind}{go(mid + 1, hi, ind + ' ')})")
+    return go(0, len(rows), "    ")
+
+
+def emit_eqns(fn_rows, guard_rows, paths, world_mod, world_ns):
+    """The dispatch equations, one per translated function and one per stated guard, each by
+    `rfl` (the kernel searches the tree), split over `paths` so they elaborate in parallel."""
+    eqs = []
+    for name, vs, call in fn_rows:
+        bs = " ".join(f"({v} : Val)" for v in vs)
+        eqs.append(f"@[fn2_dispatch] theorem {ident(name)}.fns_eq {bs}{' ' if bs else ''}:\n"
+                   f"    fns {lean_str(name)} [{', '.join(vs)}] = some ({call}) := rfl")
+    for name, vs, call in guard_rows:
+        bs = " ".join(f"({v} : Val)" for v in vs)
+        eqs.append(f"@[fn2_dispatch] theorem {ident(name)}.guard_eq {bs}{' ' if bs else ''}:\n"
+                   f"    guardOf {lean_str(name)} [{', '.join(vs)}] = some ({call}) := rfl")
+    n = len(paths)
+    for i, path in enumerate(paths):
+        part = eqs[i::n]
+        L = ["-- GENERATED by fn2/meta/emit/emit_embed.py: the dispatch equations (PW3), part "
+             f"{i + 1} of {n}.",
+             "-- Do not edit: change a book and re-emit (fn2/meta/emit/emit.sh).",
+             f"import {world_mod}", "import Fn2.ACL2.SimpAttr", "",
+             "set_option maxRecDepth 100000", "set_option linter.unusedVariables false", "",
+             f"namespace {world_ns}", "open Fn2.ACL2", ""]
+        L.extend(part)
+        L.extend(["", f"end {world_ns}", ""])
+        open(path, "w").write("\n".join(L))
+    return len(eqs)
 
 
 # ---------------------------------------------------------------- kinds
@@ -372,6 +430,7 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns):
 
 def main():
     src, world_out, kinds_out, ns = sys.argv[1:5]
+    eqn_outs = sys.argv[5:]
     forms = read_all(open(src).read())
     top = as_list(forms[0])
     if str(top[0]) != ":FN2-WORLD":
@@ -380,9 +439,10 @@ def main():
     emb = {str(as_list(e)[0]): as_list(e)[1] for e in as_list(top[2])[1:]}
     waits = [(r[0], List(as_list(r)[1:])) for r in as_list(reg.get(":WAITS", List([])))]
     world_ns = ns + "World"
-    n, refused, dropped, ng = emit_world(emb, world_out, world_ns)
+    n, refused, dropped, ng, fn_rows, guard_rows = emit_world(emb, world_out, world_ns)
+    ne = emit_eqns(fn_rows, guard_rows, eqn_outs, world_ns, world_ns) if eqn_outs else 0
     nk, no = emit_kinds(emb, waits, kinds_out, ns + "Kinds", world_ns)
-    print(f"EMBED functions={n} guards={ng} refused={refused} dropped={dropped} kinds={nk} operations={no}")
+    print(f"EMBED functions={n} guards={ng} refused={refused} dropped={dropped} kinds={nk} operations={no} equations={ne}")
 
 
 if __name__ == "__main__":

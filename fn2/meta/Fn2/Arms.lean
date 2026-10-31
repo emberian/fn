@@ -608,6 +608,11 @@ def rowReads (k : Kind) (stobjs : List (String × Val)) (id slot : Val) : Except
             else callFn w (k.name ++ "-" ++ c) [slot, table]
     pure ("ROW-" ++ c, v)
 
+/-- `0 ≤ a < b` for two integers; false for anything else (the checked write's range test). -/
+def natLt (a b : Val) : Bool := match a, b with
+  | .int x, .int y => 0 ≤ x && x < y
+  | _, _ => false
+
 /-- `K-PUT-CHILDREN`: one checked write of the pending fields (and the phase), the kind's table by
 slot and the directory by id; a slot outside the table, an id outside the directory (when a
 directory field is written) or a value wider than its column stops the core with
@@ -623,9 +628,6 @@ def put (f : Frame) (st : St) (pairs : List (String × Val)) : Except String St 
   let dirp := pairs.filter fun p => directoryFields.contains p.1
   let rows ← callFn w (k.name ++ "-ROWS") [table]
   let drows ← callFn w "FN2-MACHINES-ROWS" [dir]
-  let natLt (a b : Val) : Bool := match a, b with
-    | .int x, .int y => 0 ≤ x && x < y
-    | _, _ => false
   let fits := pairs.all fun (n, v) => match k.columns.find? (·.1 == n) with
     | some (_, ty) => ty.fits v
     | none => false

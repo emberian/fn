@@ -255,20 +255,10 @@ def memberEqual (x l : Val) : Val :=
   | .cons a d => if x == a then l else memberEqual x d
   | _ => Val.nil
 
-/-- The names this module implements, in ACL2's spelling: the emitter neither translates nor
-refuses them. `IF` and `RETURN-LAST` are special forms of the translation (lazy branches; the
-third argument). -/
-def names : List String :=
-  ["IF", "RETURN-LAST", "EQUAL", "CONS", "CAR", "CDR", "CONSP", "INTEGERP", "ACL2-NUMBERP",
-   "RATIONALP", "COERCE", "SYMBOLP", "STRINGP", "CHARACTERP", "<", "BINARY-+", "BINARY-*", "UNARY--",
-   "BINARY-LOGAND", "BINARY-LOGIOR", "BINARY-LOGXOR", "BINARY-LOGEQV", "LOGNOT", "LOGORC1",
-   "FLOOR", "MOD", "EVENP", "NONNEGATIVE-INTEGER-QUOTIENT", "EXPT", "LEN", "NTH", "MV-NTH",
-   "UPDATE-NTH", "MEMBER-EQUAL", "ACL2-COUNT"]
-
 end Native
 
-/-- The native built-ins by ACL2 name (arity checked), for the term evaluator. -/
-def nativeCall (f : String) (args : List Val) : Option Val :=
+/-- The native built-ins' implementations by ACL2 name (arity checked). -/
+def nativeImpl (f : String) (args : List Val) : Option Val :=
   open Prim Native in
   match f, args with
   | "EQUAL", [a, b] => some (equal a b)
@@ -308,6 +298,43 @@ def nativeCall (f : String) (args : List Val) : Option Val :=
   | "MEMBER-EQUAL", [a, b] => some (memberEqual a b)
   | "ACL2-COUNT", [a] => some (.int a.acl2Count)
   | _, _ => none
+
+/-- The names `nativeCall` answers for (with `IF` and `RETURN-LAST`, the forms of the translation,
+the 38 natives). -/
+def nativeCallNames : List String :=
+  ["EQUAL", "CONS", "CAR", "CDR", "CONSP", "INTEGERP", "ACL2-NUMBERP", "RATIONALP", "COERCE",
+   "SYMBOLP", "STRINGP", "CHARACTERP", "<", "BINARY-+", "BINARY-*", "UNARY--", "BINARY-LOGAND",
+   "BINARY-LOGIOR", "BINARY-LOGXOR", "BINARY-LOGEQV", "LOGNOT", "LOGORC1", "FLOOR", "CEILING",
+   "CHAR-CODE", "CODE-CHAR", "MOD", "EVENP", "NONNEGATIVE-INTEGER-QUOTIENT", "EXPT", "LEN", "NTH",
+   "MV-NTH", "UPDATE-NTH", "MEMBER-EQUAL", "ACL2-COUNT"]
+
+/-- The native built-ins by ACL2 name (arity checked), for the term evaluator. -/
+def nativeCall (f : String) (args : List Val) : Option Val :=
+  if nativeCallNames.contains f then nativeImpl f args else none
+
+/-- A name outside the natives is never answered by `nativeCall` (PW3: a call of a translated
+function goes to the dispatch). -/
+theorem nativeCall_none (f : String) (args : List Val) (h : (nativeCallNames.contains f) = false) :
+    nativeCall f args = none := by
+  unfold nativeCall; rw [h]; rfl
+
+/-! ## The dispatch
+
+The translated functions by ACL2 name, as a binary search tree the kernel can search: a name's
+key is its UTF-8 bytes read as a base-256 numeral (injective on names without a NUL byte), so a
+lookup is a dozen `Nat` comparisons, and each translated function's dispatch equation
+(`fns "F" [a0 ...] = some («F» a0 ...)`) holds by `rfl` (PW3, LEAN-METATHEORY §9.3). -/
+
+def nameKey (s : String) : Nat := s.toByteArray.data.foldl (fun n b => n * 256 + b.toNat) 0
+
+inductive Dispatch where
+  | leaf
+  | node (key : Nat) (f : List Val → Option Val) (l r : Dispatch)
+  deriving Inhabited
+
+def Dispatch.find (k : Nat) : Dispatch → Option (List Val → Option Val)
+  | .leaf => none
+  | .node k' f l r => if k < k' then l.find k else if k == k' then some f else r.find k
 
 /-! ## Translated terms, deep
 

@@ -1,3 +1,4 @@
+import Std.Data.HashMap
 import Fn2.ACL2.Read
 import Fn2.Arms
 import Fn2.Pathway
