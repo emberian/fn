@@ -121,13 +121,13 @@ class SimTargetUnit(unittest.TestCase):
             self.assertEqual(case.evidence['wire']['unjudged'], 1)
 
     def test_targets_pick_their_carrier_and_backend(self):
-        # fn2 runs nntp S under the simulator, fn2-native on the socket; both are fn2's Node backend, and a
-        # family neither carrier names stays a named not-yet-serving skip under fn2-native.
+        # fn2 runs nntp S under the simulator, fn2-native on the socket; both are fn2's Node backend; fn2-native
+        # serves nntp's other forms through the backend, and every other family stays a named skip.
         from fn2.tests import surface
         from fn2.tests.surface.nntp.test_model_nntp import TestSurface
         self.assertEqual({t: surface.backend(t) for t in surface.TARGETS},
                          {'fn1': 'fn1', 'fn2': 'fn2', 'fn2-native': 'fn2'})
-        self.assertEqual(surface.MANIFEST['serves']['fn2-native'], [])
+        self.assertEqual(surface.MANIFEST['serves']['fn2-native'], ['nntp'])
         carriers = []
         with mock.patch.object(TestSurface, 'sim_state_machine', lambda self, carrier: carriers.append(carrier)):
             for target in ('fn2', 'fn2-native'):
@@ -141,6 +141,30 @@ class SimTargetUnit(unittest.TestCase):
         with mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': 'fn3'}):
             with self.assertRaises(ValueError):
                 surface.backend()
+
+    def test_named_host_contracts_are_owed_against_fn2_and_other_outcomes_still_fail(self):
+        from fn2.tests import surface
+        def child(tests):
+            return lambda name, args: dict(status='ok', tests=tests, module=name)
+        owed = dict(test='m.T.a', outcome='fail', classification='named-node-dead', skip_reason='',
+                    exception='node dead: fn2 layer D not yet serving: init needs operator CONFIG init')
+        ok = dict(test='m.T.b', outcome='ok', classification=None, skip_reason='', exception='')
+        red = dict(test='m.T.c', outcome='fail', classification='other', skip_reason='', exception='wrong reply')
+        for target, tests, verdict in [('fn2-native', [owed, ok], 'skip'), ('fn2-native', [owed, red], 'fail'),
+                                       ('fn1', [owed, ok], 'fail')]:
+            case = surface.SurfaceCase('setUp')
+            case.setUp()
+            with self.subTest(target=target, verdict=verdict), \
+                    mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': target}), \
+                    mock.patch.object(surface, 'RUN', {'native_envs': {'m': {}}, 'out': 'build/surface-unit'}), \
+                    mock.patch.object(surface.run_natives, 'child', child(tests)):
+                if verdict == 'skip':
+                    with self.assertRaisesRegex(unittest.SkipTest, r'host contract owed \(1 tests; 1 ran ok\): init needs'):
+                        case.native('nntp', 'm')
+                    self.assertEqual(len(case.evidence['owed_host']), 1)
+                else:
+                    with self.assertRaises(AssertionError):
+                        case.native('nntp', 'm')
 
     def test_sim_machine_lines_against_the_interim_table(self):
         # Every interim line names a verb the table holds; no served line names an interim verb with its

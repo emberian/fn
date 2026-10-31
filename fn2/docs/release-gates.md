@@ -190,6 +190,14 @@ fn1's `make check` is replaced by fn2's per-commit set. Its parts, each a driver
 
   Every opened connection has its own id and verdict: 0 refused, 0 unjudged. The A5r seat's laptop run at
   424f3f9ef gave the same native line.
+- **The whole nntp family against the served node (H14, `--target fn2-native`, f794c78f3):**
+  - **S:** PASS, as above.
+  - **E:** 30 tests, 0 failures. 24 natives are owed host contracts, named (`init` with groups until D6;
+    `store init`; the FNCT control socket; developer verbs). 3 intended skips, 1 opt-in skip, and the rfc3977
+    fixture's hook is unset.
+  - **F:** owed (the differential needs an fn2 owner with groups and a login).
+  - **H:** owed (no observed nntp operations).
+  - The run exits 3 (NOT RUN): there are no reds, but most of the family waits on D6.
 
 ### 07 docs
 - **Contract:** `tools/docs_check.py --check` on the swapped tree, against the docs R3 rewrites.

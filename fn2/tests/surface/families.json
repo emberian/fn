@@ -2047,7 +2047,9 @@
       "store_ops"
     ],
     "fn2": [],
-    "fn2-native": []
+    "fn2-native": [
+      "nntp"
+    ]
   },
   "native_timeout_overrides": {
     "open_depth": {
@@ -2083,5 +2085,5 @@
       "nntp"
     ]
   },
-  "serves_native_note": "S forms that run against fn2 on a real loopback socket through layer A's session hook (FN2_SURFACE_NATIVE_<FAMILY>=module:callable, the simulator session's API over the native event loop; sim_target.NativeTarget): M1b, nntp under D3 with the same served-verb restriction and interim table as the simulator run. The target fn2-native is fn2's Node backend otherwise: every family not named here is not yet serving."
+  "serves_native_note": "S forms that run against fn2 on a real loopback socket through layer A's session hook (FN2_SURFACE_NATIVE_<FAMILY>=module:callable, the simulator session's API over the native event loop; sim_target.NativeTarget): M1b, nntp under D3 with the same served-verb restriction and interim table as the simulator run. serves.fn2-native names the families whose E/F/H forms run through the Node adapter's fn2 backend, which starts the served node (fn2/tests/native-serve.lsp) on the fixture's listener."
 }

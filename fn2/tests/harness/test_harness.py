@@ -3,6 +3,7 @@ import argparse
 import inspect
 import json
 import os
+import re
 from pathlib import Path
 import socketserver
 import subprocess
@@ -130,7 +131,8 @@ assert shim.node.Fn1Backend.__bases__[0] is before['Node']
                         self.assertEqual(result.errors + result.failures + result.skipped, [])
 
     def test_stub_execution_entries_are_named(self):
-        n = node.Fn2Backend(self, 'absent')
+        # start serves only the listener: a fixture key the served profile would not read is a named requirement.
+        n = node.Fn2Backend(self, 'absent', extra='max_connections = 3\n')
         for operation, args in [('start', ()), ('try_start', ()), ('invoke', ('status',)),
                                 ('operator', ('status',)), ('store', ('init',)), ('init', ()),
                                 ('post', ('id', b'payload')), ('start_store_owner', ()),
@@ -138,6 +140,18 @@ assert shim.node.Fn1Backend.__bases__[0] is before['Node']
             with self.subTest(operation=operation), self.assertRaisesRegex(
                     node.fn1.NodeDead, '^' + run_natives.PREFIX):
                 getattr(n, operation)(*args)
+
+    def test_served_start_names_what_the_served_node_does_not_do(self):
+        for kwargs, start, word in [(dict(extra='max_connections = 3\n'), {}, 'listener.max_connections'),
+                                    ({}, dict(verb=('run', '--once')), 'operator CONFIG run --once'),
+                                    ({}, dict(env={'FN_NATIVE_CONTROL_FAULT': 'cut'}), 'process-death cut'),
+                                    (dict(listener=False), {}, 'without a plain listener')]:
+            with self.subTest(word=word), self.assertRaisesRegex(node.fn1.NodeDead, re.escape(word)):
+                node.Fn2Backend(self, 'absent', **kwargs).start(**start)
+        with self.assertRaisesRegex(node.fn1.NodeDead, 'carries no groups until D6'):
+            node.Fn2Backend(self, 'absent').init('fn.test')
+        with self.assertRaisesRegex(node.fn1.NodeDead, 'a started served node'):
+            node.Fn2Backend(self, 'absent').session()
 
     def test_images_do_not_skip_fn2(self):
         shim.install('fn2')
@@ -362,7 +376,7 @@ from tests.native_harness import Node, class_case
 class Cases(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        Node(class_case(cls), "absent").start()
+        Node(class_case(cls), "absent", extra="max_connections = 3\\n").start()
     def test_one(self): pass
     def test_two(self): pass
 '''
@@ -379,7 +393,7 @@ class Cases(unittest.TestCase):
     def test_stub_observation_names_words_and_unknown_process(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
                 os.environ, FN2_OBSERVE_DIR=directory, FN2_TEST_ID='stub.control'):
-            n = node.Fn2Backend(self, 'absent')
+            n = node.Fn2Backend(self, 'absent', tls=None, extra='max_connections = 3\n')
             with self.assertRaises(node.fn1.NodeDead):
                 n.invoke('operator', 'a path with spaces', 'status')
             with self.assertRaises(node.fn1.NodeDead):
@@ -389,7 +403,8 @@ class Cases(unittest.TestCase):
             self.assertEqual([r['phase'] for r in records], ['invoke', 'info', 'invoke', 'info'])
             self.assertEqual(records[0]['words'], ['operator', 'a path with spaces', 'status'])
             self.assertIsNone(records[2]['pid'])
-            self.assertEqual(records[2]['argv'], ['absent', '--fn', 'operator', str(n.config), 'run'])
+            self.assertEqual(records[2]['argv'], ['tools/acl2', '<', str(node.NATIVE_SERVE)])
+            self.assertIn('listener.max_connections', records[3]['exception'])
 
     def test_raw_sbcl_guard(self):
         with self.assertRaisesRegex(RuntimeError, 'raw SBCL execution is forbidden'):

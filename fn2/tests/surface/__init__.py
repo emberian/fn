@@ -258,6 +258,18 @@ class SurfaceCase(unittest.TestCase):
         self.evidence['native'] = data
         self.assertNotEqual(data['status'], 'timeout', f'{name}: timeout')
         self.assertTrue(data['tests'], f'{name}: collected no outcomes')
+        if backend() == 'fn2':
+            # Against fn2 a native outcome that names a host contract the served node does not provide yet (the
+            # Node adapter's requirement, or the placeholder host's refusal of a verb) is owed, never a pass and
+            # never a red; any other outcome is judged as on fn1.
+            owed = [e for e in data['tests'] if e.get('classification') in ('named-node-dead', 'named-placeholder')]
+            self.evidence['owed_host'] = [dict(test=e['test'], requirement=(e['exception'] or '')[:300]) for e in owed]
+            data = dict(data, tests=[e for e in data['tests'] if e not in owed])
+            if owed and all(e['outcome'] in ('ok', 'skip') for e in data['tests']):
+                ran = sum(e['outcome'] == 'ok' for e in data['tests'])
+                needs = dict.fromkeys(re.sub(r'^.*?not yet serving: ', '', (e['exception'] or '').splitlines()[0])[:120]
+                                      for e in owed)
+                self.skipTest(f'fn2 host contract owed ({len(owed)} tests; {ran} ran ok): ' + ' | '.join(list(needs)[:3]))
         for entry in data['tests']:
             with self.subTest(native_test=entry['test']):
                 self.assertIn(entry['outcome'], ('ok', 'skip'),
@@ -274,6 +286,11 @@ class SurfaceCase(unittest.TestCase):
         margin = min(box_budget()['fuzz_margin_seconds'], budget / 2)
         seconds = budget - margin
         directory = output(family) / 'fuzz'
+        if family == 'nntp' and backend() == 'fn2' and not os.environ.get('FN2_SURFACE_FUZZ_NNTP'):
+            # The differential's owner is fn1's fuzz Node (fixture groups, a login, posted articles); against the
+            # served fn2 profile every command past D3 would be an interim reply, not a judgement.
+            raise unittest.SkipTest('nntp F against fn2 owed: the differential needs an fn2 owner with fixture '
+                                    'groups and a login (D6, E2); set FN2_SURFACE_FUZZ_NNTP to supply one')
         if family != 'nntp' or os.environ.get('FN2_SURFACE_FUZZ_NNTP'):
             command = hook(family, 'FUZZ', self, seconds=seconds,
                            corpus=FAMILIES[family]['fuzz']['corpus'])

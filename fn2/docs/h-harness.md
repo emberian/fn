@@ -708,6 +708,54 @@ both carriers. The two carriers give the same replies, because Hypothesis is der
 judges the same command sequence. The other 32 nntp tests (E, F, H) are NOT RUN on both targets. They need
 the Node adapter's configured listener (`serves.fn2` is still empty).
 
+## H14: the whole nntp family against the served fn2 node (`--target fn2-native`)
+
+**The backend.** A5r's configured listener (f794c78f3) gives `node.Fn2Backend.start` a real node. It runs
+`tools/acl2 < fn2/tests/native-serve.lsp` in a new session, with `FN2_LISTENER_PORT` set to the fixture's port and
+`FN2_LISTENER_ADDRESS` to 127.0.0.1. It writes one PID file per start, `<node root>/fn2-node-N.pid`, holding the
+session leader. It returns at `LISTENING <port>`, which must equal the configured port. Its `Fn2Process` signals
+the process group: tools/acl2 is a wrapper, so a signal to its PID alone never reaches SBCL. fn1's `stop`
+therefore ends the node with `STOPPED <reason>` and exit 0. `session()` is fn1's Client on the port once a node
+is running.
+
+The served node reads nothing from fn.toml except the listener, so `start` names what it cannot do rather than
+ignoring it:
+- an fn.toml key outside store.path, listener.host/port and control.path;
+- a verb other than `run`;
+- a death cut;
+- an implicit-TLS listener, or no plain listener;
+- a listener host other than 127.0.0.1.
+
+`init` names its requirement: the served profile carries no groups until D6.
+
+Laptop smoke: start in 14 s, greeting `201 fn-nntp experimental reader ready`, DATE `111`, stop exit 0 with
+`STOPPED 17`.
+
+**Owed is named, never red.** Against fn2, a native test whose outcome is a named host contract counts as owed.
+That is either the Node adapter's `node dead: fn2 layer D not yet serving: <requirement>` or the placeholder
+host's refusal of a verb. Such a native is a skip that lists the requirements, with the list in its evidence
+(`owed_host`). Any other outcome is judged as it is on fn1. A unit test covers both sides (fn2-native: owed;
+fn1: the same outcome fails).
+
+**Run.** `--target fn2-native --family nntp`, laptop, dev f794c78f3 (a worktree certified at that sha; the H
+files have not changed since). Exit 3.
+
+| form | result |
+|---|---|
+| S | **PASS**: 16,730 served / 0 disagreements / 15,741 interim; WIRE 17,776 opened = 17,776 judged ok, ENVELOPE ok |
+| E | 30 tests, 0 failures. 24 natives owed host contracts (83 native tests named). One of them, nntp_post_probe, also ran 12 tests ok against the placeholder, and control_filing also has 3 opt-in skips (FN_RUN_HYBRID_E2E). 3 intended skips: open_depth, over_window, over_cursor_cost (hbox fixtures). 1 opt-in skip: reader_index (FN_RUN_NATIVE_READER_INDEX). The rfc3977 fixture: its driver hook is unset. |
+| F | named skip: the differential needs an fn2 owner with fixture groups and a login (D6, E2) |
+| H | named skip: no mapped nntp operations observed (every native that would post is owed) |
+
+The owed requirements, by kind:
+- `operator CONFIG init ...` with groups and profile limits (no groups until D6);
+- `store STORE init ...`;
+- the FNCT control socket;
+- the developer `model` / `store` verbs (served_differential, source_corpus);
+- one start of the placeholder host (nntp_post_probe).
+
+Each natives row turns into a run once its contract exists. The first is `init` with groups (D6).
+
 ## The nightly of 2026-10-30 (fn1, hbox, every family and every H7 driver)
 
 The run used tree e495a7b55, image set c14e9e8e, a 64 GiB ceiling and the opt-ins FN_RUN_SLOW=1 and

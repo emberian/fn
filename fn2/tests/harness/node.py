@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import time
 import threading
 from typing import Protocol
@@ -297,8 +298,28 @@ def unavailable(operation, requirement, **fields):
         raise
 
 
+# The served fn2 node (A5r, f794c78f3): `tools/acl2 < fn2/tests/native-serve.lsp` with the listener in the
+# environment; `LISTENING <port>` once bound; SIGTERM/SIGINT to its process group ends it with `STOPPED <reason>`
+# and exit 0; `REFUSED <word>` and exit 2 for a refused configuration. Its profile is D's served profile: the
+# fixture's fn.toml supplies only the listener, so a key the served node would not read is a named requirement.
+NATIVE_SERVE = ROOT / 'fn2' / 'tests' / 'native-serve.lsp'
+SERVED_KEYS = {('store', 'path'), ('listener', 'host'), ('listener', 'port'), ('control', 'path')}
+
+
+class Fn2Process(fn1.NativeProcess):
+    """The served node's session: tools/acl2 is a wrapper whose child is SBCL, so a signal goes to the group
+    whose leader this process is (started with start_new_session), never to the wrapper's PID alone."""
+    def signal(self, number):
+        if self.process.poll() is None:
+            try:
+                os.killpg(self.pid, number)
+            except ProcessLookupError:
+                pass
+
+
 class Fn2Backend(Fn1Backend):
-    """Scratch fixtures only; every execution entry names the missing host contract.
+    """The served fn2 node on a configured listener (start/stop/session); every other execution entry names
+    the missing host contract.
 
     Inherits fn1's exact constructor, scratch cleanup, and nonexecution helpers.
     """
@@ -313,12 +334,60 @@ class Fn2Backend(Fn1Backend):
     def launch(self, image, words, env):
         return self.argv(image, words), self.environment(env)
 
+    def _served_listener(self, options):
+        """The listener the served node takes from this fixture, or the named requirement it cannot meet."""
+        import tomllib
+        config = tomllib.loads(self.config.read_text(encoding='utf-8'))
+        unread = sorted(f'{table}.{key}' for table, values in config.items()
+                        for key in (values if isinstance(values, dict) else {'': values})
+                        if (table, key) not in SERVED_KEYS)
+        refusals = [
+            (tuple(options.get('verb', ('run',))) != ('run',),
+             'operator CONFIG ' + ' '.join(map(str, options.get('verb') or ()))),
+            (options.get('death_cut') is not None or 'FN_NATIVE_CONTROL_FAULT' in (options.get('env') or {}),
+             'a process-death cut (FN_NATIVE_CONTROL_FAULT, death_cut)'),
+            (options.get('intent', 'serve') != 'serve', f"start intent {options.get('intent')}"),
+            (self.port is None, 'a node without a plain listener'),
+            (self.tls_port is not None, 'an implicit-TLS listener (listener.tls_port)'),
+            (bool(unread), 'fn.toml keys the served profile does not read: ' + ', '.join(unread)),
+            (config.get('listener', {}).get('host', '127.0.0.1') != '127.0.0.1', 'a listener host other than 127.0.0.1'),
+        ]
+        for refused, requirement in refusals:
+            if refused:
+                unavailable('start', requirement, pid=None, exit_class=None,
+                            argv=['tools/acl2', '<', str(NATIVE_SERVE)])
+        return dict(FN2_LISTENER_PORT=str(self.port), FN2_LISTENER_ADDRESS='127.0.0.1')
+
     def start(self, **options):
-        unavailable('start', 'fn --fn operator CONFIG run; CONTROL path, LISTENING PORT / '
-                    'LISTENING-WEB PORT and an NNTP/control/HTTP greeting; '
-                    f"selectors={options.get('env', {})}, death_cut={options.get('death_cut')}",
-                    pid=None, exit_class=None, argv=list(map(str, self.argv(options.get('image'),
-                        ('operator', self.config, *options.get('verb', ('run',)))))))
+        """`tools/acl2 < fn2/tests/native-serve.lsp` on this node's port, in its own session; one PID file
+        per start (ROOT/fn2-node-N.pid, the session leader) beside the fixture; returned at `LISTENING`."""
+        return self._serve(self._served_listener(options), **options)
+
+    @observed('node.start', lambda self, listener, **kw: dict(pid=None, argv=['tools/acl2', '<', str(NATIVE_SERVE)],
+                                                              exit_class=None), process_fields)
+    def _serve(self, listener, *, ready=b'LISTENING ', timeout=180, limit=fn1.DEFAULT_LIMIT, **options):
+        env = dict(os.environ, **{k: str(v) for k, v in (options.get('env') or {}).items() if v is not None},
+                   **listener)
+        argv = [str(ROOT / 'tools' / 'acl2')]
+        with NATIVE_SERVE.open('rb') as script:
+            popen = subprocess.Popen(argv, cwd=ROOT, env=env, stdin=script, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, bufsize=0, start_new_session=True)
+        process = Fn2Process(popen, limit=limit)
+        (self.root / f'fn2-node-{len(self.processes)}.pid').write_text(f'{popen.pid}\n')
+        fn1._register(argv + ['native-serve'], process)
+        self.processes.append(process)
+        self.process = process
+        try:
+            line = process.announcement(ready, timeout=timeout)
+            if ready == b'LISTENING ':
+                self.case.assertEqual(line, f'LISTENING {self.port}\n'.encode(),
+                                      f'{self.name} announced {line!r}')
+        except AssertionError as error:
+            fn1.node_dead(error)
+        fn1.require_node_greeting(process, self.port, config=self.config)
+        if os.environ.get('FN2_OBSERVE_DIR'):
+            self._watch_process(process, options)
+        return process
 
     def try_start(self, **options):
         unavailable('try_start', 'operator CONFIG run; LISTENING or a named startup refusal')
@@ -334,7 +403,8 @@ class Fn2Backend(Fn1Backend):
         unavailable('store', 'store STORE ' + ' '.join(map(str, words)), words=list(map(str, words)))
 
     def init(self, *groups, **options):
-        unavailable('init', 'operator CONFIG init [--profile P] GROUP...')
+        unavailable('init', 'operator CONFIG init [--profile P] GROUP...: the served profile carries no '
+                    'groups until D6 (GROUP answers the interim 503)')
 
     def post(self, *args, **options):
         unavailable('post', 'operator CONFIG post --message-id ID --payload PATH --group GROUP')
@@ -346,7 +416,9 @@ class Fn2Backend(Fn1Backend):
         unavailable('kill_at', f'FN_NATIVE_CONTROL_FAULT={cut}; death_cut status/marker and died_at')
 
     def session(self, **options):
-        unavailable('socket', 'NNTP 200/201 greeting on listener.port / listener.tls_port')
+        if self.process is None or self.process.poll() is not None:
+            unavailable('socket', 'a started served node: NNTP 200/201 greeting on listener.port')
+        return super().session(**options)
 
 
 if __name__ == '__main__':

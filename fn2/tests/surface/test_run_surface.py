@@ -517,6 +517,7 @@ class SurfaceBudgetTests(unittest.TestCase):
     def test_supervisor_timeout_is_still_failure(self):
         with tempfile.TemporaryDirectory() as directory, \
                 mock.patch.dict(surface.RUN, {'out': directory, 'box': 'laptop'}, clear=True), \
+                mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': 'fn1'}), \
                 mock.patch.object(surface, 'driver', side_effect=subprocess.TimeoutExpired('fake', 600)):
             case = surface.SurfaceCase()
             case.setUp()
