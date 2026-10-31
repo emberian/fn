@@ -8,12 +8,13 @@
 ;                   :signature :reuse :definition) are printed as (:elided N) so the key stays
 ;                   visible to the emitter's key rule;
 ;  (:embed ...)     the closed subset (LEAN-METATHEORY section -1, item 2): for every kind
-;                   declared in the step language and defined in child form, its arms with
-;                   every expression TRANSLATED by ACL2 (the generator's own expression rewrite,
-;                   fn2-arms-expr, then translate); the declared operations they name with
-;                   their callees' signatures; and the function closure of the generated arm
-;                   functions, the callees and the row readers and setters, each function's
-;                   translated body, guard and measure. The closure is cut at the natives the
+;                   declared in the step language, its arms with every expression AS
+;                   DECLARED (the Lean side reads them itself, Fn2.Arms.readExpr, independently
+;                   of the generator's rewrite fn2-arms-expr: LEAN-METATHEORY section 12,
+;                   decision 7), each phase's value and every constant the arms name; the
+;                   declared operations they name with their callees' signatures; and the
+;                   function closure of the generated arm functions, the callees and the row
+;                   readers and setters, each function's translated body, guard and measure. The closure is cut at the natives the
 ;                   Lean side implements (META-NATIVES); a function with no body that is not
 ;                   native is listed under :refused by name.
 (in-package "ACL2")
@@ -101,13 +102,11 @@
 
 ; ---------------------------------------------------------------- step language
 
-(defun meta-expr (e env)
-  (multiple-value-bind (err x) (fn2-arms-expr e env nil 100000)
-    (if err (meta-err "fn2-arms-expr refused ~s" e) (list :term (meta-translate x)))))
+; An expression and a phase form are printed as the declaration writes them; the generator has
+; already checked them (a kind certifies only if fn2-arms-expr accepts every one).
+(defun meta-expr (e env) (declare (ignore env)) (list :raw e))
 
-(defun meta-next (n env)
-  (multiple-value-bind (err x) (fn2-arms-next-form n env nil 100000)
-    (if err (meta-err "next form refused ~s" n) (list :term (meta-translate x)))))
+(defun meta-next (n env) (declare (ignore env)) (list :raw n))
 
 (defun meta-kw (key plist) (let ((e (member key plist))) (and e (cadr e))))
 
@@ -141,7 +140,7 @@
                  (list :accept-given (and (member :accept opts) t) :accept (meta-kw :accept opts)
                        :effects (meta-kw :effects opts)
                        :when (let ((c (meta-kw :when opts))) (and c (meta-expr c env)))
-                       :else (loop for e in (meta-kw :else opts) collect (list :term (meta-translate e)))
+                       :else (loop for e in (meta-kw :else opts) collect (list :raw e))
                        :case (loop for c in cases
                                    collect (cons (car c) (meta-steps (cdr c) env)))))))
       (:issue
@@ -213,6 +212,10 @@
           :form (if children :children :core)
           :tuple (if children (fn2-arms-kind-tuple kind *meta-w*) '(fn2-core))
           :states (fn2-machine-property kind :states *meta-w*)
+          :phases (loop for p in (fn2-machine-property kind :states *meta-w*)
+                        collect (let ((v (getpropc (fn2-arms-phase-constant kind p) 'const nil *meta-w*)))
+                                  (if (and (consp v) (integerp (cadr v))) (list p (cadr v))
+                                    (meta-err "~s's phase ~s has no constant" kind p))))
           :columns (fn2-machine-property kind :columns *meta-w*)
           :table (fn2-machine-property kind :table *meta-w*)
           :stops (fn2-machine-declared kind :stops *meta-w*)
@@ -303,6 +306,17 @@
             (push (cons s (cadr v)) out)))))
     (sort out #'string< :key (lambda (p) (symbol-name (car p))))))
 
+(defun meta-arm-constants (x acc)
+  ; every *C* an arm names that the world defines as an integer constant
+  (cond ((consp x) (meta-arm-constants (cdr x) (meta-arm-constants (car x) acc)))
+        ((and (symbolp x) (not (keywordp x)) (eq (symbol-package x) (find-package "ACL2")))
+         (let ((n (symbol-name x)) (v (getpropc x 'const nil *meta-w*)))
+           (if (and (> (length n) 2) (char= (char n 0) #\*) (char= (char n (1- (length n))) #\*)
+                    (consp v) (integerp (cadr v)) (not (assoc x acc)))
+               (cons (cons x (cadr v)) acc)
+             acc)))
+        (t acc)))
+
 (defun meta-embed ()
   (let* ((stepped (loop for (k) in (reverse (table-alist 'fn2-machine-kinds *meta-w*))
                         when (and (fn2-machine-declared k :arms *meta-w*)
@@ -345,7 +359,15 @@
             (list :operations op-rows)
             (list :natives *meta-natives*)
             (list :refused refused)
-            (list :constants (meta-constants '("*FN2-STOP-REASON-" "*FN2-WAIT-" "*FN2-WORK-" "*FN2-NONE*")))
+            (list :constants
+                  (let ((cs (meta-constants '("*FN2-STOP-REASON-" "*FN2-WAIT-" "*FN2-WORK-" "*FN2-NONE*"))))
+                    (dolist (k stepped)
+                      (dolist (c (meta-arm-constants (list (fn2-machine-declared k :subarms *meta-w*)
+                                                           (fn2-machine-declared k :arms *meta-w*)
+                                                           (fn2-machine-declared k :observe-arms *meta-w*))
+                                                     nil))
+                        (unless (assoc (car c) cs) (push c cs))))
+                    (sort cs #'string< :key (lambda (p) (symbol-name (car p))))))
             (list :functions (mapcar #'meta-fn order))
             ;; ACL2's own definitions of the natives that have one: the Lean side states that its
             ;; native agrees with each (Fn2.ACL2.Faithful)
