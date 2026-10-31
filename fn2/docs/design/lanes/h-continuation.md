@@ -52,6 +52,10 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   group (then archive True, model groups set to it); Fn2Backend.init with groups.
 - Regenerating the interim table: certify books/conn-answer, then `tools/acl2 < fn2/tests/conn-interim-export.lsp
   | python3 fn2/tests/conn-interim-json.py`.
+- H21 323b3705c: sim_nntp.cursor_form routes LIST (no keyword / ACTIVE / COUNTS / NEWSGROUPS, no wildmat) to the
+  model when D3_POLICY archive is True (inert now). NEXT TRIGGER: D's commit giving the session profile read rows
+  and a seeded group. Then: set D3_POLICY archive True and the S model's groups (sim_nntp NntpModel({...})) to the
+  seeded group (name, and its articles if seeded), run both targets by hand, READY the line.
 - STANDING BY on events. A READY that flips verbs triggers a confirm of the nntp family on both carriers
   (one run of the nightly script by hand, detached: `nohup env -i HOME=$HOME USER=$USER /bin/sh
   fn2/tests/harness/laptop_nightly.sh &`). A certify after a foundation move takes about 50 min under load.
