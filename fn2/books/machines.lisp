@@ -282,7 +282,7 @@
                [:copy (F ...)] [:clear (F ...)]) with P a phase, a :free phase, ROWKIND and each KIND ~
                D0 kinds, the range fields its own, and next-free and stopped fields." name taken))
         (t nil)))
-(defun fn2-machine-events (name states fields budget continuations observes capacity initial holds admission taken)
+(defun fn2-machine-events (name states fields budget continuations observes capacity initial holds admission taken arms)
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
@@ -296,7 +296,7 @@
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
                                      :observe (id event outcome reason count aux0 aux1 ,@(fn2-machine-row-vars cols) fn2-core))
-                :cases ,(fn2-machine-case-labels name states observes))
+                :cases ,(fn2-machine-case-labels name states observes) ,@arms)
       (append (list (list :declaration (list :columns name)))
               (fn2-machine-requirements (append continuations observes)))
       `((defcolumns ,name ,cols :put-policy ,states)
@@ -324,12 +324,34 @@
 
        ,@(fn2-machine-prepare-events name cols initial)))))
 
-(defmacro defmachine (name &key states fields budget continuations observes (capacity '1) initial holds admission taken)
+; The new form (MACHINE-FORM 6.2): :arms ((PHASE [:on-refusal (STEP ...)] STEP ...) ...)
+; with :observes ((EVENT [:from (P ...)] STEP ...) ...) and :subarms ((NAME STEP ...) ...);
+; the registry holds a skeleton (TAG FN) per arm until defmachine-arms derives
+; the contracts. :phases names :states.
+(defun fn2-machine-arm-skeleton (name entries infix)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (cons (list (caar entries) (fn2-columns-sym name (concatenate 'string infix (symbol-name (caar entries)))))
+          (fn2-machine-arm-skeleton name (cdr entries) infix))))
+(defun fn2-machine-arm-entriesp (entries)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) (null entries)
+    (and (consp (car entries)) (keywordp (caar entries)) (true-listp (car entries))
+         (fn2-machine-arm-entriesp (cdr entries)))))
+(defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
+                           admission taken arms subarms)
+  (let* ((states (or states phases))
+         (newp (and arms t))
+         (observe-arms (and newp observes))
+         (continuations (if newp (fn2-machine-arm-skeleton name arms "-RUN-") continuations))
+         (observes (if newp (fn2-machine-arm-skeleton name observes "-ON-") observes)))
   (if (and (consp states)
            (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
            (<= (len states) 256) (fn2-columns-declarationsp fields)
            (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*)
                                       (strip-cars fields)))
+           (or (not newp) (and (fn2-machine-arm-entriesp arms) (fn2-machine-arm-entriesp observe-arms)
+                               (alistp subarms) (symbol-listp (strip-cars subarms))))
            (fn2-machine-continuationsp continuations nil)
            (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
            (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
@@ -342,23 +364,31 @@
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
       (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
-             (problem (or (fn2-arm-contracts-problem name continuations states own nil)
-                          (fn2-arm-contracts-problem name observes states own t)
+             (problem (or (and (not newp) (fn2-arm-contracts-problem name continuations states own nil))
+                          (and (not newp) (fn2-arm-contracts-problem name observes states own t))
                           (fn2-arm-holds-problem-syntax name holds states)
                           (fn2-machine-admission-problem name admission states own)
                           (fn2-machine-taken-problem name taken admission states own))))
         (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
           (fn2-machine-events name states fields budget continuations observes capacity initial holds
-                              admission taken)))
-    (er hard 'defmachine "Invalid machine declaration ~x0." name)))
+                              admission taken (and newp (list :arms arms :subarms subarms :observe-arms observe-arms)))))
+    (er hard 'defmachine "Invalid machine declaration ~x0." name))))
 
 ; Table order is declaration order, independent of TABLE-ALIST's newest first.
 (defun fn2-machine-names (world)
   (declare (xargs :verify-guards nil))
   (strip-cars (fn2-decl-rows :machine world)))
-(defun fn2-machine-property (name key world)
+(defun fn2-machine-declared (name key world)
   (declare (xargs :verify-guards nil))
   (cadr (member-eq key (fn2-decl-row (list :machine name) world))))
+; A kind declared with :arms has its arm contracts derived by defmachine-arms
+; (machine-arms.lisp) in its callbacks section; they are read from there.
+(defun fn2-machine-property (name key world)
+  (declare (xargs :verify-guards nil))
+  (let ((derived (and (member-eq key '(:continuations :observes))
+                      (cdr (assoc-eq name (table-alist 'fn2-machine-arm-contracts world))))))
+    (if derived (cadr (member-eq key derived))
+      (fn2-machine-declared name key world))))
 (defun fn2-machine-arm-call (kind fn fixed bound world)
   ; FN's call with its row fields: those not already BOUND are read here.
   (declare (xargs :verify-guards nil))
@@ -1661,7 +1691,7 @@
          :doc "Whether the listener's target kind carries a principal booking (its admission copies account-ref).")
        ; The listener sees one transfer of its reserved row; each kind's own
        ; operation carries the exact effects, checked against its :holds below.
-       (defcost fn2-machine-admit :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables)
+       (defcost fn2-machine-admit :answers t :tables (fn2-core-machines fn2-core-pool fn2-core-machine-tables)
          :effects ((:transfer (:connection-row) :to :admitted))
          :doc "Admit into the listener's target kind (dispatch on the admitted-kind ordinal).")
        (make-event

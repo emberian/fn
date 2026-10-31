@@ -17,19 +17,19 @@
 (defcost fn2-core-observed-peer :doc "The harvested observation's peer record.")
 
 ; Issues: one descriptor and one transient op reservation (D0's :operation).
-(defcost fn2-issue-accept :descriptors 1 :tables (fn2-core-ops) :effects ((:acquire (:operation)))
+(defcost fn2-issue-accept :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Accept: one outbox descriptor.")
-(defcost fn2-issue-close :descriptors 1 :tables (fn2-core-ops) :effects ((:acquire (:operation)))
+(defcost fn2-issue-close :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Close: one outbox descriptor.")
-(defcost fn2-issue-receive :descriptors 1 :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+(defcost fn2-issue-receive :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Receive into the row's RX range.")
-(defcost fn2-issue-send :descriptors 1 :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+(defcost fn2-issue-send :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Send by loan from the row's range.")
-(defcost fn2-issue-write :descriptors 1 :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+(defcost fn2-issue-write :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Write from the scribe's window.")
-(defcost fn2-issue-fence :descriptors 1 :tables (fn2-core-ops) :effects ((:acquire (:operation)))
+(defcost fn2-issue-fence :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Fence the scribe's writes.")
-(defcost fn2-issue-read :descriptors 1 :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+(defcost fn2-issue-read :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Read into the scribe's window.")
 
 ; Generic row helpers: they write the acting row's wait links and status.
@@ -61,12 +61,12 @@
 
 ; Pool range operations: the resource kind is the caller's (:rx-range for a
 ; connection, :storage-window for the scribe), given in its :uses entry.
-(defcost fn2-core-reserve :tables (fn2-core-pool) :effects :per-use :doc "Reserve a pool range.")
-(defcost fn2-core-release :tables (fn2-core-pool) :effects :per-use :doc "Release a pool range.")
-(defcost fn2-core-reset :tables (fn2-core-pool) :doc "Reset a held range to empty.")
-(defcost fn2-scribe-fill :bytes *fn2-scribe-chunk-bytes* :tables (fn2-core-pool)
+(defcost fn2-core-reserve :answers t :tables (fn2-core-pool) :effects :per-use :doc "Reserve a pool range.")
+(defcost fn2-core-release :answers t :tables (fn2-core-pool) :effects :per-use :doc "Release a pool range.")
+(defcost fn2-core-reset :answers t :tables (fn2-core-pool) :doc "Reset a held range to empty.")
+(defcost fn2-scribe-fill :answers t :bytes *fn2-scribe-chunk-bytes* :tables (fn2-core-pool)
   :doc "Write one chunk of the probe sector.")
-(defcost fn2-scribe-patch-loop :bytes *fn2-format-word-bytes* :tables (fn2-core-pool)
+(defcost fn2-scribe-patch-loop :answers t :bytes *fn2-format-word-bytes* :tables (fn2-core-pool)
   :doc "Patch the sector's checksum word.")
 (defcost fn2-scribe-verify :bytes *fn2-scribe-chunk-bytes* :doc "Verify one chunk read back.")
 

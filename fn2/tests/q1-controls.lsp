@@ -80,7 +80,7 @@
                 ; fn2-echo: a receive starts its reply at offset 1, not 0 (its first octet is lost).
                 (run-kind 'fn2-echo (lambda () (and (fn2-q1c-echo-ok '(72 69 76 76 79 13 10) nil)
                                                     (fn2-q1c-echo-random-ok 3 101)))
-                  'fn2-echo-observe-receive
+                  'fn2-echo-on-receive-result
                   (lambda (orig)
                     (lambda (id event outcome reason count aux0 aux1 core)
                       (multiple-value-bind (wake core) (funcall orig id event outcome reason count aux0 aux1 core)
@@ -90,16 +90,16 @@
                           (setf core (fn2-machine-write-off id 1 core)))
                         (values wake core)))))
                 ; fn2-listener: a refused booking records the principal as booked.
-                (run-kind 'fn2-listener (lambda () (fn2-q1c-ledger-ok 1 *fn2-q1c-ledger-clients*)) 'fn2-listener-accept
+                (run-kind 'fn2-listener (lambda () (fn2-q1c-ledger-ok 1 *fn2-q1c-ledger-clients*)) 'fn2-listener-run-accepting
                   (lambda (orig)
-                    (lambda (id budget gen principal pending target core)
-                      (multiple-value-bind (b s d r core) (funcall orig id budget gen principal pending target core)
+                    (lambda (id budget core)
+                      (multiple-value-bind (b s d r core) (funcall orig id budget core)
                         (when (and (active core)
                                    (equal (fn2-machine-phase id core) *fn2-listener-state-admitting*)
                                    (equal (fn2-machine-account-ref id core) *fn2-none*)
-                                   (fn2-machine-admission-books-p target))
+                                   (fn2-machine-admission-books-p (fn2-machine-target id core)))
                           (note core)
-                          (setf core (fn2-machine-write-account-ref id principal core)))
+                          (setf core (fn2-machine-write-account-ref id (fn2-machine-principal-slot id core) core)))
                         (values b s d r core)))))
                 ; fn2-upload: the hasher is fed one octet short at the start of each chunk (the
                 ; octet is counted as hashed, so the upload goes on to its verdict as before).

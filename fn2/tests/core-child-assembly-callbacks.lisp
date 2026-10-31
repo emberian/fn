@@ -1,6 +1,8 @@
 ; Admit every machine's callbacks before generating final dispatch.
 (in-package "ACL2")
 (include-book "core-child-assembly-access")
+; the machine form's generator, as the served callbacks section includes it
+(include-book "../books/machine-arms")
 
 ; Each admitted kind's admission and reclamation operations (D 4.5).
 (fn2-machine-admission-events)

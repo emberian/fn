@@ -25,9 +25,9 @@
 
 (defcost fn2-account-book-admitted :tables (fn2-core-accounts)
   :doc "Book one connection row on a principal unless the admission was into the partition's reserve row (an attribution of a resource the admission acquired: no D0 effect).")
-(defcost fn2-account-book :tables (fn2-core-accounts)
+(defcost fn2-account-book :answers t :tables (fn2-core-accounts)
   :doc "Book one :connection-row on a principal (the listener at Accept issue, A's S1; an attribution of the row the Accept reserves: no D0 effect).")
-(defcost fn2-account-unbook-ref :tables (fn2-core-accounts)
+(defcost fn2-account-unbook-ref :answers t :tables (fn2-core-accounts)
   :doc "Release the booking a row's account-ref names, if any; charges stay.")
 (defcost fn2-account-charge-core :tables (fn2-core-accounts)
   :doc "Add a completion count to a principal's charge dimension (monotone).")

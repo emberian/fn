@@ -250,7 +250,7 @@
 (defun fn2-arm-composition-positive ()
   (declare (xargs :verify-guards nil))
   (let ((word (list (list *fn2-echo-kind* *fn2-echo-state-command* 4096 8 1)
-                    (list *fn2-listener-kind* *fn2-listener-state-accepting* 0 24 1))))
+                    (list *fn2-listener-kind* *fn2-listener-state-accepting* 0 *fn2-work-mailbox* 1))))
     (and (fn2-arm-word-certified-p word)
          (<= (fn2-arm-word-charge word) (fn2-arm-word-bound word)))))
 (defun fn2-arm-composition-negative ()

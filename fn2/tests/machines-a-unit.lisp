@@ -423,11 +423,11 @@
     (mv id fn2-core)))
 
 (encapsulate ()
- (local (table fn2-machine-kinds 'fn2-scribe
-          (list* :observes
-                 (cons '(:write-result fn2-machine-test-accumulate)
-                       (cdr (fn2-machine-property 'fn2-scribe :observes world)))
-                 (fn2-decl-row (list :machine 'fn2-scribe) world))))
+ ; the scribe's handlers are derived (machine-arms.lisp): replace :write-result's there
+ (local (table fn2-machine-arm-contracts 'fn2-scribe
+          (list :continuations (fn2-machine-property 'fn2-scribe :continuations world)
+                :observes (cons '(:write-result fn2-machine-test-accumulate)
+                                (cdr (fn2-machine-property 'fn2-scribe :observes world))))))
  (make-event
   (value (cons 'progn (fn2-machine-observe-events 'fn2-machine-test-observe
                        (fn2-machine-names (w state)) (w state))))))
@@ -502,7 +502,7 @@
                (:observe fn2-listener :accept-result) (:observe fn2-listener :close-result)))
       (equal (getpropc 'fn2-listener-run 'formals nil (w state)) '(id budget fn2-core))
       (equal (strip-cadrs (fn2-machine-property 'fn2-listener :continuations (w state)))
-             '(fn2-listener-accept fn2-listener-admitting fn2-listener-close))))
+             '(fn2-listener-run-accepting fn2-listener-run-admitting fn2-listener-run-closing))))
 (value-triple (cw "R5a DECLARATION: named callbacks and initializers; case catalogue; code and :obligations refusals PASS~%"))
 
 (must-fail
