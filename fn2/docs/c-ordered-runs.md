@@ -289,6 +289,24 @@ that finalization cannot fail, and that the fully bound event equals the staged 
 - Coverage always names its scope: locally processed offers through cut p, or an imported history
   through its advertised cut. An absent summary never means globally complete.
 
+### A refinement found while planning the build: integer handles, no octet fold values
+The summary never stores a content identity or an origin. Each candidate (N, C) carries a
+**candidate ordinal** `h`, assigned by the summary fold at its first admission: `:admit`'s
+`:assign ((h (+ candidates 1)))` when the content is new. `selected` and `first-local-receipt`
+are ordinals. The decision reads the candidate row's `h` and the summary's `selected`, and
+compares two integers: `:none` when selected is 0, `:same` when they are equal, `:other`
+otherwise.
+
+This keeps every fold value an integer. It also makes the late-bound field unnecessary for the
+fold: `h` is known at stage. The receipt row's position takes the commit position by C-S3's
+existing `:event` source at bind. So vocabulary items 3's late-bound integers (4 below) and the
+octet fold values of item 1 drop out. What remains:
+- octet and digest fold **keys** (N, and (N, C) for candidates, which is a fold too);
+- the union insert with freshness;
+- stage-result fold args;
+- full-key exclusive resume;
+- the resized layouts.
+
 ### The engine vocabulary this needs (the compiler grows; nothing hand-written)
 1. **Typed octet and digest fold keys and values.** Logic generation, ownership checks, resolve,
    stage, bind and resume all carry them, and typed content comparison and copying with them.
