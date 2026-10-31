@@ -60,4 +60,58 @@
  :arms ((:free (:idle)) (:work (:stop :no-such-reason)))
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe3 :children))
-(value-triple (cw "MACHINE ARMS UNIT: kind stops, sub-arm refusal, row-slot, wake-row, repeat, accept-hand in child form; two wakes and an unknown stop refused PASS~%"))
+;; Two extra children (the tuple's EXTRA, MACHINE-FORM P3): an operation
+;; whose :child takes two registered core children beyond the five; the
+;; kind's arms are generated over (K fn2-machines fn2-pool fn2-ops
+;; fn2-control fn2-arms-tx fn2-arms-ty), in the registry's order.
+(defcolumns fn2-arms-tx ((value :u32)))
+(defcolumns fn2-arms-ty ((value :u32)))
+(defcorechild fn2-core-arms-tx fn2-arms-tx
+ :init (fn2-arms-tx-init 1 fn2-arms-tx) :profilep t :why "Test-only extra child of an arm tuple.")
+(defcorechild fn2-core-arms-ty fn2-arms-ty
+ :init (fn2-arms-ty-init 1 fn2-arms-ty) :profilep t :why "Test-only extra child of an arm tuple.")
+(defun fn2-arms-t-move (v fn2-arms-ty fn2-arms-tx)
+  ; formals name ty before tx: the tuple's order is the registry's, not the callee's
+  (declare (xargs :stobjs (fn2-arms-ty fn2-arms-tx)
+                  :guard (and (fn2-arms-tx-wfp fn2-arms-tx) (fn2-arms-ty-wfp fn2-arms-ty))))
+  (if (and (< 0 (fn2-arms-tx-rows fn2-arms-tx)) (< 0 (fn2-arms-ty-rows fn2-arms-ty)) (unsigned-byte-p 32 v))
+      (let* ((fn2-arms-tx (fn2-arms-tx-put 0 (value v)))
+             (fn2-arms-ty (fn2-arms-ty-put 0 (value v))))
+        (mv :ok fn2-arms-ty fn2-arms-tx))
+    (mv :refused fn2-arms-ty fn2-arms-tx)))
+(fn2-arms-tx-preserves fn2-arms-t-move (v fn2-arms-ty fn2-arms-tx)
+  :carriers ((fn2-arms-ty 1 :prefix "-TY") (fn2-arms-tx 2 :prefix "-TX")))
+;; the core face fn2-arms-t-move-core is the assembly's (no core here); child form calls the :child
+(defcost fn2-arms-t-move-core :answers t :child fn2-arms-t-move :tables (fn2-core-arms-tx fn2-core-arms-ty)
+ :doc "Test: write a value into two extra children.")
+(defmachine fn2-arms-probe4
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :stops (:probe-refused)
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-arms-t-move-core row-count)
+                :case (((:ok) (:next :done) (:charge :steps *fn2-work-small*))
+                       (:otherwise (:stop :probe-refused)))))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-probe4 :children)
+(assert-event (equal (getpropc 'fn2-arms-probe4-run-work-children 'stobjs-in nil (w state))
+                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines fn2-pool fn2-ops fn2-control
+                       fn2-arms-tx fn2-arms-ty)))
+(assert-event (fn2-assert-compliant-p '(fn2-arms-probe4-run-work-children) (w state)))
+;; An operation over a stobj no defcorechild registers is refused.
+(defcolumns fn2-arms-tz ((value :u32)))
+(defun fn2-arms-t-touch (fn2-arms-tz)
+  (declare (xargs :stobjs fn2-arms-tz :guard (fn2-arms-tz-wfp fn2-arms-tz))) (mv :ok fn2-arms-tz))
+(defcost fn2-arms-t-touch-core :answers t :child fn2-arms-t-touch :doc "Test: an unregistered child.")
+(defmachine fn2-arms-probe5
+ :phases (:free :work)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle)) (:work (:do (code) (fn2-arms-t-touch-core) :case ((:otherwise (:idle))))))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-probe5 :children))
+(value-triple (cw "MACHINE ARMS UNIT: kind stops, sub-arm refusal, row-slot, wake-row, repeat, accept-hand in child form; a tuple with two extra children in registry order; two wakes and an unknown stop and an unregistered child refused PASS~%"))

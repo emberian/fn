@@ -5,7 +5,7 @@
 ; Expansion-time functions only; defmachine-arms runs in the kind's
 ; callbacks section, where its operations and the core exist.
 (in-package "ACL2")
-(include-book "machines")
+(include-book "core-children")
 
 ; ----------------------------------------------------------------------
 ; Environments and accumulators are plists. ENV: :kind :tag :observe
@@ -52,7 +52,7 @@
 ; Child form (MACHINE-FORM 6.5 P3): an arm over its kind's table and the
 ; core children its operations take, never fn2-core. ENV's :children is then
 ; the arm's stobj tuple (K-TABLE-STOBJ fn2-machines fn2-pool fn2-ops
-; fn2-control); each declared operation is called through its defcost
+; fn2-control . EXTRA), EXTRA below; each declared operation is called through its defcost
 ; :child; the index's constants *K-KIND* and *K-ADMISSION-ORDINAL* are the
 ; arm's formals KIND and ORDINAL (the assembly's wrapper passes them).
 (defconst *fn2-arms-children* '(fn2-machines fn2-pool fn2-ops fn2-control))
@@ -67,6 +67,46 @@
   (declare (xargs :verify-guards nil))
   (cond ((atom xs) nil) ((fn2-arms-stobj-p (car xs)) (cons (car xs) (fn2-arms-stobjs-of (cdr xs))))
         (t (fn2-arms-stobjs-of (cdr xs)))))
+; The tuple's extra children: the stobjs the :child functions of every
+; operation the kind's arms, sub-arms and handlers name take, beyond K and
+; the four above, in the core's child order (fn2-core-children's registry).
+; Every extra child must be a registered core child (the wrapper reaches it
+; through the registry's field). A pre-pass over the declared entries: no
+; defmachine key.
+(defun fn2-arms-collect-children (x world fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom x)) nil
+    (let* ((row (and (symbolp (car x)) (fn2-arms-op-row (car x) world)))
+           (f (and row (fn2-decl-get :child row))))
+      (union-eq (and f (fn2-arms-stobjs-of (getpropc f 'stobjs-in nil world)))
+                (union-eq (fn2-arms-collect-children (car x) world (1- fuel))
+                          (fn2-arms-collect-children (cdr x) world (1- fuel)))))))
+(defun fn2-arms-registry-order (entries wanted)
+  ; (FIELD . STOBJ) for each registered child in WANTED, in registry order
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (let ((stobj (fn2-core-child-property (car entries) :stobj)))
+      (append (and (member-eq stobj wanted) (list (cons (caar entries) stobj)))
+              (fn2-arms-registry-order (cdr entries) wanted)))))
+(defun fn2-arms-extra-children (kind world)
+  ; (mv err ((FIELD . STOBJ) ...))
+  (declare (xargs :verify-guards nil))
+  (let* ((wanted (set-difference-eq
+                  (fn2-arms-collect-children
+                   (list (fn2-machine-declared kind :subarms world) (fn2-machine-declared kind :arms world)
+                         (fn2-machine-declared kind :observe-arms world))
+                   world 1000000)
+                  (cons kind *fn2-arms-children*)))
+         (found (fn2-arms-registry-order (fn2-core-child-registry world) wanted))
+         (missing (set-difference-eq wanted (strip-cdrs found))))
+    (if missing
+        (mv (msg "~x0's arms call operations over ~x1, which no defcorechild registers (an arm reaches a child through the core's registry)." kind missing) nil)
+      (mv nil found))))
+(defun fn2-arms-kind-tuple (kind world)
+  (declare (xargs :verify-guards nil))
+  (mv-let (err extras) (fn2-arms-extra-children kind world)
+    (declare (ignore err))
+    (cons kind (append *fn2-arms-children* (strip-cdrs extras)))))
 (defun fn2-arms-rebind (stobjs call body)
   ; bind the stobjs a call returns (and nothing else) around BODY
   (declare (xargs :verify-guards nil))
@@ -513,7 +553,7 @@
         (t (fn2-arms-case-otherwise (cdr cases)))))
 
 (defconst *fn2-arms-observe-args* '(id event outcome reason count aux0 aux1))
-; Child form: the arm over (K fn2-machines fn2-pool fn2-ops fn2-control),
+; Child form: the arm over (K fn2-machines fn2-pool fn2-ops fn2-control . EXTRA),
 ; its row read by SLOT in K's table and by ID in the directory.
 (defun fn2-arms-child-name (name)
   (declare (xargs :verify-guards nil))
@@ -592,10 +632,15 @@
                                              ,@(remove-duplicates-eq callees)))
                       :do-not '(generalize fertilize eliminate-destructors)))
             0))))
-(defun fn2-arms-child-guard (kind)
+(defun fn2-arms-extra-wfps (extras)
+  (declare (xargs :verify-guards nil))
+  (if (atom extras) nil
+    (cons `(,(fn2-columns-sym (car extras) "-WFP") ,(car extras)) (fn2-arms-extra-wfps (cdr extras)))))
+(defun fn2-arms-child-guard (kind tuple)
+  ; TUPLE is (K fn2-machines fn2-pool fn2-ops fn2-control . EXTRA)
   (declare (xargs :verify-guards nil))
   `(and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines) (fn2-pool-wfp fn2-pool)
-        (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control)
+        (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control) ,@(fn2-arms-extra-wfps (nthcdr 5 tuple))
         (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))
         (natp id) (< id (fn2-machines-rows fn2-machines))))
 (defun fn2-arms-rows-facts (fn call kind)
@@ -624,7 +669,7 @@
                (inner `(if ,ucode (mv ,@tuple) ,bcode)))
           `((defun ,helper ,formals
               (declare (xargs :stobjs ,tuple :measure (nfix n)
-                              :guard (and (natp n) ,@(cdr (fn2-arms-child-guard kind))))
+                              :guard (and (natp n) ,@(cdr (fn2-arms-child-guard kind tuple))))
                        (ignorable ,@formals))
               (if (zp n) (mv ,@tuple)
                 ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
@@ -898,7 +943,7 @@
 (defun fn2-arms-env (kind tag observe refusal subs children world)
   (declare (xargs :verify-guards nil))
   (list :kind kind :tag tag :observe observe :columns (fn2-machine-property kind :columns world)
-        :children (and children (cons kind *fn2-arms-children*))
+        :children (and children (fn2-arms-kind-tuple kind world))
         :subs subs :refusal refusal :world world :written nil :next nil :lets nil
         :budget (fn2-machine-property kind :budget world)))
 (defun fn2-arms-max-dim (charges i)
@@ -950,26 +995,31 @@
 
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))
-  (let* ((tuple (cons kind *fn2-arms-children*))
+  (let* ((tuple (fn2-arms-kind-tuple kind world))
          (formals (fn2-arms-child-formals observe tuple))
          (reads (fn2-arm-get :reads acc))
          (bindings (fn2-arms-child-bindings kind reads (fn2-machine-property kind :columns world)))
          (fn (fn2-arms-child-name name)))
     `((defun ,fn ,formals
-        (declare (xargs :stobjs ,tuple :guard ,(fn2-arms-child-guard kind))
+        (declare (xargs :stobjs ,tuple :guard ,(fn2-arms-child-guard kind tuple))
                  (ignorable ,@formals))
         ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body))
       ,@(fn2-arms-child-preserves fn formals tuple (if observe 1 4)
                                   (fn2-arms-child-callees (fn2-arm-get :uses acc) world)
                                   (append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                                           (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))))))
+(defun fn2-arms-extra-lets (extras)
+  (declare (xargs :verify-guards nil))
+  (if (atom extras) nil
+    (cons `(,(cdar extras) (,(caar extras) fn2-core)) (fn2-arms-extra-lets (cdr extras)))))
 ; The core face of a child-form arm (in the kind's callbacks section): one
 ; stobj-let of the children, the row's slot read from the directory.
 (defun fn2-arms-wrapper-events (name kind observe contract world)
   (declare (xargs :verify-guards nil))
   (let* ((args (if observe *fn2-arms-observe-args* '(id budget)))
          (pos (if observe 1 4))
-         (tuple (cons kind *fn2-arms-children*))
+         (extras (mv-let (err extras) (fn2-arms-extra-children kind world) (declare (ignore err)) extras))
+         (tuple (fn2-arms-kind-tuple kind world))
          (results (if observe '(wake) '(bytes steps descriptors runnable)))
          (ordinal (fn2-columns-pre "*" (fn2-columns-sym kind "-ADMISSION-ORDINAL*")))
          (refused (if observe
@@ -988,7 +1038,8 @@
                            (fn2-machines (fn2-core-machines fn2-core))
                            (fn2-pool (fn2-core-pool fn2-core))
                            (fn2-ops (fn2-core-ops fn2-core))
-                           (fn2-control (fn2-core-control fn2-core)))
+                           (fn2-control (fn2-core-control fn2-core))
+                           ,@(fn2-arms-extra-lets extras))
                  (,@results ,@tuple)
                  (let ((slot (if (and (natp id) (< id (fn2-machines-rows fn2-machines)))
                                  (fn2-machines-slot id fn2-machines) *fn2-none*)))
@@ -1078,6 +1129,9 @@
 (defun fn2-arms-events (kind mode world)
   ; (mv err form)
   (declare (xargs :verify-guards nil))
+  (mv-let (err extras) (if (eq mode :core) (mv nil nil) (fn2-arms-extra-children kind world))
+  (declare (ignore extras))
+  (if err (mv err nil)
   (mv-let (err subs sub-events)
     (fn2-arms-subs kind (fn2-machine-declared kind :subarms world) nil nil mode world)
     (if err (mv err nil)
@@ -1093,7 +1147,7 @@
                                                 '(:continuations ,conts :observes ,obs :unreached ,unreached))
                                          ,@(and unreached
                                                 `((value-triple (cw "~x0: no arm reaches the phases ~x1.~%" ',kind ',unreached)))))))
-                              ,@sub-events ,@run-events ,@obs-events)))))))))
+                              ,@sub-events ,@run-events ,@obs-events)))))))))))
 ; The kind's arms, generated in its callbacks section (before defmachine-run).
 ; (defmachine-arms K): arms over the core; (defmachine-arms K :children) in
 ; K's own book, then (defmachine-arms K :wrappers) in its callbacks section.
