@@ -418,8 +418,10 @@
 (assert-event (equal (fn2-check-reclaim
                        '((:reserve 0 (1 0)) (:edge-add 0 :borrow 0 nil)))
                      '(1 (:edge-add 0 :borrow 0 nil) :edge-holder)))
-; Raw driver expects these deliberate internal-corruption witnesses to signal
-; a hard error. Returning pressure/:ok would absorb an allocator correctness bug.
+; Deliberate internal-corruption witnesses. A broken free or pending link is
+; named (:links, asserted below; the commit kind stops the core with
+; :alloc-links); the raw driver expects accounting underflow to signal a hard
+; error. Returning pressure/:ok would absorb an allocator correctness bug.
 (defun fn2-alloc-test-corruption (kind)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-extents
@@ -438,6 +440,8 @@
                 (declare (ignore reason i epoch counter))
                 (mv code fn2-extents))))))
       code)))
+(assert-event (equal (fn2-alloc-test-corruption :free-link) :links))
+(assert-event (equal (fn2-alloc-test-corruption :pending-link) :links))
 (defun fn2-alloc-test-edge-corruption (kind)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-extents

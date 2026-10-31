@@ -11,7 +11,8 @@
       :harvest-output :harvest-finish :wake-bounds :wake-state :machine-write
       :machine-observation :machine-phase :pool-release :signal
       :clock-exhausted :work-overflow :issue-wake :machine-contract :account :engine-genesis
-      :recovery-bounds :recovery-release :sealer :commit-publish :commit-drop :commit-settle :commit-follower :sealer-full :sealer-cache))))))))
+      :recovery-bounds :recovery-release :sealer :commit-publish :commit-drop :commit-settle :commit-follower :sealer-full :sealer-cache
+      :commit-resource :commit-pool :commit-root :commit-format :commit-io :commit-edge :alloc-links))))))))
 (defcolumns fn2-control nil
   :init-name fn2-control-columns-init
   :extra-fields

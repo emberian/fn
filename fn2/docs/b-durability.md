@@ -1468,6 +1468,26 @@ an unresolved one. Recovery resolves it by classification and replay, never by w
 `w = fn2-b-upload-windows` (landed in B5-4a). Every profile therefore has the sealer's checker row.
 A profile that names fewer slots is refused.
 
+**D's amendments (accepted 2026-10-31).**
+- (1) D's `:ready` runs in this order: resolve, stage, `fn2-successor-out`, write the member records into
+  D's workspace, C-S3a fill-octets after the last stage, `fn2-commit-admit-txn`, then bind with the
+  returned event. On `:exhausted` D parks on `:batch-membership` while staged, and the re-stage on
+  wake rewrites both the records and the fill. B never caches a workspace's records across a park:
+  admission decodes the workspace when it is called.
+- (2) Ruling 6: `:article-acceptance` is optional. A `:txn` member made only of identity records
+  plus `:operation-outcome`, with no acceptance and no `:membership`, is admissible: it is the
+  evidence-only commit. D's reply reports the article refusal and the evidence commit's outcome (S5)
+  separately.
+- (3) Rulings 3 and 7, and C's §4a (219184b5d): D's `:identity-fact` is replaced by one B kind,
+  `:identity`, whose body is a §4a record. The body leads with C's record tag (schema and version),
+  and B decodes it with C's generated decoder for that tag. B does not freeze a shape of its own.
+- (4) Ruling 1: the `:article-acceptance` record names two digests distinctly. The content digest
+  is the identity subject's (D25's authored source). The source digest is the stored projection's.
+- The `defcost` of `fn2-commit-admit-txn` declares `:answers (:ok :exhausted :admission)`, and that
+  of `fn2-commit-take` declares `:answers (:ok :pending :none)`. The arm language routes every answer
+  code, so D's `:ready` cannot absorb one. D adds `:batch-membership` to `resources.lisp` at the
+  txn's port.
+
 **Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-member-unit.lisp`).**
 - `fn2-commit-txn-outcome-evidence`: every settled `:txn` outcome matches its batch's evidence:
   `:accepted` implies published, `:uncertain` implies the journal write was reached, `:refused`

@@ -7,13 +7,13 @@
 (handler-case
     (progn
       (let ((*hard-error-is-error* t) (*hard-error-returns-nilp* nil))
-        (dolist (kind '(:free-link :pending-link :counter))
+        (dolist (kind '(:counter))
           (assert (handler-case (progn (fn2-alloc-test-corruption kind) nil)
                     (cl:error () t))))
         (dolist (kind '(:saturated :zero))
           (assert (handler-case (progn (fn2-alloc-test-edge-corruption kind) nil)
                     (cl:error () t)))))
-      (format t "ALLOC ASSERTIONS: malformed links, accounting underflow and inconsistent edge counts fail loudly PASS~%")
+      (format t "ALLOC ASSERTIONS: accounting underflow and inconsistent edge counts fail loudly PASS~%")
       (assert (equal (fn2-alloc-random-all) t))
       (sb-ext:exit :code 0))
   (cl:error (condition)

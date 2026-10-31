@@ -244,7 +244,9 @@
              (mv :ok fn2-extents)))))
 (defun fn2-alloc-reserve (fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
-  (assert$? (and (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents)
+  ; A broken free-list link is named (:links), never absorbed; the commit
+  ; kind's caller stops the core with :alloc-links.
+  (if (and (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents)
                                       *fn2-extent-state-free* fn2-extents)
        (or (equal (fn2-alloc-free-head fn2-extents) *fn2-alloc-none*)
            (fn2-alloc-link-statep
@@ -263,7 +265,8 @@
                     (fn2-extents (fn2-extents-set-reservation i 1 fn2-extents))
                     (fn2-extents (update-fn2-alloc-next-counter (+ 1 counter) fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-free* *fn2-alloc-reason-code-live* fn2-extents)))
-               (mv :ok nil i epoch counter fn2-extents)))))))
+               (mv :ok nil i epoch counter fn2-extents)))))
+    (mv :links nil 0 0 0 fn2-extents)))
 ; B5 recovery adopts a replayed allocation identity in arena order. The extent
 ; must be the free head (genesis FIFO order: B6's checkpoint map replaces this
 ; with the recorded map); the identity is the recorded one, never a fresh
@@ -369,7 +372,7 @@
                (mv :ok fn2-extents))))))
 (defun fn2-alloc-retire (i epoch counter commit fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 commit))))
-  (assert$? (fn2-alloc-link-statep (fn2-alloc-retired-tail fn2-extents)
+  (if (fn2-alloc-link-statep (fn2-alloc-retired-tail fn2-extents)
                                     *fn2-extent-state-retire-pending* fn2-extents)
     (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
     (cond ((not (eq code :ok)) (mv code fn2-extents))
@@ -390,7 +393,8 @@
                       (update-fn2-alloc-pending i fn2-extents) fn2-extents))
                     (fn2-extents (update-fn2-alloc-last-retirement commit fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-allocated* r fn2-extents)))
-               (mv :ok fn2-extents)))))))
+               (mv :ok fn2-extents)))))
+    (mv :links fn2-extents)))
 (defun fn2-alloc-releasablep (i fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
   (and (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)
@@ -399,17 +403,13 @@
  ; The complete FIFO retains covered rows until release; pending is its suffix.
 (defun fn2-alloc-unlink (i fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
-  (assert$? (and (fn2-alloc-link-statep (fn2-extents-prev-retired i fn2-extents)
-                                      *fn2-extent-state-retire-pending* fn2-extents)
-       (fn2-alloc-link-statep (fn2-extents-next-retired i fn2-extents)
-                             *fn2-extent-state-retire-pending* fn2-extents))
-    (let* ((prev (fn2-extents-prev-retired i fn2-extents)) (next (fn2-extents-next-retired i fn2-extents))
+  (let* ((prev (fn2-extents-prev-retired i fn2-extents)) (next (fn2-extents-next-retired i fn2-extents))
          (fn2-extents (if (fn2-alloc-slotp prev fn2-extents) (fn2-extents-set-next-retired prev next fn2-extents)
                         (update-fn2-alloc-retired-head next fn2-extents)))
          (fn2-extents (if (fn2-alloc-slotp next fn2-extents) (fn2-extents-set-prev-retired next prev fn2-extents)
                         (update-fn2-alloc-retired-tail prev fn2-extents)))
          (fn2-extents (if (= i (fn2-alloc-pending fn2-extents)) (update-fn2-alloc-pending next fn2-extents) fn2-extents)))
-    fn2-extents)))
+    fn2-extents))
 (defthm fn2-alloc-unlink-wfp
   (implies (and (fn2-extents-wfp p) (fn2-alloc-slotp i p)) (fn2-extents-wfp (fn2-alloc-unlink i p))))
 (defthm fn2-alloc-unlink-type
@@ -417,9 +417,7 @@
 (defthm fn2-alloc-unlink-rows (equal (fn2-extents-rows (fn2-alloc-unlink i p)) (fn2-extents-rows p)))
 (defun fn2-alloc-free (i fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
-  (assert$? (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents)
-                                    *fn2-extent-state-free* fn2-extents)
-    (let* ((s (fn2-extents-state i fn2-extents))
+  (let* ((s (fn2-extents-state i fn2-extents))
          (r (fn2-alloc-reason i (fn2-alloc-cut fn2-extents) fn2-extents))
          (fn2-extents (if (= s *fn2-extent-state-retire-pending*) (fn2-alloc-unlink i fn2-extents) fn2-extents))
          (fn2-extents (fn2-extents-set-state i *fn2-extent-state-free* fn2-extents))
@@ -432,7 +430,17 @@
          (fn2-extents (fn2-extents-set-next-free i (fn2-alloc-free-head fn2-extents) fn2-extents))
          (fn2-extents (update-fn2-alloc-free-head i fn2-extents))
          (fn2-extents (fn2-alloc-account i s r fn2-extents)))
-    fn2-extents)))
+    fn2-extents))
+; The links fn2-alloc-free and fn2-alloc-unlink rely on; their callers name a
+; broken one (:links) instead of freeing through it.
+(defun fn2-alloc-free-linksp (i fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-slotp i fn2-extents))))
+  (and (fn2-alloc-link-statep (fn2-alloc-free-head fn2-extents) *fn2-extent-state-free* fn2-extents)
+       (or (not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*))
+           (and (fn2-alloc-link-statep (fn2-extents-prev-retired i fn2-extents)
+                                       *fn2-extent-state-retire-pending* fn2-extents)
+                (fn2-alloc-link-statep (fn2-extents-next-retired i fn2-extents)
+                                       *fn2-extent-state-retire-pending* fn2-extents)))))
 (defun fn2-alloc-release (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
   (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
@@ -440,6 +448,7 @@
           ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)) (mv :state fn2-extents))
           ((fn2-alloc-protector i nil fn2-extents) (mv (fn2-alloc-protector i nil fn2-extents) fn2-extents))
           ((not (fn2-alloc-releasablep i fn2-extents)) (mv :checkpoint-blocked fn2-extents))
+          ((not (fn2-alloc-free-linksp i fn2-extents)) (mv :links fn2-extents))
           (t (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))))))
 ; Cancellation discharges its own reservation; every other protection survives.
 (defun fn2-alloc-cancel-reservation (i epoch counter fn2-extents)
@@ -449,6 +458,7 @@
           ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-reserved*)) (mv :state fn2-extents))
           ((fn2-alloc-protector i :reservation fn2-extents)
            (mv (fn2-alloc-protector i :reservation fn2-extents) fn2-extents))
+          ((not (fn2-alloc-free-linksp i fn2-extents)) (mv :links fn2-extents))
           (t (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))))))
  ; Each call visits at most budget pending retirements, never unrelated rows.
 ; coverage is the greatest processed retirement, not a requested/staged cut.
@@ -456,7 +466,7 @@
 (defun fn2-alloc-checkpoint-drain (cut budget fn2-extents)
   (declare (xargs :stobjs fn2-extents :measure (nfix budget)
     :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 cut) (natp budget))))
-  (assert$? (fn2-alloc-link-statep (fn2-alloc-pending fn2-extents)
+  (if (fn2-alloc-link-statep (fn2-alloc-pending fn2-extents)
                                     *fn2-extent-state-retire-pending* fn2-extents)
     (let ((i (fn2-alloc-pending fn2-extents)))
     (cond ((or (not (fn2-alloc-slotp i fn2-extents)) (< cut (fn2-extents-retirement i fn2-extents)))
@@ -468,7 +478,8 @@
                     (fn2-extents (update-fn2-alloc-pending (fn2-extents-next-retired i fn2-extents) fn2-extents))
                     (fn2-extents (fn2-extents-set-covered i 1 fn2-extents))
                     (fn2-extents (fn2-alloc-account i *fn2-extent-state-retire-pending* r fn2-extents)))
-               (fn2-alloc-checkpoint-drain cut (- budget 1) fn2-extents)))))))
+               (fn2-alloc-checkpoint-drain cut (- budget 1) fn2-extents)))))
+    (mv :links fn2-extents)))
 (defun fn2-alloc-checkpoint-advance (cut budget fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (unsigned-byte-p 60 cut))))
   (cond ((or (not (integerp budget)) (< budget 1) (< 32 budget)) (mv :budget fn2-extents))
