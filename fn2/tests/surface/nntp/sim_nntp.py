@@ -31,6 +31,15 @@ D3_POLICY = {'posting': False, 'starttls': False, 'sasl_mechanisms': [], 'advert
              'clock': 'unknown', 'archive': False}
 
 
+def cursor_form(line):
+    """A form of an interim verb the query cursor serves where the profile serves reading (D6 1/n-b, the
+    table's LIST note): LIST with no keyword, or ACTIVE, COUNTS or NEWSGROUPS, without a wildmat. Without an
+    archive it answers the interim 503 like the rest of its row, so it stays interim there."""
+    words = line.split()
+    return (D3_POLICY['archive'] and words[0].upper() == b'LIST' and len(words) <= 2
+            and (len(words) == 1 or words[1].upper() in (b'ACTIVE', b'COUNTS', b'NEWSGROUPS')))
+
+
 def machine(case, target, owed, served=None):
     from hypothesis import strategies as st
     from hypothesis.stateful import RuleBasedStateMachine, rule
@@ -110,7 +119,7 @@ def machine(case, target, owed, served=None):
             if self.conn.quit:
                 return self.reconnect()
             verb = line.split()[0].decode()
-            if verb not in INTERIM['interim']:
+            if verb not in INTERIM['interim'] or cursor_form(line):
                 # The verb left the interim table (its quest landed): the model judges it as served.
                 return self.judge(line, None)
             entry = INTERIM['interim'][verb]

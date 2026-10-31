@@ -103,7 +103,10 @@ runs this sequence:
 5. It runs `--target fn2 --family nntp` and `--target fn2-native --family nntp`, whole and in parallel, at 1,000 × 50, with the rfc3977 fixture hook exported.
 6. It writes `build/h8/nightly/<date>-<sha>/` with `table.md` (every test's outcome per target), `summary.txt` and `sim/` `native/` (the surface.json of each target).
 
-The summary is one line: served / interim by quest / WIRE opened-judged-unjudged-refused /
+The summary is one line. It opens with the primary number, **M2 cuts n/12**: Mini's twelve crash cuts
+and helm's room scenario through `fn2-turn` over the real core, from E's sim-layer-e against the served machines
+(REVIEW-ARGON-RESPONSE-20261031 §9.12; `OUT/m2.json`, written by the command in `H_NIGHTLY_M2`). It reads
+0/12 until those machines serve. Then come the served surface and, per target, served / interim by quest / WIRE opened-judged-unjudged-refused /
 disagreements per target, then the NOT RUN rows grouped by owner
 (`fn2.tests.surface.nightly_nntp`). It is copied to `build/h8/nightly/LATEST.txt` for main's
 morning read. A certify red writes `CERTIFY RED` there instead. Cron does not run while the

@@ -230,6 +230,13 @@
     (let ((a (fn2-cnsk-decode-reply 'read :k28 (nth 2 (car replies)))))
       (if (and (eq (car a) :accepted) (consp (nth 2 a)) (natp (nth 2 (nth 2 a))) (< 0 (nth 2 (nth 2 a))))
           (car replies) (sle-page-reply (cdr replies))))))
+(defun sle-pages-of (replies)
+  ; Every reply that is a page with items, in order.
+  (declare (xargs :verify-guards nil))
+  (if (atom replies) nil
+    (let ((a (fn2-cnsk-decode-reply 'read :k28 (nth 2 (car replies)))))
+      (if (and (eq (car a) :accepted) (consp (nth 2 a)) (natp (nth 2 (nth 2 a))) (< 0 (nth 2 (nth 2 a))))
+          (cons (car replies) (sle-pages-of (cdr replies))) (sle-pages-of (cdr replies))))))
 (defun sle-skip-item (obs)
   ; A page whose last item is dropped (the model's :skip, on the wire).
   (declare (xargs :verify-guards nil))
@@ -260,6 +267,12 @@
   (let ((r (cadr (sle-replies obs))))
     (append (sle-replace r nil (sle-upto r obs))
             (list '(:publish 2) (list :settled (list (list *sle-mini* 1)))))))
+(defun sle-from-head (obs)
+  ; The read after the ack answered from the run head instead of the cursor's
+  ; position (the positioned seek skipped): the second page repeats the first.
+  (declare (xargs :verify-guards nil))
+  (let* ((pages (sle-pages-of (sle-replies obs))) (first (car pages)) (second (cadr pages)))
+    (sle-replace second (list :reply (nth 1 second) (nth 2 first)) obs)))
 (defun sle-leak (obs)
   ; A wait-row still held after every wait answered.
   (declare (xargs :verify-guards nil))
@@ -300,14 +313,16 @@
                 (:crash (0 1) "rebase-required" "unavailable") (:timeout (0 0))))))
 ; A wrong node, each caught for its own reason: a page that drops its last
 ; item, a read answered uncertain, a cursor read back behind its ack, a woken
-; wait that never answers (K4b), a wait-row held with no wait.
+; wait that never answers (K4b), a wait-row held with no wait, a read after an
+; ack answered from the run head instead of the cursor's position.
 (defun fn2-sle-test-controls ()
   (declare (xargs :verify-guards nil))
   (equal (list (sle-fail-word (sle-check (sle-skip-item (sle-observe *sle-pages*))))
                (sle-fail-word (sle-check (sle-uncertain-read (sle-observe *sle-pages*))))
                (sle-fail-word (sle-check (sle-rewind-ledger (sle-observe *sle-wait*))))
                (sle-fail-word (sle-check (sle-lose-wake (sle-observe *sle-wait*))))
-               (sle-fail-word (sle-check (sle-leak (sle-observe *sle-wait*)))))
-         '(:reply :reply :ledger :lost-wake :settled-holding)))
+               (sle-fail-word (sle-check (sle-leak (sle-observe *sle-wait*))))
+               (sle-fail-word (sle-check (sle-from-head (sle-observe *sle-pages*)))))
+         '(:reply :reply :ledger :lost-wake :settled-holding :reply)))
 (assert! (fn2-sle-test-oracle))
 (assert! (fn2-sle-test-controls))

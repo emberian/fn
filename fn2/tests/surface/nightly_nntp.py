@@ -3,7 +3,8 @@
     python -m fn2.tests.surface.nightly_nntp OUT SHA     (OUT holds sim/ and native/, each a run_surface --out)
 
 Writes OUT/table.md (per target: per-form status and every test's outcome) and OUT/summary.txt, one line:
-the served surface (fn2_conn_interim.json at the tree under test: the verbs served, the interim rows left by
+the primary number first (M2 spine cuts n/12, OUT/m2.json from E's sim-layer-e, 0/12 until it runs), then the
+served surface (fn2_conn_interim.json at the tree under test: the verbs served, the interim rows left by
 owner, BRICKS-20261031 section 3's burndown), then served / interim / WIRE opened-judged-unjudged /
 disagreements per target, and NOT RUN rows grouped by owner.
 """
@@ -71,6 +72,18 @@ def line(r):
     return head + ('; ' + s['detail'] if s.get('detail') else '') + ('; errors ' + '; '.join(r['errors']) if r['errors'] else '')
 
 
+def m2(out):
+    """The primary number (REVIEW-ARGON-RESPONSE-20261031 §9.12): M2 spine cuts, Mini's twelve crash cuts and
+    helm's room scenario through fn2-turn over the real core, from E's sim-layer-e against the served machines.
+    OUT/m2.json ({"passed": n, "total": 12, "source": ...}) is written by that run once it exists; until the
+    consumer machines serve, the line says 0/12 on purpose."""
+    path = Path(out) / 'm2.json'
+    if not path.exists():
+        return 'M2 cuts 0/12 (sim-layer-e over the served machines not yet run)'
+    data = json.loads(path.read_text())
+    return f"M2 cuts {data['passed']}/{data.get('total', 12)} ({data.get('source', 'sim-layer-e')})"
+
+
 def surface():
     """What serves at this tree: D's interim table, read where the S form reads it."""
     table = json.loads((Path(__file__).resolve().parent / 'fn2_conn_interim.json').read_text())
@@ -85,14 +98,14 @@ def main(out, sha):
     waits = collections.Counter()
     for r in reports:
         waits += r['waits']
-    table = [f'# H nightly {out.name} (dev {sha})', '', surface(), '']
+    table = [f'# H nightly {out.name} (dev {sha})', '', m2(out), '', surface(), '']
     for r in reports:
         table += [f"## --target {r['target']} (exit {r['exit']})", '', line(r), '',
                   '| form | test | outcome | reason |', '|---|---|---|---|']
         table += [f'| {f} | {n} | {o} | {why} |' for f, n, o, why in r['rows']]
         table += ['', 'NOT RUN by owner: ' + ', '.join(f'{w} {n}' for w, n in r['waits'].most_common()), '']
     (out / 'table.md').write_text('\n'.join(table) + '\n')
-    summary = (f'H nightly {out.name} {sha}: {surface()} | ' + ' | '.join(line(r) for r in reports) +
+    summary = (f'H nightly {out.name} {sha}: {m2(out)} | {surface()} | ' + ' | '.join(line(r) for r in reports) +
                ' | NOT RUN by owner (both targets): ' + ', '.join(f'{w} {n}' for w, n in waits.most_common()))
     (out / 'summary.txt').write_text(summary + '\n')
     print(summary)

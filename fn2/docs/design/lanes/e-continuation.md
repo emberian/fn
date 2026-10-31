@@ -18,8 +18,9 @@ cannot be written inside E without another layer's sizing or records:
    fn2-ctl's `:capacity` is `(fn2-b-ctl-rows profile)` (profile key `:control-connections`, default 2, the tiny
    profile's); `:format-slots` floor/default is 4 + w + c; `fn2-b-ctl-slot-below-floor` is proved. When pasting, take the
    field base from the slot (128 x slot), not from a separate stripe below the read stripes.
-2. **Read rows** (C, D): C's read row X is "one per query cursor slot", `(fn2-b-read-rows profile)` = :x when
-   :reading; D6 1/n's cursor kind (cursor.lisp, on dev eee0eb09e) owns [0, x) by its slot. Ask: read rows = x + cns capacity, cns row S uses x + S.
+2. **Read rows: ANSWERED by D at 12410f1b9.** `fn2-b-read-rows` = 2X + N: cursor slot S reads through rows 2S and
+   2S+1; cns request S reads through row 2X + S. N = `fn2-b-cns-rows` (profile key `:cns`, 0 until E's profile sets it).
+   When pasting: `(defun fn2-cns-capacity (profile) (fn2-b-cns-rows profile))`, and E's config child holds the base 2X.
 - **A's :local listener: LANDED at 371c48e4e.** `fn2-peer-recordp` lets a :local peer carry w0 = uid, w1 = gid (port, w2, w3
   zero); `fn2-host-listener-bind` returns `:listener-path` (absolute, no NUL, <= 103 octets, else startup refuses
   :listener-path); the native side binds the Unix socket 0600 before listen, removes it at stop, refuses an existing file,

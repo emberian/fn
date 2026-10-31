@@ -3,6 +3,7 @@
 #   Fn2/Instances/LayerA.lean       the declaration registry (emit_lean.py)
 #   Fn2/Instances/LayerAWorld.lean  the closed subset's functions, translated (emit_embed.py)
 #   Fn2/Instances/LayerAKinds.lean  the kinds in the step language, translated (emit_embed.py)
+#   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations, by rfl (emit_embed.py)
 # Run from anywhere; needs fn2/books/reference certified (fn2/tools/certify.sh books/reference.lisp).
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -19,4 +20,6 @@ fi
 src=$(git -C "$root" rev-parse --short HEAD)
 python3 -I "$here/emit_lean.py" "$here/world.sexp" "$root/fn2/meta/Fn2/Instances/LayerA.lean" "dev $src"
 python3 -I "$here/emit_embed.py" "$here/world.sexp" "$root/fn2/meta/Fn2/Instances/LayerAWorld.lean" \
-  "$root/fn2/meta/Fn2/Instances/LayerAKinds.lean" Fn2.Instances.LayerA
+  "$root/fn2/meta/Fn2/Instances/LayerAKinds.lean" Fn2.Instances.LayerA \
+  "$root/fn2/meta/Fn2/Instances/LayerAEqns1.lean" "$root/fn2/meta/Fn2/Instances/LayerAEqns2.lean" \
+  "$root/fn2/meta/Fn2/Instances/LayerAEqns3.lean" "$root/fn2/meta/Fn2/Instances/LayerAEqns4.lean"
