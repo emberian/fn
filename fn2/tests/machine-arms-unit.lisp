@@ -97,9 +97,15 @@
         (:done (:idle)))
  :observes ())
 (defmachine-arms fn2-arms-probe4 :children)
+; Per-arm tuples: :work takes the children its paths touch (the move's two,
+; the stop's control, the write's table and directory), not the pool or ops;
+; :done (idle) takes only the row's table and directory and returns none.
 (assert-event (equal (getpropc 'fn2-arms-probe4-run-work-children 'stobjs-in nil (w state))
-                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines fn2-pool fn2-ops fn2-control
-                       fn2-arms-tx fn2-arms-ty)))
+                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines fn2-control fn2-arms-tx fn2-arms-ty)))
+(assert-event (equal (getpropc 'fn2-arms-probe4-run-done-children 'stobjs-in nil (w state))
+                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines)))
+(assert-event (equal (getpropc 'fn2-arms-probe4-run-done-children 'stobjs-out nil (w state))
+                     '(nil nil nil nil)))
 (assert-event (fn2-assert-compliant-p '(fn2-arms-probe4-run-work-children) (w state)))
 ;; An operation over a stobj no defcorechild registers is refused.
 (defcolumns fn2-arms-tz ((value :u32)))
