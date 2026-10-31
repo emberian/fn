@@ -409,9 +409,58 @@
   (if (atom entries) (null entries)
     (and (consp (car entries)) (keywordp (caar entries)) (true-listp (car entries))
          (fn2-machine-arm-entriesp (cdr entries)))))
+; Phase-valued fields (G3, D F10): (F (:phase-subset (P ...))) holds one of
+; the kind's phases P, stored as the phase's code (u8). Its writers are
+; checked: an arm's :set writes a phase of the subset (or a phase field whose
+; subset is within it), its :initial is a phase of the subset (written as the
+; keyword), and with no :initial, or cleared at admission, the kind's first
+; phase must be in the subset; so (:next row-F) reaches exactly the subset.
+(defun fn2-machine-phase-fields (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let ((f (car fields)))
+      (if (and (consp f) (consp (cdr f)) (consp (cadr f)) (eq (car (cadr f)) :phase-subset))
+          (cons (cons (car f) (cadr (cadr f))) (fn2-machine-phase-fields (cdr fields)))
+        (fn2-machine-phase-fields (cdr fields))))))
+(defun fn2-machine-lower-phase-fields (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (if (and (consp (car fields)) (assoc-eq (caar fields) (fn2-machine-phase-fields (list (car fields)))))
+              (list (caar fields) :u8)
+            (car fields))
+          (fn2-machine-lower-phase-fields (cdr fields)))))
+(defun fn2-machine-phase-constant (name phase)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE") phase) "*")))
+(defun fn2-machine-lower-phase-initial (name pfields initial)
+  (declare (xargs :verify-guards nil))
+  (if (atom initial) initial
+    (cons (if (and (consp (car initial)) (assoc-eq (caar initial) pfields) (keywordp (cadar initial)))
+              (list (caar initial) (fn2-machine-phase-constant name (cadar initial)))
+            (car initial))
+          (fn2-machine-lower-phase-initial name pfields (cdr initial)))))
+(defun fn2-machine-phase-fields-problem (name pfields states initial admission taken newp)
+  (declare (xargs :verify-guards nil))
+  (if (atom pfields) nil
+    (let* ((f (caar pfields)) (sub (cdar pfields)) (init (assoc-eq f initial))
+           (cleared (or (member-eq f (fn2-arm-get :clear admission)) (member-eq f (fn2-arm-get :clear taken)))))
+      (cond ((not newp) (msg "~x0: phase field ~x1 needs the arm language (:arms)." name f))
+            ((not (and (consp sub) (fn2-columns-keyword-listp sub) (subsetp-eq sub states)))
+             (msg "~x0: field ~x1 is (:phase-subset (P ...)) over its phases ~x2." name f states))
+            ((and init (not (and (keywordp (cadr init)) (member-eq (cadr init) sub))))
+             (msg "~x0: phase field ~x1's :initial is a phase of ~x2, written as its keyword." name f sub))
+            ((and (or (not init) cleared) (not (member-eq (car states) sub)))
+             (msg "~x0: phase field ~x1 starts or is cleared at ~x2, outside ~x3; give it an :initial and never :clear it."
+                  name f (car states) sub))
+            (t (fn2-machine-phase-fields-problem name (cdr pfields) states initial admission taken newp))))))
 (defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
                            admission taken arms subarms stops)
   (let* ((states (or states phases))
+         (phase-fields (fn2-machine-phase-fields fields))
+         (phase-problem (fn2-machine-phase-fields-problem name phase-fields states initial admission taken
+                                                          (and arms t)))
+         (fields (fn2-machine-lower-phase-fields fields))
+         (initial (fn2-machine-lower-phase-initial name phase-fields initial))
          (newp (and arms t))
          (observe-arms (and newp observes))
          (continuations (if newp (fn2-machine-arm-skeleton name arms "-RUN-") continuations))
@@ -438,14 +487,16 @@
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
       (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
-             (problem (or (and (not newp) (fn2-arm-contracts-problem name continuations states own nil))
+             (problem (or phase-problem
+                          (and (not newp) (fn2-arm-contracts-problem name continuations states own nil))
                           (and (not newp) (fn2-arm-contracts-problem name observes states own t))
                           (fn2-arm-holds-problem-syntax name holds states)
                           (fn2-machine-admission-problem name admission states own)
                           (fn2-machine-taken-problem name taken admission states own))))
         (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
           (fn2-machine-events name states fields budget continuations observes capacity initial holds
-                              admission taken (and newp (list :arms arms :subarms subarms :observe-arms observe-arms :stops stops)))))
+                              admission taken (and newp (list* :arms arms :subarms subarms :observe-arms observe-arms :stops stops
+                                                    (and phase-fields (list :phase-fields phase-fields)))))))
     (er hard 'defmachine "Invalid machine declaration ~x0." name))))
 
 ; ----------------------------------------------------------------------

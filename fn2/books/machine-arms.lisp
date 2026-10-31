@@ -290,14 +290,45 @@
             (mv-let (err actuals acc) (fn2-arms-exprs actuals env acc fuel)
               (mv err (cons fn actuals)
                   (fn2-arms-add :uses (list (if effects (list op :effects effects) op))
+                   (fn2-decl-set :calls (cons (if effects (list op :effects effects) op) (fn2-arm-get :calls acc))
                     (fn2-arms-add :tables (fn2-cost-tables (fn2-decl-get :tables row) world)
                       (fn2-arms-add :writes (fn2-decl-get :own-writes row)
                         (if (and (natp (fn2-decl-get :descriptors row)) (< 0 (fn2-decl-get :descriptors row)))
                             (fn2-decl-set :issues t acc)
-                          acc)))))))))))))
+                          acc))))))))))))))
 
 ; ----------------------------------------------------------------------
-; Phase forms: P, (:if E N N), (:case V ((CODE ...) N) ... (:otherwise N)).
+; Phase-valued fields (G3, D F10; machines.lisp): F's subset, and the value a
+; :set may write into it: a phase of the subset (its code), or ROW-G of a
+; phase field G whose subset is within it.
+(defun fn2-arms-phase-subset (field env)
+  (declare (xargs :verify-guards nil))
+  (cdr (assoc-eq field (fn2-machine-declared (fn2-arm-get :kind env) :phase-fields (fn2-arm-get :world env)))))
+(defun fn2-arms-phase-values (pairs env)
+  ; (mv err values)
+  (declare (xargs :verify-guards nil))
+  (if (atom pairs) (mv nil nil)
+    (mv-let (err rest) (fn2-arms-phase-values (cdr pairs) env)
+      (let* ((f (caar pairs)) (v (cadar pairs)) (sub (fn2-arms-phase-subset f env))
+             (g (and sub (symbolp v) (fn2-arms-row-field v env))))
+        (cond ((not sub) (mv err (cons v rest)))
+              ((and (keywordp v) (member-eq v sub))
+               (mv err (cons (fn2-arms-phase-constant (fn2-arm-get :kind env) v) rest)))
+              ((and g (fn2-arms-phase-subset g env) (subsetp-eq (fn2-arms-phase-subset g env) sub))
+               (mv err (cons v rest)))
+              (t (mv (msg "~x0 writes ~x1 into the phase field ~x0: a phase of ~x2, or a phase field within it."
+                          f v sub)
+                     nil)))))))
+
+(defun fn2-arms-phase-choice (e kind sub)
+  (declare (xargs :verify-guards nil))
+  (if (atom (cdr sub)) (fn2-arms-phase-constant kind (car sub))
+    `(if (eql ,e ,(fn2-arms-phase-constant kind (car sub))) ,(fn2-arms-phase-constant kind (car sub))
+       ,(fn2-arms-phase-choice e kind (cdr sub)))))
+
+; ----------------------------------------------------------------------
+; Phase forms: P, ROW-F of a phase field F, (:if E N N), (:case V ((CODE ...)
+; N) ... (:otherwise N)).
 (mutual-recursion
  (defun fn2-arms-next-form (n env acc fuel)
   ; (mv err phase-form acc)
@@ -308,6 +339,13 @@
            (if (member-eq n states)
                (mv nil (fn2-arms-phase-constant kind n) (fn2-arms-add :nexts (list n) acc))
              (mv (msg ":next names ~x0, not a phase of ~x1." n kind) nil acc)))
+          ((and (symbolp n) (fn2-arms-row-field n env) (fn2-arms-phase-subset (fn2-arms-row-field n env) env))
+           ;; a phase field reaches exactly its subset: a choice over the
+           ;; subset's phases (a phase write is a form over phase constants),
+           ;; whose last is the remaining member, as the field's writers keep it
+           (let ((sub (fn2-arms-phase-subset (fn2-arms-row-field n env) env)))
+             (mv-let (err e acc) (fn2-arms-expr n env acc (1- fuel))
+               (mv err (fn2-arms-phase-choice e kind sub) (fn2-arms-add :nexts sub acc)))))
           ((and (true-listp n) (eq (car n) :if) (equal (len n) 4))
            (mv-let (err test acc) (fn2-arms-expr (cadr n) env acc (1- fuel))
              (mv-let (err2 a acc) (fn2-arms-next-form (caddr n) env acc (1- fuel))
@@ -372,16 +410,49 @@
     (if (assoc-eq (caar pairs) (fn2-arm-get :pending env))
         (mv (msg "~x0 is written twice before the next operation." (caar pairs)) env)
       (fn2-arms-pend (cdr pairs) (fn2-decl-set :pending (append (fn2-arm-get :pending env) (list (car pairs))) env)))))
+;; A :repeat's work (G3): the passes it made times the pass's bound, the sum
+;; of its calls' declared costs (one step for the pass itself). LOOPS is the
+;; path's ((LEFT N PB PS PD NB) ...): LEFT is bound to the passes left unmade,
+;; N is the pass limit as written and NB its static bound.
+(defun fn2-arms-loop-dim (loops i)
+  ; the loops' static bound in dimension I (0 bytes, 1 steps, 2 descriptors)
+  (declare (xargs :verify-guards nil))
+  (if (atom loops) 0
+    (+ (* (nth 5 (car loops)) (nth (+ 2 i) (car loops))) (fn2-arms-loop-dim (cdr loops) i))))
+(defun fn2-arms-loop-terms (loops i)
+  (declare (xargs :verify-guards nil))
+  (if (atom loops) nil
+    (let ((per (nth (+ 2 i) (car loops))))
+      (append (and (< 0 per) (list `(* ,per (nfix (- ,(cadr (car loops)) (nfix ,(car (car loops))))))))
+              (fn2-arms-loop-terms (cdr loops) i)))))
+(defun fn2-arms-loop-add (x loops i)
+  (declare (xargs :verify-guards nil))
+  (let ((terms (fn2-arms-loop-terms loops i)))
+    (if terms `(+ ,x ,@terms) x)))
 (defun fn2-arms-charge-form (b s d r env acc fuel)
-  ; (mv err (mv ...) acc): the run's report; its bounds join the derived cost
+  ; (mv err (mv ...) acc): the run's report, with the path's loops added; its
+  ; bounds join the derived cost
   (declare (xargs :verify-guards nil))
   (let* ((world (fn2-arm-get :world env)) (lets (fn2-arm-get :lets env))
+         (loops (fn2-arm-get :loops env))
          (vb (fn2-arms-bound b lets world 64)) (vs (fn2-arms-bound s lets world 64))
          (vd (fn2-arms-bound d lets world 64)))
     (if (not (and vb vs vd))
         (mv (msg "charges (~x0 ~x1 ~x2), which has no static bound." b s d) nil acc)
       (mv-let (err xs acc) (fn2-arms-exprs (list b s d r) env acc fuel)
-        (mv err `(mv ,@xs ,@(fn2-arms-tuple env)) (fn2-arms-add :charges (list (list vb vs vd)) acc))))))
+        (mv err `(mv ,(fn2-arms-loop-add (car xs) loops 0) ,(fn2-arms-loop-add (cadr xs) loops 1)
+                     ,(fn2-arms-loop-add (caddr xs) loops 2) ,(cadddr xs) ,@(fn2-arms-tuple env))
+            (fn2-arms-add :charges (list (list (+ vb (fn2-arms-loop-dim loops 0)) (+ vs (fn2-arms-loop-dim loops 1))
+                                               (+ vd (fn2-arms-loop-dim loops 2))))
+                          acc))))))
+;; A pass's bound: its calls' declared costs summed (every call, each path's
+;; calls among them), and one step for the pass. NIL when a cost is unbounded.
+(defun fn2-arms-calls-cost (calls dim world)
+  (declare (xargs :verify-guards nil))
+  (if (atom calls) 0
+    (let ((c (fn2-arms-bound (fn2-decl-get dim (fn2-arms-op-row (fn2-arm-use-name (car calls)) world)) nil world 8))
+          (rest (fn2-arms-calls-cost (cdr calls) dim world)))
+      (and c rest (+ c rest)))))
 (defun fn2-arms-charge (b s d r env acc fuel)
   (declare (xargs :verify-guards nil))
   (mv-let (err form acc) (fn2-arms-charge-form b s d r env acc fuel)
@@ -513,6 +584,8 @@
       (let ((sub (assoc-eq (car args) (fn2-arm-get :subs env))))
         (cond ((not sub) (mv (msg "~x0: no sub-arm ~x1." step (car args)) nil acc))
               ((fn2-arm-get :next env) (mv (msg "~x0 follows a :next; the sub-arm decides the phase." step) nil acc))
+              ((fn2-arm-get :loops env)
+               (mv (msg "~x0 follows a :repeat; the path ends in its own terminal, which charges the loop's passes." step) nil acc))
               (t (let ((d (cdr sub)))
                    (mv nil (fn2-arms-wrap-writes env
                              (if (fn2-arm-get :children env)
@@ -923,9 +996,9 @@
     (if (fn2-arm-get :children env)
         (let* ((tuple (fn2-arms-tuple env))
                (bindings (fn2-arms-child-bindings kind reads cols))
-               (inner `(if ,ucode (mv ,@tuple) ,bcode)))
-          `((fn2-arms-child-emit ,helper (n id slot kind ordinal budget) 0 ,kind ,tuple
-              (if (zp n) (mv ,@tuple)
+               (inner `(if ,ucode (mv n ,@tuple) ,bcode)))
+          `((fn2-arms-child-emit ,helper (n id slot kind ordinal budget) 1 ,kind ,tuple
+              (if (zp n) (mv 0 ,@tuple)
                 ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner))
               ((natp n)) (nfix n)
               ,(fn2-arms-child-callees (fn2-arm-get :uses bacc) world)
@@ -935,13 +1008,13 @@
               ;; arm's later writes are checked against them)
               t)))
       (let* ((bindings (fn2-machine-read-bindings kind reads cols))
-             (inner `(if ,ucode fn2-core ,bcode)))
+             (inner `(if ,ucode (mv n fn2-core) ,bcode)))
         `((defun ,helper (n id budget fn2-core)
             (declare (xargs :stobjs fn2-core :measure (nfix n) :guard (and (natp n) (fn2-core-wfp fn2-core)))
                      (ignorable id budget))
-            (if (or (zp n) (not (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok))) fn2-core
+            (if (or (zp n) (not (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok))) (mv 0 fn2-core)
               ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
-          (fn2-core-preserves ,helper (n id budget fn2-core) :rows nil))))))
+          (fn2-core-preserves ,helper (n id budget fn2-core) :position 1 :rows nil))))))
 (mutual-recursion
  (defun fn2-arms-steps (steps env acc fuel)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -968,12 +1041,14 @@
             (if (not (and (doublet-listp pairs) (consp pairs) (subsetp-eq (strip-cars pairs) cols)
                           (not (assoc-eq 'phase pairs)) (no-duplicatesp-eq (strip-cars pairs))))
                 (mv (msg "~x0 writes ~x1: own fields, once each, never phase (use :next)." step (strip-cars pairs)) nil acc)
-              (mv-let (err vals acc) (fn2-arms-exprs (strip-cadrs pairs) env acc fuel)
+              (mv-let (perr pvals) (fn2-arms-phase-values pairs env)
+              (if perr (mv perr nil acc)
+              (mv-let (err vals acc) (fn2-arms-exprs pvals env acc fuel)
                 (mv-let (err1 env2) (fn2-arms-pend (pairlis$ (strip-cars pairs) vals) env)
                   (mv-let (err2 body acc)
                     (fn2-arms-steps rest (fn2-decl-set :written (union-eq (strip-cars pairs) (fn2-arm-get :written env2)) env2)
                                     acc (1- fuel))
-                    (mv (or err err1 err2) body (fn2-arms-add :writes (strip-cars pairs) acc))))))))
+                    (mv (or err err1 err2) body (fn2-arms-add :writes (strip-cars pairs) acc))))))))))
          (:next
           (if (or (fn2-arm-get :next env) (fn2-arm-get :next-done env)) (mv (msg "a path has two :next steps.") nil acc)
             (mv-let (err n acc) (fn2-arms-next-form (cadr step) env acc fuel)
@@ -1026,6 +1101,9 @@
          ;; pass's start; the steps end in no terminal, route every answer by
          ;; :accept, and see only the row, id and budget (the pass is its own
          ;; function, K-REPEAT-SITE-I). After the loop no row field is read.
+         ;; Its cost is derived (G3): every charge after it on the path adds
+         ;; the passes made times the pass's bound (its calls' declared costs
+         ;; and one step), so no arm states a loop's work by hand.
          (:repeat
           (let* ((world (fn2-arm-get :world env)) (n (cadr step)) (body (caddr step))
                  (until (fn2-arms-kw :until (cdddr step) nil))
@@ -1045,6 +1123,11 @@
                 (mv-let (err1 bcode bacc) (fn2-arms-steps (append body '((:repeat-next))) benv bacc (1- fuel))
                   (if (or err0 err1) (mv (or err0 err1) nil acc)
                     (let* ((events (fn2-arms-repeat-events helper (fn2-arm-get :kind env) ucode bcode bacc env))
+                           (calls (fn2-arm-get :calls bacc))
+                           (pb (fn2-arms-calls-cost calls :bytes world))
+                           (ps (fn2-arms-calls-cost calls :steps world))
+                           (pd (fn2-arms-calls-cost calls :descriptors world))
+                           (left (packn-pos (list helper '-left) helper))
                            (acc (fn2-decl-set :aux (append (fn2-arm-get :aux acc) (fn2-arm-get :aux bacc) events)
                                   (fn2-arms-add :uses (fn2-arm-get :uses bacc)
                                     (fn2-arms-add :tables (fn2-arm-get :tables bacc)
@@ -1053,13 +1136,19 @@
                            (call (if (fn2-arm-get :children env)
                                      `(,helper ,n id slot kind ordinal budget ,@(fn2-arms-tuple env))
                                    `(,helper ,n id budget fn2-core))))
-                      (mv-let (err2 rest-code acc)
-                        (fn2-arms-steps rest (fn2-decl-set :pending nil
-                                               (fn2-decl-set :written (strip-cars (fn2-arm-get :columns env)) env))
-                                        acc (1- fuel))
-                        (mv err2
-                            (fn2-arms-wrap-writes env (fn2-arms-rebind (fn2-arms-tuple env) call rest-code))
-                            acc))))))))))
+                      (if (not (and pb ps pd))
+                          (mv (msg "~x0 calls an operation whose declared cost has no static bound." step) nil acc)
+                        (mv-let (err2 rest-code acc)
+                          (fn2-arms-steps rest (fn2-decl-set :pending nil
+                                                 (fn2-decl-set :written (strip-cars (fn2-arm-get :columns env))
+                                                   (fn2-decl-set :loops (cons (list left n pb (+ 1 ps) pd (fn2-arms-bound n nil world 64))
+                                                                              (fn2-arm-get :loops env))
+                                                     env)))
+                                          (fn2-decl-set :calls (append calls (fn2-arm-get :calls acc)) acc) (1- fuel))
+                          (mv err2
+                              (fn2-arms-wrap-writes env `(mv-let (,left ,@(fn2-arms-tuple env)) ,call
+                                                           (declare (ignorable ,left)) ,rest-code))
+                              acc)))))))))))
          (:issue
           (let* ((call (cadr step)) (opts (cddr step))
                  (code-var 'fn2-issue-code)
@@ -1215,7 +1304,12 @@
 (defun fn2-arms-own-table (kind tables)
   (declare (xargs :verify-guards nil))
   (remove-eq (fn2-arms-sym kind "-TABLE") tables))
-; The derived contract, in the registry's arm-entry shape (R7).
+; The derived contract, in the registry's arm-entry shape (R7). Its :uses
+; are a multiset (G3, D F13): an operation the arm calls twice is listed
+; twice, so D0's check counts its effects per call.
+(defun fn2-arms-uses-multiset (uses calls)
+  (declare (xargs :verify-guards nil))
+  (append uses (fn2-arm-mminus calls uses)))
 (defun fn2-arms-contract (kind tag observe from acc world)
   (declare (xargs :verify-guards nil) (ignorable world))
   (let* ((charges (fn2-arm-get :charges acc))
@@ -1228,7 +1322,7 @@
                   :writes (remove-eq 'phase (fn2-arm-get :writes acc))
                   :tables (union-eq (fn2-arms-own-table kind (fn2-arm-get :tables acc))
                                     (fn2-machine-directory-child (fn2-arm-get :writes acc)))
-                  :next next :uses (fn2-arm-get :uses acc))
+                  :next next :uses (fn2-arms-uses-multiset (fn2-arm-get :uses acc) (reverse (fn2-arm-get :calls acc))))
             (and observe from (list :from from)))))
 (defun fn2-arms-fn-events (name kind observe acc body contract world)
   (declare (xargs :verify-guards nil))
