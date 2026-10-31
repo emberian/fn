@@ -1,4 +1,6 @@
 #!/bin/sh
+# Historical: ran at 137695dfc against the table-only exporter (registry.sexp, print-registry.lsp of
+# that revision); its result is the .diff beside it. LEAN-METATHEORY section 8 cites it.
 # Mutation control: defmachine's registry row drops each kind's first observed event.
 set -u
 cd /Users/ember/dev/fn/build/lanes/fn2/lean-meta
