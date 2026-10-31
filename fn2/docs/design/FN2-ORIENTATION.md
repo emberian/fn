@@ -64,11 +64,14 @@ Not yet in the tree at all: a durable served POST; reading an article back; the 
 
 **Outside this directory:** ~/paperbin/README-fn2-20261028.md (papers, the crash-model table, the three automation routes); ~/dev/acl2aiguide (public; ai/00-06 are written to be loaded into a building agent's context); the old record (ANATOMY-20261009.md, DESIGN-RESOURCE-MODEL-20261012.md, STATE.md, GOALS.md) for reference only.
 
-## 6. Decisions open for ember (one line each, with main's recommendation)
-1. REGROUND §5: confirm M2 as "a consumer appends, reads, waits and acks on the laptop, and an NNTP reader sees the same article", and E's design starting now (recommended yes).
-2. STORAGE-DESIGN's five decisions as amended by the scholar: built on throughout B and C, never answered one by one (recommended: record them as adopted).
-3. The research decisions: WIDEST-ROLE §5, PLANES-AND-GAMES §5.4 with the per-item durability class, MODAL-KERNEL §7, TRANSPORT §6, COHERENCE's, UNIVERSAL-CONSTRUCTIONS §12 (reread as the fragment's); each file now states what the tree and main have taken from them; recommended: rule the kernel (WIDEST 1 in MODAL-KERNEL's merged form) and the planes (PLANES 1-5), and leave the rest to their trigger points.
-4. Whether to post the drafted replies to emberian/fn#18 and #19 and answer akapug's 10-08 question on #14.
+## 6. Decisions (main's rulings of 2026-10-31; one genuinely open item for ember)
+Ruled by main, present state (ember overrules by editing here):
+1. REGROUND §5 stands as the direction: M2 is "a consumer appends, reads, waits and acks on the laptop, and an NNTP reader sees the same article"; E's design starts now, before D's fn1 breadth. (Ember's reply to REGROUND was to put the machine form first, not to amend the direction.)
+2. STORAGE-DESIGN's five decisions as amended by the scholar are adopted as built: B and C stand on them, and nothing in ember's words contradicts them; reopening one is a rewrite of B and C and is done only with a reason in STORAGE-DESIGN itself.
+3. The research decisions: WIDEST-ROLE §5's five are adopted as recommended (ember on WIDEST: "the right direction"); UNIVERSAL-CONSTRUCTIONS §12 is reread as the 5.1.1 fragment's; PLANES-AND-GAMES §5.4's sentences enter the layer briefs when the live plane starts (REGROUND's start-now list, item d); MODAL-KERNEL, TRANSPORT, COHERENCE and LEAN-METATHEORY stay research until a quest consumes an item, and that quest writes the ruling.
+4. The remaining envelope fields (WIDEST §3, decision 2: author key, payer principal, grant reference) go into B's event envelope now beside the revision stamp, the occurrence id and IDENTITY ruling 2's origin fields, as fields with no behaviour yet; B owns it before freezing more layouts.
+5. The nightly (WORKFLOW §3) is main's: one cron on forge over the existing drivers, posting a summary per file; owed until it runs once.
+Ruled by ember 10-31: emberian/fn #18 and #19 closed without comment (the 10-16 drafts in build/coordinator/replies/ are moot). #14's 10-08 question is minidregg's.
 
 ## 7. How to start (in ~/dev/fn, on dev)
 Read §1-§4 here, then the settled decisions, then your layer's brief, layer doc and continuation. Hold the interfaces in your head before writing anything: name the components, their boundaries and the byte representation at each. Work by FN2-SEAT-COMMON.md. This file is rewritten whole at each milestone or ruling.

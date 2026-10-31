@@ -12,45 +12,39 @@ recertify own books and the export, fast-forward); overlap (B5-3: machines-b, ow
 the commit kind) means regate whole.
 
 ## Landed (READY sent for each)
-- Earlier seats: C1a 181df0df0, C1b 8dfba6db2, C1b' 1e823b06f, run assembly 1c603fcdd, C2a-C2d, C3a,
-  C3b, C-S1 d21ffb2b3, C-S2, C4a 34e106dca, C-S3 c82104671, review items b2ec7dda1, D5's seams
-  294055805, :sealable grant source 83ced3bf9, C1c engine half 30ead9b23.
-- **C-S3a late octet args ebcc65eea** (dev, pushed, READY sent). The API is in layer doc §8 item 12.
-  The successor's wrappers are now in two books: assembly-callbacks-c-prepare (32.8 s) and -commit
-  (26.8 s). assembly-callbacks-c (26.2 s) keeps groups and the sealer; one book was 69.4 s. Gate:
-  whole at 429702ef1 green; the moved tip f363dd1ae got a recertify. OWED is regenerated at 567.
-  Unit identity-core-unit fn2-icu-late. Pitfall: `fill` is a CL special, so it cannot be a
-  variable.
-- **C1c the sealer machine 429702ef1** (dev, pushed, READY sent; ninth seat). It was rebased onto B5-2
-  5674cae12 and gated whole there (closure rc=0, export PASS). The moved tips f794c78f3 (A5r) and
-  c01f87b6a (D6) got an own-books recertify plus the export. OWED went 557 -> 564. The Q1 pin is 100
-  (B's 98 + 2). machines-b has format-slots 3 (recovery) and *fn2-b-seal-field-rows*. Stop reasons
-  end `:recovery-release :sealer`. The owner kind is 5 now (recovery registers first; computed).
-  The comment above fn2-seal-step is fixed (a refusal stops the executor with :sealer and the row
-  is :stopped). RED named in the message, as main allowed: assembly-reference 74.3 s at load 9-11.
-  The A5r seat's fix follows. Other assembly includers were also over 60 at that load (access
-  72.7, callbacks-a 71.8, -d 65.4, init 64.5, executor 64.1, machines-a-unit 61.5, callbacks-t
-  60.1) and need a quiet remeasure.
-- Owed to me from others: A's frame lemmas (fn2-machine-kind preserved by each fn2-issue-K).
-  When main sends their sha, set the sealer's descriptor cap 4 -> 0 in my own commit (departure 3
-  closes). Q1's owner owes controls for the sealer's two cases.
+- Earlier seats: C1a .. C-S3 c82104671, D5's seams 294055805, :sealable source 83ced3bf9, C1c engine
+  half 30ead9b23.
+- C1c sealer machine 429702ef1; C-S3a late octet args ebcc65eea (callbacks-c split into -prepare /
+  -commit / -c); sealer backpressure named stops e2448ef3b (C-SEAL-BACKPRESSURE: :sealer-full,
+  :sealer-cache; four controls in sealer-machine-unit); identity record statement 219184b5d (layer
+  doc §4a, Astra-read, doc only).
+- D landed C-S4 first half 89d31a51d (machines-c-read.lisp). My read of it: sound, with one
+  observation. Without a position limit, a range is not a cut: a publication after the range starts
+  is missed, unless the sealer retires an older source, in which case the re-enumerate picks it up.
+  The :published frontier column C owes closes that (C adds it in fn2-id-engine, set by publish).
+
+## Method (WORKFLOW-20261031.md, binding)
+No whole-tree gate per commit, no OWED regeneration, no export per commit. Land on: my changed
+books certify, the units I touched, the REPL on the tiny profile, and my own reading of the diff.
+Then push and send a one-line READY. I own C (the identity record is mine to design and build). At
+~400K: distill (`cv distill`) and continue; never hand off from this file.
 
 ## Next (in order)
-0. **Ember's ruling (10-31 night, binding):** the machine form (defmachine with hand-written
-   defmachine-callback arms, one shared assembly that re-proves every kind, per-octet exports) is
-   being redesigned. Write NO new arms in the old form: not the device half's sealer arms, not C5.
-   Stand by for main's statement of the new form. Meanwhile: the arm table below (done), and
-   reading D's machines-c-read diff when main sends it.
-1. **C-S4 (D writes machines-c-read.lisp, I read the diff)** when main sends the branch: answer
-   READY-TO-LAND or what must change. My predecessor's five amendments: reads stripes below the
-   sealer's; re-check the source at every step (overlay phase plus arena gen, run version); the
-   frontier comes from a :published column in fn2-id-engine set by publish (C adds it); LIST is a
-   whole-schema ordered scan, not the range engine; identity through the real lookup.
-2. In the new form, once it exists: the sealer's arms (table below), with the wake defect fixed.
-   Then the device half when B5-4's :run-replacement member lands: fn2-commit-admit-runs, the
-   defattach of fn2-runs-install, manifests one level deep, M2's cold leg, M3's device leg. Then C5.
-3. Owed: the machines-c-stage shave (55.4 s on forge, under load). When A's frame lemmas land, the
-   sealer's descriptor cap 4 -> 0.
+1. **Build §4a, in its order.**
+   (1) The vocabulary: typed octet/digest fold keys and values; the successor's union insert with
+   :new / :already-present / :inconsistent; stage-result fold args; late-bound integers; full-key
+   exclusive resume; layouts resized.
+   (2) The five records, deleting fn2-identity, its :record slot kind, *fn2-identity-contents-max*,
+   *fn2-id-block-max* and :identity-conflict-bound everywhere (D's txn takes the word changes).
+   (3) The decision and the three reads.
+   (4) The checker, then the teeth, then the owed rows.
+2. The :published frontier column (fn2-id-engine, set by fn2-succ-publish) for D's frontier read.
+3. C-SEAL-NO-ROW is dead since B5-4a (a profile can no longer omit the row): delete the :no-row
+   branch in machines-c-sealer / -events and the doc's interim entry.
+4. No new arms in the old form (ember's ruling); the sealer's arms wait for MACHINE-FORM (its §2
+   carries my seven gaps; the seal row's inner phases must be a declared machine).
+5. The device half when B5-4's :run-replacement member is usable; then C5.
+6. Owed: the machines-c-stage shave (55 s); the sealer's descriptor cap 4 -> 0 after A's frame lemmas.
 
 ## The fn2-sealer arm table (as built at 429702ef1; input to the new form)
 The machine has one row (capacity 1, gen 1, local slot 0). Its fields are `stopped :bool` plus the
