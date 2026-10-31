@@ -3,18 +3,21 @@
 ## Built (dev)
 - E3 (6187c6aa0), E3b (5be98c474): port.lisp, consumer-port, consumer-model, owed-consumer, the mini/helm fixtures; layout.lisp's big-endian kinds; consumer-codec.lisp (FNCT, fncu v1/v2, k4 codes 0-18, replies 5/6/9/28, items) and its unit.
 - E4a (8754482a1), E4b (291f953b8): peer model, owed-peer, six witnesses; §13 in wire words.
-- E5a/E5c (043b32fba, 63172fea2): cns-edges.lisp (buckets = rows, doubly linked chains, free list + fresh, pending-bucket stack, BPOS link race `:behind`, grant clears `:wait-row`); G-LIVE at child level. Certifies in 43 s on hbox (under the minute; D's 64 s was the laptop).
+- E5a/E5c (043b32fba, 63172fea2): cns-edges.lisp (buckets = rows, doubly linked chains, free list + fresh, pending-bucket stack, BPOS link race `:behind`, grant clears `:wait-row`); G-LIVE at child level. Certifies in 43 s on hbox under load (under the minute; D's 64 s was the laptop).
 - 65ebca019: arm tuple (K five . EXTRA) in machine-arms.lisp.
 - E5d (36d26a8da, merged 109ad246b): sim/check-consumer.lisp (CONSUMER), tests/sim-layer-e.lisp (oracle node, 5 scenarios, 5 controls), K10 stated (producer constrained).
-- E.P1a (db4b561f0, merged to dev as 788eed64d over D6 1/n): books/cns.lisp. The edge table is the core child `fn2-core-cns-edges`, rows = the ledger's :subscription-edge capacity (`fn2-account-profile-capacity`, :esub else 4096), `:profilep` states rows >= that capacity and rows < 2^31; `fn2-cns-edge-link-core` (`:answers (:ok :behind :exhausted)`) and `fn2-cns-edge-unlink-core` are defcosts with `:child`; `(defwait :wait-row :ready fn2-cns-wait-ready-p :grant fn2-cns-wait-grant-one)`, attached in assembly-access (`fn2-cns-wait-events`, after D's request events) to core faces over (edges machines control), liveness from `fn2-cns-grant-one-live`. assembly-index includes cns after txn.
+- E.P1a (db4b561f0, merged to dev as 788eed64d over D6 1/n; the merged tip certifies on forge: assembly with cursor and cns, sim/sim, sim-layer-e, cns-edges-unit): books/cns.lisp. The edge table is the core child `fn2-core-cns-edges`, rows = the ledger's :subscription-edge capacity (`fn2-account-profile-capacity`, :esub else 4096), `:profilep` states rows >= that capacity and rows < 2^31; `fn2-cns-edge-link-core` (`:answers (:ok :behind :exhausted)`) and `fn2-cns-edge-unlink-core` are defcosts with `:child`; `(defwait :wait-row :ready fn2-cns-wait-ready-p :grant fn2-cns-wait-grant-one)`, attached in assembly-access (`fn2-cns-wait-events`, after D's request events) to core faces over (edges machines control), liveness from `fn2-cns-grant-one-live`. assembly-index includes cns after txn.
 - Uncommitted: nothing.
 
 ## State of E.P1 (the served consumer): BLOCKED on seams the old notebook did not list
 Read against dev 109ad246b: E.P1's two kinds are a design, not a paste. Ops they call that do not exist and
 cannot be written inside E without another layer's sizing or records:
-1. **Request decode and reply encode need room** (B): deflayout's scan/emit write `fn2-fields` rows at a base,
-   and the FNCT trailer needs a `fn2-b3` row. No stripe or b3 row exists for a ctl/cns row; B sizes both
-   (`fn2-b-field-rows`). Ask: per ctl row a stripe of 64 field rows below the read stripes and one b3 row.
+1. **Request decode and reply encode: ANSWERED by B at cd45d4719** (a different shape from the ask, which stands as B built it):
+   connection S's format slot is `(fn2-b-ctl-slot s profile)` = 4 + w + s; that slot's `fn2-b3` row hashes the FNCT
+   trailer, and its 128-row field stripe at 128 x slot holds the codec's decode and encode, both from that one index.
+   fn2-ctl's `:capacity` is `(fn2-b-ctl-rows profile)` (profile key `:control-connections`, default 2, the tiny
+   profile's); `:format-slots` floor/default is 4 + w + c; `fn2-b-ctl-slot-below-floor` is proved. When pasting, take the
+   field base from the slot (128 x slot), not from a separate stripe below the read stripes.
 2. **Read rows** (C, D): C's read row X is "one per query cursor slot", `(fn2-b-read-rows profile)` = :x when
    :reading; D6 1/n's cursor kind (cursor.lisp, on dev eee0eb09e) owns [0, x) by its slot. Ask: read rows = x + cns capacity, cns row S uses x + S.
 3. **Consumer ids** (C, D): the cursor fold's key is `(:id consumer)` (u60); the wire's consumer is 1-64

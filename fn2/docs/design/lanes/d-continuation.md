@@ -34,25 +34,26 @@ bounded pieces with real signatures. Briefs: `build/coordinator/briefs/FN2-LAYER
     coverage), never from :duplicate/:evidence/:conflict/:stored alone.
 
 ## State
-- **In flight: D6 1/n, the cursor (spine-only ruling: nothing else from D until it lands).** It is
-  uncommitted in the Mac worktree `build/lanes/fn2/d6` on dev 24fce1ecd, and copied to forge
-  `/build/lanes/d6`, which is at d6-read = 24fce1ecd plus those files.
-  - Files:
-    - new: `fn2/books/cursor.lisp` and `fn2/books/assembly-callbacks-d-cursor.lisp` (the op core
-      faces, `:wrappers`, `defmachine-run`), both `git add -N` (intent only);
-    - edited: conn.lisp (`:query` phase and fields; `fn2-conn-serve-query`; frame-run routing;
-      `:reply` after `:query`; the drain cancels a cursor), conn-answer.lisp (`reading` argument,
-      `*fn2-answer-unread*`, 7 rows out of the interim), assembly-index (+cursor),
-      assembly-callbacks-r (includes d-cursor), machines-c-read (preservation facts for the read
-      children, generated), owed-cursor (profile `:reading t :x 2`, STAT <id> = 0, the harness renamed
-      `fn2-cursor-serve-run`), the cursor-unit teeth (served = reference), conn-answer-unit (+reading
-      arg), tests/core-child-assembly-access (runs `fn2-account-request-events`: the nightly red
-      routed to D), and the layer doc §15.0 "As built".
-  - Last forge run r40 (PID file build/r40.pid): the units over the fixed render-row (rows split
-    across pages: TX is smaller than a row).
-  - Green before that: read-unit, conn-unit, conn-answer-unit; cursor-unit's seeded GROUP tooth.
-  - Then commit by path (pathspec file), push, READY. After the push: split render-single and
-    render-step per branch.
+- **D6 1/n is on dev.**
+  - **eee0eb09e** is the cursor itself: cursor.lisp, assembly-callbacks-d-cursor, conn's `:query`
+    (`fn2-conn-serve-query`), conn-answer's routing, the machines-c-read child facts, and the
+    owed-cursor profile (`:reading t :x 2`, STAT <id> = 0, the harness renamed
+    `fn2-cursor-serve-run`). It also carries the cursor-unit teeth (served = reference less bare
+    LISTGROUP and OVER <id>; pinned) and the core-child-assembly-access fix.
+  - **a466488fe** is the follow-up: stat, over and xover leave the interim table (D6 count 10), and
+    the render sub-arms split.
+  - Not yet served: bare LISTGROUP, OVER <id>, the LIST variants (1/n-b), and ARTICLE/HEAD/BODY
+    (3/n, over `fn2-block-read`).
+- **Next commit, 1/n-b: LIST ACTIVE / COUNTS / NEWSGROUPS without a pattern, and bare LISTGROUP.**
+  - Both use the `fn2-groups` scan. `fn2-rd-key-save` writes the delivered key at offset 0 of the
+    workspace, so use TX as the workspace with the page starting after a 512-octet key area
+    (pad TX to 512; roff = 512).
+  - Bare LISTGROUP renders the name from TX[0, L).
+  - LIST status is `y` when the connection serves posting, else `n`; copy the conn's `posting` at
+    the take.
+  - Variant: extend `fn2-cursor-arg-kind` with `:keyword`. A pattern argument answers 503 for now.
+  - The same commit takes E's seam: `fn2-b-read-rows = x + cns capacity`, and cns request row S
+    uses read row x + S (e-continuation.md, the blockers).
 - **Cursor book time:** 1,339 s with the kind-wide tuple, 501 s with per-arm tuples (24fce1ecd).
 - **Arrived for the txn port (P.4):**
   - B-S2 at 6d4e7f977: `fn2-commit-admit-txn (slot gen len okind oslot ogen) -> (mv code batch
