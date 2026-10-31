@@ -14,8 +14,11 @@
 (in-package "ACL2")
 (include-book "fn2/tests/q1-contracts")
 (include-book "fn2/tests/q1-contracts-b")
+(include-book "fn2/tests/q1-contracts-c")
 (set-guard-checking nil)
 :q
+; The core whose sealer step is running (fn2-run-install takes the table, not the core).
+(defvar *fn2-q1-sealer-core* nil)
 (handler-case
     (progn
       (load "fn2/tests/own-read-hook.lsp")
@@ -123,6 +126,21 @@
                         (if (and (active core) matched)
                             (progn (note core) (values code nil))
                           (values code matched))))))
+                ; fn2-sealer: the install step writes the groups run one entry short (its last
+                ; entry is not counted, so the run leg no longer answers for it).
+                (let ((step (symbol-function 'fn2-sealer-step)))
+                  (setf (symbol-function 'fn2-sealer-step)
+                        (lambda (budget core) (let ((*fn2-q1-sealer-core* core)) (funcall step budget core))))
+                  (unwind-protect
+                      (run-kind 'fn2-sealer (lambda () (fn2-q1s-ok *fn2-smu-groups*)) 'fn2-run-install
+                        (lambda (orig)
+                          (lambda (r schema run top slot gen unit counter entries okind oslot ogen table)
+                            (let ((core *fn2-q1-sealer-core*))
+                              (if (and core (active core) (eql schema 8) (integerp entries) (< 0 entries))
+                                  (progn (note core)
+                                         (funcall orig r schema run top slot gen unit counter (- entries 1) okind oslot ogen table))
+                                (funcall orig r schema run top slot gen unit counter entries okind oslot ogen table))))))
+                    (setf (symbol-function 'fn2-sealer-step) step)))
                 ; fn2-scribe: the checksum the patch writes is off by one bit.
                 (run-kind 'fn2-scribe (lambda () (fn2-q1c-scribe-ok 1001 2000)) 'fn2-scribe-patch-loop
                   (lambda (orig)

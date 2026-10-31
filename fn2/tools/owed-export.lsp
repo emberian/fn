@@ -13,6 +13,7 @@
 (include-book "fn2/tests/q1-evidence")
 (include-book "fn2/tests/q1-contracts")
 (include-book "fn2/tests/q1-contracts-b")
+(include-book "fn2/tests/q1-contracts-c")
 (include-book "fn2/tests/q1-controls-check")
 (include-book "fn2/tests/sim-acquisition")
 ; Layer B's unit books (registered by the B seat; include-only).
