@@ -17,6 +17,7 @@
 (include-book "upload")
 (include-book "claims")
 (include-book "machines-c-bind")
+(include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -161,12 +162,10 @@
   (:retired fn2-txn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:retired)
    :uses (fn2-machine-idle))))
 
-;; B-S2 interim (section 14.7): B's transaction member is not landed, so the
-;; admission answers :not-served and the transaction is refused :not-stored.
-;; B's landing replaces this definition (the twin is deleted); owed row
-;; fn2-txn-admission-interim.
-(defcost fn2-commit-admit-txn :bytes *fn2-txn-admit-bytes*
-  :doc "B-S2 (interim until B lands it): admit a ready transaction's member workspace to the open commit batch; (mv code batch event).")
+;; B-S2 is B's (commit.lisp, defcost in machines-b). Until P.4 writes the
+;; member records into a workspace, :ready passes the upload's window, which
+;; does not decode as member records: admission answers :admission and the
+;; transaction is refused :not-stored (owed row fn2-txn-admission-interim).
 ;; The transaction's operations (each a wrapper or a staged helper below).
 (defcost fn2-txn-hash :bytes 256 :doc "FNV-1a over the Message-ID's octets (at most 250), under the upload's owner.")
 (defcost fn2-claim-begin-core :tables (fn2-core-claims) :doc "Start a claim on a Message-ID's exact octets.")
@@ -212,11 +211,6 @@
 ;; staged helpers each arm calls (each with its own preservation facts).
 (defmacro fn2-txn-op-events ()
  '(progn
-(defun fn2-commit-admit-txn (member-slot member-gen bytes okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
-           (ignore member-slot member-gen bytes okind oslot ogen))
-  (mv :not-served 0 0 fn2-core))
-(fn2-core-preserves fn2-commit-admit-txn (member-slot member-gen bytes okind oslot ogen fn2-core) :position 3 :rows nil)
 (defun fn2-txn-hash (n slot gen off okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp n) (natp off))))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -634,7 +628,7 @@
          (case acode
            (:ok (mv-let (bcode fn2-core) (fn2-successor-bind tx batch event fn2-core)
                   (mv (if (eq bcode :ok) :batched :stop) fn2-core)))
-           (:not-served (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :not-stored) fn2-core))) (mv :refused fn2-core)))
+           (:admission (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :not-stored) fn2-core))) (mv :refused fn2-core)))
            (:exhausted (mv :run fn2-core))
            (otherwise (mv :stop fn2-core)))))
       (:full (mv :run fn2-core))
@@ -812,3 +806,7 @@
 
 (defmachine-run fn2-txn)
 ))
+
+; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
+; the admission section (assembly-callbacks-a) makes its core face.
+(defmachine-registry fn2-txn)

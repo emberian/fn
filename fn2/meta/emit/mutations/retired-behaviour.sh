@@ -1,4 +1,6 @@
 #!/bin/sh
+# Historical: ran at 137695dfc against the table-only exporter (registry.sexp, print-registry.lsp of
+# that revision); its result is the .diff beside it. LEAN-METATHEORY section 8 cites it.
 # Mutation control 2 (Astra's): change generated behaviour, not the row.
 # NAME-OBSERVES-P stops excluding the :retired phase; the registry row is untouched.
 set -u

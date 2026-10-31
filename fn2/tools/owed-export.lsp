@@ -36,6 +36,7 @@
 (include-book "fn2/tests/cursor-unit")
 (include-book "fn2/tests/read-unit")
 (include-book "fn2/tests/accounts-unit")
+(include-book "fn2/tests/request-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")
 (include-book "fn2/tests/identity-unit")

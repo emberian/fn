@@ -330,6 +330,16 @@
 (defcost fn2-rec-classify :doc "The recovery class from the assumption bits and the evidence words.")
 (defcost fn2-recovery-adopt :tables (fn2-core-extents fn2-core-alloc-edges)
  :doc "Adopt one arena position into the allocator with its recorded identity.")
+(defcost fn2-commit-admit-txn :answers (:ok :exhausted :admission) :bytes 4096
+ :tables (fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root fn2-core-fields fn2-core-pool)
+ :doc "B-S2: admit a transaction member's workspace to a commit batch; (mv code batch event).")
+(defcost fn2-commit-take :answers (:ok :pending :none) :tables (fn2-core-commit-settled)
+ :doc "B-S2: the owner's settled outcome; (mv code batch event outcome).")
+(defcost fn2-commit-txn-source :answers (:ok :none :bounds) :tables (fn2-core-fields fn2-core-pool)
+ :doc "B-S2 S9: the article's source reference from an admitted workspace's acceptance record.")
+(defcost fn2-block-read :answers (:ok :exhausted :stale :bounds) :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
+ :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
+(defcost fn2-block-read-done :answers (:ok :io) :doc "B-S2 S10: the read's completion.")
 (defcost fn2-recovery-finish :tables (fn2-core-commit-root fn2-core-extents)
  :doc "Install the commit frontier and begin the writer epoch above every adopted identity.")
 

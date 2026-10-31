@@ -25,6 +25,15 @@
 (assert-event (fn2-layoutp *fn2-format-record-header*))
 (assert-event (equal (fn2-layout-max-size *fn2-format-record-header*) 83))
 
+; B-S2 (b-durability.md §11b S2): a transaction member's workspace is a
+; sequence of these frames, each followed by LENGTH body octets in the kind's
+; encoding. Admission checks every frame; the seal writes each body after a
+; record header carrying the member's event.
+(deflayout fn2-format-txn-record
+  `((record-kind ,*fn2-format-record-kind*) (length :varint)))
+(assert-event (fn2-layoutp *fn2-format-txn-record*))
+(assert-event (equal (fn2-layout-max-size *fn2-format-txn-record*) 10))
+
 (deflayout fn2-format-operation-header
   `((principal (:id principal)) (operation (:id operation))))
 (assert-event (fn2-layoutp *fn2-format-operation-header*))

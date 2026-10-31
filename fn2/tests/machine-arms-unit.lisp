@@ -97,9 +97,15 @@
         (:done (:idle)))
  :observes ())
 (defmachine-arms fn2-arms-probe4 :children)
+; Per-arm tuples: :work takes the children its paths touch (the move's two,
+; the stop's control, the write's table and directory), not the pool or ops;
+; :done (idle) takes only the row's table and directory and returns none.
 (assert-event (equal (getpropc 'fn2-arms-probe4-run-work-children 'stobjs-in nil (w state))
-                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines fn2-pool fn2-ops fn2-control
-                       fn2-arms-tx fn2-arms-ty)))
+                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines fn2-control fn2-arms-tx fn2-arms-ty)))
+(assert-event (equal (getpropc 'fn2-arms-probe4-run-done-children 'stobjs-in nil (w state))
+                     '(nil nil nil nil nil fn2-arms-probe4 fn2-machines)))
+(assert-event (equal (getpropc 'fn2-arms-probe4-run-done-children 'stobjs-out nil (w state))
+                     '(nil nil nil nil)))
 (assert-event (fn2-assert-compliant-p '(fn2-arms-probe4-run-work-children) (w state)))
 ;; An operation over a stobj no defcorechild registers is refused.
 (defcolumns fn2-arms-tz ((value :u32)))
@@ -115,3 +121,29 @@
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe5 :children))
 (value-triple (cw "MACHINE ARMS UNIT: kind stops, sub-arm refusal, row-slot, wake-row, repeat, accept-hand in child form; a tuple with two extra children in registry order; two wakes and an unknown stop and an unregistered child refused PASS~%"))
+;; An operation that never answers :ok (C's reads): its answers are a list
+;; without :ok, :accept of one needs no :why, and every member is routed.
+(defun fn2-arms-t-peek (v) (declare (xargs :guard t)) (if (equal v 0) :end :found))
+(defcost fn2-arms-t-peek :answers (:found :end) :child fn2-arms-t-peek :doc "Test: answers without :ok.")
+(defmachine fn2-arms-probe6
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-arms-t-peek row-count) :accept (:found)
+                :case (((:end) (:next :done) (:charge :steps *fn2-work-small*))))
+               (:set (count 0)) (:charge :steps *fn2-work-small*))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-probe6 :children)
+;; ... and an unrouted member is still refused (no :on-refusal here)
+(defmachine fn2-arms-probe7
+ :phases (:free :work)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-arms-t-peek row-count) :accept (:found)) (:idle)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-probe7 :children))

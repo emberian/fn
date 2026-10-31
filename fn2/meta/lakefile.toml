@@ -9,3 +9,8 @@ rev = "1c2b90b13009c65b090d95a83c98e248deafb6f1"
 
 [[lean_lib]]
 name = "Fn2"
+
+# The measure (LEAN-METATHEORY section -1, item 3): the translated kinds against the recorded calls.
+[[lean_exe]]
+name = "fn2-measure"
+root = "Fn2.Measure"

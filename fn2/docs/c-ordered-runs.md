@@ -665,6 +665,21 @@ losing conflict whose winner was dropped.
   4,096 pool reads per step; stage 4,096 bytes (one located entry per overlay of each slot's
   schema; fold rows are tens of bytes); bind 8,192 bytes (octet copies of at most 4 KiB per slot
   and the encoded rows).
+- **C-FOLD-UNCHANGED (E.P1, 2026-10-31).** A fold event's failed `:when` refuses the stage with
+  `:refused` by default: the transaction must plan again, which §4a's admit race needs. An event
+  may instead declare `:unless-when :unchanged`. Then the served and list steps both answer
+  `:unchanged` and leave the row. Stage marks the slot (column `unchanged`), sizes it 0 and goes on,
+  and bind skips it as it skips an empty slot. `(fn2-successor-applied tx i fn2-core) -> (mv code
+  verdict)` reads `:applied` or `:unchanged` once staged (`:state` before, `:kind` for an insert or
+  record slot). The cursor's `:ack` declares it, so an ack that lost its race to a later one answers
+  `behind` instead of `accepted` (e-continuation.md E.P1) and the transaction still commits.
+- **C-UNION-STAGE (§4a vocabulary, 2026-10-31).** An insert into a `:union` schema reads its key at
+  the tip, as a `:unique` one does. Found with the same payload, it is already present: stage answers
+  `:ok`, the slot binds nothing, and `fn2-successor-applied` is unavailable for inserts (`:kind`).
+  Found with another payload, it is `:inconsistent`. A `:union` schema's value fields are integers
+  (defrunschema refuses octets and digests there), so stage compares the payload whole, row by row.
+  Each staged slot's block row 44 (`*fn2-succ-fresh*`) holds 1 when fresh and 0 when it binds nothing.
+  The arg source `(:new K)` reads it from an earlier slot K, so a fold counts only fresh facts.
 - **C-SUCCESSOR-BOOK.** The successor (C-S2, now C-S3) is books of its own, apart from
   `machines-c.lisp` (the decision, C-S1): together they made one book of 58.8 s on forge. C-S3 is
   three books in a chain along its phases, `machines-c-successor.lisp` (tables, the `:prepare`
@@ -978,8 +993,9 @@ losing conflict whose winner was dropped.
    (b) Every range or seek step re-finds its sources from the resume key when the schema's run
    version moved or an overlay source's row no longer holds the taking it located (phase active or
    frozen, schema, SEQ: a SEQ is issued once per taking); a delivered entry is read only under the
-   run version it was delivered under, else `:stale`. (c) `fn2-read-frontier` waits on the
-   `:published` column (until then `fn2-cursor-view-pinned` stays owed). (d) LIST's ordered scan,
+   run version it was delivered under, else `:stale`. (c) `fn2-read-frontier (fn2-core) -> (mv
+   code position)`, a pure read of `fn2-successor-published` (C's `:published`, 93ede3b02); the view a
+   connection pins (`fn2-cursor-view-pinned` turns live with the cursor). (d) LIST's ordered scan,
    `fn2-read-scan x sid wslot wgen wk ws wg` / `fn2-read-scan-next x budget`: the range read's
    sources and merge over any schema, octet keys included, from the schema's least key; its resume
    key is the delivered key itself, copied into the caller's workspace (WSLOT/WGEN under WK WS WG, the

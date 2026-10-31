@@ -1,5 +1,5 @@
 ; The identity claim table (layer D, quest D5; fn2/docs/d-machines-nntp.md
-; section 14.4.2; D0's :identity-reservation, rank 11). One row per
+; section 14.4.2; D0's :identity-reservation, rank 12). One row per
 ; transaction slot. A transaction claims the exact octets of its
 ; Message-ID: at most one row holds a claim on given octets at a time, and
 ; a second claimant of the same octets waits in the holder's FIFO, holding

@@ -338,3 +338,65 @@
     fn2-pool-slot-read-code fn2-pool-slot-capacity fn2-pool-slot-borrows
     fn2-machines-park fn2-machines-grant-op fn2-machines-park-admission
     fn2-machines-grant-admission fn2-machines-park-pool) (w state)))
+
+; ----------------------------------------------------------------------
+; A partitioned kind's registry operations (MACHINE-FORM 6.5 P4): the
+; partition's half of an admission or a take, by the kind's ordinal ORD. The
+; free head moves to NEXT, the active count rises, a take spends a credit
+; (CREDITP), and the installed row is the wake handoff; an over-width value
+; stops the core, as the core's partition setters do.
+(defun fn2-machines-partition-install (ord target next creditp fn2-machines fn2-control)
+  (declare (xargs :stobjs (fn2-machines fn2-control)
+                  :guard (and (fn2-machines-wfp fn2-machines) (fn2-control-wfp fn2-control))))
+  (if (not (and (natp ord) (< ord *fn2-machine-admitted-max*)))
+      (fn2-machines-stop-write fn2-machines fn2-control)
+    (mv-let (fn2-machines fn2-control)
+      (fn2-machines-checked (unsigned-byte-p 32 next) (update-fn2-machines-free-headi ord next fn2-machines))
+      (mv-let (fn2-machines fn2-control)
+        (let ((active (+ 1 (fn2-machines-active-counti ord fn2-machines))))
+          (fn2-machines-checked (unsigned-byte-p 32 active)
+                                (update-fn2-machines-active-counti ord active fn2-machines)))
+        (mv-let (fn2-machines fn2-control)
+          (if (not creditp) (mv fn2-machines fn2-control)
+            (let ((credits (- (fn2-machines-admission-creditsi ord fn2-machines) 1)))
+              (fn2-machines-checked (unsigned-byte-p 32 credits)
+                                    (update-fn2-machines-admission-creditsi ord credits fn2-machines))))
+          (fn2-machines-checked (unsigned-byte-p 32 target) (update-fn2-machines-wake-id target fn2-machines)))))))
+(fn2-machines-preserves fn2-machines-partition-install (ord target next creditp fn2-machines fn2-control)
+  :carriers ((fn2-machines 0 :prefix "-MACHINES") (fn2-control 1 :prefix "-CONTROL")))
+(defthm fn2-machines-partition-install-rows
+  (equal (fn2-machines-rows (car (fn2-machines-partition-install ord target next creditp fn2-machines fn2-control)))
+         (fn2-machines-rows fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-partition-install))))
+(defthm fn2-machines-partition-install-raw-rows
+  (equal (nth *fn2-machines-rows* (car (fn2-machines-partition-install ord target next creditp fn2-machines fn2-control)))
+         (nth *fn2-machines-rows* fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-partition-install))))
+
+; A taker's park (A-S7, D F2): WAITER *fn2-none* parks nothing; any other
+; waiter must be a row not queued on a resource (else the caller is wrong:
+; the core stops). A running row may still carry :completion from the I/O
+; it last waited on. The row waits on ORD's FIFO with REASON, its row kind.
+(defun fn2-machines-park-taken (waiter ord reason fn2-machines fn2-control)
+  (declare (xargs :stobjs (fn2-machines fn2-control)
+                  :guard (and (fn2-machines-wfp fn2-machines) (fn2-control-wfp fn2-control))))
+  (cond ((equal waiter *fn2-none*) (mv fn2-machines fn2-control))
+        ((and (fn2-machines-row-ok waiter)
+              (or (equal (fn2-machines-wait-reason waiter fn2-machines) *fn2-wait-none*)
+                  (equal (fn2-machines-wait-reason waiter fn2-machines) *fn2-wait-completion*)))
+         (mv-let (fn2-machines fn2-control) (fn2-machines-park-admission waiter ord fn2-machines fn2-control)
+           (if (and (fn2-machines-row-ok waiter) (natp reason) (< reason *fn2-wait-count*))
+               (let ((fn2-machines (fn2-machines-set-wait-reason waiter reason fn2-machines)))
+                 (mv fn2-machines fn2-control))
+             (fn2-machines-stop-write fn2-machines fn2-control))))
+        (t (fn2-machines-stop-write fn2-machines fn2-control))))
+(fn2-machines-preserves fn2-machines-park-taken (waiter ord reason fn2-machines fn2-control)
+  :carriers ((fn2-machines 0 :prefix "-MACHINES") (fn2-control 1 :prefix "-CONTROL")))
+(defthm fn2-machines-park-taken-rows
+  (equal (fn2-machines-rows (car (fn2-machines-park-taken waiter ord reason fn2-machines fn2-control)))
+         (fn2-machines-rows fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-park-taken))))
+(defthm fn2-machines-park-taken-raw-rows
+  (equal (nth *fn2-machines-rows* (car (fn2-machines-park-taken waiter ord reason fn2-machines fn2-control)))
+         (nth *fn2-machines-rows* fn2-machines))
+  :hints (("Goal" :in-theory (enable fn2-machines-park-taken))))
