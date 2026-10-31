@@ -222,7 +222,7 @@ walking the Message-ID's whole block. Under the rulings that is wrong three time
   - So two observations count twice; a retransmission counts once.
 
 ### Records
-Evidence and receipts are immutable union facts. Candidates and the summary are materializations
+Evidence and history entries are immutable union facts. Candidates and the summary are materializations
 that commit atomically with the facts that justify them. They are generated, never independently
 authoritative. Local bookkeeping lives in local records, never inside a fact: sponsorship,
 charges, storage location, import position.
@@ -230,9 +230,9 @@ charges, storage location, import position.
 | record | key | fields | merge |
 |---|---|---|---|
 | `fn2-identity-evidence` (id 1; replaces `fn2-identity`) | (N, C, E) | `kind` (`:binding`, `:invalid-signature`, `:out-of-scope`, `:resolution`), `issuer`, `proof` (the retained portable evidence's identity: the signed envelope, a proof, or the observed bytes), `dependencies` (the identity of the retained dependency set; zero when none), `rule` (the validation rule and its version, where one applies) | `:union`; the same key with an unequal payload is an inconsistency, never newest-wins |
-| `fn2-identity-receipts` (id 11) | (N, C, O) | `evidence` (E of the supporting evidence), `article` (relative to O, as O issued it) | `:union`, same rule |
-| `fn2-identity-candidates` (id 12, generated) | (N, C) | `evidence-present`, `binding-qualified`, `local-receipt` (O of this domain's receipt, or none) | materialized at commit |
-| `fn2-identity-summary` (id 13, a fold) | N | `selected-content` (C, or none), `selected-receipt`, `first-local-receipt`, `resolution` (E of the last resolution applied), `candidates`, `evidence`, `receipts`, `coverage` (none, or the scope of a recorded gap) | `:latest`, fold |
+| `fn2-identity-history` (id 11; the peer's history entry, RFC 5537 §3.3, fn1 peering.md §2.5) | (N, C, O) | `evidence` (E of the supporting evidence), `article` (relative to O, as O issued it) | `:union`, same rule |
+| `fn2-identity-candidates` (id 12, generated) | (N, C) | `evidence-present`, `binding-qualified`, `local-entry` (O of this domain's history entry, or none) | materialized at commit |
+| `fn2-identity-summary` (id 13, a fold) | N | `selected-content` (C, or none), `selected-entry`, `first-local-entry`, `resolution` (E of the last resolution applied), `candidates`, `evidence`, `history entries`, `coverage` (none, or the scope of a recorded gap) | `:latest`, fold |
 | `fn2-identity-local` (id 14, local) | (N, C, E) | `sponsor`, `charged` (per dimension), `object` (where the proof's bytes are), `imported-at` | `:latest`, local only |
 
 - **Competition is derived, never stored.** A binding competes at A and can be selected at B. An
@@ -243,7 +243,7 @@ charges, storage location, import position.
   statements themselves are retained.
 - **The interpretation context is the node's own commit domain** (ruling 13: one domain per node).
   It is stated in every summary statement below, never left implicit.
-- **The six permanence states (ruling 9) are read, not stored.** They come from evidence, receipts,
+- **The six permanence states (ruling 9) are read, not stored.** They come from evidence, history entries,
   the article's withdrawal, the body's availability, and C5's obligations. "Under a custody
   obligation" needs the obligations source; it is not derivable from the other four.
 
@@ -252,11 +252,11 @@ Two summary slots for one key in one transaction would each stage against the sa
 `fn2-succ-stage-fold` reads the tip, not an earlier slot's staged row. So one event per name per
 transaction:
 - `:admit (N, deltas, establish)`. The deltas come from the engine, never from the caller: new
-  evidence (count), new candidate (0/1), new receipts (count). They are the outcome of the union
+  evidence (count), new candidate (0/1), new history entries (count). They are the outcome of the union
   inserts staged in the same transaction. `establish` is set when this admission is a local
   acceptance and the name is unselected at the serialized tip: it sets `selected-*` and
-  `first-local-receipt`.
-- `:receipt-import (N, new)`. Counts an imported receipt once. It never selects (ruling 14).
+  `first-local-entry`.
+- `:history-import (N, new)`. Counts an imported history entry once. It never selects (ruling 14).
 - `:resolve (N, E)`. Selects a named eligible binding under an authority-qualified resolution
   statement and the declared ordering. It deletes nothing.
 - `:coverage-gap (N, scope)`. Records the scope and reason of omitted evidence. Clearing a gap
@@ -268,7 +268,7 @@ see the name unselected; the first to stage `establish` wins. The second's stage
 discard evidence.
 
 **The commit position arrives after stage** (`fn2-txn-commit-1`: stage, admit, then bind with the
-returned event). The local receipt's O carries that position, so it is a late-bound field, filled
+returned event). The local history entry's O carries that position, so it is a late-bound field, filled
 at bind. This is C-S3a's mechanism grown from octets to integers. A late value never feeds a
 guard, a key lookup, arithmetic or an allocation: stage decides eligibility, the deltas and
 establishment; bind copies the position into the declared reference fields. The generator states
@@ -277,7 +277,7 @@ that finalization cannot fail, and that the fully bound event equals the staged 
 **Funded admission (ruling 7).**
 - Everything an admission will publish is reserved before stage, against the offerer, sponsor or
   peer, through `fn2-principal-charges`: evidence storage, the retained proof and dependencies,
-  receipt, candidate and summary rows, and liability. Each is a separate dimension; work done is
+  history entry, candidate and summary rows, and liability. Each is a separate dimension; work done is
   accounted separately.
 - Facts, charges, candidates and summary share one private successor and one publication.
 - A replay of the same admission neither counts nor charges again; a new observation does both.
@@ -292,13 +292,13 @@ that finalization cannot fail, and that the fully bound event equals the staged 
 ### A refinement found while planning the build: integer handles, no octet fold values
 The summary never stores a content identity or an origin. Each candidate (N, C) carries a
 **candidate ordinal** `h`, assigned by the summary fold at its first admission: `:admit`'s
-`:assign ((h (+ candidates 1)))` when the content is new. `selected` and `first-local-receipt`
+`:assign ((h (+ candidates 1)))` when the content is new. `selected` and `first-local-entry`
 are ordinals. The decision reads the candidate row's `h` and the summary's `selected`, and
 compares two integers: `:none` when selected is 0, `:same` when they are equal, `:other`
 otherwise.
 
 This keeps every fold value an integer. It also makes the late-bound field unnecessary for the
-fold: `h` is known at stage. The receipt row's position takes the commit position by C-S3's
+fold: `h` is known at stage. The history entry row's position takes the commit position by C-S3's
 existing `:event` source at bind. So vocabulary items 3's late-bound integers (4 below) and the
 octet fold values of item 1 drop out. What remains:
 - octet and digest fold **keys** (N, and (N, C) for candidates, which is a fold too);
@@ -323,7 +323,7 @@ octet fold values of item 1 drop out. What remains:
 ### The reads (each at a named view; a pinned view never substitutes content, ruling 8)
 | read | answers |
 |---|---|
-| `fn2-identity-exact (N, C, view)` | the candidate row: evidence present, binding qualified, the local receipt; admission also checks the specific E or O for replay |
+| `fn2-identity-exact (N, C, view)` | the candidate row: evidence present, binding qualified, the local history entry; admission also checks the specific E or O for replay |
 | `fn2-identity-summary-read (N, view)` | selection, locally known counts, the interpretation context, coverage, all at the same view as the exact read |
 | `fn2-identity-evidence-start / -step (N, view, resume, budget)` | immutable evidence in full-key order, resumed strictly after the last delivered key, and whether the view's cut is still available |
 
@@ -339,9 +339,9 @@ read plus one summary read. It returns three orthogonal facts plus one compatibi
 - **The facts:** the selection relation (`:none`, `:same`, `:other`), the evidence status
   (novelty and kind), and coverage.
 - **The verdict, in this precedence:**
-  - `:duplicate`: a local receipt holds (N, C), including accepted content whose body was
+  - `:duplicate`: a local history entry holds (N, C), including accepted content whose body was
     reclaimed.
-  - `:evidence`: a qualified binding is known and no local receipt holds it.
+  - `:evidence`: a qualified binding is known and no local history entry holds it.
   - `:conflict`: neither of the above, and the selection names another content.
   - `:stored`: neither of the above, and the name is unselected. It means eligible for
     admission, not durably stored.
@@ -352,7 +352,7 @@ D's txn consumes the facts, not only the verdict:
 - `:duplicate` never suppresses new independent evidence carried with duplicate bytes (ruling 14).
 
 **Cost** is a fixed number of logical probes per stable attempt, with no enumeration of a name's
-candidates, evidence or receipts. The bound is stated in source count, run heights, key-byte
+candidates, evidence or history entries. The bound is stated in source count, run heights, key-byte
 bounds and the retry conditions (a version move restarts the attempt; a page miss waits). It is
 not "three descents": `fn2-xl-step` visits overlays and possibly several runs.
 
@@ -362,12 +362,12 @@ and the conclusion. An error result or an impossible premise never counts as a p
 
 | name | statement | positive; negative (the tooth) |
 |---|---|---|
-| `fn2-identity-union-order-free` (re-scopes `fn2-identity-binding-converges`: one node only) | For a fixed set of facts (identities and payloads), every admissible schedule of insertion, replay and sealing yields exactly that evidence set and receipt set, read back by the real scans of every installed run and published overlay. | two observations of (m, a), a replay of the first, and attributed receipts, in permuted delivery and sealing orders: two evidence rows. Negative: a node deduplicating by (m, a) returns one row. Dropping the consistent-payload hypothesis exposes `:inconsistent`. |
-| `fn2-identity-interpretation-determined` (ruling 3) | Equal evidence, receipts, resolution statements, gap facts, interpretation context and version, and cut give the summary of `fn2-id-interpret-spec`, an independent list interpreter, read through the real summary read. | receipts A:a@7 and B:b@9, interpreted for A, in two delivery orders with one resolution: equal, and equal to the spec. Changing only the context to B may change the selection: the context hypothesis has teeth. Negative: selection by delivery order. A resolution present in only one run is not a positive witness. |
-| `fn2-identity-attributed` | Receipts of distinct origins for the same (N, C) all survive with their exact origins. Importing a foreign receipt into an unselected local context leaves it unselected. | A's and B's receipts for the same (m, a), even at the same numeric position: both survive. Negative: a store keyed by (m, a) alone collapses them; a node that selects on an imported receipt. |
+| `fn2-identity-union-order-free` (re-scopes `fn2-identity-binding-converges`: one node only) | For a fixed set of facts (identities and payloads), every admissible schedule of insertion, replay and sealing yields exactly that evidence set and history entry set, read back by the real scans of every installed run and published overlay. | two observations of (m, a), a replay of the first, and attributed history entries, in permuted delivery and sealing orders: two evidence rows. Negative: a node deduplicating by (m, a) returns one row. Dropping the consistent-payload hypothesis exposes `:inconsistent`. |
+| `fn2-identity-interpretation-determined` (ruling 3) | Equal evidence, history entries, resolution statements, gap facts, interpretation context and version, and cut give the summary of `fn2-id-interpret-spec`, an independent list interpreter, read through the real summary read. | history entries A:a@7 and B:b@9, interpreted for A, in two delivery orders with one resolution: equal, and equal to the spec. Changing only the context to B may change the selection: the context hypothesis has teeth. Negative: selection by delivery order. A resolution present in only one run is not a positive witness. |
+| `fn2-identity-attributed` | History entries of distinct origins for the same (N, C) all survive with their exact origins. Importing a foreign history entry into an unselected local context leaves it unselected. | A's and B's history entries for the same (m, a), even at the same numeric position: both survive. Negative: a store keyed by (m, a) alone collapses them; a node that selects on an imported history entry. |
 | `fn2-identity-no-ceiling` | For fresh admissible requests whose reservations hold and whose steps make progress (hypotheses independent of success), each commits, with no per-name cardinality test in the path. An unfunded request commits no fact and records the gap. | nine distinct bindings for one name plus a second observation of one: nine candidates, ten evidence. A tenth-content request without funds: no fact, coverage names the gap. Negative: refusing the fifth funded content (the old bound); committing the unfunded fact; a count that wraps. |
 | `fn2-identity-decide-bounded` | Per stable attempt, the decision makes a fixed number of logical probes, each within the structural bound (sources x height x key bytes), independent of the name's candidate and evidence counts. Its verdict and facts equal the read spec (a separate conjunct). | controlled source counts and heights, with growing same-name competitors, under instrumented comparator and page work. Negative: a decision that advances through every competitor breaks the bound. Without the stable-attempt hypothesis, completion is false (endless restart). |
-| `fn2-exact-identity` (re-stated) | Through reclamation, sealing and compaction, the decision preserves N's namespace and exact octets, C's profile and algorithm, and accepted-versus-evidence meaning. | accept C1, retain competing C2, release the bodies, seal, query: C1 `:duplicate`, C2 `:evidence`, a new C3 `:conflict`; the same bytes in another namespace or profile are no duplicate. Negative: dropping the namespace, the profile or the reclaimed receipt. |
+| `fn2-exact-identity` (re-stated) | Through reclamation, sealing and compaction, the decision preserves N's namespace and exact octets, C's profile and algorithm, and accepted-versus-evidence meaning. | accept C1, retain competing C2, release the bodies, seal, query: C1 `:duplicate`, C2 `:evidence`, a new C3 `:conflict`; the same bytes in another namespace or profile are no duplicate. Negative: dropping the namespace, the profile or the reclaimed history entry. |
 | `fn2-identity-summary-adequate` (generated per fold event, as C4a's) | The summary observed through the real read equals the fold of its events, and a replay changes nothing. | Negative: a replay that counts twice. |
 | `fn2-identity-admission-atomic` | At every crash cut of a publication, facts, charges, candidates, summary and coverage are all present or all absent. | Negative: a cut that exposes charges without their facts. |
 | `fn2-identity-evidence-cursor-exact` | A cursor at a view delivers exactly the view's evidence rows for N, in key order, across seals and version moves. | Negative: pagination that omits an eligible row after a seal. |
@@ -394,8 +394,8 @@ losing conflict whose winner was dropped.
    - Agreed: the theorem never claims "for any n" without the hypothesis, and the decision never
      decodes the counts.
 2. **Candidates.**
-   - Astra: a materialized (N, C) candidate index is required, because a receipt lower bound under
-     (N, C, O) may find another origin's receipt first.
+   - Astra: a materialized (N, C) candidate index is required, because a history entry lower bound under
+     (N, C, O) may find another origin's history entry first.
    - C agrees, and builds candidates as a generated materialization, updated in the same
      publication. The alternative, an origin-prefix seek, answers only the narrower question and
      would have to search inherited incarnations.
@@ -1001,6 +1001,27 @@ losing conflict whose winner was dropped.
    and the scan and identity read above. Unit: `tests/read-unit.lisp` (LIST across a seal of the
    group directory, an overview scan across a seal of the seeds' overlays, identity reads with and
    without conflict evidence).
+
+14. **S-ARTICLE-LOCATION (to D and B, ruled 2026-10-31; lands with §4a's records).** `fn2-article`
+   (id 2) gains the stored octets' location as one reference in the format's reference shape,
+   `(fn2-format-prefix "LOCATION-" *fn2-format-ref*)`: `location-storage-domain`,
+   `location-physical-unit`, `location-writer-epoch`, `location-allocation`, `location-page-kind`,
+   `location-encoded-length`, `location-expected-hash`. That is one level, as for a run's manifest:
+   - an article that fits one 64 KiB payload block names that `:raw-source` page;
+   - a larger one names its `:source-manifest`, whose entries are the content-named blocks
+     (B-HASH-ATTACHED).
+   **Count bound: exactly one reference per article.** A multi-block article is named through its
+   manifest, never by a list in the entry, so the entry's size does not grow with the article.
+   The txn writes the field at bind from the accepted member's source reference (b-durability.md
+   §11b S9): the `SOURCE-` reference of its `:article-acceptance` record, field for field, so the run
+   entry and the durable record never disagree. Until D4 3/n the reference names the upload window's
+   durable extent (B-S1); after it, the content-named block or the source manifest. B's
+   `:promised-read` edge holds what the reference names while the entry names it.
+   ARTICLE/HEAD/BODY (D6) read the field through `fn2-read-value` and hand it to B's
+   `fn2-block-read` (§11b S10). A manifest takes one more read through the same op. C never reads the
+   octets.
+   Under `:latest` a withdrawal rewrites the whole entry, so its writer copies the location from the
+   entry it read.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
