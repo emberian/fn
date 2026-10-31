@@ -35,6 +35,8 @@
       ,@(fn2-columns-cost-stubs (fn2-machine-property 'fn2-columns-cost32 :observes world)
                                (cadr (member-eq :observe calling)) t)))))
 (assert-event (equal (len (fn2-machine-property 'fn2-columns-cost32 :columns (w state))) 40))
+; MACHINE-FORM P1: the three directory fields are not the kind table's columns.
+(assert-event (equal (len (fn2-machine-property 'fn2-columns-cost32 :table (w state))) 37))
 (defun fn2-columns-cost-unit ()
  (declare (xargs :guard t))
  (with-local-stobj fn2-columns-cost32
@@ -43,8 +45,6 @@
     (mv (and (fn2-columns-cost32-wfp fn2-columns-cost32)
              (equal (fn2-columns-cost32-rows fn2-columns-cost32) 1)
              (equal (fn2-columns-cost32-generation 0 fn2-columns-cost32) 17)
-             (equal (fn2-columns-cost32-storage-bytes 0 fn2-columns-cost32) 131072)
-             (equal (fn2-columns-cost32-ready-prev 0 fn2-columns-cost32) *fn2-none*)
-             (equal (fn2-columns-cost32-ready-next 0 fn2-columns-cost32) *fn2-none*)) fn2-columns-cost32)) ok)))
+             (equal (fn2-columns-cost32-storage-bytes 0 fn2-columns-cost32) 131072)) fn2-columns-cost32)) ok)))
 (assert-event (fn2-columns-cost-unit))
-(value-triple (cw "COLUMNS COST UNIT: sprint 32 declared/40 array/41 total fields, initialization PASS~%"))
+(value-triple (cw "COLUMNS COST UNIT: sprint 32 declared/40 row/37 table fields, initialization PASS~%"))

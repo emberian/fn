@@ -12,6 +12,35 @@
     (ready-prev :link) (ready-next :link)
     (wait-reason (:enum fn2-wait (:none :completion ,@(strip-cars *fn2-resource-order*))))
     (deadline :u60)))
+; MACHINE-FORM 6.5 P1: the row fields generic code writes across rows (the
+; resource FIFOs' links, the wait reason the grant service clears) are
+; columns of the directory fn2-machines, indexed by id, not of each kind's
+; table: a park or a grant touches the directory and no kind's table. A
+; kind's row is still all of *fn2-machine-common-fields* (its :columns);
+; its table (:table) is the rest.
+(defconst *fn2-machine-directory-fields*
+  (list (assoc-eq 'ready-prev *fn2-machine-common-fields*)
+        (assoc-eq 'ready-next *fn2-machine-common-fields*)
+        (assoc-eq 'wait-reason *fn2-machine-common-fields*)))
+(defun fn2-machine-directory-fieldp (field)
+  (declare (xargs :guard t))
+  (and (assoc-eq field *fn2-machine-directory-fields*) t))
+(defun fn2-machine-table-columns (cols)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (if (fn2-machine-directory-fieldp (caar cols)) (fn2-machine-table-columns (cdr cols))
+      (cons (car cols) (fn2-machine-table-columns (cdr cols))))))
+; A kind's :initial for a directory field may only restate its default (the
+; directory initializes every row).
+(defun fn2-machine-directory-initial-p (initial)
+  (declare (xargs :verify-guards nil))
+  (if (atom initial) t
+    (and (or (not (fn2-machine-directory-fieldp (caar initial)))
+             (equal (cadar initial)
+                    (if (eq (cadr (assoc-eq (caar initial) *fn2-machine-directory-fields*)) :link)
+                        '*fn2-none* 0)))
+         (fn2-machine-directory-initial-p (cdr initial)))))
+(make-event (value (cons 'progn (fn2-columns-enum-events *fn2-machine-directory-fields*))))
 
 (defun fn2-machine-packed-layout (fields offset)
   (declare (xargs :verify-guards nil))
@@ -91,11 +120,19 @@
   (if (atom fields) nil
     (cons (fn2-columns-fit (cadr (assoc-eq (caar fields) columns)) (cadar fields))
           (fn2-machine-write-guards (cdr fields) columns))))
+(defun fn2-machine-directory-writes (fields directoryp)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (if (eq (fn2-machine-directory-fieldp (caar fields)) directoryp)
+        (cons (car fields) (fn2-machine-directory-writes (cdr fields) directoryp))
+      (fn2-machine-directory-writes (cdr fields) directoryp))))
 (defun fn2-machine-core-put-expansion (name columns states id fields corep)
   (declare (xargs :verify-guards nil))
   (if (fn2-columns-write-formp name columns states fields)
       (if corep
-          (let ((values (fn2-machine-write-fields fields)))
+          (let* ((values (fn2-machine-write-fields fields))
+                 (own (fn2-machine-directory-writes values nil))
+                 (dir (fn2-machine-directory-writes values t)))
             ; Parallel value bindings preserve the caller's lexical scope.
             ; The whole write is checked before the first column is changed.
             `(let ((fn2-write-id ,id) ,@(fn2-machine-write-values fields))
@@ -109,9 +146,20 @@
                      (if (and (natp fn2-write-slot)
                               (< fn2-write-slot (,(fn2-columns-sym name "-ROWS") ,name))
                               ,@(fn2-machine-write-guards values columns))
-                         (let* ,(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name 'fn2-write-slot values) (mv t ,name))
+                         (let* ,(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name 'fn2-write-slot own) (mv t ,name))
                        (mv nil ,name))
-                     (if fn2-write-accepted fn2-core (fn2-machine-refuse-write fn2-core)))))))
+                     (if fn2-write-accepted
+                         ,(if dir
+                              ; The directory's fields of the batch, checked with the rest above.
+                              `(stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+                                 (fn2-machines)
+                                 (if (and (natp fn2-write-id) (< fn2-write-id (fn2-machines-rows fn2-machines)))
+                                     (let* ,(fn2-columns-put-bindings 'fn2-machines-set 'fn2-machines 'fn2-write-id dir)
+                                       fn2-machines)
+                                   fn2-machines)
+                                 fn2-core)
+                            'fn2-core)
+                       (fn2-machine-refuse-write fn2-core)))))))
         `(let* ,(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name id fields) ,name))
     (er hard 'defmachine "Invalid field list or cross-kind phase in ~x0 write: ~x1." name fields)))
 
@@ -286,12 +334,13 @@
   (declare (xargs :verify-guards nil))
   (let* ((enum (fn2-columns-sym name "-STATE"))
          (cols (append `((phase (:enum ,enum ,states))) *fn2-machine-common-fields* fields))
+         (tcols (fn2-machine-table-columns cols))
          (charge (fn2-columns-sym name "-CHARGE"))
          (bytes (cadr (member-eq :bytes budget)))
          (steps (cadr (member-eq :steps budget)))
          (descriptors (cadr (member-eq :descriptors budget))))
     (fn2-declare (list :machine name)
-      `(:states ,states :columns ,cols :holds ,holds :admission ,admission :taken ,taken :budget ,budget
+      `(:states ,states :columns ,cols :table ,tcols :holds ,holds :admission ,admission :taken ,taken :budget ,budget
                 :continuations ,continuations :observes ,observes :capacity ,capacity :initial ,initial
                 :layout ,cols :packed ,(fn2-machine-packed-layout cols 0)
                 :calling-convention (:run (id budget ,@(fn2-machine-row-vars cols) fn2-core)
@@ -299,7 +348,7 @@
                 :cases ,(fn2-machine-case-labels name states observes) ,@arms)
       (append (list (list :declaration (list :columns name)))
               (fn2-machine-requirements (append continuations observes)))
-      `((defcolumns ,name ,cols :put-policy ,states)
+      `((defcolumns ,name ,tcols :put-policy ,states)
        (defmacro ,(fn2-columns-sym name "-PUT-CORE") (id &rest fields)
          (fn2-machine-core-put-expansion ',name ',cols ',states id fields t))
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-BUDGET*")) ',budget)
@@ -322,7 +371,7 @@
               ,(if (member-eq :retired states) `(not (equal phase ,(position-eq :retired states))) t)
               (case event ,@(fn2-machine-observe-event-guards observes) (otherwise nil))))
 
-       ,@(fn2-machine-prepare-events name cols initial)))))
+       ,@(fn2-machine-prepare-events name tcols initial)))))
 
 ; The new form (MACHINE-FORM 6.2): :arms ((PHASE [:on-refusal (STEP ...)] STEP ...) ...)
 ; with :observes ((EVENT [:from (P ...)] STEP ...) ...) and :subarms ((NAME STEP ...) ...);
@@ -355,6 +404,7 @@
            (fn2-machine-continuationsp continuations nil)
            (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
            (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
+           (fn2-machine-directory-initial-p initial)
            (fn2-machine-initialp name
              (append `((phase (:enum state ,states))) *fn2-machine-common-fields* fields)
              states initial)
@@ -661,6 +711,10 @@
   (if (atom fields) nil
     (let ((i (position-eq (car fields) (strip-cars columns))))
       (append (and i (list i)) (fn2-machine-column-indices (cdr fields) columns)))))
+; P1: an arm writing a directory field changes the directory child.
+(defun fn2-machine-directory-child (writes)
+  (declare (xargs :verify-guards nil))
+  (and (intersectp-eq writes (strip-cars *fn2-machine-directory-fields*)) '(fn2-core-machines)))
 (defun fn2-machine-arm-pre (name phase-constant)
   (declare (xargs :verify-guards nil))
   `(and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
@@ -672,10 +726,10 @@
   (if (atom arms) nil
     (let* ((tag (caar arms)) (fn (cadar arms)) (c (cddar arms))
            (phase (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE") tag) "*")))
-           (cols (fn2-machine-property name :columns world))
+           (cols (fn2-machine-property name :table world))
            (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
            (columns (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
-           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) *fn2-arm-implicit-tables*) world))
+           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) (fn2-machine-directory-child (fn2-arm-get :writes c)) *fn2-arm-implicit-tables*) world))
            (charge (fn2-columns-sym name "-ARM-CHARGE-OK-P"))
            (next (fn2-columns-sym name "-ARM-NEXT-OK-P"))
            (stem (fn2-columns-sym (fn2-columns-col-name name tag) "")))
@@ -710,10 +764,10 @@
   (declare (xargs :verify-guards nil))
   (if (atom observes) nil
     (let* ((tag (caar observes)) (fn (cadar observes)) (c (cddar observes))
-           (cols (fn2-machine-property name :columns world))
+           (cols (fn2-machine-property name :table world))
            (table (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
            (columns (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
-           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) *fn2-arm-implicit-tables*) world))
+           (children (fn2-machine-child-indices (append (fn2-arm-get :tables c) (fn2-machine-directory-child (fn2-arm-get :writes c)) *fn2-arm-implicit-tables*) world))
            (event (fn2-event-keyword->code tag))
            (stem (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-OBSERVE") tag) "")))
       (append (and (not (eq (fn2-arm-get :language c) :unchecked)) (list
@@ -825,9 +879,15 @@
                `(declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core)
                                                             (eq (,code id fn2-core) :ok))))
                `((if (eq (,code id fn2-core) :ok)
-                     (let ((slot (fn2-machine-slot id fn2-core)))
-                       (stobj-let ((,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
-                         (value) (,(fn2-columns-col-name name (caar columns)) slot ,name) value))
+                     ,(if (fn2-machine-directory-fieldp (caar columns))
+                          ; P1: a directory field is the directory's column at the id.
+                          `(stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+                             (value) (if (and (natp id) (< id (fn2-machines-rows fn2-machines)))
+                                         (,(fn2-columns-col-name 'fn2-machines (caar columns)) id fn2-machines) 0)
+                             value)
+                        `(let ((slot (fn2-machine-slot id fn2-core)))
+                           (stobj-let ((,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
+                             (value) (,(fn2-columns-col-name name (caar columns)) slot ,name) value)))
                    (prog2$ (hard-error ',reader "Invalid internal row read." nil) 0))) nil nil)
              `(defthm ,(fn2-columns-sym reader "-WIDTH")
                 (implies ,hyps (unsigned-byte-p ,(fn2-columns-width (cadar columns)) ,value))
@@ -835,7 +895,12 @@
                   (:type-prescription :corollary (implies ,hyps (natp ,value)))
                   (:linear :corollary (implies ,hyps (< ,value ,(expt 2 (fn2-columns-width (cadar columns))))))
                   (:rewrite :corollary (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
-                :hints (("Goal" :in-theory (enable ,reader))))
+                :hints (("Goal" :in-theory (enable ,reader)
+                         ,@(and (fn2-machine-directory-fieldp (caar columns))
+                                `(:use ((:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-NATP")
+                                         (i id) (fn2-machines (fn2-core-machines fn2-core)))
+                                        (:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-BOUND")
+                                         (i id) (fn2-machines (fn2-core-machines fn2-core)))))))))
              `(in-theory (disable ,reader))
              (fn2-machine-row-reader-events name (cdr columns) code)))))
 (defun fn2-machine-snapshot-events (name columns)
@@ -1370,6 +1435,62 @@
   (if (atom fields) nil
     (append (fn2-machine-field-events (car fields) (cadr (assoc-eq (car fields) cols)) names world)
             (fn2-machine-fields-events (cdr fields) cols names world))))
+; A directory field's dispatcher reads and writes the directory's column at
+; the id: no case over kinds.
+(defun fn2-machine-directory-field-events (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let* ((field (caar fields)) (kind (cadar fields))
+           (get (fn2-columns-col-name 'fn2-machine field))
+           (put (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field)))
+           (write (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "WRITE-" field)))
+           (column (fn2-columns-col-name 'fn2-machines field))
+           (setter (fn2-columns-col-name 'fn2-machines (fn2-columns-pre "SET-" field)))
+           (width (fn2-columns-width kind))
+           (valid `(and (unsigned-byte-p ,width value) (fn2-machine-idp id fn2-core)
+                        ,(fn2-columns-fit kind 'value))))
+      (append
+       `((in-theory (disable ,column))
+         ,@(fn2-machine-checked-reader-events get '(id)
+             '(if (fn2-machine-idp id fn2-core) :ok :bounds)
+             `(stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+                (answer) (,column id fn2-machines) answer))
+         (defthm ,(fn2-columns-sym get "-NATP")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (natp (,get id fn2-core)))
+           :rule-classes :type-prescription
+           :hints (("Goal" :use ((:instance ,(fn2-columns-sym column "-NATP")
+                                  (i id) (fn2-machines (fn2-core-machines fn2-core)))))))
+         (defthm ,(fn2-columns-sym get "-BOUND")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                    (< (,get id fn2-core) ,(expt 2 width)))
+           :rule-classes :linear
+           :hints (("Goal" :use ((:instance ,(fn2-columns-sym column "-BOUND")
+                                  (i id) (fn2-machines (fn2-core-machines fn2-core)))))))
+         (defun ,put (id value fn2-core)
+           (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) ,valid)))
+           (if (not ,valid) fn2-core
+             (stobj-let ((fn2-machines (fn2-core-machines fn2-core)))
+               (fn2-machines)
+               (if (and (natp id) (< id (fn2-machines-rows fn2-machines)))
+                   (,setter id value fn2-machines) fn2-machines)
+               fn2-core)))
+         (defthm ,(fn2-columns-sym put "-TYPE")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (,put id value fn2-core))))
+         (defthm ,(fn2-columns-sym put "-WFP")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                    (fn2-core-wfp (,put id value fn2-core))))
+         (in-theory (disable ,get ,put))
+         (defun ,write (id value fn2-core)
+           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+           (if ,valid (,put id value fn2-core) (fn2-machine-refuse-write fn2-core)))
+         (defthm ,(fn2-columns-sym write "-TYPE")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                    (fn2-corep (,write id value fn2-core))))
+         (defthm ,(fn2-columns-sym write "-WFP")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                    (fn2-core-wfp (,write id value fn2-core))))
+         (in-theory (disable ,write)))
+       (fn2-machine-directory-field-events (cdr fields))))))
 (defun fn2-machine-all-field-events (names all world seen)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil

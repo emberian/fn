@@ -1,7 +1,11 @@
 (in-package "ACL2")
 (include-book "machines")
 (include-book "profile")
-(defcolumns fn2-machines ((kind :u8) (slot :u32))
+;; The directory row of a machine id: its kind and slot, and (MACHINE-FORM
+;; 6.5 P1) the row fields generic code writes across rows,
+;; *fn2-machine-directory-fields*: the resource FIFOs' links and the wait reason.
+(make-event
+ `(defcolumns fn2-machines ((kind :u8) (slot :u32) ,@*fn2-machine-directory-fields*)
  :init-name fn2-machines-columns-init
  :extra-fields
   ((fn2-machines-accept-count :type (unsigned-byte 32) :initially 0 :why "Directory-wide listener capacity fixes the admission partition.")
@@ -17,7 +21,7 @@
    (fn2-machines-admission-head :type (array (unsigned-byte 32) (16)) :initially *fn2-none* :why "Head of each admitted kind's admission-credit FIFO across listeners.")
    (fn2-machines-admission-tail :type (array (unsigned-byte 32) (16)) :initially *fn2-none* :why "Tail of each admitted kind's admission-credit FIFO across listeners.")
    (fn2-machines-admission-credits :type (array (unsigned-byte 32) (16)) :initially 0 :why "Unassigned connection credits per admitted kind.")
-   (fn2-machines-active-count :type (array (unsigned-byte 32) (16)) :initially 0 :why "Active connections per admitted kind, compared with its credits.")))
+   (fn2-machines-active-count :type (array (unsigned-byte 32) (16)) :initially 0 :why "Active connections per admitted kind, compared with its credits."))))
 
 (defmacro fn2-machine-directory-events ()
  '(progn
@@ -38,7 +42,10 @@
   (if (or (zp left) (> left (fn2-machines-rows fn2-machines))) fn2-machines
     (mv-let (kind slot) (fn2-machine-local-id (- left 1) profile)
       (let* ((fn2-machines (fn2-machines-set-kind (- left 1) (if (unsigned-byte-p 8 kind) kind 255) fn2-machines))
-             (fn2-machines (fn2-machines-set-slot (- left 1) (if (unsigned-byte-p 32 slot) slot 0) fn2-machines)))
+             (fn2-machines (fn2-machines-set-slot (- left 1) (if (unsigned-byte-p 32 slot) slot 0) fn2-machines))
+             (fn2-machines (fn2-machines-set-ready-prev (- left 1) *fn2-none* fn2-machines))
+             (fn2-machines (fn2-machines-set-ready-next (- left 1) *fn2-none* fn2-machines))
+             (fn2-machines (fn2-machines-set-wait-reason (- left 1) *fn2-wait-none* fn2-machines)))
         (fn2-machines-init-rows (- left 1) profile fn2-machines)))))
 (fn2-machines-preserves fn2-machines-init-rows (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
 

@@ -609,7 +609,8 @@
                    (union-eq (list tag) (fn2-arm-get :nexts acc)) (fn2-arm-get :nexts acc))))
     (append (list :cost cost
                   :writes (remove-eq 'phase (fn2-arm-get :writes acc))
-                  :tables (fn2-arms-own-table kind (fn2-arm-get :tables acc))
+                  :tables (union-eq (fn2-arms-own-table kind (fn2-arm-get :tables acc))
+                                    (fn2-machine-directory-child (fn2-arm-get :writes acc)))
                   :next next :uses (fn2-arm-get :uses acc))
             (and observe from (list :from from)))))
 (defconst *fn2-arms-observe-args* '(id event outcome reason count aux0 aux1))
