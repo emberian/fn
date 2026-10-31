@@ -151,7 +151,7 @@ def main (args : List String) : IO UInt32 := do
     if let some d := t.firstInterp then IO.println s!"    interp differs: {d}"
     if let some d := t.firstGen then IO.println s!"    generated differs: {d}"
   IO.println s!"MEASURE TOTAL calls {calls} interp-equal {ie} generated-equal {ge} guard-true {gt}"
-  return (if ie == calls && ge == calls then 0 else 1)
+  return (if ie == calls && ge == calls && gt == calls then 0 else 1)
 
 end Fn2.Measure
 

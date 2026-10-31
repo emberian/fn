@@ -140,7 +140,7 @@
          (append (list :do :vars vars) (meta-call call env)
                  (list :accept-given (and (member :accept opts) t) :accept (meta-kw :accept opts)
                        :effects (meta-kw :effects opts)
-                       :when (and (member :when opts) (meta-expr (meta-kw :when opts) env))
+                       :when (let ((c (meta-kw :when opts))) (and c (meta-expr c env)))
                        :else (loop for e in (meta-kw :else opts) collect (list :term (meta-translate e)))
                        :case (loop for c in cases
                                    collect (cons (car c) (meta-steps (cdr c) env)))))))
@@ -316,6 +316,15 @@
                                                (fn2-machine-declared k :arms *meta-w*)
                                                (fn2-machine-declared k :observe-arms *meta-w*))
                                          acc)))
+                ;; the operations the generator calls without naming them in a step: the parks an
+                ;; :issue's exhaustion or a (:park ...) reaches, and the declared waits' parkers
+                (dolist (o (append '(fn2-machine-park fn2-machine-park-admission)
+                                   (loop for (nil . row) in (table-alist 'fn2-waits *meta-w*)
+                                         when (fn2-decl-get :park row) collect (fn2-decl-get :park row))
+                                   (loop for (k) in (table-alist 'fn2-machine-kinds *meta-w*)
+                                         when (fn2-machine-property k :taken *meta-w*)
+                                         collect (fn2-columns-sym 'fn2-machine-park-taken- (symbol-name k)))))
+                  (when (fn2-arms-op-row o *meta-w*) (setq acc (adjoin o acc))))
                 (sort acc #'string< :key #'symbol-name)))
          (op-rows (mapcar #'meta-op ops))
          (roots (append

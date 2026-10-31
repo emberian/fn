@@ -111,6 +111,8 @@ def emit_fn(fn, defined, out):
             die(f"{fn.name} is mutually recursive with {fn.recursive}: outside the subset")
         if is_nil(fn.measure):
             die(f"{fn.name} is recursive without a measure")
+        if not (isinstance(fn.measure, List) and str(fn.measure[0]) in ("NFIX", "ACL2-COUNT")):
+            die(f"{fn.name}: measure {show(fn.measure)} is not (NFIX ...) or (ACL2-COUNT ...), a natural number")
         nf = len(fn.formals)
         pats = ", ".join(ident(v) for v in fn.formals)
         under = ", ".join("_" for _ in fn.formals)
@@ -181,11 +183,13 @@ def emit_world(emb, path, ns):
     L.append("/-! ## Guards: each function's guard, a precondition (ACL2's `guard` property, translated) -/")
     L.append("")
     guards = []
+    guard_outside = []
     for f in kept:
         if is_nil(f.guard) or str(f.guard) == "T" or (isinstance(f.guard, List) and f.guard[0] == "QUOTE" and str(f.guard[1]) == "T"):
             continue
         gcalls = calls_of(f.guard, set())
         if gcalls & outside:
+            guard_outside.append(f.name)
             continue
         binders = " ".join(f"({ident(v)} : Val)" for v in f.formals)
         L.append(f"def {ident(f.name)}.guard {binders}{' ' if binders else ''}: Val :=")
@@ -237,10 +241,12 @@ def emit_world(emb, path, ns):
     L.append("  | some g => g args")
     L.append("  | none => none")
     L.append("")
+    L.append(f"def guardOutside : List String := [{', '.join(lean_str(n) for n in guard_outside)}]")
+    L.append("")
     L.append("/-- A function's guard on its arguments (`T` for a function with no stated guard). -/")
     L.append("def guardOf (f : String) (args : List Val) : Option Val := match guardTable.get? f with")
     L.append("  | some g => g args")
-    L.append("  | none => if fnTable.contains f then some Val.t else none")
+    L.append("  | none => if fnTable.contains f && !guardOutside.contains f then some Val.t else none")
     L.append("")
     L.append(f"def refused : List String := [{', '.join(lean_str(r) for r in refused)}]")
     L.append(f"def dropped : List String := [{', '.join(lean_str(r) for r in dropped)}]")

@@ -141,8 +141,9 @@ def directoryFields : List String := ["READY-PREV", "READY-NEXT", "WAIT-REASON"]
 structure St where
   stobjs : List (String × Val)
   vars : Env
-  pending : List (String × Val) := []
-  next : Option Val := none
+  /-- pending writes, as terms: the generator evaluates them inside the checked write, at flush -/
+  pending : List (String × Term) := []
+  next : Option Term := none
   nextDone : Bool := false
   woken : Bool := false
 
@@ -237,13 +238,15 @@ def put (f : Frame) (st : St) (pairs : List (String × Val)) : Except String St 
     let control ← callFn w "FN2-CONTROL-RECORD-STOP" [r, control]
     pure (setStobj st "FN2-CONTROL" control)
 
-/-- Write the pending fields and the path's phase before an operation call or a terminal. -/
+/-- Write the pending fields and the path's phase before an operation call or a terminal; their
+terms are evaluated here, as the generator's checked write evaluates them. -/
 def flush (f : Frame) (st : St) : Except String St := do
-  let pairs := st.pending ++ (match st.next with | some n => [("PHASE", n)] | none => [])
+  let terms := st.pending ++ (match st.next with | some n => [("PHASE", n)] | none => [])
+  let pairs ← terms.mapM fun (n, e) => do pure (n, ← ev w st e)
   let st' ← if pairs.isEmpty then pure st else put w f st pairs
   pure { st' with pending := [], next := none, nextDone := st.nextDone || st.next.isSome }
 
-def pend (st : St) (pairs : List (String × Val)) : Except String St :=
+def pend (st : St) (pairs : List (String × Term)) : Except String St :=
   if pairs.any (fun p => st.pending.any (·.1 == p.1)) then
     .error s!"a field is written twice before the next operation"
   else .ok { st with pending := st.pending ++ pairs }
@@ -336,13 +339,10 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
     | .let_ v e => do
       let x ← ev w st e
       run f fuel { st with vars := (v, x) :: st.vars } rest
-    | .set pairs => do
-      let vs ← pairs.mapM fun (n, e) => do pure (n, ← ev w st e)
-      run f fuel (← pend st vs) rest
+    | .set pairs => do run f fuel (← pend st pairs) rest
     | .next ph => do
       if st.next.isSome || st.nextDone then throw "a path has two :next steps"
-      let p ← ev w st ph
-      run f fuel { st with next := some p } rest
+      run f fuel { st with next := some ph } rest
     | .do_ vars c acceptGiven accept when_ else_ cases => do
       let st ← flush w f st
       let op ← findOp w c.op
@@ -387,6 +387,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
         run f fuel st (refused ++ [.park "OPERATION" none none none])
       else run f fuel st (refused ++ (if f.refusal.isEmpty then [.halt] else f.refusal))
     | .repeat_ n body until_ => do
+      let st0 := st
       let st ← flush w f st
       let k := (← ev w st n).nfix
       let rec loop : Nat → Nat → St → Except String St
@@ -402,7 +403,10 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
             | .again st' => loop fuel' k { st with stobjs := st'.stobjs }
             | .done _ => throw "a :repeat pass ended in a terminal"
       let st' ← loop fuel k st
-      run f fuel { st with stobjs := st'.stobjs, pending := [] } rest
+      -- the generator's continuation keeps a :next declared before the loop (written again at
+      -- the path's terminal) and clears only the pending fields
+      run f fuel { st with stobjs := st'.stobjs, pending := [], next := st0.next,
+                           nextDone := st0.nextDone } rest
     | .repeatNext => do
       let st ← flush w f st
       pure (.again st)
@@ -436,12 +440,12 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-EMPTY*") (.int 0) Val.t
     | .wait b s => do
-      let st ← pend st [("PENDING", .int 1), ("WAIT-REASON", ← const w "*FN2-WAIT-COMPLETION*")]
+      let st ← pend st [("PENDING", .quote (.int 1)), ("WAIT-REASON", .quote (← const w "*FN2-WAIT-COMPLETION*"))]
       let st ← flush w f st
       chargeResult f st (← evOpt w st b (.int 0)) (← evOpt w st s (← const w "*FN2-WORK-MAILBOX*"))
         (.int 1) Val.nil
     | .halt => do
-      let st ← pend st [("STOPPED", .int 1), ("WAIT-REASON", ← const w "*FN2-WAIT-NONE*")]
+      let st ← pend st [("STOPPED", .quote (.int 1)), ("WAIT-REASON", .quote (← const w "*FN2-WAIT-NONE*"))]
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-MAILBOX*") (.int 0) Val.nil
     | .park wait arg kind steps => do
@@ -457,7 +461,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       | "TAKEN" => viaOp st ("FN2-MACHINE-PARK-TAKEN-" ++ kind.getD "") [.var "ID"]
       | "POOL" => do
         let cls ← match arg with
-          | some a => ev w st a
+          | some a => pure a
           | none => throw "(:park :pool) without a class"
         let st ← pend st [("CURSOR", cls)]
         let st ← flush w f st
@@ -468,7 +472,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       | other => match w.waits.find? (·.kind == other) with
         | some ⟨_, some parker⟩ => viaOp st parker [.var "ID"]
         | some ⟨_, none⟩ => do
-          let st ← pend st [("WAIT-REASON", ← const w ("*FN2-WAIT-" ++ other ++ "*"))]
+          let st ← pend st [("WAIT-REASON", .quote (← const w ("*FN2-WAIT-" ++ other ++ "*")))]
           let st ← flush w f st
           chargeResult f st (.int 0) (← evOpt w st steps mailbox) (.int 0) Val.nil
         | none => throw s!"(:park :{other}) names no declared wait kind"
@@ -482,6 +486,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
           callFn w "FN2-CONTROL-RECORD-STOP" [← const w ("*FN2-STOP-REASON-" ++ reason ++ "*"), control]
       stopEnd w f (setStobj st "FN2-CONTROL" control) steps
     | .wake => do
+      if st.woken then throw "the path already woke a row (:wake-row); a path wakes at most one row"
       let st ← flush w f st
       wakeResult f st (← var st "ID")
     | .nowake => do
