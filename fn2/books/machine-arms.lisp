@@ -6,6 +6,8 @@
 ; callbacks section, where its operations and the core exist.
 (in-package "ACL2")
 (include-book "core-children")
+; defmachine-registry's code calls the directory's partition operations
+(include-book "arm-children")
 
 ; ----------------------------------------------------------------------
 ; Environments and accumulators are plists. ENV: :kind :tag :observe
@@ -875,13 +877,19 @@
           (case-codes (fn2-arms-case-codes cases))
           (other (fn2-arms-case-otherwise cases))
           (accept (if (member-eq :accept opts) (fn2-arms-kw :accept opts nil)
-                    (if (or (null answers) (member-eq :ok case-codes)) nil '(:ok))))
+                    ;; no default for an operation that never answers :ok (C's
+                    ;; reads): every member is routed by :accept or :case
+                    (if (or (null answers) (member-eq :ok case-codes)
+                            (and (consp answers) (not (member-eq :ok answers)))) nil '(:ok))))
           (code (car vars))
           (refusal (fn2-arm-get :refusal env)))
      (cond
       ((null answers) (fn2-arms-steps rest env acc (1- fuel)))
       ((not (symbolp code)) (mv (msg "a :do of an operation with answers binds its code first.") nil acc))
-      ((and accept (not (subsetp-eq accept '(:ok))) (not (stringp (fn2-arms-kw :why opts nil))))
+      ;; accepting a failure beside :ok is an absorb and says why; an operation
+      ;; that never answers :ok has no failure to absorb by accepting
+      ((and accept (not (subsetp-eq accept '(:ok))) (not (and (consp answers) (not (member-eq :ok answers))))
+            (not (stringp (fn2-arms-kw :why opts nil))))
        (mv (msg "accepting ~x0 (not only :ok) needs :why \"...\" in the step." accept) nil acc))
       ((and accept (atom rest)) (mv (msg "accepted answers ~x0 have no continuation." accept) nil acc))
       ((and (null accept) (consp rest)) (mv (msg "steps follow a :do whose answers all branch.") nil acc))
@@ -1155,3 +1163,104 @@
   `(make-event
     (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
       (if err (er soft 'defmachine-arms "~@0" err) (value form)))))
+
+; ----------------------------------------------------------------------
+; MACHINE-FORM 6.5 P4: a partitioned kind's registry operations in child
+; form, in the kind's own book: (defmachine-registry K) emits
+; fn2-machine-admit-K-children (an admitted kind) or fn2-machine-take-K-children
+; (a taken kind) over (K fn2-machines fn2-pool fn2-control), with the kind's
+; ordinal and kind code as formals. The admission section makes each core
+; face one stobj-let (machines.lisp, fn2-machine-admission-events), so the
+; assembly proves no partition's body.
+(defconst *fn2-arms-registry-children* '(fn2-machines fn2-pool fn2-control))
+(defconst *fn2-arms-registry-callees*
+  '(fn2-machines-free-head-of fn2-machines-partition-install fn2-machines-park-taken
+    fn2-pool-reserve fn2-core-release-children))
+(defun fn2-arms-registry-releases (n body)
+  ; release ranges n-1..0, then BODY
+  (declare (xargs :verify-guards nil :measure (nfix n)))
+  (if (zp n) body
+    (let ((i (- n 1)))
+      `(mv-let (rc fn2-pool fn2-control)
+         (fn2-core-release-children ,(packn-pos (list 'slot i) 'fn2-core) ,(packn-pos (list 'pgen i) 'fn2-core)
+                                    kind target gen fn2-pool fn2-control)
+         (declare (ignore rc))
+         ,(fn2-arms-registry-releases i body)))))
+(defun fn2-arms-registry-reserves (specs n install fail)
+  (declare (xargs :verify-guards nil))
+  (if (atom specs) install
+    (let ((code (packn-pos (list 'code n) 'fn2-core)))
+      `(mv-let (,code ,(packn-pos (list 'slot n) 'fn2-core) ,(packn-pos (list 'pgen n) 'fn2-core) fn2-pool)
+         (fn2-pool-reserve ,(fn2-arm-get :class (cdar specs)) kind target gen fn2-pool)
+         (if (not (eq ,code :ok))
+             ,(fn2-arms-registry-releases n fail)
+           ,(fn2-arms-registry-reserves (cdr specs) (+ 1 (nfix n)) install fail))))))
+(defun fn2-arms-registry-events (kind world)
+  (declare (xargs :verify-guards nil))
+  (let* ((adm (fn2-machine-property kind :admission world))
+         (tk (fn2-machine-property kind :taken world))
+         (spec (or adm tk))
+         (specs (fn2-machine-range-specs (fn2-arm-get :ranges spec)))
+         (copies (fn2-arm-get :copy spec))
+         (phase (fn2-arms-phase-constant kind (fn2-arm-get :phase spec)))
+         (tuple (cons kind *fn2-arms-registry-children*))
+         (name (fn2-arms-child-name (fn2-columns-sym (if adm 'fn2-machine-admit- 'fn2-machine-take-) (symbol-name kind))))
+         (formals (append (if adm '(index nonce) '(waiter)) copies '(ordinal kind) tuple))
+         (rowkind (fn2-arm-get :rows tk))
+         (reason (and tk (fn2-columns-pre "*" (fn2-columns-sym 'fn2-wait- (concatenate 'string (symbol-name rowkind) "*")))))
+         (park `(fn2-machines-park-taken waiter ordinal ,reason fn2-machines fn2-control))
+         (put `(,(fn2-arms-sym kind "-PUT-CHILDREN") target slot
+                (phase ,phase) ,@(and adm '((cap-index index) (cap-nonce nonce)))
+                ,@(fn2-machine-range-puts specs 0)
+                ,@(fn2-machine-copy-puts copies)
+                ,@(fn2-machine-zero-puts (fn2-arm-get :clear spec))
+                (wait-reason *fn2-wait-none*)))
+         (install
+          `(mv-let (fn2-machines fn2-control)
+             (fn2-machines-partition-install ordinal target next ,(if adm nil t) fn2-machines fn2-control)
+             (mv-let (,kind fn2-machines fn2-control) ,put
+               (mv :ok ,@(and tk '(target gen)) ,@tuple))))
+         (fail (if adm `(mv :pool ,@tuple)
+                 `(mv-let (fn2-machines fn2-control) ,park (mv :pool *fn2-none* 0 ,@tuple))))
+         (no-row (if adm `(mv :no-row ,@tuple)
+                   `(mv-let (fn2-machines fn2-control) ,park (mv :no-row *fn2-none* 0 ,@tuple))))
+         (body
+          `(let* ((target (fn2-machines-free-head-of ordinal fn2-machines))
+                  (slot (if (fn2-machines-row-ok target) (fn2-machines-slot target fn2-machines) *fn2-none*)))
+             (if (or (equal target *fn2-none*)
+                     (not (fn2-machines-row-ok target))
+                     (not (equal (fn2-machines-kind target fn2-machines) kind))
+                     (not (and (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))))
+                     (not (and (natp ordinal) (< ordinal *fn2-machine-admitted-max*)))
+                     ,@(and tk '((zp (fn2-machines-admission-creditsi ordinal fn2-machines))))
+                     (>= (fn2-machines-active-counti ordinal fn2-machines)
+                         (fn2-machines-connection-counti ordinal fn2-machines)))
+                 ,no-row
+               (let ((gen (,(fn2-columns-col-name kind 'generation) slot ,kind))
+                     (next (,(fn2-columns-col-name kind 'next-free) slot ,kind)))
+                 (declare (ignorable gen))
+                 ,(fn2-arms-registry-reserves specs 0 install fail))))))
+    (if (not spec) (er hard 'defmachine-registry "~x0 is neither admitted nor taken." kind)
+      `((defun ,name ,formals
+          (declare (xargs :stobjs ,tuple
+                          :guard (and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines)
+                                      (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control)
+                                      ,@(and adm '((unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)))
+                                      ,@(fn2-machine-copy-guards copies kind world))
+                          :guard-hints (("Goal" :in-theory (disable ,@*fn2-arms-registry-callees*))))
+                   (ignorable ,@formals))
+          ,body)
+        ;; as an arm's shape theorems, but with unsigned-byte-p open: an
+        ;; enum copy's guard is (< v COUNT) and the setter's rule wants its width
+        (in-theory (disable ,name))
+        ,@(fn2-arms-child-shape-thms name (fn2-arms-child-shape-terms tuple (if adm 1 3) (cons name formals))
+            (fn2-arms-child-shape-hyps tuple)
+            `(("Goal" :in-theory (e/d (,name) (min nfix nth ,@(fn2-arms-shape-fns tuple)
+                                               fn2-machines-slot fn2-machines-kind ,(fn2-arms-sym kind "-ROWS")
+                                               ,@(fn2-arms-column-readers kind (fn2-machine-property kind :table world))
+                                               ,@(fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*)
+                                               ,@*fn2-arms-registry-callees*))
+                      :do-not '(generalize fertilize eliminate-destructors)))
+            0)))))
+(defmacro defmachine-registry (kind)
+  `(make-event (value (cons 'progn (fn2-arms-registry-events ',kind (w state))))))

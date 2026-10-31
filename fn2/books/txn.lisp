@@ -17,6 +17,7 @@
 (include-book "upload")
 (include-book "claims")
 (include-book "machines-c-bind")
+(include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -812,3 +813,7 @@
 
 (defmachine-run fn2-txn)
 ))
+
+; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
+; the admission section (assembly-callbacks-a) makes its core face.
+(defmachine-registry fn2-txn)

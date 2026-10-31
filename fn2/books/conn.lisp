@@ -12,6 +12,7 @@
 (include-book "accounts-core")
 (include-book "upload-scan")
 (include-book "upload-feed")
+(include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically (section 4.2): the framer examines at
@@ -673,3 +674,7 @@
 
 (defmachine-run fn2-conn)
 ))
+
+; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;
+; the admission section (assembly-callbacks-a) makes its core face.
+(defmachine-registry fn2-conn)

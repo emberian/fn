@@ -11,6 +11,8 @@
 ; any core exists; their core faces are made in the callbacks section.
 (defmachine-arms fn2-echo :children)
 (defmachine-arms fn2-scribe :children)
+; P4: echo's admission in child form; the admission section makes its face.
+(defmachine-registry fn2-echo)
 
 (defmacro fn2-machine-a-events ()
  '(progn

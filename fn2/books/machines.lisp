@@ -1230,37 +1230,76 @@
   (if (atom names) nil
     (append (fn2-machine-observe-rows (car names) (fn2-machine-property (car names) :observes world) world)
             (fn2-machine-all-observe-rows (cdr names) world))))
+;; MACHINE-FORM 6.5 P4: the router is a case over kinds of one route per
+;; kind. A kind's route makes the router's checks with the kind's own row
+;; readers (no case over kinds), calls its handler, consumes the terminal and
+;; reads the row's wait and stop state, so each proof is bounded by its kind.
+(defun fn2-machine-route-read (name field)
+  (declare (xargs :verify-guards nil))
+  (list (fn2-machine-row-reader name field) 'id 'fn2-core))
+(defun fn2-machine-route-readers (name fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (fn2-machine-row-reader name (car fields)) (fn2-machine-route-readers name (cdr fields)))))
+(defun fn2-machine-observe-route-events (router names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let* ((name (car names))
+           (cols (fn2-machine-property name :columns world))
+           (handler (fn2-columns-col-name router name))
+           (route (fn2-columns-col-name (fn2-columns-sym router "-ROUTE") name))
+           (snap `(eq (,(fn2-columns-sym name "-SNAPSHOT-READ-CODE") id fn2-core) :ok))
+           ;; the generic terminal (a closed operation with its own facts)
+           (terminal '(fn2-machine-observe-terminal id fn2-core)))
+      (cons
+       `(progn
+          (defun ,route (id gen event outcome reason count aux0 aux1 fn2-core)
+            (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+            (if (not (and ,snap
+                          (equal gen ,(fn2-machine-route-read name 'generation))
+                          (,(fn2-columns-sym name "-OBSERVES-P") ,(fn2-machine-route-read name 'phase) event)))
+                (fn2-machine-refuse-observation fn2-core)
+              (mv-let (wake fn2-core)
+                (,handler id event outcome reason count aux0 aux1 fn2-core)
+                ; Consume every completion before generic bookkeeping. A handler
+                ; may accumulate many in-flight results without an event cell.
+                (let ((fn2-core (if (equal event *fn2-event-borrow-released*) fn2-core ,terminal)))
+                  ,(if (not (assoc-eq 'stopped cols)) '(fn2-machine-refuse-observation fn2-core)
+                     `(if (not ,snap)
+                          (fn2-machine-refuse-observation fn2-core)
+                        ;; a row parked on a resource (any D0 kind: an operation, a pool
+                        ;; window, a partition's row) stays parked; its grant wakes it
+                        (mv (if (or (not (or (equal ,(fn2-machine-route-read name 'wait-reason) *fn2-wait-none*)
+                                             (equal ,(fn2-machine-route-read name 'wait-reason) *fn2-wait-completion*)))
+                                    (equal ,(fn2-machine-route-read name 'stopped) 1)) *fn2-none* wake)
+                            fn2-core)))))))
+          (fn2-core-preserves ,route (id gen event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil
+            :hints (("Goal" :in-theory (e/d (,route) (,handler fn2-machine-observe-terminal
+                                                       fn2-machine-refuse-observation
+                                                       ,@(fn2-machine-route-readers name (if (assoc-eq 'stopped cols) '(phase generation wait-reason stopped) '(phase generation))))))))
+          (in-theory (disable ,route)))
+       (fn2-machine-observe-route-events router (cdr names) world)))))
+(defun fn2-machine-observe-route-arms (names tag router)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (cons `(,tag (,(fn2-columns-col-name (fn2-columns-sym router "-ROUTE") (car names))
+                  id gen event outcome reason count aux0 aux1 fn2-core))
+          (fn2-machine-observe-route-arms (cdr names) (+ 1 (nfix tag)) router))))
 (defun fn2-machine-observe-events (router names world)
   (declare (xargs :verify-guards nil))
   (let ((accepts (fn2-columns-sym router "-ACCEPTS-P")))
     (append (fn2-machine-observe-handlers router names world)
+     (fn2-machine-observe-route-events router names world)
      `((defun ,accepts (kind phase event)
          (declare (xargs :guard t))
          (case kind ,@(fn2-machine-observe-kind-arms names 0 t router) (otherwise nil)))
        (defun ,router (okind id gen event outcome reason count aux0 aux1 fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (if (not (and (eq (fn2-machine-generation-read-code id fn2-core) :ok)
-                       (eq (fn2-machine-phase-read-code id fn2-core) :ok)
-                       (equal gen (fn2-machine-generation id fn2-core))
-                       (equal okind (fn2-machine-kind id fn2-core))
-                       (,accepts okind (fn2-machine-phase id fn2-core) event)))
+         (if (not (and (eq (fn2-machine-kind-read-code id fn2-core) :ok)
+                       (equal okind (fn2-machine-kind id fn2-core))))
              (fn2-machine-refuse-observation fn2-core)
-           (mv-let (wake fn2-core)
-             (case okind ,@(fn2-machine-observe-kind-arms names 0 nil router)
-               (otherwise (fn2-machine-refuse-observation fn2-core)))
-             ; Consume every completion before generic bookkeeping. A handler
-             ; may accumulate many in-flight results without an event cell.
-             (let ((fn2-core (if (equal event *fn2-event-borrow-released*) fn2-core
-                               (fn2-machine-observe-terminal id fn2-core))))
-               (if (not (and (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
-                             (eq (fn2-machine-stopped-read-code id fn2-core) :ok)))
-                   (fn2-machine-refuse-observation fn2-core)
-               ;; a row parked on a resource (any D0 kind: an operation, a pool
-               ;; window, a partition's row) stays parked; its grant wakes it
-               (mv (if (or (not (or (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-none*)
-                                    (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-completion*)))
-                           (equal (fn2-machine-stopped id fn2-core) 1)) *fn2-none* wake)
-                   fn2-core))))))
+           (case okind ,@(fn2-machine-observe-route-arms names 0 router)
+             (otherwise (fn2-machine-refuse-observation fn2-core)))))
        (fn2-core-preserves ,router (okind id gen event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)))))
 
 (defun fn2-machine-index-arms (names capacities base tag inverse)
@@ -1694,6 +1733,24 @@
 (defun fn2-machine-copy-puts (fields)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil (cons (list (car fields) (car fields)) (fn2-machine-copy-puts (cdr fields)))))
+; MACHINE-FORM 6.5 P4: a kind whose book declares its registry operations
+; in child form (defmachine-registry, machine-arms.lisp) gets a core face of
+; one stobj-let here; any other kind keeps the core body below.
+(defun fn2-machine-registry-child (kind world)
+  (declare (xargs :verify-guards nil))
+  (let ((name (fn2-columns-sym (fn2-columns-sym (if (fn2-machine-property kind :admission world)
+                                                    'fn2-machine-admit- 'fn2-machine-take-)
+                                                (symbol-name kind)) "-CHILDREN")))
+    (and (function-symbolp name world) name)))
+(defun fn2-machine-registry-face (kind child args o kconst results)
+  (declare (xargs :verify-guards nil))
+  `(stobj-let ((,kind (,(fn2-columns-sym kind "-TABLE") fn2-core))
+               (fn2-machines (fn2-core-machines fn2-core))
+               (fn2-pool (fn2-core-pool fn2-core))
+               (fn2-control (fn2-core-control fn2-core)))
+     (,@results ,kind fn2-machines fn2-pool fn2-control)
+     (,child ,@args ,o ,kconst ,kind fn2-machines fn2-pool fn2-control)
+     (mv ,@results fn2-core)))
 (defun fn2-machine-admission-kind-events (kind o world)
   (declare (xargs :verify-guards nil))
   (let* ((adm (fn2-machine-property kind :admission world))
@@ -1720,7 +1777,10 @@
          (declare (xargs :stobjs fn2-core
                          :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)
                                      ,@(fn2-machine-copy-guards copies kind world))))
-         (let ((target (fn2-machine-free-head ,o fn2-core)))
+         ,(if (fn2-machine-registry-child kind world)
+              (fn2-machine-registry-face kind (fn2-machine-registry-child kind world)
+                                         `(index nonce ,@copies) o kconst '(code))
+          `(let ((target (fn2-machine-free-head ,o fn2-core)))
            (if (or (equal target *fn2-none*)
                    (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
                    (not (eq (fn2-machine-next-free-read-code target fn2-core) :ok))
@@ -1728,7 +1788,7 @@
                (mv :no-row fn2-core)
              (let ((gen (fn2-machine-generation target fn2-core))
                    (next (fn2-machine-next-free target fn2-core)))
-               ,(fn2-machine-range-reserves specs 0 kconst install))))))
+               ,(fn2-machine-range-reserves specs 0 kconst install)))))))
       (fn2-core-preserves ,admit (index nonce ,@copies fn2-core) :position 1 :rows nil :prefix "")
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
@@ -1801,7 +1861,10 @@
        (defun ,take (waiter ,@copies fn2-core)
          (declare (xargs :stobjs fn2-core
                          :guard (and (fn2-core-wfp fn2-core) ,@(fn2-machine-copy-guards copies kind world))))
-         (let ((target (fn2-machine-free-head ,o fn2-core)))
+         ,(if (fn2-machine-registry-child kind world)
+              (fn2-machine-registry-face kind (fn2-machine-registry-child kind world)
+                                         `(waiter ,@copies) o kconst '(code target gen))
+          `(let ((target (fn2-machine-free-head ,o fn2-core)))
            (if (or (equal target *fn2-none*)
                    (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
                    (not (eq (fn2-machine-next-free-read-code target fn2-core) :ok))
@@ -1812,14 +1875,18 @@
                    (next (fn2-machine-next-free target fn2-core)))
                ;; a kind taken with no ranges (fn2-txn) reserves nothing
                (declare (ignorable gen))
-               ,(fn2-machine-taken-reserves specs 0 kconst install park))))))
+               ,(fn2-machine-taken-reserves specs 0 kconst install park)))))))
       (fn2-core-preserves ,take (waiter ,@copies fn2-core) :position 3 :rows nil :prefix "")
       ;; the taker's park as its own operation, for the arm language's
       ;; (:park :taken K) (D F2): a take whose waiter is *fn2-none* parks nothing
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,(fn2-columns-sym 'fn2-machine-park-taken- (symbol-name kind)) (id fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (let ((waiter id)) ,park)))
+         (stobj-let ((fn2-machines (fn2-core-machines fn2-core))
+                     (fn2-control (fn2-core-control fn2-core)))
+           (fn2-machines fn2-control)
+           (fn2-machines-park-taken id ,o ,reason fn2-machines fn2-control)
+           fn2-core)))
       (fn2-core-preserves ,(fn2-columns-sym 'fn2-machine-park-taken- (symbol-name kind)) (id fn2-core) :rows nil :prefix "")
       (defcost ,(fn2-columns-sym 'fn2-machine-park-taken- (symbol-name kind))
         :own-writes (wait-reason ready-prev ready-next) :tables (fn2-core-machines)

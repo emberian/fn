@@ -18,6 +18,7 @@
 (include-book "upload-scan")
 (include-book "upload-feed")
 (include-book "blake3")
+(include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
 (fn2-book-layer :d)
 
 ;; The run quantum, split statically: at most *fn2-upload-hash-bytes* hashed
@@ -617,3 +618,7 @@
 
 (defmachine-run fn2-upload)
 ))
+
+; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
+; the admission section (assembly-callbacks-a) makes its core face.
+(defmachine-registry fn2-upload)
