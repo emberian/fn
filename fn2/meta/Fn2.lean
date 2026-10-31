@@ -3,5 +3,12 @@ import Fn2.Square
 import Fn2.Coherence
 import Fn2.Conservative
 import Fn2.Param
+import Fn2.ACL2.Val
+import Fn2.ACL2.Read
+import Fn2.ACL2.Faithful
+import Fn2.ACL2.Fuel
+import Fn2.Arms
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts
+import Fn2.Instances.LayerAWorld
+import Fn2.Instances.LayerAKinds
