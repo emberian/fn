@@ -31,6 +31,9 @@ Astra's read: `build/coordinator/fn2/lanes/e-quests/astra-1.md` (§15 says what 
 | the peer reference model: each node's history (its entries with their origin), identity evidence by identity, peers' history entries from catch-up, coverage gaps and funding, forward pins, the feed queue with phases, deferrals, losses and dispositions; eight faults | `fn2/books/peer-model.lisp` | the meaning §13 states; an oracle, not served evidence |
 | K-P1, K-P3a, K-P4, K-P5, K-P6 owed with teeth (K-P2 and K-P3b are stated over D5 3/n's served path) | `fn2/books/owed-peer.lisp` | 0 proved; every tooth evaluates |
 | witnesses W1, W2, W3, W7, the offer rule, F1, F2, each asserting its antecedent; each fault caught | `fn2/tests/peer-witnesses.lisp` | all hold; eight faults caught |
+| CONSUMER: a refinement checker over the L carrier's FNCT frames, the world steps, the published frontier and the ledger's rows (the consumer-cursor fold, the `:wait-row` holdings); every model state the observations allow, mutations linearized at any boundary before their reply (orphans after a lost reply or a crash, until the next settle), a wait answering the read at a moment while pending (K4), a due parked wait at a settle failing `:lost-wake` (K4b) | `fn2/sim/check-consumer.lisp` | certifies; the model's items carry the streams they are selected through, and its log is padded with commits nothing selects, so its positions are commit positions |
+| scenarios 7, 8, 9, the lost ack and paging, as FNCT clients against the oracle node; five wrong nodes caught | `fn2/tests/sim-layer-e.lisp` | all pass, each shown to exercise its path |
+| K10 stated over CONSUMER and the served producer (constrained until the simulator's adapter lands with the kinds) | `fn2/books/owed-consumer.lisp` | owed; the oracle and the controls as teeth |
 Owed, in order: the rest of §13.8's matrix as the records they need land (W4, W5, W6, W8-W10, F3-F7);
 then, when D5 2/n serves a durable POST and D6 an article, the served kind `fn2-cns` and the XFNC block (§14).
 
@@ -592,8 +595,11 @@ pending work) land with the served verb each exercises.
    9 and 28) with fn1's bytes as fixtures; the legacy translation as data.
 3. Done: peering and BP stated in wire words (§13); the peer model, K-P1, K-P3a, K-P4, K-P5, K-P6 owed
    with teeth, six witnesses.
-4. When D5 2/n and D6 land: `fn2-cns` in the new form over C's reads and folds, the XFNC block, the local
-   socket, the CONSUMER checker over the model, scenarios 7, 8, 9, K10 stated.
+4. Done: the CONSUMER checker over the model, scenarios 7, 8, 9 over the oracle node, K10 stated.
+5. `fn2-ctl` and `fn2-cns` pasted as certifying kinds (E.P1, the form's G2 with the extra-children
+   tuple, C's read `:child` faces), driven at the adapter boundary with a fixture peer record until A's
+   `:local` listener; register and ack answer `unavailable` until D's txn port carries `:consumer`;
+   the simulator adapter that defines K10's producer; then the XFNC block.
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's
