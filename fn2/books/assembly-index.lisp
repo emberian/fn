@@ -5,7 +5,7 @@
 (include-book "reference-state")
 ; B/C/D registration books go HERE, before either registry is consumed.
 (include-book "machines-b")
-(include-book "machines-c-sealer")
+(include-book "machines-c-read")
 (include-book "conn")
 (include-book "upload")
 (include-book "txn")

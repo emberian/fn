@@ -29,9 +29,11 @@
   (cbase :u32) (rbase :u32) (vrun :u60) (pfield :u32) (plimit :u60)
   (out :u32) (ok :u8) (os :u32) (og :u60) (delivered :u60)
   (qk :u8) (qs :u32) (qg :u60)))
+; A source's SRC is its overlay row or its run's fn2-run-installed row (not
+; named REF: the reference view names each core child's copy NAME-REF).
 (defcolumns fn2-range-sources
  ((kind (:enum fn2-range-kind (:none :overlay :run)))
-  (ref :u32) (state (:enum fn2-range-state (:seek :next :scan :head :end)))
+  (src :u32) (state (:enum fn2-range-state (:seek :next :scan :head :end)))
   (pos :u32) (count :u32) (cursor :u32) (rb :u32) (run :u60)
   (okind :u8) (oslot :u32) (ogen :u60)))
 ; A read with no position limit names this field.
@@ -87,7 +89,7 @@
                     (unsigned-byte-p 32 ref) (unsigned-byte-p 32 cursor) (unsigned-byte-p 32 rb) (unsigned-byte-p 60 run)
                     (unsigned-byte-p 8 ok) (unsigned-byte-p 32 os) (unsigned-byte-p 60 og)))
        (mv :bounds fn2-range-sources))
-      (fn2-range-sources (fn2-range-sources-put row (kind kind) (ref ref) (state *fn2-range-state-seek*) (pos 0) (count 0)
+      (fn2-range-sources (fn2-range-sources-put row (kind kind) (src ref) (state *fn2-range-state-seek*) (pos 0) (count 0)
                                                 (cursor cursor) (rb rb) (run run) (okind ok) (oslot os) (ogen og))))
   (mv :ok fn2-range-sources)))
 (fn2-range-sources-preserves fn2-range-add-source (g i kind ref run ok os og fn2-ranges fn2-range-sources) :position 1 :raw-rows t
@@ -169,7 +171,7 @@
       ((unless (fn2-rg-ok g)) (mv :bounds fn2-range-sources))
       (s (+ (fn2-ranges-sbase g fn2-ranges) (- n 1)))
       ((unless (< s (fn2-range-sources-rows fn2-range-sources))) (mv :bounds fn2-range-sources))
-      (o (fn2-range-sources-ref s fn2-range-sources))
+      (o (fn2-range-sources-src s fn2-range-sources))
       (fn2-range-sources
        (if (and (equal (fn2-range-sources-kind s fn2-range-sources) *fn2-range-kind-overlay*)
                 (not (equal (fn2-range-sources-state s fn2-range-sources) *fn2-range-state-seek*))
@@ -270,7 +272,7 @@
                  (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
      :guard-hints (("Goal" :in-theory (disable fn2-ov-locate fn2-ov-entry fn2-fields-rows)))))
     (b* (((unless (and (natp s) (< s (fn2-range-sources-rows fn2-range-sources)))) (mv :bounds fn2-range-sources fn2-fields))
-         (o (fn2-range-sources-ref s fn2-range-sources))
+         (o (fn2-range-sources-src s fn2-range-sources))
          (eb (+ (fn2-range-sources-rb s fn2-range-sources) *fn2-run-reader-entry*))
          ((unless (and (< o (fn2-overlays-rows fn2-overlays)) (natp qbase)
                        (<= (+ eb *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
@@ -300,7 +302,7 @@
                  (natp budget))
      :guard-hints (("Goal" :in-theory (disable fn2-run-cursor-start fn2-run-scan-step)))))
     (b* (((unless (and (natp s) (< s (fn2-range-sources-rows fn2-range-sources)))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
-         (r (fn2-range-sources-ref s fn2-range-sources)) (c (fn2-range-sources-cursor s fn2-range-sources))
+         (r (fn2-range-sources-src s fn2-range-sources)) (c (fn2-range-sources-cursor s fn2-range-sources))
          ((unless (< r (fn2-run-installed-rows fn2-run-installed))) (mv :bounds fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields))
          ((mv code fn2-run-cursors)
           (if (equal (fn2-range-sources-state s fn2-range-sources) *fn2-range-state-seek*)

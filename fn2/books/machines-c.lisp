@@ -48,8 +48,14 @@
       (unsigned-byte-p 32 (fn2-b-capacity :identity-runs 64 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :run-cache 1024 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-arena-bytes 65536 profile))
+      ;; Layer D's read rows (C-S4, machines-c-read.lisp): R of them, each
+      ;; with 8 range sources, a lookup row and cursor after the
+      ;; transactions' (t + R) and 8 source cursors after those (t + 9R).
+      (unsigned-byte-p 32 (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile))))
+      (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)))))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-capacity :format-slots 3 profile)))
-             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*)
+             (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+             (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 
 ;; Each child's init is a function whose guard is proved here once, so the
@@ -83,9 +89,11 @@
  "Each overlay's key-ordered index of its arena's entries.")
 (fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (fn2-b-capacity :identity-runs 64 profile) fn2-run-installed)
  "The resident view of each schema's sealed runs.")
-(fn2-idc-child fn2-core-run-cursors fn2-run-cursors (fn2-run-cursors-init (fn2-profile-t profile) fn2-run-cursors)
- "A decision's resumable run cursor (cursor row = decision row).")
-(fn2-idc-child fn2-core-run-paths fn2-run-paths (fn2-run-paths-init (* *fn2-run-max-levels* (nfix (fn2-profile-t profile))) fn2-run-paths)
+(fn2-idc-child fn2-core-run-cursors fn2-run-cursors
+ (fn2-run-cursors-init (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile))) fn2-run-cursors)
+ "A decision's resumable run cursor (cursor row = decision row), then each read row's lookup cursor and its range sources' (C-S4).")
+(fn2-idc-child fn2-core-run-paths fn2-run-paths
+ (fn2-run-paths-init (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)))) fn2-run-paths)
  "Each cursor's descent, one row per level.")
 (fn2-idc-child fn2-core-run-cache fn2-run-cache (fn2-run-cache-init (fn2-b-capacity :run-cache 1024 profile) fn2-run-cache)
  "Verified run pages, keyed by exact (unit, allocation counter).")

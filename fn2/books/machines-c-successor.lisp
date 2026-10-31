@@ -106,8 +106,9 @@
     (sid :u60) (kind (:enum fn2-succ-kind ,(append '(:insert :record) *fn2-run-fold-kinds*)))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
     (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32))))
-(fn2-idc-child fn2-core-succ-txns fn2-succ-txns (fn2-succ-txns-init (fn2-profile-t profile) fn2-succ-txns)
- "A transaction's writes survive its yields between :prepare and its outcome (C-S3).")
+(fn2-idc-child fn2-core-succ-txns fn2-succ-txns
+ (fn2-succ-txns-init (+ (nfix (fn2-profile-t profile)) (fn2-b-read-rows profile)) fn2-succ-txns)
+ "A transaction's writes survive its yields between :prepare and its outcome (C-S3); then one row per read row, its exact lookup's continuation (C-S4).")
 (fn2-idc-child fn2-core-succ-slots fn2-succ-slots (fn2-succ-slots-init (* *fn2-succ-slots* (nfix (fn2-profile-t profile))) fn2-succ-slots)
  "Each transaction's write slots (C-S3).")
 

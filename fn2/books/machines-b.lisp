@@ -61,12 +61,24 @@
 ; layer C's 1024-row transaction stripe (the private successor's write slots
 ; and the identity decision, C-S3, machines-c.lisp) per transaction at the
 ; table's end.
-;; Layer C's sealer stripe (C1c) after the transactions' stripes: a format
+;; Layer C's sealer stripe (C1c) below the transactions' stripes: a format
 ;; constant (C asserts its *fn2-seal-field-rows* fits).
 (defconst *fn2-b-seal-field-rows* 1280)
+;; Layer C's read rows (C-S4, machines-c-read.lisp): one per query cursor
+;; slot of a profile that serves reading, each with a stripe of
+;; *fn2-b-read-stride* rows below the sealer's (layer D's cursor kind takes
+;; its capacity from the same function; C asserts its *fn2-read-stride*
+;; fits).
+(defconst *fn2-b-read-stride* 1024)
+(defun fn2-b-read-rows (profile)
+ (declare (xargs :guard t))
+ (if (fn2-profile-get :reading profile) (nfix (fn2-profile-x profile)) 0))
+(defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
+(in-theory (disable fn2-b-read-rows))
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
- (+ (* 128 (nfix (fn2-b-capacity :format-slots 3 profile))) (* 1024 (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*))
+ (+ (* 128 (nfix (fn2-b-capacity :format-slots 3 profile))) (* 1024 (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+    (* *fn2-b-read-stride* (fn2-b-read-rows profile))))
 (in-theory (disable fn2-b-field-rows))
 (defcorechild fn2-core-fields fn2-fields
  :init (fn2-fields-init (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile) fn2-fields)

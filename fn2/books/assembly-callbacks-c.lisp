@@ -7,3 +7,4 @@
 (include-book "machines-c-sealer-events")
 (fn2-groups-core-events)
 (fn2-sealer-core-events)
+(fn2-read-core-events)

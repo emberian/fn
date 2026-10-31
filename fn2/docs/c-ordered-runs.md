@@ -735,6 +735,29 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
    `fn2/tests/identity-core-unit.lisp` (`fn2-icu-late`: every refusal above, a re-stage that needs
    the fill again, and the published overview overlay's arena holding the 20 filled octets and
    none of the source's octets past them).
+13. **C-S4, served reads for query cursor rows (D writes it on C's ruling, 2026-10-30; first half
+   built in `fn2/books/machines-c-read.lisp`, C and B reading the diff).** Read rows are
+   `(fn2-b-read-rows profile)` = `:x` when the profile sets `:reading`, else 0 (machines-b, beside
+   `*fn2-b-read-stride*` = 1,024). Children: `fn2-reads` (R rows: the op, the query owner, the
+   delivered entry), `fn2-ranges` (R), `fn2-range-sources` (8R), `fn2-seeks` (R); `fn2-succ-txns`
+   grows to t + R (read row x's exact lookup is row t + x, served by `fn2-xl-step` unchanged) and
+   `fn2-run-cursors` to t + 9R (lookup cursor t + x, source cursors t + R + 8x + i), paths with it.
+   (a) The stripe of row x is `rows − 1024·t − *fn2-b-seal-field-rows* − 1024·(x+1)`
+   (`*fn2-read-stride*` = 952 used of it: lo key +0, hi key +80, eight source heads from +160, the
+   lookup decoding into source 0's); `fn2-b-field-rows` and `fn2-idc-profilep` gain `1024·R`.
+   (b) Every range or seek step re-finds its sources from the resume key when the schema's run
+   version moved or an overlay source's row no longer holds the taking it located (phase active or
+   frozen, schema, SEQ: a SEQ is issued once per taking); a delivered entry is read only under the
+   run version it was delivered under, else `:stale`. (c) `fn2-read-frontier` waits on the
+   `:published` column (until then `fn2-cursor-view-pinned` stays owed). (d) LIST's ordered scan and
+   (e) the identity read are the second half. Operations, each a defcost and a core wrapper
+   (`fn2-read-core-events`): `fn2-read-key x region j value` (region `:lo`/`:hi`),
+   `fn2-read-key-octets x j slot gen off len okind oslot ogen` (one owner per row until release, else
+   `:owner`), `fn2-read-lookup x sid budget` (`:ok :absent :more :miss`), `fn2-read-range x sid pfield
+   plimit`, `fn2-read-next x budget` (`:entry :end :more :miss`), `fn2-read-seek x sid lo hi p pfield`
+   / `fn2-read-seek-step x budget -> (mv code answer)`, `fn2-read-value x f -> (mv code value)`,
+   `fn2-read-octets x f from n dslot dgen doff dk ds dg -> (mv code copied left)`, `fn2-read-release x`.
+   Unit: `tests/read-unit.lisp`.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
