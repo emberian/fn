@@ -15,6 +15,12 @@ the commit kind) means regate whole.
 - Earlier seats: C1a 181df0df0, C1b 8dfba6db2, C1b' 1e823b06f, run assembly 1c603fcdd, C2a-C2d, C3a,
   C3b, C-S1 d21ffb2b3, C-S2, C4a 34e106dca, C-S3 c82104671, review items b2ec7dda1, D5's seams
   294055805, :sealable grant source 83ced3bf9, C1c engine half 30ead9b23.
+- **C-S3a late octet args ebcc65eea** (dev, pushed, READY sent). The API is in layer doc §8 item 12.
+  The successor's wrappers are now in two books: assembly-callbacks-c-prepare (32.8 s) and -commit
+  (26.8 s). assembly-callbacks-c (26.2 s) keeps groups and the sealer; one book was 69.4 s. Gate:
+  whole at 429702ef1 green; the moved tip f363dd1ae got a recertify. OWED is regenerated at 567.
+  Unit identity-core-unit fn2-icu-late. Pitfall: `fill` is a CL special, so it cannot be a
+  variable.
 - **C1c the sealer machine 429702ef1** (dev, pushed, READY sent; ninth seat). It was rebased onto B5-2
   5674cae12 and gated whole there (closure rc=0, export PASS). The moved tips f794c78f3 (A5r) and
   c01f87b6a (D6) got an own-books recertify plus the export. OWED went 557 -> 564. The Q1 pin is 100
@@ -30,40 +36,78 @@ the commit kind) means regate whole.
   closes). Q1's owner owes controls for the sealer's two cases.
 
 ## Next (in order)
-1. **C-S3a, late octet args: written, on lane branch fn2/c-s3a (worktree build/lanes/fn2/c-s3a),
-   WIP commit d1c7cef66 on 429702ef1. Whole gate running on forge /build/lanes/c (build/c1.pid,
-   started 00:23 10-31).** The design (also layer doc §8 item 12):
-   - fn2-succ-slots gains LATE and FILLED (u32 masks). fn2-succ-touch takes LATE. arg and
-     arg-octets clear the arg's late bit.
-   - `fn2-succ-arg-octets-late` (machines-c-successor) writes the raw row with ref-len = MAX, so
-     stage sizes the entry at MAX. It refuses `:kind` for a key field, a digest, an integer field
-     or a non-insert, and `:bounds` for MAX past the field's bound.
-   - `fn2-succ-fill-octets` (machines-c-stage) writes the ENTRY row, so the transaction stays
-     :staged. It refuses `:state` unless the transaction is :staged, `:kind` unless the arg is late,
-     `:bounds` if LEN > the raw ref-len, and `:owner` against the slot's owner (it sets the owner if
-     none is set).
-   - stage-insert resets FILLED. bind refuses `:state` before binding anything if
-     `fn2-succ-unfilled` (machines-c-bind).
-   - Defcosts and core wrappers are `fn2-successor-arg-octets-late (tx i j max)` and
-     `fn2-successor-fill-octets (tx i j slot gen off len okind oslot ogen)`.
-   - Unit: identity-core-unit `fn2-icu-late`. It expects `(:declare :kind :kind :bounds :ok :early
-     :state :staged :ok :ok :fill :kind :bounds :state :ok :owner :again :ok :state :ok :ok :ok
-     :arena 20 0)`. The arena counts are the 83s (S) and 84s (T) in the frozen overview overlay.
-     The REPL pass of the three books on forge (/build/lanes/c3a, a scratch copy) had no errors.
-     The unit has NOT been run yet: the gate runs it.
-   - Landing: squash the WIP with a real message (`git commit -F`), regenerate OWED.md from the
-     gate's export (expect no new rows), rebase onto origin/dev, recertify on a moved tip per the
-     rule, run the secrets check, `git push origin fn2/c-s3a:dev`, READY to main and D (D5 2/n
-     waits on it).
-2. **C-S4 (D writes machines-c-read.lisp, I read the diff)** when main sends the branch: READY-TO-LAND
-   or what must change. My predecessor's five amendments: reads stripes below the sealer's;
-   re-check the source at every step (overlay phase plus arena gen, run version); the frontier
-   comes from a :published column in fn2-id-engine set by publish (C adds it); LIST is a
+0. **Ember's ruling (10-31 night, binding):** the machine form (defmachine with hand-written
+   defmachine-callback arms, one shared assembly that re-proves every kind, per-octet exports) is
+   being redesigned. Write NO new arms in the old form: not the device half's sealer arms, not C5.
+   Stand by for main's statement of the new form. Meanwhile: the arm table below (done), and
+   reading D's machines-c-read diff when main sends it.
+1. **C-S4 (D writes machines-c-read.lisp, I read the diff)** when main sends the branch: answer
+   READY-TO-LAND or what must change. My predecessor's five amendments: reads stripes below the
+   sealer's; re-check the source at every step (overlay phase plus arena gen, run version); the
+   frontier comes from a :published column in fn2-id-engine set by publish (C adds it); LIST is a
    whole-schema ordered scan, not the range engine; identity through the real lookup.
-3. The device half when B5-4's :run-replacement member lands (main sends the sha):
-   fn2-commit-admit-runs, the defattach of fn2-runs-install, manifests one level deep, M2's cold
-   leg, M3's device leg.
-4. Then C5 compaction. Owed: the machines-c-stage shave (52.6 s).
+2. In the new form, once it exists: the sealer's arms (table below), with the wake defect fixed.
+   Then the device half when B5-4's :run-replacement member lands: fn2-commit-admit-runs, the
+   defattach of fn2-runs-install, manifests one level deep, M2's cold leg, M3's device leg. Then C5.
+3. Owed: the machines-c-stage shave (55.4 s on forge, under load). When A's frame lemmas land, the
+   sealer's descriptor cap 4 -> 0.
+
+## The fn2-sealer arm table (as built at 429702ef1; input to the new form)
+The machine has one row (capacity 1, gen 1, local slot 0). Its fields are `stopped :bool` plus the
+row control fields (phase, wait-reason, ready links). Budget is 4096 bytes / 32 steps / 4
+descriptors (the cap is unused; departure 3). Its engine state lives in its own table
+`fn2-core-seals` (one row: phase idle/build/filter/install/failed, sub
+open/clear/add/drive/finish/solve, the overlay O and position POS, run and unit counters, writer
+and field bases, checker row, owner triple). So the machine has two arms, but the real state
+machine is the seal row's, below the machine's contract.
+
+| arm (machine phase) | reads | writes | effects | cost | next | refusals |
+|---|---|---|---|---|---|---|
+| `fn2-sealer-seal` (:sealing) | the row's id; through fn2-sealer-step, the seal row and 16 core children (seals, overlays, overlay-index, run-installed, run-builds, run-writers, run-restarts, run-cache, ribbon-builds, ribbon-band, fields, pool, fc, fc-context, b3, digests) | row: wait-reason (park on :sealable), phase (-> :stopped), stopped; the 16 children through the step | one seal step; pool reserve/release (64 KiB page workspaces, the hash workspace, the overlay arena on retire), page writes and seals, cache installs, the run install and the overlay retire; on refusal `fn2-core-stop :sealer` | fn2-sealer-step 4096 bytes + transition steps; 0 descriptors | :sealing (runnable on :more/:retired/:done; parked on :sealable on :idle/:full/:cache), :stopped on any other code | every non-listed code (:bounds, :state, :capacity, and callee codes) stops the core (:sealer) and moves the row to :stopped |
+| `fn2-sealer-idle` (:stopped) | the row | nothing | fn2-machine-idle | fn2-machine-idle's steps | :stopped | none |
+
+The seal row's phases are what one `fn2-seal-step` does, by phase. These are the candidate arms
+of a form that can name them:
+
+| seal phase | does | answers | next seal phase |
+|---|---|---|---|
+| idle (`fn2-seal-start`) | pick the sealable overlay (least SEQ of its schema among frozen/private/active, and itself frozen); empty: retire it; else hand out a run id, reserve the hash workspace, start the build | :idle (none), :retired, :more, :full (pool exhausted), :capacity (no class), :bounds | build |
+| build (`fn2-seal-build` -> root / next / cache / page) | drive `fn2-run-build-work` and act: a sealed page -> cache it (`fn2-seal-unit`: :cache if its direct-mapped row holds another page); promote; :need-page -> unit + 64 KiB workspace (:full); idle -> add the overlay's next entry or finish; the root sealed -> name it | :more, :cache, :full, :bounds, callee codes | filter (identity) or install |
+| filter (`-filter-open`, `fn2-seal-filter`) | open the filter page on writer WBASE+6, clear the band, add each entry's Message-ID hash, finish, solve, seal | :more, :bounds, callee codes | install |
+| install (`fn2-seal-install-run`, `fn2-seal-install`) | take a free installed-run row (the run version moves), name the filter, retire the overlay (frozen -> free, arena released), release the hash workspace | :done, :full (no free run row), :bounds | idle |
+
+## What the sealer's arm bodies do that the restricted arm language cannot say
+1. **Dispatch on an operation's answer code.** The arm cases on fn2-sealer-step's code into three
+   outcomes: stay runnable, park, or stop. The checked language moves phase and writes own fields;
+   the code-to-outcome map is hand-written in the callback.
+2. **Park on a wait kind.** It writes the row control field wait-reason := :sealable, which is not
+   an own field. The waker is outside the form: a `defattach` of the grant service's :sealable
+   pair (fn2-sealer-ready / -grant), whose readiness reads another table (seals + overlays).
+3. **Stop the core.** `fn2-sealer-refuse` = `fn2-core-stop :sealer` inside an arm, and the stop
+   reason has to be appended to A's exec-state enum by hand.
+4. **An internal state machine under one defcost.** The seal row's phase x sub (above) is invisible
+   to the machine contract: totality, bound and frame rows cover :sealing/:stopped only. The cost
+   is one 4096-byte defcost over 16 tables, whatever the phase does.
+5. **Genesis outside any arm.** `fn2-sealer-start-row` (from fn2-engine-genesis in the executor's
+   fn2-init-engine) writes the row's phase/wait-reason/stopped: park, or stop for C-SEAL-NO-ROW.
+6. **The owner triple before the index.** The engine's pool owner is (kind position, 0, 1), made by
+   make-event in machines-c-successor, because the owner is used before the machine index exists.
+   It is checked against *fn2-sealer-kind* only after the index.
+7. **The descriptor cap** is 4 although the kind issues nothing (departure 3).
+
+**Defect found while tabulating (fix it in the new form; no old-form arm work):** the
+backpressure codes park the row, but the wake predicate `fn2-seal-pending-p` needs the seal row
+in phase idle and an overlay sealable.
+- `:cache` and `:full` from the build (seal phase build) and `:full` from install (seal phase
+  install) park the row with pending-p false. Nothing wakes it: the sealer stalls silently until
+  something else runs it.
+- `:full` at start (seal phase idle, an overlay sealable) makes pending-p true at once, so the row
+  is granted every turn: a bounded spin.
+
+The new form's wake for the sealer must be "work pending in the seal row" (phase not idle, or idle
+and sealable) plus a resource wake for backpressure: a cache row or an installed-run row freed
+(M2's eviction), or pool capacity. Until eviction exists, :cache is permanent, so it should stop
+loudly instead of parking. Reported to main.
 
 ## Landing mechanics learned this seat
 - The shared tree /Users/ember/dev/fn has a local dev that can diverge from origin/dev (10-31
@@ -175,11 +219,10 @@ Facts learned that fix the design:
   `git add -N` first); in /Users/ember/dev/fn `git merge --ff-only fn2/c-found`, `python3
   tools/secrets_check.py`, `git push origin dev`.
 
-## Certify times (forge, 2026-10-30 evening, closure at e3573e0af + C1c)
+## Certify times (forge, 10-31 01:40, load 3-5, closure at 429702ef1 + C-S3a)
 | book | s |
 |---|---|
-| sealer / runs-manifest / sealer-unit | 40.4 / 6.9 / 5.5 |
-| runs-served / range-served | 38.8 / 29.2 |
-| machines-c / -successor / -stage / -bind / -groups | 10.9 / 23.9 / 52.7 / 18.2 / 21.9 |
-| executor | 45.0 |
-| assembly-reference / assembly-init / assembly-callbacks-c | 45.6 / 43.7 / 31.2 |
+| sealer-machine-unit / sealer-unit / identity-core-unit | 17.3 / 6.2 / 15.8 |
+| machines-c-successor / -stage / -bind / -groups / -sealer / -sealer-events | 27.1 / 55.4 / 20.1 / 24.2 / 5.3 / 5.3 |
+| assembly-callbacks-c-prepare / -c-commit / -c | 33.5 / 28.2 / 25.9 |
+| assembly-reference (A's split, f363dd1ae) children / children-b / reference | 38.3 / 25.7 / 33.9 |

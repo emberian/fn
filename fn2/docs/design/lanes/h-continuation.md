@@ -26,8 +26,18 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   claimed from-duplicate in c16d5d862) and cd2b74e48 (H13: M1b green at 10e454049). Sim and native each gave
   16,730 served / 0 disagreements / 15,741 interim / WIRE 17,776 opened = judged ok, 0 unjudged (native also
   ENVELOPE ok); 105 s sim, 298 s native. All pushed, READY sent.
-- WAITING ON: D5 READYs from main (D5 2/n should remove POST's 713 interims). At each one, rerun both targets
-  (items 4 and 4b) and report served / interim / WIRE. Nothing of H is running; no PID files are live.
+- Then 27978259c (H14): Fn2Backend.start runs the served node (tools/acl2 < fn2/tests/native-serve.lsp,
+  FN2_LISTENER_PORT, one PID file per start at <root>/fn2-node-N.pid, Fn2Process signals the group). start names
+  unread fn.toml keys, other verbs, death cuts and TLS; init names "no groups until D6". Against fn2, a native whose
+  outcomes are named host contracts is an owed skip (evidence owed_host). serves.fn2-native = [nntp]. Whole nntp at
+  f794c78f3: S PASS; E 30 tests, 0 failures (24 owed, 3 intended, 1 opt-in, fixture hook unset); F and H named
+  skips; exit 3. Evidence: build/h8/native-whole/.
+- WAITING ON: D5/D6 READYs from main. At each one, rerun `--target fn2 --family nntp` and `--target fn2-native
+  --family nntp` (whole), and report served / interim / WIRE plus the E rows that turned live. D6 (init with
+  groups) is the first E unlock; F needs an fn2 owner with groups and a login. Nothing of H is running.
+- When dev moves under another seat's unpushed local commit, do not merge over it: use a detached worktree
+  at origin/dev (git worktree add --detach build/lanes/h-native origin/dev), certify there and copy the H files in.
+  A worktree's full certify is about 25 min on the laptop.
 - Nothing running on hbox for H. Last nightly: 2026-10-30 (build/coordinator/fn2/nightly/2026-10-30.md; h-harness.md
   section). Every S and F form passes against fn1 (web S after H9's fix, rerun 50 ex PASS).
 - Last F runs: run-h7-fuzz-4 (operator, store_ops), -7 (tls_auth), -8 (peering with H7d), run-h7-perf/rows.json.
@@ -159,6 +169,7 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 | H8b nntp S vs fn2 under the sim (M1a gate) | 1,000 ex x 50 steps: 16,730 served 0 disagreements; 15,741 interim named; WIRE ok | 524e30869 |
 | H9 nightly 2026-10-30 harvest + web removal by post access | every S/F passes on fn1; 11 non-ok: 8 known, 2 unprovisioned, web S fixed | 4b1c90ca4 |
 | H10 the 17-gate release matrix (fn2/docs/release-gates.md) | seat-written; dry run at 945f625ad: GREEN 02/08, RED 01/03/04/05/07/09, 10-15 preconditions present, 16 would run | 68677f727 |
+| H14 Fn2Backend serves; whole nntp vs fn2-native | S PASS, E 0 fail (24 owed), F/H named skips | 27978259c |
 | H12 pin P-DUP-FIELD (upload contract's from-duplicate) | model moves; D unchanged | eb692d3cf |
 | H13 M1b: nntp S on a socket + sim with full WIRE | both 16,730/0/15,741, 17,776 judged ok | cd2b74e48 |
 | H11 sim rerun at 83ced3bf9, WIRE per-connection coverage, fn2-native target | counts = H8b; WIRE judged 4/17,776 -> D case; S RED until fixed | c47cbeff2 |

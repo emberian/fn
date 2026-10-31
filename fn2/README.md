@@ -1,23 +1,20 @@
 # fn2
 
-The bottom-up, semantics-first rebuild of fn. Decisions and research: `docs/design/` (start at `FN2-ORIENTATION.md`; the two settled decisions are `EXECUTION-MODEL.md` and `STORAGE-DESIGN.md`). The layer's own decisions: `docs/<layer>.md`. Owed keystones, written and unproved on purpose: `docs/OWED.md`.
+The bottom-up, semantics-first rebuild of fn: the persistent event log between systems, built in place here and swapped to the repository root when it serves. Start at `docs/design/FN2-ORIENTATION.md` (ember's words, the rulings, where the tree is, the order). Each layer's own decisions as built: `docs/<layer>.md`. Owed keystones, written and unproved on purpose: `docs/OWED.md`.
 
-## What is here (layer A, the foundation; layers B and H on their branches)
-- `books/columns.lisp`: `defcolumns`, the records DSL: one struct-of-arrays stobj per declaration, bounds in guards, a non-executable logical view.
-- `books/machines.lisp`: `defmachine` over `defcolumns`: one table per machine kind, enum phases, per-run budget caps as guards, generated dispatch; the registry in the world carries each kind's layout and its obligation categories.
-- `books/pool.lisp`: the byte pool (rule 6 of the execution model): fixed capacity, ownership states, generation-checked handles; the octet list exists only in the logic.
-- `books/vocab.lisp`, `profile.lisp`, `exec-state.lisp`: the event/action vocabulary, the outstanding-operation table and outbox, the profile (every capacity is a profile field).
-- `books/core.lisp`, `sched.lisp`, `executor*.lisp`: the one semantic state, the calendar scheduler, the executor turn.
-- `books/reference.lisp`, `reference-state.lisp`: the independent list-scheduled reference turn the TRACE checker compares against.
-- `books/machines-a*.lisp`: layer A's probe machines (listener, echo, null, scribe).
-- `books/owed.lisp`: `defthm-owed`, a named keystone statement with its teeth, recorded, not proved.
-- `sim/`: the deterministic simulator: the same primitive set as the host, seeded PRNG, 26 fault classes, the checkers (`check-*.lisp`: OWN, TRACE, WORK implemented; the rest arrive with their layers), the echo and scribe scenarios, the recovery stub.
-- `tests/`: unit books, the fault and replay controls, the acceptance drivers (`sim-layer-a-driver.lsp` is the layer's gate).
-- `tools/certify.sh`: certify a book on the laptop with the fn toolchain's ACL2.
-- `host/`: the Linux adapter (21 primitives), arriving with quest A5.
+## What is here
+- `books/`: the ACL2 books. The declaration forms (`columns.lisp` `defcolumns`; `machines.lisp` and `machine-arms.lisp` `defmachine` with its step language; `arms.lisp` `defcost`; `layout.lisp` `deflayout`; `runs-schema.lisp` `defrunschema`; `declare.lisp`, `owed.lisp`, `squares.lisp` the registry and the obligation store); layer A's pool, vocabulary, core, scheduler, executor and reference turn; layer B's crash and log models, formats, commit batch, allocator and recovery; layer C's ordered-run engine (runs, identity, overlays, filters, folds, reads, the sealer); layer D's connection, upload and transaction machines, the grammar DSL and the principal ledger; the `assembly-*` books that make the core from the registered kinds.
+- `sim/`: the deterministic simulator (the host's primitive set, seeded faults) and its checkers (OWN, WORK, TRACE, ACCOUNT, IDENTITY, WIRE, HISTORY, RECOVERY, RECLAIM, DEATH, DEADLOCK, ENVELOPE).
+- `host/`: the native adapter: the event loop over the served core, the socket session, the BLAKE3 FFI.
+- `tests/`: unit books, the scenario drivers, the Q1 evidence and controls, and `tests/harness/` (layer H: the Node adapter, the spec models, the surface forms run against fn1 and fn2).
+- `meta/`: the Lean metatheory (squares, coherence, revision conservativity, parametricity).
+- `experiments/`: the squares experiment.
+- `tools/certify.sh`: certify books with the fn toolchain's ACL2.
 
-## Gates
-The simulator's checkers and scenarios, and the carried natives. Certify is information, never a gate. Performance is reported beside the profile, never a gate. Proofs come when assurance is wanted.
+Not yet here: a durable served POST, reading an article back, the consumer port, peering, BP, the web reader, TLS (`docs/design/FN2-ORIENTATION.md` §3).
+
+## How changes are checked
+The changed books certify, the scenarios for what changed pass in the REPL on the tiny profile, the author reads what was written; one unattended nightly runs the whole closure, every scenario, the drivers and the surface harness (`docs/design/WORKFLOW-20261031.md`). Performance is reported beside the profile, never a gate. Proofs come when assurance is wanted.
 
 ## Rules every book follows
-Assert, never absorb. The DSLs generate meaning, not storage. Layers meet at seams. One representation for bytes. Bounded everything; exhaustion is a continuation. (The full method: `docs/design/briefs/FN2-SEAT-COMMON.md`.)
+The derived path is the only path. Assert, never absorb. The DSLs generate meaning, not storage. Layers meet at seams. One representation for bytes. Bounded everything; exhaustion is a continuation. (The full method: `docs/design/briefs/FN2-SEAT-COMMON.md`.)

@@ -450,6 +450,8 @@ The real kinds are `fn2-listener` and `fn2-echo` (`fn2/books/machines-a.lisp`). 
 
 ## 6. Five decisions for ember
 
+Status 2026-10-31. Ember answered the study as a whole: "is transport across versions the only thing it'd buy us? or is that just the foundation for much more general and powerful system? because i don't find it a compelling reason to add that much complexity (although i'm willing to entertain it)"; COHERENCE.md took the question up. Decision 5's experiments A and B were run (§9); D68 (decision 1) stands; decision 3's manifest Name is the first consumer of the revision stamp main has ruled into the envelope now (MODAL-KERNEL §8). Decisions 2 and 4 are carried by C4a's fold keystones and the DSL's representation refinement rows; none was ruled one by one.
+
 1. **Keep D68 through the first release; specify, do not build, the evolution discipline.** Before the first release every revision is a wipe and rebuild, as ruled. §3.2 records what a post-release discipline needs:
    - revisions at definite durable boundaries;
    - a Decide crossing rule;
