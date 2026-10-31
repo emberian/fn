@@ -265,101 +265,8 @@ def plist(xs):
     return {str(k): v for k, v in zip(xs[::2], xs[1::2])}
 
 
-def tm(x):
-    # an expression as the declaration writes it; Fn2.Arms.readExpr reads it
-    xs = as_list(x)
-    if not (len(xs) == 2 and xs[0] == ":RAW"):
-        die(f"expected (:RAW e), got {show(x)}")
-    return val(xs[1])
-
-
-def opt_tm(d, key):
-    return f"(some {tm(d[key])})" if key in d and not is_nil(d[key]) else "none"
-
-
-def codes(cs):
-    if isinstance(cs, Atom) and cs == ":OTHERWISE":
-        return "none"
-    return "(some [" + ", ".join(val(c) for c in as_list(cs)) + "])"
-
-
-def steps(xs):
-    return "[" + ", ".join(step(s) for s in as_list(xs)) + "]"
-
-
-def call(d):
-    keys = [as_list(k) for k in as_list(d[":KEYS"])]
-    return (f"⟨{lean_str(str(d[':OP']))}, [{', '.join(tm(a) for a in as_list(d[':ARGS']))}], "
-            f"[{', '.join(f'({lean_str(str(k[0]))}, {tm(k[1])})' for k in keys)}]⟩")
-
-
-def step(s):
-    s = as_list(s)
-    h = str(s[0])
-    a = s[1:]
-    if h == ":LET":
-        return f"(.let_ {lean_str(str(a[0]))} {tm(a[1])})"
-    if h == ":SET":
-        return "(.set [" + ", ".join(f"({lean_str(str(as_list(p)[0]))}, {tm(as_list(p)[1])})" for p in a) + "])"
-    if h == ":NEXT":
-        return f"(.next {tm(a[0])})"
-    if h == ":DO":
-        d = plist(a)
-        cases = []
-        for c in as_list(d[":CASE"]):
-            c = as_list(c)
-            cases.append(f"({codes(c[0])}, {steps(List(c[1:]))})")
-        when = f"(some {tm(d[':WHEN'])})" if not is_nil(d[":WHEN"]) else "none"
-        return (f"(.do_ [{', '.join(lean_str(str(v)) for v in as_list(d[':VARS']))}] {call(d)} "
-                f"{'true' if not is_nil(d[':ACCEPT-GIVEN']) else 'false'} "
-                f"[{', '.join(val(c) for c in as_list(d[':ACCEPT']))}] {when} "
-                f"[{', '.join(tm(e) for e in as_list(d[':ELSE']))}] [{', '.join(cases)}])")
-    if h == ":ISSUE":
-        d = plist(a)
-        return f"(.issue {call(d)} {steps(d[':OK'])} {steps(d[':REFUSED'])})"
-    if h == ":REPEAT":
-        d = plist(a)
-        return f"(.repeat_ {tm(d[':N'])} {steps(d[':STEPS'])} {tm(d[':UNTIL'])})"
-    if h == ":WAKE-ROW":
-        return f"(.wakeRow {tm(a[0])})"
-    if h == ":IF":
-        return f"(.if_ {tm(a[0])} {steps(a[1])} {steps(a[2])})"
-    if h == ":COND":
-        cl = []
-        for c in a:
-            c = as_list(c)
-            cl.append(f"({tm(c[0])}, {steps(List(c[1:]))})")
-        return f"(.cond [{', '.join(cl)}])"
-    if h == ":CASE":
-        arms = []
-        for c in a[1:]:
-            c = as_list(c)
-            arms.append(f"({codes(c[0])}, {steps(List(c[1:]))})")
-        return f"(.case_ {tm(a[0])} [{', '.join(arms)}])"
-    if h == ":CHARGE":
-        d = plist(a)
-        return f"(.charge {opt_tm(d, ':BYTES')} {opt_tm(d, ':STEPS')} {opt_tm(d, ':DESCRIPTORS')} {opt_tm(d, ':RUNNABLE')})"
-    if h == ":WAIT":
-        if str(a[0]) != ":COMPLETION":
-            die(f"wait {show(List(s))}")
-        d = plist(a[1:])
-        return f"(.wait {opt_tm(d, ':BYTES')} {opt_tm(d, ':STEPS')})"
-    if h == ":PARK":
-        wait = str(a[0]).lstrip(":")
-        d = plist(a[1:])
-        kind = f"(some {lean_str(str(d[':KIND']))})" if ":KIND" in d else "none"
-        return f"(.park {lean_str(wait)} {opt_tm(d, ':ARG')} {kind} {opt_tm(d, ':STEPS')})"
-    if h == ":STOP":
-        d = plist(a[1:])
-        return f"(.stop {lean_str(str(a[0]).lstrip(':'))} {opt_tm(d, ':STEPS')})"
-    if h in (":HALT", ":IDLE", ":YIELD", ":WAKE", ":NOWAKE"):
-        return "." + h[1:].lower()
-    if h == ":GOTO":
-        return f"(.goto {lean_str(str(a[0]))})"
-    die(f"unknown step {show(List(s))}")
-
-
 def arm(e):
+    # an arm as the declaration writes it; Fn2.Arms.readSteps reads its steps
     e = as_list(e)
     d = plist(e[1:])
     sig = as_list(d.get(":SIG", List([])))
@@ -369,9 +276,8 @@ def arm(e):
                 f"[{', '.join(lean_str(str(x)) for x in returns)}], {results}⟩")
     else:
         sigl = "none"
-    return (f"{{ tag := {lean_str(str(e[0]))}, sig := {sigl}, from_ := [{', '.join(lean_str(str(x)) for x in as_list(d[':FROM']))}],\n"
-            f"      onRefusal := {steps(d[':ON-REFUSAL'])},\n"
-            f"      steps := {steps(d[':STEPS'])},\n"
+    return (f"{{ tag := {lean_str(str(e[0]))}, sig := {sigl},\n"
+            f"      decl := {val(d[':DECL'])},\n"
             f"      fn := {lean_str(str(d[':FUNCTION']))} }}")
 
 
@@ -425,7 +331,8 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns):
     cs = []
     for c in as_list(emb[":CONSTANTS"]):
         c = list(c)
-        cs.append(f"({lean_str(str(c[0]))}, {int(str(c[2])) if len(c) == 3 else int(str(c[1]))})")
+        v = c[2] if len(c) == 3 else c[1]
+        cs.append(f"({lean_str(str(c[0]))}, {val(v)})")
     waits = []
     for name, row in registry_waits:
         d = plist(row)
@@ -452,7 +359,7 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns):
     L.append("")
     L.append("def waits : List Wait := [" + ", ".join(waits) + "]")
     L.append("")
-    L.append("def consts : List (String × Int) := [" + ", ".join(cs) + "]")
+    L.append("def consts : List (String × Val) := [" + ", ".join(cs) + "]")
     L.append("")
     L.append(f"def world : World := {{ kinds, ops, waits, consts, fns := {world_ns}.fns }}")
     L.append("")

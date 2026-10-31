@@ -78,16 +78,164 @@ structure Sig where
   results : Nat
   deriving Inhabited, Repr
 
-/-- One arm, handler or sub-arm, with the name of the child-form function ACL2 generated for it
-and, when the generator narrowed it, its signature. -/
+/-- One arm, handler or sub-arm: its declaration as the kind writes it (`decl`, the entry after
+its tag: `:from`, `:on-refusal`, then the steps), the name of the child-form function ACL2
+generated for it and, when the generator narrowed it, its signature. -/
 structure Arm where
   tag : String
   sig : Option Sig
+  decl : Val
+  fn : String
+  deriving Inhabited, Repr
+
+/-- A true list (no dotted tail). -/
+def _root_.Fn2.ACL2.Val.properList : Val → Bool
+  | .cons _ d => d.properList
+  | v => v == Val.nil
+
+/-- ACL2's `eqlablep` on the subset: an integer, a symbol or a character. -/
+def _root_.Fn2.ACL2.Val.eqlable : Val → Bool
+  | .int _ | .sym _ | .chr _ => true
+  | _ => false
+
+/-! ### The step reader
+
+`readSteps` reads an arm's steps from the declaration's S-expression, as MACHINE-FORM §6.2 writes
+them, so the printer's and the emitter's decoders are not on the interpreter's path (Astra session
+5: the declaration decoding was the part still shared after decision 7). -/
+
+/-- A plist's value for `key` (`(K1 V1 K2 V2 ...)`), as the generator's `fn2-arm-get`. -/
+def plistGet (key : String) : List Val → Option Val
+  | .sym k :: v :: rest => if k == key then some v else plistGet key rest
+  | _ :: _ :: rest => plistGet key rest
+  | _ => none
+
+def plistHas (key : String) : List Val → Bool
+  | .sym k :: _ :: rest => k == key || plistHas key rest
+  | _ :: _ :: rest => plistHas key rest
+  | _ => false
+
+def symName : Val → Except String String
+  | .sym n => .ok n
+  | v => .error s!"expected a symbol, got {v.render}"
+
+/-- A call `(OP a ... :FORMAL e ...)`: positional arguments until the first keyword. -/
+def readCall (c : Val) : Except String Call := do
+  let xs := c.toList
+  let op ← symName (xs.headD Val.nil)
+  let args := xs.tail
+  let isKw (v : Val) : Bool := match v with | .sym n => n.startsWith ":" | _ => false
+  let pos := args.takeWhile (!isKw ·)
+  let rec pairs : List Val → Except String (List (String × Expr))
+    | [] => pure []
+    | .sym k :: v :: rest => do pure ((k, v) :: (← pairs rest))
+    | xs => throw s!"a call's keyword arguments are pairs: {(Val.ofList xs).render}"
+  pure ⟨op, pos, ← pairs (args.drop pos.length)⟩
+
+def readCodes (cs : Val) : Option (List Val) :=
+  if cs == .sym ":OTHERWISE" then none else some cs.toList
+
+def stepOpt (key : String) (pl : List Val) : Option Expr := plistGet key pl
+
+partial def readSteps (ss : Val) : Except String (List Step) := do
+  if !ss.properList then throw s!"steps with a dotted tail: {ss.render}"
+  ss.toList.mapM readStep
+where
+  readStep (s : Val) : Except String Step := do
+    if !s.properList then throw s!"a step with a dotted tail: {s.render}"
+    let xs := s.toList
+    let h ← symName (xs.headD Val.nil)
+    let a := xs.tail
+    let one : Except String Val := match a with
+      | [x] => pure x
+      | _ => throw s!"{h} takes one argument: {s.render}"
+    match h with
+    | ":LET" => match a with
+      | [.sym v, e] => pure (.let_ v e)
+      | _ => throw s!"(:let VAR E): {s.render}"
+    | ":SET" => do
+      let ps ← a.mapM fun p => match p.toList with
+        | [.sym f, e] => pure (f, e)
+        | _ => throw s!"(:set (FIELD E) ...): {s.render}"
+      pure (.set ps)
+    | ":NEXT" => do pure (.next (← one))
+    | ":DO" => match a with
+      | vars :: call :: opts => do
+        let vs ← vars.toList.mapM symName
+        let c ← readCall call
+        let when_ := match plistGet ":WHEN" opts with
+          | some w => if w == Val.nil then none else some w
+          | none => none
+        let cases ← ((plistGet ":CASE" opts).getD Val.nil).toList.mapM fun c => do
+          pure (readCodes c.car, ← readSteps c.cdr)
+        pure (.do_ vs c (plistHas ":ACCEPT" opts) ((plistGet ":ACCEPT" opts).getD Val.nil).toList
+          when_ ((plistGet ":ELSE" opts).getD Val.nil).toList cases)
+      | _ => throw s!"(:do VARS CALL ...): {s.render}"
+    | ":ISSUE" => match a with
+      | call :: opts => do
+        pure (.issue (← readCall call) (← readSteps ((plistGet ":OK" opts).getD Val.nil))
+          (← readSteps ((plistGet ":REFUSED" opts).getD Val.nil)))
+      | _ => throw s!"(:issue CALL ...): {s.render}"
+    | ":REPEAT" => match a with
+      | n :: body :: opts => do
+        let some u := plistGet ":UNTIL" opts | throw s!":repeat without :until: {s.render}"
+        pure (.repeat_ n (← readSteps body) u)
+      | _ => throw s!"(:repeat N STEPS :until E): {s.render}"
+    | ":WAKE-ROW" => do pure (.wakeRow (← one))
+    | ":IF" => match a with
+      | [c, x, y] => do pure (.if_ c (← readSteps x) (← readSteps y))
+      | _ => throw s!"(:if E STEPS STEPS): {s.render}"
+    | ":COND" => do
+      pure (.cond (← a.mapM fun c => do pure (c.car, ← readSteps c.cdr)))
+    | ":CASE" => match a with
+      | key :: arms => do
+        pure (.case_ key (← arms.mapM fun c => do pure (readCodes c.car, ← readSteps c.cdr)))
+      | _ => throw s!"(:case V ...): {s.render}"
+    | ":CHARGE" => pure (.charge (stepOpt ":BYTES" a) (stepOpt ":STEPS" a)
+        (stepOpt ":DESCRIPTORS" a) (stepOpt ":RUNNABLE" a))
+    | ":WAIT" => match a with
+      | .sym ":COMPLETION" :: pl => pure (.wait (stepOpt ":BYTES" pl) (stepOpt ":STEPS" pl))
+      | _ => throw s!"(:wait :completion ...): {s.render}"
+    | ":PARK" => match a with
+      | .sym w :: rest =>
+        let wait := (w.drop 1).toString
+        if w == ":TAKEN" then match rest with
+          | .sym kind :: pl => pure (.park wait none (some kind) (stepOpt ":STEPS" pl))
+          | _ => throw s!"(:park :taken KIND ...): {s.render}"
+        else if w == ":ADMISSION" || w == ":POOL" then match rest with
+          | arg :: pl => pure (.park wait (some arg) none (stepOpt ":STEPS" pl))
+          | _ => throw s!"(:park {w} ARG ...): {s.render}"
+        else pure (.park wait none none (stepOpt ":STEPS" rest))
+      | _ => throw s!"(:park WAIT ...): {s.render}"
+    | ":STOP" => match a with
+      | .sym r :: pl => pure (.stop (r.drop 1).toString (stepOpt ":STEPS" pl))
+      | _ => throw s!"(:stop REASON ...): {s.render}"
+    | ":HALT" => pure .halt
+    | ":IDLE" => pure .idle
+    | ":YIELD" => pure .yield
+    | ":WAKE" => pure .wake
+    | ":NOWAKE" => pure .nowake
+    | ":GOTO" => do pure (.goto (← symName (← one)))
+    | _ => throw s!"unknown step {s.render}"
+
+/-- An arm's declaration read: `:from` and `:on-refusal` (in any order, as `fn2-arms-options`
+reads them), then the steps. -/
+structure ArmDecl where
   from_ : List String
   onRefusal : List Step
   steps : List Step
-  fn : String
-  deriving Inhabited, Repr
+
+partial def Arm.read (a : Arm) : Except String ArmDecl := do
+  let rec opts : Val → Except String (List String × Val × Val)
+    | .cons (.sym ":FROM") (.cons f rest) => do
+      let (_, r, ss) ← opts rest
+      pure (← f.toList.mapM symName, r, ss)
+    | .cons (.sym ":ON-REFUSAL") (.cons r rest) => do
+      let (fr, _, ss) ← opts rest
+      pure (fr, r, ss)
+    | ss => pure ([], Val.nil, ss)
+  let (fr, r, ss) ← opts a.decl
+  pure ⟨fr, ← readSteps r, ← readSteps ss⟩
 
 /-- A column's carrier, for the checked write: an unsigned width, or an enum's tag count. -/
 inductive ColType
@@ -144,7 +292,7 @@ structure World where
   kinds : List Kind
   ops : List Op
   waits : List Wait
-  consts : List (String × Int)
+  consts : List (String × Val)
   fns : Fns
 
 /-- The row-control fields that live in the directory `fn2-machines` (P1). -/
@@ -178,7 +326,7 @@ variable (w : World)
 
 def const (n : String) : Except String Val :=
   match w.consts.find? (·.1 == n) with
-  | some (_, v) => .ok (.int v)
+  | some (_, v) => .ok v
   | none => .error s!"no constant {n}"
 
 def callFn (f : String) (args : List Val) : Except String Val :=
@@ -191,41 +339,47 @@ def callFn (f : String) (args : List Val) : Except String Val :=
 /-! ### The expression reader (decision 7)
 
 `readExpr k x` reads a step-language expression of kind `k` into an ACL2 term, from ACL2's own
-definitions of the vocabulary (`*fn2-arm-primitives*`, `*fn2-arm-control*`, `member-eq`) and
-MACHINE-FORM §6.3, never from the generator's output:
+definitions of the vocabulary (`*fn2-arm-primitives*`, `*fn2-arm-control*`, `member-eq`; ACL2's
+`axioms.lisp`) and MACHINE-FORM §6.3, never from the generator's output:
 * a number, string, character, keyword, `T`, `NIL` or `(QUOTE v)` is itself;
 * `ROW-SLOT` is the arm's `SLOT` formal; `*K-KIND*` and `*K-ADMISSION-ORDINAL*` are the `KIND` and
-  `ORDINAL` formals (index-time constants, child form); another `*C*` is the constant's value;
-  every other symbol is a variable (`ROW-F`, a formal, a `:let`);
-* the macros as ACL2 defines them: `+ *` (right-associated, `0`/`1` empty), `-`, `1+ 1-`,
-  `< <= > >=`, `= /= eq eql` (as `EQUAL`), `not null`, `and or`, `cond`, `case` (`eql` on an
-  atom key, membership on a list), `logand logior` (binary, right-associated), `mv` (a list),
-  `prog2$ progn` (the last form), `member-eq` (`MEMBER-EQUAL`);
-* a function of the vocabulary (`nfix ifix zp zip natp posp integerp unsigned-byte-p floor mod
-  ash min max binary-+ binary-* unary--`) is a call;
-* `(OP a ...)` for a declared pure operation (its `:child` returns no child) is a call of the
-  `:child` with the positional arguments in its value formals and the kind's children, by name,
-  in its stobj formals;
-* anything else is refused by name. -/
+  `ORDINAL` formals (the child-form convention for index-time constants); another `*C*` is the
+  constant's printed value; every other symbol is a variable (`ROW-F`, a formal, a `:let`);
+* the macros as ACL2 defines them: `+ *` (right-associated; empty `0`/`1`, unary `(+ 0 x)`/
+  `(* 1 x)`), `-` (one or two arguments), `1+ 1-`, `< <= > >=`, `= /= eq eql` (as `EQUAL`), `not
+  null`, `and or`, `cond` (clauses of one or two forms), `case` (clauses `(keys form)`, keys
+  eqlable atoms or lists of them, `otherwise`/`t` last, a `nil` key clause dropped unread, a
+  compound key bound once), `logand logior` (empty `-1`/`0`, unary the argument, else
+  right-associated), `mv` (two or more values, a list), `prog2$` (two forms, the second's value),
+  `member-eq` (`MEMBER-EQUAL`);
+* a function of the vocabulary (`vocabularyFns`, with its arity) is a call;
+* `(OP a ...)` for a declared pure operation (its `:child` returns no child, its stobj formals
+  trailing, as the generator appends them) is a call of the `:child` with the positional
+  arguments and then the kind's children by name;
+* anything else, an application with a dotted tail, or a wrong arity is refused by name. -/
 
-def vocabularyFns : List String :=
-  ["NFIX", "IFIX", "ZP", "ZIP", "NATP", "POSP", "INTEGERP", "UNSIGNED-BYTE-P", "FLOOR", "MOD",
-   "ASH", "MIN", "MAX", "BINARY-+", "BINARY-*", "UNARY--"]
+/-- The functions of the arm vocabulary with their arities; the printer roots each in the closure. -/
+def vocabularyFns : List (String × Nat) :=
+  [("NFIX", 1), ("IFIX", 1), ("ZP", 1), ("ZIP", 1), ("NATP", 1), ("POSP", 1), ("INTEGERP", 1),
+   ("UNSIGNED-BYTE-P", 2), ("FLOOR", 2), ("MOD", 2), ("ASH", 2), ("MIN", 2), ("MAX", 2),
+   ("BINARY-+", 2), ("BINARY-*", 2), ("UNARY--", 1)]
 
 private def tIf (c a b : Term) : Term := .app "IF" [c, a, b]
 private def tNot (a : Term) : Term := tIf a (.quote Val.nil) (.quote Val.t)
 
+/-- The free variables of a term (a closed `LAMBDA`'s are its actuals'). -/
+partial def termFreeVars : Term → List String
+  | .var x => [x]
+  | .quote _ => []
+  | .app _ as => as.flatMap termFreeVars
+  | .lam _ _ as => as.flatMap termFreeVars
+
 partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
   let rd := readExpr k
   let rds (xs : List Val) : Except String (List Term) := xs.mapM rd
-  let foldR (f : String) (unit : Val) (xs : List Val) : Except String Term := do
-    match xs with
-    | [] => pure (.quote unit)
-    | [a] => pure (.app f [.quote unit, ← rd a])
-    | _ =>
-      let ts ← rds xs
-      let last := ts.getLast!
-      pure ((ts.dropLast).foldr (fun a acc => .app f [a, acc]) last)
+  let foldR (f : String) (xs : List Val) : Except String Term := do
+    let ts ← rds xs
+    pure ((ts.dropLast).foldr (fun a acc => .app f [a, acc]) ts.getLast!)
   let arity (f : String) (args : List Val) (n : Nat) : Except String Unit :=
     if args.length == n then pure () else throw s!"{f} takes {n} arguments: {x.render}"
   match x with
@@ -237,16 +391,23 @@ partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
     else if n == "*" ++ k.name ++ "-ADMISSION-ORDINAL*" then pure (.var "ORDINAL")
     else if n.length > 2 && n.startsWith "*" && n.endsWith "*" then
       match w.consts.find? (·.1 == n) with
-      | some (_, v) => pure (.quote (.int v))
+      | some (_, v) => pure (.quote v)
       | none => throw s!"the constant {n} was not printed"
     else pure (.var n)
   | .cons (.sym f) rest =>
+    if !rest.properList then throw s!"an application with a dotted tail: {x.render}"
     let args := rest.toList
     match f with
     | "QUOTE" => do arity f args 1; pure (.quote args.head!)
     | "IF" => do arity f args 3; pure (.app "IF" (← rds args))
-    | "+" => foldR "BINARY-+" (.int 0) args
-    | "*" => foldR "BINARY-*" (.int 1) args
+    | "+" => match args with
+      | [] => pure (.quote (.int 0))
+      | [a] => do pure (.app "BINARY-+" [.quote (.int 0), ← rd a])
+      | _ => foldR "BINARY-+" args
+    | "*" => match args with
+      | [] => pure (.quote (.int 1))
+      | [a] => do pure (.app "BINARY-*" [.quote (.int 1), ← rd a])
+      | _ => foldR "BINARY-*" args
     | "-" => match args with
       | [a] => do pure (.app "UNARY--" [← rd a])
       | [a, b] => do pure (.app "BINARY-+" [← rd a, .app "UNARY--" [← rd b]])
@@ -271,54 +432,65 @@ partial def readExpr (k : Kind) (x : Expr) : Except String Term := do
         let ts ← rds args
         pure ((ts.dropLast).foldr (fun a acc => tIf a a acc) ts.getLast!)
     | "COND" => do
-      let cls ← args.mapM fun c => match c.toList with
+      let cls ← args.mapM fun c =>
+        if !c.properList then throw s!"a cond clause with a dotted tail: {c.render}"
+        else match c.toList with
         | [t] => do let tt ← rd t; pure (tt, tt)
         | [t, e] => do pure (← rd t, ← rd e)
         | _ => throw s!"a cond clause has one or two forms: {c.render}"
       pure (cls.foldr (fun (t, e) acc => tIf t e acc) (.quote Val.nil))
     | "CASE" => do
-      let key ← rd args.head!
-      let arms := args.tail
+      let some keyX := args.head? | throw s!"case without a key: {x.render}"
+      let keyT ← rd keyX
+      -- a compound key is bound once, as ACL2's case binds it
+      let bound := !keyX matches .sym _
+      let key : Term := if bound then .var "CASE-DO-NOT-USE-ELSEWHERE" else keyT
       let rec go : List Val → Except String Term
         | [] => pure (.quote Val.nil)
         | a :: more => do
-          let (keys, body) := (a.car, a.cdr)
-          let e ← match body.toList with
-            | [e] => rd e
-            | _ => throw s!"a case arm has one form: {a.render}"
+          if !a.properList || a.toList.length != 2 then
+            throw s!"a case clause is (keys form): {a.render}"
+          let keys := a.car
           if keys == .sym "OTHERWISE" || keys == Val.t then
-            if more.isEmpty then pure e else throw s!"otherwise is not last: {x.render}"
-          else
-            let test := if keys.isCons || keys == Val.nil then .app "MEMBER-EQUAL" [key, .quote keys]
-              else .app "EQUAL" [key, .quote keys]
-            pure (tIf test e (← go more))
-      go arms
-    | "LOGAND" | "LOGIOR" => do
-      if args.length < 2 then throw s!"{f} with fewer than two arguments: {x.render}"
-      foldR ("BINARY-" ++ f) (.int 0) args
+            if more.isEmpty then rd a.cdr.car else throw s!"otherwise is not last: {x.render}"
+          else if keys == Val.nil then go more
+          else if keys.isCons then
+            if !(keys.properList && keys.toList.all Val.eqlable) then
+              throw s!"case keys are eqlable atoms: {keys.render}"
+            pure (tIf (.app "MEMBER-EQUAL" [key, .quote keys]) (← rd a.cdr.car) (← go more))
+          else if keys.eqlable then
+            pure (tIf (.app "EQUAL" [key, .quote keys]) (← rd a.cdr.car) (← go more))
+          else throw s!"a case key is an eqlable atom: {keys.render}"
+      let body ← go args.tail
+      if bound then
+        let fv := ((termFreeVars body).filter (· != "CASE-DO-NOT-USE-ELSEWHERE")).eraseDups
+        pure (.lam ("CASE-DO-NOT-USE-ELSEWHERE" :: fv) body (keyT :: fv.map Term.var))
+      else pure body
+    | "LOGAND" | "LOGIOR" => match args with
+      | [] => pure (.quote (.int (if f == "LOGAND" then -1 else 0)))
+      | [a] => rd a
+      | _ => foldR ("BINARY-" ++ f) args
     | "MV" => do
+      if args.length < 2 then throw s!"mv takes two or more values: {x.render}"
       let ts ← rds args
       pure (ts.foldr (fun a acc => .app "CONS" [a, acc]) (.quote Val.nil))
-    | "PROG2$" | "PROGN" => do
-      if args.isEmpty then throw s!"{f} without forms"
-      let ts ← rds args
-      pure ts.getLast!
+    | "PROG2$" => do arity f args 2; let ts ← rds args; pure ts[1]!
     | "MEMBER-EQ" | "MEMBER-EQUAL" => do arity f args 2; pure (.app "MEMBER-EQUAL" (← rds args))
     | _ =>
-      if vocabularyFns.contains f then do pure (.app f (← rds args))
-      else match w.ops.find? (·.name == f) with
+      match vocabularyFns.find? (·.1 == f) with
+      | some (_, n) => do arity f args n; pure (.app f (← rds args))
+      | none => match w.ops.find? (·.name == f) with
         | some { callee := some callee, formals, stobjsIn, stobjsOut, .. } => do
           if !stobjsOut.all (·.isNone) then throw s!"{f} returns a child; it is not a pure operation"
-          let rec fill : List String → List (Option String) → List Val → Except String (List Term)
-            | [], _, [] => pure []
-            | [], _, _ => throw s!"too many arguments: {x.render}"
-            | _ :: fs, some c :: ss, as => do
-              if !k.tuple.contains c then throw s!"{f} takes {c}, outside {k.name}'s tuple"
-              pure (.var c :: (← fill fs ss as))
-            | _ :: fs, _ :: ss, a :: as => do pure ((← rd a) :: (← fill fs ss as))
-            | _ :: _, _, [] => throw s!"too few arguments: {x.render}"
-            | _ :: _, [], _ => throw s!"{f}: stobjs-in shorter than formals"
-          pure (.app callee (← fill formals stobjsIn args))
+          let vals := stobjsIn.takeWhile (·.isNone)
+          let kids := stobjsIn.drop vals.length
+          if !kids.all (·.isSome) || formals.length != stobjsIn.length then
+            throw s!"{f}'s stobj formals are not trailing"
+          arity f args vals.length
+          let kidNames := kids.filterMap id
+          for c in kidNames do
+            if !k.tuple.contains c then throw s!"{f} takes {c}, outside {k.name}'s tuple"
+          pure (.app callee ((← rds args) ++ kidNames.map Term.var))
         | _ => throw s!"{f} is neither in the arm vocabulary nor a declared pure operation: {x.render}"
   | _ => throw s!"not an expression: {x.render}"
 
@@ -367,7 +539,9 @@ where callExprs (c : Call) : List (Bool × Expr) := (c.args ++ c.keys.map (·.2)
 arm and expression. -/
 def readKind (k : Kind) : List String :=
   (k.subarms ++ k.arms ++ k.observes).flatMap fun a =>
-    ((a.onRefusal ++ a.steps).flatMap Step.exprs).filterMap fun (ph, e) =>
+    match a.read with
+    | .error m => [s!"{a.fn}: {m}"]
+    | .ok d => ((d.onRefusal ++ d.steps).flatMap Step.exprs).filterMap fun (ph, e) =>
       match (if ph then readNext w k e else readExpr w k e) with
       | .ok _ => none
       | .error m => some s!"{a.fn}: {m}"
@@ -592,7 +766,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       let st ← flush w f st
       let k := (← ev w f.kind st n).nfix
       let rec loop : Nat → Nat → St → Except String St
-        | 0, _, st => .ok st
+        | 0, _, _ => .error "fuel"
         | _, 0, st => .ok st
         | fuel' + 1, k + 1, st => do
           let id ← var st "ID"
@@ -699,8 +873,9 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
         | some a => pure a
         | none => throw s!"no sub-arm {name}"
       let reads ← rowReads w f.kind st.stobjs (← var st "ID") (← var st "SLOT")
-      run { f with refusal := sub.onRefusal } fuel
-        { stobjs := st.stobjs, vars := reads ++ f.base } sub.steps
+      let d ← sub.read
+      run { f with refusal := d.onRefusal } fuel
+        { stobjs := st.stobjs, vars := reads ++ f.base } d.steps
 
 /-- Run one arm (or handler) of `k` on the arguments of its child-form function, in that
 function's formal order: `(id slot kind ordinal budget . tuple)` for an arm, `(id slot kind
@@ -719,8 +894,9 @@ def runArm (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fuel : Nat :
   let id := args.headD Val.nil
   let slot := (args.drop 1).headD Val.nil
   let reads ← rowReads w k stobjs id slot
-  let f : Frame := { kind := k, observe, refusal := a.onRefusal, base }
-  match ← run w f fuel { stobjs, vars := reads ++ base } a.steps with
+  let d ← a.read
+  let f : Frame := { kind := k, observe, refusal := d.onRefusal, base }
+  match ← run w f fuel { stobjs, vars := reads ++ base } d.steps with
   | .done v => pure v
   | .again _ => throw ":repeat-next outside a :repeat"
 

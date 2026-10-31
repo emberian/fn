@@ -102,101 +102,26 @@
 
 ; ---------------------------------------------------------------- step language
 
-; An expression and a phase form are printed as the declaration writes them; the generator has
-; already checked them (a kind certifies only if fn2-arms-expr accepts every one).
-(defun meta-expr (e env) (declare (ignore env)) (list :raw e))
-
-(defun meta-next (n env) (declare (ignore env)) (list :raw n))
+; An arm is printed as the declaration writes it (:decl, the entry after its tag: :from,
+; :on-refusal, then the steps). The Lean side reads the steps and their expressions itself
+; (Fn2.Arms.readSteps, readExpr), so neither the generator's expression rewrite nor a decoder
+; here is on the interpreter's path (LEAN-METATHEORY sections 5 and 12, decision 7). The
+; generator has already checked every arm: a kind certifies only if fn2-arms-steps accepts it.
 
 (defun meta-kw (key plist) (let ((e (member key plist))) (and e (cadr e))))
-
-(defun meta-split (args)
-  ; (positional . keyword plist), as fn2-arms-split-call
-  (if (or (atom args) (keywordp (car args))) (cons nil args)
-    (let ((rest (meta-split (cdr args)))) (cons (cons (car args) (car rest)) (cdr rest)))))
-
-(defun meta-call (call env)
-  (let ((split (meta-split (cdr call))))
-    (list :op (car call)
-          :args (loop for a in (car split) collect (meta-expr a env))
-          :keys (loop for (k v) on (cdr split) by #'cddr collect (list k (meta-expr v env))))))
-
-(defun meta-charge-keys (args env keys)
-  (loop for k in keys when (member k args) append (list k (meta-expr (meta-kw k args) env))))
-
-(defun meta-steps (steps env)
-  (loop for s in steps collect (meta-step s env)))
-
-(defun meta-step (s env)
-  (let ((args (cdr s)))
-    (case (car s)
-      (:let (list :let (car args) (meta-expr (cadr args) env)))
-      (:set (cons :set (loop for (f e) in args collect (list f (meta-expr e env)))))
-      (:next (list :next (meta-next (car args) env)))
-      (:do
-       (let* ((vars (car args)) (call (cadr args)) (opts (cddr args))
-              (cases (meta-kw :case opts)))
-         (append (list :do :vars vars) (meta-call call env)
-                 (list :accept-given (and (member :accept opts) t) :accept (meta-kw :accept opts)
-                       :effects (meta-kw :effects opts)
-                       :when (let ((c (meta-kw :when opts))) (and c (meta-expr c env)))
-                       :else (loop for e in (meta-kw :else opts) collect (list :raw e))
-                       :case (loop for c in cases
-                                   collect (cons (car c) (meta-steps (cdr c) env)))))))
-      (:issue
-       (append (list :issue) (meta-call (car args) env)
-               (list :ok (meta-steps (meta-kw :ok (cdr args)) env)
-                     :refused (meta-steps (meta-kw :refused (cdr args)) env))))
-      (:repeat (list :repeat :n (meta-expr (car args) env) :steps (meta-steps (cadr args) env)
-                     :until (meta-expr (meta-kw :until (cddr args)) env)))
-      (:wake-row (list :wake-row (meta-expr (car args) env)))
-      (:if (list :if (meta-expr (car args) env) (meta-steps (cadr args) env) (meta-steps (caddr args) env)))
-      (:cond (cons :cond (loop for c in args
-                               collect (cons (meta-expr (car c) env) (meta-steps (cdr c) env)))))
-      (:case (list* :case (meta-expr (car args) env)
-                    (loop for c in (cdr args) collect (cons (car c) (meta-steps (cdr c) env)))))
-      (:charge (cons :charge (meta-charge-keys args env '(:bytes :steps :descriptors :runnable))))
-      (:wait (list* :wait (car args) (meta-charge-keys (cdr args) env '(:bytes :steps))))
-      (:park
-       (let* ((wait (car args)) (argp (member wait '(:admission :pool :taken)))
-              (rest (if argp (cddr args) (cdr args))))
-         (list* :park wait
-                (cond ((eq wait :taken) (list :kind (cadr args)))
-                      (argp (list :arg (meta-expr (cadr args) env))))
-                (meta-charge-keys rest env '(:steps)))))
-      (:stop (list* :stop (car args) (meta-charge-keys (cdr args) env '(:steps))))
-      ((:halt :idle :yield :wake :nowake) (list (car s)))
-      (:goto (list :goto (car args)))
-      (otherwise (meta-err "unknown step ~s" s)))))
 
 (defun meta-sig (fn)
   ; a child-form function's (TAKES RETURNS RESULT-COUNT), when the generator narrowed it
   ; (machine-arms.lisp, fn2-arms-child-sigs); nil: it takes and returns the kind's whole tuple
   (cdr (assoc-eq fn (table-alist 'fn2-arms-child-sigs *meta-w*))))
 
-(defun meta-entries (kind entries observe subs children)
+(defun meta-entries (kind entries infix children)
   ; an arm table in child form (the arm over its children) or core form (over fn2-core)
   (loop for e in entries
-        collect (multiple-value-bind (from refusal steps) (fn2-arms-options (cdr e))
-                  (let ((env (fn2-arms-env kind (car e) observe refusal subs children *meta-w*))
-                        (fn (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") (car e))))
-                    (list (car e) :from from
-                          :on-refusal (meta-steps refusal env)
-                          :steps (meta-steps steps env)
-                          :function (if children (fn2-arms-child-name fn) fn)
-                          :sig (meta-sig (if children (fn2-arms-child-name fn) fn)))))))
-
-(defun meta-sub-entries (kind entries children)
-  (loop for e in entries
-        collect (multiple-value-bind (from refusal steps) (fn2-arms-options (cdr e))
-                  (declare (ignore from))
-                  (let ((env (fn2-arms-env kind nil nil refusal nil children *meta-w*))
-                        (fn (fn2-arms-fn-name kind "-SUB-" (car e))))
-                    (list (car e) :from nil
-                          :on-refusal (meta-steps refusal env)
-                          :steps (meta-steps steps env)
-                          :function (if children (fn2-arms-child-name fn) fn)
-                          :sig (meta-sig (if children (fn2-arms-child-name fn) fn)))))))
+        collect (let ((fn (fn2-arms-fn-name kind infix (car e))))
+                  (list (car e) :decl (cdr e)
+                        :function (if children (fn2-arms-child-name fn) fn)
+                        :sig (meta-sig (if children (fn2-arms-child-name fn) fn))))))
 
 (defun meta-child-form-p (kind)
   ; declared in the step language and its arms defined in child form in this world
@@ -220,9 +145,9 @@
           :table (fn2-machine-property kind :table *meta-w*)
           :stops (fn2-machine-declared kind :stops *meta-w*)
           :budget (fn2-machine-property kind :budget *meta-w*)
-          :subarms (meta-sub-entries kind (fn2-machine-declared kind :subarms *meta-w*) children)
-          :arms (meta-entries kind (fn2-machine-declared kind :arms *meta-w*) nil nil children)
-          :observes (meta-entries kind (fn2-machine-declared kind :observe-arms *meta-w*) t nil children))))
+          :subarms (meta-entries kind (fn2-machine-declared kind :subarms *meta-w*) "-SUB-" children)
+          :arms (meta-entries kind (fn2-machine-declared kind :arms *meta-w*) "-RUN-" children)
+          :observes (meta-entries kind (fn2-machine-declared kind :observe-arms *meta-w*) "-ON-" children))))
 
 ; ---------------------------------------------------------------- operations
 
@@ -307,12 +232,13 @@
     (sort out #'string< :key (lambda (p) (symbol-name (car p))))))
 
 (defun meta-arm-constants (x acc)
-  ; every *C* an arm names that the world defines as an integer constant
+  ; every *C* an arm names that the world defines (its value; the emitter refuses by name a value
+  ; outside the subset)
   (cond ((consp x) (meta-arm-constants (cdr x) (meta-arm-constants (car x) acc)))
         ((and (symbolp x) (not (keywordp x)) (eq (symbol-package x) (find-package "ACL2")))
          (let ((n (symbol-name x)) (v (getpropc x 'const nil *meta-w*)))
            (if (and (> (length n) 2) (char= (char n 0) #\*) (char= (char n (1- (length n))) #\*)
-                    (consp v) (integerp (cadr v)) (not (assoc x acc)))
+                    (consp v) (eq (car v) 'quote) (not (assoc x acc)))
                (cons (cons x (cadr v)) acc)
              acc)))
         (t acc)))
@@ -352,6 +278,9 @@
                  (loop for o in op-rows when (meta-kw :callee (cdr o)) collect (meta-kw :callee (cdr o)))
                  '(fn2-control-record-stop fn2-control-record-kind-stop fn2-machines-park-pool
                    fn2-machines-wake-row fn2-machines-rows)
+                 ;; the functions of the arm vocabulary (Fn2.Arms.vocabularyFns), so every name the
+                 ;; reader accepts has a translation or a native
+                 '(nfix ifix zp zip natp posp unsigned-byte-p ash min max)
                  (loop for k in kinds collect (fn2-columns-sym k "-ROWS")))))
     (multiple-value-bind (order refused) (meta-closure roots)
       (list :embed

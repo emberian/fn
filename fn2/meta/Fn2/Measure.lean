@@ -24,7 +24,9 @@ computations on the same arguments:
   operation accepts, so a declaration that reads or writes it differs (in the results or here).
 
 The interpreter's arguments and result go through `Fn2.Pathway`'s `widen` and `project`, the maps
-PW3 is stated with, so each recorded call is one instance of `Fn2.Pathway.ArmCorrect`.
+PW3 is stated with, and interp equality is equality with `Fn2.Pathway.reconstruct` (the whole
+result, so the shape and the frame too): each recorded call observes `ArmCorrect`'s conclusion on
+one input and one `rest` (the sentinels), not the quantified statement.
 
 Each is equal to the recorded result or a named difference (the first result position that
 differs; for a child, the first field and element). Performance is printed, never a gate.
@@ -107,8 +109,18 @@ def main (args : List String) : IO UInt32 := do
   for k in w.kinds do
     if !k.childForm then continue
     for a in k.subarms ++ k.arms ++ k.observes do
-      exprs := exprs + ((a.onRefusal ++ a.steps).flatMap Step.exprs).length
+      if let .ok d := a.read then
+        exprs := exprs + ((d.onRefusal ++ d.steps).flatMap Step.exprs).length
     refusals := refusals ++ (readKind w k).toArray
+  for k in w.kinds do
+    if !k.childForm then continue
+    for (a, obs) in k.subarms.map (·, false) ++ k.arms.map (·, false) ++ k.observes.map (·, true) do
+      if !Fn2.Pathway.ArmWF k a obs then refusals := refusals.push s!"{a.fn}: metadata not ArmWF"
+  -- every function of the arm vocabulary resolves (a native or a translation of its arity)
+  for (f, n) in vocabularyFns do
+    let dummy := List.replicate n (Val.int 0)
+    if (nativeCall f dummy).isNone && (w.fns f dummy).isNone then
+      refusals := refusals.push s!"the vocabulary function {f} is neither native nor translated"
   IO.println s!"READ {exprs} expressions of the child-form kinds, {refusals.size} refused"
   for r in refusals do IO.println s!"  refused: {r}"
   let t0 ← IO.monoMsNow
@@ -136,12 +148,20 @@ def main (args : List String) : IO UInt32 := do
     let names := (if observe then ["wake"] else ["bytes", "steps", "descriptors", "runnable"]) ++ returns
     let ran := runArm w k a observe full
     let interp := match ran with
-      | .ok v => let p := project v; if same p want then none else some (diff names p want)
+      | .ok v =>
+        let p := project v
+        if !(same p want) then some (diff names p want)
+        -- PW3's conclusion exactly: the whole result FN's value determines (shape and frame too)
+        else if same v (Fn2.Pathway.reconstruct k a observe entering want) then none
+        else some "the projection agrees but the whole result is not the reconstructed one"
       | .error e => some s!"error: {e}"
     -- the frame: every child outside the function's returns leaves as it entered
     let frame : Option String := match ran with
       | .ok v =>
         let outs := ((listOf v).toList.drop nOuts)
+        if outs.length != k.tuple.length then
+          some s!"the result has {outs.length} children, the tuple {k.tuple.length}"
+        else
         let bad := (k.tuple.zip (entering.zip outs)).filter fun (c, i, o) =>
           !(returns.contains c) && !(same i o)
         match bad.head? with
