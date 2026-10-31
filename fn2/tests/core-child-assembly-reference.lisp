@@ -2,4 +2,5 @@
 (in-package "ACL2")
 (include-book "core-child-assembly-dispatch")
 
+(fn2-reference-children-events)
 (fn2-reference-state-events)

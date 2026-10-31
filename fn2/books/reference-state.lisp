@@ -2,14 +2,22 @@
 (in-package "ACL2")
 (include-book "core")
 
+; Two section books expand these (assembly-reference-children, then
+; assembly-reference), so the per-child reference stobjs, which grow with every
+; core child, and the core-wide reference functions certify separately, each
+; under the one-minute rule. A test instance may expand both in one book.
 ; Array traversal termination depends only on fuel, not the wide stobj
 ; recognizers. Keep the prover out of their generated column definitions.
-(defmacro fn2-reference-state-events ()
- '(progn
-(local (defthm fn2-ref-countdown
-         (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left)))
-         :rule-classes nil))
-(local (defthm fn2-ref-count-op (o-p (nfix left)) :rule-classes nil))
+(defmacro fn2-ref-countdown-events ()
+ ; Once per world: a test instance expands both reference macros in one book.
+ '(make-event
+   (if (getpropc 'fn2-ref-countdown 'theorem nil (w state))
+       '(value-triple :present)
+     '(progn
+       (local (defthm fn2-ref-countdown
+                (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left)))
+                :rule-classes nil))
+       (local (defthm fn2-ref-count-op (o-p (nfix left)) :rule-classes nil))))))
 
 ; The columns declaration owns copy/diff; this stage supplies congruent children.
 (defun fn2-ref-state-events (names registry)
@@ -23,12 +31,33 @@
                       (fn2-decl-get :extra-fields schema))))
       (append (fn2-columns-reference-events name ref fields)
               (fn2-ref-state-events (cdr names) registry)))))
+; The per-child reference stobjs, their copy/diff/snapshot traversals, for
+; part PART of PARTS of the registered children (a contiguous run of them, in
+; registry order), so the section books form a chain of groups whose sizes do
+; not grow with the instance: a new core child adds to one part, and a part
+; near the minute becomes two.
+(defun fn2-ref-part (names part parts)
+  (declare (xargs :verify-guards nil))
+  (let* ((n (len names)) (size (ceiling n (max 1 parts))))
+    (take (min size (nfix (- n (* part size)))) (nthcdr (* part size) names))))
+(defmacro fn2-reference-children-events (&optional (part '0) (parts '1))
+ `(progn
+(fn2-ref-countdown-events)
+
 (local (deftheory fn2-ref-base-theory (current-theory :here)))
 (local (in-theory nil))
 (make-event
- (value (cons 'progn (fn2-ref-state-events (fn2-core-child-types (fn2-core-child-registry (w state)))
-                       (reverse (fn2-decl-rows :columns (w state)))))))
+ (value (cons 'progn (fn2-ref-state-events
+                      (fn2-ref-part (fn2-core-child-types (fn2-core-child-registry (w state))) ,part ,parts)
+                      (reverse (fn2-decl-rows :columns (w state)))))))
 (local (in-theory (theory 'fn2-ref-base-theory)))
+))
+
+; The core-wide reference: the congruent fn2-ref-core, the copy chain, the
+; boundary import and the difference.
+(defmacro fn2-reference-state-events ()
+ '(progn
+(fn2-ref-countdown-events)
 
 (defun fn2-ref-core-fields (children)
   (if (atom children) nil
