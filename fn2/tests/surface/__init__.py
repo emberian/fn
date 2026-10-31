@@ -173,7 +173,12 @@ def driver(command, directory, seconds, env=None):
             return process.wait(timeout=seconds)
         finally:
             if process is not None and process.poll() is None:
-                os.killpg(int(pidfile.read_text()), signal.SIGKILL)
+                try:
+                    os.killpg(int(pidfile.read_text()), signal.SIGKILL)
+                except (PermissionError, ProcessLookupError):
+                    # macOS answers EPERM for a group whose members are all exiting zombies; the wait
+                    # below still decides, so a timeout is reported as the timeout it is.
+                    pass
                 process.wait(timeout=10)
             pidfile.unlink()
 

@@ -344,7 +344,8 @@
           "model_examples": 200,
           "steps": 50,
           "natives": "selected families",
-          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin"
+          "fuzz_budget": "equal reserved share among selected F forms; driver receives share minus reporting/minimization margin",
+          "s_timeout": 1800
         },
         "hbox": {
           "forms": [
