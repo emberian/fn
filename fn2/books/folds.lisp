@@ -35,7 +35,7 @@
  :key ((consumer (:id consumer)) (epoch :u32))
  :value ((position (:id position)) (version (:id version)))
  :merge :latest
- :fold (:events ((:ack (consumer epoch to) :when (< position to) :set ((position to)))
+ :fold (:events ((:ack (consumer epoch to) :when (< position to) :unless-when :unchanged :set ((position to)))
                  (:rebase (consumer epoch query start) :when (< version query)
                   :set ((version query) (position start))))
         :init :empty :coverage :history-start

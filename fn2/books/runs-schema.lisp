@@ -80,7 +80,7 @@
 ; Folds (C4; STORAGE-DESIGN §4 decision 1, scholar ch. 1). A fold is a run
 ; schema with :merge :latest whose declaration row also carries the fold's
 ; properties (no new declaration kind):
-;   :fold (:events ((KIND (ARG ...) [:assign ((ARG EXPR) ...)] [:when TEST]
+;   :fold (:events ((KIND (ARG ...) [:assign ((ARG EXPR) ...)] [:when TEST [:unless-when :unchanged]]
 ;                    :set ((FIELD EXPR) ...)) ...)
 ;          :init :empty  :coverage :history-start  :observe (FIELD ...))
 ; An event is the list (KIND ARG-VALUE ...); its key is the args named by the
@@ -93,7 +93,9 @@
 ; (+ a b) (- a b) (min a b) (max a b) (if TEST a b); TEST is (= a b) (< a b)
 ; (<= a b) (and s t) (or s t) (not s). Each set field is computed from the
 ; old row; an event whose TEST fails is :refused and one whose result leaves
-; its field's width is :range, and neither changes the row. From the one
+; its field's width is :range, and neither changes the row. An event with a
+; TEST may declare :unless-when :unchanged: a failed TEST then answers
+; :unchanged, the row stays as it was, and stage goes on without the slot. From the one
 ; declaration the schema generates the step twice: NAME-FOLD-STEP over list
 ; values (the interpretation, logic only) and NAME-FOLD-APPLY over decoded
 ; field rows (served), and the list fold NAME-FOLD-SPEC with its observation.
@@ -180,6 +182,13 @@
 
 ;; Declaration accessors. An event declaration is (KIND ARGS . OPTIONS).
 (defun fn2-rf-opt (key ev) (declare (xargs :verify-guards nil)) (cadr (member-eq key (cddr ev))))
+;; What a failed :when answers: :refused (the default: the transaction must
+;; plan again), or :unchanged when the event declares :unless-when
+;; :unchanged (the slot then writes nothing and stage goes on: an ack that
+;; lost its race to a later one, E.P1).
+(defun fn2-rf-unless (ev)
+ (declare (xargs :verify-guards nil))
+ (if (eq (fn2-rf-opt :unless-when ev) :unchanged) :unchanged :refused))
 (defun fn2-rf-sets-okp (sets vnames names)
  (declare (xargs :verify-guards nil))
  (if (atom sets) (null sets)
@@ -200,6 +209,7 @@
              (assigns (fn2-rf-opt :assign ev))
              (anames (append vnames (set-difference-eq args (strip-cars assigns)))))
        (and (or (null when) (fn2-rf-testp when names))
+            (member-eq (fn2-rf-opt :unless-when ev) (if when '(nil :unchanged) '(nil)))
             (consp sets) (fn2-rf-sets-okp sets vnames names)
             (no-duplicatesp-eq (strip-cars sets))
             (true-listp assigns) (fn2-rf-assigns-okp assigns (cadr ev) knames anames)
@@ -278,7 +288,7 @@
           (let ,(fn2-rf-list-binds (cadar evs) 0 '(cdr e))
            (declare (ignorable ,@(fn2-rf-vars (cadar evs))))
            (let ,(fn2-rf-new-binds value (fn2-rf-opt :set (car evs)))
-            (cond ,@(let ((when (fn2-rf-opt :when (car evs)))) (and when `(((not ,(fn2-rf-test when)) (mv :refused vals)))))
+            (cond ,@(let ((when (fn2-rf-opt :when (car evs)))) (and when `(((not ,(fn2-rf-test when)) (mv ,(fn2-rf-unless (car evs)) vals)))))
                   ((not (and ,@(fn2-rf-fits value))) (mv :range vals))
                   (t (mv :ok (list ,@(fn2-rf-news value))))))))
         (fn2-rf-step-arms (cdr evs) value))))
@@ -291,7 +301,7 @@
           (let ,(fn2-rf-row-binds (cadar evs) 0 'abase)
            (declare (ignorable ,@(fn2-rf-vars (cadar evs))))
            (let ,(fn2-rf-new-binds value (fn2-rf-opt :set (car evs)))
-            (cond ,@(let ((when (fn2-rf-opt :when (car evs)))) (and when `(((not ,(fn2-rf-test when)) (mv :refused fn2-fields)))))
+            (cond ,@(let ((when (fn2-rf-opt :when (car evs)))) (and when `(((not ,(fn2-rf-test when)) (mv ,(fn2-rf-unless (car evs)) fn2-fields)))))
                   ((not (and ,@(fn2-rf-fits value))) (mv :range fn2-fields))
                   (t (let* ,(fn2-rf-row-writes value nk 'vbase) (mv :ok fn2-fields)))))))
         (fn2-rf-apply-arms (cdr evs) value nk))))

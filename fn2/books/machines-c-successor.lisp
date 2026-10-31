@@ -107,7 +107,7 @@
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
     (sid :u60) (kind (:enum fn2-succ-kind ,(append '(:insert :record) *fn2-run-fold-kinds*)))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
-    (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32))))
+    (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32) (unchanged :bool))))
 (fn2-idc-child fn2-core-succ-txns fn2-succ-txns
  (fn2-succ-txns-init (+ (nfix (fn2-profile-t profile)) (fn2-b-read-rows profile)) fn2-succ-txns)
  "A transaction's writes survive its yields between :prepare and its outcome (C-S3); then one row per read row, its exact lookup's continuation (C-S4).")
@@ -280,7 +280,7 @@
        (mv :kind fn2-succ-txns fn2-succ-slots))
       (s (+ (* tx *fn2-succ-slots*) i))
       (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-put*) (sid sid) (kind code) (set 0) (events 0) (outs 0)
-                                          (found 0) (vrun 0) (size 0) (oset 0) (sk 0) (ss 0) (sg 0) (late 0) (filled 0)))
+                                          (found 0) (vrun 0) (size 0) (oset 0) (sk 0) (ss 0) (sg 0) (late 0) (filled 0) (unchanged 0)))
       (rec (cond ((equal code *fn2-succ-kind-record*) (+ 1 i)) ((equal rec (+ 1 i)) 0) (t rec)))
       (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (record rec) (ri 0)
                                         (rstate *fn2-succ-resolve-fresh*) (rbound 0))))

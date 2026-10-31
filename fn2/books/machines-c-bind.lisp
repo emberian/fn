@@ -154,7 +154,8 @@
        (mv :bounds fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       (sid (fn2-succ-slots-sid s fn2-succ-slots)) (code (fn2-succ-slots-kind s fn2-succ-slots))
       (entry (+ b0 (* *fn2-succ-block* i)))
-      ((when (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+      ((when (or (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*)
+                 (equal (fn2-succ-slots-unchanged s fn2-succ-slots) 1)))
        (mv :ok fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code2 fn2-fields fn2-pool)
        (cond ((equal code *fn2-succ-kind-record*)
@@ -198,7 +199,7 @@
  (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-slots-events fn2-succ-slots-oset fn2-succ-slots-sk
   fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-size fn2-run-layout-fields fn2-id-engine-slot fn2-id-engine-gen
   fn2-idc-rehome fn2-succ-fill-events fn2-succ-rehome-octets fn2-succ-target fn2-id-record-insert fn2-ov-insert fn2-fields-value
-  fn2-run-layout-keys))
+  fn2-run-layout-keys fn2-succ-slots-unchanged))
 (defun fn2-succ-bind-slots (k i tx b0 b event fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :measure (nfix k)
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-id-engine-wfp fn2-id-engine)
@@ -264,7 +265,7 @@
 (defun fn2-succ-release-slots (k s fn2-succ-slots)
  (declare (xargs :stobjs fn2-succ-slots :measure (nfix k) :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (natp s))))
  (if (not (and (posp k) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)))) fn2-succ-slots
-  (let ((fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-empty*) (set 0) (events 0) (outs 0) (found 0) (size 0) (oset 0))))
+  (let ((fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-empty*) (set 0) (events 0) (outs 0) (found 0) (size 0) (oset 0) (unchanged 0))))
    (fn2-succ-release-slots (- k 1) (+ 1 s) fn2-succ-slots))))
 (fn2-succ-slots-preserves fn2-succ-release-slots (k s fn2-succ-slots) :position nil :raw-rows t)
 (defun fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
@@ -457,6 +458,8 @@
 (defcost fn2-successor-release :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
  :doc "Free a transaction's write slots and its decision at its outcome.")
+(defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
+ :doc "Whether a staged fold slot applied (:applied) or its :when failed under :unless-when :unchanged (:unchanged).")
 (defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
 (defcost fn2-successor-publish :answers (:bounds :ok :state)
@@ -546,6 +549,12 @@
      (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok) (fn2-succ-out tx i f b0 fn2-succ-txns fn2-succ-slots fn2-fields) (mv c 0)))
      (mv code value)))
+   (defun fn2-successor-applied (tx i fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core)))
+     (code verdict)
+     (fn2-succ-applied tx i fn2-succ-txns fn2-succ-slots)
+     (mv code verdict)))
    (fn2-succ-wrap fn2-successor-fill-octets (tx i j slot gen off len okind oslot ogen)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
@@ -590,5 +599,5 @@
     :hints (("Goal" :in-theory (enable fn2-succ-core-publish))))
    (defattach (fn2-successor-drop fn2-succ-core-drop)
     :hints (("Goal" :in-theory (enable fn2-succ-core-drop))))
-   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop))
-   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop) (w state)))))
+   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop))
+   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop) (w state)))))

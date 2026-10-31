@@ -665,6 +665,14 @@ losing conflict whose winner was dropped.
   4,096 pool reads per step; stage 4,096 bytes (one located entry per overlay of each slot's
   schema; fold rows are tens of bytes); bind 8,192 bytes (octet copies of at most 4 KiB per slot
   and the encoded rows).
+- **C-FOLD-UNCHANGED (E.P1, 2026-10-31).** A fold event's failed `:when` refuses the stage with
+  `:refused` by default: the transaction must plan again, which §4a's admit race needs. An event
+  may instead declare `:unless-when :unchanged`. Then the served and list steps both answer
+  `:unchanged` and leave the row. Stage marks the slot (column `unchanged`), sizes it 0 and goes on,
+  and bind skips it as it skips an empty slot. `(fn2-successor-applied tx i fn2-core) -> (mv code
+  verdict)` reads `:applied` or `:unchanged` once staged (`:state` before, `:kind` for an insert or
+  record slot). The cursor's `:ack` declares it, so an ack that lost its race to a later one answers
+  `behind` instead of `accepted` (e-continuation.md E.P1) and the transaction still commits.
 - **C-SUCCESSOR-BOOK.** The successor (C-S2, now C-S3) is books of its own, apart from
   `machines-c.lisp` (the decision, C-S1): together they made one book of 58.8 s on forge. C-S3 is
   three books in a chain along its phases, `machines-c-successor.lisp` (tables, the `:prepare`

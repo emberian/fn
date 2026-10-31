@@ -368,3 +368,51 @@
 (assert-event
  (equal (fn2-icu-names-result)
         '(:first :ok :ok 1 1 :ok :ok :frontier 0 10 :again :ok (:refused 0) :evidence :ok :ok 1 2 :other :ok :ok 1 :kind :kind)))
+
+; E.P1: an ack that loses its race. The cursor's :ack declares
+; :unless-when :unchanged, so an ack at or below the published position
+; stages :ok, reads :unchanged, and binds nothing. Ack 10 publishes; ack 5
+; is :unchanged and publishes nothing; ack 10 again is :unchanged (the tip
+; is still 10); ack 11 applies and stages position 11. Before stage the
+; verdict is :state.
+(defconst *fn2-icu-pos* *fn2-consumer-cursor-entry-field-position*)
+(defun fn2-icu-ack (tx to fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 6 :ack fn2-core))
+      ((mv c2 fn2-core) (fn2-successor-arg tx 0 0 :value 7 fn2-core))
+      ((mv c3 fn2-core) (fn2-successor-arg tx 0 1 :value 1 fn2-core))
+      ((mv c4 fn2-core) (fn2-successor-arg tx 0 2 :value to fn2-core))
+      ((mv c5 fn2-core) (fn2-icu-resolve 40 tx fn2-core)))
+  (mv (if (equal (list c1 c2 c3 c4 c5) '(:ok :ok :ok :ok :ok)) :ok (list c1 c2 c3 c4 c5)) fn2-core)))
+(defun fn2-icu-acks (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-icu-profile* fn2-core))
+      ((mv a1 fn2-core) (fn2-icu-ack 0 10 fn2-core))
+      ((mv e0 &) (fn2-successor-applied 0 0 fn2-core))
+      ((mv s1 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & v1) (fn2-successor-applied 0 0 fn2-core))
+      ((mv b1 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv p1 fn2-core) (fn2-successor-publish 4 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv a2 fn2-core) (fn2-icu-ack 0 5 fn2-core))
+      ((mv s2 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & v2) (fn2-successor-applied 0 0 fn2-core))
+      ((mv b2 fn2-core) (fn2-successor-bind 0 5 11 fn2-core))
+      ((mv p2 fn2-core) (fn2-successor-publish 5 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv a3 fn2-core) (fn2-icu-ack 0 10 fn2-core))
+      ((mv s3 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & v3) (fn2-successor-applied 0 0 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv a4 fn2-core) (fn2-icu-ack 0 11 fn2-core))
+      ((mv s4 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & v4) (fn2-successor-applied 0 0 fn2-core))
+      ((mv & o4) (fn2-successor-out 0 0 *fn2-icu-pos* fn2-core)))
+  (mv (list :first a1 e0 s1 v1 b1 p1 :behind a2 s2 v2 b2 p2 :equal a3 s3 v3 :ahead a4 s4 v4 o4) fn2-core)))
+(defun fn2-icu-acks-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-icu-acks fn2-core) r)))
+(assert-event
+ (equal (fn2-icu-acks-result)
+        '(:first :ok :state :ok :applied :ok :ok :behind :ok :ok :unchanged :ok :ok
+          :equal :ok :ok :unchanged :ahead :ok :ok :applied 11)))

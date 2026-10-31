@@ -218,12 +218,19 @@
       ((mv code fn2-fields) (fn2-fold-assign sid kw entry args fn2-fields))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((mv code fn2-fields) (fn2-fold-apply sid kw entry args fn2-fields))
+      ;; A failed :when declared :unless-when :unchanged: the slot writes
+      ;; nothing (size 0, bind skips it) and stage goes on.
+      ((when (eq code :unchanged))
+       (let* ((fn2-succ-slots (fn2-succ-slots-set-size s 0 fn2-succ-slots))
+              (fn2-succ-slots (fn2-succ-slots-set-unchanged s 1 fn2-succ-slots)))
+        (mv :ok fn2-succ-slots fn2-fields)))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((unless (fn2-succ-fits nk 0 sid entry fn2-fields)) (mv :range fn2-succ-slots fn2-fields))
       ((unless (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
       (size (fn2-run-layout-size sid 0 entry fn2-fields))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
-      (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots)))
+      (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots))
+      (fn2-succ-slots (fn2-succ-slots-set-unchanged s 0 fn2-succ-slots)))
   (mv :ok fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-stage-fold (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
@@ -435,6 +442,24 @@
   (if (< (+ b0 (* *fn2-succ-block* i) f) (fn2-fields-rows fn2-fields))
       (mv :ok (fn2-fields-value (+ b0 (* *fn2-succ-block* i) f) fn2-fields))
     (mv :bounds 0))))
+
+; Whether fold slot I of TX applied at its last stage: (mv code verdict),
+; verdict :applied, or :unchanged when its event's :when failed under
+; :unless-when :unchanged (the slot binds nothing). :state unless TX has
+; staged and the slot is in use; :kind for an insert or record slot.
+(defun fn2-succ-applied (tx i fn2-succ-txns fn2-succ-slots)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots) :guard t))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots))) (mv :state nil))
+      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp i) (< i *fn2-succ-slots*)
+                    (< (+ (* tx *fn2-succ-slots*) i) (fn2-succ-slots-rows fn2-succ-slots))))
+       (mv :bounds nil))
+      ((unless (member (fn2-succ-txns-phase tx fn2-succ-txns)
+                       (list *fn2-succ-phase-staged* *fn2-succ-phase-bound* *fn2-succ-phase-published*)))
+       (mv :state nil))
+      (s (+ (* tx *fn2-succ-slots*) i)) (kcode (fn2-succ-slots-kind s fn2-succ-slots))
+      ((when (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*)) (mv :state nil))
+      ((when (or (equal kcode *fn2-succ-kind-insert*) (equal kcode *fn2-succ-kind-record*))) (mv :kind nil)))
+  (mv :ok (if (equal (fn2-succ-slots-unchanged s fn2-succ-slots) 1) :unchanged :applied))))
 
 ; Fill late octet arg J of insert slot I of TX (C-S3a): LEN octets at [OFF,
 ; OFF+LEN) of SLOT/GEN, readable under OKIND OSLOT OGEN until bind (every
