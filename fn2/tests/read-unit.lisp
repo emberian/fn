@@ -10,13 +10,10 @@
 (include-book "std/util/bstar" :dir :system)
 
 ; Reading served with two read rows (two transactions: rows t + 2 and
-; t + 18); the sealer's checker row (3 + one window, below :format-slots 5)
-; and 64 KiB pages for its runs, which stay resident (C-SEAL-RESIDENT).
-(defconst *fn2-rdu-profile*
- (put-assoc-equal :reading t
-  (put-assoc-equal :x 2
-   (put-assoc-equal :large-upload-windows 1
-    (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-cursor-profile*)))))
+; t + 18), three groups; the sealer's checker row (3 + one window, below
+; :format-slots 5) and 64 KiB pages for its runs, which stay resident
+; (C-SEAL-RESIDENT): owed-cursor.lisp's *fn2-read-profile*.
+(defconst *fn2-rdu-profile* *fn2-read-profile*)
 (defconst *fn2-rdu-seeds*
  '((1 "<a@example.invalid>" "first	a@example.invalid") (2 "<z@example.invalid>" "other group")
    (1 "<b@example.invalid>" "second") (1 "<c@example.invalid>" "third line")))
@@ -155,6 +152,52 @@
       ((mv & fn2-core) (fn2-read-release 1 fn2-core)))
   (mv (list c1 c2 c3 c4 c5 c6 c7) fn2-core)))
 
+;; C-S4 (d): a whole-schema scan through read row X, its resume key in a
+;; workspace of its own; the sealer run to idle after AFTER deliveries.
+;; FIELDS picks what each entry yields: :groups (name group), :overview
+;; (group number).
+(defun fn2-rdu-scan-walk (fuel x what after slot gen acc fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp fuel) (mv (list :fuel (reverse acc)) fn2-core)
+  (b* (((mv code fn2-core) (fn2-read-scan-next x 512 fn2-core)))
+   (case code
+    (:more (fn2-rdu-scan-walk (- fuel 1) x what after slot gen acc fn2-core))
+    (:end (mv (reverse acc) fn2-core))
+    (:entry
+     (b* (((mv e fn2-core)
+           (if (eq what :groups)
+               (b* (((mv & g) (fn2-read-value x *fn2-groups-entry-field-group* fn2-core))
+                    ((mv c k left fn2-core) (fn2-read-octets x *fn2-groups-entry-field-name* 0 4096 slot gen 0 200 0 1 fn2-core)))
+                (mv (if (and (eq c :ok) (equal left 0)) (list (fn2-rdu-string (fn2-rdu-bytes slot gen 0 k fn2-core)) g) (list :octets c))
+                    fn2-core))
+             (b* (((mv & g) (fn2-read-value x *fn2-overview-entry-field-group* fn2-core))
+                  ((mv & n) (fn2-read-value x *fn2-overview-entry-field-number* fn2-core)))
+              (mv (list g n) fn2-core))))
+          (acc (cons e acc))
+          ((mv & fn2-core) (if (equal (len acc) after) (fn2-rdu-seal 4000 fn2-core) (mv :no fn2-core))))
+      (fn2-rdu-scan-walk (- fuel 1) x what after slot gen acc fn2-core)))
+    (otherwise (mv (list code (reverse acc)) fn2-core))))))
+(defun fn2-rdu-scan (x sid what after fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv & wslot wgen fn2-core) (fn2-core-reserve 0 200 0 1 fn2-core))
+      ((mv & slot gen fn2-core) (fn2-core-reserve 0 200 0 1 fn2-core))
+      ((mv c fn2-core) (fn2-read-scan x sid wslot wgen 200 0 1 fn2-core))
+      ((unless (eq c :ok)) (mv (list :start c) fn2-core))
+      ((mv es fn2-core) (fn2-rdu-scan-walk 200 x what after slot gen nil fn2-core))
+      ((mv & fn2-core) (fn2-core-release slot gen 200 0 1 fn2-core))
+      ((mv & fn2-core) (fn2-core-release wslot wgen 200 0 1 fn2-core))
+      ((mv & fn2-core) (fn2-read-release x fn2-core)))
+  (mv es fn2-core)))
+;; C-S4 (e): the identity read of MID through read row X: (code [article] candidates).
+
+(defun fn2-rdu-identity (x mid fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((octets (fn2-rdu-chars (coerce mid 'list)))
+      ((mv & slot gen fn2-core) (fn2-cs-fill octets fn2-core))
+      ((mv code article candidates fn2-core) (fn2-ri-loop 400 x slot gen (len octets) fn2-core))
+      ((mv & fn2-core) (fn2-core-release slot gen 200 0 1 fn2-core))
+      ((mv & fn2-core) (fn2-read-release x fn2-core)))
+  (mv (if (eq code :found) (list code article candidates) (list code candidates)) fn2-core)))
 (defun fn2-rdu-run (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-init-executor *fn2-rdu-profile* :null nil fn2-core))
@@ -181,13 +224,45 @@
       (runs-after (fn2-rdu-overview-runs 0 64 fn2-core))
       ((mv after-seal & fn2-core) (fn2-rdu-range 1 1 1 *fn2-rdu-max* nil nil fn2-core))
       ((mv g4 fn2-core) (fn2-rdu-group 1 "local.test" fn2-core))
+      ((mv scan1 fn2-core) (fn2-rdu-scan 1 *fn2-groups-sid* :groups nil fn2-core))
+      ((mv id4 fn2-core) (fn2-rdu-identity 0 "<a@example.invalid>" fn2-core))
       ((mv n4 fn2-core) (fn2-rdu-counts 0 1 fn2-core))
       ((mv s4 fn2-core) (fn2-rdu-seek 1 1 3 fn2-core))
+      ((mv scan0 fn2-core) (fn2-rdu-scan 0 *fn2-groups-sid* :groups nil fn2-core))
+      ((mv scanov fn2-core) (fn2-rdu-scan 1 *fn2-cursor-overview-sid* :overview nil fn2-core))
+      ((mv id0 fn2-core) (fn2-rdu-identity 0 "<a@example.invalid>" fn2-core))
+      ((mv id1 fn2-core) (fn2-rdu-identity 1 "<c@example.invalid>" fn2-core))
+      ((mv id2 fn2-core) (fn2-rdu-identity 0 "<nobody@example.invalid>" fn2-core))
+      ((mv conflict fn2-core) (fn2-cs-conflict "<a@example.invalid>" 0 5 fn2-core))
+      ((mv id3 fn2-core) (fn2-rdu-identity 1 "<a@example.invalid>" fn2-core))
       ((mv refused fn2-core) (fn2-rdu-refusals fn2-core)))
   (mv (list :rows rows :seeded seeded :groups (list g1 g2 g3) :counts (list n1 n2 n3) :all all :limit lim :mid mid
             :other other :seeks (list s0 s1 s2 s3) :runs (list runs-before runs-after) :sealed sealed :stale stale
-            :after-seal after-seal :after (list g4 n4 s4) :refused refused :stop (fn2-core-stop-reason fn2-core))
+            :after-seal after-seal :after (list g4 n4 s4) :refused refused
+            :scans (list scan0 scanov scan1) :identity (list id0 id1 id2 conflict id3 id4)
+            :stop (fn2-core-stop-reason fn2-core))
       fn2-core)))
+;; A second instance with no seeds: the group directory's genesis overlay
+;; sealed into a run between the first and second entries of a LIST scan,
+;; then a seed's overlays sealed between the second and third of an
+;; overview scan; then the identity read of a seeded Message-ID before the
+;; seal and of it again after.
+(defun fn2-rdu-run2 (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor *fn2-rdu-profile* :null nil fn2-core))
+      ((mv groups fn2-core) (fn2-rdu-scan 0 *fn2-groups-sid* :groups 1 fn2-core))
+      ((mv seeded fn2-core) (fn2-cs-seed-all *fn2-rdu-seeds* 1 fn2-core))
+      ((mv id0 fn2-core) (fn2-rdu-identity 1 "<b@example.invalid>" fn2-core))
+      ((mv over fn2-core) (fn2-rdu-scan 1 *fn2-cursor-overview-sid* :overview 2 fn2-core))
+      ((mv id1 fn2-core) (fn2-rdu-identity 0 "<b@example.invalid>" fn2-core)))
+  (mv (list :groups groups :seeded seeded :overview over :identity (list id0 id1) :stop (fn2-core-stop-reason fn2-core))
+      fn2-core)))
+(defun fn2-rdu-result2 ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-rdu-run2 fn2-core) r)))
+(make-event (value `(defconst *fn2-rdu-result2* ',(fn2-rdu-result2))))
+(value-triple (cw "READ-UNIT-2 ~x0~%" *fn2-rdu-result2*))
+
 (defun fn2-rdu-result ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-rdu-run fn2-core) r)))
@@ -225,4 +300,53 @@
 (assert-event (equal (fn2-rdu-answers (cddr (cadr (member :after *fn2-rdu-result*)))) '((:done 3))))
 (assert-event (equal (cadr (member :refused *fn2-rdu-result*)) '(:bounds :state :state :ok :owner :state :key-kind)))
 (assert-event (equal (cadr (member :stop *fn2-rdu-result*)) 0))
+;; C-S4 (d): LIST's scan delivers every group once in name order, over
+;; the genesis overlay and over its run; the overview scan every entry in
+;; (group, number) order, across groups.
+(assert-event (equal (car (cadr (member :scans *fn2-rdu-result*)))
+                     '(("alt.misc" 3) ("local.empty" 2) ("local.test" 1))))
+(assert-event (equal (cadr (cadr (member :scans *fn2-rdu-result*))) '((1 1) (1 2) (1 3) (2 1))))
+(assert-event (equal (caddr (cadr (member :scans *fn2-rdu-result*)))
+                     '(("alt.misc" 3) ("local.empty" 2) ("local.test" 1))))
+;; ...and across the sealer moving its source between two steps: the
+;; groups overlay into a run after the first name, the seeds' overlays after
+;; the second overview entry; each key once, none lost.
+(assert-event (equal (cadr (member :groups *fn2-rdu-result2*)) '(("alt.misc" 3) ("local.empty" 2) ("local.test" 1))))
+(assert-event (equal (cadr (member :seeded *fn2-rdu-result2*)) :ok))
+(assert-event (equal (cadr (member :overview *fn2-rdu-result2*)) '((1 1) (1 2) (1 3) (2 1))))
+(assert-event (equal (cadr (member :identity *fn2-rdu-result2*)) '((:found 3 0) (:found 3 0))))
+(assert-event (equal (cadr (member :stop *fn2-rdu-result2*)) 0))
+;; C-S4 (e): the identity read's selection (the article is the seed's
+;; commit position) and its candidates; conflict evidence of content 0 sorts
+;; before the accepted content and is counted, never selected.
+(assert-event (equal (cadr (member :identity *fn2-rdu-result*))
+                     '((:found 1 0) (:found 4 0) (:absent 0) :ok (:found 1 1) (:found 1 0))))
+
+;; The owed row's teeth (owed-cursor.lisp fn2-read-identity-typed-exact).
+;; Positive: the served selection and candidates are the reference's, with
+;; and without conflict evidence, and for an absent name; the other three
+;; fields are not served yet. Negative: the reference tells a store with
+;; conflict evidence from one without (the candidates), and an absent name
+;; from a selected one.
+(defconst *fn2-rdu-tooth-seeds* '((1 "<a@example.invalid>" "first") (1 "<b@example.invalid>" "second")))
+(defun fn2-read-identity-test-selection ()
+ (declare (xargs :verify-guards nil))
+ (and (equal (take 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<b@example.invalid>"))
+             (take 2 (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<b@example.invalid>")))
+      (equal (take 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* '(("<a@example.invalid>" 0)) "<a@example.invalid>"))
+             (take 2 (fn2-read-identity-spec *fn2-rdu-tooth-seeds* '(("<a@example.invalid>" 0)) "<a@example.invalid>")))
+      (equal (take 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<z@example.invalid>"))
+             (take 2 (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<z@example.invalid>")))
+      (equal (nthcdr 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<b@example.invalid>"))
+             '(:not-served :not-served :not-served))))
+(defun fn2-read-identity-test-negative ()
+ (declare (xargs :verify-guards nil))
+ (and (not (equal (fn2-read-identity-spec *fn2-rdu-tooth-seeds* '(("<a@example.invalid>" 0)) "<a@example.invalid>")
+                  (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<a@example.invalid>")))
+      (not (equal (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<z@example.invalid>")
+                  (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<a@example.invalid>")))
+      (not (equal (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<b@example.invalid>")
+                  (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<b@example.invalid>")))))
+(assert-event (fn2-read-identity-test-selection))
+(assert-event (fn2-read-identity-test-negative))
 (value-triple (cw "READ-UNIT PASS~%"))

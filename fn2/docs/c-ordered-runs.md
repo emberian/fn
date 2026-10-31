@@ -979,15 +979,28 @@ losing conflict whose winner was dropped.
    version moved or an overlay source's row no longer holds the taking it located (phase active or
    frozen, schema, SEQ: a SEQ is issued once per taking); a delivered entry is read only under the
    run version it was delivered under, else `:stale`. (c) `fn2-read-frontier` waits on the
-   `:published` column (until then `fn2-cursor-view-pinned` stays owed). (d) LIST's ordered scan and
-   (e) the identity read are the second half. Operations, each a defcost and a core wrapper
+   `:published` column (until then `fn2-cursor-view-pinned` stays owed). (d) LIST's ordered scan,
+   `fn2-read-scan x sid wslot wgen wk ws wg` / `fn2-read-scan-next x budget`: the range read's
+   sources and merge over any schema, octet keys included, from the schema's least key; its resume
+   key is the delivered key itself, copied into the caller's workspace (WSLOT/WGEN under WK WS WG, the
+   query owner) and skipped once by the next step, so a re-find after a seal neither repeats nor loses
+   a key; never an octet-keyed range. (e) The identity read, `fn2-read-identity x mslot mgen moff mlen
+   okind oslot ogen budget -> (mv code article candidates)`: the decision path's lower query (the
+   Message-ID, an empty content) and its classification (`fn2-id-classify`) over the same merge, the
+   whole block of the Message-ID: `:found` with the accepted fact's article, else `:evidence`, else
+   `:absent`, and the candidates (conflict facts met at this cut). That is the selection and evidence
+   status of IDENTITY-ACROSS-PEERS ruling 8 over this engine; availability, coverage and authorization
+   wait on §4a's records and S-ARTICLE-LOCATION (owed row `fn2-read-identity-typed-exact`,
+   owed-cursor.lisp). Operations, each a defcost and a core wrapper
    (`fn2-read-core-events`): `fn2-read-key x region j value` (region `:lo`/`:hi`),
    `fn2-read-key-octets x j slot gen off len okind oslot ogen` (one owner per row until release, else
    `:owner`), `fn2-read-lookup x sid budget` (`:ok :absent :more :miss`), `fn2-read-range x sid pfield
    plimit`, `fn2-read-next x budget` (`:entry :end :more :miss`), `fn2-read-seek x sid lo hi p pfield`
    / `fn2-read-seek-step x budget -> (mv code answer)`, `fn2-read-value x f -> (mv code value)`,
-   `fn2-read-octets x f from n dslot dgen doff dk ds dg -> (mv code copied left)`, `fn2-read-release x`.
-   Unit: `tests/read-unit.lisp`.
+   `fn2-read-octets x f from n dslot dgen doff dk ds dg -> (mv code copied left)`, `fn2-read-release x`,
+   and the scan and identity read above. Unit: `tests/read-unit.lisp` (LIST across a seal of the
+   group directory, an overview scan across a seal of the seeds' overlays, identity reads with and
+   without conflict evidence).
 
 ## 9. Keystones (defthm-owed, each with teeth)
 

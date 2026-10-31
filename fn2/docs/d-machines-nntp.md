@@ -1816,7 +1816,14 @@ cases.
   is C's doc §8 item 13): (a) and (b) as ruled; `fn2-read-key` takes a region (`:lo`/`:hi`), and
   `fn2-read-value` / `fn2-read-octets` answer `(mv code ...)` (assert, never absorb: `:stale` once
   the schema's run version moved since delivery); (c) waits on C's `:published` column
-  (`fn2-cursor-view-pinned` stays owed until it lands); (d) and (e) are D6 2/n.
+  (`fn2-cursor-view-pinned` stays owed until it lands). **Second half built**: (d) `fn2-read-scan` /
+  `-scan-next` (a whole-schema ordered scan whose resume key is the delivered key, copied into the
+  cursor's workspace and skipped once), (e) `fn2-read-identity -> (mv code article candidates)`, the
+  selection and evidence status of IDENTITY-ACROSS-PEERS ruling 8 over C's engine as it stands; the
+  rest of the typed read result (availability, coverage, authorization) is the owed row
+  `fn2-read-identity-typed-exact`. Per C's §4a the cursor (and the txn) decide replies from the
+  separate facts a decision or read returns (selection, evidence status, coverage), never from a
+  verdict alone.
 - **C-S3a, a late octet argument** (C's; landing): `(fn2-successor-arg-octets-late t i j max)` at `:prepare` (`max` within the slot's octet capacity, else `:bounds`), `(fn2-successor-fill-octets t i j slot gen off len okind oslot ogen)` between stage and bind (`:state` unless staged and unbound, `:bounds` past `max`); bind refuses `:state` while a late argument is unfilled. As asked (for D5 2/n's overview line): the overview line carries the
   Xref suffix, whose numbers are assigned at stage, so `(fn2-successor-arg-octets-late t i j max
   fn2-core)` at `:prepare` reserves room for at most MAX octets, and `(fn2-successor-fill-octets t i

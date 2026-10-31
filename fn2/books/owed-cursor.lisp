@@ -386,3 +386,93 @@
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-cursor-test-pinned fn2-cursor-test-pinned-negative)
   :doc "STORAGE-DESIGN 4 decision 2 (section 15.1, the model's logical snapshot): a connection that opened with GROUP and does not re-pin reads the view pinned there; batches LATER published after its first reply (between its commands and between the pages of a reply) change none of its replies. FN2-CURSOR-WIRE-INTERLEAVED publishes one seed of LATER after each adapter round once the client holds two reply lines.")
+
+; ---------------------------------------------------------------------------
+; C-S4 (e): the identity read's typed result (IDENTITY-ACROSS-PEERS ruling
+; 8: selection, evidence status as the locally known candidates at this
+; cut, availability, coverage, authorization). Its subject reads a store
+; seeded as above plus CONFLICTS, conflict evidence recorded through C-S3
+; (each (MID BYTE): a content of 32 octets of BYTE for an already accepted
+; Message-ID), through read row 0 of a profile that serves reading.
+(defconst *fn2-read-profile*
+ (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2) ("alt.misc" . 3))
+  (put-assoc-equal :reading t
+   (put-assoc-equal :x 2
+    (put-assoc-equal :large-upload-windows 1
+     (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-cursor-profile*))))))
+(defun fn2-cs-conflict (mid byte b fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((mid (fn2-cs-octets mid))
+       ((mv & mslot mgen fn2-core) (fn2-cs-fill mid fn2-core))
+       ((mv & dslot dgen fn2-core) (fn2-cs-fill (make-list 32 :initial-element byte) fn2-core))
+       ((mv c fn2-core) (fn2-identity-offer 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv (list :offer c) fn2-core))
+       ((mv a fn2-core) (fn2-cs-drive 100 0 fn2-core))
+       ((mv c fn2-core)
+        (fn2-cs-chain (fn2-successor-put 0 0 *fn2-txn-identity-sid* :record fn2-core)
+                      (fn2-successor-arg 0 0 0 :event 0 fn2-core) (fn2-successor-arg 0 0 1 :value 3 fn2-core)))
+       ((unless (eq c :ok)) (mv (list a :slots c) fn2-core))
+       ((mv c fn2-core) (fn2-cs-resolve 40 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list a :resolve c) fn2-core))
+       ((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list a :stage c) fn2-core))
+       ((mv c fn2-core)
+        (fn2-cs-chain (fn2-successor-bind 0 b b fn2-core) (fn2-successor-publish b fn2-core) (fn2-successor-release 0 fn2-core)
+                      (fn2-core-release mslot mgen 200 0 1 fn2-core) (fn2-core-release dslot dgen 200 0 1 fn2-core))))
+    (mv (if (and (eq a :conflict) (eq c :ok)) :ok (list a c)) fn2-core)))
+(defun fn2-cs-conflict-all (conflicts b fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom conflicts) (mv :ok fn2-core)
+    (mv-let (code fn2-core) (fn2-cs-conflict (car (car conflicts)) (cadr (car conflicts)) b fn2-core)
+      (if (eq code :ok) (fn2-cs-conflict-all (cdr conflicts) (+ 1 b) fn2-core) (mv (list b code) fn2-core)))))
+(defun fn2-ri-loop (fuel x slot gen len fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel 0 0 fn2-core)
+    (mv-let (code article candidates fn2-core) (fn2-read-identity x slot gen 0 len 200 0 1 4096 fn2-core)
+      (if (eq code :more) (fn2-ri-loop (- fuel 1) x slot gen len fn2-core) (mv code article candidates fn2-core)))))
+;; The served answer as the five fields of ruling 8: the selection and the
+;; candidates come from fn2-read-identity; availability, coverage and
+;; authorization are not served by C's engine as it stands (:not-served).
+(defun fn2-read-identity-typed (seeds conflicts mid)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-read-profile* :null nil fn2-core))
+           ((mv c1 fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
+           ((mv c2 fn2-core) (fn2-cs-conflict-all conflicts (+ 1 (len seeds)) fn2-core))
+           ((unless (and (eq c1 :ok) (eq c2 :ok))) (mv (list :seeding c1 c2) fn2-core))
+           (octets (fn2-cs-octets mid))
+           ((mv & slot gen fn2-core) (fn2-cs-fill octets fn2-core))
+           ((mv code article candidates fn2-core) (fn2-ri-loop 400 0 slot gen (len octets) fn2-core)))
+        (mv (list (if (eq code :found) (list :found article) code) candidates :not-served :not-served :not-served) fn2-core))
+      result)))
+;; The reference over the list view: the selection is the seed's article
+;; (its commit position, I+1) when MID was seeded, else :evidence when MID
+;; has conflict evidence, else :absent; the candidates the conflicts of MID;
+;; the body held exactly when selected (no reclamation yet), coverage
+;; complete (every admitted fact is local), authorization the anonymous
+;; reader's (no access rule before E).
+(defun fn2-ri-position (seeds mid i)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom seeds) nil) ((equal (nth 1 (car seeds)) mid) (+ 1 i)) (t (fn2-ri-position (cdr seeds) mid (+ 1 i)))))
+(defun fn2-ri-count (conflicts mid)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom conflicts) 0) ((equal (car (car conflicts)) mid) (+ 1 (fn2-ri-count (cdr conflicts) mid)))
+        (t (fn2-ri-count (cdr conflicts) mid))))
+(defun fn2-read-identity-spec (seeds conflicts mid)
+  (declare (xargs :verify-guards nil))
+  (let ((p (fn2-ri-position seeds mid 0)) (n (fn2-ri-count conflicts mid)))
+    (list (cond (p (list :found p)) ((< 0 n) :evidence) (t :absent)) n
+          (if p :held :none) :complete :anonymous)))
+(defun fn2-ri-conflictsp (conflicts seeds)
+  (declare (xargs :verify-guards nil))
+  (or (atom conflicts)
+      (and (consp (car conflicts)) (fn2-ri-position seeds (car (car conflicts)) 0) (natp (cadr (car conflicts)))
+           (< (cadr (car conflicts)) 256) (fn2-ri-conflictsp (cdr conflicts) seeds))))
+(defthm-owed fn2-read-identity-typed-exact (seeds conflicts mid)
+  (implies (and (fn2-csp-seedsp seeds (fn2-profile-get :groups *fn2-read-profile*) nil) (fn2-ri-conflictsp conflicts seeds)
+                (stringp mid))
+           (equal (fn2-read-identity-typed seeds conflicts mid) (fn2-read-identity-spec seeds conflicts mid)))
+  :schema :invariant
+  :teeth (fn2-read-identity-test-selection fn2-read-identity-test-negative)
+  :doc "IDENTITY-ACROSS-PEERS ruling 8 over C-S4 (e): the identity read by Message-ID answers the typed read result: the selection, the evidence status (the locally known conflict candidates at this cut, counted, never a global count), availability, coverage and authorization. Owed on two counts. (1) C's engine as it stands stores (name, content) as :accepted/:conflict with at most four contents a name, so the read answers the selection and the candidates only; availability, coverage and authorization are :not-served until C's record change under rulings 3 and 7 (attributed receipts apart from binding evidence, the four-per-id constant deleted, an exact lookup plus a per-name summary plus a pageable evidence cursor) and S-ARTICLE-LOCATION give it an answer; the read is rewritten over those then. (2) The candidates are the contents met in the block, which the future evidence cursor pages instead of walking. Teeth: the selection and the candidates against the reference, and a reference that tells a conflict apart.")
