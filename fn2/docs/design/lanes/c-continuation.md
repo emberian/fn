@@ -56,7 +56,8 @@ distill.
 ## In flight
 If the §4a landing is not on dev: lane fn2/c-wake holds commit "WIP §4a landing" plus the edits
 after it (runs-schema's compare chain, the layer doc's §4a "As built" and §1 rows). Certify on
-forge: `build/c7.sh` (setsid; PID `build/c7.pid`; out `build/c7.out`). Its targets are
+forge (this run only; the next certifies go to hbox: swarm-build, PID files, clone under ~ or
+/othersys, no new data on /tank, nothing heavy on the Mac): `build/c7.sh` (setsid; PID `build/c7.pid`; out `build/c7.out`). Its targets are
 sim/check-identity and the units identity-core, txn, groups, runs, range, sealer, sealer-machine,
 read, cursor, conn-answer and q1-contracts-d. Expected values I could not run yet:
 - identity-core-unit's decision `:steps 4`;
@@ -81,11 +82,36 @@ READY. The READY names `*fn2-b-txn-field-rows*` for B, and the API for D's port.
    (b) `(defcost fn2-successor-stream-member :child ... :answers (:ok :done :state))` -> (mv code
        stream position next), listing a published batch's fn2-addr writes, for E's attachment of
        fn2-commit-stream-wake.
-3. §4a steps 3-4 (layer doc): the three reads at a named view; the checker's rewrite, M3 over
+3. The Argon review (build/coordinator/fn2/REVIEW-ARGON-RESPONSE-20261031.md), in this order:
+   (a) Answer main with numbers:
+       - the installed-run capacity per schema at the concrete profile (fn2-b-capacity
+         :identity-runs 64 in machines-c.lisp; how the rows split per schema);
+       - what the sealer answers when the capacity is reached (:full at install: :sealer-full
+         stops the core, C-SEAL-BACKPRESSURE);
+       - the smallest C5 (merge the installed runs of one schema, drop superseded fold keys) that
+         must precede helm's 7,000-events-a-day run. Argon computes exhaustion within hours at a
+         bound of 16.
+   (b) machines-c-stage.lisp ~68: fn2-succ-tip-scan reads the :private overlays of in-flight
+       batches. Main's reading: stage writes no overlay (bind does, after admission), so a private
+       overlay holds only admitted members; a later member commits only if every earlier batch
+       publishes (B's suffix abort). So the read is consistent with any history in which the
+       reader commits. State that invariant in §8 in one sentence, or fix the scan if some path
+       lets a reader commit while the overlay it read is dropped.
+   (c) Ruled: one encoding of a transaction. fn2-successor-out emits the member workspace from the
+       staged slots in B's record kinds: B's generated encoders, every staged slot with no subset
+       (overview, addr, the identity records, the folds' events). D passes it to
+       fn2-commit-admit-txn, and fn2-member-replay feeds the same slots back through the same
+       installer. Coordinate the kinds list with B.
+   (d) Restate fn2-txn-claim-stabilizes-decision as "while every writer of this name holds the
+       claim". Stage-time :refused becomes reachable once catch-up, generated-Message-ID POSTs and
+       resolution exist; the txn then replans to evidence.
+   (ARTICLE <mid> is O(1): two exact reads from (namespace, name), the article index (id 14) and
+   then the summary (id 13). Confirmed in the §4a READY.)
+4. §4a steps 3-4 (layer doc): the three reads at a named view; the checker's rewrite, M3 over
    the new decision, and the keystones as defthm-owed rows.
-4. C-SEAL-NO-ROW is dead since B5-4a: delete the :no-row branch and the doc's interim entry.
-5. The device half when B5-4's :run-replacement is usable; then C5.
-6. Owed: the machines-c-stage shave; the sealer's descriptor cap 4 -> 0 after A's frame lemmas;
+5. C-SEAL-NO-ROW is dead since B5-4a: delete the :no-row branch and the doc's interim entry.
+6. The device half when B5-4's :run-replacement is usable; then C5.
+7. Owed: the machines-c-stage shave; the sealer's descriptor cap 4 -> 0 after A's frame lemmas;
    fn2-xl-step skipping a run on the summary filter.
 
 ## The fn2-sealer arm table (as built at 429702ef1; input to the new form)

@@ -47,6 +47,10 @@ FN2_SURFACE_NATIVE_NNTP=fn2.tests.surface.fn2_native_session:session \
   "$python" -m fn2.tests.surface.run_surface --target fn2-native --family nntp --box laptop --out "$out/native" \
   > "$out/native.log" 2>&1 &
 wait
+# The primary number, M2 spine cuts (REVIEW-ARGON-RESPONSE §9.12): E's sim-layer-e over the served machines
+# writes $out/m2.json once its invocation lands here (H_NIGHTLY_M2, a command run in the tree with OUT set);
+# without it the line reports 0/12.
+if [ -n "${H_NIGHTLY_M2:-}" ]; then OUT="$out" sh -c "$H_NIGHTLY_M2" > "$out/m2.log" 2>&1 || :; fi
 "$python" -m fn2.tests.surface.nightly_nntp "$out" "$sha" > /dev/null
 cp "$out/summary.txt" "$base/LATEST.txt"
 echo "$(date) done $sha: $(cat "$out/summary.txt")"
