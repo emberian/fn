@@ -9,3 +9,5 @@
 ; The ledger's request FIFO and its grant source (D7 4/n-a), attached to
 ; the access section's constrained pair.
 (fn2-account-request-events)
+; The consumer waits' :wait-row source (E, cns.lisp), attached likewise.
+(fn2-cns-wait-events)
