@@ -306,3 +306,65 @@
  (equal (fn2-icu-late-result)
         '(:declare :kind :kind :bounds :ok :early :state :staged :ok :ok :fill :kind :bounds :state :ok :owner
           :again :ok :state :ok :ok :ok :arena 20 0)))
+
+; C §4a: octet fold keys. The summary fold keyed by (namespace, name):
+; transaction 0 admits a new content for name "mm" and establishes a local
+; acceptance (selected 1, candidates 1); bound and published. Transaction 1
+; on the same name: establishing again is :refused (slot 0) while candidate
+; 1 is selected; as evidence only (est 0, a new content) it stages
+; candidates 2 with candidate 1 still selected. Transaction 0 again, on name
+; "mn" (one octet differs): its own summary (candidates 1). An integer arg
+; given to the octet key is :kind. The published frontier (C-S4 (c)) moves
+; from 0 to batch 4's commit position 10 at its publication.
+(defconst *fn2-icu-sel* *fn2-identity-summary-entry-field-selected*)
+(defconst *fn2-icu-cand* *fn2-identity-summary-entry-field-candidates*)
+(defun fn2-icu-admit (tx nslot ngen nlen nc est fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 13 :admit fn2-core))
+      ((mv c2 fn2-core) (fn2-successor-arg tx 0 0 :value 1 fn2-core))
+      ((mv c3 fn2-core) (fn2-successor-arg-octets tx 0 1 nslot ngen 0 nlen 5 1 1 fn2-core))
+      ((mv c4 fn2-core) (fn2-successor-arg tx 0 2 :value 1 fn2-core))
+      ((mv c5 fn2-core) (fn2-successor-arg tx 0 3 :value nc fn2-core))
+      ((mv c6 fn2-core) (fn2-successor-arg tx 0 4 :value 0 fn2-core))
+      ((mv c7 fn2-core) (fn2-successor-arg tx 0 5 :value est fn2-core))
+      ((mv c8 fn2-core) (fn2-successor-arg tx 0 6 :value 0 fn2-core))
+      ((mv c9 fn2-core) (fn2-icu-resolve 40 tx fn2-core)))
+  (mv (if (equal (list c1 c2 c3 c4 c5 c6 c7 c8 c9) '(:ok :ok :ok :ok :ok :ok :ok :ok :ok)) :ok (list c1 c2 c3 c4 c5 c6 c7 c8 c9))
+      fn2-core)))
+(defun fn2-icu-names (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-icu-profile* fn2-core))
+      ((mv & n1 g1 fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & n2 g2 fn2-core) (fn2-core-reserve 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-icu-write '(109 109) n1 g1 0 fn2-core))
+      ((mv & fn2-core) (fn2-icu-write '(109 110) n2 g2 0 fn2-core))
+      ((mv a1 fn2-core) (fn2-icu-admit 0 n1 g1 2 1 1 fn2-core))
+      ((mv s1 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & o1) (fn2-successor-out 0 0 *fn2-icu-sel* fn2-core))
+      ((mv & o2) (fn2-successor-out 0 0 *fn2-icu-cand* fn2-core))
+      ((mv b1 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
+      ((mv & pub0) (fn2-successor-published fn2-core))
+      ((mv p1 fn2-core) (fn2-successor-publish 4 fn2-core))
+      ((mv & pub1) (fn2-successor-published fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv a2 fn2-core) (fn2-icu-admit 1 n1 g1 2 1 1 fn2-core))
+      ((mv s2 fn2-core) (fn2-icu-stage 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 1 fn2-core))
+      ((mv a3 fn2-core) (fn2-icu-admit 1 n1 g1 2 1 0 fn2-core))
+      ((mv s3 fn2-core) (fn2-icu-stage 1 fn2-core))
+      ((mv & o3) (fn2-successor-out 1 0 *fn2-icu-sel* fn2-core))
+      ((mv & o4) (fn2-successor-out 1 0 *fn2-icu-cand* fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 1 fn2-core))
+      ((mv a4 fn2-core) (fn2-icu-admit 0 n2 g2 2 1 1 fn2-core))
+      ((mv s4 fn2-core) (fn2-icu-stage 0 fn2-core))
+      ((mv & o5) (fn2-successor-out 0 0 *fn2-icu-cand* fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ((mv & fn2-core) (fn2-successor-put 0 0 13 :admit fn2-core))
+      ((mv k1 fn2-core) (fn2-successor-arg 0 0 1 :value 5 fn2-core)))
+  (mv (list :first a1 s1 o1 o2 b1 p1 :frontier pub0 pub1 :again a2 s2 :evidence a3 s3 o3 o4 :other a4 s4 o5 :kind k1) fn2-core)))
+(defun fn2-icu-names-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-icu-names fn2-core) r)))
+(assert-event
+ (equal (fn2-icu-names-result)
+        '(:first :ok :ok 1 1 :ok :ok :frontier 0 10 :again :ok (:refused 0) :evidence :ok :ok 1 2 :other :ok :ok 1 :kind :kind)))

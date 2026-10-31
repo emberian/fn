@@ -197,8 +197,11 @@
       (fn2-fields (fn2-succ-key-rows nk 0 nk sid kw nil args entry fn2-fields))
       (rows (fn2-overlays-rows fn2-overlays))
       ((mv code best pos fn2-fields)
-       (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
-                          rows 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+       (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
+           (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) (fn2-succ-slots-sk s fn2-succ-slots) (fn2-succ-slots-ss s fn2-succ-slots)
+                              (fn2-succ-slots-sg s fn2-succ-slots) rows 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+         (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
+                            rows 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((mv code fn2-fields)
        (cond ((and (natp best) (< best rows) (natp pos))
@@ -227,7 +230,7 @@
  (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-vrun fn2-succ-slots-found
   fn2-succ-kindkw fn2-fold-arity fn2-succ-required fn2-run-layout-keys fn2-run-layout-fields fn2-succ-eval-args fn2-succ-key-rows
   fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign fn2-fold-apply
-  fn2-succ-fits fn2-run-layout-size))
+  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg))
 
 ;; Every slot of TX from I (K of them), in order: (mv code i slots fields).
 (defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine

@@ -88,7 +88,9 @@
 ; staged entry's SIZE, the owner its octet args are read under, the args
 ; declared late (LATE, C-S3a: octets given between stage and bind) and the
 ; late args filled since the last stage (FILLED).
-(defcolumns fn2-id-engine ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60)))
+; PUBLISHED: the greatest commit position publication has made readable
+; (C-S4 amendment (c): D's frontier reads it, never derives it from overlays).
+(defcolumns fn2-id-engine ((scratch :bool) (slot :u32) (gen :u60) (arena :u32) (seq :u60) (published :u60)))
 (defun fn2-id-engine-init-arena (bytes fn2-id-engine)
  (declare (xargs :stobjs fn2-id-engine :guard (unsigned-byte-p 32 bytes)))
  (let ((fn2-id-engine (fn2-id-engine-init 1 fn2-id-engine)))
@@ -226,6 +228,25 @@
 (defun fn2-succ-key-arg-p (k kf sid kw j)
  (declare (xargs :guard (natp kf) :measure (nfix k)))
  (and (posp k) (or (equal (fn2-fold-key-arg sid kw kf) j) (fn2-succ-key-arg-p (- k 1) (+ 1 (nfix kf)) sid kw j))))
+; The key field of fold event KW whose arg is J (K fields from KF), or nil.
+(defun fn2-succ-key-field-of (k kf sid kw j)
+ (declare (xargs :guard (natp kf) :measure (nfix k)))
+ (cond ((not (posp k)) nil)
+       ((equal (fn2-fold-key-arg sid kw kf) j) (nfix kf))
+       (t (fn2-succ-key-field-of (- k 1) (+ 1 (nfix kf)) sid kw j))))
+(defthm fn2-succ-key-field-of-type
+ (or (null (fn2-succ-key-field-of k kf sid kw j)) (natp (fn2-succ-key-field-of k kf sid kw j))) :rule-classes :type-prescription)
+; The entry field an octet arg J of slot kind KCODE writes: an insert's
+; field J, a fold's key field whose arg is J (C §4a: octet fold keys), else
+; nil; and only when that field is octets or a digest.
+(defun fn2-succ-octet-field (sid kcode j)
+ (declare (xargs :guard (natp j)))
+ (let ((f (cond ((equal kcode *fn2-succ-kind-insert*) j)
+                ((equal kcode *fn2-succ-kind-record*) nil)
+                (t (fn2-succ-key-field-of (nfix (fn2-run-layout-keys sid)) 0 sid (fn2-succ-kindkw kcode) j)))))
+  (and (natp f) (fn2-run-layout-octets-max sid f) f)))
+(defthm fn2-succ-octet-field-type
+ (or (null (fn2-succ-octet-field sid kcode j)) (natp (fn2-succ-octet-field sid kcode j))) :rule-classes :type-prescription)
 (defun fn2-succ-bit (j) (declare (xargs :guard (natp j))) (ash 1 (nfix j)))
 (defun fn2-succ-has (mask j) (declare (xargs :guard (natp j))) (not (equal (logand (nfix mask) (fn2-succ-bit j)) 0)))
 (defthm fn2-succ-bit-natp (natp (fn2-succ-bit j)) :rule-classes :type-prescription)
@@ -319,7 +340,8 @@
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
       (kw (fn2-succ-kindkw kcode))
       (insert (equal kcode *fn2-succ-kind-insert*)) (fold (not (or insert (equal kcode *fn2-succ-kind-record*))))
-      ((when (or (and insert (fn2-run-layout-octets-max sid j)) (and fold (fn2-fold-assigned-p sid kw j))))
+      ((when (or (and insert (fn2-run-layout-octets-max sid j)) (and fold (fn2-fold-assigned-p sid kw j))
+                 (and fold (fn2-succ-octet-field sid kcode j))))
        (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
       (k (floor value 256)) (f (mod value 256)) (ks (+ (* tx *fn2-succ-slots*) k))
       ((unless (case src
@@ -348,7 +370,8 @@
 (fn2-idc-fn-shape fn2-succ-arg (tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-slots-phase fn2-succ-slots-kind fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-events fn2-succ-slots-outs
-  fn2-succ-slots-late fn2-run-layout-octets-max fn2-fold-assigned-p fn2-succ-key-arg-p fn2-run-layout-fields fn2-run-layout-keys))
+  fn2-succ-slots-late fn2-run-layout-octets-max fn2-fold-assigned-p fn2-succ-key-arg-p fn2-run-layout-fields fn2-run-layout-keys
+  fn2-succ-octet-field))
 
 ; Octet arg J of insert slot I of TX: LEN octets at [OFF, OFF+LEN) of
 ; SLOT/GEN, readable under OKIND OSLOT OGEN until bind (which copies them
@@ -369,9 +392,9 @@
                     (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
-      ((unless (and (equal kcode *fn2-succ-kind-insert*) (fn2-run-layout-octets-max sid j)))
-       (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
-      ((unless (fn2-run-layout-value-ok sid j len)) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
+      (f (fn2-succ-octet-field sid kcode j))
+      ((unless f) (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
+      ((unless (fn2-run-layout-value-ok sid f len)) (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
       ((when (and (equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
                   (not (and (equal (fn2-succ-slots-sk s fn2-succ-slots) okind) (equal (fn2-succ-slots-ss s fn2-succ-slots) oslot)
                             (equal (fn2-succ-slots-sg s fn2-succ-slots) ogen)))))
@@ -385,7 +408,7 @@
       ; A digest field's row carries the codec's presence value 1 (an octet
       ; field's value is unused); a digest admits only length 32, so a length
       ; of 0 tells it apart from (:octets 32).
-      (digest (not (fn2-run-layout-value-ok sid j 0)))
+      (digest (not (fn2-run-layout-value-ok sid f 0)))
       (fn2-fields (fn2-fields-put row (value (if digest 1 0)) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
       (late (logand (nfix (fn2-succ-slots-late s fn2-succ-slots)) (- #xffffffff bit)))
       (fn2-succ-slots (fn2-succ-slots-put s (oset 1) (sk okind) (ss oslot) (sg ogen)))
@@ -394,7 +417,7 @@
 (fn2-idc-fn-shape fn2-succ-arg-octets (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-set fn2-succ-slots-events
-  fn2-succ-slots-outs fn2-succ-slots-late fn2-run-layout-octets-max fn2-run-layout-value-ok))
+  fn2-succ-slots-outs fn2-succ-slots-late fn2-run-layout-octets-max fn2-run-layout-value-ok fn2-succ-octet-field))
 
 ; Late octet arg J of insert slot I of TX (C-S3a): at most MAX octets,
 ; given by fn2-succ-fill-octets after stage and before bind. Stage sizes
@@ -451,7 +474,9 @@
   (let ((a (if insert kf (fn2-fold-key-arg sid kw kf))))
    (if (not (and (natp a) (natp src) (natp entry) (< (+ src a) (fn2-fields-rows fn2-fields)) (< (+ entry kf) (fn2-fields-rows fn2-fields))))
        fn2-fields
-    (let ((fn2-fields (fn2-fields-put (+ entry kf) (value (fn2-fields-value (+ src a) fn2-fields)) (ref-len 0))))
+    (let ((fn2-fields (if (fn2-run-layout-octets-max sid kf)
+                          (fn2-succ-copy-row (+ src a) (+ entry kf) fn2-fields)
+                        (fn2-fields-put (+ entry kf) (value (fn2-fields-value (+ src a) fn2-fields)) (ref-len 0)))))
      (fn2-succ-key-rows (- k 1) (+ 1 kf) nk sid kw insert src entry fn2-fields))))))
 (fn2-fields-preserves fn2-succ-key-rows (k kf nk sid kw insert src entry fn2-fields) :position nil :raw-rows t
  :hints (("Goal" :in-theory (disable fn2-fold-key-arg))))
@@ -564,8 +589,11 @@
      (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
    (t
     (b* (((mv c fn2-run-cursors fn2-run-paths fn2-fields)
-          (fn2-run-lookup-step tx budget entry *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
-                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+          (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
+              (fn2-run-lookup-step tx budget entry (fn2-succ-slots-sk s fn2-succ-slots) (fn2-succ-slots-ss s fn2-succ-slots)
+                                   (fn2-succ-slots-sg s fn2-succ-slots) fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+            (fn2-run-lookup-step tx budget entry *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
+                                 fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))
          ((when (eq c :absent))
           (let ((fn2-succ-txns (fn2-succ-txns-set-rstate tx *fn2-succ-resolve-next* fn2-succ-txns)))
            (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
@@ -580,7 +608,8 @@
  (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
  (fn2-succ-txns-ri fn2-succ-txns-rstate fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-run-version
   fn2-succ-reads-key fn2-run-layout-keys fn2-run-layout-fields fn2-succ-kindkw fn2-succ-resolved fn2-succ-resolve-next
-  fn2-run-lookup-step fn2-succ-key-rows fn2-succ-copy-rows fn2-run-cursors-rows fn2-run-paths-rows))
+  fn2-run-lookup-step fn2-succ-key-rows fn2-succ-copy-rows fn2-run-cursors-rows fn2-run-paths-rows
+  fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg))
 
 ; One bounded step of resolve for TX (BUDGET at most 4,096): :more, :miss
 ; (a run page to load, as C-S1), or :ok when every slot is resolved. A

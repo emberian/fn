@@ -9,6 +9,7 @@
 (include-book "ordered")
 (include-book "folds")
 (include-book "runs-manifest")
+(include-book "identity-records")
 (fn2-book-layer :c)
 (fn2-run-assemble)
 (fn2-identity-assemble)
