@@ -9,8 +9,8 @@
 (include-book "../books/owed-cursor")
 (include-book "std/util/bstar" :dir :system)
 
-; Reading served with two read rows (two transactions: rows t + 2 and
-; t + 18), three groups; the sealer's checker row (3 + one window;
+; Reading served with four read rows, two a cursor slot (two transactions:
+; rows t + 4 and t + 36), three groups; the sealer's checker row (3 + one window;
 ; :format-slots derived) and 64 KiB pages for its runs, which stay resident
 ; (C-SEAL-RESIDENT): owed-cursor.lisp's *fn2-read-profile*.
 (defconst *fn2-rdu-profile* *fn2-read-profile*)
@@ -142,7 +142,7 @@
 ; no seek, an octet key under a second owner.
 (defun fn2-rdu-refusals (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
- (b* (((mv c1 fn2-core) (fn2-read-key 2 :lo 0 1 fn2-core))
+ (b* (((mv c1 fn2-core) (fn2-read-key 4 :lo 0 1 fn2-core)) ; past the last read row (two a cursor slot, x 2)
       ((mv c2 fn2-core) (fn2-read-next 0 512 fn2-core))
       ((mv c3 & fn2-core) (fn2-read-seek-step 1 512 fn2-core))
       ((mv c4 fn2-core) (fn2-read-key-octets 1 0 0 1 0 4 200 0 1 fn2-core))
@@ -279,7 +279,8 @@
 
 (defconst *fn2-rdu-three*
  '((1 1 "first	a@example.invalid") (2 3 "second") (3 4 "third line")))
-(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 2 (+ 2 2) (+ 2 (* 9 2)))))
+;; Read rows: two a cursor slot (x 2 gives four), no consumer requests.
+(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 4 (+ 2 4) (+ 2 (* 9 4)))))
 (assert-event (equal (cadr (member :seeded *fn2-rdu-result*)) :ok))
 (assert-event (equal (cadr (member :groups *fn2-rdu-result*)) '((:ok :ok 1) (:ok :ok 2) (:absent))))
 (assert-event (equal (cadr (member :counts *fn2-rdu-result*)) '((:ok 3 1 3) (:ok 1 1 1) (:absent))))

@@ -34,6 +34,17 @@
 (sb-alien:define-alien-routine ("shutdown" %fn2-native-shutdown) sb-alien:int
   (fd sb-alien:int) (how sb-alien:int))
 (sb-alien:define-alien-routine ("close" %fn2-native-close) sb-alien:int (fd sb-alien:int))
+(sb-alien:define-alien-routine ("chmod" %fn2-native-chmod) sb-alien:int
+  (path sb-sys:system-area-pointer) (mode sb-alien:unsigned-int))
+(sb-alien:define-alien-routine ("unlink" %fn2-native-unlink) sb-alien:int
+  (path sb-sys:system-area-pointer))
+#+linux
+(sb-alien:define-alien-routine ("getsockopt" %fn2-native-getsockopt) sb-alien:int
+  (fd sb-alien:int) (level sb-alien:int) (option sb-alien:int)
+  (value sb-sys:system-area-pointer) (length sb-sys:system-area-pointer))
+#+darwin
+(sb-alien:define-alien-routine ("getpeereid" %fn2-native-getpeereid) sb-alien:int
+  (fd sb-alien:int) (uid sb-sys:system-area-pointer) (gid sb-sys:system-area-pointer))
 ;; &OPTIONAL marks C variadic arguments in SBCL's alien function type.
 ;; Darwin arm64 places them on the stack, unlike fixed prototype arguments.
 (defun %fn2-native-fcntl (fd command argument)
@@ -124,6 +135,44 @@
              (values fd (+ (* 256 (sb-sys:sap-ref-8 sap 2)) (sb-sys:sap-ref-8 sap 3)))))
       (unless ok (fn2-native-syscall (%fn2-native-close fd))))))
 
+;;; The owner-only Unix-domain listener at PATH (the profile's :listener-path,
+;;; validated by fn2-host-listener-pathp: absolute, no NUL, at most 103
+;;; octets). bind creates the socket file; chmod makes it 0600 before listen,
+;;; so no connection is accepted while it is wider. An existing file at PATH
+;;; is a named refusal (:local-bind with the errno): the node never removes a
+;;; file it did not create. Values: fd.
+(defun fn2-native-sockaddr-local (sap path)
+  "sockaddr_un for PATH at SAP (zeroed, 110 octets). Value: its length."
+  (dotimes (i 110) (setf (sb-sys:sap-ref-8 sap i) 0))
+  (let ((at #+linux 2 #+darwin 2) (n (length path)))
+    #+linux (setf (sb-sys:sap-ref-16 sap 0) 1)
+    #+darwin (setf (sb-sys:sap-ref-8 sap 0) (+ at n 1) (sb-sys:sap-ref-8 sap 1) 1)
+    (dotimes (i n) (setf (sb-sys:sap-ref-8 sap (+ at i)) (char-code (char path i))))
+    (+ at n 1)))
+(defun fn2-native-listen-local (path &optional (backlog 128))
+  (let ((fd (fn2-native-require-call :local-socket (%fn2-native-socket 1 1 0))) (ok nil))
+    (unwind-protect
+         (sb-alien:with-alien ((address-bytes (array sb-alien:unsigned-char 112)))
+           (let* ((sap (sb-alien:alien-sap address-bytes))
+                  (length (fn2-native-sockaddr-local sap path)))
+             (multiple-value-call #'fn2-native-required (fn2-native-configure-socket fd) :local-socket-options)
+             (fn2-native-require-call :local-bind (%fn2-native-bind fd sap length))
+             ;; From here the file is ours: a failure removes it.
+             (unwind-protect
+                  (progn
+                    (fn2-native-require-call :local-chmod (%fn2-native-chmod (sb-sys:sap+ sap 2) #o600))
+                    (fn2-native-require-call :local-listen (%fn2-native-listen fd backlog))
+                    (setf ok t)
+                    fd)
+               (unless ok (fn2-native-syscall (%fn2-native-unlink (sb-sys:sap+ sap 2)))))))
+      (unless ok (fn2-native-syscall (%fn2-native-close fd))))))
+(defun fn2-native-unlink-local (path)
+  "Remove the socket file this node's fn2-native-listen-local created."
+  (sb-alien:with-alien ((address-bytes (array sb-alien:unsigned-char 112)))
+    (let ((sap (sb-alien:alien-sap address-bytes)))
+      (fn2-native-sockaddr-local sap path)
+      (fn2-native-syscall (%fn2-native-unlink (sb-sys:sap+ sap 2))))))
+
 ;;; accept(2) with the peer's sockaddr. Values: fd (or -1), errno, family
 ;;; (:inet :inet6 :local :none), port, w0..w3 (network order, most
 ;;; significant first). Families by the kernel's numbering per platform.
@@ -148,6 +197,38 @@
                                (fn2-native-sap-word sap 16) (fn2-native-sap-word sap 20)))
                       ((= family 1) (values new 0 :local 0 0 0 0 0))
                       (t (values new 0 :none 0 0 0 0 0)))))))))))
+;;; accept(2) on the Unix-domain listener: the peer is its credentials, read
+;;; from the kernel (getpeereid on Darwin, SO_PEERCRED on Linux), never from
+;;; the sockaddr (an unnamed client has none). Values as fn2-native-accept:
+;;; fd (or -1), errno, :local, port 0, w0 = uid, w1 = gid, 0, 0. A failed
+;;; credential read closes the connection and is the accept's failure.
+(defun fn2-native-peer-credentials (fd)
+  "Values: result, errno, uid, gid."
+  #+darwin
+  (sb-alien:with-alien ((uid sb-alien:unsigned-int 0) (gid sb-alien:unsigned-int 0))
+    (multiple-value-bind (r e)
+        (fn2-native-syscall (%fn2-native-getpeereid fd (sb-alien:alien-sap (sb-alien:addr uid))
+                                                    (sb-alien:alien-sap (sb-alien:addr gid))))
+      (values r e uid gid)))
+  #+linux
+  (sb-alien:with-alien ((cred (array sb-alien:unsigned-int 3)) (length sb-alien:unsigned-int 12))
+    (multiple-value-bind (r e)
+        (fn2-native-syscall (%fn2-native-getsockopt fd 1 17 (sb-alien:alien-sap cred)
+                                                    (sb-alien:alien-sap (sb-alien:addr length))))
+      (values r e (sb-alien:deref cred 1) (sb-alien:deref cred 2)))))
+(defun fn2-native-accept-local (fd)
+  (sb-alien:with-alien ((peer (array sb-alien:unsigned-char 112))
+                        (length sb-alien:unsigned-int 112))
+    (multiple-value-bind (new error)
+        (fn2-native-syscall (%fn2-native-accept fd (sb-alien:alien-sap peer) (sb-alien:alien-sap (sb-alien:addr length))))
+      (if (minusp new) (values new error :none 0 0 0 0 0)
+        (multiple-value-bind (r e) (fn2-native-configure-socket new)
+          (if (minusp r)
+              (progn (fn2-native-syscall (%fn2-native-close new)) (values r e :none 0 0 0 0 0))
+            (multiple-value-bind (r e uid gid) (fn2-native-peer-credentials new)
+              (if (minusp r)
+                  (progn (fn2-native-syscall (%fn2-native-close new)) (values r e :none 0 0 0 0 0))
+                (values new 0 :local 0 uid gid 0 0)))))))))
 (defun fn2-native-recv (fd sap length) (fn2-native-syscall (%fn2-native-recv fd sap length 0)))
 (defun fn2-native-send (fd sap length)
   (fn2-native-syscall (%fn2-native-send fd sap length #+linux #x4000 #+darwin 0)))
@@ -181,8 +262,9 @@
   (wake-read -1) (wake-write -1) wake-buffer)
 (declaim (ftype (function (t t t t) t) fn2-native-mux-interest))
 (defun make-fn2-native-mux (capacity)
-  ;; Slots: CAPACITY capabilities, then the signal wake, then the control fd.
-  (let* ((total (+ 2 capacity))
+  ;; Slots: CAPACITY capabilities, then the listener's second socket (the
+  ;; Unix-domain one, capability 0's), then the signal wake, then the control fd.
+  (let* ((total (+ 3 capacity))
          (mux (%make-fn2-native-mux
           :capacity total :fd #+linux (fn2-native-require-call :epoll-create (%fn2-native-epoll-create #x80000)) #+darwin -1
           :fds (make-array total :element-type 'fixnum :initial-element -1)
@@ -204,8 +286,9 @@
     (multiple-value-call #'fn2-native-required
       (fn2-native-configure-socket (fn2-native-mux-wake-write mux)) :signal-writer)
     ;; This permanent internal slot closes the signal-before-poll race.
-    (fn2-native-mux-interest mux capacity (fn2-native-mux-wake-read mux) 1)
+    (fn2-native-mux-interest mux (1+ capacity) (fn2-native-mux-wake-read mux) 1)
     mux))
+(defun fn2-native-mux-local-index (mux) (- (fn2-native-mux-capacity mux) 3))
 (defun fn2-native-mux-signal (mux)
   "Handler wake transport, not an operation completion. The sticky bit is set
 before this call. EAGAIN means an earlier wake byte is already unread. No core

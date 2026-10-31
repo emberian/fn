@@ -137,6 +137,14 @@ def coerce (x y : Val) : Val :=
     | .str s => Val.ofList (s.toList.map Val.chr)
     | _ => Val.nil
   | _ => .str (String.ofList (x.toList.map fun | .chr c => c | _ => Char.ofNat 0))
+/-- `CHAR-CODE`: a character's code; a non-character is 0 (ACL2's completion). -/
+def charCode : Val → Val
+  | .chr c => .int c.toNat
+  | _ => .int 0
+/-- `CODE-CHAR`: the character of a code below 256; anything else is `(code-char 0)`. -/
+def codeChar : Val → Val
+  | .int i => if 0 ≤ i ∧ i < 256 then .chr (Char.ofNat i.toNat) else .chr (Char.ofNat 0)
+  | _ => .chr (Char.ofNat 0)
 
 end Prim
 
@@ -186,6 +194,10 @@ def logorc1 (a b : Val) : Val := logior (lognot a) b
 def floor (a b : Val) : Val :=
   let j := b.toInt
   if j = 0 then .int 0 else .int (Int.fdiv a.toInt j)
+/-- `CEILING` on the subset's numbers: the least integer not below `i / j`; `j = 0` gives 0. -/
+def ceiling (a b : Val) : Val :=
+  let j := b.toInt
+  if j = 0 then .int 0 else .int (-(Int.fdiv (-a.toInt) j))
 /-- `MOD`: `(- x (* y (floor x y)))`. -/
 def mod (a b : Val) : Val :=
   .int (a.toInt - b.toInt * (floor a b).toInt)
@@ -282,6 +294,9 @@ def nativeCall (f : String) (args : List Val) : Option Val :=
   | "LOGNOT", [a] => some (lognot a)
   | "LOGORC1", [a, b] => some (logorc1 a b)
   | "FLOOR", [a, b] => some (floor a b)
+  | "CEILING", [a, b] => some (ceiling a b)
+  | "CHAR-CODE", [a] => some (charCode a)
+  | "CODE-CHAR", [a] => some (codeChar a)
   | "MOD", [a, b] => some (mod a b)
   | "EVENP", [a] => some (evenp a)
   | "NONNEGATIVE-INTEGER-QUOTIENT", [a, b] => some (niq a b)
@@ -314,9 +329,10 @@ abbrev Env := List (String × Val)
 
 def Env.get? (env : Env) (x : String) : Option Val := (env.find? (·.1 == x)).map (·.2)
 
-/-- Evaluate a translated term. `IF` is lazy; `RETURN-LAST` is its third argument (ACL2's
+/-- Evaluate a translated term (total: structural on the term, so the kernel unfolds it for PW3).
+`IF` is lazy; `RETURN-LAST` is its third argument (ACL2's
 logical meaning of `mbe`, `prog2$` and their kin). -/
-partial def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
+def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
   | .var x => match env.get? x with
     | some v => .ok v
     | none => .error s!"unbound variable {x}"
@@ -326,14 +342,16 @@ partial def Term.eval (fns : Fns) (env : Env) : Term → Except String Val
     if cv.truthy then Term.eval fns env a else Term.eval fns env b
   | .app "RETURN-LAST" [_, _, c] => Term.eval fns env c
   | .app f args => do
-    let vs ← args.mapM (Term.eval fns env)
+    let vs ← args.attach.mapM (fun ⟨a, _⟩ => Term.eval fns env a)
     match nativeCall f vs with
     | some v => .ok v
     | none => match fns f vs with
       | some v => .ok v
       | none => .error s!"no function {f} of arity {vs.length}"
   | .lam formals body actuals => do
-    let vs ← actuals.mapM (Term.eval fns env)
+    let vs ← actuals.attach.mapM (fun ⟨a, _⟩ => Term.eval fns env a)
     Term.eval fns (formals.zip vs) body
+termination_by t => sizeOf t
+decreasing_by all_goals (simp_wf; first | omega | (have := List.sizeOf_lt_of_mem ‹_›; omega))
 
 end Fn2.ACL2

@@ -30,7 +30,7 @@
   '(if return-last equal cons car cdr consp integerp acl2-numberp rationalp symbolp stringp characterp coerce
     < binary-+ binary-* unary-- binary-logand binary-logior binary-logxor binary-logeqv lognot
     logorc1 floor mod evenp nonnegative-integer-quotient expt len nth mv-nth update-nth
-    member-equal acl2-count))
+    member-equal acl2-count char-code code-char ceiling))
 
 (defun meta-err (fmt &rest args)
   (push (apply #'format nil fmt args) *meta-errors*)

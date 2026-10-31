@@ -44,6 +44,14 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 - H18 555faa655: nntp laptop s_timeout 1800 (the socket S under load passed 300 s), driver() tolerates EPERM
   on a zombie-only group kill (macOS). The proving nightly at 555faa655 passed: both targets S ok, 16,730 / 0 /
   15,741, WIRE 17,776 judged ok; served surface 7 verbs, 23 interim rows (D6 17, D5 3, D7 1, E2 1, E4 1). READY sent.
+- H19 fe8127048 (a verb that leaves the interim table is judged as served), H20 b1ccb0444 (fn2_conn_interim.json
+  regenerated from conn-answer: D6 10; served_verbs gains the cursor's seven; model policy archive, D3_POLICY
+  archive False since the sessions' profile has no read rows), ba528cfee (h-harness.md fn2 today). Line at
+  b1ccb0444: 14 verbs served, 16 interim (D6 10), both carriers S ok 20,723 served / 0 disagreements / 9,777
+  interim, WIRE 18,837 judged ok. READY sent. Owed upstream: a session profile with read rows + a published
+  group (then archive True, model groups set to it); Fn2Backend.init with groups.
+- Regenerating the interim table: certify books/conn-answer, then `tools/acl2 < fn2/tests/conn-interim-export.lsp
+  | python3 fn2/tests/conn-interim-json.py`.
 - STANDING BY on events. A READY that flips verbs triggers a confirm of the nntp family on both carriers
   (one run of the nightly script by hand, detached: `nohup env -i HOME=$HOME USER=$USER /bin/sh
   fn2/tests/harness/laptop_nightly.sh &`). A certify after a foundation move takes about 50 min under load.

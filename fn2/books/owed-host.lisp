@@ -64,4 +64,4 @@
                   (list 0 5 9 family port w0 w1 w2 w3)))
   :schema :invariant :from (:operation-set fn2-host-accept)
   :teeth (fn2-host-test-peer-delivered fn2-host-test-peer-delivered-negative)
-  :doc "A5r's ABI: an Accept result posted with a valid peer record (any family) is harvested into the observing listener row exactly, beside its capability, with no stray; the peer address reaches the core only through the Accept's own cell.")
+  :doc "A5r's ABI: an Accept result posted with a valid peer record (any family; a :local peer's uid and gid in w0 and w1) is harvested into the observing listener row exactly, beside its capability, with no stray; the peer address reaches the core only through the Accept's own cell.")

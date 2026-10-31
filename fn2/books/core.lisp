@@ -215,6 +215,8 @@
   (slot gen okind oslot ogen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-drop-prefix fn2-pool-drop-prefix
   (slot gen k cursor limit okind oslot ogen) (code cursor) 2)
+(fn2-core-pool-wrapper fn2-core-truncate fn2-pool-truncate
+  (slot gen n okind oslot ogen) (code) 1)
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-compare (s1 g1 off1 k1 os1 og1 s2 g2 off2 k2 os2 og2 len fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -356,7 +358,7 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
-    fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix
+    fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix fn2-core-truncate
     fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
     fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake

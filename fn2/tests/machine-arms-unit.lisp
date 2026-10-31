@@ -42,6 +42,32 @@
                                         fn2-arms-probe-run-take-children
                                         fn2-arms-probe-on-close-result-children) (w state)))
 
+;; G3: the loop's work is derived, never stated: the arm's charge after the
+;; :repeat adds the passes made (4 less the passes left, which the pass
+;; function returns first) times the pass's bound, and its static cost the
+;; four passes.
+(defun fn2-arms-test-mentions (x tree)
+  (declare (xargs :guard t))
+  (if (atom tree) (equal x tree)
+    (or (fn2-arms-test-mentions x (car tree)) (fn2-arms-test-mentions x (cdr tree)))))
+(assert-event (fn2-arms-test-mentions 'fn2-arms-probe-repeat-loop-0-left
+                                      (getpropc 'fn2-arms-probe-run-loop-children 'unnormalized-body nil (w state))))
+(assert-event (equal (caddr (cdr (assoc-eq 'fn2-arms-probe-repeat-loop-0 (table-alist 'fn2-arms-child-sigs (w state))))) 1))
+
+;; G3 (D F13): D0's move check counts holds and effects per call. A move
+;; into a phase holding two windows needs two acquiring calls, and one is
+;; refused; leaving it needs two releases.
+(assert-event (and (fn2-arm-msubsetp '(:w :w) '(:w :x :w)) (not (fn2-arm-msubsetp '(:w :w) '(:w :x)))
+                   (equal (fn2-arm-mminus '(:w :w :x) '(:w)) '(:w :x))))
+(assert-event (and (null (fn2-arm-moves-problem (fn2-arm-moves '(:p) '(:q) '((:p) (:q :storage-window :storage-window)))
+                                                '(:storage-window :storage-window) nil))
+                   (fn2-arm-moves-problem (fn2-arm-moves '(:p) '(:q) '((:p) (:q :storage-window :storage-window)))
+                                          '(:storage-window) nil)
+                   (fn2-arm-moves-problem (fn2-arm-moves '(:q) '(:p) '((:p) (:q :storage-window :storage-window)))
+                                          nil '(:storage-window))
+                   (null (fn2-arm-moves-problem (fn2-arm-moves '(:q) '(:p) '((:p) (:q :storage-window :storage-window)))
+                                                nil '(:storage-window :storage-window)))))
+
 ;; Refused at expansion: two wakes on one path; an unknown stop reason; an
 ;; :issue on a kind with no descriptors is checked elsewhere.
 (defmachine fn2-arms-probe2
@@ -60,6 +86,50 @@
  :arms ((:free (:idle)) (:work (:stop :no-such-reason)))
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe3 :children))
+;; G3 (D F10): a phase-valued field. The reply arm's :next is the field, so
+;; it reaches exactly the subset; the writes are checked against it.
+(defmachine fn2-arms-phase-field
+ :phases (:free :reply :command :query)
+ :fields ((after (:phase-subset (:command :query))))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (after :command))
+ :arms ((:free (:idle))
+        (:reply (:next row-after) (:charge :steps *fn2-work-small*))
+        (:command (:set (after :query)) (:charge :steps *fn2-work-small*))
+        (:query (:set (after :command)) (:next :reply) (:charge :steps *fn2-work-small*)))
+ :observes ())
+(defmachine-arms fn2-arms-phase-field :children)
+(assert-event (equal (fn2-machine-declared 'fn2-arms-phase-field :phase-fields (w state)) '((after :command :query))))
+;; a write outside the subset is refused
+(defmachine fn2-arms-phase-bad-write
+ :phases (:free :reply :command :query)
+ :fields ((after (:phase-subset (:command :query))))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (after :command))
+ :arms ((:free (:idle)) (:reply (:set (after :reply)) (:charge :steps *fn2-work-small*))
+        (:command (:idle)) (:query (:idle)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-phase-bad-write :children))
+;; a phase field that would start outside its subset (no :initial) is refused
+(must-fail (defmachine fn2-arms-phase-bad-start
+            :phases (:free :reply :command)
+            :fields ((after (:phase-subset (:command))))
+            :budget (:bytes 4096 :steps 32 :descriptors 0)
+            :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+            :arms ((:free (:idle)) (:reply (:next row-after) (:idle)) (:command (:idle)))
+            :observes ()))
+
+;; A :goto after a :repeat: the sub-arm's charge cannot carry the loop's passes.
+(defmachine fn2-arms-loop-goto
+ :phases (:free :work)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((rest (:charge :steps *fn2-work-small*)))
+ :arms ((:free (:idle))
+        (:work (:repeat 2 ((:set (count (+ 1 row-count)))) :until (>= row-count 3)) (:goto rest)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-loop-goto :children))
 ;; Two extra children (the tuple's EXTRA, MACHINE-FORM P3): an operation
 ;; whose :child takes two registered core children beyond the five; the
 ;; kind's arms are generated over (K fn2-machines fn2-pool fn2-ops

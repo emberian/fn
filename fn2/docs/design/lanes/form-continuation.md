@@ -1,57 +1,47 @@
 # fn2 machine-form seat continuation (present state; rewritten whole after every commit)
 
-Seat: Opus, writes the code; Astra for read-only review. Brief: main's launch prompt (2026-10-30 night) +
-`build/coordinator/briefs/FN2-SEAT-COMMON.md`; method: `build/coordinator/fn2/WORKFLOW-20261031.md` (W1: certify my
-changed books + touched units + the scenario for what I touched, read the diff, push, READY; main gates the tip nightly;
-at ~400K distill myself and continue). Statement: `build/coordinator/fn2/MACHINE-FORM-20261030.md` §6 (6.5 placement
-P1-P4 as amended, 6.9 built, 6.10 where every seat's ask lands).
+Seat: Opus, writes the code; owns layer A's generator and adapter. Brief: main's launch prompt + `build/coordinator/briefs/FN2-SEAT-COMMON.md`;
+method `build/coordinator/fn2/WORKFLOW-20261031.md`. Statement: `build/coordinator/fn2/MACHINE-FORM-20261030.md` §6 (6.10 = what is built
+and what is open, rewritten with every landing).
 
 ## Landed (dev)
 | sha | what |
 |---|---|
-| d04660248 | G1: machine-arms.lisp (step language + generator), A's probes declared, 32 hand callbacks deleted |
-| 6f05dbba0 | placement probe (tests/form-probe-kind, -unit) |
-| 516c2daf3 | P1: ready-prev/ready-next/wait-reason in the directory (`*fn2-machine-directory-fields*`, kind `:table`); sixth grant source `fn2-batchable-*` |
-| 24fce1ecd | per-arm stobj tuples: `fn2-arms-child-emit` (make-event) narrows each child-form function to the children its paths read (takes) and write (returns); sigs in table `fn2-arms-child-sigs`; :goto/:repeat/face bind by sig; shape lemmas only for returned children. Cursor (D's tree) 1,339 -> 501 s; machines-a-run 31.3 -> 20.5 s |
-| cb903f15c | P4: `(defmachine-registry K)` (admit/take in child form in the kind's book; echo, conn, upload, txn), directory ops `fn2-machines-partition-install` / `-park-taken`; per-kind observe routes `fn2-machine-observe-route-K`; `:answers` lists without `:ok`. callbacks-a 55.4 -> 17.6 s, dispatch 44.6 -> 27.8 s |
-| 7a0edee7a | G2: defwait wait kinds (generated grant service), take answers + generation + `(:park :taken K)`, `:repeat` (pass functions K-REPEAT-SITE-I), `:wake-row`, `row-slot`, hand/accept-hand ops, `:stops` kind reasons (foundation `:kind` + control stop-kind/detail), sub-arm `:on-refusal`, reachability `:unreached`; tests/machine-arms-unit.lisp |
-| 9a453bffd | P2/P3: arm-children.lisp (ops over children, core faces as stobj-let wrappers, defcost `:child`); generator child form `(defmachine-arms K :children)` / `:wrappers`; echo + scribe arms proved in machines-a-run.lisp with no core (27 s); listener stays core form (registry arms) |
+| d04660248 6f05dbba0 516c2daf3 9a453bffd 7a0edee7a cb903f15c 24fce1ecd 82eb2bfc2 | G1, probe, P1, P2/P3, G2, P4, per-arm tuples, one shape theorem per function (see MACHINE-FORM 6.9/6.10) |
+| 3804cb211 | Q1 reds fixed forward: q1-unit's pin = the assembled catalogue (110: conn :query + the cursor's 8); q1-teeth's profile serves reading (`:reading t :x 2`) so the cursor has row 0 |
+| 56b866c35 | G3 1/n: `:repeat` cost derived, F13 per-call holds, F10 phase-valued fields (hbox: machine-arms-unit, machines-a-unit, cursor-unit, assembly, host-unit certified) |
+| 371c48e4e | the `:local` listener: `:listener-path` (0600 Unix socket, the listener capability's second fd in the mux, Accept alternates), `:local` peer record w0 = uid, w1 = gid (getpeereid / SO_PEERCRED), `fn2-host-listener-bind` returns 4 values, the simulator's per-capability peer (`fn2-network-set-peer`, `fn2-network-peer`; `fn2-own-post-result` takes the record and posts Accepts through `fn2-post-accept-result`). Verified: native-serve-check PASS on forge (unix socket served, 0600, removed), sim-layer-a-smoke PASS, host-unit certified |
 
-## How child form works (for editing the generator)
-- Per-arm tuples (24fce1ecd): the walker emits over the kind tuple; `fn2-arms-child-emit-events` scans the body
-  (`fn2-arms-scan`: reads = tuple symbols outside terminal mv tails; writes = tuple binders, callee sig outs) and
-  rewrites it (`fn2-arms-narrow`: terminal `(mv x.. . T)` -> `(mv x.. . OUTS)`, calls of recorded functions get their
-  own TAKES, tail calls widen to the caller's OUTS). A new emitter of child code must go through `fn2-arms-child-emit`.
-- env `:children` = `(K fn2-machines fn2-pool fn2-ops fn2-control)`; `fn2-arms-callee` maps an op to its defcost `:child`;
-  `*K-KIND*`/`*K-ADMISSION-ORDINAL*` become formals `kind`/`ordinal`; writes via `K-PUT-CHILDREN id slot ...`
-  (machines.lisp) returning `(mv K fn2-machines fn2-control)`; stop = `fn2-control-record-stop`.
-- Child fn `NAME-CHILDREN (id slot kind ordinal budget|event... K m p o c)`; shape theorems `NAME-CHILDREN-SHAPE-0..9`, one
-  per child recognizer/invariant, hint closes callees, column readers, `nth`, `unsigned-byte-p min nfix` and the children's
-  predicates (without that, 100-400 s per arm: nth openings and type-prescription storms). Tau proves them instantly in
-  any world that already has them: REPL experiments must disable `(:executable-counterpart tau-system)`.
-- Wrapper `NAME (id budget fn2-core)` = snapshot check, stobj-let of five children, slot from the directory, call.
-- Reserved arm names now include `slot kind ordinal` and the child stobj names.
+## How G3 1/n is built (56b866c35; for editing it)
+- `:repeat`: the pass function returns passes-left first (child-emit k = 1; core form `(mv n fn2-core)`, `:position 1`);
+  the call site binds `<HELPER>-LEFT`; env `:loops` ((LEFT N PB PS PD NB) ...); `fn2-arms-charge-form` adds
+  `(* per (nfix (- N (nfix LEFT))))` per dimension and N*per to the static bound. Pass bound = the calls' defcost costs
+  summed (`fn2-arms-calls-cost`) + 1 step. `:goto` after a `:repeat` refused.
+- F13: `fn2-arms-call` records every call in acc `:calls` (multiset of use forms); contract `:uses` =
+  `fn2-arms-uses-multiset`; arms.lisp `fn2-arm-mminus` / `fn2-arm-msubsetp` in `fn2-arm-moves` and `-moves-problem`.
+- F10: machines.lisp `fn2-machine-phase-fields`, `-lower-phase-fields` (u8), `-lower-phase-initial`,
+  `-phase-fields-problem`; the declaration carries `:phase-fields` only when declared. Generator:
+  `fn2-arms-phase-values` checks `:set`; `:next ROW-F` lowers to `fn2-arms-phase-choice` (an if-chain over the subset's
+  phase constants: PUT accepts only phase forms over constants).
+- Test kinds in machine-arms-unit must have unique names (probe2..7 are taken further down the file).
 
-## Next (in order) — PAUSED by ember's ruling (10-31): spine only until the cursor and B-S2 land; main wakes me
-1. The `:local` family Unix listener + peer uid/gid in Accept (E's consumer socket) — first when woken.
-2. P4's remainder: the listener's registry arms (fn2-machine-admit over the admitted kinds' children, in a registry section), the per-kind run rewrite (`kind = K => fn2-machine-run = K-RUN`, stopped-row interception in K-RUN).
-3. Ports (conn mine; commit/recovery, upload, txn, sealer by seats), G3 (`:repeat` cost, F8 links, F10, F11, F13/F14, `:sub`, `:genesis`), outbound Connect.
-Notes: executor.lisp is 70.6 s (over the minute before P4; transition/service preserves 28 + 19 s). A child-form kind parking on :principal-reservation needs D's park op to name a :child.
+## Next (in order, from main 10-31 evening)
+1. G3 rest: F11 (walk a sub-arm's leaves per caller phase folding `row-phase` tests), F14 (holds per path; a hold
+   conditional on a field), F8 (`:links`, `(:live L)`, `(:read L F)`, owner overrides only via a link; owner = holder
+   owed row for F9's hand), `:sub` and `:genesis` for the sealer. The conn port (D's P.1 in d-continuation.md, written
+   in G1 syntax) is the measure; conn's `after` enum ports to a `:phase-subset` field.
+2. Assembly per-child books: assembly-access (52 s), rows-other (29 s), reference books (~40 s), assembly-init's
+   fn2-core-init-wfp (20 s), the per-kind run rewrite for the executor (73 s). Before/after numbers on forge.
+3. Listener registry arms (admission by peer family into E's kind); outbound Connect.
 
-## Boxes and scripts
-Forge clone `/build/lanes/form-base` = my working tree (scratchpad now /private/tmp/claude-501/-Users-ember-dev-minidregg/01a191a8-05db-77e8-8974-3ca1139560de/scratchpad, cert1.sh and parens.py copied there) (rsync books/tests from the worktree; not a git checkout of a
-sha any more). `build/p2.sh` = certify A units + callbacks-a + smoke (detached via `build/detach.py PIDFILE LOG cmd`,
-results in `build/p2.rc`). Local helper `scratchpad/cert1.sh BOOK...` (session scratchpad
-/private/tmp/claude-501/-Users-ember-dev-minidregg/01a190f5-7c4c-7c33-aa50-10891bcd6bc3/scratchpad/) rsyncs and certifies
-named books, printing the first error. REPL: `tools/acl2 < build/q.lsp` in the clone. `/build/lanes/form` holds a stopped
-baseline at 747afb64c (unused). No detached runs of mine are live (forge `/build/lanes/form-base`: `build/p4.sh` = certify + smoke, `build/evtimes.py BOOK.cert.out` per-event times).
-
-## Pitfalls
-- `(mv-nth 0 x)` rules never fire (it simplifies to car); columns.lisp now states position 0 as `car`.
-- A stobj returned from `mv` must be a variable: let-bind `fn2-control-record-stop` first.
-- ACL2 flet bodies cannot see outer variables; use a helper function.
-- Paren balance per edit (scratchpad parens.py); unused let-bound names are translate errors (declare ignorable).
+## Boxes
+hbox is up: certify there (`ssh hbox-saas`, tree `~/form-g3`, a plain copy of the worktree's fn2/ tools/ acl2-projects,
+not a git repo, so sim-layer-a-smoke's scenario-revision step fails there; run smoke on forge). Launch:
+`setsid sh build/X.sh > build/X.out 2>&1 < /dev/null &` then find the `sh build/X.sh` pid with ps and write it to the
+PID file (the `$!` of the ssh wrapper is not the group leader). hbox home has ~41 G free. Forge: `/build/lanes/form-base`
+(a copy at dev + this seat's landed work; `build/detach.py PIDFILE LOG cmd`), the measurement box and the native/smoke
+runs. When sed-templating scripts, never substitute `l2`-like tokens that also match `acl2`.
 
 ## Rules
-PID files only; never stash / add -A; named paths; secrets check before push; a book over 60 s blocks the commit;
-disk < 60 GiB: stop.
+PID files only; never stash / add -A; named paths (zsh: list paths literally, a variable does not split); secrets check
+before push; a book over 60 s is its owner's to fix; disk pressure: stop and tell.

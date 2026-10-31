@@ -1,6 +1,7 @@
 ; Q1 controls: the assembled catalogue is E1's 39 labels plus the listener's
 ; :admitting phase (R7's split, agreed with layer D) plus B's 15 commit labels
-; (a pinned regression
+; (a pinned regression; conn's :query and the cursor's eight phases since D6
+; 1/n,
 ; control, DSL-METATHEORY 5.8), every label is bound, the composition row is
 ; the unchanged fn2-turn-refinement, and a declared role that does not occur in
 ; the generated statement is refused (E2's role-divergence control).
@@ -36,6 +37,7 @@
     (:run fn2-conn :free) (:run fn2-conn :greeting) (:run fn2-conn :command)
     (:run fn2-conn :article-input) (:run fn2-conn :reply) (:run fn2-conn :upgrading)
     (:run fn2-conn :closing) (:run fn2-conn :draining) (:run fn2-conn :retired)
+    (:run fn2-conn :query)
     (:observe fn2-conn :receive-result) (:observe fn2-conn :send-result)
     (:observe fn2-conn :borrow-released) (:observe fn2-conn :close-result)
     (:run fn2-upload :free) (:run fn2-upload :head) (:run fn2-upload :identity)
@@ -46,14 +48,17 @@
     (:run fn2-txn :prepare) (:run fn2-txn :ready) (:run fn2-txn :batched) (:run fn2-txn :accepted)
     (:run fn2-txn :refused) (:run fn2-txn :uncertain) (:run fn2-txn :releasing) (:run fn2-txn :draining)
     (:run fn2-txn :retired)
+    (:run fn2-cursor :free) (:run fn2-cursor :select) (:run fn2-cursor :seek)
+    (:run fn2-cursor :render) (:run fn2-cursor :send) (:run fn2-cursor :finish)
+    (:run fn2-cursor :draining) (:run fn2-cursor :retired)
     (:router :fallback) (:executor :clock) (:executor :signal)
     (:executor :service 0) (:executor :service 1) (:executor :service 2)
     (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 101))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 110))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 101 :bound 101 :unmatched nil
+        '(:required 110 :bound 110 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
