@@ -3,7 +3,8 @@
 ; query cursor rows. Written by D on C's ruling (C and B read the diff), as
 ; machines-c-groups.lisp is written, to C's binding amendments (a)-(e):
 ;
-; (a) Read row X (one per query cursor slot, (fn2-b-read-rows profile) of
+; (a) Read row X (two per query cursor slot, one per consumer request:
+;     (fn2-b-read-rows profile) of
 ;     them) owns a field stripe of *fn2-read-stride* rows below the sealer's
 ;     stripe, which sits below the transactions' stripes anchored at the
 ;     table's end: base(X) = rows - 1024*t - *fn2-b-seal-field-rows* -
@@ -59,9 +60,10 @@
 (defconst *fn2-read-heads* (* 2 *fn2-run-entry-rows*))
 (defconst *fn2-read-stride* (+ *fn2-read-heads* (* *fn2-read-sources* *fn2-run-reader-fields*)))
 (assert-event (and (<= *fn2-read-stride* *fn2-b-read-stride*) (<= *fn2-b-read-stride* 1024)
-                   (equal (fn2-b-read-rows '((:x . 4))) 0) (equal (fn2-b-read-rows '((:x . 4) (:reading . t))) 4)
+                   (equal (fn2-b-read-rows '((:x . 4))) 0) (equal (fn2-b-read-rows '((:x . 4) (:reading . t))) 8)
+                   (equal (fn2-b-read-rows '((:x . 4) (:reading . t) (:cns . 3))) 11)
                    (equal (fn2-b-field-rows '((:t . 3) (:x . 2) (:reading . t) (:format-slots . 3)))
-                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* (* 2 *fn2-b-read-stride*)))))
+                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* (* 4 *fn2-b-read-stride*)))))
 
 ; A read row: the operation it holds (one at a time), the schema, the
 ; owner its octet key fields are read under (QSET once given), and the

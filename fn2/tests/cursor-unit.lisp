@@ -22,16 +22,18 @@
 
 ; One transcript, every covered command positive and refused.
 (defconst *fn2-cru-lines*
-  '("NEXT" "STAT" "OVER" "GROUP nope.nope" "GROUP local.empty" "NEXT" "GROUP local.test" "STAT" "NEXT" "NEXT" "NEXT"
-    "LAST" "LAST" "LAST" "STAT 9" "STAT <b@example.invalid>" "STAT <z@example.invalid>" "LISTGROUP"
-    "LISTGROUP local.test 2-" "OVER 2-3" "OVER 7-9" "XOVER 7-9" "OVER" "OVER <c@example.invalid>" "QUIT"))
+  '("LIST" "NEXT" "STAT" "OVER" "LISTGROUP" "GROUP nope.nope" "GROUP local.empty" "NEXT" "GROUP local.test" "STAT"
+    "NEXT" "NEXT" "NEXT" "LAST" "LAST" "LAST" "STAT 9" "STAT <b@example.invalid>" "STAT <z@example.invalid>" "LISTGROUP"
+    "LISTGROUP local.test 2-" "LIST COUNTS" "LIST newsgroups" "OVER 2-3" "OVER 7-9" "XOVER 7-9" "OVER"
+    "OVER <c@example.invalid>" "QUIT"))
 (assert-event (fn2-csp-linesp *fn2-cru-lines*))
 (defun fn2-cru-ov (n subject mid)
   (declare (xargs :verify-guards nil))
   (fn2-csp-cat (list (fn2-csp-str n) (fn2-cru-tab) (fn2-cru-line subject mid))))
 (defun fn2-cru-expected ()
   (declare (xargs :verify-guards nil))
-  (list "412 no newsgroup selected" "412 no newsgroup selected" "412 no newsgroup selected"
+  (list "215 list of active newsgroups follows" "local.empty 0 1 y" "local.test 3 1 y" "."
+        "412 no newsgroup selected" "412 no newsgroup selected" "412 no newsgroup selected" "412 no newsgroup selected"
         "411 no such newsgroup" "211 0 1 0 local.empty" "420 no current article"
         "211 3 1 3 local.test" "223 1 <a@example.invalid> retrieved"
         "223 2 <b@example.invalid> retrieved" "223 3 <c@example.invalid> retrieved" "421 no next article"
@@ -39,6 +41,8 @@
         "423 no article with that number" "223 0 <b@example.invalid> retrieved" "430 no article with that message-id"
         "211 3 1 3 local.test list follows" "1" "2" "3" "."
         "211 3 1 3 local.test list follows" "2" "3" "."
+        "215 list of active newsgroups follows" "local.empty 0 1 0 y" "local.test 3 1 3 y" "."
+        "215 list of newsgroups follows" "local.empty (no description)" "local.test (no description)" "."
         "224 overview information follows" (fn2-cru-ov 2 "two" "<b@example.invalid>") (fn2-cru-ov 3 "three" "<c@example.invalid>") "."
         "423 no articles in that range" "420 no article(s) selected"
         "224 overview information follows" (fn2-cru-ov 1 "one" "<a@example.invalid>") "."
@@ -119,16 +123,38 @@
   (not (equal (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-pinned-lines*)
               (fn2-cursor-spec-wire *fn2-cru-groups* (append *fn2-cru-seeds* *fn2-cru-later*) *fn2-cru-pinned-lines*))))
 
-;; Served = reference (D6 1/n) over the transcript less the two commands
-;; 1/n-b serves (LISTGROUP with no name: the name read back; OVER <id>: the
-;; article's number), whole and in small chunks.
-(defconst *fn2-cru-served-lines*
-  (remove-equal "OVER <c@example.invalid>" (remove-equal "LISTGROUP" *fn2-cru-lines*)))
+;; Served = reference (D6 1/n-b) over the transcript less OVER <id> (the
+;; article's number in the group comes with the transaction's address
+;; entries), whole and in small chunks.
+(defconst *fn2-cru-served-lines* (remove-equal "OVER <c@example.invalid>" *fn2-cru-lines*))
 (defun fn2-cursor-test-served (sizes)
   (declare (xargs :verify-guards nil))
   (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-served-lines* sizes))
         (want (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-served-lines*)))
     (or (equal got want) (cw "served ~x0~%want ~x1~%" got want))))
+;; LIST over a directory whose rows span pages: five groups of 200-octet
+;; names (two rows a page of a 1,024-octet TX after its 256-octet key area),
+;; so the scan resumes from the key TX keeps across every page.
+(defun fn2-cru-long-name (c)
+  (declare (xargs :verify-guards nil))
+  (fn2-csp-cat (list "long." (coerce (make-list 190 :initial-element #\x) 'string) "." (coerce (list c) 'string))))
+(defconst *fn2-cru-long-groups*
+  (list (cons (fn2-cru-long-name #\c) 3) (cons (fn2-cru-long-name #\a) 1) (cons (fn2-cru-long-name #\e) 5)
+        (cons (fn2-cru-long-name #\b) 2) (cons (fn2-cru-long-name #\d) 4)))
+(defconst *fn2-cru-long-lines* '("LIST" "LIST COUNTS" "LIST NEWSGROUPS" "GROUP local.none" "QUIT"))
+(defun fn2-cursor-test-list-pages ()
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (put-assoc-equal :groups *fn2-cru-long-groups* *fn2-cursor-profile*))
+         (r (fn2-cursor-serve-run profile nil nil (list (list (fn2-cw-crlf-octets *fn2-cru-long-lines*) '(5 2)))))
+         (want (fn2-cursor-spec-wire *fn2-cru-long-groups* nil *fn2-cru-long-lines*)))
+    (and (equal (nth 3 r) 0)
+         (or (equal (car (nth 2 r)) want) (cw "list pages ~x0~%want ~x1~%" (car (nth 2 r)) want)))))
+; Negative: the listing in the profile's order (the reference sorts by
+; name) differs, so the positive checks the order the scan delivers.
+(defun fn2-cursor-test-list-pages-negative ()
+  (declare (xargs :verify-guards nil))
+  (not (equal (fn2-csp-list-rows "ACTIVE" (fn2-csp-sort *fn2-cru-long-groups*) nil)
+              (fn2-csp-list-rows "ACTIVE" *fn2-cru-long-groups* nil))))
 (defun fn2-cursor-test-pinned-served ()
   (declare (xargs :verify-guards nil))
   (let ((got (fn2-cursor-wire-interleaved *fn2-cru-seeds* *fn2-cru-later* *fn2-cru-pinned-lines* nil))
@@ -144,3 +170,5 @@
 (assert-event (fn2-cursor-test-served nil))
 (assert-event (fn2-cursor-test-served '(7 3 1)))
 (assert-event (fn2-cursor-test-pinned-served))
+(assert-event (fn2-cursor-test-list-pages))
+(assert-event (fn2-cursor-test-list-pages-negative))

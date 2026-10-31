@@ -86,3 +86,4 @@
 (defcost fn2-core-accept-hand :answers t :child fn2-pool-accept-own :tables (fn2-core-pool)
   :doc "Accept a range handed to this row.")
 (defcost fn2-core-drop-prefix :answers t :child fn2-pool-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")
+(defcost fn2-core-truncate :answers t :child fn2-pool-truncate :tables (fn2-core-pool) :doc "Keep a held range's first N filled bytes (N 0 is a reset).")

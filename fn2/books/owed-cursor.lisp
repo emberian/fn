@@ -158,7 +158,8 @@
 ; The reference. State: the profile's groups ((NAME . GROUP) ...) and the
 ; seeds. A connection's selection is (group-name current-number). Commands
 ; are strings; the covered set is GROUP, LISTGROUP, NEXT, LAST, STAT,
-; OVER, XOVER and QUIT, each with the argument forms RFC 3977 gives them.
+; OVER, XOVER and QUIT, each with the argument forms RFC 3977 gives them, and
+; LIST ACTIVE, COUNTS and NEWSGROUPS with no wildmat.
 (defun fn2-csp-words (cs word acc)
   (declare (xargs :verify-guards nil))
   (cond ((atom cs) (reverse (if word (cons (coerce (reverse word) 'string) acc) acc)))
@@ -231,6 +232,32 @@
     (cons (fn2-csp-cat (list (fn2-csp-str (car (car rows))) (coerce (list (code-char 9)) 'string) (nth 2 (car rows))))
           (fn2-csp-overview (cdr rows)))))
 
+;; LIST ACTIVE, COUNTS and NEWSGROUPS with no wildmat: every group of the
+;; directory in name order (octet order), its numbers as GROUP gives them
+;; (an empty group: high 0, low 1) and the status y (posting is served beside
+;; reading in this profile); NEWSGROUPS's description is the model's default.
+(defun fn2-csp-name< (a b)
+  (declare (xargs :verify-guards nil))
+  (and (string< a b) t))
+(defun fn2-csp-insert (g sorted)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom sorted) (list g))
+        ((fn2-csp-name< (car g) (car (car sorted))) (cons g sorted))
+        (t (cons (car sorted) (fn2-csp-insert g (cdr sorted))))))
+(defun fn2-csp-sort (groups)
+  (declare (xargs :verify-guards nil))
+  (if (atom groups) nil (fn2-csp-insert (car groups) (fn2-csp-sort (cdr groups)))))
+(defun fn2-csp-list-rows (variant sorted seeds)
+  (declare (xargs :verify-guards nil))
+  (if (atom sorted) nil
+    (let* ((name (car (car sorted))) (rows (fn2-csp-rows (cdr (car sorted)) seeds 1)) (high (fn2-csp-high rows)))
+      (cons (if (equal variant "NEWSGROUPS")
+                (fn2-csp-cat (list name " (no description)"))
+              (fn2-csp-cat (list name " " (fn2-csp-str high) " " (fn2-csp-str (if rows (car (car rows)) (+ 1 high)))
+                                 (if (equal variant "COUNTS") (fn2-csp-cat (list " " (fn2-csp-str (len rows)))) "")
+                                 " y")))
+            (fn2-csp-list-rows variant (cdr sorted) seeds)))))
+
 ; One command: (mv reply-lines selection close).
 (defun fn2-csp-command (line sel groups seeds)
   (declare (xargs :verify-guards nil))
@@ -239,6 +266,12 @@
        (rows (and gname (fn2-csp-rows (fn2-csp-gid gname groups) seeds 1))))
     (cond
      ((equal verb "QUIT") (mv (list "205 closing connection") sel t))
+     ((equal verb "LIST")
+      (let ((variant (if args (string-upcase (car args)) "ACTIVE")))
+        (mv (append (list (if (equal variant "NEWSGROUPS") "215 list of newsgroups follows"
+                            "215 list of active newsgroups follows"))
+                    (fn2-csp-list-rows variant (fn2-csp-sort groups) seeds) (list "."))
+            sel nil)))
      ((or (equal verb "GROUP") (equal verb "LISTGROUP"))
       (b* ((listing (equal verb "LISTGROUP"))
            (name (if args (car args) gname))
@@ -340,8 +373,14 @@
 (defun fn2-csp-coveredp (line)
   (declare (xargs :verify-guards nil))
   (and (stringp line) (<= (length line) 510) (fn2-csp-printablep (coerce line 'list))
-       (member-equal (string-upcase (or (car (fn2-csp-split line)) ""))
-                     '("GROUP" "LISTGROUP" "NEXT" "LAST" "STAT" "OVER" "XOVER" "QUIT"))))
+       (let ((words (fn2-csp-split line)))
+         (if (equal (string-upcase (or (car words) "")) "LIST")
+             ;; LIST with no wildmat: ACTIVE (or no keyword), COUNTS, NEWSGROUPS
+             (or (atom (cdr words))
+                 (and (atom (cddr words))
+                      (member-equal (string-upcase (cadr words)) '("ACTIVE" "COUNTS" "NEWSGROUPS"))))
+           (member-equal (string-upcase (or (car words) ""))
+                         '("GROUP" "LISTGROUP" "NEXT" "LAST" "STAT" "OVER" "XOVER" "QUIT"))))))
 (defun fn2-csp-linesp (lines)
   (declare (xargs :verify-guards nil))
   (and (consp lines) (fn2-csp-coveredp (car lines))
@@ -354,7 +393,7 @@
                   (fn2-cursor-spec-wire (fn2-profile-get :groups *fn2-cursor-profile*) seeds lines)))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-cursor-test-spec fn2-cursor-test-spec-negative fn2-cursor-test-seeded)
-  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER and XOVER, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is 0, which RFC 3977 and H's model admit). D6 1/n serves all but LISTGROUP with no name and OVER <id> (1/n-b), and tests/cursor-unit.lisp checks served = reference over the transcript less those two, whole and chunked; the row stays owed until 1/n-b.")
+  :doc "D6 (section 15.7): after a published state seeded through C-S3, a reader's replies to GROUP, LISTGROUP, NEXT, LAST, STAT, OVER, XOVER and LIST ACTIVE/COUNTS/NEWSGROUPS, in every chunking, are the bytes RFC 3977 and H's model give over the list view of that state (an empty group answers 0 high+1 high; numbers follow commit order within a group; by Message-ID the number is 0, which RFC 3977 and H's model admit; LIST's rows in name order). D6 1/n-b serves all but OVER <id> (it waits on the transaction's article-to-number address entries), and tests/cursor-unit.lisp checks served = reference over the transcript less that one, whole and chunked, and over a directory whose LIST spans pages; the row stays owed until OVER <id> serves.")
 
 ; OVER over [LO, HI] after GROUP local.test (group 1).
 (defun fn2-cursor-over-lines (lo hi)
