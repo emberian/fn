@@ -6,3 +6,6 @@
 ; Accept booking (S1) call them.
 (fn2-account-events)
 (fn2-machine-access-events)
+; The ledger's request FIFO and its grant source (D7 4/n-a), attached to
+; the access section's constrained pair.
+(fn2-account-request-events)

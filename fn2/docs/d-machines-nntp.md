@@ -85,23 +85,24 @@ which a service acquires and is never awaited).
 | 4 | `:rx-range` | :pool-slot | `(:profile :pool-classes)` | none | The connection's receive window, held for its lifetime. |
 | 5 | `:tx-range` | :pool-slot | `(:profile :pool-classes)` | none | The connection's reply window, held for its lifetime. |
 | 6 | `:principal-reservation` | :quantity | `(:profile :p)` | :system | One request's charge on its principal account, held from request admission to its reply; a machine holds at most one. |
-| 7 | `:tls-slot` | :slot | `(:round2 :ltls 16)` | none | A handshake job, held for the handshake only. |
-| 8 | `:upload-row` | :row | `(:profile :u)` | none | An article input in progress, held while its bytes arrive. |
-| 9 | `:chunk-window` | :window | `(:round2 :large-upload-windows 16)` | none | Two 256 KiB chunk ranges of a large upload, held while it streams. |
-| 10 | `:transaction-row` | :row | `(:profile :t)` | none | A posting transaction from admission to its outcome. |
-| 11 | `:identity-reservation` | :reservation | `(:profile :t)` | none | The Message-ID and operation identity claim of one transaction. |
-| 12 | `:cursor-row` | :row | `(:profile :x)` | none | A query cursor from its command to its last reply byte. |
-| 13 | `:wait-row` | :row | `(:profile :w)` | none | A parked consumer wait from registration to its reply or cancellation. |
-| 14 | `:subscription-edge` | :edge | `(:round2 :esub 4096)` | none | One wait row's edge to a stream, reserved at registration. |
-| 15 | `:control-output` | :bytes | `(:profile :w)` | none | The reply window a wake or control reply needs, reserved at registration so delivery never waits. |
-| 16 | `:cache-pin` | :pin | `(:round2 :cache-profile)` | :recovery | An object lease under a pinned view, held while a reply streams it. |
-| 17 | `:batch-membership` | :records-and-bytes | `(:round2 :batch 1024 4194304)` | none | A transaction's records in a commit batch until publish. |
-| 18 | `:storage-job` | :job | `(:profile :jread :jwrite)` | :recovery | A read or write slot: a storage job row, held across its issue, completion and verification. |
-| 19 | `:storage-window` | :pool-slot | `(:profile :pool-classes)` | :recovery | The pool range a storage job reads into or writes from. |
-| 20 | `:fence-slot` | :slot | `(:profile :fence-slots)` | :fence | One fence in flight per storage domain. |
-| 21 | `:cancel-credit` | :credit | `(:profile :ncancel)` | :cancel | One outstanding cancellation request. |
-| 22 | `:operation` | :op | `(:profile :o :qa)` | (:close :cancel :arm-wake :fence) | One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue. |
-| 23 | `:sealable` | :overlay | `(:profile :identity-overlays)` | none | A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it. |
+| 7 | `:durable-octets` | :quantity | `(:profile :dstore)` | :system | Octets a principal's appended articles keep durable (4,096-octet blocks, rounded up per article), charged in the append's transaction and released when retention reclaims them. |
+| 8 | `:tls-slot` | :slot | `(:round2 :ltls 16)` | none | A handshake job, held for the handshake only. |
+| 9 | `:upload-row` | :row | `(:profile :u)` | none | An article input in progress, held while its bytes arrive. |
+| 10 | `:chunk-window` | :window | `(:round2 :large-upload-windows 16)` | none | Two 256 KiB chunk ranges of a large upload, held while it streams. |
+| 11 | `:transaction-row` | :row | `(:profile :t)` | none | A posting transaction from admission to its outcome. |
+| 12 | `:identity-reservation` | :reservation | `(:profile :t)` | none | The Message-ID and operation identity claim of one transaction. |
+| 13 | `:cursor-row` | :row | `(:profile :x)` | none | A query cursor from its command to its last reply byte. |
+| 14 | `:wait-row` | :row | `(:profile :w)` | none | A parked consumer wait from registration to its reply or cancellation. |
+| 15 | `:subscription-edge` | :edge | `(:profile :esub)` (default 4,096, ROUND2) | none | One wait row's edge to a stream, reserved at registration. |
+| 16 | `:control-output` | :bytes | `(:profile :w)` | none | The reply window a wake or control reply needs, reserved at registration so delivery never waits. |
+| 17 | `:cache-pin` | :pin | `(:round2 :cache-profile)` | :recovery | An object lease under a pinned view, held while a reply streams it. |
+| 18 | `:batch-membership` | :records-and-bytes | `(:round2 :batch 1024 4194304)` | none | A transaction's records in a commit batch until publish. |
+| 19 | `:storage-job` | :job | `(:profile :jread :jwrite)` | :recovery | A read or write slot: a storage job row, held across its issue, completion and verification. |
+| 20 | `:storage-window` | :pool-slot | `(:profile :pool-classes)` | :recovery | The pool range a storage job reads into or writes from. |
+| 21 | `:fence-slot` | :slot | `(:profile :fence-slots)` | :fence | One fence in flight per storage domain. |
+| 22 | `:cancel-credit` | :credit | `(:profile :ncancel)` | :cancel | One outstanding cancellation request. |
+| 23 | `:operation` | :op | `(:profile :o :qa)` | (:close :cancel :arm-wake :fence) | One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue. |
+| 24 | `:sealable` | :overlay | `(:profile :identity-overlays)` | none | A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it. |
 
 **(b, c) Bundles and held-while-waiting** (`*fn2-resource-bundles*`).
 
@@ -1087,8 +1088,37 @@ field of the ledger's configuration row) for a head whose acquisition now fits.
   capacity 3, where B holds 2, C reserves 1, and A waits on `:shared`. B's release reaches A through
   the source, not through B.
 
-**Keystones** (owed, `fn2/books/owed-accounts.lisp`; teeth in `fn2/tests/accounts-unit.lisp`, which
-drives the ledger stobj with no machine):
+**As built (4/n-a).**
+- **accounts.lisp.** `fn2-account-request` (`:ok :queued :limit :shared :refused :bounds`), with
+  `fn2-account-request-no-barging` **proved**. `fn2-account-fits` (and `fn2-account-fits-acquire`,
+  proved), `fn2-account-grant-scan` / `-grant-next`, and the cursor column `grant-at`, read and
+  written on the system row.
+- **accounts-core.lisp.** `fn2-account-request-core`, `-request-release` and `fn2-account-core-ends`
+  / `-set-ends` / `-grant-next` / `-grant` / `-headed-fits` in `fn2-account-events`. Then
+  `fn2-account-request-events` (materialized in assembly-access after the machine access events)
+  holds `fn2-account-request-park`, and the source `fn2-account-grant-ready` /
+  `fn2-account-grant-take`.
+  - The source is attached by `defattach` to the constrained pair `fn2-account-grant-ready-p` /
+    `-grant-one`, which A's machines-a-access.lisp now declares like the sealable and batchable
+    sources. That is a foundation edit to A's book: the stubs moved out of D's events.
+  - `fn2-account-grant-take-live` is **proved**, so the liveness constraint holds by construction: a
+    grant whose FIFO and ledger disagree stops the core (`:machine-write`) and still answers its head.
+- **Teeth.** `tests/request-unit.lisp`, in the owed export, covers:
+  - Astra's example, scaled to capacity 8;
+  - the bounded wait: id 7 on slot 2 is granted within the 4 rows, and a cursor that restarts at 0
+    serves slot 0 four times and never reaches it;
+  - settled once, with a re-park as the negative;
+  - `:refused` for a request limit of 0.
+- `fn2-account-request-cancel` comes with 5/n, its only caller.
+- `grant-ready-exact` is definitional (`fn2-account-grant-ready` is "the scan finds a fitting head"),
+  so it is not a separate row.
+- **E's dimensions** (e-surface.md §11): `:durable-octets`, a new D0 kind at rank 7 (the kinds after
+  it renumbered 8..24, so every wait-reason code above `:principal-reservation` moves by one),
+  `:wait-row` and `:subscription-edge`, the last bounded by the profile key `:esub` (default 4,096).
+  Each is a holding dimension of the ledger. A missing profile key takes the dimension's `:default`.
+
+**Keystones** (owed, `fn2/books/owed-accounts.lisp`; teeth in `fn2/tests/request-unit.lisp`, over a
+served core with no machine run):
 
 | statement | teeth |
 |---|---|
@@ -1368,7 +1398,7 @@ that retries with the same operation id gets the original outcome without re-exe
 contradictory reuse (same id, different request digest) is refused `:operation-reused`; the NNTP
 path never retries by operation id, so D5 builds the record and E's API is its first reader.
 
-**14.4.2 The identity reservation** (D0 rank 11, `:identity-reservation`). *As built
+**14.4.2 The identity reservation** (D0 rank 12, `:identity-reservation`). *As built
 (`fn2/books/claims.lisp`, `tests/claims-unit.lisp`): the table is its own stobj `fn2-claims` (a D core
 child with D5 1/n), one row per transaction slot whose `head`/`stamp` columns are also bucket `r`'s;
 `fn2-claim-begin`, `fn2-claim-walk` (budgeted, restarting when its bucket's stamp moved),
@@ -1411,26 +1441,44 @@ wait-free: each stale retry means another transaction or installation progressed
 measured (~45 stale per 30 offers under contention with no claims; the claims remove the same-Message-
 ID share of them). D's IDENTITY run (14.8) reports retries per decision.
 
-Answers to replies: POST `:duplicate` → 441 "this article is already stored here", `:conflict` → 441
-"a different article with this Message-ID is stored here"; IHAVE 437 / TAKETHIS 439 for either
-(transit decides by Message-ID alone, NNT-020); `:identity-conflict-bound` (a fifth content) → the
-same transit refusal, and for POST the conflict line (the bound is C's, the word D's).
-
-**Evidence is its own operation (Astra).** C records a conflicting content as evidence; a refused
-article must contribute no mutation (T6), and a later re-offer of evidence content must not hear
-"already stored here", which would be false. So: a POST conflict records nothing (fn1's D25: "neither
-writes anything"); a transit conflict records its evidence through a separate **evidence operation**
-with its own record and outcome in the same batch (the article is refused, the evidence is
-committed, and T6 counts them apart); and C's decision reports the matched fact's state (C-S1:
-`:duplicate` only for accepted content, `:evidence` for a content recorded only as evidence, answered
-with the conflict line).
+Answers to replies, under IDENTITY-ACROSS-PEERS rulings 6, 7, 8 and 11 (2026-10-30). This text
+replaces the earlier D25 reading, where a POST conflict wrote nothing, a fifth content was refused by
+a per-name bound, and transit decided by Message-ID alone.
+- **The decision's facts decide the reply** (ruling 8; C §4a). The reply is chosen from the selection
+  relation, the evidence status and the coverage, never from a verdict word alone (d-continuation.md
+  P.4).
+- **POST and IHAVE.**
+  - **Selected here.** The name is selected here under this content: POST answers 441 "this article
+    is already stored here" and IHAVE answers 437.
+  - **A valid competing binding.** This takes ruling 6's evidence-only committed transaction: the
+    evidence is framed, charged and committed with no membership and no retention promise, the reply
+    waits on that commit, and the article refusal (441 or 437) and the evidence outcome (committed,
+    uncertain or refused) are reported separately.
+  - **Evidence that is known already** is idempotent: it commits nothing new and is not
+    double-charged on replay.
+  - **Three evidence classes.** An invalid signature, an out-of-scope object and a valid competing
+    binding are distinct, each with its own word.
+- **No per-name ceiling** (ruling 7). `:identity-conflict-bound` and its "fifth content" refusal are
+  deleted with C's four-per-id constant. Evidence admission is funded instead: charged against the
+  offerer and reserved. A refused admission leaves coverage explicitly incomplete, which the typed
+  read result reports, and the article's reply is unchanged by it.
+- **Transit** (ruling 11).
+  - CHECK and IHAVE keep Message-ID-only suppression (435/438) as a declared loss. Per E's §13.2,
+    suppression happens only on local acceptance history for the name (accepted, withdrawn or
+    reclaimed) or a local not-wanted decision, never on evidence alone.
+  - A fully received TAKETHIS that carries a new admissible conflict takes ruling 6's path and
+    answers 439 with the conflict word, with its evidence committed. Transit decides after receipt,
+    not by Message-ID alone.
+- **The refused article contributes no mutation** (T6). The committed evidence is a separate operation
+  with its own record and outcome in the same batch, and T6 counts the two apart. A later re-offer of
+  evidence-only content never hears "already stored here": `:duplicate` is only for selected content.
 
 **14.4.4 The batch.** `:ready` admits the transaction to B's commit batch (B-S2): one member whose
 records are (a) the article record (stored octets by reference: the window today, extents with D4
 3/n; the content digest; the source digest; the stored length), (b) the identity fact `(mid, content,
 article, binding = batch event, principal)`, (c) the membership rows `(group, number, article)` (C3),
 (d) the operation outcome `(principal, operation, request digest, outcome, event)` (C4). Batch
-membership is acquired here (`:transaction :batch`, holding everything below rank 17); a full batch is
+membership is acquired here (`:transaction :batch`, holding everything below rank 18); a full batch is
 backpressure (`:ready` stays, a retry, the transaction holds no batch resource). The member outcome
 comes back as an observation (`:member-result`) carrying accepted / refused / uncertain by the batch's
 own phase at the time it settled, so the transaction never infers its outcome from time or from a
@@ -1460,7 +1508,7 @@ Every word is a value of `fn2-txn-word` (the row's `word` field) and every reply
 | `:injected` | 441 "...Xref or Injection fields are the server's" | — | — | upload |
 | `:no-clock` | 441 "posting failed; this server has no usable clock reading" | — | — | transaction (injection) |
 | `:group` | 441 "...no such newsgroup here (group)" | 437 | 439 | transaction (C3 membership) |
-| `:identity-conflict-bound` | conflict line | 437 | 439 | C's record |
+| `:identity-conflict-bound` | conflict line | 437 | 439 | C's record; deleted with C §4a (ruling 7: no per-name ceiling), served until then |
 | `:unaffordable` | 441 "...unaffordable" | 436 | 436 | a capacity the profile cannot grant (a zero `:t`, an article over the window with no extents) |
 | `:control-malformed` | 441 "the Control header field is malformed" | 437 | 439 | transaction (control, RFC 5537) |
 | `:refused` | 441 "posting failed; the article was refused" | 437 | 439 | the generic refusal |
@@ -1740,7 +1788,7 @@ Two positions were weighed. Fields on `fn2-conn` would need C's read state (a ra
 sources, a field stripe, run cursors) per connection, `C` = 256 of them resident whether reading or
 not, and would make the connection's widest arm wider. A **taken kind** `fn2-cursor` (A-S7, as the
 upload and the transaction are) has its own capacity `X` (ROUND2 B.1: 256; the tiny profile 4) and
-D0 resource `:cursor-row` (rank 12, "a query cursor from its command to its last reply byte"), so a
+D0 resource `:cursor-row` (rank 13, "a query cursor from its command to its last reply byte"), so a
 reader beyond `X` waits on the kind's FIFO holding only its connection (scenario 2: a stalled reader
 holds its reserved window and nothing else), the read state is per cursor row, and the connection
 keeps only what outlives a command: **the selection** (`group`, `current`, `view` on `fn2-conn`).

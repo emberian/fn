@@ -23,7 +23,14 @@
   '((:connection-row :capacity :c
      :why "The entitlement to a connection; one RX and one TX range ride with each row for its lifetime.")
     (:principal-reservation :capacity :c
-     :why "Concurrent requests of a principal: one per holder, held from the framed line to the reply's last octet.")))
+     :why "Concurrent requests of a principal: one per holder, held from the framed line to the reply's last octet.")
+    ;; E's consumer surface (fn2/docs/e-surface.md section 11; D7 4/n-a)
+    (:durable-octets :capacity :dstore :default 4294967295
+     :why "The store's durable quota in 4,096-octet blocks: a principal's appended articles, from the append's transaction to retention's reclaim.")
+    (:wait-row :capacity :w
+     :why "A principal's parked waits, from admission to reply or cancellation.")
+    (:subscription-edge :capacity :esub :default 4096
+     :why "A principal's subscription edges, held from register or rebase to unregister.")))
 (defconst *fn2-account-charges*
   '((:rx-octets :why "Octets received, settled from Receive completion counts.")
     (:tx-octets :why "Octets sent, settled from Send completion counts.")
@@ -50,7 +57,13 @@
 
 (defcolumns fn2-accounts
   ((state (:enum fn2-account-state (:free :anonymous :configured :system)))
-   (weight :u8) (wait-head :link) (wait-tail :link))
+   (weight :u8) (wait-head :link) (wait-tail :link)
+   ;; the grant service's cursor (D7 4/n-a, layer doc 13.8): read and
+   ;; written on the system row only, the row the grant service runs on
+   (grant-at :u32)
+   ;; the row's incarnation: bumped at each rebinding, never reset, so a
+   ;; principal id (slot, incarnation) is never reused within a store
+   (incarnation :u32))
   :init-name fn2-accounts-columns-init
   :extra-fields
   ((fn2-accounts-limit :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
@@ -169,6 +182,8 @@
 (fn2-account-shape-column weight)
 (fn2-account-shape-column wait-head)
 (fn2-account-shape-column wait-tail)
+(fn2-account-shape-column grant-at)
+(fn2-account-shape-column incarnation)
 (in-theory (disable fn2-accounts-shapep fn2-account-ix-bound))
 
 ;; Element readers over the dimension-major arrays: natural by
@@ -335,6 +350,116 @@
   (if (and (natp d) (< d *fn2-account-nh*)) (fn2-account-capacityv d fn2-accounts) 0))
 
 ;; ------------------------------------------------------------------------
+;; D7 4/n-a (layer doc 13.8): requests of a principal. A request holds one
+;; :principal-reservation from its framed line to its reply's last octet.
+;; A principal's waiting requests form a FIFO whose ends are the row's
+;; wait-head and wait-tail; its links are the parked rows' directory links
+;; (the core wrappers, fn2-account-request-events). No request barges: while
+;; the FIFO is non-empty, a new request answers :queued even when it fits.
+(defconst *fn2-account-request-dim* (fn2-account-holding :principal-reservation))
+;; Whether (fn2-account-acquire p d a) would answer :ok.
+(defun fn2-account-fits (p d a fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (natp a)
+         (< (+ p (* d rows)) (* *fn2-account-nh* rows))
+         (let* ((ix (+ p (* d rows)))
+                (h (fn2-account-holdv ix fn2-accounts))
+                (r (fn2-account-reservev ix fn2-accounts))
+                (h2 (+ h a)))
+           (and (<= h2 (fn2-account-limitv ix fn2-accounts))
+                (<= (+ (fn2-account-committedv d fn2-accounts) (- (max h2 r) (max h r)))
+                    (fn2-account-capacityv d fn2-accounts)))))))
+(defthm fn2-account-fits-acquire
+  (implies (fn2-account-fits p d a fn2-accounts)
+           (equal (mv-nth 0 (fn2-account-acquire p d a fn2-accounts)) :ok))
+  :hints (("Goal" :in-theory (enable fn2-account-acquire))))
+(defun fn2-account-wait-head-of (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts))) (fn2-accounts-wait-head p fn2-accounts) *fn2-none*))
+(defun fn2-account-wait-tail-of (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts))) (fn2-accounts-wait-tail p fn2-accounts) *fn2-none*))
+;; A new request: :ok (acquired), :queued (the FIFO is non-empty), :limit
+;; or :shared (it does not fit), :refused (a request limit of 0: refused by
+;; name, never parked), :bounds.
+(defun fn2-account-request (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (cond ((not (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))) (mv :bounds fn2-accounts))
+        ((equal (fn2-account-limit p *fn2-account-request-dim* fn2-accounts) 0) (mv :refused fn2-accounts))
+        ((not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*)) (mv :queued fn2-accounts))
+        (t (fn2-account-acquire p *fn2-account-request-dim* 1 fn2-accounts))))
+(fn2-account-preserves fn2-account-request (p fn2-accounts))
+;; No barging (layer doc 13.8): while P's FIFO is non-empty a request
+;; acquires nothing, whatever it would fit.
+(defthm fn2-account-request-no-barging
+  (implies (and (natp p) (< p (fn2-accounts-rows fn2-accounts))
+                (not (equal (fn2-account-limit p *fn2-account-request-dim* fn2-accounts) 0))
+                (not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*)))
+           (and (equal (mv-nth 0 (fn2-account-request p fn2-accounts)) :queued)
+                (equal (mv-nth 1 (fn2-account-request p fn2-accounts)) fn2-accounts))))
+(in-theory (disable fn2-account-request))
+;; The grant service's choice: from row I, at most K rows on (cyclic), the
+;; first whose FIFO head's request fits; *fn2-none* when none does.
+(defun fn2-account-grant-scan (k i fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp k) (natp i)) :measure (nfix k)))
+  (let ((rows (nfix (fn2-accounts-rows fn2-accounts))))
+    (if (or (zp k) (zp rows)) *fn2-none*
+      (let ((p (if (< (nfix i) rows) (nfix i) 0)))
+        (if (and (not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*))
+                 (fn2-account-fits p *fn2-account-request-dim* 1 fn2-accounts))
+            p
+          (fn2-account-grant-scan (- k 1) (+ 1 p) fn2-accounts))))))
+;; The cursor lives on the system row (the last); every row is scanned once.
+(defun fn2-account-grant-cursor (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (zp rows) 0 (fn2-accounts-grant-at (- rows 1) fn2-accounts))))
+(defun fn2-account-grant-next (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (fn2-account-grant-scan (nfix (fn2-accounts-rows fn2-accounts)) (fn2-account-grant-cursor fn2-accounts) fn2-accounts))
+(defthm fn2-account-grant-scan-range
+  (implies (not (equal (fn2-account-grant-scan k i fn2-accounts) *fn2-none*))
+           (and (natp (fn2-account-grant-scan k i fn2-accounts))
+                (< (fn2-account-grant-scan k i fn2-accounts) (nfix (fn2-accounts-rows fn2-accounts))))))
+(defthm fn2-account-grant-scan-fits
+  (implies (not (equal (fn2-account-grant-scan k i fn2-accounts) *fn2-none*))
+           (fn2-account-fits (fn2-account-grant-scan k i fn2-accounts) *fn2-account-request-dim* 1 fn2-accounts)))
+(in-theory (disable fn2-account-fits fn2-account-grant-scan))
+
+;; The durable principal identity (C's fn2-outcome key, (:id principal)):
+;; slot * 2^32 + incarnation, a u60. A slot is rebound (E2's binding, an
+;; account deleted and its slot issued again) only through
+;; fn2-account-rebind, which bumps the incarnation, so no id names two
+;; principals within a store. :exhausted at the u32 limit: the slot is
+;; retired, never wrapped.
+(defun fn2-account-principal-id (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))
+      (+ (* p 4294967296) (fn2-accounts-incarnation p fn2-accounts))
+    0))
+(defun fn2-account-rebind (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (cond ((not (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))) (mv :bounds fn2-accounts))
+        ((>= (fn2-accounts-incarnation p fn2-accounts) *fn2-account-u32-max*) (mv :exhausted fn2-accounts))
+        (t (let ((fn2-accounts (fn2-accounts-set-incarnation p (+ 1 (fn2-accounts-incarnation p fn2-accounts))
+                                                             fn2-accounts)))
+             (mv :ok fn2-accounts)))))
+(fn2-account-preserves fn2-account-rebind (p fn2-accounts))
+;; Ids are unique: two rows, or one row before and after a rebinding, never
+;; share an id; and a rebinding never lowers the incarnation.
+(defthm fn2-account-principal-id-unique
+  (implies (and (fn2-account-guard) (natp p) (natp q) (< p (fn2-accounts-rows fn2-accounts))
+                (< q (fn2-accounts-rows fn2-accounts)) (not (equal p q)))
+           (not (equal (fn2-account-principal-id p fn2-accounts) (fn2-account-principal-id q fn2-accounts))))
+  :hints (("Goal" :nonlinearp t)))
+(defthm fn2-account-rebind-fresh
+  (implies (and (fn2-account-guard) (equal (mv-nth 0 (fn2-account-rebind p fn2-accounts)) :ok))
+           (< (fn2-account-principal-id p fn2-accounts)
+              (fn2-account-principal-id p (mv-nth 1 (fn2-account-rebind p fn2-accounts))))))
+(in-theory (disable fn2-account-rebind))
+
+;; ------------------------------------------------------------------------
 ;; The invariant, executable: per dimension committed = sum of
 ;; max(hold, reserve) <= capacity, and hold <= limit on every row.
 (defun fn2-account-sum (d i fn2-accounts)
@@ -378,7 +503,7 @@
                 (<= (+ (fn2-account-hold p d fn2-accounts) a) (fn2-account-limit p d fn2-accounts)))
            (equal (mv-nth 0 (fn2-account-acquire p d a fn2-accounts)) :ok))
   :hints (("Goal" :in-theory (e/d (fn2-account-acquire) (fn2-account-ix-bound))
-           :use ((:instance fn2-account-ix-bound (n 2) (r (fn2-accounts-rows fn2-accounts)))))))
+           :use ((:instance fn2-account-ix-bound (n *fn2-account-nh*) (r (fn2-accounts-rows fn2-accounts)))))))
 
 ;; Charges are monotone: no holding operation touches a charge, and a
 ;; charge only adds (disconnecting erases no charge; attribution launders
@@ -439,9 +564,13 @@
   (declare (xargs :guard (natp d)))
   (let ((e (nth d (true-list-fix entries))))
     (if (consp e) (fn2-account-plist-get :capacity (cdr e)) nil)))
+;; The profile's value for the dimension's key, else the dimension's
+;; :default (ROUND2's: :esub 4,096 edges; :dstore the ledger's u32 range).
 (defun fn2-account-profile-capacity (d profile)
   (declare (xargs :guard (natp d)))
-  (fn2-profile-get (fn2-account-capacity-key *fn2-account-holdings* d) profile))
+  (let ((v (fn2-profile-get (fn2-account-capacity-key *fn2-account-holdings* d) profile)))
+    (or v (let ((e (nth d (true-list-fix *fn2-account-holdings*))))
+            (if (consp e) (fn2-account-plist-get :default (cdr e)) nil)))))
 
 (defun fn2-account-dim-alistp (alist)
   (declare (xargs :guard t))
@@ -479,6 +608,12 @@
   (declare (xargs :guard t))
   (if (atom entries) (null entries)
     (and (fn2-account-entryp (car entries) p) (fn2-account-entriesp (cdr entries) p))))
+(defthm fn2-account-entryp-consp
+  (implies (fn2-account-entryp entry p) (consp entry))
+  :rule-classes :forward-chaining)
+(defthm fn2-account-entriesp-alistp
+  (implies (fn2-account-entriesp entries p) (alistp entries))
+  :hints (("Goal" :in-theory (disable fn2-account-entryp))))
 (defun fn2-account-reserve-total (key entries)
   (declare (xargs :guard t))
   (if (atom entries) 0
@@ -659,5 +794,8 @@
  '(fn2-accounts-shapep fn2-account-acquire fn2-account-release fn2-account-charge fn2-account-acquire2
    fn2-account-release2 fn2-account-attribute fn2-account-hold fn2-account-reserve fn2-account-limit
    fn2-account-charged fn2-account-committed fn2-account-capacity fn2-account-sum fn2-account-limits-ok
-   fn2-account-dims-ok fn2-accounts-conservedp fn2-accounts-profilep fn2-accounts-init)
+   fn2-account-dims-ok fn2-accounts-conservedp fn2-accounts-profilep fn2-accounts-init
+   fn2-account-fits fn2-account-wait-head-of fn2-account-wait-tail-of fn2-account-request
+   fn2-account-grant-scan fn2-account-grant-cursor fn2-account-grant-next fn2-account-principal-id
+   fn2-account-rebind)
  (w state)))

@@ -27,39 +27,41 @@
      :why "The connection's reply window, held for its lifetime.")
     (:principal-reservation :rank 6 :unit :quantity :bound (:profile :p) :reserve :system
      :why "One request's charge on its principal account, held from request admission to its reply; a machine holds at most one.")
-    (:tls-slot :rank 7 :unit :slot :bound (:round2 :ltls 16) :reserve nil
+    (:durable-octets :rank 7 :unit :quantity :bound (:profile :dstore) :reserve :system
+     :why "Octets a principal's appended articles keep durable (4,096-octet blocks, rounded up per article), charged in the append's transaction and released when retention reclaims them.")
+    (:tls-slot :rank 8 :unit :slot :bound (:round2 :ltls 16) :reserve nil
      :why "A handshake job, held for the handshake only.")
-    (:upload-row :rank 8 :unit :row :bound (:profile :u) :reserve nil
+    (:upload-row :rank 9 :unit :row :bound (:profile :u) :reserve nil
      :why "An article input in progress, held while its bytes arrive.")
-    (:chunk-window :rank 9 :unit :window :bound (:round2 :large-upload-windows 16) :reserve nil
+    (:chunk-window :rank 10 :unit :window :bound (:round2 :large-upload-windows 16) :reserve nil
      :why "Two 256 KiB chunk ranges of a large upload, held while it streams.")
-    (:transaction-row :rank 10 :unit :row :bound (:profile :t) :reserve nil
+    (:transaction-row :rank 11 :unit :row :bound (:profile :t) :reserve nil
      :why "A posting transaction from admission to its outcome.")
-    (:identity-reservation :rank 11 :unit :reservation :bound (:profile :t) :reserve nil
+    (:identity-reservation :rank 12 :unit :reservation :bound (:profile :t) :reserve nil
      :why "The Message-ID and operation identity claim of one transaction.")
-    (:cursor-row :rank 12 :unit :row :bound (:profile :x) :reserve nil
+    (:cursor-row :rank 13 :unit :row :bound (:profile :x) :reserve nil
      :why "A query cursor from its command to its last reply byte.")
-    (:wait-row :rank 13 :unit :row :bound (:profile :w) :reserve nil
+    (:wait-row :rank 14 :unit :row :bound (:profile :w) :reserve nil
      :why "A parked consumer wait from registration to its reply or cancellation.")
-    (:subscription-edge :rank 14 :unit :edge :bound (:round2 :esub 4096) :reserve nil
+    (:subscription-edge :rank 15 :unit :edge :bound (:profile :esub) :reserve nil
      :why "One wait row's edge to a stream, reserved at registration.")
-    (:control-output :rank 15 :unit :bytes :bound (:profile :w) :reserve nil
+    (:control-output :rank 16 :unit :bytes :bound (:profile :w) :reserve nil
      :why "The reply window a wake or control reply needs, reserved at registration so delivery never waits.")
-    (:cache-pin :rank 16 :unit :pin :bound (:round2 :cache-profile) :reserve :recovery
+    (:cache-pin :rank 17 :unit :pin :bound (:round2 :cache-profile) :reserve :recovery
      :why "An object lease under a pinned view, held while a reply streams it.")
-    (:batch-membership :rank 17 :unit :records-and-bytes :bound (:round2 :batch 1024 4194304) :reserve nil
+    (:batch-membership :rank 18 :unit :records-and-bytes :bound (:round2 :batch 1024 4194304) :reserve nil
      :why "A transaction's records in a commit batch until publish.")
-    (:storage-job :rank 18 :unit :job :bound (:profile :jread :jwrite) :reserve :recovery
+    (:storage-job :rank 19 :unit :job :bound (:profile :jread :jwrite) :reserve :recovery
      :why "A read or write slot: a storage job row, held across its issue, completion and verification.")
-    (:storage-window :rank 19 :unit :pool-slot :bound (:profile :pool-classes) :reserve :recovery
+    (:storage-window :rank 20 :unit :pool-slot :bound (:profile :pool-classes) :reserve :recovery
      :why "The pool range a storage job reads into or writes from.")
-    (:fence-slot :rank 20 :unit :slot :bound (:profile :fence-slots) :reserve :fence
+    (:fence-slot :rank 21 :unit :slot :bound (:profile :fence-slots) :reserve :fence
      :why "One fence in flight per storage domain.")
-    (:cancel-credit :rank 21 :unit :credit :bound (:profile :ncancel) :reserve :cancel
+    (:cancel-credit :rank 22 :unit :credit :bound (:profile :ncancel) :reserve :cancel
      :why "One outstanding cancellation request.")
-    (:operation :rank 22 :unit :op :bound (:profile :o :qa) :reserve (:close :cancel :arm-wake :fence)
+    (:operation :rank 23 :unit :op :bound (:profile :o :qa) :reserve (:close :cancel :arm-wake :fence)
      :why "One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue.")
-    (:sealable :rank 23 :unit :overlay :bound (:profile :identity-overlays) :reserve nil
+    (:sealable :rank 24 :unit :overlay :bound (:profile :identity-overlays) :reserve nil
      :why "A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it.")))
 
 ; Protected reserves (e): units set aside at init and never lent to ordinary
@@ -76,7 +78,7 @@
      :why "A batch or probe holding its writes can always fence them.")
     (:recovery :covers (:cache-pin :storage-job :storage-window :operation) :issue nil
      :why "Recovery acquires its whole bundle from this reserve at start and never waits for ordinary holders.")
-    (:system :covers (:principal-reservation) :issue nil
+    (:system :covers (:principal-reservation :durable-octets) :issue nil
      :why "Recovery and control are charged to the system reserve of every account dimension.")
     (:service-classes :covers (:service-work) :issue nil
      :why "The four protected service classes of the calendar (ROUND2 section C.2).")))
@@ -489,7 +491,7 @@
 ; Each table, checked over its own data at certification (negative fixtures
 ; for every predicate: tests/resources-unit.lisp).
 (assert-event (fn2-resource-order-p *fn2-resource-order*))
-(assert-event (equal (len *fn2-resource-order*) 23))
+(assert-event (equal (len *fn2-resource-order*) 24))
 (assert-event (fn2-resource-reserves-p *fn2-resource-reserves* *fn2-resource-order*))
 (assert-event (fn2-resource-bundles-p *fn2-resource-bundles* *fn2-resource-order* *fn2-resource-reserves*))
 (assert-event (fn2-resource-releases-p *fn2-resource-releases* *fn2-resource-order*))

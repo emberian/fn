@@ -15,10 +15,10 @@
 (fn2-resource-rejects :order-duplicate
   (fn2-resource-order-p
    (append *fn2-resource-order*
-           (list (cons :operation '(:rank 24 :unit :op :bound (:profile :o) :why "again"))))))
+           (list (cons :operation '(:rank 25 :unit :op :bound (:profile :o) :why "again"))))))
 (fn2-resource-rejects :order-no-why
   (fn2-resource-order-p
-   (append *fn2-resource-order* (list '(:extra :rank 24 :unit :op :bound (:profile :o))))))
+   (append *fn2-resource-order* (list '(:extra :rank 25 :unit :op :bound (:profile :o))))))
 
 (defun fn2-resource-test-bundle (acquires holds reserve transition)
   (declare (xargs :guard t))

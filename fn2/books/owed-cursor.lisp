@@ -14,14 +14,16 @@
 
 ; Reading served beside posting (the seeds use transaction slot 0's
 ; successor rows), with two groups carried. Each seeded batch takes one
-; private overlay per schema it writes (four) and an arena each, and no
-; sealer retires them yet (C1c), so the profile holds 32 overlays and 48
-; 4 KiB pool slots.
+; private overlay per schema it writes (four) and an arena each: 32
+; overlays, 64 4 KiB pool slots, and 32 64 KiB slots so the sealer can
+; reserve its run pages (it stops the core :sealer-full otherwise,
+; C-SEAL-BACKPRESSURE), with one large-upload window.
 (defconst *fn2-cursor-overview-sid* 3)
 (defconst *fn2-cursor-profile*
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2))
   (put-assoc-equal :identity-overlays 32
-   (put-assoc-equal :pool-classes '((8 . 1024) (48 . 4096) (4 . 65536)) *fn2-txn-posting-profile*))))
+   (put-assoc-equal :large-upload-windows 1
+    (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-txn-posting-profile*)))))
 
 ; ---------------------------------------------------------------------------
 ; A seed is (GROUP MID LINE): an article accepted into group GROUP (an
@@ -398,8 +400,7 @@
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2) ("alt.misc" . 3))
   (put-assoc-equal :reading t
    (put-assoc-equal :x 2
-    (put-assoc-equal :large-upload-windows 1
-     (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-cursor-profile*))))))
+    *fn2-cursor-profile*))))
 (defun fn2-cs-conflict (mid byte b fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((mid (fn2-cs-octets mid))
