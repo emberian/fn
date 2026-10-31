@@ -51,9 +51,14 @@
 (defconst *fn2-succ-raw* 12)
 (defconst *fn2-succ-eval* 24)
 (defconst *fn2-succ-res* 36)
+; Row 44 of a staged slot's block: 1 when stage found it fresh (an insert
+; new at the tip, a fold step applied), 0 when it binds nothing (a :union
+; key already present, a fold :unchanged). An arg (:new K) reads it.
+(defconst *fn2-succ-fresh* 44)
 (defconst *fn2-succ-fields-max* 12)
 (defconst *fn2-succ-values-max* 8)
-(assert-event (<= (+ *fn2-succ-res* *fn2-succ-values-max*) *fn2-succ-block*))
+(assert-event (<= (+ *fn2-succ-res* *fn2-succ-values-max*) *fn2-succ-fresh*))
+(assert-event (< *fn2-succ-fresh* *fn2-succ-block*))
 
 ;; Every assembled schema fits a slot: at most 12 entry fields and, for a
 ;; fold, 8 value fields and 12 args per event kind; its octet fields fit the
@@ -275,7 +280,7 @@
       (rec (fn2-succ-txns-record tx fn2-succ-txns))
       ((unless (cond ((equal code *fn2-succ-kind-record*) (and (equal sid 1) (or (equal rec 0) (equal rec (+ 1 i)))))
                      ((equal code *fn2-succ-kind-insert*)
-                      (and (not (fn2-run-layout-fold-p sid)) (member-eq (fn2-run-layout-merge sid) '(:unique :latest))))
+                      (and (not (fn2-run-layout-fold-p sid)) (member-eq (fn2-run-layout-merge sid) '(:unique :latest :union))))
                      (t (natp (fn2-fold-arity sid kind)))))
        (mv :kind fn2-succ-txns fn2-succ-slots))
       (s (+ (* tx *fn2-succ-slots*) i))
@@ -321,8 +326,9 @@
 ; Arg J of slot I of TX from SRC: :value (the integer VALUE), :event (the
 ; member's commit position, written at bind; an insert's integer field, or a
 ; record's article: the article identifier is the commit position), or :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged
-; row, never a record's; never a fold's key arg, which resolve must read).
-; An assigned arg takes no call. B0 is TX's stripe base. :ok, :bounds,
+; row, never a record's; never a fold's key arg, which resolve must read),
+; or :new (VALUE = K: 1 when slot K < I staged fresh, 0 when it binds
+; nothing; never a fold's key arg; C §4a). An assigned arg takes no call. B0 is TX's stripe base. :ok, :bounds,
 ; :state, :kind.
 (defun fn2-succ-arg (tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
@@ -343,10 +349,16 @@
       ((when (or (and insert (fn2-run-layout-octets-max sid j)) (and fold (fn2-fold-assigned-p sid kw j))
                  (and fold (fn2-succ-octet-field sid kcode j))))
        (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
-      (k (floor value 256)) (f (mod value 256)) (ks (+ (* tx *fn2-succ-slots*) k))
+      ;; :out VALUE is K*256+F; :new VALUE is the slot K.
+      (k (if (eq src :new) value (floor value 256))) (f (if (eq src :new) 0 (mod value 256)))
+      (ks (+ (* tx *fn2-succ-slots*) k))
       ((unless (case src
                 (:value t)
                 (:event (or insert (and (equal kcode *fn2-succ-kind-record*) (equal j 0))))
+                (:new (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
+                           (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                           (not (equal (fn2-succ-slots-kind ks fn2-succ-slots) *fn2-succ-kind-record*))
+                           (not (and fold (fn2-succ-key-arg-p (fn2-run-layout-keys sid) 0 sid kw j)))))
                 (:out (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
                            (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
                            (not (equal (fn2-succ-slots-kind ks fn2-succ-slots) *fn2-succ-kind-record*))
@@ -362,9 +374,12 @@
       (events (logand (nfix (fn2-succ-slots-events s fn2-succ-slots)) (- #xffffffff bit)))
       (outs (logand (nfix (fn2-succ-slots-outs s fn2-succ-slots)) (- #xffffffff bit)))
       (late (logand (nfix (fn2-succ-slots-late s fn2-succ-slots)) (- #xffffffff bit)))
-      (fn2-fields (fn2-fields-put row (value (if (eq src :event) 0 value)) (ref-len 0)))
+      ;; (:new K) is an :out of slot K's fresh row.
+      (fn2-fields (fn2-fields-put row (value (case src (:event 0) (:new (+ (* 256 k) *fn2-succ-fresh*)) (otherwise value)))
+                                  (ref-len 0)))
       ((mv code fn2-succ-txns fn2-succ-slots)
-       (fn2-succ-touch tx s set (if (eq src :event) (logior events bit) events) (if (eq src :out) (logior outs bit) outs) late
+       (fn2-succ-touch tx s set (if (eq src :event) (logior events bit) events)
+                       (if (member-eq src '(:out :new)) (logior outs bit) outs) late
                        fn2-succ-txns fn2-succ-slots)))
   (mv code fn2-succ-txns fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-arg (tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields) (fn2-succ-txns fn2-succ-slots fn2-fields)
@@ -488,7 +503,7 @@
         (nk (nfix (fn2-run-layout-keys sid))) (mask (- (ash 1 nk) 1)))
   (cond ((equal code *fn2-succ-kind-record*) nil)
         ((equal code *fn2-succ-kind-insert*)
-         (and (eq (fn2-run-layout-merge sid) :unique)
+         (and (member-eq (fn2-run-layout-merge sid) '(:unique :union))
               (equal (logand (nfix (fn2-succ-slots-set s fn2-succ-slots)) mask) mask)
               (equal (logand (logior (nfix (fn2-succ-slots-events s fn2-succ-slots)) (nfix (fn2-succ-slots-outs s fn2-succ-slots))) mask) 0)))
         (t t))))

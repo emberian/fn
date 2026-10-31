@@ -103,6 +103,12 @@
 ; is the range the fold answers for. A bootstrap (:init (:from FN)) or a later
 ; coverage start ((:from POSITION), the earlier range declared unavailable)
 ; is refused until a fold needs one.
+;; Every value field an integer (no octets, no digest): a :union payload.
+(defun fn2-rs-int-valuesp (value)
+ (declare (xargs :verify-guards nil))
+ (if (atom value) t
+  (and (consp (car value)) (not (eq (cadar value) :digest)) (not (fn2-rs-octetsp (cadar value)))
+       (fn2-rs-int-valuesp (cdr value)))))
 (defun fn2-rf-value-kindp (kind)
  (declare (xargs :verify-guards nil))
  (or (member-eq kind '(:u8 :u16 :u32 :u60 :bool :varint))
@@ -458,6 +464,8 @@
   (cond ((not (and (symbolp name) (natp id) (consp key) (fn2-rs-keyp key) (fn2-layoutp layout)
                    (<= (len layout) *fn2-run-key-fields-max*)
                    (member-eq merge '(:union :latest :unique))
+                   ;; a :union payload is integers, so stage compares it whole
+                   (or (not (eq merge :union)) (fn2-rs-int-valuesp value))
                    (member-eq page-kind '(:run-data :manifest))
                    (or (null fold) (fn2-rf-okp fold key value merge))))
          `(make-event (er soft 'defrunschema "Malformed run schema ~x0." ',name)))

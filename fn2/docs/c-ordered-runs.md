@@ -673,6 +673,13 @@ losing conflict whose winner was dropped.
   verdict)` reads `:applied` or `:unchanged` once staged (`:state` before, `:kind` for an insert or
   record slot). The cursor's `:ack` declares it, so an ack that lost its race to a later one answers
   `behind` instead of `accepted` (e-continuation.md E.P1) and the transaction still commits.
+- **C-UNION-STAGE (§4a vocabulary, 2026-10-31).** An insert into a `:union` schema reads its key at
+  the tip, as a `:unique` one does. Found with the same payload, it is already present: stage answers
+  `:ok`, the slot binds nothing, and `fn2-successor-applied` is unavailable for inserts (`:kind`).
+  Found with another payload, it is `:inconsistent`. A `:union` schema's value fields are integers
+  (defrunschema refuses octets and digests there), so stage compares the payload whole, row by row.
+  Each staged slot's block row 44 (`*fn2-succ-fresh*`) holds 1 when fresh and 0 when it binds nothing.
+  The arg source `(:new K)` reads it from an earlier slot K, so a fold counts only fresh facts.
 - **C-SUCCESSOR-BOOK.** The successor (C-S2, now C-S3) is books of its own, apart from
   `machines-c.lisp` (the decision, C-S1): together they made one book of 58.8 s on forge. C-S3 is
   three books in a chain along its phases, `machines-c-successor.lisp` (tables, the `:prepare`

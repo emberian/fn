@@ -427,7 +427,7 @@
  :doc "Declare one write slot of a transaction (schema and kind).")
 (defcost fn2-successor-arg :answers (:bounds :kind :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
- :doc "Give one argument of a write slot: a value, the member's commit position, or a field of an earlier slot's row.")
+ :doc "Give one argument of a write slot: a value, the member's commit position, a field of an earlier slot's row, or an earlier slot's freshness.")
 (defcost fn2-successor-arg-octets :answers (:bounds :kind :ok :owner :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one octet argument of an insert slot by reference.")

@@ -125,6 +125,24 @@
 ; at the tip (:duplicate; a key with an :out or :event arg is fresh by
 ; construction and bind's insert refuses a duplicate); its size, a late
 ; octet arg counted at its bound (C-S3a); its late args unfilled.
+; Write the fresh row of the slot block at ENTRY (*fn2-succ-fresh*).
+(defun fn2-succ-set-fresh (entry x fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (and (fn2-fields-wfp fn2-fields) (natp entry) (natp x))))
+ (if (and (natp entry) (< (+ entry *fn2-succ-fresh*) (fn2-fields-rows fn2-fields)))
+     (fn2-fields-put (+ entry *fn2-succ-fresh*) (value (if (equal x 1) 1 0)) (ref-len 0))
+   fn2-fields))
+(fn2-fields-preserves fn2-succ-set-fresh (entry x fn2-fields) :position nil :raw-rows t)
+
+; Whether the integer value fields [NK, NF) of the staged entry at A and the
+; entry at B agree (a :union key's payload; a :union schema's value fields
+; are integers, so this is the whole payload).
+(defun fn2-succ-same-ints (nf nk a b fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields) :measure (nfix (- (nfix nf) (nfix nk)))))
+ (cond ((not (and (natp nk) (natp nf) (< nk nf) (natp a) (natp b))) t)
+       ((not (and (< (+ a nk) (fn2-fields-rows fn2-fields)) (< (+ b nk) (fn2-fields-rows fn2-fields)))) nil)
+       ((not (equal (fn2-fields-value (+ a nk) fn2-fields) (fn2-fields-value (+ b nk) fn2-fields))) nil)
+       (t (fn2-succ-same-ints nf (+ 1 nk) a b fn2-fields))))
+
 (defun fn2-succ-stage-insert (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed) (fn2-overlays-wfp fn2-overlays)
@@ -144,7 +162,7 @@
       ((mv code fn2-fields)
        (if (fn2-succ-reads-key s fn2-succ-slots)
            (b* ((rows (fn2-overlays-rows fn2-overlays))
-                ((mv code best & fn2-fields)
+                ((mv code best pos fn2-fields)
                  (if (equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
                      (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) (fn2-succ-slots-sk s fn2-succ-slots)
                                         (fn2-succ-slots-ss s fn2-succ-slots) (fn2-succ-slots-sg s fn2-succ-slots) rows 0
@@ -152,26 +170,48 @@
                    (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
                                       rows 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
                 ((unless (eq code :ok)) (mv code fn2-fields))
-                ((when (and (natp best) (< best rows))) (mv :duplicate fn2-fields))
+                (union (eq (fn2-run-layout-merge sid) :union))
+                ((when (and (natp best) (< best rows) (not union))) (mv :duplicate fn2-fields))
+                ;; A :union key already at the tip: the same payload is
+                ;; already present, another is :inconsistent (C §4a).
+                ((when (and (natp best) (< best rows) (natp pos)))
+                 (mv-let (code end fn2-fields)
+                   (fn2-ov-entry best pos (+ b0 *fn2-idc-eb*) fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+                   (declare (ignore end))
+                   (if (not (eq code :ok)) (mv code fn2-fields)
+                     (mv (if (fn2-succ-same-ints nf (nfix (fn2-run-layout-keys sid)) entry (+ b0 *fn2-idc-eb*) fn2-fields)
+                             :present :inconsistent)
+                         fn2-fields))))
                 ((unless (equal (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
                                 (fn2-succ-slots-vrun s fn2-succ-slots)))
                  (mv :stale fn2-fields))
-                ((when (equal (fn2-succ-slots-found s fn2-succ-slots) 1)) (mv :duplicate fn2-fields)))
+                ((when (and (equal (fn2-succ-slots-found s fn2-succ-slots) 1) (not union))) (mv :duplicate fn2-fields))
+                ((when (equal (fn2-succ-slots-found s fn2-succ-slots) 1))
+                 (mv (if (fn2-succ-same-ints nf (nfix (fn2-run-layout-keys sid)) entry
+                                             (- (+ entry *fn2-succ-res*) (nfix (fn2-run-layout-keys sid))) fn2-fields)
+                         :present :inconsistent)
+                     fn2-fields)))
             (mv :ok fn2-fields))
          (mv :ok fn2-fields)))
+      ((when (eq code :present))
+       (let* ((fn2-succ-slots (fn2-succ-slots-put s (size 0) (filled 0) (unchanged 1)))
+              (fn2-fields (fn2-succ-set-fresh entry 0 fn2-fields)))
+        (mv :ok fn2-succ-slots fn2-fields)))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((unless (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
       (size (fn2-run-layout-size sid 0 entry fn2-fields))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
       ; A late arg is filled again after every stage (its entry row was just
       ; recopied from the raw row, which holds only its bound).
-      (fn2-succ-slots (fn2-succ-slots-put s (size size) (filled 0))))
+      (fn2-succ-slots (fn2-succ-slots-put s (size size) (filled 0) (unchanged 0)))
+      (fn2-fields (fn2-succ-set-fresh entry 1 fn2-fields)))
   (mv :ok fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-stage-insert (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-events fn2-succ-slots-oset fn2-succ-slots-sk
   fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-vrun fn2-succ-slots-found fn2-run-layout-fields fn2-succ-eval-args
-  fn2-succ-fits fn2-succ-reads-key fn2-succ-tip-scan fn2-run-version fn2-run-layout-size))
+  fn2-succ-fits fn2-succ-reads-key fn2-succ-tip-scan fn2-run-version fn2-run-layout-size fn2-ov-entry fn2-succ-same-ints
+  fn2-run-layout-keys fn2-run-layout-merge fn2-succ-set-fresh))
 
 ; Stage fold slot S (slot I) of TX: its event's args evaluated, the key's
 ; row at the tip into the slot's row, the assigned args computed from it, the
@@ -222,7 +262,8 @@
       ;; nothing (size 0, bind skips it) and stage goes on.
       ((when (eq code :unchanged))
        (let* ((fn2-succ-slots (fn2-succ-slots-set-size s 0 fn2-succ-slots))
-              (fn2-succ-slots (fn2-succ-slots-set-unchanged s 1 fn2-succ-slots)))
+              (fn2-succ-slots (fn2-succ-slots-set-unchanged s 1 fn2-succ-slots))
+              (fn2-fields (fn2-succ-set-fresh entry 0 fn2-fields)))
         (mv :ok fn2-succ-slots fn2-fields)))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((unless (fn2-succ-fits nk 0 sid entry fn2-fields)) (mv :range fn2-succ-slots fn2-fields))
@@ -230,14 +271,15 @@
       (size (fn2-run-layout-size sid 0 entry fn2-fields))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
       (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots))
-      (fn2-succ-slots (fn2-succ-slots-set-unchanged s 0 fn2-succ-slots)))
+      (fn2-succ-slots (fn2-succ-slots-set-unchanged s 0 fn2-succ-slots))
+      (fn2-fields (fn2-succ-set-fresh entry 1 fn2-fields)))
   (mv :ok fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-stage-fold (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-vrun fn2-succ-slots-found
   fn2-succ-kindkw fn2-fold-arity fn2-succ-required fn2-run-layout-keys fn2-run-layout-fields fn2-succ-eval-args fn2-succ-key-rows
   fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign fn2-fold-apply
-  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg))
+  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh))
 
 ;; Every slot of TX from I (K of them), in order: (mv code i slots fields).
 (defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
