@@ -3,7 +3,9 @@
     python -m fn2.tests.surface.nightly_nntp OUT SHA     (OUT holds sim/ and native/, each a run_surface --out)
 
 Writes OUT/table.md (per target: per-form status and every test's outcome) and OUT/summary.txt, one line:
-served / interim / WIRE opened-judged-unjudged / disagreements per target, and NOT RUN rows grouped by owner.
+the served surface (fn2_conn_interim.json at the tree under test: the verbs served, the interim rows left by
+owner, BRICKS-20261031 section 3's burndown), then served / interim / WIRE opened-judged-unjudged /
+disagreements per target, and NOT RUN rows grouped by owner.
 """
 import collections
 import json
@@ -69,20 +71,28 @@ def line(r):
     return head + ('; ' + s['detail'] if s.get('detail') else '') + ('; errors ' + '; '.join(r['errors']) if r['errors'] else '')
 
 
+def surface():
+    """What serves at this tree: D's interim table, read where the S form reads it."""
+    table = json.loads((Path(__file__).resolve().parent / 'fn2_conn_interim.json').read_text())
+    left = collections.Counter(row['quest'] for row in table['interim'].values())
+    return (f"serves {len(table['served_verbs'])} verbs ({' '.join(table['served_verbs'])}); "
+            f"{sum(left.values())} interim rows left: " + ', '.join(f'{q} {n}' for q, n in sorted(left.items())))
+
+
 def main(out, sha):
     out = Path(out)
     reports = [target_report(out / name) for name in ('sim', 'native') if (out / name / 'surface.json').exists()]
     waits = collections.Counter()
     for r in reports:
         waits += r['waits']
-    table = [f'# H nightly {out.name} (dev {sha})', '']
+    table = [f'# H nightly {out.name} (dev {sha})', '', surface(), '']
     for r in reports:
         table += [f"## --target {r['target']} (exit {r['exit']})", '', line(r), '',
                   '| form | test | outcome | reason |', '|---|---|---|---|']
         table += [f'| {f} | {n} | {o} | {why} |' for f, n, o, why in r['rows']]
         table += ['', 'NOT RUN by owner: ' + ', '.join(f'{w} {n}' for w, n in r['waits'].most_common()), '']
     (out / 'table.md').write_text('\n'.join(table) + '\n')
-    summary = (f'H nightly {out.name} {sha}: ' + ' | '.join(line(r) for r in reports) +
+    summary = (f'H nightly {out.name} {sha}: {surface()} | ' + ' | '.join(line(r) for r in reports) +
                ' | NOT RUN by owner (both targets): ' + ', '.join(f'{w} {n}' for w, n in waits.most_common()))
     (out / 'summary.txt').write_text(summary + '\n')
     print(summary)
