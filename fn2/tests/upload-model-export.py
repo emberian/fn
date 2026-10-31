@@ -51,9 +51,37 @@ FIXTURES = [
 ]
 REFUSE = re.compile(rb"441 \.\*\?\(\?:([A-Za-z |-]+)\)\.\*\Z")
 
+# fn2-txn's fixtures (tests/txn-unit.lisp's): the model's store seeded with
+# articles (Message-ID, source) before the POST, in txn-unit's profile
+# (local.test carried). Each row adds MID (the octets, nil when absent),
+# SEEDS ((mid source) ...) and IDENTITY: t when the model's verdict is its
+# identity branch (stored, duplicate, conflict), so the served answer is
+# the identity decision.
+MID = b"<one@example.invalid>"
+GOOD_T = [b"From: a@example.invalid", b"Subject: hello", b"Newsgroups: local.test",
+          b"Message-ID: " + MID, b"", b"body", b"..stuffed"]
+def _source(lines):
+    return framing.decode_block(b"".join(l + b"\r\n" for l in lines) + b".\r\n")
+SAME = [(MID, _source(GOOD_T))]
+OTHER = [(MID, _source(GOOD_T) + b"x\r\n")]
+XREF_T = GOOD_T[:3] + [b"Xref: h g:1"] + GOOD_T[3:]
+TXN_FIXTURES = [
+    ("valid", GOOD_T, []),
+    ("duplicate", GOOD_T, SAME),
+    ("conflict", GOOD_T, OTHER),
+    ("subject-missing-seeded", [l for l in GOOD_T if l != b"Subject: hello"], SAME),
+    ("xref-seeded", XREF_T, SAME),
+    ("xref", XREF_T, []),
+    ("no-carried-group", [GOOD_T[0], GOOD_T[1], b"Newsgroups: no.such.group, other.group"] + GOOD_T[3:], []),
+    ("groups-mixed", [GOOD_T[0], GOOD_T[1], b"Newsgroups: x.y,local.test , z"] + GOOD_T[3:], []),
+    ("no-message-id-seeded", [l for l in GOOD_T if not l.startswith(b"Message-ID")], SAME),
+]
+IDENTITY_REASONS = ({"this article is already stored here"}, {"a different article with this Message-ID is stored here"})
 
-def judge(block):
-    m = nntp_model.NntpModel({g: {} for g in GROUPS}, [], {}, {"article_limit": LIMIT})
+
+def judge(block, groups=GROUPS, seeds=()):
+    articles = [(mid.decode(), src, ["local.test"]) for mid, src in seeds]
+    m = nntp_model.NntpModel({g: {} for g in groups}, articles, {}, {"article_limit": LIMIT})
     c = m.connect(tls=False, implicit_tls=False)
     for expect, status in ((c.greeting(), b"200 ready\r\n"), (c.send(b"POST\r\n"), b"340 send\r\n")):
         expect.update(status, None)
@@ -95,6 +123,18 @@ def main():
             raise SystemExit(f"{name}: decode and judgement disagree")
         jtext = "(" + " ".join([":" + j[0]] + ['"' + a + '"' for a in j[1:]]) + ")"
         rows.append(f'("{name}" {octets(block)}\n    {octets(data) if data is not None else "nil"}\n    {jtext})')
+    print("\n   ".join(rows) + "))")
+    print("(defconst *fn2-txn-model-cases*\n '(", end="")
+    rows = []
+    for name, lines, seeds in TXN_FIXTURES:
+        block = b"".join(l + b"\r\n" for l in lines) + b".\r\n"
+        data = framing.decode_block(block)
+        j = judge(block, ("local.test",), seeds)
+        mid = MID if any(l.startswith(b"Message-ID: ") for l in lines) else None
+        identity = mid is not None and (j == ["accept"] or (j[0] == "refuse" and set(j[1:]) in IDENTITY_REASONS))
+        jtext = "(" + " ".join([":" + j[0]] + ['"' + a + '"' for a in j[1:]]) + ")"
+        stext = "(" + " ".join("(" + octets(m) + " " + octets(src) + ")" for m, src in seeds) + ")"
+        rows.append(f'("{name}" {octets(block)}\n    {octets(data)}\n    {jtext} {octets(mid) if mid else "nil"}\n    {stext} {"t" if identity else "nil"})')
     print("\n   ".join(rows) + "))")
 
 

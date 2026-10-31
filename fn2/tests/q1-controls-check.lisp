@@ -2,9 +2,8 @@
 ; section 4). fn2/tests/q1-controls.lsp records four runs per kind into evidence/q1-controls.lisp;
 ; this book states what each kind's four records must say and asserts it. The Q1 case rows of a
 ; kind name its check (fn2-q1.lisp, :shared-handler-mutation) beside its independent contract
-; (q1-contracts.lisp, q1-contracts-b.lisp and q1-contracts-c.lisp, :contract :independent). fn2-commit has no control
-; until B5-4 ports its arms (still :unchecked) and fn2-txn none yet (D5 1/n); their case rows name
-; neither, and the export lists them so.
+; (q1-contracts.lisp, -b, -c and -d, :contract :independent). fn2-commit has no control until
+; B5-4 ports its arms (still :unchecked); its case rows name neither, and the export lists them so.
 (in-package "ACL2")
 (include-book "evidence/q1-controls")
 (include-book "../books/declare")
@@ -35,15 +34,15 @@
 (defun fn2-recovery-machine-shared-handler-control () (declare (xargs :guard t))
   (fn2-q1-control-ok 'fn2-recovery-machine *fn2-q1-controls*))
 (defun fn2-sealer-shared-handler-control () (declare (xargs :guard t)) (fn2-q1-control-ok 'fn2-sealer *fn2-q1-controls*))
+(defun fn2-txn-shared-handler-control () (declare (xargs :guard t)) (fn2-q1-control-ok 'fn2-txn *fn2-q1-controls*))
 (assert-event (and (fn2-conn-shared-handler-control) (fn2-echo-shared-handler-control)
                    (fn2-listener-shared-handler-control) (fn2-scribe-shared-handler-control)
                    (fn2-upload-shared-handler-control) (fn2-recovery-machine-shared-handler-control)
-                   (fn2-sealer-shared-handler-control)))
+                   (fn2-sealer-shared-handler-control) (fn2-txn-shared-handler-control)))
 ; The judge refuses a kind without records, a shared mutant that ran on one core only, a
 ; shared mutant TRACE caught, and a shared mutant under which the oracle signalled.
 (assert-event
  (and (not (fn2-q1-control-ok 'fn2-commit *fn2-q1-controls*))
-      (not (fn2-q1-control-ok 'fn2-txn *fn2-q1-controls*))
       (not (fn2-q1-control-ok 'k '((k :baseline :pass :pass 0 0) (k :shared :pass :fail 1 0)
                                    (k :concrete-only :fail :fail 1 0) (k :restored :pass :pass 0 0))))
       (not (fn2-q1-control-ok 'k '((k :baseline :pass :pass 0 0) (k :shared :fail :fail 1 1)
@@ -52,4 +51,4 @@
                                    (k :concrete-only :fail :fail 1 0) (k :restored :pass :pass 0 0))))
       (fn2-q1-control-ok 'k '((k :baseline :pass :pass 0 0) (k :shared :pass :fail 1 1)
                               (k :concrete-only :fail :fail 1 0) (k :restored :pass :pass 0 0)))))
-(value-triple (cw "Q1 CONTROLS: conn, echo, listener, scribe, upload, recovery-machine, sealer PASS (baseline, shared blind to TRACE and seen by the oracle, concrete-only seen by TRACE, restored); fn2-commit: none until B5-4 ports its arms; fn2-txn: none yet~%"))
+(value-triple (cw "Q1 CONTROLS: conn, echo, listener, scribe, upload, recovery-machine, sealer, txn PASS (baseline, shared blind to TRACE and seen by the oracle, concrete-only seen by TRACE, restored); fn2-commit: none until B5-4 ports its arms~%"))

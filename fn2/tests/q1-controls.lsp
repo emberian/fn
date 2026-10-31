@@ -15,6 +15,7 @@
 (include-book "fn2/tests/q1-contracts")
 (include-book "fn2/tests/q1-contracts-b")
 (include-book "fn2/tests/q1-contracts-c")
+(include-book "fn2/tests/q1-contracts-d")
 (set-guard-checking nil)
 :q
 ; The core whose sealer step is running (fn2-run-install takes the table, not the core).
@@ -141,6 +142,17 @@
                                          (funcall orig r schema run top slot gen unit counter (- entries 1) okind oslot ogen table))
                                 (funcall orig r schema run top slot gen unit counter entries okind oslot ogen table))))))
                     (setf (symbol-function 'fn2-sealer-step) step)))
+                ; fn2-txn: the identity decision answers a second content for a recorded Message-ID
+                ; as stored (the transaction then goes on toward accepting it).
+                (run-kind 'fn2-txn (lambda () (and (fn2-q1t-ok (fn2-q1t-case "conflict") nil)
+                                                   (fn2-q1t-ok (fn2-q1t-case "xref-seeded") nil)))
+                  'fn2-identity-step
+                  (lambda (orig)
+                    (lambda (d budget core)
+                      (multiple-value-bind (answer core) (funcall orig d budget core)
+                        (if (and (active core) (eq answer :conflict))
+                            (progn (note core) (values :stored core))
+                          (values answer core))))))
                 ; fn2-scribe: the checksum the patch writes is off by one bit.
                 (run-kind 'fn2-scribe (lambda () (fn2-q1c-scribe-ok 1001 2000)) 'fn2-scribe-patch-loop
                   (lambda (orig)

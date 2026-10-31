@@ -211,7 +211,7 @@
 ;; Each kind's independent contract (fn2/tests/q1-contracts.lisp) and its
 ;; shared-handler control (fn2/tests/q1-controls-check.lisp, judging the
 ;; four-way runs of fn2/tests/q1-controls.lsp), named by every run and
-;; observe case of the kind. fn2-commit has neither until B5-4, fn2-txn none yet; an executor or
+;; observe case of the kind. fn2-commit has neither until B5-4; an executor or
 ;; router case shares no machine handler.
 (defconst *fn2-q1-kind-contracts*
   '((fn2-conn fn2-conn-wire-correct fn2-conn-shared-handler-control)
@@ -220,7 +220,8 @@
     (fn2-scribe fn2-scribe-reads-back fn2-scribe-shared-handler-control)
     (fn2-upload fn2-upload-judged-and-hashed fn2-upload-shared-handler-control)
     (fn2-recovery-machine fn2-recovery-machine-recovers fn2-recovery-machine-shared-handler-control)
-    (fn2-sealer fn2-sealer-seals-the-directory fn2-sealer-shared-handler-control)))
+    (fn2-sealer fn2-sealer-seals-the-directory fn2-sealer-shared-handler-control)
+    (fn2-txn fn2-txn-answers-by-identity fn2-txn-shared-handler-control)))
 (defun fn2-q1-kind-contract (case)
   (declare (xargs :verify-guards nil))
   (and (member-eq (car case) '(:run :observe))
