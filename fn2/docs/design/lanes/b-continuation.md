@@ -24,14 +24,17 @@ fn2-commit is its first B kind. The port's input in any form is the arm table an
 ## Next (owned order; WORKFLOW-20261031; BRICKS-20261031 §5 is the program order)
 Landed: named stops 75adea036; the envelope c0ae11af4 (record header = event envelope; §11b S9/S10).
 Landed: B-S2 6d4e7f977; the section split c4dde2215 (assembly-callbacks-bt between -b and -b2;
-forge -b 45 s, -bt 41 s, -b2 48 s); B-S2's three keystones ca3aded2b (commit-proof.lisp over
+forge -b 45 s, -bt 41 s, -b2 48 s); E's control-connection format rows cd45d4719 (fn2-b-ctl-rows :control-connections default 2,
+fn2-b-ctl-slot = 4+w+S; floor 4+w+c; amended: the slot's own 128-row stripe, no stripe below the reads);
+B-S2's three keystones ca3aded2b (commit-proof.lisp over
 fn2-commit-txn-proof-run; teeth in tests/commit-txn-unit.lisp; b-durability.md 11b).
 1. **PARKED (ember's spine-only ruling, 2026-10-31).** No B5-4b, B6 or commit port until main wakes
    the seat (the port follows G3). Open items when woken: rebase over C's *fn2-b-txn-field-rows*
    (machines-b's fn2-b-field-rows; txn stripe 1024 -> 2048) when main sends C's sha; the cross-owner
    copy-range is queued at the form seat (then retire B-TXN-COPY); S10's borrow edge and block hash
    come with D4 3/n. The post-landing check at ca3aded2b on forge b54 is green (commit-txn,
-   sim-layer-b, commit-proof units over the rebuilt tree). Nothing of B's runs on forge.
+   sim-layer-b, commit-proof units over the rebuilt tree). Nothing of B's runs on forge. Standing reds not B's: q1-unit's catalogue pin and a q1-teeth tooth
+   reading the generation of a kind with no row in the teeth profile (dev's new kinds).
 2. B5-4b replay. 3. The twelve arms' port in the form (stops to :stops).
 Forge: tree /build/lanes/b54 (at c0ae11af4's parent + diff). Sync by copying changed files, NOT
 git checkout + apply (that touches every file and recertifies the whole chain, ~40 min).

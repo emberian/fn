@@ -72,20 +72,25 @@ inventoried retirement or an `intended-skips.json` entry; 0 otherwise.
 
 ## fn2 today
 
-The last laptop nightly's line is in `build/h8/nightly/LATEST.txt` (below). At dev
-10e454049 and f794c78f3, 1,000 examples × 50 steps:
+The last laptop nightly's line is in `build/h8/nightly/LATEST.txt` (below). At dev b1ccb0444
+(the cursor, D6 1/n, with the interim table regenerated), 1,000 examples × 50 steps:
 
 | target | form | result |
 |---|---|---|
-| `fn2` | S | 16,730 served, 0 disagreements, 15,741 interim (POST 713 for D5; 17 verbs, 15,028, for D6), WIRE 17,776 opened = judged ok, 105 s |
-| `fn2-native` | S | the same counts, WIRE and ENVELOPE ok on all 17,776 connections, 298 s (M1b's gate) |
-| `fn2-native` | E | 30 tests, 0 failures. 24 natives are owed host contracts (83 native tests), led by `operator CONFIG init` with groups (no groups until D6), `store STORE init`, the FNCT control socket, and the developer `model` and `store` verbs. There are also 3 intended skips (hbox fixtures), 1 opt-in, and the rfc3977 fixture (owed at its setup's `init`). |
-| `fn2-native` | F | named skip: the differential's owner is fn1's fuzz Node with groups and a login (D6, E2) |
+| both | served surface | 14 verbs: CAPABILITIES HELP QUIT MODE DATE AUTHINFO XREDEEM, and the cursor's GROUP LISTGROUP NEXT LAST STAT OVER XOVER. 16 interim rows left: D6 10, D5 3, D7 1, E2 1, E4 1 |
+| `fn2` | S | 20,723 served, 0 disagreements, 9,777 interim (POST 811 for D5; 8,966 for D6), WIRE 18,837 opened = judged ok |
+| `fn2-native` | S | the same counts, WIRE and ENVELOPE ok on all 18,837 connections |
+| `fn2-native` | E | 0 failures. The natives are owed host contracts (`operator CONFIG init` with groups, `store STORE init`, the FNCT control socket, the developer `model` and `store` verbs). There are also 3 intended skips (hbox fixtures), 1 opt-in, and the rfc3977 fixture (owed at its setup's `init`). |
+| `fn2-native` | F | named skip: the differential's owner is fn1's fuzz Node with groups and a login |
 | `fn2-native` | H | named skip: no nntp operations observed |
 
-M1a (the simulator) and M1b (the socket) both reach the served-verb gate with zero
-disagreements. The E rows turn live in this order: `init` with groups (D6), then
-`store init`, then the control socket (E1).
+**What the S form does not reach yet: the cursor's own replies.** Both sessions run a profile
+with no read rows, so the node serves no archive. A well-formed GROUP, LISTGROUP, STAT, OVER or
+XOVER answers 503, and NEXT and LAST answer 412 (`*fn2-answer-unread*`). The model states this
+as policy `archive` false in `D3_POLICY`. The cursor's 211, 223, 224 and 42x replies get judged
+once a session profile has read rows and a published group. `D3_POLICY` then sets `archive` true
+and the model's groups to that group. Likewise, the E rows that need groups turn live when the
+served node takes groups at `init`.
 
 ## The laptop nightly (fn2; cron 03:30, `fn2/tests/harness/laptop_nightly.sh`)
 
