@@ -7,6 +7,12 @@
 ; parks again. Every group then answers through the run leg of the lookup.
 ; Without the checker row 3 + :large-upload-windows in the profile
 ; (C-SEAL-NO-ROW, until B5-4a) the row is stopped and the overlay stays.
+; Backpressure has no wake until M2's eviction, so it stops the core by
+; name instead of parking the row (controls at the end): no 256-byte slot
+; for the hash workspace at the pick (:sealer-full), no 64 KiB page
+; workspace in the build (:sealer-full), every cache row held by another
+; page (:sealer-cache), no free installed-run row at install
+; (:sealer-full).
 ; Run: sh fn2/tools/certify.sh tests/sealer-machine-unit.lisp
 (in-package "ACL2")
 (include-book "../books/executor")
@@ -112,3 +118,61 @@
       (equal (fn2-b-format-slots *fn2-smu-profile*) 5)
       (fn2-core-profilep *fn2-smu-profile*)
       (not (fn2-core-profilep (put-assoc-equal :format-slots 4 *fn2-smu-profile*)))))
+
+;; Backpressure controls. After genesis, take away one resource, then run:
+;; the core stops with the named reason, the sealer's row is :stopped and
+;; the groups overlay is not retired (frozen).
+(defun fn2-smu-exhaust (fuel class fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp fuel) fn2-core
+  (mv-let (code slot gen fn2-core) (fn2-core-reserve class 5 1 1 fn2-core)
+   (declare (ignore slot gen))
+   (if (eq code :ok) (fn2-smu-exhaust (- fuel 1) class fn2-core) fn2-core))))
+(defun fn2-smu-hold-cache (i n fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+ (if (>= (nfix i) (nfix n)) fn2-core
+  (let ((fn2-core (stobj-let ((fn2-run-cache (fn2-core-run-cache fn2-core)))
+                   (fn2-run-cache)
+                   (if (< (nfix i) (fn2-run-cache-rows fn2-run-cache))
+                       (fn2-run-cache-put (nfix i) (state *fn2-run-cache-state-ready*) (unit 999999))
+                     fn2-run-cache)
+                   fn2-core)))
+   (fn2-smu-hold-cache (+ 1 (nfix i)) n fn2-core))))
+(defun fn2-smu-hold-runs (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-run-installed (fn2-core-run-installed fn2-core)))
+  (fn2-run-installed)
+  (if (< 0 (fn2-run-installed-rows fn2-run-installed))
+      (fn2-run-installed-put 0 (state *fn2-run-installed-state-live*) (schema 99) (run 999999))
+    fn2-run-installed)
+  fn2-core))
+(defun fn2-smu-pressure (what profile fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor profile :null nil fn2-core))
+      (fn2-core (case what
+                  (:hash (fn2-smu-exhaust 64 1 fn2-core))
+                  (:page (fn2-smu-exhaust 64 3 fn2-core))
+                  (:cache (fn2-smu-hold-cache 0 2 fn2-core))
+                  (otherwise (fn2-smu-hold-runs fn2-core))))
+      (fn2-core (fn2-smu-turns 400 fn2-core)))
+  (mv (list (fn2-exec-status fn2-core) (fn2-core-stop-reason fn2-core) (car (fn2-smu-row fn2-core))
+            (fn2-smu-phases 0 1 fn2-core))
+      fn2-core)))
+(defun fn2-smu-pressure-result (what profile)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-smu-pressure what profile fn2-core) r)))
+(defconst *fn2-smu-small*
+ (put-assoc-equal :run-cache 2 (put-assoc-equal :identity-runs 1 *fn2-smu-profile*)))
+(assert-event
+ (fn2-smu-check (list (fn2-smu-pressure-result :hash *fn2-smu-profile*)
+                      (fn2-smu-pressure-result :page *fn2-smu-profile*)
+                      (fn2-smu-pressure-result :cache *fn2-smu-small*)
+                      (fn2-smu-pressure-result :runs *fn2-smu-small*))
+                `((:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
+                  (:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
+                  (:stop ,*fn2-stop-reason-sealer-cache* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
+                  (:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*)))))
+;; The small profile without the pressure still seals (the controls' teeth).
+(assert-event
+ (fn2-smu-check (cadr (fn2-smu-result *fn2-smu-small* 400))
+                `(((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*) :idle ,*fn2-stop-reason-none*)))

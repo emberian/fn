@@ -26,7 +26,7 @@
           fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests)
  :doc "One bounded seal step: at most 4,096 bytes of page or filter work, one entry added, or one install.")
 (defcost fn2-sealer-refuse :tables (fn2-core-control)
- :doc "Stop the core: a seal step's refusal is an invariant (:sealer).")
+ :doc "Stop the core by name: a seal step refused for want of a pool slot (:sealer-full), a cache row (:sealer-cache), or as an invariant (:sealer).")
 
 (defmachine fn2-sealer
  :states (:sealing :stopped)

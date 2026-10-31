@@ -495,8 +495,9 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   used before the index exists; the core events assert `*fn2-sealer-kind*` equals it.
 - **C-SEALER-MACHINE (C1c).** `fn2-sealer` (capacity 1; phases `:sealing :stopped`) drives
   `fn2-seal-step` through the core wrapper `fn2-sealer-step` (defcost 4,096 bytes over the 16
-  tables): `:more :retired :done` keep it runnable; `:idle :full :cache` park it on the D0 wait
-  kind `:sealable`; any other answer stops the core (`:sealer`). It is woken by the grant
+  tables): `:more :retired :done` keep it runnable; `:idle` parks it on the D0 wait kind
+  `:sealable`; `:full` and `:cache` stop the core by name (`:sealer-full`, `:sealer-cache`; C-SEAL-
+  BACKPRESSURE); any other answer stops it as an invariant (`:sealer`). It is woken by the grant
   service's fifth source (main's ruling: a D0 wait and a grant, never a direct wake id): C attaches
   `fn2-sealer-ready` (the row parked on `:sealable` in `:sealing`, the seal row idle, an overlay
   sealable) and `fn2-sealer-grant` (clear the wait, wake the row) to the constrained pair together,
@@ -508,6 +509,18 @@ statement; evidence only grows. Exact octets are kept permanently (STORAGE §4 d
   Measured (tests/sealer-machine-unit): the tiny profile's genesis groups overlay is sealed into a
   three-entry run by the real executor, the overlay retired, the row parked again, the executor
   idle, and every group answers through the lookup's run leg.
+- **C-SEAL-BACKPRESSURE (interim until M2's eviction gives a resource wake).** The sealer's
+  wake (`fn2-seal-pending-p`: the seal row idle and an overlay sealable) covers only the empty
+  case. A row parked on `:full` or `:cache` in the build or at install has pending-p false, so it
+  was never woken: a silent stall. A row parked on `:full` at the pick has pending-p true, so it was
+  re-granted every turn: a spin. Both were found writing the arm table for the machine-form
+  redesign. Until a page workspace, a cache row or an installed-run row freed is a wake, they stop
+  the core by name: `:sealer-full` (a pool class or the installed-run rows exhausted) or
+  `:sealer-cache` (a direct-mapped cache row held by another page; no eviction before M2's cold
+  leg). Assert, never absorb. Controls are in tests/sealer-machine-unit, one per case: no hash
+  workspace slot at the pick, no page workspace in the build, both cache rows held, the one run
+  row held. Each stops by its name, with the row :stopped and the overlay still frozen; the same
+  small profile without the pressure seals as before.
 - **C-SEAL-NO-ROW (interim until B5-4a).** A profile without the checker row 3 + windows (today
   every profile that does not set `:format-slots` to at least 4 + windows) stops the sealer's row
   at genesis: overlays then accumulate as before C1c (backpressure at stage). B5-4a sizes the

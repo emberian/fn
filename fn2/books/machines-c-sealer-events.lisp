@@ -80,28 +80,37 @@
    ;; The attachment proves the pair's constraints (type, shape, liveness)
    ;; from the three lemmas above and the grant's preserves lemmas.
    (defattach (fn2-sealable-ready-p fn2-sealer-ready) (fn2-sealable-grant-one fn2-sealer-grant))
-   (defun fn2-sealer-refuse (fn2-core)
+   ;; CODE names the stop: a pool exhausted (:full) or a cache row held by
+   ;; another page (:cache) is :sealer-full / :sealer-cache, any other
+   ;; refusal :sealer.
+   (defun fn2-sealer-refuse (code fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (fn2-core-stop *fn2-stop-reason-sealer* fn2-core))
-   (fn2-core-preserves fn2-sealer-refuse (fn2-core) :rows nil)
+    (fn2-core-stop (case code (:full *fn2-stop-reason-sealer-full*) (:cache *fn2-stop-reason-sealer-cache*)
+                     (otherwise *fn2-stop-reason-sealer*))
+                   fn2-core))
+   (fn2-core-preserves fn2-sealer-refuse (code fn2-core) :rows nil)
    (in-theory (disable fn2-sealer-refuse))
    (assert-event (fn2-assert-compliant-p '(fn2-sealer-step fn2-sealer-genesis fn2-sealer-pending-p fn2-sealer-ready
                                            fn2-sealer-grant fn2-sealer-refuse) (w state)))
 
    ;; The continuations. :sealing: one seal step; more work keeps the row
-   ;; runnable; nothing sealable (:idle) or backpressure (:full, :cache)
-   ;; parks it on :sealable; any other answer is an invariant: the core
-   ;; stops (:sealer) and the row is :stopped.
+   ;; runnable; nothing sealable (:idle) parks it on :sealable, which the
+   ;; grant service wakes once an overlay is sealable. Backpressure has no
+   ;; wake yet (a page workspace, a cache row or a run row freed: M2's
+   ;; eviction), so :full and :cache stop the core by name (:sealer-full,
+   ;; :sealer-cache) rather than park a row nothing would wake (or, at the
+   ;; pick, re-grant it every turn); any other answer is an invariant
+   ;; (:sealer). A stopped core moves the row to :stopped.
    (defmachine-callback fn2-sealer-seal fn2-sealer (id budget) 4
     (fn2-machine-with-work 4096 *fn2-work-transition* 0
      (mv-let (code fn2-core) (fn2-sealer-step 4096 fn2-core)
       (case code
        ((:more :retired :done) (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core))
-       ((:idle :full :cache)
+       (:idle
         (let ((fn2-core (fn2-sealer-put-core id (wait-reason *fn2-wait-sealable*))))
          (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core)))
        (otherwise
-        (let* ((fn2-core (fn2-sealer-refuse fn2-core))
+        (let* ((fn2-core (fn2-sealer-refuse code fn2-core))
                (fn2-core (fn2-sealer-put-core id (phase *fn2-sealer-state-stopped*) (stopped 1))))
          (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core)))))))
    ;; Layer C's genesis, called once by the executor's fn2-init-engine:
