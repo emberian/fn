@@ -36,7 +36,7 @@
         "211 3 1 3 local.test" "223 1 <a@example.invalid> retrieved"
         "223 2 <b@example.invalid> retrieved" "223 3 <c@example.invalid> retrieved" "421 no next article"
         "223 2 <b@example.invalid> retrieved" "223 1 <a@example.invalid> retrieved" "422 no previous article"
-        "423 no article with that number" "223 2 <b@example.invalid> retrieved" "430 no article with that message-id"
+        "423 no article with that number" "223 0 <b@example.invalid> retrieved" "430 no article with that message-id"
         "211 3 1 3 local.test list follows" "1" "2" "3" "."
         "211 3 1 3 local.test list follows" "2" "3" "."
         "224 overview information follows" (fn2-cru-ov 2 "two" "<b@example.invalid>") (fn2-cru-ov 3 "three" "<c@example.invalid>") "."
@@ -69,8 +69,7 @@
                                                                                    (fn2-cru-line "four" "<d@example.invalid>"))))
                                                 *fn2-cru-lines*))))))
 ; The subject runs: the seeds publish through C-S3 (seeded :ok), the core
-; does not stop, and today's served reply to GROUP is the interim 503, so
-; the row is owed (the D6 1/n commit turns this tooth into served = spec).
+; does not stop, and the cursor serves GROUP (D6 1/n).
 (defun fn2-cursor-test-seeded ()
   (declare (xargs :verify-guards nil))
   (let ((r (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
@@ -79,7 +78,7 @@
          (equal (nth 3 r) 0)
          (or (equal (car (nth 2 r))
                     (list (fn2-cw-crlf-octets '("200 fn-nntp experimental server ready"
-                                                "503 archive projection unavailable" "205 closing connection"))
+                                                "211 3 1 3 local.test" "205 closing connection"))
                           t))
              (cw "wire ~x0~%" (car (nth 2 r)))))))
 
@@ -111,7 +110,7 @@
   (declare (xargs :verify-guards nil))
   (and (fn2-csp-seedsp (append *fn2-cru-seeds* *fn2-cru-later*) *fn2-cru-groups* nil)
        (fn2-csp-linesp *fn2-cru-pinned-lines*) (fn2-csp-no-repin-p (cdr *fn2-cru-pinned-lines*))
-       (let ((r (fn2-cursor-run *fn2-cursor-profile* *fn2-cru-seeds* *fn2-cru-later*
+       (let ((r (fn2-cursor-serve-run *fn2-cursor-profile* *fn2-cru-seeds* *fn2-cru-later*
                                 (list (list (fn2-cw-crlf-octets *fn2-cru-pinned-lines*) nil)))))
          ;; the later seed was published while the client read
          (or (eq (nth 0 r) :ok) (cw "pinned seeded ~x0~%" (nth 0 r))))))
@@ -120,6 +119,21 @@
   (not (equal (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-pinned-lines*)
               (fn2-cursor-spec-wire *fn2-cru-groups* (append *fn2-cru-seeds* *fn2-cru-later*) *fn2-cru-pinned-lines*))))
 
+;; Served = reference (D6 1/n) over the transcript less the two commands
+;; 1/n-b serves (LISTGROUP with no name: the name read back; OVER <id>: the
+;; article's number), whole and in small chunks.
+(defconst *fn2-cru-served-lines*
+  (remove-equal "OVER <c@example.invalid>" (remove-equal "LISTGROUP" *fn2-cru-lines*)))
+(defun fn2-cursor-test-served (sizes)
+  (declare (xargs :verify-guards nil))
+  (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-served-lines* sizes))
+        (want (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-served-lines*)))
+    (or (equal got want) (cw "served ~x0~%want ~x1~%" got want))))
+(defun fn2-cursor-test-pinned-served ()
+  (declare (xargs :verify-guards nil))
+  (let ((got (fn2-cursor-wire-interleaved *fn2-cru-seeds* *fn2-cru-later* *fn2-cru-pinned-lines* nil))
+        (want (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-seeds* *fn2-cru-pinned-lines*)))
+    (or (equal got want) (cw "pinned ~x0~%want ~x1~%" got want))))
 (assert-event (fn2-cursor-test-spec))
 (assert-event (fn2-cursor-test-spec-negative))
 (assert-event (fn2-cursor-test-seeded))
@@ -127,3 +141,6 @@
 (assert-event (fn2-cursor-test-range-cost-negative))
 (assert-event (fn2-cursor-test-pinned))
 (assert-event (fn2-cursor-test-pinned-negative))
+(assert-event (fn2-cursor-test-served nil))
+(assert-event (fn2-cursor-test-served '(7 3 1)))
+(assert-event (fn2-cursor-test-pinned-served))

@@ -1115,6 +1115,52 @@
                        fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
     (mv c 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))))
 
+;; Each child operation keeps every child it returns well formed (the type,
+;; the invariant and the row count), so a child-form arm's shape follows
+;; (MACHINE-FORM 6.5 P3: the cursor's arms call these directly).
+(defun fn2-read-child-hyps (ins)
+  (declare (xargs :verify-guards nil))
+  (if (atom ins) nil
+    (if (car ins)
+        (list* (list (fn2-columns-sym (car ins) "P") (car ins)) (list (fn2-columns-sym (car ins) "-WFP") (car ins))
+               (fn2-read-child-hyps (cdr ins)))
+      (fn2-read-child-hyps (cdr ins)))))
+(defun fn2-read-child-rows (ins)
+  (declare (xargs :verify-guards nil))
+  (if (atom ins) nil
+    (if (car ins) (cons (fn2-columns-sym (car ins) "-ROWS") (fn2-read-child-rows (cdr ins)))
+      (fn2-read-child-rows (cdr ins)))))
+(defun fn2-read-child-facts (fn call outs i hyps rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom outs) nil
+    (append
+     (and (car outs)
+          (let ((r `(mv-nth ,i ,call)) (st (car outs)))
+            `((defthm ,(fn2-columns-sym fn (concatenate 'string "-" (symbol-name st) "-PRESERVED"))
+                (implies (and ,@hyps)
+                         (and (,(fn2-columns-sym st "P") ,r) (,(fn2-columns-sym st "-WFP") ,r)
+                              (equal (,(fn2-columns-sym st "-ROWS") ,r) (,(fn2-columns-sym st "-ROWS") ,st))))
+                :hints (("Goal" :in-theory (e/d (,fn) (,@rows))))))))
+     (fn2-read-child-facts fn call (cdr outs) (+ 1 i) hyps rows))))
+(defun fn2-read-children-facts (fns world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fns) nil
+    (let* ((fn (car fns)) (formals (getpropc fn 'formals nil world))
+           (ins (getpropc fn 'stobjs-in nil world)) (outs (getpropc fn 'stobjs-out nil world)))
+      (append (fn2-read-child-facts fn (cons fn formals) outs 0 (fn2-read-child-hyps ins) (fn2-read-child-rows ins))
+              (fn2-read-children-facts (cdr fns) world)))))
+(make-event
+ (cons 'progn
+       (fn2-read-children-facts
+        '(fn2-read-key-children fn2-read-key-octets-children fn2-read-lookup-children fn2-read-range-children
+          fn2-read-next-children fn2-read-seek-children fn2-read-seek-step-children fn2-read-octets-children
+          fn2-read-release-children fn2-read-scan-children fn2-read-scan-next-children fn2-read-identity-children)
+        (w state))))
+(in-theory (disable fn2-read-key-children fn2-read-key-octets-children fn2-read-lookup-children fn2-read-range-children
+                    fn2-read-next-children fn2-read-seek-children fn2-read-seek-step-children fn2-read-octets-children
+                    fn2-read-release-children fn2-read-scan-children fn2-read-scan-next-children
+                    fn2-read-identity-children fn2-read-value-children))
+
 (defmacro fn2-read-core-events ()
  '(progn
    (defun fn2-read-key (x region j value fn2-core)
