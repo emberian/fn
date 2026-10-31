@@ -9,7 +9,8 @@ random chunkings, so every reply is also a fragmentation case. Two kinds of comm
            for a node without TLS: 580): NntpModel judges the reply, under the profile D3 serves (posting
            off, no TLS, no credentials, no SASL mechanism, no AUTHINFO label until E2: `d3` policy below)
   interim  (the table's "interim" commands): the reply must be the table's code; each is counted as OWED with
-           the quest that replaces it, never a pass and never a red. A different code is a disagreement.
+           the quest that replaces it, never a pass and never a red. A different code is a disagreement. A line
+           whose verb has left the table is judged by the model as a served one.
 
 The gate (M1a): zero disagreements on served verbs and every interim reply named. Every connection's WIRE
 verdict is asserted at the end (sim_target.SimTarget).
@@ -78,8 +79,11 @@ def machine(case, target, owed, served=None):
         def served(self, line, cut):
             if self.conn.quit:
                 return self.reconnect()
+            self.judge(line, cut)
+
+        def judge(self, line, cut):
             expected = self.conn.send(line + b'\r\n')
-            chunks = [cut, len(line) + 2 - cut] if 0 < cut < len(line) + 2 else None
+            chunks = [cut, len(line) + 2 - cut] if cut and 0 < cut < len(line) + 2 else None
             status = self.exchange(line, chunks)
             body = None
             if expected.multiline_for(status):
@@ -103,6 +107,9 @@ def machine(case, target, owed, served=None):
             if self.conn.quit:
                 return self.reconnect()
             verb = line.split()[0].decode()
+            if verb not in INTERIM['interim']:
+                # The verb left the interim table (its quest landed): the model judges it as served.
+                return self.judge(line, None)
             entry = INTERIM['interim'][verb]
             status = self.exchange(line, None)
             owed[verb] = owed.get(verb, dict(quest=entry['quest'], code=entry['code'], replies=0))
