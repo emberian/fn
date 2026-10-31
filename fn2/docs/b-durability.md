@@ -409,7 +409,7 @@ identity as well as its allocation pair, binding the physical context required b
 | frame-header | 12 | 15–95 | magic, frame-kind, history, incarnation, writer-epoch, commit, extent, extent-writer-epoch, extent-allocation, ordinal, fragment-offset, payload-length |
 | frame-trailer | 1 | 33–33 | frame-hash |
 | maintenance-header | 2 | 2–2 | record-kind, schema-version |
-| record-header | 3 | 3–11 | record-kind, schema-version, event |
+| record-header | 11 | 11–83 | record-kind, schema-version, event, revision, occurrence, lineage, domain, incarnation, author, payer, grant (the event envelope; event = position) |
 | operation-header | 2 | 2–18 | principal, operation |
 | article-acceptance | 55 | 311–874 | article, message-id, source-identity, source-length, source-storage-domain, source-physical-unit, source-writer-epoch, source-allocation, source-page-kind, source-encoded-length, source-expected-hash, projection-storage-domain, projection-physical-unit, projection-writer-epoch, projection-allocation, projection-page-kind, projection-encoded-length, projection-expected-hash, memberships-storage-domain, memberships-physical-unit, memberships-writer-epoch, memberships-allocation, memberships-page-kind, memberships-encoded-length, memberships-expected-hash, membership-count, acceptance-storage-domain, acceptance-physical-unit, acceptance-writer-epoch, acceptance-allocation, acceptance-page-kind, acceptance-encoded-length, acceptance-expected-hash, configuration-storage-domain, configuration-physical-unit, configuration-writer-epoch, configuration-allocation, configuration-page-kind, configuration-encoded-length, configuration-expected-hash, charges-storage-domain, charges-physical-unit, charges-writer-epoch, charges-allocation, charges-page-kind, charges-encoded-length, charges-expected-hash, created-obligations-storage-domain, created-obligations-physical-unit, created-obligations-writer-epoch, created-obligations-allocation, created-obligations-page-kind, created-obligations-encoded-length, created-obligations-expected-hash, outcome |
 | cursor-advance | 11 | 43–115 | registration, previous-event, next-event, selection-storage-domain, selection-physical-unit, selection-writer-epoch, selection-allocation, selection-page-kind, selection-encoded-length, selection-expected-hash, outcome |
@@ -1487,6 +1487,34 @@ A profile that names fewer slots is refused.
   of `fn2-commit-take` declares `:answers (:ok :pending :none)`. The arm language routes every answer
   code, so D's `:ready` cannot absorb one. D adds `:batch-membership` to `resources.lisp` at the
   txn's port.
+
+**S9. S-ARTICLE-LOCATION: the member result names where the article's octets are.** An
+`:article-acceptance` member's `:accepted` settlement carries the article's source references as
+`fn2-format-ref` values, the layout the acceptance record already holds (`SOURCE-` and
+`PROJECTION-`): storage domain, physical unit, writer epoch, allocation, page kind, encoded length,
+expected hash. Until D4 3/n moves bodies into content-named payload blocks, the source reference is
+the upload window's durable extent (B-S1), with the article's offset and length inside it. After D4
+3/n it is the payload block (B-HASH-ATTACHED: each 64 KiB block is hashed and content-named).
+`fn2-commit-take` returns the event, and the references are read from the settled row's acceptance
+record. The txn binds them into C's `fn2-article` location field (C adds the field). A reference
+holds an allocator `:promised-read` edge from the time it is published until the article is
+retired, so the extent cannot be reclaimed while it is named.
+
+**S10. The block read, for D6 3/n (ARTICLE, HEAD, BODY).** There are two operations. Each has a
+defcost that names `fn2-core-extents`, `fn2-core-alloc-edges` and the issuing kind's lease, and
+declares `:answers`.
+- `(fn2-block-read ref-row lease-slot lease-gen off len okind oslot ogen fn2-core) -> (mv code
+  fn2-core)`, with `:answers (:ok :exhausted :stale :bounds)`. It checks the reference's allocation
+  handle against the allocator (`:stale` when the epoch or counter has moved) and takes a `:borrow`
+  edge on the extent for the read's lifetime. It then issues `fn2-issue-read` (the
+  `(:storage-job :read)` hold) of `[off, off+len)` into the caller's lease. The read result arrives
+  as the caller's `:read-result` observation.
+- `(fn2-block-read-done ref-row lease-slot lease-gen fn2-core) -> (mv code fn2-core)`, with
+  `:answers (:ok :hash :io)`. It runs after the result. For a whole block it verifies the block's
+  expected hash with the BLAKE3 hasher row (`:hash` is damage, never served). It drops the
+  `:borrow` edge.
+A cursor's `:need-page` issues the same pair. The caller owns the lease, so B writes no other kind's
+row.
 
 **Keystones (owed, `commit-proof.lisp`; teeth in `tests/commit-member-unit.lisp`).**
 - `fn2-commit-txn-outcome-evidence`: every settled `:txn` outcome matches its batch's evidence:

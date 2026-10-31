@@ -61,7 +61,9 @@
  (declare (xargs :verify-guards nil :measure (nfix left)
   :hints (("Goal" :use (fn2-b-countdown fn2-b-count-op) :in-theory nil))))
  (if (zp left) nil
-  (cons (list (list *record-kind-keyed-mutation* 1 key)
+  ; The header is the event envelope (format-events.lisp): event, revision,
+  ; occurrence = event, lineage, domain, incarnation 1, author, payer, grant.
+  (cons (list (list *record-kind-keyed-mutation* 1 key 0 key 0 0 1 0 0 0)
               (list 1 key 0 key *fn2-b-zero-digest* 0
                     0 (* 3 (nfix extent)) epoch allocation *page-kind-manifest* 4096 hash 0))
         (fn2-b-expected-members (- left 1) (+ 1 (nfix key)) extent epoch allocation hash))))

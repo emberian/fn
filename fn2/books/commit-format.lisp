@@ -93,6 +93,17 @@
   (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-record-kind*) *record-kind-keyed-mutation* fn2-fields))
   (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-schema-version*) 1 fn2-fields))
   (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-event*) (+ first index) fn2-fields))
+  ; The envelope of a locally committed event: its own occurrence, this node's
+  ; single domain (lineage and domain 0), the batch's incarnation (1); no
+  ; revision, author, payer or grant yet.
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-revision*) 0 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-occurrence*) (+ first index) fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-lineage*) 0 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-domain*) 0 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-incarnation*) 1 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-author*) 0 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-payer*) 0 fn2-fields))
+  (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-grant*) 0 fn2-fields))
  ) (mv-let (code end fn2-pool) (fn2-format-record-header-encode base slot gen off owner-kind id ogen fn2-fields fn2-pool)
       (mv code end fn2-fields fn2-pool))))
  (:record (let* (

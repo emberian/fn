@@ -9,10 +9,21 @@
 (assert-event (fn2-layoutp *fn2-format-maintenance-header*))
 (assert-event (equal (fn2-layout-max-size *fn2-format-maintenance-header*) 2))
 
+; One record is one event; its header is the event envelope (WIDEST-ROLE §3
+; decision 2, IDENTITY-ACROSS-PEERS ruling 2). The event is its commit
+; position. The other fields carry no behaviour yet:
+; - revision: the revision the event was decided under.
+; - occurrence: the event's occurrence identity, distinct from content identity.
+; - lineage, domain, incarnation: the origin of an acceptance.
+; - author, payer, grant: the author key, the payer principal, the grant acted under.
+; A field with nothing to name is 0, one octet.
 (deflayout fn2-format-record-header
-  (append *fn2-format-maintenance-header* '((event (:id event)))))
+  (append *fn2-format-maintenance-header*
+          '((event (:id event)) (revision (:id revision)) (occurrence (:id occurrence))
+            (lineage (:id lineage)) (domain (:id domain)) (incarnation (:id incarnation))
+            (author (:id key)) (payer (:id principal)) (grant (:id grant)))))
 (assert-event (fn2-layoutp *fn2-format-record-header*))
-(assert-event (equal (fn2-layout-max-size *fn2-format-record-header*) 11))
+(assert-event (equal (fn2-layout-max-size *fn2-format-record-header*) 83))
 
 (deflayout fn2-format-operation-header
   `((principal (:id principal)) (operation (:id operation))))
