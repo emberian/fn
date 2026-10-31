@@ -39,7 +39,7 @@ echo "$(date) start $sha -> $out"
 sh "$tree/fn2/tools/certify.sh" tests/conn-unit.lisp sim/echo.lisp sim/check-wire.lisp sim/check-envelope.lisp \
   > "$out/cert.log" 2>&1 || { echo "H nightly $(basename "$out") $sha: CERTIFY RED, see $out/cert.log" | tee "$out/summary.txt" > "$base/LATEST.txt"; exit 1; }
 cd "$tree"
-export PYTHONPATH="$tree" FN2_SIM_EXAMPLES="${H_NIGHTLY_EXAMPLES:-1000}" FN2_SIM_STEPS="${H_NIGHTLY_STEPS:-50}"
+export FN2_SURFACE_FIXTURE_NNTP=fn2.tests.surface.fixtures:fixture PYTHONPATH="$tree" FN2_SIM_EXAMPLES="${H_NIGHTLY_EXAMPLES:-1000}" FN2_SIM_STEPS="${H_NIGHTLY_STEPS:-50}"
 FN2_SURFACE_SIM_NNTP=fn2.tests.surface.fn2_sim_session:session \
   "$python" -m fn2.tests.surface.run_surface --target fn2 --family nntp --box laptop --out "$out/sim" \
   > "$out/sim.log" 2>&1 &

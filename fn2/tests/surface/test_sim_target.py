@@ -166,6 +166,19 @@ class SimTargetUnit(unittest.TestCase):
                     with self.assertRaises(AssertionError):
                         case.native('nntp', 'm')
 
+    def test_a_fixture_setup_the_served_node_lacks_is_owed_against_fn2(self):
+        from fn2.tests import surface
+        from tests.native_harness import NodeDead
+        def refuse(**kwargs):
+            raise NodeDead(surface.run_natives.PREFIX + ': init needs operator CONFIG init GROUP...')
+        for target, owed in (('fn2-native', True), ('fn1', False)):
+            case = surface.SurfaceCase('setUp')
+            case.setUp()
+            with self.subTest(target=target), mock.patch.dict(os.environ, {'FN2_SURFACE_TARGET': target}), \
+                    mock.patch.object(surface, 'hook', lambda *a, **k: refuse()):
+                with self.assertRaisesRegex(unittest.SkipTest if owed else NodeDead, 'init needs'):
+                    case.fixture('nntp', dict(path='x', reason='y'))
+
     def test_sim_machine_lines_against_the_interim_table(self):
         # Every interim line names a verb the table holds; no served line names an interim verb with its
         # projection form (a served line may carry an interim verb only as a sub-form error, e.g. bare GROUP).

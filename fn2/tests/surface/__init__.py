@@ -356,7 +356,15 @@ class SurfaceCase(unittest.TestCase):
             self.skipTest('history driver owed: no mapped ' + family + ' operations observed')
 
     def fixture(self, family, fixture):
-        return hook(family, 'FIXTURE', self, path=ROOT / fixture['path'], contract=fixture['reason'])
+        from tests.native_harness import NodeDead
+        try:
+            return hook(family, 'FIXTURE', self, path=ROOT / fixture['path'], contract=fixture['reason'])
+        except NodeDead as error:
+            # The owed rule of native(): a named host contract the served fn2 node lacks is owed, not red.
+            if backend() != 'fn2' or not str(error).startswith(run_natives.PREFIX):
+                raise
+            self.evidence['owed_host'] = [dict(test=self.id(), requirement=str(error)[:300])]
+            self.skipTest('fn2 host contract owed (fixture setup): ' + str(error)[len(run_natives.PREFIX) + 2:][:160])
 
     def perf(self, family, row):
         measured = hook(family, 'PERF', self, row=row)
