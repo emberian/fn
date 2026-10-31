@@ -163,6 +163,26 @@
         `(let* ,(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name id fields) ,name))
     (er hard 'defmachine "Invalid field list or cross-kind phase in ~x0 write: ~x1." name fields)))
 
+;; The child-form write (MACHINE-FORM 6.5 P3): the row at SLOT of the
+;; kind's table and at ID of the directory, the whole batch checked first; a
+;; refused batch stops the core. Returns (mv K fn2-machines fn2-control).
+(defun fn2-machine-children-put-expansion (name columns states id slot fields)
+  (declare (xargs :verify-guards nil))
+  (if (fn2-columns-write-formp name columns states fields)
+      (let* ((values (fn2-machine-write-fields fields))
+             (own (fn2-machine-directory-writes values nil))
+             (dir (fn2-machine-directory-writes values t)))
+        `(let ((fn2-write-id ,id) (fn2-write-slot ,slot) ,@(fn2-machine-write-values fields))
+           (declare (ignorable fn2-write-id))
+           (if (and (natp fn2-write-slot) (< fn2-write-slot (,(fn2-columns-sym name "-ROWS") ,name))
+                    ,@(and dir '((natp fn2-write-id) (< fn2-write-id (fn2-machines-rows fn2-machines))))
+                    ,@(fn2-machine-write-guards values columns))
+               (let* (,@(fn2-columns-put-bindings (fn2-columns-sym name "-SET") name 'fn2-write-slot own)
+                      ,@(fn2-columns-put-bindings 'fn2-machines-set 'fn2-machines 'fn2-write-id dir))
+                 (mv ,name fn2-machines fn2-control))
+             (let ((fn2-control (fn2-control-record-stop *fn2-stop-reason-machine-write* fn2-control)))
+               (mv ,name fn2-machines fn2-control)))))
+    (er hard 'defmachine "Invalid field list or cross-kind phase in ~x0 write: ~x1." name fields)))
 (defun fn2-machine-continuationsp (entries observationp)
   (declare (xargs :verify-guards nil))
   (if (atom entries) (null entries)
@@ -351,6 +371,8 @@
       `((defcolumns ,name ,tcols :put-policy ,states)
        (defmacro ,(fn2-columns-sym name "-PUT-CORE") (id &rest fields)
          (fn2-machine-core-put-expansion ',name ',cols ',states id fields t))
+       (defmacro ,(fn2-columns-sym name "-PUT-CHILDREN") (id slot &rest fields)
+         (fn2-machine-children-put-expansion ',name ',cols ',states id slot fields))
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-BUDGET*")) ',budget)
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-RUN-BYTES*")) ,bytes)
        (defconst ,(fn2-columns-pre "*" (fn2-columns-sym name "-RUN-STEPS*")) ,steps)
@@ -1643,16 +1665,8 @@
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         ;; A reclaim with no active row of the kind is a caller's bug: the core
-         ;; stops (:machine-write) before any partition field changes, never a
-         ;; count clamped at zero (REVIEW-20261030).
-         (let ((active (fn2-machine-active-count ,o fn2-core)))
-           (if (zp active) (fn2-machine-refuse-write fn2-core)
-             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
-                    (fn2-core (if retire fn2-core
-                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
-                                                                   fn2-core))))
-               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
+         ;; The partition's reclaim (fn2-machines-reclaim, arm-children.lisp).
+         (fn2-machine-reclaim id ,o retire fn2-core)))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,admit :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE"))
         :effects ((:transfer (:connection-row) :to ,kind)
@@ -1735,16 +1749,8 @@
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
        (defun ,reclaim (id retire fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         ;; A reclaim with no active row of the kind is a caller's bug: the core
-         ;; stops (:machine-write) before any partition field changes, never a
-         ;; count clamped at zero (REVIEW-20261030).
-         (let ((active (fn2-machine-active-count ,o fn2-core)))
-           (if (zp active) (fn2-machine-refuse-write fn2-core)
-             (let* ((fn2-core (if retire fn2-core (fn2-machine-set-free-head ,o id fn2-core)))
-                    (fn2-core (if retire fn2-core
-                                (fn2-machine-set-admission-credits ,o (+ 1 (fn2-machine-admission-credits ,o fn2-core))
-                                                                   fn2-core))))
-               (fn2-machine-set-active-count ,o (- active 1) fn2-core))))))
+         ;; The partition's reclaim (fn2-machines-reclaim, arm-children.lisp).
+         (fn2-machine-reclaim id ,o retire fn2-core)))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
       (defcost ,take :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
         :effects ((:acquire (,rowkind) :for ,kind)

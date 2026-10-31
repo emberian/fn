@@ -7,6 +7,7 @@
 (include-book "sched")
 (include-book "trace")
 (include-book "exec-state")
+(include-book "arm-children")
 
 (include-book "core-children-a")
 (defmacro fn2-core-events ()
@@ -146,12 +147,7 @@
                               (fn2-stop-reason-code->keyword reason)
                               (not (= reason *fn2-stop-reason-none*)))))
   (stobj-let ((fn2-control (fn2-core-control fn2-core)))
-    (fn2-control)
-    (if (= (fn2-control-stop fn2-control) 1) fn2-control
-      (let* ((fn2-control (update-fn2-control-stop 1 fn2-control))
-             (fn2-control (update-fn2-control-stop-reason reason fn2-control)))
-        fn2-control))
-    fn2-core))
+    (fn2-control) (fn2-control-record-stop reason fn2-control) fn2-core))
 (defthm fn2-core-stop-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                 (unsigned-byte-p 8 reason))
@@ -185,14 +181,11 @@
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-release (slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-    (code fn2-pool)
-    (if (fn2-pool-release-countp slot fn2-pool)
-        (fn2-pool-release slot gen okind oslot ogen fn2-pool)
-      (mv :corrupt fn2-pool))
-    (let ((fn2-core (if (or (eq code :ok) (eq code :retired)) fn2-core
-                     (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core))))
-      (mv code fn2-core)))))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (code fn2-pool fn2-control)
+    (fn2-core-release-children slot gen okind oslot ogen fn2-pool fn2-control)
+    (mv code fn2-core))))
 (fn2-core-preserves fn2-core-release (slot gen okind oslot ogen fn2-core) :position 1 :rows nil)
 (fn2-core-pool-wrapper fn2-core-reset fn2-pool-reset
   (slot gen okind oslot ogen) (code) 1)
@@ -230,104 +223,29 @@
 
 ; No row traversal: these are the scalar outbox preconditions needed by
 ; enqueue. A reservation takes the row and credit before a pool loan.
-(defun fn2-core-outbox-ready (fn2-ops)
-  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
-  (let ((capacity (fn2-ops-out-slot-length fn2-ops)))
-    (and (< (fn2-ops-out-tail fn2-ops) capacity)
-         (< (fn2-ops-out-tail fn2-ops) (fn2-ops-out-gen-length fn2-ops))
-         (< capacity 4294967296))))
-
-(defun fn2-core-lease (kind slot gen off len opslot opgen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (cond ((or (equal kind *fn2-action-receive*) (equal kind *fn2-action-read*)
-             (equal kind *fn2-action-entropy*))
-         (fn2-pool-lease-in slot gen len opslot opgen okind oslot ogen fn2-pool))
-        ((or (equal kind *fn2-action-send*) (equal kind *fn2-action-write*))
-         (mv-let (code fn2-pool)
-           (fn2-pool-lease-out slot gen off len okind oslot ogen fn2-pool)
-           (mv code off fn2-pool)))
-        (t (mv :ok 0 fn2-pool))))
-(fn2-pool-preserves fn2-core-lease (kind slot gen off len opslot opgen okind oslot ogen fn2-pool) :position 2 :disable nil)
-(in-theory (disable fn2-core-lease))
-
-; Shared issue implementation. The public wrappers supply only their own
-; descriptor fields. Validate scalar widths before any mutation. The only
-; post-reservation refusal is the pool lease; unreserve restores its row.
-(fn2-defoperation (:operation-set fn2-core-issue) :core :infer
-(defun fn2-core-issue (kind cap-index cap-nonce offset fua slot gen off len
-                           may-release target-slot target-gen
-                           okind oslot ogen principal fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
-              (fn2-ops (fn2-core-ops fn2-core)))
-    (stop-reason code opslot opgen fn2-pool fn2-ops)
-    (b* (((unless (and (unsigned-byte-p 32 cap-index) (unsigned-byte-p 32 cap-nonce)
-                       (unsigned-byte-p 60 offset) (unsigned-byte-p 1 fua)
-                       (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
-                       (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)
-                       (unsigned-byte-p 32 target-slot) (unsigned-byte-p 60 target-gen)))
-          (mv *fn2-stop-reason-none* :bounds 0 0 fn2-pool fn2-ops))
-         ((unless (fn2-core-outbox-ready fn2-ops))
-          (mv *fn2-stop-reason-none* :state 0 0 fn2-pool fn2-ops))
-         ((mv code opslot opgen fn2-ops)
-          (fn2-op-reserve kind okind oslot ogen principal may-release fn2-ops))
-         ((unless (eq code :ok)) (mv *fn2-stop-reason-none* code 0 0 fn2-pool fn2-ops))
-         ((mv code actual-off fn2-pool)
-          (fn2-core-lease kind slot gen off len opslot opgen okind oslot ogen fn2-pool))
-         ((unless (eq code :ok))
-          (mv-let (undo fn2-ops) (fn2-op-unreserve opslot opgen fn2-ops)
-            (mv (if (eq undo :ok) *fn2-stop-reason-none* *fn2-stop-reason-issue-unreserve*)
-                code 0 0 fn2-pool fn2-ops)))
-         ((mv code fn2-ops) (fn2-op-set-range opslot opgen slot gen actual-off len fn2-ops))
-         ((unless (eq code :ok))
-          (mv *fn2-stop-reason-issue-range* code opslot opgen fn2-pool fn2-ops))
-         ((mv code fn2-ops) (fn2-op-set-capability opslot opgen cap-index cap-nonce fn2-ops))
-         ((unless (eq code :ok))
-          (mv *fn2-stop-reason-issue-capability* code opslot opgen fn2-pool fn2-ops))
-         ((mv code fn2-ops) (fn2-op-set-storage opslot opgen offset fua fn2-ops))
-         ((unless (eq code :ok))
-          (mv *fn2-stop-reason-issue-storage* code opslot opgen fn2-pool fn2-ops))
-         ((mv code fn2-ops) (fn2-op-set-cancel-target opslot opgen target-slot target-gen fn2-ops))
-         ((unless (eq code :ok))
-          (mv *fn2-stop-reason-issue-cancel-target* code opslot opgen fn2-pool fn2-ops))
-         ((mv code fn2-ops) (fn2-op-enqueue opslot opgen fn2-ops)))
-      (mv (if (eq code :ok) *fn2-stop-reason-none* *fn2-stop-reason-issue-enqueue*)
-          code opslot opgen fn2-pool fn2-ops))
-    (let ((fn2-core (if (= stop-reason *fn2-stop-reason-none*) fn2-core
-                     (fn2-core-stop stop-reason fn2-core))))
-      (mv code opslot opgen fn2-core)))))
-
-(fn2-core-preserves fn2-core-issue (kind cap-index cap-nonce offset fua slot gen off len may-release
-        target-slot target-gen okind oslot ogen principal fn2-core) :position 3 :rows nil)
-
-(defmacro fn2-core-issue-wrapper (name args kind cap-index cap-nonce offset fua
-                                      slot gen off len may-release target-slot target-gen)
+; The core face of an action's issue (its body is arm-children.lisp's NAME-CHILDREN).
+(defmacro fn2-core-issue-wrapper (name args)
   (fn2-operation-events '(:operation-set fn2-core-issue) name 'fn2-core
     (append args '(okind oslot ogen principal)) '(code slot gen fn2-core) nil :core
     '(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    `((fn2-core-issue ,kind ,cap-index ,cap-nonce ,offset ,fua ,slot ,gen ,off ,len
-                     ,may-release ,target-slot ,target-gen okind oslot ogen principal fn2-core))
+    `((stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+                  (fn2-ops (fn2-core-ops fn2-core))
+                  (fn2-control (fn2-core-control fn2-core)))
+        (code slot gen fn2-pool fn2-ops fn2-control)
+        (,(fn2-columns-sym name "-CHILDREN") ,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+        (mv code slot gen fn2-core)))
     `((fn2-core-preserves ,name (,@args okind oslot ogen principal fn2-core) :position 3 :rows nil))
     (list :refusal (list :square (fn2-columns-sym name "-REFUSAL")))))
-(fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len)
-  *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release)
-  *fn2-action-send* cap-index cap-nonce 0 0 slot gen off len may-release 0 0)
-(fn2-core-issue-wrapper fn2-issue-read (offset slot gen len)
-  *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-write (offset slot gen off len fua)
-  *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-fence ()
-  *fn2-action-fence* 0 0 0 0 0 0 0 0 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-accept (cap-index cap-nonce)
-  *fn2-action-accept* cap-index cap-nonce 0 0 0 0 0 0 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-close (cap-index cap-nonce)
-  *fn2-action-close* cap-index cap-nonce 0 0 0 0 0 0 0 0 0)
-(fn2-core-issue-wrapper fn2-issue-cancel (target-slot target-gen)
-  *fn2-action-cancel* 0 0 0 0 0 0 0 0 0 target-slot target-gen)
+(fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len))
+(fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
+(fn2-core-issue-wrapper fn2-issue-read (offset slot gen len))
+(fn2-core-issue-wrapper fn2-issue-write (offset slot gen off len fua))
+(fn2-core-issue-wrapper fn2-issue-fence ())
+(fn2-core-issue-wrapper fn2-issue-accept (cap-index cap-nonce))
+(fn2-core-issue-wrapper fn2-issue-close (cap-index cap-nonce))
+(fn2-core-issue-wrapper fn2-issue-cancel (target-slot target-gen))
 
-(fn2-core-issue-wrapper fn2-issue-entropy (slot gen len)
-  *fn2-action-entropy* 0 0 0 0 slot gen 0 len 0 0 0)
+(fn2-core-issue-wrapper fn2-issue-entropy (slot gen len))
 
  ; ArmWake owns an ordinary outbox credit but no completion cell is posted.
 ; Its separate scalar payload is never overloaded onto a storage offset.
@@ -420,7 +338,7 @@
  (fn2-assert-compliant-p
   '(fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix
-    fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-issue fn2-core-lease
+    fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-lease
     fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
     fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake
     fn2-ops-next-owner fn2-core-next-owner fn2-harvest-one)

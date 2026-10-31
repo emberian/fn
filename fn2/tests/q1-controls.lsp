@@ -156,10 +156,14 @@
                 ; fn2-scribe: the checksum the patch writes is off by one bit.
                 (run-kind 'fn2-scribe (lambda () (fn2-q1c-scribe-ok 1001 2000)) 'fn2-scribe-patch-loop
                   (lambda (orig)
-                    (lambda (left cursor hash slot gen id owner-gen core)
-                      (if (and (active core) (eql cursor 0))
-                          (progn (note core) (funcall orig left cursor (logxor hash 1) slot gen id owner-gen core))
-                        (funcall orig left cursor hash slot gen id owner-gen core))))))
+                    ; the patch loop is over the pool (MACHINE-FORM P2): the core it runs
+                    ; in is the one whose pool child it was handed
+                    (lambda (left cursor hash slot gen okind oslot ogen pool)
+                      (let ((core (if (and *fn2-q1-hook-ref* (eq pool (fn2-core-pool *fn2-q1-hook-ref*)))
+                                      *fn2-q1-hook-ref* :concrete)))
+                        (if (and (active core) (eql cursor 0))
+                            (progn (note core) (funcall orig left cursor (logxor hash 1) slot gen okind oslot ogen pool))
+                          (funcall orig left cursor hash slot gen okind oslot ogen pool)))))))
             (fn2-q1-hook-restore)))
         (with-open-file (out "fn2/tests/evidence/q1-controls.lisp" :direction :output :if-exists :supersede)
           (with-standard-io-syntax
