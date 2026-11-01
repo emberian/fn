@@ -26,7 +26,7 @@
    pos+1 and must become the seek. CONSUMER compares pages exactly, and the run-head control is caught.
 
 
-## State of E.P1 (the served consumer): BLOCKED on seams the old notebook did not list
+## State of E.P1 (the served consumer): waiting on C's two seams, D's txn port and D6 3/n
 Read against dev 109ad246b: E.P1's two kinds are a design, not a paste. Ops they call that do not exist and
 cannot be written inside E without another layer's sizing or records:
 1. **Request decode and reply encode: ANSWERED by B at cd45d4719** (a different shape from the ask, which stands as B built it):
@@ -60,14 +60,19 @@ cannot be written inside E without another layer's sizing or records:
 So before D's txn port and D6 3/n, a served ctl/cns pair could only refuse; BRICKS §5 already orders
 "cns served over the local socket, K10" after D6 3/n and D5 2/n, and e-surface's owed line says the same.
 
-## Next
-1. When main answers seams 1-4 (exact forms above): E's config child, then fn2-ctl (admission through the
-   listener with `:listener-targets fn2-ctl` in the simulator profile and A's :local listener (371c48e4e), its peer set per
-   capability by fn2-network-set-peer; owner check; FNCT framing by deflayout over the stripe; take of fn2-cns
-   core-form; TX hand), then fn2-cns (decode, Grant/Meter interims, cursor lookup, read/park on the edge,
-   answer), the hook attached, then the simulator adapter as K10's producer and sim-layer-e's scenarios
-   against it. register/ack/append/fetch/rebase/unregister refuse `unavailable` until their sources land.
-2. Under ember's spine-only ruling: PARK otherwise (no design, witnesses, §13 or new seams).
+## Next (exact; PARKED under CONVERGE until main wakes me with the txn port's sha)
+On dev already, the paste's inputs: cns.lisp (edges child, :wait-row wait kind; 788eed64d); B's ctl rows (cd45d4719:
+field base 128 x (fn2-b-ctl-slot s profile), its b3 row, capacity fn2-b-ctl-rows / :control-connections); D's read rows
+(12410f1b9: request S reads row 2X + S, fn2-cns-capacity = fn2-b-cns-rows / :cns); A's :local listener (371c48e4e;
+fn2-network-set-peer in the simulator); the Argon rulings (28b6aa253).
+Pending, in order: C's `fn2-consumer-names` schema and `fn2-successor-stream-member`; D's txn port (:consumer mode;
+register writes fn2-consumer-names); D6 3/n (an item's Message-ID and octets).
+The step when woken: E's config child (owner uid, max wait, read base 2X), then fn2-ctl (admitted via
+`:listener-targets fn2-ctl`; owner check on peer w0; FNCT framing by deflayout at the slot's field base, trailer by
+its b3 row; take of fn2-cns core-form; TX hand), then fn2-cns (decode, Grant/Meter interims, ack decided by the arm,
+reads through fn2-read-seek from the cursor's position, park on the edge, answer), the hook attached over
+fn2-successor-stream-member, then the simulator adapter as K10's producer and sim-layer-e's scenarios against it
+(the n/12 progress number). Verbs whose sources have not landed refuse `unavailable`.
 
 ## Pitfalls / commands
 - Box: hbox is DOWN (ember, 10-31): certify on forge only, my clone `/build/lanes/fn2-e` (branch fn2-e-base pushed from the laptop), `build/cert.sh BOOKS` (forge-certify -j 6 under swarm-build), detached with setsid so `build/cert.pid` is the group leader; stop with `kill -- -$(cat build/cert.pid)`. The hbox scratch `/tank/fn/scratch/fn2-e` is lost.

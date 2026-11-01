@@ -380,7 +380,16 @@ def op(e):
         return "[" + ", ".join("none" if is_nil(x) else f"(some {lean_str(str(x))})" for x in as_list(xs)) + "]"
     return (f"{{ name := {lean_str(str(e[0]))}, callee := {callee}, "
             f"formals := [{', '.join(lean_str(str(x)) for x in as_list(d[':FORMALS']))}], "
-            f"stobjsIn := {so(d[':STOBJS-IN'])}, stobjsOut := {so(d[':STOBJS-OUT'])}, answers := {answers} }}")
+            f"stobjsIn := {so(d[':STOBJS-IN'])}, stobjsOut := {so(d[':STOBJS-OUT'])}, answers := {answers}, "
+            f"bound := {bound(d.get(':BOUND'))} }}")
+
+
+def bound(b):
+    # the declared cost's static bound (bytes steps descriptors); none where a dimension has none
+    xs = as_list(b) if b is not None and not is_nil(b) else []
+    if len(xs) != 3 or any(is_nil(x) for x in xs):
+        return "none"
+    return f"(some ({int(str(xs[0]))}, {int(str(xs[1]))}, {int(str(xs[2]))}))"
 
 
 def emit_kinds(emb, registry_waits, path, ns, world_ns):

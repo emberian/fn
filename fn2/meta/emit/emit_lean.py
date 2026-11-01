@@ -305,6 +305,7 @@ def common(name, d, sym, table):
 
 def row_dict(name, row, consumed, omitted, where):
     d = plist(row, name)
+    consumed = consumed + [k for k in MACHINE_OPTIONAL if k in d]
     check_keys(d, consumed + COMMON_CONSUMED, omitted + COMMON_OMITTED, where)
     return d
 
@@ -315,6 +316,8 @@ def struct(fields):
 
 MACHINE_KEYS = [":STATES", ":COLUMNS", ":TABLE", ":HOLDS", ":ADMISSION", ":TAKEN", ":BUDGET",
                 ":CONTINUATIONS", ":OBSERVES", ":CAPACITY", ":INITIAL", ":CASES"]
+# present only on a kind with phase-valued fields (G3, D F10)
+MACHINE_OPTIONAL = [":PHASE-FIELDS"]
 # :layout duplicates :columns; :packed is deleted by DSL-METATHEORY 5.2; :calling-convention is not
 # authoritative; the step-language arms are consumed translated, from the embedding (LayerAKinds).
 MACHINE_OMITTED = [":LAYOUT", ":PACKED", ":CALLING-CONVENTION", ":ARMS", ":SUBARMS", ":OBSERVE-ARMS",
@@ -338,6 +341,7 @@ def machine(name, row, sym):
     step_form = ":ARMS" in d
     consumed = MACHINE_KEYS + ([":STOPS"] if step_form else [])
     omitted = [k for k in MACHINE_OMITTED if k != ":STOPS"]
+    consumed = consumed + [k for k in MACHINE_OPTIONAL if k in d]
     check_keys(d, consumed + COMMON_CONSUMED,
                [k for k in omitted if (k in d)] + ([":CALLBACKS"] if ":CALLBACKS" in d else [])
                + COMMON_OMITTED, f"machine {name}")
@@ -372,6 +376,7 @@ def machine(name, row, sym):
         f"cases := {lean_list(cases, 6)}",
         f"stops := [{', '.join(sym(s) for s in stops)}]",
         f"stepForm := {'true' if step_form else 'false'}",
+        f"phaseFields := [{', '.join(f'({sym(as_list(pf)[0])}, [{chr(44).join(sym(p) for p in as_list(pf)[1:])}])' for pf in as_list(d.get(':PHASE-FIELDS', List([]))))}]",
         f"common := {common(name, d, sym, ':MACHINE')}",
     ]
     return struct(fields), len(as_list(d[":CONTINUATIONS"])), len(as_list(d[":OBSERVES"]))

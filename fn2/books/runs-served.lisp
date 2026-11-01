@@ -1,6 +1,6 @@
 ; Layer C's served run assembly (C-ONE-ASSEMBLY): the production schemas
-; (identity, article metadata, overview, addressing, the folds) assembled once, with
-; the identity decision. A world holds one assembly; the node's assembly
+; (identity, article metadata, overview, addressing, the folds) assembled once.
+; A world holds one assembly; the node's assembly
 ; (assembly-index through machines-c) and every C unit include this book.
 ; The range reads are assembled on top of it in range-served.lisp, so each
 ; book stays under the minute.
@@ -9,7 +9,5 @@
 (include-book "ordered")
 (include-book "folds")
 (include-book "runs-manifest")
-(include-book "identity-records")
 (fn2-book-layer :c)
 (fn2-run-assemble)
-(fn2-identity-assemble)

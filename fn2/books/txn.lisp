@@ -27,18 +27,28 @@
 ;; Body lines counted per :prepare run (one pool read each).
 (defconst *fn2-txn-count-bytes* 2048)
 ;; The schemas a POST writes (identity.lisp, ordered.lisp) and its write
-;; slots (C-S3, W = 16): the identity fact, the article row, the operation
-;; outcome, then one group-count accept per carried group. A cross-post to
-;; more carried groups than *fn2-txn-groups-max* is refused :unaffordable
-;; (the overview row and the addr entries of D5 2/n take the other slots).
-(defconst *fn2-txn-identity-sid* 1)
+;; slots (C-S3, W = 24): the identity admission (C §4a: the evidence, the
+;; history entry, the summary's and the candidate's :admit, the article
+;; index), the article row, the operation outcome, then one group-count
+;; accept per carried group. A cross-post to more carried groups than
+;; *fn2-txn-groups-max* is refused :unaffordable (the overview row and the
+;; addr entries of D5 2/n take the other slots).
+(defconst *fn2-txn-evidence-sid* 1)
+(defconst *fn2-txn-history-sid* 11)
+(defconst *fn2-txn-candidates-sid* 12)
+(defconst *fn2-txn-summary-sid* 13)
+(defconst *fn2-txn-index-sid* 14)
 (defconst *fn2-txn-article-sid* 2)
 (defconst *fn2-txn-counts-sid* 5)
 (defconst *fn2-txn-outcome-sid* 9)
-(defconst *fn2-txn-slot-record* 0)
-(defconst *fn2-txn-slot-article* 1)
-(defconst *fn2-txn-slot-outcome* 2)
-(defconst *fn2-txn-slot-accepts* 3)
+(defconst *fn2-txn-slot-evidence* 0)
+(defconst *fn2-txn-slot-history* 1)
+(defconst *fn2-txn-slot-summary* 2)
+(defconst *fn2-txn-slot-candidate* 3)
+(defconst *fn2-txn-slot-index* 4)
+(defconst *fn2-txn-slot-article* 5)
+(defconst *fn2-txn-slot-outcome* 6)
+(defconst *fn2-txn-slot-accepts* 7)
 (defconst *fn2-txn-groups-max* 6)
 (assert-event (<= (+ *fn2-txn-slot-accepts* (* 2 *fn2-txn-groups-max*)) *fn2-succ-slots*))
 ;; The article row's values: a born article is live, version 1; the
@@ -349,7 +359,7 @@
        (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
        (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
        ((mv in1 doff) (fn2-upload-digest-at (fn2-upload-row-hashed u fn2-core) (fn2-upload-chunk-cap c0 fn2-core))))
-    (fn2-identity-offer (fn2-machine-slot id fn2-core) c0 g0 (fn2-upload-row-mo u fn2-core) (fn2-upload-row-ml u fn2-core)
+    (fn2-identity-decide-start (fn2-machine-slot id fn2-core) c0 g0 (fn2-upload-row-mo u fn2-core) (fn2-upload-row-ml u fn2-core)
                         (if in1 c1 c0) (if in1 g1 g0) doff *fn2-upload-kind* u ugen fn2-core)))
 (fn2-core-preserves fn2-txn-offer (id u ugen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-offer))
@@ -369,7 +379,7 @@
         (b* (((mv code fn2-core) (fn2-txn-offer id u ugen fn2-core))
              ((unless (eq code :ok)) (mv :stop fn2-core)))
           (let ((fn2-core (fn2-machine-write-offered id 1 fn2-core))) (mv :run fn2-core))))
-       ((mv answer fn2-core) (fn2-identity-step (fn2-machine-slot id fn2-core) 4096 fn2-core)))
+       ((mv answer fn2-core) (fn2-identity-decide (fn2-machine-slot id fn2-core) 4096 fn2-core)))
     (case answer
       (:more (mv :run fn2-core))
       (:stored (mv :prepare fn2-core))
@@ -415,9 +425,8 @@
                                         *fn2-upload-kind* u ugen fn2-core)))
     (mv code (+ from n) lines2)))
 (in-theory (disable fn2-txn-count-run))
-;; The write slots of an accepted POST (C-S3): the identity fact (its
-;; article and binding the member's commit position, :event; the offerer's
-;; principal), the article row (key and birth the same event, live, version
+;; The write slots of an accepted POST (C-S3): the identity admission (C
+;; §4a; fn2-txn-put-identity), the article row (key and birth the same event, live, version
 ;; 1, the source's content identity (appended after the source), the stored
 ;; length, the source until injection in D5 2/n, and the body's lines) and
 ;; the operation outcome ((principal, operation) with the operation the
@@ -427,6 +436,121 @@
   (if (atom calls) '(mv :ok fn2-core)
     (if (atom (cdr calls)) (car calls)
       `(mv-let (c fn2-core) ,(car calls) (if (eq c :ok) (fn2-txn-chain ,@(cdr calls)) (mv c fn2-core))))))
+;; The identity admission (C §4a) for the name [MOFF, MOFF+MLEN) of
+;; MSLOT/MGEN and the content digest [DOFF, DOFF+32) of DSLOT/DGEN, both
+;; read under OKIND OSLOT OGEN; H the decision's candidate ordinal (0 when
+;; the content is new). Always: the evidence of the binding (its occurrence
+;; the member's commit position, issued by PRINCIPAL), the summary's :admit
+;; and the candidate's :admit (its ordinal the summary's new candidate count
+;; when new, else H). For a local acceptance (LOCAL 1) also this domain's
+;; history entry (its position and article the member's commit position)
+;; and the article index, and the summary establishes the selection; else
+;; (LOCAL 0) evidence only, its history and index slots empty.
+(defmacro fn2-txn-put-name (i j)
+  `(fn2-successor-arg-octets tx ,i ,j mslot mgen moff mlen okind oslot ogen fn2-core))
+(defmacro fn2-txn-put-digest (i j)
+  `(fn2-successor-arg-octets tx ,i ,j dslot dgen doff *fn2-upload-digest-octets* okind oslot ogen fn2-core))
+;; The ordinal arg J of slot I: the summary's new candidate count when the
+;; content is new (H 0), else H.
+(defun fn2-txn-put-ordinal (tx i j h fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (equal h 0)
+      (fn2-successor-arg tx i j :out (+ (* *fn2-txn-slot-summary* 256) *fn2-identity-summary-entry-field-candidates*) fn2-core)
+    (fn2-successor-arg tx i j :value h fn2-core)))
+(fn2-core-preserves fn2-txn-put-ordinal (tx i j h fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-ordinal))
+(defun fn2-txn-put-local (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((r *fn2-txn-slot-history*))
+    (fn2-txn-chain
+     (fn2-successor-put tx r *fn2-txn-history-sid* :insert fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-namespace* :value *fn2-identity-namespace-netnews* fn2-core)
+     (fn2-txn-put-name r *fn2-identity-history-entry-field-name*)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-profile* :value *fn2-identity-profile-source* fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-algorithm* :value *fn2-identity-algorithm-blake3* fn2-core)
+     (fn2-txn-put-digest r *fn2-identity-history-entry-field-digest*)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-lineage* :value *fn2-identity-lineage* fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-domain* :value *fn2-identity-domain* fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-incarnation* :value *fn2-identity-incarnation* fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-position* :event 0 fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-evidence* :event 0 fn2-core)
+     (fn2-successor-arg tx r *fn2-identity-history-entry-field-article* :event 0 fn2-core))))
+(fn2-core-preserves fn2-txn-put-local (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-local))
+;; The article index (slot 4), after the summary (its ordinal may be the
+;; summary's :out).
+(defun fn2-txn-put-index (tx mslot mgen moff mlen okind oslot ogen h fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((x *fn2-txn-slot-index*))
+    (fn2-txn-chain
+     (fn2-successor-put tx x *fn2-txn-index-sid* :insert fn2-core)
+     (fn2-successor-arg tx x *fn2-identity-article-entry-field-namespace* :value *fn2-identity-namespace-netnews* fn2-core)
+     (fn2-txn-put-name x *fn2-identity-article-entry-field-name*)
+     (fn2-txn-put-ordinal tx x *fn2-identity-article-entry-field-h* h fn2-core)
+     (fn2-successor-arg tx x *fn2-identity-article-entry-field-article* :event 0 fn2-core))))
+(fn2-core-preserves fn2-txn-put-index (tx mslot mgen moff mlen okind oslot ogen h fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-index))
+;; Evidence (slot 0) of the binding, its occurrence the commit position.
+(defun fn2-txn-put-evidence (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((e *fn2-txn-slot-evidence*))
+    (fn2-txn-chain
+     (fn2-successor-put tx e *fn2-txn-evidence-sid* :insert fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-namespace* :value *fn2-identity-namespace-netnews* fn2-core)
+     (fn2-txn-put-name e *fn2-identity-evidence-entry-field-name*)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-profile* :value *fn2-identity-profile-source* fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-algorithm* :value *fn2-identity-algorithm-blake3* fn2-core)
+     (fn2-txn-put-digest e *fn2-identity-evidence-entry-field-digest*)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-lineage* :value *fn2-identity-lineage* fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-domain* :value *fn2-identity-domain* fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-incarnation* :value *fn2-identity-incarnation* fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-occurrence* :event 0 fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-kind* :value *fn2-identity-evidence-kind-binding* fn2-core)
+     (fn2-successor-arg tx e *fn2-identity-evidence-entry-field-issuer* :value principal fn2-core))))
+(fn2-core-preserves fn2-txn-put-evidence (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen principal fn2-core)
+  :position 1 :rows nil)
+;; The summary's :admit (slot 2; namespace name ne nr est oldh, h assigned).
+(defun fn2-txn-put-summary (tx mslot mgen moff mlen okind oslot ogen h l fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((m *fn2-txn-slot-summary*))
+    (fn2-txn-chain
+     (fn2-successor-put tx m *fn2-txn-summary-sid* :admit fn2-core)
+     (fn2-successor-arg tx m 0 :value *fn2-identity-namespace-netnews* fn2-core)
+     (fn2-txn-put-name m 1)
+     (fn2-successor-arg tx m 2 :new *fn2-txn-slot-evidence* fn2-core)
+     (fn2-successor-arg tx m 3 (if (equal l 1) :new :value) (if (equal l 1) *fn2-txn-slot-history* 0) fn2-core)
+     (fn2-successor-arg tx m 4 :value l fn2-core)
+     (fn2-successor-arg tx m 5 :value h fn2-core))))
+(fn2-core-preserves fn2-txn-put-summary (tx mslot mgen moff mlen okind oslot ogen h l fn2-core) :position 1 :rows nil)
+;; The candidate's :admit (slot 3; namespace name profile algorithm digest ch ne q l).
+(defun fn2-txn-put-candidate (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h l fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((k *fn2-txn-slot-candidate*))
+    (fn2-txn-chain
+     (fn2-successor-put tx k *fn2-txn-candidates-sid* :admit fn2-core)
+     (fn2-successor-arg tx k 0 :value *fn2-identity-namespace-netnews* fn2-core)
+     (fn2-txn-put-name k 1)
+     (fn2-successor-arg tx k 2 :value *fn2-identity-profile-source* fn2-core)
+     (fn2-successor-arg tx k 3 :value *fn2-identity-algorithm-blake3* fn2-core)
+     (fn2-txn-put-digest k 4)
+     (fn2-txn-put-ordinal tx k 5 h fn2-core)
+     (fn2-successor-arg tx k 6 :new *fn2-txn-slot-evidence* fn2-core)
+     (fn2-successor-arg tx k 7 :value 1 fn2-core)
+     (fn2-successor-arg tx k 8 :value l fn2-core))))
+(fn2-core-preserves fn2-txn-put-candidate (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h l fn2-core)
+  :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-evidence fn2-txn-put-summary fn2-txn-put-candidate))
+(defun fn2-txn-put-identity (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal local fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (let ((l (if (equal local 1) 1 0)))
+    (fn2-txn-chain
+     (if (equal l 1) (fn2-txn-put-local tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core) (mv :ok fn2-core))
+     (fn2-txn-put-evidence tx mslot mgen moff mlen dslot dgen doff okind oslot ogen principal fn2-core)
+     (fn2-txn-put-summary tx mslot mgen moff mlen okind oslot ogen h l fn2-core)
+     (fn2-txn-put-candidate tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h l fn2-core)
+     (if (equal l 1) (fn2-txn-put-index tx mslot mgen moff mlen okind oslot ogen h fn2-core) (mv :ok fn2-core)))))
+(fn2-core-preserves fn2-txn-put-identity (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal local fn2-core)
+  :position 1 :rows nil)
 (defun fn2-txn-put-article (tx dslot dgen doff bytes lines principal u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (let ((i *fn2-txn-slot-article*))
@@ -440,9 +564,6 @@
                                *fn2-upload-kind* u ugen fn2-core)
      (fn2-successor-arg tx i *fn2-article-entry-field-bytes* :value bytes fn2-core)
      (fn2-successor-arg tx i *fn2-article-entry-field-lines* :value lines fn2-core)
-     (fn2-successor-put tx *fn2-txn-slot-record* *fn2-txn-identity-sid* :record fn2-core)
-     (fn2-successor-arg tx *fn2-txn-slot-record* 0 :event 0 fn2-core)
-     (fn2-successor-arg tx *fn2-txn-slot-record* 1 :value principal fn2-core)
      (fn2-successor-put tx *fn2-txn-slot-outcome* *fn2-txn-outcome-sid* :insert fn2-core)
      (fn2-successor-arg tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-principal* :value principal fn2-core)
      (fn2-successor-arg tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-operation* :event 0 fn2-core)
@@ -460,7 +581,17 @@
      (fn2-successor-put tx i *fn2-txn-counts-sid* :accept fn2-core)
      (fn2-successor-arg tx i 0 :value group fn2-core))))
 (fn2-core-preserves fn2-txn-put-accept (tx k group fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-put-article fn2-txn-put-accept))
+(in-theory (disable fn2-txn-put-local fn2-txn-put-index fn2-txn-put-identity fn2-txn-put-article fn2-txn-put-accept))
+;; A POST's slots: the identity admission (a local acceptance) and the
+;; article row with its outcome, one call for the declaring run.
+(defun fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines u ugen h principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (fn2-txn-chain
+   (fn2-txn-put-identity tx mslot mgen moff mlen dslot dgen doff *fn2-upload-kind* u ugen h principal 1 fn2-core)
+   (fn2-txn-put-article tx dslot dgen doff bytes lines principal u ugen fn2-core)))
+(fn2-core-preserves fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines u ugen h principal fn2-core)
+  :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-post))
 
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
@@ -598,8 +729,11 @@
        (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
        (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
        ((mv in1 doff) (fn2-upload-digest-at source (fn2-upload-chunk-cap c0 fn2-core)))
-       ((mv code fn2-core) (fn2-txn-put-article tx (if in1 c1 c0) (if in1 g1 g0) doff source lines
-                                                (fn2-txn-row-principal-slot id fn2-core) u ugen fn2-core))
+       ((mv fcode verdict & h & &) (fn2-identity-facts tx fn2-core))
+       ((unless (and (eq fcode :ok) (eq verdict :stored))) (mv :stop fn2-core))
+       ((mv code fn2-core)
+        (fn2-txn-put-post tx c0 g0 (fn2-upload-row-mo u fn2-core) (fn2-upload-row-ml u fn2-core) (if in1 c1 c0) (if in1 g1 g0)
+                          doff source lines u ugen h (fn2-txn-row-principal-slot id fn2-core) fn2-core))
        ((unless (eq code :ok)) (mv :stop fn2-core)))
     (let ((fn2-core (fn2-machine-write-prepared id 1 fn2-core))) (mv :run fn2-core))))
 (fn2-core-preserves fn2-txn-declare-1 (id fn2-core) :position 1 :rows nil)
@@ -608,8 +742,9 @@
 ;; admit the member (B-S2, the interim answers :not-served: refused
 ;; :not-stored), and on the admission's :ok bind the slots into its batch
 ;; with the member's commit position, which cannot fail. :full and an
-;; exhausted batch are backpressure (stay :ready, run again); :stale decides
-;; again.
+;; exhausted batch are backpressure (stay :ready, run again); :stale and a
+;; refused identity admission (the name was selected or the candidate moved
+;; since the decision) decide again.
 (defun fn2-txn-commit-1 (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
@@ -632,12 +767,11 @@
            (:exhausted (mv :run fn2-core))
            (otherwise (mv :stop fn2-core)))))
       (:full (mv :run fn2-core))
-      ;; a fact or a run moved under the identity fact: decide again (its
-      ;; slots stay declared; :prepare resolves them again)
-      (:stale (let ((fn2-core (fn2-machine-write-offered id 0 fn2-core))) (mv :lookup fn2-core)))
+      ;; a run moved, or the identity admission's summary or candidate moved
+      ;; since the decision: decide again (the slots stay declared; :prepare
+      ;; resolves them again)
+      ((:stale :refused) (let ((fn2-core (fn2-machine-write-offered id 0 fn2-core))) (mv :lookup fn2-core)))
       (:duplicate (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :duplicate) fn2-core))) (mv :refused fn2-core)))
-      (:evidence (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :conflict) fn2-core))) (mv :refused fn2-core)))
-      (:identity-conflict-bound (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :identity-conflict-bound) fn2-core))) (mv :refused fn2-core)))
       (:capacity (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :unaffordable) fn2-core))) (mv :refused fn2-core)))
       (otherwise (mv :stop fn2-core)))))
 (fn2-core-preserves fn2-txn-commit-1 (id fn2-core) :position 1 :rows nil)

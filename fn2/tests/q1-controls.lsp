@@ -146,7 +146,7 @@
                 ; as stored (the transaction then goes on toward accepting it).
                 (run-kind 'fn2-txn (lambda () (and (fn2-q1t-ok (fn2-q1t-case "conflict") nil)
                                                    (fn2-q1t-ok (fn2-q1t-case "xref-seeded") nil)))
-                  'fn2-identity-step
+                  'fn2-identity-decide
                   (lambda (orig)
                     (lambda (d budget core)
                       (multiple-value-bind (answer core) (funcall orig d budget core)

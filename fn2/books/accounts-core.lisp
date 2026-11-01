@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "accounts")
 (include-book "machines-a")
+(include-book "arm-children")
 (fn2-book-layer :d)
 
 ;; Every wrapper checks the ledger's shape (the core's wfp covers its
@@ -34,7 +35,36 @@
   :doc "D7 4/n-a: a principal's request; :queued while its FIFO is non-empty (no barging), :refused for a request limit of 0.")
 (defcost fn2-account-request-release :answers t :tables (fn2-core-accounts) :effects ((:release (:principal-reservation)))
   :doc "D7 4/n-a: a request's reservation released at its reply's last octet.")
+;; The park over the two children it touches (MACHINE-FORM 6.5 P2; the
+;; child form's (:park :principal-reservation)): ID appended at the tail of
+;; PRINCIPAL's request FIFO, its wait reason :principal-reservation, its
+;; ready links the directory's; :ok for a row parked there already; :bounds
+;; for an id or principal outside the children, or a tail no row holds.
+(defun fn2-account-request-park-children (id principal fn2-accounts fn2-machines)
+  (declare (xargs :stobjs (fn2-accounts fn2-machines)
+                  :guard (and (fn2-accounts-wfp fn2-accounts) (fn2-machines-wfp fn2-machines))))
+  (b* (((unless (and (fn2-machines-row-ok id) (unsigned-byte-p 32 id) (fn2-accountsp fn2-accounts)
+                     (fn2-accounts-shapep fn2-accounts) (natp principal)
+                     (< principal (fn2-accounts-rows fn2-accounts))))
+        (mv :bounds fn2-accounts fn2-machines))
+       ((when (equal (fn2-machines-wait-reason id fn2-machines) *fn2-wait-principal-reservation*))
+        (mv :ok fn2-accounts fn2-machines))
+       (head (fn2-accounts-wait-head principal fn2-accounts))
+       (tail (fn2-accounts-wait-tail principal fn2-accounts))
+       ((unless (and (unsigned-byte-p 32 head) (unsigned-byte-p 32 tail)
+                     (or (equal tail *fn2-none*) (fn2-machines-row-ok tail))))
+        (mv :bounds fn2-accounts fn2-machines))
+       (fn2-machines (fn2-machines-set-wait-reason id *fn2-wait-principal-reservation* fn2-machines))
+       (fn2-machines (fn2-machines-set-ready-prev id tail fn2-machines))
+       (fn2-machines (fn2-machines-set-ready-next id *fn2-none* fn2-machines))
+       (fn2-machines (if (equal tail *fn2-none*) fn2-machines (fn2-machines-set-ready-next tail id fn2-machines)))
+       (fn2-accounts (fn2-accounts-set-wait-head principal (if (equal tail *fn2-none*) id head) fn2-accounts))
+       (fn2-accounts (fn2-accounts-set-wait-tail principal id fn2-accounts)))
+    (mv :ok fn2-accounts fn2-machines)))
+(fn2-accounts-preserves fn2-account-request-park-children (id principal fn2-accounts fn2-machines)
+  :carriers ((fn2-accounts 1) (fn2-machines 2 :prefix "-MACHINES")))
 (defcost fn2-account-request-park :answers (:ok :bounds) :tables (fn2-core-accounts fn2-core-machines)
+  :child fn2-account-request-park-children
   :own-writes (wait-reason ready-prev ready-next)
   :doc "D7 4/n-a: park a refused request on its principal's FIFO in the same transition.")
 ;; The :principal-reservation wait kind is D's (MACHINE-FORM 6.10): a refused

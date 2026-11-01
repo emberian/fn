@@ -14,18 +14,19 @@
 
 ; Reading served beside posting (the seeds use transaction slot 0's
 ; successor rows), with two groups carried. Each seeded batch takes one
-; private overlay per schema it writes (four) and an arena each: 32
-; overlays, 64 4 KiB pool slots, and 32 64 KiB slots so the sealer can
-; reserve its run pages (it stops the core :sealer-full otherwise,
+; private overlay per schema it writes (nine: the five identity records,
+; counts, overview, article, outcome) and an arena each: 64 overlays, 128
+; 4 KiB pool slots, and 64 64 KiB slots so the sealer can
+; reserve its run pages (each run's pages stay resident) (it stops the core :sealer-full otherwise,
 ; C-SEAL-BACKPRESSURE), with one large-upload window.
 (defconst *fn2-cursor-overview-sid* 3)
 (defconst *fn2-cursor-profile*
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2))
-  (put-assoc-equal :identity-overlays 32
+  (put-assoc-equal :identity-overlays 64
    (put-assoc-equal :large-upload-windows 1
     (put-assoc-equal :reading t
      (put-assoc-equal :x 2
-      (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (32 . 65536)) *fn2-txn-posting-profile*)))))))
+      (put-assoc-equal :pool-classes '((8 . 1024) (128 . 4096) (64 . 65536)) *fn2-txn-posting-profile*)))))))
 
 ; ---------------------------------------------------------------------------
 ; A seed is (GROUP MID LINE): an article accepted into group GROUP (an
@@ -49,7 +50,7 @@
 (defun fn2-cs-drive (fuel d fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (zp fuel) (mv :fuel fn2-core)
-    (mv-let (answer fn2-core) (fn2-identity-step d 4096 fn2-core)
+    (mv-let (answer fn2-core) (fn2-identity-decide d 4096 fn2-core)
       (if (eq answer :more) (fn2-cs-drive (- fuel 1) d fn2-core) (mv answer fn2-core)))))
 (defun fn2-cs-resolve (fuel tx fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -67,32 +68,31 @@
        ((mv c2 dslot dgen fn2-core) (fn2-cs-fill (make-list 32 :initial-element (mod b 256)) fn2-core))
        ((mv c3 lslot lgen fn2-core) (fn2-cs-fill line fn2-core))
        ((unless (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))) (mv (list :fill c1 c2 c3) fn2-core))
-       ((mv c fn2-core) (fn2-identity-offer 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
+       ((mv c fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :offer c) fn2-core))
        ((mv a fn2-core) (fn2-cs-drive 100 0 fn2-core))
        ((unless (eq a :stored)) (mv (list :decide a) fn2-core))
+       ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
        ((mv c fn2-core)
         (fn2-cs-chain
-         (fn2-successor-put 0 0 *fn2-txn-identity-sid* :record fn2-core)
-         (fn2-successor-arg 0 0 0 :event 0 fn2-core)
-         (fn2-successor-arg 0 0 1 :value 3 fn2-core)
-         (fn2-successor-put 0 1 *fn2-txn-counts-sid* :accept fn2-core)
-         (fn2-successor-arg 0 1 0 :value group fn2-core)
-         (fn2-successor-put 0 2 *fn2-cursor-overview-sid* :insert fn2-core)
-         (fn2-successor-arg 0 2 *fn2-overview-entry-field-group* :value group fn2-core)
-         (fn2-successor-arg 0 2 *fn2-overview-entry-field-number* :out
-                            (+ (* 1 256) *fn2-group-counts-entry-field-high*) fn2-core)
-         (fn2-successor-arg 0 2 *fn2-overview-entry-field-article* :event 0 fn2-core)
-         (fn2-successor-arg 0 2 *fn2-overview-entry-field-position* :event 0 fn2-core)
-         (fn2-successor-arg-octets 0 2 *fn2-overview-entry-field-line* lslot lgen 0 (len line) 200 0 1 fn2-core)
-         (fn2-successor-put 0 3 *fn2-txn-article-sid* :insert fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-article* :event 0 fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-birth* :event 0 fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-state* :value *fn2-txn-article-live* fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-version* :value *fn2-txn-article-version* fn2-core)
-         (fn2-successor-arg-octets 0 3 *fn2-article-entry-field-source* dslot dgen 0 32 200 0 1 fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-bytes* :value (len line) fn2-core)
-         (fn2-successor-arg 0 3 *fn2-article-entry-field-lines* :value 1 fn2-core)))
+         (fn2-txn-put-identity 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 h 3 1 fn2-core)
+         (fn2-successor-put 0 7 *fn2-txn-counts-sid* :accept fn2-core)
+         (fn2-successor-arg 0 7 0 :value group fn2-core)
+         (fn2-successor-put 0 8 *fn2-cursor-overview-sid* :insert fn2-core)
+         (fn2-successor-arg 0 8 *fn2-overview-entry-field-group* :value group fn2-core)
+         (fn2-successor-arg 0 8 *fn2-overview-entry-field-number* :out
+                            (+ (* 7 256) *fn2-group-counts-entry-field-high*) fn2-core)
+         (fn2-successor-arg 0 8 *fn2-overview-entry-field-article* :event 0 fn2-core)
+         (fn2-successor-arg 0 8 *fn2-overview-entry-field-position* :event 0 fn2-core)
+         (fn2-successor-arg-octets 0 8 *fn2-overview-entry-field-line* lslot lgen 0 (len line) 200 0 1 fn2-core)
+         (fn2-successor-put 0 5 *fn2-txn-article-sid* :insert fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-article* :event 0 fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-birth* :event 0 fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-state* :value *fn2-txn-article-live* fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-version* :value *fn2-txn-article-version* fn2-core)
+         (fn2-successor-arg-octets 0 5 *fn2-article-entry-field-source* dslot dgen 0 32 200 0 1 fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-bytes* :value (len line) fn2-core)
+         (fn2-successor-arg 0 5 *fn2-article-entry-field-lines* :value 1 fn2-core)))
        ((unless (eq c :ok)) (mv (list :slots c) fn2-core))
        ((mv c fn2-core) (fn2-cs-resolve 40 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :resolve c) fn2-core))
@@ -434,9 +434,9 @@
 ; C-S4 (e): the identity read's typed result (IDENTITY-ACROSS-PEERS ruling
 ; 8: selection, evidence status as the locally known candidates at this
 ; cut, availability, coverage, authorization). Its subject reads a store
-; seeded as above plus CONFLICTS, conflict evidence recorded through C-S3
-; (each (MID BYTE): a content of 32 octets of BYTE for an already accepted
-; Message-ID), through read row 0 of a profile that serves reading.
+; seeded as above plus CONFLICTS, evidence-only admissions through C-S3
+; (C §4a; each (MID BYTE): a content of 32 octets of BYTE for an already
+; accepted Message-ID), through read row 0 of a profile that serves reading.
 (defconst *fn2-read-profile*
  (put-assoc-equal :groups '(("local.test" . 1) ("local.empty" . 2) ("alt.misc" . 3))
   (put-assoc-equal :reading t
@@ -447,14 +447,15 @@
   (b* ((mid (fn2-cs-octets mid))
        ((mv & mslot mgen fn2-core) (fn2-cs-fill mid fn2-core))
        ((mv & dslot dgen fn2-core) (fn2-cs-fill (make-list 32 :initial-element byte) fn2-core))
-       ((mv c fn2-core) (fn2-identity-offer 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
+       ((mv c fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :offer c) fn2-core))
        ((mv a fn2-core) (fn2-cs-drive 100 0 fn2-core))
-       ((mv c fn2-core)
-        (fn2-cs-chain (fn2-successor-put 0 0 *fn2-txn-identity-sid* :record fn2-core)
-                      (fn2-successor-arg 0 0 0 :event 0 fn2-core) (fn2-successor-arg 0 0 1 :value 3 fn2-core)))
+       ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
+       ((mv c fn2-core) (fn2-txn-put-identity 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 h 3 0 fn2-core))
        ((unless (eq c :ok)) (mv (list a :slots c) fn2-core))
-       ((mv c fn2-core) (fn2-cs-resolve 40 0 fn2-core))
+       ;; one resolve step per run of each slot's schema: after the sealer
+       ;; has made a run per seeded overlay, more than the seeds' 40
+       ((mv c fn2-core) (fn2-cs-resolve 400 0 fn2-core))
        ((unless (eq c :ok)) (mv (list a :resolve c) fn2-core))
        ((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
        ((unless (eq c :ok)) (mv (list a :stage c) fn2-core))
@@ -517,4 +518,4 @@
            (equal (fn2-read-identity-typed seeds conflicts mid) (fn2-read-identity-spec seeds conflicts mid)))
   :schema :invariant
   :teeth (fn2-read-identity-test-selection fn2-read-identity-test-negative)
-  :doc "IDENTITY-ACROSS-PEERS ruling 8 over C-S4 (e): the identity read by Message-ID answers the typed read result: the selection, the evidence status (the locally known conflict candidates at this cut, counted, never a global count), availability, coverage and authorization. Owed on two counts. (1) C's engine as it stands stores (name, content) as :accepted/:conflict with at most four contents a name, so the read answers the selection and the candidates only; availability, coverage and authorization are :not-served until C's record change under rulings 3 and 7 (attributed receipts apart from binding evidence, the four-per-id constant deleted, an exact lookup plus a per-name summary plus a pageable evidence cursor) and S-ARTICLE-LOCATION give it an answer; the read is rewritten over those then. (2) The candidates are the contents met in the block, which the future evidence cursor pages instead of walking. Teeth: the selection and the candidates against the reference, and a reference that tells a conflict apart.")
+  :doc "IDENTITY-ACROSS-PEERS ruling 8 over C-S4 (e): the identity read by Message-ID answers the typed read result: the selection, the evidence status (the locally known conflict candidates at this cut, counted, never a global count), availability, coverage and authorization. Owed: the read answers the selection (C §4a's article index) and the locally known other candidates (the summary's count); availability, coverage and authorization are :not-served until S-ARTICLE-LOCATION (the article's location, bound at D's txn port) and the summary's coverage are read into the result. Teeth: the selection and the candidates against the reference, and a reference that tells a conflict apart.")

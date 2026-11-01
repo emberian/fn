@@ -43,14 +43,15 @@ def seeded_article(letter, subject):
 #   default `.invalid` agent: specs/nntp.md 330-349 (PRF-206) puts a ninth field `Xref: SERVER group:number` on
 #   every OVER line, and SERVER is the path identity, `.invalid` when unset. local.test holds three
 #   articles numbered 1-3 before any client opens; local.empty holds none.
-# - NATIVE (A's native session, unchanged): no read rows, so the node serves no archive. The cursor's verbs
-#   answer *fn2-answer-unread* (503; NEXT and LAST 412), which the model states as archive False.
+# - NATIVE (A's native session, 8e42831b8): the same seeded store and profile (fn2/tests/seeded-store.lsp, shared
+#   by sim-session, native-serve and native-session). D3_POLICY's archive False remains the model's statement of a
+#   profile without read rows (*fn2-answer-unread*).
 CARRIERS = {
     'SIM': dict(groups={'local.test': {}, 'local.empty': {}},
                 articles=[seeded_article('a', 'one'), seeded_article('b', 'two'), seeded_article('c', 'three')],
                 policy=dict(D3_POLICY, archive=True)),
-    'NATIVE': dict(groups={'surface.test': {}}, articles=[], policy=dict(D3_POLICY)),
 }
+CARRIERS['NATIVE'] = CARRIERS['SIM']
 
 
 def cursor_form(line, policy=D3_POLICY):

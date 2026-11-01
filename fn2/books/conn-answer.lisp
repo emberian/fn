@@ -430,10 +430,9 @@
     (:injection-date *fn2-nntp-reply-post-refused-injection-date-present*)
     (:no-clock *fn2-nntp-reply-post-refused-clock-unusable*)
     (:group *fn2-nntp-reply-post-refused-unknown-group*)
-    ;; C's identity decision (section 14.4.3): a fifth content is answered
-    ;; with the conflict line (the bound is C's, the word D's)
+    ;; C's identity decision (section 14.4.3)
     (:duplicate *fn2-nntp-reply-post-refused-duplicate*)
-    ((:conflict :identity-conflict-bound) *fn2-nntp-reply-post-refused-conflict*)
+    (:conflict *fn2-nntp-reply-post-refused-conflict*)
     (:unaffordable *fn2-nntp-reply-post-refused-unaffordable*)
     ;; :not-stored (the interim, D5 2/n) and every other refusal: the generic line
     (otherwise *fn2-nntp-reply-post-refused-unnamed*)))

@@ -50,8 +50,7 @@
          (fn2-q1c-model-reply-p judgement reply)
          (or (not (nth 6 case))
              (equal (car (fn2-check-identity
-                          (append (fn2-q1t-seeded-events seeds) (list (list :query mid (fn-blake3 data) (fn2-q1t-answer reply))))
-                          *fn2-identity-contents-max*))
+                          (append (fn2-q1t-seeded-events seeds) (list (list :query mid (fn-blake3 data) (fn2-q1t-answer reply))))))
                     :ok)))))
 (defthm-owed fn2-txn-answers-by-identity (case sizes)
   (implies (and (member-equal case *fn2-txn-model-cases*) (nat-listp sizes)
@@ -83,8 +82,7 @@
          (not (fn2-q1t-ok (update-nth 5 (nth 5 conflict) dup) nil))
          ; IDENTITY alone refuses a second content answered as stored
          (not (equal (car (fn2-check-identity (append (fn2-q1t-seeded-events (nth 5 conflict))
-                                                      (list (list :query (nth 4 conflict) (fn-blake3 (nth 2 conflict)) :stored)))
-                                              *fn2-identity-contents-max*))
+                                                      (list (list :query (nth 4 conflict) (fn-blake3 (nth 2 conflict)) :stored)))))
                      :ok)))))
 
 (fn2-assert-owed-teeth fn2-txn-answers-by-identity)

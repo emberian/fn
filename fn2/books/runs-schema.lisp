@@ -32,27 +32,37 @@
 
 ; Key order over two field ranges whose key fields start at ABASE and BBASE,
 ; read under owners A and B. The entry layout's field indexes are used for
-; every layout of the schema, which all start with the key fields.
-(defun fn2-rs-compare-body (layout key)
+; every layout of the schema, which all start with the key fields. One
+; function per key field, each comparing its field and calling the next
+; (NAME-COMPARE the first): one function nesting every field took minutes
+; to define at nine key fields.
+(defun fn2-rs-compare-name (name i)
  (declare (xargs :verify-guards nil))
- (if (atom key) '(mv :ok :eq)
-  (let ((c (fn2-codec-field layout (caar key))) (rest (fn2-rs-compare-body layout (cdr key))))
-   (if (fn2-rs-octetsp (cadar key))
-       `(mv-let (code order)
-          (fn2-run-octets-field-compare (+ abase ,c) (+ bbase ,c) ak as ag bk bs bg fn2-fields fn2-pool)
-          (if (or (not (eq code :ok)) (not (eq order :eq))) (mv code order) ,rest))
-     `(let ((order (fn2-run-value-compare (+ abase ,c) (+ bbase ,c) fn2-fields)))
-        (if (eq order :eq) ,rest (mv :ok order)))))))
-
-(defun fn2-rs-compare-event (name layout key)
+ (if (zp i) (fn2-rs-sym name "-COMPARE")
+  (fn2-rs-sym name (concatenate 'string "-COMPARE-" (coerce (explode-nonnegative-integer i 10 nil) 'string)))))
+(defun fn2-rs-compare-step (layout field next)
  (declare (xargs :verify-guards nil))
- (let ((n (len key)))
- `(defun ,(fn2-rs-sym name "-COMPARE") (abase bbase ak as ag bk bs bg fn2-fields fn2-pool)
-   (declare (ignorable ak as ag bk bs bg fn2-pool))
-   (declare (xargs :stobjs (fn2-fields fn2-pool)
-    :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp abase) (natp bbase)
-                (<= (+ abase ,n) (fn2-fields-rows fn2-fields)) (<= (+ bbase ,n) (fn2-fields-rows fn2-fields)))))
-   ,(fn2-rs-compare-body layout key))))
+ (let ((c (fn2-codec-field layout (car field)))
+       (rest (if next `(,next abase bbase ak as ag bk bs bg fn2-fields fn2-pool) '(mv :ok :eq))))
+  (if (fn2-rs-octetsp (cadr field))
+      `(mv-let (code order)
+         (fn2-run-octets-field-compare (+ abase ,c) (+ bbase ,c) ak as ag bk bs bg fn2-fields fn2-pool)
+         (if (or (not (eq code :ok)) (not (eq order :eq))) (mv code order) ,rest))
+    `(let ((order (fn2-run-value-compare (+ abase ,c) (+ bbase ,c) fn2-fields)))
+       (if (eq order :eq) ,rest (mv :ok order))))))
+(defun fn2-rs-compare-events-from (name layout key i n)
+ (declare (xargs :verify-guards nil))
+ (if (atom key) nil
+  (cons `(defun ,(fn2-rs-compare-name name i) (abase bbase ak as ag bk bs bg fn2-fields fn2-pool)
+          (declare (ignorable ak as ag bk bs bg fn2-pool))
+          (declare (xargs :stobjs (fn2-fields fn2-pool)
+           :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp abase) (natp bbase)
+                       (<= (+ abase ,n) (fn2-fields-rows fn2-fields)) (<= (+ bbase ,n) (fn2-fields-rows fn2-fields)))))
+          ,(fn2-rs-compare-step layout (car key) (and (consp (cdr key)) (fn2-rs-compare-name name (+ 1 i)))))
+        (fn2-rs-compare-events-from name layout (cdr key) (+ 1 i) n))))
+(defun fn2-rs-compare-events (name layout key)
+ (declare (xargs :verify-guards nil))
+ (reverse (fn2-rs-compare-events-from name layout key 0 (len key))))
 
 ;; The CHILD- fields of an index layout sit right after the key fields, in the
 ;; ref layout's order, and child-entries follows them; the generic promotion
@@ -479,7 +489,7 @@
               (list :id id :key key :value value :merge merge :page-kind page-kind
                     :layouts (list entry index run) :compare cmp :fold fold)
               nil
-              (cons (fn2-rs-compare-event name entry key) (and fold (fn2-rf-events name key value fold))))
+              (append (fn2-rs-compare-events name entry key) (and fold (fn2-rf-events name key value fold))))
            ,@(and fold (fn2-rf-logic-events name key value fold)))))))
 
 ;; A schema declared after the run assembly would never be dispatched: refused.
