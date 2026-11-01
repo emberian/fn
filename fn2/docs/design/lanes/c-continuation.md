@@ -14,105 +14,60 @@ PID file `build/cN.pid`; forge only while hbox is down).
   219184b5d and refinement b0fbb77e9, octet fold keys and the :published frontier 93ede3b02,
   :answers and :child 381507ecd, S-ARTICLE-LOCATION doc 186a84b7d, C-FOLD-UNCHANGED 523f747c6,
   C-UNION-STAGE and (:new K) 80bd41b85, exact :answers on P4 89f965079.
-- §4a's one landing (sha in the READY; see "In flight" if not yet pushed): the identity records,
-  the decision, the txn switch, and the deletion of the old record. As built, with four departures,
-  in the layer doc's §4a "As built". In short:
-  - The records (identity.lisp): evidence 1, history 11, candidates 12, summary 13, article index 14.
-  - The decision (machines-c-groups.lisp): `fn2-identity-decide-start` / `-decide` / `-facts`, two
-    `fn2-xl-step` lookups. D's `fn2-read-identity` is the article index, then the summary.
-  - The admission: `fn2-txn-put-identity tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h
-    principal local` (txn.lisp; slots 0-4).
-  - The engine: 24 slots, a 2048-row stripe (B's `*fn2-b-txn-field-rows*`), and the sealer's
-    filter on summary runs.
-  - The schema compare is now generated as a chain of one function per key field: a nine-field key
-    took minutes nested, and the certify stalled four hours.
-  - Deleted: identity-unit, sim-layer-c (M3) and its sweep, the conflict bound, and the upload word
-    :identity-conflict-bound.
+- **§4a, 0022ac2f8 (READY sent 11-01):** the identity records (evidence 1, history 11, candidates 12,
+  summary 13, article index 14), fn2-identity-decide-start/-decide/-facts, fn2-txn-put-identity
+  (helpers put-local (history), -evidence, -summary, -candidate, -index, in that order: the index's
+  ordinal is the summary's :out, so it goes last) and fn2-txn-put-post (identity + article, the one
+  call declare-1 makes; two C writes in a row in declare-1 broke its guard proof). Stage of a fold
+  whose key is found in an overlay re-copies the key fields from the args (the decoded key named the
+  overlay arena: :owner at bind). Test profiles resized (owed-cursor, owed-txn, icu). Layer doc §4a
+  "As built". A confirming certify of the pushed tree was started on hbox (~/fn2-c/cert.pid, log
+  ~/fn2-c/cert.log); read it, fix forward if red.
+- Item 2 (:child narrowing): answered main, no change: each fn2-read-*-children already returns only
+  what it writes.
 
-## Method (WORKFLOW-20261031, binding)
-No whole-tree gate, no OWED regeneration, no export per commit. Land on: my changed books certify,
-my units pass, my own reading of the diff; rebase on dev; secrets check (`python3
-tools/secrets_check.py`, NOT a .sh); push; one-line READY. Fix forward. At ~400K ask main for the
-distill.
+## In flight: c-next (worktree /Users/ember/dev/fn/build/lanes/fn2/c-next, branch fn2/c-next, on 0022ac2f8)
+Uncommitted, not yet certified (needs the hbox tree updated with these four files, then the target
+certify: tests/identity-core-unit.lisp plus the C units; the schema addition rebuilds the chain):
+- machines-c-bind.lisp: `fn2-succ-unstage` (bind and drop return every other :staged txn to :open;
+  §8 item 15, the tip scan's invariant enforced) and `fn2-successor-stream-member` (§8 item 17,
+  :child fn2-succ-stream-member-children, (mv code stream position next), :answers (:ok :done :state
+  :bounds)).
+- ordered.lisp: `fn2-consumer-names` id 15 (§8 item 16).
+- identity-core-unit.lisp: `fn2-icu-tips` (unstage, stream member, names duplicate); expected values
+  are my prediction, check them.
+- c-ordered-runs.md: §5 capacity numbers and the minimal C5; §4a claim stability restated; §8 items
+  15-18 (18 = the one-encoding proposal: one B kind :staged-write, body = C tag + layout codec;
+  fn2-successor-emit and C's replay attachment land at D's txn port).
+Land as one commit, READY naming E's two seams (fn2-consumer-names, fn2-successor-stream-member) and
+asking B (through main) about :staged-write.
 
-## Rulings in force (main, 10-31)
-- Ember: spine only until D's cursor and B's member land. §4a's single landing IS the spine (D's
-  txn port is written against fn2-identity-decide and the four slots), so it goes on. Paused: E's
-  peering seams, coverage gaps, funded admission, any breadth. The location field's bind comes
-  with D's txn port when D asks.
-- A kind lands with its producer (D46). E's five peering schemas stay design (e-surface.md §13).
-  fn2-withdrawals waits for the cancel verb (D5 3/n). The fn2-outcome widening stays in my order
-  (the txn writes it today).
-- fn2-outcome's principal key: D7's (b). (:id principal) keys on fn2-account-principal-id =
-  slot*2^32 + incarnation (u60). The outcome keystone takes D's fn2-account-principal-id-unique as
-  its premise. D7 4/n-a 00c493d32 PROVED fn2-account-principal-id-unique and -rebind-fresh, so the
-  premise is a theorem; key on it when the widening lands with E's op id. D's fn2-read-frontier
-  (c7972899d) reads my published column.
-- Wire words: record kinds are named by the protocol verb that writes and reads them.
-- G2 (7a0edee7a): :sealable is a defwait in my sealer kind book. Kind :stops exist, so the sealer's
-  :sealer-full / :sealer-cache and inner-phase stops leave exec-state's enum at the sealer's port,
-  which waits for G3's :sub and :genesis.
+## Next (in order; main 10-31: spine seams only)
+1. Land c-next (above).
+2. Argon (c) code at D's port: fn2-successor-emit and the replay attachment, once B agrees the kind.
+3. §4a steps 3-4 (layer doc): the reads at a named view; the checker's rewrite, M3 over the new
+   decision, the keystones as defthm-owed rows.
+4. C-SEAL-NO-ROW is dead since B5-4a: delete the :no-row branch and the doc's interim entry.
+5. The device half when B5-4's :run-replacement is usable; then C5 (minimal: §5's merge phase;
+   the concrete profile must set :identity-overlays >= 20 and :identity-runs 512 before D5 2/n
+   serves: tell main/A who owns the profile).
+6. Owed: the machines-c-stage shave; the sealer's descriptor cap 4 -> 0; fn2-xl-step skipping a run
+   on the summary filter.
 
-## In flight
-If the §4a landing is not on dev: lane fn2/c-wake holds commit "WIP §4a landing" plus the edits
-after it (runs-schema's compare chain, the layer doc's §4a "As built" and §1 rows). Certify on
-forge (this run only; the next certifies go to hbox: swarm-build, PID files, clone under ~ or
-/othersys, no new data on /tank, nothing heavy on the Mac): `build/c7.sh` (setsid; PID `build/c7.pid`; out `build/c7.out`). Its targets are
-sim/check-identity and the units identity-core, txn, groups, runs, range, sealer, sealer-machine,
-read, cursor, conn-answer and q1-contracts-d. Expected values I could not run yet:
-- identity-core-unit's decision `:steps 4`;
-- check-identity's good-trace facts order;
-- runs-unit's page expectations (the entry is larger now);
-- sealer-unit's summary image.
-Fix each from the REPL (build/iddrun.sh is the REPL pattern: a driver .lsp, `--timeout`, a PID
-file). Then squash into one commit by path. The message names other owners' files: D's txn,
-owed-cursor, upload, conn-answer, read and txn units, machines-c-read; B's machines-b; Q1's
-q1-contracts-d and q1-controls; A's owed-export. Rebase, run the secrets check, push, and send
-READY. The READY names `*fn2-b-txn-field-rows*` for B, and the API for D's port.
-
-## Next (in order; main 10-31: spine seams only, nothing beyond these)
-1. Narrow the read ops' :child returns (ember's certify-time push). Each fn2-read-X-children
-   returns only the children it changes; a lookup changes fn2-reads and fn2-fields, not the run
-   tables. The cursor's seek arm pays one shape-lemma pair (~11 s) per returned child; the arms
-   narrow by construction under the per-arm tuples (24fce1ecd). Measured by the cursor's time.
-2. E's consumer machine seams (exact forms in lanes/e-continuation.md, its blockers):
-   (a) the fold `fn2-consumer-names`: key ((principal (:id principal)) (name (:octets 64))),
-       value ((consumer (:id consumer))), :unique, written by register's transaction (D's txn
-       port's :consumer mode), so a wire name maps to the cursor fold's consumer id;
-   (b) `(defcost fn2-successor-stream-member :child ... :answers (:ok :done :state))` -> (mv code
-       stream position next), listing a published batch's fn2-addr writes, for E's attachment of
-       fn2-commit-stream-wake.
-3. The Argon review (build/coordinator/fn2/REVIEW-ARGON-RESPONSE-20261031.md), in this order:
-   (a) Answer main with numbers:
-       - the installed-run capacity per schema at the concrete profile (fn2-b-capacity
-         :identity-runs 64 in machines-c.lisp; how the rows split per schema);
-       - what the sealer answers when the capacity is reached (:full at install: :sealer-full
-         stops the core, C-SEAL-BACKPRESSURE);
-       - the smallest C5 (merge the installed runs of one schema, drop superseded fold keys) that
-         must precede helm's 7,000-events-a-day run. Argon computes exhaustion within hours at a
-         bound of 16.
-   (b) machines-c-stage.lisp ~68: fn2-succ-tip-scan reads the :private overlays of in-flight
-       batches. Main's reading: stage writes no overlay (bind does, after admission), so a private
-       overlay holds only admitted members; a later member commits only if every earlier batch
-       publishes (B's suffix abort). So the read is consistent with any history in which the
-       reader commits. State that invariant in §8 in one sentence, or fix the scan if some path
-       lets a reader commit while the overlay it read is dropped.
-   (c) Ruled: one encoding of a transaction. fn2-successor-out emits the member workspace from the
-       staged slots in B's record kinds: B's generated encoders, every staged slot with no subset
-       (overview, addr, the identity records, the folds' events). D passes it to
-       fn2-commit-admit-txn, and fn2-member-replay feeds the same slots back through the same
-       installer. Coordinate the kinds list with B.
-   (d) Restate fn2-txn-claim-stabilizes-decision as "while every writer of this name holds the
-       claim". Stage-time :refused becomes reachable once catch-up, generated-Message-ID POSTs and
-       resolution exist; the txn then replans to evidence.
-   (ARTICLE <mid> is O(1): two exact reads from (namespace, name), the article index (id 14) and
-   then the summary (id 13). Confirmed in the §4a READY.)
-4. §4a steps 3-4 (layer doc): the three reads at a named view; the checker's rewrite, M3 over
-   the new decision, and the keystones as defthm-owed rows.
-5. C-SEAL-NO-ROW is dead since B5-4a: delete the :no-row branch and the doc's interim entry.
-6. The device half when B5-4's :run-replacement is usable; then C5.
-7. Owed: the machines-c-stage shave; the sealer's descriptor cap 4 -> 0 after A's frame lemmas;
-   fn2-xl-step skipping a run on the summary filter.
+## Boxes (11-01)
+- hbox is the certify box: tree ~/fn2-c/tree (sync from a Mac worktree with `rsync -ac --exclude
+  '*.cert*' --exclude '*.fasl' --exclude '*.port' --exclude '*.out' --exclude '*.time' fn2/
+  hbox-saas:fn2-c/tree/fn2/`; -c keeps unchanged files' mtimes so certs stay warm). Certify:
+  `~/fn2-c/cert.sh BOOKS` started `(setsid nohup sh cert.sh ... & echo $! > cert.pid)`; stop with
+  `kill -- -$(cat cert.pid)`. The assembly chain is ~1 h at hbox's load (~15).
+- REPL loop on hbox (minutes, not an hour): ~/fn2-c/vu.sh runs ~/fn2-c/vu.lsp from tree/fn2/tests
+  (PID vu.pid, out vu.out): include the certified assembly, `(set-ld-redefinition-action '(:doit .
+  :overwrite) state)`, `(ld "../books/X-new.lisp" :ld-error-action :continue)` for each edited book
+  (for txn.lisp also `(fn2-txn-op-events) (fn2-txn-events)`: its core functions live in those
+  macros), then ld the units with :continue and grep "Assertion failed". A defun that fails inside a
+  macro's progn silently leaves the OLD definitions in force: grep the out for Errors first. A new
+  schema cannot be tried this way (the assembly is generated from the schema table).
+- forge /build/lanes/c is stale (pre-rebase); do not use it.
 
 ## The fn2-sealer arm table (as built at 429702ef1; input to the new form)
 The machine has one row (capacity 1, gen 1, local slot 0). Its fields are `stopped :bool` plus the

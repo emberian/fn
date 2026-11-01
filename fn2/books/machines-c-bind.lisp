@@ -184,11 +184,28 @@
            (fn2-succ-unfilled (- k 1) (+ 1 i) tx fn2-succ-slots)))))
 (in-theory (disable fn2-succ-unfilled))
 
+;; A stage's conclusions hold while the tip it read is unchanged; the tip
+;; changes at a bind and at a drop (a publish changes no content a stage
+;; reads; a seal moves the run version, which stage already checks). So a
+;; bind (of every transaction but EXCEPT) and a drop return every other
+;; :staged transaction to :open: its bind then answers :state until it
+;; stages again (c-ordered-runs.md §8, the tip scan's invariant).
+(defun fn2-succ-unstage (k tx except fn2-succ-txns)
+ (declare (xargs :stobjs fn2-succ-txns :measure (nfix k) :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (natp tx))))
+ (b* (((unless (and (posp k) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))) fn2-succ-txns)
+      (fn2-succ-txns (if (and (not (equal tx except))
+                              (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-staged*))
+                         (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns)
+                       fn2-succ-txns)))
+  (fn2-succ-unstage (- k 1) (+ 1 tx) except fn2-succ-txns)))
+(fn2-succ-txns-preserves fn2-succ-unstage (k tx except fn2-succ-txns) :position nil :raw-rows t)
+(in-theory (disable fn2-succ-unstage))
+
 ; Bind staged TX into BATCH at commit position EVENT (its :event args): :ok, :state while a late octet arg is
 ; unfilled (C-S3a; nothing is bound), or an invariant failure by name.
 (defun fn2-succ-bind (tx b event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-bind-slots)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-bind-slots fn2-succ-unstage)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots)
                     (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
                     (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
@@ -203,12 +220,13 @@
        (fn2-succ-bind-slots *fn2-succ-slots* 0 tx b0 b event fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index
                             fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-bound*) (batch b) (event event))))
+      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-bound*) (batch b) (event event)))
+      (fn2-succ-txns (fn2-succ-unstage (fn2-succ-txns-rows fn2-succ-txns) 0 tx fn2-succ-txns)))
   (mv :ok fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
 (fn2-idc-fn-shape fn2-succ-bind (tx b event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-txns-phase fn2-succ-bind-slots fn2-succ-unfilled))
+ (fn2-succ-txns-phase fn2-succ-bind-slots fn2-succ-unfilled fn2-succ-unstage))
 
 ; Release TX at its outcome: its slots and its decision free again. A
 ; transaction bound to a batch not yet published or dropped is :state.
@@ -339,10 +357,50 @@
        (mv :state fn2-succ-txns fn2-overlays fn2-pool))
       ((unless (and (posp b) (unsigned-byte-p 60 b))) (mv :bounds fn2-succ-txns fn2-overlays fn2-pool))
       (fn2-succ-txns (fn2-succ-drop-txns (fn2-succ-txns-rows fn2-succ-txns) 0 b fn2-succ-txns))
+      (fn2-succ-txns (fn2-succ-unstage (fn2-succ-txns-rows fn2-succ-txns) 0 (fn2-succ-txns-rows fn2-succ-txns) fn2-succ-txns))
       ((mv code fn2-overlays fn2-pool) (fn2-succ-drop-overlays (fn2-overlays-rows fn2-overlays) 0 b fn2-overlays fn2-pool)))
   (mv code fn2-succ-txns fn2-overlays fn2-pool)))
 (fn2-idc-fn-shape fn2-succ-drop (b fn2-succ-txns fn2-overlays fn2-pool) (fn2-succ-txns fn2-overlays fn2-pool)
- (fn2-succ-txns fn2-overlays fn2-pool) t (fn2-succ-drop-txns fn2-succ-drop-overlays))
+ (fn2-succ-txns fn2-overlays fn2-pool) t (fn2-succ-drop-txns fn2-succ-drop-overlays fn2-succ-unstage))
+
+;; The stream members of published batch B (E's fn2-commit-stream-wake,
+;; attached to B's hook right after fn2-successor-publish, before any
+;; transaction of B is released): its fn2-addr writes, one per call. Cursor
+;; I = tx * W + slot walks the transaction rows bound to B (now :published)
+;; and their non-empty addr slots, reading the staged row (its position the
+;; member's commit position, filled at bind). (mv code stream position next):
+;; :ok with the slot's stream and position and the cursor of the next call;
+;; :done past the last; :state when the tables are not well formed. At most
+;; K slots visited per call (the whole table: W x t, a profile bound).
+(defconst *fn2-succ-addr-sid* 4)
+(defun fn2-succ-stream-scan (k i b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :measure (nfix k)
+  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (natp i))))
+ (b* (((unless (and (posp k) (natp i) (< i (fn2-succ-slots-rows fn2-succ-slots)))) (mv :done 0 0 0))
+      (tx (floor i *fn2-succ-slots*)) (j (mod i *fn2-succ-slots*))
+      ((unless (and (< tx (fn2-succ-txns-rows fn2-succ-txns))
+                    (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-published*)
+                    (equal (fn2-succ-txns-batch tx fn2-succ-txns) b)
+                    (not (equal (fn2-succ-slots-phase i fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                    (equal (fn2-succ-slots-sid i fn2-succ-slots) *fn2-succ-addr-sid*)))
+       (fn2-succ-stream-scan (- k 1) (+ 1 i) b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields))
+      ((mv c b0) (fn2-idc-stripe tx fcrows fn2-id-decides fn2-fields))
+      ((unless (eq c :ok)) (mv c 0 0 0))
+      (entry (+ b0 (* *fn2-succ-block* j)))
+      ((unless (< (+ entry *fn2-addr-entry-field-stream*) (fn2-fields-rows fn2-fields))) (mv :bounds 0 0 0)))
+  (mv :ok (fn2-fields-value (+ entry *fn2-addr-entry-field-stream*) fn2-fields)
+      (fn2-fields-value (+ entry *fn2-addr-entry-field-position*) fn2-fields) (+ 1 i))))
+(defun fn2-succ-stream-member (b i fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :guard t))
+ (if (not (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)
+               (posp b) (natp i)))
+     (mv :state 0 0 0)
+   (fn2-succ-stream-scan (fn2-succ-slots-rows fn2-succ-slots) i b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)))
+(defun fn2-succ-stream-member-children (b i fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t))
+ (if (fn2-fc-wfp fn2-fc)
+     (fn2-succ-stream-member b i (fn2-fc-rows fn2-fc) fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
+   (mv :state 0 0 0)))
 
 ; ---------------------------------------------------------------------------
 ; Costs (the bases: fn2/docs/c-ordered-runs.md §7 C-SUCCESSOR).
@@ -384,6 +442,8 @@
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
  :doc "Whether a staged fold slot applied (:applied) or its :when failed under :unless-when :unchanged (:unchanged).")
+(defcost fn2-successor-stream-member :child fn2-succ-stream-member-children :answers (:ok :done :state :bounds)
+ :doc "One fn2-addr write of a published batch (E's stream wake): (mv code stream position next).")
 (defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
 (defcost fn2-successor-publish :answers (:bounds :ok :state)
@@ -508,6 +568,13 @@
     (fn2-succ-txns fn2-overlays fn2-id-engine)
     (fn2-succ-publish batch fn2-succ-txns fn2-overlays fn2-id-engine))
    ;; The greatest published commit position: (mv code position).
+   (defun fn2-successor-stream-member (b i fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+                (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code stream position next)
+     (fn2-succ-stream-member-children b i fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
+     (mv code stream position next)))
    (defun fn2-successor-published (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)))
@@ -521,5 +588,5 @@
     :hints (("Goal" :in-theory (enable fn2-succ-core-publish))))
    (defattach (fn2-successor-drop fn2-succ-core-drop)
     :hints (("Goal" :in-theory (enable fn2-succ-core-drop))))
-   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop))
-   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-succ-core-drop) (w state)))))
+   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop))
+   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop) (w state)))))

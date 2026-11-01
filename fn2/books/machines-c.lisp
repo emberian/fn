@@ -31,13 +31,22 @@
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*))))
 
+;; The overlay rows a profile gets when it names none (:identity-overlays):
+;; a batch takes one private overlay per schema it writes, and a POST
+;; writes up to 10 today (the five identity records, article, outcome,
+;; counts, overview, addr) of the 16 a transaction could name; B keeps two
+;; batches in flight (its two commit rows) and the sealer works on the
+;; frozen ones behind them. So 16 schemas x 3 batches. Each overlay in use
+;; holds one arena of :identity-arena-bytes from the pool; the pool must
+;; carry them (c-ordered-runs.md §5, capacity).
+(defconst *fn2-idc-overlays-default* 48)
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (nfix (fn2-profile-t profile))))
       (unsigned-byte-p 32 (* *fn2-succ-slots* (nfix (fn2-profile-t profile))))
-      (unsigned-byte-p 32 (fn2-b-capacity :identity-overlays 8 profile))
-      (unsigned-byte-p 32 (* (nfix (fn2-b-capacity :identity-overlays 8 profile))
+      (unsigned-byte-p 32 (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
+      (unsigned-byte-p 32 (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                              (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))))
       (unsigned-byte-p 32 (fn2-b-capacity :identity-runs 64 profile))
       (unsigned-byte-p 32 (fn2-b-capacity :run-cache 1024 profile))
@@ -73,10 +82,10 @@
 (in-theory (disable fn2-idc-profilep))
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
  "One identity decision per transaction survives the transaction's yields (C-S1).")
-(fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays 8 profile) fn2-overlays)
+(fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile) fn2-overlays)
  "Bounded sorted overlays hold facts not yet sealed into runs.")
 (fn2-idc-child fn2-core-overlay-index fn2-overlay-index
- (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays 8 profile))
+ (fn2-overlay-index-init (* (nfix (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile))
                             (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))) fn2-overlay-index)
  "Each overlay's key-ordered index of its arena's entries.")
 (fn2-idc-child fn2-core-run-installed fn2-run-installed (fn2-run-installed-init (fn2-b-capacity :identity-runs 64 profile) fn2-run-installed)

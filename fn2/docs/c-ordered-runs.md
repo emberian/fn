@@ -372,6 +372,15 @@ and the conclusion. An error result or an impossible premise never counts as a p
 | `fn2-identity-admission-atomic` | At every crash cut of a publication, facts, charges, candidates, summary and coverage are all present or all absent. | Negative: a cut that exposes charges without their facts. |
 | `fn2-identity-evidence-cursor-exact` | A cursor at a view delivers exactly the view's evidence rows for N, in key order, across seals and version moves. | Negative: pagination that omits an eligible row after a seal. |
 
+**Claim stability, restated (Argon §9.5 bug 2, ruled).** `fn2-txn-claim-stabilizes-decision` (D's
+row, over C's decision) holds **while every writer of this name holds the claim**: for an immutable
+offer, while its transaction holds the claim and before its own publication, every validated
+`fn2-identity-decide` returns the same verdict, provided every identity writer of the name holds the
+claim and every representation change (seal, merge) preserves facts. Catch-up import,
+generated-Message-ID POSTs and resolution statements write without a claim, so once they exist a
+stage-time `:refused` of the summary's or candidate's `:admit` is reachable; the txn then replans
+to evidence only (decides again), never stops.
+
 **`fn2-identity-linearizable` changes in substance, not only by losing the bound.** The checker
 verifies one publication transition carrying the facts, charges, candidates, summary and coverage:
 - two decisions see the name unselected, one local acceptance wins, and the other commits conflict
@@ -524,6 +533,41 @@ Departures from the statement above, each with its remedy:
   with a declared maintenance reserve; admission backpressures before the debt exhausts that
   reserve (STORAGE-DESIGN-ASTRA §4's price: compaction bytes per committed byte, reported).
   Relocation under a stalled lease moves only placement; the lease keeps its content identity.
+- **Capacity today, at the concrete profile (Argon §9.13 item 1; measured from the books, not a
+  run).** `*fn2-profile-concrete*` sets no C key, so C's defaults hold: `:identity-overlays` 8,
+  `:identity-runs` 64, `:run-cache` 1024, `:identity-overlay-entries` 256, `:identity-arena-bytes`
+  64 KiB. The 64 installed-run rows are **one table shared by every schema**, not a bound per schema.
+  A batch takes one private overlay per schema it writes, and each frozen overlay seals into its own
+  run. A POST writes 8 schemas today (evidence 1, article 2, counts 5, outcome 9, history 11,
+  candidates 12, summary 13, article index 14) and 10 once D5 2/n adds overview 3 and addr 4.
+  - Installed runs: 8 runs per batch, so 64 rows last 8 batches (6 with overview and addr). At one
+    POST per batch that is the first 8 POSTs, minutes into helm's 7,000 events a day, not hours.
+    At the 65th run the sealer's install answers `:full` and the core stops `:sealer-full`
+    (C-SEAL-BACKPRESSURE above): nothing reclaims a row before C5.
+  - Pages: a sealed run's pages stay resident in `fn2-run-cache` until M2's cold leg, each in a
+    64 KiB pool slot, so the 64 KiB class bounds the runs before the run rows do: a test profile with
+    4 such slots (two of them upload windows) stopped `:sealer-full` on the first seeded POST's runs.
+  - Overlays: stage holds one spare per schema it writes (`fn2-idc-hold-spares`). With the old
+    default of 8 rows and 8 schemas a POST staged only when every overlay was spare (one batch in
+    flight); with overview and addr it needs 10 of 8 and never stages, a livelock reported as
+    backpressure (the units hit it once the identity records became five schemas). **The default is
+    now `*fn2-idc-overlays-default*` = 48** (`machines-c.lisp`): 16 schemas a transaction can name x 3
+    batches (B's two in flight, one being sealed). A profile names `:identity-overlays` to change it.
+    Each overlay in use holds one arena of `:identity-arena-bytes` (default 64 KiB) from the pool, so
+    the pool must carry up to 48 arenas: 3 MiB of 64 KiB slots, which the concrete profile's 80 such
+    slots (its read and write jobs) cannot spare. The concrete profile needs its own class for C:
+    48 x 64 KiB, or `:identity-arena-bytes` 4096 with 48 more 4 KiB slots (a batch's overflow takes a
+    second overlay). Owned by the profile's owner; asked through main.
+  - The minimal C5 before helm's concrete run: a merge phase in the sealer whose entry source is a
+    range scan over at most eight live runs of one schema (the k-way merge `fn2-rd-scan` already
+    does, resolving `:latest` to the newest row and `:union` by union; fold rows are `:latest`, so a
+    superseded fold key drops), feeding the same run builder, installed as one manifest replacement
+    that retires its inputs (their installed rows freed; their pages released once readers have
+    moved past the run version, which readers already check as `:stale`). Policy: size-tiered, merge
+    a schema's runs when two adjacent ones are within a factor of two in entries, so a schema holds
+    about log2(entries) runs: 22 at 2.5 million entries (a year of helm), 15 schemas, about 330
+    rows. So the concrete profile also sets `:identity-runs` to 512, and the per-op cost stays
+    O(log n) amortised (each entry is rewritten about log2 n times over its life).
 
 ## 6. The read path and the read contract (C1-C4)
 
@@ -1081,6 +1125,53 @@ Departures from the statement above, each with its remedy:
    octets.
    Under `:latest` a withdrawal rewrites the whole entry, so its writer copies the location from the
    entry it read.
+
+15. **The tip a stage reads (Argon §9.5 bug 3; built).** `fn2-succ-tip-scan` reads the `:active`,
+   `:frozen` and `:private` overlays of a schema. A private overlay holds only rows bound after their
+   member's admission, so it holds admitted members of an in-flight batch. **Invariant:** a
+   transaction binds only the conclusions of a stage taken against the tip as it is at the bind, so a
+   value it read from an in-flight batch's private overlay is bound into the same or a later batch,
+   and B's suffix abort (a batch whose predecessor is dropped is dropped, in batch order) drops the
+   reader whenever it drops the overlay the reader read. C enforces the first half: the tip changes
+   only at a bind and at a drop (a publish changes nothing a stage reads; a seal moves the run
+   version, which stage checks as `:stale`), so `fn2-succ-bind` (for every transaction but its own)
+   and `fn2-succ-drop` return every other `:staged` transaction to `:open` (`fn2-succ-unstage`), and
+   its bind then answers `:state` until it stages again. D's `:ready` stages, admits and binds in one
+   transition, and re-stages after a park on `:batch-membership` (b-durability.md D's amendment 1);
+   a port that forgets the re-stage gets `:state`, never a stale bind.
+16. **`fn2-consumer-names` (to E and D, E's consumer port; declared).** `(defrunschema
+   fn2-consumer-names :id 15 :key ((principal (:id principal)) (name (:octets 64))) :value ((consumer
+   (:id consumer))) :merge :unique)` in `ordered.lisp`. Register's transaction (D's txn port,
+   `:consumer` mode) inserts it beside the consumer cursor's `:rebase`; a second registration of the
+   same (principal, name) refuses `:duplicate` at stage. E's cursor verbs map a wire name to the
+   cursor fold's consumer id by one exact lookup.
+17. **`fn2-successor-stream-member` (to E, for its attachment of B's `fn2-commit-stream-wake`;
+   built).** `(fn2-successor-stream-member batch i fn2-core) -> (mv code stream position next)`,
+   `:child fn2-succ-stream-member-children`, `:answers (:ok :done :state :bounds)`. Called after
+   `fn2-successor-publish batch` and before any of the batch's transactions is released (B's hook
+   runs right after the publish in the same step). Cursor I starts at 0; each `:ok` names one
+   `fn2-addr` write of the batch (its stream and its position, the member's commit position) and
+   the next cursor; `:done` past the last. It reads the published transactions' staged rows, never
+   the overlays (a publish clears the overlay's batch). `:bounds` is the stripe check, kept as a
+   code (assert, never absorb): E's attachment stops on it.
+18. **One encoding of a transaction (Argon §9.6, ruled; the kinds list, to B through main; lands
+   at D's txn port).** C proposes one B record kind, not one per schema: `:staged-write` (named by
+   the verb that writes it, stage, and read back by bind's installer). Its body is C's tag then the
+   schema's entry codec:
+   - tag: `(schema :u8) (slot-kind (:enum fn2-succ-kind (:insert . fold event kinds))) (events :u32)`,
+     EVENTS the mask of fields that take the member's commit position;
+   - entry: `fn2-run-layout-encode` of the staged row, the encoding the overlay arena and run pages
+     already hold (one codec for a row everywhere). A fold slot carries its post-image (the row its
+     event produced at stage), so replay never re-evaluates a `:when`.
+   `(fn2-successor-emit tx slot gen off cap okind oslot ogen fn2-core) -> (mv code len fn2-core)`
+   writes one `fn2-format-member-record` header plus body per non-empty slot of the staged
+   transaction, in slot order, into D's workspace; D passes it to `fn2-commit-admit-txn` unchanged.
+   `fn2-member-replay` (attached by C) decodes each body with the schema's decoder, fills the EVENTS
+   fields from the record header's event, and inserts through `fn2-succ-bind-slot`, the same
+   installer bind uses. B's part: `:staged-write` in `*fn2-format-record-kind*` and its admission
+   decode delegated to C's decoder by the tag (as D's amendment 3 already does for `:identity`); the
+   three D kinds `:identity-fact`, `:membership` and `:operation-outcome` are then subsumed (identity,
+   overview/counts and outcome are staged writes). `:article-acceptance` stays.
 
 ## 9. Keystones (defthm-owed, each with teeth)
 
