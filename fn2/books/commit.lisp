@@ -12,7 +12,7 @@
 ; B-S2 (§11b S1-S2): a transaction member's workspace holds at most this many
 ; record frames; the records frame's payload bounds a batch's records, each
 ; counted at its largest sealed size (header 83 octets plus its body).
-(defconst *fn2-commit-txn-records-max* 8)
+(defconst *fn2-commit-txn-records-max* 25)
 (defconst *fn2-commit-records-room* 3900)
 (defconst *fn2-commit-txn-header-room* 83)
 (defmacro fn2-commit-require (ok reason)
@@ -537,21 +537,38 @@
  :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame))))
 (in-theory (disable fn2-commit-txn-frame))
 ; A body in its kind's encoding, exactly [OFF, END). Each kind is admitted with
-; its producer (D46): :article-acceptance with D's POST transaction.
+; its producer (D46): :article-acceptance with D's POST transaction, and each
+; of C's 15 run schemas (S12: *fn2-commit-txn-schema-record-kind-base* + sid)
+; decoded by fn2-run-layout-decode.
 (defun fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (if (not (equal rkind *record-kind-article-acceptance*)) (mv :kind fn2-core)
-  (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-   (code fn2-fields)
-   (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
-            (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
-            (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
-    (mv-let (code next fn2-fields)
-     (fn2-format-article-acceptance-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
-     (mv (if (and (eq code :ok) (equal next end)) :ok :body) fn2-fields))
-    (mv :bounds fn2-fields))
-   (mv code fn2-core))))
-(fn2-core-preserves fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core) :position 1 :rows nil)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+  :guard-hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode fn2-run-layout-decode)))))
+ (cond
+  ((equal rkind *record-kind-article-acceptance*)
+   (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+    (code fn2-fields)
+    (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+             (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
+             (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+     (mv-let (code next fn2-fields)
+      (fn2-format-article-acceptance-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+      (mv (if (and (eq code :ok) (equal next end)) :ok :body) fn2-fields))
+     (mv :bounds fn2-fields))
+    (mv code fn2-core)))
+  ((and (natp rkind) (<= *record-kind-identity-evidence* rkind) (<= rkind *record-kind-consumer-names*))
+   (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+    (code fn2-fields)
+    (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+             (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
+             (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+     (mv-let (code next fn2-fields)
+      (fn2-run-layout-decode (- rkind *fn2-commit-txn-schema-record-kind-base*) 0 base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+      (mv (if (and (eq code :ok) (equal next end)) :ok :body) fn2-fields))
+     (mv :bounds fn2-fields))
+    (mv code fn2-core)))
+  (t (mv :kind fn2-core))))
+(fn2-core-preserves fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core) :position 1 :rows nil
+ :hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode fn2-run-layout-decode))))
 (in-theory (disable fn2-commit-txn-body))
 ; Every frame of [OFF, END) with its body: (mv code count need), NEED the
 ; largest sealed size of its records. The workspace is read where it is,

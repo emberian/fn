@@ -207,7 +207,7 @@
  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (if (not (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
                (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sg)
-               (natp rkind) (< rkind 16) (unsigned-byte-p 60 event)))
+               (natp rkind) (< rkind *record-kind-count*) (unsigned-byte-p 60 event)))
      (mv :bounds off fn2-fields fn2-pool)
   (let* ((fn2-fields (fn2-commit-clear-fields *fn2-format-sealed-batch-num-fields* base scratch sg fn2-fields))
          (fn2-fields (fn2-fields-set-value (+ base *fn2-format-record-header-field-record-kind*) rkind fn2-fields))
