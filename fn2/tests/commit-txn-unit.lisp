@@ -182,5 +182,12 @@
  (declare (xargs :verify-guards nil))
  (let ((r (fn2-ctu-refusal-run :leak)))
   (and (fn2-ctp-initialized r) (not (fn2-commit-txn-admission-totalp r)))))
+;; S11: the posture is :draining while an uncertain batch holds its row
+;; (here after the failed writes, before any recovery), :serving after a
+;; clean run.
+(assert-event
+ (and (equal (fn2-ctp-posture (fn2-ctu-accepted-run nil)) :serving)
+      (equal (fn2-ctp-posture (fn2-commit-txn-proof-run *fn2-ctu-two-members* (cons '(:admit 0) (fn2-ctu-auto 12)) 0 nil))
+             :draining)))
 (fn2-assert-owed-teeth fn2-commit-txn-outcome-evidence fn2-commit-txn-records-verbatim
                        fn2-commit-txn-admission-total)

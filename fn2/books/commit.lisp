@@ -484,6 +484,24 @@
   (code batch event outcome fn2-commit-settled) (fn2-cs-take okind oslot ogen fn2-commit-settled)
   (mv code batch event outcome fn2-core)))
 (fn2-core-preserves fn2-commit-take (okind oslot ogen fn2-core) :position 4 :rows nil)
+; B-S2 S11 (Argon 9.7): the node's serving posture, computed from the two
+; commit rows' phases and never stored: :draining while either row is
+; :uncertain (its batch holds rows, windows, reservations and claims until
+; recovery resolves it), else :serving. D's :ready refuses new work by word
+; while it answers :draining.
+(defun fn2-commit-posture (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* ((base (fn2-machine-kind-base *fn2-commit-kind* fn2-core))
+      (a base) (b (+ 1 base)))
+  (if (or (and (fn2-commit-idp a fn2-core)
+               (equal (fn2-machine-phase a fn2-core) *fn2-commit-state-uncertain*))
+          (and (fn2-commit-idp b fn2-core)
+               (equal (fn2-machine-phase b fn2-core) *fn2-commit-state-uncertain*)))
+      :draining :serving)))
+(defthm fn2-commit-posture-answers
+ (member-eq (fn2-commit-posture fn2-core) '(:serving :draining))
+ :hints (("Goal" :in-theory (enable fn2-commit-posture))))
+(in-theory (disable fn2-commit-posture))
 )))
 ; The first section's second half (assembly-callbacks-b2): the batch's root
 ; edges, refusal, and the collect and seal arms.

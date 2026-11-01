@@ -353,7 +353,7 @@
    (mv (cons (list (car a) code batch event outcome) rest) fn2-core))))
 (defun fn2-commit-txn-proof-execute (workspaces commands mode plant fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
- (b* (((unless (member-equal mode '(0 1))) (mv (list nil nil nil nil nil nil) fn2-core fn2-sim fn2-own))
+ (b* (((unless (member-equal mode '(0 1))) (mv (list nil nil nil nil nil nil nil) fn2-core fn2-sim fn2-own))
       ; Room for the members' workspaces beside the two rows' four windows each.
       (profile (fn2-b-test-profile
                 (put-assoc-equal :pool-classes
@@ -369,8 +369,9 @@
       (fn2-own (fn2-own-init profile fn2-own))
       ((mv admissions counts published images fn2-core fn2-sim fn2-own)
        (fn2-ctp-replay commands 0 ids workspaces plant nil nil nil nil nil fn2-core fn2-sim fn2-own))
+      (posture (fn2-commit-posture fn2-core))
       ((mv outcomes fn2-core) (fn2-ctp-outcomes admissions fn2-core)))
-  (mv (list (eq ec :ok) admissions counts published images outcomes) fn2-core fn2-sim fn2-own)))
+  (mv (list (eq ec :ok) admissions counts published images outcomes posture) fn2-core fn2-sim fn2-own)))
 (defun fn2-commit-txn-proof-run (workspaces commands mode plant)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
@@ -383,7 +384,7 @@
        (mv result fn2-core fn2-sim)))
      (mv result fn2-core))) result)))
 (fn2-cm-defreaders fn2-ctp-initialized fn2-ctp-admissions fn2-ctp-counts
- fn2-ctp-published-batches fn2-ctp-images fn2-ctp-outcome-list)
+ fn2-ctp-published-batches fn2-ctp-images fn2-ctp-outcome-list fn2-ctp-posture)
 
 ; Statement 1: every settled outcome matches its batch's evidence.
 (defun fn2-ctp-outcome-okp (o result)

@@ -1547,6 +1547,12 @@ once any batch is `:uncertain` the node's posture is `:draining`.
   could go stale: `(fn2-commit-posture fn2-core) -> code`, with a defcost naming `fn2-machines` and
   `:answers (:serving :draining)`. It answers `:draining` exactly when some commit row's phase is
   `:uncertain`.
+  As built: section 1 of commit.lisp. It reads the two rows' phases through the generated reader,
+  with a teeth control in `tests/commit-txn-unit.lisp` (`:serving` after a clean run, `:draining`
+  while a failed batch is uncertain). It has no `:child` body yet: the phases live in the commit
+  kind's own table, and that table is not a child of another kind's tuple. In child form that
+  table joins D's txn tuple, or the posture becomes a directory column. The form seat decides at the
+  port.
 - D's `:ready` reads it before staging. While it answers `:draining`, a new POST, append or IHAVE
   is refused by word (`:unaffordable` with the uncertain reason) instead of parking. Work already
   admitted drains as usual.
