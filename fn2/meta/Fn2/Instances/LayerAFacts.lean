@@ -35,7 +35,7 @@ theorem ids_qualified : registry.ids.Nodup ∧ ¬ (registry.ids.map DeclId.name)
 theorem declaration_counts :
     registry.machines.length = 10 ∧ registry.columns.length = 53 ∧
     registry.coreChildren.length = 53 ∧ registry.squares.length = 444 ∧
-    registry.costs.length = 176 ∧ registry.waits.length = 4 ∧
+    registry.costs.length = 180 ∧ registry.waits.length = 4 ∧
     registry.rows.length = 190 := by
   decide +kernel
 

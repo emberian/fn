@@ -165,7 +165,12 @@
           :stobjs-in (and callee (getpropc callee 'stobjs-in nil *meta-w*))
           :stobjs-out (and callee (getpropc callee 'stobjs-out nil *meta-w*))
           :answers (fn2-decl-get :answers row) :descriptors (fn2-decl-get :descriptors row)
-          :effects (fn2-decl-get :effects row) :own-writes (fn2-decl-get :own-writes row))))
+          :effects (fn2-decl-get :effects row) :own-writes (fn2-decl-get :own-writes row)
+          ;; the declared cost's static bound per dimension (G3: a :repeat's pass bound is its calls'
+          ;; declared costs and one step); nil where the cost has no static bound
+          :bound (list (fn2-arms-bound (fn2-decl-get :bytes row) nil *meta-w* 8)
+                       (fn2-arms-bound (fn2-decl-get :steps row) nil *meta-w* 8)
+                       (fn2-arms-bound (fn2-decl-get :descriptors row) nil *meta-w* 8)))))
 
 ; ---------------------------------------------------------------- the function closure
 

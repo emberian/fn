@@ -97,11 +97,56 @@ def findArm (w : World) (fn : String) : Option (Kind × Arm × Bool) := Id.run d
       if a.fn == fn then return some (k, a, true)
   return none
 
+/-- The step-language constructs an arm's declaration contains (its steps, its refusal steps, and
+every nested path), for the arm-level coverage report: a construct counts the recorded calls of
+the arms that contain it, so an arm whose branch with the construct was not taken still counts
+(a dynamic route, such as an `:issue` answering `:exhausted`, is not seen here). -/
+partial def stepTags (w : World) (k : Kind) : Step → List String
+  | .let_ .. => [":let"]
+  | .set _ => [":set"]
+  | .next _ => [":next"]
+  | .do_ _ _ acc _ wh _ cs =>
+    [":do"] ++ (if acc then [":do :accept"] else []) ++ (if wh.isSome then [":do :when"] else []) ++
+      cs.flatMap (·.2.flatMap (stepTags w k))
+  | .issue _ ok rf => [":issue"] ++ (ok ++ rf).flatMap (stepTags w k)
+  | .repeat_ _ b _ => [":repeat"] ++ b.flatMap (stepTags w k)
+  | .wakeRow _ => [":wake-row"]
+  | .if_ _ a b => [":if"] ++ (a ++ b).flatMap (stepTags w k)
+  | .cond cl => [":cond"] ++ cl.flatMap (·.2.flatMap (stepTags w k))
+  | .case_ _ arms => [":case"] ++ arms.flatMap (·.2.flatMap (stepTags w k))
+  | .charge .. => [":charge"]
+  | .wait .. => [":wait :completion"]
+  | .park wt _ _ _ =>
+    if wt == "POOL" || wt == "ADMISSION" || wt == "TAKEN" || wt == "OPERATION" then [s!":park :{wt}"]
+    else match w.waits.find? (·.kind == wt) with
+      | some ⟨_, some _⟩ => [":park a declared wait with a parker"]
+      | _ => [":park a declared wait without a parker"]
+  | .stop r _ => [if k.stops.contains r then ":stop a kind's own reason" else ":stop"]
+  | .halt => [":halt"]
+  | .idle => [":idle"]
+  | .yield => [":yield"]
+  | .wake => [":wake"]
+  | .nowake => [":nowake"]
+  | .goto _ => [":goto"]
+  | .repeatNext => []
+
+def constructs : List String :=
+  [":let", ":set", ":next", ":do", ":do :accept", ":do :when", ":issue", ":repeat", ":wake-row", ":if",
+   ":cond", ":case", ":charge", ":wait :completion", ":park :POOL", ":park :ADMISSION", ":park :TAKEN",
+   ":park a declared wait without a parker", ":park a declared wait with a parker", ":stop",
+   ":stop a kind's own reason", ":halt", ":idle", ":yield", ":wake", ":nowake", ":goto"]
+
+def armTags (w : World) (k : Kind) (a : Arm) : List String :=
+  match a.read with
+  | .ok d => ((d.onRefusal ++ d.steps).flatMap (stepTags w k)).eraseDups
+  | .error _ => []
+
 def main (args : List String) : IO UInt32 := do
   let path := args.headD "build/lean-meta/arms-record.sexp"
   let w := Fn2.Instances.LayerAKinds.world
   let text ← IO.FS.readFile path
   let mut tallies : Std.HashMap String Tally := {}
+  let mut cover : Std.HashMap String Nat := {}
   let mut order : Array String := #[]
   let mut lines := 0
   -- the reader over every expression of every child-form kind, exercised or not
@@ -177,6 +222,8 @@ def main (args : List String) : IO UInt32 := do
     let guard := match Fn2.Instances.LayerAWorld.guardOf fn argv with
       | some v => v.truthy
       | none => false
+    for tag in armTags w k a do
+      cover := cover.insert tag ((cover.get? tag).getD 0 + 1)
     let t := (tallies.get? fn).getD {}
     if !(tallies.contains fn) then order := order.push fn
     tallies := tallies.insert fn
@@ -206,6 +253,11 @@ def main (args : List String) : IO UInt32 := do
     if let some d := t.firstInterp then IO.println s!"    interp differs: {d}"
     if let some d := t.firstGen then IO.println s!"    generated differs: {d}"
     if let some d := t.firstFrame then IO.println s!"    frame differs: {d}"
+  -- arm-level coverage of the step language (stepTags): the recorded calls of arms containing
+  -- each construct; the constructs with none are what the measure has not seen
+  let uncovered := constructs.filter fun c => (cover.get? c).getD 0 == 0
+  IO.println s!"COVERAGE {(constructs.map fun c => s!"{c} {(cover.get? c).getD 0}")}"
+  IO.println s!"UNCOVERED {uncovered.length}: {uncovered}"
   IO.println s!"MEASURE TOTAL calls {calls} interp-equal {ie} generated-equal {ge} guard-true {gt} frame-kept {fo}"
   return (if ie == calls && ge == calls && gt == calls && fo == calls && refusals.isEmpty then 0 else 1)
 

@@ -293,6 +293,9 @@ structure Op where
   stobjsIn : List (Option String)
   stobjsOut : List (Option String)
   answers : Answers
+  /-- the declared cost's static bound `(bytes, steps, descriptors)`, as the generator bounds it
+  (`fn2-arms-bound`); `none` where a dimension has none -/
+  bound : Option (Int × Int × Int) := none
   deriving Inhabited, Repr
 
 structure Wait where
@@ -322,6 +325,9 @@ structure St where
   next : Option Expr := none
   nextDone : Bool := false
   woken : Bool := false
+  /-- the work of the `:repeat`s before this point of the path (G3): the passes each made times
+  its pass's bound, added to the terminal's charge -/
+  loopWork : Int × Int × Int := (0, 0, 0)
 
 /-- A path's end: a result (the arm function's `mv` list) or the end of a `:repeat` pass. -/
 inductive Res
@@ -522,7 +528,11 @@ def readNextF (k : Kind) (readNext : Expr → Except String Term) (n : Expr) :
   | .sym p =>
     match k.phases.find? (·.1 == p) with
     | some (_, v) => pure (.quote (.int v))
-    | none => throw s!":next names {p}, not a phase of {k.name}"
+    | none =>
+      -- a phase-valued field (G3, D F10): `(:next row-F)` moves to the phase the row holds; that
+      -- F is a phase field whose subset the arm may reach is the generator's check
+      if p.startsWith "ROW-" && k.columns.any (·.1 == (p.drop 4).toString) then pure (.var p)
+      else throw s!":next names {p}, not a phase of {k.name}"
   | .cons (.sym ":IF") rest => match rest.toList with
     | [e, a, b] => do pure (tIf (← readExpr w k e) (← readNext a) (← readNext b))
     | _ => throw s!"malformed :next {n.render}"
@@ -561,6 +571,19 @@ def Step.exprsF (exprs : Step → List (Bool × Expr)) : Step → List (Bool × 
 where callExprs (c : Call) : List (Bool × Expr) := (c.args ++ c.keys.map (·.2)).map ((false, ·))
 
 def Step.exprs : Step → List (Bool × Expr) := fixN readDepth Step.exprsF (fun _ => [])
+
+/-- The declared operations a path's steps call by `:do` and `:issue`, every branch, in order (a
+`:repeat` pass's calls, whose declared costs bound the pass, G3). -/
+def Step.callsF (calls : Step → List String) : Step → List String
+  | .do_ _ c _ _ _ _ cs => c.op :: cs.flatMap fun (_, ss) => ss.flatMap calls
+  | .issue c ok rf => c.op :: (ok ++ rf).flatMap calls
+  | .repeat_ _ b _ => b.flatMap calls
+  | .if_ _ a b => (a ++ b).flatMap calls
+  | .cond cl => cl.flatMap fun (_, ss) => ss.flatMap calls
+  | .case_ _ arms => arms.flatMap fun (_, ss) => ss.flatMap calls
+  | _ => []
+
+def Step.calls : Step → List String := fixN readDepth Step.callsF (fun _ => [])
 
 /-- The reader over every expression of a kind's arms, handlers and sub-arms: the refusals, by
 arm and expression. -/
@@ -721,7 +744,9 @@ def tupleVals (f : Frame) (st : St) : Except String (List Val) :=
 
 def chargeResult (f : Frame) (st : St) (b s d r : Val) : Except String Res := do
   let t ← tupleVals f st
-  pure (.done (Val.ofList ([b, s, d, r] ++ t)))
+  let (lb, ls, ld) := st.loopWork
+  let add (x : Val) (n : Int) : Val := if n == 0 then x else .int (x.toInt + n)
+  pure (.done (Val.ofList ([add b lb, add s ls, add d ld, r] ++ t)))
 
 def wakeResult (f : Frame) (st : St) (v : Val) : Except String Res := do
   let t ← tupleVals f st
@@ -794,23 +819,34 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       let st0 := st
       let st ← flush w f st
       let k := (← ev w f.kind st n).nfix
-      let rec loop : Nat → Nat → St → Except String St
+      -- the passes left unmade, as the pass function returns them first
+      let rec loop : Nat → Nat → St → Except String (St × Nat)
         | 0, _, _ => .error "fuel"
-        | _, 0, st => .ok st
+        | _, 0, st => .ok (st, 0)
         | fuel' + 1, k + 1, st => do
           let id ← var st "ID"
           let slot ← var st "SLOT"
           let reads ← rowReads w f.kind st.stobjs id slot
           let pass : St := { stobjs := st.stobjs, vars := reads ++ f.base }
-          if (← ev w f.kind pass until_).truthy then pure st
+          if (← ev w f.kind pass until_).truthy then pure (st, k + 1)
           else match ← run f fuel' pass (body ++ [.repeatNext]) with
             | .again st' => loop fuel' k { st with stobjs := st'.stobjs }
             | .done _ => throw "a :repeat pass ended in a terminal"
-      let st' ← loop fuel k st
+      let (st', left) ← loop fuel k st
+      -- G3: the pass's bound is its calls' declared costs and one step; every terminal after the
+      -- loop adds the passes made times it
+      let per ← (body.flatMap Step.calls).foldlM (init := ((0 : Int), (1 : Int), (0 : Int)))
+        fun (b, s, d) op => do
+          match (← findOp w op).bound with
+          | some (b', s', d') => pure (b + b', s + s', d + d')
+          | none => throw s!"{op}'s declared cost has no static bound"
+      let made : Int := (k - left : Nat)
+      let (lb, ls, ld) := st.loopWork
       -- the generator's continuation keeps a :next declared before the loop (written again at
       -- the path's terminal) and clears only the pending fields
       run f fuel { st with stobjs := st'.stobjs, pending := [], next := st0.next,
-                           nextDone := st0.nextDone } rest
+                           nextDone := st0.nextDone,
+                           loopWork := (lb + made * per.1, ls + made * per.2.1, ld + made * per.2.2) } rest
     | .repeatNext => do
       let st ← flush w f st
       pure (.again st)
