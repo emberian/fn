@@ -24,23 +24,43 @@ INTERIM = json.loads((Path(__file__).resolve().parents[1] / 'fn2_conn_interim.js
 # D3's profile, stated where the model reads it: posting off (greeting 201, MODE READER 201), no TLS (STARTTLS
 # 580, no STARTTLS label), no credential store and no SASL mechanism (AUTHINFO USER 381, PASS 481/482,
 # SASL 503), and no AUTHINFO/SASL capability lines until E2 renders them.
-# The sessions' profile has no read rows, so the node serves no archive: the cursor's verbs, once out of the
-# interim table, answer *fn2-answer-unread* (503; NEXT and LAST 412), which the model states as archive False.
-# A session profile with read rows and a published group turns this to True with the model's groups set to it.
 D3_POLICY = {'posting': False, 'starttls': False, 'sasl_mechanisms': [], 'advertise_authinfo': False,
              'clock': 'unknown', 'archive': False}
 
 
-def cursor_form(line):
+def seeded_article(letter, subject):
+    """One of the simulator session's seeds (tests/sim-session.lsp *fn2-ss-seeds*): its overview row is subject,
+    from a@example.invalid, the date, the Message-ID, no references, 120 octets, 1 line; the octets that give
+    exactly that row, the only article content the S form reads (ARTICLE/HEAD/BODY stay interim, D6 3/n)."""
+    ident = f'<{letter}@example.invalid>'
+    head = (f'From: a@example.invalid\r\nSubject: {subject}\r\nDate: Fri, 30 Oct 2026 12:00:00 +0000\r\n'
+            f'Message-ID: {ident}\r\n\r\n').encode()
+    return ident, head + b'x' * (120 - len(head) - 2) + b'\r\n', ['local.test']
+
+
+# Each carrier's store and profile, as its session serves it:
+# - SIM (D's sim-session.lsp at 689d196a1): reading over a seeded store, reader-only. local.test holds three
+#   articles numbered 1-3 before any client opens; local.empty holds none.
+# - NATIVE (A's native session, unchanged): no read rows, so the node serves no archive. The cursor's verbs
+#   answer *fn2-answer-unread* (503; NEXT and LAST 412), which the model states as archive False.
+CARRIERS = {
+    'SIM': dict(groups={'local.test': {}, 'local.empty': {}},
+                articles=[seeded_article('a', 'one'), seeded_article('b', 'two'), seeded_article('c', 'three')],
+                policy=dict(D3_POLICY, archive=True, server=None)),
+    'NATIVE': dict(groups={'surface.test': {}}, articles=[], policy=dict(D3_POLICY)),
+}
+
+
+def cursor_form(line, policy=D3_POLICY):
     """A form of an interim verb the query cursor serves where the profile serves reading (D6 1/n-b, the
     table's LIST note): LIST with no keyword, or ACTIVE, COUNTS or NEWSGROUPS, without a wildmat. Without an
     archive it answers the interim 503 like the rest of its row, so it stays interim there."""
     words = line.split()
-    return (D3_POLICY['archive'] and words[0].upper() == b'LIST' and len(words) <= 2
+    return (policy['archive'] and words[0].upper() == b'LIST' and len(words) <= 2
             and (len(words) == 1 or words[1].upper() in (b'ACTIVE', b'COUNTS', b'NEWSGROUPS')))
 
 
-def machine(case, target, owed, served=None):
+def machine(case, target, owed, served=None, carrier='SIM'):
     from hypothesis import strategies as st
     from hypothesis.stateful import RuleBasedStateMachine, rule
     from fn2.tests.model.nntp_model import NntpModel
@@ -57,14 +77,20 @@ def machine(case, target, owed, served=None):
         b'GROUP surface.test', b'LISTGROUP', b'ARTICLE <a@b>', b'HEAD 1', b'BODY', b'STAT <x@y>', b'NEXT', b'LAST',
         b'OVER 1-', b'XOVER 1-', b'HDR subject 1-', b'XHDR subject 1-', b'LIST ACTIVE', b'LIST NEWSGROUPS',
         b'NEWGROUPS 20260101 000000', b'NEWNEWS * 20260101 000000', b'POST', b'XPAT subject 1- *x*',
-        b'XFN-ZARTICLE <a@b> ' + b'0' * 64])
+        b'XFN-ZARTICLE <a@b> ' + b'0' * 64,
+        # the cursor over the seeded store (judged by the model once these verbs leave the table)
+        b'GROUP local.test', b'GROUP local.empty', b'GROUP absent.group', b'LISTGROUP local.test',
+        b'LISTGROUP local.test 2-', b'LISTGROUP local.empty', b'STAT 1', b'STAT 3', b'STAT 4',
+        b'STAT <b@example.invalid>', b'STAT <z@example.invalid>', b'OVER 1-3', b'OVER 2', b'XOVER 2-',
+        b'XOVER 9', b'LIST', b'LIST COUNTS'])
+    store = CARRIERS[carrier]
 
     class SimNntp(RuleBasedStateMachine):
         @capture_step(case, 'nntp')
         def __init__(self):
             super().__init__()
             self.case, self.trace = case, []
-            self.model = NntpModel({'surface.test': {}}, [], {}, dict(D3_POLICY))
+            self.model = NntpModel(store['groups'], store['articles'], {}, dict(store['policy']))
             self.connect()
 
         def connect(self):
@@ -119,7 +145,7 @@ def machine(case, target, owed, served=None):
             if self.conn.quit:
                 return self.reconnect()
             verb = line.split()[0].decode()
-            if verb not in INTERIM['interim'] or cursor_form(line):
+            if verb not in INTERIM['interim'] or cursor_form(line, store['policy']):
                 # The verb left the interim table (its quest landed): the model judges it as served.
                 return self.judge(line, None)
             entry = INTERIM['interim'][verb]

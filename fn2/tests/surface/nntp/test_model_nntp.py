@@ -128,7 +128,7 @@ class TestSurface(SurfaceCase):
         self.evidence['owed_interim'], self.evidence['served_checked'] = owed, served
         examples = int(os.environ.get('FN2_SIM_EXAMPLES', '100'))
         with failure_context(self, 'nntp'):
-            run_state_machine_as_test(sim_nntp.machine(self, target, owed, served), settings=settings(
+            run_state_machine_as_test(sim_nntp.machine(self, target, owed, served, carrier), settings=settings(
                 max_examples=examples, stateful_step_count=int(os.environ.get('FN2_SIM_STEPS', '30')),
                 deadline=None, database=None, derandomize=True, phases=(Phase.explicit, Phase.generate),
                 report_multiple_bugs=False))

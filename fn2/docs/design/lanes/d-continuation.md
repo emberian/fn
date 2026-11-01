@@ -26,6 +26,10 @@ the lane clone is `~/fn2-d6-lane/work` on `hbox-saas`); forge is the measurement
   and the txn reads it (D9's ServicePosture brought forward). (4) small, any time: `fn2-resource-rank`
   = 1 + position in `*fn2-resource-order*`, the hand `:rank` keys and the length pin go; the twin
   bundle/release tables are deleted at the conn port once every kind declares `:holds`/`:effects`.
+- **B's forms for these (dev c0645b91e, b-durability.md §11b):** S11 `(fn2-commit-posture fn2-core) ->
+  (:serving :draining)`, a read op (defcost naming fn2-machines), `:draining` exactly while some commit
+  row is `:uncertain`; `:ready` reads it before staging. S12: pass `fn2-successor-out`'s workspace to
+  `fn2-commit-admit-txn` unchanged.
 - **Never stand by.** While the txn port waits on C's §4a sha, do D's breadth that waits on nothing.
 
 ## State (dev)
