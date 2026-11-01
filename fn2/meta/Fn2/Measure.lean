@@ -116,7 +116,7 @@ partial def stepTags (w : World) (k : Kind) : Step → List String
   | .case_ _ arms => [":case"] ++ arms.flatMap (·.2.flatMap (stepTags w k))
   | .charge .. => [":charge"]
   | .wait .. => [":wait :completion"]
-  | .park wt _ _ _ =>
+  | .park wt .. =>
     if wt == "POOL" || wt == "ADMISSION" || wt == "TAKEN" || wt == "OPERATION" then [s!":park :{wt}"]
     else match w.waits.find? (·.kind == wt) with
       | some ⟨_, some _⟩ => [":park a declared wait with a parker"]

@@ -33,10 +33,10 @@ theorem ids_qualified : registry.ids.Nodup ∧ ¬ (registry.ids.map DeclId.name)
   decide +kernel
 
 theorem declaration_counts :
-    registry.machines.length = 10 ∧ registry.columns.length = 53 ∧
-    registry.coreChildren.length = 53 ∧ registry.squares.length = 444 ∧
-    registry.costs.length = 180 ∧ registry.waits.length = 4 ∧
-    registry.rows.length = 190 := by
+    registry.machines.length = 10 ∧ registry.columns.length = 52 ∧
+    registry.coreChildren.length = 52 ∧ registry.squares.length = 464 ∧
+    registry.costs.length = 181 ∧ registry.waits.length = 4 ∧
+    registry.rows.length = 197 := by
   decide +kernel
 
 /-- The labels the registry does not hold today: the executor's seven (DSL-METATHEORY §3.2, §3.5),

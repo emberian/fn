@@ -351,10 +351,25 @@ def coltype(k):
     return f".uw {w}"
 
 
-def kind(e):
+def link_entry(e):
+    e = as_list(e)
+    d = plist(e[1:])
+    kf = f"(some {lean_str(str(d[':KIND-FIELD']))})" if ":KIND-FIELD" in d and not is_nil(d[":KIND-FIELD"]) else "none"
+    back = [lean_str(str(x)) for x in as_list(d.get(":BACK", List([])))]
+    reads = [lean_str(str(x)) for x in as_list(d.get(":READS", List([])))]
+    return (f"{{ name := {lean_str(str(e[0]))}, kind := {lean_str(str(d[':KIND']))}, "
+            f"slot := {lean_str(str(d[':SLOT']))}, gen := {lean_str(str(d[':GEN']))}, "
+            f"kindField := {kf}, back := [{', '.join(back)}], reads := [{', '.join(reads)}] }}")
+
+
+def kind(e, reg_links=None):
     e = as_list(e)
     d = plist(e[1:])
     cols = [as_list(c) for c in as_list(d[":COLUMNS"])]
+    raw_links = d.get(":LINKS")
+    if (raw_links is None or is_nil(raw_links)) and reg_links is not None:
+        raw_links = reg_links.get(str(e[0]), List([]))
+    links = [link_entry(l) for l in as_list(raw_links or List([]))]
     return (f"{{ name := {lean_str(str(e[0]))},\n"
             f"    childForm := {'true' if str(d[':FORM']) == ':CHILDREN' else 'false'},\n"
             f"    tuple := [{', '.join(lean_str(str(x)) for x in as_list(d[':TUPLE']))}],\n"
@@ -363,6 +378,7 @@ def kind(e):
             f"    columns := [{', '.join(f'({lean_str(str(c[0]))}, {coltype(c[1])})' for c in cols)}],\n"
             f"    table := [{', '.join(lean_str(str(as_list(c)[0])) for c in as_list(d[':TABLE']))}],\n"
             f"    stops := [{', '.join(lean_str(str(x).lstrip(':')) for x in as_list(d[':STOPS']))}],\n"
+            f"    links := [{', '.join(links)}],\n"
             f"    subarms := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':SUBARMS']))}],\n"
             f"    arms := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':ARMS']))}],\n"
             f"    observes := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':OBSERVES']))}] }}")
@@ -392,8 +408,8 @@ def bound(b):
     return f"(some ({int(str(xs[0]))}, {int(str(xs[1]))}, {int(str(xs[2]))}))"
 
 
-def emit_kinds(emb, registry_waits, path, ns, world_ns):
-    kinds = [kind(k) for k in as_list(emb[":KINDS"])]
+def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
+    kinds = [kind(k, reg_links) for k in as_list(emb[":KINDS"])]
     ops = [op(o) for o in as_list(emb[":OPERATIONS"])]
     consts = [as_list(c) if isinstance(c, List) else c for c in as_list(emb[":CONSTANTS"])]
     cs = []
@@ -447,10 +463,12 @@ def main():
     reg = {str(as_list(e)[0]): as_list(e)[1] for e in as_list(top[1])[1:]}
     emb = {str(as_list(e)[0]): as_list(e)[1] for e in as_list(top[2])[1:]}
     waits = [(r[0], List(as_list(r)[1:])) for r in as_list(reg.get(":WAITS", List([])))]
+    reg_links = {str(as_list(r)[0]): plist(as_list(r)[1:]).get(":LINKS", List([]))
+                 for r in as_list(reg.get(":MACHINE-KINDS", List([])))}
     world_ns = ns + "World"
     n, refused, dropped, ng, fn_rows, guard_rows = emit_world(emb, world_out, world_ns)
     ne = emit_eqns(fn_rows, guard_rows, eqn_outs, world_ns, world_ns) if eqn_outs else 0
-    nk, no = emit_kinds(emb, waits, kinds_out, ns + "Kinds", world_ns)
+    nk, no = emit_kinds(emb, waits, kinds_out, ns + "Kinds", world_ns, reg_links)
     print(f"EMBED functions={n} guards={ng} refused={refused} dropped={dropped} kinds={nk} operations={no} equations={ne}")
 
 

@@ -144,6 +144,7 @@
           :columns (fn2-machine-property kind :columns *meta-w*)
           :table (fn2-machine-property kind :table *meta-w*)
           :stops (fn2-machine-declared kind :stops *meta-w*)
+          :links (fn2-machine-declared kind :links *meta-w*)
           :budget (fn2-machine-property kind :budget *meta-w*)
           :subarms (meta-entries kind (fn2-machine-declared kind :subarms *meta-w*) "-SUB-" children)
           :arms (meta-entries kind (fn2-machine-declared kind :arms *meta-w*) "-RUN-" children)

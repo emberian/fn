@@ -71,6 +71,7 @@ inductive Step where
   | charge (bytes steps descriptors runnable : Option Expr)
   | wait (bytes steps : Option Expr)
   | park (wait : String) (arg : Option Expr) (kind : Option String) (steps : Option Expr)
+      (keys : List (String × Expr) := [])
   | stop (reason : String) (steps : Option Expr)
   | halt | idle | yield | wake | nowake
   | goto (name : String)
@@ -128,6 +129,11 @@ def symName : Val → Except String String
   | .sym n => .ok n
   | v => .error s!"expected a symbol, got {v.render}"
 
+def readCallKeys : List Val → Except String (List (String × Expr))
+  | [] => pure []
+  | .sym k :: v :: rest => do pure ((k, v) :: (← readCallKeys rest))
+  | xs => throw s!"a call's keyword arguments are pairs: {(Val.ofList xs).render}"
+
 /-- A call `(OP a ... :FORMAL e ...)`: positional arguments until the first keyword. -/
 def readCall (c : Val) : Except String Call := do
   let xs := c.toList
@@ -135,11 +141,7 @@ def readCall (c : Val) : Except String Call := do
   let args := xs.tail
   let isKw (v : Val) : Bool := match v with | .sym n => n.startsWith ":" | _ => false
   let pos := args.takeWhile (!isKw ·)
-  let rec pairs : List Val → Except String (List (String × Expr))
-    | [] => pure []
-    | .sym k :: v :: rest => do pure ((k, v) :: (← pairs rest))
-    | xs => throw s!"a call's keyword arguments are pairs: {(Val.ofList xs).render}"
-  pure ⟨op, pos, ← pairs (args.drop pos.length)⟩
+  pure ⟨op, pos, ← readCallKeys (args.drop pos.length)⟩
 
 def readCodes (cs : Val) : Option (List Val) :=
   if cs == .sym ":OTHERWISE" then none else some cs.toList
@@ -215,7 +217,9 @@ where
         else if w == ":ADMISSION" || w == ":POOL" then match rest with
           | arg :: pl => pure (.park wait (some arg) none (stepOpt ":STEPS" pl))
           | _ => throw s!"(:park {w} ARG ...): {s.render}"
-        else pure (.park wait none none (stepOpt ":STEPS" rest))
+        else do
+          let ks := (← readCallKeys rest).filter (·.1 != ":STEPS")
+          pure (.park wait none none (stepOpt ":STEPS" rest) ks)
       | _ => throw s!"(:park WAIT ...): {s.render}"
     | ":STOP" => match a with
       | .sym r :: pl => pure (.stop (r.drop 1).toString (stepOpt ":STEPS" pl))
@@ -262,6 +266,18 @@ def ColType.fits : ColType → Val → Bool
   | .enum n, .int i => 0 ≤ i && i < n
   | _, _ => false
 
+/-- A declared link `(L :kind K2 :slot S :gen G [:kind-field KF] [:back (B [BG])] [:reads (F ...)])`
+(G3, D F8). -/
+structure Link where
+  name : String
+  kind : String
+  slot : String
+  gen : String
+  kindField : Option String
+  back : List String
+  reads : List String
+  deriving Inhabited, Repr
+
 /-- A kind declared in the step language. `childForm` is false for a kind whose arms the world
 defines only over `fn2-core` (the listener, whose registry arms wait behind P4): its arms are
 printed as terms and refused by the interpreter by name. -/
@@ -275,6 +291,7 @@ structure Kind where
   columns : List (String × ColType)
   table : List String
   stops : List String
+  links : List Link := []
   subarms : List Arm
   arms : List Arm
   observes : List Arm
@@ -499,6 +516,28 @@ def readExprF (k : Kind) (readExpr : Expr → Except String Term) (x : Expr) :
       pure (ts.foldr (fun a acc => .app "CONS" [a, acc]) (.quote Val.nil))
     | "PROG2$" => do arity f args 2; let ts ← rds args; pure ts[1]!
     | "MEMBER-EQ" | "MEMBER-EQUAL" => do arity f args 2; pure (.app "MEMBER-EQUAL" (← rds args))
+    | ":LIVE" => match args with
+      | [.sym l] =>
+        let some link := k.links.find? (·.name == l)
+          | throw s!"{x.render} names no link of {k.name}"
+        let fn := k.name ++ "-LINK-" ++ l ++ "-LIVE-P"
+        let rArgs : List Term :=
+          [.var ("ROW-" ++ link.slot), .var ("ROW-" ++ link.gen)] ++
+          (link.kindField.toList.map fun kf => .var ("ROW-" ++ kf)) ++
+          (if link.back.length ≥ 1 then [.var "ID"] else []) ++
+          (if link.back.length ≥ 2 then [.var "ROW-GENERATION"] else []) ++
+          [.var link.kind, .var "FN2-MACHINES"]
+        pure (.app fn rArgs)
+      | _ => throw s!"(:live L): {x.render}"
+    | ":READ" => match args with
+      | [.sym l, .sym fld] =>
+        let some link := k.links.find? (·.name == l)
+          | throw s!"{x.render} names no link of {k.name}"
+        if !link.reads.contains fld then
+          throw s!"{x.render} reads outside link {l}'s read set"
+        let fn := k.name ++ "-LINK-" ++ l ++ "-" ++ fld
+        pure (.app fn [.var ("ROW-" ++ link.slot), .var link.kind, .var "FN2-MACHINES"])
+      | _ => throw s!"(:read L F): {x.render}"
     | _ =>
       match vocabularyFns.find? (·.1 == f) with
       | some (_, n) => do arity f args n; pure (.app f (← rds args))
@@ -565,7 +604,7 @@ def Step.exprsF (exprs : Step → List (Bool × Expr)) : Step → List (Bool × 
   | .case_ key arms => (false, key) :: arms.flatMap fun (_, ss) => ss.flatMap exprs
   | .charge a b c d => [a, b, c, d].flatMap fun o => o.toList.map ((false, ·))
   | .wait a b => [a, b].flatMap fun o => o.toList.map ((false, ·))
-  | .park _ a _ st => [a, st].flatMap fun o => o.toList.map ((false, ·))
+  | .park _ a _ st ks => ([a, st].flatMap fun o => o.toList.map ((false, ·))) ++ ks.map ((false, ·.2))
   | .stop _ st => st.toList.map ((false, ·))
   | _ => []
 where callExprs (c : Call) : List (Bool × Expr) := (c.args ++ c.keys.map (·.2)).map ((false, ·))
@@ -729,13 +768,34 @@ def findOp (n : String) : Except String Op :=
   | some o => .ok o
   | none => .error s!"no declared operation {n}"
 
+/-- Expand `:owner L` in a call's keyword overrides to its link's triple (F8). -/
+def expandOwner (k : Kind) (keys : List (String × Expr)) : Except String (List (String × Expr)) := do
+  let hand := keys.any fun (kw, _) => kw == ":OKIND" || kw == ":OSLOT" || kw == ":OGEN"
+  match keys.find? (·.1 == ":OWNER") with
+  | some (_, .sym l) =>
+    let some link := k.links.find? (·.name == l)
+      | throw s!":owner {l} names no link of {k.name}"
+    let some kf := link.kindField
+      | throw s!":owner {l} names no link of {k.name} with a :kind-field"
+    if hand then throw s!":owner {l} is the whole owner triple; no :okind, :oslot or :ogen beside it"
+    pure (keys.filter (·.1 != ":OWNER") ++
+      [(":OKIND", .sym ("ROW-" ++ kf)),
+       (":OSLOT", .sym ("ROW-" ++ link.slot)),
+       (":OGEN", .sym ("ROW-" ++ link.gen))])
+  | some (_, v) => throw s!":owner expects a link name, got {v.render}"
+  | none =>
+    if !k.links.isEmpty && hand then
+      throw s!"{k.name} has links: an owner override is a link's triple, written :owner L"
+    else pure keys
+
 /-- Call a declared operation through its `:child`, returning the raw result. -/
 def callOp (k : Kind) (st : St) (c : Call) : Except String (Op × Val) := do
   let op ← findOp w c.op
   let callee ← match op.callee with
     | some f => pure f
     | none => throw s!"{c.op} names no :child (not in child form)"
-  let args ← actuals w k st op.formals op.stobjsIn c.args c.keys
+  let keys ← expandOwner k c.keys
+  let args ← actuals w k st op.formals op.stobjsIn c.args keys
   let r ← callFn w callee args
   pure (op, r)
 
@@ -888,11 +948,11 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
       let st ← pend st [("STOPPED", Expr.q (.int 1)), ("WAIT-REASON", Expr.q (← const w "*FN2-WAIT-NONE*"))]
       let st ← flush w f st
       chargeResult f st (.int 0) (← const w "*FN2-WORK-MAILBOX*") (.int 0) Val.nil
-    | .park wait arg kind steps => do
+    | .park wait arg kind steps keys => do
       let mailbox ← const w "*FN2-WORK-MAILBOX*"
       let viaOp (st : St) (op : String) (args : List Expr) : Except String Res := do
         let st ← flush w f st
-        let (o, r) ← callOp w f.kind st ⟨op, args, []⟩
+        let (o, r) ← callOp w f.kind st ⟨op, args, keys⟩
         let st ← bindOuts st o.stobjsOut [] r
         chargeResult f st (.int 0) (← evOpt w f.kind st steps mailbox) (.int 0) Val.nil
       match wait with
