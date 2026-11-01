@@ -1,1129 +1,801 @@
-; Invitation-code accounts (PRF-164; specs/nntp.md, "Invitation-code
-; accounts (NNT-034)").
-;
-; An operator hands a friend one code.  The configuration's tenth slot
-; (books/config.lisp `fn-cfg-accounts') keeps a pending row keyed on the
-; crypto seam's tagged SHA-256 digest of the code, never the code; the
-; friend's XREDEEM (books/nntp-auth.lisp) turns it into a redeemed row
-; carrying a login and the books/auth-secret.lisp verifier of the friend's
-; password, published through the owner's live reconfiguration exactly as
-; `peer add' is.  The redeemed rows are the second producer of the reader's
-; credential table: auth.toml's credentials at start, then these.
-;
-; This book owns three decisions:
-;   - the digest of a code and the text a verifier is kept as in a row
-;     (`fn-acct-code-digest-text', `fn-acct-verifier-text' and its inverse
-;     `fn-acct-text-verifier', with the round trip that makes the text a
-;     representation and not a second verifier);
-;   - the redeem plan, a pure function of the configuration value and the
-;     request (`fn-acct-redeem-plan'), whose :redeem delta is exactly one the
-;     configuration admits;
-;   - the login's local principal (`fn-acct-local-principal'), the one
-;     function `fn principal set-password' without --principal also uses.
-;
-; Once only, PRF-097's pattern: a redeemed row stays the same row across
-; every admitted delta and across the replay the owner runs at open
-; (`fn-acct-redeemed-row-stays-across-replay'); a second redeem of the same
-; digest is refused unless it is the identical delta
-; (`fn-acct-redeemed-refuses-another-redeem'); and after the owner published
-; a redeem, the same request plans "already redeemed by this login" and
-; stages nothing (`fn-acct-redeem-plan-after-its-redeem-is-already-redeemed'),
-; which is the crash cut after `fn-ocl-publish''s root barrier and before the
-; reply.  That a guessed code finds a row is the crypto seam's preimage
-; resistance (A-CRYPTO), never claimed here.
+;; The principal ledger (layer D, quest D7; ROUND2 section B.2: "principal
+;; accounts are shared ledger rows, not a second executor"). The design is
+;; docs/d-machines-nntp.md section 13. One row per calendar principal
+;; slot 0..P-1 (slot 0 is the anonymous principal) and the system row P,
+;; which is never in the calendar. Per row and holding dimension: limit,
+;; reserve, hold; per charge dimension: a monotone charge. Per dimension:
+;; capacity N and committed = sum over rows of max(hold, reserve).
+;; The admission rule: an acquisition above a row's own reserve must fit
+;; what no row has committed, so no principal can draw another's reserve.
+;; This book is a library; the core wrappers the machines call are in
+;; fn2-account-events, materialized after the core instance.
 (in-package "ACL2")
-(include-book "decimal-text")
-(include-book "config")
-(include-book "auth-secret")
-(include-book "identity")
-(include-book "native-admin-shape")
-(include-book "clock-unit")
-(include-book "article")
-(include-book "consumer-position")
-(local (include-book "identity-invariants"))
-(local (include-book "records-canonicality"))
-
-;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
-;; Its work is proof time no prover step counts (docs/proof-style.md
-;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
-(local (in-theory (disable (tau-system))))
-
-(defconst *fn-acct-code-tag* (fn-record-string-octets "fn-account-code-v1"))
-(defconst *fn-acct-local-principal-tag*
-  (fn-record-string-octets "fn-principal-local-v1"))
-
-; -----------------------------------------------------------------------------
-; Representations
-
-(defun fn-acct-text (octets)
-  ; The configuration text of wire octets (a login).
-  (declare (xargs :guard t))
-  (fn-record-octets-string (fn-authsec-octets octets)))
-
-(defun fn-acct-hex-text (octets)
-  (declare (xargs :guard t))
-  (fn-record-octets-string (fn-id-hex-octets (fn-authsec-octets octets))))
-
-(defun fn-acct-code-digest (code)
-  ; The crypto seam's tagged digest (SHA-256 under crypto-attach) of the
-  ; code's octets.
-  (declare (xargs :guard t))
-  (fn-digest-tagged *fn-acct-code-tag* (fn-authsec-octets code)))
-
-(defun fn-acct-code-digest-text (code)
-  (declare (xargs :guard t))
-  (fn-acct-hex-text (fn-acct-code-digest code)))
-
-(defun fn-acct-verifier-text (ver)
-  ; 224 hexadecimal characters: the verifier's 16-octet salt, its 32-octet
-  ; digest, then SCRAM's 32-octet StoredKey and 32-octet ServerKey
-  ; (books/auth-secret.lisp, verifier v2).  The tag is not stored;
-  ; `fn-acct-text-verifier' rebuilds the verifier through
-  ; `fn-authsec-verifier', the one reassembly.
-  (declare (xargs :guard t))
-  (fn-acct-hex-text (append (fn-authsec-octets (fn-authsec-ver-salt ver))
-                            (fn-authsec-octets (fn-authsec-ver-digest ver))
-                            (fn-authsec-octets (fn-authsec-ver-stored-key ver))
-                            (fn-authsec-octets (fn-authsec-ver-server-key ver)))))
-
-(defun fn-acct-slice (start n o)
-  ; Octets START .. START+N-1 of O, as many as there are.
-  (declare (xargs :guard (and (natp start) (natp n))))
-  (let ((rest (nthcdr start (fn-authsec-octets o))))
-    (take (min n (len rest)) rest)))
-
-(defun fn-acct-text-verifier (text)
-  (declare (xargs :guard t))
-  (let ((hex (fn-record-string-octets text)))
-    (if (and (stringp text) (fn-id-hex-listp hex) (evenp (len hex)))
-        (let ((o (fn-id-unhex hex)))
-          (fn-authsec-verifier (fn-acct-slice 0 16 o) (fn-acct-slice 16 32 o)
-                               (fn-acct-slice 48 32 o)
-                               (nthcdr 80 (fn-authsec-octets o))))
-      nil)))
-
-(defun fn-acct-local-principal (name)
-  ; A login's local principal: the tagged digest of its octets.  The
-  ; principal a credential enrolled without --principal carries
-  ; (books/native-auth-admin.lisp `fn-native-auth-admin-principal').
-  (declare (xargs :guard t))
-  (fn-digest-tagged *fn-acct-local-principal-tag* (fn-authsec-octets name)))
-
-; The representation boundary: a verifier kept as text in a row is the
-; verifier.
-(local (defthm fn-acct-cbor-octet-listp-of-hex-octets
-  (implies (fn-cbor-octet-listp x)
-           (and (fn-cbor-octet-listp (fn-id-hex-octets x))
-                (fn-id-hex-listp (fn-id-hex-octets x))))
-  :hints (("Goal" :in-theory (enable fn-id-hex-octets fn-id-hex-digit
-                                     fn-id-hex-digitp fn-cbor-octet-listp
-                                     fn-cbor-octetp)))))
-
-(local (defthm fn-acct-evenp-len-hex-octets
-  (evenp (len (fn-id-hex-octets x)))
-  :hints (("Goal" :in-theory (enable fn-id-hex-octets evenp)))))
-
-(local (defthm fn-acct-cbor-octet-listp-of-append
-  (implies (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))
-           (fn-cbor-octet-listp (append a b)))
-  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
-
-(local (defthm fn-acct-len-of-append
-  (equal (len (append a b)) (+ (len a) (len b)))))
-
-(local (defthm fn-acct-take-of-append
-  (implies (and (equal (len a) n) (true-listp a))
-           (equal (take n (append a b)) a))))
-
-(local (defthm fn-acct-nthcdr-of-append
-  (implies (equal (len a) n)
-           (equal (nthcdr n (append a b)) b))))
-
-(local (defthm fn-acct-cbor-octet-listp-true-listp
-  (implies (fn-cbor-octet-listp x) (true-listp x))
-  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))
-  :rule-classes :forward-chaining))
-
-(local (defthm fn-acct-len-one-true-list
-  (implies (and (true-listp x) (equal (len x) 1))
-           (equal (list (car x)) x))
-  :rule-classes nil
-  :hints (("Goal" :expand ((len x) (len (cdr x)))))))
-
-(local (defthm fn-acct-verifier-decomposes
-  (implies (fn-authsec-verifierp ver)
-           (equal (list :fn-authsec-v2 (cadr ver) (caddr ver) (cadddr ver)
-                        (car (cddddr ver)))
-                  ver))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp)
-                                  (fn-authsec-saltp fn-cbor-octet-listp
-                                   fn-authsec-32p))
-           :use ((:instance fn-acct-len-one-true-list (x (cddddr ver))))))))
-
-(local (defthm fn-acct-nthcdr-of-append-assoc
-  (implies (and (true-listp a) (equal (len a) n))
-           (equal (nthcdr n (append a b)) b))))
-
-(local (defun fn-acct-nthcdr-induct (a k)
-  (if (and (consp a) (posp k))
-      (fn-acct-nthcdr-induct (cdr a) (- k 1))
-    (list a k))))
-
-(local (defthm fn-acct-nthcdr-past-append-head
-  (implies (and (true-listp a) (natp k) (<= (len a) k))
-           (equal (nthcdr k (append a b)) (nthcdr (- k (len a)) b)))
-  :hints (("Goal" :induct (fn-acct-nthcdr-induct a k)))))
-
-(local (defthm fn-acct-slice-of-append
-  (implies (and (fn-cbor-octet-listp a) (equal (len a) n)
-                (fn-cbor-octet-listp b) (natp m) (<= m (len b)))
-           (equal (fn-acct-slice n m (append a b))
-                  (take m b)))
-  :hints (("Goal" :in-theory (e/d (fn-acct-slice) (fn-authsec-octets))))))
-
-(local (defthm fn-acct-take-all
-  (implies (and (true-listp x) (equal (len x) n))
-           (equal (take n x) x))))
-
-(defthm fn-acct-text-verifier-of-verifier-text
-  (implies (fn-authsec-verifierp ver)
-           (equal (fn-acct-text-verifier (fn-acct-verifier-text ver)) ver))
-  :hints (("Goal" :in-theory (e/d (fn-authsec-verifierp fn-authsec-saltp
-                                   fn-authsec-32p
-                                   fn-record-string-octets-of-octets-string
-                                   fn-authsec-verifier
-                                   fn-authsec-ver-salt fn-authsec-ver-digest
-                                   fn-authsec-ver-stored-key
-                                   fn-authsec-ver-server-key fn-acct-slice)
-                                  (fn-record-string-octets
-                                   fn-record-octets-string fn-id-hex-octets
-                                   fn-id-unhex fn-id-hex-listp evenp
-                                   fn-id-hex-octets-length))
-           :use ((:instance fn-acct-verifier-decomposes)))))
-
-; -----------------------------------------------------------------------------
-; The redeem plan
-;
-;   (:already-redeemed)   the code's row is redeemed by this login and the
-;                         password checks against its verifier: the resume
-;                         after a crash between publication and reply
-;   (:redeem D)           D is the :account-redeem delta the owner publishes
-;   (:refused REASON)     the reason class; never the digest or the code
-;   (:fault :salt-observation)  the host's salt was not 16 octets
-;
-; TAKENP is whether the login already names a credential in the connection's
-; snapshot (auth.toml's rows and the redeemed rows), decided by
-; books/nntp-auth.lisp with `fn-auth-find-cred'.
-
-(defun fn-acct-redeem-plan (v stamp code login password salt takenp)
-  (declare (xargs :guard t))
-  (let* ((digest (fn-acct-code-digest-text code))
-         (name (fn-acct-text login))
-         (row (fn-cfg-account-row (fn-cfg-accounts v) digest)))
-    (cond
-     ((and (consp row) (equal (fn-cfg-row-n row) 1))
-      (if (and (equal (fn-cfg-row-b row) name)
-               (fn-authsec-checkp (fn-acct-text-verifier (fn-cfg-row-c row))
-                                  password))
-          (list :already-redeemed)
-        (list :refused :account-redeemed)))
-     (takenp (list :refused :account-login-taken))
-     ((not (fn-authsec-saltp salt)) (list :fault :salt-observation))
-     (t
-      (let* ((d (fn-cfg-account-redeem
-                 digest name
-                 (fn-acct-verifier-text (fn-authsec-enrol salt password))))
-             (reason (fn-cfg-delta-reason v 0 stamp 0 0 d)))
-        (if reason (list :refused reason) (list :redeem d)))))))
-
-(defun fn-acct-plan-delta (plan)
-  (declare (xargs :guard t))
-  (if (and (consp plan) (consp (cdr plan))) (car (cdr plan)) nil))
-
-; -----------------------------------------------------------------------------
-; Row algebra (the slot's rows are keyed; PRF-097's lemmas, for this slot)
-
-(local (defthm fn-acct-rows-with-key-of-append
-  (equal (fn-cfg-rows-with-key (append a b) k)
-         (append (fn-cfg-rows-with-key a k) (fn-cfg-rows-with-key b k)))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key)))))
-
-(local (defthm fn-acct-rows-with-key-of-rows-without-key
-  (equal (fn-cfg-rows-with-key (fn-cfg-rows-without-key rows k) k) nil)
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-key)))))
-
-(local (defthm fn-acct-rows-with-other-key-of-rows-without-key
-  (implies (not (equal j k))
-           (equal (fn-cfg-rows-with-key (fn-cfg-rows-without-key rows j) k)
-                  (fn-cfg-rows-with-key rows k)))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-key)))))
-
-(local (defthm fn-acct-first-row-kept-by-append
-  (implies (consp (fn-cfg-rows-with-key a k))
-           (equal (fn-cfg-ag-car (append (fn-cfg-rows-with-key a k) b))
-                  (fn-cfg-ag-car (fn-cfg-rows-with-key a k))))
-  :hints (("Goal" :in-theory (enable fn-cfg-ag-car)))))
-
-(local (defthm fn-acct-first-row-with-key-has-the-key
-  (implies (consp (fn-cfg-rows-with-key rows k))
-           (equal (fn-cfg-row-a (car (fn-cfg-rows-with-key rows k))) k))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key)))))
-
-(local (defthm fn-acct-rows-with-key-of-singleton
-  (equal (fn-cfg-rows-with-key (list r) k)
-         (if (equal (fn-cfg-row-a r) k) (list r) nil))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key)))))
-
-(local (defthm fn-acct-rows-with-key-when-singleton
-  (implies (equal (list r) rows)
-           (equal (fn-cfg-rows-with-key rows k)
-                  (if (equal (fn-cfg-row-a r) k) (list r) nil)))))
-
-; The slot's third writer is the login binding (PKT-221,
-; books/login-binding.lisp): it removes only binding rows (mark 2).
-(defthm fn-acct-accounts-of-apply-delta-unfolds
-  (equal (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d))
-         (cond ((or (equal (fn-cfg-delta-kind d) :account-invite)
-                    (equal (fn-cfg-delta-kind d) :account-redeem))
-                (append (fn-cfg-rows-without-key (fn-cfg-accounts v)
-                                                 (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :login-binding)
-                (append (fn-cfg-rows-without-binding (fn-cfg-accounts v)
-                                                     (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :account-access)
-                (append (fn-cfg-rows-without-access (fn-cfg-accounts v)
-                                                    (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :set-group-moderation)
-                (append (fn-cfg-rows-without-moderation (fn-cfg-accounts v)
-                                                        (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :consumer-bind)
-                (append (fn-cfg-rows-without-consumer-bind (fn-cfg-accounts v)
-                                                           (fn-cfg-delta-a d))
-                        (fn-cfg-delta-rows d)))
-               ((equal (fn-cfg-delta-kind d) :account-delete)
-                (fn-cfg-rows-deleting-account (fn-cfg-accounts v)
-                                              (fn-cfg-delta-a d)))
-               (t (fn-cfg-accounts v))))
-  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
-
-; Removing binding rows keeps the first row a key names when that row is an
-; account row.
-(local (defthm fn-acct-rows-with-key-of-rows-without-binding
-  (implies (and (consp (fn-cfg-rows-with-key rows k))
-                (not (fn-cfg-binding-rowp (car (fn-cfg-rows-with-key rows k)))))
-           (and (consp (fn-cfg-rows-with-key
-                        (fn-cfg-rows-without-binding rows l) k))
-                (equal (car (fn-cfg-rows-with-key
-                             (fn-cfg-rows-without-binding rows l) k))
-                       (car (fn-cfg-rows-with-key rows k)))))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-binding)))))
-
-; The slot's fourth writer is the access rule (PRF-222,
-; books/group-access.lisp): it removes only access rows (mark 3).
-(local (defthm fn-acct-rows-with-key-of-rows-without-access
-  (implies (and (consp (fn-cfg-rows-with-key rows k))
-                (not (fn-cfg-access-rowp (car (fn-cfg-rows-with-key rows k)))))
-           (and (consp (fn-cfg-rows-with-key
-                        (fn-cfg-rows-without-access rows l) k))
-                (equal (car (fn-cfg-rows-with-key
-                             (fn-cfg-rows-without-access rows l) k))
-                       (car (fn-cfg-rows-with-key rows k)))))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-access)))))
-; The slot's moderation writer (P3, PRF-228, code 23): it removes only
-; moderation and moderator rows (marks 5 and 4).
-(local (defthm fn-acct-rows-with-key-of-rows-without-moderation
-  (implies (and (consp (fn-cfg-rows-with-key rows k))
-                (not (fn-cfg-moderation-rowp (car (fn-cfg-rows-with-key rows k))))
-                (not (fn-cfg-moderator-rowp (car (fn-cfg-rows-with-key rows k)))))
-           (and (consp (fn-cfg-rows-with-key
-                        (fn-cfg-rows-without-moderation rows l) k))
-                (equal (car (fn-cfg-rows-with-key
-                             (fn-cfg-rows-without-moderation rows l) k))
-                       (car (fn-cfg-rows-with-key rows k)))))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-moderation)))))
-
-; The slot's fifth writer is the consumer binding (PRF-234,
-; books/consumer-bound.lisp): it removes only consumer binding rows (mark 6).
-(local (defthm fn-acct-rows-with-key-of-rows-without-consumer-bind
-  (implies (and (consp (fn-cfg-rows-with-key rows k))
-                (not (fn-cfg-consumer-bind-rowp
-                      (car (fn-cfg-rows-with-key rows k)))))
-           (and (consp (fn-cfg-rows-with-key
-                        (fn-cfg-rows-without-consumer-bind rows l) k))
-                (equal (car (fn-cfg-rows-with-key
-                             (fn-cfg-rows-without-consumer-bind rows l) k))
-                       (car (fn-cfg-rows-with-key rows k)))))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-rows-without-consumer-bind)))))
-
-;; The account deletion (public-node-2, code 27) rewrites a redeemed row in
-;; place as its tombstone: the digest a row is keyed on never changes, and
-;; the key's first row is the rewritten first row.
-(local (defthm fn-acct-rows-with-key-of-rows-deleting-account
-  (equal (fn-cfg-rows-with-key (fn-cfg-rows-deleting-account rows l) k)
-         (fn-cfg-rows-deleting-account (fn-cfg-rows-with-key rows k) l))
-  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
-                                     fn-cfg-account-deleted-row)))))
-
-(local (defthm fn-acct-ag-car-of-rows-deleting-account
-  (equal (fn-cfg-ag-car (fn-cfg-rows-deleting-account rows l))
-         (if (consp rows)
-             (if (and (equal (fn-cfg-row-n (car rows)) 1)
-                      (fn-cfg-same-login-p (fn-cfg-row-b (car rows)) l))
-                 (fn-cfg-account-deleted-row (car rows))
-               (car rows))
-           nil))
-  :hints (("Goal" :in-theory (enable fn-cfg-ag-car)))))
-
-; -----------------------------------------------------------------------------
-; Once only
-;
-; A code binds at most one login, ever.  A code's row is BOUND once it is
-; redeemed (mark 1) or its account deleted (mark 7, the tombstone); a bound
-; row's successor under an admitted delta is the row itself or, only for a
-; redeemed row, its tombstone: the digest and the login never change, the
-; verifier is only ever dropped, and a tombstone never changes again.
-
-(defun fn-acct-boundp (rows digest)
-  (declare (xargs :guard t))
-  (let ((row (fn-cfg-account-row rows digest)))
-    (and (consp row)
-         (member-equal (fn-cfg-row-n row) '(1 7))
-         t)))
-
-(defun fn-acct-row-successorp (old new)
-  (declare (xargs :guard t))
-  (or (equal new old)
-      (and (equal (fn-cfg-row-n old) 1)
-           (equal new (fn-cfg-account-deleted-row old)))))
-
-; An admitted delta keeps a bound row or tombstones a redeemed one: invite
-; and redeem of another digest touch another key, an invite of this digest
-; is refused as reused, a redeem of it is admitted only as the identical
-; redeemed row, an account deletion tombstones exactly the redeemed rows of
-; its login, and no other kind writes the slot's account rows.
-(defthm fn-acct-bound-row-succeeds-by-a-delta
-  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
-                (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
-           (fn-acct-row-successorp
-            (fn-cfg-account-row (fn-cfg-accounts v) digest)
-            (fn-cfg-account-row
-             (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest)))
-  :hints (("Goal" :in-theory (enable fn-cfg-delta-reason
-                                     fn-cfg-account-row
-                                     fn-cfg-binding-rowp
-                                     fn-cfg-access-rowp
-                                     fn-cfg-moderation-rowp
-                                     fn-cfg-moderator-rowp
-                                     fn-cfg-consumer-bind-rowp
-                                     fn-cfg-ag-car)
-           :cases ((equal (fn-cfg-delta-a d) digest)))))
-
-(local (defthm fn-acct-row-successorp-is-reflexive
-  (fn-acct-row-successorp x x)))
-
-(local (defthm fn-acct-successor-of-bound-is-bound
-  (implies (and (fn-acct-boundp rows digest)
-                (fn-acct-row-successorp (fn-cfg-account-row rows digest)
-                                        (fn-cfg-account-row rows2 digest)))
-           (fn-acct-boundp rows2 digest))
-  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row)))))
-
-(local (defthm fn-acct-row-successorp-is-transitive
-  (implies (and (fn-acct-row-successorp a b) (fn-acct-row-successorp b c))
-           (fn-acct-row-successorp a c))
-  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row)))))
-
-(local (defthm fn-acct-bound-stays-bound-by-a-delta
-  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
-                (not (fn-cfg-delta-reason v gen stamp reserved ceiling d)))
-           (fn-acct-boundp
-            (fn-cfg-accounts (fn-cfg-apply-delta v gen stamp d)) digest))
-  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-acct-row-successorp
-                                      fn-cfg-account-row fn-cfg-delta-reason
-                                      fn-cfg-apply-delta
-                                      fn-acct-accounts-of-apply-delta-unfolds)
-           :use ((:instance fn-acct-bound-row-succeeds-by-a-delta)
-                 (:instance fn-acct-successor-of-bound-is-bound
-                            (rows (fn-cfg-accounts v))
-                            (rows2 (fn-cfg-accounts
-                                    (fn-cfg-apply-delta v gen stamp d)))))))))
-
-(local (defthm fn-acct-bound-row-succeeds-from
-  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
-                (fn-acct-row-successorp orig (fn-cfg-account-row (fn-cfg-accounts v) digest))
-                (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
-           (fn-acct-row-successorp
-            orig
-            (fn-cfg-account-row
-             (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas)) digest)))
-  :hints (("Goal" :induct (fn-cfg-apply v gen stamp deltas)
-           :in-theory (e/d (fn-cfg-admissiblep fn-cfg-admissible-reason
-                                               fn-cfg-apply)
-                           (fn-acct-boundp fn-cfg-account-row
-                            fn-acct-row-successorp
-                            fn-cfg-delta-reason
-                            fn-cfg-apply-delta
-                            fn-acct-accounts-of-apply-delta-unfolds)))
-          ("Subgoal *1/1" :use ((:instance fn-acct-bound-row-succeeds-by-a-delta
-                                           (d (car deltas)))
-                                (:instance fn-acct-bound-stays-bound-by-a-delta
-                                           (d (car deltas)))
-                                (:instance fn-acct-row-successorp-is-transitive
-                                           (a orig)
-                                           (b (fn-cfg-account-row (fn-cfg-accounts v) digest))
-                                           (c (fn-cfg-account-row
-                                               (fn-cfg-accounts
-                                                (fn-cfg-apply-delta v gen stamp (car deltas)))
-                                               digest))))))))
-
-(defthm fn-acct-bound-row-succeeds
-  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
-                (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
-           (fn-acct-row-successorp
-            (fn-cfg-account-row (fn-cfg-accounts v) digest)
-            (fn-cfg-account-row
-             (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas)) digest)))
-  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-cfg-account-row
-                                      fn-acct-row-successorp
-                                      fn-acct-bound-row-succeeds-from
-                                      fn-cfg-admissiblep fn-cfg-apply)
-           :use ((:instance fn-acct-bound-row-succeeds-from
-                            (orig (fn-cfg-account-row (fn-cfg-accounts v)
-                                                      digest)))))))
-
-(local (defthm fn-acct-bound-stays-bound
-  (implies (and (fn-acct-boundp (fn-cfg-accounts v) digest)
-                (fn-cfg-admissiblep v gen stamp reserved ceiling deltas))
-           (fn-acct-boundp (fn-cfg-accounts (fn-cfg-apply v gen stamp deltas))
-                           digest))
-  :hints (("Goal" :induct (fn-cfg-apply v gen stamp deltas)
-           :in-theory (e/d (fn-cfg-admissiblep fn-cfg-admissible-reason
-                                               fn-cfg-apply)
-                           (fn-acct-boundp fn-cfg-account-row
-                            fn-acct-row-successorp
-                            fn-cfg-delta-reason
-                            fn-cfg-apply-delta
-                            fn-acct-accounts-of-apply-delta-unfolds))))))
-
-;; One acceptable record: a bound row succeeds and stays bound.
-(local (defthm fn-acct-bound-row-succeeds-by-a-record
-  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
-                (fn-cfg-record-acceptablep cfg r reserved ceiling))
-           (and (fn-acct-row-successorp
-                 (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest)
-                 (fn-cfg-account-row
-                  (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg r)))
-                  digest))
-                (fn-acct-boundp
-                 (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg r)))
-                 digest)))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-apply-record fn-cfg-record-acceptablep)
-                                  (fn-acct-boundp fn-acct-row-successorp
-                                   fn-cfg-account-row fn-cfg-apply fn-cfgp
-                                   fn-cfg-recordp fn-cfg-admissiblep))
-           :use ((:instance fn-acct-bound-row-succeeds
-                            (v (fn-cfg-value cfg))
-                            (gen (fn-cfg-record-generation r))
-                            (stamp (fn-cfg-record-stamp r))
-                            (deltas (fn-cfg-record-change r)))
-                 (:instance fn-acct-bound-stays-bound
-                            (v (fn-cfg-value cfg))
-                            (gen (fn-cfg-record-generation r))
-                            (stamp (fn-cfg-record-stamp r))
-                            (deltas (fn-cfg-record-change r))))))))
-
-; KEYSTONE (once only, across the history).  Across the configuration
-; records the owner replays at open (`fn-config-replay-loop', the fold
-; fn-owner-reconfigure-complete's published records are read back through),
-; a code's bound row is, after every later acceptable record, the same row
-; or -- only if it was redeemed -- its tombstone: the digest and the login it
-; bound never change, so no second login is ever bound to the code, and a
-; deleted account's code is never bound again.  (Restated by public-node-2
-; from fn-acct-redeemed-row-stays-across-replay, the row's EQUALITY, which
-; `account delete' falsifies by design.)
-(local (defthm fn-acct-bound-row-succeeds-across-replay-from
-  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
-                (fn-acct-row-successorp
-                 orig (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest))
-                (not (equal (fn-config-replay-loop cfg reserved ceiling records)
-                            :fault)))
-           (fn-acct-row-successorp
-            orig
-            (fn-cfg-account-row
-             (fn-cfg-accounts
-              (fn-cfg-value (fn-config-replay-loop cfg reserved ceiling records)))
-             digest)))
-  :hints (("Goal" :induct (fn-config-replay-loop cfg reserved ceiling records)
-           :in-theory (e/d (fn-config-replay-loop)
-                           (fn-acct-boundp fn-acct-row-successorp
-                            fn-cfg-account-row
-                            fn-cfg-apply-record fn-cfg-record-acceptablep)))
-          ("Subgoal *1/3"
-           :use ((:instance fn-acct-bound-row-succeeds-by-a-record
-                            (r (car records)))
-                 (:instance fn-acct-row-successorp-is-transitive
-                            (a orig)
-                            (b (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest))
-                            (c (fn-cfg-account-row
-                                (fn-cfg-accounts (fn-cfg-value (fn-cfg-apply-record cfg (car records))))
-                                digest))))))))
-
-(defthm fn-acct-bound-row-succeeds-across-replay
-  (implies (and (fn-acct-boundp (fn-cfg-accounts (fn-cfg-value cfg)) digest)
-                (not (equal (fn-config-replay-loop cfg reserved ceiling records)
-                            :fault)))
-           (fn-acct-row-successorp
-            (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg)) digest)
-            (fn-cfg-account-row
-             (fn-cfg-accounts
-              (fn-cfg-value (fn-config-replay-loop cfg reserved ceiling records)))
-             digest)))
-  :hints (("Goal" :in-theory (disable fn-acct-boundp fn-cfg-account-row
-                                      fn-acct-row-successorp
-                                      fn-acct-bound-row-succeeds-across-replay-from
-                                      fn-config-replay-loop)
-           :use ((:instance fn-acct-bound-row-succeeds-across-replay-from
-                            (orig (fn-cfg-account-row
-                                   (fn-cfg-accounts (fn-cfg-value cfg))
-                                   digest)))))))
-
-; KEYSTONE (a second redeem).  A redeem of a redeemed digest is refused
-; unless it carries exactly the redeemed row: the same login and the same
-; verifier.
-(defthm fn-acct-redeemed-refuses-another-redeem
-  (implies (and (fn-cfg-account-redeemedp (fn-cfg-accounts v)
-                                          (fn-cfg-delta-a d))
-                (equal (fn-cfg-delta-kind d) :account-redeem)
-                (not (equal (fn-cfg-delta-rows d)
-                            (list (fn-cfg-account-row (fn-cfg-accounts v)
-                                                      (fn-cfg-delta-a d))))))
-           (fn-cfg-delta-reason v gen stamp reserved ceiling d))
-  :hints (("Goal" :in-theory (enable fn-cfg-delta-reason
-                                     fn-cfg-account-redeemedp))))
-
-; -----------------------------------------------------------------------------
-; The plan
-
-(local (defthm fn-acct-delta-reason-of-account-redeem-ignores-ledger
-  (implies (equal (fn-cfg-delta-kind d) :account-redeem)
-           (equal (fn-cfg-delta-reason v gen stamp reserved ceiling d)
-                  (fn-cfg-delta-reason v 0 stamp 0 0 d)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-cfg-delta-reason)))))
-
-(defmacro fn-acct-plan-redeem-delta-term ()
-  '(fn-cfg-account-redeem (fn-acct-code-digest-text code)
-                          (fn-acct-text login)
-                          (fn-acct-verifier-text
-                           (fn-authsec-enrol salt password))))
-
-; KEYSTONE (the plan agrees with admission).  A :redeem plan's delta is one
-; the configuration admits at any generation and ledger, so the owner's
-; publish of it cannot be refused by `fn-cfg-admissiblep' for a reason the
-; plan did not see; and it redeems the code under the login it names.
-(defthm fn-acct-redeem-plan-is-admitted-and-redeems
-  (let ((plan (fn-acct-redeem-plan v stamp code login password salt takenp)))
-    (implies (equal (car plan) :redeem)
-             (and (not (fn-cfg-delta-reason v gen stamp reserved ceiling
-                                            (fn-acct-plan-delta plan)))
-                  (equal (fn-cfg-account-row
-                          (fn-cfg-accounts
-                           (fn-cfg-apply-delta v gen stamp
-                                               (fn-acct-plan-delta plan)))
-                          (fn-acct-code-digest-text code))
-                         (fn-cfg-row-make
-                          (fn-acct-code-digest-text code)
-                          (fn-acct-text login)
-                          (fn-acct-verifier-text
-                           (fn-authsec-enrol salt password))
-                          1)))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-account-redeem fn-cfg-account-row
-                                   fn-cfg-rows-with-key fn-cfg-ag-car
-                                   fn-cfg-ag-cdr)
-                                  (fn-cfg-delta-reason fn-acct-text
-                                   fn-acct-code-digest-text
-                                   fn-acct-verifier-text fn-authsec-enrol))
-           :use ((:instance fn-acct-delta-reason-of-account-redeem-ignores-ledger
-                            (d (fn-acct-plan-redeem-delta-term)))))))
-
-; KEYSTONE (crash between publication and reply).  Once the owner's
-; publication of a redeem is durable (after fn-ocl-publish's root barrier),
-; the same request -- the same code, login and password, under any later
-; stamp, salt and snapshot -- plans "already redeemed by this login" and
-; stages nothing: a retried XREDEEM answers 281 and never binds a second row.
-(defthm fn-acct-redeem-plan-after-its-redeem-is-already-redeemed
-  (let ((plan (fn-acct-redeem-plan v stamp code login password salt takenp)))
-    (implies (equal (car plan) :redeem)
-             (equal (fn-acct-redeem-plan
-                     (fn-cfg-apply-delta v gen stamp (fn-acct-plan-delta plan))
-                     stamp2 code login password salt2 takenp2)
-                    (list :already-redeemed))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-account-redeem fn-cfg-account-row
-                                   fn-cfg-rows-with-key fn-cfg-ag-car
-                                   fn-cfg-ag-cdr)
-                                  (fn-cfg-delta-reason fn-acct-text
-                                   fn-acct-code-digest-text
-                                   fn-acct-verifier-text fn-authsec-enrol
-                                   fn-acct-text-verifier fn-authsec-checkp)))))
-
-; KEYSTONE (another login).  A code redeemed by one login is refused to
-; every other login, whatever password it sends.
-(defthm fn-acct-redeem-plan-refuses-another-login
-  (implies (and (fn-cfg-account-redeemedp
-                 (fn-cfg-accounts v) (fn-acct-code-digest-text code))
-                (not (equal (fn-cfg-row-b
-                             (fn-cfg-account-row
-                              (fn-cfg-accounts v)
-                              (fn-acct-code-digest-text code)))
-                            (fn-acct-text login))))
-           (equal (fn-acct-redeem-plan v stamp code login password salt takenp)
-                  (list :refused :account-redeemed)))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-account-redeemedp)
-                                  (fn-acct-code-digest-text fn-acct-text
-                                   fn-cfg-account-row)))))
-
-; KEYSTONE (an unknown code).  A code whose digest keys no row plans neither
-; a redeem nor a resume: it stages nothing.
-(defthm fn-acct-redeem-plan-of-an-unknown-code-stages-nothing
-  (implies (not (consp (fn-cfg-account-row (fn-cfg-accounts v)
-                                           (fn-acct-code-digest-text code))))
-           (and (not (equal (car (fn-acct-redeem-plan v stamp code login
-                                                      password salt takenp))
-                            :redeem))
-                (not (equal (car (fn-acct-redeem-plan v stamp code login
-                                                      password salt takenp))
-                            :already-redeemed))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-delta-reason fn-cfg-account-redeem)
-                                  (fn-acct-code-digest-text fn-acct-text
-                                   fn-acct-verifier-text fn-authsec-enrol)))))
-
-; -----------------------------------------------------------------------------
-; The owner's plan and the word the wire answers (PKT-439)
-;
-; host/native-admin-host.lisp `fn-acct-host-owner-redeem-stage' runs this plan
-; over the LIVE configuration value, under the owner mutex, with the code,
-; login and password a holding session keeps (books/nntp-auth.lisp
-; `fn-auth-redeem-request'), the host's CSPRNG salt, TAKENP from the
-; connection-independent credential table (auth.toml's rows and the
-; redeemed rows), USED the number of credentials in that table and BOUND the
-; store profile's max-credentials (field 12, the bound auth.toml's table is
-; loaded under, D27): a redeem that would take the table past the operator's
-; bound is refused; a resume is never refused by it, since it adds no row.
-
-(defun fn-acct-redeem-bounded-plan (v stamp code login password salt takenp
-                                      used bound)
-  (declare (xargs :guard t))
-  (let ((plan (fn-acct-redeem-plan v stamp code login password salt takenp)))
-    (if (and (equal (car plan) :redeem)
-             (not (< (nfix used) (nfix bound))))
-        (list :refused :account-credential-bound)
-      plan)))
-
-; The word the owner feeds the holding connection (books/nntp-auth.lisp
-; `fn-auth-redeem-outcome'): :bound only for a resume, or for a redeem the
-; owner's publication answered :accepted (host/native/admin.lisp
-; `fnn-owner-live-reconfigure-locked' answers :accepted only after
-; `fn-owner-reconfigure-complete' installed the durable record).
-(defun fn-acct-redeem-word (plan published)
-  (declare (xargs :guard t))
-  (let ((head (if (consp plan) (car plan) nil)))
-    (if (or (equal head :already-redeemed)
-            (and (equal head :redeem) (equal published :accepted)))
-        :bound
-      :refused)))
-
-; KEYSTONE (the admission limit, community-bounds' shape).  Where the plan
-; would redeem, the bounded plan redeems exactly when the table is under the
-; operator's bound, and otherwise refuses with the bound's own reason.
-(defthm fn-acct-redeem-bounded-plan-refuses-exactly-past-the-operator-bound
-  (implies (and (natp used) (natp bound)
-                (equal (car (fn-acct-redeem-plan v stamp code login password
-                                                 salt takenp))
-                       :redeem))
-           (equal (fn-acct-redeem-bounded-plan v stamp code login password salt
-                                               takenp used bound)
-                  (if (< used bound)
-                      (fn-acct-redeem-plan v stamp code login password salt
-                                           takenp)
-                    (list :refused :account-credential-bound))))
-  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan))))
-
-; The bound never refuses a resume or changes any plan but a redeem.
-(defthm fn-acct-redeem-bounded-plan-is-the-plan-unless-it-redeems
-  (implies (not (equal (car (fn-acct-redeem-plan v stamp code login password
-                                                 salt takenp))
-                       :redeem))
-           (equal (fn-acct-redeem-bounded-plan v stamp code login password salt
-                                               takenp used bound)
-                  (fn-acct-redeem-plan v stamp code login password salt
-                                       takenp)))
-  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan))))
-
-; KEYSTONE (281 only after durability).  The owner's word is :bound only
-; for a resume of a redeem already durable for this login and password, or
-; for a :redeem plan whose publication answered :accepted.
-(defthm fn-acct-redeem-word-is-bound-only-after-a-durable-redeem
-  (implies (equal (fn-acct-redeem-word plan published) :bound)
-           (or (equal (car plan) :already-redeemed)
-               (and (equal (car plan) :redeem)
-                    (equal published :accepted)))))
-
-; KEYSTONE (an unknown code, on the wire).  A code whose digest keys no row
-; stages nothing and answers :refused, i.e. 482 (books/nntp-auth.lisp
-; fn-auth-step-pinned-redeem-outcome-answers-the-word), whatever the
-; publication step reported.
-(defthm fn-acct-redeem-word-of-an-unknown-code-is-refused
-  (implies (not (consp (fn-cfg-account-row (fn-cfg-accounts v)
-                                           (fn-acct-code-digest-text code))))
-           (and (not (equal (car (fn-acct-redeem-bounded-plan
-                                  v stamp code login password salt takenp
-                                  used bound))
-                            :redeem))
-                (equal (fn-acct-redeem-word
-                        (fn-acct-redeem-bounded-plan v stamp code login password
-                                                     salt takenp used bound)
-                        published)
-                       :refused)))
-  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan)
-           :use ((:instance fn-acct-redeem-plan-of-an-unknown-code-stages-nothing)))))
-
-; KEYSTONE (the crash cut, through the bound).  After the owner published a
-; bounded plan's redeem, the same request under any later stamp, salt,
-; snapshot, count and bound answers :bound and stages nothing: a client
-; whose 281 was lost to a crash after the root barrier is told 281 on retry.
-(defthm fn-acct-redeem-bounded-plan-after-its-redeem-is-bound
-  (let ((plan (fn-acct-redeem-bounded-plan v stamp code login password salt
-                                           takenp used bound)))
-    (implies (equal (car plan) :redeem)
-             (let ((again (fn-acct-redeem-bounded-plan
-                           (fn-cfg-apply-delta v gen stamp
-                                               (fn-acct-plan-delta plan))
-                           stamp2 code login password salt2 takenp2 used2
-                           bound2)))
-               (and (equal again (list :already-redeemed))
-                    (equal (fn-acct-redeem-word again published2) :bound)))))
-  :hints (("Goal" :in-theory (disable fn-acct-redeem-plan fn-cfg-apply-delta
-                                      fn-acct-plan-delta)
-           :use ((:instance fn-acct-redeem-plan-after-its-redeem-is-already-redeemed)))))
-
-; -----------------------------------------------------------------------------
-; The operator's verbs (PKT-439): `account invite' and `account list'
-;
-; The code is the hexadecimal text of 16 CSPRNG octets the host read; ACL2
-; renders it and its digest, and the configuration keeps only the digest.
-; The expiry is in milliseconds of DTN time (books/clock.lisp: wall
-; milliseconds since 2000-01-01), the unit of the owner's clock that
-; `fn-cfg-account-livep' compares it with when the redeem plan runs
-; (host/native-admin-host.lisp fn-acct-host-owner-redeem-stage passes
-; fn-own-clock): the upper end of the issuing reading's error interval plus
-; SECONDS, both converted to milliseconds from the reading's own unit
-; (books/clock-unit.lisp).  The running node issues from the owner's clock;
-; the stopped node from its configuration record's stamp; both are
-; milliseconds since PRF-378.  Bug M1 (PRF-374): the stopped path's stamp,
-; then seconds, was added to milliseconds, so its codes were already
-; expired.
-
-(defconst *fn-acct-code-entropy-octets* 16)
-(defconst *fn-acct-default-expiry-seconds* 604800)
-(defconst *fn-acct-issuer* "operator")
-
-(defun fn-acct-code-text (entropy)
-  (declare (xargs :guard t))
-  (if (and (fn-cbor-octet-listp entropy)
-           (equal (len entropy) *fn-acct-code-entropy-octets*))
-      (fn-acct-hex-text entropy)
-    nil))
-
-; Later proofs in this book are developed under the arithmetic books.
+(include-book "core-children")
+(include-book "profile")
+(include-book "resources")
 (local (include-book "arithmetic/top" :dir :system))
+(fn2-book-layer :d)
 
-(defun fn-acct-invite-expiry (seconds reading)
+;; The dimensions are data; every use names a dimension by keyword and the
+;; index is resolved at expansion. A holding dimension is a D0 resource kind
+;; whose holdings are attributed to principals; :capacity names its profile key.
+(defconst *fn2-account-holdings*
+  '((:connection-row :capacity :c
+     :why "The entitlement to a connection; one RX and one TX range ride with each row for its lifetime.")
+    (:principal-reservation :capacity :c
+     :why "Concurrent requests of a principal: one per holder, held from the framed line to the reply's last octet.")
+    ;; E's consumer surface (docs/e-surface.md section 11; D7 4/n-a)
+    (:durable-octets :capacity :dstore :default 4294967295
+     :why "The store's durable quota in 4,096-octet blocks: a principal's appended articles, from the append's transaction to retention's reclaim.")
+    (:wait-row :capacity :w
+     :why "A principal's parked waits, from admission to reply or cancellation.")
+    (:subscription-edge :capacity :esub :default 4096
+     :why "A principal's subscription edges, held from register or rebase to unregister.")))
+(defconst *fn2-account-charges*
+  '((:rx-octets :why "Octets received, settled from Receive completion counts.")
+    (:tx-octets :why "Octets sent, settled from Send completion counts.")
+    (:requests :why "Replies rendered for framed lines.")
+    (:run-steps :why "Steps of scheduled runs (the scheduler's charge, seam S2).")
+    (:run-bytes :why "Bytes of scheduled runs (the scheduler's charge, seam S2).")))
+(defconst *fn2-account-nh* (len *fn2-account-holdings*))
+(defconst *fn2-account-nc* (len *fn2-account-charges*))
+(defconst *fn2-account-u32-max* 4294967295)
+
+(defun fn2-account-key-index (key entries i)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom entries) nil) ((eq key (caar entries)) i)
+        (t (fn2-account-key-index key (cdr entries) (+ 1 i)))))
+(defmacro fn2-account-holding (key)
+  (or (fn2-account-key-index key *fn2-account-holdings* 0)
+      (er hard 'fn2-account-holding "~x0 is not a holding dimension of *fn2-account-holdings*." key)))
+(defmacro fn2-account-charge-dim (key)
+  (or (fn2-account-key-index key *fn2-account-charges* 0)
+      (er hard 'fn2-account-charge-dim "~x0 is not a charge dimension of *fn2-account-charges*." key)))
+
+;; Every holding dimension is a D0 kind.
+(assert-event (subsetp-eq (strip-cars *fn2-account-holdings*) (strip-cars *fn2-resource-order*)))
+
+(defcolumns fn2-accounts
+  ((state (:enum fn2-account-state (:free :anonymous :configured :system)))
+   (weight :u8) (wait-head :link) (wait-tail :link)
+   ;; the grant service's cursor (D7 4/n-a, layer doc 13.8): read and
+   ;; written on the system row only, the row the grant service runs on
+   (grant-at :u32)
+   ;; the row's incarnation: bumped at each rebinding, never reset, so a
+   ;; principal id (slot, incarnation) is never reused within a store
+   (incarnation :u32))
+  :init-name fn2-accounts-columns-init
+  :extra-fields
+  ((fn2-accounts-limit :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+    :why "Per (dimension, row): dimension-major, holding dimensions times rows.")
+   (fn2-accounts-reserve :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+    :why "Per (dimension, row): the protected reservation.")
+   (fn2-accounts-hold :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+    :why "Per (dimension, row): the current holding.")
+   (fn2-accounts-charge :type (array (unsigned-byte 60) (0)) :initially 0 :resizable t
+    :why "Per (charge dimension, row): monotone work charges.")
+   (fn2-accounts-capacity :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+    :why "Per holding dimension: the capacity N.")
+   (fn2-accounts-committed :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t
+    :why "Per holding dimension: the sum over rows of max(hold, reserve).")))
+
+;; Element facts for the extra arrays (the generated facts cover the
+;; columns; these cover the dimension-major arrays the same way).
+(defmacro fn2-account-array-facts (field width)
+  (let* ((fp (fn2-columns-sym field "P"))
+         (ix (fn2-columns-pre "*" (fn2-columns-sym field "I*")))
+         (lemma (fn2-columns-sym field "-ELEMENT")))
+    `(progn
+       (defthm ,lemma
+         (implies (and (,fp x) (natp i) (< i (len x)))
+                  (and (natp (nth i x)) (< (nth i x) ,(expt 2 width))))
+         :hints (("Goal" :in-theory (enable nth ,fp) :induct (nth i x))))
+       (defthm ,(fn2-columns-sym lemma "-ANY")
+         (implies (,fp x) (< (nfix (nth i x)) ,(expt 2 width)))
+         :hints (("Goal" :in-theory (enable nth ,fp) :induct (nth i x))))
+       (defthm ,(fn2-columns-sym lemma "-TYPES")
+         (implies (and (fn2-accountsp fn2-accounts) (natp i) (< i (len (nth ,ix fn2-accounts))))
+                  (and (natp (nth i (nth ,ix fn2-accounts)))
+                       (integerp (nth i (nth ,ix fn2-accounts)))
+                       (rationalp (nth i (nth ,ix fn2-accounts)))
+                       (acl2-numberp (nth i (nth ,ix fn2-accounts)))))
+         :hints (("Goal" :use ((:instance ,lemma (x (nth ,ix fn2-accounts)))))))
+       (defthm ,(fn2-columns-sym lemma "-BOUND")
+         (implies (and (fn2-accountsp fn2-accounts) (natp i) (< i (len (nth ,ix fn2-accounts))))
+                  (and (<= 0 (nth i (nth ,ix fn2-accounts)))
+                       (< (nth i (nth ,ix fn2-accounts)) ,(expt 2 width))))
+         :rule-classes :linear
+         :hints (("Goal" :use ((:instance ,lemma (x (nth ,ix fn2-accounts))))))))))
+(fn2-account-array-facts fn2-accounts-limit 32)
+(fn2-account-array-facts fn2-accounts-reserve 32)
+(fn2-account-array-facts fn2-accounts-hold 32)
+(fn2-account-array-facts fn2-accounts-charge 60)
+(fn2-account-array-facts fn2-accounts-capacity 32)
+(fn2-account-array-facts fn2-accounts-committed 32)
+
+(defun fn2-accounts-shapep (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts))
+  (let ((r (fn2-accounts-rows fn2-accounts)))
+    (and (natp r)
+         (equal (fn2-accounts-limit-length fn2-accounts) (* *fn2-account-nh* r))
+         (equal (fn2-accounts-reserve-length fn2-accounts) (* *fn2-account-nh* r))
+         (equal (fn2-accounts-hold-length fn2-accounts) (* *fn2-account-nh* r))
+         (equal (fn2-accounts-charge-length fn2-accounts) (* *fn2-account-nc* r))
+         (equal (fn2-accounts-capacity-length fn2-accounts) *fn2-account-nh*)
+         (equal (fn2-accounts-committed-length fn2-accounts) *fn2-account-nh*))))
+
+(defthm fn2-account-ix-bound
+  (implies (and (natp d) (natp p) (natp r) (natp n) (< d n) (< p r))
+           (< (+ p (* d r)) (* n r)))
+  :hints (("Goal" :nonlinearp t)))
+
+(defmacro fn2-account-ix-facts (field n)
+  (let ((ix (fn2-columns-pre "*" (fn2-columns-sym field "I*"))))
+    `(defthm ,(fn2-columns-sym field "-IX-IN-RANGE")
+       (implies (and (fn2-accounts-shapep fn2-accounts) (fn2-accounts-wfp fn2-accounts)
+                     (natp d) (< d ,n) (natp p) (< p (nth *fn2-accounts-rows* fn2-accounts)))
+                (< (+ p (* d (nth *fn2-accounts-rows* fn2-accounts))) (len (nth ,ix fn2-accounts))))
+       :rule-classes (:rewrite :linear)
+       :hints (("Goal" :in-theory (disable fn2-account-ix-bound)
+                :use ((:instance fn2-account-ix-bound (n ,n) (r (nth *fn2-accounts-rows* fn2-accounts)))))))))
+(fn2-account-ix-facts fn2-accounts-limit *fn2-account-nh*)
+(fn2-account-ix-facts fn2-accounts-reserve *fn2-account-nh*)
+(fn2-account-ix-facts fn2-accounts-hold *fn2-account-nh*)
+(fn2-account-ix-facts fn2-accounts-charge *fn2-account-nc*)
+(defthm fn2-account-dimension-lengths
+  (implies (fn2-accounts-shapep fn2-accounts)
+           (and (equal (len (nth *fn2-accounts-capacityi* fn2-accounts)) *fn2-account-nh*)
+                (equal (len (nth *fn2-accounts-committedi* fn2-accounts)) *fn2-account-nh*))))
+(defthm fn2-account-shape-rows
+  (implies (fn2-accounts-shapep fn2-accounts) (natp (nth *fn2-accounts-rows* fn2-accounts)))
+  :rule-classes (:rewrite :forward-chaining))
+(defmacro fn2-account-shape-update (field)
+  (let ((upd (fn2-columns-pre "UPDATE-" (fn2-columns-sym field "I")))
+        (ix (fn2-columns-pre "*" (fn2-columns-sym field "I*"))))
+    `(defthm ,(fn2-columns-sym upd "-SHAPE")
+       (implies (and (fn2-accounts-shapep fn2-accounts) (natp i) (< i (len (nth ,ix fn2-accounts))))
+                (fn2-accounts-shapep (,upd i v fn2-accounts)))
+       :hints (("Goal" :in-theory (enable fn2-accounts-shapep))))))
+(fn2-account-shape-update fn2-accounts-limit)
+(fn2-account-shape-update fn2-accounts-reserve)
+(fn2-account-shape-update fn2-accounts-hold)
+(fn2-account-shape-update fn2-accounts-charge)
+(fn2-account-shape-update fn2-accounts-capacity)
+(fn2-account-shape-update fn2-accounts-committed)
+(defmacro fn2-account-wfp-update (field)
+  (let ((upd (fn2-columns-pre "UPDATE-" (fn2-columns-sym field "I"))))
+    `(defthm ,(fn2-columns-sym upd "-WFP")
+       (equal (fn2-accounts-wfp (,upd i v fn2-accounts)) (fn2-accounts-wfp fn2-accounts))
+       :hints (("Goal" :in-theory (enable fn2-accounts-wfp))))))
+(fn2-account-wfp-update fn2-accounts-limit)
+(fn2-account-wfp-update fn2-accounts-reserve)
+(fn2-account-wfp-update fn2-accounts-hold)
+(fn2-account-wfp-update fn2-accounts-charge)
+(fn2-account-wfp-update fn2-accounts-capacity)
+(fn2-account-wfp-update fn2-accounts-committed)
+(defmacro fn2-account-shape-column (col)
+  (let ((set (fn2-columns-sym 'fn2-accounts- (concatenate 'string "SET-" (symbol-name col)))))
+    `(defthm ,(fn2-columns-sym set "-SHAPE")
+       (equal (fn2-accounts-shapep (,set i v fn2-accounts)) (fn2-accounts-shapep fn2-accounts))
+       :hints (("Goal" :in-theory (enable fn2-accounts-shapep))))))
+(fn2-account-shape-column state)
+(fn2-account-shape-column weight)
+(fn2-account-shape-column wait-head)
+(fn2-account-shape-column wait-tail)
+(fn2-account-shape-column grant-at)
+(fn2-account-shape-column incarnation)
+(in-theory (disable fn2-accounts-shapep fn2-account-ix-bound))
+
+;; Element readers over the dimension-major arrays: natural by
+;; construction (the array's type makes the nfix the identity), with the
+;; width bound as a linear fact, so the operations' guards are linear.
+(defmacro fn2-account-reader (name field width)
+  (let ((read (fn2-columns-sym field "I")) (len (fn2-columns-sym field "-LENGTH")))
+    `(progn
+       (defun ,name (i fn2-accounts)
+         (declare (xargs :stobjs fn2-accounts
+                         :guard (and (fn2-accountsp fn2-accounts) (natp i) (< i (,len fn2-accounts)))))
+         (nfix (,read i fn2-accounts)))
+       (defthm ,(fn2-columns-sym name "-BOUND")
+         (implies (fn2-accountsp fn2-accounts) (< (,name i fn2-accounts) ,(expt 2 width)))
+         :rule-classes :linear
+         :hints (("Goal" :in-theory (enable ,name)
+                  :use ((:instance ,(fn2-columns-sym field "-ELEMENT-ANY")
+                                   (x (nth ,(fn2-columns-pre "*" (fn2-columns-sym field "I*")) fn2-accounts)))))))
+       (in-theory (disable ,name)))))
+(fn2-account-reader fn2-account-limitv fn2-accounts-limit 32)
+(fn2-account-reader fn2-account-reservev fn2-accounts-reserve 32)
+(fn2-account-reader fn2-account-holdv fn2-accounts-hold 32)
+(fn2-account-reader fn2-account-chargev fn2-accounts-charge 60)
+(fn2-account-reader fn2-account-capacityv fn2-accounts-capacity 32)
+(fn2-account-reader fn2-account-committedv fn2-accounts-committed 32)
+
+(defmacro fn2-account-guard ()
+  '(and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)))
+
+;; ------------------------------------------------------------------------
+;; The ledger operations. Codes: :ok; :limit (over the row's own limit);
+;; :shared (the part above the row's reserve does not fit the uncommitted
+;; remainder); :bounds (a row or dimension outside the ledger: the caller
+;; stops); :underflow and :state (a release the ledger does not hold: an
+;; invariant broken, the caller stops); :overflow (a charge past u60).
+
+(defun fn2-account-acquire (p d a fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (not (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (natp a)
+                  (< (+ p (* d rows)) (* *fn2-account-nh* rows))))
+        (mv :bounds fn2-accounts)
+      (let* ((ix (+ p (* d rows)))
+             (h (fn2-account-holdv ix fn2-accounts))
+             (r (fn2-account-reservev ix fn2-accounts))
+             (h2 (+ h a))
+             (n (fn2-account-capacityv d fn2-accounts))
+             (c (fn2-account-committedv d fn2-accounts))
+             (extra (- (max h2 r) (max h r))))
+        (cond ((> h2 (fn2-account-limitv ix fn2-accounts)) (mv :limit fn2-accounts))
+              ((> (+ c extra) n) (mv :shared fn2-accounts))
+              (t (let* ((fn2-accounts (update-fn2-accounts-holdi ix h2 fn2-accounts))
+                        (fn2-accounts (update-fn2-accounts-committedi d (+ c extra) fn2-accounts)))
+                   (mv :ok fn2-accounts))))))))
+
+(defun fn2-account-release (p d a fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (not (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (natp a)
+                  (< (+ p (* d rows)) (* *fn2-account-nh* rows))))
+        (mv :bounds fn2-accounts)
+      (let* ((ix (+ p (* d rows)))
+             (h (fn2-account-holdv ix fn2-accounts))
+             (r (fn2-account-reservev ix fn2-accounts))
+             (c (fn2-account-committedv d fn2-accounts)))
+        (if (> a h) (mv :underflow fn2-accounts)
+          (let ((less (- (max h r) (max (- h a) r))))
+            (if (> less c) (mv :state fn2-accounts)
+              (let* ((fn2-accounts (update-fn2-accounts-holdi ix (- h a) fn2-accounts))
+                     (fn2-accounts (update-fn2-accounts-committedi d (- c less) fn2-accounts)))
+                (mv :ok fn2-accounts)))))))))
+
+(defun fn2-account-charge (p k a fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (not (and (natp p) (< p rows) (natp k) (< k *fn2-account-nc*) (natp a)
+                  (< (+ p (* k rows)) (* *fn2-account-nc* rows))))
+        (mv :bounds fn2-accounts)
+      (let* ((ix (+ p (* k rows)))
+             (v (+ a (fn2-account-chargev ix fn2-accounts))))
+        (if (not (unsigned-byte-p 60 v)) (mv :overflow fn2-accounts)
+          (let ((fn2-accounts (update-fn2-accounts-chargei ix v fn2-accounts))) (mv :ok fn2-accounts)))))))
+
+;; Shape and type preservation (the guards of the next operation).
+(defmacro fn2-account-preserves (name args &optional (pos '1))
+  `(progn
+     (defthm ,(fn2-columns-sym name "-PRESERVES")
+       (implies (fn2-account-guard)
+                (let ((fn2-accounts (mv-nth ,pos (,name ,@args))))
+                  (fn2-account-guard))))
+     (defthm ,(fn2-columns-sym name "-ROWS")
+       (equal (nth *fn2-accounts-rows* (mv-nth ,pos (,name ,@args))) (nth *fn2-accounts-rows* fn2-accounts)))))
+(fn2-account-preserves fn2-account-acquire (p d a fn2-accounts))
+(fn2-account-preserves fn2-account-release (p d a fn2-accounts))
+(fn2-account-preserves fn2-account-charge (p k a fn2-accounts))
+(in-theory (disable fn2-account-acquire fn2-account-release fn2-account-charge))
+;; A two-dimension bundle, whole or not at all (a refused second dimension
+;; returns the first before the refusal is reported).
+(defun fn2-account-acquire2 (p d1 a1 d2 a2 fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (mv-let (code fn2-accounts) (fn2-account-acquire p d1 a1 fn2-accounts)
+    (if (not (eq code :ok)) (mv code fn2-accounts)
+      (mv-let (code2 fn2-accounts) (fn2-account-acquire p d2 a2 fn2-accounts)
+        (if (eq code2 :ok) (mv :ok fn2-accounts)
+          (mv-let (back fn2-accounts) (fn2-account-release p d1 a1 fn2-accounts)
+            (mv (if (eq back :ok) code2 :state) fn2-accounts)))))))
+
+(defun fn2-account-release2 (p d1 a1 d2 a2 fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (mv-let (code fn2-accounts) (fn2-account-release p d2 a2 fn2-accounts)
+    (if (not (eq code :ok)) (mv code fn2-accounts)
+      (fn2-account-release p d1 a1 fn2-accounts))))
+
+(fn2-account-preserves fn2-account-acquire2 (p d1 a1 d2 a2 fn2-accounts))
+(fn2-account-preserves fn2-account-release2 (p d1 a1 d2 a2 fn2-accounts))
+(in-theory (disable fn2-account-acquire2 fn2-account-release2))
+
+;; Authentication's transfer of attribution (rule 5), as one net change:
+;; the bundle is released on FROM and acquired on TO; when TO refuses, it is
+;; acquired back on FROM, which cannot be refused (FROM held it a moment ago
+;; and nothing else ran), so the ledger is unchanged and the refusal is
+;; reported. Releasing first means a capacity-neutral transfer is never
+;; refused for want of shared room (Astra, D7 review). Charges are not
+;; touched: what FROM incurred stays FROM's.
+(defun fn2-account-attribute (from to d1 a1 d2 a2 fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (mv-let (code fn2-accounts) (fn2-account-release2 from d1 a1 d2 a2 fn2-accounts)
+    (if (not (eq code :ok)) (mv (if (eq code :bounds) :bounds :state) fn2-accounts)
+      (mv-let (code fn2-accounts) (fn2-account-acquire2 to d1 a1 d2 a2 fn2-accounts)
+        (if (eq code :ok) (mv :ok fn2-accounts)
+          (mv-let (back fn2-accounts) (fn2-account-acquire2 from d1 a1 d2 a2 fn2-accounts)
+            (mv (if (eq back :ok) code :state) fn2-accounts)))))))
+(fn2-account-preserves fn2-account-attribute (from to d1 a1 d2 a2 fn2-accounts))
+(in-theory (disable fn2-account-attribute))
+
+;; ------------------------------------------------------------------------
+;; Readers for the machines, the checkers and the tests (a row outside the
+;; ledger reads as 0; the operations above refuse it by name).
+(defun fn2-account-hold (p d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (< (+ p (* d rows)) (* *fn2-account-nh* rows)))
+        (fn2-account-holdv (+ p (* d rows)) fn2-accounts) 0)))
+(defun fn2-account-reserve (p d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (< (+ p (* d rows)) (* *fn2-account-nh* rows)))
+        (fn2-account-reservev (+ p (* d rows)) fn2-accounts) 0)))
+(defun fn2-account-limit (p d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (< (+ p (* d rows)) (* *fn2-account-nh* rows)))
+        (fn2-account-limitv (+ p (* d rows)) fn2-accounts) 0)))
+(defun fn2-account-charged (p k fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (and (natp p) (< p rows) (natp k) (< k *fn2-account-nc*) (< (+ p (* k rows)) (* *fn2-account-nc* rows)))
+        (fn2-account-chargev (+ p (* k rows)) fn2-accounts) 0)))
+(defun fn2-account-committed (d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp d) (< d *fn2-account-nh*)) (fn2-account-committedv d fn2-accounts) 0))
+(defun fn2-account-capacity (d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp d) (< d *fn2-account-nh*)) (fn2-account-capacityv d fn2-accounts) 0))
+
+;; ------------------------------------------------------------------------
+;; D7 4/n-a (layer doc 13.8): requests of a principal. A request holds one
+;; :principal-reservation from its framed line to its reply's last octet.
+;; A principal's waiting requests form a FIFO whose ends are the row's
+;; wait-head and wait-tail; its links are the parked rows' directory links
+;; (the core wrappers, fn2-account-request-events). No request barges: while
+;; the FIFO is non-empty, a new request answers :queued even when it fits.
+(defconst *fn2-account-request-dim* (fn2-account-holding :principal-reservation))
+;; Whether (fn2-account-acquire p d a) would answer :ok.
+(defun fn2-account-fits (p d a fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (and (natp p) (< p rows) (natp d) (< d *fn2-account-nh*) (natp a)
+         (< (+ p (* d rows)) (* *fn2-account-nh* rows))
+         (let* ((ix (+ p (* d rows)))
+                (h (fn2-account-holdv ix fn2-accounts))
+                (r (fn2-account-reservev ix fn2-accounts))
+                (h2 (+ h a)))
+           (and (<= h2 (fn2-account-limitv ix fn2-accounts))
+                (<= (+ (fn2-account-committedv d fn2-accounts) (- (max h2 r) (max h r)))
+                    (fn2-account-capacityv d fn2-accounts)))))))
+(defthm fn2-account-fits-acquire
+  (implies (fn2-account-fits p d a fn2-accounts)
+           (equal (mv-nth 0 (fn2-account-acquire p d a fn2-accounts)) :ok))
+  :hints (("Goal" :in-theory (enable fn2-account-acquire))))
+(defun fn2-account-wait-head-of (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts))) (fn2-accounts-wait-head p fn2-accounts) *fn2-none*))
+(defun fn2-account-wait-tail-of (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts))) (fn2-accounts-wait-tail p fn2-accounts) *fn2-none*))
+;; A new request: :ok (acquired), :queued (the FIFO is non-empty), :limit
+;; or :shared (it does not fit), :refused (a request limit of 0: refused by
+;; name, never parked), :bounds.
+(defun fn2-account-request (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (cond ((not (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))) (mv :bounds fn2-accounts))
+        ((equal (fn2-account-limit p *fn2-account-request-dim* fn2-accounts) 0) (mv :refused fn2-accounts))
+        ((not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*)) (mv :queued fn2-accounts))
+        (t (fn2-account-acquire p *fn2-account-request-dim* 1 fn2-accounts))))
+(fn2-account-preserves fn2-account-request (p fn2-accounts))
+;; No barging (layer doc 13.8): while P's FIFO is non-empty a request
+;; acquires nothing, whatever it would fit.
+(defthm fn2-account-request-no-barging
+  (implies (and (natp p) (< p (fn2-accounts-rows fn2-accounts))
+                (not (equal (fn2-account-limit p *fn2-account-request-dim* fn2-accounts) 0))
+                (not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*)))
+           (and (equal (mv-nth 0 (fn2-account-request p fn2-accounts)) :queued)
+                (equal (mv-nth 1 (fn2-account-request p fn2-accounts)) fn2-accounts))))
+(in-theory (disable fn2-account-request))
+;; The grant service's choice: from row I, at most K rows on (cyclic), the
+;; first whose FIFO head's request fits; *fn2-none* when none does.
+(defun fn2-account-grant-scan (k i fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp k) (natp i)) :measure (nfix k)))
+  (let ((rows (nfix (fn2-accounts-rows fn2-accounts))))
+    (if (or (zp k) (zp rows)) *fn2-none*
+      (let ((p (if (< (nfix i) rows) (nfix i) 0)))
+        (if (and (not (equal (fn2-accounts-wait-head p fn2-accounts) *fn2-none*))
+                 (fn2-account-fits p *fn2-account-request-dim* 1 fn2-accounts))
+            p
+          (fn2-account-grant-scan (- k 1) (+ 1 p) fn2-accounts))))))
+;; The cursor lives on the system row (the last); every row is scanned once.
+(defun fn2-account-grant-cursor (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (let ((rows (fn2-accounts-rows fn2-accounts)))
+    (if (zp rows) 0 (fn2-accounts-grant-at (- rows 1) fn2-accounts))))
+(defun fn2-account-grant-next (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (fn2-account-grant-scan (nfix (fn2-accounts-rows fn2-accounts)) (fn2-account-grant-cursor fn2-accounts) fn2-accounts))
+(defthm fn2-account-grant-scan-range
+  (implies (not (equal (fn2-account-grant-scan k i fn2-accounts) *fn2-none*))
+           (and (natp (fn2-account-grant-scan k i fn2-accounts))
+                (< (fn2-account-grant-scan k i fn2-accounts) (nfix (fn2-accounts-rows fn2-accounts))))))
+(defthm fn2-account-grant-scan-fits
+  (implies (not (equal (fn2-account-grant-scan k i fn2-accounts) *fn2-none*))
+           (fn2-account-fits (fn2-account-grant-scan k i fn2-accounts) *fn2-account-request-dim* 1 fn2-accounts)))
+(in-theory (disable fn2-account-fits fn2-account-grant-scan))
+
+;; The durable principal identity (C's fn2-outcome key, (:id principal)):
+;; slot * 2^32 + incarnation, a u60. A slot is rebound (E2's binding, an
+;; account deleted and its slot issued again) only through
+;; fn2-account-rebind, which bumps the incarnation, so no id names two
+;; principals within a store. :exhausted at the u32 limit: the slot is
+;; retired, never wrapped.
+(defun fn2-account-principal-id (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))
+      (+ (* p 4294967296) (fn2-accounts-incarnation p fn2-accounts))
+    0))
+(defun fn2-account-rebind (p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (cond ((not (and (natp p) (< p (fn2-accounts-rows fn2-accounts)))) (mv :bounds fn2-accounts))
+        ((>= (fn2-accounts-incarnation p fn2-accounts) *fn2-account-u32-max*) (mv :exhausted fn2-accounts))
+        (t (let ((fn2-accounts (fn2-accounts-set-incarnation p (+ 1 (fn2-accounts-incarnation p fn2-accounts))
+                                                             fn2-accounts)))
+             (mv :ok fn2-accounts)))))
+(fn2-account-preserves fn2-account-rebind (p fn2-accounts))
+;; Ids are unique: two rows, or one row before and after a rebinding, never
+;; share an id; and a rebinding never lowers the incarnation.
+(defthm fn2-account-principal-id-unique
+  (implies (and (fn2-account-guard) (natp p) (natp q) (< p (fn2-accounts-rows fn2-accounts))
+                (< q (fn2-accounts-rows fn2-accounts)) (not (equal p q)))
+           (not (equal (fn2-account-principal-id p fn2-accounts) (fn2-account-principal-id q fn2-accounts))))
+  :hints (("Goal" :nonlinearp t)))
+(defthm fn2-account-rebind-fresh
+  (implies (and (fn2-account-guard) (equal (mv-nth 0 (fn2-account-rebind p fn2-accounts)) :ok))
+           (< (fn2-account-principal-id p fn2-accounts)
+              (fn2-account-principal-id p (mv-nth 1 (fn2-account-rebind p fn2-accounts))))))
+(in-theory (disable fn2-account-rebind))
+
+;; ------------------------------------------------------------------------
+;; The invariant, executable: per dimension committed = sum of
+;; max(hold, reserve) <= capacity, and hold <= limit on every row.
+(defun fn2-account-sum (d i fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d) (natp i))
+                  :measure (nfix (- (nfix (fn2-accounts-rows fn2-accounts)) (nfix i)))))
+  (if (or (not (natp i)) (>= i (nfix (fn2-accounts-rows fn2-accounts)))) 0
+    (+ (max (fn2-account-hold i d fn2-accounts) (fn2-account-reserve i d fn2-accounts))
+       (fn2-account-sum d (+ 1 i) fn2-accounts))))
+(defun fn2-account-limits-ok (d i fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d) (natp i))
+                  :measure (nfix (- (nfix (fn2-accounts-rows fn2-accounts)) (nfix i)))))
+  (if (or (not (natp i)) (>= i (nfix (fn2-accounts-rows fn2-accounts)))) t
+    (and (<= (fn2-account-hold i d fn2-accounts) (fn2-account-limit i d fn2-accounts))
+         (fn2-account-limits-ok d (+ 1 i) fn2-accounts))))
+(defun fn2-account-dims-ok (d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d))
+                  :measure (nfix (- *fn2-account-nh* (nfix d)))))
+  (if (or (not (natp d)) (>= d *fn2-account-nh*)) t
+    (and (equal (fn2-account-committed d fn2-accounts) (fn2-account-sum d 0 fn2-accounts))
+         (<= (fn2-account-committed d fn2-accounts) (fn2-account-capacity d fn2-accounts))
+         (fn2-account-limits-ok d 0 fn2-accounts)
+         (fn2-account-dims-ok (+ 1 d) fn2-accounts))))
+(defun fn2-accounts-conservedp (fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts))
+  (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+       (fn2-account-dims-ok 0 fn2-accounts)))
+
+;; ------------------------------------------------------------------------
+;; Keystones local to the ledger.
+
+;; Protected reservations (rule 5): whatever every other row holds, a row
+;; acquiring within its own reserve and limit is admitted. The only fact
+;; about the rest of the ledger it needs is committed <= capacity, which
+;; fn2-accounts-conservedp gives.
+(defthm fn2-account-acquire-protected
+  (implies (and (fn2-account-guard)
+                (natp p) (< p (fn2-accounts-rows fn2-accounts))
+                (natp d) (< d *fn2-account-nh*) (natp a)
+                (<= (fn2-account-committed d fn2-accounts) (fn2-account-capacity d fn2-accounts))
+                (<= (+ (fn2-account-hold p d fn2-accounts) a) (fn2-account-reserve p d fn2-accounts))
+                (<= (+ (fn2-account-hold p d fn2-accounts) a) (fn2-account-limit p d fn2-accounts)))
+           (equal (mv-nth 0 (fn2-account-acquire p d a fn2-accounts)) :ok))
+  :hints (("Goal" :in-theory (e/d (fn2-account-acquire) (fn2-account-ix-bound))
+           :use ((:instance fn2-account-ix-bound (n *fn2-account-nh*) (r (fn2-accounts-rows fn2-accounts)))))))
+
+;; Charges are monotone: no holding operation touches a charge, and a
+;; charge only adds (disconnecting erases no charge; attribution launders
+;; none).
+(defthm fn2-account-acquire-charges
+  (equal (nth *fn2-accounts-chargei* (mv-nth 1 (fn2-account-acquire p d a fn2-accounts)))
+         (nth *fn2-accounts-chargei* fn2-accounts))
+  :hints (("Goal" :in-theory (enable fn2-account-acquire))))
+(defthm fn2-account-release-charges
+  (equal (nth *fn2-accounts-chargei* (mv-nth 1 (fn2-account-release p d a fn2-accounts)))
+         (nth *fn2-accounts-chargei* fn2-accounts))
+  :hints (("Goal" :in-theory (enable fn2-account-release))))
+(defthm fn2-account-attribute-charges
+  (equal (nth *fn2-accounts-chargei* (mv-nth 1 (fn2-account-attribute from to d1 a1 d2 a2 fn2-accounts)))
+         (nth *fn2-accounts-chargei* fn2-accounts))
+  :hints (("Goal" :in-theory (enable fn2-account-attribute fn2-account-acquire2 fn2-account-release2))))
+(defthm fn2-account-charge-monotone
+  (implies (natp i)
+           (<= (fn2-account-chargev i fn2-accounts)
+               (fn2-account-chargev i (mv-nth 1 (fn2-account-charge p k a fn2-accounts)))))
+  :hints (("Goal" :in-theory (enable fn2-account-charge fn2-account-chargev)))
+  :rule-classes :linear)
+
+;; The ledger's operation set (the owner of its owed rows).
+(make-event (value (fn2-declare '(:operation-set fn2-accounts) nil nil nil)))
+
+;; Conservation under every ledger operation: owed (the sum over the
+;; dimension-major array under one update), with executable teeth.
+(defthm-owed fn2-account-ops-conserve (op p q d1 a1 d2 a2 fn2-accounts)
+  (implies (fn2-accounts-conservedp fn2-accounts)
+           (fn2-accounts-conservedp
+            (case op
+              (:acquire (mv-nth 1 (fn2-account-acquire p d1 a1 fn2-accounts)))
+              (:release (mv-nth 1 (fn2-account-release p d1 a1 fn2-accounts)))
+              (:charge (mv-nth 1 (fn2-account-charge p d1 a1 fn2-accounts)))
+              (:acquire2 (mv-nth 1 (fn2-account-acquire2 p d1 a1 d2 a2 fn2-accounts)))
+              (:release2 (mv-nth 1 (fn2-account-release2 p d1 a1 d2 a2 fn2-accounts)))
+              (otherwise (mv-nth 1 (fn2-account-attribute p q d1 a1 d2 a2 fn2-accounts))))))
+  :schema :invariant :from (:operation-set fn2-accounts)
+  :teeth (fn2-accounts-test-conserve fn2-accounts-test-conserve-negative)
+  :doc "Every ledger operation keeps committed = sum of max(hold, reserve) <= capacity and hold <= limit, in every dimension; with fn2-account-acquire-protected this is rule 5's protected reservation over any sequence of operations.")
+
+;; ------------------------------------------------------------------------
+;; Configuration and initialization. Profile keys (optional; A's
+;; profile.lisp is untouched): :accounts ((SLOT . PLIST) ...) with SLOT a
+;; principal slot below P or :system, PLIST (:state S :weight W :limits
+;; ((DIM . N) ...) :reserves ((DIM . N) ...)). Unconfigured: slot 0 is the
+;; anonymous principal with every limit its dimension's capacity, every
+;; other slot :free with limits 0, the system row limits its capacity and
+;; reserves 0.
+
+(defun fn2-account-plist-get (key plist)
   (declare (xargs :guard t))
-  (let ((latest (fn-clock-reading-latest-milliseconds reading)))
-    (if (and (posp seconds) latest)
-        (+ latest (fn-clock-seconds-in-milliseconds seconds))
-      nil)))
+  (cond ((atom plist) nil) ((atom (cdr plist)) nil)
+        ((equal (car plist) key) (cadr plist))
+        (t (fn2-account-plist-get key (cddr plist)))))
+(defun fn2-account-capacity-key (entries d)
+  (declare (xargs :guard (natp d)))
+  (let ((e (nth d (true-list-fix entries))))
+    (if (consp e) (fn2-account-plist-get :capacity (cdr e)) nil)))
+;; The profile's value for the dimension's key, else the dimension's
+;; :default (ROUND2's: :esub 4,096 edges; :dstore the ledger's u32 range).
+(defun fn2-account-profile-capacity (d profile)
+  (declare (xargs :guard (natp d)))
+  (let ((v (fn2-profile-get (fn2-account-capacity-key *fn2-account-holdings* d) profile)))
+    (or v (let ((e (nth d (true-list-fix *fn2-account-holdings*))))
+            (if (consp e) (fn2-account-plist-get :default (cdr e)) nil)))))
 
-; The pending row's delta for a code's digest text, or nil when the reading
-; carries no usable wall clock (an invite cannot expire without one).
-(defun fn-acct-invite-delta (digest seconds reading)
+(defun fn2-account-dim-alistp (alist)
   (declare (xargs :guard t))
-  (let ((expiry (fn-acct-invite-expiry seconds reading)))
-    (if expiry
-        (fn-cfg-account-invite digest *fn-acct-issuer*
-                               (fn-decimal-text expiry))
-      nil)))
-
-; The two readings an invitation is issued at.  Running: the live owner's
-; clock.  Stopped: the offline configuration record's stamp, the very
-; observation the record carries (host/native/admin.lisp
-; fnn-admin-clock-plan, books/native-admin.lisp
-; fn-native-admin-clock-observation, host/store-node-host.lisp
-; fn-store-cfg-peer-delta-record), wall claim included: a stopped node whose
-; wall clock is unreadable stamps a record with no wall claim, and its
-; invitation refuses (fn-acct-offline-invite-refusal, PRF-379).
-(defun fn-acct-live-invite-reading (clock)
+  (if (atom alist) (null alist)
+    (and (consp (car alist))
+         (assoc-equal (caar alist) *fn2-account-holdings*)
+         (unsigned-byte-p 32 (cdar alist))
+         (fn2-account-dim-alistp (cdr alist)))))
+(defun fn2-account-dim-get (key alist)
   (declare (xargs :guard t))
-  (fn-clock-reading *fn-clock-owner-unit* clock))
+  (cond ((atom alist) 0)
+        ((and (consp (car alist)) (equal (caar alist) key)) (nfix (cdar alist)))
+        (t (fn2-account-dim-get key (cdr alist)))))
 
-(defun fn-acct-offline-invite-reading (stamp)
+(defun fn2-account-entry-dims-ok (keys limits reserves)
   (declare (xargs :guard t))
-  (fn-clock-reading *fn-clock-record-stamp-unit* stamp))
-
-; A pending row's code is live at the issuing reading and at every later
-; reading whose error interval ends before SECONDS have passed.
-(defthm fn-acct-invite-delta-is-live-at-its-stamp
-  (implies (fn-acct-invite-expiry seconds reading)
-           (< (fn-clock-reading-latest-milliseconds reading)
-              (fn-acct-invite-expiry seconds reading))))
-
-; `account list' is books/account-list.lisp's report (PKT-391); the older
-; fn-acct-list-report, which listed a binding row as pending, was removed
-; with its last caller (PKT-473).
-
-; The pending row an accepted `account invite DIGEST SECONDS' plan stages at
-; READING (fn-acct-live-invite-reading of the live owner's clock, or
-; fn-acct-offline-invite-reading of the offline record's stamp), or nil.
-(defun fn-acct-admin-deltas (plan reading)
+  (if (atom keys) t
+    (and (<= (fn2-account-dim-get (car keys) reserves) (fn2-account-dim-get (car keys) limits))
+         (fn2-account-entry-dims-ok (cdr keys) limits reserves))))
+(defun fn2-account-entryp (entry p)
   (declare (xargs :guard t))
-  (if (and (equal (fn-native-admin-result-status plan) :accepted)
-           (equal (fn-native-admin-result-kind plan) :account-invite))
-      (let ((d (fn-acct-invite-delta
-                (fn-record-octets-string (fn-native-admin-result-name plan))
-                (fn-native-admin-result-capacity plan) reading)))
-        (if d (list d) nil))
-    nil))
-
-; KEYSTONE (PRF-374, bug M1).  The host calls fn-acct-admin-deltas from
-; host/native-admin-host.lisp: fn-native-admin-host-owner-reconfigure (the
-; running node, at fn-acct-live-invite-reading of fn-own-clock) and
-; fn-native-admin-host-apply (the stopped node, at
-; fn-acct-offline-invite-reading of the record's stamp).  On both paths an
-; accepted invite plan stages exactly one pending row whose expiry is
-; now + expires in MILLISECONDS: the upper end of the reading's error
-; interval plus 1000 x expires.
-(defthm fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths
-  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
-                (equal (fn-native-admin-result-kind plan) :account-invite)
-                (posp (fn-native-admin-result-capacity plan))
-                (natp wall)
-                (natp err))
-           (let ((row (list (fn-cfg-account-invite
-                             (fn-record-octets-string
-                              (fn-native-admin-result-name plan))
-                             *fn-acct-issuer*
-                             (fn-decimal-text
-                              (+ wall err
-                                 (* 1000 (fn-native-admin-result-capacity
-                                          plan))))))))
-             (and (equal (fn-acct-admin-deltas
-                          plan (fn-acct-live-invite-reading
-                                (fn-clock-observation monotonic wall err t)))
-                         row)
-                  (equal (fn-acct-admin-deltas
-                          plan (fn-acct-offline-invite-reading
-                                (fn-clock-observation monotonic wall err t)))
-                         row))))
-  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
-                                     fn-clock-reading fn-clock-readingp
-                                     fn-clock-reading-unit
-                                     fn-clock-reading-observation))))
-
-; KEYSTONE (PRF-374, PRF-378).  The two paths agree exactly: at one
-; observation the stopped node's expiry is the running node's.  Bug M1's
-; factor of 1000, and the one-second truncation of the seconds stamp that
-; followed it, are what this refutes.
-(defthm fn-acct-invite-expiry-agrees-across-the-running-and-stopped-paths
-  (equal (fn-acct-invite-expiry seconds (fn-acct-offline-invite-reading obs))
-         (fn-acct-invite-expiry seconds (fn-acct-live-invite-reading obs)))
-  :hints (("Goal" :in-theory (enable fn-clock-reading))))
-
-; The stopped node's `account invite' outcome (PRF-379): nil when the plan
-; stages its pending row at STAMP, else the reason the host reports.  An
-; unreadable wall clock (a stamp with no wall claim) cannot date an expiry,
-; so the verb refuses by name rather than print a code that is born
-; expired.  The host calls it from host/native-admin-host.lisp
-; fn-native-admin-host-apply.
-(defun fn-acct-offline-invite-refusal (plan stamp)
+  (and (consp entry)
+       (or (eq (car entry) :system) (and (natp (car entry)) (< (car entry) (nfix p))))
+       (true-listp (cdr entry))
+       (let ((state (fn2-account-plist-get :state (cdr entry)))
+             (weight (fn2-account-plist-get :weight (cdr entry)))
+             (limits (fn2-account-plist-get :limits (cdr entry)))
+             (reserves (fn2-account-plist-get :reserves (cdr entry))))
+         (and (if (eq (car entry) :system) (member-eq state '(nil :system))
+                (member-eq state '(:anonymous :configured)))
+              (or (null weight) (and (posp weight) (< weight 256)))
+              (fn2-account-dim-alistp limits) (fn2-account-dim-alistp reserves)
+              (fn2-account-entry-dims-ok (strip-cars *fn2-account-holdings*) limits reserves)))))
+(defun fn2-account-entriesp (entries p)
   (declare (xargs :guard t))
-  (if (fn-acct-admin-deltas plan (fn-acct-offline-invite-reading stamp))
-      nil
-    :no-clock))
+  (if (atom entries) (null entries)
+    (and (fn2-account-entryp (car entries) p) (fn2-account-entriesp (cdr entries) p))))
+(defthm fn2-account-entryp-consp
+  (implies (fn2-account-entryp entry p) (consp entry))
+  :rule-classes :forward-chaining)
+(defthm fn2-account-entriesp-alistp
+  (implies (fn2-account-entriesp entries p) (alistp entries))
+  :hints (("Goal" :in-theory (disable fn2-account-entryp))))
+(defun fn2-account-reserve-total (key entries)
+  (declare (xargs :guard t))
+  (if (atom entries) 0
+    (+ (if (consp (car entries))
+           (fn2-account-dim-get key (fn2-account-plist-get :reserves (cdar entries))) 0)
+       (fn2-account-reserve-total key (cdr entries)))))
+(defun fn2-account-totals-ok (d entries profile)
+  (declare (xargs :guard (natp d) :measure (nfix (- *fn2-account-nh* (nfix d)))))
+  (if (or (not (natp d)) (>= d *fn2-account-nh*)) t
+    (and (unsigned-byte-p 32 (fn2-account-profile-capacity d profile))
+         (<= (fn2-account-reserve-total (car (nth d *fn2-account-holdings*)) entries)
+             (fn2-account-profile-capacity d profile))
+         (fn2-account-totals-ok (+ 1 d) entries profile))))
+(defun fn2-accounts-profilep (profile)
+  (declare (xargs :guard t))
+  (let ((p (fn2-profile-p profile)) (entries (fn2-profile-get :accounts profile)))
+    (and (posp p) (< (+ 1 p) 4294967296)
+         (unsigned-byte-p 32 (* *fn2-account-nh* (+ 1 p)))
+         (unsigned-byte-p 32 (* *fn2-account-nc* (+ 1 p)))
+         (fn2-account-entriesp entries p)
+         (no-duplicatesp-equal (strip-cars entries))
+         (fn2-account-totals-ok 0 entries profile))))
 
-; KEYSTONE (PRF-379).  An accepted `account invite' plan on a stopped node
-; refuses :no-clock exactly when the record's stamp claims no usable wall
-; clock; otherwise it stages its row.
-(defthm fn-acct-offline-invite-refusal-is-no-clock-exactly-without-a-wall
-  (implies (and (equal (fn-native-admin-result-status plan) :accepted)
-                (equal (fn-native-admin-result-kind plan) :account-invite)
-                (posp (fn-native-admin-result-capacity plan))
-                (fn-clock-observationp stamp))
-           (equal (fn-acct-offline-invite-refusal plan stamp)
-                  (if (fn-clock-has-wall stamp) nil :no-clock)))
-  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
-                                     fn-clock-reading fn-clock-readingp
-                                     fn-clock-reading-unit
-                                     fn-clock-reading-observation
-                                     fn-clock-observationp))))
+(defun fn2-account-row-of (slot p)
+  (declare (xargs :guard t))
+  (if (eq slot :system) (nfix p) (nfix slot)))
 
-; -----------------------------------------------------------------------------
-; Expiry at admission and replay (PRF-378)
-;
-; `fn-cfg-account-livep' reads a record's stamp in milliseconds, the unit
-; of the expiry, so a redeem record stamped at or after its row's expiry is
-; refused at admission (host/store-node-host.lisp
-; fn-store-cfg-peer-delta-record and books/owner-config.lisp's live path
-; call fn-cfg-record-acceptablep through fn-cnode-record-acceptablep) and
-; faults the replay (fn-config-replay-loop, which every open folds).
+;; Write one row's limits and reserves for dimensions d.. (defaults when
+;; LIMITS is :default: the dimension's capacity).
+(defun fn2-account-set-dims (row d limits reserves fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d))
+                  :measure (nfix (- *fn2-account-nh* (nfix d)))))
+  (if (or (not (natp d)) (>= d *fn2-account-nh*)
+          (not (natp row)) (>= row (fn2-accounts-rows fn2-accounts)))
+      fn2-accounts
+    (let* ((key (car (nth d *fn2-account-holdings*)))
+           (ix (+ row (* d (fn2-accounts-rows fn2-accounts))))
+           (l (if (eq limits :default) (fn2-account-capacityv d fn2-accounts)
+                (fn2-account-dim-get key limits)))
+           (r (if (eq limits :default) 0 (fn2-account-dim-get key reserves)))
+           (fn2-accounts (update-fn2-accounts-limiti ix (if (unsigned-byte-p 32 l) l 0) fn2-accounts))
+           (fn2-accounts (update-fn2-accounts-reservei ix (if (unsigned-byte-p 32 r) r 0) fn2-accounts)))
+      (fn2-account-set-dims row (+ 1 d) limits reserves fn2-accounts))))
+(defthm fn2-account-set-dims-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (fn2-account-set-dims row d limits reserves fn2-accounts)))
+             (fn2-account-guard))))
+(defthm fn2-account-set-dims-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-set-dims row d limits reserves fn2-accounts))
+         (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-set-dims-wfp
+  (implies (fn2-accounts-wfp fn2-accounts) (fn2-accounts-wfp (fn2-account-set-dims row d limits reserves fn2-accounts))))
+(in-theory (disable fn2-account-set-dims))
 
-(defthm fn-cfg-account-livep-unfolds
-  (implies (and (natp (fn-clock-wall stamp))
-                (natp (fn-clock-wall-error stamp))
-                (fn-clock-observation-shapep stamp))
-           (equal (fn-cfg-account-livep row stamp)
-                  (and (fn-clock-has-wall stamp)
-                       (< (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))
-                          (fn-cfg-account-expiry (fn-cfg-row-c row))))))
-  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
-                                     fn-clock-reading fn-clock-readingp
-                                     fn-clock-reading-unit
-                                     fn-clock-reading-observation))))
+(defun fn2-account-configure (entries p fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (atom entries) fn2-accounts
+    (let* ((e (car entries))
+           (fn2-accounts
+            (if (not (consp e)) fn2-accounts
+              (let* ((row (fn2-account-row-of (car e) p))
+                     (plist (cdr e))
+                     (state (fn2-account-plist-get :state plist))
+                     (weight (fn2-account-plist-get :weight plist)))
+                (if (>= row (fn2-accounts-rows fn2-accounts)) fn2-accounts
+                  (let* ((fn2-accounts (fn2-account-set-dims row 0 (fn2-account-plist-get :limits plist)
+                                                             (fn2-account-plist-get :reserves plist) fn2-accounts))
+                         (fn2-accounts (fn2-accounts-set-state row
+                                         (cond ((eq (car e) :system) *fn2-account-state-system*)
+                                               ((eq state :anonymous) *fn2-account-state-anonymous*)
+                                               (t *fn2-account-state-configured*))
+                                         fn2-accounts)))
+                    (fn2-accounts-set-weight row (if (and (posp weight) (< weight 256)) weight 1)
+                                             fn2-accounts)))))))
+      (fn2-account-configure (cdr entries) p fn2-accounts))))
+(defthm fn2-account-configure-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (fn2-account-configure entries p fn2-accounts)))
+             (fn2-account-guard))))
+(defthm fn2-account-configure-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-configure entries p fn2-accounts))
+         (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-configure-wfp
+  (implies (fn2-accounts-wfp fn2-accounts) (fn2-accounts-wfp (fn2-account-configure entries p fn2-accounts))))
+(in-theory (disable fn2-account-configure))
 
-; The redeem's own branch of fn-cfg-delta-reason, and the time test in
-; the stamp's milliseconds.
-(defthm fn-cfg-delta-reason-of-a-redeem-past-its-expiry
-  (let ((row (fn-cfg-account-row (fn-cfg-accounts v) (fn-cfg-delta-a d))))
-    (implies (and (fn-cfg-deltap d)
-                  (equal (fn-cfg-delta-kind d) :account-redeem)
-                  (fn-cfg-account-digestp (fn-cfg-delta-a d))
-                  (fn-cfg-account-loginp (fn-cfg-delta-b d))
-                  (fn-cfg-account-delta-rowp d 1)
-                  (consp row)
-                  (equal (fn-cfg-row-n row) 0)
-                  (not (fn-cfg-account-livep row stamp)))
-             (equal (fn-cfg-delta-reason v gen stamp reserved ceiling d)
-                    :account-expired)))
-  :hints (("Goal" :in-theory (disable fn-cfg-account-livep fn-cfg-account-digestp
-                                      fn-cfg-account-loginp fn-cfg-account-delta-rowp
-                                      fn-cfg-account-row fn-cfg-deltap)
-           :expand ((fn-cfg-delta-reason v gen stamp reserved ceiling d)))))
-(defthm fn-cfg-account-livep-fails-at-or-past-the-expiry
-  (implies (or (not (fn-clock-has-wall stamp))
-               (<= (fn-cfg-account-expiry (fn-cfg-row-c row))
-                   (+ (fn-clock-wall stamp) (fn-clock-wall-error stamp))))
-           (not (fn-cfg-account-livep row stamp)))
-  :hints (("Goal" :in-theory (enable fn-clock-reading-latest-milliseconds
-                                     fn-clock-reading fn-clock-readingp
-                                     fn-clock-reading-unit
-                                     fn-clock-reading-observation))))
+(defun fn2-account-set-capacities (d profile fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d))
+                  :measure (nfix (- *fn2-account-nh* (nfix d)))))
+  (if (or (not (natp d)) (>= d *fn2-account-nh*)) fn2-accounts
+    (let* ((n (fn2-account-profile-capacity d profile))
+           (fn2-accounts (update-fn2-accounts-capacityi d (if (unsigned-byte-p 32 n) n 0) fn2-accounts)))
+      (fn2-account-set-capacities (+ 1 d) profile fn2-accounts))))
+(defthm fn2-account-set-capacities-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (fn2-account-set-capacities d profile fn2-accounts))) (fn2-account-guard))))
+(defthm fn2-account-set-capacities-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-set-capacities d profile fn2-accounts)) (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-set-capacities-wfp
+  (implies (fn2-accounts-wfp fn2-accounts) (fn2-accounts-wfp (fn2-account-set-capacities d profile fn2-accounts))))
+(in-theory (disable fn2-account-set-capacities))
+(defun fn2-account-set-committed (d fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp d))
+                  :measure (nfix (- *fn2-account-nh* (nfix d)))))
+  (if (or (not (natp d)) (>= d *fn2-account-nh*)) fn2-accounts
+    (let* ((s (fn2-account-sum d 0 fn2-accounts))
+           (fn2-accounts (update-fn2-accounts-committedi d (if (unsigned-byte-p 32 s) s 0) fn2-accounts)))
+      (fn2-account-set-committed (+ 1 d) fn2-accounts))))
+(defthm fn2-account-set-committed-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (fn2-account-set-committed d fn2-accounts))) (fn2-account-guard))))
+(defthm fn2-account-set-committed-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-set-committed d fn2-accounts)) (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-set-committed-wfp
+  (implies (fn2-accounts-wfp fn2-accounts) (fn2-accounts-wfp (fn2-account-set-committed d fn2-accounts))))
+(in-theory (disable fn2-account-set-committed))
+(defun fn2-account-default-rows (row fn2-accounts)
+  ;; slot 0 anonymous and the system row: every limit its capacity
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp row))))
+  (let ((fn2-accounts (fn2-account-set-dims row 0 :default nil fn2-accounts)))
+    (if (and (natp row) (< row (fn2-accounts-rows fn2-accounts)))
+        (fn2-accounts-set-weight row 1 fn2-accounts) fn2-accounts)))
+(defthm fn2-account-default-rows-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (fn2-account-default-rows row fn2-accounts))) (fn2-account-guard))))
+(defthm fn2-account-default-rows-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-default-rows row fn2-accounts)) (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-default-rows-wfp
+  (implies (fn2-accounts-wfp fn2-accounts) (fn2-accounts-wfp (fn2-account-default-rows row fn2-accounts))))
+(in-theory (disable fn2-account-default-rows))
 
-; KEYSTONE (PRF-378).  A record whose first delta redeems a pending code,
-; stamped when the upper end of its wall interval (milliseconds) is at or
-; past the code's expiry (milliseconds), or with no wall claim, is refused
-; :account-expired, is not acceptable, and faults a replay reaching it.
-(defthm fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay
-  (let* ((d (car (fn-cfg-record-change r)))
-         (stamp (fn-cfg-record-stamp r))
-         (row (fn-cfg-account-row (fn-cfg-accounts (fn-cfg-value cfg))
-                                  (fn-cfg-delta-a d))))
-    (implies (and (fn-cfg-deltap d)
-                  (equal (fn-cfg-delta-kind d) :account-redeem)
-                  (fn-cfg-account-digestp (fn-cfg-delta-a d))
-                  (fn-cfg-account-loginp (fn-cfg-delta-b d))
-                  (fn-cfg-account-delta-rowp d 1)
-                  (consp row)
-                  (equal (fn-cfg-row-n row) 0)
-                  (or (not (fn-clock-has-wall stamp))
-                      (<= (fn-cfg-account-expiry (fn-cfg-row-c row))
-                          (+ (fn-clock-wall stamp)
-                             (fn-clock-wall-error stamp)))))
-             (and (equal (fn-cfg-admissible-reason
-                          (fn-cfg-value cfg) (fn-cfg-record-generation r)
-                          stamp reserved ceiling (fn-cfg-record-change r))
-                         :account-expired)
-                  (not (fn-cfg-record-acceptablep cfg r reserved ceiling))
-                  (equal (fn-config-replay-loop cfg reserved ceiling
-                                                (cons r rest))
-                         :fault))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-admissiblep fn-cfg-record-acceptablep)
-                                  (fn-cfg-account-livep
-                                   fn-cfg-account-digestp
-                                   fn-cfg-account-loginp
-                                   fn-cfg-account-delta-rowp
-                                   fn-cfg-account-row fn-cfg-deltap
-                                   fn-cfg-delta-reason fn-cfg-account-expiry
-                                   fn-cfg-apply-record fn-cfg-apply-delta))
-           :expand ((fn-cfg-admissible-reason
-                     (fn-cfg-value cfg) (fn-cfg-record-generation r)
-                     (fn-cfg-record-stamp r) reserved ceiling
-                     (fn-cfg-record-change r))
-                    (fn-config-replay-loop cfg reserved ceiling (cons r rest))))))
+(defun fn2-accounts-alloc (n fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-accountsp fn2-accounts) (natp n) (< n 4294967296))))
+  (let* ((fn2-accounts (fn2-accounts-columns-init n fn2-accounts))
+         (fn2-accounts (resize-fn2-accounts-limit (* *fn2-account-nh* n) fn2-accounts))
+         (fn2-accounts (resize-fn2-accounts-reserve (* *fn2-account-nh* n) fn2-accounts))
+         (fn2-accounts (resize-fn2-accounts-hold (* *fn2-account-nh* n) fn2-accounts))
+         (fn2-accounts (resize-fn2-accounts-charge (* *fn2-account-nc* n) fn2-accounts))
+         (fn2-accounts (resize-fn2-accounts-capacity *fn2-account-nh* fn2-accounts)))
+    (resize-fn2-accounts-committed *fn2-account-nh* fn2-accounts)))
+(defthm fn2-accounts-alloc-preserves
+  (implies (and (fn2-accountsp fn2-accounts) (natp n) (< n 4294967296))
+           (let ((fn2-accounts (fn2-accounts-alloc n fn2-accounts))) (fn2-account-guard)))
+  :hints (("Goal" :in-theory (enable fn2-accounts-shapep))))
+(defthm fn2-accounts-alloc-wfp
+  (implies (and (natp n) (< n 4294967296)) (fn2-accounts-wfp (fn2-accounts-alloc n fn2-accounts))))
+(defthm fn2-accounts-alloc-rows
+  (implies (natp n) (equal (nth *fn2-accounts-rows* (fn2-accounts-alloc n fn2-accounts)) n)))
+(in-theory (disable fn2-accounts-alloc))
+(defthm fn2-accounts-profilep-rows
+  (implies (fn2-accounts-profilep profile)
+           (and (posp (fn2-profile-p profile)) (< (+ 1 (fn2-profile-p profile)) 4294967296)))
+  :rule-classes (:rewrite :forward-chaining))
+(in-theory (disable fn2-accounts-profilep))
 
-; -----------------------------------------------------------------------------
-; Account deletion (public-node-2): `account delete LOGIN', delta code 27
-;
-; books/config.lisp owns the record (fn-cfg-account-delete) and its
-; admission (fn-cfg-account-delete-reason); the verb's plan is
-; books/native-admin.lisp's and its delta is exactly this record
-; (fn-native-admin-plan-deltas-of-account-delete-unfolds).  The credential
-; half is books/nntp-auth.lisp's
-; fn-auth-config-with-accounts-after-an-account-delete-offers-only-the-operators-credential.
+(defun fn2-accounts-init (profile fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-accountsp fn2-accounts) (fn2-accounts-profilep profile))))
+  (let* ((p (nfix (fn2-profile-p profile)))
+         (fn2-accounts (fn2-accounts-alloc (if (< (+ 1 p) 4294967296) (+ 1 p) 1) fn2-accounts))
+         (fn2-accounts (fn2-account-set-capacities 0 profile fn2-accounts))
+         (fn2-accounts (fn2-account-default-rows 0 fn2-accounts))
+         (fn2-accounts (if (< 0 p) (fn2-accounts-set-state 0 *fn2-account-state-anonymous* fn2-accounts) fn2-accounts))
+         (fn2-accounts (fn2-account-default-rows p fn2-accounts))
+         (fn2-accounts (if (< p (fn2-accounts-rows fn2-accounts))
+                           (fn2-accounts-set-state p *fn2-account-state-system* fn2-accounts) fn2-accounts))
+         (fn2-accounts (fn2-account-configure (fn2-profile-get :accounts profile) p fn2-accounts)))
+    (fn2-account-set-committed 0 fn2-accounts)))
+(defthm fn2-accounts-init-preserves
+  (implies (fn2-accountsp fn2-accounts)
+           (let ((fn2-accounts (fn2-accounts-init profile fn2-accounts))) (fn2-account-guard))))
+(defthm fn2-accounts-init-wfp
+  (fn2-accounts-wfp (fn2-accounts-init profile fn2-accounts)))
+(in-theory (disable fn2-accounts-init))
 
-; KEYSTONE (refuses with an obligation).  The deletion is admitted exactly
-; when the login is well formed, a redeemed row or a tombstone holds it, and
-; no row names it in a role (a signing binding, a moderator role, a consumer
-; binding): an account with an unresolved obligation is refused, whatever
-; else holds.
-(local (defthm fn-acct-account-delete-is-a-delta
-  (implies (fn-cfg-account-loginp login)
-           (fn-cfg-deltap (fn-cfg-account-delete login)))
-  :hints (("Goal" :in-theory (enable fn-cfg-deltap fn-cfg-account-delete
-                                     fn-cfg-account-loginp)))))
+(defconst *fn2-account-system* :system)
 
-(defthm fn-acct-delete-is-admitted-exactly-when-held-and-unobligated
-  (iff (fn-cfg-delta-reason v gen stamp reserved ceiling
-                            (fn-cfg-account-delete login))
-       (not (and (fn-cfg-account-loginp login)
-                 (fn-cfg-account-heldp (fn-cfg-accounts v) login)
-                 (not (fn-cfg-account-obligation (fn-cfg-accounts v) login)))))
-  :hints (("Goal" :in-theory (e/d (fn-cfg-delta-reason
-                                   fn-cfg-account-delete-reason)
-                                  (fn-cfg-account-loginp
-                                   fn-cfg-account-heldp
-                                   fn-cfg-account-obligation fn-cfg-deltap))
-           :use ((:instance fn-acct-account-delete-is-a-delta))
-           :expand ((fn-cfg-account-delete login)))))
-
-; The deletion writes only the accounts slot: groups, articles' withdrawal
-; rows (the authorities slot), peers and every other slot are the value's.
-; Nothing is withdrawn.  An unfold of the arm, named for that.
-(defthm fn-acct-delete-apply-unfolds
-  (equal (fn-cfg-apply-delta v gen stamp (fn-cfg-account-delete login))
-         (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
-                                 (fn-cfg-quotas v) (fn-cfg-policies v)
-                                 (fn-cfg-listeners v) (fn-cfg-peers v)
-                                 (fn-cfg-limits v) (fn-cfg-authorities v)
-                                 (fn-cfg-invitations v)
-                                 (fn-cfg-rows-deleting-account
-                                  (fn-cfg-accounts v) login)
-                                 (fn-cfg-descriptions v)))
-  :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-account-delete))))
-
-; A deleted login is not redeemed again: a second code's redeem under it is
-; refused :account-login-taken, since its tombstone keeps it taken.
-(defthm fn-acct-delete-keeps-the-login-taken
-  (implies (fn-cfg-account-login-takenp rows login)
-           (fn-cfg-account-login-takenp
-            (fn-cfg-rows-deleting-account rows del) login))
-  :hints (("Goal" :in-theory (enable fn-cfg-account-deleted-row))))
+(assert-event (fn2-assert-compliant-p
+ '(fn2-accounts-shapep fn2-account-acquire fn2-account-release fn2-account-charge fn2-account-acquire2
+   fn2-account-release2 fn2-account-attribute fn2-account-hold fn2-account-reserve fn2-account-limit
+   fn2-account-charged fn2-account-committed fn2-account-capacity fn2-account-sum fn2-account-limits-ok
+   fn2-account-dims-ok fn2-accounts-conservedp fn2-accounts-profilep fn2-accounts-init
+   fn2-account-fits fn2-account-wait-head-of fn2-account-wait-tail-of fn2-account-request
+   fn2-account-grant-scan fn2-account-grant-cursor fn2-account-grant-next fn2-account-principal-id
+   fn2-account-rebind)
+ (w state)))

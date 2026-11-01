@@ -6,11 +6,12 @@ __pycache__/
 build/
 var/
 *.cert
+*.cert.out
+*.cert.time
 *.port
 *.fasl
+*.lx64fsl
+Makefile-tmp
+workxxx.*
 # Lane scratch (BRIEF-COMMON: never committed)
 /LANEDUMP.md
-
-# Retired archive working directory (D71): never committed.
-/planning/evidence/
-/.spw/_workbench/

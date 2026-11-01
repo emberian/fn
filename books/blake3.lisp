@@ -1,1066 +1,566 @@
-; fn: BLAKE3 over octet lists, executable and guard verified: the logical
-; definition of fn's digest (ember 2026-09-28: BLAKE3 wherever fn chooses the
-; algorithm; SHA-256 only where an RFC puts it on the wire).
-;
-; What this book is.  The BLAKE3 hash function (J. O'Connor, J.-P. Aumasson,
-; S. Neves, Z. Wilcox-O'Hearn, "BLAKE3: one function, fast everywhere",
-; 2020-01-09; the reference implementation `reference_impl.rs' and the C
-; `blake3_impl.h' vendored at third_party/blake3, version 1.8.7) as ACL2
-; functions over octet lists: the compression function over 64-octet blocks
-; (seven rounds of G on columns and diagonals), the chunk (up to 1024 octets,
-; sixteen blocks chained, CHUNK_START on the first, CHUNK_END on the last),
-; the binary tree over chunks (a left subtree of the largest power-of-two
-; number of whole chunks strictly shorter than the input, section 2.1), the
-; parent node, and the root: the first 32 output octets, which is BLAKE3's
-; default output and the only length fn uses.  The three modes: `fn-blake3'
-; (hash, the IV as the key), `fn-blake3-keyed' (keyed_hash, a 32-octet key)
-; and `fn-blake3-derive-key' (derive_key: the context string hashed under
-; DERIVE_KEY_CONTEXT, the result the key for the material under
-; DERIVE_KEY_MATERIAL).
-;
-; What it does and does not establish.  It proves the SHAPE (32 octets,
-; always; the chaining values are words) and admits every function with its
-; guard verified.  Agreement with BLAKE3 is evidence, not proof: the official
-; test vectors (the BLAKE3 repository's test_vectors/test_vectors.json, all
-; 35 lengths in all three modes) are checked by evaluation in
-; tests/acl2/blake3-tests.lisp, and the executable twin over the octet buffer
-; (books/blake3-stobj.lisp) is proved equal to this definition.  Collision
-; and preimage resistance are A-CRYPTO (specs/failures.md) and are not
-; provable here: about 2^-128 per chosen pair (the birthday bound over a
-; 256-bit output) is the figure to quote, not the 2^-256 second-preimage one.
-;
-; Representation.  Words are naturals below 2^32.  The word operations are
-; declared on 32-bit words and reduce with `mod' by 2^32 (SBCL compiles each
-; to fixnum arithmetic and a mask), so every guard obligation is a fact about
-; `mod' and no bitvector library is needed; the compression function is a
-; chain of seven functions of the sixteen state and sixteen message words
-; (`fn-b3-rounds-1' .. `-7') that return multiple values, so it conses
-; nothing.  The top-level functions have `:guard t' and read any object as
-; octets (`fn-b3-fix-octets'), as the digest seam's `fn-digest' is
-; constrained over any object; on an octet list the coercion is the identity.
-
+; Incremental BLAKE3. Digests are rows; only the buffered block is words.
 (in-package "ACL2")
-(include-book "rev-onto") ; the loop twins' step (PKT-877)
-
-(local (include-book "arithmetic/top" :dir :system))
-(local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
-(include-book "def-loop")
-
-(local (in-theory (disable floor mod truncate rem)))
-
-; -----------------------------------------------------------------------------
-; Constants (section 2.1, Table 3 and the IV of section 2.2)
-
-(defconst *fn-b3-digest-octets* 32)
-(defconst *fn-b3-block-octets* 64)
-(defconst *fn-b3-chunk-octets* 1024)
-
-(defconst *fn-b3-chunk-start* 1)
-(defconst *fn-b3-chunk-end* 2)
-(defconst *fn-b3-parent* 4)
-(defconst *fn-b3-root* 8)
-(defconst *fn-b3-keyed-hash* 16)
-(defconst *fn-b3-derive-key-context* 32)
-(defconst *fn-b3-derive-key-material* 64)
-
-; The IV: SHA-256's initial hash value (FIPS 180-4 section 5.3.3), as the
-; paper takes it.
-(defconst *fn-b3-iv*
-  '(1779033703 3144134277 1013904242 2773480762
-    1359893119 2600822924 528734635 1541459225))
-
-; -----------------------------------------------------------------------------
-; Words and octets
-
-(defun fn-b3-w32 (x)
-  ; Any object as a 32-bit word.
-  (declare (xargs :guard t))
-  (mod (ifix x) 4294967296))
-
-(defthm fn-b3-w32-type
-  (and (integerp (fn-b3-w32 x))
-       (<= 0 (fn-b3-w32 x))
-       (< (fn-b3-w32 x) 4294967296))
-  :rule-classes ((:type-prescription
-                  :corollary (and (integerp (fn-b3-w32 x))
-                                  (<= 0 (fn-b3-w32 x))))
-                 (:linear
-                  :corollary (and (<= 0 (fn-b3-w32 x))
-                                  (< (fn-b3-w32 x) 4294967296)))
-                 (:rewrite
-                  :corollary (integerp (fn-b3-w32 x)))))
-
-(defun fn-b3-byte (x)
-  ; Any object as an octet.
-  (declare (xargs :guard t))
-  (mod (ifix x) 256))
-
-(defthm fn-b3-byte-type
-  (and (integerp (fn-b3-byte x))
-       (<= 0 (fn-b3-byte x))
-       (<= (fn-b3-byte x) 255))
-  :rule-classes ((:type-prescription
-                  :corollary (and (integerp (fn-b3-byte x))
-                                  (<= 0 (fn-b3-byte x))))
-                 (:linear
-                  :corollary (and (<= 0 (fn-b3-byte x))
-                                  (<= (fn-b3-byte x) 255)))
-                 (:rewrite
-                  :corollary (integerp (fn-b3-byte x)))))
-
-(defthm fn-b3-w32-of-word
-  (implies (and (integerp x) (<= 0 x) (< x 4294967296))
-           (equal (fn-b3-w32 x) x)))
-
-(defthm fn-b3-byte-of-octet
-  (implies (and (integerp x) (<= 0 x) (< x 256))
-           (equal (fn-b3-byte x) x)))
-
-(defthm fn-b3-u32-of-w32
-  (unsigned-byte-p 32 (fn-b3-w32 x)))
-
-(in-theory (disable fn-b3-w32 fn-b3-byte))
-
-(local
- (defthm fn-b3-u32-of-mod
-   (implies (integerp z)
-            (unsigned-byte-p 32 (mod z 4294967296)))
-   :hints (("Goal" :use ((:instance fn-b3-u32-of-w32 (x z)))
-            :in-theory (enable fn-b3-w32)))))
-
-(defun-inline fn-b3-word (x)
-  ; Any object as a word; the identity on a word, without a division.
-  (declare (xargs :guard t))
-  (mbe :logic (fn-b3-w32 x)
-       :exec (if (and (integerp x) (<= 0 x) (< x 4294967296)) x (fn-b3-w32 x))))
-
-(defun fn-b3-octet (x)
-  ; Any object as an octet; the identity on an octet.
-  (declare (xargs :guard t))
-  (mbe :logic (fn-b3-byte x)
-       :exec (if (and (integerp x) (<= 0 x) (< x 256)) x (fn-b3-byte x))))
-
-(defthm fn-b3-word-type
-  (unsigned-byte-p 32 (fn-b3-word x)))
-
-(defthm fn-b3-octet-type
-  (and (integerp (fn-b3-octet x))
-       (<= 0 (fn-b3-octet x))
-       (<= (fn-b3-octet x) 255))
-  :rule-classes ((:type-prescription
-                  :corollary (and (integerp (fn-b3-octet x))
-                                  (<= 0 (fn-b3-octet x))))
-                 (:linear
-                  :corollary (and (<= 0 (fn-b3-octet x))
-                                  (<= (fn-b3-octet x) 255)))))
-
-(in-theory (disable fn-b3-word fn-b3-octet))
-
-; An octet list, recognized without depending on any other fn book (this book
-; sits at the bottom of the tree beside books/sha256.lisp).
-(defun fn-b3-octet-listp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (integerp (car xs))
-           (<= 0 (car xs))
-           (<= (car xs) 255)
-           (fn-b3-octet-listp (cdr xs)))
-    (null xs)))
-
-; -----------------------------------------------------------------------------
-; Total list primitives (as in books/sha256.lisp: `:guard t', so that no guard
-; obligation reaches below a type prescription).
-
-(defun fn-b3-nthx (n xs)
-  ; Element n, or 0 past the end: the zero padding of a short block.
-  (declare (xargs :guard t :measure (nfix n)))
-  (let ((n (nfix n)))
-    (cond ((atom xs) 0)
-          ((zp n) (car xs))
-          (t (fn-b3-nthx (- n 1) (cdr xs))))))
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-b3-firstn-loop (n xs acc)
-  (declare (xargs :measure (nfix n) :guard (true-listp acc) :verify-guards nil))
-  (let ((n (nfix n)))
-    (if (or (zp n) (atom xs))
-        (revappend acc nil)
-      (fn-b3-firstn-loop (- n 1) (cdr xs) (cons (car xs) acc)))))
-
-(defun fn-b3-firstn (n xs)
-  (declare (xargs :verify-guards nil :guard t :measure (nfix n)))
-  (mbe :logic
-       (let ((n (nfix n)))
-         (if (or (zp n) (atom xs))
-             nil
-           (cons (car xs) (fn-b3-firstn (- n 1) (cdr xs)))))
-       :exec (fn-b3-firstn-loop n xs nil)))
-
-(local
- (defthm fn-b3-firstn-loop-is-revappend
-   (equal (fn-b3-firstn-loop n xs acc)
-          (revappend acc (fn-b3-firstn n xs)))
-   :hints (("Goal" :induct (fn-b3-firstn-loop n xs acc)
-                   :in-theory (union-theories '(fn-b3-firstn-loop fn-b3-firstn revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-b3-firstn-loop)
-
-(verify-guards fn-b3-firstn
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-b3-firstn)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-b3-firstn-loop-is-revappend (acc nil))))))
-
-
-(defun fn-b3-nthcdrx (n xs)
-  (declare (xargs :guard t :measure (nfix n)))
-  (let ((n (nfix n)))
-    (if (or (zp n) (atom xs))
-        xs
-      (fn-b3-nthcdrx (- n 1) (cdr xs)))))
-
-(defthm fn-b3-len-of-nthcdrx
-  (equal (len (fn-b3-nthcdrx n xs))
-         (nfix (- (len xs) (nfix n)))))
-
-(defthm fn-b3-len-of-firstn
-  (equal (len (fn-b3-firstn n xs))
-         (min (nfix n) (len xs))))
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(def-loop fn-b3-fix-octets-walk (m)
-  :shape :map
-  :body (fn-b3-octet (car m)))
-
-
-(defthm fn-b3-fix-octets-walk-of-octets
-  (implies (fn-b3-octet-listp m)
-           (equal (fn-b3-fix-octets-walk m) m))
-  :hints (("Goal" :in-theory (enable fn-b3-octet))))
-
-(defun fn-b3-fix-octets (m)
-  ; Any object as an octet list: each element of its conses as an octet, the
-  ; last tail dropped.  The identity on an octet list, which is not copied.
-  (declare (xargs :guard t))
-  (mbe :logic (fn-b3-fix-octets-walk m)
-       :exec (if (fn-b3-octet-listp m) m (fn-b3-fix-octets-walk m))))
-
-(defthm fn-b3-octet-listp-of-fix-octets
-  (fn-b3-octet-listp (fn-b3-fix-octets m))
-  :hints (("Goal" :in-theory (enable fn-b3-octet))))
-
-(defthm fn-b3-len-of-fix-octets
-  (equal (len (fn-b3-fix-octets m)) (len m)))
-
-(defthm fn-b3-fix-octets-of-octets
-  (implies (fn-b3-octet-listp m)
-           (equal (fn-b3-fix-octets m) m)))
-
-; -----------------------------------------------------------------------------
-; The word operations, on declared words (section 2.2: addition modulo 2^32,
-; XOR, rotation right).
-
-(defun-inline fn-b3-add (x y)
-  (declare (type (unsigned-byte 32) x y))
-  (the (unsigned-byte 32) (mod (+ (ifix x) (ifix y)) 4294967296)))
-
-(defun-inline fn-b3-add3 (x y z)
-  (declare (type (unsigned-byte 32) x y z))
-  (the (unsigned-byte 32) (mod (+ (ifix x) (ifix y) (ifix z)) 4294967296)))
-
-(defun-inline fn-b3-xor (x y)
-  ; The reduction is the identity on two words; it is here so that the
-  ; result is a word by a fact about `mod' rather than about `logxor'.
-  (declare (type (unsigned-byte 32) x y))
-  (the (unsigned-byte 32) (mod (logxor x y) 4294967296)))
-
-(defun-inline fn-b3-rotr (x n)
-  (declare (type (unsigned-byte 32) x) (type (integer 1 31) n))
-  (the (unsigned-byte 32)
-       (mod (logior (ash x (- n)) (ash x (- 32 n))) 4294967296)))
-
-(defthm fn-b3-word-ops-type
-  (and (unsigned-byte-p 32 (fn-b3-add x y))
-       (unsigned-byte-p 32 (fn-b3-add3 x y z))
-       (unsigned-byte-p 32 (fn-b3-xor x y))
-       (unsigned-byte-p 32 (fn-b3-rotr x n))))
-
-(in-theory (disable fn-b3-add fn-b3-add3 fn-b3-xor fn-b3-rotr))
-
-; From here on a word is `unsigned-byte-p 32' and stays closed: the declared
-; types of the functions below are proved from the type theorems of their
-; callees, never by reopening the bound.
-(local (in-theory (disable unsigned-byte-p mv-nth)))
-
-; The quarter-round G (section 2.2), with the rotation distances 16, 12, 8, 7.
-(defun-inline fn-b3-g (a b c d mx my)
-  (declare (type (unsigned-byte 32) a b c d mx my))
-  (let* ((a (fn-b3-add3 a b mx))
-         (d (fn-b3-rotr (fn-b3-xor d a) 16))
-         (c (fn-b3-add c d))
-         (b (fn-b3-rotr (fn-b3-xor b c) 12))
-         (a (fn-b3-add3 a b my))
-         (d (fn-b3-rotr (fn-b3-xor d a) 8))
-         (c (fn-b3-add c d))
-         (b (fn-b3-rotr (fn-b3-xor b c) 7)))
-    (mv a b c d)))
-
-(defthm fn-b3-g-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-g a b c d mx my)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-g a b c d mx my)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-g a b c d mx my)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-g a b c d mx my))))
-  :hints (("Goal" :in-theory (enable fn-b3-g))))
-
-(in-theory (disable fn-b3-g))
-
-(defun-inline fn-b3-round (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  (declare (xargs :guard-hints (("Goal" :in-theory (enable fn-b3-g mv-nth)))))
-  ; Exec bindings are generated by tools/blake3_exec.py --flatten-round;
-  ; guard verification proves this straight-line body equals the original.
-  ; One round (the BLAKE3 paper, section 2.2): G on the four columns, then
-  ; on the four diagonals, each consuming the next two message words.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mbe :logic
-       (mv-let (v0 v4 v8 v12) (fn-b3-g v0 v4 v8 v12 m0 m1)
-   (mv-let (v1 v5 v9 v13) (fn-b3-g v1 v5 v9 v13 m2 m3)
-    (mv-let (v2 v6 v10 v14) (fn-b3-g v2 v6 v10 v14 m4 m5)
-     (mv-let (v3 v7 v11 v15) (fn-b3-g v3 v7 v11 v15 m6 m7)
-      (mv-let (v0 v5 v10 v15) (fn-b3-g v0 v5 v10 v15 m8 m9)
-       (mv-let (v1 v6 v11 v12) (fn-b3-g v1 v6 v11 v12 m10 m11)
-        (mv-let (v2 v7 v8 v13) (fn-b3-g v2 v7 v8 v13 m12 m13)
-         (mv-let (v3 v4 v9 v14) (fn-b3-g v3 v4 v9 v14 m14 m15)
-          (mv v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)))))))))
-       :exec
-       (let* ((v0 (fn-b3-add3 v0 v4 m0))
-              (v12 (fn-b3-rotr (fn-b3-xor v12 v0) 16))
-              (v8 (fn-b3-add v8 v12))
-              (v4 (fn-b3-rotr (fn-b3-xor v4 v8) 12))
-              (v0 (fn-b3-add3 v0 v4 m1))
-              (v12 (fn-b3-rotr (fn-b3-xor v12 v0) 8))
-              (v8 (fn-b3-add v8 v12))
-              (v4 (fn-b3-rotr (fn-b3-xor v4 v8) 7))
-              (v1 (fn-b3-add3 v1 v5 m2))
-              (v13 (fn-b3-rotr (fn-b3-xor v13 v1) 16))
-              (v9 (fn-b3-add v9 v13))
-              (v5 (fn-b3-rotr (fn-b3-xor v5 v9) 12))
-              (v1 (fn-b3-add3 v1 v5 m3))
-              (v13 (fn-b3-rotr (fn-b3-xor v13 v1) 8))
-              (v9 (fn-b3-add v9 v13))
-              (v5 (fn-b3-rotr (fn-b3-xor v5 v9) 7))
-              (v2 (fn-b3-add3 v2 v6 m4))
-              (v14 (fn-b3-rotr (fn-b3-xor v14 v2) 16))
-              (v10 (fn-b3-add v10 v14))
-              (v6 (fn-b3-rotr (fn-b3-xor v6 v10) 12))
-              (v2 (fn-b3-add3 v2 v6 m5))
-              (v14 (fn-b3-rotr (fn-b3-xor v14 v2) 8))
-              (v10 (fn-b3-add v10 v14))
-              (v6 (fn-b3-rotr (fn-b3-xor v6 v10) 7))
-              (v3 (fn-b3-add3 v3 v7 m6))
-              (v15 (fn-b3-rotr (fn-b3-xor v15 v3) 16))
-              (v11 (fn-b3-add v11 v15))
-              (v7 (fn-b3-rotr (fn-b3-xor v7 v11) 12))
-              (v3 (fn-b3-add3 v3 v7 m7))
-              (v15 (fn-b3-rotr (fn-b3-xor v15 v3) 8))
-              (v11 (fn-b3-add v11 v15))
-              (v7 (fn-b3-rotr (fn-b3-xor v7 v11) 7))
-              (v0 (fn-b3-add3 v0 v5 m8))
-              (v15 (fn-b3-rotr (fn-b3-xor v15 v0) 16))
-              (v10 (fn-b3-add v10 v15))
-              (v5 (fn-b3-rotr (fn-b3-xor v5 v10) 12))
-              (v0 (fn-b3-add3 v0 v5 m9))
-              (v15 (fn-b3-rotr (fn-b3-xor v15 v0) 8))
-              (v10 (fn-b3-add v10 v15))
-              (v5 (fn-b3-rotr (fn-b3-xor v5 v10) 7))
-              (v1 (fn-b3-add3 v1 v6 m10))
-              (v12 (fn-b3-rotr (fn-b3-xor v12 v1) 16))
-              (v11 (fn-b3-add v11 v12))
-              (v6 (fn-b3-rotr (fn-b3-xor v6 v11) 12))
-              (v1 (fn-b3-add3 v1 v6 m11))
-              (v12 (fn-b3-rotr (fn-b3-xor v12 v1) 8))
-              (v11 (fn-b3-add v11 v12))
-              (v6 (fn-b3-rotr (fn-b3-xor v6 v11) 7))
-              (v2 (fn-b3-add3 v2 v7 m12))
-              (v13 (fn-b3-rotr (fn-b3-xor v13 v2) 16))
-              (v8 (fn-b3-add v8 v13))
-              (v7 (fn-b3-rotr (fn-b3-xor v7 v8) 12))
-              (v2 (fn-b3-add3 v2 v7 m13))
-              (v13 (fn-b3-rotr (fn-b3-xor v13 v2) 8))
-              (v8 (fn-b3-add v8 v13))
-              (v7 (fn-b3-rotr (fn-b3-xor v7 v8) 7))
-              (v3 (fn-b3-add3 v3 v4 m14))
-              (v14 (fn-b3-rotr (fn-b3-xor v14 v3) 16))
-              (v9 (fn-b3-add v9 v14))
-              (v4 (fn-b3-rotr (fn-b3-xor v4 v9) 12))
-              (v3 (fn-b3-add3 v3 v4 m15))
-              (v14 (fn-b3-rotr (fn-b3-xor v14 v3) 8))
-              (v9 (fn-b3-add v9 v14))
-              (v4 (fn-b3-rotr (fn-b3-xor v4 v9) 7)))
-         (mv v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15))))
-
-(defthm fn-b3-round-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 8 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 9 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 10 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 11 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 12 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 13 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 14 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 15 (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                              m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-round))))
-
-(in-theory (disable fn-b3-round))
-
-(defun fn-b3-rounds-7 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 7, then the output chaining value: the first half of the state XOR
-  ; the second (section 2.2).
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m11 m15 m5 m0 m1 m9 m8 m6 m14 m10 m2 m12 m3 m4 m7 m13)
-    (mv (fn-b3-xor v0 v8)
-        (fn-b3-xor v1 v9)
-        (fn-b3-xor v2 v10)
-        (fn-b3-xor v3 v11)
-        (fn-b3-xor v4 v12)
-        (fn-b3-xor v5 v13)
-        (fn-b3-xor v6 v14)
-        (fn-b3-xor v7 v15))))
-
-(defthm fn-b3-rounds-7-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-7))))
-
-(in-theory (disable fn-b3-rounds-7))
-
-(defun fn-b3-rounds-6 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 6 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m9 m14 m11 m5 m8 m12 m15 m1 m13 m3 m0 m10 m2 m6 m4 m7)
-    (fn-b3-rounds-7 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-6-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-6))))
-
-(in-theory (disable fn-b3-rounds-6))
-
-(defun fn-b3-rounds-5 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 5 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m12 m13 m9 m11 m15 m10 m14 m8 m7 m2 m5 m3 m0 m1 m6 m4)
-    (fn-b3-rounds-6 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-5-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-5))))
-
-(in-theory (disable fn-b3-rounds-5))
-
-(defun fn-b3-rounds-4 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 4 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m10 m7 m12 m9 m14 m3 m13 m15 m4 m0 m11 m2 m5 m8 m1 m6)
-    (fn-b3-rounds-5 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-4-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-4))))
-
-(in-theory (disable fn-b3-rounds-4))
-
-(defun fn-b3-rounds-3 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 3 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m3 m4 m10 m12 m13 m2 m7 m14 m6 m5 m9 m0 m11 m15 m8 m1)
-    (fn-b3-rounds-4 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-3-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-3))))
-
-(in-theory (disable fn-b3-rounds-3))
-
-(defun fn-b3-rounds-2 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 2 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m2 m6 m3 m10 m7 m0 m4 m13 m1 m11 m12 m5 m9 m14 m15 m8)
-    (fn-b3-rounds-3 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-2-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-2))))
-
-(in-theory (disable fn-b3-rounds-2))
-
-(defun fn-b3-rounds-1 (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                        m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-  ; Round 1 and the rounds after it.
-  (declare (type (unsigned-byte 32) v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-           (type (unsigned-byte 32) m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))
-  (mv-let (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15)
-    (fn-b3-round v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)
-    (fn-b3-rounds-2 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                     m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-
-(defthm fn-b3-rounds-1-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-rounds-1 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-                                                  m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15))))
-  :hints (("Goal" :in-theory (enable fn-b3-rounds-1))))
-
-(in-theory (disable fn-b3-rounds-1))
-
-; -----------------------------------------------------------------------------
-; The compression function over any objects: each input read as a word, the
-; state initialised (section 2.2: the chaining value, IV[0..3], the counter's
-; low and high words, the block length, the flags), then the seven rounds.
-; The counter is a natural of any size read modulo 2^64, as the reference's
-; u64; fn's counters are chunk indices.
-
-(defun-inline fn-b3-compress-core (c0 c1 c2 c3 c4 c5 c6 c7
-                             m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15
-                             counter blen flags)
-  (declare (xargs :guard t))
-  (fn-b3-rounds-1 (fn-b3-word c0) (fn-b3-word c1) (fn-b3-word c2) (fn-b3-word c3) (fn-b3-word c4) (fn-b3-word c5) (fn-b3-word c6) (fn-b3-word c7)
-                  1779033703 3144134277 1013904242 2773480762
-                  (fn-b3-word counter) (fn-b3-word (floor (nfix counter) 4294967296))
-                  (fn-b3-word blen) (fn-b3-word flags)
-                  (fn-b3-word m0) (fn-b3-word m1) (fn-b3-word m2) (fn-b3-word m3) (fn-b3-word m4) (fn-b3-word m5) (fn-b3-word m6) (fn-b3-word m7) (fn-b3-word m8) (fn-b3-word m9) (fn-b3-word m10) (fn-b3-word m11) (fn-b3-word m12) (fn-b3-word m13) (fn-b3-word m14) (fn-b3-word m15)))
-
-(defthm fn-b3-compress-core-type
-  (and (unsigned-byte-p 32 (mv-nth 0 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 1 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 2 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 3 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 4 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 5 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 6 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
-       (unsigned-byte-p 32 (mv-nth 7 (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags))))
-  :hints (("Goal" :in-theory (enable fn-b3-compress-core))))
-
-(in-theory (disable fn-b3-compress-core))
-
-; The compression function on a chaining value of 8 words and a block of 16,
-; each a list; the output chaining value as a list of 8 words.
-; The generated exec body walks each input once, including zero padding on
-; short/improper lists. Its guard-t equality obligation covers every input.
-; Generator: tools/blake3_exec.py --linear-entry.
-(defun fn-b3-compress (cv words counter blen flags)
-  (declare (xargs :guard t))
-  (mbe :logic
-       (mv-let (o0 o1 o2 o3 o4 o5 o6 o7)
-    (fn-b3-compress-core (fn-b3-nthx 0 cv) (fn-b3-nthx 1 cv) (fn-b3-nthx 2 cv) (fn-b3-nthx 3 cv) (fn-b3-nthx 4 cv) (fn-b3-nthx 5 cv) (fn-b3-nthx 6 cv) (fn-b3-nthx 7 cv)
-                         (fn-b3-nthx 0 words) (fn-b3-nthx 1 words) (fn-b3-nthx 2 words) (fn-b3-nthx 3 words) (fn-b3-nthx 4 words) (fn-b3-nthx 5 words) (fn-b3-nthx 6 words) (fn-b3-nthx 7 words) (fn-b3-nthx 8 words) (fn-b3-nthx 9 words) (fn-b3-nthx 10 words) (fn-b3-nthx 11 words) (fn-b3-nthx 12 words) (fn-b3-nthx 13 words) (fn-b3-nthx 14 words) (fn-b3-nthx 15 words)
-                         counter blen flags)
-    (list o0 o1 o2 o3 o4 o5 o6 o7))
-       :exec
-       (let* ((c0 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c1 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c2 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c3 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c4 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c5 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c6 (if (consp cv) (car cv) 0))
-              (cv (if (consp cv) (cdr cv) nil))
-              (c7 (if (consp cv) (car cv) 0))
-              (m0 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m1 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m2 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m3 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m4 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m5 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m6 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m7 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m8 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m9 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m10 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m11 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m12 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m13 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m14 (if (consp words) (car words) 0))
-              (words (if (consp words) (cdr words) nil))
-              (m15 (if (consp words) (car words) 0)))
-         (mv-let (o0 o1 o2 o3 o4 o5 o6 o7)
-    (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7
-                         m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15
-                         counter blen flags)
-    (list o0 o1 o2 o3 o4 o5 o6 o7)))))
-
-(defun fn-b3-word-listp (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (and (unsigned-byte-p 32 (car xs)) (fn-b3-word-listp (cdr xs)))
-    (null xs)))
-
-(defthm fn-b3-compress-shape
-  (and (fn-b3-word-listp (fn-b3-compress cv words counter blen flags))
-       (true-listp (fn-b3-compress cv words counter blen flags))
-       (equal (len (fn-b3-compress cv words counter blen flags)) 8)))
-
-(in-theory (disable fn-b3-compress))
-
-; -----------------------------------------------------------------------------
-; Octets to words and back, little-endian (section 2.2: "the message block
-; ... interpreted as 16 little-endian 32-bit words"; the output is the words
-; serialized little-endian).
-
-(defun fn-b3-le-word (b0 b1 b2 b3)
-  (declare (xargs :guard t))
-  (+ (fn-b3-octet b0)
-     (* 256 (fn-b3-octet b1))
-     (* 65536 (fn-b3-octet b2))
-     (* 16777216 (fn-b3-octet b3))))
-
-(defthm fn-b3-le-word-type
-  (unsigned-byte-p 32 (fn-b3-le-word b0 b1 b2 b3))
-  :hints (("Goal" :in-theory (enable unsigned-byte-p))))
-
-(in-theory (disable fn-b3-le-word))
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-b3-words-loop (k octets acc)
-  (declare (xargs :measure (nfix k) :guard (true-listp acc) :verify-guards nil))
-  (if (zp (nfix k))
-      (revappend acc nil)
-    (fn-b3-words-loop (- (nfix k) 1)
-                      (fn-b3-nthcdrx 4 octets)
-                      (cons (fn-b3-le-word (fn-b3-nthx 0 octets)
-                                           (fn-b3-nthx 1 octets)
-                                           (fn-b3-nthx 2 octets)
-                                           (fn-b3-nthx 3 octets))
-                            acc))))
-
-(defun fn-b3-words (k octets)
-  ; K little-endian words from the front of OCTETS, the octets past its end
-  ; read as zero: a short final block is zero-padded (section 2.1).
-  (declare (xargs :verify-guards nil :guard t :measure (nfix k)))
-  (mbe :logic
-       (if (zp (nfix k))
-           nil
-         (cons (fn-b3-le-word (fn-b3-nthx 0 octets) (fn-b3-nthx 1 octets)
-                              (fn-b3-nthx 2 octets) (fn-b3-nthx 3 octets))
-               (fn-b3-words (- (nfix k) 1) (fn-b3-nthcdrx 4 octets))))
-       :exec (fn-b3-words-loop k octets nil)))
-
-(local
- (defthm fn-b3-words-loop-is-revappend
-   (equal (fn-b3-words-loop k octets acc)
-          (revappend acc (fn-b3-words k octets)))
-   :hints (("Goal" :induct (fn-b3-words-loop k octets acc)
-                   :in-theory (union-theories '(fn-b3-words-loop fn-b3-words revappend car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-b3-words-loop)
-
-(verify-guards fn-b3-words
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-b3-words)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-b3-words-loop-is-revappend (acc nil))))))
-
-
-(defthm fn-b3-words-shape
-  (and (fn-b3-word-listp (fn-b3-words k octets))
-       (true-listp (fn-b3-words k octets))
-       (equal (len (fn-b3-words k octets)) (nfix k))))
-
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec folds the reversed list (fn-ag-rev-onto) from the left with the
-; same step.
-(defun fn-b3-words-octets-loop (rev acc)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp rev)
-      (fn-b3-words-octets-loop (cdr rev)
-                               (let ((w (fn-b3-word (car rev))))
-                                 (list* (mod w 256)
-                                        (mod (floor w 256) 256)
-                                        (mod (floor w 65536) 256)
-                                        (mod (floor w 16777216) 256)
-                                        acc)))
-    acc))
-
-(defun fn-b3-words-octets (ws)
-  ; Each word's four octets, least significant first.
-  (declare (xargs :verify-guards nil :guard t))
-  (mbe :logic
-       (if (consp ws)
-           (let ((w (fn-b3-word (car ws))))
-             (list* (mod w 256)
-                    (mod (floor w 256) 256)
-                    (mod (floor w 65536) 256)
-                    (mod (floor w 16777216) 256)
-                    (fn-b3-words-octets (cdr ws))))
-         nil)
-       :exec (fn-b3-words-octets-loop (fn-ag-rev-onto ws nil) nil)))
-
-(local
- (defthm fn-b3-words-octets-loop-of-rev-onto
-   (equal (fn-b3-words-octets-loop (fn-ag-rev-onto ws zs) nil)
-          (fn-b3-words-octets-loop zs (fn-b3-words-octets ws)))
-   :hints (("Goal" :induct (fn-ag-rev-onto ws zs)
-                   :in-theory (union-theories '(fn-b3-words-octets-loop fn-b3-words-octets fn-ag-rev-onto
-                                                car-cons cdr-cons)
-                                              (theory 'minimal-theory))))))
-
-(verify-guards fn-b3-words-octets-loop)
-
-(verify-guards fn-b3-words-octets
-  :hints (("Goal" :in-theory (union-theories '(fn-b3-words-octets fn-b3-words-octets-loop)
-                                                  (union-theories (theory 'minimal-theory)
-                                                                  (executable-counterpart-theory :here)))
-                  :use ((:instance fn-b3-words-octets-loop-of-rev-onto (zs nil))))))
-
-
-(defthm fn-b3-words-octets-shape
-  (and (fn-b3-octet-listp (fn-b3-words-octets ws))
-       (equal (len (fn-b3-words-octets ws)) (* 4 (len ws)))))
-
-; -----------------------------------------------------------------------------
-; A node's output (section 2.4): the inputs of the last compression of a chunk
-; or of a parent, kept so that the root can compress them again with ROOT.
-
-(defun fn-b3-output (cv words counter blen flags)
-  (declare (xargs :guard t))
-  (list cv words counter blen flags))
-
-; The chaining value of a non-root node.
-(defun fn-b3-output-cv (out)
-  (declare (xargs :guard t))
-  (fn-b3-compress (fn-b3-nthx 0 out) (fn-b3-nthx 1 out) (fn-b3-nthx 2 out)
-                  (fn-b3-nthx 3 out) (fn-b3-nthx 4 out)))
-
-; The root's 32 output octets: the same inputs with ROOT set and the output
-; block counter 0 (section 2.6; fn uses only the first 32 octets).
-(defun fn-b3-output-root (out)
-  (declare (xargs :guard t))
-  (fn-b3-words-octets
-   (fn-b3-compress (fn-b3-nthx 0 out) (fn-b3-nthx 1 out) 0
-                   (fn-b3-nthx 3 out)
-                   (logior (ifix (fn-b3-nthx 4 out)) *fn-b3-root*))))
-
-(defthm fn-b3-output-cv-shape
-  (and (fn-b3-word-listp (fn-b3-output-cv out))
-       (true-listp (fn-b3-output-cv out))
-       (equal (len (fn-b3-output-cv out)) 8)))
-
-(defthm fn-b3-output-root-shape
-  (and (fn-b3-octet-listp (fn-b3-output-root out))
-       (true-listp (fn-b3-output-root out))
-       (equal (len (fn-b3-output-root out)) 32))
-  :hints (("Goal" :use ((:instance fn-b3-words-octets-shape
-                                   (ws (fn-b3-compress (fn-b3-nthx 0 out) (fn-b3-nthx 1 out) 0
-                                                       (fn-b3-nthx 3 out)
-                                                       (logior (ifix (fn-b3-nthx 4 out)) *fn-b3-root*)))))
-           :in-theory (disable fn-b3-words-octets-shape))))
-
-(in-theory (disable fn-b3-output-cv fn-b3-output-root))
-
-; A chaining value as its eight words: what the compression function reads of
-; any object.
-(defun fn-b3-cv8 (cv)
-  (declare (xargs :guard t))
-  (list (fn-b3-nthx 0 cv) (fn-b3-nthx 1 cv) (fn-b3-nthx 2 cv) (fn-b3-nthx 3 cv)
-        (fn-b3-nthx 4 cv) (fn-b3-nthx 5 cv) (fn-b3-nthx 6 cv) (fn-b3-nthx 7 cv)))
-
-; -----------------------------------------------------------------------------
-; A chunk (section 2.4): its blocks chained from the chaining value CV (the
-; key), each compressed with the chunk counter; CHUNK_START on the first
-; block, CHUNK_END on the last, whose length is its octet count (0 for the
-; empty input's one block).  The result is the last block's output.
-
-(defun fn-b3-chunk (cv octets counter flags startp)
-  (declare (xargs :guard t :measure (len octets)))
-  (let ((fl (logior (ifix flags) (if startp *fn-b3-chunk-start* 0))))
-    (if (< 64 (len octets))
-        (fn-b3-chunk (fn-b3-compress cv (fn-b3-words 16 octets) counter 64 fl)
-                     (fn-b3-nthcdrx 64 octets) counter flags nil)
-      (fn-b3-output (fn-b3-cv8 cv) (fn-b3-words 16 octets) counter (len octets)
-                    (logior fl *fn-b3-chunk-end*)))))
-
-; -----------------------------------------------------------------------------
-; The tree (section 2.1): above one chunk, the left subtree holds the largest
-; power-of-two number of whole chunks whose octets are fewer than the input's,
-; the right subtree the rest; a parent compresses its children's chaining
-; values under the key with counter 0, block length 64 and PARENT.
-
-(defun fn-b3-left-chunks (p n)
-  ; From P, doubled while twice it still leaves octets to its right.
-  (declare (xargs :guard (and (natp p) (natp n))
-                  :measure (nfix (- (nfix n) (* 1024 (nfix p))))))
-  (if (and (posp p) (natp n) (< (* 2048 p) n))
-      (fn-b3-left-chunks (* 2 p) n)
-    p))
-
-(defthm fn-b3-left-chunks-posp
-  (implies (posp p) (posp (fn-b3-left-chunks p n)))
-  :rule-classes (:rewrite :type-prescription))
-
-(defthm fn-b3-left-chunks-below
-  (implies (and (posp p) (natp n) (< (* 1024 p) n))
-           (< (* 1024 (fn-b3-left-chunks p n)) n))
-  :rule-classes (:rewrite :linear))
-
-(defun fn-b3-node (key octets counter flags)
-  (declare (xargs :guard t :measure (len octets)))
-  (if (< 1024 (len octets))
-      (let* ((lc (fn-b3-left-chunks 1 (len octets)))
-             (ll (* 1024 lc)))
-        (fn-b3-output key
-                      (append (fn-b3-output-cv
-                               (fn-b3-node key (fn-b3-firstn ll octets) counter flags))
-                              (fn-b3-output-cv
-                               (fn-b3-node key (fn-b3-nthcdrx ll octets)
-                                           (+ (nfix counter) lc) flags)))
-                      0 64 (logior (ifix flags) *fn-b3-parent*)))
-    (fn-b3-chunk key octets counter flags t)))
-
-; -----------------------------------------------------------------------------
-; The three modes (section 2.3).
-
-(defun fn-b3-hash (key flags octets)
-  ; The root output of OCTETS under the key words KEY and the mode flags.
-  (declare (xargs :guard t))
-  (fn-b3-output-root (fn-b3-node key octets 0 flags)))
-
-(defun fn-blake3 (m)
-  ; BLAKE3 of any object read as octets: the hash mode, the IV as the key.
-  (declare (xargs :guard t))
-  (fn-b3-hash *fn-b3-iv* 0 (fn-b3-fix-octets m)))
-
-(defun fn-blake3-keyed (key m)
-  ; keyed_hash: KEY is 32 octets, read as eight words.
-  (declare (xargs :guard t))
-  (fn-b3-hash (fn-b3-words 8 (fn-b3-fix-octets key)) *fn-b3-keyed-hash*
-              (fn-b3-fix-octets m)))
-
-(defun fn-blake3-derive-key (context material)
-  ; derive_key: the context string hashed under DERIVE_KEY_CONTEXT gives the
-  ; key for the material under DERIVE_KEY_MATERIAL.
-  (declare (xargs :guard t))
-  (fn-b3-hash (fn-b3-words 8 (fn-b3-hash *fn-b3-iv* *fn-b3-derive-key-context*
-                                          (fn-b3-fix-octets context)))
-              *fn-b3-derive-key-material*
-              (fn-b3-fix-octets material)))
-
-; -----------------------------------------------------------------------------
-; The shape: 32 octets, always, in every mode.
-
-(defthm fn-b3-hash-shape
-  (and (fn-b3-octet-listp (fn-b3-hash key flags octets))
-       (true-listp (fn-b3-hash key flags octets))
-       (equal (len (fn-b3-hash key flags octets)) 32)))
-
-(defthm fn-blake3-shape
-  (and (fn-b3-octet-listp (fn-blake3 m))
-       (true-listp (fn-blake3 m))
-       (equal (len (fn-blake3 m)) 32)))
-
-(defthm fn-blake3-keyed-shape
-  (and (fn-b3-octet-listp (fn-blake3-keyed key m))
-       (true-listp (fn-blake3-keyed key m))
-       (equal (len (fn-blake3-keyed key m)) 32)))
-
-(defthm fn-blake3-derive-key-shape
-  (and (fn-b3-octet-listp (fn-blake3-derive-key context material))
-       (true-listp (fn-blake3-derive-key context material))
-       (equal (len (fn-blake3-derive-key context material)) 32)))
-
-; The coercion is the identity on the octets fn digests: on an octet list,
-; `fn-blake3' is the hash of exactly those octets.
-(defthm fn-blake3-of-octets
-  (implies (fn-b3-octet-listp m)
-           (equal (fn-blake3 m) (fn-b3-hash *fn-b3-iv* 0 m))))
-
-(in-theory (disable fn-b3-hash fn-blake3 fn-blake3-keyed fn-blake3-derive-key))
+(include-book "digests")
+(fn2-book-layer :b)
+(defcolumns fn2-b3
+ ((pos :u8) (blocks :u8) (counter :u60) (origin :u60) (depth :u8) (flags :u8)
+  (verify-phase :u8) (verify-next :u32) (verify-base :u32)
+  (verify-count :u32) (verify-target :u32) (verify-length :u60))
+ :init-name fn2-b3-columns-init
+ :extra-fields ((fn2-b3-words :type (array (unsigned-byte 32) (0)) :initially 0 :resizable t :why "Buffered-block and chaining words, eight-word stripes per hasher row, not one column.")))
+(include-book "layout")
+(include-book "blake3-spec")
+(local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
+(defun fn2-b3-ready (row fn2-b3 fn2-digests)
+ (declare (xargs :stobjs (fn2-b3 fn2-digests) :guard t))
+ (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3))
+      (equal (fn2-b3-words-length fn2-b3) (* 16 (fn2-b3-rows fn2-b3)))
+      (fn2-digest-workspacep row fn2-digests)))
+(defun fn2-b3-table-init (n fn2-b3)
+ (declare (xargs :stobjs fn2-b3 :guard (unsigned-byte-p 32 n)))
+ (let* ((fn2-b3 (fn2-b3-columns-init n fn2-b3))
+        (fn2-b3 (resize-fn2-b3-words (* 16 n) fn2-b3))) fn2-b3))
+(defthm fn2-b3-table-init-shape
+ (implies (and (unsigned-byte-p 32 n) (fn2-b3p fn2-b3))
+  (and (fn2-b3p (fn2-b3-table-init n fn2-b3))
+       (fn2-b3-wfp (fn2-b3-table-init n fn2-b3))
+       (equal (fn2-b3-rows (fn2-b3-table-init n fn2-b3)) n)
+       (equal (fn2-b3-words-length (fn2-b3-table-init n fn2-b3)) (* 16 n)))))
+(in-theory (disable fn2-b3-table-init))
+(local (in-theory (disable fn2-b3p fn2-b3-wfp fn2-digestsp fn2-digests-wfp fn2-poolp fn2-pool-wfp fn2-b3-rows fn2-b3-pos fn2-b3-blocks fn2-b3-counter
+ fn2-b3-origin fn2-b3-depth fn2-b3-flags fn2-b3-verify-phase fn2-b3-verify-next
+ fn2-b3-verify-base fn2-b3-verify-count fn2-b3-verify-target fn2-b3-verify-length
+ fn2-digests-rows)))
+(defun fn2-b3-word (row i fn2-b3)
+ (declare (xargs :stobjs fn2-b3 :guard (and (natp row) (natp i) (< i 16)
+  (< (+ (* 16 row) i) (fn2-b3-words-length fn2-b3)))))
+ (fn-b3-word (fn2-b3-wordsi (+ (* 16 row) i) fn2-b3)))
+(defthm fn2-b3-word-type (unsigned-byte-p 32 (fn2-b3-word row i fn2-b3)))
+(defthm fn2-b3-word-natp (natp (fn2-b3-word row i fn2-b3)) :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (enable fn-b3-word))))
+(defthm fn2-b3-word-bound (< (fn2-b3-word row i fn2-b3) 4294967296) :rule-classes :linear
+ :hints (("Goal" :in-theory (enable fn-b3-word))))
+(in-theory (disable fn2-b3-word))
+
+(local (defthm fn2-b3-compression-car-type
+ (unsigned-byte-p 32 (car (fn-b3-compress-core c0 c1 c2 c3 c4 c5 c6 c7 m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15 counter blen flags)))
+ :hints (("Goal" :use fn-b3-compress-core-type :in-theory (disable fn-b3-compress-core fn-b3-compress-core-type)))))
+(local (defthm fn2-b3-normalized-natp (natp (fn-b3-word x))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn-b3-word)))))
+(local (defthm fn2-b3-normalized-bound (< (fn-b3-word x) 4294967296)
+ :rule-classes :linear :hints (("Goal" :in-theory (enable fn-b3-word)))))
+(include-book "blake3-pool-spec")
+(defun fn2-b3-store (row i v fn2-b3)
+ (declare (xargs :stobjs (fn2-b3) :verify-guards nil :guard (and (fn2-b3-wfp fn2-b3) (natp row) (natp i) (< i 16) (< (+ (* 16 row) i) (fn2-b3-words-length fn2-b3)) (unsigned-byte-p 32 v))))
+ (update-fn2-b3-wordsi (+ (* 16 row) i) v fn2-b3))
+(defthm fn2-b3-store-shape
+ (implies (and (and (fn2-b3-wfp fn2-b3) (natp row) (natp i) (< i 16) (< (+ (* 16 row) i) (fn2-b3-words-length fn2-b3)) (unsigned-byte-p 32 v)) (fn2-b3p fn2-b3))
+  (and (fn2-b3p (fn2-b3-store row i v fn2-b3)) (fn2-b3-wfp (fn2-b3-store row i v fn2-b3)) (equal (fn2-b3-rows (fn2-b3-store row i v fn2-b3)) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (fn2-b3-store row i v fn2-b3))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-store)
+(in-theory (disable fn2-b3-store))
+(defun fn2-b3-init (row mode key fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp key fn2-digests) (member mode '(0 16 32 64)))))
+ (let* ((dst (fn2-digest-slot row *fn2-b3-key*))
+ (fn2-digests (if (or (equal mode 0) (equal mode 32)) (fn2-digest-iv dst fn2-digests) (fn2-digest-copy dst key fn2-digests)))
+ (fn2-digests (fn2-digest-copy (fn2-digest-slot row *fn2-b3-cv*) dst fn2-digests))
+ (fn2-b3 (fn2-b3-set-verify-phase row 0 fn2-b3))(fn2-b3 (fn2-b3-set-pos row 0 fn2-b3))(fn2-b3 (fn2-b3-set-blocks row 0 fn2-b3))(fn2-b3 (fn2-b3-set-counter row 0 fn2-b3))(fn2-b3 (fn2-b3-set-origin row 0 fn2-b3))(fn2-b3 (fn2-b3-set-depth row 0 fn2-b3))
+ (fn2-b3 (fn2-b3-set-flags row mode fn2-b3))) (mv fn2-digests fn2-b3)))
+(defthm fn2-b3-init-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp key fn2-digests) (member mode '(0 16 32 64))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (car (fn2-b3-init row mode key fn2-digests fn2-b3))) (fn2-digests-wfp (car (fn2-b3-init row mode key fn2-digests fn2-b3))) (equal (fn2-digests-rows (car (fn2-b3-init row mode key fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-init row mode key fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-init row mode key fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-init row mode key fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-init row mode key fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-init)
+(in-theory (disable fn2-b3-init))
+(defun fn2-b3-start-subtree (row counter fn2-b3)
+ (declare (xargs :stobjs (fn2-b3) :verify-guards nil :guard (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)) (unsigned-byte-p 54 counter) (equal (mod counter 64) 0) (equal (fn2-b3-pos row fn2-b3) 0) (equal (fn2-b3-blocks row fn2-b3) 0) (equal (fn2-b3-depth row fn2-b3) 0))))
+ (let* ((fn2-b3 (fn2-b3-set-counter row counter fn2-b3)) (fn2-b3 (fn2-b3-set-origin row counter fn2-b3))) fn2-b3))
+(defthm fn2-b3-start-subtree-shape
+ (implies (and (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)) (unsigned-byte-p 54 counter) (equal (mod counter 64) 0) (equal (fn2-b3-pos row fn2-b3) 0) (equal (fn2-b3-blocks row fn2-b3) 0) (equal (fn2-b3-depth row fn2-b3) 0)) (fn2-b3p fn2-b3))
+  (and (fn2-b3p (fn2-b3-start-subtree row counter fn2-b3)) (fn2-b3-wfp (fn2-b3-start-subtree row counter fn2-b3)) (equal (fn2-b3-rows (fn2-b3-start-subtree row counter fn2-b3)) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (fn2-b3-start-subtree row counter fn2-b3))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-start-subtree)
+(in-theory (disable fn2-b3-start-subtree))
+(defun fn2-b3-parent-cv (dst left right key flags fn2-digests)
+ (declare (xargs :stobjs (fn2-digests) :verify-guards nil :guard (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests) (fn2-digest-rowp key fn2-digests) (unsigned-byte-p 8 flags))))
+ (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-compress-core (fn2-digests-w0 key fn2-digests) (fn2-digests-w1 key fn2-digests) (fn2-digests-w2 key fn2-digests) (fn2-digests-w3 key fn2-digests) (fn2-digests-w4 key fn2-digests) (fn2-digests-w5 key fn2-digests) (fn2-digests-w6 key fn2-digests) (fn2-digests-w7 key fn2-digests) (fn2-digests-w0 left fn2-digests) (fn2-digests-w1 left fn2-digests) (fn2-digests-w2 left fn2-digests) (fn2-digests-w3 left fn2-digests) (fn2-digests-w4 left fn2-digests) (fn2-digests-w5 left fn2-digests) (fn2-digests-w6 left fn2-digests) (fn2-digests-w7 left fn2-digests) (fn2-digests-w0 right fn2-digests) (fn2-digests-w1 right fn2-digests) (fn2-digests-w2 right fn2-digests) (fn2-digests-w3 right fn2-digests) (fn2-digests-w4 right fn2-digests) (fn2-digests-w5 right fn2-digests) (fn2-digests-w6 right fn2-digests) (fn2-digests-w7 right fn2-digests) 0 64 (logior flags 4))
+ (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests)))
+(defthm fn2-b3-parent-cv-shape
+ (implies (and (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests) (fn2-digest-rowp key fn2-digests) (unsigned-byte-p 8 flags)) (fn2-digestsp fn2-digests))
+  (and (fn2-digestsp (fn2-b3-parent-cv dst left right key flags fn2-digests)) (fn2-digests-wfp (fn2-b3-parent-cv dst left right key flags fn2-digests)) (equal (fn2-digests-rows (fn2-b3-parent-cv dst left right key flags fn2-digests)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-parent-cv)
+(in-theory (disable fn2-b3-parent-cv))
+(defun fn2-b3-parent-root (dst left right key flags fn2-digests)
+ (declare (xargs :stobjs (fn2-digests) :verify-guards nil :guard (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests) (fn2-digest-rowp key fn2-digests) (unsigned-byte-p 8 flags))))
+ (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-compress-core (fn2-digests-w0 key fn2-digests) (fn2-digests-w1 key fn2-digests) (fn2-digests-w2 key fn2-digests) (fn2-digests-w3 key fn2-digests) (fn2-digests-w4 key fn2-digests) (fn2-digests-w5 key fn2-digests) (fn2-digests-w6 key fn2-digests) (fn2-digests-w7 key fn2-digests) (fn2-digests-w0 left fn2-digests) (fn2-digests-w1 left fn2-digests) (fn2-digests-w2 left fn2-digests) (fn2-digests-w3 left fn2-digests) (fn2-digests-w4 left fn2-digests) (fn2-digests-w5 left fn2-digests) (fn2-digests-w6 left fn2-digests) (fn2-digests-w7 left fn2-digests) (fn2-digests-w0 right fn2-digests) (fn2-digests-w1 right fn2-digests) (fn2-digests-w2 right fn2-digests) (fn2-digests-w3 right fn2-digests) (fn2-digests-w4 right fn2-digests) (fn2-digests-w5 right fn2-digests) (fn2-digests-w6 right fn2-digests) (fn2-digests-w7 right fn2-digests) 0 64 (logior flags 12))
+ (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests)))
+(defthm fn2-b3-parent-root-shape
+ (implies (and (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests) (fn2-digest-rowp key fn2-digests) (unsigned-byte-p 8 flags)) (fn2-digestsp fn2-digests))
+  (and (fn2-digestsp (fn2-b3-parent-root dst left right key flags fn2-digests)) (fn2-digests-wfp (fn2-b3-parent-root dst left right key flags fn2-digests)) (equal (fn2-digests-rows (fn2-b3-parent-root dst left right key flags fn2-digests)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-parent-root)
+(in-theory (disable fn2-b3-parent-root))
+(defun fn2-b3-parent (dst row level right root fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp right fn2-digests) (natp level) (< level 54))))
+ (let ((left (+ (fn2-digest-slot row *fn2-b3-frontier*) level)) (key (fn2-digest-slot row *fn2-b3-key*)) (flags (fn2-b3-flags row fn2-b3)))
+ (if root (fn2-b3-parent-root dst left right key flags fn2-digests)
+          (fn2-b3-parent-cv dst left right key flags fn2-digests))))
+(defthm fn2-b3-parent-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp right fn2-digests) (natp level) (< level 54)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-parent dst row level right root fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-parent dst row level right root fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-parent dst row level right root fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-parent)
+(in-theory (disable fn2-b3-parent))
+(defun fn2-b3-block-word (row i fn2-b3)
+ (declare (xargs :stobjs (fn2-b3) :verify-guards nil :guard (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)) (equal (fn2-b3-words-length fn2-b3) (* 16 (fn2-b3-rows fn2-b3))) (natp i) (< i 16))))
+ (let ((left (- (fn2-b3-pos row fn2-b3) (* 4 i))))
+ (cond ((<= left 0) 0) ((>= left 4) (fn2-b3-word row i fn2-b3))
+       (t (mod (fn2-b3-word row i fn2-b3) (expt 256 left))))))
+(verify-guards fn2-b3-block-word)
+(in-theory (disable fn2-b3-block-word))
+(defun fn2-b3-output (dst row end root fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests))))
+ (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-compress-core (fn2-digests-w0 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w1 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w2 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w3 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w4 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w5 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w6 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests) (fn2-digests-w7 (fn2-digest-slot row *fn2-b3-cv*) fn2-digests)
+ (fn2-b3-block-word row 0 fn2-b3) (fn2-b3-block-word row 1 fn2-b3) (fn2-b3-block-word row 2 fn2-b3) (fn2-b3-block-word row 3 fn2-b3) (fn2-b3-block-word row 4 fn2-b3) (fn2-b3-block-word row 5 fn2-b3) (fn2-b3-block-word row 6 fn2-b3) (fn2-b3-block-word row 7 fn2-b3) (fn2-b3-block-word row 8 fn2-b3) (fn2-b3-block-word row 9 fn2-b3) (fn2-b3-block-word row 10 fn2-b3) (fn2-b3-block-word row 11 fn2-b3) (fn2-b3-block-word row 12 fn2-b3) (fn2-b3-block-word row 13 fn2-b3) (fn2-b3-block-word row 14 fn2-b3) (fn2-b3-block-word row 15 fn2-b3)
+ (if root 0 (fn2-b3-counter row fn2-b3)) (fn2-b3-pos row fn2-b3)
+ (logior (fn2-b3-flags row fn2-b3) (if (equal (fn2-b3-blocks row fn2-b3) 0) 1 0) (if end 2 0) (if root 8 0)))
+ (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests)))
+(defthm fn2-b3-output-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-output dst row end root fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-output dst row end root fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-output dst row end root fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-output)
+(in-theory (disable fn2-b3-output))
+(defun fn2-b3-push (row n depth src fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp src fn2-digests) (unsigned-byte-p 60 n) (natp depth) (< depth 54)) :measure (nfix depth)))
+ (if (and (posp depth) (equal (mod (nfix n) 2) 0))
+ (let ((fn2-digests (fn2-b3-parent src row (- depth 1) src nil fn2-digests fn2-b3)))
+  (fn2-b3-push row (floor n 2) (- depth 1) src fn2-digests fn2-b3))
+ (let* ((fn2-digests (fn2-digest-copy (+ (fn2-digest-slot row *fn2-b3-frontier*) (nfix depth)) src fn2-digests))
+        (fn2-b3 (fn2-b3-set-depth row (+ 1 (nfix depth)) fn2-b3))) (mv fn2-digests fn2-b3))))
+(defthm fn2-b3-push-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp src fn2-digests) (unsigned-byte-p 60 n) (natp depth) (< depth 54)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (car (fn2-b3-push row n depth src fn2-digests fn2-b3))) (fn2-digests-wfp (car (fn2-b3-push row n depth src fn2-digests fn2-b3))) (equal (fn2-digests-rows (car (fn2-b3-push row n depth src fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-push row n depth src fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-push row n depth src fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-push row n depth src fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-push row n depth src fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-push)
+(in-theory (disable fn2-b3-push))
+(defun fn2-b3-flush (row fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (fn2-b3-ready row fn2-b3 fn2-digests)))
+ (let* ((blocks (fn2-b3-blocks row fn2-b3)) (tmp (fn2-digest-slot row *fn2-b3-scratch*))
+ (fn2-digests (fn2-b3-output tmp row (equal blocks 15) nil fn2-digests fn2-b3)))
+ (if (equal blocks 15)
+  (let ((counter (fn2-b3-counter row fn2-b3)) (depth (fn2-b3-depth row fn2-b3)))
+   (mv-let (fn2-digests fn2-b3) (fn2-b3-push row (mod (+ 1 (- counter (fn2-b3-origin row fn2-b3))) (expt 2 60)) (if (< depth 54) depth 0) tmp fn2-digests fn2-b3)
+    (let* ((fn2-digests (fn2-digest-copy (fn2-digest-slot row *fn2-b3-cv*) (fn2-digest-slot row *fn2-b3-key*) fn2-digests))
+     (fn2-b3 (fn2-b3-set-counter row (mod (+ 1 counter) (expt 2 60)) fn2-b3))
+     (fn2-b3 (fn2-b3-set-blocks row 0 fn2-b3)) (fn2-b3 (fn2-b3-set-pos row 0 fn2-b3))) (mv fn2-digests fn2-b3))))
+  (let* ((fn2-digests (fn2-digest-copy (fn2-digest-slot row *fn2-b3-cv*) tmp fn2-digests))
+   (fn2-b3 (fn2-b3-set-blocks row (mod (+ 1 blocks) 256) fn2-b3))
+   (fn2-b3 (fn2-b3-set-pos row 0 fn2-b3))) (mv fn2-digests fn2-b3)))))
+(defthm fn2-b3-flush-shape
+ (implies (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (car (fn2-b3-flush row fn2-digests fn2-b3))) (fn2-digests-wfp (car (fn2-b3-flush row fn2-digests fn2-b3))) (equal (fn2-digests-rows (car (fn2-b3-flush row fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-flush row fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-flush row fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-flush row fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-flush row fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-flush)
+(in-theory (disable fn2-b3-flush))
+(defun fn2-b3-byte (row byte fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (unsigned-byte-p 8 byte))))
+ (let* ((old-pos (fn2-b3-pos row fn2-b3)) (pos (mod old-pos 64)))
+ (mv-let (fn2-digests fn2-b3) (if (equal old-pos 64) (fn2-b3-flush row fn2-digests fn2-b3) (mv fn2-digests fn2-b3))
+  (let* ((i (floor pos 4)) (shift (* 8 (mod pos 4)))
+   (word (if (equal shift 0) 0 (fn2-b3-word row i fn2-b3)))
+   (fn2-b3 (fn2-b3-store row i (fn-b3-word (+ word (ash byte shift))) fn2-b3))
+   (fn2-b3 (fn2-b3-set-pos row (+ pos 1) fn2-b3))) (mv fn2-digests fn2-b3)))))
+(defthm fn2-b3-byte-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (unsigned-byte-p 8 byte)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (car (fn2-b3-byte row byte fn2-digests fn2-b3))) (fn2-digests-wfp (car (fn2-b3-byte row byte fn2-digests fn2-b3))) (equal (fn2-digests-rows (car (fn2-b3-byte row byte fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-byte row byte fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-byte row byte fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-byte row byte fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-byte row byte fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-byte)
+(in-theory (disable fn2-b3-byte))
+(defun fn2-b3-roomp (row fn2-b3)
+ (declare (xargs :stobjs fn2-b3 :guard (and (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3))) t) ))
+ ; 54 CV slots cover BLAKE3's 2^64-byte input domain. Refuse, never wrap.
+ (and (equal (fn2-b3-verify-phase row fn2-b3) 0)
+      (<= (fn2-b3-depth row fn2-b3) 54)
+      (< (fn2-b3-counter row fn2-b3) (expt 2 54))
+      (or (< (fn2-b3-counter row fn2-b3) (- (expt 2 54) 1))
+          (< (fn2-b3-blocks row fn2-b3) 15) (< (fn2-b3-pos row fn2-b3) 64))
+      (<= (fn2-b3-pos row fn2-b3) 64) (< (fn2-b3-blocks row fn2-b3) 16)))
+(defun fn2-b3-read (slot gen off okind oslot ogen fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (fn2-pool-read slot gen off okind oslot ogen fn2-pool))
+(defthm fn2-b3-read-byte
+ (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+  (unsigned-byte-p 8 (mv-nth 1 (fn2-b3-read slot gen off okind oslot ogen fn2-pool))))
+ :hints (("Goal" :in-theory (enable fn2-b3-read fn2-pool-read))))
+(in-theory (disable fn2-b3-roomp fn2-b3-read fn2-pool-read))
+(defun fn2-b3-subtree-cv-into (dst off len counter fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-pool) :verify-guards nil :guard (and (fn2-digest-rowp dst fn2-digests) (and (natp len) (natp off) (<= (+ off len) (fn2-pool-data-length fn2-pool))) (member len '(1024 2048 4096 8192 16384 32768 65536))
+ (unsigned-byte-p 54 counter) (<= (+ counter (floor len 1024)) (expt 2 54)))))
+ (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-pool-tree off (floor len 1024) counter fn2-pool)
+ (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests)))
+(defthm fn2-b3-subtree-cv-into-shape
+ (implies (and (and (fn2-digest-rowp dst fn2-digests) (and (natp len) (natp off) (<= (+ off len) (fn2-pool-data-length fn2-pool))) (member len '(1024 2048 4096 8192 16384 32768 65536))
+ (unsigned-byte-p 54 counter) (<= (+ counter (floor len 1024)) (expt 2 54))) (fn2-digestsp fn2-digests) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (fn2-b3-subtree-cv-into dst off len counter fn2-digests fn2-pool)) (fn2-digests-wfp (fn2-b3-subtree-cv-into dst off len counter fn2-digests fn2-pool)) (equal (fn2-digests-rows (fn2-b3-subtree-cv-into dst off len counter fn2-digests fn2-pool)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-subtree-cv-into)
+(in-theory (disable fn2-b3-subtree-cv-into))
+(defun fn2-b3-pool-message (row off i fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)) (equal (fn2-b3-words-length fn2-b3) (* 16 (fn2-b3-rows fn2-b3))) (natp i) (<= i 16) (natp off) (<= (+ off 64) (fn2-pool-data-length fn2-pool))) :measure (nfix (- 16 i))))
+ (if (zp (- 16 i)) fn2-b3 (let ((fn2-b3 (fn2-b3-store row i (fn-b3-word (fn-b3-pool-word (+ off (* 4 i)) fn2-pool)) fn2-b3))) (fn2-b3-pool-message row off (+ i 1) fn2-b3 fn2-pool))))
+(defthm fn2-b3-pool-message-shape
+ (implies (and (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)) (equal (fn2-b3-words-length fn2-b3) (* 16 (fn2-b3-rows fn2-b3))) (natp i) (<= i 16) (natp off) (<= (+ off 64) (fn2-pool-data-length fn2-pool))) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-b3p (fn2-b3-pool-message row off i fn2-b3 fn2-pool)) (fn2-b3-wfp (fn2-b3-pool-message row off i fn2-b3 fn2-pool)) (equal (fn2-b3-rows (fn2-b3-pool-message row off i fn2-b3 fn2-pool)) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (fn2-b3-pool-message row off i fn2-b3 fn2-pool))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-pool-message)
+(in-theory (disable fn2-b3-pool-message))
+(defun fn2-b3-chunk-output-into (row off counter fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (<= (+ off 1024) (fn2-pool-data-length fn2-pool)) (unsigned-byte-p 54 counter))))
+ (let* ((fn2-digests (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-pool-blocks off counter 15 0 (nth 0 *fn2-b3-iv*) (nth 1 *fn2-b3-iv*) (nth 2 *fn2-b3-iv*) (nth 3 *fn2-b3-iv*) (nth 4 *fn2-b3-iv*) (nth 5 *fn2-b3-iv*) (nth 6 *fn2-b3-iv*) (nth 7 *fn2-b3-iv*) fn2-pool)
+ (let* ((fn2-digests (fn2-digests-set-w0 (fn2-digest-slot row *fn2-b3-cv*) c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 (fn2-digest-slot row *fn2-b3-cv*) c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 (fn2-digest-slot row *fn2-b3-cv*) c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 (fn2-digest-slot row *fn2-b3-cv*) c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 (fn2-digest-slot row *fn2-b3-cv*) c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 (fn2-digest-slot row *fn2-b3-cv*) c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 (fn2-digest-slot row *fn2-b3-cv*) c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 (fn2-digest-slot row *fn2-b3-cv*) c7 fn2-digests))) fn2-digests)))
+ (fn2-b3 (fn2-b3-pool-message row (+ off 960) 0 fn2-b3 fn2-pool))
+ (fn2-b3 (fn2-b3-set-counter row counter fn2-b3))
+ (fn2-b3 (fn2-b3-set-blocks row 15 fn2-b3))
+ (fn2-b3 (fn2-b3-set-pos row 64 fn2-b3))) (mv fn2-digests fn2-b3)))
+(defthm fn2-b3-chunk-output-into-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (<= (+ off 1024) (fn2-pool-data-length fn2-pool)) (unsigned-byte-p 54 counter)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (car (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (car (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (car (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-chunk-output-into)
+(in-theory (disable fn2-b3-chunk-output-into))
+(defun fn2-b3-bulk (row off len counter lastp fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (and (natp len) (natp off) (<= (+ off len) (fn2-pool-data-length fn2-pool))) (member len '(1024 2048)) (unsigned-byte-p 54 counter) (< (+ counter (floor len 1024)) (expt 2 54)) (or (not lastp) (equal len 1024)))))
+ (if lastp (fn2-b3-chunk-output-into row off counter fn2-digests fn2-b3 fn2-pool)
+ (let* ((tmp (fn2-digest-slot row *fn2-b3-scratch*))
+  (fn2-digests (fn2-b3-subtree-cv-into tmp off len counter fn2-digests fn2-pool))
+  (chunks (floor len 1024))
+  (n (mod (floor (- (+ counter chunks) (fn2-b3-origin row fn2-b3)) chunks) (expt 2 60)))
+  (depth (fn2-b3-depth row fn2-b3)))
+  (mv-let (fn2-digests fn2-b3) (fn2-b3-push row n (if (< depth 54) depth 0) tmp fn2-digests fn2-b3)
+   (let* ((fn2-digests (fn2-digest-copy (fn2-digest-slot row *fn2-b3-cv*) (fn2-digest-slot row *fn2-b3-key*) fn2-digests))
+    (fn2-b3 (fn2-b3-set-counter row (+ counter chunks) fn2-b3))
+    (fn2-b3 (fn2-b3-set-blocks row 0 fn2-b3)) (fn2-b3 (fn2-b3-set-pos row 0 fn2-b3))) (mv fn2-digests fn2-b3))))))
+(defthm fn2-b3-bulk-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (and (natp len) (natp off) (<= (+ off len) (fn2-pool-data-length fn2-pool))) (member len '(1024 2048)) (unsigned-byte-p 54 counter) (< (+ counter (floor len 1024)) (expt 2 54)) (or (not lastp) (equal len 1024))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (car (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (car (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (car (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-bulk row off len counter lastp fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-bulk)
+(in-theory (disable fn2-b3-bulk))
+(defun fn2-b3-span (row off counter lastp fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (<= (+ off 1024) (fn2-pool-data-length fn2-pool)) (unsigned-byte-p 54 counter) (< (+ counter 1) (expt 2 54)))))
+ (mv-let (fn2-digests fn2-b3) (if (and (equal (fn2-b3-pos row fn2-b3) 64) (equal (fn2-b3-blocks row fn2-b3) 15)) (fn2-b3-flush row fn2-digests fn2-b3) (mv fn2-digests fn2-b3)) (fn2-b3-bulk row off 1024 counter lastp fn2-digests fn2-b3 fn2-pool)))
+(defthm fn2-b3-span-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (<= (+ off 1024) (fn2-pool-data-length fn2-pool)) (unsigned-byte-p 54 counter) (< (+ counter 1) (expt 2 54))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (car (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (car (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (car (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-span row off counter lastp fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-span)
+(in-theory (disable fn2-b3-span))
+(defun fn2-b3-next-counter (row fn2-b3)
+ (declare (xargs :stobjs fn2-b3 :guard (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3)))))
+ (+ (fn2-b3-counter row fn2-b3) (if (and (equal (fn2-b3-pos row fn2-b3) 64) (equal (fn2-b3-blocks row fn2-b3) 15)) 1 0)))
+(in-theory (disable fn2-b3-next-counter))
+(local (in-theory (disable fn2-layout-range-code fn2-pool-slot-base fn2-pool-rows fn2-pool-data-length)))
+(defun fn2-b3-can-span (row slot gen off left consumed okind oslot ogen fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-pool) :guard (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3))
+ (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (natp left) (natp consumed))))
+ (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
+ (<= 1024 left) (<= (+ consumed 1024) 4096) (< (+ off 1024) 4294967296)
+ (equal (fn2-b3-flags row fn2-b3) 0)
+ (or (and (equal (fn2-b3-pos row fn2-b3) 64) (equal (fn2-b3-blocks row fn2-b3) 15))
+     (and (equal (fn2-b3-pos row fn2-b3) 0) (equal (fn2-b3-blocks row fn2-b3) 0)))
+ (unsigned-byte-p 54 (fn2-b3-next-counter row fn2-b3))
+ (< (+ (fn2-b3-next-counter row fn2-b3) 1) (expt 2 54))
+ (<= (+ (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off) 1024) (fn2-pool-data-length fn2-pool))
+ (eq (fn2-layout-range-code slot gen off (+ off 1024) nil okind oslot ogen fn2-pool) :ok)))
+(defthm fn2-b3-can-span-bounds
+ (implies (fn2-b3-can-span row slot gen off left consumed okind oslot ogen fn2-b3 fn2-pool)
+  (and (natp slot) (< slot (fn2-pool-rows fn2-pool)) (<= 1024 left)
+       (<= (+ consumed 1024) 4096) (< (+ off 1024) 4294967296)
+       (unsigned-byte-p 54 (fn2-b3-next-counter row fn2-b3))
+       (< (+ (fn2-b3-next-counter row fn2-b3) 1) (expt 2 54))
+       (<= (+ (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off) 1024) (fn2-pool-data-length fn2-pool))))
+ :rule-classes (:rewrite (:forward-chaining :trigger-terms ((fn2-b3-can-span row slot gen off left consumed okind oslot ogen fn2-b3 fn2-pool)))))
+(in-theory (disable fn2-b3-can-span))
+(defun fn2-b3-feed (row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (natp left) (<= left 4096) (natp consumed) (<= consumed 4096)) :measure (nfix left) :hints (("Goal" :in-theory (enable fn2-b3-can-span)))))
+ (cond ((zp left) (mv :ok consumed fn2-digests fn2-b3))
+ ((or (not (fn2-b3-roomp row fn2-b3)) (>= off 4294967295) (>= consumed 4096)) (mv :exhausted consumed fn2-digests fn2-b3))
+ ((fn2-b3-can-span row slot gen off left consumed okind oslot ogen fn2-b3 fn2-pool)
+  (mv-let (fn2-digests fn2-b3) (fn2-b3-span row (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off) (fn2-b3-next-counter row fn2-b3) (< left 2048) fn2-digests fn2-b3 fn2-pool)
+   (fn2-b3-feed row slot gen (+ off 1024) (- left 1024) (+ consumed 1024) okind oslot ogen fn2-digests fn2-b3 fn2-pool)))
+ (t (mv-let (code byte) (fn2-b3-read slot gen off okind oslot ogen fn2-pool)
+  (if (not (eq code :ok)) (mv code consumed fn2-digests fn2-b3)
+   (mv-let (fn2-digests fn2-b3) (fn2-b3-byte row byte fn2-digests fn2-b3)
+    (fn2-b3-feed row slot gen (+ off 1) (- left 1) (+ consumed 1) okind oslot ogen fn2-digests fn2-b3 fn2-pool)))))))
+(defthm fn2-b3-feed-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (natp left) (<= left 4096) (natp consumed) (<= consumed 4096)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (mv-nth 2 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (mv-nth 2 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (mv-nth 2 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 3 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 3 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 3 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 3 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))) :hints (("Goal" :induct (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool) :expand ((fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool)) :in-theory (disable (:definition fn2-b3-feed))) ("Subgoal *1/3" :use fn2-b3-can-span-bounds) ("Subgoal *1/1" :in-theory (enable fn2-b3-feed))))
+(verify-guards fn2-b3-feed :hints (("Goal" :use fn2-b3-can-span-bounds)))
+(in-theory (disable fn2-b3-feed))
+(defthm fn2-b3-feed-count
+ (implies (natp consumed) (natp (mv-nth 1 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (e/d (fn2-b3-feed) (fn2-b3-roomp)))))
+(defthm fn2-b3-feed-consumed-bounds
+ (implies (and (natp left) (natp consumed))
+  (and (<= consumed (mv-nth 1 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool)))
+       (<= (mv-nth 1 (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool)) (+ consumed left))))
+ :rule-classes (:rewrite :linear)
+ :hints (("Goal" :induct (fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool) :expand ((fn2-b3-feed row slot gen off left consumed okind oslot ogen fn2-digests fn2-b3 fn2-pool))
+         :in-theory (e/d ((:induction fn2-b3-feed)) ((:definition fn2-b3-feed))))
+         ("Subgoal *1/1" :in-theory (enable fn2-b3-feed))))
+
+(local (defthm fn2-b3-pool-byte-type
+ (implies (and (fn2-poolp fn2-pool) (natp off) (< off (fn2-pool-data-length fn2-pool)))
+          (unsigned-byte-p 8 (fn2-pool-datai off fn2-pool)))
+ :hints (("Goal" :use ((:instance fn2-pool-datai-natp (i off))
+                       (:instance fn2-pool-datai-bound (i off)))
+          :in-theory (disable fn2-poolp fn2-pool-datai fn2-pool-data-length)))))
+(local (in-theory (disable fn2-pool-datai)))
+; A partial chunk's admitted prefix is one stateless replaceable operation.
+(defun fn2-b3-fragment-into (row off n fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (natp n) (<= n 1024) (<= (+ off n) (fn2-pool-data-length fn2-pool))) :measure (nfix n)))
+ (if (zp n) (mv fn2-digests fn2-b3)
+  (mv-let (fn2-digests fn2-b3) (fn2-b3-byte row (fn2-pool-datai off fn2-pool) fn2-digests fn2-b3)
+   (fn2-b3-fragment-into row (+ off 1) (- n 1) fn2-digests fn2-b3 fn2-pool))))
+(defthm fn2-b3-fragment-into-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp off) (natp n) (<= n 1024) (<= (+ off n) (fn2-pool-data-length fn2-pool))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (car (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (car (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (car (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 1 (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 1 (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 1 (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 1 (fn2-b3-fragment-into row off n fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-fragment-into)
+(in-theory (disable fn2-b3-fragment-into))
+(defun fn2-b3-fragment-count (row slot gen off len okind oslot ogen fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-pool) :guard
+  (and (fn2-b3-wfp fn2-b3) (natp row) (< row (fn2-b3-rows fn2-b3))
+       (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (unsigned-byte-p 32 len))))
+ (let* ((pos (fn2-b3-pos row fn2-b3)) (blocks (fn2-b3-blocks row fn2-b3))
+        (used (+ (* 64 blocks) pos)) (n (min len (nfix (- 1024 used)))))
+  (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)) (natp len) (natp off)
+           (equal (fn2-b3-flags row fn2-b3) 0) (<= pos 64) (< blocks 16)
+           (< 0 used) (< used 1024) (fn2-b3-roomp row fn2-b3)
+           (< (+ off n) 4294967296)
+           (<= (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off n) (fn2-pool-data-length fn2-pool))
+           (eq (fn2-layout-range-code slot gen off (+ off n) nil okind oslot ogen fn2-pool) :ok)) n 0)))
+(defthm fn2-b3-fragment-count-natural
+ (natp (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool)) :rule-classes :type-prescription)
+(defthm fn2-b3-fragment-count-bound
+ (implies (natp len)
+  (and (<= (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool) len)
+       (<= (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool) 1024)))
+ :rule-classes (:rewrite :linear))
+(defthm fn2-b3-fragment-count-span
+ (implies (posp (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool))
+  (and (natp off) (natp slot) (< slot (fn2-pool-rows fn2-pool))
+       (< (+ off (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool)) 4294967296)
+       (<= (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool)) (fn2-pool-data-length fn2-pool))))
+ :rule-classes (:rewrite (:forward-chaining :trigger-terms ((fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool)))))
+(in-theory (disable fn2-b3-fragment-count))
+(defun fn2-b3-update (row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (unsigned-byte-p 32 len))))
+ (let ((n (fn2-b3-fragment-count row slot gen off len okind oslot ogen fn2-b3 fn2-pool)))
+ (mv-let (fn2-digests fn2-b3)
+  (if (posp n) (fn2-b3-fragment-into row (+ (nfix (fn2-pool-slot-base slot fn2-pool)) off) n fn2-digests fn2-b3 fn2-pool) (mv fn2-digests fn2-b3))
+  (mv-let (code consumed fn2-digests fn2-b3)
+   (fn2-b3-feed row slot gen (+ off n) (- (min len 4096) n) n okind oslot ogen fn2-digests fn2-b3 fn2-pool)
+   (mv (if (and (eq code :ok) (< consumed len)) :more code) consumed fn2-digests fn2-b3)))))
+(defthm fn2-b3-update-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-pool-wfp fn2-pool) (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3) (fn2-poolp fn2-pool))
+  (and (fn2-digestsp (mv-nth 2 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-digests-wfp (mv-nth 2 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (equal (fn2-digests-rows (mv-nth 2 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 3 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-b3-wfp (mv-nth 3 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (equal (fn2-b3-rows (mv-nth 3 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 3 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)))) (len (nth *fn2-b3-wordsi* fn2-b3))))) :hints (("Goal" :use fn2-b3-fragment-count-span :in-theory (disable nfix))))
+(verify-guards fn2-b3-update :hints (("Goal" :use fn2-b3-fragment-count-span :in-theory (disable nfix))))
+(in-theory (disable fn2-b3-update))
+(defthm fn2-b3-update-consumed-bound
+ (implies (natp len) (and (natp (mv-nth 1 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)))
+  (<= (mv-nth 1 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)) len)
+  (<= (mv-nth 1 (fn2-b3-update row slot gen off len okind oslot ogen fn2-digests fn2-b3 fn2-pool)) 4096)))
+ :hints (("Goal" :in-theory (enable fn2-b3-update))))
+(defun fn2-b3-update-const (row str off len fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (stringp str) (unsigned-byte-p 32 off) (natp len) (<= len 4096) (<= (+ off len) (length str))) :measure (nfix len)))
+ (if (zp len) (mv :ok 0 fn2-digests fn2-b3)
+ (if (or (not (fn2-b3-roomp row fn2-b3)) (>= off 4294967295)) (mv :exhausted 0 fn2-digests fn2-b3)
+  (mv-let (fn2-digests fn2-b3) (fn2-b3-byte row (char-code (char str off)) fn2-digests fn2-b3)
+   (mv-let (code consumed fn2-digests fn2-b3) (fn2-b3-update-const row str (+ off 1) (- len 1) fn2-digests fn2-b3)
+    (mv code (+ 1 (nfix consumed)) fn2-digests fn2-b3))))))
+(defthm fn2-b3-update-const-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (stringp str) (unsigned-byte-p 32 off) (natp len) (<= len 4096) (<= (+ off len) (length str))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (mv-nth 2 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (fn2-digests-wfp (mv-nth 2 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (equal (fn2-digests-rows (mv-nth 2 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 3 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 3 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 3 (fn2-b3-update-const row str off len fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 3 (fn2-b3-update-const row str off len fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-update-const)
+(in-theory (disable fn2-b3-update-const))
+(defun fn2-b3-fold (dst row depth root fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (natp depth) (<= depth 54)) :measure (nfix depth)))
+ (if (zp depth) fn2-digests
+ (let ((fn2-digests (fn2-b3-parent dst row (- depth 1) dst (and root (equal depth 1)) fn2-digests fn2-b3)))
+  (fn2-b3-fold dst row (- depth 1) root fn2-digests fn2-b3))))
+(defthm fn2-b3-fold-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (natp depth) (<= depth 54)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-fold dst row depth root fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-fold dst row depth root fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-fold dst row depth root fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-fold)
+(in-theory (disable fn2-b3-fold))
+(defun fn2-b3-finish (dst row root fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests))))
+ (let* ((depth (min 54 (fn2-b3-depth row fn2-b3)))
+ (fn2-digests (fn2-b3-output dst row t (and root (equal depth 0)) fn2-digests fn2-b3)))
+ (fn2-b3-fold dst row depth root fn2-digests fn2-b3)))
+(defthm fn2-b3-finish-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-finish dst row root fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-finish dst row root fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-finish dst row root fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-finish)
+(in-theory (disable fn2-b3-finish))
+(defun fn2-b3-finalize (dst row fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (or (< dst (fn2-digest-slot row *fn2-b3-cv*)) (<= (fn2-digest-slot row *fn2-b3-scratch*) dst)))))
+ (fn2-b3-finish dst row t fn2-digests fn2-b3))
+(defthm fn2-b3-finalize-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (or (< dst (fn2-digest-slot row *fn2-b3-cv*)) (<= (fn2-digest-slot row *fn2-b3-scratch*) dst))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-finalize dst row fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-finalize dst row fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-finalize dst row fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-finalize)
+(in-theory (disable fn2-b3-finalize))
+(defun fn2-b3-subtree-cv (dst row fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (or (< dst (fn2-digest-slot row *fn2-b3-cv*)) (<= (fn2-digest-slot row *fn2-b3-scratch*) dst)))))
+ (fn2-b3-finish dst row nil fn2-digests fn2-b3))
+(defthm fn2-b3-subtree-cv-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests) (or (< dst (fn2-digest-slot row *fn2-b3-cv*)) (<= (fn2-digest-slot row *fn2-b3-scratch*) dst))) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (fn2-b3-subtree-cv dst row fn2-digests fn2-b3)) (fn2-digests-wfp (fn2-b3-subtree-cv dst row fn2-digests fn2-b3)) (equal (fn2-digests-rows (fn2-b3-subtree-cv dst row fn2-digests fn2-b3)) (fn2-digests-rows fn2-digests)))))
+(verify-guards fn2-b3-subtree-cv)
+(in-theory (disable fn2-b3-subtree-cv))
+(defun fn2-b3-proof-step (row fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (fn2-b3-ready row fn2-b3 fn2-digests)))
+ (b* ((i (fn2-b3-verify-next row fn2-b3)) (n (fn2-b3-verify-count row fn2-b3))
+ (at (+ (fn2-b3-verify-base row fn2-b3) i)) (tmp (fn2-digest-slot row *fn2-b3-scratch*))
+ ((unless (and (< i n) (< at (fn2-digests-rows fn2-digests)))) (mv :proof fn2-digests fn2-b3))
+ ((when (and (equal i (fn2-b3-verify-target row fn2-b3)) (not (fn2-digest-equal at (fn2-digest-slot row *fn2-b3-cv*) fn2-digests)))) (mv :block fn2-digests fn2-b3))
+ (depth (fn2-b3-depth row fn2-b3)) ((unless (< depth 54)) (mv :state fn2-digests fn2-b3))
+ (fn2-digests (fn2-digest-copy tmp at fn2-digests)))
+ (if (equal (+ i 1) n)
+  (let* ((fn2-digests (fn2-b3-fold tmp row depth t fn2-digests fn2-b3))
+   (ok (fn2-digest-equal tmp (fn2-digest-slot row *fn2-b3-result*) fn2-digests))
+   (fn2-b3 (fn2-b3-set-verify-phase row 2 fn2-b3))) (mv (if ok :ok :digest) fn2-digests fn2-b3))
+  (mv-let (fn2-digests fn2-b3) (fn2-b3-push row (+ i 1) depth tmp fn2-digests fn2-b3)
+   (let ((fn2-b3 (fn2-b3-set-verify-next row (+ i 1) fn2-b3))) (mv :more fn2-digests fn2-b3))))))
+(defthm fn2-b3-proof-step-shape
+ (implies (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (mv-nth 1 (fn2-b3-proof-step row fn2-digests fn2-b3))) (fn2-digests-wfp (mv-nth 1 (fn2-b3-proof-step row fn2-digests fn2-b3))) (equal (fn2-digests-rows (mv-nth 1 (fn2-b3-proof-step row fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 2 (fn2-b3-proof-step row fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 2 (fn2-b3-proof-step row fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 2 (fn2-b3-proof-step row fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 2 (fn2-b3-proof-step row fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-proof-step)
+(in-theory (disable fn2-b3-proof-step))
+(defun fn2-b3-range-start (row base n source-len block expected fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp expected fn2-digests) (unsigned-byte-p 32 base) (unsigned-byte-p 32 n) (unsigned-byte-p 32 block) (unsigned-byte-p 60 source-len))))
+ (b* ((saved (fn2-digest-slot row *fn2-b3-result*)) (tmp (fn2-digest-slot row *fn2-b3-scratch*)) (fn2-digests (fn2-b3-subtree-cv tmp row fn2-digests fn2-b3))
+ (fn2-digests (fn2-digest-copy (fn2-digest-slot row *fn2-b3-cv*) tmp fn2-digests))
+ (fn2-digests (fn2-digest-copy saved expected fn2-digests))
+ (fn2-b3 (fn2-b3-set-depth row 0 fn2-b3)) (fn2-b3 (fn2-b3-set-verify-next row 0 fn2-b3))
+ (fn2-b3 (fn2-b3-set-verify-base row base fn2-b3)) (fn2-b3 (fn2-b3-set-verify-count row n fn2-b3))
+ (fn2-b3 (fn2-b3-set-verify-target row block fn2-b3)) (fn2-b3 (fn2-b3-set-verify-length row source-len fn2-b3))
+ (fn2-b3 (fn2-b3-set-verify-phase row 1 fn2-b3))) (mv :more fn2-digests fn2-b3)))
+(defthm fn2-b3-range-start-shape
+ (implies (and (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp expected fn2-digests) (unsigned-byte-p 32 base) (unsigned-byte-p 32 n) (unsigned-byte-p 32 block) (unsigned-byte-p 60 source-len)) (fn2-digestsp fn2-digests) (fn2-b3p fn2-b3))
+  (and (fn2-digestsp (mv-nth 1 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (fn2-digests-wfp (mv-nth 1 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (equal (fn2-digests-rows (mv-nth 1 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (fn2-digests-rows fn2-digests)) (fn2-b3p (mv-nth 2 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (fn2-b3-wfp (mv-nth 2 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (equal (fn2-b3-rows (mv-nth 2 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3))) (fn2-b3-rows fn2-b3)) (equal (len (nth *fn2-b3-wordsi* (mv-nth 2 (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3)))) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+(verify-guards fn2-b3-range-start)
+(in-theory (disable fn2-b3-range-start))
+(defun fn2-b3-verify-range (row base source-len block block-len expected fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp expected fn2-digests) (unsigned-byte-p 32 base) (unsigned-byte-p 60 source-len) (unsigned-byte-p 32 block) (unsigned-byte-p 32 block-len)
+ (<= (* *fn2-digest-stride* (fn2-b3-rows fn2-b3)) expected))))
+ (b* ((phase (fn2-b3-verify-phase row fn2-b3)) (saved (fn2-digest-slot row *fn2-b3-result*)) (tmp (fn2-digest-slot row *fn2-b3-scratch*))
+ ((when (equal phase 1))
+  (if (and (equal base (fn2-b3-verify-base row fn2-b3)) (equal block (fn2-b3-verify-target row fn2-b3))
+           (equal source-len (fn2-b3-verify-length row fn2-b3))
+           (equal block-len (min 65536 (- source-len (* block 65536)))) (fn2-digest-equal expected saved fn2-digests))
+   (fn2-b3-proof-step row fn2-digests fn2-b3) (mv :state fn2-digests fn2-b3)))
+ ((unless (and (equal phase 0) (equal (fn2-b3-flags row fn2-b3) 0))) (mv :state fn2-digests fn2-b3))
+ ((unless (equal (fn2-b3-origin row fn2-b3) (* block 64))) (mv :counter fn2-digests fn2-b3))
+ ((unless (and (<= (fn2-b3-origin row fn2-b3) (fn2-b3-counter row fn2-b3))
+  (< (- (fn2-b3-counter row fn2-b3) (fn2-b3-origin row fn2-b3)) 64)
+  (< (fn2-b3-blocks row fn2-b3) 16) (<= (fn2-b3-pos row fn2-b3) 64))) (mv :length fn2-digests fn2-b3))
+ (observed (+ (* 1024 (- (fn2-b3-counter row fn2-b3) (fn2-b3-origin row fn2-b3))) (* 64 (fn2-b3-blocks row fn2-b3)) (fn2-b3-pos row fn2-b3)))
+ ((unless (and (or (< (* block 65536) source-len) (and (equal source-len 0) (equal block 0)))
+  (equal observed block-len) (equal block-len (min 65536 (- source-len (* block 65536)))))) (mv :length fn2-digests fn2-b3))
+ ((when (<= source-len 65536))
+  (let ((fn2-digests (fn2-b3-finalize tmp row fn2-digests fn2-b3)))
+   (mv (if (fn2-digest-equal tmp expected fn2-digests) :ok :digest) fn2-digests fn2-b3)))
+ (n (ceiling source-len 65536))
+ ((unless (and (< n 4294967296) (<= (* *fn2-digest-stride* (fn2-b3-rows fn2-b3)) base)
+  (<= (+ base n) (fn2-digests-rows fn2-digests)))) (mv :proof fn2-digests fn2-b3))
+) (fn2-b3-range-start row base n source-len block expected fn2-digests fn2-b3)))
+
+(verify-guards fn2-b3-verify-range)
+(in-theory (disable fn2-b3-verify-range))
+; Full digest-table effect, not merely a scalar output assertion. This unfolds
+; the boundary against its scalar pool oracle; it does not prove C correct.
+(defthm fn2-b3-subtree-cv-into-by-definition
+ (equal (fn2-b3-subtree-cv-into dst off len counter fn2-digests fn2-pool)
+  (mv-let (c0 c1 c2 c3 c4 c5 c6 c7)
+   (fn-b3-pool-tree off (floor len 1024) counter fn2-pool)
+   (fn2-digest-load dst (list c0 c1 c2 c3 c4 c5 c6 c7) fn2-digests)))
+ :hints (("Goal" :in-theory (enable fn2-b3-subtree-cv-into fn2-digest-load))))
+
+; Logical/test adapters.
+(defun fn2-b3-flatten (xs)
+ (declare (xargs :verify-guards nil))
+ (if (atom xs) nil (append (car xs) (fn2-b3-flatten (cdr xs)))))
+(defun fn2-b3-splitsp (xs)
+ (declare (xargs :guard t))
+ (if (atom xs) (null xs)
+  (and (fn-b3-octet-listp (car xs)) (<= (len (car xs)) 4096) (fn2-b3-splitsp (cdr xs)))))
+(defun fn2-b3-spec-load (xs off fn2-pool)
+ (declare (xargs :stobjs fn2-pool :verify-guards nil))
+ (if (atom xs) fn2-pool
+  (mv-let (code fn2-pool) (fn2-pool-write 0 1 off (car xs) 1 0 1 fn2-pool)
+   (declare (ignore code)) (fn2-b3-spec-load (cdr xs) (+ 1 (nfix off)) fn2-pool))))
+(defun fn2-b3-spec-splits (xs fn2-digests fn2-b3 fn2-pool)
+ (declare (xargs :stobjs (fn2-digests fn2-b3 fn2-pool) :verify-guards nil))
+ (if (atom xs) (mv fn2-digests fn2-b3 fn2-pool)
+  (b* (((mv code fn2-pool) (fn2-pool-reset 0 1 1 0 1 fn2-pool)) (- code)
+   (fn2-pool (fn2-b3-spec-load (car xs) 0 fn2-pool))
+   ((mv code consumed fn2-digests fn2-b3) (fn2-b3-update 0 0 1 0 (len (car xs)) 1 0 1 fn2-digests fn2-b3 fn2-pool)) (- code consumed))
+   (fn2-b3-spec-splits (cdr xs) fn2-digests fn2-b3 fn2-pool))))
+(defun fn2-b3-split-digest (splits counter root)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-digests (mv-let (answer fn2-digests) (with-local-stobj fn2-b3 (mv-let (answer fn2-digests fn2-b3) (with-local-stobj fn2-pool (mv-let (answer fn2-digests fn2-b3 fn2-pool) (b* ((fn2-digests (fn2-digests-init 144 fn2-digests))
+ (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
+ ((mv fn2-digests fn2-b3) (fn2-b3-init 0 0 136 fn2-digests fn2-b3))
+ (fn2-b3 (fn2-b3-start-subtree 0 counter fn2-b3))
+ (fn2-pool (fn2-pool-init '((1 . 4096)) 1 100 fn2-pool))
+ ((mv code slot gen fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool)) (- code slot gen)
+ ((mv fn2-digests fn2-b3 fn2-pool) (fn2-b3-spec-splits splits fn2-digests fn2-b3 fn2-pool))
+ (fn2-digests (fn2-b3-finish 136 0 root fn2-digests fn2-b3)))
+ (mv (fn2-digest-list 136 fn2-digests) fn2-digests fn2-b3 fn2-pool)) (mv answer fn2-digests fn2-b3))) (mv answer fn2-digests))) answer)))
+(defun fn2-b3-incremental-hyps (splits)
+ (declare (xargs :verify-guards nil))
+ (and (fn2-b3-splitsp splits) (< (len (fn2-b3-flatten splits)) (expt 2 64))))
+(defun fn2-b3-incremental-resultp (splits)
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-b3-split-digest splits 0 t)
+        (fn-b3-words 8 (fn-blake3 (fn2-b3-flatten splits)))))
+(defthm-owed fn2-b3-incremental-is-blake3 (splits)
+ (implies (fn2-b3-incremental-hyps splits) (fn2-b3-incremental-resultp splits))
+ :teeth (fn2-b3-incremental-positive fn2-b3-incremental-negative)
+ :schema :g1 :claim :representation
+ :doc "Every split into bounded checked pool updates, below BLAKE3's 2^64-byte domain, followed by actual finalize; no source must reside in one pool window. Unproved.")
+(defun fn2-b3-subtree-inputsp (blocks counters next)
+ (declare (xargs :verify-guards nil))
+ (if (atom blocks) (and (null blocks) (null counters))
+  (and (consp counters) (equal (car counters) next) (fn2-b3-splitsp (car blocks))
+       (let ((n (len (fn2-b3-flatten (car blocks)))))
+        (if (consp (cdr blocks)) (equal n 65536) (and (< 0 n) (<= n 65536))))
+       (fn2-b3-subtree-inputsp (cdr blocks) (cdr counters) (+ 64 (nfix next))))))
+(defun fn2-b3-subtree-hyps (blocks counters)
+ (declare (xargs :verify-guards nil))
+ (and (consp blocks) (consp (cdr blocks)) (fn2-b3-subtree-inputsp blocks counters 0)
+      (< (len (fn2-b3-flatten (fn2-b3-flatten blocks))) (expt 2 64))))
+(defun fn2-b3-compose-loop (blocks counters n fn2-digests fn2-b3)
+ (declare (xargs :stobjs (fn2-digests fn2-b3) :verify-guards nil))
+ (if (atom blocks) (mv nil fn2-digests fn2-b3)
+  (let* ((cv (fn2-b3-split-digest (car blocks) (car counters) nil))
+         (fn2-digests (fn2-digest-load 136 cv fn2-digests)))
+   (if (atom (cdr blocks))
+    (let ((fn2-digests (fn2-b3-fold 136 0 (fn2-b3-depth 0 fn2-b3) t fn2-digests fn2-b3)))
+     (mv (fn2-digest-list 136 fn2-digests) fn2-digests fn2-b3))
+    (mv-let (fn2-digests fn2-b3) (fn2-b3-push 0 n (fn2-b3-depth 0 fn2-b3) 136 fn2-digests fn2-b3)
+     (fn2-b3-compose-loop (cdr blocks) (cdr counters) (+ 1 (nfix n)) fn2-digests fn2-b3))))))
+(defun fn2-b3-compose-sources (blocks counters)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-digests (mv-let (answer fn2-digests) (with-local-stobj fn2-b3 (mv-let (answer fn2-digests fn2-b3) (b* ((fn2-digests (fn2-digests-init 144 fn2-digests)) (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
+ ((mv fn2-digests fn2-b3) (fn2-b3-init 0 0 136 fn2-digests fn2-b3)))
+ (fn2-b3-compose-loop blocks counters 1 fn2-digests fn2-b3)) (mv answer fn2-digests))) answer)))
+(defun fn2-b3-subtree-resultp (blocks counters)
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-b3-compose-sources blocks counters)
+        (fn-b3-words 8 (fn-blake3 (fn2-b3-flatten (fn2-b3-flatten blocks))))))
+(defthm-owed fn2-b3-subtree-composition (blocks counters)
+ (implies (fn2-b3-subtree-hyps blocks counters) (fn2-b3-subtree-resultp blocks counters))
+ :teeth (fn2-b3-subtree-teeth)
+ :schema :route :claim :representation
+ :doc "The actual subtree-CV calculation and parent stack fold with ROOT equal the ordinary digest, including a partial final chunk. Unproved.")
+(assert-event (eq (symbol-class 'fn2-b3-init (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-update (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-update-const (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-finalize (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-subtree-cv (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-parent-cv (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-parent-root (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-verify-range (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-subtree-cv-into (w state)) :common-lisp-compliant))
+(assert-event (eq (symbol-class 'fn2-b3-chunk-output-into (w state)) :common-lisp-compliant))

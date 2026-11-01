@@ -1,294 +1,115 @@
-; fn: content identity and charge policy, owned by ACL2.
-;
-; The v1 identity profile of `specs/encoding.md`, adopted.  Every content
-; identity in the system is
-;
-;     subject-v1    = BLAKE3("fn/subject/v1" || 0x00
-;                             || uint32-be(len(payload)) || payload)
-;     obligation-v1 = BLAKE3("fn/obligation/v1" || 0x00
-;                             || uint32-be(len(msgid)) || msgid
-;                             || uint32-be(len(subject)) || subject)
-;
-; and the identity itself is the triple (label-octets, algorithm-id, digest)
-; rendered canonically by `fn-id-render`:
-;
-;     identity = label || 0x00 || version-octet || algorithm-octet || digest
-;
-; so the kind is carried inside the encoded identity rather than as a hex
-; prefix, and the algorithm identifier travels in the container.  Changing the
-; hash suite (D09) changes the algorithm octet; it does not change the meaning
-; of an identity already written.  Every variable field in a preimage is
-; length-prefixed, so no pair of different kinds and no pair of different
-; (msgid, subject) splits can share a preimage by construction; ENC-003 is met
-; rather than deferred.
-;
-; The canonical identity is OCTETS.  `fn-id-text` renders it as lowercase
-; hexadecimal, whole and label included, and is used only where a string is
-; unavoidable: the store record's metadata fields, the workflow journal's JSON
-; records and the NNTP header value.  Nothing else renders an identity, and
-; the rendering is proved invertible, so a string comparison at one of those
-; boundaries is an octet comparison and, by injectivity, a digest comparison.
-;
-; The digest itself is A-CRYPTO, exactly as in `books/frame.lisp`: the host
-; supplies 32 octets and ACL2 owns everything around them.  The functions that
-; take a digest are executable and guard verified; `fn-id-subject-of-payload`
-; and `fn-id-obligation-of` state the same identities against the constrained
-; `fn-frame-digest` so that a theorem can mention the assumption it rests on.
-;
-; There is exactly one derivation.  The pre-v1 `"sha256:"+hex` and
-; `"archive:"+hex` derivation is gone, not kept beside this one: a store
-; written under it is refused at open by its configuration format
-; (`books/store-config.lisp`, `fn-store-experiment-5`) rather than misread.
-
+; Layer C §4a: the identity record (rulings 3 and 7 of
+; IDENTITY-ACROSS-PEERS-20261030.md; docs/c-ordered-runs.md §4a).
+; - N, the name: (namespace, the exact name octets). Netnews is namespace 1.
+; - C, the content identity: (profile, algorithm, digest), the named
+;   subject's digest.
+; - O, an origin: B's envelope (format-events.lisp): lineage, domain,
+;   incarnation, and a position.
+; - E, an occurrence: O's (lineage, domain, incarnation) and the occurrence.
+; Evidence and history entries are immutable union facts. Candidates and the
+; summary are folds that commit in the facts' publication. The article index
+; is this domain's first local acceptance of N. Every fold value is an
+; integer: a candidate is named by its ordinal under N, assigned by the
+; summary when the content is new. The decision (machines-c-groups.lisp) is
+; two exact reads: the summary, then the candidate.
 (in-package "ACL2")
-(include-book "frame")
-(include-book "def-loop")
-(include-book "identity-hex")
+(include-book "runs-assemble")
+(include-book "ribbon")
+(fn2-book-layer :c)
 
-; The derivations are built on the frame field grammar, so this book opens
-; it locally; results stay opaque.
-(local (in-theory (enable fn-frame-octet-vocabulary
-                          fn-frame-fields-vocabulary
-                          fn-frame-codec-vocabulary
-                          fn-cbor-invariants-vocabulary)))
-(local (include-book "arithmetic/top" :dir :system))
+(defconst *fn2-identity-namespace-netnews* 1)
+; The content profile of a POST's subject (D25: the authored source) and the
+; digest algorithm the upload computes (BLAKE3).
+(defconst *fn2-identity-profile-source* 1)
+(defconst *fn2-identity-algorithm-blake3* 1)
+; This node's single domain, as B's envelope writes it (commit-format.lisp).
+(defconst *fn2-identity-lineage* 0)
+(defconst *fn2-identity-domain* 0)
+(defconst *fn2-identity-incarnation* 1)
 
-; -----------------------------------------------------------------------------
-; Lowercase hexadecimal
+; One observation of a binding of N to C, or of a reason it does not bind.
+(defrunschema fn2-identity-evidence :id 1
+ :key ((namespace (:id namespace)) (name (:octets 250)) (profile :u8) (algorithm :u8) (digest :digest)
+       (lineage (:id lineage)) (domain (:id domain)) (incarnation (:id incarnation)) (occurrence (:id occurrence)))
+ :value ((kind (:enum fn2-identity-evidence-kind (:binding :invalid-signature :out-of-scope :resolution)))
+         (issuer (:id principal)))
+ :merge :union)
 
-(defun fn-id-hex-digitp (octet)
-  (declare (xargs :guard t))
-  (or (and (natp octet) (<= 48 octet) (<= octet 57))
-      (and (natp octet) (<= 97 octet) (<= octet 102))))
+; A domain's history entry (RFC 5537 §3.3): origin O accepted C as N, on
+; the evidence occurrence EVIDENCE, as O's article ARTICLE.
+(defrunschema fn2-identity-history :id 11
+ :key ((namespace (:id namespace)) (name (:octets 250)) (profile :u8) (algorithm :u8) (digest :digest)
+       (lineage (:id lineage)) (domain (:id domain)) (incarnation (:id incarnation)) (position (:id position)))
+ :value ((evidence (:id occurrence)) (article (:id article)))
+ :merge :union)
 
-(defun fn-id-hex-value (octet)
-  (declare (xargs :guard (fn-id-hex-digitp octet)))
-  (if (<= octet 57) (- octet 48) (- octet 87)))
+; Per name N: the selected candidate (0 is none), the last resolution
+; applied, and the locally known counts. :admit is one transaction's whole
+; admission under N: NE new evidence rows and NR new history entries (the
+; freshness of the same transaction's facts), EST 1 for a local acceptance
+; (only while nothing is selected), OLDH the candidate's ordinal before (0
+; when the content is new: its ordinal H is then candidates + 1). :import
+; counts an imported history entry; it never selects. :resolve selects
+; candidate H under resolution E. :gap counts a recorded coverage gap.
+(defrunschema fn2-identity-summary :id 13
+ :key ((namespace (:id namespace)) (name (:octets 250)))
+ :value ((selected (:id candidate)) (resolution (:id event))
+         (candidates :u60) (evidence :u60) (history :u60) (gaps :u60))
+ :merge :latest
+ :fold (:events ((:admit (namespace name ne nr est oldh h) :assign ((h (if (= oldh 0) (+ candidates 1) oldh)))
+                  :when (and (<= est 1) (and (or (= est 0) (= selected 0)) (<= oldh candidates)))
+                  :set ((candidates (+ candidates (if (= oldh 0) 1 0))) (evidence (+ evidence ne)) (history (+ history nr))
+                        (selected (if (= est 1) h selected))))
+                 (:import (namespace name nr) :when (< 0 nr) :set ((history (+ history nr))))
+                 (:resolve (namespace name h e) :when (and (< 0 h) (<= h candidates)) :set ((selected h) (resolution e)))
+                 (:gap (namespace name g) :when (< 0 g) :set ((gaps (+ gaps g)))))
+        :init :empty :coverage :history-start
+        :observe (selected resolution candidates evidence history gaps)))
 
-(defun fn-id-hex-listp (octets)
-  (declare (xargs :guard t))
-  (if (consp octets)
-      (and (fn-id-hex-digitp (car octets))
-           (fn-id-hex-listp (cdr octets)))
-    (null octets)))
+; Per candidate (N, C): its ordinal H under N (CH, from the summary's
+; :admit), its evidence count, whether a binding qualifies it and whether
+; this domain's history entry holds it.
+(defrunschema fn2-identity-candidates :id 12
+ :key ((namespace (:id namespace)) (name (:octets 250)) (profile :u8) (algorithm :u8) (digest :digest))
+ :value ((h (:id candidate)) (evidence :u60) (qualified :bool) (local :bool))
+ :merge :latest
+ :fold (:events ((:admit (namespace name profile algorithm digest ch ne q l)
+                  :when (and (< 0 ch) (and (or (= h 0) (= h ch)) (and (<= q 1) (<= l 1))))
+                  :set ((h ch) (evidence (+ evidence ne)) (qualified (max qualified q)) (local (max local l)))))
+        :init :empty :coverage :history-start
+        :observe (h evidence qualified local)))
 
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-; Inverse of `fn-id-hex-octets` on an even-length lowercase hex list.
-(def-loop fn-id-unhex (octets)
-  :shape :step
-  :done (not (and (consp octets) (consp (cdr octets)))) :elt o
-  :body (+ (* 16 (fn-id-hex-value o)) (fn-id-hex-value (car (cdr octets)))) :next (cdr (cdr octets))
-  :guard (fn-id-hex-listp octets))
+; This domain's first local acceptance of N: the candidate H and the
+; article. A second local acceptance of N is :duplicate at stage. It is
+; local (the article is this node's), and it is what ARTICLE <message-id>
+; reads; the article is the commit position, so it is written at bind.
+(defrunschema fn2-identity-article :id 14
+ :key ((namespace (:id namespace)) (name (:octets 250)))
+ :value ((h (:id candidate)) (article (:id article)))
+ :merge :unique)
 
-; -----------------------------------------------------------------------------
-; The v1 profile: labels, version, algorithm
+; ---------------------------------------------------------------------------
+; The decision row (one per transaction, the transaction's own row): its
+; phase, the owner its query's octets are read under (QK QS QG), and what
+; the two reads found: the summary (SFOUND, SELECTED, CANDIDATES, GAPS) and
+; the candidate (CFOUND, H, EVIDENCE, QUALIFIED, LOCAL).
+(defcolumns fn2-id-decides
+ ((phase (:enum fn2-id-decide-phase (:idle :summary :candidate :done)))
+  (qk :u8) (qs :u32) (qg :u60)
+  (sfound :bool) (selected :u60) (candidates :u60) (gaps :u60)
+  (cfound :bool) (h :u60) (evidence :u60) (qualified :bool) (local :bool)))
 
-(defconst *fn-id-subject-label*                          ; "fn/subject/v1"
-  '(102 110 47 115 117 98 106 101 99 116 47 118 49))
-(defconst *fn-id-obligation-label*                       ; "fn/obligation/v1"
-  '(102 110 47 111 98 108 105 103 97 116 105 111 110 47 118 49))
-
-; The one octet that terminates a label in both a preimage and an identity.
-(defconst *fn-id-separator* 0)
-
-; The profile version and the hash suite, carried in the container.
-(defconst *fn-id-version* 1)
-; Algorithm 2 is BLAKE3 (books/crypto-attach.lisp, store format 10); algorithm
-; 1 (SHA-256, formats up to 9) is not read: a format-10 store never holds one
-; (D34, fresh deploys), and an older store is refused at open by its format.
-(defconst *fn-id-algorithm-blake3* 2)
-
-; label || separator || version || algorithm, then the digest.
-(defconst *fn-id-header-octets* 3)
-(defconst *fn-id-digest-octets* 32)
-(defconst *fn-id-subject-octets* 48)     ; 13 + 3 + 32
-(defconst *fn-id-obligation-octets* 51)  ; 16 + 3 + 32
-
-(defun fn-id-digestp (xs)
-  (declare (xargs :guard t))
-  (and (fn-cbor-octet-listp xs)
-       (equal (len xs) *fn-id-digest-octets*)))
-
-; -----------------------------------------------------------------------------
-; Preimages.  Every variable field is preceded by its length as four
-; big-endian octets -- the same `fn-cbor-u32-bytes` the frame grammar uses --
-; so the fields of a preimage can be read back rather than guessed at from a
-; separator that a field might itself contain.
-
-(defun fn-id-subject-prefix (length)
-  ; The fixed head of a subject preimage.  The host appends the payload to
-  ; this and hashes; the payload never crosses the bridge, exactly as with
-  ; `fn-frame-inbound-prefix`.
-  (declare (xargs :guard (and (natp length) (<= length *fn-cbor-max-uint*))))
-  (append *fn-id-subject-label*
-          (cons *fn-id-separator* (fn-cbor-u32-bytes length))))
-
-(defun fn-id-subject-preimage (payload)
-  ; The exact bytes the subject digest covers.
-  (declare (xargs :guard (and (fn-cbor-octet-listp payload)
-                              (<= (len payload) *fn-cbor-max-uint*))))
-  (append (fn-id-subject-prefix (len payload)) payload))
-
-(defun fn-id-obligation-preimage (msgid subject)
-  ; The exact bytes the obligation digest covers.  Both variable fields are
-  ; length-prefixed, so the Message-ID cannot run into the subject identity
-  ; whatever octets either of them contains.
-  (declare (xargs :guard (and (fn-cbor-octet-listp msgid)
-                              (<= (len msgid) *fn-cbor-max-uint*)
-                              (fn-cbor-octet-listp subject)
-                              (<= (len subject) *fn-cbor-max-uint*))))
-  (append *fn-id-obligation-label*
-          (cons *fn-id-separator*
-                (append (fn-cbor-u32-bytes (len msgid))
-                        (append msgid
-                                (append (fn-cbor-u32-bytes (len subject))
-                                        subject))))))
-
-; -----------------------------------------------------------------------------
-; The canonical identity rendering
-
-(defun fn-id-render (label digest)
-  ; (label-octets, algorithm-id, digest-octets), canonically: the label, the
-  ; separator, the profile version octet, the algorithm octet, the digest.
-  (declare (xargs :guard (and (fn-cbor-octet-listp label)
-                              (fn-id-digestp digest))))
-  (append label
-          (cons *fn-id-separator*
-                (cons *fn-id-version*
-                      (cons *fn-id-algorithm-blake3* digest)))))
-
-(defun fn-id-subject (digest)
-  ; The host entry point: `digest` is the digest (BLAKE3) of the subject preimage.
-  (declare (xargs :guard (fn-id-digestp digest)))
-  (fn-id-render *fn-id-subject-label* digest))
-
-(defun fn-id-obligation (digest)
-  ; The host entry point: `digest` is the digest (BLAKE3) of the obligation preimage.
-  (declare (xargs :guard (fn-id-digestp digest)))
-  (fn-id-render *fn-id-obligation-label* digest))
-
-; -----------------------------------------------------------------------------
-; The string boundary
-;
-; A canonical identity is octets.  These two are the only rendering into and
-; out of a string, and they are used at exactly three places in the host: the
-; store record's metadata fields, the workflow journal's JSON records and the
-; NNTP header value.
-
-(defun fn-id-text (identity)
-  (declare (xargs :guard (fn-cbor-octet-listp identity)))
-  (fn-id-hex-octets identity))
-
-(defun fn-id-from-text (octets)
-  (declare (xargs :guard (fn-id-hex-listp octets)))
-  (fn-id-unhex octets))
-
-; -----------------------------------------------------------------------------
-; The same two identities stated against A-CRYPTO rather than against host
-; octets.  These are the specification functions; the theorems that connect
-; them to the executable pair above mention `fn-frame-digest` by name.
-
-(defun fn-id-subject-of-payload (payload)
-  (declare (xargs :guard (and (fn-cbor-octet-listp payload)
-                              (<= (len payload) *fn-cbor-max-uint*))
-                  :verify-guards nil))
-  (fn-id-subject (fn-frame-digest (fn-id-subject-preimage payload))))
-
-(defun fn-id-obligation-of (msgid subject)
-  (declare (xargs :guard (and (fn-cbor-octet-listp msgid)
-                              (<= (len msgid) *fn-cbor-max-uint*)
-                              (fn-cbor-octet-listp subject)
-                              (<= (len subject) *fn-cbor-max-uint*))
-                  :verify-guards nil))
-  (fn-id-obligation (fn-frame-digest (fn-id-obligation-preimage msgid subject))))
-
-(verify-guards fn-id-subject-of-payload)
-(verify-guards fn-id-obligation-of)
-
-; -----------------------------------------------------------------------------
-; A recognizer for an identity this book could have produced.  A host that
-; hands ACL2 an identity gets it checked against the grammar, not merely
-; compared with another octet string of unknown provenance.
-
-; The guard of the three header reads below is the only place this book needs
-; a list fact about a split suffix.  `fn-frame-split-suffix-true-listp' is a
-; REWRITE rule, so it never lands in the context, and the three obligations
-; are propositional (`(not (cddr split))' from `(not (consp (cddr split)))'),
-; which type reasoning alone cannot close.  The same fact, forward-chained off
-; the split term, does close them, and type-set carries it down the `cdr's.
-; Local: a guard fact, never an exported `true-listp' backchaining rule.
-(local
- (defthm fn-id-frame-split-suffix-true-listp-fc
-   (implies (true-listp xs)
-            (true-listp (cdr (fn-frame-split n xs))))
-   :rule-classes ((:forward-chaining
-                   :trigger-terms ((fn-frame-split n xs))))
-   :hints (("Goal" :use fn-frame-split-suffix-true-listp))))
-
-(defun fn-id-labelledp (label octets)
-  ; The octet check comes first so that the split is never applied to
-  ; something that is not a list.
-  (declare (xargs :guard t))
-  (and (fn-cbor-octet-listp octets)
-       (let ((split (fn-frame-split (len label) octets)))
-         (and split
-              (equal (car split) label)
-              (let ((tail (cdr split)))
-                (and (equal (len tail)
-                            (+ *fn-id-header-octets* *fn-id-digest-octets*))
-                     (equal (car tail) *fn-id-separator*)
-                     (equal (car (cdr tail)) *fn-id-version*)
-                     (equal (car (cdr (cdr tail)))
-                            *fn-id-algorithm-blake3*)))))))
-
-(defun fn-id-subjectp (octets)
-  (declare (xargs :guard t))
-  (fn-id-labelledp *fn-id-subject-label* octets))
-
-(defun fn-id-obligationp (octets)
-  (declare (xargs :guard t))
-  (fn-id-labelledp *fn-id-obligation-label* octets))
-
-; -----------------------------------------------------------------------------
-; Charge policy
-;
-; One unit for the record itself plus one per 4096-octet page of payload.
-; `run_store.py` computed this; ACL2 only checked `posp` and accounted.  The
-; page size is a local policy choice, not an RFC or storage-hardware fact.
-
-(defconst *fn-id-charge-page-octets* 4096)
-
-(defun fn-charge-for-payload (length)
-  (declare (xargs :guard (natp length)))
-  (+ 1 (floor (+ (nfix length) (- *fn-id-charge-page-octets* 1))
-              *fn-id-charge-page-octets*)))
-
-; -----------------------------------------------------------------------------
-; Export theory.
-;
-; Enabled on include: nothing but the derivations themselves as executable
-; functions.  A book that reasons about them opens this theory locally;
-; `identity-invariants' does exactly that and exports the hex keystones.
-
-(deftheory fn-id-definitions
-  '(    (:d fn-id-hex-digit) (:d fn-id-hex-digitp) (:d fn-id-hex-value)
-    (:d fn-id-hex-octets) (:d fn-id-hex-listp) (:d fn-id-unhex)
-    (:d fn-id-digestp) (:d fn-id-subject-prefix) (:d fn-id-subject-preimage)
-    (:d fn-id-obligation-preimage) (:d fn-id-render) (:d fn-id-subject)
-    (:d fn-id-obligation) (:d fn-id-text) (:d fn-id-from-text)
-    (:d fn-id-subject-of-payload) (:d fn-id-obligation-of)
-    (:d fn-id-labelledp) (:d fn-id-subjectp) (:d fn-id-obligationp)
-    (:d fn-charge-for-payload)))
-
-(in-theory (disable (:d fn-id-hex-digit) (:d fn-id-hex-digitp)
-             (:d fn-id-hex-value) (:d fn-id-hex-octets)
-             (:d fn-id-hex-listp) (:d fn-id-unhex) (:d fn-id-digestp)
-             (:d fn-id-subject-prefix) (:d fn-id-subject-preimage)
-             (:d fn-id-obligation-preimage) (:d fn-id-render)
-             (:d fn-id-subject) (:d fn-id-obligation) (:d fn-id-text)
-             (:d fn-id-from-text) (:d fn-id-subject-of-payload)
-             (:d fn-id-obligation-of) (:d fn-id-labelledp)
-             (:d fn-id-subjectp) (:d fn-id-obligationp)
-             (:d fn-charge-for-payload)))
+; The verdict, in §4a's precedence: :duplicate when this domain's history
+; holds (N, C); :evidence when a qualified binding is known and not held
+; here; :conflict when the selection names another content; else :stored
+; (eligible for admission).
+(defun fn2-id-verdict (selected h qualified local)
+ (declare (xargs :guard t))
+ (cond ((equal local 1) :duplicate)
+       ((equal qualified 1) :evidence)
+       ((and (not (equal selected 0)) (not (equal selected h))) :conflict)
+       (t :stored)))
+; The selection relation of (N, C): :none, :same or :other.
+(defun fn2-id-selection (selected h)
+ (declare (xargs :guard t))
+ (cond ((equal selected 0) :none) ((equal selected h) :same) (t :other)))

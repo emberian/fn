@@ -1,3 +1,0 @@
-# Mounted tooling is an independent checkout; never vendor it accidentally.
-/_workbench/
-/gen/
