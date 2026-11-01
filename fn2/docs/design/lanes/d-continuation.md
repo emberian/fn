@@ -1,4 +1,4 @@
-# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 night, the tenth Opus seat)
+# fn2 layer D continuation (present state, rewritten whole; 2026-10-31 night, the eleventh Opus seat; converged)
 
 Seat: Opus, layer D. The seat writes the code itself. Briefs: `build/coordinator/briefs/FN2-LAYER-D-MACHINES-NNTP.md`
 and FN2-SEAT-COMMON.md. **The flow is `build/coordinator/fn2/WORKFLOW-20261031.md`**: a commit = the changed books
@@ -37,57 +37,77 @@ the lane clone is `~/fn2-d6-lane/work` on `hbox-saas`); forge is the measurement
   hand), `:phase-subset` fields (conn's `after`), per-path findings at defmachine-run.
 - **Never stand by.** While the txn port waits on C's §4a sha, do D's breadth that waits on nothing.
 
-## State (dev)
+## State (dev) — CONVERGE (ember, 10-31 night): the fleet landed and stopped for Gemini's turn
 - **D6 1/n** eee0eb09e + a466488fe: the cursor (GROUP, LISTGROUP name, NEXT, LAST, STAT n/<id>, OVER/XOVER).
-- **Argon ruling (4)** 49e7df92f: `fn2-resource-rank` = 1 + position; no `:rank` keys, no length pin.
-- **H20 item 2** 689d196a1: sim-session.lsp serves reading over three seeded articles in local.test
-  (reader-only profile: *fn2-cursor-profile* less :posting-interim). A's native session is A's.
-- **D6 1/n-b** 068fd597a (on dev, 12410f1b9 merge; cursor-unit green at that tip on hbox):
-  - LIST ACTIVE / COUNTS / NEWSGROUPS without a wildmat and bare LISTGROUP, through a scan of
-    `fn2-groups` in name order (d-machines-nntp.md §15.0 is the as-built record).
-  - TX's prefix `[0, roff)` is the cursor's across pages: the connection truncates TX to roff after a
-    query page (A's new `fn2-pool-truncate` / `fn2-core-truncate`) and empties it after the last.
-    A scan pads TX to a 256-octet key area, gives TX as its workspace (the key lands at offset 0),
-    and starts pages after it.
-  - Read rows (E's seam, taken): `fn2-b-read-rows` = 2X + N (machines-b.lisp). Cursor slot S reads
-    through 2S (and LIST's counts through 2S+1); E's consumer request S through 2X+S
-    (`fn2-b-cns-rows`, profile `:cns`). The cursor's capacity is `fn2-b-cursor-rows`. Linear fact
-    `fn2-b-read-rows-parts`. E must define `fn2-cns-capacity` as `fn2-b-cns-rows` and keep the base 2X
-    in its config child.
-  - The interim JSON regenerated (notes only; the table is unchanged); upload-model's pin regenerated
-    (H20's model sha).
-  - cursor.lisp is 83 s on hbox (over the minute): the form seat's notes say fn2-cursor-render's
-    preserves (17 s: close its callees, tau off), the take (10 s) and `:seek` are what is left.
-- **Still 503:** OVER <id> (needs the txn's article-to-number address entries), LIST with a wildmat,
-  ACTIVE.TIMES, SUBSCRIPTIONS; ARTICLE/HEAD/BODY (3/n).
-- Earlier on dev: c7972899d the frontier; 00c493d32 D7 4/n-a (§13.8); 721f7a50b the D7 4/n statement.
-- **Arrived for the txn port (P.4):** B-S2 6d4e7f977 (`fn2-commit-admit-txn (slot gen len okind oslot
-  ogen) -> (mv code batch event)` `(:ok :exhausted :admission)`; `fn2-commit-take (:ok :pending :none)`;
-  `fn2-commit-txn-source`; `fn2-block-read` / `-done`); C §4a NOT yet on dev at 7798b9e35 (main sends
-  the sha). C §4a's API as planned: `fn2-identity-decide-start tx mslot mgen moff mlen dslot dgen doff
-  okind oslot ogen`; `fn2-identity-decide tx budget`; `fn2-identity-facts tx -> (mv code verdict
-  selection h evidence coverage)`; slots evidence 1, history 11, summary 13, candidate 12, article 14.
-- B's cd45d4719 (fn2-b-ctl-rows, format slots floor 4 + w + c) is merged; it touched machines-b
-  beside the read rows.
+- **D6 1/n-b** 068fd597a (merge 12410f1b9): LIST ACTIVE / COUNTS / NEWSGROUPS without a wildmat, bare LISTGROUP
+  (scan of `fn2-groups`; TX prefix `[0, roff)` kept across pages via A's `fn2-pool-truncate`; read rows
+  `fn2-b-read-rows` = 2X + N, cursor slot S on 2S/2S+1, E's request S on 2X+S). §15.0 is the record.
+- **Argon ruling (4)** 49e7df92f: `fn2-resource-rank` = 1 + position in `*fn2-resource-order*`.
+- **Sessions:** 689d196a1 reading over seeded local.test; Xref field in seeded overview lines e86678fd3 and
+  d96297076 (A moved seeds to the shared `tests/seeded-store.lsp`; the fix lives there). Merge 48305081a. Tip of my last push: df9be72b5 (brought in C's c65141708: overlay capacity).
+- **fn2-account-request-park-children** (accounts-core.lisp): `(id principal fn2-accounts fn2-machines) ->
+  (mv code fn2-accounts fn2-machines)`, :answers (:ok :bounds), named as `:child` of the request-park defcost;
+  accounts-core now includes "arm-children" (for `fn2-machines` and `fn2-machines-row-ok`). Landed 09fc6cf2a (merge df9be72b5). The generator gap is routed to the form seat, ruled as
+  `(:park :principal-reservation :principal row-principal-slot)`; the op keeps its principal formal.
+- **Still 503:** OVER <id>, LIST with a wildmat, ACTIVE.TIMES, SUBSCRIPTIONS; ARTICLE/HEAD/BODY (3/n).
+- **Worktree** `/Users/ember/dev/fn/build/lanes/fn2/d6` (branch fn2/d6-read): clean after the park commit;
+  no txn-port code was written. hbox clone `~/fn2-d6-lane/work` holds scp'd copies only.
 
-## Next, in order
-1. **The txn port P.4** the moment main sends C's §4a sha: P.4 below as amended by the Argon rulings (the member workspace is `fn2-successor-out`'s, passed unchanged; stage `:refused` replans to evidence-only; `fn2-commit-posture` `:draining` refuses new POSTs by word),
-   `(:park :batch-membership)` on `:exhausted`, the `:consumer` mode with E's declared op then
-   `(:wake-row cns)`, C's location bind from `fn2-commit-txn-source`, replies from the facts (rulings 6,
-   7, 8), the `fn2-consumer-names` fold at register when main sends C's schema sha), and D5 2/n: the
-   durable POST, 240 after publication, posting advertised (`fn2-answer-posting-p` on), D5's interim
-   rows leaving. `(defmachine-registry fn2-txn)` is declared; its arms go to child form with the port.
-2. **OVER <id>** after the port (the address entries).
-3. **D6 3/n** ARTICLE/HEAD/BODY over `fn2-block-read` / `-done` and the location field; the conn port
-   when the form's G3 lands (a child-form `(:park :principal-reservation)` needs
-   `fn2-account-request-park`'s defcost to name a `:child`).
-4. When convenient: cursor.lisp under the minute (above).
+## Seams for the txn port as they stand (dev 48305081a)
+- **C §4a landed 0022ac2f8.** `fn2-identity-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot
+  ogen)` :answers (:bounds :ok :state); `fn2-identity-decide (tx budget)` (:more :stored :duplicate :conflict
+  :evidence and error codes); `fn2-identity-facts (tx) -> (mv code verdict selection h evidence coverage)`,
+  :child fn2-id-facts: SELECTION :none/:same/:other, H the candidate ordinal, EVIDENCE :none/:present/
+  :qualified, COVERAGE :complete/:gap. C rewrote D's txn.lisp for the switch: `fn2-txn-put-identity (tx mslot
+  mgen moff mlen dslot dgen doff okind oslot ogen h principal local)` (slots 0-4), `fn2-txn-put-post` (identity
+  local 1 + article + outcome), `fn2-txn-put-accept`; :lookup still routes on decide's answer (to be facts).
+- **Not on dev, routed by main:** C's `fn2-successor-emit (tx wslot wgen woff wmax okind oslot ogen) -> (mv code
+  len fn2-core)` :answers (:ok :room :state :bounds) (S12; `fn2-successor-out` is still a one-field read);
+  B's `fn2-commit-posture () -> (:serving :draining)` (S11) and the admission decoder / record-kind list
+  extended to C's list. These plug in as two `:do` steps of `:ready`.
+- **Not on dev, not yet asked:** E's `fn2-cns-post-outcome` and C's `fn2-consumer-cursor` schema: the
+  `:consumer` mode needs both (write its fields and routing only when they exist).
+- **Core form, not child form:** ~20 callees have no `:child` (C's ten successor ops, decide-start/decide,
+  group-lookup; B's admit-txn/take/txn-source; D's conn-post-word and claims ops). Ruled by main: declare the
+  txn in the new form, generate `(defmachine-arms fn2-txn)` (core form, as the listener) in
+  assembly-callbacks-d-txn; C/B add :child later (queued); D's own ops get :child as written.
+- B: `fn2-commit-admit-txn (slot gen len okind oslot ogen) -> (mv code batch event)` (:ok :exhausted
+  :admission); `fn2-commit-take (okind oslot ogen) -> (mv code batch event outcome)` (:ok :pending :none),
+  OUTCOME numeric `*fn2-commit-outcome-accepted/refused/uncertain*`; `(defwait :batch-membership ...)` in
+  machines-b (park by wait reason alone).
+- Reply texts are the grammar's (nntp-grammar.lisp) and H's model has no "evidence recorded" line: keep the
+  evidence-mode reply as `:conflict` (441 "a different article ... is stored here") and record the commit's
+  answer in a txn field; a new reply text is H's model first.
+
+## Next, in order (after the converge ends)
+1. **The txn port** (design worked out, nothing written): replace txn.lisp's old-form `defmachine` +
+   `fn2-txn-events` callbacks with the new form. Fields: today's plus `mode (:enum fn2-txn-mode (:article
+   :evidence))`, `ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused))`, `batch :u60`,
+   `bevent :u60` (`event`/`outcome` are reserved arm names: don't use them as binders). `:stops
+   (:txn-uncertain)`. Ops (D, defcost before the core, defun in the op events): pure `fn2-txn-upload-view (u)
+   -> (mv ml mo c0 g0 c1 g1 hashed scanned no nl)` (nfixed, natp facts), `fn2-txn-count-next (u ugen counted
+   to lines) -> (mv code counted2 lines2)`, `fn2-txn-put-post-for (tx u ugen h principal lines)` and
+   `fn2-txn-put-evidence-for (tx u ugen h principal)` (put-identity local 0), `fn2-txn-offer (tx u ugen)`;
+   `:answers` added to fn2-conn-post-word (:ok :dropped), the claims ops and fn2-txn-hash (t). Arms: :admit and
+   :reserve as P.3; :lookup routes from facts (selection :same → :duplicate; verdict :stored and mode not
+   already evidence → :article; else mode :evidence, word :conflict → :prepare); :prepare evidence =
+   facts + put-evidence-for, article = count / group sub-arm / no groups :group / inj / facts + put-post-for,
+   then resolve; :ready stage → :ok admit (→ bind, :batched, idle; :exhausted `(:park :batch-membership)`;
+   :admission word :not-stored), :full retry, :stale offered 0 → :lookup, :refused/:evidence → mode
+   :evidence, release successor, offered 0, prepared 0 → :lookup (evidence mode sticky), :duplicate,
+   :capacity :unaffordable; :batched take → accepted (article :accepted / evidence ecommit committed,
+   :refused with :conflict), uncertain → :uncertain `(:stop :txn-uncertain)`, refused (article :not-stored /
+   evidence ecommit refused). reply/releasing/draining as P.3. Budget stays 16384 until the emit lands
+   (then 24576, C's ruling). Units: txn-unit, request-unit, conn-unit, owed-txn (test profile :overlays 64).
+2. Plug in C's emit and B's posture when main sends the shas; D5 2/n (240 after publication, posting
+   advertised, the interim rows leave); the :consumer mode when E's op and C's schema exist.
+3. **OVER <id>** (the address entries). 4. **D6 3/n** ARTICLE/HEAD/BODY. 5. The conn port (G3 2/n's
+   language). 6. cursor.lisp under the minute.
 - **Commands (hbox):** sync `git push hbox-saas:fn2-d6-lane/work HEAD:refs/heads/<b>` then on hbox
-  `git checkout -q <b>` (the clone's working copy holds only my copies). Certify detached:
-  `cd ~/fn2-d6-lane/work && rm -f build/rN.status; (setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh -j 16 <tests...> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" > /dev/null 2>&1 < /dev/null &); sleep 2; ps -eo pgid,cmd | grep "build/rN.out" | grep -v grep | awk "{print \$1}" | head -1 > build/rN.pid`.
-  Stop with `kill -- -$(cat build/rN.pid)`. Interim JSON: `python3 tools/acl2 < fn2/tests/conn-interim-export.lsp | python3 fn2/tests/conn-interim-json.py`
-  with FN_ACL2/ACL2_SYSTEM_BOOKS set. Forge tree `/build/lanes/d6` (branch d6-read at 82eb2bfc2 plus
-  scp'd files; its wip branch d6-forge-wip-1031 holds a466488fe's content).
+  `git checkout -q <b>`; copy changed files with `cat >` (not tar). Certify detached:
+  `cd ~/fn2-d6-lane/work && rm -f build/rN.status; (setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh -j 16 <books...> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" > /dev/null 2>&1 < /dev/null &); sleep 2; ps -eo pgid,cmd | grep "build/rN.out" | grep -v grep | awk "{print \$1}" | head -1 > build/rN.pid`.
+  Stop with `kill -- -$(cat build/rN.pid)` (the group; killing the sh alone leaves make running).
+  `/home/hbox/form-g3` is the form seat's clone: not ours.
 
 ## Pitfalls hit (this seat)
 - Shape lemmas outside an assembly:
