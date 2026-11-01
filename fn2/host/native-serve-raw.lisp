@@ -13,7 +13,7 @@
 
 (defun fn2-nserve-profile ()
   "The served profile, the listener from the environment (absent: the profile's defaults).
-The simulator session's (fn2/tests/sim-session.lsp): the cursor's profile less its posting,
+The surface sessions' (fn2/tests/seeded-store.lsp): the cursor's profile less its posting,
 so the node serves reading over the store it seeds."
   (let* ((profile *fn2-ss-profile*)
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
@@ -47,7 +47,7 @@ so the node serves reading over the store it seeds."
              (format t "STOPPED ~d~%" reason)
              (when (plusp capacity)
                (format t "ENVELOPE ~s~%"
-                       (car (fn2-nserve-replay (fn2-n-trace-list host) profile *fn2-ss-seeds*))))
+                       (car (fn2-ss-replay (fn2-n-trace-list host) profile *fn2-ss-seeds* nil))))
              (finish-output)
              0)
         (fn2-n-destroy host)))))

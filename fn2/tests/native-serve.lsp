@@ -5,7 +5,7 @@
 ; :listener-port / :listener-address; FN2_LISTENER_PATH sets :listener-path,
 ; the owner-only Unix socket beside it. Prints fn1's ready line
 ; `LISTENING <port>` once bound (port 0 reports the kernel's ephemeral port),
-; serving the simulator session's profile and seeded store (sim-session.lsp:
+; serving the surface sessions' profile and seeded store (seeded-store.lsp:
 ; reading over local.test with three articles and local.empty),
 ; then `LISTENING-LOCAL <path>` when the Unix socket is bound,
 ; serves until SIGTERM or SIGINT (the sticky signal stops the core), then
@@ -13,18 +13,7 @@
 ; `REFUSED <word>`. FN2_ENVELOPE_TRACE=N records a boundary trace of N
 ; entries and checks ENVELOPE's legality (item 1) at stop: `ENVELOPE <verdict>`.
 (in-package "ACL2")
-(include-book "fn2/sim/check-envelope")
-(ld "fn2/tests/sim-session.lsp")
-; ENVELOPE's replay of the session from the same seeded store
-(defun fn2-nserve-replay (trace profile seeds)
-  (declare (xargs :verify-guards nil))
-  (with-local-stobj fn2-core
-    (mv-let (verdict caps fn2-core)
-      (let ((fn2-core (fn2-init-executor profile :echo nil fn2-core)))
-        (mv-let (code fn2-core) (fn2-cs-seed-all seeds 1 fn2-core)
-          (declare (ignore code))
-          (fn2-env-steps trace 0 nil nil nil fn2-core)))
-      (list verdict caps))))
+(ld "fn2/tests/seeded-store.lsp")
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
 (load "fn2/host/ffi.lisp")
