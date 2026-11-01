@@ -1,50 +1,44 @@
 # fn2 layer B continuation (present state, rewritten whole after every commit)
 
-Seat: Opus, layer B. Method: briefs/FN2-SEAT-COMMON.md (dev is the branch; Opus writes; Codex only for
-bounded pieces with real signatures; READY to main per commit via SendMessage "main").
+Seat: Opus, layer B. Method: WORKFLOW-20261031 (a commit = the changed books certify, the touched
+scenarios pass on the tiny profile, the author read the diff; push to dev; fix forward). READY to main
+per commit via SendMessage "main". Design record: fn2/docs/b-durability.md (§6, §11a, §11b).
 
-## Standing rulings (2026-10-31)
-WORKFLOW-20261031: no whole-tree gate per commit; seats distill at ~400K and continue. B owns its order;
-only the twelve arms' port waits for MACHINE-FORM. Earlier tonight: do NOT start the commit arm port in
-the old form (defmachine + hand-written defmachine-callback arms, one
-shared assembly re-proving every kind, per-octet exports). Stand by for main's statement of the new form;
-fn2-commit is its first B kind. The port's input in any form is the arm table and the absorb list below.
+## State: CONVERGE (ember, 2026-11-01): stopped, nothing in flight
+Dev tip with B's last commit: 71a9f55bc. Worktree /Users/ember/dev/fn/build/lanes/fn2/b-machine
+(branch fn2/b) is clean and equal to dev. Nothing of B's runs on forge, hbox or the Mac. Forge b54 holds
+dev 0022ac2f8 + the posture files (committed since) with certs current.
 
-## On dev
-- 747afb64c **B5-4a** (landed 2026-10-31 on 6f05dbba0; READY sent): the member and settled tables,
-  admission (fn2-commit-pick, fn2-commit-admit-keyed), refusal as a suffix abort with :dropping, the
-  four hooks with refusing defaults (C attaches publish/drop), settlement and fn2-commit-take; events
-  from 1; the derived format rows (fn2-b-upload-windows); four commit section books (-b, -b2, -r,
-  -r2); the harness on fn2-turn. Gate on forge (f2ed887f7, bdev 6f05dbba0): closure rc 0; drivers 7/7
-  both trees; A4 identical but Q1 34/101; sim-layer-b S13 306 (reorders 86, tears 130), S14 2046, S15
-  326, S16 12; export PASS. Published: sim-allocation full restart 51.1 MB -> 73.1 MB allocated.
-  Message: b-quests/b54a-final.msg + the gate paragraph (worktree build/b54a.msg).
-- B5-3 2062b2f74, B5-2 5674cae12, B5-1 717bec1c3; earlier B library 12cd1031f, B3b 19149d32e/49ffcd6af.
+## On dev (B, newest first)
+- 71a9f55bc fn2-commit-posture (S11: :serving/:draining from the commit rows' phases; defcost
+  :answers (:serving :draining) on fn2-core-machines; no :child yet, see §11b S11) and
+  fn2-commit-take's :child fn2-cs-take. Checked over C's §4a 0022ac2f8 (*fn2-b-txn-field-rows* 2048):
+  commit-txn-unit, sim-layer-b, commit-proof-unit green.
+- c0645b91e docs: Argon rulings (§11b S11 posture, S12 one encoding; §6 geometry => import).
+- cd45d4719 E's control-connection format rows: fn2-b-ctl-rows (:control-connections, default 2),
+  fn2-b-ctl-slot = 4+w+S, floor 4+w+c (amended: the slot's own 128-row stripe, no stripe below reads).
+- ca3aded2b B-S2's three keystones (commit-proof.lisp, fn2-commit-txn-proof-run; teeth in
+  tests/commit-txn-unit.lisp). c4dde2215 the B-S2 section book assembly-callbacks-bt (-b 45 s, -bt 41 s,
+  -b2 48-51 s on forge).
+- 6d4e7f977 B-S2 (admission, seal verbatim, :batchable, stream-wake hook, S9 source ref, S10 block read).
+- c0ae11af4 envelope fields in the record header; 75adea036 the 27 assert$? -> named stops;
+  880e5edad §11b statement; 747afb64c B5-4a; B5-3 2062b2f74, B5-2 5674cae12, B5-1 717bec1c3.
 
-## Next (owned order; WORKFLOW-20261031; BRICKS-20261031 §5 is the program order)
-Landed: named stops 75adea036; the envelope c0ae11af4 (record header = event envelope; §11b S9/S10).
-Landed: B-S2 6d4e7f977; the section split c4dde2215 (assembly-callbacks-bt between -b and -b2;
-forge -b 45 s, -bt 41 s, -b2 48 s); E's control-connection format rows cd45d4719 (fn2-b-ctl-rows :control-connections default 2,
-fn2-b-ctl-slot = 4+w+S; floor 4+w+c; amended: the slot's own 128-row stripe, no stripe below the reads);
-B-S2's three keystones ca3aded2b (commit-proof.lisp over
-fn2-commit-txn-proof-run; teeth in tests/commit-txn-unit.lisp; b-durability.md 11b).
-Docs c0645b91e: Argon rulings in b-durability.md (11b S11 the :draining posture via
-fn2-commit-posture; S12 one encoding, the txn record kinds grow to every staged schema; 6 geometry =>
-resize/migration is an import). Their code lands with D's txn port.
-1. **PARKED (ember's spine-only ruling, 2026-10-31).** No B5-4b, B6 or commit port until main wakes
-   the seat (the port follows G3). Open items when woken: rebase over C's *fn2-b-txn-field-rows*
-   (machines-b's fn2-b-field-rows; txn stripe 1024 -> 2048) when main sends C's sha; the cross-owner
-   copy-range is queued at the form seat (then retire B-TXN-COPY); S10's borrow edge and block hash
-   come with D4 3/n. The post-landing check at ca3aded2b on forge b54 is green (commit-txn,
-   sim-layer-b, commit-proof units over the rebuilt tree). Nothing of B's runs on forge. Standing reds not B's: q1-unit's catalogue pin and a q1-teeth tooth
-   reading the generation of a kind with no row in the teeth profile (dev's new kinds).
-2. B5-4b replay. 3. The twelve arms' port in the form (stops to :stops).
-Forge: tree /build/lanes/b54 (at c0ae11af4's parent + diff). Sync by copying changed files, NOT
-git checkout + apply (that touches every file and recertifies the whole chain, ~40 min).
-Asks out: C (sealer profilep demands its pool class; C-SEAL-NO-ROW unreachable).
-Lessons: stobj positions in mv / stobj-let producers must be the variable; a stop in an arm
-returns at once (fn2-commit-stop-arm); zp needs natp, use posp; expected-member fixtures in
-sim/commit-history move with the record header.
+## Exact next step (when main wakes the seat; spine-only otherwise)
+1. S12 record kinds at D's txn port: when main sends C's list (the record kinds fn2-successor-emit
+   writes: acceptance, the five identity records, membership, overview, addr, the folds' events, the
+   outcome), add each to the record-kind enum (format-events.lisp) and *fn2-commit-txn-record-kinds*,
+   extend fn2-commit-txn-body (commit.lisp section 1t, -bt) with one branch per kind calling its
+   generated decoder with the exact-length check (next = end), and extend commit-txn-unit's
+   verbatim fixture with one record of each kind. Certify -bt, -b2, commit-txn-unit, sim-layer-b.
+2. Posture's :child: once the form seat says how a kind reads the commit rows' phases in child form
+   (the commit table in D's txn tuple, or a directory column), give fn2-commit-posture that body.
+   :child bodies for fn2-commit-admit-txn and fn2-commit-txn-source come with the commit port.
+3. Owed, not started: keystone subjects on fn2-turn (Argon §9.2, OWED priority at M2); B5-4b replay;
+   B6, B7; the commit arm port after G3; B-TXN-COPY retires when the cross-owner copy-range lands; S10's
+   borrow edge and block hash with D4 3/n.
+Standing reds that are not B's (seen at cd45d4719): q1-unit's catalogue pin; a q1-teeth tooth reading
+the generation of a kind with no row in the teeth profile.
 
 ## fn2-commit's twelve arms as built (input to the port in any form)
 Every arm except idle and observe begins with the partner gate: `fn2-commit-partner-state (batch-no, partner)`
@@ -71,6 +65,7 @@ arm today: the per-run cap (4096 bytes, 32 steps, 4 descriptors); the actual cha
 | :dropping drop | batch-no partner cb-stage outcome cb-cursor member-count (+ partner phase batch-no) | cb-stage cb-cursor phase | hook fn2-successor-drop (C); alloc: prepared-successor edge drop (when collect ran) + cancel reservation; commit-root seal-ready 0; settled :refused; root row 0 frontier restore (end-abort) | 0, advance | :draining | an older partner still dropping -> wait; hook or unprepare non-:ok stop :commit-drop |
 | observe (:write-result, :fence-result) | cb-issued cb-done cb-bytes cb-failed cb-fence-live phase pending | cb-fence-live cb-done cb-bytes cb-fence-ok cb-failed outcome cb-reason phase | commit-io: drop the io edges when the last write completes (drop-io) | handler | :uncertain from any phase (stray or failed result) | drop-io codes absorbed (assert$?) |
 
+
 ## Where commit.lisp and alloc.lisp absorb (27 `assert$?`: ACL2's er hard? at run time, the shown value in the logic)
 commit.lisp (22): fn2-commit-resource :160 (index out of range -> (mv 0 0 0 0 0)); fn2-commit-reserve-extent :195;
 fn2-commit-save-pool :222; fn2-commit-release-pool :244; fn2-commit-reserve-pools :261 (release on failure not
@@ -85,12 +80,17 @@ fn2-alloc-checkpoint-drain :459 (each a free/retired/pending list-link shape che
 Each becomes a named stop reason with a control in the port (one reason per family: :commit-resource,
 :commit-pool, :commit-root, :commit-format, :commit-io, :alloc-links).
 
+(These 27 are named stops since 75adea036; kept as the arm port's input.)
+
 ## Commands that work
-- Local certify (Mac, slot pool): `sh fn2/tools/certify.sh -j 6 -k <books>` from the worktree, detached
-  with `python3 -c "import os; os.setsid(); ..."` writing build/cN.pid (macOS has no setsid binary).
-- REPL diagnosis: copy a unit to fn2/tests/zz-b-probe.lsp with assert-event -> a printing macro, ld it
-  from build/probe (paths relative to the tests dir), then delete the probe file.
-- Forge: `ssh forge`, trees /build/lanes/{bdev,b54}; drivers /build/lanes/b51/build/drivers.sh; A4 blocks
-  /build/lanes/b51/build/a4blocks.sh.
-Pitfalls: editing a book while its certify runs breaks the run (book-hash mismatch); commit.lisp is
-included by machines-b, so any commit.lisp edit recertifies C and D above it (~25 min on the laptop).
+- Forge: `ssh forge`, tree /build/lanes/b54 (detached at dev). Certify detached with a group-leader PID
+  file: `(setsid sh -c "echo \$\$ > build/X.pid; exec > build/X.out 2>&1; swarm-build sh
+  fn2/tools/forge-certify.sh -j 8 <paths>; echo rc=\$? > build/X.done" < /dev/null > /dev/null 2>&1 &)`;
+  stop with `kill -TERM -- -$(cat build/X.pid)`. Per-form times: awk over the .cert.out (Form:/Time:).
+- REPL probe on forge: write /tmp/b-*.lsp, run `../../tools/acl2 --timeout N < probe` from fn2/tests
+  or fn2/books.
+- hbox (ssh hbox-saas): / and /othersys were at 40-41 GiB free on 2026-11-01, under the brief's 60 GiB
+  stop line, so B used forge.
+Pitfalls: editing a book while its certify runs breaks the run; machines-b and commit.lisp sit under
+almost everything, so a change there rebuilds the tree (~45 min on forge). A slow proof is usually an
+inline body case-split: make the body its own function with fn2-core-preserves.

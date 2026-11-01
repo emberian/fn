@@ -21,12 +21,11 @@ work until main restarts H.
 - **Interim table:** `fn2_conn_interim.json` is D's generated table (tools/acl2 < fn2/tests/conn-interim-export.lsp |
   python3 fn2/tests/conn-interim-json.py, after certifying books/conn-answer). At the cursor: 14 verbs served,
   16 interim rows (D6 10, D5 3, D7 1, E2 1, E4 1).
-- **IN FLIGHT AT CONVERGE:** a hand run of the nightly at 48305081a (D's Xref fix). It is the first both-carriers run
-  that judges the cursor over the seeded store. PID file: build/h8/nightly/running.pid. Output:
-  build/h8/nightly/2026-10-31-48305081a/ and the line in build/h8/nightly/LATEST.txt. The seat READYs that line
-  when it ends; the result is recorded under "Last line" below.
-- **Last line:** see LATEST.txt. Before the Xref fix, the simulator carrier failed at the first OVER (8 fields, no
-  Xref; D fixed it in 48305081a). The socket carrier was green at dc2651b2a (no-archive then).
+- **Last line (hand run at 48305081a, D's Xref fix; READY sent):** the first both-carriers run that judges the
+  cursor over the seeded store. M2 cuts 0/12. 14 verbs are served and 16 interim rows are left (D6 10, D5 3, D7 1,
+  E2 1, E4 1). Both carriers: S ok, 28,657 served, 0 disagreements, 4,372 interim (D5 401, D6 3,971), WIRE 16,768
+  opened = judged ok, 0 unjudged. ENVELOPE is ok on the socket. NOT RUN rows are as before (E owed at init, F and H
+  named). Output: build/h8/nightly/2026-10-31-48305081a/. Nothing of H is running.
 - **Owed to H:**
   - an fn2 owner for the nntp differential (F);
   - Fn2Backend.init with groups, when the served node takes groups at init (E rows);
