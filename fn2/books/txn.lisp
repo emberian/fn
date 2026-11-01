@@ -104,14 +104,56 @@
 (defconst *fn2-txn-ready-bytes* (+ 4096 8192 *fn2-txn-admit-bytes*))
 (assert-event (equal *fn2-txn-ready-bytes* 16384))  ; the kind's :budget below
 
-;; (The :prepare arm is fn2-txn-slots: the kind's table owns fn2-txn-prepare.)
+(defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
+(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
+(defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
+(defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
+(defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
+(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
+(defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
+
+(defcost fn2-txn-upload-live-p :doc "Whether the upload still names this transaction.")
+(defcost fn2-txn-upload-sealed-p :doc "Whether the upload reached its verdict.")
+(defcost fn2-txn-upload-aborting-p :doc "Whether the upload is aborting.")
+(defcost fn2-txn-upload-words :doc "The upload's refusal word and injected-field word.")
+(defcost fn2-txn-upload-view :doc "The upload's Message-ID, chunks, hashed/scanned offsets and Newsgroups span.")
+(defcost fn2-txn-hash :answers t :bytes 256
+  :doc "FNV-1a over the Message-ID's octets (at most 250), under the upload's owner.")
+(defcost fn2-claim-begin-core :answers (:ok :bounds :state) :tables (fn2-core-claims)
+  :doc "Start a claim on a Message-ID's exact octets.")
+(defcost fn2-claim-state-core :doc "Read a transaction's claim state.")
+(defcost fn2-claim-walk-core :answers (:claimed :wait :more :bounds :state :fault) :bytes 4096
+  :tables (fn2-core-claims)
+  :effects ((:acquire (:identity-reservation)))
+  :doc "Walk the claim's bucket at most 16 chain steps (one Message-ID compared per step on an equal hash): claimed, waiting in the holder's FIFO, or more.")
+(defcost fn2-claim-release-core :answers (:ok :bounds :state) :tables (fn2-core-claims fn2-core-machines)
+  :effects ((:release (:identity-reservation)))
+  :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
+(defcost fn2-txn-offer :answers (:ok :bounds :state)
+  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
+  :doc "Start the identity decision for the upload's Message-ID and content digest.")
+(defcost fn2-txn-count-next :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
+  :doc "Count LF octets in up to 2,048 octets of the upload's body.")
+(defcost fn2-txn-next-name :answers (:name :end :run :fault) :bytes *fn2-txn-scan-bytes*
+  :doc "Scan chunk 0 for the next group name of Newsgroups.")
+(defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+  :doc "Declare the article's identity, article and outcome slots in the private successor.")
+(defcost fn2-txn-put-evidence-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+  :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
+(defcost fn2-txn-wake-upload :tables (fn2-core-machines)
+  :doc "Wake the upload this transaction held, if it still names it, so it drains.")
+
 (defmachine fn2-txn
- :states (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
+ :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
  :fields ((upload :link) (upload-gen :u60) (conn :link) (conn-gen :u60) (request :u32)
           (rule (:enum fn2-txn-rule (:post :ihave :takethis)))
+          (tmode (:enum fn2-txn-mode (:article :evidence)))
+          (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
+          (batch :u60) (bevent :u60)
           (word :u8) (offered :bool) (prepared :bool) (counted :u60) (lines :u32)
           (gcur :u32) (gskip :bool) (ngroups :u8)
           (stopped :bool) (next-free :link))
+ :stops (:txn-uncertain)
  :holds ((:admit :transaction-row) (:reserve :transaction-row)
          (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)
          (:ready :transaction-row :identity-reservation)
@@ -119,106 +161,220 @@
          (:accepted :transaction-row :identity-reservation) (:refused :transaction-row :identity-reservation)
          (:uncertain :transaction-row :identity-reservation) (:releasing :transaction-row :identity-reservation)
          (:draining :transaction-row))
- :budget (:bytes 16384 :steps 32 :descriptors 4)
+ :budget (:bytes 16384 :steps 32 :descriptors 0)
  :capacity (fn2-txn-capacity profile)
  ;; An upload takes the row at its :identity (section 14.3).
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
-         :clear (word offered prepared counted lines gcur gskip ngroups stopped))
+         :clear (tmode ecommit batch bevent word offered prepared counted lines gcur gskip ngroups stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
- :continuations
- ((:free fn2-txn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
-   :uses (fn2-machine-idle))
-  (:admit fn2-txn-admit :cost (:bytes (:cost fn2-txn-begin :bytes) :steps *fn2-work-transition*)
-   :writes (word upload) :tables (fn2-core-claims fn2-core-machines fn2-conn-table fn2-core-pool)
-   :next (:admit :reserve :draining) :uses (fn2-txn-begin fn2-machine-refuse-phase))
-  (:reserve fn2-txn-reserve :cost (:bytes (:cost fn2-txn-claim-walk :bytes) :steps *fn2-work-transition*)
-   :writes () :tables (fn2-core-claims)
-   :next (:reserve :lookup) :uses (fn2-txn-claim-walk fn2-machine-refuse-phase))
-  (:lookup fn2-txn-lookup :cost (:bytes (:cost fn2-txn-decide :bytes) :steps *fn2-work-transition*)
-   :writes (word offered)
-   :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed
-            fn2-core-run-cursors fn2-core-run-paths fn2-core-run-cache fn2-core-fields fn2-core-pool fn2-core-fc)
-   :next (:lookup :prepare :refused) :uses (fn2-txn-decide fn2-machine-refuse-phase))
-  (:prepare fn2-txn-slots :cost (:bytes (:cost fn2-txn-declare :bytes) :steps *fn2-work-transition*)
-   :writes (word counted lines prepared gcur gskip ngroups)
-   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
-   :next (:prepare :ready :refused) :uses (fn2-txn-declare fn2-machine-refuse-phase))
-  (:ready fn2-txn-ready :cost (:bytes (:cost fn2-txn-commit :bytes) :steps *fn2-work-transition*)
-   :writes (word offered)
-   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine fn2-core-overlays
-            fn2-core-overlay-index fn2-core-fields fn2-core-pool)
-   :next (:ready :lookup :batched :refused) :uses (fn2-txn-commit fn2-machine-refuse-phase))
-  (:batched fn2-txn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
-   :next (:batched) :uses (fn2-machine-refuse-phase))
-  (:accepted fn2-txn-reply :cost (:steps (:cost fn2-txn-finish :steps)) :writes ()
-   :tables (fn2-conn-table fn2-core-machines fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
-   :next (:releasing) :uses (fn2-txn-finish fn2-machine-refuse-phase))
-  (:refused fn2-txn-reply :cost (:steps (:cost fn2-txn-finish :steps)) :writes ()
-   :tables (fn2-conn-table fn2-core-machines fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
-   :next (:releasing) :uses (fn2-txn-finish fn2-machine-refuse-phase))
-  (:uncertain fn2-txn-unreached :cost (:steps (:cost fn2-machine-refuse-phase :steps)) :writes ()
-   :next (:uncertain) :uses (fn2-machine-refuse-phase))
-  ;; one wake per run (the run's wake slot): the word woke the connection,
-  ;; the claim's hand-over wakes its waiter here, the drain wakes the upload
-  (:releasing fn2-txn-unclaim :cost (:steps (:cost fn2-txn-unclaim-run :steps)) :writes ()
-   :tables (fn2-core-claims fn2-core-machines)
-   :next (:draining) :uses (fn2-txn-unclaim-run fn2-machine-refuse-phase))
-  (:draining fn2-txn-drain :cost (:steps (:cost fn2-txn-release :steps))
-   :writes (generation upload upload-gen conn conn-gen next-free wait-reason)
-   :tables (fn2-core-machines)
-   :next (:free :retired) :uses (fn2-txn-release))
-  (:retired fn2-txn-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:retired)
-   :uses (fn2-machine-idle))))
-
-;; B-S2 is B's (commit.lisp, defcost in machines-b). Until P.4 writes the
-;; member records into a workspace, :ready passes the upload's window, which
-;; does not decode as member records: admission answers :admission and the
-;; transaction is refused :not-stored (owed row fn2-txn-admission-interim).
-;; The transaction's operations (each a wrapper or a staged helper below).
-(defcost fn2-txn-hash :bytes 256 :doc "FNV-1a over the Message-ID's octets (at most 250), under the upload's owner.")
-(defcost fn2-claim-begin-core :tables (fn2-core-claims) :doc "Start a claim on a Message-ID's exact octets.")
-(defcost fn2-claim-walk-core :bytes 4096 :tables (fn2-core-claims)
-  :effects ((:acquire (:identity-reservation)))
-  :doc "Walk the claim's bucket at most 16 chain steps (one Message-ID compared per step on an equal hash): claimed, waiting in the holder's FIFO, or more.")
-(defcost fn2-claim-release-core :tables (fn2-core-claims fn2-core-machines)
-  :effects ((:release (:identity-reservation)))
-  :doc "Release a held claim and hand it to its FIFO's head, waking that transaction.")
-(defcost fn2-txn-begin :bytes 256 :tables (fn2-core-claims fn2-core-machines fn2-conn-table fn2-core-pool)
-  :own-writes (word upload)
-  :doc "Admit: wait for the upload's verdict when no Message-ID is supplied, else hash it and begin the claim.")
-(defcost fn2-txn-claim-walk :bytes 4096 :tables (fn2-core-claims)
-  :effects ((:acquire (:identity-reservation)))
-  :doc "One run of the claim walk.")
-(defcost fn2-txn-decide :bytes 4096
-  :tables (fn2-core-id-decides fn2-core-id-stamps fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed
-           fn2-core-run-cursors fn2-core-run-paths fn2-core-run-cache fn2-core-fields fn2-core-pool fn2-core-fc)
-  :own-writes (word offered)
-  :doc "Lookup: the upload's verdict, then the identity offer (one run) or one decision step (another), then the injected-field refusal.")
-(defcost fn2-txn-declare :bytes 8192
-  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
-  :own-writes (word counted lines prepared gcur gskip ngroups)
-  :doc "Prepare: count the body's lines (at most 2,048 octets per run); look each Newsgroups name up (at most 1,275 octets scanned and one lookup source per run); refuse :group or the injected fields; declare the write slots and resolve them (one step per run).")
-(defcost fn2-txn-commit :bytes *fn2-txn-ready-bytes*
-  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine fn2-core-overlays
-           fn2-core-overlay-index fn2-core-fields fn2-core-pool)
-  :own-writes (word offered)
-  :effects ((:acquire (:batch-membership)))
-  :doc "Ready, one transition: stage every slot against the tip, admit the member to the batch, bind on :ok; a stale identity fact decides again.")
-(defcost fn2-txn-finish :steps *fn2-work-transition*
-  :tables (fn2-conn-table fn2-core-machines fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
-  :doc "The outcome: post the word to the connection (waking it) and release the successor's slots and decision.")
-(defcost fn2-txn-unclaim-run :steps *fn2-work-transition* :tables (fn2-core-claims fn2-core-machines)
-  :effects ((:release (:identity-reservation)))
-  :doc "Release the claim; its FIFO's head takes it and is woken.")
-(defcost fn2-txn-wake-upload :tables (fn2-core-machines)
-  :doc "Wake the upload this transaction held, if it still names it, so it drains.")
+ :subarms
+ (;; one Newsgroups name: look it up, declare its group-count accept
+  (group :on-refusal ((:stop :machine-phase))
+   (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+   (:do (status start len next skip2)
+        (fn2-txn-next-name no row-gcur nl (equal row-gskip 1) c0 g0
+                           :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+    :accept (:run :end :name) :why "the name scan's three continuations; :fault goes to :on-refusal")
+   (:cond ((not (unsigned-byte-p 32 next)) (:stop :machine-phase))
+          ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
+                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+          ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+          (t (:do (code group) (fn2-group-lookup row-slot c0 g0 (+ no start) len
+                                                 :budget 4096 :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+              :accept ()
+              :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                     ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                     ((:ok)
+                      (:cond ((>= row-ngroups *fn2-txn-groups-max*)
+                              (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                             (t (:let i (+ *fn2-txn-slot-accepts* row-ngroups))
+                                (:do (c1) (fn2-successor-put row-slot i *fn2-txn-counts-sid* ':accept))
+                                (:do (c2) (fn2-successor-arg row-slot i 0 ':value group))
+                                (:set (ngroups (+ 1 row-ngroups)) (gcur next))
+                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))
+  ;; the outcome: the word to the connection (waking it), the successor released
+  (reply :on-refusal ((:stop :machine-phase))
+   (:if (not (equal row-word 0))
+        ((:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request row-word)
+          :accept (:ok :dropped) :why "a connection that moved on takes no word; its release woke the upload")
+         (:do (rcode) (fn2-successor-release row-slot))
+         (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t))
+        ((:do (rcode) (fn2-successor-release row-slot))
+         (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t)))))
+ :arms
+ ((:free (:idle))
+  ;; wait for the verdict when no Message-ID was scanned (posting the upload's
+  ;; word, or :not-stored); else hash it and begin the claim
+  (:admit :on-refusal ((:stop :machine-phase))
+   (:cond ((not (fn2-txn-upload-live-p row-upload row-upload-gen id row-generation))
+           (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+          (t (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+             (:cond ((and (equal ml 0) (fn2-txn-upload-sealed-p row-upload))
+                     (:do (w inj) (fn2-txn-upload-words row-upload))
+                     (:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request
+                                                      (cond ((not (equal w 0)) w) ((not (equal inj 0)) inj)
+                                                            (t *fn2-upload-word-not-stored*)))
+                      :accept (:ok :dropped) :why "a connection that moved on takes no word")
+                     (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+                    ((and (equal ml 0) (fn2-txn-upload-aborting-p row-upload))
+                     (:next :draining) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+                    ((equal ml 0) (:charge :bytes 256 :steps *fn2-work-transition*))
+                    (t (:do (hcode hash) (fn2-txn-hash ml c0 g0 mo :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen))
+                       (:do (bcode) (fn2-claim-begin-core row-slot hash c0 g0 mo ml
+                                                          :ok *fn2-upload-kind* :os row-upload :og row-upload-gen))
+                       (:next :reserve) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))))))
+  ;; the claim walk: held, waiting in the holder's FIFO, or more
+  (:reserve :on-refusal ((:stop :machine-phase))
+   (:let s (fn2-claim-state-core row-slot))
+   (:cond ((equal s *fn2-claim-state-held*) (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((equal s *fn2-claim-state-waiting*) (:charge :bytes 4096 :steps *fn2-work-transition*))
+          (t (:do (code holder) (fn2-claim-walk-core row-slot *fn2-txn-claim-steps*)
+              :accept ()
+              :case (((:claimed) (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     ((:wait) (:charge :bytes 4096 :steps *fn2-work-transition*))
+                     ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))
+  ;; the upload's verdict, then the identity offer (one run) or one decision step,
+  ;; routed from C's separate facts (ruling 6, ruling 8)
+  (:lookup :on-refusal ((:stop :machine-phase))
+   (:cond ((not (and (fn2-txn-upload-live-p row-upload row-upload-gen id row-generation)
+                     (not (fn2-txn-upload-aborting-p row-upload))))
+           (:set (word 0)) (:next :refused) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((not (fn2-txn-upload-sealed-p row-upload)) (:charge :bytes 4096 :steps *fn2-work-transition*))
+          (t (:do (w inj) (fn2-txn-upload-words row-upload))
+             (:cond ((not (equal w 0)) (:set (word w)) (:next :refused)
+                                       (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    ((not (equal row-offered 1))
+                     (:do (code) (fn2-txn-offer row-slot row-upload row-upload-gen))
+                     (:set (offered 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                    (t (:do (answer) (fn2-identity-decide row-slot 4096)
+                        :accept ()
+                        :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                               ((:stored :duplicate :conflict :evidence)
+                                (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+                                (:cond ((eq selection :same)
+                                        (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
+                                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                                       ((and (eq verdict :stored) (not (equal row-tmode *fn2-txn-mode-evidence*)))
+                                        (:set (tmode *fn2-txn-mode-article*)) (:next :prepare)
+                                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                                       (t (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*))
+                                          (:next :prepare)
+                                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))))))
+  ;; count the body's lines, look each group up, refuse :group or the injected
+  ;; fields, declare the slots (evidence or article); then resolve them
+  (:prepare :on-refusal ((:stop :machine-phase))
+   (:if (equal row-prepared 1)
+        ((:do (answer) (fn2-successor-resolve row-slot 4096)
+          :accept ()
+          :case (((:ok) (:next :ready) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                 ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))
+        ((:if (equal row-tmode *fn2-txn-mode-evidence*)
+              ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+               (:do (pcode) (fn2-txn-put-evidence-for row-slot row-upload row-upload-gen h row-principal-slot))
+               (:set (prepared 1))
+               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+              ((:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+               (:let counted (max scanned row-counted))
+               (:cond ((< counted hashed)
+                       (:do (ccode counted2 lines2) (fn2-txn-count-next row-upload row-upload-gen counted hashed row-lines))
+                       (:if (and (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))
+                            ((:set (counted counted2) (lines lines2))
+                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                            ((:stop :machine-phase))))
+                      ((< row-gcur nl) (:goto group))
+                      ((equal row-ngroups 0)
+                       (:set (word *fn2-upload-word-group*)) (:next :refused)
+                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                      (t (:do (w inj) (fn2-txn-upload-words row-upload))
+                         (:if (not (equal inj 0))
+                              ((:set (word inj)) (:next :refused)
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                              ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+                               (:do (pcode) (fn2-txn-put-post-for row-slot row-upload row-upload-gen h row-principal-slot row-lines))
+                               (:set (prepared 1))
+                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
+  ;; stage every slot against the tip, admit the member, bind on :ok (one run)
+  (:ready :on-refusal ((:stop :machine-phase))
+   (:do (scode i) (fn2-successor-stage row-slot)
+    :accept ()
+    :case (((:ok)
+            (:do (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view row-upload))
+            (:do (acode b ev) (fn2-commit-admit-txn c0 g0 0
+                                                    :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+             :effects ((:acquire (:batch-membership)))
+             :accept ()
+             :case (((:ok)
+                     (:if (and (unsigned-byte-p 60 b) (unsigned-byte-p 60 ev))
+                          ((:do (bcode) (fn2-successor-bind row-slot b ev))
+                           (:set (batch b) (bevent ev))
+                           (:next :batched) (:charge :bytes 16384 :steps *fn2-work-transition*))
+                          ((:stop :machine-phase))))
+                    ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
+                    ((:admission)
+                     (:if (equal row-tmode *fn2-txn-mode-evidence*)
+                          ((:set (ecommit *fn2-txn-ecommit-refused*) (word *fn2-upload-word-conflict*))
+                           (:next :refused) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+                          ((:set (word *fn2-upload-word-not-stored*))
+                           (:next :refused) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t)))))))
+           ((:full) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:stale) (:set (offered 0)) (:next :lookup) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:refused :evidence)
+            (:do (rcode) (fn2-successor-release row-slot))
+            (:set (tmode *fn2-txn-mode-evidence*) (word *fn2-upload-word-conflict*) (offered 0) (prepared 0))
+            (:next :lookup) (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:duplicate) (:set (word *fn2-upload-word-duplicate*)) (:next :refused)
+                         (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t))
+           ((:capacity) (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                        (:charge :bytes 16384 :steps *fn2-work-transition* :runnable t)))))
+  (:batched :on-refusal ((:stop :machine-phase))
+   (:do (tcode tbatch tevent tout)
+        (fn2-commit-take :okind *fn2-upload-kind* :oslot row-upload :ogen row-upload-gen)
+    :effects ((:release (:batch-membership)))
+    :accept ()
+    :case (((:pending) (:charge :steps *fn2-work-empty*))
+           ((:ok)
+            (:cond ((equal tout *fn2-commit-outcome-accepted*)
+                    (:if (equal row-tmode *fn2-txn-mode-evidence*)
+                         ((:set (ecommit *fn2-txn-ecommit-committed*) (word *fn2-upload-word-conflict*))
+                          (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
+                         ((:set (word *fn2-upload-word-accepted*))
+                          (:next :accepted) (:charge :steps *fn2-work-transition* :runnable t))))
+                   ((equal tout *fn2-commit-outcome-uncertain*)
+                    (:set (ecommit (if (equal row-tmode *fn2-txn-mode-evidence*) *fn2-txn-ecommit-uncertain* row-ecommit))
+                          (word *fn2-upload-word-uncertain*))
+                    (:next :uncertain) (:charge :steps *fn2-work-transition* :runnable t))
+                   ((equal tout *fn2-commit-outcome-refused*)
+                    (:if (equal row-tmode *fn2-txn-mode-evidence*)
+                         ((:set (ecommit *fn2-txn-ecommit-refused*) (word *fn2-upload-word-conflict*))
+                          (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
+                         ((:set (word *fn2-upload-word-not-stored*))
+                          (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))))
+                   (t (:stop :machine-phase)))))))
+  (:accepted (:goto reply))
+  (:refused (:goto reply))
+  (:uncertain (:stop :txn-uncertain))
+  ;; release the claim; its FIFO's head takes it and is woken (the run's one wake)
+  (:releasing :on-refusal ((:stop :machine-phase))
+   (:do (code) (fn2-claim-release-core row-slot))
+   (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
+  (:draining
+   (:let u row-upload) (:let gen row-generation)
+   (:let next (fn2-machine-free-head *fn2-txn-admission-ordinal*))
+   (:let retire (>= gen (fn2-machine-gen-limit)))
+   (:set (generation (if retire gen (+ 1 gen))) (upload *fn2-none*) (upload-gen 0) (conn *fn2-none*) (conn-gen 0)
+         (next-free next) (wait-reason *fn2-wait-none*))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-txn id retire))
+   (:do () (fn2-txn-wake-upload u id gen))
+   (:charge :steps *fn2-work-release*))
+  (:retired (:idle))))
 
 ;; ------------------------------------------------------------------------
 ;; The operations, materialized after the core instance (assembly-callbacks-d-txn,
-;; after the upload's continuations): wrappers over the claim table and C's seams, and the
-;; staged helpers each arm calls (each with its own preservation facts).
+;; after the upload's continuations): wrappers over the claim table and C's seams.
 (defmacro fn2-txn-op-events ()
  '(progn
 (defun fn2-txn-hash (n slot gen off okind oslot ogen fn2-core)
@@ -291,6 +447,30 @@
   (if (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
       (mv (fn2-upload-row-word u fn2-core) (fn2-upload-row-inj u fn2-core))
     (mv 0 0)))
+(defun fn2-txn-upload-view (u fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
+      (mv (nfix (fn2-upload-row-ml u fn2-core))
+          (nfix (fn2-upload-row-mo u fn2-core))
+          (nfix (fn2-upload-row-c0-slot u fn2-core))
+          (nfix (fn2-upload-row-c0-gen u fn2-core))
+          (nfix (fn2-upload-row-c1-slot u fn2-core))
+          (nfix (fn2-upload-row-c1-gen u fn2-core))
+          (nfix (fn2-upload-row-hashed u fn2-core))
+          (nfix (fn2-upload-row-scan-off u fn2-core))
+          (nfix (fn2-upload-row-no u fn2-core))
+          (nfix (fn2-upload-row-nl u fn2-core)))
+    (mv 0 0 0 0 0 0 0 0 0 0)))
+(defthm fn2-txn-upload-view-natp-0 (natp (mv-nth 0 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-1 (natp (mv-nth 1 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-2 (natp (mv-nth 2 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-3 (natp (mv-nth 3 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-4 (natp (mv-nth 4 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-5 (natp (mv-nth 5 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-6 (natp (mv-nth 6 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-7 (natp (mv-nth 7 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-8 (natp (mv-nth 8 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
+(defthm fn2-txn-upload-view-natp-9 (natp (mv-nth 9 (fn2-txn-upload-view u fn2-core))) :rule-classes :type-prescription)
 ;; At the drain: wake the upload U if it still names this row (ID of
 ;; generation GEN), so it sees the row gone and drains.
 (defun fn2-txn-wake-upload (u id gen fn2-core)
@@ -300,93 +480,16 @@
       (fn2-machine-set-wake-id u fn2-core)
     fn2-core))
 (fn2-core-preserves fn2-txn-wake-upload (u id gen fn2-core) :rows nil)
-(in-theory (disable fn2-txn-upload-words fn2-txn-wake-upload))
+(in-theory (disable fn2-txn-upload-words fn2-txn-upload-view fn2-txn-wake-upload))
 
-;; :admit. Returns (mv next fn2-core): :reserve (claim begun), :idle (no
-;; Message-ID was supplied and the verdict is not in yet), :draining (the
-;; upload left, or the verdict without a Message-ID was posted), :stop.
-;; D5 1/n: a POST without a Message-ID is answered with the upload's verdict
-;; or the interim :not-stored; the generated Message-ID comes with injection
-;; (D5 2/n, owed row fn2-txn-generated-message-id).
-(defun fn2-txn-begin (id fn2-core)
+(defun fn2-txn-offer (tx u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-        (mv :stop fn2-core))
-       (gen (fn2-machine-generation id fn2-core))
-       (u (fn2-txn-row-upload id fn2-core)) (ugen (fn2-txn-row-upload-gen id fn2-core))
-       ((unless (fn2-txn-upload-live-p u ugen id gen fn2-core)) (mv :draining fn2-core))
-       (ml (fn2-upload-row-ml u fn2-core))
-       ((when (equal ml 0))
-        (if (not (fn2-txn-upload-sealed-p u fn2-core))
-            (mv (if (fn2-txn-upload-aborting-p u fn2-core) :draining :idle) fn2-core)
-          (b* (((mv w inj) (fn2-txn-upload-words u fn2-core))
-               (word (cond ((not (equal w 0)) w) ((not (equal inj 0)) inj)
-                           (t (fn2-upload-word-code :not-stored))))
-               ((mv & fn2-core) (fn2-conn-post-word (fn2-txn-row-conn id fn2-core) (fn2-txn-row-conn-gen id fn2-core)
-                                                   (fn2-txn-row-request id fn2-core) word fn2-core)))
-            (mv :draining fn2-core))))
-       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
-       (mo (fn2-upload-row-mo u fn2-core))
-       ((mv hcode hash) (fn2-txn-hash ml c0 g0 mo *fn2-upload-kind* u ugen fn2-core))
-       ((unless (eq hcode :ok)) (mv :stop fn2-core))
-       ((mv bcode fn2-core) (fn2-claim-begin-core (fn2-machine-slot id fn2-core) hash c0 g0 mo ml
-                                                  *fn2-upload-kind* u ugen fn2-core)))
-    (mv (if (eq bcode :ok) :reserve :stop) fn2-core)))
-(fn2-core-preserves fn2-txn-begin (id fn2-core) :position 1 :rows nil)
-
-;; :reserve, one run of the walk: (mv next fn2-core), :lookup (the claim is
-;; held: taken now, or handed over by its holder's release), :run (more of
-;; the chain), :idle (waiting in the holder's FIFO), :stop.
-(defun fn2-txn-claim-walk (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (fn2-machine-idp id fn2-core)) (mv :stop fn2-core))
-       (c (fn2-machine-slot id fn2-core))
-       (s (fn2-claim-state-core c fn2-core))
-       ((when (equal s *fn2-claim-state-held*)) (mv :lookup fn2-core))
-       ((when (equal s *fn2-claim-state-waiting*)) (mv :idle fn2-core))
-       ((mv code & fn2-core) (fn2-claim-walk-core c *fn2-txn-claim-steps* fn2-core)))
-    (mv (case code (:claimed :lookup) (:wait :idle) (:more :run) (otherwise :stop)) fn2-core)))
-(fn2-core-preserves fn2-txn-claim-walk (id fn2-core) :position 1 :rows nil)
-
-;; :lookup: (mv next fn2-core). The upload's verdict first (the model's
-;; order: its definite refusals precede identity); then the identity offer
-;; (one run) and the decision's steps (one per run); :stored goes on to
-;; :prepare (the group check, then the injected fields: the model's order);
-;; :duplicate, :conflict and :evidence are refused by word.
-(defun fn2-txn-offer (id u ugen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok) (fn2-machine-idp id fn2-core))) (mv :bounds fn2-core))
-       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
-       (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
-       ((mv in1 doff) (fn2-upload-digest-at (fn2-upload-row-hashed u fn2-core) (fn2-upload-chunk-cap c0 fn2-core))))
-    (fn2-identity-decide-start (fn2-machine-slot id fn2-core) c0 g0 (fn2-upload-row-mo u fn2-core) (fn2-upload-row-ml u fn2-core)
-                        (if in1 c1 c0) (if in1 g1 g0) doff *fn2-upload-kind* u ugen fn2-core)))
-(fn2-core-preserves fn2-txn-offer (id u ugen fn2-core) :position 1 :rows nil)
+  (mv-let (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view u fn2-core)
+    (declare (ignore scanned no nl))
+    (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
+      (fn2-identity-decide-start tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff *fn2-upload-kind* u ugen fn2-core))))
+(fn2-core-preserves fn2-txn-offer (tx u ugen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-offer))
-(defun fn2-txn-decide (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-        (mv :stop fn2-core))
-       (gen (fn2-machine-generation id fn2-core))
-       (u (fn2-txn-row-upload id fn2-core)) (ugen (fn2-txn-row-upload-gen id fn2-core))
-       ;; the upload left (its connection went): nothing to answer
-       ((unless (and (fn2-txn-upload-live-p u ugen id gen fn2-core) (not (fn2-txn-upload-aborting-p u fn2-core))))
-        (let ((fn2-core (fn2-machine-write-word id 0 fn2-core))) (mv :refused fn2-core)))
-       ((unless (fn2-txn-upload-sealed-p u fn2-core)) (mv :idle fn2-core))
-       ((mv w &) (fn2-txn-upload-words u fn2-core))
-       ((unless (equal w 0)) (let ((fn2-core (fn2-machine-write-word id w fn2-core))) (mv :refused fn2-core)))
-       ((unless (equal (fn2-txn-row-offered id fn2-core) 1))
-        (b* (((mv code fn2-core) (fn2-txn-offer id u ugen fn2-core))
-             ((unless (eq code :ok)) (mv :stop fn2-core)))
-          (let ((fn2-core (fn2-machine-write-offered id 1 fn2-core))) (mv :run fn2-core))))
-       ((mv answer fn2-core) (fn2-identity-decide (fn2-machine-slot id fn2-core) 4096 fn2-core)))
-    (case answer
-      (:more (mv :run fn2-core))
-      (:stored (mv :prepare fn2-core))
-      (:duplicate (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :duplicate) fn2-core))) (mv :refused fn2-core)))
-      ((:conflict :evidence) (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :conflict) fn2-core))) (mv :refused fn2-core)))
-      (otherwise (mv :stop fn2-core)))))
-(fn2-core-preserves fn2-txn-decide (id fn2-core) :position 1 :rows nil)
 
 ;; :prepare. The body's lines first (the article row's `lines`): LF octets of
 ;; [body, source) read under the upload's owner, at most
@@ -424,7 +527,18 @@
        ((mv code lines2) (fn2-txn-count (if in0 c0 c1) (if in0 g0 g1) (if in0 from (- from cap0)) n lines
                                         *fn2-upload-kind* u ugen fn2-core)))
     (mv code (+ from n) lines2)))
+(defthm fn2-txn-count-run-natp
+  (implies (and (natp from) (natp lines))
+           (and (natp (mv-nth 1 (fn2-txn-count-run from to lines c0 g0 c1 g1 cap0 u ugen fn2-core)))
+                (natp (mv-nth 2 (fn2-txn-count-run from to lines c0 g0 c1 g1 cap0 u ugen fn2-core)))))
+  :rule-classes :type-prescription)
 (in-theory (disable fn2-txn-count-run))
+(defun fn2-txn-count-next (u ugen counted to lines fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp counted) (natp to) (natp lines))))
+  (mv-let (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view u fn2-core)
+    (declare (ignore ml mo hashed scanned no nl))
+    (fn2-txn-count-run counted to lines c0 g0 c1 g1 (fn2-upload-chunk-cap c0 fn2-core) u ugen fn2-core)))
+(in-theory (disable fn2-txn-count-next))
 ;; The write slots of an accepted POST (C-S3): the identity admission (C
 ;; §4a; fn2-txn-put-identity), the article row (key and birth the same event, live, version
 ;; 1, the source's content identity (appended after the source), the stored
@@ -572,16 +686,7 @@
      (fn2-successor-arg tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-outcome* :value *fn2-txn-outcome-accepted* fn2-core)
      (fn2-successor-arg tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-event* :event 0 fn2-core))))
 (fn2-core-preserves fn2-txn-put-article (tx dslot dgen doff bytes lines principal u ugen fn2-core) :position 1 :rows nil)
-;; A group-count accept for GROUP in accept slot K (its number assigned high
-;; + 1 at stage, C4a).
-(defun fn2-txn-put-accept (tx k group fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
-  (let ((i (+ *fn2-txn-slot-accepts* k)))
-    (fn2-txn-chain
-     (fn2-successor-put tx i *fn2-txn-counts-sid* :accept fn2-core)
-     (fn2-successor-arg tx i 0 :value group fn2-core))))
-(fn2-core-preserves fn2-txn-put-accept (tx k group fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-put-local fn2-txn-put-index fn2-txn-put-identity fn2-txn-put-article fn2-txn-put-accept))
+(in-theory (disable fn2-txn-put-local fn2-txn-put-index fn2-txn-put-identity fn2-txn-put-article))
 ;; A POST's slots: the identity admission (a local acceptance) and the
 ;; article row with its outcome, one call for the declaring run.
 (defun fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines u ugen h principal fn2-core)
@@ -592,6 +697,21 @@
 (fn2-core-preserves fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines u ugen h principal fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post))
+(defun fn2-txn-put-post-for (tx u ugen h principal lines fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view u fn2-core)
+    (declare (ignore scanned no nl))
+    (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
+      (fn2-txn-put-post tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff hashed lines u ugen h principal fn2-core))))
+(fn2-core-preserves fn2-txn-put-post-for (tx u ugen h principal lines fn2-core) :position 1 :rows nil)
+(defun fn2-txn-put-evidence-for (tx u ugen h principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (ml mo c0 g0 c1 g1 hashed scanned no nl) (fn2-txn-upload-view u fn2-core)
+    (declare (ignore scanned no nl))
+    (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
+      (fn2-txn-put-identity tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff *fn2-upload-kind* u ugen h principal 0 fn2-core))))
+(fn2-core-preserves fn2-txn-put-evidence-for (tx u ugen h principal fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-put-post-for fn2-txn-put-evidence-for))
 
 ;; Newsgroups, a name at a time: the value's names are separated by commas
 ;; and white space (the model's split).
@@ -657,287 +777,13 @@
                 (natp (mv-nth 2 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))
                 (natp (mv-nth 3 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core))))))
 (in-theory (disable fn2-txn-next-name))
-
-;; :prepare: (mv next fn2-core), :run, :ready, :refused, :stop. In order:
-;; the body's lines (LF octets of [body, source) under the upload's owner,
-;; at most *fn2-txn-count-bytes* per run); the Newsgroups names looked up
-;; (S-GROUP; one lookup source per run, its arguments the same until it
-;; answers), each carried one an accept slot; none carried: :group; then the
-;; injected fields (the model's order); then the slots, and resolve (one step
-;; per run).
-(defun fn2-txn-count-step (id u ugen counted source lines fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp counted) (natp source) (natp lines))))
-  (b* (((unless (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)) (mv :stop fn2-core))
-       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
-       (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
-       (cap0 (fn2-upload-chunk-cap c0 fn2-core))
-       ((mv code counted2 lines2) (fn2-txn-count-run counted source lines c0 g0 c1 g1 cap0 u ugen fn2-core))
-       ((unless (and (eq code :ok) (unsigned-byte-p 60 counted2) (unsigned-byte-p 32 lines2))) (mv :stop fn2-core))
-       (fn2-core (fn2-machine-write-counted id counted2 fn2-core)))
-    (let ((fn2-core (fn2-machine-write-lines id lines2 fn2-core))) (mv :run fn2-core))))
-(fn2-core-preserves fn2-txn-count-step (id u ugen counted source lines fn2-core) :position 1 :rows nil)
-(defun fn2-txn-group-step (id tx u ugen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok) (eq (fn2-txn-snapshot-read-code id fn2-core) :ok)))
-        (mv :stop fn2-core))
-       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
-       (base (fn2-upload-row-no u fn2-core)) (end (fn2-upload-row-nl u fn2-core))
-       (cur (fn2-txn-row-gcur id fn2-core)) (skip (equal (fn2-txn-row-gskip id fn2-core) 1))
-       (ngroups (fn2-txn-row-ngroups id fn2-core))
-       ((mv status start len next skip2) (fn2-txn-next-name base cur end skip c0 g0 *fn2-upload-kind* u ugen fn2-core))
-       ((unless (unsigned-byte-p 32 next)) (mv :stop fn2-core)))
-    (case status
-      (:run (let ((fn2-core (fn2-machine-write-gcur id next fn2-core)))
-              (let ((fn2-core (fn2-machine-write-gskip id (if skip2 1 0) fn2-core))) (mv :run fn2-core))))
-      (:end (let ((fn2-core (fn2-machine-write-gcur id next fn2-core))) (mv :run fn2-core)))
-      (:name
-       (mv-let (code group fn2-core)
-         (fn2-group-lookup tx c0 g0 (+ base start) len *fn2-upload-kind* u ugen 4096 fn2-core)
-         (case code
-           (:more (mv :run fn2-core))
-           (:absent (let ((fn2-core (fn2-machine-write-gcur id next fn2-core))) (mv :run fn2-core)))
-           (:ok (b* (((when (>= ngroups *fn2-txn-groups-max*))
-                      (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :unaffordable) fn2-core))) (mv :refused fn2-core)))
-                     ((mv pcode fn2-core) (fn2-txn-put-accept tx ngroups group fn2-core))
-                     ((unless (eq pcode :ok)) (mv :stop fn2-core))
-                     (fn2-core (fn2-machine-write-ngroups id (+ 1 ngroups) fn2-core)))
-                  (let ((fn2-core (fn2-machine-write-gcur id next fn2-core))) (mv :run fn2-core))))
-           (otherwise (mv :stop fn2-core)))))
-      (otherwise (mv :stop fn2-core)))))
-(fn2-core-preserves fn2-txn-group-step (id tx u ugen fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-count-step fn2-txn-group-step))
-(defun fn2-txn-declare-1 (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-        (mv :stop fn2-core))
-       (tx (fn2-machine-slot id fn2-core))
-       ;; declared already: resolve, one step per run
-       ((when (equal (fn2-txn-row-prepared id fn2-core) 1))
-        (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
-          (mv (case answer (:ok :ready) (:more :run) (otherwise :stop)) fn2-core)))
-       (u (fn2-txn-row-upload id fn2-core)) (ugen (fn2-txn-row-upload-gen id fn2-core))
-       ((unless (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)) (mv :stop fn2-core))
-       (source (fn2-upload-row-hashed u fn2-core))
-       (counted (max (fn2-upload-row-scan-off u fn2-core) (fn2-txn-row-counted id fn2-core)))
-       (lines (fn2-txn-row-lines id fn2-core))
-       ((when (< counted source)) (fn2-txn-count-step id u ugen counted source lines fn2-core))
-       ((when (< (fn2-txn-row-gcur id fn2-core) (fn2-upload-row-nl u fn2-core))) (fn2-txn-group-step id tx u ugen fn2-core))
-       ((when (equal (fn2-txn-row-ngroups id fn2-core) 0))
-        (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :group) fn2-core))) (mv :refused fn2-core)))
-       ((mv & inj) (fn2-txn-upload-words u fn2-core))
-       ((unless (equal inj 0)) (let ((fn2-core (fn2-machine-write-word id inj fn2-core))) (mv :refused fn2-core)))
-       (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
-       (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
-       ((mv in1 doff) (fn2-upload-digest-at source (fn2-upload-chunk-cap c0 fn2-core)))
-       ((mv fcode verdict & h & &) (fn2-identity-facts tx fn2-core))
-       ((unless (and (eq fcode :ok) (eq verdict :stored))) (mv :stop fn2-core))
-       ((mv code fn2-core)
-        (fn2-txn-put-post tx c0 g0 (fn2-upload-row-mo u fn2-core) (fn2-upload-row-ml u fn2-core) (if in1 c1 c0) (if in1 g1 g0)
-                          doff source lines u ugen h (fn2-txn-row-principal-slot id fn2-core) fn2-core))
-       ((unless (eq code :ok)) (mv :stop fn2-core)))
-    (let ((fn2-core (fn2-machine-write-prepared id 1 fn2-core))) (mv :run fn2-core))))
-(fn2-core-preserves fn2-txn-declare-1 (id fn2-core) :position 1 :rows nil)
-
-;; :ready, one transition (C-S3): stage every slot against the tip; on :ok
-;; admit the member (B-S2, the interim answers :not-served: refused
-;; :not-stored), and on the admission's :ok bind the slots into its batch
-;; with the member's commit position, which cannot fail. :full and an
-;; exhausted batch are backpressure (stay :ready, run again); :stale and a
-;; refused identity admission (the name was selected or the candidate moved
-;; since the decision) decide again.
-(defun fn2-txn-commit-1 (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-        (mv :stop fn2-core))
-       (tx (fn2-machine-slot id fn2-core))
-       ((mv scode & fn2-core) (fn2-successor-stage tx fn2-core)))
-    (case scode
-      (:ok
-       (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-             (mv :stop fn2-core))
-            (u (fn2-txn-row-upload id fn2-core)) (ugen (fn2-txn-row-upload-gen id fn2-core))
-            ((unless (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)) (mv :stop fn2-core))
-            ((mv acode batch event fn2-core)
-             (fn2-commit-admit-txn (fn2-upload-row-c0-slot u fn2-core) (fn2-upload-row-c0-gen u fn2-core)
-                                   (fn2-upload-row-hashed u fn2-core) *fn2-upload-kind* u ugen fn2-core)))
-         (case acode
-           (:ok (mv-let (bcode fn2-core) (fn2-successor-bind tx batch event fn2-core)
-                  (mv (if (eq bcode :ok) :batched :stop) fn2-core)))
-           (:admission (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :not-stored) fn2-core))) (mv :refused fn2-core)))
-           (:exhausted (mv :run fn2-core))
-           (otherwise (mv :stop fn2-core)))))
-      (:full (mv :run fn2-core))
-      ;; a run moved, or the identity admission's summary or candidate moved
-      ;; since the decision: decide again (the slots stay declared; :prepare
-      ;; resolves them again)
-      ((:stale :refused) (let ((fn2-core (fn2-machine-write-offered id 0 fn2-core))) (mv :lookup fn2-core)))
-      (:duplicate (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :duplicate) fn2-core))) (mv :refused fn2-core)))
-      (:capacity (let ((fn2-core (fn2-machine-write-word id (fn2-upload-word-code :unaffordable) fn2-core))) (mv :refused fn2-core)))
-      (otherwise (mv :stop fn2-core)))))
-(fn2-core-preserves fn2-txn-commit-1 (id fn2-core) :position 1 :rows nil)
-;; The two runs that charge more than another kind's cap (:prepare 8 KiB,
-;; :ready 16 KiB) end by asserting the row is still this kind's (the
-;; charge's guard is over the row's kind after the run): anything else is
-;; :stop, and the arm stops the core.
-(defun fn2-txn-kind-ok (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (and (fn2-machine-idp id fn2-core) (equal (fn2-machine-kind id fn2-core) *fn2-txn-kind*)))
-;; A phase write (the txn table) leaves the row's id and kind as they were.
-(defthm fn2-txn-idp-of-table-update
-  (equal (fn2-machine-idp id (update-fn2-txn-table x fn2-core)) (fn2-machine-idp id fn2-core))
-  :hints (("Goal" :in-theory (enable fn2-machine-idp))))
-(defthm fn2-txn-kind-of-table-update
-  (equal (fn2-machine-kind id (update-fn2-txn-table x fn2-core)) (fn2-machine-kind id fn2-core))
-  :hints (("Goal" :in-theory (enable fn2-machine-kind fn2-machine-idp))))
-(defthm fn2-txn-idp-of-refuse-write
-  (equal (fn2-machine-idp id (fn2-machine-refuse-write fn2-core)) (fn2-machine-idp id fn2-core))
-  :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-refuse-write fn2-core-stop))))
-(defthm fn2-txn-kind-of-refuse-write
-  (equal (fn2-machine-kind id (fn2-machine-refuse-write fn2-core)) (fn2-machine-kind id fn2-core))
-  :hints (("Goal" :in-theory (enable fn2-machine-kind fn2-machine-idp fn2-machine-refuse-write fn2-core-stop))))
-(defmacro fn2-txn-checked (name inner)
-  `(progn
-     (defun ,name (id fn2-core)
-       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (mv-let (next fn2-core) (,inner id fn2-core)
-         (if (fn2-txn-kind-ok id fn2-core) (mv next fn2-core) (mv :stop fn2-core))))
-     (fn2-core-preserves ,name (id fn2-core) :position 1 :rows nil)
-     (defthm ,(fn2-columns-sym name "-KIND")
-       (implies (not (equal (mv-nth 0 (,name id fn2-core)) :stop))
-                (and (fn2-machine-idp id (mv-nth 1 (,name id fn2-core)))
-                     (equal (fn2-machine-kind id (mv-nth 1 (,name id fn2-core))) *fn2-txn-kind*)))
-       :hints (("Goal" :in-theory (enable ,name fn2-txn-kind-ok))))))
-(fn2-txn-checked fn2-txn-declare fn2-txn-declare-1)
-(fn2-txn-checked fn2-txn-commit fn2-txn-commit-1)
-
-;; :accepted / :refused: the word (0: the connection left, nothing to post)
-;; to the connection, and the successor's slots and decision; :releasing
-;; then releases the claim (its FIFO's head takes it), and the drain lets the
-;; upload go: each run wakes one row. (mv next fn2-core).
-(defun fn2-txn-finish (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((unless (and (eq (fn2-txn-snapshot-read-code id fn2-core) :ok) (fn2-machine-idp id fn2-core)))
-        (mv :stop fn2-core))
-       (word (fn2-txn-row-word id fn2-core))
-       (tx (fn2-machine-slot id fn2-core))
-       ((mv & fn2-core)
-        (if (equal word 0) (mv :none fn2-core)
-          (fn2-conn-post-word (fn2-txn-row-conn id fn2-core) (fn2-txn-row-conn-gen id fn2-core)
-                              (fn2-txn-row-request id fn2-core) word fn2-core)))
-       ((mv rcode fn2-core) (fn2-successor-release tx fn2-core)))
-    (mv (if (eq rcode :ok) :releasing :stop) fn2-core)))
-(fn2-core-preserves fn2-txn-finish (id fn2-core) :position 1 :rows nil)
-(defun fn2-txn-unclaim-run (id fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (fn2-machine-idp id fn2-core)) (mv :stop fn2-core)
-    (mv-let (code fn2-core) (fn2-claim-release-core (fn2-machine-slot id fn2-core) fn2-core)
-      (mv (if (eq code :ok) :draining :stop) fn2-core))))
-(fn2-core-preserves fn2-txn-unclaim-run (id fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-begin fn2-txn-claim-walk fn2-txn-decide fn2-txn-declare-1 fn2-txn-commit-1 fn2-txn-declare
-                    fn2-txn-commit fn2-txn-finish fn2-txn-unclaim-run fn2-txn-kind-ok))
 ))
 
 ;; ------------------------------------------------------------------------
 ;; The transaction's continuations (materialized after the upload's).
 (defmacro fn2-txn-events ()
  '(progn
-(defmachine-callback fn2-txn-idle fn2-txn (id budget) 4
-  (fn2-machine-idle id fn2-core))
-(defmachine-callback fn2-txn-unreached fn2-txn (id budget) 4
-  (fn2-machine-refuse-phase id fn2-core))
-
-(defmachine-callback fn2-txn-admit fn2-txn (id budget) 4
-  (fn2-machine-with-work 256 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-begin id fn2-core)
-      (case next
-        (:reserve (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-reserve*))))
-                    (fn2-machine-result 256 *fn2-work-transition* 0 t fn2-core)))
-        (:idle (fn2-machine-result 256 *fn2-work-transition* 0 nil fn2-core))
-        (:draining (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-draining*))))
-                     (fn2-machine-result 256 *fn2-work-transition* 0 t fn2-core)))
-        (otherwise (fn2-machine-refuse-phase id fn2-core))))))
-
-(defmachine-callback fn2-txn-reserve fn2-txn (id budget) 4
-  (fn2-machine-with-work 4096 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-claim-walk id fn2-core)
-      (case next
-        (:lookup (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-lookup*))))
-                   (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core)))
-        (:run (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core))
-        (:idle (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core))
-        (otherwise (fn2-machine-refuse-phase id fn2-core))))))
-
-(defmachine-callback fn2-txn-lookup fn2-txn (id budget) 4
-  (fn2-machine-with-work 4096 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-decide id fn2-core)
-      (case next
-        (:run (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core))
-        (:idle (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core))
-        (:prepare (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-prepare*))))
-                    (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core)))
-        (:refused (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-refused*))))
-                    (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core)))
-        (otherwise (fn2-machine-refuse-phase id fn2-core))))))
-
-(defmachine-callback fn2-txn-slots fn2-txn (id budget) 4
-  (fn2-machine-with-work 8192 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-declare id fn2-core)
-      (case next
-        (:run (fn2-machine-result 8192 *fn2-work-transition* 0 t fn2-core))
-        (:ready (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-ready*))))
-                  (fn2-machine-result 8192 *fn2-work-transition* 0 t fn2-core)))
-        (:refused (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-refused*))))
-                    (fn2-machine-result 8192 *fn2-work-transition* 0 t fn2-core)))
-        (otherwise (fn2-machine-refuse-phase id fn2-core))))))
-
-(defmachine-callback fn2-txn-ready fn2-txn (id budget) 4
-  (fn2-machine-with-work *fn2-txn-ready-bytes* *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-commit id fn2-core)
-      (case next
-        (:run (fn2-machine-result *fn2-txn-ready-bytes* *fn2-work-transition* 0 t fn2-core))
-        (:lookup (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-lookup*))))
-                   (fn2-machine-result *fn2-txn-ready-bytes* *fn2-work-transition* 0 t fn2-core)))
-        (:batched (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-batched*))))
-                    (fn2-machine-result *fn2-txn-ready-bytes* *fn2-work-transition* 0 nil fn2-core)))
-        (:refused (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-refused*))))
-                    (fn2-machine-result *fn2-txn-ready-bytes* *fn2-work-transition* 0 t fn2-core)))
-        (otherwise (fn2-machine-refuse-phase id fn2-core))))))
-
-(defmachine-callback fn2-txn-reply fn2-txn (id budget) 4
-  (fn2-machine-with-work 0 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-finish id fn2-core)
-      (if (eq next :releasing)
-          (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-releasing*))))
-            (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
-        (fn2-machine-refuse-phase id fn2-core)))))
-(defmachine-callback fn2-txn-unclaim fn2-txn (id budget) 4
-  (fn2-machine-with-work 0 *fn2-work-transition* 0
-    (mv-let (next fn2-core) (fn2-txn-unclaim-run id fn2-core)
-      (if (eq next :draining)
-          (let ((fn2-core (fn2-txn-put-core id (phase *fn2-txn-state-draining*))))
-            (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))
-        (fn2-machine-refuse-phase id fn2-core)))))
-
-;; :draining returns the row to its partition.
-(defmachine-callback fn2-txn-release fn2-txn (id budget) 4
-  :contract (:cost (:steps *fn2-work-release*)
-             :writes (generation upload upload-gen conn conn-gen next-free wait-reason)
-             :tables (fn2-core-machines) :next (:free :retired)
-             :uses (fn2-machine-gen-limit fn2-machine-free-head fn2-machine-reclaim-fn2-txn fn2-txn-wake-upload))
-  (b* ((gen row-generation) (u row-upload)
-       (retire (>= gen (fn2-machine-gen-limit fn2-core)))
-       (next (fn2-machine-free-head *fn2-txn-admission-ordinal* fn2-core))
-       (fn2-core (fn2-txn-put-core id
-                   (phase (if retire *fn2-txn-state-retired* *fn2-txn-state-free*))
-                   (generation (if retire gen (+ 1 gen)))
-                   (upload *fn2-none*) (upload-gen 0) (conn *fn2-none*) (conn-gen 0)
-                   (next-free next) (wait-reason *fn2-wait-none*)))
-       (fn2-core (fn2-machine-reclaim-fn2-txn id retire fn2-core))
-       (fn2-core (fn2-txn-wake-upload u id gen fn2-core)))
-    (fn2-machine-result 0 *fn2-work-release* 0 nil fn2-core)))
-(defmachine-callback fn2-txn-drain fn2-txn (id budget) 4
-  (fn2-call fn2-txn-release id budget))
-
+(defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)
 ))
 
