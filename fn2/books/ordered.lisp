@@ -51,3 +51,14 @@
  :key ((principal (:id principal)) (operation (:id operation)))
  :value ((request :digest) (outcome :u16) (event (:id event)))
  :merge :unique)
+
+; Consumer names (E's consumer port): a principal's registered wire name
+; (at most 64 octets) to the consumer identifier that keys
+; fn2-consumer-cursor. Unique: a second registration of (principal, name)
+; is refused at stage (:duplicate), so a name maps to one consumer for the
+; store's life. Written by register's transaction (D's txn port, :consumer
+; mode); E's cursor verbs read it by an exact lookup.
+(defrunschema fn2-consumer-names :id 15
+ :key ((principal (:id principal)) (name (:octets 64)))
+ :value ((consumer (:id consumer)))
+ :merge :unique)

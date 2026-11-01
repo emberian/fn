@@ -151,6 +151,9 @@ structure MachineDecl (S : Type) where
   cases : List (S × S × S)
   stops : List S
   stepForm : Bool
+  /-- phase-valued fields (G3, D F10): a field holding one of the kind's phases, with the subset
+  of phases it may hold -/
+  phaseFields : List (S × List S) := []
   common : Common S
   deriving Repr
 

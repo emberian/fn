@@ -208,7 +208,7 @@
                '(phase :bit-offset 0 :bit-width 8 :tags
                  ((0 :free) (1 :reserve) (2 :fill) (3 :patch) (4 :write)
                   (5 :write-result) (6 :fence) (7 :fence-result) (8 :reset)
-                  (9 :read) (10 :read-result) (11 :verify) (12 :next) (13 :stopped)))))))
+                  (9 :read) (10 :read-result) (11 :verify) (12 :next) (13 :stopped) (14 :refused)))))))
 
 (defun fn2-machine-refusal-control ()
   (declare (xargs :verify-guards nil))

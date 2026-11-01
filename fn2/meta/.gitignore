@@ -1,2 +1,3 @@
 .lake/
 emit/world.sexp
+emit/world-probe.sexp

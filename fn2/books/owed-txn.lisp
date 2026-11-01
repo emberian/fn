@@ -10,14 +10,16 @@
 (fn2-book-layer :d)
 
 ; Posting served with two upload windows of 4 KiB chunks and room for C's
-; engine (4 KiB arenas, the bind scratch).
+; engine (4 KiB arenas, the bind scratch), and twelve 64 KiB slots: the two
+; windows, the sealer's page workspace and the resident pages of the runs a
+; seeded POST seals (one per schema it writes, C §4a's five among them).
 ;; One group carried at genesis (S-GROUP): local.test is group 1.
 (defconst *fn2-txn-posting-profile*
  (put-assoc-equal :groups '(("local.test" . 1))
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-conn-wire-profile*))))))
+        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (12 . 65536)) *fn2-conn-wire-profile*))))))
 (defun fn2-txn-wire-solo (octets sizes)
   (declare (xargs :verify-guards nil))
   (car (nth 1 (fn2-conn-wire-run-in *fn2-txn-posting-profile* (list (list octets sizes))))))

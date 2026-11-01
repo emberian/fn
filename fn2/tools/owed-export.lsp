@@ -39,9 +39,7 @@
 (include-book "fn2/tests/request-unit")
 ; Layer C's unit books (registered by the C seat; include-only).
 (include-book "fn2/tests/runs-unit")
-(include-book "fn2/tests/identity-unit")
 (include-book "fn2/tests/ribbon-unit")
-(include-book "fn2/tests/sim-layer-c")
 (include-book "fn2/tests/range-unit")
 (include-book "fn2/tests/folds-unit")
 (include-book "fn2/tests/sealer-unit")

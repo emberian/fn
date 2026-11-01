@@ -4,7 +4,11 @@
 #   Fn2/Instances/LayerAWorld.lean  the closed subset's functions, translated (emit_embed.py)
 #   Fn2/Instances/LayerAKinds.lean  the kinds in the step language, translated (emit_embed.py)
 #   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations, by rfl (emit_embed.py)
-# Run from anywhere; needs fn2/books/reference certified (fn2/tools/certify.sh books/reference.lisp).
+# The registry is printed from reference (print-registry.lsp, world.sexp); the embedding from
+# reference plus the measure's probe book (print-probe.lsp, world-probe.sexp), so the probe kinds
+# are translated and measured beside the served ones.
+# Run from anywhere; needs fn2/books/reference and fn2/meta/emit/meta-probe certified
+# (fn2/tools/certify.sh books/reference.lisp meta/emit/meta-probe.lisp).
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$here/../../.." && pwd)
@@ -17,9 +21,13 @@ log=$(mktemp "${TMPDIR:-/tmp}/fn2-meta-print-XXXXXX")
 if ! grep -F 'FN2-META-PRINT-WORLD PASS' "$log" >/dev/null; then
   grep -F 'META ERROR' "$log" | head -40; tail -20 "$log"; echo "print-registry FAILED (log $log)"; exit 1
 fi
+"$ACL2" --timeout 900 < fn2/meta/emit/print-probe.lsp > "$log.probe" 2>&1 || :
+if ! grep -F 'FN2-META-PRINT-WORLD PASS' "$log.probe" >/dev/null; then
+  grep -F 'META ERROR' "$log.probe" | head -40; tail -20 "$log.probe"; echo "print-probe FAILED (log $log.probe)"; exit 1
+fi
 src=$(git -C "$root" rev-parse --short HEAD)
 python3 -I "$here/emit_lean.py" "$here/world.sexp" "$root/fn2/meta/Fn2/Instances/LayerA.lean" "dev $src"
-python3 -I "$here/emit_embed.py" "$here/world.sexp" "$root/fn2/meta/Fn2/Instances/LayerAWorld.lean" \
+python3 -I "$here/emit_embed.py" "$here/world-probe.sexp" "$root/fn2/meta/Fn2/Instances/LayerAWorld.lean" \
   "$root/fn2/meta/Fn2/Instances/LayerAKinds.lean" Fn2.Instances.LayerA \
   "$root/fn2/meta/Fn2/Instances/LayerAEqns1.lean" "$root/fn2/meta/Fn2/Instances/LayerAEqns2.lean" \
   "$root/fn2/meta/Fn2/Instances/LayerAEqns3.lean" "$root/fn2/meta/Fn2/Instances/LayerAEqns4.lean"

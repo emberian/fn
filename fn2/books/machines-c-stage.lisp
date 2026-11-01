@@ -79,47 +79,6 @@
  (fn2-ov-locate fn2-overlays-schema fn2-overlays-phase fn2-overlays-seq))
 (in-theory (disable fn2-succ-tip-scan))
 
-; Stage record slot S (slot I) of TX: decision TX's verdict against the
-; published state (as C-S1/C-S2: :stale, :duplicate, :evidence,
-; :identity-conflict-bound), its article and principal evaluated, its size.
-(defun fn2-succ-stage-record (tx i s b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-fields)
- (declare (xargs :stobjs (fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-fields)
-  :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-id-stamps-wfp fn2-id-stamps)
-              (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine) (fn2-fields-wfp fn2-fields)
-              (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-eval-args fn2-fields-rows)))))
- (b* (((unless (and (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)) (< 0 (fn2-id-engine-rows fn2-id-engine))
-                    (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (< i *fn2-succ-slots*) (natp b0)
-                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
-       (mv :bounds fn2-succ-slots fn2-fields))
-      ((unless (equal (fn2-id-decides-phase tx fn2-id-decides) *fn2-id-decide-phase-done*)) (mv :state fn2-succ-slots fn2-fields))
-      ((unless (equal (logand (nfix (fn2-succ-slots-set s fn2-succ-slots)) 3) 3)) (mv :state fn2-succ-slots fn2-fields))
-      (bucket (fn2-id-decides-bucket tx fn2-id-decides))
-      ((unless (< bucket (fn2-id-stamps-rows fn2-id-stamps))) (mv :bounds fn2-succ-slots fn2-fields))
-      ((unless (and (equal (fn2-id-stamps-gen bucket fn2-id-stamps) (fn2-id-decides-stamp tx fn2-id-decides))
-                    (equal (fn2-run-version 1 (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
-                           (fn2-id-decides-vrun tx fn2-id-decides))))
-       (mv :stale fn2-succ-slots fn2-fields))
-      ((when (equal (fn2-id-decides-exact tx fn2-id-decides) 1)) (mv :duplicate fn2-succ-slots fn2-fields))
-      ((when (equal (fn2-id-decides-exact tx fn2-id-decides) 2)) (mv :evidence fn2-succ-slots fn2-fields))
-      ((unless (< (fn2-id-decides-others tx fn2-id-decides) *fn2-identity-contents-max*))
-       (mv :identity-conflict-bound fn2-succ-slots fn2-fields))
-      (entry (+ b0 (* *fn2-succ-block* i)))
-      (fn2-fields (fn2-succ-eval-args 2 0 (+ entry *fn2-succ-raw*) (+ entry *fn2-succ-eval*) b0
-                                      (fn2-succ-slots-outs s fn2-succ-slots) 0 fn2-fields))
-      (mrow (+ b0 *fn2-idc-q* *fn2-id-mid*))
-      ((unless (< mrow (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
-      (mlen (fn2-fields-ref-len mrow fn2-fields))
-      (size (+ (nfix mlen) 32 *fn2-idc-entry-overhead*))
-      ((unless (and (<= size (nfix (fn2-id-engine-arena 0 fn2-id-engine))) (unsigned-byte-p 32 size)))
-       (mv :capacity fn2-succ-slots fn2-fields))
-      (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots)))
-  (mv :ok fn2-succ-slots fn2-fields)))
-(fn2-idc-fn-shape fn2-succ-stage-record (tx i s b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-fields)
- (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-fields) t
- (fn2-id-decides-phase fn2-id-decides-bucket fn2-id-decides-stamp fn2-id-decides-vrun fn2-id-decides-exact fn2-id-decides-others
-  fn2-id-stamps-gen fn2-run-version fn2-succ-slots-set fn2-succ-slots-outs fn2-fields-ref-len fn2-id-engine-arena fn2-succ-eval-args))
-
 ; Stage insert slot S (slot I) of TX: its entry from its args, its integer
 ; fields within their widths (:range), and, for a key resolve read, not held
 ; at the tip (:duplicate; a key with an :out or :event arg is fresh by
@@ -255,6 +214,10 @@
               (let ((fn2-fields (fn2-succ-copy-rows nv (+ entry *fn2-succ-res*) (+ entry nk) fn2-fields))) (mv :ok fn2-fields)))
              (t (let ((fn2-fields (fn2-succ-zero-rows nv (+ entry nk) fn2-fields))) (mv :ok fn2-fields)))))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
+      ;; the key from the args again: an overlay's decoded row names its key
+      ;; octets in the overlay's arena, and bind copies a fold row's key
+      ;; octets from the slot's own owner (equal octets: the scan matched)
+      (fn2-fields (fn2-succ-key-rows nk 0 nk sid kw nil args entry fn2-fields))
       ((mv code fn2-fields) (fn2-fold-assign sid kw entry args fn2-fields))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((mv code fn2-fields) (fn2-fold-apply sid kw entry args fn2-fields))
@@ -282,36 +245,34 @@
   fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh))
 
 ;; Every slot of TX from I (K of them), in order: (mv code i slots fields).
-(defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+(defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                              fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-overlays
+ (declare (xargs :stobjs (fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays
                           fn2-overlay-index fn2-fields fn2-pool) :measure (nfix k)
-  :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-id-stamps-wfp fn2-id-stamps)
+  :guard (and (fn2-succ-slots-wfp fn2-succ-slots)
               (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays)
               (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
               (natp i) (natp tx) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-record fn2-succ-stage-insert fn2-succ-stage-fold fn2-succ-slots-rows)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-insert fn2-succ-stage-fold fn2-succ-slots-rows)))))
  (b* (((unless (and (posp k) (natp i) (< i *fn2-succ-slots*))) (mv :ok 0 fn2-succ-slots fn2-fields))
       (s (+ (* (nfix tx) *fn2-succ-slots*) i))
       ((unless (< s (fn2-succ-slots-rows fn2-succ-slots))) (mv :bounds i fn2-succ-slots fn2-fields))
       (code (fn2-succ-slots-kind s fn2-succ-slots))
       ((mv c fn2-succ-slots fn2-fields)
        (cond ((equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*) (mv :ok fn2-succ-slots fn2-fields))
-             ((equal code *fn2-succ-kind-record*)
-              (fn2-succ-stage-record tx i s b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-fields))
              ((equal code *fn2-succ-kind-insert*)
               (fn2-succ-stage-insert i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
              (t (fn2-succ-stage-fold i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
       ((unless (eq c :ok)) (mv c i fn2-succ-slots fn2-fields)))
-  (fn2-succ-stage-slots (- k 1) (+ 1 i) tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+  (fn2-succ-stage-slots (- k 1) (+ 1 i) tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                         fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+(fn2-idc-fn-shape fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                                         fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-slots 2) (fn2-fields 3))
- (fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-stage-record fn2-succ-stage-insert fn2-succ-stage-fold))
+ (fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-stage-insert fn2-succ-stage-fold))
 (defthm fn2-succ-stage-slots-natp
- (natp (mv-nth 1 (fn2-succ-stage-slots k i tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+ (natp (mv-nth 1 (fn2-succ-stage-slots k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
  :hints (("Goal" :in-theory (enable fn2-succ-stage-slots))) :rule-classes :type-prescription)
 
@@ -361,7 +322,7 @@
 ; Hold the bind scratch (once): :ok, or :full when the pool has none.
 (defun fn2-idc-scratch (fn2-id-engine fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-pool) :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-pool-wfp fn2-pool)) :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
@@ -383,7 +344,7 @@
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool)
   :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-pool-wfp fn2-pool))
   :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
@@ -422,18 +383,18 @@
 
 ; Stage TX: every slot in order against the tip, then room. (mv code i ...):
 ; :ok (TX :staged: bind may follow in this transition); :stale (resolve
-; again; for its :record slot also decide again); :refused (slot I's fold
-; test failed); :range; :duplicate, :evidence, :identity-conflict-bound;
+; again); :refused (slot I's fold test failed); :range; :duplicate (a
+; :unique key present); :inconsistent (a :union key with another payload);
 ; :full (no room now: backpressure); :capacity; :state (TX not resolved, or
 ; a slot's args incomplete). I names the slot.
-(defun fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+(defun fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-slots fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
                                             fn2-overlays-rows fn2-overlay-index-rows)))))
- (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides)
-                    (fn2-id-stamps-wfp fn2-id-stamps) (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine)
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots)
+                    (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine)
                     (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields)
                     (fn2-pool-wfp fn2-pool) (< 0 (fn2-id-engine-rows fn2-id-engine))))
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
@@ -444,7 +405,7 @@
        (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns))
       ((mv code i fn2-succ-slots fn2-fields)
-       (fn2-succ-stage-slots *fn2-succ-slots* 0 tx b0 fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+       (fn2-succ-stage-slots *fn2-succ-slots* 0 tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                              fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code i fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       (orows (fn2-overlays-rows fn2-overlays))
@@ -458,15 +419,14 @@
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-staged* fn2-succ-txns)))
   (mv :ok 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine
+(fn2-idc-fn-shape fn2-succ-stage (tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
                                   fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-stamps fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-succ-txns-phase fn2-succ-txns-ri fn2-id-engine-arena fn2-succ-stage-slots fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares))
 
 ; Field F of slot I's staged row (D reads the assigned group number here
-; before admission): (mv code value); a record slot's and an octet field are
-; :kind.
+; before admission): (mv code value); an octet field is :kind.
 (defun fn2-succ-out (tx i f b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields))) (mv :state 0))
@@ -480,7 +440,7 @@
       (s (+ (* tx *fn2-succ-slots*) i)) (sid (fn2-succ-slots-sid s fn2-succ-slots))
       ((when (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*)) (mv :state 0))
       ((unless (< f (min *fn2-succ-fields-max* (fn2-run-layout-fields sid 0)))) (mv :bounds 0))
-      ((when (or (equal (fn2-succ-slots-kind s fn2-succ-slots) *fn2-succ-kind-record*) (fn2-run-layout-octets-max sid f))) (mv :kind 0)))
+      ((when (fn2-run-layout-octets-max sid f)) (mv :kind 0)))
   (if (< (+ b0 (* *fn2-succ-block* i) f) (fn2-fields-rows fn2-fields))
       (mv :ok (fn2-fields-value (+ b0 (* *fn2-succ-block* i) f) fn2-fields))
     (mv :bounds 0))))
@@ -488,7 +448,7 @@
 ; Whether fold slot I of TX applied at its last stage: (mv code verdict),
 ; verdict :applied, or :unchanged when its event's :when failed under
 ; :unless-when :unchanged (the slot binds nothing). :state unless TX has
-; staged and the slot is in use; :kind for an insert or record slot.
+; staged and the slot is in use; :kind for an insert slot.
 (defun fn2-succ-applied (tx i fn2-succ-txns fn2-succ-slots)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots) :guard t))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots))) (mv :state nil))
@@ -500,7 +460,7 @@
        (mv :state nil))
       (s (+ (* tx *fn2-succ-slots*) i)) (kcode (fn2-succ-slots-kind s fn2-succ-slots))
       ((when (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*)) (mv :state nil))
-      ((when (or (equal kcode *fn2-succ-kind-insert*) (equal kcode *fn2-succ-kind-record*))) (mv :kind nil)))
+      ((when (equal kcode *fn2-succ-kind-insert*)) (mv :kind nil)))
   (mv :ok (if (equal (fn2-succ-slots-unchanged s fn2-succ-slots) 1) :unchanged :applied))))
 
 ; Fill late octet arg J of insert slot I of TX (C-S3a): LEN octets at [OFF,

@@ -56,7 +56,7 @@
       ((mv & slot gen fn2-core) (fn2-core-reserve 1 5 1 1 fn2-core))
       ((mv long & fn2-core) (fn2-group-lookup 0 slot gen 0 251 5 1 1 4096 fn2-core))
       ((mv & fn2-core) (fn2-gu-write (make-list 32 :initial-element 7) slot gen 0 fn2-core))
-      ((mv & fn2-core) (fn2-identity-offer 1 slot gen 0 20 slot gen 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-identity-decide-start 1 slot gen 0 20 slot gen 0 5 1 1 fn2-core))
       ((mv busy & fn2-core) (fn2-group-lookup 1 slot gen 0 8 5 1 1 4096 fn2-core))
       (twice (put-assoc-equal :groups '(("a.b" . 1) ("a.b" . 2)) *fn2-gu-profile*))
       (fn2-core (fn2-core-init twice fn2-core))
@@ -79,8 +79,8 @@
 ;; S-OUTCOME and S-ARTICLE-ID. Transaction 0 writes, in one batch: the
 ; outcome of (principal 3, operation 5) (request digest by reference, reply
 ; 240, the event), and the article row keyed by the commit position (:event
-; on its key). Its identity record takes the article as :event too; the
-; principal never (:kind). After publication the bound identity fact's
+; on its key). Its article index entry (C §4a) takes the article as :event
+; too; its name octets never (:kind). After publication the index entry's
 ; article is the event, 42, and a second transaction's outcome for (3, 5)
 ; is :duplicate at stage.
 (defconst *fn2-gu-mid* (append (list 60) (make-list 12 :initial-element 98) (list 64 120 62)))
@@ -92,7 +92,7 @@
 (defun fn2-gu-decide (fuel d fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (zp fuel) (mv :fuel fn2-core)
-  (mv-let (answer fn2-core) (fn2-identity-step d 4096 fn2-core)
+  (mv-let (answer fn2-core) (fn2-identity-decide d 4096 fn2-core)
    (if (eq answer :more) (fn2-gu-decide (- fuel 1) d fn2-core) (mv answer fn2-core)))))
 (defun fn2-gu-outcome (tx i dslot dgen fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -103,7 +103,7 @@
       ((mv c5 fn2-core) (fn2-successor-arg tx i 3 :value 240 fn2-core))
       ((mv c6 fn2-core) (fn2-successor-arg tx i 4 :event 0 fn2-core)))
   (mv (list c1 c2 c3 c4 c5 c6) fn2-core)))
-; The article field of the identity fact in the newest published identity
+; The article field of the article index entry in the newest published index
 ; overlay (its entry 0), decoded into transaction 1's stripe.
 (defun fn2-gu-bound-article (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -111,10 +111,10 @@
              (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code article fn2-fields)
   (b* ((rows (fn2-overlays-rows fn2-overlays))
-       (o (fn2-xl-newest-frozen rows 0 1 *fn2-u60-max* rows fn2-overlays))
+       (o (fn2-xl-newest-frozen rows 0 14 *fn2-u60-max* rows fn2-overlays))
        (eb (- (fn2-fields-rows fn2-fields) 200))
        ((mv code & fn2-fields) (fn2-ov-entry o 0 eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-   (mv code (fn2-fields-value (+ eb *fn2-identity-entry-field-article*) fn2-fields) fn2-fields))
+   (mv code (fn2-fields-value (+ eb *fn2-identity-article-entry-field-article*) fn2-fields) fn2-fields))
   (mv code article fn2-core)))
 (defun fn2-gu-ids (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -123,12 +123,14 @@
       ((mv & dslot dgen fn2-core) (fn2-core-reserve 1 5 1 1 fn2-core))
       ((mv & fn2-core) (fn2-gu-write *fn2-gu-mid* mslot mgen 0 fn2-core))
       ((mv & fn2-core) (fn2-gu-write (make-list 32 :initial-element 7) dslot dgen 0 fn2-core))
-      ((mv & fn2-core) (fn2-identity-offer 0 mslot mgen 0 (len *fn2-gu-mid*) dslot dgen 0 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 (len *fn2-gu-mid*) dslot dgen 0 5 1 1 fn2-core))
       ((mv a1 fn2-core) (fn2-gu-decide 100 0 fn2-core))
-      ((mv & fn2-core) (fn2-successor-put 0 0 1 :record fn2-core))
-      ((mv e1 fn2-core) (fn2-successor-arg 0 0 0 :event 0 fn2-core))
+      ((mv & fn2-core) (fn2-successor-put 0 0 14 :insert fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 0 0 :value 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg-octets 0 0 1 mslot mgen 0 (len *fn2-gu-mid*) 5 1 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 0 2 :value 1 fn2-core))
+      ((mv e1 fn2-core) (fn2-successor-arg 0 0 3 :event 0 fn2-core))
       ((mv e2 fn2-core) (fn2-successor-arg 0 0 1 :event 0 fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 0 1 :value 3 fn2-core))
       ((mv o1 fn2-core) (fn2-gu-outcome 0 1 dslot dgen fn2-core))
       ((mv & fn2-core) (fn2-successor-put 0 2 2 :insert fn2-core))
       ((mv e3 fn2-core) (fn2-successor-arg 0 2 0 :event 0 fn2-core))

@@ -1,4 +1,4 @@
-; Q1 controls: the assembled catalogue is E1's 39 labels plus the listener's
+; Q1 controls: the assembled catalogue is E1's 39 labels and the scribe's :refused plus the listener's
 ; :admitting phase (R7's split, agreed with layer D) plus B's 15 commit labels
 ; (a pinned regression; conn's :query and the cursor's eight phases since D6
 ; 1/n,
@@ -20,7 +20,7 @@
     (:run fn2-scribe :patch) (:run fn2-scribe :write) (:run fn2-scribe :write-result)
     (:run fn2-scribe :fence) (:run fn2-scribe :fence-result) (:run fn2-scribe :reset)
     (:run fn2-scribe :read) (:run fn2-scribe :read-result) (:run fn2-scribe :verify)
-    (:run fn2-scribe :next) (:run fn2-scribe :stopped)
+    (:run fn2-scribe :next) (:run fn2-scribe :stopped) (:run fn2-scribe :refused)
     (:observe fn2-scribe :write-result) (:observe fn2-scribe :fence-result)
     (:observe fn2-scribe :read-result)
     (:run fn2-commit :free) (:run fn2-commit :collect) (:run fn2-commit :seal)
@@ -55,10 +55,10 @@
     (:executor :service 0) (:executor :service 1) (:executor :service 2)
     (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 110))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 111))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 110 :bound 110 :unmatched nil
+        '(:required 111 :bound 111 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))

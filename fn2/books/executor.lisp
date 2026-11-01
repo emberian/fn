@@ -190,13 +190,42 @@
   (fn2-concrete-turn fn2-core))
 (fn2-core-preserves fn2-turn (fn2-core) :position 4 :rows nil)
 
-(defun fn2-exec-start-listeners (left id fn2-core)
+;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
+;; each of its rows at init, from the row's initial phase, so a row's first
+;; writes and moves are an arm's; a runnable answer wakes the row. No turn is
+;; running: the arm's charge is its bound, checked against the kind's caps at
+;; defmachine-run, and nothing is charged. A directory row whose kind does not
+;; read stops the core.
+(defun fn2-exec-genesis-clauses (names code world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let ((gen (fn2-machine-property (car names) :genesis-arm world))
+          (budget (fn2-machine-property (car names) :budget world)))
+      (append (and gen
+                   `((,code (mv-let (bytes steps descriptors runnable fn2-core)
+                              (,(cadr (car gen)) id ,(nfix (fn2-arm-get :bytes budget)) fn2-core)
+                              (declare (ignore bytes steps descriptors))
+                              (if runnable (fn2-exec-wake id fn2-core) fn2-core)))))
+              (fn2-exec-genesis-clauses (cdr names) (+ 1 code) world)))))
+(make-event
+ `(defun fn2-exec-genesis-row (id fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (not (eq (fn2-machine-kind-read-code id fn2-core) :ok))
+        (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)
+      (case (fn2-machine-kind id fn2-core)
+        ,@(fn2-exec-genesis-clauses (fn2-machine-names (w state)) 0 (w state))
+        (otherwise fn2-core)))))
+(fn2-core-preserves fn2-exec-genesis-row (id fn2-core) :rows nil :prefix "")
+(defun fn2-exec-genesis (left id fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
                   :guard (and (fn2-core-wfp fn2-core) (natp left) (natp id))))
   (if (zp left) fn2-core
-    (let ((fn2-core (fn2-exec-wake id fn2-core)))
-      (fn2-exec-start-listeners (- left 1) (+ id 1) fn2-core))))
-(fn2-core-preserves fn2-exec-start-listeners (left id fn2-core) :rows nil :prefix "")
+    (let ((fn2-core (fn2-exec-genesis-row id fn2-core)))
+      (fn2-exec-genesis (- left 1) (+ 1 (nfix id)) fn2-core))))
+(fn2-core-preserves fn2-exec-genesis (left id fn2-core) :rows nil :prefix "")
+(defun fn2-exec-rows (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-machines (fn2-core-machines fn2-core))) (n) (fn2-machines-rows fn2-machines) n))
 
 ; Bookings the listeners hold (D7's S1): a listener with an Accept outstanding
 ; holds one :connection-row booking on its principal for the connection it is
@@ -238,8 +267,7 @@
        (fn2-core (fn2-listener-set-target-all
                   (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
        (fn2-core (fn2-listener-set-principals (fn2-profile-get :listener-principals profile) fn2-core))
-       (fn2-core (fn2-exec-start-listeners (fn2-machine-accept-count fn2-core)
-                   (fn2-machine-kind-base *fn2-listener-kind* fn2-core) fn2-core))
+       (fn2-core (fn2-exec-genesis (fn2-exec-rows fn2-core) 0 fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core)))
     (fn2-exec-wake wake fn2-core)))
