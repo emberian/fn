@@ -19,7 +19,7 @@
     integerp unsigned-byte-p 1+ 1- floor mod logand logior ash not
     binary-+ binary-* unary-- null))
 (defconst *fn2-arm-control* '(if cond and or mv prog2$ progn case))
-(defconst *fn2-arm-keys* '(:cost :writes :tables :next :uses :language :on-refusal))
+(defconst *fn2-arm-keys* '(:cost :writes :tables :next :uses :language :on-refusal :paths))
 ; The emitter's own stop branches (refused snapshots) may set the stop
 ; reason; every arm may therefore change the control child.
 (defconst *fn2-arm-implicit-tables* '(fn2-core-control))
@@ -611,11 +611,20 @@
                       (msg "uses ~x0, which gives a ~x1 row ~x2 while moving it ~x3 -> ~x4 needs ~x5."
                            name kind given (cadr target) (caddr target) gain))))
           (fn2-arm-target-problem (cdr uses) world)))))
-(defun fn2-arm-resource-problem (sources nexts holds uses world)
+(defun fn2-arm-transfer-kinds (effects)
+  ; the kinds every :transfer gives up, whatever its receiver
+  (declare (xargs :verify-guards nil))
+  (if (atom effects) nil
+    (append (and (consp (car effects)) (eq (caar effects) :transfer) (fn2-arm-get :to (cddar effects)) (cadar effects))
+            (fn2-arm-transfer-kinds (cdr effects)))))
+;; TRANSFERSP (a path's check, G3 F14): a transfer to another row is the
+;; giver's release too
+(defun fn2-arm-resource-problem-1 (sources nexts holds uses world transfersp)
   (declare (xargs :verify-guards nil))
   (let* ((effects (fn2-arm-uses-effects uses world))
          (acquires (fn2-arm-minus (fn2-arm-effect-kinds effects '(:acquire) nil) *fn2-arm-transient-kinds*))
-         (releases (fn2-arm-effect-kinds effects '(:release :transfer) nil))
+         (releases (append (fn2-arm-effect-kinds effects '(:release :transfer) nil)
+                           (and transfersp (fn2-arm-transfer-kinds effects))))
          (moves (fn2-arm-moves sources nexts holds)))
     (cond ((fn2-arm-per-use-missing uses world)
            (msg "uses ~x0 without naming its per-use effect: write (~x0 :effects ...)."
@@ -628,6 +637,92 @@
            (msg "releases ~x0, which no move to a declared successor gives up (an undeclared resource effect)."
                 (fn2-arm-minus releases (fn2-arm-moved-kinds moves nil))))
           (t (fn2-arm-target-problem uses world)))))
+(defun fn2-arm-resource-problem (sources nexts holds uses world)
+  (declare (xargs :verify-guards nil))
+  (fn2-arm-resource-problem-1 sources nexts holds uses world nil))
+; ----------------------------------------------------------------------
+; Per-path holds (G3, D F14). A generated arm's contract lists its :paths,
+; (SOURCES ENDS USES ENTRY SETS STOP) (machine-arms.lisp), and D0 checks each
+; path on its own: from each phase it can start in to each it can end in,
+; its own calls acquire exactly what the move gains and release exactly what
+; it gives up. A conditional hold (PHASE K F V ...) of WHILE holds K in PHASE
+; while the enum field F is one of V; the path's tests fix F at entry (else
+; every value of DOMS is checked) and its writes fix F at its end. A path
+; that stops the core moves nothing.
+(defun fn2-arm-while-holds (phase vals while)
+  ; the kinds WHILE holds in PHASE under the field values VALS ((F . V) ...)
+  (declare (xargs :verify-guards nil))
+  (if (atom while) nil
+    (let ((w (car while)))
+      (append (and (consp w) (eq (car w) phase) (consp (cdr w)) (consp (cddr w))
+                   (member-eq (cdr (assoc-eq (caddr w) vals)) (cdddr w)) (list (cadr w)))
+              (fn2-arm-while-holds phase vals (cdr while))))))
+(defun fn2-arm-assign-cons (f v rests)
+  (declare (xargs :verify-guards nil))
+  (if (atom rests) nil (cons (acons f v (car rests)) (fn2-arm-assign-cons f v (cdr rests)))))
+(defun fn2-arm-assign-each (f vs rests)
+  (declare (xargs :verify-guards nil))
+  (if (atom vs) nil (append (fn2-arm-assign-cons f (car vs) rests) (fn2-arm-assign-each f (cdr vs) rests))))
+(defun fn2-arm-assignments (doms)
+  ; every ((F . V) ...) choosing one V of each (F V ...) in DOMS
+  (declare (xargs :verify-guards nil))
+  (if (atom doms) (list nil)
+    (fn2-arm-assign-each (caar doms) (cdar doms) (fn2-arm-assignments (cdr doms)))))
+(defun fn2-arm-entry-doms (doms entry)
+  (declare (xargs :verify-guards nil))
+  (if (atom doms) nil
+    (cons (or (assoc-eq (caar doms) entry) (car doms)) (fn2-arm-entry-doms (cdr doms) entry))))
+(defun fn2-arm-end-doms (doms sets a)
+  ; each field at the path's end: its write, any value (:any), or its entry value in A
+  (declare (xargs :verify-guards nil))
+  (if (atom doms) nil
+    (let* ((f (caar doms)) (s (assoc-eq f sets)))
+      (cons (cond ((null s) (list f (cdr (assoc-eq f a))))
+                  ((eq (cdr s) :any) (car doms))
+                  (t (list f (cdr s))))
+            (fn2-arm-end-doms (cdr doms) sets a)))))
+(defun fn2-arm-holds-under (phase a holds while)
+  (declare (xargs :verify-guards nil))
+  (append (fn2-arm-holds-of phase holds) (fn2-arm-while-holds phase a while)))
+(defun fn2-arm-path-end-problem (s srch e a endas uses holds while world)
+  ; the move S -> E under every end assignment
+  (declare (xargs :verify-guards nil))
+  (if (atom endas) nil
+    (let ((p (fn2-arm-resource-problem-1 '(:path-from) '(:path-to)
+                                         (list (cons :path-from srch)
+                                               (cons :path-to (fn2-arm-holds-under e (car endas) holds while)))
+                                         uses world t)))
+      (if p (msg "on a path ~x0 -> ~x1~@2 calling ~x3: ~@4" s e
+                 (if a (msg " (at entry ~x0, at its end ~x1)" a (car endas)) "")
+                 (fn2-arm-use-names uses) p)
+        (fn2-arm-path-end-problem s srch e a (cdr endas) uses holds while world)))))
+(defun fn2-arm-path-ends-problem-all (s srch ends a endas uses holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom ends) nil
+    (or (fn2-arm-path-end-problem s srch (car ends) a endas uses holds while world)
+        (fn2-arm-path-ends-problem-all s srch (cdr ends) a endas uses holds while world))))
+(defun fn2-arm-path-entries-problem (s as path doms holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom as) nil
+    (let* ((a (car as)) (ends (if (eq (cadr path) :stay) (list s) (cadr path)))
+           (endas (fn2-arm-assignments (fn2-arm-end-doms doms (nth 4 path) a))))
+      (or (fn2-arm-path-ends-problem-all s (fn2-arm-holds-under s a holds while) ends a endas (caddr path) holds while world)
+          (fn2-arm-path-entries-problem s (cdr as) path doms holds while world)))))
+(defun fn2-arm-path-sources-problem (sources path doms holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom sources) nil
+    (or (fn2-arm-path-entries-problem (car sources) (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path)))
+                                      path doms holds while world)
+        (fn2-arm-path-sources-problem (cdr sources) path doms holds while world))))
+(defun fn2-arm-paths-problem (sources paths doms holds while world)
+  ; SOURCES the arm's phases, DOMS ((F V ...) ...) the conditional fields' values
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) nil
+    (let ((path (car paths)))
+      (or (and (not (nth 5 path))
+               (fn2-arm-path-sources-problem (if (eq (car path) :any) sources (intersection-eq (car path) sources))
+                                             path doms holds while world))
+          (fn2-arm-paths-problem sources (cdr paths) doms holds while world)))))
 ; The same declarations as D0's effect rows, for D0's checker.
 ;; One row per operation reached (through forwarded callbacks), each from
 ;; the holds of the arm's source phase: alternative paths are separate rows.
