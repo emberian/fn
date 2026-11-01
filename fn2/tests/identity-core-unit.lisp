@@ -1,5 +1,6 @@
-; Layer C in the served core: the identity decision (C-S1) through the core
-; wrappers fn2-identity-offer and fn2-identity-step, and a transaction's
+; Layer C in the served core: the identity decision (C-S1, C §4a) through
+; the core wrappers fn2-identity-decide-start, fn2-identity-decide and
+; fn2-identity-facts, and a transaction's
 ; writes through the private successor (C-S3: fn2-successor-put / -arg /
 ; -arg-octets / -resolve / -stage / -out / -bind / -release / -publish /
 ; -drop), on the real assembled core under the tiny profile (two
@@ -18,17 +19,17 @@
 (defun fn2-icu-drive (fuel d fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (zp fuel) (mv :fuel 0 fn2-core)
-  (mv-let (answer fn2-core) (fn2-identity-step d 4096 fn2-core)
+  (mv-let (answer fn2-core) (fn2-identity-decide d 4096 fn2-core)
    (if (eq answer :more)
        (mv-let (a n fn2-core) (fn2-icu-drive (- fuel 1) d fn2-core) (mv a (+ 1 n) fn2-core))
      (mv answer 1 fn2-core)))))
 (defconst *fn2-icu-mid* (append (list 60) (make-list 40 :initial-element 97) (list 64 120 62)))
 
-; Decision 1 of a fresh node: the offer is :stored (no fact is visible), in
-; three steps (no overlay, no run, the answer); a second offer to the busy row is
-; refused :state, an offer to a row past the profile's two is :bounds, and
-; a released row takes an offer again. A Message-ID longer than 250 octets
-; is refused :bounds before anything is staged.
+; Decision 1 of a fresh node: the offer is :stored (no fact is visible): two
+; exact reads, each over no overlay and no run; a second start on the busy
+; row is refused :state, a start on a row past the profile's two :bounds, a
+; Message-ID longer than 250 octets :bounds. A done decision answers its
+; verdict again; a released row is idle (:state) and takes a start again.
 (defun fn2-icu-run (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
@@ -36,43 +37,49 @@
       ((mv c2 dslot dgen fn2-core) (fn2-core-reserve 1 5 1 1 fn2-core))
       ((mv c3 fn2-core) (fn2-icu-write *fn2-icu-mid* mslot mgen 0 fn2-core))
       ((mv c4 fn2-core) (fn2-icu-write (make-list 32 :initial-element 7) dslot dgen 0 fn2-core))
-      ((mv offer fn2-core) (fn2-identity-offer 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
-      ((mv busy fn2-core) (fn2-identity-offer 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
-      ((mv past fn2-core) (fn2-identity-offer 2 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
-      ((mv long fn2-core) (fn2-identity-offer 0 mslot mgen 0 251 dslot dgen 0 5 1 1 fn2-core))
+      ((mv offer fn2-core) (fn2-identity-decide-start 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
+      ((mv busy fn2-core) (fn2-identity-decide-start 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
+      ((mv past fn2-core) (fn2-identity-decide-start 2 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
+      ((mv long fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 251 dslot dgen 0 5 1 1 fn2-core))
+      ((mv early & & & & &) (fn2-identity-facts 1 fn2-core))
       ((mv answer steps fn2-core) (fn2-icu-drive 100 1 fn2-core))
-      ((mv again fn2-core) (fn2-identity-step 1 4096 fn2-core))
+      ((mv fc verdict selection h evidence coverage) (fn2-identity-facts 1 fn2-core))
+      ((mv again fn2-core) (fn2-identity-decide 1 4096 fn2-core))
       ((mv rel fn2-core) (fn2-successor-release 1 fn2-core))
-      ((mv idle fn2-core) (fn2-identity-step 1 4096 fn2-core))
-      ((mv reoffer fn2-core) (fn2-identity-offer 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
+      ((mv idle fn2-core) (fn2-identity-decide 1 4096 fn2-core))
+      ((mv reoffer fn2-core) (fn2-identity-decide-start 1 mslot mgen 0 (len *fn2-icu-mid*) dslot dgen 0 5 1 1 fn2-core))
       ((mv answer2 & fn2-core) (fn2-icu-drive 100 1 fn2-core)))
-  (mv (list :setup (list c1 c2 c3 c4) :offer offer :busy busy :past past :long long
-            :answer answer :steps steps :again again :release rel :idle idle :reoffer reoffer :answer2 answer2)
+  (mv (list :setup (list c1 c2 c3 c4) :offer offer :busy busy :past past :long long :early early
+            :answer answer :steps steps :facts (list fc verdict selection h evidence coverage)
+            :again again :release rel :idle idle :reoffer reoffer :answer2 answer2)
       fn2-core)))
 (defun fn2-icu-result ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-icu-run fn2-core) r)))
 (assert-event
  (equal (fn2-icu-result)
-        '(:setup (:ok :ok :ok :ok) :offer :ok :busy :state :past :bounds :long :bounds
-          :answer :stored :steps 3 :again :stored :release :ok :idle :state :reoffer :ok :answer2 :stored)))
+        '(:setup (:ok :ok :ok :ok) :offer :ok :busy :state :past :bounds :long :bounds :early :state
+          :answer :stored :steps 6 :facts (:ok :stored :none 0 :none :complete)
+          :again :stored :release :ok :idle :state :reoffer :ok :answer2 :stored)))
 
-;; C-S3, the identity case (C-S2's scenario through the seam that replaced
-; it). A profile with 4 KiB pool slots for the engine's arenas and scratch.
-; Offers m (content 7) and decide: :stored; a record slot, staged, bound into
-; batch 1. A second decision for m (content 7), decided while batch 1 is
-; private, answers :stored (the successor is invisible) and its stage refuses
-; :stale once batch 1 is published (its bucket moved); releasing the bound
-; transaction is refused :state. Decided again after publication: :duplicate.
-; Content 8 for m: :conflict, bound into batch 2 as evidence, published;
-; re-offered: :evidence. Message-ID n bound into batch 3, which is dropped: n
-; is :stored again.
+;; C-S3, the identity case (C §4a). A profile with 4 KiB pool slots for the
+; engine's arenas and scratch. Offer m (content 7): :stored; admitted as a
+; local acceptance (five slots), staged, bound into batch 1. A second
+; decision for m (content 7), decided while batch 1 is private, answers
+; :stored (the successor is invisible); releasing the bound transaction is
+; refused :state; once batch 1 is published its admission is refused at the
+; summary (slot 2: the name is selected). Decided again: :duplicate.
+; Content 8 for m: :conflict (selection :other, no candidate); admitted as
+; evidence only, bound into batch 2, published; offered again: :evidence
+; (candidate 2, qualified). Message-ID n bound into batch 3, which is
+; dropped: n is :stored again.
 (defconst *fn2-icu-profile*
- (put-assoc-equal :identity-arena-bytes 4096
-  (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096)) *fn2-profile-tiny*)))
+ (put-assoc-equal :identity-overlays 24
+  (put-assoc-equal :identity-arena-bytes 4096
+   (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (40 . 4096)) *fn2-profile-tiny*))))
 (defun fn2-icu-decide (d mslot mgen mlen dslot dgen fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
- (b* (((mv code fn2-core) (fn2-identity-offer d mslot mgen 0 mlen dslot dgen 0 5 1 1 fn2-core))
+ (b* (((mv code fn2-core) (fn2-identity-decide-start d mslot mgen 0 mlen dslot dgen 0 5 1 1 fn2-core))
       ((unless (eq code :ok)) (mv (list :offer code) fn2-core))
       ((mv answer & fn2-core) (fn2-icu-drive 100 d fn2-core)))
   (mv answer fn2-core)))
@@ -81,17 +88,20 @@
  (if (zp fuel) (mv :fuel fn2-core)
   (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
    (if (eq answer :more) (fn2-icu-resolve (- fuel 1) tx fn2-core) (mv answer fn2-core)))))
-;; Slot 0 of TX records its decision's fact (article ARTICLE, principal 3); resolved.
-(defun fn2-icu-record (tx article fn2-core)
+;; TX's identity admission of its decision (principal 3), LOCAL 1 a local
+;; acceptance, 0 evidence only; resolved.
+(defun fn2-icu-identity (tx mslot mgen mlen dslot dgen local fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
- (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 1 :record fn2-core))
-      ((mv c2 fn2-core) (fn2-successor-arg tx 0 0 :value article fn2-core))
-      ((mv c3 fn2-core) (fn2-successor-arg tx 0 1 :value 3 fn2-core))
-      ((mv c4 fn2-core) (fn2-icu-resolve 40 tx fn2-core)))
-  (mv (if (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq c4 :ok)) :ok (list c1 c2 c3 c4)) fn2-core)))
+ (b* (((mv & & & h & &) (fn2-identity-facts tx fn2-core))
+      ((mv c1 fn2-core) (fn2-txn-put-identity tx mslot mgen 0 mlen dslot dgen 0 5 1 1 h 3 local fn2-core))
+      ((mv c2 fn2-core) (fn2-icu-resolve 40 tx fn2-core)))
+  (mv (if (and (eq c1 :ok) (eq c2 :ok)) :ok (list c1 c2)) fn2-core)))
 (defun fn2-icu-stage (tx fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (mv-let (code i fn2-core) (fn2-successor-stage tx fn2-core) (mv (if (eq code :ok) :ok (list code i)) fn2-core)))
+(defun fn2-icu-facts (tx fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (mv-let (c v s h e g) (fn2-identity-facts tx fn2-core) (list c v s h e g)))
 (defun fn2-icu-successor (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-icu-profile* fn2-core))
@@ -105,49 +115,55 @@
       ((mv & fn2-core) (fn2-icu-write (make-list 32 :initial-element 8) d8 g8 0 fn2-core))
       (len (len *fn2-icu-mid*))
       ((mv a1 fn2-core) (fn2-icu-decide 0 mslot mgen len d7 g7 fn2-core))
-      ((mv & fn2-core) (fn2-icu-record 0 100 fn2-core))
+      ((mv i1 fn2-core) (fn2-icu-identity 0 mslot mgen len d7 g7 1 fn2-core))
       ((mv s1 fn2-core) (fn2-icu-stage 0 fn2-core))
       ((mv b1 fn2-core) (fn2-successor-bind 0 1 1 fn2-core))
       ((mv a2 fn2-core) (fn2-icu-decide 1 mslot mgen len d7 g7 fn2-core))
       ((mv r0 fn2-core) (fn2-successor-release 0 fn2-core))
       ((mv p1 fn2-core) (fn2-successor-publish 1 fn2-core))
       ((mv r0b fn2-core) (fn2-successor-release 0 fn2-core))
-      ((mv & fn2-core) (fn2-icu-record 1 100 fn2-core))
+      ((mv & fn2-core) (fn2-icu-identity 1 mslot mgen len d7 g7 1 fn2-core))
       ((mv s2 fn2-core) (fn2-icu-stage 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 1 fn2-core))
       ((mv a3 fn2-core) (fn2-icu-decide 1 mslot mgen len d7 g7 fn2-core))
-      ((mv s3 fn2-core) (fn2-icu-stage 1 fn2-core))
+      (f3 (fn2-icu-facts 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-release 1 fn2-core))
       ((mv a4 fn2-core) (fn2-icu-decide 0 mslot mgen len d8 g8 fn2-core))
-      ((mv & fn2-core) (fn2-icu-record 0 101 fn2-core))
+      (f4 (fn2-icu-facts 0 fn2-core))
+      ((mv i4 fn2-core) (fn2-icu-identity 0 mslot mgen len d8 g8 0 fn2-core))
       ((mv s4 fn2-core) (fn2-icu-stage 0 fn2-core))
       ((mv b4 fn2-core) (fn2-successor-bind 0 2 2 fn2-core))
       ((mv p2 fn2-core) (fn2-successor-publish 2 fn2-core))
       ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
       ((mv a5 fn2-core) (fn2-icu-decide 0 mslot mgen len d8 g8 fn2-core))
+      (f5 (fn2-icu-facts 0 fn2-core))
       ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
       ((mv a6 fn2-core) (fn2-icu-decide 1 nslot ngen len d7 g7 fn2-core))
-      ((mv & fn2-core) (fn2-icu-record 1 102 fn2-core))
+      ((mv & fn2-core) (fn2-icu-identity 1 nslot ngen len d7 g7 1 fn2-core))
       ((mv s6 fn2-core) (fn2-icu-stage 1 fn2-core))
       ((mv b6 fn2-core) (fn2-successor-bind 1 3 3 fn2-core))
       ((mv x3 fn2-core) (fn2-successor-drop 3 fn2-core))
       ((mv r1 fn2-core) (fn2-successor-release 1 fn2-core))
       ((mv a7 fn2-core) (fn2-icu-decide 1 nslot ngen len d7 g7 fn2-core)))
-  (mv (list :first a1 s1 b1 :private a2 :release-bound r0 :publish p1 r0b :stale s2 :after a3 s3
-            :conflict a4 s4 b4 p2 :evidence a5 :dropped a6 s6 b6 x3 r1 a7)
+  (mv (list :first a1 i1 s1 b1 :private a2 :release-bound r0 :publish p1 r0b :selected s2 :after a3 f3
+            :conflict a4 f4 i4 s4 b4 p2 :evidence a5 f5 :dropped a6 s6 b6 x3 r1 a7)
       fn2-core)))
 (defun fn2-icu-successor-result ()
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-icu-successor fn2-core) r)))
 (assert-event
  (equal (fn2-icu-successor-result)
-        '(:first :stored :ok :ok :private :stored :release-bound :state :publish :ok :ok :stale (:stale 0)
-          :after :duplicate (:duplicate 0) :conflict :conflict :ok :ok :ok :evidence :evidence
+        '(:first :stored :ok :ok :ok :private :stored :release-bound :state :publish :ok :ok :selected (:refused 2)
+          :after :duplicate (:ok :duplicate :same 1 :qualified :complete)
+          :conflict :conflict (:ok :conflict :other 0 :none :complete) :ok :ok :ok :ok
+          :evidence :evidence (:ok :evidence :other 2 :qualified :complete)
           :dropped :stored :ok :ok :ok :ok :stored)))
 
 ;; C-S3, folds and inserts. A POST's writes in one transaction: the identity
-; fact (slot 0), the group's accept (slot 1: group 9, its number assigned
-; high + 1 at stage), the overview row (slot 2: number = slot 1's high by
-; :out, position = the commit position by :event, the line by reference).
+; admission (slots 0-4), the group's accept (slot 7: group 9, its number
+; assigned high + 1 at stage), the overview row (slot 8: number = slot 7's
+; high by :out, position = the commit position by :event, the line by
+; reference).
 ; The seam's refusals at put and arg. The accept's number is 1; a second
 ; transaction's accept in the same unpublished batch chains on the first's
 ; private row (2). After publication a withdrawal of a number past high is
@@ -179,30 +195,29 @@
       ((mv & fn2-core) (fn2-icu-write (make-list 20 :initial-element 83) lslot lgen 0 fn2-core))
       (len (len *fn2-icu-mid*))
       ((mv a1 fn2-core) (fn2-icu-decide 0 mslot mgen len d7 g7 fn2-core))
-      ((mv & fn2-core) (fn2-successor-put 0 0 1 :record fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 0 0 :value 200 fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 0 1 :value 3 fn2-core))
-      ((mv & fn2-core) (fn2-icu-accept 0 1 9 fn2-core))
-      ((mv & fn2-core) (fn2-successor-put 0 2 3 :insert fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 2 0 :value 9 fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 2 1 :out (+ 256 *fn2-icu-high*) fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 2 2 :value 200 fn2-core))
-      ((mv & fn2-core) (fn2-successor-arg 0 2 3 :event 0 fn2-core))
-      ((mv o1 fn2-core) (fn2-successor-arg-octets 0 2 4 lslot lgen 0 20 5 1 1 fn2-core))
-      ((mv v1 fn2-core) (fn2-successor-put 0 3 5 :insert fn2-core))
-      ((mv v2 fn2-core) (fn2-successor-put 0 3 3 :record fn2-core))
-      ((mv v3 fn2-core) (fn2-successor-put 0 3 3 :bogus fn2-core))
-      ((mv v4 fn2-core) (fn2-successor-put 0 3 99 :insert fn2-core))
-      ((mv v5 fn2-core) (fn2-successor-arg 0 1 1 :value 5 fn2-core))
-      ((mv v6 fn2-core) (fn2-successor-arg 0 2 1 :out 512 fn2-core))
-      ((mv v7 fn2-core) (fn2-successor-arg 0 2 4 :value 0 fn2-core))
+      ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
+      ((mv & fn2-core) (fn2-txn-put-identity 0 mslot mgen 0 len d7 g7 0 5 1 1 h 3 1 fn2-core))
+      ((mv & fn2-core) (fn2-icu-accept 0 7 9 fn2-core))
+      ((mv & fn2-core) (fn2-successor-put 0 8 3 :insert fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 8 0 :value 9 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 8 1 :out (+ (* 7 256) *fn2-icu-high*) fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 8 2 :value 200 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 8 3 :event 0 fn2-core))
+      ((mv o1 fn2-core) (fn2-successor-arg-octets 0 8 4 lslot lgen 0 20 5 1 1 fn2-core))
+      ((mv v1 fn2-core) (fn2-successor-put 0 9 5 :insert fn2-core))
+      ((mv v2 fn2-core) (fn2-successor-put 0 9 3 :record fn2-core))
+      ((mv v3 fn2-core) (fn2-successor-put 0 9 3 :bogus fn2-core))
+      ((mv v4 fn2-core) (fn2-successor-put 0 9 99 :insert fn2-core))
+      ((mv v5 fn2-core) (fn2-successor-arg 0 7 1 :value 5 fn2-core))
+      ((mv v6 fn2-core) (fn2-successor-arg 0 8 1 :out (* 8 256) fn2-core))
+      ((mv v7 fn2-core) (fn2-successor-arg 0 8 4 :value 0 fn2-core))
       ((mv u1 & fn2-core) (fn2-successor-stage 0 fn2-core))
       ((mv r1 fn2-core) (fn2-icu-resolve 40 0 fn2-core))
       ((mv s1 fn2-core) (fn2-icu-stage 0 fn2-core))
-      ((mv h1 n1) (fn2-successor-out 0 1 *fn2-icu-high* fn2-core))
-      ((mv & n2) (fn2-successor-out 0 2 *fn2-overview-entry-field-number* fn2-core))
+      ((mv h1 n1) (fn2-successor-out 0 7 *fn2-icu-high* fn2-core))
+      ((mv & n2) (fn2-successor-out 0 8 *fn2-overview-entry-field-number* fn2-core))
       ((mv b1 fn2-core) (fn2-successor-bind 0 4 10 fn2-core))
-      ((mv & n3) (fn2-successor-out 0 2 *fn2-overview-entry-field-position* fn2-core))
+      ((mv & n3) (fn2-successor-out 0 8 *fn2-overview-entry-field-position* fn2-core))
       ((mv & fn2-core) (fn2-icu-accept 1 0 9 fn2-core))
       ((mv & fn2-core) (fn2-icu-resolve 40 1 fn2-core))
       ((mv s2 fn2-core) (fn2-icu-stage 1 fn2-core))
@@ -318,16 +333,18 @@
 ; from 0 to batch 4's commit position 10 at its publication.
 (defconst *fn2-icu-sel* *fn2-identity-summary-entry-field-selected*)
 (defconst *fn2-icu-cand* *fn2-identity-summary-entry-field-candidates*)
+; :admit (namespace name ne nr est oldh): one new evidence row, no history
+; entry, OLDH 0 when the content is new (NC 1), else candidate 1.
 (defun fn2-icu-admit (tx nslot ngen nlen nc est fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 13 :admit fn2-core))
       ((mv c2 fn2-core) (fn2-successor-arg tx 0 0 :value 1 fn2-core))
       ((mv c3 fn2-core) (fn2-successor-arg-octets tx 0 1 nslot ngen 0 nlen 5 1 1 fn2-core))
       ((mv c4 fn2-core) (fn2-successor-arg tx 0 2 :value 1 fn2-core))
-      ((mv c5 fn2-core) (fn2-successor-arg tx 0 3 :value nc fn2-core))
-      ((mv c6 fn2-core) (fn2-successor-arg tx 0 4 :value 0 fn2-core))
-      ((mv c7 fn2-core) (fn2-successor-arg tx 0 5 :value est fn2-core))
-      ((mv c8 fn2-core) (fn2-successor-arg tx 0 6 :value 0 fn2-core))
+      ((mv c5 fn2-core) (fn2-successor-arg tx 0 3 :value 0 fn2-core))
+      ((mv c6 fn2-core) (fn2-successor-arg tx 0 4 :value est fn2-core))
+      ((mv c7 fn2-core) (fn2-successor-arg tx 0 5 :value (if (equal nc 1) 0 1) fn2-core))
+      (c8 :ok)
       ((mv c9 fn2-core) (fn2-icu-resolve 40 tx fn2-core)))
   (mv (if (equal (list c1 c2 c3 c4 c5 c6 c7 c8 c9) '(:ok :ok :ok :ok :ok :ok :ok :ok :ok)) :ok (list c1 c2 c3 c4 c5 c6 c7 c8 c9))
       fn2-core)))
@@ -417,29 +434,34 @@
         '(:first :ok :state :ok :applied :ok :ok :behind :ok :ok :unchanged :ok :ok
           :equal :ok :ok :unchanged :ahead :ok :ok :applied 11)))
 
-; C §4a (a): a :union insert stages against the tip. fn2-identity (id 1)
-; is :union. Slot 0 inserts (m, D) -> (state 0, article 5, binding 9,
-; principal P); slot 1 acks the cursor to (:new 0), slot 0's freshness.
-; First: fresh, the ack moves to 1. The same row again: already present
-; (the ack's to is 0, so it stays :unchanged; nothing binds). The same key
-; with principal 4: :inconsistent. (:new 1) from slot 0 is :kind (only an
-; earlier slot).
+; C §4a (a): a :union insert stages against the tip. fn2-identity-evidence
+; (id 1) is :union. Slot 0 inserts the evidence (m, D, occurrence 9 of this
+; domain) -> (binding, issuer P); slot 1 acks the cursor to (:new 0), slot
+; 0's freshness. First: fresh, the ack moves to 1. The same row again:
+; already present (the ack's to is 0, so it stays :unchanged; nothing
+; binds). The same key with issuer 4: :inconsistent. (:new 1) from slot 0 is
+; :kind (only an earlier slot).
 (defun fn2-icu-union (tx principal mslot mgen dslot dgen fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 1 :insert fn2-core))
-      ((mv c2 fn2-core) (fn2-successor-arg-octets tx 0 *fn2-identity-entry-field-message-id* mslot mgen 0 1 5 1 1 fn2-core))
-      ((mv c3 fn2-core) (fn2-successor-arg-octets tx 0 *fn2-identity-entry-field-content* dslot dgen 0 32 5 1 1 fn2-core))
-      ((mv c4 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-entry-field-state* :value 0 fn2-core))
-      ((mv c5 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-entry-field-article* :value 5 fn2-core))
-      ((mv c6 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-entry-field-binding* :value 9 fn2-core))
-      ((mv c7 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-entry-field-principal* :value principal fn2-core))
-      ((mv c8 fn2-core) (fn2-successor-put tx 1 6 :ack fn2-core))
-      ((mv c9 fn2-core) (fn2-successor-arg tx 1 0 :value 7 fn2-core))
-      ((mv c10 fn2-core) (fn2-successor-arg tx 1 1 :value 1 fn2-core))
-      ((mv c11 fn2-core) (fn2-successor-arg tx 1 2 :new 0 fn2-core))
-      ((mv c12 fn2-core) (fn2-icu-resolve 40 tx fn2-core))
-      (cs (list c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12)))
-  (mv (if (equal cs (make-list 12 :initial-element :ok)) :ok cs) fn2-core)))
+      ((mv c2 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-namespace* :value 1 fn2-core))
+      ((mv c3 fn2-core) (fn2-successor-arg-octets tx 0 *fn2-identity-evidence-entry-field-name* mslot mgen 0 1 5 1 1 fn2-core))
+      ((mv c4 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-profile* :value 1 fn2-core))
+      ((mv c5 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-algorithm* :value 1 fn2-core))
+      ((mv c6 fn2-core) (fn2-successor-arg-octets tx 0 *fn2-identity-evidence-entry-field-digest* dslot dgen 0 32 5 1 1 fn2-core))
+      ((mv c7 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-lineage* :value 0 fn2-core))
+      ((mv c8 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-domain* :value 0 fn2-core))
+      ((mv c9 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-incarnation* :value 1 fn2-core))
+      ((mv c10 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-occurrence* :value 9 fn2-core))
+      ((mv c11 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-kind* :value 0 fn2-core))
+      ((mv c12 fn2-core) (fn2-successor-arg tx 0 *fn2-identity-evidence-entry-field-issuer* :value principal fn2-core))
+      ((mv c13 fn2-core) (fn2-successor-put tx 1 6 :ack fn2-core))
+      ((mv c14 fn2-core) (fn2-successor-arg tx 1 0 :value 7 fn2-core))
+      ((mv c15 fn2-core) (fn2-successor-arg tx 1 1 :value 1 fn2-core))
+      ((mv c16 fn2-core) (fn2-successor-arg tx 1 2 :new 0 fn2-core))
+      ((mv c17 fn2-core) (fn2-icu-resolve 40 tx fn2-core))
+      (cs (list c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17)))
+  (mv (if (equal cs (make-list 17 :initial-element :ok)) :ok cs) fn2-core)))
 (defun fn2-icu-unions (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-icu-profile* fn2-core))

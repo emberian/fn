@@ -8,8 +8,8 @@
 ; recorded only as conflict evidence, :conflict iff another content is,
 ; else :stored. A record
 ; (outcome :ok) of a stored offer adds the accepted content; of a
-; conflicting one adds evidence while mid holds fewer than BOUND contents,
-; and past that the outcome must be :identity-conflict-bound. A duplicate
+; conflicting one adds evidence, however many contents mid holds (no
+; per-name ceiling: IDENTITY-ACROSS-PEERS ruling 7, C §4a). A duplicate
 ; or an :evidence records nothing. :stale records nothing and constrains
 ; nothing (the offer was decided around a later record of its bucket and is
 ; decided again);
@@ -58,68 +58,65 @@
  (declare (xargs :guard (and (true-listp a) (true-listp b))))
  (and (subsetp-equal a b) (subsetp-equal b a)))
 ; The outcome a correct engine reports for an offer whose decision was
-; EXPECTED, with N contents recorded for its Message-ID.
-(defun fn2-ci-outcome-ok (expected n bound outcome)
- (declare (xargs :guard (and (natp n) (natp bound))))
+; EXPECTED.
+(defun fn2-ci-outcome-ok (expected outcome)
+ (declare (xargs :guard t))
  (case expected
   (:duplicate (member-eq outcome '(:duplicate :none)))
   (:evidence (member-eq outcome '(:evidence :none)))
-  (:stored (eq outcome :ok))
-  (otherwise (if (< n bound) (eq outcome :ok) (eq outcome :identity-conflict-bound)))))
+  (otherwise (eq outcome :ok))))
 
-(defun fn2-ci-loop (events i bound binding seals reclaims stales)
- (declare (xargs :guard (and (natp i) (natp bound) (natp seals) (natp reclaims) (natp stales))))
+(defun fn2-ci-loop (events i binding seals reclaims stales)
+ (declare (xargs :guard (and (natp i) (natp seals) (natp reclaims) (natp stales))))
  (if (atom events) (list :ok (fn2-ci-facts binding) seals reclaims stales)
   (let ((e (car events)))
    (case (and (consp e) (car e))
     (:offer
      (b* (((unless (and (true-listp e) (equal (len e) 5))) (list :identity-error i :malformed e))
           (mid (nth 1 e)) (c (nth 2 e)) (answer (nth 3 e)) (outcome (nth 4 e))
-          ((when (eq outcome :stale)) (fn2-ci-loop (cdr events) (+ 1 i) bound binding seals reclaims (+ 1 stales)))
+          ((when (eq outcome :stale)) (fn2-ci-loop (cdr events) (+ 1 i) binding seals reclaims (+ 1 stales)))
           (expected (fn2-ci-decide mid c binding))
           ((unless (eq answer expected)) (list :identity-error i :answer mid c expected answer))
-          (n (len (fn2-ci-contents mid binding)))
-          ((unless (fn2-ci-outcome-ok expected n bound outcome)) (list :identity-error i :outcome mid c expected outcome)))
-      (fn2-ci-loop (cdr events) (+ 1 i) bound (if (eq outcome :ok) (fn2-ci-add mid c binding) binding) seals reclaims stales)))
+          ((unless (fn2-ci-outcome-ok expected outcome)) (list :identity-error i :outcome mid c expected outcome)))
+      (fn2-ci-loop (cdr events) (+ 1 i) (if (eq outcome :ok) (fn2-ci-add mid c binding) binding) seals reclaims stales)))
     (:query
      (b* (((unless (and (true-listp e) (equal (len e) 4))) (list :identity-error i :malformed e))
           (expected (fn2-ci-decide (nth 1 e) (nth 2 e) binding))
           ((unless (eq (nth 3 e) expected)) (list :identity-error i :query (nth 1 e) (nth 2 e) expected (nth 3 e))))
-      (fn2-ci-loop (cdr events) (+ 1 i) bound binding seals reclaims stales)))
-    (:seal (fn2-ci-loop (cdr events) (+ 1 i) bound binding (+ 1 seals) reclaims stales))
-    (:reclaim (fn2-ci-loop (cdr events) (+ 1 i) bound binding seals (+ 1 reclaims) stales))
+      (fn2-ci-loop (cdr events) (+ 1 i) binding seals reclaims stales)))
+    (:seal (fn2-ci-loop (cdr events) (+ 1 i) binding (+ 1 seals) reclaims stales))
+    (:reclaim (fn2-ci-loop (cdr events) (+ 1 i) binding seals (+ 1 reclaims) stales))
     (:binding
      (b* (((unless (and (true-listp e) (equal (len e) 2) (true-listp (nth 1 e)))) (list :identity-error i :malformed e))
           ((unless (fn2-ci-same-set (nth 1 e) (fn2-ci-facts binding))) (list :identity-error i :binding (fn2-ci-facts binding) (nth 1 e))))
-      (fn2-ci-loop (cdr events) (+ 1 i) bound binding seals reclaims stales)))
+      (fn2-ci-loop (cdr events) (+ 1 i) binding seals reclaims stales)))
     (otherwise (list :identity-error i :unknown e))))))
-(defun fn2-check-identity (events bound)
- (declare (xargs :guard (natp bound)))
- (fn2-ci-loop events 0 bound nil 0 0 0))
+(defun fn2-check-identity (events)
+ (declare (xargs :guard t))
+ (fn2-ci-loop events 0 nil 0 0 0))
 
-; Controls (the checker's own teeth): a correct trace passes; a flipped
-; answer, evidence answered as accepted content, a conflict recorded past
-; the bound, a dropped conflict record, a binding missing a fact, and an
-; accepted second content are refused.
+; Controls (the checker's own teeth): a correct trace passes (a third
+; content of one Message-ID recorded as evidence: no ceiling); a flipped
+; answer, evidence answered as accepted content, a dropped conflict record,
+; a binding missing a fact, and an accepted second content are refused.
 (defconst *fn2-ci-good*
  '((:offer m1 a :stored :ok) (:offer m1 a :duplicate :duplicate) (:offer m1 b :conflict :ok)
    (:offer m2 a :stored :stale) (:offer m2 a :stored :ok) (:seal 1) (:reclaim :bodies)
-   (:offer m1 c :conflict :identity-conflict-bound)
+   (:offer m1 c :conflict :ok)
    (:query m1 b :evidence) (:query m1 a :duplicate) (:query m1 z :conflict) (:query m3 a :stored)
-   (:binding ((m2 a :accepted) (m1 b :conflict) (m1 a :accepted)))))
-(assert-event (equal (fn2-check-identity *fn2-ci-good* 2) '(:ok ((m1 a :accepted) (m1 b :conflict) (m2 a :accepted)) 1 1 1)))
-;; The same facts with the accepted and the evidence content exchanged (a
+   (:binding ((m2 a :accepted) (m1 c :conflict) (m1 b :conflict) (m1 a :accepted)))))
+(assert-event (equal (fn2-check-identity *fn2-ci-good*)
+                     '(:ok ((m1 a :accepted) (m1 b :conflict) (m1 c :conflict) (m2 a :accepted)) 1 1 1)))
+;; The same facts with the accepted and an evidence content exchanged (a
 ;; node that served the other choice) are refused.
 (assert-event (equal (car (fn2-check-identity (append (butlast *fn2-ci-good* 1)
-                                                      '((:binding ((m2 a :accepted) (m1 b :accepted) (m1 a :conflict))))) 2))
+                                                      '((:binding ((m2 a :accepted) (m1 c :conflict) (m1 b :accepted) (m1 a :conflict)))))))
                      :identity-error))
-(assert-event (equal (car (fn2-check-identity (cons '(:offer m9 a :conflict :ok) *fn2-ci-good*) 2)) :identity-error))
-(assert-event (equal (fn2-check-identity (append (take 7 *fn2-ci-good*) '((:offer m1 c :conflict :ok))) 2)
-                     '(:identity-error 7 :outcome m1 c :conflict :ok)))
-(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :none)) 4)
+(assert-event (equal (car (fn2-check-identity (cons '(:offer m9 a :conflict :ok) *fn2-ci-good*))) :identity-error))
+(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :none)))
                      '(:identity-error 1 :outcome m1 b :conflict :none)))
-(assert-event (equal (car (fn2-check-identity (append (butlast *fn2-ci-good* 1) '((:binding ((m1 a) (m1 b))))) 2)) :identity-error))
-(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :ok) (:query m1 b :duplicate)) 4)
+(assert-event (equal (car (fn2-check-identity (append (butlast *fn2-ci-good* 1) '((:binding ((m1 a) (m1 b))))))) :identity-error))
+(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :conflict :ok) (:query m1 b :duplicate)))
                      '(:identity-error 2 :query m1 b :evidence :duplicate)))
-(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :stored :ok)) 4)
+(assert-event (equal (fn2-check-identity '((:offer m1 a :stored :ok) (:offer m1 b :stored :ok)))
                      '(:identity-error 1 :answer m1 b :conflict :stored)))

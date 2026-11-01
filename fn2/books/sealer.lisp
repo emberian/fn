@@ -1,6 +1,6 @@
 ; Layer C1c, the sealer's engine half (fn2/docs/c-ordered-runs.md §5): a
 ; published (frozen) overlay becomes a sealed run through the real build,
-; with a Ribbon filter for the identity schema, is installed in the resident
+; with a Ribbon filter for the identity summary, is installed in the resident
 ; view of runs (fn2-run-installed), and the overlay is retired with its arena
 ; released, in one step. The engine half names runs and pages itself (a run
 ; counter and a physical-unit counter in the seal row) and keeps every sealed
@@ -35,7 +35,11 @@
 (defconst *fn2-seal-filter-region* (+ *fn2-seal-hash-region* *fn2-run-max-levels*))
 (assert-event (and (< *fn2-fc-previous-seal* *fn2-seal-hash-region*) (< *fn2-seal-filter-region* *fn2-digest-stride*)))
 (defconst *fn2-seal-hash-bytes* (* 32 *fn2-run-max-levels*))
-(defconst *fn2-seal-identity* 1)
+; The schema whose runs carry a Ribbon filter: the identity summary (§4a),
+; keyed by the name N, which the identity decision reads first; the filter
+; holds each entry's name.
+(defconst *fn2-seal-identity* *fn2-id-summary-sid*)
+(defconst *fn2-seal-filter-field* *fn2-identity-summary-entry-field-name*)
 (defcolumns fn2-seals
  ((phase (:enum fn2-seal-phase (:idle :build :filter :install :failed)))
   (sub (:enum fn2-seal-sub (:open :clear :add :drive :finish :solve)))
@@ -434,8 +438,8 @@
   fn2-run-buildp fn2-run-builds-wbase))
 
 ; ---------------------------------------------------------------------------
-; The filter (identity runs): open the filter page on writer WBASE+6, clear
-; the band, add each overlay entry's Message-ID, finish, solve and seal.
+; The filter (identity summary runs): open the filter page on writer WBASE+6,
+; clear the band, add each overlay entry's name, finish, solve and seal.
 ; Open writer W on the filter page (unit, SLOT/GEN) and start the Ribbon
 ; build over the overlay's N keys. (mv code ribbon-builds writers pool)
 (defun fn2-seal-filter-begin (w unit slot gen n fn2-seals fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-pool)
@@ -519,7 +523,7 @@
           ((unless (eq c :ok))
            (mv c fn2-seals fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-cache fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
           ((mv c fn2-ribbon-builds fn2-ribbon-band)
-           (fn2-ribbon-add 0 (+ eb *fn2-id-mid*) (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays)
+           (fn2-ribbon-add 0 (+ eb *fn2-seal-filter-field*) (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays)
                            (fn2-overlays-ogen o fn2-overlays) fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool))
           ((unless (member-eq c '(:ok :more)))
            (mv c fn2-seals fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-cache fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))

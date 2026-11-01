@@ -37,10 +37,10 @@
 ;     range read's sources and merge over any schema, octet keys included,
 ;     its resume key the delivered key itself (copied into the caller's
 ;     workspace), skipped once by the next step; never an octet-keyed range.
-; (e) The identity read (fn2-read-identity): the decision path's own
-;     lower query (the Message-ID, an empty content) and classification
-;     (fn2-run-octets-field-compare), over the same merge in Message-ID
-;     order: (:found article), :evidence or :absent.
+; (e) The identity read (fn2-read-identity), rewritten by C over §4a's
+;     records: two exact lookups of the name (the article index, then the
+;     summary), answering (:found article), :evidence or :absent and the
+;     locally known other candidates.
 ;
 ; Every operation is (... fn2-core) with a defcost; the core wrappers are
 ; fn2-read-core-events, materialized in assembly-callbacks-c.lisp.
@@ -54,7 +54,6 @@
 ; ---------------------------------------------------------------------------
 ; The stripe.
 (defconst *fn2-read-sources* 8)
-(defconst *fn2-read-identity-sid* 1)
 (defconst *fn2-read-lo* 0)
 (defconst *fn2-read-hi* *fn2-run-entry-rows*)
 (defconst *fn2-read-heads* (* 2 *fn2-run-entry-rows*))
@@ -71,8 +70,9 @@
 ; delivered under the schema's run version EVER).
 ; A scan (C-S4 (d)) keeps its resume key in the lo region, its octets in
 ; the caller's workspace WSLOT/WGEN (under the query owner), EXCL once a key
-; was delivered (the next step skips it); the identity read (C-S4 (e)) SEEN
-; once it met conflict evidence for its Message-ID.
+; was delivered (the next step skips it); the identity read (C-S4 (e)) its
+; lookup (SID: the article index, then the summary), FOUND and the article
+; (SELECTED) once the index answered.
 (defcolumns fn2-reads
  ((op (:enum fn2-read-op (:idle :lookup :range :seek :scan :identity)))
   (sid :u60) (qset :bool) (qk :u8) (qs :u32) (qg :u60)
@@ -805,136 +805,88 @@
   fn2-run-cache fn2-fields fn2-pool)
  (fn2-rd-scan-step fn2-reads-op))
 
-; The identity read (C-S4 (e)) of the Message-ID at [MOFF, MOFF+MLEN) of
-; MSLOT/MGEN (readable under OKIND OSLOT OGEN, the same arguments on every
-; call): the first call places the decision path's lower query (the
-; Message-ID, an empty content) and starts a scan of the identity schema;
-; each later call takes one step, over the whole block of the Message-ID in
-; content order. The answer is the first half of the typed read result
-; (IDENTITY-ACROSS-PEERS ruling 8) over C's engine as it stands: the
-; selection (the accepted fact's article: :found, else :evidence when
-; conflict evidence was met, else :absent) and the evidence status (the
-; locally known conflict candidates at this cut, a count of facts, never a
-; global count). Availability, coverage and authorization are not in it:
-; C's engine stores (name, content) with :accepted/:conflict and at most four
-; contents a name (rulings 3 and 7 replace it with attributed receipts, an
-; exact lookup, a per-name summary and an evidence cursor); the gap is the
-; owed row fn2-read-identity-typed. A move of the sources restarts the block.
-; (mv code article candidates reads ranges sources cursors paths fields pool)
-(defun fn2-rd-identity-start (x mslot mgen moff mlen okind oslot ogen b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays
-                              fn2-run-installed fn2-fields)
- (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields) :guard t
-  :guard-hints (("Goal" :in-theory (e/d (fn2-rd-range-args-ok) (fn2-rd-range-start fn2-reads-rows fn2-fields-rows
-                                                                 fn2-ranges-rows fn2-range-sources-rows))))))
- (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources)
-                    (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields)))
-       (mv :state fn2-reads fn2-ranges fn2-range-sources fn2-fields))
-      ((unless (and (fn2-rd-range-args-ok x *fn2-read-identity-sid* b0 tn fn2-reads fn2-fields) (< x (fn2-ranges-rows fn2-ranges))
-                    (<= (* *fn2-read-sources* (+ x 1)) (fn2-range-sources-rows fn2-range-sources))
+; The identity read (C-S4 (e), over C §4a's records) of the name at [MOFF,
+; MOFF+MLEN) of MSLOT/MGEN in namespace 1 (readable under OKIND OSLOT OGEN,
+; the same arguments on every call): two exact lookups of the read row's
+; lookup, one query (the namespace, the name) for both. First the article
+; index (this domain's first local acceptance of the name: its article),
+; then the summary (the name's locally known candidates). The answer:
+; (:found article) when the index holds the name, else :evidence when the
+; summary knows candidates, else :absent; CANDIDATES the locally known
+; candidates other than the found one, at this cut (never a global count).
+; Availability, coverage and authorization are the owed row
+; fn2-read-identity-typed-exact's. :more between the steps.
+; (mv code article candidates reads txns cursors paths fields)
+(defconst *fn2-read-index-sid* 14)
+(defconst *fn2-read-summary-sid* 13)
+; The identity read's start: the query (namespace 1, the name) at the lo
+; region, read row X on the index lookup, the lookup TX idle.
+(defun fn2-rd-identity-begin (x tx mslot mgen moff mlen okind oslot ogen q fn2-reads fn2-succ-txns fn2-fields)
+ (declare (xargs :stobjs (fn2-reads fn2-succ-txns fn2-fields) :guard t))
+ (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-succ-txns-wfp fn2-succ-txns) (fn2-fields-wfp fn2-fields)
+                    (natp x) (< x (fn2-reads-rows fn2-reads)) (natp tx) (natp q) (< (+ q 1) (fn2-fields-rows fn2-fields))
+                    (unsigned-byte-p 32 mslot) (unsigned-byte-p 60 mgen) (unsigned-byte-p 32 moff) (unsigned-byte-p 32 mlen)
+                    (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+       (mv :bounds fn2-reads fn2-succ-txns fn2-fields))
+      (fn2-fields (fn2-fields-put q (value *fn2-identity-namespace-netnews*) (ref-len 0)))
+      (fn2-fields (fn2-fields-put (+ q 1) (value 0) (ref-slot mslot) (ref-gen mgen) (ref-off moff) (ref-len mlen)))
+      (fn2-reads (fn2-reads-put x (op *fn2-read-op-identity*) (sid *fn2-read-index-sid*) (entry 0) (qset 1) (qk okind)
+                                (qs oslot) (qg ogen) (found 0) (selected 0) (evidence 0)))
+      ((mv & fn2-succ-txns) (fn2-xl-done tx :ok fn2-succ-txns)))
+  (mv :ok fn2-reads fn2-succ-txns fn2-fields)))
+(fn2-rd-shape fn2-rd-identity-begin (x tx mslot mgen moff mlen okind oslot ogen q fn2-reads fn2-succ-txns fn2-fields)
+ ((fn2-reads 1) (fn2-succ-txns 2) (fn2-fields 3)) (fn2-reads fn2-succ-txns fn2-fields) (fn2-xl-done))
+(defun fn2-rd-identity (x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
+                        fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed
+                          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-xl-step fn2-xl-done fn2-id-field fn2-rd-identity-begin fn2-fields-rows fn2-reads-rows)))))
+ (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-succ-txns-wfp fn2-succ-txns) (fn2-overlays-wfp fn2-overlays)
+                    (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
+                    (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                    (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
+       (mv :state 0 0 fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      ((unless (and (natp x) (< x (fn2-reads-rows fn2-reads)) (natp tn) (< (+ tn x) (fn2-succ-txns-rows fn2-succ-txns))
+                    (natp budget) (<= budget 4096) (natp b0) (<= (+ b0 *fn2-read-stride*) (fn2-fields-rows fn2-fields))
                     (posp mlen) (<= mlen 250) (unsigned-byte-p 32 mslot) (unsigned-byte-p 60 mgen) (unsigned-byte-p 32 moff)
                     (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
-       (mv :bounds fn2-reads fn2-ranges fn2-range-sources fn2-fields))
-      (q (+ b0 *fn2-read-lo*))
-      (fn2-fields (fn2-fields-put (+ q *fn2-id-mid*) (value 0) (ref-slot mslot) (ref-gen mgen) (ref-off moff) (ref-len mlen)))
-      (fn2-fields (fn2-fields-put (+ q *fn2-id-con*) (value 0) (ref-slot mslot) (ref-gen mgen) (ref-off moff) (ref-len 0)))
-      (fn2-reads (fn2-reads-put x (op *fn2-read-op-identity*) (sid *fn2-read-identity-sid*) (entry 0) (qset 1) (qk okind)
-                                (qs oslot) (qg ogen) (excl 0) (found 0) (selected 0) (evidence 0))))
-  (mv-let (code fn2-ranges fn2-range-sources)
-    (fn2-rd-range-start x *fn2-read-identity-sid* *fn2-range-no-position* 0 b0 tn fn2-reads fn2-ranges fn2-range-sources
-                        fn2-overlays fn2-run-installed)
-   (mv code fn2-reads fn2-ranges fn2-range-sources fn2-fields))))
-(fn2-rd-shape fn2-rd-identity-start (x mslot mgen moff mlen okind oslot ogen b0 tn fn2-reads fn2-ranges fn2-range-sources
-                                     fn2-overlays fn2-run-installed fn2-fields)
- ((fn2-reads 1) (fn2-ranges 2) (fn2-range-sources 3) (fn2-fields 4))
- (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
- ((:keep fn2-rd-range-args-ok) fn2-rd-range-start (:keep fn2-reads-rows)))
-
-; How the delivered entry stands to the query, by the decision path's own
-; classification: :other-mid, :exact or :other (accepted), :evidence.
-(defun fn2-rd-identity-class (x b0 fn2-reads fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-reads fn2-fields fn2-pool) :guard t))
- (b* (((unless (and (fn2-reads-wfp fn2-reads) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp x)
-                    (< x (fn2-reads-rows fn2-reads)) (natp b0)))
-       (mv :state :other-mid 0))
-      (eb (fn2-reads-erow x fn2-reads))
-      ((unless (and (natp eb) (< (+ eb *fn2-identity-entry-field-article*) (fn2-fields-rows fn2-fields))
-                    (< (+ eb *fn2-identity-entry-field-state*) (fn2-fields-rows fn2-fields))))
-       (mv :bounds :other-mid 0))
-      ;; the Message-ID compared exactly; the content is ignored (any
-      ;; content of the Message-ID is its block)
-      ((mv code class) (fn2-id-classify eb (fn2-reads-ek x fn2-reads) (fn2-reads-es x fn2-reads) (fn2-reads-eg x fn2-reads)
-                                        (+ b0 *fn2-read-lo*) (fn2-reads-qk x fn2-reads) (fn2-reads-qs x fn2-reads)
-                                        (fn2-reads-qg x fn2-reads) fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code :other-mid 0))
-      ((when (eq class :other-mid)) (mv :ok :other-mid 0))
-      (accepted (equal (fn2-fields-value (+ eb *fn2-identity-entry-field-state*) fn2-fields) *fn2-identity-state-accepted*)))
-  (mv :ok (if accepted :accepted :evidence) (nfix (fn2-fields-value (+ eb *fn2-identity-entry-field-article*) fn2-fields)))))
-(in-theory (disable fn2-rd-identity-class))
-
-; After one scan step answered CODE (MOVED: its sources were found again):
-; the identity read's accounting over the delivered entry.
-; (mv code article candidates reads)
-(defun fn2-rd-identity-note (x code moved b0 fn2-reads fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-reads fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-rd-identity-class fn2-reads-rows fn2-reads-found fn2-reads-selected
-                                            fn2-reads-evidence)))))
- (b* (((unless (and (fn2-reads-wfp fn2-reads) (natp x) (< x (fn2-reads-rows fn2-reads)))) (mv :state 0 0 fn2-reads))
-      (fn2-reads (if moved (fn2-reads-put x (found 0) (selected 0) (evidence 0)) fn2-reads))
+       (mv :bounds 0 0 fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (tx (+ tn x)) (q (+ b0 *fn2-read-lo*))
+      ((mv & fn2-reads fn2-succ-txns fn2-fields)
+       (if (equal (fn2-reads-op x fn2-reads) *fn2-read-op-identity*) (mv :ok fn2-reads fn2-succ-txns fn2-fields)
+         (fn2-rd-identity-begin x tx mslot mgen moff mlen okind oslot ogen q fn2-reads fn2-succ-txns fn2-fields)))
+      (index (equal (fn2-reads-sid x fn2-reads) *fn2-read-index-sid*))
+      ((mv code erow fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+       (fn2-xl-step tx (if index *fn2-read-index-sid* *fn2-read-summary-sid*) budget q (+ b0 *fn2-read-heads*)
+                    (fn2-reads-qk x fn2-reads) (fn2-reads-qs x fn2-reads) (fn2-reads-qg x fn2-reads)
+                    fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths
+                    fn2-run-cache fn2-fields fn2-pool))
+      ((unless (member-eq code '(:ok :absent))) (mv code 0 0 fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (hit (eq code :ok))
+      ((when index)
+       (let ((fn2-reads (fn2-reads-put x (sid *fn2-read-summary-sid*) (found (if hit 1 0))
+                                       (selected (if hit (fn2-id-field (+ erow *fn2-identity-article-entry-field-article*) fn2-fields) 0)))))
+        (mv :more 0 0 fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
       (found (equal (fn2-reads-found x fn2-reads) 1))
-      (selected (nfix (fn2-reads-selected x fn2-reads)))
-      (evidence (nfix (fn2-reads-evidence x fn2-reads)))
-      (done (cond (found :found) ((< 0 evidence) :evidence) (t :absent)))
-      ((unless (member-eq code '(:entry :end))) (mv code 0 0 fn2-reads))
-      ((mv code class article)
-       (if (eq code :entry) (fn2-rd-identity-class x b0 fn2-reads fn2-fields fn2-pool) (mv :ok :other-mid 0)))
-      ((unless (eq code :ok)) (mv code 0 0 fn2-reads))
-      ((when (eq class :other-mid))
-       (let ((fn2-reads (fn2-reads-set-op x *fn2-read-op-idle* fn2-reads))) (mv done selected evidence fn2-reads)))
-      ((unless (and (unsigned-byte-p 32 (+ 1 evidence)) (unsigned-byte-p 60 article))) (mv :bounds 0 0 fn2-reads))
-      (fn2-reads (if (eq class :accepted)
-                     (fn2-reads-put x (found 1) (selected article))
-                   (fn2-reads-set-evidence x (+ 1 evidence) fn2-reads))))
-  (mv :more 0 0 fn2-reads)))
-(fn2-rd-shape fn2-rd-identity-note (x code moved b0 fn2-reads fn2-fields fn2-pool) ((fn2-reads 3)) (fn2-reads fn2-fields fn2-pool)
- (fn2-rd-identity-class fn2-reads-found fn2-reads-selected fn2-reads-evidence))
-(defthm fn2-rd-identity-note-natp
- (and (natp (mv-nth 1 (fn2-rd-identity-note x code moved b0 fn2-reads fn2-fields fn2-pool)))
-      (natp (mv-nth 2 (fn2-rd-identity-note x code moved b0 fn2-reads fn2-fields fn2-pool))))
- :hints (("Goal" :in-theory (enable fn2-rd-identity-note fn2-rd-identity-class))))
-
-(defun fn2-rd-identity (x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays
-                        fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
-                          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-rd-identity-start fn2-rd-scan-step fn2-rd-identity-note fn2-reads-rows)))))
- (b* (((unless (and (fn2-reads-wfp fn2-reads) (natp x) (< x (fn2-reads-rows fn2-reads))))
-       (mv :state 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))
-      ((unless (equal (fn2-reads-op x fn2-reads) *fn2-read-op-identity*))
-       (mv-let (code fn2-reads fn2-ranges fn2-range-sources fn2-fields)
-         (fn2-rd-identity-start x mslot mgen moff mlen okind oslot ogen b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays
-                                fn2-run-installed fn2-fields)
-        (mv (if (eq code :ok) :more code) 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields
-            fn2-pool)))
-      ((mv code moved fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
-       (fn2-rd-scan-step x budget nil fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
-                         fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
-      ((mv code article candidates fn2-reads) (fn2-rd-identity-note x code moved b0 fn2-reads fn2-fields fn2-pool)))
-  (mv code article candidates fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)))
-(fn2-rd-shape fn2-rd-identity (x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-ranges fn2-range-sources
-                               fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
-                               fn2-fields fn2-pool)
- ((fn2-reads 3) (fn2-ranges 4) (fn2-range-sources 5) (fn2-run-cursors 6) (fn2-run-paths 7) (fn2-fields 8) (fn2-pool 9))
- (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths
+      (article (nfix (fn2-reads-selected x fn2-reads)))
+      (candidates (nfix (- (if hit (fn2-id-field (+ erow *fn2-identity-summary-entry-field-candidates*) fn2-fields) 0) (if found 1 0))))
+      (fn2-reads (fn2-reads-put x (op *fn2-read-op-idle*) (found 0) (selected 0) (evidence 0))))
+  (mv (cond (found :found) ((< 0 candidates) :evidence) (t :absent)) (if found article 0) candidates
+      fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+(fn2-rd-shape fn2-rd-identity (x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
+                               fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ ((fn2-reads 3) (fn2-succ-txns 4) (fn2-run-cursors 5) (fn2-run-paths 6) (fn2-fields 7))
+ (fn2-reads fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths
   fn2-run-cache fn2-fields fn2-pool)
- (fn2-rd-identity-start fn2-rd-scan-step fn2-rd-identity-note fn2-reads-op))
+ (fn2-xl-step fn2-xl-done fn2-reads-op fn2-reads-sid fn2-reads-qk fn2-reads-qs fn2-reads-qg fn2-reads-found fn2-reads-selected fn2-id-field fn2-rd-identity-begin))
 (defthm fn2-rd-identity-natp
- (and (natp (mv-nth 1 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-ranges fn2-range-sources
-                                       fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+ (and (natp (mv-nth 1 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
+                                       fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                                        fn2-fields fn2-pool)))
-      (natp (mv-nth 2 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-ranges fn2-range-sources
-                                       fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+      (natp (mv-nth 2 (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 tn fn2-reads fn2-succ-txns fn2-overlays
+                                       fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
                                        fn2-fields fn2-pool))))
- :hints (("Goal" :in-theory (e/d (fn2-rd-identity) (fn2-rd-identity-start fn2-rd-scan-step fn2-rd-identity-note)))))
+ :hints (("Goal" :in-theory (e/d (fn2-rd-identity) (fn2-xl-step fn2-xl-done fn2-rd-identity-begin)))))
 
 ; ---------------------------------------------------------------------------
 ; Costs and the core wrappers.
@@ -980,12 +932,11 @@
  :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One scan step: each of at most eight sources advanced by at most the budget's pool reads, one entry delivered and its key (at most 512 octets a field) saved.")
-(defcost fn2-read-identity :child fn2-read-identity-children :answers (:absent :bad-magic :bounds :done :end :entry :evidence :format :found :invariant :length :miss
-  :more :noncanonical :owner :part :payload :schema :sources :stale :state :truncated :unknown-tag
-  :wide)
+(defcost fn2-read-identity :child fn2-read-identity-children :answers (:absent :bad-magic :bounds :done :end :entry :evidence :format :found
+  :invariant :length :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
- :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
- :doc "One step of an identity read: its start, or one scan step over the identity schema and one Message-ID comparison (at most 250 octets); the answer is (code article candidates).")
+ :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :doc "One source of an identity read's two exact lookups (the article index, then the summary): one overlay search or one run step of at most 4,096 pool reads; the answer is (code article candidates).")
 (defcost fn2-read-frontier :child fn2-succ-published :answers (:ok :state) :tables (fn2-core-id-engine)
  :doc "The served frontier, C's :published position: (mv code position). Pure: reads the engine, writes nothing.")
 (defcost fn2-read-release :child fn2-read-release-children :answers (:bounds :ok :state)
@@ -1101,21 +1052,20 @@
    (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (fn2-rd-scan-next x budget fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed
                    fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
-(defun fn2-read-identity-children (x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-ranges
-  fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
-  fn2-fields fn2-pool fn2-fc)
- (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index
+(defun fn2-read-identity-children (x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-succ-txns
+  fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-succ-txns fn2-overlays fn2-overlay-index
    fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
-  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges)
-   (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-succ-txns-wfp fn2-succ-txns)
+   (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
    (fn2-run-installed-wfp fn2-run-installed) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths)
    (fn2-run-cache-wfp fn2-run-cache) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-fc-wfp fn2-fc))))
  (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
   (if (eq c :ok)
       (fn2-rd-identity x mslot mgen moff mlen okind oslot ogen budget b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads
-                       fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors
+                       fn2-succ-txns fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors
                        fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-    (mv c 0 0 fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool))))
+    (mv c 0 0 fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))))
 
 ;; Each child operation keeps every child it returns well formed (the type,
 ;; the invariant and the row count), so a child-form arm's shape follows
@@ -1308,14 +1258,14 @@
    (defun fn2-read-identity (x mslot mgen moff mlen okind oslot ogen budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
-                (fn2-ranges (fn2-core-ranges fn2-core)) (fn2-range-sources (fn2-core-range-sources fn2-core))
+                (fn2-succ-txns (fn2-core-succ-txns fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
-     (code article candidates fn2-reads fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields fn2-pool)
-     (fn2-read-identity-children x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-ranges
-       fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
+     (code article candidates fn2-reads fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+     (fn2-read-identity-children x mslot mgen moff mlen okind oslot ogen budget fn2-reads fn2-id-decides fn2-succ-txns
+       fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache
        fn2-fields fn2-pool fn2-fc)
      (mv code article candidates fn2-core)))
    (fn2-core-preserves fn2-read-identity (x mslot mgen moff mlen okind oslot ogen budget fn2-core) :position 3 :rows nil

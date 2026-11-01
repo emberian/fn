@@ -53,7 +53,7 @@
 (defconst *fn2-upload-words*
   '(:none :accepted :uncertain :duplicate :conflict :too-large :malformed :framing :line-length
     :header-fields :header-lines :header-octets :missing :duplicate-field :path :message-id :mismatch
-    :injected :no-clock :group :identity-conflict-bound :unaffordable :control-malformed :refused :not-stored
+    :injected :no-clock :group :unaffordable :control-malformed :refused :not-stored
     ;; the verdict's :missing, :duplicate-field and :injected by field (the catalogue's rows)
     :from-missing :subject-missing :newsgroups-missing :from-duplicate :subject-duplicate
     :newsgroups-duplicate :message-id-duplicate :date-duplicate :path-duplicate :xref :injection-info

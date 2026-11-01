@@ -69,6 +69,8 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
 - A's 4c7ab8df3 seeded native-serve.lsp (Fn2Backend's node), NOT native-session.lsp (the S socket hook). Kept
   CARRIERS['NATIVE'] archive False and asked A to seed native-session the same way. When that sha comes, flip
   CARRIERS['NATIVE'] to the SIM store (same groups/articles/policy).
+- H25: CARRIERS['NATIVE'] = the seeded SIM store (A's 8e42831b8 seeds native-session). Both carriers now judge the
+  cursor. Next: on D's Xref fix sha (or the 03:30 nightly), run both targets and READY the line.
 - STANDING BY on events. A READY that flips verbs triggers a confirm of the nntp family on both carriers
   (one run of the nightly script by hand, detached: `nohup env -i HOME=$HOME USER=$USER /bin/sh
   fn2/tests/harness/laptop_nightly.sh &`). A certify after a foundation move takes about 50 min under load.
