@@ -22,23 +22,8 @@
 (set-fmt-hard-right-margin 1000000 state)
 (set-fmt-soft-right-margin 1000000 state)
 
-;; The session serves reading (D6): the cursor's profile (read rows, x 2;
-;; the groups local.test 1 and local.empty 2) less its posting, so the
-;; posting replies stay the reader-only node's. Before any client opens,
-;; the store holds three articles in local.test, published through C-S3 as
-;; tests/cursor-unit.lisp seeds them (numbers 1-3, Message-IDs <a|b|c@
-;; example.invalid>); local.empty holds none.
-(defconst *fn2-ss-profile*
-  (put-assoc-equal :trace nil (remove1-assoc-equal :posting-interim *fn2-cursor-profile*)))
-(defun fn2-ss-tab () (declare (xargs :verify-guards nil)) (coerce (list (code-char 9)) 'string))
-(defun fn2-ss-line (subject mid)
-  (declare (xargs :verify-guards nil))
-  (fn2-csp-cat (list subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
-                     (fn2-ss-tab) mid (fn2-ss-tab) "" (fn2-ss-tab) "120" (fn2-ss-tab) "1")))
-(defconst *fn2-ss-seeds*
-  (list (list 1 "<a@example.invalid>" (fn2-ss-line "one" "<a@example.invalid>"))
-        (list 1 "<b@example.invalid>" (fn2-ss-line "two" "<b@example.invalid>"))
-        (list 1 "<c@example.invalid>" (fn2-ss-line "three" "<c@example.invalid>"))))
+;; The session serves reading (D6) over the seeded store (seeded-store.lsp).
+(ld "seeded-store.lsp")
 
 ; Client records live in a global table (test-side): id -> (nonce sent
 ; received closed cap). The id is a serial number per open (the global

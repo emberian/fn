@@ -119,6 +119,164 @@
             :arms ((:free (:idle)) (:reply (:next row-after) (:idle)) (:command (:idle)))
             :observes ()))
 
+;; G3: the contracts the generator derives for a kind, read without
+;; registering them (child form registers none).
+(defun fn2-arms-test-conts (kind world)
+  (declare (xargs :mode :program))
+  (mv-let (err form) (fn2-arms-events kind :wrappers world)
+    (and (not err) (cadr (member-eq :continuations (cadr (cadddr (cadr form))))))))
+(defun fn2-arms-test-next (tag conts)
+  (declare (xargs :mode :program))
+  (cadr (member-eq :next (cddr (assoc-eq tag conts)))))
+;; G3 (D F11): a shared sub-arm's leaves count only where the caller's phase
+;; reaches them: :a reaches :c alone and :b :d alone, though both go to work.
+(defmachine fn2-arms-shared
+ :phases (:free :a :b :c :d)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((work (:cond ((equal row-phase *fn2-arms-shared-state-a*) (:next :c) (:charge :steps *fn2-work-small*))
+                        ((not (equal row-phase *fn2-arms-shared-state-b*)) (:stop :machine-phase))
+                        (t (:next :d) (:charge :steps *fn2-work-small*)))))
+ :arms ((:free (:idle)) (:a (:goto work)) (:b (:goto work)) (:c (:idle)) (:d (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-shared :children)
+(make-event
+ (let ((conts (fn2-arms-test-conts 'fn2-arms-shared (w state))))
+   (if (and (equal (fn2-arms-test-next :a conts) '(:c)) (equal (fn2-arms-test-next :b conts) '(:d)))
+       '(value-triple :f11-ok)
+     (er hard 'f11 "shared sub-arm nexts ~x0" conts))))
+;; G3 (D F14): holds per path. :cmd holds the window only while reserved is
+;; :held; a path acquires it exactly when it starts without it and ends where
+;; it is held. A refused reservation acquires nothing (an operation with
+;; answers acts on its :ok paths).
+(defmachine fn2-arms-per-path
+ :phases (:free :cmd :rep)
+ :fields ((reserved (:enum fn2-arms-res (:none :held))) (wslot :u32) (wgen :u60))
+ :holds ((:cmd (:storage-window :while (reserved :held))) (:rep :storage-window))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((answer (:next :rep) (:charge :steps *fn2-work-small*)))
+ :arms ((:free (:idle))
+        (:cmd (:if (equal row-reserved *fn2-arms-res-held*)
+                   ((:goto answer))
+                   ((:do (code ws wg) (fn2-core-reserve 1) :effects ((:acquire (:storage-window)))
+                     :case (((:ok) (:set (reserved *fn2-arms-res-held*) (wslot ws) (wgen wg)) (:goto answer))
+                            (:otherwise (:charge :steps *fn2-work-small*)))))))
+        (:rep (:do (code) (fn2-core-release row-wslot row-wgen) :effects ((:release (:storage-window)))
+               :case (((:ok) (:set (reserved *fn2-arms-res-none*)) (:next :cmd) (:charge :steps *fn2-work-small*))
+                      (:otherwise (:stop :machine-phase))))))
+ :observes ())
+(defmachine-arms fn2-arms-per-path :children)
+(assert-event (equal (fn2-machine-declared 'fn2-arms-per-path :holds-while (w state))
+                     '((:cmd :storage-window reserved :held))))
+(make-event
+ (let ((p (fn2-machine-arms-problem 'fn2-arms-per-path (fn2-arms-test-conts 'fn2-arms-per-path (w state)) nil (w state))))
+   (if p (er hard 'f14 "~@0" p) '(value-triple :f14-ok))))
+;; the same arm without the test: entering :cmd with the window held, its
+;; reservation would acquire it twice, and D0 refuses the path
+(defmachine fn2-arms-per-path-blind
+ :phases (:free :cmd :rep)
+ :fields ((reserved (:enum fn2-arms-res2 (:none :held))) (wslot :u32) (wgen :u60))
+ :holds ((:cmd (:storage-window :while (reserved :held))) (:rep :storage-window))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((answer (:next :rep) (:charge :steps *fn2-work-small*)))
+ :arms ((:free (:idle))
+        (:cmd (:do (code ws wg) (fn2-core-reserve 1) :effects ((:acquire (:storage-window)))
+               :case (((:ok) (:set (reserved *fn2-arms-res2-held*) (wslot ws) (wgen wg)) (:goto answer))
+                      (:otherwise (:charge :steps *fn2-work-small*)))))
+        (:rep (:do (code) (fn2-core-release row-wslot row-wgen) :effects ((:release (:storage-window)))
+               :case (((:ok) (:set (reserved *fn2-arms-res2-none*)) (:next :cmd) (:charge :steps *fn2-work-small*))
+                      (:otherwise (:stop :machine-phase))))))
+ :observes ())
+(defmachine-arms fn2-arms-per-path-blind :children)
+(assert-event (fn2-machine-arms-problem 'fn2-arms-per-path-blind
+                                        (fn2-arms-test-conts 'fn2-arms-per-path-blind (w state)) nil (w state)))
+;; a conditional hold names an enum field and its values
+(must-fail (defmachine fn2-arms-per-path-bad
+            :phases (:free :cmd)
+            :fields ((count :u32))
+            :holds ((:cmd (:storage-window :while (count 1))))
+            :budget (:bytes 4096 :steps 32 :descriptors 0)
+            :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+            :arms ((:free (:idle)) (:cmd (:idle)))
+            :observes ()))
+
+;; G3 (D F8): a typed link. The generator emits the link's liveness and its
+;; reads over the probe's table (which joins the tuple), and :owner L stands
+;; for the link's owner triple.
+(defmachine fn2-arms-linker
+ :phases (:free :work :done)
+ :fields ((peer :link) (peer-gen :u60) (peer-kind :u8) (seen :u32) (wslot :u32) (wgen :u60))
+ :links ((peer :kind fn2-arms-probe :slot peer :gen peer-gen :kind-field peer-kind :back (target) :reads (count)))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (peer *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:if (:live peer)
+                    ((:set (seen (:read peer count)))
+                     (:do (code) (fn2-core-truncate row-wslot row-wgen 0 :owner peer) :accept ()
+                      :case ((:otherwise (:next :done) (:charge :steps *fn2-work-small*)))))
+                    ((:next :done) (:charge :steps *fn2-work-small*))))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-linker :children)
+(assert-event (fn2-assert-compliant-p '(fn2-arms-linker-link-peer-live-p fn2-arms-linker-link-peer-count
+                                        fn2-arms-linker-run-work-children) (w state)))
+;; a linked kind names its owner only through a link, and reads only the
+;; link's read set
+(defmachine fn2-arms-linker-hand
+ :phases (:free :work)
+ :fields ((peer :link) (peer-gen :u60) (peer-kind :u8) (wslot :u32) (wgen :u60))
+ :links ((peer :kind fn2-arms-probe :slot peer :gen peer-gen :kind-field peer-kind))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (peer *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-core-truncate row-wslot row-wgen 0 :okind row-peer-kind :oslot row-peer :ogen row-peer-gen)
+                :accept () :case ((:otherwise (:charge :steps *fn2-work-small*))))))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-linker-hand :children))
+(defmachine fn2-arms-linker-wide
+ :phases (:free :work)
+ :fields ((peer :link) (peer-gen :u60) (seen :u32))
+ :links ((peer :kind fn2-arms-probe :slot peer :gen peer-gen :reads (count)))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (peer *fn2-none*))
+ :arms ((:free (:idle)) (:work (:set (seen (:read peer cap-index))) (:charge :steps *fn2-work-small*)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-linker-wide :children))
+
+;; G3 (C gap 4): an inner state machine. The sealer-like row runs its inner
+;; machine from :work; the inner phase is the field step, each inner arm a
+;; clause on it, and the outer arm's phases are only the inner arms' (idle
+;; stays, build moves on to :done).
+(defmachine fn2-arms-inner
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :sub ((seal :field step :phases (:idle :build)
+        :arms ((:idle (:sub-next seal :build) (:charge :steps *fn2-work-small* :runnable t))
+               (:build (:sub-next seal :idle) (:set (count (+ 1 row-count))) (:next :done) (:charge :steps *fn2-work-small*)))))
+ :arms ((:free (:idle)) (:work (:goto seal)) (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-inner :children)
+(assert-event (equal *fn2-arms-inner-seal-build* 1))
+(make-event
+ (let ((conts (fn2-arms-test-conts 'fn2-arms-inner (w state))))
+   (if (let ((n (fn2-arms-test-next :work conts))) (and (subsetp-eq n '(:work :done)) (subsetp-eq '(:work :done) n)))
+       '(value-triple :sub-ok)
+     (er hard 'sub "inner machine nexts ~x0" conts))))
+;; an inner machine names one arm per inner phase, in order
+(must-fail (defmachine fn2-arms-inner-bad
+            :phases (:free :work)
+            :fields ((count :u32))
+            :budget (:bytes 4096 :steps 32 :descriptors 0)
+            :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+            :sub ((seal :field step :phases (:idle :build) :arms ((:idle (:idle)))))
+            :arms ((:free (:idle)) (:work (:goto seal)))
+            :observes ()))
+
 ;; A :goto after a :repeat: the sub-arm's charge cannot carry the loop's passes.
 (defmachine fn2-arms-loop-goto
  :phases (:free :work)

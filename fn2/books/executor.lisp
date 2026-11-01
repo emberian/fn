@@ -3,11 +3,19 @@
 (include-book "executor-wake")
 (include-book "assembly")
 
-(defconst *fn2-turn-transition-max*
-  (+ *fn2-work-empty*
-     (max (+ *fn2-listener-run-bytes* *fn2-listener-run-steps*)
-          (max (+ *fn2-echo-run-bytes* *fn2-echo-run-steps*)
-               (+ *fn2-scribe-run-bytes* *fn2-scribe-run-steps*)))))
+; One transition's largest declared work: a visit and the largest per-run
+; budget (bytes and steps) over every registered machine kind, read from the
+; registry, so a kind's budget joins the turn's bound when it is declared.
+(defun fn2-exec-kinds-work-max (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) 0
+    (let ((budget (fn2-machine-property (car names) :budget world)))
+      (max (+ (nfix (fn2-arm-get :bytes budget)) (nfix (fn2-arm-get :steps budget)))
+           (fn2-exec-kinds-work-max (cdr names) world)))))
+(make-event
+ `(defconst *fn2-turn-transition-max*
+    ,(+ *fn2-work-empty* (fn2-exec-kinds-work-max (fn2-machine-names (w state)) (w state)))))
+(assert-event (<= (+ *fn2-work-empty* *fn2-listener-run-bytes* *fn2-listener-run-steps*) *fn2-turn-transition-max*))
 
 (defun fn2-exec-eligible-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

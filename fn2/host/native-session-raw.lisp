@@ -7,7 +7,8 @@
 
 (defun fn2-ns-serve (&optional (trace-capacity 4000000))
   "Bind 127.0.0.1:0, announce the port, serve until the stop control line."
-  (let ((host (fn2-n-make-host *fn2-ns-profile* :control-fd 0 :trace-capacity trace-capacity)))
+  (let ((host (fn2-n-make-host *fn2-ss-profile* :control-fd 0 :trace-capacity trace-capacity
+                                   :seeds *fn2-ss-seeds*)))
     (format t "@@FN2SS ready ~d 0 0@@~%" (fn2-nhost-listen-port host))
     (finish-output)
     (unwind-protect
@@ -19,12 +20,12 @@
 
 (defun fn2-ns-verdicts (clients)
   "CLIENTS: (incarnation sent received closed port ident) per connection, the clients' own view.
-WIRE per connection; ENVELOPE over the trace (a refusal is every connection's verdict)."
-  (let ((env (fn2-envelope-check *fn2-ns-trace* clients *fn2-ns-profile*)))
+WIRE per connection; ENVELOPE over the trace replayed from the seeded store (a refusal is every connection's verdict)."
+  (let ((env (fn2-ss-envelope-check *fn2-ns-trace* clients *fn2-ss-profile* *fn2-ss-seeds*)))
     ;; A refusal names a port: print that connection's two sides for the record.
     (when (and (consp env) (member (car env) '(:receive-not-client :send-not-client :no-client)))
       (let* ((port (cadr env))
-             (caps (cadr (fn2-envelope-replay *fn2-ns-trace* *fn2-ns-profile* nil)))
+             (caps (cadr (fn2-ss-replay *fn2-ns-trace* *fn2-ss-profile* *fn2-ss-seeds* nil)))
              (cap (find port caps :key (lambda (c) (nth 1 (cdr c)))))
              (cl (find port clients :key (lambda (c) (nth 4 c)))))
         (format t "@@FN2SS envelope-detail ~d rx=~s eof=~s tx-len=~d sent=~s received-len=~d closed=~s@@~%"
