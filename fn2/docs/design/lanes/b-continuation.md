@@ -28,6 +28,9 @@ forge -b 45 s, -bt 41 s, -b2 48 s); E's control-connection format rows cd45d4719
 fn2-b-ctl-slot = 4+w+S; floor 4+w+c; amended: the slot's own 128-row stripe, no stripe below the reads);
 B-S2's three keystones ca3aded2b (commit-proof.lisp over
 fn2-commit-txn-proof-run; teeth in tests/commit-txn-unit.lisp; b-durability.md 11b).
+Docs c0645b91e: Argon rulings in b-durability.md (11b S11 the :draining posture via
+fn2-commit-posture; S12 one encoding, the txn record kinds grow to every staged schema; 6 geometry =>
+resize/migration is an import). Their code lands with D's txn port.
 1. **PARKED (ember's spine-only ruling, 2026-10-31).** No B5-4b, B6 or commit port until main wakes
    the seat (the port follows G3). Open items when woken: rebase over C's *fn2-b-txn-field-rows*
    (machines-b's fn2-b-field-rows; txn stripe 1024 -> 2048) when main sends C's sha; the cross-owner

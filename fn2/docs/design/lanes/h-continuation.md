@@ -56,6 +56,19 @@ READY (sha + one line) per commit, RED, BLOCKED; rewrite this file whole after e
   model when D3_POLICY archive is True (inert now). NEXT TRIGGER: D's commit giving the session profile read rows
   and a seeded group. Then: set D3_POLICY archive True and the S model's groups (sim_nntp NntpModel({...})) to the
   seeded group (name, and its articles if seeded), run both targets by hand, READY the line.
+- H22 53c2b9ff6 (pushed as dfa876f12): the line opens with "M2 cuts n/12" (Argon §9.12), read from OUT/m2.json,
+  which the command in H_NIGHTLY_M2 writes ({"passed": n, "total": 12, "source": ...}); prints 0/12 until then.
+  When main sends E's sim-layer-e invocation: put it in the crontab line as H_NIGHTLY_M2='...' (cron has no env), or
+  wire it into laptop_nightly.sh, and make it write OUT/m2.json.
+- H23 a362d0d13 (sim_nntp.CARRIERS: SIM = D's seeded store, local.test 1-3 <a|b|c@example.invalid> as 120-octet
+  1-line articles, local.empty; archive True. NATIVE = archive False, surface.test) and H24 9f0e1c954 (model: LIST
+  status n when posting is off; SIM keeps the default .invalid Xref server). laptop_nightly.sh certifies
+  books/owed-cursor too. RED sent to main/D: the seeded node's OVER/XOVER lines have 8 fields, no Xref, while
+  OVERVIEW.FMT lists Xref:full (specs/nntp.md 330-349). Next: when D's fix lands, run both targets by hand and
+  READY the line. Probes: build/h8/probe/.
+- A's 4c7ab8df3 seeded native-serve.lsp (Fn2Backend's node), NOT native-session.lsp (the S socket hook). Kept
+  CARRIERS['NATIVE'] archive False and asked A to seed native-session the same way. When that sha comes, flip
+  CARRIERS['NATIVE'] to the SIM store (same groups/articles/policy).
 - STANDING BY on events. A READY that flips verbs triggers a confirm of the nntp family on both carriers
   (one run of the nightly script by hand, detached: `nohup env -i HOME=$HOME USER=$USER /bin/sh
   fn2/tests/harness/laptop_nightly.sh &`). A certify after a foundation move takes about 50 min under load.

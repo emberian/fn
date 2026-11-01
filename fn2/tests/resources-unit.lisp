@@ -7,18 +7,19 @@
 (defmacro fn2-resource-rejects (name form)
   `(assert-event (not ,form) :msg (msg "~x0: a defective table was accepted" ',name)))
 
-; (a) one total order: no tie, no gap, no duplicate kind, no prose-free row.
-(fn2-resource-rejects :order-tie
-  (fn2-resource-order-p
-   (cons (cons :tie (cdr (car *fn2-resource-order*))) *fn2-resource-order*)))
-(fn2-resource-rejects :order-gap (fn2-resource-order-p (cdr *fn2-resource-order*)))
+; (a) one total order (a rank is a kind's place, so no tie or gap can be
+; written): no duplicate kind, no prose-free row; ranks follow the order.
+(assert-event (fn2-resource-order-p *fn2-resource-order*))
+(assert-event (and (equal (fn2-resource-rank :service-work *fn2-resource-order*) 1)
+                   (equal (fn2-resource-rank :cursor-row *fn2-resource-order*) 13)
+                   (equal (fn2-resource-rank :bogus *fn2-resource-order*) 0)))
 (fn2-resource-rejects :order-duplicate
   (fn2-resource-order-p
    (append *fn2-resource-order*
-           (list (cons :operation '(:rank 25 :unit :op :bound (:profile :o) :why "again"))))))
+           (list (cons :operation '(:unit :op :bound (:profile :o) :why "again"))))))
 (fn2-resource-rejects :order-no-why
   (fn2-resource-order-p
-   (append *fn2-resource-order* (list '(:extra :rank 25 :unit :op :bound (:profile :o))))))
+   (append *fn2-resource-order* (list '(:extra :unit :op :bound (:profile :o))))))
 
 (defun fn2-resource-test-bundle (acquires holds reserve transition)
   (declare (xargs :guard t))

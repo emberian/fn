@@ -26,11 +26,23 @@ the lane clone is `~/fn2-d6-lane/work` on `hbox-saas`); forge is the measurement
   and the txn reads it (D9's ServicePosture brought forward). (4) small, any time: `fn2-resource-rank`
   = 1 + position in `*fn2-resource-order*`, the hand `:rank` keys and the length pin go; the twin
   bundle/release tables are deleted at the conn port once every kind declares `:holds`/`:effects`.
+- **B's forms for these (dev c0645b91e, b-durability.md §11b):** S11 `(fn2-commit-posture fn2-core) ->
+  (:serving :draining)`, a read op (defcost naming fn2-machines), `:draining` exactly while some commit
+  row is `:uncertain`; `:ready` reads it before staging. S12: pass `fn2-successor-out`'s workspace to
+  `fn2-commit-admit-txn` unchanged.
+- **The form, latest (dev):** 144596771 derives `*fn2-turn-transition-max*` from the registry (cursor and
+  txn budgets are inside the turn bound). a0556c390 (G3 2/n) gives the conn port its language: F14 holds
+  per path `(K :while (F V ...))` (`:principal-reservation :while (reserved :held)`), F8 typed `:links`
+  (cross-row reads of upload/txn/cursor move to links; a linked kind stops writing okind/oslot/ogen by
+  hand), `:phase-subset` fields (conn's `after`), per-path findings at defmachine-run.
 - **Never stand by.** While the txn port waits on C's §4a sha, do D's breadth that waits on nothing.
 
 ## State (dev)
 - **D6 1/n** eee0eb09e + a466488fe: the cursor (GROUP, LISTGROUP name, NEXT, LAST, STAT n/<id>, OVER/XOVER).
-- **D6 1/n-b** 068fd597a (merged over dev as 19c1506bf, pushed with this notebook; see `git log`):
+- **Argon ruling (4)** 49e7df92f: `fn2-resource-rank` = 1 + position; no `:rank` keys, no length pin.
+- **H20 item 2** 689d196a1: sim-session.lsp serves reading over three seeded articles in local.test
+  (reader-only profile: *fn2-cursor-profile* less :posting-interim). A's native session is A's.
+- **D6 1/n-b** 068fd597a (on dev, 12410f1b9 merge; cursor-unit green at that tip on hbox):
   - LIST ACTIVE / COUNTS / NEWSGROUPS without a wildmat and bare LISTGROUP, through a scan of
     `fn2-groups` in name order (d-machines-nntp.md §15.0 is the as-built record).
   - TX's prefix `[0, roff)` is the cursor's across pages: the connection truncates TX to roff after a
@@ -59,21 +71,17 @@ the lane clone is `~/fn2-d6-lane/work` on `hbox-saas`); forge is the measurement
   beside the read rows.
 
 ## Next, in order
-1. **H's session profile (main, H20 item 2; taken right after 1/n-b):** give the S-form sessions
-   (sim-session.lsp, and A's native session) a profile with read rows (`:reading t :x 2`) and a published
-   group seeded through C-S3 as cursor-unit does (owed-cursor.lisp's `fn2-cs-seed-all`), so H's model
-   can flip `archive` true and judge the cursor's own 211/223/224/42x/215 replies. Say the sha to main.
-2. **The txn port P.4** the moment main sends C's §4a sha: P.4 below (four records in B's encodings,
+1. **The txn port P.4** the moment main sends C's §4a sha: P.4 below as amended by the Argon rulings (the member workspace is `fn2-successor-out`'s, passed unchanged; stage `:refused` replans to evidence-only; `fn2-commit-posture` `:draining` refuses new POSTs by word),
    `(:park :batch-membership)` on `:exhausted`, the `:consumer` mode with E's declared op then
    `(:wake-row cns)`, C's location bind from `fn2-commit-txn-source`, replies from the facts (rulings 6,
    7, 8), the `fn2-consumer-names` fold at register when main sends C's schema sha), and D5 2/n: the
    durable POST, 240 after publication, posting advertised (`fn2-answer-posting-p` on), D5's interim
    rows leaving. `(defmachine-registry fn2-txn)` is declared; its arms go to child form with the port.
-3. **OVER <id>** after the port (the address entries).
-4. **D6 3/n** ARTICLE/HEAD/BODY over `fn2-block-read` / `-done` and the location field; the conn port
+2. **OVER <id>** after the port (the address entries).
+3. **D6 3/n** ARTICLE/HEAD/BODY over `fn2-block-read` / `-done` and the location field; the conn port
    when the form's G3 lands (a child-form `(:park :principal-reservation)` needs
    `fn2-account-request-park`'s defcost to name a `:child`).
-5. When convenient: cursor.lisp under the minute (above).
+4. When convenient: cursor.lisp under the minute (above).
 - **Commands (hbox):** sync `git push hbox-saas:fn2-d6-lane/work HEAD:refs/heads/<b>` then on hbox
   `git checkout -q <b>` (the clone's working copy holds only my copies). Certify detached:
   `cd ~/fn2-d6-lane/work && rm -f build/rN.status; (setsid sh -c "swarm-build sh fn2/tools/forge-certify.sh -j 16 <tests...> > build/rN.out 2>&1; echo rc=\$? > build/rN.status" > /dev/null 2>&1 < /dev/null &); sleep 2; ps -eo pgid,cmd | grep "build/rN.out" | grep -v grep | awk "{print \$1}" | head -1 > build/rN.pid`.

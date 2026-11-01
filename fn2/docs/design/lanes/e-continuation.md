@@ -7,7 +7,24 @@
 - 65ebca019: arm tuple (K five . EXTRA) in machine-arms.lisp.
 - E5d (36d26a8da, merged 109ad246b): sim/check-consumer.lisp (CONSUMER), tests/sim-layer-e.lisp (oracle node, 5 scenarios, 5 controls), K10 stated (producer constrained).
 - E.P1a (db4b561f0, merged to dev as 788eed64d over D6 1/n; the merged tip certifies on forge: assembly with cursor and cns, sim/sim, sim-layer-e, cns-edges-unit): books/cns.lisp. The edge table is the core child `fn2-core-cns-edges`, rows = the ledger's :subscription-edge capacity (`fn2-account-profile-capacity`, :esub else 4096), `:profilep` states rows >= that capacity and rows < 2^31; `fn2-cns-edge-link-core` (`:answers (:ok :behind :exhausted)`) and `fn2-cns-edge-unlink-core` are defcosts with `:child`; `(defwait :wait-row :ready fn2-cns-wait-ready-p :grant fn2-cns-wait-grant-one)`, attached in assembly-access (`fn2-cns-wait-events`, after D's request events) to core faces over (edges machines control), liveness from `fn2-cns-grant-one-live`. assembly-index includes cns after txn.
+- Argon rulings (28b6aa253, merged 4a644101c): e-surface 3.1/3.2/3.3/5/6/13.3/14 rewritten as present state; fn2-fncu-decode accepts a v2 cursor that fits v1 (unit asserts it); sim-layer-e has a sixth control, a read after an ack answered from the run head, caught by CONSUMER (:reply). Certified on forge.
 - Uncommitted: nothing.
+
+## Rulings the paste must code (Argon review, REVIEW-ARGON-RESPONSE-20261031.md)
+1. ack: C's fold answers :unchanged for equal and lower alike, so the arm decides: read the recorded position before staging;
+   equal -> accepted, no transaction; lower -> behind; greater -> stage the :consumer txn; an :unchanged after the stage (a
+   race) re-reads and answers by the same rule. (E.P1's :lookup arm already reads first; its :commit arm's
+   `*fn2-cns-posted-unchanged*` -> behind must become re-read-and-decide.)
+2. append (when it serves): fn2-outcome(principal, op) lookup before the write grant; order principal, outcome, grant, meter.
+3. cursors: accept v2 whenever offered; issue v1 while fields fit; compare against the server's record exactly.
+4. §13.3 feed: durable cursor + one terminal disposition per delivery identity; in-memory window; ack the contiguous
+   terminal prefix batched every N or T; reconnect re-offers by CHECK. No durable commit per reply.
+5. XFNC client guidance: wait with nothing pipelined, or open two connections.
+6. Progress number: M2 spine cuts n/12 (Mini's twelve + helm's room through fn2-turn over the real core), sim-layer-e is the source.
+7. A wait's read (first and after every wake) starts at the cursor's position via C's positioned seek (fn2-read-seek /
+   -seek-step), never the run head or fn2-read-range from the run start; E.P1's :read arm uses fn2-read-range with a lo key of
+   pos+1 and must become the seek. CONSUMER compares pages exactly, and the run-head control is caught.
+
 
 ## State of E.P1 (the served consumer): BLOCKED on seams the old notebook did not list
 Read against dev 109ad246b: E.P1's two kinds are a design, not a paste. Ops they call that do not exist and

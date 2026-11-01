@@ -453,15 +453,132 @@
              (msg "~x0: phase field ~x1 starts or is cleared at ~x2, outside ~x3; give it an :initial and never :clear it."
                   name f (car states) sub))
             (t (fn2-machine-phase-fields-problem name (cdr pfields) states initial admission taken newp))))))
+;; Inner state machines (G3, C gap 4): :sub ((NAME :field F :phases (Q ...)
+;; [:on-refusal (STEP ...)] :arms ((Q STEP ...) ...)) ...) is the enum field F
+;; over the inner phases (enum K-NAME, starting at the first) and a sub-arm
+;; NAME after the declared ones, one :cond clause per inner phase on ROW-F;
+;; (:sub-next NAME Q) is (:set (F *K-NAME-Q*)). An arm runs the inner machine
+;; with (:goto NAME), and each path's knowledge of F (G3 F11, F14) keeps the
+;; inner phases' costs, moves and holds apart.
+(defun fn2-machine-sub-enum (name sub)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-sym name (concatenate 'string "-" (symbol-name sub))))
+(defun fn2-machine-sub-const (name sub q)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-machine-sub-enum name sub) q) "*")))
+(defun fn2-machine-sub-get (key spec)
+  (declare (xargs :verify-guards nil))
+  (cadr (member-eq key (cdr spec))))
+(defun fn2-machine-sub-problem (name subs fields)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom subs) (and subs (msg "~x0: :sub is a list of (NAME :field F :phases (Q ...) :arms ((Q STEP ...) ...))." name)))
+        ((not (let* ((spec (car subs)) (qs (fn2-machine-sub-get :phases spec)) (arms (fn2-machine-sub-get :arms spec)))
+                (and (consp spec) (symbolp (car spec)) (keyword-value-listp (cdr spec))
+                     (subsetp-eq (evens (cdr spec)) '(:field :phases :arms :on-refusal))
+                     (symbolp (fn2-machine-sub-get :field spec)) (fn2-machine-sub-get :field spec)
+                     (not (assoc-eq (fn2-machine-sub-get :field spec) fields))
+                     (consp qs) (fn2-columns-keyword-listp qs) (no-duplicatesp-eq qs) (<= (len qs) 256)
+                     (alistp arms) (equal (strip-cars arms) qs) (true-list-listp arms))))
+         (msg "~x0: inner machine ~x1 is (NAME :field F :phases (Q ...) [:on-refusal (STEP ...)] :arms ((Q STEP ...) ...)), ~
+               F a new field and one arm per inner phase, in order." name (car subs)))
+        (t (fn2-machine-sub-problem name (cdr subs) fields))))
+(defun fn2-machine-sub-fields (name subs)
+  (declare (xargs :verify-guards nil))
+  (if (atom subs) nil
+    (cons `(,(fn2-machine-sub-get :field (car subs)) (:enum ,(fn2-machine-sub-enum name (caar subs)) ,(fn2-machine-sub-get :phases (car subs))))
+          (fn2-machine-sub-fields name (cdr subs)))))
+(defun fn2-machine-sub-clauses (name sub f arms)
+  (declare (xargs :verify-guards nil))
+  (if (atom arms) '((t (:stop :machine-phase)))
+    (cons `((equal ,(fn2-columns-col-name 'row f) ,(fn2-machine-sub-const name sub (caar arms))) ,@(cdar arms))
+          (fn2-machine-sub-clauses name sub f (cdr arms)))))
+(defun fn2-machine-sub-subarms (name subs)
+  (declare (xargs :verify-guards nil))
+  (if (atom subs) nil
+    (let ((spec (car subs)))
+      (cons `(,(car spec) ,@(and (member-eq :on-refusal (cdr spec)) `(:on-refusal ,(fn2-machine-sub-get :on-refusal spec)))
+              (:cond ,@(fn2-machine-sub-clauses name (car spec) (fn2-machine-sub-get :field spec) (fn2-machine-sub-get :arms spec))))
+            (fn2-machine-sub-subarms name (cdr subs))))))
+(defun fn2-machine-sub-nexts (name subs x)
+  ; X with each (:sub-next NAME Q) as its field write
+  (declare (xargs :verify-guards nil))
+  (cond ((atom x) x)
+        ((and (eq (car x) :sub-next) (true-listp x) (equal (len x) 3) (assoc-eq (cadr x) subs)
+              (member-eq (caddr x) (fn2-machine-sub-get :phases (assoc-eq (cadr x) subs))))
+         `(:set (,(fn2-machine-sub-get :field (assoc-eq (cadr x) subs)) ,(fn2-machine-sub-const name (cadr x) (caddr x)))))
+        (t (cons (fn2-machine-sub-nexts name subs (car x)) (fn2-machine-sub-nexts name subs (cdr x))))))
+; Conditional holds (G3, D F14): an element (K :while (F V ...)) of a :holds
+; entry holds K in its phase only while the enum field F is one of V. The
+; declaration's :holds keeps each phase's unconditional kinds; :holds-while
+; lists ((PHASE K F V ...) ...), and the kind's arms are checked per path.
+(defun fn2-machine-holds-plain (xs)
+  (declare (xargs :verify-guards nil))
+  (if (atom xs) nil
+    (if (consp (car xs)) (fn2-machine-holds-plain (cdr xs)) (cons (car xs) (fn2-machine-holds-plain (cdr xs))))))
+(defun fn2-machine-holds-kinds (xs)
+  (declare (xargs :verify-guards nil))
+  (if (atom xs) nil (cons (if (consp (car xs)) (caar xs) (car xs)) (fn2-machine-holds-kinds (cdr xs)))))
+(defun fn2-machine-holds-base (holds kindsp)
+  ; each entry's unconditional kinds (KINDSP: every kind, for the rank check)
+  (declare (xargs :verify-guards nil))
+  (if (atom holds) holds
+    (cons (if (consp (car holds))
+              (cons (caar holds) (if kindsp (fn2-machine-holds-kinds (cdar holds)) (fn2-machine-holds-plain (cdar holds))))
+            (car holds))
+          (fn2-machine-holds-base (cdr holds) kindsp))))
+(defun fn2-machine-holds-while-of (phase xs)
+  (declare (xargs :verify-guards nil))
+  (if (atom xs) nil
+    (append (and (consp (car xs)) (consp (cdar xs)) (consp (cddar xs))
+                 (list (list* phase (caar xs) (caddar xs))))
+            (fn2-machine-holds-while-of phase (cdr xs)))))
+(defun fn2-machine-holds-while (holds)
+  (declare (xargs :verify-guards nil))
+  (if (atom holds) nil
+    (append (and (consp (car holds)) (fn2-machine-holds-while-of (caar holds) (cdar holds)))
+            (fn2-machine-holds-while (cdr holds)))))
+(defun fn2-machine-holds-while-entry-problem (name phase xs fields newp)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom xs) nil)
+        ((atom (car xs)) (fn2-machine-holds-while-entry-problem name phase (cdr xs) fields newp))
+        ((not newp) (msg "~x0: the conditional hold ~x1 in ~x2 needs the arm language (:arms)." name (car xs) phase))
+        ((not (let* ((x (car xs)) (c (and (true-listp x) (equal (len x) 3) (eq (cadr x) :while) (caddr x)))
+                     (ty (and (consp c) (cadr (assoc-eq (car c) fields)))))
+                (and (consp c) (true-listp c) (consp (cdr c)) (consp ty) (eq (car ty) :enum) (true-listp ty)
+                     (equal (len ty) 3) (subsetp-eq (cdr c) (caddr ty)))))
+         (msg "~x0: ~x1 in ~x2's holds is (KIND :while (F V ...)), F an enum field and V its values."
+              name (car xs) phase))
+        (t (fn2-machine-holds-while-entry-problem name phase (cdr xs) fields newp))))
+(defun fn2-machine-holds-while-problem (name holds fields newp)
+  (declare (xargs :verify-guards nil))
+  (if (atom holds) nil
+    (or (and (consp (car holds)) (true-listp (car holds))
+             (fn2-machine-holds-while-entry-problem name (caar holds) (cdar holds) fields newp))
+        (fn2-machine-holds-while-problem name (cdr holds) fields newp))))
+(defun fn2-machine-holds-domains (while fields)
+  ; ((F V ...) ...): each conditional field and every value it takes
+  (declare (xargs :verify-guards nil))
+  (if (atom while) nil
+    (let ((rest (fn2-machine-holds-domains (cdr while) fields)) (f (caddr (car while))))
+      (if (assoc-eq f rest) rest (cons (cons f (caddr (cadr (assoc-eq f fields)))) rest)))))
 (defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
-                           admission taken arms subarms stops)
+                           admission taken arms subarms stops links sub)
   (let* ((states (or states phases))
+         (sub-problem (fn2-machine-sub-problem name sub fields))
+         (fields (if sub-problem fields (append fields (fn2-machine-sub-fields name sub))))
+         (subarms (if sub-problem subarms (fn2-machine-sub-nexts name sub (append subarms (fn2-machine-sub-subarms name sub)))))
+         (arms (if sub-problem arms (fn2-machine-sub-nexts name sub arms)))
+         (observes (if (and arms (not sub-problem)) (fn2-machine-sub-nexts name sub observes) observes))
          (phase-fields (fn2-machine-phase-fields fields))
          (phase-problem (fn2-machine-phase-fields-problem name phase-fields states initial admission taken
                                                           (and arms t)))
          (fields (fn2-machine-lower-phase-fields fields))
          (initial (fn2-machine-lower-phase-initial name phase-fields initial))
          (newp (and arms t))
+         (holds-while (fn2-machine-holds-while holds))
+         (while-problem (fn2-machine-holds-while-problem name holds fields newp))
+         (rank-holds (fn2-machine-holds-base holds t))
+         (holds (fn2-machine-holds-base holds nil))
          (observe-arms (and newp observes))
          (continuations (if newp (fn2-machine-arm-skeleton name arms "-RUN-") continuations))
          (observes (if newp (fn2-machine-arm-skeleton name observes "-ON-") observes)))
@@ -474,6 +591,9 @@
            (and (fn2-columns-keyword-listp stops) (no-duplicatesp-eq stops) (< (len stops) 256))
            (or (not newp) (and (fn2-machine-arm-entriesp arms) (fn2-machine-arm-entriesp observe-arms)
                                (alistp subarms) (symbol-listp (strip-cars subarms))))
+           ;; typed links (G3, D F8), checked whole by defmachine-arms
+           (and (alistp links) (symbol-listp (strip-cars links)) (no-duplicatesp-eq (strip-cars links))
+                (or newp (null links)))
            (fn2-machine-continuationsp continuations nil)
            (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
            (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
@@ -487,16 +607,19 @@
            (natp (cadr (member-eq :steps budget)))
            (natp (cadr (member-eq :descriptors budget))) capacity)
       (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
-             (problem (or phase-problem
+             (problem (or sub-problem (and sub (not newp) (msg "~x0: an inner machine needs the arm language (:arms)." name))
+                          phase-problem while-problem
                           (and (not newp) (fn2-arm-contracts-problem name continuations states own nil))
                           (and (not newp) (fn2-arm-contracts-problem name observes states own t))
-                          (fn2-arm-holds-problem-syntax name holds states)
+                          (fn2-arm-holds-problem-syntax name rank-holds states)
                           (fn2-machine-admission-problem name admission states own)
                           (fn2-machine-taken-problem name taken admission states own))))
         (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
           (fn2-machine-events name states fields budget continuations observes capacity initial holds
                               admission taken (and newp (list* :arms arms :subarms subarms :observe-arms observe-arms :stops stops
-                                                    (and phase-fields (list :phase-fields phase-fields)))))))
+                                                    (append (and phase-fields (list :phase-fields phase-fields))
+                                                            (and holds-while (list :holds-while holds-while))
+                                                            (and links (list :links links))))))))
     (er hard 'defmachine "Invalid machine declaration ~x0." name))))
 
 ; ----------------------------------------------------------------------
@@ -763,6 +886,34 @@
           (fn2-machine-unresolved-use name (cdr uses) world)
         u))))
 (defconst *fn2-arm-postures* '(:close-and-release :discard-to-terminator :refuse-by-word :stop))
+;; D0's moves: per path for a generated arm of a kind with conditional holds
+;; (its :paths, G3 D F14), else per arm over its :next and :uses. Every other
+;; generated arm's paths are checked too and reported, not refused, until
+;; their owners have read them (fn2-machine-arm-path-report).
+(defun fn2-machine-arm-paths-problem (name sources c holds world)
+  (declare (xargs :verify-guards nil))
+  (let ((while (fn2-machine-declared name :holds-while world)))
+    (fn2-arm-paths-problem sources (fn2-arm-get :paths c)
+                           (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
+                           holds while world)))
+(defun fn2-machine-arm-path-report (name entries world)
+  ; ((TAG . problem) ...) over a kind's continuations, when it has no conditional holds
+  (declare (xargs :verify-guards nil))
+  (if (or (atom entries) (fn2-machine-declared name :holds-while world)) nil
+    (let* ((c (cddar entries))
+           (p (and (member-eq :paths c)
+                   (fn2-machine-arm-paths-problem name (list (caar entries)) c (fn2-machine-property name :holds world) world))))
+      (append (and p (list (cons (caar entries) p))) (fn2-machine-arm-path-report name (cdr entries) world)))))
+(defun fn2-machine-path-report-events (name report)
+  (declare (xargs :verify-guards nil))
+  (if (atom report) nil
+    (cons `(value-triple (cw "~x0 arm ~x1, D0 per path (reported, G3 F14): ~@2~%" ',name ',(caar report) ',(cdar report)))
+          (fn2-machine-path-report-events name (cdr report)))))
+(defun fn2-machine-arm-resource-problem (name sources c holds world)
+  (declare (xargs :verify-guards nil))
+  (if (and (member-eq :paths c) (fn2-machine-declared name :holds-while world))
+      (fn2-machine-arm-paths-problem name sources c holds world)
+    (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds (fn2-arm-get :uses c) world)))
 (defun fn2-machine-arm-problem (name entry observationp world)
   (declare (xargs :verify-guards nil))
   (let* ((tag (car entry)) (c (cddr entry))
@@ -790,8 +941,8 @@
       (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
            name tag (fn2-machine-unresolved-use name uses world)))
      ((and (not (eq (fn2-arm-get :language c) :unchecked))
-           (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world))
-      (msg "~x0: arm ~x1 ~@2" name tag (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds uses world)))
+           (fn2-machine-arm-resource-problem name sources c holds world))
+      (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds world)))
      ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-arm-effect-rows name sources uses holds world))
                                    *fn2-resource-order*))
       (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
@@ -1226,6 +1377,7 @@
                       (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world))))
     (if problem `(make-event (er soft 'defmachine-run "~@0" ',problem))
     `(progn
+       ,@(fn2-machine-path-report-events name (fn2-machine-arm-path-report name (fn2-machine-property name :continuations world) world))
        ,@(fn2-machine-certificate-events name world)
        ,(fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
       '(bytes steps descriptors runnable fn2-core) nil :callbacks

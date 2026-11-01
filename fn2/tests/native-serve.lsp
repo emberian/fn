@@ -5,14 +5,15 @@
 ; :listener-port / :listener-address; FN2_LISTENER_PATH sets :listener-path,
 ; the owner-only Unix socket beside it. Prints fn1's ready line
 ; `LISTENING <port>` once bound (port 0 reports the kernel's ephemeral port),
+; serving the surface sessions' profile and seeded store (seeded-store.lsp:
+; reading over local.test with three articles and local.empty),
 ; then `LISTENING-LOCAL <path>` when the Unix socket is bound,
 ; serves until SIGTERM or SIGINT (the sticky signal stops the core), then
 ; prints `STOPPED <reason>` and exits 0; a refused configuration exits 2 with
 ; `REFUSED <word>`. FN2_ENVELOPE_TRACE=N records a boundary trace of N
 ; entries and checks ENVELOPE's legality (item 1) at stop: `ENVELOPE <verdict>`.
 (in-package "ACL2")
-(include-book "fn2/books/owed-conn")
-(include-book "fn2/sim/check-envelope")
+(ld "fn2/tests/seeded-store.lsp")
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
 (load "fn2/host/ffi.lisp")

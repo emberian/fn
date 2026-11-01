@@ -15,14 +15,15 @@
 ; client octets moved (every round observes a clock reading). Network
 ; faults follow the seed; process death is excluded (probability 0).
 (in-package "ACL2")
-(include-book "../books/owed-conn")
+(include-book "../books/owed-cursor")
 (include-book "../sim/echo")
 (include-book "../sim/check-wire")
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 (set-fmt-hard-right-margin 1000000 state)
 (set-fmt-soft-right-margin 1000000 state)
 
-(defconst *fn2-ss-profile* (put-assoc-equal :trace nil *fn2-conn-wire-profile*))
+;; The session serves reading (D6) over the seeded store (seeded-store.lsp).
+(ld "seeded-store.lsp")
 
 ; Client records live in a global table (test-side): id -> (nonce sent
 ; received closed cap). The id is a serial number per open (the global
@@ -95,6 +96,8 @@
 (defun fn2-ss-start (seed fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((fn2-core (fn2-init-executor *fn2-ss-profile* :echo nil fn2-core))
+       ((mv seeded fn2-core) (fn2-cs-seed-all *fn2-ss-seeds* 1 fn2-core))
+       (- (or (eq seeded :ok) (cw "@@FN2SS seeding ~x0@@~%" seeded)))
        (fn2-sim (fn2-sim-init seed :crash-only "sim-session" *fn2-ss-profile* fn2-sim))
        (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
        (fn2-sim (update-fn2-sim-probabilitiesi *fn2-fault-crash* 0 fn2-sim))

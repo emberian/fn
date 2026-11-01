@@ -242,6 +242,16 @@ Facts learned that fix the design:
 - A: A-S8 `fn2-pool-copy-across` replaces `fn2-idc-copy`.
 
 ## Pitfalls (this seat and earlier)
+- A long `fn2-txn-chain` (about 30 calls) with `if`s inside stalls its guard proof for hours. Split it
+  into small functions, each with its own `fn2-core-preserves` and disabled before use. The chain
+  macro binds `c`: never name a local `c` inside it.
+- Generated code nested once per key field (the schema compare) took about 290 s per nine-field
+  schema to define. Generate a chain of shallow functions instead (runs-schema does now).
+- A certify with no new .cert for ten minutes is a stalled proof: read the newest .cert.out's tail,
+  stop the run by its PID file, split the proof.
+- rd-shape and idc shape lemmas state positions >= 1 (`(mv-nth 0 x)` normalizes to `(car x)` and
+  never matches): a function's stobjs follow a leading code. A shape lemma's hypotheses are stobj
+  facts only, so the function checks its own bounds (guard t) rather than relying on its guard.
 - A shape lemma's callee hyps must all be discharged: `(< b (X-rows ...))` needs an explicit
   run-time `(< 0 (X-rows ...))` check (fn2-run-buildp is disabled, so its row fact is invisible)
   and the X-rows functions disabled in the guard hints, else they open to `(nth *X-ROWS* ...)` and
