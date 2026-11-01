@@ -72,25 +72,25 @@ inventoried retirement or an `intended-skips.json` entry; 0 otherwise.
 
 ## fn2 today
 
-The last laptop nightly's line is in `build/h8/nightly/LATEST.txt` (below). At dev b1ccb0444
-(the cursor, D6 1/n, with the interim table regenerated), 1,000 examples × 50 steps:
+The last laptop nightly's line is in `build/h8/nightly/LATEST.txt` (below). At dev 48305081a, 1,000 examples ×
+50 steps, both carriers serve reading over the shared seeded store (`fn2/tests/seeded-store.lsp`). local.test
+holds <a|b|c@example.invalid> numbered 1-3, each overview row ending in `Xref: .invalid local.test:N`, and
+local.empty is empty. `sim_nntp.CARRIERS` gives the model the same store.
 
 | target | form | result |
 |---|---|---|
-| both | served surface | 14 verbs: CAPABILITIES HELP QUIT MODE DATE AUTHINFO XREDEEM, and the cursor's GROUP LISTGROUP NEXT LAST STAT OVER XOVER. 16 interim rows left: D6 10, D5 3, D7 1, E2 1, E4 1 |
-| `fn2` | S | 20,723 served, 0 disagreements, 9,777 interim (POST 811 for D5; 8,966 for D6), WIRE 18,837 opened = judged ok |
-| `fn2-native` | S | the same counts, WIRE and ENVELOPE ok on all 18,837 connections |
-| `fn2-native` | E | 0 failures. The natives are owed host contracts (`operator CONFIG init` with groups, `store STORE init`, the FNCT control socket, the developer `model` and `store` verbs). There are also 3 intended skips (hbox fixtures), 1 opt-in, and the rfc3977 fixture (owed at its setup's `init`). |
-| `fn2-native` | F | named skip: the differential's owner is fn1's fuzz Node with groups and a login |
+| both | primary | M2 cuts 0/12. E's sim-layer-e over the served machines has not run yet. |
+| both | served surface | 14 verbs: CAPABILITIES HELP QUIT MODE DATE AUTHINFO XREDEEM, plus the cursor's GROUP LISTGROUP NEXT LAST STAT OVER XOVER (and LIST, ACTIVE, COUNTS, NEWSGROUPS without a wildmat). 16 interim rows left: D6 10, D5 3, D7 1, E2 1, E4 1. |
+| `fn2` | S | 28,657 served, 0 disagreements, 4,372 interim (D5 401, D6 3,971), WIRE 16,768 opened = judged ok |
+| `fn2-native` | S | the same counts, WIRE and ENVELOPE ok on all 16,768 connections |
+| `fn2-native` | E | 0 failures. Natives owe host contracts (`operator CONFIG init` with their own groups, `store STORE init`, the FNCT control socket, developer verbs). There are 3 intended skips, 1 opt-in, and the rfc3977 fixture (owed at `init`). |
+| `fn2-native` | F | named skip: the differential's owner needs groups and a login |
 | `fn2-native` | H | named skip: no nntp operations observed |
 
-**What the S form does not reach yet: the cursor's own replies.** Both sessions run a profile
-with no read rows, so the node serves no archive. A well-formed GROUP, LISTGROUP, STAT, OVER or
-XOVER answers 503, and NEXT and LAST answer 412 (`*fn2-answer-unread*`). The model states this
-as policy `archive` false in `D3_POLICY`. The cursor's 211, 223, 224 and 42x replies get judged
-once a session profile has read rows and a published group. `D3_POLICY` then sets `archive` true
-and the model's groups to that group. Likewise, the E rows that need groups turn live when the
-served node takes groups at `init`.
+The S form judges the cursor's own replies on both carriers: 211, 223 by number and Message-ID, 224 with the
+Xref field, 42x, and LIST and LIST COUNTS. Model corrections on the way: LIST status is `n` on a node that
+permits no posting, and the default `.invalid` Xref server applies (specs/nntp.md 330-349). The E rows turn live
+when the served node takes groups at `init`.
 
 ## The laptop nightly (fn2; cron 03:30, `fn2/tests/harness/laptop_nightly.sh`)
 
