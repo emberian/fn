@@ -15,53 +15,53 @@
 ; returns to its start (argument (g), fn2-resource-ranked-no-cycle below).
 ; :bound names the profile key (or ROUND2 section B.1 capacity) that bounds it.
 (defconst *fn2-resource-order*
-  '((:service-work :rank 1 :unit :visit :bound (:calendar) :reserve :service-classes
+  '((:service-work :unit :visit :bound (:calendar) :reserve :service-classes
      :why "One bounded run of a scheduled service; a visit is the frame in which a service acquires and is never awaited.")
-    (:accept-credit :rank 2 :unit :credit :bound (:profile :accept-credits) :reserve nil
+    (:accept-credit :unit :credit :bound (:profile :accept-credits) :reserve nil
      :why "A listener row: at most one pending Accept each, held for the listener's lifetime.")
-    (:connection-row :rank 3 :unit :row :bound (:profile :c) :reserve nil
+    (:connection-row :unit :row :bound (:profile :c) :reserve nil
      :why "Reserved as an admission credit at Accept issue, held for the connection's lifetime.")
-    (:rx-range :rank 4 :unit :pool-slot :bound (:profile :pool-classes) :reserve nil
+    (:rx-range :unit :pool-slot :bound (:profile :pool-classes) :reserve nil
      :why "The connection's receive window, held for its lifetime.")
-    (:tx-range :rank 5 :unit :pool-slot :bound (:profile :pool-classes) :reserve nil
+    (:tx-range :unit :pool-slot :bound (:profile :pool-classes) :reserve nil
      :why "The connection's reply window, held for its lifetime.")
-    (:principal-reservation :rank 6 :unit :quantity :bound (:profile :p) :reserve :system
+    (:principal-reservation :unit :quantity :bound (:profile :p) :reserve :system
      :why "One request's charge on its principal account, held from request admission to its reply; a machine holds at most one.")
-    (:durable-octets :rank 7 :unit :quantity :bound (:profile :dstore) :reserve :system
+    (:durable-octets :unit :quantity :bound (:profile :dstore) :reserve :system
      :why "Octets a principal's appended articles keep durable (4,096-octet blocks, rounded up per article), charged in the append's transaction and released when retention reclaims them.")
-    (:tls-slot :rank 8 :unit :slot :bound (:round2 :ltls 16) :reserve nil
+    (:tls-slot :unit :slot :bound (:round2 :ltls 16) :reserve nil
      :why "A handshake job, held for the handshake only.")
-    (:upload-row :rank 9 :unit :row :bound (:profile :u) :reserve nil
+    (:upload-row :unit :row :bound (:profile :u) :reserve nil
      :why "An article input in progress, held while its bytes arrive.")
-    (:chunk-window :rank 10 :unit :window :bound (:round2 :large-upload-windows 16) :reserve nil
+    (:chunk-window :unit :window :bound (:round2 :large-upload-windows 16) :reserve nil
      :why "Two 256 KiB chunk ranges of a large upload, held while it streams.")
-    (:transaction-row :rank 11 :unit :row :bound (:profile :t) :reserve nil
+    (:transaction-row :unit :row :bound (:profile :t) :reserve nil
      :why "A posting transaction from admission to its outcome.")
-    (:identity-reservation :rank 12 :unit :reservation :bound (:profile :t) :reserve nil
+    (:identity-reservation :unit :reservation :bound (:profile :t) :reserve nil
      :why "The Message-ID and operation identity claim of one transaction.")
-    (:cursor-row :rank 13 :unit :row :bound (:profile :x) :reserve nil
+    (:cursor-row :unit :row :bound (:profile :x) :reserve nil
      :why "A query cursor from its command to its last reply byte.")
-    (:wait-row :rank 14 :unit :row :bound (:profile :w) :reserve nil
+    (:wait-row :unit :row :bound (:profile :w) :reserve nil
      :why "A parked consumer wait from registration to its reply or cancellation.")
-    (:subscription-edge :rank 15 :unit :edge :bound (:profile :esub) :reserve nil
+    (:subscription-edge :unit :edge :bound (:profile :esub) :reserve nil
      :why "One wait row's edge to a stream, reserved at registration.")
-    (:control-output :rank 16 :unit :bytes :bound (:profile :w) :reserve nil
+    (:control-output :unit :bytes :bound (:profile :w) :reserve nil
      :why "The reply window a wake or control reply needs, reserved at registration so delivery never waits.")
-    (:cache-pin :rank 17 :unit :pin :bound (:round2 :cache-profile) :reserve :recovery
+    (:cache-pin :unit :pin :bound (:round2 :cache-profile) :reserve :recovery
      :why "An object lease under a pinned view, held while a reply streams it.")
-    (:batch-membership :rank 18 :unit :records-and-bytes :bound (:round2 :batch 1024 4194304) :reserve nil
+    (:batch-membership :unit :records-and-bytes :bound (:round2 :batch 1024 4194304) :reserve nil
      :why "A transaction's records in a commit batch until publish.")
-    (:storage-job :rank 19 :unit :job :bound (:profile :jread :jwrite) :reserve :recovery
+    (:storage-job :unit :job :bound (:profile :jread :jwrite) :reserve :recovery
      :why "A read or write slot: a storage job row, held across its issue, completion and verification.")
-    (:storage-window :rank 20 :unit :pool-slot :bound (:profile :pool-classes) :reserve :recovery
+    (:storage-window :unit :pool-slot :bound (:profile :pool-classes) :reserve :recovery
      :why "The pool range a storage job reads into or writes from.")
-    (:fence-slot :rank 21 :unit :slot :bound (:profile :fence-slots) :reserve :fence
+    (:fence-slot :unit :slot :bound (:profile :fence-slots) :reserve :fence
      :why "One fence in flight per storage domain.")
-    (:cancel-credit :rank 22 :unit :credit :bound (:profile :ncancel) :reserve :cancel
+    (:cancel-credit :unit :credit :bound (:profile :ncancel) :reserve :cancel
      :why "One outstanding cancellation request.")
-    (:operation :rank 23 :unit :op :bound (:profile :o :qa) :reserve (:close :cancel :arm-wake :fence)
+    (:operation :unit :op :bound (:profile :o :qa) :reserve (:close :cancel :arm-wake :fence)
      :why "One op row with its outbox descriptor and two result cells, reserved together (fn2-op-reserve); held for one issue.")
-    (:sealable :rank 24 :unit :overlay :bound (:profile :identity-overlays) :reserve nil
+    (:sealable :unit :overlay :bound (:profile :identity-overlays) :reserve nil
      :why "A pure wait, never held: the sealer parked until a published overlay is sealable; the grant service's fifth source wakes it.")))
 
 ; Protected reserves (e): units set aside at init and never lent to ordinary
@@ -276,9 +276,15 @@
         ((and (consp (car table)) (equal key (caar table))) (cdar table))
         (t (fn2-resource-entry key (cdr table)))))
 
+;; A kind's rank is its place in the order: 1 + its position, 0 when absent.
+(defun fn2-resource-position (kind order i)
+  (declare (xargs :guard (natp i)))
+  (cond ((atom order) 0)
+        ((and (consp (car order)) (equal kind (caar order))) (+ 1 (nfix i)))
+        (t (fn2-resource-position kind (cdr order) (+ 1 (nfix i))))))
 (defun fn2-resource-rank (kind order)
   (declare (xargs :guard t))
-  (nfix (fn2-resource-get :rank (fn2-resource-entry kind order))))
+  (fn2-resource-position kind order 0))
 
 (defun fn2-resource-kindp (kind order)
   (declare (xargs :guard t))
@@ -290,21 +296,21 @@
     (and (fn2-resource-kindp (car kinds) order)
          (fn2-resource-kinds-known-p (cdr kinds) order))))
 
-; Ranks are exactly 1..n in listed order: one total order, no ties.
-(defun fn2-resource-order-entries-p (order rank seen)
+; One total order: a kind's rank is its place (fn2-resource-rank), so no tie
+; or gap can be written; each kind appears once, with its unit, bound and why.
+(defun fn2-resource-order-entries-p (order seen)
   (declare (xargs :guard t))
   (if (atom order) (null order)
     (let ((e (car order)))
       (and (consp e) (keywordp (car e)) (not (fn2-resource-memberp (car e) seen))
            (keyword-value-listp (cdr e))
-           (equal (fn2-resource-get :rank (cdr e)) rank)
            (keywordp (fn2-resource-get :unit (cdr e)))
            (consp (fn2-resource-get :bound (cdr e)))
            (stringp (fn2-resource-get :why (cdr e)))
-           (fn2-resource-order-entries-p (cdr order) (+ 1 (nfix rank)) (cons (car e) seen))))))
+           (fn2-resource-order-entries-p (cdr order) (cons (car e) seen))))))
 (defun fn2-resource-order-p (order)
   (declare (xargs :guard t))
-  (and (consp order) (fn2-resource-order-entries-p order 1 nil)))
+  (and (consp order) (fn2-resource-order-entries-p order nil)))
 
 (defun fn2-resource-ascending-p (kinds order)
   (declare (xargs :guard t))
@@ -491,7 +497,6 @@
 ; Each table, checked over its own data at certification (negative fixtures
 ; for every predicate: tests/resources-unit.lisp).
 (assert-event (fn2-resource-order-p *fn2-resource-order*))
-(assert-event (equal (len *fn2-resource-order*) 24))
 (assert-event (fn2-resource-reserves-p *fn2-resource-reserves* *fn2-resource-order*))
 (assert-event (fn2-resource-bundles-p *fn2-resource-bundles* *fn2-resource-order* *fn2-resource-reserves*))
 (assert-event (fn2-resource-releases-p *fn2-resource-releases* *fn2-resource-order*))
