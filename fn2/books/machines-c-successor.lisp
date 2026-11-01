@@ -134,23 +134,29 @@
 ;; Shapes of the operations the successor uses (type, wfp, rows of every
 ;; stobj each returns), proved here once, each operation opened alone; READS
 ;; are folded (C-SHAPE-READS).
+(defun fn2-idc-op-shape-disables (plain reads)
+ (declare (xargs :verify-guards nil))
+ (cond ((eq plain :min) `(fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows ,@reads))
+       (plain `(fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
+                fn2-id-engine-rows fn2-id-decides-rows
+                fn2-succ-txns-rows fn2-succ-slots-rows fn2-run-cursors-rows
+                fn2-run-paths-rows fn2-run-installed-rows
+                fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read
+                fn2-pool-write fn2-pool-class-for ,@reads))
+       (t `(fn2-overlaysp fn2-overlays-wfp fn2-overlay-indexp fn2-overlay-index-wfp
+            fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-overlays-rows
+            fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
+            fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
+            fn2-pool-class-for fn2-id-enginep fn2-id-engine-wfp fn2-id-engine-rows
+            fn2-id-decidesp fn2-id-decides-wfp fn2-id-decides-rows ,@reads))))
+;; One theorem per operation (machines.lisp fn2-shape-one): the claims about
+;; every returned child are one predicate, proved by one walk of the
+;; operation's paths; FN-IDC-SHAPE states the claims, for callers.
 (defmacro fn2-idc-op-shape (fn args outs hyps &optional (plain 'nil) reads)
- `(defthm ,(fn2-columns-sym fn "-IDC-SHAPE")
-   (implies (and ,@hyps) (and ,@(fn2-fc-shape-claims (if (consp (car outs)) outs (fn2-idc-shape-outs outs 1)) (cons fn args))))
-   :hints (("Goal" :in-theory ,(cond ((eq plain :min) `(e/d (,fn) (fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows ,@reads)))
-                                     (plain `(e/d (,fn) (fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
-                                                   fn2-id-engine-rows fn2-id-decides-rows
-                                                   fn2-succ-txns-rows fn2-succ-slots-rows fn2-run-cursors-rows
-                                                   fn2-run-paths-rows fn2-run-installed-rows
-                                                   fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read
-                                                   fn2-pool-write fn2-pool-class-for ,@reads)))
-                                     (t
-                                 `(e/d (,fn) (fn2-overlaysp fn2-overlays-wfp fn2-overlay-indexp fn2-overlay-index-wfp
-                                          fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-overlays-rows
-                                          fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
-                                          fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                          fn2-pool-class-for fn2-id-enginep fn2-id-engine-wfp fn2-id-engine-rows
-                                          fn2-id-decidesp fn2-id-decides-wfp fn2-id-decides-rows ,@reads))))))))
+ (let ((outputs (if (consp (car outs)) outs (fn2-idc-shape-outs outs 1))))
+  `(fn2-shape-one ,(fn2-columns-sym fn "-IDC-SHAPE") ,fn ,args ,hyps
+                  ,(fn2-fc-shape-claims outputs 'fn2-shape-r) ,(strip-cars outputs)
+                  (,fn) ,(fn2-idc-op-shape-disables plain reads))))
 (fn2-idc-op-shape fn2-ov-start (o schema slot gen ibase icap okind oslot ogen cov fn2-overlays fn2-overlay-index fn2-pool)
  (fn2-overlays fn2-pool) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
 (fn2-idc-op-shape fn2-ov-advance (o from to fn2-overlays) (fn2-overlays) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays)))

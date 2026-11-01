@@ -3,7 +3,7 @@
 ; arms' core faces and derived contracts over the child-form arms generated
 ; in its own book, then its run entry, after the transaction kind's section.
 (in-package "ACL2")
-(include-book "assembly-callbacks-d-txn")
+(include-book "assembly-callbacks-d")
 
 (defun fn2-cursor-parse (s e mask slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp s) (natp e))

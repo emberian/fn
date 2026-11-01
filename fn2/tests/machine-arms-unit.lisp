@@ -3,6 +3,7 @@
 ; child form here, with no core and no assembly. Refusals are must-fails.
 (in-package "ACL2")
 (include-book "../books/machines-a-run")
+(include-book "../books/accounts-core")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defmachine fn2-arms-probe
@@ -422,3 +423,27 @@
  :observes ())
 (must-fail (defmachine-arms fn2-arms-born-bad :children))
 (value-triple (cw "MACHINE ARMS UNIT: genesis arm walked from the initial phase, registered, an undeclared call refused PASS~%"))
+
+;; G3 (D F4): a defwait park's named formals (:park K :F E ...): in child
+;; form, fn2-account-request-park's :child takes (id principal fn2-accounts
+;; fn2-machines); :principal E supplies the formal, and omitting it is refused.
+(defmachine fn2-arms-park-wait
+ :phases (:free :work)
+ :fields ((seen :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:park :principal-reservation :principal row-principal-slot)))
+ :observes ())
+(defmachine-arms fn2-arms-park-wait :children)
+(assert-event (fn2-assert-compliant-p '(fn2-arms-park-wait-run-work-children) (w state)))
+(defmachine fn2-arms-park-wait-bad
+ :phases (:free :work)
+ :fields ((seen :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:park :principal-reservation)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-park-wait-bad :children))
+(value-triple (cw "MACHINE ARMS UNIT: defwait park named formals supplied and unnamed formal refused PASS~%"))
