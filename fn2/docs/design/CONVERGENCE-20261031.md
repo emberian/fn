@@ -1,9 +1,13 @@
-# fn2 convergence, 2026-10-31 evening (main; present state; the base for Gemini's turn)
+# fn2 convergence, 2026-11-01 (main; present state after Gemini's 3-cycle pass)
 
-Ember: "let's get our subagents converged and landed, and stop spawning more follow-up work; I would like to give Gemini a turn." Every seat was told: push what is green, commit nothing half-done, rewrite its notebook as present state with its exact next step, one-line READY, stop. This note is the state at that point. The seats' notebooks (`lanes/*-continuation.md`) hold the detail; `STATE.md` holds the day's log with shas; `REVIEW-REQUEST-20261031-ARGON.md` and `REVIEW-ARGON-RESPONSE-20261031.md` hold the review and its disposition.
+Ember: "let's get our subagents converged and landed, and stop spawning more follow-up work; I would like to give Gemini a turn." Every seat was told: push what is green, commit nothing half-done, rewrite its notebook as present state with its exact next step, one-line READY, stop. Gemini then ran three vertical/structural cycles on top of `7f44cc242`:
+1. **Cycle 1 (`393c3f4ff`, form + build DAG):** Added named `:park` formals (`(:park K :F E ...)`) with extra child-stobj collection and non-stobj return dropping in `machine-arms.lisp`; adopted `fn2-shape-one` in `machines-c-successor.lisp` (`machines-c-stage` 119 s → 54.4 s); decoupled the linear `assembly-callbacks` chain so `assembly-callbacks-r` (`r -> r2 -> s -> t`) depends on `assembly-callbacks-c` and `assembly-callbacks-d-{conn2,upload,txn,cursor}` fan out in parallel and join in `assembly-callbacks.lisp`.
+2. **Cycle 2 (`35f56fb47`, Lean metatheory):** Re-emitted the `48305081a` world into `Fn2/Instances/LayerA*.lean` (`1,341` translated functions, `1,150` guards, `0` refused, `0` dropped, `22` kinds, `69` operations, `2,491` dispatch equations); added named `:park` keyword formals and `F8` `:links` (`(:live L)`, `(:read L F)`, `:owner L`) to `Fn2/Arms.lean` and `emit_embed.py`; verified `lake build`, `AxiomCensus.lean`, `0` refused expressions across all `1,011` child-form expressions, and `100%` measure agreement across `probe` (`31/31`), `arms` (`963/963`), and `cursor` (`583/583`).
+3. **Cycle 3 (`76666078b` + `55c8290de`, vertical write spine D + C + B):** Ported `fn2-txn` (`books/txn.lisp`) onto `defmachine-arms` (`+308 / -462` lines, certified in `12.6 s`); added C's `fn2-successor-emit` (`defcost` + `fn2-successor-emit-children` in `books/machines-c-bind.lisp`); implemented B's `S12` `fn2-commit-open-entry`, `:open-entry` schema, and `fn2-commit-open-children` in `books/{format-base,format-events,commit-format,commit}.lisp`.
+4. **Disk:** `hbox` `/` and `/othersys` cleaned (54 GiB free, 58% used).
 
 ## The tip
-`origin/dev` at `71a9f55bc` (B's last landing; all seven seats converged and stopped). 91 commits on dev today before the convergence landings, none reverted.
+`origin/dev` includes `393c3f4ff`, `35f56fb47`, `76666078b`, and `55c8290de` above `7f44cc242`.
 
 ## What serves (the measure)
 - 14 NNTP verbs: CAPABILITIES HELP QUIT MODE DATE AUTHINFO XREDEEM, and the cursor's GROUP, LISTGROUP (named and bare), NEXT, LAST, STAT, OVER/XOVER, plus LIST ACTIVE/COUNTS/NEWSGROUPS without a wildmat. 16 interim rows: D6 10 (LIST's wildmat and remaining variants, NEWGROUPS, NEWNEWS, ARTICLE, HEAD, BODY, HDR, XHDR, XPAT, XFN-ZARTICLE), D5 3 (POST's success, IHAVE/CHECK/TAKETHIS), D7 1, E2 1, E4 1.
@@ -30,16 +34,16 @@ Ember: "let's get our subagents converged and landed, and stop spawning more fol
 - **E2, the Lean direction:** typed Lean emitted from the declaration forms with operation bodies in a declared typed subset, the reader kept as the measure's oracle, PW3 re-aimed at the wrapper; LEAN-METATHEORY §9.6 states both directions with costs. The Lean seat holds its per-arm proofs until ruled.
 
 ## The order from here (BRICKS §5, present state)
-1. C's `fn2-successor-emit` and B's `fn2-commit-posture` (both to D's exact forms, in the notebooks).
-2. D's transaction port and the durable POST, posting advertised; the D5 rows leave the interim table.
+1. **DONE (`393c3f4ff`, `35f56fb47`, `76666078b`, `55c8290de`):** Form's named `:park` formals + `fn2-shape-one` + `assembly-callbacks` fan-out; Lean `48305081a` re-record + `:park` + `F8` `:links` (1,577/1,577 calls matched); D's `fn2-txn` ported to `defmachine-arms`; C's `fn2-successor-emit`; B's `S12` `fn2-commit-open-entry` + `fn2-commit-open-children`.
+2. **Next immediate brick (D5 2/n durable POST):** Wire `fn2-txn`'s `:COMMIT` phase to `fn2-successor-emit` and `fn2-commit-open`/`fn2-commit-join` (with `:child` wrappers on the remaining txn callees), advertise posting, and drop the D5 rows from the interim table.
 3. The minimal C5 (C), before any concrete-profile run.
 4. OVER by Message-ID, then ARTICLE/HEAD/BODY (D6 3/n).
-5. E's consumer machine pasted and driven in the simulator (M2 cuts n/12), then over the local socket: M2.
+5. E's consumer machine pasted and driven in the simulator (M2 cuts n/12), then over the local socket: **M2** (at which point we can tag `fn1-quarry`, purge `fn1` from `dev`, and promote `fn2/` to the repo root).
 6. The conn port on G3 (deletes the 822 s book), the rest of G3, the assembly's per-child books.
 7. Behind M2: the peer path, TLS, credentials, B6 and replay, peering, BP, operator verbs.
 
 ## Boxes and nightlies
-hbox's `/` and `/othersys` were at 40-41 GiB free when B checked (under the 60 GiB line the seats stop at); ember decides what goes, nobody deletes.
+hbox's `/` and `/othersys` were cleaned to 54 GiB free (58% used).
 forge (measurement; the fn2 nightly at 10:00 UTC with the fixed script), hbox (certifies; the Lean re-record running), persvati (approved tonight for fn2 certifies; its `/tank/fn` toolchain to be qualified first; reachable from the Mac as `persvati-remote`), the Mac (REPL and `lake build` only; H's nightly at 03:30). Every live job has a PID file in its clone's `build/`.
 
 ## Convergence READYs
