@@ -108,7 +108,7 @@
   (let* ((wanted (set-difference-eq
                   (fn2-arms-collect-children
                    (list (fn2-machine-declared kind :subarms world) (fn2-machine-declared kind :arms world)
-                         (fn2-machine-declared kind :observe-arms world))
+                         (fn2-machine-declared kind :observe-arms world) (fn2-machine-declared kind :genesis world))
                    world 1000000)
                   (cons kind *fn2-arms-children*)))
          ;; a link's kind (G3, D F8): its table, after the registered extras
@@ -1223,33 +1223,31 @@
         (defthm ,(fn2-columns-sym ok "-OPEN")
           (equal (,ok r) (and ,@(fn2-arms-narrow-shape-terms outs k n 'r)))
           :hints (("Goal" :in-theory (enable ,ok))))
-        (in-theory (disable ,ok ,(fn2-columns-sym ok "-OPEN")))))))
-(defun fn2-arms-ok-corollaries (name call outs pos hyps ok)
+        ;; the opening stays enabled for callers (each function's per-child
+        ;; facts are rule classes of its shape theorem); the shape proofs
+        ;; themselves keep it closed
+        (in-theory (disable ,ok))))))
+(defun fn2-arms-ok-rule-classes (call outs pos total hyps)
+  ; each returned child's type and invariant, as rule classes of the one
+  ; shape theorem (REVIEW-ARGON-RESPONSE: per-output facts, no event each)
   (declare (xargs :verify-guards nil))
   (if (atom outs) nil
-    (let ((r (if (eql pos 0) `(car ,call) `(mv-nth ,pos ,call)))
-          (stem (fn2-columns-sym name (concatenate 'string "-" (symbol-name (car outs))))))
-      (list* `(defthm ,(fn2-columns-sym stem "-TYPE")
-                (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "P") ,r))
-                :hints (("Goal" :use ,(fn2-columns-sym name "-SHAPE")
-                                 :in-theory (e/d (,(fn2-columns-sym ok "-OPEN")) (,name ,(fn2-columns-sym name "-SHAPE"))))))
-             `(defthm ,(fn2-columns-sym stem "-WFP")
-                (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "-WFP") ,r))
-                :hints (("Goal" :use ,(fn2-columns-sym name "-SHAPE")
-                                 :in-theory (e/d (,(fn2-columns-sym ok "-OPEN")) (,name ,(fn2-columns-sym name "-SHAPE"))))))
-             (fn2-arms-ok-corollaries name call (cdr outs) (+ 1 pos) hyps ok)))))
+    (let ((r (cond ((equal total 1) call) ((eql pos 0) `(car ,call)) (t `(mv-nth ,pos ,call)))))
+      (list* `(:rewrite :corollary (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "P") ,r)))
+             `(:rewrite :corollary (implies (and ,@hyps) (,(fn2-columns-sym (car outs) "-WFP") ,r)))
+             (fn2-arms-ok-rule-classes call (cdr outs) (+ 1 pos) total hyps)))))
 (defun fn2-arms-ok-shape-events (name call k outs ins readers callees ubp-open world)
   (declare (xargs :verify-guards nil))
   (let* ((ok (fn2-arms-ok-name k outs)) (hyps (fn2-arms-child-shape-hyps ins)))
     (append (fn2-arms-ok-events k outs world)
             `((defthm ,(fn2-columns-sym name "-SHAPE")
                 (implies (and ,@hyps) (,ok ,call))
+                :rule-classes (:rewrite ,@(fn2-arms-ok-rule-classes call outs k (+ k (len outs)) hyps))
                 :hints (("Goal" :in-theory (e/d (,name ,(fn2-columns-sym ok "-OF-TUPLE"))
-                                                (,ok (:executable-counterpart tau-system)
+                                                (,ok ,(fn2-columns-sym ok "-OPEN") (:executable-counterpart tau-system)
                                                  ,@(if ubp-open nil '(unsigned-byte-p)) min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
                                                  ,@(remove-duplicates-eq callees)))
-                         :do-not '(generalize fertilize eliminate-destructors)))))
-            (fn2-arms-ok-corollaries name call outs k hyps ok))))
+                         :do-not '(generalize fertilize eliminate-destructors))))))))
 (defun fn2-arms-stobj-callees (fns world)
   ; the callees that return a child (their shape facts carry a proof); a pure
   ; one stays open, its value's type comes from its definition
@@ -1799,27 +1797,29 @@
                       (:children (fn2-arms-child-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code world))
                       (otherwise nil)))
             mode world)))))))
-(defun fn2-arms-arms (kind entries observe subs entries-out events mode world)
+; GENESIS: ENTRIES is the kind's one genesis arm, entered in the row's
+; initial phase TAG and named K-GENESIS (G3, C gap 5).
+(defun fn2-arms-arms (kind entries observe subs entries-out events mode world genesis)
   ; (mv err contract-entries events)
   (declare (xargs :verify-guards nil))
   (if (atom entries) (mv nil entries-out events)
     (let ((tag (caar entries)))
       (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
         (mv-let (err code acc)
-          (fn2-arms-steps steps (let ((env (fn2-decl-set :site (symbol-name tag)
+          (fn2-arms-steps steps (let ((env (fn2-decl-set :site (if genesis "GENESIS" (symbol-name tag))
                                              (fn2-arms-env kind tag observe refusal subs (not (eq mode :core)) world))))
                                   (cond ((not observe) (fn2-arms-arm-knowledge kind (list tag) env))
                                         (from (fn2-arms-arm-knowledge kind from env))
                                         (t env)))
                           nil 100000)
-          (if err (mv (msg "~x0 ~s1 ~x2: ~@3" kind (if observe "handler" "arm") tag err) nil nil)
-            (let* ((name (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") tag))
+          (if err (mv (msg "~x0 ~s1 ~x2: ~@3" kind (cond (genesis "genesis from") (observe "handler") (t "arm")) tag err) nil nil)
+            (let* ((name (if genesis (fn2-arms-sym kind "-GENESIS") (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") tag)))
                    (contract (fn2-arms-contract kind tag observe from acc world)))
               (fn2-arms-arms kind (cdr entries) observe subs
                              (append entries-out (list (list* tag name contract)))
                              (append events (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
                                      (fn2-arms-mode-events mode name kind observe acc code contract world))
-                             mode world))))))))
+                             mode world genesis))))))))
 ; Reachability (D F12): the phases no arm or handler's :next names, other
 ; than the entry phases (the first, :free, the admission's and the take's,
 ; and an :initial phase), reported when the contracts are registered.
@@ -1832,6 +1832,13 @@
     (if (atom states) nil
       (if (eq v (fn2-arms-phase-constant kind (car states))) (list (car states))
         (fn2-arms-initial-phase kind (cdr states) initial)))))
+; The phase a row of KIND is in when the executor's init runs its genesis
+; arm: its :initial phase, else its first.
+(defun fn2-arms-genesis-phase (kind world)
+  (declare (xargs :verify-guards nil))
+  (let ((states (fn2-machine-property kind :states world)))
+    (or (car (fn2-arms-initial-phase kind states (fn2-machine-property kind :initial world)))
+        (car states))))
 (defun fn2-arms-unreached (kind conts obs world)
   (declare (xargs :verify-guards nil))
   (let* ((states (fn2-machine-property kind :states world))
@@ -1850,18 +1857,26 @@
     (fn2-arms-subs kind (fn2-machine-declared kind :subarms world) nil nil mode world)
     (if err (mv err nil)
       (mv-let (err conts run-events)
-        (fn2-arms-arms kind (fn2-machine-declared kind :arms world) nil subs nil nil mode world)
+        (fn2-arms-arms kind (fn2-machine-declared kind :arms world) nil subs nil nil mode world nil)
         (if err (mv err nil)
           (mv-let (err obs obs-events)
-            (fn2-arms-arms kind (fn2-machine-declared kind :observe-arms world) t subs nil nil mode world)
+            (fn2-arms-arms kind (fn2-machine-declared kind :observe-arms world) t subs nil nil mode world nil)
             (if err (mv err nil)
+              (mv-let (err gen gen-events)
+                (let ((steps (fn2-machine-declared kind :genesis world)))
+                  (if steps
+                      (fn2-arms-arms kind (list (cons (fn2-arms-genesis-phase kind world) steps))
+                                     nil subs nil nil mode world t)
+                    (mv nil nil nil)))
+                (if err (mv err nil)
               (mv nil `(progn ,@(and (not (eq mode :children))
-                                     (let ((unreached (fn2-arms-unreached kind conts obs world)))
+                                     (let ((unreached (fn2-arms-unreached kind (append conts gen) obs world)))
                                        `((table fn2-machine-arm-contracts ',kind
-                                                '(:continuations ,conts :observes ,obs :unreached ,unreached))
+                                                '(:continuations ,conts :observes ,obs :genesis-arm ,gen
+                                                  :unreached ,unreached))
                                          ,@(and unreached
                                                 `((value-triple (cw "~x0: no arm reaches the phases ~x1.~%" ',kind ',unreached)))))))
-                              ,@sub-events ,@run-events ,@obs-events)))))))))))
+                              ,@sub-events ,@run-events ,@obs-events ,@gen-events)))))))))))))
 ; The kind's arms, generated in its callbacks section (before defmachine-run).
 ; (defmachine-arms K): arms over the core; (defmachine-arms K :children) in
 ; K's own book, then (defmachine-arms K :wrappers) in its callbacks section.

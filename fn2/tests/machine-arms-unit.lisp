@@ -375,3 +375,50 @@
         (:work (:do (code) (fn2-arms-t-peek row-count) :accept (:found)) (:idle)))
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe7 :children))
+
+;; G3 (C gap 5): a genesis arm, run once on each row by the executor's init
+;; (fn2-exec-genesis), is walked as an arm from the row's initial phase
+;; (:ready here), named K-GENESIS, and registered as the kind's :genesis-arm;
+;; its :next is its paths' ends (staying is the initial phase), and a phase
+;; only it reaches is reached.
+(defmachine fn2-arms-born
+ :phases (:free :ready :parked)
+ :fields ((seen :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (phase *fn2-arms-born-state-ready*))
+ :genesis ((:if (equal row-seen 0)
+                ((:set (seen 1)) (:charge :steps *fn2-work-small* :runnable t))
+                ((:next :parked) (:charge :steps *fn2-work-small*))))
+ :arms ((:free (:idle)) (:ready (:set (seen 2)) (:charge :steps *fn2-work-small*)) (:parked (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-born :children)
+(assert-event (fn2-assert-compliant-p '(fn2-arms-born-genesis-children) (w state)))
+(defun fn2-arms-test-genesis (kind world)
+  (declare (xargs :mode :program))
+  (mv-let (err form) (fn2-arms-events kind :wrappers world)
+    (and (not err) (cadr (member-eq :genesis-arm (cadr (cadddr (cadr form))))))))
+(defun fn2-arms-test-unreached (kind world)
+  (declare (xargs :mode :program))
+  (mv-let (err form) (fn2-arms-events kind :wrappers world)
+    (and (not err) (cadr (member-eq :unreached (cadr (cadddr (cadr form))))))))
+(make-event
+ (let ((g (fn2-arms-test-genesis 'fn2-arms-born (w state))))
+   (if (and (equal (len g) 1) (eq (car (car g)) :ready) (eq (cadr (car g)) 'fn2-arms-born-genesis)
+            (subsetp-eq (fn2-arms-test-next :ready g) '(:ready :parked))
+            (subsetp-eq '(:ready :parked) (fn2-arms-test-next :ready g))
+            (null (fn2-arms-test-unreached 'fn2-arms-born (w state))))
+       '(value-triple :genesis-ok)
+     (er hard 'genesis "genesis entry ~x0" g))))
+;; a kind without :genesis registers none
+(assert-event (null (fn2-arms-test-genesis 'fn2-arms-probe6 (w state))))
+;; the genesis arm is the arm language: an undeclared operation is refused
+(defmachine fn2-arms-born-bad
+ :phases (:free :ready)
+ :fields ((seen :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :genesis ((:do (code) (fn2-arms-t-undeclared row-seen) :case ((:otherwise (:idle)))))
+ :arms ((:free (:idle)) (:ready (:idle)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-born-bad :children))
+(value-triple (cw "MACHINE ARMS UNIT: genesis arm walked from the initial phase, registered, an undeclared call refused PASS~%"))

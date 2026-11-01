@@ -172,6 +172,20 @@
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (fn2-pool-accept-hand slot gen okind oslot ogen fn2-pool))
 (fn2-pool-preserves fn2-pool-accept-own (slot gen okind oslot ogen fn2-pool) :position 1)
+; F9's owner = holder (G3): a range handed to a target row is owned by that
+; row once, and only once, its accept answers :ok; an accept by any other
+; triple is refused, so the range is never owned by a row it was not handed to.
+(defthm fn2-pool-hand-accept-owner
+  (b* (((mv hcode p1) (fn2-pool-hand slot gen okind oslot ogen tkind tslot tgen fn2-pool))
+       ((mv acode p2) (fn2-pool-accept-own slot gen akind aslot agen p1)))
+    (implies (and (eq hcode :ok) (eq acode :ok))
+             (and (equal akind tkind) (equal aslot tslot) (equal agen tgen)
+                  (equal (fn2-pool-owner-kind slot p2) tkind)
+                  (equal (fn2-pool-owner-slot slot p2) tslot)
+                  (equal (fn2-pool-owner-gen slot p2) tgen)
+                  (equal (fn2-pool-state slot p2) *fn2-pool-state-workspace*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-pool-hand fn2-pool-accept-own fn2-pool-accept-hand))))
 
 ; ----------------------------------------------------------------------
 ; The directory's checked writes: a write the directory cannot take (an id

@@ -30,6 +30,8 @@
  :capacity (fn2-profile-accept-credits profile)
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (phase *fn2-listener-state-accepting*) (mode 1))
+ ;; every listener starts runnable in :accepting (its first Accept)
+ :genesis ((:charge :steps *fn2-work-small* :runnable t))
  :subarms
  ;; the admission of an accepted connection into the target kind; a refused
  ;; admission returns the row credit and the booking and closes the capability
@@ -180,9 +182,11 @@
 
 ;; scribe is the layer-A storage probe, not a persistence implementation. Its
 ;; only acknowledgement point is its own successful FenceResult; a failed
-;; write/fence result never retries I/O.
+;; write/fence result never retries I/O. A refused reservation stops the probe
+;; in :refused, which holds no window (it never took one); :stopped holds it.
 (defmachine fn2-scribe
- :phases (:free :reserve :fill :patch :write :write-result :fence :fence-result :reset :read :read-result :verify :next :stopped)
+ :phases (:free :reserve :fill :patch :write :write-result :fence :fence-result :reset :read :read-result :verify :next :stopped
+          :refused)
  :fields ((pool-slot :link) (pool-gen :u60) (pending :u32) (borrows :u32)
           (sequence :u32) (cursor :u32) (checksum :u32) (completed :u32)
           (verified :u32) (stopped :bool) (event :u8) (outcome :u8)
@@ -192,7 +196,8 @@
          (:fence :storage-job :storage-window) (:fence-result :storage-job :storage-window)
          (:reset :storage-job :storage-window) (:read :storage-job :storage-window)
          (:read-result :storage-job :storage-window) (:verify :storage-job :storage-window)
-         (:next :storage-job :storage-window) (:stopped :storage-job :storage-window))
+         (:next :storage-job :storage-window) (:stopped :storage-job :storage-window)
+         (:refused :storage-job))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 1
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
@@ -222,10 +227,10 @@
   (:reserve
    (:let class (fn2-scribe-window-class))
    (:if (null class)
-        ((:set (stopped 1)) (:next :stopped) (:charge :steps *fn2-work-release*))
+        ((:set (stopped 1)) (:next :refused) (:charge :steps *fn2-work-release*))
         ((:do (code wslot wgen) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
           :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
-                 (:otherwise (:set (stopped 1) (event-ready 0)) (:next :stopped) (:charge :steps *fn2-work-transition*))))
+                 (:otherwise (:set (stopped 1) (event-ready 0)) (:next :refused) (:charge :steps *fn2-work-transition*))))
          (:set (pool-slot wslot) (pool-gen wgen) (cursor 0) (checksum *fn2-fnv-offset-basis*))
          (:next :fill)
          (:charge :steps *fn2-work-transition* :runnable t))))
@@ -286,7 +291,8 @@
                  (:otherwise (:set (verified row-sequence) (sequence (+ 1 row-sequence)) (cursor 0)
                                    (checksum *fn2-fnv-offset-basis*) (stopped 1))
                              (:next :stopped) (:charge :steps *fn2-work-small*)))))))
-  (:stopped (:idle)))
+  (:stopped (:idle))
+  (:refused (:idle)))
  :observes
  ((:write-result (:set (event event) (outcome outcome) (count count) (aux0 aux0) (aux1 aux1) (event-ready 1)) (:wake))
   (:fence-result (:set (event event) (outcome outcome) (count count) (aux0 aux0) (aux1 aux1) (event-ready 1)) (:wake))

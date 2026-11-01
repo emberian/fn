@@ -562,9 +562,12 @@
     (let ((rest (fn2-machine-holds-domains (cdr while) fields)) (f (caddr (car while))))
       (if (assoc-eq f rest) rest (cons (cons f (caddr (cadr (assoc-eq f fields)))) rest)))))
 (defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
-                           admission taken arms subarms stops links sub)
+                           admission taken arms subarms stops links sub genesis)
   (let* ((states (or states phases))
          (sub-problem (fn2-machine-sub-problem name sub fields))
+         ;; (G3, C gap 5) :genesis (STEP ...): an arm the executor's init runs
+         ;; once on each row of the kind, from the row's initial phase
+         (genesis (if sub-problem genesis (fn2-machine-sub-nexts name sub genesis)))
          (fields (if sub-problem fields (append fields (fn2-machine-sub-fields name sub))))
          (subarms (if sub-problem subarms (fn2-machine-sub-nexts name sub (append subarms (fn2-machine-sub-subarms name sub)))))
          (arms (if sub-problem arms (fn2-machine-sub-nexts name sub arms)))
@@ -594,6 +597,7 @@
            ;; typed links (G3, D F8), checked whole by defmachine-arms
            (and (alistp links) (symbol-listp (strip-cars links)) (no-duplicatesp-eq (strip-cars links))
                 (or newp (null links)))
+           (and (true-listp genesis) (or newp (null genesis)))
            (fn2-machine-continuationsp continuations nil)
            (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
            (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
@@ -619,7 +623,8 @@
                               admission taken (and newp (list* :arms arms :subarms subarms :observe-arms observe-arms :stops stops
                                                     (append (and phase-fields (list :phase-fields phase-fields))
                                                             (and holds-while (list :holds-while holds-while))
-                                                            (and links (list :links links))))))))
+                                                            (and links (list :links links))
+                                                            (and genesis (list :genesis genesis))))))))
     (er hard 'defmachine "Invalid machine declaration ~x0." name))))
 
 ; ----------------------------------------------------------------------
@@ -699,7 +704,7 @@
 ; (machine-arms.lisp) in its callbacks section; they are read from there.
 (defun fn2-machine-property (name key world)
   (declare (xargs :verify-guards nil))
-  (let ((derived (and (member-eq key '(:continuations :observes))
+  (let ((derived (and (member-eq key '(:continuations :observes :genesis-arm))
                       (cdr (assoc-eq name (table-alist 'fn2-machine-arm-contracts world))))))
     (if derived (cadr (member-eq key derived))
       (fn2-machine-declared name key world))))
@@ -1373,11 +1378,16 @@
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
   (let* ((run (fn2-columns-sym name "-RUN"))
+         ;; the genesis arm (G3) is checked as an arm from the row's initial phase
          (problem (or (fn2-machine-arms-problem name (fn2-machine-property name :continuations world) nil world)
-                      (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world))))
+                      (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world)
+                      (fn2-machine-arms-problem name (fn2-machine-property name :genesis-arm world) nil world))))
     (if problem `(make-event (er soft 'defmachine-run "~@0" ',problem))
     `(progn
-       ,@(fn2-machine-path-report-events name (fn2-machine-arm-path-report name (fn2-machine-property name :continuations world) world))
+       ,@(fn2-machine-path-report-events name (fn2-machine-arm-path-report
+                                               name (append (fn2-machine-property name :continuations world)
+                                                            (fn2-machine-property name :genesis-arm world))
+                                               world))
        ,@(fn2-machine-certificate-events name world)
        ,(fn2-operation-events (list :machine name) run 'fn2-core '(id budget)
       '(bytes steps descriptors runnable fn2-core) nil :callbacks
@@ -2091,7 +2101,27 @@
            (fn2-machines-park-taken id ,o ,reason fn2-machines fn2-control)
            fn2-core)))
       (fn2-core-preserves ,(fn2-columns-sym 'fn2-machine-park-taken- (symbol-name kind)) (id fn2-core) :rows nil :prefix "")
+      ;; its child form (MACHINE-FORM 6.5 P3): the same body over the two
+      ;; children it touches, so a child-form arm may park on a taken kind
+      (defun ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))
+        (id fn2-machines fn2-control)
+        (declare (xargs :stobjs (fn2-machines fn2-control)
+                        :guard (and (fn2-machines-wfp fn2-machines) (fn2-control-wfp fn2-control))))
+        (fn2-machines-park-taken id ,o ,reason fn2-machines fn2-control))
+      (fn2-machines-preserves ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))
+        (id fn2-machines fn2-control)
+        :carriers ((fn2-machines 0 :prefix "-MACHINES") (fn2-control 1 :prefix "-CONTROL")))
+      (defthm ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN-ROWS"))
+        (and (equal (fn2-machines-rows (car (,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))
+                                            id fn2-machines fn2-control)))
+                    (fn2-machines-rows fn2-machines))
+             (equal (nth *fn2-machines-rows* (car (,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))
+                                                  id fn2-machines fn2-control)))
+                    (nth *fn2-machines-rows* fn2-machines)))
+        :hints (("Goal" :in-theory (enable ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))))))
+      (in-theory (disable ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))))
       (defcost ,(fn2-columns-sym 'fn2-machine-park-taken- (symbol-name kind))
+        :child ,(fn2-columns-sym 'fn2-machine-park-taken- (concatenate 'string (symbol-name kind) "-CHILDREN"))
         :own-writes (wait-reason ready-prev ready-next) :tables (fn2-core-machines)
         :doc ,(concatenate 'string "Park the row until a " (symbol-name kind) " row is free."))
       (fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
@@ -2179,3 +2209,49 @@
             (value '(value-triple :admission-effects-checked)))))))))
 (defmacro fn2-machine-admission-events ()
   '(make-event (value (fn2-machine-admission-events-form (w state)))))
+
+; ----------------------------------------------------------------------
+; One theorem per function, for any operation over children (the form
+; seat's move for the arms, 82eb2bfc2, offered to every :child operation):
+; the claims about a function's returned children (type, invariant, size;
+; CLAIMS, written over the variable FN2-SHAPE-R for the result) are one
+; predicate FN-SHAPE-OK of the result and the input children OBJS, opened
+; only on an explicit result tuple, the leaves of the function's paths after
+; the if-lifting splits them, so the proof walks the paths once rather than
+; once per claim. The claims follow from it by its definition, as the
+; theorem NAME, for callers that rewrite with them.
+(defun fn2-shape-tuple-vars (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil (append (fn2-shape-tuple-vars (- n 1)) (list (packn-pos (list 'fn2-shape-x (- n 1)) 'fn2-shape-x)))))
+(defun fn2-shape-one-events (name fn args hyps claims objs enables disables world)
+  (declare (xargs :verify-guards nil))
+  (let* ((ok (fn2-columns-sym fn "-SHAPE-OK"))
+         (n (len (getpropc fn 'stobjs-out nil world)))
+         (tuple (cons 'list (fn2-shape-tuple-vars n)))
+         (call (cons fn args)))
+    `((defun-nx ,ok (fn2-shape-r ,@objs)
+        (declare (xargs :verify-guards nil))
+        (and ,@claims))
+      (defthm ,(fn2-columns-sym ok "-OF-TUPLE")
+        (equal (,ok ,tuple ,@objs) (and ,@(sublis (list (cons 'fn2-shape-r tuple)) claims)))
+        :hints (("Goal" :in-theory (enable ,ok))))
+      (defthm ,(fn2-columns-sym ok "-OPEN")
+        (equal (,ok fn2-shape-r ,@objs) (and ,@claims))
+        :hints (("Goal" :in-theory (enable ,ok))))
+      (in-theory (disable ,ok ,(fn2-columns-sym ok "-OPEN")))
+      (defthm ,(fn2-columns-sym fn "-SHAPE-ONE")
+        (implies (and ,@hyps) (,ok ,call ,@objs))
+        ;; a leaf that is another operation's result (not a tuple) is opened
+        ;; once nothing else simplifies, so its callee's claims carry it
+        :hints (("Goal" :in-theory (e/d (,@enables ,(fn2-columns-sym ok "-OF-TUPLE"))
+                                        (,ok (:executable-counterpart tau-system) ,@disables))
+                 :do-not '(generalize fertilize eliminate-destructors))
+                (and stable-under-simplificationp
+                     '(:in-theory (e/d (,@enables ,(fn2-columns-sym ok "-OF-TUPLE") ,(fn2-columns-sym ok "-OPEN"))
+                                       (,ok (:executable-counterpart tau-system) ,@disables))))))
+      (defthm ,name
+        (implies (and ,@hyps) (and ,@(sublis (list (cons 'fn2-shape-r call)) claims)))
+        :hints (("Goal" :use ,(fn2-columns-sym fn "-SHAPE-ONE")
+                 :in-theory (e/d (,(fn2-columns-sym ok "-OPEN")) (,fn ,(fn2-columns-sym fn "-SHAPE-ONE")))))))))
+(defmacro fn2-shape-one (name fn args hyps claims objs enables disables)
+  `(make-event (cons 'progn (fn2-shape-one-events ',name ',fn ',args ',hyps ',claims ',objs ',enables ',disables (w state)))))
