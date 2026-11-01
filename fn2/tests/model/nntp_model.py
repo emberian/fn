@@ -917,7 +917,10 @@ class Conn:
 
     def _status(self, group):
         flags = self.view_flags[group]
-        if flags.get("read_only") or flags.get("posting") == "n" or not self._access(group, "post"):
+        # RFC 3977 §7.6.3 and specs/nntp.md 1048-1052: `n` is "local postings are not permitted", which holds for
+        # every group of a node that permits no posting at all (policy posting False, greeting 201).
+        if (flags.get("read_only") or flags.get("posting") == "n" or not self.policy.get("posting", True)
+                or not self._access(group, "post")):
             return "n"
         return "m" if flags.get("moderated") or flags.get("posting") == "m" else "y"
 

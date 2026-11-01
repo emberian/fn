@@ -39,14 +39,16 @@ def seeded_article(letter, subject):
 
 
 # Each carrier's store and profile, as its session serves it:
-# - SIM (D's sim-session.lsp at 689d196a1): reading over a seeded store, reader-only. local.test holds three
+# - SIM (D's sim-session.lsp at 689d196a1): reading over a seeded store, reader-only. The Xref server is the model's
+#   default `.invalid` agent: specs/nntp.md 330-349 (PRF-206) puts a ninth field `Xref: SERVER group:number` on
+#   every OVER line, and SERVER is the path identity, `.invalid` when unset. local.test holds three
 #   articles numbered 1-3 before any client opens; local.empty holds none.
 # - NATIVE (A's native session, unchanged): no read rows, so the node serves no archive. The cursor's verbs
 #   answer *fn2-answer-unread* (503; NEXT and LAST 412), which the model states as archive False.
 CARRIERS = {
     'SIM': dict(groups={'local.test': {}, 'local.empty': {}},
                 articles=[seeded_article('a', 'one'), seeded_article('b', 'two'), seeded_article('c', 'three')],
-                policy=dict(D3_POLICY, archive=True, server=None)),
+                policy=dict(D3_POLICY, archive=True)),
     'NATIVE': dict(groups={'surface.test': {}}, articles=[], policy=dict(D3_POLICY)),
 }
 
