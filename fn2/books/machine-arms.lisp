@@ -11,9 +11,10 @@
 
 ; ----------------------------------------------------------------------
 ; Environments and accumulators are plists. ENV: :kind :tag :observe
-; :columns :subs (name . derived) :refusal :world :written :next :lets
-; :budget. ACC: :charges ((b s d) ...) :nexts :writes :uses :tables :reads
-; :stay :issues.
+; :columns :subs (name . derived, with :src (STEPS REFUSAL SUBS)) :refusal
+; :world :written :next :lets :budget, and the path's knowledge (Paths,
+; below). ACC: :charges ((b s d) ...) :nexts :writes :uses :tables :reads
+; :stay :issues :calls :paths.
 (defun fn2-arms-add (key items acc)
   (declare (xargs :verify-guards nil))
   (fn2-decl-set key (union-equal items (fn2-arm-get key acc)) acc))
@@ -90,6 +91,17 @@
     (let ((stobj (fn2-core-child-property (car entries) :stobj)))
       (append (and (member-eq stobj wanted) (list (cons (caar entries) stobj)))
               (fn2-arms-registry-order (cdr entries) wanted)))))
+(defun fn2-arms-links (kind world)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-declared kind :links world))
+(defun fn2-arms-link-kinds (links)
+  (declare (xargs :verify-guards nil))
+  (if (atom links) nil
+    (union-eq (and (consp (car links)) (list (cadr (member-eq :kind (cdar links)))))
+              (fn2-arms-link-kinds (cdr links)))))
+(defun fn2-arms-table-pairs (kinds)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil (cons (cons (fn2-columns-sym (car kinds) "-TABLE") (car kinds)) (fn2-arms-table-pairs (cdr kinds)))))
 (defun fn2-arms-extra-children (kind world)
   ; (mv err ((FIELD . STOBJ) ...))
   (declare (xargs :verify-guards nil))
@@ -99,11 +111,15 @@
                          (fn2-machine-declared kind :observe-arms world))
                    world 1000000)
                   (cons kind *fn2-arms-children*)))
+         ;; a link's kind (G3, D F8): its table, after the registered extras
+         ;; in link order (machine tables register only at the assembly)
+         (linked (set-difference-eq (fn2-arms-link-kinds (fn2-arms-links kind world)) (cons kind *fn2-arms-children*)))
+         (wanted (set-difference-eq wanted linked))
          (found (fn2-arms-registry-order (fn2-core-child-registry world) wanted))
          (missing (set-difference-eq wanted (strip-cdrs found))))
     (if missing
         (mv (msg "~x0's arms call operations over ~x1, which no defcorechild registers (an arm reaches a child through the core's registry)." kind missing) nil)
-      (mv nil found))))
+      (mv nil (append found (fn2-arms-table-pairs linked))))))
 (defun fn2-arms-kind-tuple (kind world)
   (declare (xargs :verify-guards nil))
   (mv-let (err extras) (fn2-arms-extra-children kind world)
@@ -122,6 +138,139 @@
          (cond ((eq x (fn2-columns-pre "*" (fn2-columns-sym kind "-KIND*"))) 'kind)
                ((eq x (fn2-columns-pre "*" (fn2-columns-sym kind "-ADMISSION-ORDINAL*"))) 'ordinal)
                (t nil)))))
+
+; ----------------------------------------------------------------------
+; Typed links (G3, D F8). A kind declares :links ((L :kind K2 :slot S :gen G
+; [:kind-field KF] [:back (B [BG])] [:reads (F ...)]) ...): its fields S and
+; G hold a row of K2 and that row's generation, KF the row's kind code, and B
+; and BG are K2's fields naming this row and its generation back. In the
+; kind's book (child form) the generator emits the link's liveness
+; K-LINK-L-LIVE-P and a reader K-LINK-L-F for each field F of its read set,
+; over K2's table and the directory, each a declared operation; an arm writes
+; (:live L) and (:read L F), and K2's table joins its tuple. An owner
+; override is a link's triple, written :owner L; a kind with links writes
+; no :okind/:oslot/:ogen by hand.
+(defun fn2-arms-link-fn (kind l suffix)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-sym kind (concatenate 'string "-LINK-" (symbol-name l) suffix)))
+(defun fn2-arms-row-var (f)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-col-name 'row f))
+(defun fn2-arms-link-row (link)
+  ; the link's fields as row variables: (slot gen kind-or-nil)
+  (declare (xargs :verify-guards nil))
+  (let ((o (cdr link)))
+    (list (fn2-arms-row-var (cadr (member-eq :slot o))) (fn2-arms-row-var (cadr (member-eq :gen o)))
+          (and (cadr (member-eq :kind-field o)) (fn2-arms-row-var (cadr (member-eq :kind-field o)))))))
+(defun fn2-arms-link-problem (kind link world)
+  (declare (xargs :verify-guards nil))
+  (let* ((o (cdr link)) (k2 (cadr (member-eq :kind o)))
+         (own (strip-cars (fn2-machine-property kind :columns world)))
+         (table (strip-cars (fn2-machine-property k2 :table world)))
+         (back (cadr (member-eq :back o))) (reads (cadr (member-eq :reads o))))
+    (cond ((not (and (consp link) (symbolp (car link)) (keyword-value-listp o)
+                     (subsetp-eq (evens o) '(:kind :slot :gen :kind-field :back :reads))))
+           (msg "~x0: link ~x1 is (L :kind K :slot S :gen G [:kind-field KF] [:back (B [BG])] [:reads (F ...)])." kind link))
+          ((not (fn2-machine-property k2 :table world))
+           (msg "~x0: link ~x1 names ~x2, which is no machine kind declared before it." kind (car link) k2))
+          ((not (and (member-eq (cadr (member-eq :slot o)) own) (member-eq (cadr (member-eq :gen o)) own)
+                     (or (not (member-eq :kind-field o)) (member-eq (cadr (member-eq :kind-field o)) own))))
+           (msg "~x0: link ~x1's :slot, :gen and :kind-field are fields of ~x0." kind (car link)))
+          ((not (and (true-listp back) (<= (len back) 2) (subsetp-eq back table)))
+           (msg "~x0: link ~x1's :back names fields of ~x2's table ~x3." kind (car link) k2 table))
+          ((not (and (symbol-listp reads) (subsetp-eq reads table)))
+           (msg "~x0: link ~x1 reads ~x2, which are not all fields of ~x3's table ~x4." kind (car link) reads k2 table))
+          (t nil))))
+(defun fn2-arms-link-slot ()
+  (declare (xargs :verify-guards nil))
+  `(slot (if (fn2-machines-row-ok target) (fn2-machines-slot target fn2-machines) 0)))
+(defun fn2-arms-link-reader-events (kind l k2 reads world)
+  (declare (xargs :verify-guards nil))
+  (if (atom reads) nil
+    (let* ((f (car reads)) (name (fn2-arms-link-fn kind l (concatenate 'string "-" (symbol-name f))))
+           (w (fn2-columns-width (cadr (assoc-eq f (fn2-machine-property k2 :table world))))))
+      (append
+       `((defun ,name (target ,k2 fn2-machines)
+           (declare (xargs :stobjs (,k2 fn2-machines)
+                           :guard (and (,(fn2-arms-sym k2 "-WFP") ,k2) (fn2-machines-wfp fn2-machines))))
+           (let (,(fn2-arms-link-slot))
+             (if (and (fn2-machines-row-ok target) (natp slot) (< slot (,(fn2-arms-sym k2 "-ROWS") ,k2)))
+                 (let ((v (,(fn2-columns-col-name k2 f) slot ,k2))) (if (unsigned-byte-p ,w v) v 0))
+               0)))
+         (defthm ,(fn2-arms-sym name "-TYPE") (unsigned-byte-p ,w (,name target ,k2 fn2-machines))
+           :hints (("Goal" :in-theory (enable ,name))))
+         (defthm ,(fn2-arms-sym name "-NATP") (natp (,name target ,k2 fn2-machines))
+           :rule-classes :type-prescription :hints (("Goal" :in-theory (enable ,name))))
+         (in-theory (disable ,name))
+         (defcost ,name :child ,name :doc ,(concatenate 'string "Link " (symbol-name l) "'s read of its row's " (symbol-name f) ".")))
+       (fn2-arms-link-reader-events kind l k2 (cdr reads) world)))))
+(defun fn2-arms-link-events-1 (kind link world)
+  (declare (xargs :verify-guards nil))
+  (let* ((l (car link)) (o (cdr link)) (k2 (cadr (member-eq :kind o)))
+         (back (cadr (member-eq :back o))) (kf (member-eq :kind-field o))
+         (live (fn2-arms-link-fn kind l "-LIVE-P")))
+    (append
+     `((defun ,live (target tgen ,@(and kf '(tkind)) ,@(and back '(id)) ,@(and (cdr back) '(gen)) ,k2 fn2-machines)
+         (declare (xargs :stobjs (,k2 fn2-machines)
+                         :guard (and (,(fn2-arms-sym k2 "-WFP") ,k2) (fn2-machines-wfp fn2-machines))))
+         (let (,(fn2-arms-link-slot))
+           (and (fn2-machines-row-ok target)
+                ,@(and kf '((equal (fn2-machines-kind target fn2-machines) tkind)))
+                (natp slot) (< slot (,(fn2-arms-sym k2 "-ROWS") ,k2))
+                (equal (,(fn2-columns-col-name k2 'generation) slot ,k2) tgen)
+                ,@(and back `((equal (,(fn2-columns-col-name k2 (car back)) slot ,k2) id)))
+                ,@(and (cdr back) `((equal (,(fn2-columns-col-name k2 (cadr back)) slot ,k2) gen)))
+                t)))
+       (defthm ,(fn2-arms-sym live "-BOOLEANP") (booleanp (,live target tgen ,@(and kf '(tkind)) ,@(and back '(id))
+                                                                ,@(and (cdr back) '(gen)) ,k2 fn2-machines))
+         :rule-classes :type-prescription :hints (("Goal" :in-theory (enable ,live))))
+       (in-theory (disable ,live))
+       (defcost ,live :child ,live :doc ,(concatenate 'string "Whether link " (symbol-name l) " still names its row.")))
+     (fn2-arms-link-reader-events kind l k2 (cadr (member-eq :reads o)) world))))
+(defun fn2-arms-link-events (kind links world)
+  ; (mv err events)
+  (declare (xargs :verify-guards nil))
+  (if (atom links) (mv nil nil)
+    (let ((p (fn2-arms-link-problem kind (car links) world)))
+      (if p (mv p nil)
+        (mv-let (err rest) (fn2-arms-link-events kind (cdr links) world)
+          (mv err (append (fn2-arms-link-events-1 kind (car links) world) rest)))))))
+(defun fn2-arms-link-expr (x env)
+  ; (mv err call) for (:live L) or (:read L F); nil call when X is neither
+  (declare (xargs :verify-guards nil))
+  (let* ((kind (fn2-arm-get :kind env))
+         (link (and (consp x) (member-eq (car x) '(:live :read)) (consp (cdr x))
+                    (assoc-eq (cadr x) (fn2-arms-links kind (fn2-arm-get :world env))))))
+    (cond ((not (and (consp x) (member-eq (car x) '(:live :read)))) (mv nil nil))
+          ((not link) (mv (msg "~x0 names no link of ~x1." x kind) nil))
+          ((eq (car x) :live)
+           (if (not (equal (len x) 2)) (mv (msg "~x0 is (:live L)." x) nil)
+             (let* ((o (cdr link)) (r (fn2-arms-link-row link)) (back (cadr (member-eq :back o))))
+               (mv nil `(,(fn2-arms-link-fn kind (car link) "-LIVE-P") ,(car r) ,(cadr r)
+                         ,@(and (caddr r) (list (caddr r))) ,@(and back '(id)) ,@(and (cdr back) '(row-generation)))))))
+          ((not (and (equal (len x) 3) (member-eq (caddr x) (cadr (member-eq :reads (cdr link))))))
+           (mv (msg "~x0 reads outside link ~x1's read set ~x2." x (car link) (cadr (member-eq :reads (cdr link)))) nil))
+          (t (mv nil `(,(fn2-arms-link-fn kind (car link) (concatenate 'string "-" (symbol-name (caddr x))))
+                       ,(car (fn2-arms-link-row link))))))))
+(defun fn2-arms-plist-drop (keys plist)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom plist) nil)
+        ((member-eq (car plist) keys) (fn2-arms-plist-drop keys (cddr plist)))
+        (t (list* (car plist) (cadr plist) (fn2-arms-plist-drop keys (cddr plist))))))
+(defun fn2-arms-owner-overrides (plist env)
+  ; (mv err plist): :owner L as its link's triple; by hand only in a kind with no links
+  (declare (xargs :verify-guards nil))
+  (let* ((kind (fn2-arm-get :kind env)) (links (fn2-arms-links kind (fn2-arm-get :world env)))
+         (hand (or (member-eq :okind plist) (member-eq :oslot plist) (member-eq :ogen plist))))
+    (cond ((member-eq :owner plist)
+           (let* ((link (assoc-eq (cadr (member-eq :owner plist)) links)) (r (and link (fn2-arms-link-row link))))
+             (cond ((not (and link (caddr r))) (mv (msg ":owner ~x0 names no link of ~x1 with a :kind-field." (cadr (member-eq :owner plist)) kind) plist))
+                   (hand (mv (msg ":owner ~x0 is the whole owner triple; no :okind, :oslot or :ogen beside it." (cadr (member-eq :owner plist))) plist))
+                   (t (mv nil (append (fn2-arms-plist-drop '(:owner) plist)
+                                      (list :okind (caddr r) :oslot (car r) :ogen (cadr r))))))))
+          ((and links hand)
+           (mv (msg "~x0 has links: an owner override is a link's triple, written :owner L." kind) plist))
+          (t (mv nil plist)))))
 
 ; ----------------------------------------------------------------------
 ; Bounds of charge expressions, for the derived cost: nat, a constant, a
@@ -175,6 +324,9 @@
                (t (mv nil x (fn2-arms-add :reads (list x) acc))))))
       ((atom x) (mv nil x acc))
       ((eq (car x) 'quote) (mv nil x acc))
+      ((member-eq (car x) '(:live :read))
+       (mv-let (err call) (fn2-arms-link-expr x env)
+         (if err (mv err x acc) (fn2-arms-expr call env acc (1- fuel)))))
       ((not (and (symbolp (car x)) (true-listp x))) (mv (msg "malformed expression ~x0." x) x acc))
       ((eq (car x) 'cond)
        (mv-let (err clauses acc) (fn2-arms-clauses (cdr x) env acc (1- fuel))
@@ -282,11 +434,12 @@
       (mv (msg "calls ~x0, a per-use operation, without :effects." op) nil acc))
      ((not fn) (mv (msg "calls ~x0, whose defcost names no :child (the arm cannot be in child form)." op) nil acc))
      (t
-      (let ((split (fn2-arms-split-call (cdr call))))
+      (mv-let (oerr overrides) (fn2-arms-owner-overrides (cdr (fn2-arms-split-call (cdr call))) env)
+      (let ((split (cons (car (fn2-arms-split-call (cdr call))) overrides)))
         (mv-let (err actuals)
           (fn2-arms-actuals (getpropc fn 'formals nil world) (getpropc fn 'stobjs-in nil world)
                             (car split) (cdr split) (fn2-arm-get :kind env) (fn2-arms-tuple env))
-          (if err (mv (msg "~x0 ~@1" op err) nil acc)
+          (if (or oerr err) (mv (msg "~x0 ~@1" op (or oerr err)) nil acc)
             (mv-let (err actuals acc) (fn2-arms-exprs actuals env acc fuel)
               (mv err (cons fn actuals)
                   (fn2-arms-add :uses (list (if effects (list op :effects effects) op))
@@ -295,7 +448,7 @@
                       (fn2-arms-add :writes (fn2-decl-get :own-writes row)
                         (if (and (natp (fn2-decl-get :descriptors row)) (< 0 (fn2-decl-get :descriptors row)))
                             (fn2-decl-set :issues t acc)
-                          acc))))))))))))))
+                          acc)))))))))))))))
 
 ; ----------------------------------------------------------------------
 ; Phase-valued fields (G3, D F10; machines.lisp): F's subset, and the value a
@@ -410,6 +563,166 @@
     (if (assoc-eq (caar pairs) (fn2-arm-get :pending env))
         (mv (msg "~x0 is written twice before the next operation." (caar pairs)) env)
       (fn2-arms-pend (cdr pairs) (fn2-decl-set :pending (append (fn2-arm-get :pending env) (list (car pairs))) env)))))
+(defun fn2-arms-env (kind tag observe refusal subs children world)
+  (declare (xargs :verify-guards nil))
+  (list :kind kind :tag tag :observe observe :columns (fn2-machine-property kind :columns world)
+        :children (and children (fn2-arms-kind-tuple kind world))
+        :subs subs :refusal refusal :world world :written nil :next nil :lets nil
+        :budget (fn2-machine-property kind :budget world)))
+; ----------------------------------------------------------------------
+; Paths (G3, D F11 and F14). Every path an arm can take is recorded at its
+; terminal: (SOURCES ENDS USES ENTRY SETS STOP). SOURCES are the phases it
+; can start in (:any: the arm's own), ENDS the phases it moves to (:stay),
+; USES the operations it called, in order, whose effects took place on it (an
+; operation with answers acts on its :ok paths), ENTRY what its tests fixed
+; of the conditional holds' fields at the arm's entry ((F V ...) ...), SETS
+; the values it wrote them ((F . V|:any) ...), and STOP whether it stops the
+; core. A :goto walks the sub-arm again on the path, carrying what the path
+; knows, so a shared sub-arm's leaves count only where its caller can reach
+; them, and D0 checks the holds each path starts and ends with.
+;
+; What a path knows: for the phase and each enum field F, the values it can
+; hold (:known, as the row now reads) and held at the arm's entry (:entry),
+; narrowed by the tests (EQUAL ROW-F C) / = / EQL / EQ, NOT, AND, OR over its
+; constants; a :set of F fixes F to its constant (or forgets it). A path
+; whose knowledge is empty is impossible and records nothing.
+(defun fn2-arms-enum-pairs (enum vals)
+  ; ((CONSTANT . VALUE) ...)
+  (declare (xargs :verify-guards nil))
+  (if (atom vals) nil
+    (cons (cons (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name enum (car vals)) "*")) (car vals))
+          (fn2-arms-enum-pairs enum (cdr vals)))))
+(defun fn2-arms-universe (f env)
+  ; the constants an enum field F ranges over, paired with their values
+  (declare (xargs :verify-guards nil))
+  (let ((ty (cadr (assoc-eq f (fn2-arm-get :columns env)))))
+    (and (consp ty) (eq (car ty) :enum) (consp (cdr ty)) (consp (cddr ty))
+         (fn2-arms-enum-pairs (cadr ty) (caddr ty)))))
+(defun fn2-arms-known (key f env)
+  (declare (xargs :verify-guards nil))
+  (let ((e (assoc-eq f (fn2-arm-get key env)))) (if e (cdr e) (strip-cars (fn2-arms-universe f env)))))
+(defun fn2-arms-restrict (f vals env)
+  (declare (xargs :verify-guards nil))
+  (let* ((now (intersection-eq (fn2-arms-known :known f env) vals))
+         (env (fn2-decl-set :known (acons f now (fn2-arm-get :known env)) env))
+         (env (if (assoc-eq f (fn2-arm-get :path-sets env)) env
+                (fn2-decl-set :entry (acons f (intersection-eq (fn2-arms-known :entry f env) vals) (fn2-arm-get :entry env))
+                              env))))
+    (if (consp now) env (fn2-decl-set :impossible t env))))
+(defun fn2-arms-test-atom (x env)
+  ; (F . C) for (EQUAL ROW-F C) and its kin, C a constant of enum field F
+  (declare (xargs :verify-guards nil))
+  (and (consp x) (member-eq (car x) '(equal = eql eq)) (true-listp x) (equal (len x) 3)
+       (let* ((a (cadr x)) (b (caddr x))
+              (fa (and (symbolp a) (fn2-arms-row-field a env)))
+              (fb (and (symbolp b) (fn2-arms-row-field b env))))
+         (cond ((and fa (assoc-eq b (fn2-arms-universe fa env))) (cons fa b))
+               ((and fb (assoc-eq a (fn2-arms-universe fb env))) (cons fb a))
+               (t nil)))))
+(defun fn2-arms-path-narrow (xs pol env fuel)
+  ; ENV narrowed by every X of XS holding (POL t) or failing (POL nil)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom xs)) env
+    (let* ((x (car xs)) (p (fn2-arms-test-atom x env))
+           (env (cond (p (fn2-arms-restrict (car p)
+                                            (if pol (list (cdr p))
+                                              (remove-eq (cdr p) (strip-cars (fn2-arms-universe (car p) env))))
+                                            env))
+                      ((and (consp x) (eq (car x) 'not) (true-listp x) (equal (len x) 2))
+                       (fn2-arms-path-narrow (list (cadr x)) (not pol) env (1- fuel)))
+                      ((and (consp x) (eq (car x) (if pol 'and 'or)) (true-listp x))
+                       (fn2-arms-path-narrow (cdr x) pol env (1- fuel)))
+                      (t env))))
+      (fn2-arms-path-narrow (cdr xs) pol env (1- fuel)))))
+(defun fn2-arms-note-sets (pairs env)
+  ; a :set's ((F E) ...): F now reads E, a constant of its enum, or anything
+  (declare (xargs :verify-guards nil))
+  (if (atom pairs) env
+    (let* ((f (caar pairs)) (e (cadar pairs)) (u (fn2-arms-universe f env)) (c (and u (assoc-eq e u))))
+      (fn2-arms-note-sets (cdr pairs)
+        (if (not u) env
+          (fn2-decl-set :path-sets (acons f (if c (cdr c) :any) (fn2-arm-get :path-sets env))
+            (fn2-decl-set :known (acons f (if c (list e) (strip-cars u)) (fn2-arm-get :known env)) env)))))))
+(defun fn2-arms-with-use (use env)
+  (declare (xargs :verify-guards nil))
+  (fn2-decl-set :path-uses (append (fn2-arm-get :path-uses env) (list use)) env))
+(defun fn2-arms-next-phases (n env fuel)
+  ; the phases a :next form can name
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((zp fuel) nil)
+        ((keywordp n) (list n))
+        ((and (symbolp n) (fn2-arms-row-field n env)) (fn2-arms-phase-subset (fn2-arms-row-field n env) env))
+        ((and (true-listp n) (eq (car n) :if) (equal (len n) 4))
+         (union-eq (fn2-arms-next-phases (caddr n) env (1- fuel)) (fn2-arms-next-phases (cadddr n) env (1- fuel))))
+        ((and (true-listp n) (eq (car n) :case))
+         (fn2-arms-next-phases (cons :case-arms (cddr n)) env (1- fuel)))
+        ((and (true-listp n) (eq (car n) :case-arms) (consp (cdr n)))
+         (union-eq (and (consp (cadr n)) (fn2-arms-next-phases (cadr (cadr n)) env (1- fuel)))
+                   (fn2-arms-next-phases (cons :case-arms (cddr n)) env (1- fuel))))
+        (t nil)))
+(defun fn2-arms-values-of (consts pairs)
+  (declare (xargs :verify-guards nil))
+  (if (atom consts) nil
+    (let ((p (assoc-eq (car consts) pairs)))
+      (append (and p (list (cdr p))) (fn2-arms-values-of (cdr consts) pairs)))))
+(defun fn2-arms-while-fields-of (while)
+  ; the field of each (PHASE K F V ...)
+  (declare (xargs :verify-guards nil))
+  (if (atom while) nil
+    (union-eq (and (consp (car while)) (consp (cdar while)) (consp (cddar while)) (list (caddar while)))
+              (fn2-arms-while-fields-of (cdr while)))))
+(defun fn2-arms-while-fields (env)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-while-fields-of (fn2-machine-declared (fn2-arm-get :kind env) :holds-while (fn2-arm-get :world env))))
+(defun fn2-arms-path-entry (fields env)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let ((e (assoc-eq (car fields) (fn2-arm-get :entry env))))
+      (append (and e (list (cons (car fields) (fn2-arms-values-of (cdr e) (fn2-arms-universe (car fields) env)))))
+              (fn2-arms-path-entry (cdr fields) env)))))
+(defun fn2-arms-path-sets (fields env)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let ((s (assoc-eq (car fields) (fn2-arm-get :path-sets env))))
+      (append (and s (list s)) (fn2-arms-path-sets (cdr fields) env)))))
+(defun fn2-arms-path-record (step env acc0 acc)
+  ; ACC with the path ending at terminal STEP (ACC0 before the terminal)
+  (declare (xargs :verify-guards nil))
+  (if (or (member-eq (car step) '(:goto :repeat-next)) (fn2-arm-get :impossible env) (fn2-arm-get :helper env)) acc
+    (let* ((n (- (len (fn2-arm-get :calls acc)) (len (fn2-arm-get :calls acc0))))
+           (own (append (reverse (take (nfix n) (fn2-arm-get :calls acc)))
+                        (and (eq (car step) :park) (eq (cadr step) :pool) (fn2-arm-get :children env)
+                             '(fn2-machine-park-pool))))
+           (phase (assoc-eq 'phase (fn2-arm-get :entry env)))
+           (fields (fn2-arms-while-fields env)))
+      (fn2-decl-set :paths
+        (cons (list (if phase (fn2-arms-values-of (cdr phase) (fn2-arms-universe 'phase env)) :any)
+                    (if (fn2-arm-get :next-phases env) (fn2-arm-get :next-phases env) :stay)
+                    (append (fn2-arm-get :path-uses env) own)
+                    (fn2-arms-path-entry fields env) (fn2-arms-path-sets fields env)
+                    (eq (car step) :stop))
+              (fn2-arm-get :paths acc))
+        acc))))
+(defconst *fn2-arms-path-keys* '(:known :entry :path-sets :path-uses :impossible :woken :next-phases))
+(defun fn2-arms-carry (keys from to)
+  (declare (xargs :verify-guards nil))
+  (if (atom keys) to (fn2-arms-carry (cdr keys) from (fn2-decl-set (car keys) (fn2-arm-get (car keys) from) to))))
+(defun fn2-arms-phase-entry (kind phases)
+  ; the phase constants of PHASES
+  (declare (xargs :verify-guards nil))
+  (if (atom phases) nil (cons (fn2-arms-phase-constant kind (car phases)) (fn2-arms-phase-entry kind (cdr phases)))))
+(defun fn2-arms-arm-knowledge (kind phases env)
+  ; an arm or handler entered in one of PHASES
+  (declare (xargs :verify-guards nil))
+  (let ((cs (fn2-arms-phase-entry kind phases)))
+    (fn2-decl-set :known (list (cons 'phase cs)) (fn2-decl-set :entry (list (cons 'phase cs)) env))))
+(defun fn2-arms-path-ends (paths tag)
+  ; the phases the paths move to; a staying path stays in TAG (nil: none)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) nil
+    (union-eq (let ((ends (cadr (car paths)))) (if (eq ends :stay) (and tag (list tag)) ends))
+              (fn2-arms-path-ends (cdr paths) tag))))
+
 ;; A :repeat's work (G3): the passes it made times the pass's bound, the sum
 ;; of its calls' declared costs (one step for the pass itself). LOOPS is the
 ;; path's ((LEFT N PB PS PD NB) ...): LEFT is bound to the passes left unmade,
@@ -1046,13 +1359,16 @@
               (mv-let (err vals acc) (fn2-arms-exprs pvals env acc fuel)
                 (mv-let (err1 env2) (fn2-arms-pend (pairlis$ (strip-cars pairs) vals) env)
                   (mv-let (err2 body acc)
-                    (fn2-arms-steps rest (fn2-decl-set :written (union-eq (strip-cars pairs) (fn2-arm-get :written env2)) env2)
+                    (fn2-arms-steps rest (fn2-arms-note-sets pairs
+                                           (fn2-decl-set :written (union-eq (strip-cars pairs) (fn2-arm-get :written env2)) env2))
                                     acc (1- fuel))
                     (mv (or err err1 err2) body (fn2-arms-add :writes (strip-cars pairs) acc))))))))))
          (:next
           (if (or (fn2-arm-get :next env) (fn2-arm-get :next-done env)) (mv (msg "a path has two :next steps.") nil acc)
             (mv-let (err n acc) (fn2-arms-next-form (cadr step) env acc fuel)
-              (mv-let (err2 body acc) (fn2-arms-steps rest (fn2-decl-set :next n env) acc (1- fuel))
+              (mv-let (err2 body acc) (fn2-arms-steps rest (fn2-decl-set :next-phases (fn2-arms-next-phases (cadr step) env 32)
+                                                             (fn2-decl-set :next n env))
+                                                      acc (1- fuel))
                 (mv (or err err2) body (fn2-arms-add :writes '(phase) acc))))))
          (:do
           (let* ((vars (cadr step)) (call (caddr step)) (opts (cdddr step))
@@ -1083,7 +1399,8 @@
                       (mv-let (err body acc)
                         (fn2-arms-do-body vars answers opts rest
                                           (fn2-decl-set :bound (append vars (fn2-arm-get :bound env)) (fn2-arms-cleared env))
-                                          acc (1- fuel))
+                                          acc (1- fuel)
+                                          (if (fn2-arms-kw :effects opts nil) (list op :effects (fn2-arms-kw :effects opts nil)) op))
                         (mv (or err0 err (and cond-form (not (equal (len (fn2-arms-kw :else opts nil)) (len vars)))
                                          (msg "~x0: :else gives the ~x1 values of a skipped call." step (len vars)))
                                 (and (intersection-eq vars (fn2-arm-get :bound env))
@@ -1140,10 +1457,11 @@
                           (mv (msg "~x0 calls an operation whose declared cost has no static bound." step) nil acc)
                         (mv-let (err2 rest-code acc)
                           (fn2-arms-steps rest (fn2-decl-set :pending nil
+                                                 (fn2-decl-set :path-uses (append (fn2-arm-get :path-uses env) (reverse calls))
                                                  (fn2-decl-set :written (strip-cars (fn2-arm-get :columns env))
                                                    (fn2-decl-set :loops (cons (list left n pb (+ 1 ps) pd (fn2-arms-bound n nil world 64))
                                                                               (fn2-arm-get :loops env))
-                                                     env)))
+                                                     env))))
                                           (fn2-decl-set :calls (append calls (fn2-arm-get :calls acc)) acc) (1- fuel))
                           (mv err2
                               (fn2-arms-wrap-writes env `(mv-let (,left ,@(fn2-arms-tuple env)) ,call
@@ -1163,7 +1481,7 @@
              (t
               (mv-let (err call2 acc) (fn2-arms-call call nil env acc fuel)
                 (if err (mv err nil acc)
-                  (mv-let (err1 okc acc) (fn2-arms-steps ok (fn2-arms-cleared env) acc (1- fuel))
+                  (mv-let (err1 okc acc) (fn2-arms-steps ok (fn2-arms-with-use (car call) (fn2-arms-cleared env)) acc (1- fuel))
                     (mv-let (err2 exc acc) (fn2-arms-steps (append refused '((:park :operation))) (fn2-arms-cleared env) acc (1- fuel))
                       (mv-let (err3 otc acc)
                         (fn2-arms-steps (append refused (or (fn2-arm-get :refusal env) '((:halt)))) (fn2-arms-cleared env) acc (1- fuel))
@@ -1183,7 +1501,7 @@
                 ((fn2-arm-get :woken env) (mv (msg "~x0: a path wakes at most one row." step) nil acc))
                 (t (mv-let (err e acc) (fn2-arms-expr (cadr step) env acc fuel)
                      (mv-let (err2 body acc)
-                       (fn2-arms-steps rest (fn2-decl-set :woken t env) acc (1- fuel))
+                       (fn2-arms-steps rest (fn2-arms-with-use 'fn2-machine-wake-row (fn2-decl-set :woken t env)) acc (1- fuel))
                        (mv (or err err2)
                            (if (fn2-arm-get :children env)
                                `(mv-let (fn2-machines fn2-control) (fn2-machines-wake-row ,e fn2-machines fn2-control) ,body)
@@ -1193,8 +1511,8 @@
           (if (or rest (not (equal (len step) 4)))
               (mv (msg "~x0 is (:if E (STEP ...) (STEP ...)) and ends its path." step) nil acc)
             (mv-let (err test acc) (fn2-arms-expr (cadr step) env acc fuel)
-              (mv-let (err2 a acc) (fn2-arms-steps (caddr step) env acc (1- fuel))
-                (mv-let (err3 b acc) (fn2-arms-steps (cadddr step) env acc (1- fuel))
+              (mv-let (err2 a acc) (fn2-arms-steps (caddr step) (fn2-arms-path-narrow (list (cadr step)) t env 64) acc (1- fuel))
+                (mv-let (err3 b acc) (fn2-arms-steps (cadddr step) (fn2-arms-path-narrow (list (cadr step)) nil env 64) acc (1- fuel))
                   (mv (or err err2 err3) `(if ,test ,a ,b) acc))))))
          (:cond
           (if rest (mv (msg "~x0 ends its path." step) nil acc)
@@ -1207,11 +1525,26 @@
          (otherwise
           (if (member-eq (car step) *fn2-arms-terminals*)
               (if rest (mv (msg "steps follow the terminal ~x0." step) nil acc)
-                (fn2-arms-terminal step env acc fuel))
+                (mv-let (err code acc2) (fn2-arms-terminal step env acc fuel)
+                  (if (or err (not (eq (car step) :goto)) (fn2-arm-get :impossible env))
+                      (mv err code (if err acc2 (fn2-arms-path-record step env acc acc2)))
+                    ;; the sub-arm walked again on this path (G3, D F11/F14):
+                    ;; its paths are this path's continuations
+                    (let* ((src (fn2-arm-get :src (cdr (assoc-eq (cadr step) (fn2-arm-get :subs env)))))
+                           (renv (fn2-arms-carry *fn2-arms-path-keys* env
+                                   (fn2-decl-set :site (concatenate 'string (fn2-arm-get :site env) "-PATH")
+                                     (fn2-arms-env (fn2-arm-get :kind env) nil nil (cadr src) (caddr src)
+                                                   (fn2-arm-get :children env) (fn2-arm-get :world env))))))
+                      (mv-let (rerr rcode racc) (fn2-arms-steps (car src) renv nil (1- fuel))
+                        (declare (ignore rcode))
+                        (mv (and rerr (msg "through ~x0: ~@1" step rerr)) code
+                            (fn2-decl-set :paths (append (fn2-arm-get :paths racc) (fn2-arm-get :paths acc2)) acc2)))))))
             (mv (msg "unknown step ~x0." step) nil acc))))))))
  ; the continuation of a :do: accepted answers continue with REST; :case
  ; branches end their paths; the rest of the answers go to :on-refusal
- (defun fn2-arms-do-body (vars answers opts rest env acc fuel)
+ ; USE takes effect on the paths where the operation answered :ok (on every
+ ; path when it has no answers, or never answers :ok)
+ (defun fn2-arms-do-body (vars answers opts rest env acc fuel use)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
    (if (zp fuel) (mv (msg "too deep.") nil acc)
    (let* ((cases (fn2-arms-kw :case opts nil))
@@ -1223,9 +1556,11 @@
                     (if (or (null answers) (member-eq :ok case-codes)
                             (and (consp answers) (not (member-eq :ok answers)))) nil '(:ok))))
           (code (car vars))
-          (refusal (fn2-arm-get :refusal env)))
+          (refusal (fn2-arm-get :refusal env))
+          (always (or (null answers) (and (consp answers) (not (member-eq :ok answers)))))
+          (ok-rest (or always (not (member-eq :ok (append accept case-codes))))))
      (cond
-      ((null answers) (fn2-arms-steps rest env acc (1- fuel)))
+      ((null answers) (fn2-arms-steps rest (fn2-arms-with-use use env) acc (1- fuel)))
       ((not (symbolp code)) (mv (msg "a :do of an operation with answers binds its code first.") nil acc))
       ;; accepting a failure beside :ok is an absorb and says why; an operation
       ;; that never answers :ok has no failure to absorb by accepting
@@ -1241,24 +1576,29 @@
       ((and (not (consp answers)) (not (or other refusal)))
        (mv (msg "an operation with an open answer set needs a :case :otherwise or the arm's :on-refusal.") nil acc))
       (t
-       (mv-let (err1 cont acc) (if accept (fn2-arms-steps rest env acc (1- fuel)) (mv nil nil acc))
-         (mv-let (err2 branches acc) (fn2-arms-case-branches code cases env acc (1- fuel))
+       (mv-let (err1 cont acc) (if accept (fn2-arms-steps rest (if (or always (member-eq :ok accept)) (fn2-arms-with-use use env) env)
+                                                           acc (1- fuel))
+                                 (mv nil nil acc))
+         (mv-let (err2 branches acc) (fn2-arms-case-branches code cases env acc (1- fuel) use always)
            (mv-let (err3 tail acc)
-             (cond (other (fn2-arms-steps (cdr other) env acc (1- fuel)))
-                   (refusal (fn2-arms-steps refusal env acc (1- fuel)))
+             (cond (other (fn2-arms-steps (cdr other) (if ok-rest (fn2-arms-with-use use env) env) acc (1- fuel)))
+                   (refusal (fn2-arms-steps refusal (if ok-rest (fn2-arms-with-use use env) env) acc (1- fuel)))
                    (t (fn2-arms-steps '((:stop :machine-contract)) env acc (1- fuel))))
              (mv (or err1 err2 err3)
                  `(cond ,@(and accept `(((member-eq ,code ',accept) ,cont)))
                         ,@branches
                         (t ,tail))
                  acc)))))))))
- (defun fn2-arms-case-branches (code cases env acc fuel)
+ (defun fn2-arms-case-branches (code cases env acc fuel use always)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
    (cond ((zp fuel) (mv (msg "too deep.") nil acc))
          ((atom cases) (mv nil nil acc))
-         ((eq (caar cases) :otherwise) (fn2-arms-case-branches code (cdr cases) env acc (1- fuel)))
-         (t (mv-let (err a acc) (fn2-arms-steps (cdar cases) env acc (1- fuel))
-              (mv-let (err2 b acc) (fn2-arms-case-branches code (cdr cases) env acc (1- fuel))
+         ((eq (caar cases) :otherwise) (fn2-arms-case-branches code (cdr cases) env acc (1- fuel) use always))
+         (t (mv-let (err a acc) (fn2-arms-steps (cdar cases)
+                                                (if (or always (and (consp (caar cases)) (member-eq :ok (caar cases))))
+                                                    (fn2-arms-with-use use env) env)
+                                                acc (1- fuel))
+              (mv-let (err2 b acc) (fn2-arms-case-branches code (cdr cases) env acc (1- fuel) use always)
                 (mv (or err err2) (cons `((member-eq ,code ',(caar cases)) ,a) b) acc))))))
  (defun fn2-arms-cond (clauses env acc fuel)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -1268,8 +1608,8 @@
           (if (cdr clauses) (mv (msg "a :cond's t clause is its last.") nil acc)
             (fn2-arms-steps (cdar clauses) env acc (1- fuel))))
          (t (mv-let (err test acc) (fn2-arms-expr (caar clauses) env acc (1- fuel))
-              (mv-let (err2 a acc) (fn2-arms-steps (cdar clauses) env acc (1- fuel))
-                (mv-let (err3 b acc) (fn2-arms-cond (cdr clauses) env acc (1- fuel))
+              (mv-let (err2 a acc) (fn2-arms-steps (cdar clauses) (fn2-arms-path-narrow (list (caar clauses)) t env 64) acc (1- fuel))
+                (mv-let (err3 b acc) (fn2-arms-cond (cdr clauses) (fn2-arms-path-narrow (list (caar clauses)) nil env 64) acc (1- fuel))
                   (mv (or err err2 err3) `(if ,test ,a ,b) acc)))))))
  (defun fn2-arms-case (key arms env acc fuel)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -1289,12 +1629,6 @@
       (mv-let (from refusal steps) (fn2-arms-options (cddr entry))
         (if (eq (car entry) :from) (mv (cadr entry) refusal steps) (mv from (cadr entry) steps)))
     (mv nil nil entry)))
-(defun fn2-arms-env (kind tag observe refusal subs children world)
-  (declare (xargs :verify-guards nil))
-  (list :kind kind :tag tag :observe observe :columns (fn2-machine-property kind :columns world)
-        :children (and children (fn2-arms-kind-tuple kind world))
-        :subs subs :refusal refusal :world world :written nil :next nil :lets nil
-        :budget (fn2-machine-property kind :budget world)))
 (defun fn2-arms-max-dim (charges i)
   (declare (xargs :verify-guards nil))
   (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
@@ -1316,13 +1650,18 @@
          (cost (if observe '(:steps *fn2-work-transition*)
                  (list :bytes (fn2-arms-max-dim charges 0) :steps (fn2-arms-max-dim charges 1)
                        :descriptors (fn2-arms-max-dim charges 2))))
-         (next (if (and (not observe) (fn2-arm-get :stay acc))
-                   (union-eq (list tag) (fn2-arm-get :nexts acc)) (fn2-arm-get :nexts acc))))
+         (paths (remove-duplicates-equal (fn2-arm-get :paths acc)))
+         ;; an arm's or handler's phases are its paths' (G3, D F11); a
+         ;; sub-arm's own contract keeps every leaf
+         (next (cond (tag (fn2-arms-path-ends paths (and (not observe) tag)))
+                     ((fn2-arm-get :stay acc) (union-eq (list tag) (fn2-arm-get :nexts acc)))
+                     (t (fn2-arm-get :nexts acc)))))
     (append (list :cost cost
                   :writes (remove-eq 'phase (fn2-arm-get :writes acc))
                   :tables (union-eq (fn2-arms-own-table kind (fn2-arm-get :tables acc))
                                     (fn2-machine-directory-child (fn2-arm-get :writes acc)))
                   :next next :uses (fn2-arms-uses-multiset (fn2-arm-get :uses acc) (reverse (fn2-arm-get :calls acc))))
+            (and tag (list :paths paths))
             (and observe from (list :from from)))))
 (defun fn2-arms-fn-events (name kind observe acc body contract world)
   (declare (xargs :verify-guards nil))
@@ -1451,7 +1790,7 @@
         (fn2-arms-steps steps (fn2-decl-set :site (concatenate 'string "SUB-" (symbol-name name))
                                 (fn2-arms-env kind nil nil refusal subs (not (eq mode :core)) world)) nil 100000)
         (if err (mv (msg "~x0 sub-arm ~x1: ~@2" kind name err) nil nil)
-          (fn2-arms-subs kind (cdr entries) (append subs (list (cons name acc)))
+          (fn2-arms-subs kind (cdr entries) (append subs (list (cons name (fn2-decl-set :src (list steps refusal subs) acc))))
             (append events
                     (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
                     (case mode
@@ -1467,8 +1806,12 @@
     (let ((tag (caar entries)))
       (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
         (mv-let (err code acc)
-          (fn2-arms-steps steps (fn2-decl-set :site (symbol-name tag)
-                                  (fn2-arms-env kind tag observe refusal subs (not (eq mode :core)) world)) nil 100000)
+          (fn2-arms-steps steps (let ((env (fn2-decl-set :site (symbol-name tag)
+                                             (fn2-arms-env kind tag observe refusal subs (not (eq mode :core)) world))))
+                                  (cond ((not observe) (fn2-arms-arm-knowledge kind (list tag) env))
+                                        (from (fn2-arms-arm-knowledge kind from env))
+                                        (t env)))
+                          nil 100000)
           (if err (mv (msg "~x0 ~s1 ~x2: ~@3" kind (if observe "handler" "arm") tag err) nil nil)
             (let* ((name (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") tag))
                    (contract (fn2-arms-contract kind tag observe from acc world)))
@@ -1523,9 +1866,14 @@
 ; (defmachine-arms K): arms over the core; (defmachine-arms K :children) in
 ; K's own book, then (defmachine-arms K :wrappers) in its callbacks section.
 (defmacro defmachine-arms (kind &optional (mode ':core))
-  `(make-event
-    (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
-      (if err (er soft 'defmachine-arms "~@0" err) (value form)))))
+  `(progn
+     ,@(and (eq mode :children)
+            `((make-event
+               (mv-let (err events) (fn2-arms-link-events ',kind (fn2-arms-links ',kind (w state)) (w state))
+                 (if err (er soft 'defmachine-arms "~@0" err) (value (cons 'progn events)))))))
+     (make-event
+      (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
+        (if err (er soft 'defmachine-arms "~@0" err) (value form))))))
 
 ; ----------------------------------------------------------------------
 ; MACHINE-FORM 6.5 P4: a partitioned kind's registry operations in child

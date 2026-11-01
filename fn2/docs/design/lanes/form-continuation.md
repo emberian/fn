@@ -11,8 +11,11 @@ Seat: Opus, writes the code; owns layer A's generator and adapter (and A's execu
 | 3804cb211 | Q1 reds: q1-unit's pin = the assembled catalogue; q1-teeth's profile serves reading |
 | 371c48e4e | the `:local` listener (0600 Unix socket as the listener capability's second fd; `:local` peer w0 uid w1 gid; simulator per-capability peer) |
 | 56b866c35 | G3 1/n: `:repeat` cost derived, F13 per-call holds (multisets), F10 phase-valued fields |
+| 144596771 | turn bound from the registry: `*fn2-turn-transition-max*` = work-empty + max budget bytes+steps over every kind (Argon 9.8) |
+| 4c7ab8df3 | native session serves the sim session's profile + seeded store (`fn2-n-make-host :seeds`, `fn2-nserve-replay` replays ENVELOPE from the seeded store) |
+| a0556c390 | G3 2/n: paths (F11), holds per path (F14), typed links (F8), inner machines (`:sub`) — details below |
 
-## In the worktree, certifying on hbox (~/form-g3, run g6): G3 2/n + 3/n + the turn bound
+## How G3 2/n is built (a0556c390; for editing it)
 Files: books/machine-arms.lisp, arms.lisp, machines.lisp, executor.lisp, tests/machine-arms-unit.lisp.
 - **Paths (F11 + F14).** Every terminal records a path in acc `:paths`: (SOURCES ENDS USES ENTRY SETS STOP).
   The env carries path knowledge: `:known`/`:entry` (values of row-phase and each enum field, narrowed by
@@ -40,11 +43,13 @@ Files: books/machine-arms.lisp, arms.lisp, machines.lisp, executor.lisp, tests/m
   `(:sub-next NAME Q)` = `(:set (F *K-NAME-Q*))`.
 - **Turn bound (Argon §9.8).** executor.lisp: `*fn2-turn-transition-max*` = work-empty + max over every
   registered kind's budget bytes+steps (`fn2-exec-kinds-work-max`, make-event over `fn2-machine-names`).
-- Commit messages to write: G3 2/n (paths, F11, F14), 3/n (F8, :sub), the turn bound.
+- Verified: hbox machine-arms-unit (25.9 s), machines-a-unit, cursor-unit, assembly, host-unit, q1-unit, q1-teeth,
+  executor; sim-layer-a-smoke PASS on hbox (tree made a git repo with an empty anchor commit for the revision);
+  native-serve-check PASS + GROUP/STAT over the seeded store. Not measured on forge yet (forge base is pre-G3).
 
 ## Next (in order)
-1. Land the above (certify on hbox: machine-arms-unit, machines-a-unit, cursor-unit, assembly, host-unit,
-   check-own-unit, q1-unit, q1-teeth; smoke on forge; measure on forge).
+1. Forge before/after numbers for 2/n (sync /build/lanes/form-base, certify assembly; the per-path re-walk
+   costs expansion time per :goto).
 2. `:genesis (STEP ...)`: a generated per-row genesis arm, run by the executor's init for each row of the
    kind (replaces C's fn2-sealer-start-row; C's fn2-engine-genesis keeps the group/sealer genesis ops).
 3. F9's owed row owner = holder (a range handed between rows), with links.

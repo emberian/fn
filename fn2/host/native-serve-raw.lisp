@@ -12,8 +12,10 @@
          (reduce (lambda (a p) (+ (* a 256) p)) parts :initial-value 0))))
 
 (defun fn2-nserve-profile ()
-  "The served profile, the listener from the environment (absent: the profile's defaults)."
-  (let* ((profile (put-assoc-equal :trace nil *fn2-conn-wire-profile*))
+  "The served profile, the listener from the environment (absent: the profile's defaults).
+The surface sessions' (fn2/tests/seeded-store.lsp): the cursor's profile less its posting,
+so the node serves reading over the store it seeds."
+  (let* ((profile *fn2-ss-profile*)
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
          (address (sb-ext:posix-getenv "FN2_LISTENER_ADDRESS"))
          (path (sb-ext:posix-getenv "FN2_LISTENER_PATH")))
@@ -35,7 +37,7 @@
       (unless (eq bind :ok)
         (format t "~%REFUSED ~(~a~)~%" bind) (finish-output)
         (return-from fn2-nserve-main 2)))
-    (let ((host (fn2-n-make-host profile :trace-capacity capacity)))
+    (let ((host (fn2-n-make-host profile :trace-capacity capacity :seeds *fn2-ss-seeds*)))
       (format t "~%LISTENING ~d~%" (fn2-nhost-listen-port host))
       (when (fn2-nhost-local-path host)
         (format t "LISTENING-LOCAL ~a~%" (fn2-nhost-local-path host)))
@@ -45,7 +47,7 @@
              (format t "STOPPED ~d~%" reason)
              (when (plusp capacity)
                (format t "ENVELOPE ~s~%"
-                       (car (fn2-envelope-replay (fn2-n-trace-list host) profile nil))))
+                       (car (fn2-ss-replay (fn2-n-trace-list host) profile *fn2-ss-seeds* nil))))
              (finish-output)
              0)
         (fn2-n-destroy host)))))

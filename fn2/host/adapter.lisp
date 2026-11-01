@@ -406,16 +406,20 @@ otherwise the bound one. Values: (index . cap) or nil."
   (or (cdr (assoc 'fn2-core (user-stobj-alist *the-live-state*)))
       (error "fn2 native: the certified core stobj is absent")))
 
-(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0))
+(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0) (seeds nil))
   "Initialize the live core with PROFILE, bind its configured listener (:listener-address,
 :listener-port; default 127.0.0.1 and an ephemeral port; and :listener-path, the owner-only
-Unix socket, when named), and return the host."
+Unix socket, when named), and return the host. SEEDS, when given, are published into the
+store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session seeds it)."
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
          (n (fn2-profile-o profile))
          (ncaps (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n)))
     (fn2-init-executor profile :echo nil core)
+    (when seeds
+      (let ((code (funcall 'fn2-cs-seed-all seeds 1 core)))
+        (unless (eq code :ok) (error "fn2 native: the store's seed was refused: ~(~a~)" code))))
     (multiple-value-bind (lfd lport) (fn2-native-listen port address)
       (let ((host (make-fn2-nhost
                    :core core
