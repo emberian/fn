@@ -18,7 +18,7 @@ departure from a decision that is not recorded here is a defect.
 | `defrunschema`: per-schema entry, index-entry and run-descriptor layouts, key comparison, writer/seek entry points, the schema's registration | `fn2/books/runs-schema.lisp` | C1 |
 | multi-page runs: the build (one writer per level, promotion of sealed pages into index entries), the verified-page cache, resumable lookup cursors, the run-level adapter and keystone | `fn2/books/runs.lisp` | C1b' |
 | the manifest schema (the engine's own directory is a run) | `fn2/books/runs-manifest.lisp` | C1c |
-| identity schema, its specification, the decision machine over overlays and installed runs, the recording under the conflict bound, adapters and keystones (`fn2-identity-assemble`, expanded after the run assembly) | `fn2/books/identity.lisp`; unit `fn2/tests/identity-unit.lisp` | C2b |
+| the identity records (§4a: evidence, history, candidates, summary, article index), the decision row, the verdict | `fn2/books/identity.lisp`; the decision `fn2/books/machines-c-groups.lisp`; unit `fn2/tests/identity-core-unit.lisp` | C2b, §4a |
 | installed runs (the resident view of each schema's sealed runs; the manifest makes it durable in C1c) | `fn2/books/runs.lisp` (`fn2-run-installed`) | C2b |
 | active overlay per schema: a bounded in-memory sorted run (tables and placement in `fn2/books/overlay.lisp`; entry, locate, insert generated at the assembly) | `fn2/books/overlay.lisp`, `fn2/books/runs-assemble.lisp` | C2a |
 | range scan from a lower bound (cursor path, next leaf through it) | `fn2/books/runs.lisp` (path table), `fn2/books/runs-assemble.lisp` | C2a |
@@ -35,9 +35,9 @@ departure from a decision that is not recorded here is a defect.
 | registration, read-state, edge-policy and inbox folds; the select-versus-materialize check | `fn2/books/folds.lisp`, `fn2/sim/check-consumer.lisp` | C4b |
 | compaction with reservations and backpressure; relocation under a lease | `fn2/books/compact.lisp` | C5 |
 | IDENTITY checker (an independent list interpreter with its own Binding); CONSUMER checker | `fn2/sim/check-identity.lisp` (C2d); `fn2/sim/check-consumer.lisp` (C4) | C2d, C4 |
-| acceptance | `fn2/tests/sim-layer-c.lisp` (scenario M3 so far; `fn2/tests/sim-layer-c-sweep.lsp` the 10,000-seed driver) | C2d-C6 |
+| acceptance | scenario M3 is rewritten over §4a's decision with the keystones (§4a step 4); the old one went with the old record | C2d-C6 |
 | C's test world: the served assembly (range-served) and the teeth makers | `fn2/tests/runs-assembly.lisp` | C2b |
-| units | `fn2/tests/runs-unit.lisp` (over the overview and identity schemas), `fn2/tests/identity-unit.lisp`, `fn2/tests/range-unit.lisp`, `fn2/tests/sim-layer-c.lisp` (all include `runs-assembly`), `fn2/tests/ribbon-unit.lisp` (the filter alone), `fn2/tests/identity-core-unit.lisp` (the served core) | each |
+| units | `fn2/tests/runs-unit.lisp` (over the overview and identity candidate schemas), `fn2/tests/range-unit.lisp` (both include `runs-assembly`), `fn2/tests/ribbon-unit.lisp` (the filter alone), `fn2/tests/identity-core-unit.lisp` (the served core) | each |
 
 Every C book starts `(fn2-book-layer :c)` after its includes, so its rows count under layer C.
 
@@ -400,15 +400,58 @@ losing conflict whose winner was dropped.
      publication. The alternative, an origin-prefix seek, answers only the narrower question and
      would have to search inherited incarnations.
 
+### As built (2026-10-31; the one landing, no twin)
+The old record is gone: `fn2-identity`, its `:record` slot kind, the block-walk decision and its
+stamps (`fn2-id-stamps`), `*fn2-identity-contents-max*`, `*fn2-id-block-max*` and
+`:identity-conflict-bound` (stage, txn, upload words, conn-answer). What replaced it:
+- **Records** (`fn2/books/identity.lisp`): `fn2-identity-evidence` (1, `:union`),
+  `fn2-identity-history` (11, `:union`), `fn2-identity-candidates` (12) and `fn2-identity-summary`
+  (13), both folds, and `fn2-identity-article` (14, `:unique`).
+- **The decision** (`machines-c-groups.lisp`): `fn2-identity-decide-start` / `fn2-identity-decide` /
+  `fn2-identity-facts`. It does two exact lookups (`fn2-xl-step`) of one query in the transaction's
+  lookup area: the summary of N, then the candidate (N, C). The verdict follows §4a's precedence.
+  The facts are verdict, selection (`:none`/`:same`/`:other`), candidate ordinal, evidence status
+  (`:none`/`:present`/`:qualified`) and coverage (`:complete`/`:gap`).
+- **The admission** (`fn2-txn-put-identity`, txn.lisp; D reads it). Slots, in order: evidence 0,
+  history 1, summary `:admit` 2, candidate `:admit` 3, article index 4. A local acceptance fills all
+  five. Evidence only (LOCAL 0) leaves history and index empty. The summary's `ne`/`nr` are `(:new
+  0)`/`(:new 1)`, and its `oldh` is the decision's ordinal. The candidate's ordinal, and the
+  index's, is `:out` of the summary's `candidates` field when the content is new, else that
+  ordinal. A stale ordinal fails the candidate's `:when` at stage (`:refused`), and the txn decides
+  again. So `:old (K, F)` was not needed.
+- **D's identity read** (`fn2-read-identity`): two exact lookups, the article index then the
+  summary. It answers `(:found article)`, `:evidence` or `:absent`, plus the other candidates known
+  locally.
+- **The sealer's filter** is built for summary runs (keyed by N), the schema the decision reads
+  first. No read consults it yet: `fn2-xl-step` learning to skip a run on the filter is owed.
+- **Slots and stripe**: 24 write slots of 48 rows. The transaction stripe is 2048 rows (B's
+  `*fn2-b-txn-field-rows*`).
+
+Departures from the statement above, each with its remedy:
+1. **The origin takes B's envelope types**, `(:id lineage) (:id domain) (:id incarnation)`, not
+   32-byte digests, and E's ordinal is B's `(:id occurrence)`. One origin form serves every
+   layer. Remedy: the key widens when B's envelope does. A local fact today is lineage 0,
+   domain 0, incarnation 1, as `commit-format.lisp` writes them.
+2. **Facts carry only fields that have producers.** Evidence has kind and issuer; history has the
+   evidence occurrence and the article. `proof`, `dependencies` and `rule` arrive with signature
+   validation, which is their producer.
+3. **A fifth record, `fn2-identity-article`.** The summary's `first-local-entry` moves into its
+   own `:unique` record keyed by N. Its article is the commit position, known only at bind, and no
+   fold value is late-bound. ARTICLE/STAT by Message-ID reads it. Its `:unique` stage also refuses a
+   second local acceptance.
+4. **The keystones are not yet rows.** `fn2-exact-identity`, `fn2-identity-binding-converges` and
+   `fn2-identity-linearizable` were stated over the deleted machine, through its list adapters
+   and scenario M3 (`identity-unit`, `sim-layer-c`). They went with it. The IDENTITY checker loses
+   its per-name bound (ruling 7). Remedy: step 4 below enters §4a's keystones as `defthm-owed` rows
+   over the new decision, with M3 rewritten to drive it.
+
 ### Order of work (C's; engine ops and schemas, not arms)
-1. The vocabulary (above, items 1-6), each with its unit.
-2. The five records, and the deletion of `fn2-identity`: its `:record` slot kind,
-   `*fn2-identity-contents-max*`, `*fn2-id-block-max*`, and `:identity-conflict-bound` in every
-   vocabulary that names it (stage, txn, upload words, conn-answer). D's txn migration takes the
-   word changes with ruling 6's evidence-commit path.
-3. The decision and the three reads.
-4. The checker's rewrite, then the keystones' teeth as evaluating functions, then the
-   `defthm-owed` rows.
+1. Done: the vocabulary (octet fold keys, the `:union` stage, `(:new K)`).
+2. Done: the five records, the deletion, the decision, D's identity read.
+3. Next: the reads `fn2-identity-exact`, `-summary-read` and `-evidence-start/-step` at a named
+   view (the decision reads the tip today).
+4. Next: the checker's rewrite (attributed facts), scenario M3 over the new decision, the
+   keystones' teeth as evaluating functions, and the `defthm-owed` rows.
 
 ## 5. The write path (C1, C2, C5)
 

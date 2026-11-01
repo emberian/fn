@@ -54,7 +54,7 @@
 (assert-event (equal (fn2-range-image 4 *fn2-addr-entry* *fn2-rgt-addr* '(7 26) '(7 1000000) nil 0 8 nil)
                      (list (fn2-rgt-ad 7 30) (fn2-rgt-ad 7 40))))
 ;; A schema with an octet key is refused by name.
-(assert-event (equal (fn2-range-image 1 *fn2-identity-entry* (list nil nil) (list nil (cons 1 nil)) (list nil (cons 1 nil)) nil 0 8 nil)
+(assert-event (equal (fn2-range-image 13 *fn2-identity-summary-entry* (list nil nil) (list 1 nil) (list 1 nil) nil 0 8 nil)
                      '(:key-kind)))
 
 ;; Teeth for fn2-range-seek-position. Positive: group 1 of the sources above

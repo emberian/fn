@@ -1,8 +1,8 @@
 ; Layer C1 unit: one run page written, sealed by B's sealer, accepted by B's
 ; checker, refused after a flipped byte, and searched by the generated seek;
 ; multi-page runs, scans and the overlay. Over the production schemas
-; (C-ONE-ASSEMBLY): overview (numeric key) and identity (octet key); the
-; identity schema's keystone teeth are identity-unit's.
+; (C-ONE-ASSEMBLY): overview (numeric key) and the identity candidates
+; (octet keys: the name and the digest, C §4a).
 (in-package "ACL2")
 (include-book "runs-assembly")
 (include-book "std/util/bstar" :dir :system)
@@ -170,21 +170,32 @@
       (fn2-fields (fn2-fields-set-ref-off row off fn2-fields))
       (fn2-fields (fn2-fields-set-ref-len row (len octets) fn2-fields)))
   (mv code (+ off (len octets)) fn2-fields fn2-pool)))
-; Identity entry i: Message-ID floor(i/2), content bytes all (i mod 2),
-; state accepted, article 100+i, binding i+1, principal 7.
+; Candidate entry i (schema 12): namespace 1, name floor(i/2), profile 1,
+; algorithm 1, digest bytes all (i mod 2); ordinal 100+i, evidence i+1,
+; local.
+(defconst *fn2-rt-cand-sid* 12)
+(defun fn2-rt-key-ints (base fn2-fields)
+ (declare (xargs :stobjs fn2-fields :verify-guards nil))
+ (b* ((fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-namespace*) 1 fn2-fields))
+      (fn2-fields (fn2-fields-set-ref-len (+ base *fn2-identity-candidates-entry-field-namespace*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-profile*) 1 fn2-fields))
+      (fn2-fields (fn2-fields-set-ref-len (+ base *fn2-identity-candidates-entry-field-profile*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-algorithm*) 1 fn2-fields)))
+  (fn2-fields-set-ref-len (+ base *fn2-identity-candidates-entry-field-algorithm*) 0 fn2-fields)))
 (defun fn2-rt-mid-entry (i base slot gen off okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool) :verify-guards nil))
- (b* (((mv & off fn2-fields fn2-pool)
-       (fn2-rt-set-octets (+ base *fn2-identity-entry-field-message-id*) (fn2-rt-mid-octets (floor i 2))
+ (b* ((fn2-fields (fn2-rt-key-ints base fn2-fields))
+      ((mv & off fn2-fields fn2-pool)
+       (fn2-rt-set-octets (+ base *fn2-identity-candidates-entry-field-name*) (fn2-rt-mid-octets (floor i 2))
                           slot gen off okind oslot ogen fn2-fields fn2-pool))
       ((mv code off fn2-fields fn2-pool)
-       (fn2-rt-set-octets (+ base *fn2-identity-entry-field-content*) (make-list 32 :initial-element (mod i 2))
+       (fn2-rt-set-octets (+ base *fn2-identity-candidates-entry-field-digest*) (make-list 32 :initial-element (mod i 2))
                           slot gen off okind oslot ogen fn2-fields fn2-pool))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-entry-field-content*) 1 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-entry-field-state*) *fn2-identity-state-accepted* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-entry-field-binding*) (+ 1 i) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-entry-field-principal*) 7 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-entry-field-article*) (+ 100 i) fn2-fields)))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-digest*) 1 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-h*) (+ 100 i) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-evidence*) (+ 1 i) fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-qualified*) 0 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ base *fn2-identity-candidates-entry-field-local*) 1 fn2-fields)))
   (mv code off fn2-fields fn2-pool)))
 
 (fn2-rt-defun fn2-rt-mid-add-loop (fuel i src sgen off)
@@ -193,24 +204,25 @@
         (fn2-rt-mid-entry i *fn2-rt-entry-base* src sgen off 9 0 1 fn2-fields fn2-pool))
        ((unless (eq code :ok)) (fn2-rt-mv (list :source code) i off))
        ((mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-        (fn2-run-add 0 1 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
+        (fn2-run-add 0 *fn2-rt-cand-sid* *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
    (if (eq code :ok) (fn2-rt-mid-add-loop (- fuel 1) (+ 1 i) src sgen off
                        fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
      (fn2-rt-mv code i off)))))
 
-; Query (Message-ID j, content c) placed in a slot owned by a different owner
+; Query (name j, digest c) placed in a slot owned by a different owner
 ; (10 0 1): the compare reads the page and the query under their own owners.
 (fn2-rt-defun fn2-rt-mid-seek (slot gen qslot qgen j c)
  (b* ((q *fn2-rt-query-base*) (rb *fn2-rt-reader-base*)
+      (fn2-fields (fn2-rt-key-ints q fn2-fields))
       ((mv & qoff fn2-fields fn2-pool)
-       (fn2-rt-set-octets (+ q *fn2-identity-entry-field-message-id*) (fn2-rt-mid-octets j) qslot qgen 0 10 0 1 fn2-fields fn2-pool))
+       (fn2-rt-set-octets (+ q *fn2-identity-candidates-entry-field-name*) (fn2-rt-mid-octets j) qslot qgen 0 10 0 1 fn2-fields fn2-pool))
       ((mv & & fn2-fields fn2-pool)
-       (fn2-rt-set-octets (+ q *fn2-identity-entry-field-content*) (make-list 32 :initial-element c) qslot qgen qoff 10 0 1 fn2-fields fn2-pool))
+       (fn2-rt-set-octets (+ q *fn2-identity-candidates-entry-field-digest*) (make-list 32 :initial-element c) qslot qgen qoff 10 0 1 fn2-fields fn2-pool))
       ((mv code fn2-fields) (fn2-run-read-header slot gen rb 9 0 1 fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :header code)))
       ((mv code & & idx & fn2-fields)
-       (fn2-run-seek 1 0 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 10 0 1 fn2-fields fn2-pool))
-      (article (if (eq code :found) (fn2-fields-value (+ rb *fn2-run-reader-entry* *fn2-identity-entry-field-article*) fn2-fields) nil)))
+       (fn2-run-seek *fn2-rt-cand-sid* 0 64 0 (fn2-run-hdr rb restarts) 0 0 q rb slot gen 9 0 1 10 0 1 fn2-fields fn2-pool))
+      (article (if (eq code :found) (fn2-fields-value (+ rb *fn2-run-reader-entry* *fn2-identity-candidates-entry-field-h*) fn2-fields) nil)))
   (fn2-rt-mv (list code idx article))))
 (fn2-rt-defun fn2-rt-mid-seeks (slot gen qslot qgen queries)
  (if (atom queries) (fn2-rt-mv nil)
@@ -231,13 +243,13 @@
       ((mv & src sgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
       ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 1 10 0 1 fn2-pool))
       ((mv code fn2-run-writers fn2-pool)
-       (fn2-run-open 0 slot gen 1 1 0 8 0 *page-kind-run-data* 6 2 4 1 1 9 0 1 *fn2-rt-writer-base* *fn2-run-page-size* fn2-run-writers fn2-pool))
+       (fn2-run-open 0 slot gen *fn2-rt-cand-sid* 1 0 8 0 *page-kind-run-data* 6 2 4 1 1 9 0 1 *fn2-rt-writer-base* *fn2-run-page-size* fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (fn2-rt-mv (list :open code)))
       ((mv add count off fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rt-mid-add-loop n 0 src sgen 0 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
       ((mv & & fn2-fields fn2-pool) (fn2-rt-mid-entry (- count 1) *fn2-rt-entry-base* src sgen off 9 0 1 fn2-fields fn2-pool))
       ((mv repeat fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-       (fn2-run-add 0 1 *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+       (fn2-run-add 0 *fn2-rt-cand-sid* *fn2-rt-entry-base* fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((mv & fn2-run-writers) (fn2-run-close 0 fn2-run-writers))
       ((mv close fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rt-close 64 fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
@@ -336,7 +348,7 @@
 ;; check.
 (defun fn2-run-glue-verified-positive ()
  (declare (xargs :verify-guards nil))
- (and (subsetp-eq '(fn2-identity fn2-article fn2-overview fn2-addr) (strip-cars (fn2-run-glue-assembled)))
+ (and (subsetp-eq '(fn2-identity-evidence fn2-article fn2-overview fn2-addr) (strip-cars (fn2-run-glue-assembled)))
       (equal (fn2-run-glue-check (fn2-run-glue-assembled)) :ok)))
 (defun fn2-rt-old-lookup-step (c budget)
  (declare (xargs :verify-guards nil))

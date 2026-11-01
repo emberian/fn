@@ -33,19 +33,14 @@
 (assert-event (not (equal *fn2-idc-owner-kind* 254)))
 (defconst *fn2-idc-owner-slot* 0)
 (defconst *fn2-idc-owner-gen* 1)
-; The bind scratch takes one slot's octets at a time: an identity fact's
-; content at 0 and its Message-ID at 32, or an entry's octet fields in field
-; order from 0.
+; The bind scratch takes one slot's octets at a time: an entry's octet
+; fields in field order from 0.
 (defconst *fn2-idc-scratch-bytes* 4096)
-(defconst *fn2-idc-scratch-mid* 32)
-; An identity entry is at most the Message-ID, the 32-byte content and this
-; much more (lengths, state, three identifiers).
-(defconst *fn2-idc-entry-overhead* 48)
 
 ; A write slot's block of field rows (C-STRIPE): the staged row at +0 (key
 ; fields then value fields, at most 12), the args as given at +12 (a value,
 ; a packed handle for :out, an octet reference), the args evaluated at +24
-; (a fold's event args, a record's article and principal), the key's row
+; (a fold's event args), the key's row
 ; read from the installed runs at +36 (its value fields, at most 8).
 (defconst *fn2-succ-entry* 0)
 (defconst *fn2-succ-raw* 12)
@@ -83,11 +78,11 @@
 ; ---------------------------------------------------------------------------
 ; Tables. The engine row: the bind scratch (held once taken), the arena
 ; size, the next overlay sequence number. A transaction row (one per
-; transaction, as its decision row): its phase, the slot holding its
-; identity fact (1 + index, or 0), its batch and commit position once bound,
+; transaction, as its decision row): its phase, its batch and commit
+; position once bound,
 ; resolve's progress (slot RI, run bound RBOUND), and an exact lookup's
 ; (machines-c-groups.lisp: LPHASE, LBOUND, LROW, LVER). A slot row (row
-; T * 16 + I): schema, kind (:insert, :record, or one of the folds' event
+; T * 24 + I): schema, kind (:insert, or one of the folds' event
 ; kinds), the masks of args given (SET), given :event (EVENTS) and given
 ; :out (OUTS), what resolve found (FOUND, the schema's run version VRUN), the
 ; staged entry's SIZE, the owner its octet args are read under, the args
@@ -104,13 +99,13 @@
  "The engine's bind scratch, arena size and overlay sequence (C-S3).")
 (defcolumns fn2-succ-txns
  ((phase (:enum fn2-succ-phase (:idle :open :staged :bound :published)))
-  (record :u8) (batch :u60) (event :u60)
+  (batch :u60) (event :u60)
   (ri :u32) (rstate (:enum fn2-succ-resolve (:fresh :next :look))) (rbound :u60)
   (lphase (:enum fn2-succ-lookup (:idle :overlays :runs :scan))) (lbound :u60) (lrow :u32) (lver :u60)))
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
-    (sid :u60) (kind (:enum fn2-succ-kind ,(append '(:insert :record) *fn2-run-fold-kinds*)))
+    (sid :u60) (kind (:enum fn2-succ-kind ,(cons :insert *fn2-run-fold-kinds*)))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
     (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32) (unchanged :bool))))
 (fn2-idc-child fn2-core-succ-txns fn2-succ-txns
@@ -144,7 +139,7 @@
    (implies (and ,@hyps) (and ,@(fn2-fc-shape-claims (if (consp (car outs)) outs (fn2-idc-shape-outs outs 1)) (cons fn args))))
    :hints (("Goal" :in-theory ,(cond ((eq plain :min) `(e/d (,fn) (fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows ,@reads)))
                                      (plain `(e/d (,fn) (fn2-overlays-rows fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
-                                                   fn2-id-engine-rows fn2-id-decides-rows fn2-id-stamps-rows
+                                                   fn2-id-engine-rows fn2-id-decides-rows
                                                    fn2-succ-txns-rows fn2-succ-slots-rows fn2-run-cursors-rows
                                                    fn2-run-paths-rows fn2-run-installed-rows
                                                    fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read
@@ -155,8 +150,7 @@
                                           fn2-overlay-index-rows fn2-fields-rows fn2-pool-rows
                                           fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
                                           fn2-pool-class-for fn2-id-enginep fn2-id-engine-wfp fn2-id-engine-rows
-                                          fn2-id-decidesp fn2-id-decides-wfp fn2-id-decides-rows
-                                          fn2-id-stampsp fn2-id-stamps-wfp fn2-id-stamps-rows ,@reads))))))))
+                                          fn2-id-decidesp fn2-id-decides-wfp fn2-id-decides-rows ,@reads))))))))
 (fn2-idc-op-shape fn2-ov-start (o schema slot gen ibase icap okind oslot ogen cov fn2-overlays fn2-overlay-index fn2-pool)
  (fn2-overlays fn2-pool) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)))
 (fn2-idc-op-shape fn2-ov-advance (o from to fn2-overlays) (fn2-overlays) ((fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays)))
@@ -170,12 +164,6 @@
   (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  nil (fn2-ov-okp fn2-overlays-phase fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen fn2-overlays-count
       fn2-overlays-icap fn2-overlays-schema fn2-run-layout-merge))
-(fn2-idc-op-shape fn2-id-record-insert (d o ebase sbase article binding principal fn2-id-decides fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
- (fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
- ((fn2-id-decidesp fn2-id-decides) (fn2-id-decides-wfp fn2-id-decides)
-  (fn2-overlaysp fn2-overlays) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-indexp fn2-overlay-index)
-  (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :min (fn2-id-decides-others fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen))
 (in-theory (disable fn2-ov-start fn2-ov-advance))
 
 ;; Each function's output shapes (type, wfp, rows), proved right after it.
@@ -221,11 +209,10 @@
  (declare (xargs :guard t))
  (if (unsigned-byte-p 8 code) (fn2-succ-kind-code->keyword code) nil))
 ; The number of args slot kind CODE of schema SID takes: an insert's entry
-; fields, a record's article and principal, a fold event's args.
+; fields, a fold event's args.
 (defun fn2-succ-arity (sid code)
  (declare (xargs :guard t))
  (cond ((equal code *fn2-succ-kind-insert*) (nfix (fn2-run-layout-fields sid 0)))
-       ((equal code *fn2-succ-kind-record*) 2)
        (t (nfix (fn2-fold-arity sid (fn2-succ-kindkw code))))))
 (defthm fn2-succ-arity-natp (natp (fn2-succ-arity sid code)) :rule-classes :type-prescription)
 (in-theory (disable fn2-succ-kindkw fn2-succ-arity))
@@ -247,7 +234,6 @@
 (defun fn2-succ-octet-field (sid kcode j)
  (declare (xargs :guard (natp j)))
  (let ((f (cond ((equal kcode *fn2-succ-kind-insert*) j)
-                ((equal kcode *fn2-succ-kind-record*) nil)
                 (t (fn2-succ-key-field-of (nfix (fn2-run-layout-keys sid)) 0 sid (fn2-succ-kindkw kcode) j)))))
   (and (natp f) (fn2-run-layout-octets-max sid f) f)))
 (defthm fn2-succ-octet-field-type
@@ -261,9 +247,8 @@
 ; Declaring writes (at :prepare).
 
 ; Slot I of transaction TX writes schema SID by KIND: a fold event kind of
-; SID, :insert (a whole entry of a :unique or :latest schema that is not a
-; fold), or :record (SID 1: the identity fact of decision TX, at most one per
-; transaction). Any change to a transaction's slots leaves it :open (stage
+; SID, or :insert (a whole entry of a :unique, :latest or :union schema that
+; is not a fold). Any change to a transaction's slots leaves it :open (stage
 ; again) and restarts resolve.
 (defun fn2-succ-put (tx i sid kind fn2-succ-txns fn2-succ-slots)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots) :guard t))
@@ -277,21 +262,18 @@
       (code (fn2-succ-kind-keyword->code kind))
       ((unless (natp code)) (mv :kind fn2-succ-txns fn2-succ-slots))
       ((unless (< 0 (fn2-run-layout-fields sid 0))) (mv :schema fn2-succ-txns fn2-succ-slots))
-      (rec (fn2-succ-txns-record tx fn2-succ-txns))
-      ((unless (cond ((equal code *fn2-succ-kind-record*) (and (equal sid 1) (or (equal rec 0) (equal rec (+ 1 i)))))
-                     ((equal code *fn2-succ-kind-insert*)
+      ((unless (cond ((equal code *fn2-succ-kind-insert*)
                       (and (not (fn2-run-layout-fold-p sid)) (member-eq (fn2-run-layout-merge sid) '(:unique :latest :union))))
                      (t (natp (fn2-fold-arity sid kind)))))
        (mv :kind fn2-succ-txns fn2-succ-slots))
       (s (+ (* tx *fn2-succ-slots*) i))
       (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-put*) (sid sid) (kind code) (set 0) (events 0) (outs 0)
                                           (found 0) (vrun 0) (size 0) (oset 0) (sk 0) (ss 0) (sg 0) (late 0) (filled 0) (unchanged 0)))
-      (rec (cond ((equal code *fn2-succ-kind-record*) (+ 1 i)) ((equal rec (+ 1 i)) 0) (t rec)))
-      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (record rec) (ri 0)
+      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-open*) (ri 0)
                                         (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
   (mv :ok fn2-succ-txns fn2-succ-slots)))
 (fn2-idc-fn-shape fn2-succ-put (tx i sid kind fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots) (fn2-succ-txns fn2-succ-slots) t
- (fn2-succ-txns-phase fn2-succ-txns-record))
+ (fn2-succ-txns-phase))
 
 ;; An arg change: the slot is :put (resolve it again), the transaction :open.
 (defun fn2-succ-touch (tx s set events outs late fn2-succ-txns fn2-succ-slots)
@@ -324,15 +306,15 @@
 (in-theory (disable fn2-succ-declared))
 
 ; Arg J of slot I of TX from SRC: :value (the integer VALUE), :event (the
-; member's commit position, written at bind; an insert's integer field, or a
-; record's article: the article identifier is the commit position), or :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged
-; row, never a record's; never a fold's key arg, which resolve must read),
+; member's commit position, written at bind; an insert's integer field), or
+; :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged row;
+; never a fold's key arg, which resolve must read),
 ; or :new (VALUE = K: 1 when slot K < I staged fresh, 0 when it binds
 ; nothing; never a fold's key arg; C §4a). An assigned arg takes no call. B0 is TX's stripe base. :ok, :bounds,
 ; :state, :kind.
 (defun fn2-succ-arg (tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
@@ -345,7 +327,7 @@
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 60 value)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
       (kw (fn2-succ-kindkw kcode))
-      (insert (equal kcode *fn2-succ-kind-insert*)) (fold (not (or insert (equal kcode *fn2-succ-kind-record*))))
+      (insert (equal kcode *fn2-succ-kind-insert*)) (fold (not insert))
       ((when (or (and insert (fn2-run-layout-octets-max sid j)) (and fold (fn2-fold-assigned-p sid kw j))
                  (and fold (fn2-succ-octet-field sid kcode j))))
        (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
@@ -354,14 +336,12 @@
       (ks (+ (* tx *fn2-succ-slots*) k))
       ((unless (case src
                 (:value t)
-                (:event (or insert (and (equal kcode *fn2-succ-kind-record*) (equal j 0))))
+                (:event insert)
                 (:new (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
                            (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
-                           (not (equal (fn2-succ-slots-kind ks fn2-succ-slots) *fn2-succ-kind-record*))
                            (not (and fold (fn2-succ-key-arg-p (fn2-run-layout-keys sid) 0 sid kw j)))))
                 (:out (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
                            (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
-                           (not (equal (fn2-succ-slots-kind ks fn2-succ-slots) *fn2-succ-kind-record*))
                            (< f (fn2-run-layout-fields (fn2-succ-slots-sid ks fn2-succ-slots) 0))
                            (not (fn2-run-layout-octets-max (fn2-succ-slots-sid ks fn2-succ-slots) f))
                            (not (and fold (fn2-succ-key-arg-p (fn2-run-layout-keys sid) 0 sid kw j)))))
@@ -393,7 +373,7 @@
 ; into the arena); every octet arg of a slot under one owner (:owner).
 (defun fn2-succ-arg-octets (tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
@@ -441,7 +421,7 @@
 ; are :kind; MAX past the field's octet bound is :bounds.
 (defun fn2-succ-arg-octets-late (tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t :guard-hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-reset fn2-pool-read fn2-pool-write
-                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-id-record-insert fn2-ov-insert
+                                             fn2-pool-class-for fn2-ov-start fn2-ov-advance fn2-ov-insert
                                              fn2-ov-locate fn2-ov-entry fn2-run-copy-row fn2-fold-apply fn2-fold-assign
                                              fn2-run-layout-size fn2-run-lookup-step fn2-run-cursor-start
                                              fn2-fields-rows fn2-succ-slots-rows fn2-succ-txns-rows fn2-overlays-rows)))))
@@ -501,8 +481,7 @@
  (declare (xargs :stobjs fn2-succ-slots :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)))))
  (let* ((sid (fn2-succ-slots-sid s fn2-succ-slots)) (code (fn2-succ-slots-kind s fn2-succ-slots))
         (nk (nfix (fn2-run-layout-keys sid))) (mask (- (ash 1 nk) 1)))
-  (cond ((equal code *fn2-succ-kind-record*) nil)
-        ((equal code *fn2-succ-kind-insert*)
+  (cond ((equal code *fn2-succ-kind-insert*)
          (and (member-eq (fn2-run-layout-merge sid) '(:unique :union))
               (equal (logand (nfix (fn2-succ-slots-set s fn2-succ-slots)) mask) mask)
               (equal (logand (logior (nfix (fn2-succ-slots-events s fn2-succ-slots)) (nfix (fn2-succ-slots-outs s fn2-succ-slots))) mask) 0)))
@@ -644,7 +623,7 @@
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
       ((unless (and (member (fn2-succ-txns-phase tx fn2-succ-txns) (list *fn2-succ-phase-open* *fn2-succ-phase-staged*))
                     (member (fn2-id-decides-phase tx fn2-id-decides)
-                            (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done* *fn2-id-decide-phase-held*))))
+                            (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields))
       (fn2-succ-txns (fn2-succ-txns-set-phase tx *fn2-succ-phase-open* fn2-succ-txns)))
   (fn2-succ-resolve-step tx budget b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)))

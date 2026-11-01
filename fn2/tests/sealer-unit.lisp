@@ -174,10 +174,10 @@
  (declare (xargs :verify-guards nil))
  (if (atom queries) nil (cons (fn2-sealer-lookup-spec key batches (car queries)) (fn2-sealer-spec key batches (cdr queries)))))
 (defun fn2-su-seqs (n i) (declare (xargs :verify-guards nil :measure (nfix n))) (if (zp n) nil (cons i (fn2-su-seqs (- n 1) (+ 1 i)))))
-(defconst *fn2-identity-layout-spec*
- '((message-id (:octets 250)) (content :digest) (state (:enum fn2-identity-state (:accepted :conflict)))
-   (article (:id article)) (binding (:id event)) (principal (:id principal))))
-(defconst *fn2-identity-key-spec* '((message-id (:octets 250)) (content :digest)))
+; The identity summary (C §4a, schema 13): the schema whose runs carry a filter.
+(defconst *fn2-su-summary* '((namespace (:id namespace)) (name (:octets 250)) (selected (:id candidate)) (resolution (:id event))
+                             (candidates :u60) (evidence :u60) (history :u60) (gaps :u60)))
+(defconst *fn2-su-summary-key* '((namespace (:id namespace)) (name (:octets 250))))
 ; Inputs: at most four batches, each at most 48 distinct well-formed keys.
 (defun fn2-sealer-inputp (layout key batches)
  (declare (xargs :verify-guards nil))
@@ -270,20 +270,20 @@
   (equal views (list (list nil (list *fn2-overlay-phase-frozen*))
                      (list (list (list sid 1 (len batch) filter)) (list *fn2-overlay-phase-free*))))))
 (defthm-owed fn2-manifest-replacement-atomic (sid batch pfill)
- (implies (and (member sid '(1 8)) (consp batch) (<= (len batch) 48) (natp pfill) (<= 400 pfill) (<= pfill *fn2-run-page-size*)
-               (fn2-ov-inputp (if (equal sid 1) *fn2-identity-layout-spec* *fn2-su-groups*)
-                              (if (equal sid 1) *fn2-identity-key-spec* *fn2-su-groups-key*) batch))
-          (fn2-sealer-cuts-ok sid batch (fn2-sealer-cut-views sid (if (equal sid 1) *fn2-identity-layout-spec* *fn2-su-groups*) batch pfill)))
+ (implies (and (member sid '(13 8)) (consp batch) (<= (len batch) 48) (natp pfill) (<= 400 pfill) (<= pfill *fn2-run-page-size*)
+               (fn2-ov-inputp (if (equal sid 13) *fn2-su-summary* *fn2-su-groups*)
+                              (if (equal sid 13) *fn2-su-summary-key* *fn2-su-groups-key*) batch))
+          (fn2-sealer-cuts-ok sid batch (fn2-sealer-cut-views sid (if (equal sid 13) *fn2-su-summary* *fn2-su-groups*) batch pfill)))
  :teeth (fn2-manifest-replacement-atomic-positive fn2-manifest-replacement-atomic-negative)
  :schema :invariant
  :doc "Engine half of the run replacement: at every cut of one seal the resident view holds the old runs with the overlay published or the new run with the overlay retired, never both or neither; the device half (B5 recovery over the run-replacement member) owes the same of the recovered manifest.")
-(defun fn2-su-fact (j b) (declare (xargs :verify-guards nil)) (list (fn2-su-name j) (cons 1 (make-list 32 :initial-element b)) 0 (+ 1 j) (+ 1 j) 3))
+(defun fn2-su-fact (j b) (declare (xargs :verify-guards nil)) (list 1 (fn2-su-name j) 0 0 b (+ 1 j) (+ 1 j) 0))
 (defun fn2-su-facts (from n) (declare (xargs :verify-guards nil :measure (nfix n))) (if (zp n) nil (cons (fn2-su-fact from 7) (fn2-su-facts (+ 1 from) (- n 1)))))
 (defun fn2-manifest-replacement-atomic-positive ()
  (declare (xargs :verify-guards nil))
  (let ((g (fn2-su-batch 0 30 100)) (i (fn2-su-facts 0 20)))
   (and (fn2-sealer-cuts-ok 8 g (fn2-sealer-cut-views 8 *fn2-su-groups* g 400))
-       (fn2-sealer-cuts-ok 1 i (fn2-sealer-cut-views 1 *fn2-identity-layout-spec* i 400)))))
+       (fn2-sealer-cuts-ok 13 i (fn2-sealer-cut-views 13 *fn2-su-summary* i 400)))))
 ; Teeth: a seal that installed the run and retired the overlay in two steps
 ; shows the run beside its published overlay (a fact in two places), or
 ; neither (a fact nowhere): both views are refused.
@@ -295,13 +295,13 @@
 (fn2-assert-owed-teeth fn2-manifest-replacement-atomic)
 
 ;; The first-overlay rule (C-SEAL-ORDER): with an older batch still private,
-;; the newer published one waits (nothing is sealed); identity runs get a
+;; the newer published one waits (nothing is sealed); summary runs get a
 ;; filter; an empty published overlay is retired with no run.
 (assert-event
  (let ((r (fn2-sealer-image 8 *fn2-su-groups* (list (fn2-su-batch 0 3 100) (fn2-su-batch 3 3 100)) '(2 1) t nil 400 nil)))
   (and (equal (car r) :idle) (equal (cadr r) 0) (equal (cadddr r) nil))))
 (assert-event
- (let ((r (fn2-sealer-image 1 *fn2-identity-layout-spec* (list (fn2-su-facts 0 5)) '(1) nil nil 400
+ (let ((r (fn2-sealer-image 13 *fn2-su-summary* (list (fn2-su-facts 0 5)) '(1) nil nil 400
                             (list (fn2-su-fact 2 7) (fn2-su-fact 9 7)))))
-  (and (equal (car r) :idle) (equal (cadr r) 1) (equal (cadddr r) '((1 1 5 1)))
+  (and (equal (car r) :idle) (equal (cadr r) 1) (equal (cadddr r) '((13 1 5 1)))
        (equal (caddr r) (list (list :found (fn2-su-fact 2 7)) (list :absent))))))
