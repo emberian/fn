@@ -78,8 +78,12 @@
 (assert-event
  (and (eq (fn2-decl-layer '(:fn . "books/pool.lisp") nil) :a)
       (eq (fn2-decl-layer "/tree/sim/check.lisp" nil) :a)
-      (eq (fn2-decl-layer '(:fn . "fn2/b/layout.lisp") nil) :b)
-      (eq (fn2-decl-layer '(:fn . "books/layout.lisp") :b) :b)))
+      (eq (fn2-decl-layer '(:fn . "books/layout.lisp") nil) :b)
+      (eq (fn2-decl-layer '(:fn . "books/identity.lisp") nil) :c)
+      (eq (fn2-decl-layer '(:fn . "books/conn.lisp") nil) :d)
+      (eq (fn2-decl-layer '(:fn . "books/cns.lisp") nil) :e)
+      (eq (fn2-decl-layer '(:fn . "tests/pool-unit.lisp") nil) :test)
+      (eq (fn2-decl-layer '(:fn . "books/pool.lisp") :b) :b)))
 
 (local (defun fn2-decl-layer-tooth () (natp 0)))
 (local (defthm-owed fn2-decl-layer-owed (x) (natp x)

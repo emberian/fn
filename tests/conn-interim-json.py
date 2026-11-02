@@ -12,11 +12,10 @@ for line in sys.stdin:
 if not rows:
     sys.exit('no INTERIM lines')
 out = {'source': 'books/conn-answer.lisp *fn2-answer-interim*',
-       'served_verbs': ['CAPABILITIES', 'HELP', 'QUIT', 'MODE', 'DATE', 'AUTHINFO', 'XREDEEM',
-                        'GROUP', 'LISTGROUP', 'NEXT', 'LAST', 'STAT', 'OVER', 'XOVER'],
+       'served_verbs': ['CAPABILITIES', 'HELP', 'QUIT', 'MODE', 'DATE', 'POST', 'AUTHINFO', 'XREDEEM',
+                        'GROUP', 'LISTGROUP', 'NEXT', 'LAST', 'STAT', 'ARTICLE', 'HEAD', 'BODY', 'OVER', 'XOVER'],
        'interim': dict(sorted(rows.items())),
        'notes': {'LIST': 'OVERVIEW.FMT, HEADERS and MOTD are served; DISTRIBUTIONS and DISTRIB.PATS answer 503 data item not stored; ACTIVE (or no keyword), COUNTS and NEWSGROUPS without a wildmat are the query cursor\'s where the profile serves reading; ACTIVE.TIMES, SUBSCRIPTIONS and any wildmat are the interim reply',
-                 'OVER': 'OVER <message-id> answers 503 archive projection unavailable until the transaction writes the article-to-number address entries (D5 2/n)',
                  'IHAVE': 'on a reader connection (every D3 connection) the 502 state refusal answers first',
                  'CHECK': 'on a reader connection the 502 state refusal answers first',
                  'TAKETHIS': 'on a reader connection the 502 state refusal; a peer TAKETHIS waits for D4 and E4'}}

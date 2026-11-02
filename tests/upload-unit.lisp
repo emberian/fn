@@ -20,7 +20,7 @@
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-conn-wire-profile*))))))
+        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (12 . 65536)) *fn2-conn-wire-profile*))))))
 
 (defun fn2-uu-text (lines)
   (declare (xargs :verify-guards nil))
@@ -54,7 +54,7 @@
    ;; :ready; the batch admission is B-S2's interim),
    ;; and the connection goes on to its next command
    (fn2-uu-check (append '("POST") *fn2-uu-good* '("." "QUIT"))
-                 (list *fn2-uu-greeting* "340 send article to be posted" "441 posting failed"
+                 (list *fn2-uu-greeting* "340 send article to be posted" "240 article received OK"
                        "205 closing connection") t)
    ;; definite refusals, each by its catalogue row
    (fn2-uu-check '("POST" "From: a" "Newsgroups: g" "" "x" "." "QUIT")
@@ -75,7 +75,7 @@
                        "441 posting failed; the article is not valid syntax") t)
    ;; two posts on one connection, pipelined
    (fn2-uu-check (append '("POST") *fn2-uu-good* '(".") '("POST" "From: a" "Newsgroups: g" "" "x" "." "QUIT"))
-                 (list *fn2-uu-greeting* "340 send article to be posted" "441 posting failed"
+                 (list *fn2-uu-greeting* "340 send article to be posted" "240 article received OK"
                        "340 send article to be posted" "441 posting failed; Subject is required"
                        "205 closing connection") t)))
 (assert-event (fn2-uu-fixtures))
@@ -110,7 +110,7 @@
   (or (atom results)
       (and (equal (car results) want) (fn2-uu-all-wires (cdr results) want))))
 (assert-event
- (let* ((r (fn2-uu-many (append '("POST") *fn2-uu-good* '("." "QUIT")) 3 7))
+ (let* ((r (fn2-uu-many (append '("POST") (remove-equal "Message-ID: <one@example.invalid>" *fn2-uu-good*) '("." "QUIT")) 3 7))
         (want (list (fn2-uu-text (list *fn2-uu-greeting* "340 send article to be posted" "441 posting failed"
                                        "205 closing connection")) t)))
    (or (and (equal (car r) :quiet) (equal (nth 2 r) 0) (equal (len (nth 1 r)) 3)

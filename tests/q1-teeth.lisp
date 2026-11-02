@@ -20,10 +20,11 @@
 ; uploads', row 5 the sealer's, rows 6-7 the control connections'. Reading
 ; is served (D6 1/n, the owed-cursor profile) so the cursor kind has rows.
 (defconst *fn2-q1-teeth-profile*
-  (put-assoc-equal :reading t (put-assoc-equal :x 2
-  (put-assoc-equal :posting-interim t
-    (put-assoc-equal :large-upload-windows 2
-      (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))))))
+  (put-assoc-equal :cns 2
+   (put-assoc-equal :reading t (put-assoc-equal :x 2
+   (put-assoc-equal :posting-interim t
+     (put-assoc-equal :large-upload-windows 2
+       (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*)))))))
 
 (defun fn2-q1-teeth-position (x xs)
   (declare (xargs :guard t))

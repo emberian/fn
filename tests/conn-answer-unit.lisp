@@ -230,3 +230,29 @@
 (assert-event
  (subsetp-eq '(mode-stream-reader authinfo-user-arity xredeem-arity zarticle-short list-motd-arg hdr-colon xhdr-colon xpat-bad)
              (fn2-cau-deferred *fn2-cau-fixtures*)))
+
+; Posting profile: CAPABILITIES advertises POST and POST transitions to :article-input.
+(defun fn2-cau-run-posting (line)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
+        (mv-let (c1 slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+          (declare (ignore c1))
+          (mv-let (c2 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+            (declare (ignore c2))
+            (let* ((octets (append (fn2-cau-octets (coerce line 'list)) (list 13 10)))
+                   (fn2-pool (fn2-cau-feed octets slot gen fn2-pool)))
+              (mv-let (code after pending fn2-pool)
+                (fn2-answer 0 (len octets) *fn2-cau-reader* :none t nil nil 0 0 slot gen tslot tgen 1 1 1 fn2-pool)
+                (mv (list code after pending
+                          (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
+                    fn2-pool))))))
+      result)))
+(assert-event
+ (and (equal (fn2-cau-run-posting "CAPABILITIES")
+             (list :ok :command :none
+                   (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+                                   "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                                   "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "."))))
+      (equal (fn2-cau-run-posting "POST") (list :ok :article-input :none ""))))

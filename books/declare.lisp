@@ -149,15 +149,36 @@
   (declare (xargs :verify-guards nil))
   (let ((body (getpropc statement 'unnormalized-body nil world)))
     (if (eq (car body) 'return-last) (cadddr body) body)))
+(defun fn2-decl-book-stemp (stems book)
+  (declare (xargs :verify-guards nil))
+  (and (consp stems)
+       (or (search (car stems) book)
+           (fn2-decl-book-stemp (cdr stems) book))))
 (defun fn2-decl-layer (book explicit)
   (declare (xargs :verify-guards nil))
   (let ((book (concatenate 'string "/" (if (consp book) (cdr book) book))))
     (or explicit
-      (cond ((or (search "/fn2/b/" book) (search "/fn2/sprint/b/" book)) :b)
-            ((or (search "/fn2/c/" book) (search "/fn2/sprint/c/" book)) :c)
-            ((or (search "/fn2/d/" book) (search "/fn2/sprint/d/" book)) :d)
-            ((or (search "/books/" book) (search "/sim/" book)
-                 (search "/books/" book) (search "/sim/" book)) :a)
+      (cond ((search "/tests/" book) :test)
+            ((fn2-decl-book-stemp '("/alloc" "/blake3" "/commit" "/crash-model" "/digests" "/format"
+                                    "/layout" "/log-model" "/machines-b" "/merkle" "/recovery"
+                                    "/assembly-callbacks-b" "/assembly-callbacks-r" "/assembly-rows-b"
+                                    "/check-deadlock" "/check-death" "/check-reclaim" "/check-recovery"
+                                    "/recover-stub" "/sim-recovery")
+                                  book) :b)
+            ((fn2-decl-book-stemp '("/fnv" "/folds" "/identity" "/machines-c" "/ordered" "/overlay"
+                                    "/range" "/ribbon" "/runs" "/sealer" "/tuple" "/words"
+                                    "/assembly-callbacks-c" "/assembly-callbacks-s" "/assembly-rows-c"
+                                    "/check-history" "/check-identity")
+                                  book) :c)
+            ((fn2-decl-book-stemp '("/accounts" "/claims" "/conn" "/cursor" "/grammar" "/nntp-grammar"
+                                    "/owed-accounts" "/owed-conn" "/owed-cursor" "/owed-d" "/owed-txn"
+                                    "/resident" "/resources" "/txn" "/upload"
+                                    "/assembly-callbacks-d" "/check-account" "/check-wire")
+                                  book) :d)
+            ((fn2-decl-book-stemp '("/cns" "/consumer" "/owed-consumer" "/owed-peer" "/peer-model"
+                                    "/port" "/check-consumer" "/check-envelope" "/sim-transfer")
+                                  book) :e)
+            ((or (search "/books/" book) (search "/sim/" book)) :a)
             (t :test)))))
 (defmacro fn2-decl-current-book ()
   '(or (car (global-val 'include-book-path (w state)))

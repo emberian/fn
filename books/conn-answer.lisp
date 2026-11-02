@@ -34,6 +34,11 @@
    '("VERSION 2" "READER" "IMPLEMENTATION fn2"
      "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
      "OVER MSGID" "HDR" "XPAT" "NEWNEWS")))
+(defconst *fn2-answer-capabilities-posting-text*
+  (fn2-answer-crlf-lines
+   '("VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+     "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+     "OVER MSGID" "HDR" "XPAT" "NEWNEWS")))
 ;; LIST OVERVIEW.FMT (RFC 3977 section 8.4; the overview fields C stores).
 (defconst *fn2-answer-overview-fmt-text*
   (fn2-answer-crlf-lines '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:" "Lines:" "Xref:full")))
@@ -42,6 +47,7 @@
 (defconst *fn2-answer-headers-text* (fn2-answer-crlf-lines '(":" ":bytes" ":lines")))
 
 (assert-event (and (<= (length *fn2-answer-capabilities-text*) *fn2-answer-body-bytes*)
+                   (<= (length *fn2-answer-capabilities-posting-text*) *fn2-answer-body-bytes*)
                    (<= (length *fn2-nntp-help-text*) *fn2-answer-body-bytes*)
                    (<= (length *fn2-answer-overview-fmt-text*) *fn2-answer-body-bytes*)
                    (<= (length *fn2-answer-headers-text*) *fn2-answer-body-bytes*)))
@@ -182,7 +188,7 @@
     (newgroups :no-projection :d6) (newnews :no-projection :d6)
     (hdr :no-projection :d6) (xhdr :no-projection :d6) (xpat :no-projection :d6)
     (xfn-zarticle :no-projection :d6) (xfncatchup :no-projection :e4)
-    (post :not-permitted :d5) (ihave :retry :d5) (check :later :d5)
+    (ihave :retry :d5) (check :later :d5)
     (starttls :cannot :d7) (compress :algorithm :e2)))
 
 (defun fn2-answer-interim-arms (rows)
@@ -246,7 +252,9 @@
     (cond
      ((equal tag *fn2-nntp-command-capabilities*)
       (mv-let (code fn2-pool)
-        (fn2-answer-say-body c *fn2-nntp-reply-capabilities-list* mask *fn2-answer-capabilities-text* tslot tgen okind oslot ogen fn2-pool)
+        (fn2-answer-say-body c *fn2-nntp-reply-capabilities-list* mask
+                             (if posting *fn2-answer-capabilities-posting-text* *fn2-answer-capabilities-text*)
+                             tslot tgen okind oslot ogen fn2-pool)
         (mv code :command pending fn2-pool)))
      ((equal tag *fn2-nntp-command-help*)
       (mv-let (code fn2-pool)
@@ -317,10 +325,14 @@
         (mv-let (code fn2-pool)
           (fn2-answer-say c (fn2-answer-unread-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
           (mv code :command pending fn2-pool))))
-     ;; POST where posting is served: no reply yet; the connection takes an
-     ;; upload and renders 340, or waits for one (section 14.2).
-     ((and posting (equal tag *fn2-nntp-command-post*))
-      (mv :ok :article-input pending fn2-pool))
+     ;; POST: where posting is served, no reply yet (the connection takes an
+     ;; upload and renders 340, or waits for one, section 14.2); on a
+     ;; reader-only profile, 440 posting not permitted (RFC 3977 section 6.3.1).
+     ((equal tag *fn2-nntp-command-post*)
+      (if posting (mv :ok :article-input pending fn2-pool)
+        (mv-let (code fn2-pool)
+          (fn2-answer-say c *fn2-nntp-reply-post-not-permitted* mask 0 tslot tgen okind oslot ogen fn2-pool)
+          (mv code :command pending fn2-pool))))
      ((equal tag *fn2-nntp-command-takethis*)
       ;; Reached only on a peer connection, which D3 never admits: its block
       ;; follows at once and D4's article input discards it. Until then the
@@ -375,7 +387,7 @@
   (declare (xargs :guard t))
   (or (member-equal tag (list *fn2-nntp-command-capabilities* *fn2-nntp-command-help* *fn2-nntp-command-quit*
                               *fn2-nntp-command-mode* *fn2-nntp-command-date* *fn2-nntp-command-authinfo*
-                              *fn2-nntp-command-xredeem* *fn2-nntp-command-list* *fn2-nntp-command-takethis*))
+                              *fn2-nntp-command-xredeem* *fn2-nntp-command-list* *fn2-nntp-command-post* *fn2-nntp-command-takethis*))
       (fn2-answer-query-p tag)
       (not (equal (fn2-answer-interim-reply tag) *fn2-nntp-reply-none*))))
 (defun fn2-answer-all-tabled-p (n)
