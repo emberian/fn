@@ -10,6 +10,7 @@ import Fn2.ACL2.Faithful
 import Fn2.ACL2.Fuel
 import Fn2.Arms
 import Fn2.ArmsLemmas
+import Fn2.Arms.Derive
 import Fn2.Pathway
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts

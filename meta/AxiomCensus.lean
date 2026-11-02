@@ -121,3 +121,28 @@ import Fn2
 #print axioms Fn2.Instances.LayerAWorld.«FN2-ECHO-RUN-FREE-CHILDREN».fns_eq
 #print axioms Fn2.Instances.LayerAWorld.«FN2-ECHO-SET-PHASE».fns_eq
 #print axioms Fn2.Instances.LayerAWorld.«FN2-ECHO-ON-CLOSE-RESULT-CHILDREN».guard_eq
+-- Fn2.Arms.Derive (Brick F7 universal Step induction & contract derivation):
+#print axioms Fn2.Arms.Derive.stepsExec_charge_le_cost
+#print axioms Fn2.Arms.Derive.runArm_charge_le_cost
+#print axioms Fn2.Arms.Derive.stepsExec_writes_sub
+#print axioms Fn2.Arms.Derive.runArm_writes_sub
+#print axioms Fn2.Arms.Derive.stepsExec_next_mem
+#print axioms Fn2.Arms.Derive.runArm_next_mem
+#print axioms Fn2.Arms.Derive.stepsExec_tables_sub
+#print axioms Fn2.Arms.Derive.runArm_frame_untouched
+#print axioms Fn2.Arms.Derive.stepsExec_fuel_le
+#print axioms Fn2.Arms.Derive.runArm_terminates_within
+#print axioms Fn2.Arms.Derive.put_col_preserve
+#print axioms Fn2.Arms.Derive.chargeResult_extract
+#print axioms Fn2.Arms.Derive.runArm_charge_le_cost_pos
+#print axioms Fn2.Arms.Derive.runArm_writes_sub_pos
+#print axioms Fn2.Arms.Derive.runArm_next_mem_pos
+#print axioms Fn2.Arms.Derive.runArm_frame_untouched_pos
+#print axioms Fn2.Arms.Derive.runArm_terminates_within_pos
+#print axioms Fn2.Arms.Derive.mutant_charge_exceeds_cost_neg
+#print axioms Fn2.Arms.Derive.mutant_writes_outside_decl_neg
+#print axioms Fn2.Arms.Derive.mutant_next_outside_decl_neg
+#print axioms Fn2.Arms.Derive.mutant_frame_touched_neg
+#print axioms Fn2.Arms.Derive.mutant_repeat_fuel_exhausted_neg
+#print axioms Fn2.Arms.Derive.layerA_childForm_contracts_agree
+
