@@ -15,6 +15,7 @@
 ; D's :consumer transaction), and K10 (owed-consumer.lisp) is CONSUMER over
 ; its observations.
 (in-package "ACL2")
+(include-book "../books/cns")
 (include-book "../sim/check-consumer")
 (include-book "std/testing/assert-bang" :dir :system)
 
@@ -134,7 +135,7 @@
       (sle-run-steps (cdr script) st pending conns mem obs))))
 (defun sle-observe (script)
   (declare (xargs :verify-guards nil))
-  (sle-run-steps script (fn2-cns-init *sle-history* *sle-incarnation*) nil nil nil nil))
+  (sle-run-steps script (fn2-cns-model-init *sle-history* *sle-incarnation*) nil nil nil nil))
 (defun sle-check (obs)
   (declare (xargs :verify-guards nil))
   (fn2-consumer-check obs *sle-history* *sle-incarnation* *sle-interims*))
@@ -326,3 +327,64 @@
          '(:reply :reply :ledger :lost-wake :settled-holding :reply)))
 (assert! (fn2-sle-test-oracle))
 (assert! (fn2-sle-test-controls))
+
+;; ---------------------------------------------------------------------------
+;; Local control carrier (fn2-ctl) and consumer request machine (fn2-cns)
+;; end-to-end verification (M2: STATUS / PAUSE / RESUME / DRAIN / STOP and
+;; subscription-edge parking/waking).
+(defun fn2-sle-test-ctl-commands ()
+  (declare (xargs :verify-guards nil))
+  (and
+   ;; Owner check: local peer family 3 with uid 0 is owner; uid 1000 or non-local is refused.
+   (fn2-ctl-owner-p 3 0)
+   (not (fn2-ctl-owner-p 3 1000))
+   (not (fn2-ctl-owner-p 1 0))
+   ;; End-to-end STATUS / PAUSE / RESUME / DRAIN / STOP posture sequence:
+   ;; STOP terminates the session so any trailing command after STOP is not executed.
+   (equal (fn2-ctl-eval-commands '(:status :pause :status :resume :drain :stop :status)
+                                 *fn2-ctl-posture-running*)
+          '((:ok :status :running)
+            (:ok :pause :paused)
+            (:ok :status :paused)
+            (:ok :resume :running)
+            (:ok :drain :draining)
+            (:ok :stop :stopped)))))
+
+(defun fn2-sle-test-cns-park-wake ()
+  (declare (xargs :verify-guards nil))
+  ;; Verify the subscription-edge link, publish wake, and grant cycle that
+  ;; backs fn2-cns :park and :wait-row (cns.lisp).
+  (with-local-stobj fn2-cns-edges
+    (mv-let (ok fn2-cns-edges)
+      (with-local-stobj fn2-machines
+        (mv-let (ok fn2-cns-edges fn2-machines)
+          (with-local-stobj fn2-control
+            (mv-let (ok fn2-cns-edges fn2-machines fn2-control)
+              (b* ((fn2-cns-edges (fn2-cns-edges-init 16 fn2-cns-edges))
+                   (fn2-machines (fn2-machines-columns-init 8 fn2-machines))
+                   (fn2-control (fn2-control-init *fn2-profile-tiny* fn2-control))
+                   (fn2-machines (fn2-machines-set-wait-reason 2 *fn2-wait-wait-row* fn2-machines))
+                   ((mv code edge fn2-cns-edges) (fn2-cns-edge-link 0 2 1 5 fn2-cns-edges))
+                   ((unless (and (eq code :ok) (natp edge)))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   ;; Before publish at >= 5, no waiter is ready.
+                   ((when (fn2-cns-ready-p fn2-cns-edges))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   ;; Publish at position 5 on stream 0 wakes the bucket.
+                   (fn2-cns-edges (fn2-cns-wake-stream 0 5 fn2-cns-edges))
+                   ((unless (fn2-cns-ready-p fn2-cns-edges))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   ;; Grant wakes waiter 2 and clears its :wait-row wait reason.
+                   ((mv w fn2-cns-edges fn2-machines fn2-control)
+                    (fn2-cns-grant-one fn2-cns-edges fn2-machines fn2-control))
+                   (fn2-cns-edges (fn2-cns-edge-unlink edge fn2-cns-edges)))
+                (mv (and (equal w 2)
+                         (equal (fn2-machines-wait-reason 2 fn2-machines) *fn2-wait-none*)
+                         (not (fn2-cns-ready-p fn2-cns-edges)))
+                    fn2-cns-edges fn2-machines fn2-control))
+              (mv ok fn2-cns-edges fn2-machines)))
+          (mv ok fn2-cns-edges)))
+      ok)))
+
+(assert! (fn2-sle-test-ctl-commands))
+(assert! (fn2-sle-test-cns-park-wake))

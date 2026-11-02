@@ -46,11 +46,11 @@
 
 (defun fn2-cns-class (o) (declare (xargs :guard t)) (and (consp o) (car o)))
 (defun fn2-cns-get (k st) (declare (xargs :verify-guards nil)) (and (alistp st) (cdr (assoc-eq k st))))
-(defun fn2-cns-put (k v st) (declare (xargs :verify-guards nil)) (put-assoc-eq k v st))
+(defun fn2-cns-model-put (k v st) (declare (xargs :verify-guards nil)) (put-assoc-eq k v st))
 (defun fn2-cns-at (k al) (declare (xargs :verify-guards nil)) (and (alistp al) (cdr (assoc-equal k al))))
 (defun fn2-cns-set (k v al) (declare (xargs :verify-guards nil)) (put-assoc-equal k v (if (alistp al) al nil)))
 
-(defun fn2-cns-init (history incarnation)
+(defun fn2-cns-model-init (history incarnation)
   (declare (xargs :verify-guards nil))
   (list (cons :log nil) (cons :regs nil) (cons :acks nil) (cons :outcomes nil) (cons :grants nil)
         (cons :auth nil) (cons :charged nil) (cons :limit nil) (cons :waits nil) (cons :numbers nil)
@@ -90,7 +90,7 @@
 (defun fn2-cns-auth (st p) (declare (xargs :verify-guards nil)) (nfix (fn2-cns-at p (fn2-cns-get :auth st))))
 (defun fn2-cns-bump-auth (p st)
   (declare (xargs :verify-guards nil))
-  (fn2-cns-put :auth (fn2-cns-set p (+ 1 (fn2-cns-auth st p)) (fn2-cns-get :auth st)) st))
+  (fn2-cns-model-put :auth (fn2-cns-set p (+ 1 (fn2-cns-auth st p)) (fn2-cns-get :auth st)) st))
 
 ; Why an event is selected for P with EDGES under GRANTS: its reasons, or nil.
 ; An article is visible only through a stream P may read (the pullback along
@@ -209,9 +209,9 @@
 (defun fn2-cns-meter (st p amount)
   (declare (xargs :verify-guards nil))
   (if (< (fn2-cns-limit st p) (+ (fn2-cns-charged st p) (nfix amount))) :limit :ok))
-(defun fn2-cns-charge (st p amount)
+(defun fn2-cns-model-charge (st p amount)
   (declare (xargs :verify-guards nil))
-  (fn2-cns-put :charged (fn2-cns-set p (+ (fn2-cns-charged st p) (nfix amount)) (fn2-cns-get :charged st)) st))
+  (fn2-cns-model-put :charged (fn2-cns-set p (+ (fn2-cns-charged st p) (nfix amount)) (fn2-cns-get :charged st)) st))
 
 ; The generated precondition order (port.lisp FN2-CONSUMER-ADMIT) over the
 ; model: (mv answer state). AMOUNT is the durable reservation; with
@@ -219,7 +219,7 @@
 (defun fn2-cns-admit (verb st p grant-ok amount fault)
   (declare (xargs :verify-guards nil))
   (let ((answer (fn2-consumer-admit verb grant-ok (fn2-cns-meter st p amount))))
-    (mv answer (if (and (eq fault :meter-first) (< 0 (nfix amount))) (fn2-cns-charge st p amount) st))))
+    (mv answer (if (and (eq fault :meter-first) (< 0 (nfix amount))) (fn2-cns-model-charge st p amount) st))))
 (defun fn2-cns-may-consume (st p) (declare (xargs :verify-guards nil)) (fn2-cns-allows (fn2-cns-get :grants st) p :consume :any))
 
 ;; read ---------------------------------------------------------------------
@@ -254,7 +254,7 @@
     (if (not (eq answer :proceed)) (mv answer st1)
       (let ((o (fn2-cns-page st p k limits fault)))
         (if (or (not (eq (fn2-cns-class o) :accepted)) (fn2-cns-page-items o)) (mv o st)
-          (mv :parked (fn2-cns-put :waits (fn2-cns-set (cons p (fn2-cns-cursor-consumer k)) (list k limits o)
+          (mv :parked (fn2-cns-model-put :waits (fn2-cns-set (cons p (fn2-cns-cursor-consumer k)) (list k limits o)
                                                        (fn2-cns-get :waits st)) st)))))))
 ; The answer a parked wait gives now: the read at this moment (the final
 ; frontier check: a lost or late wake costs latency, never an event).
@@ -276,24 +276,24 @@
   (declare (xargs :verify-guards nil))
   (if (eq fault :lost-wake) (mv nil st)
   (mv-let (answers keep) (fn2-cns-wake-list (fn2-cns-get :waits st) st fault)
-    (mv answers (fn2-cns-put :waits keep st)))))
+    (mv answers (fn2-cns-model-put :waits keep st)))))
 (defun fn2-cns-timeout (st p c fault)
   (declare (xargs :verify-guards nil))
   (let* ((key (cons p c)) (w (fn2-cns-at key (fn2-cns-get :waits st))))
     (if (null w) (mv nil st)
       (mv (list (cons key (fn2-cns-wait-answer st key w fault)))
-          (fn2-cns-put :waits (remove1-equal (cons key w) (fn2-cns-get :waits st)) st)))))
+          (fn2-cns-model-put :waits (remove1-equal (cons key w) (fn2-cns-get :waits st)) st)))))
 
 ;; register, rebase, unregister ------------------------------------------------
-(defun fn2-cns-edges-p (edges p)
+(defun fn2-cns-model-edges-p (edges p)
   (declare (xargs :verify-guards nil))
   (if (atom edges) (null edges)
     (and (or (stringp (car edges)) (equal (car edges) (list :addr p)))
          (not (member-equal (car edges) (cdr edges)))
-         (fn2-cns-edges-p (cdr edges) p))))
-(defun fn2-cns-edges-from (streams start)
+         (fn2-cns-model-edges-p (cdr edges) p))))
+(defun fn2-cns-model-edges-from (streams start)
   (declare (xargs :verify-guards nil))
-  (if (atom streams) nil (cons (cons (car streams) start) (fn2-cns-edges-from (cdr streams) start))))
+  (if (atom streams) nil (cons (cons (car streams) start) (fn2-cns-model-edges-from (cdr streams) start))))
 (defun fn2-cns-edges-keep (streams old start)
   ; Keep the starts of edges that stay; a new stream starts at START.
   (declare (xargs :verify-guards nil))
@@ -305,10 +305,10 @@
   (declare (xargs :verify-guards nil))
   (let* ((epoch (nfix (fn2-cns-get :epoch st)))
          (r (list epoch qv (fn2-cns-auth st p) edges (fn2-cns-get :grants st)))
-         (st (fn2-cns-put :epoch (+ 1 epoch) st))
-         (st (fn2-cns-put :regs (fn2-cns-set (cons p c) r (fn2-cns-get :regs st)) st))
-         (st (fn2-cns-put :acks (fn2-cns-set (list p c epoch) pos (fn2-cns-get :acks st)) st))
-         (st (fn2-cns-charge st p *fn2-cns-record-octets*)))
+         (st (fn2-cns-model-put :epoch (+ 1 epoch) st))
+         (st (fn2-cns-model-put :regs (fn2-cns-set (cons p c) r (fn2-cns-get :regs st)) st))
+         (st (fn2-cns-model-put :acks (fn2-cns-set (list p c epoch) pos (fn2-cns-get :acks st)) st))
+         (st (fn2-cns-model-charge st p *fn2-cns-record-octets*)))
     (mv (fn2-cns-cursor st p c r pos) st)))
 ; START is :now (from the frontier) or :history (from the beginning).
 (defun fn2-cns-register (st p c streams start fault)
@@ -316,12 +316,12 @@
   (mv-let (answer st1) (fn2-cns-admit 'register st p (fn2-cns-may-consume st p) *fn2-cns-record-octets* fault)
     (let ((r (fn2-cns-reg st p c)) (pos (if (eq start :now) (fn2-cns-frontier st) 0)))
       (cond ((not (eq answer :proceed)) (mv answer st1))
-            ((not (and (consp streams) (fn2-cns-edges-p streams p) (member start '(:now :history)))) (mv '(:refused query) st))
+            ((not (and (consp streams) (fn2-cns-model-edges-p streams p) (member start '(:now :history)))) (mv '(:refused query) st))
             ; The same registration again answers the recorded one (a lost reply never resets progress).
             ((and r (equal (strip-cars (fn2-cns-reg-edges r)) streams))
              (mv (list :accepted (list (fn2-cns-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))) st))
             (r (mv '(:refused rebase-required) st))
-            (t (mv-let (k st2) (fn2-cns-install st p c (fn2-cns-edges-from streams pos) pos 1)
+            (t (mv-let (k st2) (fn2-cns-install st p c (fn2-cns-model-edges-from streams pos) pos 1)
                  (mv (list :accepted (list k)) st2)))))))
 ; A rebase is a new epoch under the newer query or the current view (an old
 ; cursor is then refused by scope). START :keep keeps the recorded position
@@ -335,14 +335,14 @@
            (front (fn2-cns-frontier st)))
       (cond ((not (eq answer :proceed)) (mv answer st1))
             (problem (mv (list :refused problem) st))
-            ((not (and (fn2-cns-edges-p new p) (consp new) (member start '(:keep :now :history)))) (mv '(:refused query) st))
+            ((not (and (fn2-cns-model-edges-p new p) (consp new) (member start '(:keep :now :history)))) (mv '(:refused query) st))
             (t (let* ((qv (+ (if streams 1 0) (nfix (fn2-cns-reg-qv r))))
                       (at (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))
                  (mv-let (k2 st2)
                    (case start
                      (:keep (fn2-cns-install st p c (fn2-cns-edges-keep new (fn2-cns-reg-edges r) front) at qv))
-                     (:now (fn2-cns-install st p c (fn2-cns-edges-from new front) front qv))
-                     (otherwise (fn2-cns-install st p c (fn2-cns-edges-from new 0) 0 qv)))
+                     (:now (fn2-cns-install st p c (fn2-cns-model-edges-from new front) front qv))
+                     (otherwise (fn2-cns-install st p c (fn2-cns-model-edges-from new 0) 0 qv)))
                    (mv (list :accepted (list k2)) st2))))))))
 (defun fn2-cns-unregister (st p k fault)
   (declare (xargs :verify-guards nil))
@@ -350,8 +350,8 @@
     (let ((problem (fn2-cns-scope-problem st p k nil)) (c (fn2-cns-cursor-consumer k)))
       (cond ((not (eq answer :proceed)) (mv answer st1))
             (problem (mv (list :refused problem) st))
-            (t (let ((st (fn2-cns-put :regs (remove1-equal (cons (cons p c) (fn2-cns-reg st p c)) (fn2-cns-get :regs st)) st)))
-                 (mv '(:accepted nil) (fn2-cns-charge st p *fn2-cns-record-octets*))))))))
+            (t (let ((st (fn2-cns-model-put :regs (remove1-equal (cons (cons p c) (fn2-cns-reg st p c)) (fn2-cns-get :regs st)) st)))
+                 (mv '(:accepted nil) (fn2-cns-model-charge st p *fn2-cns-record-octets*))))))))
 
 ;; ack, position, status ------------------------------------------------------
 (defun fn2-cns-ack (st p k fault)
@@ -367,11 +367,11 @@
             ((< (fn2-cns-frontier st) to) (mv '(:refused beyond-frontier) st))
             ((< to at) (if (eq fault :rewind)
                            (mv (list :accepted (list to))
-                               (fn2-cns-put :acks (fn2-cns-set (list p c (fn2-cns-reg-epoch r)) to (fn2-cns-get :acks st)) st))
+                               (fn2-cns-model-put :acks (fn2-cns-set (list p c (fn2-cns-reg-epoch r)) to (fn2-cns-get :acks st)) st))
                          (mv '(:refused behind) st)))
             ((equal to at) (if (eq fault :equal-behind) (mv '(:refused behind) st) (mv (list :accepted (list to)) st)))
             (t (mv (list :accepted (list to))
-                   (fn2-cns-charge (fn2-cns-put :acks (fn2-cns-set (list p c (fn2-cns-reg-epoch r)) to (fn2-cns-get :acks st)) st)
+                   (fn2-cns-model-charge (fn2-cns-model-put :acks (fn2-cns-set (list p c (fn2-cns-reg-epoch r)) to (fn2-cns-get :acks st)) st)
                                    p *fn2-cns-record-octets*)))))))
 (defun fn2-cns-position (st p c fault)
   (declare (xargs :verify-guards nil))
@@ -427,15 +427,15 @@
               ((and old (equal (fn2-cns-ev-octets old) octets)) (mv '(:refused duplicate) st))
               ; IDENTITY ruling 6: the article is refused and its evidence commits.
               (old (mv '(:refused conflict :evidence-committed)
-                       (fn2-cns-put :evidence (cons (list mid octets p) (fn2-cns-get :evidence st)) st)))
+                       (fn2-cns-model-put :evidence (cons (list mid octets p) (fn2-cns-get :evidence st)) st)))
               (t (let* ((n (+ 1 (nfix (fn2-cns-at stream (fn2-cns-get :numbers st)))))
                         (numbers (list (cons stream n)))
                         (o (list :accepted (list mid pos numbers (list (fn2-cns-get :history st) pos))))
-                        (st (fn2-cns-put :log (append (fn2-cns-get :log st)
+                        (st (fn2-cns-model-put :log (append (fn2-cns-get :log st)
                                                       (list (list pos :article (list stream) mid octets to p numbers))) st))
-                        (st (fn2-cns-put :numbers (fn2-cns-set stream n (fn2-cns-get :numbers st)) st))
-                        (st (if op (fn2-cns-put :outcomes (fn2-cns-set (cons p op) (list digest o) (fn2-cns-get :outcomes st)) st) st)))
-                   (mv o (fn2-cns-charge st p (length octets))))))))))
+                        (st (fn2-cns-model-put :numbers (fn2-cns-set stream n (fn2-cns-get :numbers st)) st))
+                        (st (if op (fn2-cns-model-put :outcomes (fn2-cns-set (cons p op) (list digest o) (fn2-cns-get :outcomes st)) st) st)))
+                   (mv o (fn2-cns-model-charge st p (length octets))))))))))
 
 ;; The world's own steps (not port verbs): an operator's grants and limits, a
 ;; cancel, a reclamation, a timeout, a crash.
@@ -447,7 +447,7 @@
   (declare (xargs :verify-guards nil))
   (let ((a (fn2-cns-article-of mid (fn2-cns-get :log st))))
     (if (and a (equal (nth 6 a) p) (not (fn2-cns-withdrawn-p mid (fn2-cns-get :log st))))
-        (fn2-cns-put :log (append (fn2-cns-get :log st)
+        (fn2-cns-model-put :log (append (fn2-cns-get :log st)
                                   (list (list (+ 1 (fn2-cns-frontier st)) :withdraw '("control.cancel") mid p))) st)
       st)))
 
@@ -468,17 +468,17 @@
       (status (fn2-cns-status st p a fault))
       (fetch (fn2-cns-fetch st p a fault))
       (append (fn2-cns-append st p a b c fault))
-      (:grant (mv :done (fn2-cns-bump-auth p (fn2-cns-put :grants (cons (list p a b) (fn2-cns-get :grants st)) st))))
-      (:revoke (mv :done (fn2-cns-bump-auth p (fn2-cns-put :grants (remove-equal (list p a b) (fn2-cns-get :grants st)) st))))
-      (:limit (mv :done (fn2-cns-put :limit (fn2-cns-set p a (fn2-cns-get :limit st)) st)))
+      (:grant (mv :done (fn2-cns-bump-auth p (fn2-cns-model-put :grants (cons (list p a b) (fn2-cns-get :grants st)) st))))
+      (:revoke (mv :done (fn2-cns-bump-auth p (fn2-cns-model-put :grants (remove-equal (list p a b) (fn2-cns-get :grants st)) st))))
+      (:limit (mv :done (fn2-cns-model-put :limit (fn2-cns-set p a (fn2-cns-get :limit st)) st)))
       (:withdraw (mv :done (fn2-cns-withdraw st p a)))
-      (:reclaim (mv :done (fn2-cns-put :reclaimed (cons a (fn2-cns-get :reclaimed st)) st)))
-      (:crash (mv :done (fn2-cns-put :waits nil st)))
+      (:reclaim (mv :done (fn2-cns-model-put :reclaimed (cons a (fn2-cns-get :reclaimed st)) st)))
+      (:crash (mv :done (fn2-cns-model-put :waits nil st)))
       ; A commit no consumer selects (another consumer's ack, a register, any
       ; batch outside the selection) still takes its position: the log is
       ; padded with (POS :commit) through position P, so the model's positions
       ; are the store's commit positions (the CONSUMER checker's alignment).
-      (:commit (mv :done (fn2-cns-put :log (fn2-cns-pad (fn2-cns-get :log st) (+ 1 (fn2-cns-frontier st)) p) st)))
+      (:commit (mv :done (fn2-cns-model-put :log (fn2-cns-pad (fn2-cns-get :log st) (+ 1 (fn2-cns-frontier st)) p) st)))
       (otherwise (mv '(:refused :no-such-verb) st)))))
 (defun fn2-cns-step (op st fault)
   (declare (xargs :verify-guards nil))
@@ -496,11 +496,11 @@
         (mv (cons (list (car ops) o answers st st2) trace) st3)))))
 (defun fn2-cns-final (ops fault)
   (declare (xargs :verify-guards nil))
-  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-init "fn2-history" "fn2-incarnation") fault)
+  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
     (declare (ignore trace)) st))
 (defun fn2-cns-trace (ops fault)
   (declare (xargs :verify-guards nil))
-  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-init "fn2-history" "fn2-incarnation") fault)
+  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
     (declare (ignore st)) trace))
 
 ;; The NNTP view (carrier N): what ARTICLE and GROUP answer over the same log.
@@ -696,5 +696,5 @@
   (if (atom trace) t
     (let* ((e (car trace)) (o (nth 1 e)))
       (and (or (not (and (fn2-cns-port-verb (nth 0 e)) (consp o) (eq (fn2-cns-class o) :refused)))
-               (equal (fn2-cns-put :evidence nil (nth 4 e)) (fn2-cns-put :evidence nil (nth 3 e))))
+               (equal (fn2-cns-model-put :evidence nil (nth 4 e)) (fn2-cns-model-put :evidence nil (nth 3 e))))
            (fn2-cns-k8 (cdr trace))))))

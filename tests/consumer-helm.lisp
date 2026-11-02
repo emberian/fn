@@ -165,7 +165,7 @@
 
 (defun helm-run (fault)
   (declare (xargs :verify-guards nil))
-  (mv-let (st db ops woken) (helm-drive (helm-script) (fn2-cns-init "fn2-history" "fn2-incarnation") nil nil nil fault)
+  (mv-let (st db ops woken) (helm-drive (helm-script) (fn2-cns-model-init "fn2-history" "fn2-incarnation") nil nil nil fault)
     (mv st db (reverse ops) woken)))
 
 ;; The acceptance (e-surface.md 10.2) -----------------------------------------

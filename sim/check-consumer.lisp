@@ -553,4 +553,4 @@
 ; The checker: OBS from a store with HISTORY and INCARNATION (id octets).
 (defun fn2-consumer-check (obs history incarnation interims)
   (declare (xargs :verify-guards nil))
-  (fn2-cnsk-run obs 0 nil (list (list (fn2-cns-init history incarnation) nil nil)) interims))
+  (fn2-cnsk-run obs 0 nil (list (list (fn2-cns-model-init history incarnation) nil nil)) interims))

@@ -181,7 +181,7 @@
   (mv-let (st db ops) (mini-drive (append (pairlis$ (make-list (len *mini-grants*) :initial-element :world)
                                                     (pairlis$ *mini-grants* nil))
                                           script)
-                                  (fn2-cns-init "fn2-history" "fn2-incarnation") nil nil fault)
+                                  (fn2-cns-model-init "fn2-history" "fn2-incarnation") nil nil fault)
     (mv st db (reverse ops))))
 
 (defconst *mini-append-r1* `(:world (append "origin" ,*mini-group* ("<r1@origin>" ,*mini-r1* nil) "o-r1")))
