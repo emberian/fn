@@ -35,25 +35,29 @@
   (declare (xargs :stobjs fn2-claims :guard (fn2-claims-wfp fn2-claims)))
   (let ((n (fn2-claims-rows fn2-claims))) (if (posp n) (mod (nfix hash) n) 0)))
 
-; Start row C's claim on [off, off+len) of SLOT under (ok os og), whose
+(defun fn2-claim-state (c fn2-claims)
+  (declare (xargs :stobjs fn2-claims :guard (fn2-claims-wfp fn2-claims)))
+  (if (fn2-claim-rowp c fn2-claims) (fn2-claims-state c fn2-claims) *fn2-claim-state-free*))
+
+; Start row C's claim on [off, off+len) of SLOT under (okind oslot ogen), whose
 ; FNV-1a hash is HASH. Refused :state unless C is free.
-(defun fn2-claim-begin (c hash slot gen off len ok os og fn2-claims)
+(defun fn2-claim-begin (c hash slot gen off len okind oslot ogen fn2-claims)
   (declare (xargs :stobjs fn2-claims :guard (fn2-claims-wfp fn2-claims)))
   (b* (((unless (fn2-claim-rowp c fn2-claims)) (mv :bounds fn2-claims))
        ((unless (equal (fn2-claims-state c fn2-claims) *fn2-claim-state-free*)) (mv :state fn2-claims))
        ((unless (and (unsigned-byte-p 32 hash) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
-                     (unsigned-byte-p 32 off) (unsigned-byte-p 32 len) (unsigned-byte-p 8 ok)
-                     (unsigned-byte-p 32 os) (unsigned-byte-p 60 og)))
+                     (unsigned-byte-p 32 off) (unsigned-byte-p 32 len) (unsigned-byte-p 8 okind)
+                     (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
         (mv :bounds fn2-claims))
        (b (fn2-claim-bucket hash fn2-claims))
        ((unless (fn2-claim-rowp b fn2-claims)) (mv :bounds fn2-claims))
        (fn2-claims (fn2-claims-put c (state *fn2-claim-state-walking*) (hash hash) (slot slot) (gen gen)
-                                   (off off) (len len) (ok ok) (os os) (og og)
+                                   (off off) (len len) (ok okind) (os oslot) (og ogen)
                                    (next *fn2-none*) (prev *fn2-none*) (wait-head *fn2-none*)
                                    (wait-tail *fn2-none*) (wait-next *fn2-none*)
                                    (cursor (fn2-claims-head b fn2-claims)) (wstamp (fn2-claims-stamp b fn2-claims)))))
     (mv :ok fn2-claims)))
-(fn2-claims-preserves fn2-claim-begin (c hash slot gen off len ok os og fn2-claims) :position 1 :raw-rows t)
+(fn2-claims-preserves fn2-claim-begin (c hash slot gen off len okind oslot ogen fn2-claims) :position 1 :raw-rows t)
 
 ; Whether row X holds a claim on the same octets as row C.
 (defun fn2-claim-same (c x fn2-claims fn2-pool)

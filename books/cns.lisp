@@ -53,19 +53,6 @@
 
 (defmacro fn2-cns-wait-events ()
  '(progn
-   ;; the core faces of the declared operations (one stobj-let each)
-   (defun fn2-cns-edge-link-core (stream waiter gen from fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core)))
-       (code e fn2-cns-edges) (fn2-cns-edge-link stream waiter gen from fn2-cns-edges)
-       (mv code e fn2-core)))
-   (fn2-core-preserves fn2-cns-edge-link-core (stream waiter gen from fn2-core) :position 2 :rows nil)
-   (defun fn2-cns-edge-unlink-core (e fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core)))
-       (fn2-cns-edges) (fn2-cns-edge-unlink e fn2-cns-edges)
-       fn2-core))
-   (fn2-core-preserves fn2-cns-edge-unlink-core (e fn2-core) :rows nil :prefix "")
    ;; the :wait-row source
    (defun fn2-cns-core-ready (fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -88,7 +75,7 @@
                                       (fn2-cns-edges (fn2-core-cns-edges fn2-core))
                                       (fn2-machines (fn2-core-machines fn2-core))
                                       (fn2-control (fn2-core-control fn2-core)))))))
-   (in-theory (disable fn2-cns-edge-link-core fn2-cns-edge-unlink-core fn2-cns-core-ready fn2-cns-core-grant))
+   (in-theory (disable fn2-cns-core-ready fn2-cns-core-grant))
    (defattach (fn2-cns-wait-ready-p fn2-cns-core-ready) (fn2-cns-wait-grant-one fn2-cns-core-grant))))
 
 ;; ---------------------------------------------------------------------------
@@ -397,11 +384,6 @@
 
 (defmacro fn2-cns-events ()
   '(progn
-     (defun fn2-cns-reclaim (id ord retire fn2-core)
-       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (fn2-machine-reclaim id ord retire fn2-core))
-     (fn2-core-preserves fn2-cns-reclaim (id ord retire fn2-core) :rows nil)
-     (in-theory (disable fn2-cns-reclaim))
      (defmachine-arms fn2-ctl :wrappers)
      (defmachine-run fn2-ctl)
      (defmachine-arms fn2-cns :wrappers)
