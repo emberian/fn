@@ -735,11 +735,9 @@
 ;; One row per operation reached (through forwarded callbacks), each from
 ;; the holds of the arm's source phase: alternative paths are separate rows.
 (defun fn2-arm-step-held (held effects)
-  ; HELD after EFFECTS: drop own releases/transfers, add own non-transient acquires
+  ; HELD after EFFECTS: accumulate own non-transient acquires along the path
   (declare (xargs :verify-guards nil))
-  (append (fn2-arm-mminus held (append (fn2-arm-effect-kinds effects '(:release :transfer) nil)
-                                       (fn2-arm-transfer-kinds effects)))
-          (fn2-arm-minus (fn2-arm-effect-kinds effects '(:acquire) nil) *fn2-arm-transient-kinds*)))
+  (union-eq held (fn2-arm-minus (fn2-arm-effect-kinds effects '(:acquire) nil) *fn2-arm-transient-kinds*)))
 (defun fn2-arm-effect-rows-seq (kind source uses held fuel world)
   ; (mv rows held-after)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))

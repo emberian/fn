@@ -1,6 +1,6 @@
 ; Scalar executor access, separate from scheduling policy.
 (in-package "ACL2")
-(include-book "assembly")
+(include-book "assembly-access")
 
 (in-theory (disable fn2-ops-post-count
                     fn2-ops-clock-posted fn2-ops-signals))

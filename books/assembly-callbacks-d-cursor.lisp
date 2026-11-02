@@ -4,6 +4,7 @@
 ; in its own book, then its run entry, after the transaction kind's section.
 (in-package "ACL2")
 (include-book "assembly-callbacks-d")
+(include-book "cursor")
 
 (defmachine-arms fn2-cursor :wrappers)
 (defmachine-run fn2-cursor)

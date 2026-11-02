@@ -7,6 +7,7 @@
 ; durable POST (D5 2/n), whose subject the batch member gives them.
 (in-package "ACL2")
 (include-book "owed-conn")
+(include-book "assembly-attach")
 (fn2-book-layer :d)
 
 ; Posting served with two upload windows of 4 KiB chunks and room for C's

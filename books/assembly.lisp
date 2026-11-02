@@ -1,6 +1,6 @@
 ; The sole served core instance, in generated-section include order.
 (in-package "ACL2")
-(include-book "assembly-reference")
+(include-book "assembly-dispatch")
 
 (assert-event
  (and (fn2-core-profilep *fn2-profile-concrete*)

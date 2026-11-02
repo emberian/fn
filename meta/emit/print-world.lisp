@@ -78,17 +78,25 @@
              (meta-put key f (cddr plist)))
     plist))
 
-(defun meta-row-terms (key row)
+(defun meta-row-terms (key name row)
   (case key
     (:machine-kinds
-     (meta-put :capacity #'meta-term
-       (meta-put :initial
-                 (lambda (inits)
-                   (loop for (field v) in inits
-                         collect (list field (if (and (symbolp v) (function-symbolp v *meta-w*))
-                                                 (list :function v)
-                                               (meta-term v)))))
-                 row)))
+     (let* ((late (cdr (assoc-eq name (table-alist 'fn2-machine-arm-bodies *meta-w*))))
+            (row (if late
+                     (let ((r row))
+                       (dolist (k '(:arms :subarms :observe-arms :genesis :book) r)
+                         (when (member k late)
+                           (setq r (meta-put k (lambda (old) (declare (ignore old)) (cadr (member k late)))
+                                             (if (member k r) r (append r (list k nil))))))))
+                   row)))
+       (meta-put :capacity #'meta-term
+         (meta-put :initial
+                   (lambda (inits)
+                     (loop for (field v) in inits
+                           collect (list field (if (and (symbolp v) (function-symbolp v *meta-w*))
+                                                   (list :function v)
+                                                 (meta-term v)))))
+                   row))))
     (:core-children (if *meta-assembled* (meta-put :init #'meta-term (meta-put :profilep #'meta-term row)) row))
     (:costs (meta-put :bytes #'meta-term (meta-put :steps #'meta-term (meta-put :descriptors #'meta-term row))))
     (:squares (meta-put :translated (lambda (x) (list :term x)) row))
@@ -98,7 +106,7 @@
   (cons :registry
         (loop for (key table) in *meta-tables*
               collect (list key (loop for (name . row) in (reverse (table-alist table *meta-w*))
-                                      collect (cons name (meta-elide (meta-row-terms key row))))))))
+                                      collect (cons name (meta-elide (meta-row-terms key name row))))))))
 
 ; ---------------------------------------------------------------- step language
 

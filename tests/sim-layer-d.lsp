@@ -12,6 +12,7 @@
 (in-package "ACL2")
 (set-cbd "tests/")
 (include-book "../books/owed-conn")
+(include-book "../books/assembly-attach")
 (include-book "../sim/echo")
 (include-book "../sim/check-wire")
 (include-book "../sim/check-account")

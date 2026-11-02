@@ -14,10 +14,7 @@
 ;; Registration book: assembly-index includes it after upload; its operations
 ;; and continuations are materialized by assembly-callbacks-d-txn.lisp.
 (in-package "ACL2")
-(include-book "upload")
-(include-book "claims")
-(include-book "machines-c-bind")
-(include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
+(include-book "txn-kind")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -33,14 +30,6 @@
 ;; accept per carried group. A cross-post to more carried groups than
 ;; *fn2-txn-groups-max* is refused :unaffordable (the overview row and the
 ;; addr entries of D5 2/n take the other slots).
-(defconst *fn2-txn-evidence-sid* 1)
-(defconst *fn2-txn-history-sid* 11)
-(defconst *fn2-txn-candidates-sid* 12)
-(defconst *fn2-txn-summary-sid* 13)
-(defconst *fn2-txn-index-sid* 14)
-(defconst *fn2-txn-article-sid* 2)
-(defconst *fn2-txn-counts-sid* 5)
-(defconst *fn2-txn-outcome-sid* 9)
 (defconst *fn2-txn-slot-evidence* 0)
 (defconst *fn2-txn-slot-history* 1)
 (defconst *fn2-txn-slot-summary* 2)
@@ -59,42 +48,6 @@
 (defconst *fn2-txn-outcome-accepted* 1)
 ;; Newsgroups is scanned at most this many octets per :prepare run.
 (defconst *fn2-txn-scan-bytes* 1024)
-
-;; The claim table (a D core child, one row per transaction slot).
-(fn2-claims-preserves fn2-claims-init-buckets (left fn2-claims)
-  :hyps ((fn2-claimsp fn2-claims) (fn2-claims-wfp fn2-claims) (<= (nfix left) (fn2-claims-rows fn2-claims))))
-;; the core's init-wfp theorem has no recognizer hypothesis: wfp from wfp alone
-(defthm fn2-claims-init-buckets-rows-equal
-  (equal (fn2-claims-rows (fn2-claims-init-buckets left fn2-claims)) (fn2-claims-rows fn2-claims))
-  :hints (("Goal" :in-theory (enable fn2-claims-init-buckets))))
-(defthm fn2-claims-init-buckets-wfp-alone
-  (implies (and (fn2-claims-wfp fn2-claims) (<= (nfix left) (fn2-claims-rows fn2-claims)))
-           (fn2-claims-wfp (fn2-claims-init-buckets left fn2-claims)))
-  :hints (("Goal" :in-theory (e/d (fn2-claims-init-buckets) (fn2-claimsp)))))
-(defun fn2-txn-claims-profilep (profile)
-  (declare (xargs :guard t))
-  (unsigned-byte-p 32 (fn2-profile-t profile)))
-(defun fn2-claims-init-for (profile fn2-claims)
-  (declare (xargs :stobjs fn2-claims :guard (fn2-txn-claims-profilep profile)))
-  (fn2-claims-table-init (fn2-profile-t profile) fn2-claims))
-(defthm fn2-claims-init-for-type
-  (implies (and (fn2-claimsp fn2-claims) (fn2-txn-claims-profilep profile))
-           (fn2-claimsp (fn2-claims-init-for profile fn2-claims))))
-(defthm fn2-claims-init-for-wfp
-  (implies (fn2-txn-claims-profilep profile) (fn2-claims-wfp (fn2-claims-init-for profile fn2-claims)))
-  :hints (("Goal" :in-theory (enable fn2-claims-init-for fn2-txn-claims-profilep))))
-(in-theory (disable fn2-claims-init-for fn2-txn-claims-profilep))
-(defcorechild fn2-core-claims fn2-claims
- :init (fn2-claims-init-for profile fn2-claims) :profilep (fn2-txn-claims-profilep profile)
- :why "The identity reservation: a transaction's claim on its Message-ID's exact octets and the FIFO of its waiters survive the transaction's yields (section 14.4.2).")
-
-;; One row per transaction slot, and none unless the profile serves article
-;; input (the upload's rule): a transaction exists only for an upload.
-(defun fn2-txn-capacity (profile)
-  (declare (xargs :guard t))
-  (if (fn2-profile-get :posting-interim profile) (nfix (fn2-profile-t profile)) 0))
-(defthm fn2-txn-capacity-natp (natp (fn2-txn-capacity profile)) :rule-classes :type-prescription)
-(in-theory (disable fn2-txn-capacity))
 
 ;; The :ready transition's byte bound: C-S3's stage, emit and bind and B's
 ;; admission happen in one run (nothing may stage or bind between a
@@ -206,7 +159,7 @@
   :doc "FNV-1a over the Message-ID's octets (at most 250), under the upload's owner.")
 (defcost fn2-claim-begin-core :child fn2-claim-begin :answers (:ok :bounds :state) :tables (fn2-core-claims)
   :doc "Start a claim on a Message-ID's exact octets.")
-(defcost fn2-claim-state-core :child fn2-claim-state :doc "Read a transaction's claim state.")
+(defcost fn2-claim-state-core :child fn2-claim-state :effects :per-use :doc "Read a transaction's claim state.")
 (defcost fn2-claim-walk-core :child fn2-claim-walk :answers (:claimed :wait :more :bounds :state :fault) :faults (:bounds :state :fault) :bytes 4096
   :tables (fn2-core-claims)
   :effects ((:acquire (:identity-reservation)))
@@ -230,34 +183,7 @@
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 
-(defmachine fn2-txn
- :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
- :fields ((upload :link) (upload-gen :u60) (conn :link) (conn-gen :u60) (request :u32)
-          (rule (:enum fn2-txn-rule (:post :ihave :takethis)))
-          (tmode (:enum fn2-txn-mode (:article :evidence)))
-          (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
-          (batch :u60) (bevent :u60)
-          (word :u8) (offered :bool) (prepared :bool) (counted :u60) (lines :u32)
-          (gcur :u32) (gskip :bool) (ngroups :u8)
-          (stopped :bool) (next-free :link))
- :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
-                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl)))
- :stops (:txn-uncertain)
- :holds ((:admit :transaction-row) (:reserve :transaction-row)
-         (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)
-         (:ready :transaction-row :identity-reservation)
-         (:batched :transaction-row :identity-reservation :batch-membership)
-         (:accepted :transaction-row :identity-reservation) (:refused :transaction-row :identity-reservation)
-         (:uncertain :transaction-row :identity-reservation) (:releasing :transaction-row :identity-reservation)
-         (:draining :transaction-row))
- :budget (:bytes 24576 :steps 32 :descriptors 4)
- :capacity (fn2-txn-capacity profile)
- ;; An upload takes the row at its :identity (section 14.3).
- :taken (:phase :admit :rows :transaction-row :ranges ()
-         :copy (upload upload-gen conn conn-gen request rule principal-slot)
-         :clear (tmode ecommit batch bevent word offered prepared counted lines gcur gskip ngroups stopped))
- :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
-           (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
+(defmachine-arms fn2-txn :declare
  :subarms
  (;; one Newsgroups name: look it up, declare its group-count accept
   (group :on-refusal ((:stop :machine-phase))
@@ -319,7 +245,9 @@
   ;; the claim walk: held, waiting in the holder's FIFO, or more
   (:reserve :on-refusal ((:stop :machine-phase))
    (:let s (fn2-claim-state-core row-slot))
-   (:cond ((equal s *fn2-claim-state-held*) (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+   (:cond ((equal s *fn2-claim-state-held*)
+           (:do (s2) (fn2-claim-state-core row-slot) :effects ((:acquire (:identity-reservation))))
+           (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
           ((equal s *fn2-claim-state-waiting*) (:charge :bytes 4096 :steps *fn2-work-transition*))
           (t (:do (code holder) (fn2-claim-walk-core row-slot *fn2-txn-claim-steps*)
               :accept ()
@@ -683,7 +611,3 @@
 (defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)
 ))
-
-; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
-; the admission section (assembly-callbacks-a) makes its core face.
-(defmachine-registry fn2-txn)

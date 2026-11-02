@@ -2196,8 +2196,13 @@
 ; The kind's arms, generated in its callbacks section (before defmachine-run).
 ; (defmachine-arms K): arms over the core; (defmachine-arms K :children) in
 ; K's own book, then (defmachine-arms K :wrappers) in its callbacks section.
-(defmacro defmachine-arms (kind &optional (mode ':core))
+(defmacro defmachine-arms (kind &optional (mode ':core) &key subarms arms observes genesis)
   `(progn
+     ,@(and (or subarms arms observes genesis)
+            `((make-event
+               (value `(table fn2-machine-arm-bodies ',',kind
+                              '(:arms ,',arms :subarms ,',subarms :observe-arms ,',observes :genesis ,',genesis
+                                :book ,(fn2-decl-current-book)))))))
      ,@(and (eq mode :children)
             `((make-event
                (mv-let (err events) (fn2-arms-link-events ',kind (fn2-arms-links ',kind (w state)) (w state))
@@ -2206,11 +2211,12 @@
             `((make-event
                (mv-let (err events) (fn2-arms-link-core-events ',kind (fn2-arms-links ',kind (w state)) (w state))
                  (if err (er soft 'defmachine-arms "~@0" err) (value (cons 'progn events)))))))
-     ,@(and (not (eq mode :children))
+     ,@(and (not (member-eq mode '(:children :declare)))
             `((defcost-faces ,kind)))
-     (make-event
-      (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
-        (if err (er soft 'defmachine-arms "~@0" err) (value form))))))
+     ,@(and (not (eq mode :declare))
+            `((make-event
+               (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
+                 (if err (er soft 'defmachine-arms "~@0" err) (value form))))))))
 
 ; ----------------------------------------------------------------------
 ; MACHINE-FORM 6.5 P4: a partitioned kind's registry operations in child

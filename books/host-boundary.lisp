@@ -4,6 +4,7 @@
 ; through these guard-verified functions, so the adapter decides nothing.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "assembly-attach")
 (include-book "../sim/sim")
 
 (local (in-theory (enable fn2-core-wfp)))
