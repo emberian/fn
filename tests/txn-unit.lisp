@@ -220,3 +220,69 @@
               (fn2-txn-interim-wire "441 posting failed"))))
 (assert-event (and (fn2-txn-test-admission-interim) (fn2-txn-test-admission-interim-negative)
                    (fn2-txn-test-generated-interim) (fn2-txn-test-generated-interim-negative)))
+
+; End-to-end M2 spine (Brick F6): POST stages group counts, overview, and
+; group-address entries, prebinds the prospective event number before
+; emitting journal records, and publishes so a reader on the same connection
+; immediately sees the posted article via GROUP, OVER, OVER <id>, HEAD, BODY,
+; and ARTICLE with its real stored body octets (not fabricated 'x' bytes).
+(defconst *fn2-tu-read-profile*
+  (put-assoc-equal :reading t (put-assoc-equal :x 2 *fn2-tu-profile*)))
+(defun fn2-tu-tab () (declare (xargs :verify-guards nil)) (coerce (list (code-char 9)) 'string))
+(defun fn2-tu-ov-line (num)
+  (declare (xargs :verify-guards nil))
+  (concatenate 'string num (fn2-tu-tab) "hello" (fn2-tu-tab) "a@example.invalid" (fn2-tu-tab)
+               (fn2-tu-tab) *fn2-tu-mid* (fn2-tu-tab) (fn2-tu-tab) "118" (fn2-tu-tab) "2"))
+(defconst *fn2-tu-post-read-lines*
+  (append '("POST") *fn2-tu-good* '(".")
+          '("GROUP local.test"
+            "OVER 1"
+            "OVER <one@example.invalid>"
+            "HEAD 1"
+            "BODY 1"
+            "ARTICLE 1"
+            "BODY <one@example.invalid>"
+            "QUIT")))
+(defconst *fn2-tu-post-read-expect*
+  (list *fn2-tu-greeting*
+        *fn2-tu-340*
+        "240 article received OK"
+        "211 1 1 1 local.test"
+        "224 overview information follows"
+        (fn2-tu-ov-line "1")
+        "."
+        "224 overview information follows"
+        (fn2-tu-ov-line "1")
+        "."
+        "221 1 <one@example.invalid> headers follow"
+        "From: a@example.invalid"
+        "Subject: hello"
+        "Message-ID: <one@example.invalid>"
+        "."
+        "222 1 <one@example.invalid> body follows"
+        "body"
+        "..stuffed"
+        "."
+        "220 1 <one@example.invalid> article follows"
+        "From: a@example.invalid"
+        "Subject: hello"
+        "Message-ID: <one@example.invalid>"
+        ""
+        "body"
+        "..stuffed"
+        "."
+        "222 0 <one@example.invalid> body follows"
+        "body"
+        "..stuffed"
+        "."
+        *fn2-tu-205*))
+(defun fn2-txn-test-post-and-read ()
+  (declare (xargs :verify-guards nil))
+  (let* ((octets (fn2-tu-text *fn2-tu-post-read-lines*))
+         (want (list :ok :quiet 0 (fn2-tu-text *fn2-tu-post-read-expect*) t))
+         (r (fn2-tu-run *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
+    (and (fn2-wire-pass-p octets (fn2-tu-text *fn2-tu-post-read-expect*) t)
+         (or (equal got want) (cw "post-and-read ~x0~%want ~x1~%" got want)))))
+(assert-event (fn2-txn-test-post-and-read))
+

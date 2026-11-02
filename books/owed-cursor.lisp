@@ -144,6 +144,9 @@
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
       (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv seeded fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
            ((mv status clients visits seeded fn2-core)
             (fn2-cs-loop (+ 2000 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))

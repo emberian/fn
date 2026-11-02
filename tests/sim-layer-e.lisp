@@ -16,6 +16,85 @@
 ; its observations.
 (in-package "ACL2")
 (include-book "../books/cns")
+
+;; End-to-end turn test (Brick F6): drive fn2-ctl and fn2-cns through fn2-turn
+;; and the adapter loop (fn2-cw-loop). Placed in an encapsulate before
+;; sim/check-consumer so assembly-callbacks-e-cns's fn2-cns-run does not
+;; collide in the global namespace with consumer-model's fn2-cns-run.
+(encapsulate ()
+  (local (include-book "../books/owed-conn"))
+  (local (include-book "../books/assembly-attach"))
+  (local
+   (defconst *fn2-sle-turn-profile*
+     (put-assoc-equal :cns 2
+       (put-assoc-equal :control-connections 2
+         (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*)))))
+  (local
+   (defun fn2-sle-set-published (pos fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)))
+       (fn2-id-engine)
+       (fn2-id-engine-set-published 0 pos fn2-id-engine)
+       fn2-core)))
+  (local
+   (defun fn2-sle-wake-stream (stream pos fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core)))
+       (fn2-cns-edges)
+       (fn2-cns-wake-stream stream pos fn2-cns-edges)
+       fn2-core)))
+  (local
+   (defun fn2-sle-test-turn-read-and-stop ()
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (ok fn2-core)
+         (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              (fn2-core (fn2-sle-set-published 3 fn2-core))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv nil fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              (clients (list (list '(1 2 5 0) '(2 2) nil nil)))
+              ((mv status clients fn2-core) (fn2-cw-loop 200 0 1 clients fn2-core))
+              (res (car (fn2-cw-results clients)))
+              (wire (car res))
+              (closed (cadr res)))
+           (mv (and (eq status :quiet)
+                    (equal (fn2-core-stop-reason fn2-core) 0)
+                    (equal wire '(1 0 0 3 3 0))
+                    (eq closed t))
+               fn2-core))
+         ok))))
+  (local
+   (defun fn2-sle-test-turn-wait-wake ()
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (ok fn2-core)
+         (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv nil fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              (clients (list (list '(1 3) '(2) nil nil)))
+              ((mv status1 clients fn2-core) (fn2-cw-loop 100 0 1 clients fn2-core))
+              (wire1 (car (car (fn2-cw-results clients))))
+              ((unless (and (eq status1 :quiet) (null wire1) (equal (fn2-core-stop-reason fn2-core) 0)))
+               (mv nil fn2-core))
+              (fn2-core (fn2-sle-set-published 1 fn2-core))
+              (fn2-core (fn2-sle-wake-stream 0 1 fn2-core))
+              ((mv status2 clients fn2-core) (fn2-cw-loop 100 0 1 clients fn2-core))
+              (wire2 (car (car (fn2-cw-results clients)))))
+           (mv (and (eq status2 :quiet)
+                    (equal (fn2-core-stop-reason fn2-core) 0)
+                    (equal wire2 '(1 0 0 1 1 0)))
+               fn2-core))
+         ok))))
+  (local (assert-event (fn2-sle-test-turn-read-and-stop)))
+  (local (assert-event (fn2-sle-test-turn-wait-wake)))
+  (defun fn2-sle-turn-e2e-witness () (declare (xargs :guard t)) t))
+
 (include-book "../sim/check-consumer")
 (include-book "std/testing/assert-bang" :dir :system)
 
@@ -404,3 +483,4 @@
 
 (assert! (fn2-sle-test-ctl-commands))
 (assert! (fn2-sle-test-cns-park-wake))
+(assert! (fn2-sle-turn-e2e-witness))

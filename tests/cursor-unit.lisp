@@ -181,3 +181,74 @@
 (assert-event (fn2-cursor-test-pinned-served))
 (assert-event (fn2-cursor-test-list-pages))
 (assert-event (fn2-cursor-test-list-pages-negative))
+
+;; End-to-end POST -> GROUP / OVER / OVER <id> / ARTICLE / HEAD / BODY without
+;; manual seeding: verifies that a posted article with non-'x' body content and
+;; dot-stuffed lines is immediately visible to fn2-cursor and streams its real
+;; stored headers and body octets.
+(defconst *fn2-cru-post-lines*
+  '("POST"
+    "From: poster@example.invalid"
+    "Subject: real body test"
+    "Newsgroups: local.test"
+    "Message-ID: <post1@example.invalid>"
+    ""
+    "real line 1"
+    "..dot stuffed"
+    "."
+    "GROUP local.test"
+    "OVER 1"
+    "OVER <post1@example.invalid>"
+    "HEAD 1"
+    "BODY 1"
+    "ARTICLE 1"
+    "BODY <post1@example.invalid>"
+    "QUIT"))
+(defun fn2-cru-post-ov (num)
+  (declare (xargs :verify-guards nil))
+  (fn2-csp-cat (list num (fn2-cru-tab) "real body test" (fn2-cru-tab) "poster@example.invalid"
+                     (fn2-cru-tab) (fn2-cru-tab) "<post1@example.invalid>"
+                     (fn2-cru-tab) (fn2-cru-tab) "145" (fn2-cru-tab) "2")))
+(defun fn2-cru-post-expected-wire ()
+  (declare (xargs :verify-guards nil))
+  (list (fn2-cw-crlf-octets
+         (list "200 fn-nntp experimental server ready"
+               "340 send article to be posted"
+               "240 article received OK"
+               "211 1 1 1 local.test"
+               "224 overview information follows"
+               (fn2-cru-post-ov "1")
+               "."
+               "224 overview information follows"
+               (fn2-cru-post-ov "1")
+               "."
+               "221 1 <post1@example.invalid> headers follow"
+               "From: poster@example.invalid"
+               "Subject: real body test"
+               "Message-ID: <post1@example.invalid>"
+               "."
+               "222 1 <post1@example.invalid> body follows"
+               "real line 1"
+               "..dot stuffed"
+               "."
+               "220 1 <post1@example.invalid> article follows"
+               "From: poster@example.invalid"
+               "Subject: real body test"
+               "Message-ID: <post1@example.invalid>"
+               ""
+               "real line 1"
+               "..dot stuffed"
+               "."
+               "222 0 <post1@example.invalid> body follows"
+               "real line 1"
+               "..dot stuffed"
+               "."
+               "205 closing connection"))
+        t))
+(defun fn2-cursor-test-post-roundtrip ()
+  (declare (xargs :verify-guards nil))
+  (let ((got (fn2-cursor-wire-solo nil *fn2-cru-post-lines* nil))
+        (want (fn2-cru-post-expected-wire)))
+    (or (equal got want) (cw "post-roundtrip ~x0~%want ~x1~%" got want))))
+(assert-event (fn2-cursor-test-post-roundtrip))
+

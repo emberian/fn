@@ -48,7 +48,9 @@
   '("From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
     "Message-ID: <one@example.invalid>" "" "body" "..stuffed"))
 (defconst *fn2-sld-posts*
-  (list (fn2-sld-post-text (append '("POST") *fn2-sld-good* '("." "QUIT")))
+  (list (fn2-sld-post-text (append '("POST") *fn2-sld-good*
+                                   '("." "GROUP local.test" "OVER 1" "OVER <one@example.invalid>"
+                                     "HEAD 1" "BODY 1" "ARTICLE 1" "BODY <one@example.invalid>" "QUIT")))
         (fn2-sld-post-text '("POST" "From: a" "Newsgroups: g" "" "x" "." "DATE" "QUIT"))
         (fn2-sld-post-text '("POST" "From: a" "From: b" "Subject: s" "Newsgroups: g" "" "x" "." "QUIT"))
         (fn2-sld-post-text '("POST" "From: a" "Subject: s" "Newsgroups: g" "Message-ID: <bad>" "" "x" "." "QUIT"))
@@ -61,8 +63,10 @@
   (put-assoc-equal :identity-overlays 64
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
-      (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((32 . 1024) (128 . 4096) (64 . 65536)) *fn2-sld-profile*)))))))
+      (put-assoc-equal :reading t
+        (put-assoc-equal :x 2
+          (put-assoc-equal :large-upload-windows 2
+            (put-assoc-equal :pool-classes '((32 . 1024) (128 . 4096) (64 . 65536)) *fn2-sld-profile*)))))))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by
