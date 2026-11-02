@@ -305,3 +305,46 @@
                             (list (fn2-su-fact 2 7) (fn2-su-fact 9 7)))))
   (and (equal (car r) :idle) (equal (cadr r) 1) (equal (cadddr r) '((13 1 5 1)))
        (equal (caddr r) (list (list :found (fn2-su-fact 2 7)) (list :absent))))))
+
+;; Readiness across seal-row phases (Brick H4): when no overlay is sealable
+;; (an older batch is private), :idle is not pending, every active non-idle
+;; phase (:build, :filter, :install) stays pending so a parked sealer wakes to
+;; finish its in-flight run, and :failed is not pending; with a sealable
+;; overlay, :idle is pending. Also verify fn2-seal-cache refuses :cache when
+;; the writer's direct-mapped cache row already holds a ready page.
+(fn2-su-defun fn2-su-pending-check ()
+ (b* ((fn2-su-bind (code) (fn2-su-call fn2-su-setup 3 400))
+      ((unless (eq code :ok)) (fn2-su-mv (list :setup code)))
+      (fn2-su-bind (code)
+        (fn2-su-call fn2-su-load 8 *fn2-su-groups*
+                     (list (fn2-su-batch 0 3 100) (fn2-su-batch 3 3 100)) 0 '(2 1) t))
+      ((unless (eq code :ok)) (fn2-su-mv (list :load code)))
+      (p-idle-blocked (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-build* fn2-seals))
+      (p-build (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-filter* fn2-seals))
+      (p-filter (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-install* fn2-seals))
+      (p-install (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-failed* fn2-seals))
+      (p-failed (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-idle* fn2-seals))
+      (fn2-overlays (fn2-overlays-set-phase 1 *fn2-overlay-phase-frozen* fn2-overlays))
+      (p-idle-sealable (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-run-writers (fn2-run-writers-put 0 (unit 5) (counter 1) (slot 2) (gen 1)))
+      ((mv c1 fn2-run-cache) (fn2-seal-cache 0 fn2-run-writers fn2-run-cache))
+      (fn2-run-writers (fn2-run-writers-put 0 (unit (+ 5 (fn2-run-cache-rows fn2-run-cache))) (counter 2) (slot 3) (gen 1)))
+      ((mv c2 fn2-run-cache) (fn2-seal-cache 0 fn2-run-writers fn2-run-cache))
+      (kept-unit (fn2-run-cache-unit (fn2-run-cache-row 5 fn2-run-cache) fn2-run-cache)))
+  (fn2-su-mv (list p-idle-blocked p-build p-filter p-install p-failed p-idle-sealable c1 c2 kept-unit))))
+(defun fn2-su-pending-result ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+  (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+    (fn2-su-pending-check fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+                          fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+   (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths))))
+(assert-event (equal (fn2-su-pending-result) '(nil t t t nil t :ok :cache 5)))

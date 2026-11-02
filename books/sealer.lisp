@@ -99,7 +99,20 @@
                  fn2-overlays)))
 (defthm fn2-seal-pick-natp
  (implies (natp best) (natp (fn2-seal-pick k o best fn2-overlays))) :rule-classes :type-prescription)
-(in-theory (disable fn2-seal-older-p fn2-seal-sealable-p fn2-seal-pick))
+; Work is pending in the seal row when it is in a non-idle active phase
+; (:build, :filter, :install), or when it is :idle and a published overlay is
+; sealable.
+(defun fn2-seal-pending-p (fn2-seals fn2-overlays)
+ (declare (xargs :stobjs (fn2-seals fn2-overlays) :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays))))
+ (and (< 0 (fn2-seals-rows fn2-seals))
+      (let ((phase (fn2-seals-phase 0 fn2-seals)))
+       (or (equal phase *fn2-seal-phase-build*)
+           (equal phase *fn2-seal-phase-filter*)
+           (equal phase *fn2-seal-phase-install*)
+           (and (equal phase *fn2-seal-phase-idle*)
+                (< (fn2-seal-pick (fn2-overlays-rows fn2-overlays) 0 (fn2-overlays-rows fn2-overlays) fn2-overlays)
+                   (fn2-overlays-rows fn2-overlays)))))))
+(in-theory (disable fn2-seal-older-p fn2-seal-sealable-p fn2-seal-pick fn2-seal-pending-p))
 
 ; Retire overlay O (frozen -> free) and release its arena.
 (defun fn2-seal-retire (o fn2-overlays fn2-pool)
@@ -218,15 +231,23 @@
  (fn2-seals fn2-run-builds fn2-run-writers fn2-pool) (fn2-seals fn2-run-builds fn2-run-writers fn2-run-cache fn2-pool) t
  (fn2-seal-take-page fn2-run-build-page fn2-run-buildp))
 
-; A page writer W just sealed: cache it, so readers find it resident.
+; A page writer W just sealed: cache it, so readers find it resident; refuse
+; :cache when its direct-mapped row already holds a ready page.
 (defun fn2-seal-cache (w fn2-run-writers fn2-run-cache)
  (declare (xargs :stobjs (fn2-run-writers fn2-run-cache) :guard (and (fn2-run-writers-wfp fn2-run-writers) (fn2-run-cache-wfp fn2-run-cache))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-cache-install)))))
- (if (not (and (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))) (mv :bounds fn2-run-cache)
-  (fn2-run-cache-install (fn2-run-writers-unit w fn2-run-writers) (fn2-run-writers-counter w fn2-run-writers)
+  :guard-hints (("Goal" :in-theory (disable fn2-run-cache-install fn2-run-cache-row)))))
+ (b* (((unless (and (natp w) (< w (fn2-run-writers-rows fn2-run-writers)) (< 0 (fn2-run-cache-rows fn2-run-cache))))
+       (mv :bounds fn2-run-cache))
+      (unit (fn2-run-writers-unit w fn2-run-writers))
+      (i (fn2-run-cache-row unit fn2-run-cache))
+      ((unless (and (natp i) (< i (fn2-run-cache-rows fn2-run-cache)))) (mv :bounds fn2-run-cache))
+      ((when (equal (fn2-run-cache-state i fn2-run-cache) *fn2-run-cache-state-ready*))
+       (mv :cache fn2-run-cache)))
+  (fn2-run-cache-install unit (fn2-run-writers-counter w fn2-run-writers)
                          (fn2-run-writers-slot w fn2-run-writers) (fn2-run-writers-gen w fn2-run-writers) fn2-run-cache)))
 (fn2-seal-shape fn2-seal-cache (w fn2-run-writers fn2-run-cache) (fn2-run-cache) (fn2-run-writers fn2-run-cache) t
- (fn2-run-cache-install))
+ (fn2-run-cache-install fn2-run-cache-row fn2-run-cache-state fn2-run-writers-unit fn2-run-writers-counter
+  fn2-run-writers-slot fn2-run-writers-gen))
 
 ; The column readers of the build's and filter's tables, folded in the
 ; callee shapes below (C-SHAPE-READS: their values only feed run-time checks
@@ -683,4 +704,4 @@
  (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
   fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests) t
  (fn2-seal-start fn2-seal-build fn2-seal-filter-open fn2-seal-filter fn2-seal-install fn2-seals-phase fn2-seals-sub))
-(assert-event (fn2-assert-compliant-p '(fn2-seal-step) (w state)))
+(assert-event (fn2-assert-compliant-p '(fn2-seal-step fn2-seal-pending-p fn2-seal-cache) (w state)))

@@ -153,6 +153,9 @@
                   (:hash (fn2-smu-exhaust 64 1 fn2-core))
                   (:page (fn2-smu-exhaust 64 3 fn2-core))
                   (:cache (fn2-smu-hold-cache 0 2 fn2-core))
+                  (:cache-seal (b* (((mv & fn2-core) (fn2-sealer-step 4096 fn2-core))
+                                    ((mv & fn2-core) (fn2-sealer-step 4096 fn2-core)))
+                                (fn2-smu-hold-cache 0 2 fn2-core)))
                   (otherwise (fn2-smu-hold-runs fn2-core))))
       (fn2-core (fn2-smu-turns 400 fn2-core)))
   (mv (list (fn2-exec-status fn2-core) (fn2-core-stop-reason fn2-core) (car (fn2-smu-row fn2-core))
@@ -167,12 +170,51 @@
  (fn2-smu-check (list (fn2-smu-pressure-result :hash *fn2-smu-profile*)
                       (fn2-smu-pressure-result :page *fn2-smu-profile*)
                       (fn2-smu-pressure-result :cache *fn2-smu-small*)
+                      (fn2-smu-pressure-result :cache-seal *fn2-smu-small*)
                       (fn2-smu-pressure-result :runs *fn2-smu-small*))
                 `((:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
                   (:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
+                  (:stop ,*fn2-stop-reason-sealer-cache* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
                   (:stop ,*fn2-stop-reason-sealer-cache* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*))
                   (:stop ,*fn2-stop-reason-sealer-full* ,*fn2-sealer-state-stopped* (,*fn2-overlay-phase-frozen*)))))
 ;; The small profile without the pressure still seals (the controls' teeth).
 (assert-event
  (fn2-smu-check (cadr (fn2-smu-result *fn2-smu-small* 400))
                 `(((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*) :idle ,*fn2-stop-reason-none*)))
+
+;; Non-idle seal-row wake (Brick H4): when the seal row is in :build, :filter
+;; or :install while the sealer machine row is parked on :sealable,
+;; fn2-sealer-ready is true and the grant service wakes the sealer to complete
+;; the in-flight seal rather than stalling with pending-p = nil.
+(defun fn2-smu-set-seal-phase (phase fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-seals (fn2-core-seals fn2-core)))
+  (fn2-seals) (fn2-seals-set-phase 0 phase fn2-seals) fn2-core))
+(defun fn2-smu-mid-seal-wake (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-init-executor *fn2-smu-profile* :null nil fn2-core))
+      ;; Advance one seal step from :idle into :build while the machine row is
+      ;; still parked on :sealable; verify readiness across :build/:filter/:install
+      ;; and resume through fn2-turn to completion.
+      ((mv step1 fn2-core) (fn2-sealer-step 4096 fn2-core))
+      (r-build (fn2-sealer-ready fn2-core))
+      (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-filter* fn2-core))
+      (r-filter (fn2-sealer-ready fn2-core))
+      (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-install* fn2-core))
+      (r-install (fn2-sealer-ready fn2-core))
+      (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-failed* fn2-core))
+      (r-failed (fn2-sealer-ready fn2-core))
+      (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-build* fn2-core))
+      (fn2-core (fn2-smu-turns 400 fn2-core)))
+  (mv (list step1 r-build r-filter r-install r-failed
+            (fn2-smu-runs 0 64 fn2-core) (fn2-smu-phases 0 1 fn2-core) (fn2-smu-row fn2-core)
+            (fn2-exec-status fn2-core) (fn2-core-stop-reason fn2-core))
+      fn2-core)))
+(defun fn2-smu-mid-seal-wake-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-smu-mid-seal-wake fn2-core) r)))
+(assert-event
+ (fn2-smu-check (fn2-smu-mid-seal-wake-result)
+                `(:more t t t nil
+                  ((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*)
+                  :idle ,*fn2-stop-reason-none*)))

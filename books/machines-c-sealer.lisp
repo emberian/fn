@@ -78,10 +78,3 @@
       ((unless (eq c :ok)) (mv c fn2-seals)))
   (fn2-seal-init 0 fbase crow *fn2-sealer-fill* *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-seals)))
 (fn2-seal-shape fn2-seal-genesis (profile fcrows trows frows fn2-seals) (fn2-seals) (fn2-seals) t (fn2-seal-init fn2-sealer-fbase))
-(defun fn2-seal-pending-p (fn2-seals fn2-overlays)
- (declare (xargs :stobjs (fn2-seals fn2-overlays) :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays))))
- (and (< 0 (fn2-seals-rows fn2-seals)) (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*)
-      (< (fn2-seal-pick (fn2-overlays-rows fn2-overlays) 0 (fn2-overlays-rows fn2-overlays) fn2-overlays)
-         (fn2-overlays-rows fn2-overlays))))
-(in-theory (disable fn2-seal-pending-p))
-
