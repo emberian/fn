@@ -180,7 +180,6 @@
 (defconst *fn2-answer-interim*
   '((list :no-projection :d6)
     (newgroups :no-projection :d6) (newnews :no-projection :d6)
-    (article :no-projection :d6) (head :no-projection :d6) (body :no-projection :d6)
     (hdr :no-projection :d6) (xhdr :no-projection :d6) (xpat :no-projection :d6)
     (xfn-zarticle :no-projection :d6) (xfncatchup :no-projection :e4)
     (post :not-permitted :d5) (ihave :retry :d5) (check :later :d5)
@@ -203,6 +202,7 @@
 ;; node that serves no archive (NEXT and LAST: no group can be selected).
 (defconst *fn2-answer-unread*
   '((group :no-projection) (listgroup :no-projection) (next :no-group-selected) (last :no-group-selected)
+    (article :no-projection) (head :no-projection) (body :no-projection)
     (stat :no-projection) (over :no-projection) (xover :no-projection)))
 (make-event
  (value `(defun fn2-answer-unread-reply (tag)

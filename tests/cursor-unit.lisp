@@ -25,7 +25,8 @@
   '("LIST" "NEXT" "STAT" "OVER" "LISTGROUP" "GROUP nope.nope" "GROUP local.empty" "NEXT" "GROUP local.test" "STAT"
     "NEXT" "NEXT" "NEXT" "LAST" "LAST" "LAST" "STAT 9" "STAT <b@example.invalid>" "STAT <z@example.invalid>" "LISTGROUP"
     "LISTGROUP local.test 2-" "LIST COUNTS" "LIST newsgroups" "OVER 2-3" "OVER 7-9" "XOVER 7-9" "OVER"
-    "OVER <c@example.invalid>" "QUIT"))
+    "OVER <c@example.invalid>" "ARTICLE" "HEAD 2" "BODY <b@example.invalid>" "ARTICLE 9"
+    "HEAD <z@example.invalid>" "QUIT"))
 (assert-event (fn2-csp-linesp *fn2-cru-lines*))
 (defun fn2-cru-ov (n subject mid)
   (declare (xargs :verify-guards nil))
@@ -47,6 +48,14 @@
         "423 no articles in that range" "420 no article(s) selected"
         "224 overview information follows" (fn2-cru-ov 1 "one" "<a@example.invalid>") "."
         "224 overview information follows" (fn2-cru-ov 3 "three" "<c@example.invalid>") "."
+        "220 1 <a@example.invalid> article follows"
+        "From: a@example.invalid" "Subject: one" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+        "Message-ID: <a@example.invalid>" "" "xxxxx" "."
+        "221 2 <b@example.invalid> headers follow"
+        "From: a@example.invalid" "Subject: two" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+        "Message-ID: <b@example.invalid>" "."
+        "222 0 <b@example.invalid> body follows" "xxxxx" "."
+        "423 no article with that number" "430 no article with that message-id"
         "205 closing connection"))
 (defun fn2-cru-expected-wire ()
   (declare (xargs :verify-guards nil))
@@ -126,7 +135,7 @@
 ;; Served = reference (D6 1/n-b) over the transcript less OVER <id> (the
 ;; article's number in the group comes with the transaction's address
 ;; entries), whole and in small chunks.
-(defconst *fn2-cru-served-lines* (remove-equal "OVER <c@example.invalid>" *fn2-cru-lines*))
+(defconst *fn2-cru-served-lines* *fn2-cru-lines*)
 (defun fn2-cursor-test-served (sizes)
   (declare (xargs :verify-guards nil))
   (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-served-lines* sizes))
