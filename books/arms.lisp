@@ -160,7 +160,7 @@
 ; :child names the operation's body over the core children it touches
 ; (MACHINE-FORM 6.5 P2): the same formals with fn2-core replaced by those
 ; children, the same results with fn2-core replaced likewise.
-(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :tables :own-writes :effects :target :answers :child :doc))
+(defconst *fn2-cost-keys* '(:bytes :steps :descriptors :tables :own-writes :effects :target :answers :faults :child :doc))
 (defun fn2-cost-boundp (x)
   (declare (xargs :verify-guards nil))
   (or (natp x) (and (symbolp x) x (not (keywordp x)) (not (eq x t)))))
@@ -235,6 +235,8 @@
         ((not (or (null (fn2-arm-get :answers args)) (eq (fn2-arm-get :answers args) t)
                   (and (keyword-listp (fn2-arm-get :answers args)) (consp (fn2-arm-get :answers args)))))
          (msg "defcost ~x0: :answers is t or a non-empty list of answer codes." fn))
+        ((not (keyword-listp (fn2-arm-get :faults args)))
+         (msg "defcost ~x0: :faults is a list of answer codes." fn))
         ((not (symbolp (fn2-arm-get :child args)))
          (msg "defcost ~x0: :child names a function." fn))
         ((not (stringp (fn2-arm-get :doc args)))
@@ -249,7 +251,7 @@
               :descriptors (or (fn2-arm-get :descriptors args) 0)
               :tables (fn2-arm-get :tables args) :own-writes (fn2-arm-get :own-writes args)
               :effects (fn2-arm-get :effects args) :target (fn2-arm-get :target args)
-              :answers (fn2-arm-get :answers args) :child (fn2-arm-get :child args)
+              :answers (fn2-arm-get :answers args) :faults (fn2-arm-get :faults args) :child (fn2-arm-get :child args)
               :doc (fn2-arm-get :doc args) :proof '(:owed))
         (list (list :function fn :at :callbacks)) nil))))
 
@@ -536,7 +538,7 @@
    (if (consp use) (fn2-arm-get :effects (cdr use))
      (let ((row (fn2-decl-row (list :cost use) world)))
        (if row (fn2-decl-get :effects row)
-         (if (zp fuel) nil
+         (if (zp fuel) '((:fuel-exhausted))
            (fn2-arm-uses-effects-fuel
             (fn2-arm-get :uses (fn2-decl-get :contract (fn2-operation-row use world)))
             (1- fuel) world))))))
@@ -626,16 +628,22 @@
          (releases (append (fn2-arm-effect-kinds effects '(:release :transfer) nil)
                            (and transfersp (fn2-arm-transfer-kinds effects))))
          (moves (fn2-arm-moves sources nexts holds)))
-    (cond ((fn2-arm-per-use-missing uses world)
+    (cond ((assoc-eq :fuel-exhausted effects)
+           (msg "exhausts effect-expansion fuel in :uses (cyclic or too-deep :uses chain)."))
+          ((fn2-arm-per-use-missing uses world)
            (msg "uses ~x0 without naming its per-use effect: write (~x0 :effects ...)."
                 (fn2-arm-per-use-missing uses world)))
           ((fn2-arm-moves-problem moves acquires releases))
-          ((not (fn2-arm-subsetp acquires (fn2-arm-moved-kinds moves t)))
+          ((if (or transfersp (equal (len moves) 1))
+               (not (fn2-arm-msubsetp acquires (fn2-arm-moved-kinds moves t)))
+             (not (fn2-arm-subsetp acquires (fn2-arm-moved-kinds moves t))))
            (msg "acquires ~x0, which no move to a declared successor holds (an undeclared resource effect)."
-                (fn2-arm-minus acquires (fn2-arm-moved-kinds moves t))))
-          ((not (fn2-arm-subsetp releases (fn2-arm-moved-kinds moves nil)))
+                (fn2-arm-mminus acquires (fn2-arm-moved-kinds moves t))))
+          ((if (or transfersp (equal (len moves) 1))
+               (not (fn2-arm-msubsetp releases (fn2-arm-moved-kinds moves nil)))
+             (not (fn2-arm-subsetp releases (fn2-arm-moved-kinds moves nil))))
            (msg "releases ~x0, which no move to a declared successor gives up (an undeclared resource effect)."
-                (fn2-arm-minus releases (fn2-arm-moved-kinds moves nil))))
+                (fn2-arm-mminus releases (fn2-arm-moved-kinds moves nil))))
           (t (fn2-arm-target-problem uses world)))))
 (defun fn2-arm-resource-problem (sources nexts holds uses world)
   (declare (xargs :verify-guards nil))
@@ -726,24 +734,68 @@
 ; The same declarations as D0's effect rows, for D0's checker.
 ;; One row per operation reached (through forwarded callbacks), each from
 ;; the holds of the arm's source phase: alternative paths are separate rows.
-(defun fn2-arm-effect-rows-from (kind source uses holds fuel world)
+(defun fn2-arm-step-held (held effects)
+  ; HELD after EFFECTS: drop own releases/transfers, add own acquires
+  (declare (xargs :verify-guards nil))
+  (append (fn2-arm-mminus held (append (fn2-arm-effect-kinds effects '(:release :transfer) nil)
+                                       (fn2-arm-transfer-kinds effects)))
+          (fn2-arm-effect-kinds effects '(:acquire) nil)))
+(defun fn2-arm-effect-rows-seq (kind source uses held fuel world)
+  ; (mv rows held-after)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
-  (if (or (zp fuel) (atom uses)) nil
-    (let* ((use (car uses)) (name (fn2-arm-use-name use))
-           (callee (and (atom use) (not (fn2-decl-row (list :cost name) world))
-                        (fn2-decl-get :contract (fn2-operation-row name world)))))
-      (append (if callee
-                  (fn2-arm-effect-rows-from kind source (fn2-arm-get :uses callee) holds (1- fuel) world)
-                (let ((e (fn2-arm-use-effects use world)))
-                  (and (consp e)
+  (if (atom uses) (mv nil held)
+    (if (zp fuel)
+        (mv (list (list (list (list kind source) (fn2-arm-use-name (car uses)))
+                        :holds-before held :effects '((:fuel-exhausted))))
+            held)
+      (let* ((use (car uses)) (name (fn2-arm-use-name use))
+             (callee (and (atom use) (not (fn2-decl-row (list :cost name) world))
+                          (fn2-decl-get :contract (fn2-operation-row name world)))))
+        (mv-let (rows1 held1)
+          (if callee
+              (fn2-arm-effect-rows-seq kind source (fn2-arm-get :uses callee) held (1- fuel) world)
+            (let ((e (fn2-arm-use-effects use world)))
+              (mv (and (consp e)
                        (list (list (list (list kind source) name)
-                                   :holds-before (fn2-arm-holds-of source holds) :effects e)))))
-              (fn2-arm-effect-rows-from kind source (cdr uses) holds (1- fuel) world)))))
+                                   :holds-before held :effects e)))
+                  (if (consp e) (fn2-arm-step-held held e) held))))
+          (mv-let (rows2 held2)
+            (fn2-arm-effect-rows-seq kind source (cdr uses) held1 (1- fuel) world)
+            (mv (append rows1 rows2) held2)))))))
+(defun fn2-arm-effect-rows-from (kind source uses holds fuel world)
+  (declare (xargs :verify-guards nil))
+  (mv-let (rows held)
+    (fn2-arm-effect-rows-seq kind source uses (fn2-arm-holds-of source holds) fuel world)
+    (declare (ignore held))
+    rows))
 (defun fn2-arm-effect-rows (kind sources uses holds world)
   (declare (xargs :verify-guards nil))
   (if (atom sources) nil
     (append (fn2-arm-effect-rows-from kind (car sources) uses holds 256 world)
             (fn2-arm-effect-rows kind (cdr sources) uses holds world))))
+(defun fn2-arm-path-entries-effect-rows (kind s as uses holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom as) nil
+    (mv-let (rows held)
+      (fn2-arm-effect-rows-seq kind s uses (fn2-arm-holds-under s (car as) holds while) 256 world)
+      (declare (ignore held))
+      (append rows (fn2-arm-path-entries-effect-rows kind s (cdr as) uses holds while world)))))
+(defun fn2-arm-path-sources-effect-rows (kind sources path doms holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom sources) nil
+    (append (fn2-arm-path-entries-effect-rows kind (car sources)
+              (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path)))
+              (caddr path) holds while world)
+            (fn2-arm-path-sources-effect-rows kind (cdr sources) path doms holds while world))))
+(defun fn2-arm-paths-effect-rows (kind sources paths doms holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) nil
+    (let ((path (car paths)))
+      (append (and (not (nth 5 path))
+                   (fn2-arm-path-sources-effect-rows kind
+                     (if (eq (car path) :any) sources (intersection-eq (car path) sources))
+                     path doms holds while world))
+              (fn2-arm-paths-effect-rows kind sources (cdr paths) doms holds while world)))))
 ; ----------------------------------------------------------------------
 ; The frame predicate of an arm's invariant row: cores as lists of children.
 ; Every child outside CHILDREN is unchanged; in the kind's table (child TABLE)

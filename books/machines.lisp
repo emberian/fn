@@ -902,13 +902,9 @@
                            (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
                            holds while world)))
 (defun fn2-machine-arm-path-report (name entries world)
-  ; ((TAG . problem) ...) over a kind's continuations, when it has no conditional holds
-  (declare (xargs :verify-guards nil))
-  (if (or (atom entries) (fn2-machine-declared name :holds-while world)) nil
-    (let* ((c (cddar entries))
-           (p (and (member-eq :paths c)
-                   (fn2-machine-arm-paths-problem name (list (caar entries)) c (fn2-machine-property name :holds world) world))))
-      (append (and p (list (cons (caar entries) p))) (fn2-machine-arm-path-report name (cdr entries) world)))))
+  ; every generated arm with :paths is checked and enforced by fn2-machine-arm-resource-problem
+  (declare (xargs :verify-guards nil) (ignore name entries world))
+  nil)
 (defun fn2-machine-path-report-events (name report)
   (declare (xargs :verify-guards nil))
   (if (atom report) nil
@@ -916,9 +912,17 @@
           (fn2-machine-path-report-events name (cdr report)))))
 (defun fn2-machine-arm-resource-problem (name sources c holds world)
   (declare (xargs :verify-guards nil))
-  (if (and (member-eq :paths c) (fn2-machine-declared name :holds-while world))
+  (if (member-eq :paths c)
       (fn2-machine-arm-paths-problem name sources c holds world)
     (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds (fn2-arm-get :uses c) world)))
+(defun fn2-machine-arm-effect-rows (name sources c uses holds world)
+  (declare (xargs :verify-guards nil))
+  (if (member-eq :paths c)
+      (let ((while (fn2-machine-declared name :holds-while world)))
+        (fn2-arm-paths-effect-rows name sources (fn2-arm-get :paths c)
+                                   (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
+                                   holds while world))
+    (fn2-arm-effect-rows name sources uses holds world)))
 (defun fn2-machine-arm-problem (name entry observationp world)
   (declare (xargs :verify-guards nil))
   (let* ((tag (car entry)) (c (cddr entry))
@@ -948,10 +952,10 @@
      ((and (not (eq (fn2-arm-get :language c) :unchecked))
            (fn2-machine-arm-resource-problem name sources c holds world))
       (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds world)))
-     ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-arm-effect-rows name sources uses holds world))
+     ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds world))
                                    *fn2-resource-order*))
       (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
-           (fn2-arm-effect-rows name sources uses holds world)))
+           (fn2-machine-arm-effect-rows name sources c uses holds world)))
      ((and posture
            (not (and (true-listp posture) (member-eq (car posture) *fn2-arm-postures*)
                      (member-eq (fn2-arm-get :to (cdr posture)) (fn2-arm-get :next c)))))

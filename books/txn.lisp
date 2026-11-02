@@ -122,7 +122,7 @@
 (defcost fn2-claim-begin-core :answers (:ok :bounds :state) :tables (fn2-core-claims)
   :doc "Start a claim on a Message-ID's exact octets.")
 (defcost fn2-claim-state-core :doc "Read a transaction's claim state.")
-(defcost fn2-claim-walk-core :answers (:claimed :wait :more :bounds :state :fault) :bytes 4096
+(defcost fn2-claim-walk-core :answers (:claimed :wait :more :bounds :state :fault) :faults (:bounds :state :fault) :bytes 4096
   :tables (fn2-core-claims)
   :effects ((:acquire (:identity-reservation)))
   :doc "Walk the claim's bucket at most 16 chain steps (one Message-ID compared per step on an equal hash): claimed, waiting in the holder's FIFO, or more.")
@@ -134,7 +134,7 @@
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count-next :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
-(defcost fn2-txn-next-name :answers (:name :end :run :fault) :bytes *fn2-txn-scan-bytes*
+(defcost fn2-txn-next-name :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
 (defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the article's identity, article and outcome slots in the private successor.")
@@ -201,9 +201,11 @@
    (:let rslot row-slot)
    (:if (not (equal row-word 0))
         ((:do (pcode) (fn2-conn-post-word row-conn row-conn-gen row-request row-word))
-         (:do (rcode) (fn2-successor-release rslot))
+         (:do (rcode) (fn2-successor-release rslot)
+          :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
          (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t))
-        ((:do (rcode) (fn2-successor-release rslot))
+        ((:do (rcode) (fn2-successor-release rslot)
+          :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
          (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t)))))
  :arms
  ((:free (:idle))

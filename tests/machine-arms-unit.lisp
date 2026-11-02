@@ -447,3 +447,83 @@
  :observes ())
 (must-fail (defmachine-arms fn2-arms-park-wait-bad :children))
 (value-triple (cw "MACHINE ARMS UNIT: defwait park named formals supplied and unnamed formal refused PASS~%"))
+
+;; Brick F2 teeth:
+;; 1. Sequential D0 resource acquisition order check: acquiring a higher-ranked
+;; resource (:identity-reservation) before a lower-ranked one (:transaction-row)
+;; in the same arm is caught even when the source phase holds neither.
+(defun fn2-arms-t-acq-hi () (declare (xargs :guard t)) :ok)
+(defun fn2-arms-t-acq-lo () (declare (xargs :guard t)) :ok)
+(defcost fn2-arms-t-acq-hi :answers (:ok) :child fn2-arms-t-acq-hi
+  :effects ((:acquire (:identity-reservation))) :doc "Test: acquire higher-ranked resource.")
+(defcost fn2-arms-t-acq-lo :answers (:ok) :child fn2-arms-t-acq-lo
+  :effects ((:acquire (:transaction-row))) :doc "Test: acquire lower-ranked resource.")
+(assert-event
+ (not (fn2-resource-effects-p
+       (fn2-arm-effect-rows 'fn2-arms-probe '(:work) '(fn2-arms-t-acq-hi fn2-arms-t-acq-lo)
+                            '((:work) (:done :transaction-row :identity-reservation)) (w state))
+       *fn2-resource-order*)))
+(assert-event
+ (fn2-resource-effects-p
+  (fn2-arm-effect-rows 'fn2-arms-probe '(:work) '(fn2-arms-t-acq-lo fn2-arms-t-acq-hi)
+                       '((:work) (:done :transaction-row :identity-reservation)) (w state))
+  *fn2-resource-order*))
+
+;; 2. Derived call-cost summation: two sequential :do calls of 3072 bytes each
+;; sum to 6144 bytes in the derived contract cost, even when :charge states 0.
+(defun fn2-arms-t-work3k (v) (declare (xargs :guard t)) (nfix v))
+(defcost fn2-arms-t-work3k :bytes 3072 :child fn2-arms-t-work3k :doc "Test: 3 KiB operation.")
+(defmachine fn2-arms-cost-sum
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 8192 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:do (a) (fn2-arms-t-work3k row-count))
+               (:do (b) (fn2-arms-t-work3k a))
+               (:set (count b)) (:next :done) (:charge :steps *fn2-work-small*))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-cost-sum :children)
+(make-event
+ (let* ((conts (fn2-arms-test-conts 'fn2-arms-cost-sum (w state)))
+        (cost (cadr (member-eq :cost (cddr (assoc-eq :work conts))))))
+   (if (equal (cadr (member-eq :bytes cost)) 6144)
+       '(value-triple :cost-sum-ok)
+     (er hard 'cost-sum "expected 6144 derived bytes, got ~x0" cost))))
+
+;; 3. :faults on defcost + (:refuse WORD) in :on-refusal + :do-chain auto-split (> 4 :do steps):
+(defun fn2-arms-t-fop (v) (declare (xargs :guard t)) (mv :ok (nfix v)))
+(defcost fn2-arms-t-fop :answers (:ok :soft :fault) :faults (:fault) :child fn2-arms-t-fop
+  :doc "Test: operation with soft refusal and fault.")
+(defmachine fn2-arms-f2-probe
+ :phases (:free :work :refused :done)
+ :fields ((word :u8) (count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work :on-refusal (:refuse 7)
+               (:do (c1 v1) (fn2-arms-t-fop row-count))
+               (:do (c2 v2) (fn2-arms-t-fop v1))
+               (:do (c3 v3) (fn2-arms-t-fop v2))
+               (:do (c4 v4) (fn2-arms-t-fop v3))
+               (:do (c5 v5) (fn2-arms-t-fop v4))
+               (:set (count v5)) (:next :done) (:charge :steps *fn2-work-small*))
+        (:refused (:idle))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-f2-probe :children)
+(assert-event (function-symbolp 'fn2-arms-f2-probe-chain-work-0-children (w state)))
+;; leaving a non-fault answer (:soft) unrouted to a :stop :on-refusal is refused
+(defmachine fn2-arms-f2-bad
+ :phases (:free :work)
+ :fields ((word :u8))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work :on-refusal ((:stop :machine-phase))
+               (:do (c1 v1) (fn2-arms-t-fop row-word))
+               (:charge :steps *fn2-work-small*)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-f2-bad :children))
+(value-triple (cw "MACHINE ARMS UNIT: Brick F2 sequential D0 holdings, derived call-cost summation, :faults + (:refuse WORD), and :do-chain auto-split PASS~%"))
