@@ -145,4 +145,37 @@ import Fn2
 #print axioms Fn2.Arms.Derive.mutant_frame_touched_neg
 #print axioms Fn2.Arms.Derive.mutant_repeat_fuel_exhausted_neg
 #print axioms Fn2.Arms.Derive.layerA_childForm_contracts_agree
+#print axioms Fn2.Arms.Derive.stepsExec_holds_sub
+#print axioms Fn2.Arms.Derive.runArm_holds_sub
+#print axioms Fn2.Arms.Derive.Step.eval_wfp
+#print axioms Fn2.Arms.Derive.Step.eval_frame
+#print axioms Fn2.Arms.Derive.Step.eval_budget
+#print axioms Fn2.Arms.Derive.Step.eval_holds_sublist
+-- Fn2.Pathway & Fn2.MachineProofs (Brick H6 PW3 wrapper preservation & per-machine contract proofs):
+#print axioms Fn2.Pathway.toList_ofList
+#print axioms Fn2.Pathway.entering_length
+#print axioms Fn2.Pathway.widen_length
+#print axioms Fn2.Pathway.entering_frame_entry
+#print axioms Fn2.Pathway.reconstruct_frame_entry
+#print axioms Fn2.Pathway.reconstruct_toList_length
+#print axioms Fn2.Pathway.reconstruct_results
+#print axioms Fn2.Pathway.reconstruct_children
+#print axioms Fn2.Pathway.project_reconstruct
+#print axioms Fn2.Pathway.armCorrect_project_preserve
+#print axioms Fn2.MachineProofs.listener_contracts_hold
+#print axioms Fn2.MachineProofs.echo_contracts_hold
+#print axioms Fn2.MachineProofs.scribe_contracts_hold
+#print axioms Fn2.MachineProofs.cursor_contracts_hold
+#print axioms Fn2.MachineProofs.txn_contracts_hold
+#print axioms Fn2.MachineProofs.ctl_contracts_hold
+#print axioms Fn2.MachineProofs.cns_contracts_hold
+#print axioms Fn2.MachineProofs.machineRegistry_contracts_hold
+#print axioms Fn2.MachineProofs.layerAKinds_contracts_hold
+#print axioms Fn2.MachineProofs.machine_eval_wfp
+#print axioms Fn2.MachineProofs.machine_eval_frame
+#print axioms Fn2.MachineProofs.machine_eval_budget
+#print axioms Fn2.MachineProofs.machine_eval_holds_sublist
+#print axioms Fn2.MachineProofs.pw3_wrapper_roundtrip_all_machines
+#print axioms Fn2.MachineProofs.pw3_wrapper_roundtrip_all_layerAKinds
+#print axioms Fn2.MachineProofs.pw3_mutant_dup_returns_neg
 

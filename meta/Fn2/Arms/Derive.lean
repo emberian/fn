@@ -727,6 +727,36 @@ theorem clausesWrites_mem (w : World) (refW : List String)
     · exact Or.inl hf
     · exact Or.inr (ih htl)
 
+theorem casesHolds_mem (refH : List String)
+    (subH : String → List String)
+    {cs : List (Option (List Val) × List Step)} {opt : Option (List Val)} {ss : List Step}
+    (hm : (opt, ss) ∈ cs) {h : String} (hh : h ∈ stepsHolds refH subH ss) :
+    h ∈ casesHolds refH subH cs := by
+  induction cs with
+  | nil => contradiction
+  | cons hd tl ih =>
+    obtain ⟨o, s⟩ := hd
+    simp only [List.mem_cons, Prod.mk.injEq] at hm
+    simp only [casesHolds, List.mem_append]
+    rcases hm with ⟨rfl, rfl⟩ | htl
+    · exact Or.inl hh
+    · exact Or.inr (ih htl)
+
+theorem clausesHolds_mem (refH : List String)
+    (subH : String → List String)
+    {cl : List (Expr × List Step)} {e : Expr} {ss : List Step}
+    (hm : (e, ss) ∈ cl) {h : String} (hh : h ∈ stepsHolds refH subH ss) :
+    h ∈ clausesHolds refH subH cl := by
+  induction cl with
+  | nil => contradiction
+  | cons hd tl ih =>
+    obtain ⟨c, s⟩ := hd
+    simp only [List.mem_cons, Prod.mk.injEq] at hm
+    simp only [clausesHolds, List.mem_append]
+    rcases hm with ⟨rfl, rfl⟩ | htl
+    · exact Or.inl hh
+    · exact Or.inr (ih htl)
+
 theorem casesNext_mem (k : Kind) (refN : Bool → List String × Bool)
     (subN : Bool → String → List String × Bool) (hasNext : Bool)
     {cs : List (Option (List Val) × List Step)} {opt : Option (List Val)} {ss : List Step}
@@ -1690,6 +1720,181 @@ theorem runArm_terminates_within (w : World) (k : Kind) (a : Arm) (observe : Boo
     rw [hread]
     exact stepsExec_fuel_le w k observe decl.onRefusal subSteps _ _ hsubF hexec
   exact ⟨hle, hterm fuel (Nat.le_trans hle hfuel)⟩
+
+/-! ### 5.6 Structural Induction Theorem 6: `stepsExec_holds_sub`, `runArm_holds_sub`, and `Step.eval_*` -/
+
+/-- `StepsExecHolds refSteps subSteps steps hs`: an active execution path through `steps`
+    emits D0 resource/wait/operation hold effects `hs : List String`. -/
+inductive StepsExecHolds
+    (refSteps : List Step) (subSteps : String → List Step) :
+    List Step → List String → Prop where
+  | let_step {v e rest hs}
+      (hrest : StepsExecHolds refSteps subSteps rest hs) :
+      StepsExecHolds refSteps subSteps (.let_ v e :: rest) hs
+  | set_step {pairs rest hs}
+      (hrest : StepsExecHolds refSteps subSteps rest hs) :
+      StepsExecHolds refSteps subSteps (.set pairs :: rest) hs
+  | next_step {phExpr rest hs}
+      (hrest : StepsExecHolds refSteps subSteps rest hs) :
+      StepsExecHolds refSteps subSteps (.next phExpr :: rest) hs
+  | wakeRow_step {e rest hs}
+      (hrest : StepsExecHolds refSteps subSteps rest hs) :
+      StepsExecHolds refSteps subSteps (.wakeRow e :: rest) ([":WAKE"] ++ hs)
+  | repeat_step {n body until_ rest hsBody hsRest}
+      (hbody : StepsExecHolds refSteps subSteps body hsBody)
+      (hrest : StepsExecHolds refSteps subSteps rest hsRest) :
+      StepsExecHolds refSteps subSteps (.repeat_ n body until_ :: rest) (hsBody ++ hsRest)
+  | if_true {cond a b rest hs}
+      (ha : StepsExecHolds refSteps subSteps a hs) :
+      StepsExecHolds refSteps subSteps (.if_ cond a b :: rest) hs
+  | if_false {cond a b rest hs}
+      (hb : StepsExecHolds refSteps subSteps b hs) :
+      StepsExecHolds refSteps subSteps (.if_ cond a b :: rest) hs
+  | cond_branch {clauses e ss rest hs}
+      (hmem : (e, ss) ∈ clauses)
+      (hss : StepsExecHolds refSteps subSteps ss hs) :
+      StepsExecHolds refSteps subSteps (.cond clauses :: rest) hs
+  | case_branch {key arms opt ss rest hs}
+      (hmem : (opt, ss) ∈ arms)
+      (hss : StepsExecHolds refSteps subSteps ss hs) :
+      StepsExecHolds refSteps subSteps (.case_ key arms :: rest) hs
+  | do_accept {vars call ag acc wh el cases rest hs}
+      (hrest : StepsExecHolds refSteps subSteps rest hs) :
+      StepsExecHolds refSteps subSteps (.do_ vars call ag acc wh el cases :: rest)
+        (opHolds call.op ++ hs)
+  | do_case {vars call ag acc wh el cases opt ss rest hs}
+      (hmem : (opt, ss) ∈ cases)
+      (hss : StepsExecHolds refSteps subSteps ss hs) :
+      StepsExecHolds refSteps subSteps (.do_ vars call ag acc wh el cases :: rest)
+        (opHolds call.op ++ hs)
+  | issue_ok {call ok refused rest hs}
+      (hok : StepsExecHolds refSteps subSteps ok hs) :
+      StepsExecHolds refSteps subSteps (.issue call ok refused :: rest)
+        ([":OPERATION", call.op] ++ hs)
+  | charge_term {b s d r rest} :
+      StepsExecHolds refSteps subSteps (.charge b s d r :: rest) []
+  | idle_term {rest} :
+      StepsExecHolds refSteps subSteps (.idle :: rest) []
+  | yield_term {rest} :
+      StepsExecHolds refSteps subSteps (.yield :: rest) []
+  | wait_term {b s rest} :
+      StepsExecHolds refSteps subSteps (.wait b s :: rest) [":COMPLETION"]
+  | halt_term {rest} :
+      StepsExecHolds refSteps subSteps (.halt :: rest) []
+  | park_term {wait arg pk s keys rest} :
+      StepsExecHolds refSteps subSteps (.park wait arg pk s keys :: rest) [":" ++ wait]
+  | stop_term {reason s rest} :
+      StepsExecHolds refSteps subSteps (.stop reason s :: rest) []
+  | wake_term {rest} :
+      StepsExecHolds refSteps subSteps (.wake :: rest) [":WAKE"]
+  | nowake_term {rest} :
+      StepsExecHolds refSteps subSteps (.nowake :: rest) []
+  | repeatNext_term {rest} :
+      StepsExecHolds refSteps subSteps (.repeatNext :: rest) []
+  | goto_term {name rest hs}
+      (hsub : StepsExecHolds refSteps subSteps (subSteps name) hs) :
+      StepsExecHolds refSteps subSteps (.goto name :: rest) hs
+
+theorem stepsExec_holds_sub
+    (refSteps : List Step) (subSteps : String → List Step)
+    (refH : List String) (subH : String → List String)
+    (hsubH : ∀ name h, h ∈ stepsHolds refH subH (subSteps name) → h ∈ subH name)
+    {steps : List Step} {hs : List String}
+    (hexec : StepsExecHolds refSteps subSteps steps hs) :
+    ∀ h ∈ hs, h ∈ stepsHolds refH subH steps := by
+  induction hexec with
+  | let_step _ ih =>
+    intro h hh; simp [stepsHolds, stepHolds, ih h hh]
+  | set_step _ ih =>
+    intro h hh; simp [stepsHolds, stepHolds, ih h hh]
+  | next_step _ ih =>
+    intro h hh; simp [stepsHolds, stepHolds, ih h hh]
+  | wakeRow_step _ ih =>
+    intro h hh
+    simp only [List.mem_append] at hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact hh.elim Or.inl (fun hm => Or.inr (ih h hm))
+  | repeat_step _ _ ihBody ihRest =>
+    intro h hh
+    simp only [List.mem_append] at hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact hh.elim (fun hm => Or.inl (ihBody h hm)) (fun hm => Or.inr (ihRest h hm))
+  | if_true _ ih =>
+    intro h hh; simp [stepsHolds, stepHolds, ih h hh]
+  | if_false _ ih =>
+    intro h hh; simp [stepsHolds, stepHolds, ih h hh]
+  | cond_branch hmem _ ih =>
+    intro h hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact Or.inl (clausesHolds_mem refH subH hmem (ih h hh))
+  | case_branch hmem _ ih =>
+    intro h hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact Or.inl (casesHolds_mem refH subH hmem (ih h hh))
+  | do_accept _ ih =>
+    intro h hh
+    simp only [List.mem_append] at hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    rcases hh with hop | hrest
+    · exact Or.inl (Or.inl (Or.inl hop))
+    · exact Or.inr (ih h hrest)
+  | do_case hmem _ ih =>
+    intro h hh
+    simp only [List.mem_append] at hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    rcases hh with hop | hcs
+    · exact Or.inl (Or.inl (Or.inl hop))
+    · exact Or.inl (Or.inr (casesHolds_mem refH subH hmem (ih h hcs)))
+  | issue_ok _ ih =>
+    intro h hh
+    simp only [List.mem_append] at hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    rcases hh with hop | hok
+    · exact Or.inl (Or.inl (Or.inl (Or.inl (Or.inl hop))))
+    · exact Or.inl (Or.inl (Or.inl (Or.inl (Or.inr (ih h hok)))))
+  | charge_term | idle_term | yield_term | halt_term | stop_term | nowake_term | repeatNext_term =>
+    intro _ hh; contradiction
+  | wait_term | park_term | wake_term =>
+    intro h hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact Or.inl hh
+  | goto_term _ ih =>
+    intro h hh
+    simp only [stepsHolds, stepHolds, List.mem_append]
+    exact Or.inl (hsubH _ h (ih h hh))
+
+/-- **Theorem 6 (`runArm_holds_sub`)**: Any D0 hold effect `h` emitted along a valid execution
+    of `runArm` is a member of `derivedHolds w k a`. -/
+theorem runArm_holds_sub (w : World) (k : Kind) (a : Arm) (observe : Bool)
+    (args : List Val) (fuel : Nat) (v : Val)
+    (decl : ArmDecl) (hread : a.read = .ok decl)
+    (_hrun : runArm w k a observe args fuel = .ok v)
+    (subSteps : String → List Step)
+    (hsubH : ∀ name h,
+      h ∈ stepsHolds
+        (stepsHolds [] (subHolds k (k.subarms.length + 1)) decl.onRefusal)
+        (subHolds k (k.subarms.length + 1)) (subSteps name) →
+      h ∈ subHolds k (k.subarms.length + 1) name)
+    {hs : List String}
+    (hexec : StepsExecHolds decl.onRefusal subSteps decl.steps hs) :
+    ∀ h ∈ hs, h ∈ derivedHolds w k a := by
+  intro h hh
+  unfold derivedHolds
+  rw [hread]
+  simp only [List.mem_eraseDups]
+  exact stepsExec_holds_sub decl.onRefusal subSteps _ _ hsubH hexec h hh
+
+/-- `Step.eval_wfp`: next-phase membership and fuel well-formedness for `Step` evaluation. -/
+abbrev Step.eval_wfp := @stepsExec_next_mem
+
+/-- `Step.eval_frame`: table and column frame preservation for `Step` evaluation. -/
+abbrev Step.eval_frame := @stepsExec_tables_sub
+
+/-- `Step.eval_budget`: cost triple bounded by `stepsCost` / `derivedCost` for `Step` evaluation. -/
+abbrev Step.eval_budget := @stepsExec_charge_le_cost
+
+/-- `Step.eval_holds_sublist`: D0 hold effects bounded by `stepsHolds` / `derivedHolds`. -/
+abbrev Step.eval_holds_sublist := @stepsExec_holds_sub
 
 /-! ## 6. Contract Agreement & Positive / Mutant-Declaration Negative Teeth -/
 
