@@ -335,10 +335,12 @@
 (defun fn2-sle-test-ctl-commands ()
   (declare (xargs :verify-guards nil))
   (and
-   ;; Owner check: local peer family 3 with uid 0 is owner; uid 1000 or non-local is refused.
-   (fn2-ctl-owner-p 3 0)
-   (not (fn2-ctl-owner-p 3 1000))
-   (not (fn2-ctl-owner-p 1 0))
+   ;; Owner check: local peer family 3 with configured owner uid is owner; mismatched uid or non-local is refused.
+   (fn2-ctl-owner-uid-p 3 0 0)
+   (fn2-ctl-owner-uid-p 3 1000 1000)
+   (not (fn2-ctl-owner-uid-p 3 0 1000))
+   (not (fn2-ctl-owner-uid-p 3 1000 0))
+   (not (fn2-ctl-owner-uid-p 1 1000 1000))
    ;; End-to-end STATUS / PAUSE / RESUME / DRAIN / STOP posture sequence:
    ;; STOP terminates the session so any trailing command after STOP is not executed.
    (equal (fn2-ctl-eval-commands '(:status :pause :status :resume :drain :stop :status)
@@ -362,8 +364,22 @@
             (mv-let (ok fn2-cns-edges fn2-machines fn2-control)
               (b* ((fn2-cns-edges (fn2-cns-edges-init 16 fn2-cns-edges))
                    (fn2-machines (fn2-machines-columns-init 8 fn2-machines))
-                   (fn2-control (fn2-control-init *fn2-profile-tiny* fn2-control))
+                   (fn2-control (fn2-control-init (put-assoc-equal :owner-uid 1000 *fn2-profile-tiny*) fn2-control))
+                   ((unless (and (fn2-ctl-owner-p 3 1000 fn2-control)
+                                 (not (fn2-ctl-owner-p 3 0 fn2-control))))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   ;; Stale edge with generation 1 does not wake row 2 when row 2 is at generation 9.
                    (fn2-machines (fn2-machines-set-wait-reason 2 *fn2-wait-wait-row* fn2-machines))
+                   ((mv code0 edge0 fn2-cns-edges) (fn2-cns-edge-link 0 2 1 3 fn2-cns-edges))
+                   ((unless (and (eq code0 :ok) (natp edge0)))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   (fn2-cns-edges (fn2-cns-wake-stream 0 3 fn2-cns-edges))
+                   ((mv & fn2-cns-edges fn2-machines fn2-control)
+                    (fn2-cns-grant-one-gen 9 fn2-cns-edges fn2-machines fn2-control))
+                   ((unless (equal (fn2-machines-wait-reason 2 fn2-machines) *fn2-wait-wait-row*))
+                    (mv nil fn2-cns-edges fn2-machines fn2-control))
+                   (fn2-cns-edges (fn2-cns-edge-unlink edge0 fn2-cns-edges))
+                   ;; Matching generation 1 wakes row 2 and clears its :wait-row wait reason.
                    ((mv code edge fn2-cns-edges) (fn2-cns-edge-link 0 2 1 5 fn2-cns-edges))
                    ((unless (and (eq code :ok) (natp edge)))
                     (mv nil fn2-cns-edges fn2-machines fn2-control))

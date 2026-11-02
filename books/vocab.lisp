@@ -249,6 +249,20 @@
   (implies (fn2-profilep profile) (fn2-ops-wfp (fn2-ops-init profile fn2-ops))))
 (in-theory (disable fn2-ops-init))
 
+(defconst *fn2-op-cleanup-reserve-threshold* 16)
+(defconst *fn2-op-cleanup-reserve-slots* 4)
+(defun fn2-op-cleanup-kindp (kind)
+  (declare (xargs :guard t))
+  (or (equal kind *fn2-action-close*)
+      (equal kind *fn2-action-cancel*)
+      (equal kind *fn2-action-arm-wake*)
+      (equal kind *fn2-action-fence*)))
+(defun fn2-op-cleanup-reserve (capacity)
+  (declare (xargs :guard t))
+  (if (>= (nfix capacity) *fn2-op-cleanup-reserve-threshold*)
+      *fn2-op-cleanup-reserve-slots*
+    0))
+
 (defun fn2-op-reserve (kind okind oslot ogen principal may-release fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (let ((slot (fn2-ops-free-head fn2-ops))
@@ -259,9 +273,11 @@
                      (unsigned-byte-p 16 principal) (unsigned-byte-p 1 may-release)
                      (or (= may-release 0) (= kind *fn2-action-send*))))
            (mv :bounds 0 0 fn2-ops))
-          ((or (zp free) (= slot *fn2-none*)
-               (>= (+ reserved (fn2-ops-queued fn2-ops)) (fn2-ops-out-slot-length fn2-ops))
-               (= reserved *fn2-none*))
+          ((let ((res (if (fn2-op-cleanup-kindp kind) 0 (fn2-op-cleanup-reserve (fn2-ops-rows fn2-ops))))
+                 (qres (if (fn2-op-cleanup-kindp kind) 0 (fn2-op-cleanup-reserve (fn2-ops-out-slot-length fn2-ops)))))
+             (or (<= free res) (= slot *fn2-none*)
+                 (>= (+ reserved (fn2-ops-queued fn2-ops) qres) (fn2-ops-out-slot-length fn2-ops))
+                 (= reserved *fn2-none*)))
            (mv :exhausted 0 0 fn2-ops))
           ((not (fn2-op-slotp slot fn2-ops)) (mv :bounds 0 0 fn2-ops))
           ((not (= (fn2-ops-phase slot fn2-ops) *fn2-op-phase-free*))
@@ -955,7 +971,7 @@
     fn2-reason-code->keyword fn2-reason-keyword->code fn2-op-phase-code->keyword
     fn2-op-phase-keyword->code fn2-action-completionp fn2-op-ack-phase
     fn2-op-slotp fn2-op-handle-code fn2-ops-clock-coalesced
-    fn2-ops-clock-rejected fn2-ops-retired-count)
+    fn2-ops-clock-rejected fn2-ops-retired-count fn2-op-cleanup-kindp fn2-op-cleanup-reserve)
   (w state)))
 
 ; Owed semantic obligations. These executable traversals and snapshots are

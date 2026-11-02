@@ -1350,3 +1350,37 @@
           (mv (and (eq valid :ok) (= (fn2-ops-record-kind row) *fn2-action-accept*)
                    (eq invalid :bounds) (null absent)) fn2-ops)))) ok)))
 (assert-event (fn2-op-read-control))
+
+(defun fn2-vocab-reserve-n-receives (n fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix n)))
+  (if (zp n) (mv t fn2-ops)
+    (mv-let (code slot gen fn2-ops)
+      (fn2-op-reserve *fn2-action-receive* 1 2 3 1 0 fn2-ops)
+      (declare (ignore slot gen))
+      (if (not (eq code :ok)) (mv nil fn2-ops)
+        (fn2-vocab-reserve-n-receives (- n 1) fn2-ops)))))
+
+(defun fn2-vocab-test-cleanup-reserve-run (fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (b* ((profile (put-assoc-equal :o 16 (put-assoc-equal :qa 16 *fn2-profile-tiny*)))
+       (fn2-ops (fn2-ops-init profile fn2-ops))
+       ((mv ok12 fn2-ops) (fn2-vocab-reserve-n-receives 12 fn2-ops))
+       ((unless ok12) (mv :twelve-receives fn2-ops))
+       ;; 13th ordinary receive is refused because 4 slots are protected for cleanup/progress.
+       ((mv c-ord & & fn2-ops) (fn2-op-reserve *fn2-action-receive* 1 2 3 1 0 fn2-ops))
+       ((unless (eq c-ord :exhausted)) (mv :ordinary-not-withheld fn2-ops))
+       ;; Close, Cancel, ArmWake, and Fence all succeed from the protected reserve.
+       ((mv c1 & & fn2-ops) (fn2-op-reserve *fn2-action-close* 1 2 3 1 0 fn2-ops))
+       ((mv c2 & & fn2-ops) (fn2-op-reserve *fn2-action-cancel* 1 2 3 1 0 fn2-ops))
+       ((mv c3 & & fn2-ops) (fn2-op-reserve *fn2-action-arm-wake* 1 2 3 1 0 fn2-ops))
+       ((mv c4 & & fn2-ops) (fn2-op-reserve *fn2-action-fence* 1 2 3 1 0 fn2-ops)))
+    (mv (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq c4 :ok)) fn2-ops)))
+
+(defun fn2-vocab-test-cleanup-reserve ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-ops
+    (mv-let (res fn2-ops)
+      (fn2-vocab-test-cleanup-reserve-run fn2-ops)
+      res)))
+
+(assert-event (equal (fn2-vocab-test-cleanup-reserve) t))

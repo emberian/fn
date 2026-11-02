@@ -35,10 +35,14 @@
 (defconst *fn2-ctl-posture-draining* 2)
 (defconst *fn2-ctl-posture-stopped* 3)
 
-(defun fn2-ctl-owner-p (peer-family peer-w0)
+(defun fn2-ctl-owner-uid-p (peer-family peer-w0 owner-uid)
   (declare (xargs :guard t))
   (and (equal (nfix peer-family) 3)
-       (equal (nfix peer-w0) 0)))
+       (equal (nfix peer-w0) (nfix owner-uid))))
+
+(defun fn2-ctl-owner-p (peer-family peer-w0 fn2-control)
+  (declare (xargs :stobjs fn2-control :guard (fn2-control-wfp fn2-control)))
+  (fn2-ctl-owner-uid-p peer-family peer-w0 (fn2-control-owner-uid fn2-control)))
 
 (defun fn2-ctl-step-posture (cmd posture)
   (declare (xargs :guard t))

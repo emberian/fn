@@ -117,3 +117,17 @@
 (assert-event (fn2-resource-waiters-ranked-p
                '(((:connection-row :rx-range) . :operation) ((:accept-credit) . :connection-row))
                *fn2-resource-order*))
+
+; Extensible declarations: defresource, defservice, defaction, fn2-assemble.
+(assert-event
+ (let ((ord (fn2-resource-assembled-order (w state))))
+   (and (fn2-resource-order-p ord)
+        (posp (fn2-resource-rank :successor-workspace ord))
+        (< (fn2-resource-rank :identity-reservation ord)
+           (fn2-resource-rank :successor-workspace ord))
+        (< (fn2-resource-rank :successor-workspace ord)
+           (fn2-resource-rank :cursor-row ord))
+        (assoc-eq :timer (table-alist 'fn2-services (w state)))
+        (assoc-eq :connect (table-alist 'fn2-actions (w state)))
+        (assoc-eq :timer (table-alist 'fn2-actions (w state)))
+        (assoc-eq 'fn2-probe-app (table-alist 'fn2-app-manifests (w state))))))

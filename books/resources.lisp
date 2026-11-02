@@ -562,3 +562,105 @@
                         (:instance fn2-resource-below-member
                          (held (caar waiters)) (kind (cdar waiters))
                          (k (fn2-resource-last-awaited waiters)))))))
+
+; ------------------------------------------------------------------------
+; Extensible declaration forms: defresource, defservice, defaction, and
+; fn2-assemble (Fable A3 / Generalizations 1-4).
+
+(table fn2-resources nil nil :guard (and (keywordp key) (keyword-value-listp val)))
+(table fn2-services nil nil :guard (and (keywordp key) (keyword-value-listp val)))
+(table fn2-actions nil nil :guard (and (keywordp key) (keyword-value-listp val)))
+(table fn2-app-manifests nil nil :guard (and (symbolp key) (keyword-value-listp val)))
+
+(defun fn2-resource-insert-after (after entry order)
+  (declare (xargs :guard t))
+  (cond ((atom order) (list entry))
+        ((and (consp (car order)) (equal (caar order) after))
+         (cons (car order) (cons entry (cdr order))))
+        (t (cons (car order) (fn2-resource-insert-after after entry (cdr order))))))
+
+(defun fn2-resource-merge-declared (rows order)
+  (declare (xargs :guard t))
+  (if (atom rows) order
+    (let* ((k (and (consp (car rows)) (caar rows)))
+           (plist (and (consp (car rows)) (cdar rows)))
+           (after (fn2-resource-get :after plist))
+           (entry (cons k plist))
+           (next (if (or (not (keywordp k)) (fn2-resource-kindp k order)) order
+                   (if (and (keywordp after) (fn2-resource-kindp after order))
+                       (fn2-resource-insert-after after entry order)
+                     (fn2-resource-insert-after nil entry order)))))
+      (fn2-resource-merge-declared (cdr rows) next))))
+
+(defun fn2-resource-assembled-order (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-resource-merge-declared (reverse (table-alist 'fn2-resources world)) *fn2-resource-order*))
+
+(defmacro defresource (kind &key unit bound reserve after why)
+  `(make-event
+    (let* ((plist (list :unit ',unit :bound ',bound :reserve ',reserve :after ',after :why ,why))
+           (next (fn2-resource-merge-declared
+                  (append (reverse (table-alist 'fn2-resources (w state)))
+                          (list (cons ',kind plist)))
+                  *fn2-resource-order*)))
+      (if (not (and (keywordp ',kind) (keywordp ',unit) (consp ',bound) (stringp ,why)
+                    (not (fn2-resource-kindp ',kind *fn2-resource-order*))
+                    (not (assoc-eq ',kind (table-alist 'fn2-resources (w state))))
+                    (fn2-resource-order-p next)))
+          (er soft 'defresource "Malformed or duplicate resource declaration ~x0." ',kind)
+        (value `(table fn2-resources ',',kind ',plist))))))
+
+(defmacro defservice (name &key ready step bound doc)
+  `(make-event
+    (if (not (and (keywordp ',name) (symbolp ',ready) (symbolp ',step) (stringp ,doc)))
+        (er soft 'defservice "Malformed service declaration ~x0." ',name)
+      (value `(table fn2-services ',',name '(:ready ,',ready :step ,',step :bound ,',bound :doc ,,doc))))))
+
+(defmacro defaction (name &key event issue reserve cancellable doc)
+  `(make-event
+    (if (not (and (keywordp ',name) (keywordp ',event) (symbolp ',issue) (booleanp ',cancellable) (stringp ,doc)))
+        (er soft 'defaction "Malformed action declaration ~x0." ',name)
+      (value `(table fn2-actions ',',name
+                     '(:event ,',event :issue ,',issue :reserve ,',reserve :cancellable ,',cancellable :doc ,,doc))))))
+
+(defmacro fn2-assemble (&key (name 'fn2-default-app) kinds services resources actions)
+  `(make-event
+    (if (not (and (symbolp ',name) (symbol-listp ',kinds) (keyword-listp ',services)
+                  (keyword-listp ',resources) (keyword-listp ',actions)))
+        (er soft 'fn2-assemble "Malformed app manifest ~x0." ',name)
+      (value `(table fn2-app-manifests ',',name
+                     '(:kinds ,',kinds :services ,',services :resources ,',resources :actions ,',actions))))))
+
+(defresource :successor-workspace
+  :unit :slot
+  :bound (:profile :identity-overlays)
+  :reserve nil
+  :after :identity-reservation
+  :why "A transaction's private successor overlay workspace, held from :prepare to :releasing.")
+
+(defservice :timer
+  :ready fn2-timer-service-ready-p
+  :step fn2-timer-service-step
+  :bound (:steps 16 :descriptors 1)
+  :doc "Calendar timer service with fn2-control-idle-deadline as its wake source.")
+
+(defaction :connect
+  :event :connect-result
+  :issue fn2-issue-connect
+  :reserve nil
+  :cancellable t
+  :doc "Outbound peer connection initiation (E4/E5).")
+
+(defaction :timer
+  :event :arm-wake
+  :issue fn2-issue-arm-wake
+  :reserve :arm-wake
+  :cancellable nil
+  :doc "Host deadline wake arming for the timer service.")
+
+(fn2-assemble
+  :name fn2-probe-app
+  :kinds (fn2-listener fn2-echo fn2-scribe)
+  :services (:timer)
+  :resources (:accept-credit :connection-row :rx-range :storage-job :storage-window :fence-slot :operation)
+  :actions (:connect :timer))
