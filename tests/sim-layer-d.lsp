@@ -57,10 +57,11 @@
         (fn2-sld-post-text (append '("POST") *fn2-sld-good* '("." "QUIT")))))
 (defconst *fn2-sld-posting-profile*
   (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
+  (put-assoc-equal :identity-overlays 64
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (12 . 65536)) *fn2-sld-profile*))))))
+        (put-assoc-equal :pool-classes '((32 . 1024) (128 . 4096) (64 . 65536)) *fn2-sld-profile*)))))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by
