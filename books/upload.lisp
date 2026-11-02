@@ -183,8 +183,8 @@
    :next (:discard :sealed :aborting :draining) :uses (fn2-upload-advance fn2-machine-refuse-phase))
   ;; its transaction holds the octets (the Message-ID, the digest, the
   ;; source) until its outcome, then lets it drain
-  (:sealed fn2-upload-hold :cost (:steps *fn2-work-transition*) :writes ()
-   :next (:sealed :draining) :uses (fn2-upload-txn-live-p))
+  (:sealed fn2-upload-hold :cost (:steps *fn2-work-transition*) :writes () :tables (fn2-core-machines)
+   :next (:sealed :draining) :uses (fn2-upload-txn-live-p fn2-upload-wake))
   (:aborting fn2-upload-abort :cost (:steps *fn2-work-transition*) :writes () :tables (fn2-core-machines)
    :next (:aborting :draining) :uses (fn2-upload-txn-live-p fn2-upload-wake))
   (:draining fn2-upload-drain :cost (:steps (:cost fn2-upload-release :steps))
@@ -264,6 +264,9 @@
 (defun fn2-upload-chunk-cap (slot fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-feed-cap slot fn2-pool) (nfix n)))
+(defthm fn2-upload-chunk-cap-natp
+  (natp (fn2-upload-chunk-cap slot fn2-core))
+  :rule-classes :type-prescription)
 (defun fn2-upload-bound (cap0 cap1 fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
@@ -548,10 +551,12 @@
         (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core))
     (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-draining*))))
       (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))
-;; :sealed: wait for the transaction's outcome, then drain.
+;; :sealed: wait for the transaction's outcome (relaying any settlement wake
+;; to the transaction while it still names this upload), then drain.
 (defmachine-callback fn2-upload-hold fn2-upload (id budget) 4
   (if (fn2-upload-txn-live-p row-txn row-txn-gen id fn2-core)
-      (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
+      (let ((fn2-core (fn2-upload-wake row-txn fn2-core)))
+        (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core))
     (let ((fn2-core (fn2-upload-put-core id (phase *fn2-upload-state-draining*))))
       (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))
 ;; :identity: take the transaction row (A-S7), the transaction's copies this

@@ -558,7 +558,7 @@
   ((and (natp rkind) (<= *record-kind-identity-evidence* rkind) (<= rkind *record-kind-consumer-names*))
    (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (code fn2-fields)
-    (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+    (if (and (natp base) (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
              (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
              (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
      (mv-let (code next fn2-fields)

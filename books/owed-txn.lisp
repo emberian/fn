@@ -19,7 +19,7 @@
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (12 . 65536)) *fn2-conn-wire-profile*))))))
+        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (12 . 65536)) *fn2-conn-wire-profile*))))))
 (defun fn2-txn-wire-solo (octets sizes)
   (declare (xargs :verify-guards nil))
   (car (nth 1 (fn2-conn-wire-run-in *fn2-txn-posting-profile* (list (list octets sizes))))))
@@ -38,10 +38,10 @@
 (defthm-owed fn2-txn-admission-interim (sizes)
   (implies (nat-listp sizes)
            (equal (fn2-txn-wire-solo (fn2-txn-post-octets *fn2-txn-article*) sizes)
-                  (fn2-txn-interim-wire "441 posting failed")))
+                  (fn2-txn-interim-wire "240 article received OK")))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-txn-test-admission-interim fn2-txn-test-admission-interim-negative)
-  :doc "Interim until B-S2 (B's transaction member, fn2-commit-admit-txn): the transaction stages its slots at :ready and the interim admission answers :not-served, so a valid POST whose Message-ID is unrecorded is refused :not-stored (the generic 441), however it is chunked. The slots it stages are the identity fact, the article row, the operation outcome and one group-count accept per carried group; the overview row (its line) and the addr entries come with D5 2/n. Lifting it replaces this row with T6 (accepted only on durable and published evidence, uncertain from log-write, refused otherwise) and T9.")
+  :doc "D5 2/n: a valid POST whose Message-ID is unrecorded stages its slots at :ready, emits the transaction member's record stream into chunk 1, admits the member to B's commit batch, binds the successor, and after the commit batch publishes and settles, answers 240 article received OK, however it is chunked.")
 
 (defthm-owed fn2-txn-generated-message-id-interim (sizes)
   (implies (nat-listp sizes)

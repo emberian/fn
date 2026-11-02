@@ -60,7 +60,7 @@
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-sld-profile*))))))
+        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (12 . 65536)) *fn2-sld-profile*))))))
 
 ; A client record per network slot: (nonce todo sent received closed index
 ; rx tx), RX and TX the octets the simulator delivered to the core by
@@ -290,6 +290,9 @@
             (with-local-stobj fn2-own
               (mv-let (answer fn2-core fn2-sim fn2-own)
                 (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+                     ((mv & fn2-core)
+                      (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                        (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
                      (fn2-sim (fn2-sim-init seed fault-profile "sim-layer-d" profile fn2-sim))
                      (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
                      ; Network faults land (every hit spends the budget); process

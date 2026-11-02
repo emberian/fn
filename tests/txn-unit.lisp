@@ -57,6 +57,8 @@
        ((mv c10 & fn2-core) (fn2-successor-stage 0 fn2-core))
        ((mv c11 fn2-core) (fn2-successor-bind 0 batch batch fn2-core))
        ((mv c12 fn2-core) (fn2-successor-publish batch fn2-core))
+       (fn2-core (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (fn2-commit-root)
+                   (fn2-commit-root-set-first-key 0 (+ 1 batch) fn2-commit-root) fn2-core))
        ((mv c13 fn2-core) (fn2-successor-release 0 fn2-core))
        ((mv c14 fn2-core) (fn2-core-release mslot mgen 200 0 1 fn2-core))
        ((mv c15 fn2-core) (fn2-core-release dslot dgen 200 0 1 fn2-core)))
@@ -78,9 +80,12 @@
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
       (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv seeded fn2-core) (fn2-tu-seed-all seeds 1 fn2-core))
            ((mv status clients fn2-core)
-            (fn2-cw-loop (+ 2000 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
+            (fn2-cw-loop (+ 2500 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
                          0 0 (fn2-cw-clients transcripts) fn2-core)))
         (mv (list seeded status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)) fn2-core))
       result)))
@@ -119,9 +124,9 @@
 (defun fn2-tu-fixtures ()
   (declare (xargs :verify-guards nil))
   (and
-   ;; refused: a valid article reaches :ready and the interim admission
-   ;; (B-S2 not served): the generic line, no stop
-   (fn2-tu-check nil (fn2-tu-post *fn2-tu-good*) (fn2-tu-expect "441 posting failed"))
+   ;; accepted: a valid article reaches :ready, emits its member, commits and
+   ;; publishes through B's commit batch, and answers 240, no stop
+   (fn2-tu-check nil (fn2-tu-post *fn2-tu-good*) (fn2-tu-expect "240 article received OK"))
    ;; duplicate: the same Message-ID and source are recorded
    (fn2-tu-check *fn2-tu-same* (fn2-tu-post *fn2-tu-good*)
                  (fn2-tu-expect "441 posting failed; this article is already stored here"))
@@ -150,7 +155,7 @@
    (fn2-tu-check *fn2-tu-same* (fn2-tu-post (update-nth 2 "Newsgroups: no.such.group" *fn2-tu-good*))
                  (fn2-tu-expect "441 posting failed; a different article with this Message-ID is stored here"))
    (fn2-tu-check nil (fn2-tu-post (update-nth 2 "Newsgroups: x.y,local.test , z" *fn2-tu-good*))
-                 (fn2-tu-expect "441 posting failed"))
+                 (fn2-tu-expect "240 article received OK"))
    ;; no Message-ID: the interim (the generated one comes with injection)
    (fn2-tu-check *fn2-tu-same* (fn2-tu-post (remove-equal (nth 3 *fn2-tu-good*) *fn2-tu-good*))
                  (fn2-tu-expect "441 posting failed"))
@@ -164,7 +169,8 @@
 
 ; Two clients offer the same Message-ID at once: the second's claim waits in
 ; the first's FIFO and is handed over at the first's outcome; both are
-; answered, the duplicate in both when it is recorded.
+; answered, the duplicate in both when it is recorded, and 240 followed by
+; the duplicate refusal when the first client commits it first.
 (defun fn2-tu-two (seeds lines k)
   (declare (xargs :verify-guards nil))
   (let* ((octets (fn2-tu-text lines)) (one (list octets (fn2-tu-sizes (len octets) k))))
@@ -177,9 +183,11 @@
        (cw "two ~x0~%" r))))
 (assert-event
  (let ((r (fn2-tu-two nil (fn2-tu-post *fn2-tu-good*) 3))
-       (want (list (fn2-tu-text (fn2-tu-expect "441 posting failed")) t)))
+       (want1 (list (fn2-tu-text (fn2-tu-expect "240 article received OK")) t))
+       (want2 (list (fn2-tu-text (fn2-tu-expect "441 posting failed; this article is already stored here")) t)))
    (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
-            (equal (nth 2 r) (list want want)))
+            (or (equal (nth 2 r) (list want1 want2))
+                (equal (nth 2 r) (list want2 want1))))
        (cw "two ~x0~%" r))))
 
 ; ------------------------------------------------------------------------
@@ -194,11 +202,11 @@
          (equal (fn2-txn-wire-solo octets (fn2-tu-sizes (len octets) 1)) want))))
 (defun fn2-txn-test-admission-interim ()
   (declare (xargs :verify-guards nil))
-  (fn2-tu-solo-all *fn2-txn-article* (fn2-txn-interim-wire "441 posting failed")))
+  (fn2-tu-solo-all *fn2-txn-article* (fn2-txn-interim-wire "240 article received OK")))
 (defun fn2-txn-test-admission-interim-negative ()
   (declare (xargs :verify-guards nil))
   (not (equal (fn2-txn-wire-solo (fn2-txn-post-octets *fn2-txn-article*) '(4096))
-              (fn2-txn-interim-wire "240 article received OK"))))
+              (fn2-txn-interim-wire "441 posting failed"))))
 (defun fn2-txn-test-generated-interim ()
   (declare (xargs :verify-guards nil))
   (fn2-tu-solo-all (remove-equal (nth 3 *fn2-txn-article*) *fn2-txn-article*)

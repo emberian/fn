@@ -509,12 +509,13 @@
   (fn2-machine-with-work *fn2-conn-run-bytes* *fn2-work-transition* 1
    (b* ((ordinal row-ordinal) (mask row-mask) (auth row-auth-pending)
         (rslot row-rx-slot) (rgen row-rx-gen) (tslot row-tx-slot) (tgen row-tx-gen) (gen row-generation)
+        (pslot row-principal-slot) (posting row-posting)
         ((mv status s p o) (fn2-conn-frame rslot rgen row-start row-pos row-overflow id gen fn2-core)))
      (cond ((eq status :line)
             (b* (((mv ccode fn2-core)
-                  (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
+                  (fn2-account-charge-core pslot *fn2-account-charge-requests* 1 fn2-core))
                  ((mv code after next fn2-core)
-                  (fn2-conn-run-answer s p mask auth row-posting
+                  (fn2-conn-run-answer s p mask auth posting
                                        (fn2-conn-reading-p fn2-core)
                                        rslot rgen tslot tgen id gen fn2-core)))
               (cond ((not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core))
@@ -538,7 +539,7 @@
                          (fn2-machine-result *fn2-conn-run-bytes* *fn2-work-transition* 0 t fn2-core))))))
            ((or (eq status :overflow) (eq status :long-line))
             (b* (((mv ccode fn2-core)
-                  (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1 fn2-core))
+                  (fn2-account-charge-core pslot *fn2-account-charge-requests* 1 fn2-core))
                  ((mv code fn2-core) (fn2-conn-run-overflow mask tslot tgen id gen fn2-core)))
               (if (not (and (eq code :ok) (eq ccode :ok))) (fn2-machine-refuse-phase id fn2-core)
                 (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (start s) (pos p) (overflow o)
@@ -580,12 +581,13 @@
              :next (:command :reply)
              :uses (fn2-machine-take-fn2-upload fn2-upload-gen-of fn2-conn-run-block-open fn2-machine-refuse-phase))
   (fn2-machine-with-work 512 *fn2-work-transition* 0
-    (b* (((mv tcode u ugen fn2-core)
-          (fn2-machine-take-fn2-upload id id row-generation row-request *fn2-upload-rule-post* row-principal-slot fn2-core)))
+    (b* ((gen row-generation) (mask row-mask) (tslot row-tx-slot) (tgen row-tx-gen)
+         ((mv tcode u ugen fn2-core)
+          (fn2-machine-take-fn2-upload id id gen row-request *fn2-upload-rule-post* row-principal-slot fn2-core)))
       (if (not (eq tcode :ok))
           ;; parked by the take: no work until the grant wakes this row
           (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)
-        (b* (((mv code fn2-core) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen id row-generation fn2-core)))
+        (b* (((mv code fn2-core) (fn2-conn-run-block-open mask tslot tgen id gen fn2-core)))
           (if (not (eq code :ok)) (fn2-machine-refuse-phase id fn2-core)
             (let ((fn2-core (fn2-conn-put-core id (phase *fn2-conn-state-reply*) (tx-off 0)
                                                (after *fn2-conn-after-article-input*)
@@ -626,11 +628,11 @@
              :tables (fn2-core-ops fn2-core-pool fn2-core-machines fn2-core-machine-tables)
              :next (:article-input)
              :uses (fn2-conn-feed-run fn2-conn-wake fn2-conn-block-input fn2-machine-refuse-phase))
-  (b* ((u row-upload)
+  (b* ((u row-upload) (rfed row-fed)
        ((mv status start mode why copied fn2-core)
-        (fn2-conn-feed-run row-start row-feed-mode row-feed-discard row-fed row-rx-slot row-rx-gen id
+        (fn2-conn-feed-run row-start row-feed-mode row-feed-discard rfed row-rx-slot row-rx-gen id
                            row-generation u row-upload-gen fn2-core))
-       (fed (+ row-fed (nfix copied)))
+       (fed (+ rfed (nfix copied)))
        (fn2-core (fn2-conn-wake u fn2-core)))
     (cond ((not (and (unsigned-byte-p 32 start) (unsigned-byte-p 8 mode) (unsigned-byte-p 8 why)
                      (unsigned-byte-p 60 fed)))
@@ -725,16 +727,18 @@
                     fn2-machine-gen-limit fn2-machine-free-head fn2-account-unbook-ref fn2-conn-wake
                     fn2-machine-reclaim-fn2-conn fn2-core-stop fn2-conn-cursor-cancel))
   (b* ((kind *fn2-conn-kind*) (gen row-generation) (booked row-account-ref)
-       ((mv tcode fn2-core) (fn2-core-release row-tx-slot row-tx-gen kind id gen fn2-core))
-       ((mv rcode fn2-core) (fn2-core-release row-rx-slot row-rx-gen kind id gen fn2-core))
+       (tslot row-tx-slot) (tgen row-tx-gen) (rslot row-rx-slot) (rgen row-rx-gen)
+       (qry row-query) (qgen row-query-gen) (upl row-upload)
+       ((mv tcode fn2-core) (fn2-core-release tslot tgen kind id gen fn2-core))
+       ((mv rcode fn2-core) (fn2-core-release rslot rgen kind id gen fn2-core))
        ;; the booking goes; the charges stay with the principal (rule 5)
        ((mv acode fn2-core) (fn2-account-unbook-ref booked fn2-core))
        ;; an upload this row was feeding is woken: it sees the row move on
        ;; (its generation) and drains, posting nothing
        ;; a query cursor waiting on this row is cancelled and woken (an
        ;; upload and a query are never both live: one wake)
-       (fn2-core (fn2-conn-cursor-cancel row-query row-query-gen fn2-core))
-       (fn2-core (fn2-conn-wake (if (equal row-upload *fn2-none*) row-query row-upload) fn2-core)))
+       (fn2-core (fn2-conn-cursor-cancel qry qgen fn2-core))
+       (fn2-core (fn2-conn-wake (if (equal upl *fn2-none*) qry upl) fn2-core)))
     (cond
      ((not (and (or (eq tcode :ok) (eq tcode :retired)) (or (eq rcode :ok) (eq rcode :retired))))
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-pool-release* fn2-core)))
