@@ -21,7 +21,10 @@ the base fact "the count is the number of posts" (`revision_counts`, satisfiable
 the fact quantifies over every word with annotations interleaved); `badRevision`, whose annotation
 also bumps the count, breaks the same fact (`badRevision_breaks_counts`): its G1 square for
 `annotate` is false (`badRevision_annotate_not_square`), which is exactly the certificate the
-conservativity theorem consumes.
+conservativity theorem consumes. The three hypothesis-removal structures
+`ExtensionWithoutStepSquare`, `ExtensionWithoutProjConvert` and `ExtensionWithoutLift` package
+every retained obligation of `Extension` while dropping G1 (`step`), G0 (`proj_convert`) or
+lifting (`lift`), and show that each omission invalidates `runs_exactly` and `conservative`.
 -/
 
 namespace Fn2.Conservative
@@ -219,4 +222,184 @@ theorem badRevision_annotate_not_square :
   have hR' : (1 : Nat) = b' := hR
   omega
 
+/-! ## Packaged hypothesis-removal structures and teeth (LEAN-METATHEORY §11 row 6) -/
+
+/-- Hypothesis-removal structure for `Extension.step` (G1): every obligation of `Extension`
+(`translate_inj`, `proj_convert`, `lift`) except the per-event step square. -/
+structure ExtensionWithoutStepSquare (Base Ext : Frame.{u}) where
+  proj : Ext.State → Base.State
+  translate : Ext.Label → List Base.Label
+  inj : Base.Label → Ext.Label
+  convert : Base.State → Ext.State
+  translate_inj : ∀ e, translate (inj e) = [e]
+  proj_convert : ∀ s, proj (convert s) = s
+  lift : ∀ e x y, Base.step e (proj x) = some y → ∃ x', Ext.step (inj e) x = some x' ∧ proj x' = y
+
+/-- `badRevised` satisfies every obligation of `Extension` except the `annotate` G1 square. -/
+def badRevision : ExtensionWithoutStepSquare base badRevised where
+  proj s := s.1
+  translate := translate4
+  inj _ := .post
+  convert n := (n, 0)
+  translate_inj _ := rfl
+  proj_convert _ := rfl
+  lift _ x _ h := ⟨(x.1 + 1, x.2), rfl, Option.some.inj h⟩
+
+/-- **Packaged G1 revision tooth**: `badRevision` satisfies `ExtensionWithoutStepSquare`, the base
+property `postsCount 0` holds of every base run, the G1 step square fails on `.annotate`,
+`conservative` fails on `postsCount 0`, and `runs_exactly` fails. -/
+theorem badRevision_without_stepSquare_package :
+    (∀ w s', run base.step w 0 = some s' → postsCount 0 w s') ∧
+    (¬ ∀ e, Sq (fun x y => badRevision.proj x = y) (badRevised.step e)
+      (run base.step (badRevision.translate e)) (fun x y => badRevision.proj x = y)) ∧
+    (¬ ∀ w s', run badRevised.step w (badRevision.convert 0) = some s' →
+      postsCount 0 (expand badRevision.translate w) (badRevision.proj s')) ∧
+    ¬ (run base.step [] 0 = some 1 ↔
+      ∃ w' x', run badRevised.step w' (badRevision.convert 0) = some x' ∧
+        expand badRevision.translate w' = [] ∧ badRevision.proj x' = 1) := by
+  refine ⟨fun w s' h => base_counts w 0 s' h, ?_, badRevision_breaks_counts, ?_⟩
+  · intro h
+    exact badRevision_annotate_not_square (h E4.annotate)
+  · intro hiff
+    have h1 : run base.step [] 0 = some 1 :=
+      hiff.mpr ⟨[E4.annotate], (1, 1), rfl, rfl, rfl⟩
+    exact absurd (Option.some.inj h1) (by decide)
+
+theorem extensionWithoutStepSquare_not_runs_exactly :
+    ∃ (X : ExtensionWithoutStepSquare base badRevised) (s₀ : base.State)
+      (w : List base.Label) (b : base.State),
+      ¬ (run base.step w s₀ = some b ↔
+        ∃ w' x', run badRevised.step w' (X.convert s₀) = some x' ∧
+          expand X.translate w' = w ∧ X.proj x' = b) :=
+  ⟨badRevision, 0, [], 1, badRevision_without_stepSquare_package.2.2.2⟩
+
+theorem extensionWithoutStepSquare_not_conservative :
+    ∃ (X : ExtensionWithoutStepSquare base badRevised) (s₀ : base.State)
+      (φ : List base.Label → base.State → Prop),
+      (∀ w s', run base.step w s₀ = some s' → φ w s') ∧
+      ¬ (∀ w s', run badRevised.step w (X.convert s₀) = some s' →
+        φ (expand X.translate w) (X.proj s')) :=
+  ⟨badRevision, 0, postsCount 0,
+    badRevision_without_stepSquare_package.1,
+    badRevision_without_stepSquare_package.2.2.1⟩
+
+/-- Hypothesis-removal structure for `Extension.proj_convert` (G0): every obligation of `Extension`
+(`translate_inj`, `step`, `lift`) except that `convert` projects back to the starting base state. -/
+structure ExtensionWithoutProjConvert (Base Ext : Frame.{u}) where
+  proj : Ext.State → Base.State
+  translate : Ext.Label → List Base.Label
+  inj : Base.Label → Ext.Label
+  convert : Base.State → Ext.State
+  translate_inj : ∀ e, translate (inj e) = [e]
+  step : ∀ e, Sq (fun x y => proj x = y) (Ext.step e) (run Base.step (translate e))
+    (fun x y => proj x = y)
+  lift : ∀ e x y, Base.step e (proj x) = some y → ∃ x', Ext.step (inj e) x = some x' ∧ proj x' = y
+
+/-- A revision with valid G1 step squares and base-event lifting whose converter offsets the post
+count by one. -/
+def badConvertRevision : ExtensionWithoutProjConvert base revised where
+  proj s := s.1
+  translate := translate4
+  inj _ := .post
+  convert n := (n + 1, 0)
+  translate_inj _ := rfl
+  step := revision.step
+  lift := revision.lift
+
+theorem extensionWithoutProjConvert_not_runs_exactly :
+    ∃ (X : ExtensionWithoutProjConvert base revised) (s₀ : base.State)
+      (w : List base.Label) (b : base.State),
+      ¬ (run base.step w s₀ = some b ↔
+        ∃ w' x', run revised.step w' (X.convert s₀) = some x' ∧
+          expand X.translate w' = w ∧ X.proj x' = b) := by
+  refine ⟨badConvertRevision, 0, [], 1, ?_⟩
+  intro hiff
+  have h1 : run base.step [] 0 = some 1 :=
+    hiff.mpr ⟨[], (1, 0), rfl, rfl, rfl⟩
+  exact absurd (Option.some.inj h1) (by decide)
+
+theorem extensionWithoutProjConvert_not_conservative :
+    ∃ (X : ExtensionWithoutProjConvert base revised) (s₀ : base.State)
+      (φ : List base.Label → base.State → Prop),
+      (∀ w s', run base.step w s₀ = some s' → φ w s') ∧
+      ¬ (∀ w s', run revised.step w (X.convert s₀) = some s' →
+        φ (expand X.translate w) (X.proj s')) := by
+  refine ⟨badConvertRevision, 0, postsCount 0, fun w s' h => base_counts w 0 s' h, ?_⟩
+  intro h
+  have h1 := h [] (1, 0) rfl
+  have h2 : (1 : Nat) = 0 := h1
+  exact absurd h2 (by decide)
+
+/-- Hypothesis-removal structure for `Extension.lift`: all G0 and G1 projection axioms
+(`translate_inj`, `proj_convert`, `step`) without the base-event lifting obligation. -/
+structure ExtensionWithoutLift (Base Ext : Frame.{u}) where
+  proj : Ext.State → Base.State
+  translate : Ext.Label → List Base.Label
+  inj : Base.Label → Ext.Label
+  convert : Base.State → Ext.State
+  translate_inj : ∀ e, translate (inj e) = [e]
+  proj_convert : ∀ s, proj (convert s) = s
+  step : ∀ e, Sq (fun x y => proj x = y) (Ext.step e) (run Base.step (translate e))
+    (fun x y => proj x = y)
+
+/-- A revision that disables every transition: forward simulation `step` holds vacuously, but
+base transitions cannot be lifted. -/
+abbrev haltingRevised : Frame.{0} where
+  State := Nat × Nat
+  Label := E4
+  step _ _ := none
+
+def noLiftRevision : ExtensionWithoutLift base haltingRevised where
+  proj s := s.1
+  translate := translate4
+  inj _ := .post
+  convert n := (n, 0)
+  translate_inj _ := rfl
+  proj_convert _ := rfl
+  step _ _ _ _ _ hx := by cases hx
+
+theorem haltingRevised_run_nil :
+    ∀ (w' : List E4) (s x' : Nat × Nat),
+      run haltingRevised.step w' s = some x' → w' = [] ∧ x' = s := by
+  intro w' s x' h
+  cases w' with
+  | nil => exact ⟨rfl, (Option.some.inj h).symm⟩
+  | cons e u => cases h
+
+theorem extensionWithoutLift_not_runs_exactly :
+    ∃ (X : ExtensionWithoutLift base haltingRevised) (s₀ : base.State)
+      (w : List base.Label) (b : base.State),
+      run base.step w s₀ = some b ∧
+      ¬ (∃ w' x', run haltingRevised.step w' (X.convert s₀) = some x' ∧
+        expand X.translate w' = w ∧ X.proj x' = b) ∧
+      ¬ (run base.step w s₀ = some b ↔
+        ∃ w' x', run haltingRevised.step w' (X.convert s₀) = some x' ∧
+          expand X.translate w' = w ∧ X.proj x' = b) := by
+  refine ⟨noLiftRevision, 0, [()], 1, rfl, ?_, ?_⟩
+  · rintro ⟨w', x', hrun, hexp, _⟩
+    obtain ⟨hw', _⟩ := haltingRevised_run_nil w' (0, 0) x' hrun
+    subst hw'
+    cases hexp
+  · intro hiff
+    obtain ⟨w', x', hrun, hexp, _⟩ := hiff.mp rfl
+    obtain ⟨hw', _⟩ := haltingRevised_run_nil w' (0, 0) x' hrun
+    subst hw'
+    cases hexp
+
+theorem extensionWithoutLift_not_conservative :
+    ∃ (X : ExtensionWithoutLift base haltingRevised) (s₀ : base.State)
+      (φ : List base.Label → base.State → Prop),
+      (∀ w s', run haltingRevised.step w (X.convert s₀) = some s' →
+        φ (expand X.translate w) (X.proj s')) ∧
+      ¬ (∀ w s', run base.step w s₀ = some s' → φ w s') := by
+  refine ⟨noLiftRevision, 0, (fun w _ => w = []), ?_, ?_⟩
+  · intro w s' hrun
+    obtain ⟨hw, _⟩ := haltingRevised_run_nil w (0, 0) s' hrun
+    subst hw
+    rfl
+  · intro hb
+    have h1 := hb [()] 1 rfl
+    cases h1
+
 end Fn2.Conservative
+

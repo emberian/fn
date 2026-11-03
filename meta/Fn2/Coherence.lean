@@ -39,9 +39,15 @@ Witnesses, statement-first (ATLAS §6 law 2):
   (`liar_not_diamond`).
 * teeth for the catalogue form: a case missing from the catalogue is not covered
   (`uncovered_case_fails`).
-
-The frame completeness conjecture (COHERENCE §3.2, second statement) is not claimed here; see
-LEAN-METATHEORY.md §6.
+* two-sided mixed-pasting schema HM (`mixed_pasting_hm`, `mixed_pasting_hm_obs`): when adjacent
+  `I_A`-swaps map under `C.interp` to `TraceEq I_B`-equivalent reference words and `Diamonds B I_B`
+  holds, implementation runs transport across both `TraceEq I_A` and `TraceEq I_B` with equal
+  observations (`hm_witness_satisfiable`, and hypothesis-removal tooth
+  `hm_without_ref_diamonds_fails`).
+* Mazurkiewicz projections and toy completeness (`traceEq_perm`, `traceEq_count`,
+  `traceEq_filter_dependent`, `traceEq_iff_filter_eq`, `twoRecv_traceEq_iff_projections`,
+  `twoRecv_traceEq_iff_counts`, and negative teeth `dependent_swap_not_traceEq`,
+  `acceptClose_not_traceEq`).
 -/
 
 namespace Fn2.Coherence
@@ -305,12 +311,12 @@ def sumCorr : Correspondence twoRecv total Nat where
       have h : some ((Action.incr Conn.c0).upd s) = some s' := hs
       have e := (Option.some.inj h).symm
       subst e
-      simp [Action.incr] <;> omega
+      simp [Action.incr]; omega
     | c1 =>
       have h : some ((Action.incr Conn.c1).upd s) = some s' := hs
       have e := (Option.some.inj h).symm
       subst e
-      simp [Action.incr] <;> omega
+      simp [Action.incr]; omega
   edge _ _ h := h
 
 /-- The coherence theorem, instantiated: any receive schedule and any trace-equivalent schedule
@@ -459,7 +465,7 @@ def acIdCorr : Correspondence acFrame acFrame Nat where
     subst e
     refine ⟨a', ?_, rfl⟩
     show (acFrame.step t a).bind (Loose.ident _) = some a'
-    rw [ha] <;> rfl
+    rw [ha]; rfl
   edge a b h := by
     have e : a = b := h
     subst e
@@ -509,4 +515,420 @@ theorem uncovered_case_fails :
   rw [hnone] at hb
   simp at hb
 
+/-! ## Two-sided mixed-pasting schema (HM, COHERENCE §3.2) -/
+
+theorem TraceEq.append_left {L : Type u} {I : L → L → Prop} (p : List L) {w₁ w₂ : List L}
+    (h : TraceEq I w₁ w₂) : TraceEq I (p ++ w₁) (p ++ w₂) := by
+  induction h with
+  | refl w => exact TraceEq.refl (p ++ w)
+  | swap l r t v hI =>
+    have e1 : p ++ (l ++ t :: v :: r) = (p ++ l) ++ t :: v :: r := (List.append_assoc p l _).symm
+    have e2 : p ++ (l ++ v :: t :: r) = (p ++ l) ++ v :: t :: r := (List.append_assoc p l _).symm
+    rw [e1, e2]
+    exact TraceEq.swap (p ++ l) r t v hI
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+theorem TraceEq.append_right {L : Type u} {I : L → L → Prop} (q : List L) {w₁ w₂ : List L}
+    (h : TraceEq I w₁ w₂) : TraceEq I (w₁ ++ q) (w₂ ++ q) := by
+  induction h with
+  | refl w => exact TraceEq.refl (w ++ q)
+  | swap l r t v hI =>
+    have e1 : (l ++ t :: v :: r) ++ q = l ++ t :: v :: (r ++ q) := by simp [List.append_assoc]
+    have e2 : (l ++ v :: t :: r) ++ q = l ++ v :: t :: (r ++ q) := by simp [List.append_assoc]
+    rw [e1, e2]
+    exact TraceEq.swap l (r ++ q) t v hI
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+theorem TraceEq.append {L : Type u} {I : L → L → Prop} {u₁ u₂ v₁ v₂ : List L}
+    (h₁ : TraceEq I u₁ u₂) (h₂ : TraceEq I v₁ v₂) : TraceEq I (u₁ ++ v₁) (u₂ ++ v₂) :=
+  (TraceEq.append_right v₁ h₁).trans (TraceEq.append_left u₂ h₂)
+
+theorem expand_append {L M : Type u} (interp : L → List M) (w₁ w₂ : List L) :
+    expand interp (w₁ ++ w₂) = expand interp w₁ ++ expand interp w₂ := by
+  induction w₁ with
+  | nil => rfl
+  | cons t w₁ ih =>
+    show interp t ++ expand interp (w₁ ++ w₂) = (interp t ++ expand interp w₁) ++ expand interp w₂
+    rw [ih, List.append_assoc]
+
+/-- Label-interpretation compatibility transports `TraceEq I_A` to `TraceEq I_B` through `expand`. -/
+theorem expand_traceEq {L M : Type u} {I_A : L → L → Prop} {I_B : M → M → Prop}
+    (interp : L → List M)
+    (hSwap : ∀ t v, I_A t v → TraceEq I_B (interp t ++ interp v) (interp v ++ interp t))
+    {w w' : List L} (hw : TraceEq I_A w w') :
+    TraceEq I_B (expand interp w) (expand interp w') := by
+  induction hw with
+  | refl w => exact TraceEq.refl (expand interp w)
+  | swap p q t v hI =>
+    have e1 : expand interp (p ++ t :: v :: q) =
+        expand interp p ++ ((interp t ++ interp v) ++ expand interp q) := by
+      simp [expand_append, expand, List.append_assoc]
+    have e2 : expand interp (p ++ v :: t :: q) =
+        expand interp p ++ ((interp v ++ interp t) ++ expand interp q) := by
+      simp [expand_append, expand, List.append_assoc]
+    rw [e1, e2]
+    exact TraceEq.append_left (expand interp p)
+      (TraceEq.append_right (expand interp q) (hSwap t v hI))
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+/-- **General two-sided mixed-pasting schema (HM, COHERENCE §3.2).** When adjacent `I_A`-swaps
+map under `C.interp` to `TraceEq I_B`-equivalent reference words and `Diamonds B I_B` holds, any
+successful implementation run along `w` and `TraceEq I_A w w'` yields a matching reference run
+along `expand C.interp w'` with `C.R` and equal observations. -/
+theorem mixed_pasting_hm {A B : Frame.{u}} {O : Type u} (C : Correspondence A B O)
+    {I_A : A.Label → A.Label → Prop} {I_B : B.Label → B.Label → Prop}
+    (hSwap : ∀ t v, I_A t v → TraceEq I_B (C.interp t ++ C.interp v) (C.interp v ++ C.interp t))
+    (hDB : Diamonds B I_B)
+    {a : A.State} {b : B.State} (h0 : C.R a b)
+    {w w' : List A.Label} (hw : TraceEq I_A w w') {a' : A.State}
+    (hrun : run A.step w a = some a') :
+    ∃ b', run B.step (expand C.interp w') b = some b' ∧ C.R a' b' ∧ C.obsA a' = C.obsB b' := by
+  obtain ⟨b', hb, hR⟩ := Sq.paste C.interp C.R C.step w a b a' h0 hrun
+  have htr : TraceEq I_B (expand C.interp w) (expand C.interp w') :=
+    expand_traceEq C.interp hSwap hw
+  rw [trace_run hDB htr] at hb
+  exact ⟨b', hb, hR, C.edge a' b' hR⟩
+
+/-- Observation and two-sided schedule corollary of `mixed_pasting_hm`: under the HM hypotheses,
+if `w` runs to `a'` and `TraceEq I_A w w'` and `TraceEq I_B (expand C.interp w') v'`, then both
+`expand C.interp w` and `v'` run from `b` to reference states `bₙ` and `bₙ'` with equal
+observations (`C.obsB bₙ = C.obsB bₙ' = C.obsA a'`). -/
+theorem mixed_pasting_hm_obs {A B : Frame.{u}} {O : Type u} (C : Correspondence A B O)
+    {I_A : A.Label → A.Label → Prop} {I_B : B.Label → B.Label → Prop}
+    (hSwap : ∀ t v, I_A t v → TraceEq I_B (C.interp t ++ C.interp v) (C.interp v ++ C.interp t))
+    (hDB : Diamonds B I_B)
+    {a : A.State} {b : B.State} (h0 : C.R a b)
+    {w w' : List A.Label} (hw : TraceEq I_A w w')
+    {v' : List B.Label} (hv' : TraceEq I_B (expand C.interp w') v')
+    {a' : A.State} (hrun : run A.step w a = some a') :
+    ∃ bₙ bₙ',
+      run B.step (expand C.interp w) b = some bₙ ∧
+      run B.step v' b = some bₙ' ∧
+      C.obsA a' = C.obsB bₙ ∧
+      C.obsA a' = C.obsB bₙ' ∧
+      C.obsB bₙ = C.obsB bₙ' := by
+  obtain ⟨bₙ, hbₙ, hR⟩ := Sq.paste C.interp C.R C.step w a b a' h0 hrun
+  have htr : TraceEq I_B (expand C.interp w) v' :=
+    (expand_traceEq C.interp hSwap hw).trans hv'
+  have hbₙ' : run B.step v' b = some bₙ := by
+    rw [← trace_run hDB htr]; exact hbₙ
+  have hobs : C.obsA a' = C.obsB bₙ := C.edge a' bₙ hR
+  exact ⟨bₙ, bₙ, hbₙ, hbₙ', hobs, hobs, rfl⟩
+
+/-- Non-identity reference frame for HM: a pair of connection counters `(n₀, n₁)` retaining label
+identities `Conn` rather than collapsing them to `Unit`. -/
+abbrev pairTotal : Frame.{0} where
+  State := Nat × Nat
+  Label := Conn
+  step c p := match c with
+    | .c0 => some (p.1 + 1, p.2)
+    | .c1 => some (p.1, p.2 + 1)
+
+def pairCorr : Correspondence twoRecv pairTotal Nat where
+  R s p := s Conn.c0 = p.1 ∧ s Conn.c1 = p.2
+  interp c := [c]
+  obsA s := s Conn.c0 + s Conn.c1
+  obsB p := p.1 + p.2
+  step t := by
+    intro s p s' hR hs
+    obtain ⟨h0, h1⟩ : s Conn.c0 = p.1 ∧ s Conn.c1 = p.2 := hR
+    cases t with
+    | c0 =>
+      have h : some ((Action.incr Conn.c0).upd s) = some s' := hs
+      have e := (Option.some.inj h).symm
+      subst e
+      refine ⟨(p.1 + 1, p.2), rfl, ?_⟩
+      show ((Action.incr Conn.c0).upd s) Conn.c0 = p.1 + 1 ∧
+        ((Action.incr Conn.c0).upd s) Conn.c1 = p.2
+      simp [Action.incr, h0, h1]
+    | c1 =>
+      have h : some ((Action.incr Conn.c1).upd s) = some s' := hs
+      have e := (Option.some.inj h).symm
+      subst e
+      refine ⟨(p.1, p.2 + 1), rfl, ?_⟩
+      show ((Action.incr Conn.c1).upd s) Conn.c0 = p.1 ∧
+        ((Action.incr Conn.c1).upd s) Conn.c1 = p.2 + 1
+      simp [Action.incr, h0, h1]
+  edge s p h := by
+    obtain ⟨h0, h1⟩ : s Conn.c0 = p.1 ∧ s Conn.c1 = p.2 := h
+    show s Conn.c0 + s Conn.c1 = p.1 + p.2
+    omega
+
+theorem pairTotal_diamonds : Diamonds pairTotal (fun (t v : Conn) => t ≠ v) := by
+  intro t v hne (n0, n1)
+  cases t <;> cases v
+  · exact (hne rfl).elim
+  · rfl
+  · rfl
+  · exact (hne rfl).elim
+
+theorem pairCorr_swap :
+    ∀ t v : Conn, footIndep (Action.incr t) (Action.incr v) →
+      TraceEq (fun (x y : Conn) => x ≠ y)
+        (pairCorr.interp t ++ pairCorr.interp v)
+        (pairCorr.interp v ++ pairCorr.interp t) := by
+  intro t v hI
+  have hne : t ≠ v := by
+    intro heq
+    subst heq
+    exact (hI t).1 ⟨rfl, Or.inl rfl⟩
+  exact TraceEq.swap [] [] t v hne
+
+/-- Satisfiable non-identity witness for `mixed_pasting_hm`: `twoRecv` into `pairTotal` with
+distinct mapped reference schedules `[c0, c1] ≠ [c1, c0]`. -/
+theorem hm_witness_satisfiable :
+    pairCorr.R (fun _ => 0) (0, 0) ∧
+    (∀ t v, footIndep (Action.incr t) (Action.incr v) →
+      TraceEq (fun (x y : Conn) => x ≠ y)
+        (pairCorr.interp t ++ pairCorr.interp v)
+        (pairCorr.interp v ++ pairCorr.interp t)) ∧
+    Diamonds pairTotal (fun (x y : Conn) => x ≠ y) ∧
+    TraceEq (fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v))
+      [Conn.c0, Conn.c1] [Conn.c1, Conn.c0] ∧
+    expand pairCorr.interp [Conn.c0, Conn.c1] ≠ expand pairCorr.interp [Conn.c1, Conn.c0] ∧
+    ∃ s' bₙ bₙ',
+      run twoRecv.step [Conn.c0, Conn.c1] (fun _ => 0) = some s' ∧
+      run pairTotal.step (expand pairCorr.interp [Conn.c0, Conn.c1]) (0, 0) = some bₙ ∧
+      run pairTotal.step (expand pairCorr.interp [Conn.c1, Conn.c0]) (0, 0) = some bₙ' ∧
+      pairCorr.R s' bₙ' ∧
+      pairCorr.obsA s' = pairCorr.obsB bₙ' ∧
+      pairCorr.obsB bₙ = pairCorr.obsB bₙ' :=
+  ⟨And.intro rfl rfl, pairCorr_swap, pairTotal_diamonds,
+    TraceEq.swap [] [] Conn.c0 Conn.c1 (incr_indep (by decide)),
+    by decide,
+    ⟨_, (1, 1), (1, 1), rfl, rfl, rfl, And.intro rfl rfl, rfl, rfl⟩⟩
+
+/-- Hypothesis-removal tooth for `mixed_pasting_hm`: every premise of HM except `Diamonds B I_B`
+holds (`acIdCorr`, `hSwap`, `TraceEq`, a successful implementation run), and the conclusion fails. -/
+theorem hm_without_ref_diamonds_fails :
+    (∀ t v, differentMachine t v →
+      TraceEq differentMachine (acIdCorr.interp t ++ acIdCorr.interp v)
+        (acIdCorr.interp v ++ acIdCorr.interp t)) ∧
+    ¬ Diamonds acFrame differentMachine ∧
+    ∃ (a b a' : acFrame.State) (w w' : List ACLab),
+      acIdCorr.R a b ∧ TraceEq differentMachine w w' ∧ run acFrame.step w a = some a' ∧
+      ¬ ∃ b', run acFrame.step (expand acIdCorr.interp w') b = some b' ∧
+        acIdCorr.obsA a' = acIdCorr.obsB b' :=
+  ⟨fun t v h => TraceEq.swap [] [] t v h, acceptClose_not_diamond, acceptClose_without_g2⟩
+
+/-! ## Mazurkiewicz projections and toy completeness (COHERENCE §3.1, §3.2) -/
+
+/-- `TraceEq` preserves label multiplicity (is a subrelation of `List.Perm`). -/
+theorem traceEq_perm {L : Type u} {I : L → L → Prop} {w₁ w₂ : List L}
+    (h : TraceEq I w₁ w₂) : List.Perm w₁ w₂ := by
+  induction h with
+  | refl w => exact List.Perm.refl w
+  | swap p q t v _ => exact (List.Perm.swap v t q).append_left p
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+/-- `TraceEq` preserves the count of every label. -/
+theorem traceEq_count {L : Type u} [DecidableEq L] {I : L → L → Prop} {w₁ w₂ : List L}
+    (h : TraceEq I w₁ w₂) (a : L) : w₁.count a = w₂.count a :=
+  (traceEq_perm h).count_eq a
+
+/-- Mazurkiewicz projection preservation on a dependence clique (`∀ x y, p x → p y → ¬ I x y`):
+`TraceEq I` preserves the subword projection `List.filter p`. -/
+theorem traceEq_filter_clique {L : Type u} {I : L → L → Prop} (p : L → Bool)
+    (hDep : ∀ x y, p x = true → p y = true → ¬ I x y)
+    {w₁ w₂ : List L} (h : TraceEq I w₁ w₂) :
+    w₁.filter p = w₂.filter p := by
+  induction h with
+  | refl _ => rfl
+  | swap l r t v hI =>
+    simp only [List.filter_append, List.filter]
+    cases ht : p t <;> cases hv : p v
+    · rfl
+    · rfl
+    · rfl
+    · exact (hDep t v ht hv hI).elim
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+/-- Mazurkiewicz projection preservation: if all distinct labels selected by `p` are mutually
+dependent (`¬ I x y`), then `TraceEq I` preserves the subword projection `List.filter p`. -/
+theorem traceEq_filter_dependent {L : Type u} [DecidableEq L] {I : L → L → Prop} (p : L → Bool)
+    (hDep : ∀ x y, x ≠ y → p x = true → p y = true → ¬ I x y)
+    {w₁ w₂ : List L} (h : TraceEq I w₁ w₂) :
+    w₁.filter p = w₂.filter p := by
+  induction h with
+  | refl _ => rfl
+  | swap l r t v hI =>
+    by_cases htv : t = v
+    · subst htv; rfl
+    · simp only [List.filter_append, List.filter]
+      cases ht : p t <;> cases hv : p v
+      · rfl
+      · rfl
+      · rfl
+      · exact (hDep t v htv ht hv hI).elim
+  | symm _ ih => exact ih.symm
+  | trans _ _ ih₁ ih₂ => exact ih₁.trans ih₂
+
+theorem traceEq_bubble_right {L : Type u} {I : L → L → Prop} (p : L → Bool)
+    (hIndep : ∀ x y, p x = true → p y = false → I x y ∧ I y x)
+    (a : L) (ha : p a = false) :
+    ∀ (u q : List L), (∀ x ∈ u, p x = true) →
+      TraceEq I (a :: (u ++ q)) (u ++ a :: q) := by
+  intro u
+  induction u with
+  | nil =>
+    intro q _
+    exact TraceEq.refl (a :: q)
+  | cons x u ih =>
+    intro q hu
+    have hx : p x = true := hu x (by simp)
+    have hIax : I a x := (hIndep x a hx ha).2
+    have h1 : TraceEq I (a :: x :: (u ++ q)) (x :: a :: (u ++ q)) :=
+      TraceEq.swap [] (u ++ q) a x hIax
+    have h2 : TraceEq I (x :: a :: (u ++ q)) (x :: (u ++ a :: q)) :=
+      TraceEq.append_left [x] (ih q (fun y hy => hu y (by simp [hy])))
+    exact h1.trans h2
+
+/-- Canonical form for a 2-class independent partition: every word is trace-equivalent to its
+`p`-projection followed by its `¬p`-projection. -/
+theorem traceEq_partition_normal {L : Type u} {I : L → L → Prop} (p : L → Bool)
+    (hIndep : ∀ x y, p x = true → p y = false → I x y ∧ I y x) :
+    ∀ (w : List L), TraceEq I w (w.filter p ++ w.filter (fun x => !p x)) := by
+  intro w
+  induction w with
+  | nil => exact TraceEq.refl []
+  | cons a v ih =>
+    have hstep : TraceEq I (a :: v) (a :: (v.filter p ++ v.filter (fun x => !p x))) :=
+      TraceEq.append_left [a] ih
+    cases ha : p a
+    · simp only [List.filter, ha, Bool.not_false]
+      exact hstep.trans (traceEq_bubble_right p hIndep a ha (v.filter p)
+        (v.filter (fun x => !p x)) (fun x hx => (List.mem_filter.mp hx).2))
+    · simp only [List.filter, ha, Bool.not_true]
+      exact hstep
+
+/-- **Mazurkiewicz projection completeness for a 2-class independent partition**: when `p`
+partitions `L` into two mutually independent classes, each internally dependent on distinct
+labels, two words are trace-equivalent iff their projections onto the two classes are equal. -/
+theorem traceEq_iff_filter_eq {L : Type u} [DecidableEq L] {I : L → L → Prop} (p : L → Bool)
+    (hIndep : ∀ x y, p x = true → p y = false → I x y ∧ I y x)
+    (hDepT : ∀ x y, x ≠ y → p x = true → p y = true → ¬ I x y)
+    (hDepF : ∀ x y, x ≠ y → p x = false → p y = false → ¬ I x y)
+    (w₁ w₂ : List L) :
+    TraceEq I w₁ w₂ ↔
+      w₁.filter p = w₂.filter p ∧
+      w₁.filter (fun x => !p x) = w₂.filter (fun x => !p x) := by
+  constructor
+  · intro h
+    refine ⟨traceEq_filter_dependent p hDepT h, ?_⟩
+    exact traceEq_filter_dependent (fun x => !p x) (by
+      intro x y hxy hx hy
+      have hx' : p x = false := by cases hpx : p x <;> simp_all
+      have hy' : p y = false := by cases hpy : p y <;> simp_all
+      exact hDepF x y hxy hx' hy') h
+  · rintro ⟨hT, hF⟩
+    have hn₁ := traceEq_partition_normal p hIndep w₁
+    have hn₂ := traceEq_partition_normal p hIndep w₂
+    rw [hT, hF] at hn₁
+    exact hn₁.trans hn₂.symm
+
+theorem filter_beq_eq_replicate_count {L : Type u} [DecidableEq L] (c : L) :
+    ∀ (w : List L), w.filter (· == c) = List.replicate (w.count c) c := by
+  intro w
+  induction w with
+  | nil => rfl
+  | cons x u ih =>
+    by_cases hxc : x = c
+    · subst hxc
+      simp [List.filter, List.count_cons_self, List.replicate_succ, ih]
+    · have hbeq : (x == c) = false := beq_false_of_ne hxc
+      simp [List.filter, hbeq, List.count_cons_of_ne hxc, ih]
+
+/-- **Toy completeness (projection form)**: on `twoRecv`, two words are `TraceEq` under footprint
+independence iff their projections onto `c0` and `c1` are equal. -/
+theorem twoRecv_traceEq_iff_projections (w₁ w₂ : List Conn) :
+    TraceEq (fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v)) w₁ w₂ ↔
+      w₁.filter (· == Conn.c0) = w₂.filter (· == Conn.c0) ∧
+      w₁.filter (· == Conn.c1) = w₂.filter (· == Conn.c1) := by
+  have hiff := traceEq_iff_filter_eq
+    (I := fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v))
+    (p := (· == Conn.c0))
+    (by
+      intro x y hx hy
+      cases x <;> cases y
+      · cases hy
+      · exact ⟨incr_indep (by decide), incr_indep (by decide)⟩
+      · cases hx
+      · cases hx)
+    (by
+      intro x y hxy hx hy
+      cases x <;> cases y
+      · exact (hxy rfl).elim
+      · cases hy
+      · cases hx
+      · cases hx)
+    (by
+      intro x y hxy hx hy
+      cases x <;> cases y
+      · cases hx
+      · cases hx
+      · cases hy
+      · exact (hxy rfl).elim)
+    w₁ w₂
+  have hnot : (fun x : Conn => !(x == Conn.c0)) = (· == Conn.c1) := by
+    funext x
+    cases x <;> rfl
+  rw [hnot] at hiff
+  exact hiff
+
+/-- **Toy completeness (count form)**: on `twoRecv`, two words are `TraceEq` under footprint
+independence iff they have the same `c0` and `c1` counts. -/
+theorem twoRecv_traceEq_iff_counts (w₁ w₂ : List Conn) :
+    TraceEq (fun (t v : Conn) => footIndep (Action.incr t) (Action.incr v)) w₁ w₂ ↔
+      w₁.count Conn.c0 = w₂.count Conn.c0 ∧ w₁.count Conn.c1 = w₂.count Conn.c1 := by
+  rw [twoRecv_traceEq_iff_projections]
+  constructor
+  · rintro ⟨h0, h1⟩
+    have hc0 := congrArg List.length h0
+    have hc1 := congrArg List.length h1
+    rw [filter_beq_eq_replicate_count, filter_beq_eq_replicate_count,
+      List.length_replicate, List.length_replicate] at hc0 hc1
+    exact ⟨hc0, hc1⟩
+  · rintro ⟨hc0, hc1⟩
+    rw [filter_beq_eq_replicate_count Conn.c0 w₁, filter_beq_eq_replicate_count Conn.c0 w₂,
+      filter_beq_eq_replicate_count Conn.c1 w₁, filter_beq_eq_replicate_count Conn.c1 w₂,
+      hc0, hc1]
+    exact ⟨rfl, rfl⟩
+
+/-- Negative tooth: distinct mutually dependent events (`t ≠ v`, `¬ I t v`, `¬ I v t`) are never
+trace-equivalent in opposite orders. -/
+theorem dependent_swap_not_traceEq {L : Type u} [DecidableEq L] {I : L → L → Prop}
+    {t v : L} (hne : t ≠ v) (hntv : ¬ I t v) (hnvt : ¬ I v t) :
+    ¬ TraceEq I [t, v] [v, t] := by
+  intro h
+  let p : L → Bool := fun x => decide (x = t ∨ x = v)
+  have hDep : ∀ x y, x ≠ y → p x = true → p y = true → ¬ I x y := by
+    intro x y hxy hx hy
+    have hx' : x = t ∨ x = v := of_decide_eq_true hx
+    have hy' : y = t ∨ y = v := of_decide_eq_true hy
+    rcases hx' with rfl | rfl <;> rcases hy' with rfl | rfl
+    · exact (hxy rfl).elim
+    · exact hntv
+    · exact hnvt
+    · exact (hxy rfl).elim
+  have hfilt := traceEq_filter_dependent p hDep h
+  have ht : p t = true := decide_eq_true (Or.inl rfl)
+  have hv : p v = true := decide_eq_true (Or.inr rfl)
+  simp [List.filter, ht, hv] at hfilt
+  exact hne hfilt.1
+
+/-- Negative tooth on the accept/close toy: under footprint independence, `[accept, close]` and
+`[close, accept]` are not trace-equivalent. -/
+theorem acceptClose_not_traceEq :
+    ¬ TraceEq (fun (t v : ACLab) => footIndep t.act v.act)
+      [ACLab.accept, ACLab.close] [ACLab.close, ACLab.accept] := by
+  refine dependent_swap_not_traceEq (L := ACLab) (by decide) acceptClose_footprint_dependent ?_
+  intro h
+  exact (h ACPos.free).1 ⟨Or.inr rfl, Or.inl (Or.inl rfl)⟩
+
 end Fn2.Coherence
+
