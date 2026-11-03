@@ -41,8 +41,13 @@
 (assert-event (<= (+ *fn2-groups-name-max* 3 (* 3 21) 4) *fn2-cursor-list-room*))
 ;; LIST's variants (the grammar's keyword order) the cursor serves.
 (defconst *fn2-cursor-list-active* 0)
+(defconst *fn2-cursor-list-times* 1)
 (defconst *fn2-cursor-list-counts* 2)
 (defconst *fn2-cursor-list-newsgroups* 7)
+(defconst *fn2-cursor-list-subscriptions* 9)
+;; HDR/XHDR and NEWNEWS: room in TX before reading an overview line to
+;; extract a header field or Message-ID.
+(defconst *fn2-cursor-hdr-room* 512)
 ;; UPDATE: what the reply moves the connection's selection to.
 (defconst *fn2-cursor-update-none* 0)
 (defconst *fn2-cursor-update-current* 1)
@@ -62,6 +67,9 @@
 (defun fn2-cursor-overview-p (tag)
   (declare (xargs :guard t))
   (or (equal tag *fn2-nntp-command-over*) (equal tag *fn2-nntp-command-xover*)))
+(defun fn2-cursor-hdr-p (tag)
+  (declare (xargs :guard t))
+  (or (equal tag *fn2-nntp-command-hdr*) (equal tag *fn2-nntp-command-xhdr*)))
 ;; The reply a tag gives for WHAT (a keyword); 0 (no reply) when it has none.
 (defun fn2-cursor-reply-of (tag what)
   (declare (xargs :guard t))
@@ -107,12 +115,31 @@
       (:no-msgid *fn2-nntp-reply-over-no-msgid*)
       (otherwise *fn2-nntp-reply-over-no-projection*)))
    ((equal tag *fn2-nntp-command-list*)
-    (case what (:newsgroups *fn2-nntp-reply-list-newsgroups*) (:active *fn2-nntp-reply-list-active*)
+    (case what (:newsgroups *fn2-nntp-reply-list-newsgroups*)
+      (:times *fn2-nntp-reply-list-times*)
+      (:subscriptions *fn2-nntp-reply-list-subscriptions*)
+      (:active *fn2-nntp-reply-list-active*)
       (otherwise *fn2-nntp-reply-list-no-projection*)))
    ((equal tag *fn2-nntp-command-xover*)
     (case what (:found *fn2-nntp-reply-xover-overview*) (:no-group-selected *fn2-nntp-reply-xover-no-group-selected*)
       (:no-current *fn2-nntp-reply-xover-no-current*) (:none *fn2-nntp-reply-xover-none-selected*)
       (otherwise *fn2-nntp-reply-xover-no-projection*)))
+   ((equal tag *fn2-nntp-command-hdr*)
+    (case what (:found *fn2-nntp-reply-hdr-headers*) (:no-group-selected *fn2-nntp-reply-hdr-no-group-selected*)
+      (:no-current *fn2-nntp-reply-hdr-no-current*) (:none *fn2-nntp-reply-hdr-empty-range*)
+      (:no-msgid *fn2-nntp-reply-hdr-no-msgid*)
+      (otherwise *fn2-nntp-reply-hdr-no-projection*)))
+   ((equal tag *fn2-nntp-command-xhdr*)
+    (case what (:found *fn2-nntp-reply-xhdr-header*) (:no-group-selected *fn2-nntp-reply-xhdr-no-group-selected*)
+      (:no-current *fn2-nntp-reply-xhdr-no-current*) (:none *fn2-nntp-reply-xhdr-none-selected*)
+      (:no-msgid *fn2-nntp-reply-xhdr-no-msgid*)
+      (otherwise *fn2-nntp-reply-xhdr-no-projection*)))
+   ((equal tag *fn2-nntp-command-newgroups*)
+    (case what (:listed *fn2-nntp-reply-newgroups-listed*)
+      (otherwise *fn2-nntp-reply-newgroups-no-projection*)))
+   ((equal tag *fn2-nntp-command-newnews*)
+    (case what (:listed *fn2-nntp-reply-newnews-listed*)
+      (otherwise *fn2-nntp-reply-newnews-no-projection*)))
    (t 0)))
 ;; NEXT, LAST and STAT: one article, its 223 line.
 (defun fn2-cursor-single-p (tag)
@@ -123,13 +150,23 @@
 (defun fn2-cursor-list-variant (k0 a0)
   (declare (xargs :guard t))
   (if (equal k0 *fn2-cursor-arg-keyword*) (nfix a0) *fn2-cursor-list-active*))
+(defun fn2-cursor-list-reply (k0 a0)
+  (declare (xargs :guard t))
+  (let ((v (fn2-cursor-list-variant k0 a0)))
+    (cond ((equal v *fn2-cursor-list-newsgroups*) *fn2-nntp-reply-list-newsgroups*)
+          ((equal v *fn2-cursor-list-times*) *fn2-nntp-reply-list-times*)
+          ((equal v *fn2-cursor-list-subscriptions*) *fn2-nntp-reply-list-subscriptions*)
+          (t *fn2-nntp-reply-list-active*))))
 (defcost fn2-cursor-list-variant :child fn2-cursor-list-variant :doc "LIST's variant (ACTIVE when no keyword).")
+(defcost fn2-cursor-list-reply :child fn2-cursor-list-reply :doc "The 215 reply for a LIST variant.")
 (defcost fn2-cursor-selects-p :child fn2-cursor-selects-p :doc "GROUP or LISTGROUP.")
 (defcost fn2-cursor-overview-p :child fn2-cursor-overview-p :doc "OVER or XOVER.")
+(defcost fn2-cursor-hdr-p :child fn2-cursor-hdr-p :doc "HDR or XHDR.")
 (defcost fn2-cursor-single-p :child fn2-cursor-single-p :doc "NEXT, LAST or STAT.")
 (defcost fn2-cursor-reply-of :child fn2-cursor-reply-of :doc "The reply a command tag gives for an outcome.")
 (defthm fn2-cursor-reply-of-natp (natp (fn2-cursor-reply-of tag what)) :rule-classes :type-prescription)
-(in-theory (disable fn2-cursor-reply-of))
+(defthm fn2-cursor-list-reply-natp (natp (fn2-cursor-list-reply k0 a0)) :rule-classes :type-prescription)
+(in-theory (disable fn2-cursor-reply-of fn2-cursor-list-reply))
 
 ; ---------------------------------------------------------------------------
 ; The cursor's pool operations, over fn2-pool only. Each writes at TX's fill
@@ -371,32 +408,36 @@
   (fn2-cursor-pad-loop (nfix (- (nfix k) (fn2-cursor-pool-fill slot fn2-pool))) slot gen okind oslot ogen fn2-pool))
 (fn2-pool-preserves fn2-cursor-pool-pad (k slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 ;; A LIST row after its name: " (no description)" for NEWSGROUPS (WHAT 7),
-;; else " HIGH LOW [COUNT] STATUS" (COUNT for COUNTS, WHAT 2; STATUS y where
-;; the connection serves posting, else n); then CR LF.
+;; nothing for SUBSCRIPTIONS (WHAT 9), else " HIGH LOW [COUNT] STATUS"
+;; (COUNT for COUNTS, WHAT 2; STATUS y where the connection serves posting,
+;; else n); then CR LF.
 (defun fn2-cursor-pool-tail (what high low count posting slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp high) (natp low) (natp count))))
   (b* (((mv code fn2-pool)
-        (if (equal what *fn2-cursor-list-newsgroups*)
-            (fn2-answer-put-text 0 " (no description)" slot gen okind oslot ogen fn2-pool)
-          (b* (((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (fn2-gram-put-number high slot gen okind oslot ogen fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (fn2-gram-put-number low slot gen okind oslot ogen fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (if (equal what *fn2-cursor-list-counts*)
-                                       (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool)
-                                     (mv :ok fn2-pool)))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (if (equal what *fn2-cursor-list-counts*)
-                                       (fn2-gram-put-number count slot gen okind oslot ogen fn2-pool)
-                                     (mv :ok fn2-pool)))
-               ((unless (eq code :ok)) (mv code fn2-pool))
-               ((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
-               ((unless (eq code :ok)) (mv code fn2-pool)))
-            (fn2-gram-put (if (equal posting 1) 121 110) slot gen okind oslot ogen fn2-pool))))
+        (cond ((equal what *fn2-cursor-list-subscriptions*)
+               (mv :ok fn2-pool))
+              ((equal what *fn2-cursor-list-newsgroups*)
+               (fn2-answer-put-text 0 " (no description)" slot gen okind oslot ogen fn2-pool))
+              (t
+               (b* (((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (fn2-gram-put-number high slot gen okind oslot ogen fn2-pool))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (fn2-gram-put-number low slot gen okind oslot ogen fn2-pool))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (if (equal what *fn2-cursor-list-counts*)
+                                            (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool)
+                                          (mv :ok fn2-pool)))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (if (equal what *fn2-cursor-list-counts*)
+                                            (fn2-gram-put-number count slot gen okind oslot ogen fn2-pool)
+                                          (mv :ok fn2-pool)))
+                    ((unless (eq code :ok)) (mv code fn2-pool))
+                    ((mv code fn2-pool) (fn2-gram-put 32 slot gen okind oslot ogen fn2-pool))
+                    ((unless (eq code :ok)) (mv code fn2-pool)))
+                 (fn2-gram-put (if (equal posting 1) 121 110) slot gen okind oslot ogen fn2-pool)))))
        ((unless (eq code :ok)) (mv code fn2-pool)))
     (fn2-gram-put-crlf slot gen okind oslot ogen fn2-pool)))
 (fn2-pool-preserves fn2-cursor-pool-tail (what high low count posting slot gen okind oslot ogen fn2-pool)
@@ -414,7 +455,231 @@
        ((mv f3 t3) (fn2-gram-find (nfix (- to (+ 1 t2))) (+ 1 t2) 9 slot gen okind oslot ogen fn2-pool))
        ((mv f4 t4) (fn2-gram-find (nfix (- to (+ 1 t3))) (+ 1 t3) 9 slot gen okind oslot ogen fn2-pool)))
     (if (and f1 f2 f3 f4 (< (+ 1 t3) t4)) (mv :ok (+ 1 t3) (- t4 (+ 1 t3))) (mv :refused 0 0))))
+(defthm fn2-cursor-mid-span-types
+  (and (natp (mv-nth 1 (fn2-cursor-mid-span slot gen from to okind oslot ogen fn2-pool)))
+       (natp (mv-nth 2 (fn2-cursor-mid-span slot gen from to okind oslot ogen fn2-pool)))))
 (in-theory (disable fn2-cursor-parse-line fn2-cursor-mid-span fn2-cursor-pool-fill))
+
+(defun fn2-cursor-truncate-to (at slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp at))))
+  (let ((at (nfix at)))
+    (if (and (eq (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
+             (unsigned-byte-p 32 at) (<= at (fn2-pool-cap slot fn2-pool)))
+        (fn2-pool-set-fill slot at fn2-pool)
+      fn2-pool)))
+(fn2-pool-preserves fn2-cursor-truncate-to (at slot gen okind oslot ogen fn2-pool) :position nil :rows nil)
+(in-theory (disable fn2-cursor-truncate-to))
+
+(defun fn2-cursor-move-loop (left src dst slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp src) (natp dst))))
+  (if (zp left) (mv :ok fn2-pool)
+    (mv-let (ok b) (fn2-gram-read slot gen (nfix src) okind oslot ogen fn2-pool)
+      (if (not ok) (mv :refused fn2-pool)
+        (mv-let (wc fn2-pool) (fn2-pool-write slot gen (nfix dst) b okind oslot ogen fn2-pool)
+          (if (not (eq wc :ok)) (mv wc fn2-pool)
+            (fn2-cursor-move-loop (- left 1) (+ 1 (nfix src)) (+ 1 (nfix dst)) slot gen okind oslot ogen fn2-pool)))))))
+(fn2-pool-preserves fn2-cursor-move-loop (left src dst slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+(in-theory (disable fn2-cursor-move-loop))
+
+(defun fn2-cursor-move-line (src len at slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp src) (natp len) (natp at))))
+  (mv-let (mc fn2-pool) (fn2-cursor-move-loop (nfix len) (nfix src) (nfix at) slot gen okind oslot ogen fn2-pool)
+    (if (not (eq mc :ok)) (mv mc fn2-pool)
+      (let ((fn2-pool (fn2-cursor-truncate-to (+ (nfix at) (nfix len)) slot gen okind oslot ogen fn2-pool)))
+        (fn2-gram-put-crlf slot gen okind oslot ogen fn2-pool)))))
+(fn2-pool-preserves fn2-cursor-move-line (src len at slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+(in-theory (disable fn2-cursor-move-line))
+
+(defun fn2-cursor-pool-list-filter (variant k1 a1 b1 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp variant) (natp k1) (natp a1) (natp b1)
+                              (natp at) (natp copied))))
+  (let ((keep (and (not (equal (nfix variant) *fn2-cursor-list-times*))
+                   (or (not (equal (nfix k1) *fn2-cursor-arg-span*))
+                       (fn2-wildmat-match-p (nfix a1) (+ (nfix a1) (nfix b1)) rslot rgen
+                                            (nfix at) (+ (nfix at) (nfix copied)) tslot tgen
+                                            okind oslot ogen fn2-pool)))))
+    (if keep
+        (mv :ok t fn2-pool)
+      (let ((fn2-pool (fn2-cursor-truncate-to at tslot tgen okind oslot ogen fn2-pool)))
+        (mv :ok nil fn2-pool)))))
+(fn2-pool-preserves fn2-cursor-pool-list-filter
+  (variant k1 a1 b1 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 2 :rows nil)
+(in-theory (disable fn2-cursor-pool-list-filter))
+
+(defun fn2-cursor-pool-newnews-filter (a0 b0 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0) (natp at) (natp copied))))
+  (let* ((keep (fn2-wildmat-match-p (nfix a0) (+ (nfix a0) (nfix b0)) rslot rgen
+                                    (nfix at) (+ (nfix at) (nfix copied)) tslot tgen
+                                    okind oslot ogen fn2-pool))
+         (fn2-pool (fn2-cursor-truncate-to at tslot tgen okind oslot ogen fn2-pool)))
+    (mv :ok (and keep t) fn2-pool)))
+(fn2-pool-preserves fn2-cursor-pool-newnews-filter
+  (a0 b0 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 2 :rows nil)
+(in-theory (disable fn2-cursor-pool-newnews-filter))
+
+(defun fn2-cursor-span-eq-p (len s1 s2 slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix len)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp len) (natp s1) (natp s2))))
+  (if (zp len) t
+    (mv-let (ok1 b1) (fn2-gram-read slot gen (nfix s1) okind oslot ogen fn2-pool)
+      (mv-let (ok2 b2) (fn2-gram-read slot gen (nfix s2) okind oslot ogen fn2-pool)
+        (and ok1 ok2 (= b1 b2)
+             (fn2-cursor-span-eq-p (- len 1) (+ 1 (nfix s1)) (+ 1 (nfix s2)) slot gen okind oslot ogen fn2-pool))))))
+(in-theory (disable fn2-cursor-span-eq-p))
+
+(defun fn2-cursor-mid-seen-p (fuel i at ms ml slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp i) (natp at) (natp ms) (natp ml))))
+  (if (or (zp fuel) (>= (nfix i) (nfix at))) nil
+    (mv-let (has-lf lf-pos) (fn2-cursor-next-lf (nfix i) (nfix at) slot gen okind oslot ogen fn2-pool)
+      (if (or (not has-lf) (>= lf-pos (nfix at))) nil
+        (let ((line-end (nfix (- lf-pos 1))))
+          (or (and (equal (nfix (- line-end (nfix i))) (nfix ml))
+                   (fn2-cursor-span-eq-p (nfix ml) (nfix i) (nfix ms) slot gen okind oslot ogen fn2-pool))
+              (fn2-cursor-mid-seen-p (- fuel 1) (+ 1 lf-pos) at ms ml slot gen okind oslot ogen fn2-pool)))))))
+(in-theory (disable fn2-cursor-mid-seen-p))
+
+(defun fn2-cursor-pool-newnews-mid (roff at to tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp roff) (natp at) (natp to))))
+  (mv-let (mcode ms ml) (fn2-cursor-mid-span tslot tgen at to okind oslot ogen fn2-pool)
+    (if (or (not (eq mcode :ok))
+            (fn2-cursor-mid-seen-p (nfix (- (nfix at) (nfix roff))) roff at ms ml tslot tgen okind oslot ogen fn2-pool))
+        (let ((fn2-pool (fn2-cursor-truncate-to at tslot tgen okind oslot ogen fn2-pool)))
+          (mv :ok fn2-pool))
+      (fn2-cursor-move-line ms ml at tslot tgen okind oslot ogen fn2-pool))))
+(fn2-pool-preserves fn2-cursor-pool-newnews-mid (roff at to tslot tgen okind oslot ogen fn2-pool)
+  :position 1 :rows nil)
+(in-theory (disable fn2-cursor-pool-newnews-mid))
+
+(defun fn2-cursor-pool-hdr-label (tag n k1 a1 b1 rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp tag) (natp n) (natp k1) (natp a1) (natp b1))))
+  (b* (((mv code fn2-pool)
+        (if (and (equal (nfix tag) *fn2-nntp-command-xhdr*) (equal (nfix k1) *fn2-cursor-arg-span*))
+            (fn2-gram-put-span (nfix b1) (nfix a1) (nfix rslot) (nfix rgen) tslot tgen okind oslot ogen fn2-pool)
+          (fn2-gram-put-number (if (equal (nfix k1) *fn2-cursor-arg-span*) 0 (nfix n))
+                               tslot tgen okind oslot ogen fn2-pool)))
+       ((unless (eq code :ok)) (mv code fn2-pool)))
+    (fn2-gram-put 32 tslot tgen okind oslot ogen fn2-pool)))
+(fn2-pool-preserves fn2-cursor-pool-hdr-label (tag n k1 a1 b1 rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  :position 1 :rows nil)
+(in-theory (disable fn2-cursor-pool-hdr-label))
+
+(defun fn2-cursor-ci-span-eq-p (len s1 slot1 gen1 s2 slot2 gen2 okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix len)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp len) (natp s1) (natp s2))))
+  (if (zp len) t
+    (mv-let (ok1 b1) (fn2-gram-read slot1 gen1 (nfix s1) okind oslot ogen fn2-pool)
+      (mv-let (ok2 b2) (fn2-gram-read slot2 gen2 (nfix s2) okind oslot ogen fn2-pool)
+        (and ok1 ok2 (= (fn2-gram-upcase b1) (fn2-gram-upcase b2))
+             (fn2-cursor-ci-span-eq-p (- len 1) (+ 1 (nfix s1)) slot1 gen1 (+ 1 (nfix s2)) slot2 gen2
+                                      okind oslot ogen fn2-pool))))))
+(in-theory (disable fn2-cursor-ci-span-eq-p))
+
+(defun fn2-cursor-skip-wsp (fuel i end slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp i) (natp end))))
+  (if (or (zp fuel) (>= (nfix i) (nfix end))) (nfix i)
+    (mv-let (ok b) (fn2-gram-read slot gen (nfix i) okind oslot ogen fn2-pool)
+      (if (and ok (or (= b 32) (= b 9)))
+          (fn2-cursor-skip-wsp (- fuel 1) (+ 1 (nfix i)) end slot gen okind oslot ogen fn2-pool)
+        (nfix i)))))
+(defthm fn2-cursor-skip-wsp-natp
+  (natp (fn2-cursor-skip-wsp fuel i end slot gen okind oslot ogen fn2-pool))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-cursor-skip-wsp))
+
+(defun fn2-cursor-scan-extra-hdr (fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp i) (natp to) (natp a0) (natp b0))))
+  (if (or (zp fuel) (>= (nfix i) (nfix to))) (mv nil 0 0)
+    (mv-let (has-lf lf-pos) (fn2-cursor-next-lf (nfix i) (nfix to) tslot tgen okind oslot ogen fn2-pool)
+      (let* ((line-e (if has-lf lf-pos (nfix to)))
+             (val-e (if (< (nfix i) line-e)
+                        (mv-let (okc cb) (fn2-gram-read tslot tgen (- line-e 1) okind oslot ogen fn2-pool)
+                          (if (and okc (= cb 13)) (- line-e 1) line-e))
+                      line-e)))
+        (if (<= val-e (nfix i))
+            (mv nil 0 0)
+          (mv-let (okcol col-pos) (fn2-gram-read tslot tgen (+ (nfix i) (nfix b0)) okind oslot ogen fn2-pool)
+            (if (and (<= (+ (nfix i) (nfix b0) 1) val-e)
+                     okcol (= col-pos 58)
+                     (fn2-cursor-ci-span-eq-p (nfix b0) (nfix a0) rslot rgen (nfix i) tslot tgen
+                                              okind oslot ogen fn2-pool))
+                (let ((vs (fn2-cursor-skip-wsp (nfix (- val-e (+ (nfix i) (nfix b0) 1)))
+                                               (+ (nfix i) (nfix b0) 1) val-e tslot tgen
+                                               okind oslot ogen fn2-pool)))
+                  (mv t vs (max vs val-e)))
+              (if has-lf
+                  (fn2-cursor-scan-extra-hdr (- fuel 1) (+ 1 lf-pos) to a0 b0 rslot rgen tslot tgen
+                                             okind oslot ogen fn2-pool)
+                (mv nil 0 0)))))))))
+(defthm fn2-cursor-scan-extra-hdr-types
+  (and (natp (mv-nth 1 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)))
+       (natp (mv-nth 2 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)))))
+(in-theory (disable fn2-cursor-scan-extra-hdr))
+
+(local (in-theory (disable fn2-gram-match)))
+(defun fn2-cursor-pool-hdr-val (a0 b0 at to rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0) (natp at) (natp to))))
+  (let ((a0 (nfix a0)) (b0 (nfix b0)) (at (nfix at)) (to (nfix to)))
+    (if (or (fn2-gram-match a0 b0 ":FN-VERIFIED" rslot rgen okind oslot ogen fn2-pool)
+            (fn2-gram-match a0 b0 ":FN-CONTROL" rslot rgen okind oslot ogen fn2-pool)
+            (fn2-gram-match a0 b0 ":FN-ENROLLMENT" rslot rgen okind oslot ogen fn2-pool))
+        (b* ((fn2-pool (fn2-cursor-truncate-to at tslot tgen okind oslot ogen fn2-pool))
+             ((mv code fn2-pool) (fn2-answer-put-text 0 "absent no-field" tslot tgen okind oslot ogen fn2-pool))
+             ((unless (eq code :ok)) (mv code fn2-pool)))
+          (fn2-gram-put-crlf tslot tgen okind oslot ogen fn2-pool))
+      (b* (((mv has-lf lf-pos) (fn2-cursor-next-lf at to tslot tgen okind oslot ogen fn2-pool))
+           (ov-to (if has-lf lf-pos to))
+           ((mv f1 t1) (fn2-cursor-next-tab at ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f2 t2) (fn2-cursor-next-tab (+ 1 t1) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f3 t3) (fn2-cursor-next-tab (+ 1 t2) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f4 t4) (fn2-cursor-next-tab (+ 1 t3) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f5 t5) (fn2-cursor-next-tab (+ 1 t4) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f6 t6) (fn2-cursor-next-tab (+ 1 t5) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((mv f7 t7) (fn2-cursor-next-tab (+ 1 t6) ov-to tslot tgen okind oslot ogen fn2-pool))
+           ((unless (and f1 f2 f3 f4 f5 f6)) (mv :refused fn2-pool))
+           (lines-to (if f7 t7 ov-to))
+           (has-xref (and f7 (< (+ 1 t7) ov-to)))
+           ((mv vs ve)
+            (cond ((fn2-gram-match a0 b0 "SUBJECT" rslot rgen okind oslot ogen fn2-pool)
+                   (mv at (max at t1)))
+                  ((fn2-gram-match a0 b0 "FROM" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t1) (max (+ 1 t1) t2)))
+                  ((fn2-gram-match a0 b0 "DATE" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t2) (max (+ 1 t2) t3)))
+                  ((fn2-gram-match a0 b0 "MESSAGE-ID" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t3) (max (+ 1 t3) t4)))
+                  ((fn2-gram-match a0 b0 "REFERENCES" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t4) (max (+ 1 t4) t5)))
+                  ((fn2-gram-match a0 b0 ":BYTES" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t5) (max (+ 1 t5) t6)))
+                  ((fn2-gram-match a0 b0 ":LINES" rslot rgen okind oslot ogen fn2-pool)
+                   (mv (+ 1 t6) (max (+ 1 t6) lines-to)))
+                  ((fn2-gram-match a0 b0 "XREF" rslot rgen okind oslot ogen fn2-pool)
+                   (if has-xref
+                       (let ((xs (if (and (<= (+ 7 t7) ov-to)
+                                          (fn2-gram-match (+ 1 t7) 6 "XREF: " tslot tgen okind oslot ogen fn2-pool))
+                                     (+ 7 t7)
+                                   (+ 1 t7))))
+                         (mv xs (max xs ov-to)))
+                     (mv at at)))
+                  (has-lf
+                   (mv-let (found es ee)
+                     (fn2-cursor-scan-extra-hdr (nfix (- to (+ 1 lf-pos))) (+ 1 lf-pos) to
+                                                a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)
+                     (if found (mv es (max es ee)) (mv at at))))
+                  (t (mv at at)))))
+        (fn2-cursor-move-line vs (nfix (- ve vs)) at tslot tgen okind oslot ogen fn2-pool)))))
+(fn2-pool-preserves fn2-cursor-pool-hdr-val (a0 b0 at to rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  :position 1 :rows nil)
+(in-theory (disable fn2-cursor-pool-hdr-val))
 
 (defcost fn2-cursor-parse :child fn2-cursor-parse-line :answers (:ok :refused) :bytes 512
  :doc "Parse the connection's command line again (at most 512 octets of its RX, under its owner).")
@@ -436,6 +701,16 @@
  :doc "A LIST row after its name: the description, or the numbers and the status; then CR LF.")
 (defcost fn2-cursor-mid :child fn2-cursor-mid-span :answers (:ok :refused) :bytes 1024
  :doc "Find an overview line's Message-ID field (at most 1,024 octets read).")
+(defcost fn2-cursor-list-filter :child fn2-cursor-pool-list-filter :answers (:ok) :bytes 1024 :tables (fn2-core-pool)
+ :doc "Filter a LIST group name by variant and wildmat, truncating TX when excluded.")
+(defcost fn2-cursor-newnews-filter :child fn2-cursor-pool-newnews-filter :answers (:ok) :bytes 1024 :tables (fn2-core-pool)
+ :doc "Check whether a group name matches NEWNEWS's wildmat, truncating TX back to AT.")
+(defcost fn2-cursor-newnews-mid :child fn2-cursor-pool-newnews-mid :answers t :bytes 1024 :tables (fn2-core-pool)
+ :doc "Extract an overview line's Message-ID and append it once to the NEWNEWS page.")
+(defcost fn2-cursor-hdr-label :child fn2-cursor-pool-hdr-label :answers t :bytes 256 :tables (fn2-core-pool)
+ :doc "Append the article number or Message-ID label and a space for HDR/XHDR.")
+(defcost fn2-cursor-hdr-val :child fn2-cursor-pool-hdr-val :answers t :bytes 1024 :tables (fn2-core-pool)
+ :doc "Extract the requested header or metadata value from an overview line and append CR LF.")
 
 ; ---------------------------------------------------------------------------
 ; The kind. A cursor row in slot S reads through read row 2S, and LIST's
@@ -459,11 +734,12 @@
    (:do (c2) (fn2-read-key (* 2 row-slot) ':lo 1 row-lo) :accept (:ok))
    (:do (c3) (fn2-read-key (* 2 row-slot) ':hi 0 g) :accept (:ok))
    (:do (c4) (fn2-read-key (* 2 row-slot) ':hi 1 row-hi) :accept (:ok))
-   (:do (c5) (fn2-read-range (* 2 row-slot) *fn2-cursor-overview-sid* *fn2-overview-entry-field-position* row-pin)
+   (:do (c5) (fn2-read-range (* 2 row-slot) *fn2-cursor-overview-sid*
+                             *fn2-overview-entry-field-position* (if (equal row-pin 0) *fn2-none* row-pin))
     :accept (:ok))
    (:set (have 0) (next row-lo))
    (:next :render) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
-  ;; OVER/XOVER: the 224 line first (TX is reset if the range is empty)
+  ;; OVER/XOVER, HDR/XHDR: the status line first (TX is reset if the range is empty)
   (over-head :on-refusal ((:stop :machine-phase))
    (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask 0 0 0
                                row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
@@ -524,7 +800,9 @@
            (:goto range))))
   (seek-identity :on-refusal ((:stop :machine-phase))
      (:do (ic article candidates)
-          (fn2-read-identity (* 2 row-slot) row-rx-slot row-rx-gen row-a0 row-b0
+          (fn2-read-identity (* 2 row-slot) row-rx-slot row-rx-gen
+                             (if (fn2-cursor-hdr-p row-tag) row-a1 row-a0)
+                             (if (fn2-cursor-hdr-p row-tag) row-b1 row-b0)
                              :okind row-conn-kind :oslot row-conn :ogen row-conn-gen :budget *fn2-cursor-step-budget*)
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -538,7 +816,9 @@
                                    (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
                                   ((:set (spin article) (found 0) (lgroup (if (< 0 row-group) row-group 1))
                                          (lo 1) (hi *fn2-none*) (step 8))
-                                   (:if (fn2-cursor-overview-p row-tag) ((:goto over-head)) ((:goto range))))))
+                                   (:if (or (fn2-cursor-overview-p row-tag) (fn2-cursor-hdr-p row-tag))
+                                        ((:goto over-head))
+                                        ((:goto range))))))
                             ((:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))))
              ((:evidence :absent) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
                                   (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))
@@ -566,11 +846,14 @@
                                                    :none :no-current))))
      (:goto refuse))
   (end-empty :on-refusal ((:stop :machine-phase))
-     ;; an empty overview range: the 224 line goes, the refusal replaces it
+     ;; an empty overview/HDR range: the status line goes, the refusal replaces it
      (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
      (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
-     (:set (reply (fn2-cursor-reply-of row-tag (if (equal row-k0 *fn2-cursor-arg-range*) :none :no-current))))
+     (:set (reply (fn2-cursor-reply-of row-tag
+                                       (if (equal (if (fn2-cursor-hdr-p row-tag) row-k1 row-k0)
+                                                  *fn2-cursor-arg-range*)
+                                           :none :no-current))))
      (:goto refuse))
   (end-list :on-refusal ((:stop :machine-phase))
      ;; the rows' terminator
@@ -614,15 +897,13 @@
      (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
      (:set (sel row-group) (spin v) (step 2))
      (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
-  ;; LIST ACTIVE, COUNTS, NEWSGROUPS: the 215 line after TX's key area, then
-  ;; the group directory scanned in name order, one row a group
+  ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the 215
+  ;; line after TX's key area, then the group directory scanned in name order
   (list-start :on-refusal ((:stop :machine-phase))
      (:do (pc) (fn2-cursor-pad *fn2-cursor-key-room* row-tx-slot row-tx-gen
                                :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
-     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag (if (equal (fn2-cursor-list-variant row-k0 row-a0)
-                                                                                *fn2-cursor-list-newsgroups*)
-                                                                          :newsgroups :active))
+     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-list-reply row-k0 row-a0)
                                  row-mask 0 0 0 row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
                                  :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
@@ -630,24 +911,34 @@
       :accept (:ok))
      (:set (roff *fn2-cursor-key-room*) (have 0) (step 9) (update *fn2-cursor-update-none*))
      (:next :render) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
-  ;; the next group: its name copied after the page's rows (the row's room
-  ;; was checked), the description at once (NEWSGROUPS), else its numbers next
+  ;; the next group: its name copied after the page's rows, filtered by
+  ;; variant and wildmat, then rendered at once (NEWSGROUPS, SUBSCRIPTIONS)
+  ;; or its counts looked up next
   (list-step :on-refusal ((:stop :machine-phase))
      (:do (nc) (fn2-read-scan-next (* 2 row-slot) *fn2-cursor-step-budget*)
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:entry)
               (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
+              (:let v (fn2-cursor-list-variant row-k0 row-a0))
               (:do (vc g) (fn2-read-value (* 2 row-slot) *fn2-groups-entry-field-group*) :accept (:ok))
               (:do (oc copied left) (fn2-read-octets (* 2 row-slot) *fn2-groups-entry-field-name* 0 *fn2-groups-name-max*
                                                      row-tx-slot row-tx-gen at row-conn-kind row-conn row-conn-gen)
                :accept (:ok))
-              (:if (equal (fn2-cursor-list-variant row-k0 row-a0) *fn2-cursor-list-newsgroups*)
-                   ((:do (tc) (fn2-cursor-tail *fn2-cursor-list-newsgroups* 0 0 0 0 row-tx-slot row-tx-gen
-                                               :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-                     :accept (:ok))
-                    (:set (seen 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                   ((:set (lgroup g) (have 1) (seen 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+              (:do (fc keep) (fn2-cursor-list-filter v row-k1 row-a1 row-b1 at (nfix copied)
+                                                     row-rx-slot row-rx-gen row-tx-slot row-tx-gen
+                                                     :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+               :accept (:ok))
+              (:if (not keep)
+                   ((:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   ((:if (or (equal v *fn2-cursor-list-newsgroups*)
+                             (equal v *fn2-cursor-list-subscriptions*))
+                         ((:do (tc) (fn2-cursor-tail v 0 0 0 0 row-tx-slot row-tx-gen
+                                                     :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                           :accept (:ok))
+                          (:set (seen 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                         ((:set (lgroup g) (have 1) (seen 1))
+                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
              ((:end) (:goto end-list))
              (:otherwise (:stop :machine-phase)))))
   ;; the group's counts through the second read row: its key, then the lookup
@@ -685,6 +976,95 @@
                      (+ (nfix (fn2-cursor-tx-fill row-tx-slot)) *fn2-cursor-list-room*)))
              (:goto hand))
             (t (:goto list-step))))
+  ;; NEWGROUPS: 231 status line and terminator (no group creation timestamps stored)
+  (newgroups-done :on-refusal ((:stop :machine-phase))
+     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :listed) row-mask 0 0 0
+                                 row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
+                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:do (c2) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen
+                                    :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:set (done 1) (roff 0) (update *fn2-cursor-update-none*))
+     (:goto hand))
+  ;; NEWNEWS: scan groups on 2S, filter by wildmat, scan overview on 2S+1
+  (newnews-start :on-refusal ((:stop :machine-phase))
+     (:do (pc) (fn2-cursor-pad *fn2-cursor-key-room* row-tx-slot row-tx-gen
+                               :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :listed) row-mask 0 0 0
+                                 row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
+                                 :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:do (sc) (fn2-read-scan (* 2 row-slot) *fn2-groups-sid* row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
+      :accept (:ok))
+     (:set (roff *fn2-cursor-key-room*) (have 0) (step 12) (update *fn2-cursor-update-none*))
+     (:next :render) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
+  (newnews-group-step :on-refusal ((:stop :machine-phase))
+     (:do (nc) (fn2-read-scan-next (* 2 row-slot) *fn2-cursor-step-budget*)
+      :accept ()
+      :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:entry)
+              (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
+              (:do (vc g) (fn2-read-value (* 2 row-slot) *fn2-groups-entry-field-group*) :accept (:ok))
+              (:do (oc copied left) (fn2-read-octets (* 2 row-slot) *fn2-groups-entry-field-name* 0 *fn2-groups-name-max*
+                                                     row-tx-slot row-tx-gen at row-conn-kind row-conn row-conn-gen)
+               :accept (:ok))
+              (:do (fc keep) (fn2-cursor-newnews-filter row-a0 row-b0 at (nfix copied)
+                                                        row-rx-slot row-rx-gen row-tx-slot row-tx-gen
+                                                        :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+               :accept (:ok))
+              (:if keep
+                   ((:set (lgroup g) (lo 1) (hi *fn2-none*) (have 1))
+                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   ((:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+             ((:end) (:goto end-list))
+             (:otherwise (:stop :machine-phase)))))
+  (newnews-ov-start :on-refusal ((:stop :machine-phase))
+     (:do (c1) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo 0 row-lgroup) :accept (:ok))
+     (:do (c2) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo 1 row-lo) :accept (:ok))
+     (:do (c3) (fn2-read-key (+ 1 (* 2 row-slot)) ':hi 0 row-lgroup) :accept (:ok))
+     (:do (c4) (fn2-read-key (+ 1 (* 2 row-slot)) ':hi 1 row-hi) :accept (:ok))
+     (:do (c5) (fn2-read-range (+ 1 (* 2 row-slot)) *fn2-cursor-overview-sid*
+                               *fn2-overview-entry-field-position* (if (equal row-pin 0) *fn2-none* row-pin))
+      :accept (:ok))
+     (:set (have 2) (next row-lo))
+     (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
+  (newnews-ov-step :on-refusal ((:stop :machine-phase))
+     (:do (nc) (fn2-read-next (+ 1 (* 2 row-slot)) *fn2-cursor-step-budget*)
+      :accept ()
+      :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:entry) (:set (have 3)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:end) (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
+                     (:set (have 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             (:otherwise (:stop :machine-phase)))))
+  (newnews-ov-emit :on-refusal ((:stop :machine-phase))
+     (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
+     (:let room (nfix (- (nfix (fn2-cursor-tx-cap row-tx-slot)) (+ at 32))))
+     (:do (vc n) (fn2-read-value (+ 1 (* 2 row-slot)) *fn2-overview-entry-field-number*) :accept (:ok :stale)
+      :why ":stale: the range restarts at the next number")
+     (:if (eq vc :ok)
+          ((:do (oc copied left) (fn2-read-octets (+ 1 (* 2 row-slot)) *fn2-overview-entry-field-line*
+                                                  0 (min room 4096)
+                                                  row-tx-slot row-tx-gen at row-conn-kind row-conn row-conn-gen)
+            :accept (:ok))
+           (:do (mc) (fn2-cursor-newnews-mid row-roff at (+ at (nfix copied))
+                                             row-tx-slot row-tx-gen
+                                             :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+            :accept (:ok))
+           (:set (seen 1) (have 2) (next (+ 1 (nfix n))))
+           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
+           (:set (lo row-next) (have 1)) (:charge :steps *fn2-work-transition* :runnable t))))
+  (newnews-render :on-refusal ((:stop :machine-phase))
+     (:cond ((equal row-have 1) (:goto newnews-ov-start))
+            ((equal row-have 2) (:goto newnews-ov-step))
+            ((and (< row-roff (nfix (fn2-cursor-tx-fill row-tx-slot)))
+                  (< (nfix (fn2-cursor-tx-cap row-tx-slot))
+                     (+ (nfix (fn2-cursor-tx-fill row-tx-slot)) *fn2-cursor-hdr-room*)))
+             (:goto hand))
+            ((equal row-have 3) (:goto newnews-ov-emit))
+            (t (:goto newnews-group-step))))
   (render-step :on-refusal ((:stop :machine-phase))
      (:do (nc) (fn2-read-next (* 2 row-slot) *fn2-cursor-step-budget*)
       :accept ()
@@ -780,6 +1160,33 @@
                   :accept (:ok))
                  (:goto render-piece))
                 ((:goto render-piece))))
+          ((:set (lo row-next)) (:goto range))))
+  ;; HDR/XHDR: "<num-or-id> <value> CR LF"
+  (render-hdr-val :on-refusal ((:stop :machine-phase))
+     (:let at (nfix (fn2-cursor-tx-fill row-tx-slot)))
+     (:let room (nfix (- (nfix (fn2-cursor-tx-cap row-tx-slot)) (+ at 32))))
+     (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*) :accept (:ok))
+     (:do (oc copied left) (fn2-read-octets (* 2 row-slot) *fn2-overview-entry-field-line* 0 (min room 4096)
+                                            row-tx-slot row-tx-gen at row-conn-kind row-conn row-conn-gen)
+      :accept (:ok))
+     (:do (hc) (fn2-cursor-hdr-val row-a0 row-b0 at (+ at (nfix copied))
+                                   row-rx-slot row-rx-gen row-tx-slot row-tx-gen
+                                   :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:set (seen 1) (have 0) (lpos 0) (next (+ 1 (nfix n))))
+     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+  (render-hdr :on-refusal ((:stop :machine-phase))
+     (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*) :accept (:ok :stale)
+      :why ":stale: the range restarts at the next number")
+     (:if (eq vc :ok)
+          ((:do (lc) (fn2-cursor-hdr-label row-tag
+                                           (if (and (equal row-step 8) (not (equal row-lgroup row-group)))
+                                               0 (nfix n))
+                                           row-k1 row-a1 row-b1
+                                           row-rx-slot row-rx-gen row-tx-slot row-tx-gen
+                                           :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+            :accept (:ok))
+           (:goto render-hdr-val))
           ((:set (lo row-next)) (:goto range)))))
  :arms
  ((:free (:idle))
@@ -793,8 +1200,10 @@
    (:next :seek) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (:seek :on-refusal ((:stop :machine-phase))
    (:cond
-    ;; LIST ACTIVE, COUNTS, NEWSGROUPS: the group directory, no group needed
+    ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS, SUBSCRIPTIONS: the group directory
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-start))
+    ((equal row-tag *fn2-nntp-command-newgroups*) (:goto newgroups-done))
+    ((equal row-tag *fn2-nntp-command-newnews*) (:goto newnews-start))
     ;; GROUP g / LISTGROUP g: the name in the group directory
     ((and (fn2-cursor-selects-p row-tag) (equal row-k0 *fn2-cursor-arg-span*) (equal row-step 0)) (:goto seek-name))
     ((and (fn2-cursor-selects-p row-tag) (equal row-step 1)) (:goto seek-group))
@@ -810,12 +1219,19 @@
     ((and (fn2-cursor-selects-p row-tag) (equal row-step 0)) (:goto lg-start))
     ((and (fn2-cursor-selects-p row-tag) (equal row-step 10)) (:goto lg-step))
     ((fn2-cursor-selects-p row-tag) (:goto lg-found))
-    ;; STAT/ARTICLE/HEAD/BODY/OVER <id>: the identity read
-    ((and (or (fn2-cursor-single-p row-tag) (equal row-tag *fn2-nntp-command-over*))
-          (equal row-k0 *fn2-cursor-arg-span*))
+    ;; STAT/ARTICLE/HEAD/BODY/OVER <id>, HDR/XHDR <field> <id>: the identity read
+    ((or (and (or (fn2-cursor-single-p row-tag) (equal row-tag *fn2-nntp-command-over*))
+              (equal row-k0 *fn2-cursor-arg-span*))
+         (and (fn2-cursor-hdr-p row-tag) (equal row-k1 *fn2-cursor-arg-span*)))
      (:goto seek-identity))
     ;; every other command reads the selected group
     ((equal row-group 0) (:set (reply (fn2-cursor-reply-of row-tag :no-group-selected))) (:goto refuse))
+    ;; HDR/XHDR [range]: the current article when no second argument
+    ((fn2-cursor-hdr-p row-tag)
+     (:if (not (equal row-k1 *fn2-cursor-arg-range*))
+          ((:if (equal row-current 0) ((:set (reply (fn2-cursor-reply-of row-tag :no-current))) (:goto refuse))
+                ((:set (lo row-current) (hi row-current) (step 5)) (:goto over-head))))
+          ((:set (lo row-a1) (hi row-b1) (step 5)) (:goto over-head))))
     ;; NEXT: the first article after the current one
     ((equal row-tag *fn2-nntp-command-next*)
      (:if (equal row-current 0) ((:set (reply (fn2-cursor-reply-of row-tag :no-current))) (:goto refuse))
@@ -837,6 +1253,7 @@
   (:render :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-tag *fn2-nntp-command-list*) (:goto list-render))
+    ((equal row-tag *fn2-nntp-command-newnews*) (:goto newnews-render))
     ((equal row-have 0) (:goto render-step))
     ;; LAST's walk: remember the number, step on
     ((equal row-step 6) (:goto render-walk))
@@ -845,10 +1262,14 @@
     ((fn2-cursor-single-p row-tag) (:goto render-single))
     ;; a page break: TX has no room for another row
     ((and (< 0 (nfix (fn2-cursor-tx-fill row-tx-slot)))
-          (< (nfix (fn2-cursor-tx-cap row-tx-slot)) (+ (nfix (fn2-cursor-tx-fill row-tx-slot)) *fn2-cursor-row-room*)))
+          (< (nfix (fn2-cursor-tx-cap row-tx-slot))
+             (+ (nfix (fn2-cursor-tx-fill row-tx-slot))
+                (if (fn2-cursor-hdr-p row-tag) *fn2-cursor-hdr-room* *fn2-cursor-row-room*))))
      (:set (roff 0)) (:goto hand))
     ;; LISTGROUP: the number
     ((equal row-tag *fn2-nntp-command-listgroup*) (:goto render-number))
+    ;; HDR/XHDR: "<num-or-id> <value>"
+    ((fn2-cursor-hdr-p row-tag) (:goto render-hdr))
     ;; OVER/XOVER: a row, "N TAB line" (the 224 line is written before the range)
     (t (:goto render-row))))
   ;; TX is the connection's until it sets TURN again
@@ -858,7 +1279,8 @@
           ((equal row-done 1) (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
           (t (:next :render) (:charge :steps *fn2-work-transition* :runnable t))))
   (:finish :on-refusal ((:stop :machine-phase))
-   (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
+   (:do (rc1) (fn2-read-release (* 2 row-slot)) :accept (:ok))
+   (:do (rc2) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
    (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
   (:draining
    (:let next (fn2-cursor-free-head *fn2-cursor-admission-ordinal*))

@@ -252,3 +252,131 @@
     (or (equal got want) (cw "post-roundtrip ~x0~%want ~x1~%" got want))))
 (assert-event (fn2-cursor-test-post-roundtrip))
 
+;; D6 2/n (Brick H3): LIST variants & RFC 3977 wildmat filtering, NEWGROUPS,
+;; NEWNEWS, and HDR/XHDR over message-id, current article, and ranges.
+(defconst *fn2-cru-h3-lines*
+  '("LIST ACTIVE local.*"
+    "LIST ACTIVE *,!*.empty"
+    "LIST ACTIVE comp.*"
+    "LIST ACTIVE.TIMES"
+    "LIST ACTIVE.TIMES local.*"
+    "LIST COUNTS local.t?st"
+    "LIST NEWSGROUPS *,!*.test"
+    "LIST SUBSCRIPTIONS"
+    "LIST SUBSCRIPTIONS *.test"
+    "LIST OVERVIEW.FMT"
+    "LIST HEADERS"
+    "LIST HEADERS MSGID"
+    "LIST HEADERS RANGE"
+    "LIST DISTRIB.PATS"
+    "LIST DISTRIBUTIONS"
+    "NEWGROUPS 20261030 000000 GMT"
+    "NEWNEWS local.* 20261030 000000 GMT"
+    "NEWNEWS *,!*.test 20261030 000000"
+    "NEWNEWS comp.* 20261030 000000"
+    "HDR Subject"
+    "XHDR Subject 1-2"
+    "HDR Subject <b@example.invalid>"
+    "XHDR Subject <b@example.invalid>"
+    "HDR From <b@example.invalid>"
+    "HDR :bytes <b@example.invalid>"
+    "HDR :lines <b@example.invalid>"
+    "HDR :fn-verified <b@example.invalid>"
+    "HDR Subject <z@example.invalid>"
+    "XHDR Subject <z@example.invalid>"
+    "HDR :unknown <b@example.invalid>"
+    "GROUP local.empty"
+    "HDR Subject"
+    "XHDR Subject"
+    "HDR Subject 1-3"
+    "XHDR Subject 1-3"
+    "GROUP local.test"
+    "HDR Subject"
+    "XHDR Subject"
+    "HDR Subject 2-3"
+    "XHDR Message-ID 1-2"
+    "HDR Date 1"
+    "HDR References 1"
+    "HDR :bytes 2-3"
+    "XHDR :lines 1-2"
+    "HDR X-Absent 1-2"
+    "HDR Subject 9"
+    "XHDR Subject 9"
+    "HDR Subject 7-9"
+    "XHDR Subject 7-9"
+    "QUIT"))
+(defun fn2-cru-h3-expected-wire ()
+  (declare (xargs :verify-guards nil))
+  (list (fn2-cw-crlf-octets
+         (list "200 fn-nntp experimental server ready"
+               "215 list of active newsgroups follows" "local.empty 0 1 y" "local.test 3 1 y" "."
+               "215 list of active newsgroups follows" "local.test 3 1 y" "."
+               "215 list of active newsgroups follows" "."
+               "215 information follows" "."
+               "215 information follows" "."
+               "215 list of active newsgroups follows" "local.test 3 1 3 y" "."
+               "215 list of newsgroups follows" "local.empty (no description)" "."
+               "215 list of recommended newsgroups follows" "local.empty" "local.test" "."
+               "215 list of recommended newsgroups follows" "local.test" "."
+               "215 order of fields in overview database"
+               "Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:" "Lines:" "Xref:full" "."
+               "215 field list follows" ":" ":bytes" ":lines" "."
+               "215 field list follows" ":" ":bytes" ":lines" "."
+               "215 field list follows" ":" ":bytes" ":lines" "."
+               "503 data item not stored"
+               "503 data item not stored"
+               "231 list of new newsgroups follows" "."
+               "230 list of new articles by message-id follows"
+               "<a@example.invalid>" "<b@example.invalid>" "<c@example.invalid>" "."
+               "230 list of new articles by message-id follows" "."
+               "230 list of new articles by message-id follows" "."
+               "412 no newsgroup selected"
+               "412 no newsgroup selected"
+               "225 headers follow" "0 two" "."
+               "221 header follows" "<b@example.invalid> two" "."
+               "225 headers follow" "0 a@example.invalid" "."
+               "225 headers follow" "0 120" "."
+               "225 headers follow" "0 1" "."
+               "225 headers follow" "0 absent no-field" "."
+               "430 no article with that message-id"
+               "430 no article with that message-id"
+               "503 archive projection unavailable"
+               "211 0 1 0 local.empty"
+               "420 no current article"
+               "420 no current article"
+               "423 no articles in that range"
+               "420 no article(s) selected"
+               "211 3 1 3 local.test"
+               "225 headers follow" "1 one" "."
+               "221 header follows" "1 one" "."
+               "225 headers follow" "2 two" "3 three" "."
+               "221 header follows" "1 <a@example.invalid>" "2 <b@example.invalid>" "."
+               "225 headers follow" "1 Fri, 30 Oct 2026 12:00:00 +0000" "."
+               "225 headers follow" "1 " "."
+               "225 headers follow" "2 120" "3 120" "."
+               "221 header follows" "1 1" "2 1" "."
+               "225 headers follow" "1 " "2 " "."
+               "423 no articles in that range"
+               "420 no article(s) selected"
+               "423 no articles in that range"
+               "420 no article(s) selected"
+               "205 closing connection"))
+        t))
+(defun fn2-cursor-test-h3 (sizes)
+  (declare (xargs :verify-guards nil))
+  (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-h3-lines* sizes))
+        (want (fn2-cru-h3-expected-wire)))
+    (or (equal got want) (cw "h3 ~x0~%want ~x1~%" got want))))
+;; Negative: wildmat filtering is not a no-op (unfiltered LIST ACTIVE includes
+;; local.empty whereas LIST ACTIVE *,!*.empty excludes it; NEWNEWS *,!*.test
+;; excludes local.test's articles).
+(defun fn2-cursor-test-h3-negative ()
+  (declare (xargs :verify-guards nil))
+  (and (not (equal (fn2-cursor-wire-solo *fn2-cru-seeds* '("LIST ACTIVE *,!*.empty" "QUIT") nil)
+                   (fn2-cursor-wire-solo *fn2-cru-seeds* '("LIST ACTIVE" "QUIT") nil)))
+       (not (equal (fn2-cursor-wire-solo *fn2-cru-seeds* '("NEWNEWS *,!*.test 20261030 000000" "QUIT") nil)
+                   (fn2-cursor-wire-solo *fn2-cru-seeds* '("NEWNEWS local.* 20261030 000000" "QUIT") nil)))))
+(assert-event (fn2-cursor-test-h3 nil))
+(assert-event (fn2-cursor-test-h3 '(9 4 1)))
+(assert-event (fn2-cursor-test-h3-negative))
+

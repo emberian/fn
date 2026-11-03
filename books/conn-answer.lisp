@@ -122,6 +122,16 @@
     (if (and ok (= b 58))
         (and (< 1 tl) (fn2-answer-field-loop (- tl 1) (+ 1 ts) slot gen okind oslot ogen fn2-pool))
       (and (< 0 tl) (fn2-answer-field-loop tl ts slot gen okind oslot ogen fn2-pool)))))
+(defun fn2-answer-hdr-meta-ok-p (ts tl slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp ts) (natp tl))))
+  (mv-let (ok b) (fn2-gram-read slot gen ts okind oslot ogen fn2-pool)
+    (or (not (and ok (= b 58)))
+        (fn2-gram-match ts tl ":BYTES" slot gen okind oslot ogen fn2-pool)
+        (fn2-gram-match ts tl ":LINES" slot gen okind oslot ogen fn2-pool)
+        (fn2-gram-match ts tl ":FN-VERIFIED" slot gen okind oslot ogen fn2-pool)
+        (fn2-gram-match ts tl ":FN-CONTROL" slot gen okind oslot ogen fn2-pool)
+        (fn2-gram-match ts tl ":FN-ENROLLMENT" slot gen okind oslot ogen fn2-pool))))
+(in-theory (disable fn2-answer-hdr-meta-ok-p))
 
 ;; XFN-ZARTICLE's digests: one or more words of exactly 64 lower-case hex
 ;; octets, separated by SP or TAB (specs/nntp.md:2484-2499).
@@ -178,15 +188,161 @@
         (t t)))
 
 ;; ------------------------------------------------------------------------
+;; RFC 3977 section 4 wildmat matching over pool spans [ps, pe) and [ts, te).
+;; Supports *, ?, \x, [...] and [^...]/[!...] character classes with c1-c2
+;; ranges, and comma-separated [!]<pattern> alternatives (rightmost match
+;; wins). Iterative two-pointer glob with explicit fuel.
+(defun fn2-wildmat-class-end (i pe pslot pgen first-p okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix pe) (nfix i)))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp i) (natp pe))))
+  (if (>= (nfix i) (nfix pe)) (nfix pe)
+    (mv-let (ok b) (fn2-gram-read pslot pgen (nfix i) okind oslot ogen fn2-pool)
+      (cond ((not ok) (nfix pe))
+            ((and (not first-p) (= b 93)) (nfix i))
+            ((and (= b 92) (< (+ 1 (nfix i)) (nfix pe)))
+             (fn2-wildmat-class-end (+ 2 (nfix i)) pe pslot pgen nil okind oslot ogen fn2-pool))
+            (t (fn2-wildmat-class-end (+ 1 (nfix i)) pe pslot pgen nil okind oslot ogen fn2-pool))))))
+(defthm fn2-wildmat-class-end-natp
+  (natp (fn2-wildmat-class-end i pe pslot pgen first-p okind oslot ogen fn2-pool))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-wildmat-class-end))
+
+(defun fn2-wildmat-class-in-p (i ce tc pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix ce) (nfix i)))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp i) (natp ce) (natp tc))))
+  (if (>= (nfix i) (nfix ce)) nil
+    (mv-let (ok1 b1) (fn2-gram-read pslot pgen (nfix i) okind oslot ogen fn2-pool)
+      (if (not ok1) nil
+        (if (and (= b1 92) (< (+ 1 (nfix i)) (nfix ce)))
+            (mv-let (ok2 b2) (fn2-gram-read pslot pgen (+ 1 (nfix i)) okind oslot ogen fn2-pool)
+              (or (and ok2 (= b2 (nfix tc)))
+                  (fn2-wildmat-class-in-p (+ 2 (nfix i)) ce tc pslot pgen okind oslot ogen fn2-pool)))
+          (if (< (+ 2 (nfix i)) (nfix ce))
+              (mv-let (okd bd) (fn2-gram-read pslot pgen (+ 1 (nfix i)) okind oslot ogen fn2-pool)
+                (if (and okd (= bd 45))
+                    (mv-let (ok2 b2) (fn2-gram-read pslot pgen (+ 2 (nfix i)) okind oslot ogen fn2-pool)
+                      (or (and ok2 (<= b1 (nfix tc)) (<= (nfix tc) b2))
+                          (fn2-wildmat-class-in-p (+ 3 (nfix i)) ce tc pslot pgen okind oslot ogen fn2-pool)))
+                  (or (= b1 (nfix tc))
+                      (fn2-wildmat-class-in-p (+ 1 (nfix i)) ce tc pslot pgen okind oslot ogen fn2-pool))))
+            (or (= b1 (nfix tc))
+                (fn2-wildmat-class-in-p (+ 1 (nfix i)) ce tc pslot pgen okind oslot ogen fn2-pool))))))))
+(in-theory (disable fn2-wildmat-class-in-p))
+
+(defun fn2-wildmat-step-one (pidx pe tc pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp pidx) (natp pe) (natp tc))))
+  (if (>= (nfix pidx) (nfix pe)) (mv nil (nfix pe))
+    (mv-let (ok pb) (fn2-gram-read pslot pgen (nfix pidx) okind oslot ogen fn2-pool)
+      (cond ((not ok) (mv nil (nfix pe)))
+            ((= pb 63) (mv t (+ 1 (nfix pidx))))
+            ((= pb 92)
+             (if (< (+ 1 (nfix pidx)) (nfix pe))
+                 (mv-let (ok2 pb2) (fn2-gram-read pslot pgen (+ 1 (nfix pidx)) okind oslot ogen fn2-pool)
+                   (mv (and ok2 (= pb2 (nfix tc))) (+ 2 (nfix pidx))))
+               (mv (= 92 (nfix tc)) (+ 1 (nfix pidx)))))
+            ((= pb 91)
+             (mv-let (okn nb) (fn2-gram-read pslot pgen (+ 1 (nfix pidx)) okind oslot ogen fn2-pool)
+               (let* ((neg (and (< (+ 1 (nfix pidx)) (nfix pe)) okn (or (= nb 94) (= nb 33))))
+                      (body-s (if neg (+ 2 (nfix pidx)) (+ 1 (nfix pidx))))
+                      (ce (fn2-wildmat-class-end body-s pe pslot pgen t okind oslot ogen fn2-pool)))
+                 (if (< ce (nfix pe))
+                     (let ((in-p (fn2-wildmat-class-in-p body-s ce tc pslot pgen okind oslot ogen fn2-pool)))
+                       (mv (if neg (not in-p) in-p) (+ 1 ce)))
+                   (mv (= 91 (nfix tc)) (+ 1 (nfix pidx)))))))
+            (t (mv (= pb (nfix tc)) (+ 1 (nfix pidx))))))))
+(defthm fn2-wildmat-step-one-natp
+  (natp (mv-nth 1 (fn2-wildmat-step-one pidx pe tc pslot pgen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-wildmat-step-one))
+
+(defun fn2-wildmat-pat-loop (fuel pidx pe pslot pgen tidx te tslot tgen star-pidx star-tidx okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp pidx) (natp pe)
+                              (natp tidx) (natp te) (natp star-pidx) (natp star-tidx))))
+  (if (zp fuel) nil
+    (let ((pidx (nfix pidx)) (pe (nfix pe)) (tidx (nfix tidx)) (te (nfix te))
+          (star-pidx (nfix star-pidx)) (star-tidx (nfix star-tidx)))
+      (if (< tidx te)
+          (mv-let (okp pb) (fn2-gram-read pslot pgen pidx okind oslot ogen fn2-pool)
+            (if (and (< pidx pe) okp (= pb 42))
+                (fn2-wildmat-pat-loop (- fuel 1) (+ 1 pidx) pe pslot pgen tidx te tslot tgen (+ 1 pidx) tidx
+                                      okind oslot ogen fn2-pool)
+              (mv-let (okt tb) (fn2-gram-read tslot tgen tidx okind oslot ogen fn2-pool)
+                (if (not okt) nil
+                  (mv-let (ok next-pidx)
+                    (if (< pidx pe)
+                        (fn2-wildmat-step-one pidx pe tb pslot pgen okind oslot ogen fn2-pool)
+                      (mv nil pe))
+                    (if ok
+                        (fn2-wildmat-pat-loop (- fuel 1) next-pidx pe pslot pgen (+ 1 tidx) te tslot tgen star-pidx star-tidx
+                                              okind oslot ogen fn2-pool)
+                      (if (<= star-pidx pe)
+                          (fn2-wildmat-pat-loop (- fuel 1) star-pidx pe pslot pgen (+ 1 star-tidx) te tslot tgen
+                                                star-pidx (+ 1 star-tidx) okind oslot ogen fn2-pool)
+                        nil)))))))
+        (mv-let (okp pb) (fn2-gram-read pslot pgen pidx okind oslot ogen fn2-pool)
+          (if (and (< pidx pe) okp (= pb 42))
+              (fn2-wildmat-pat-loop (- fuel 1) (+ 1 pidx) pe pslot pgen tidx te tslot tgen star-pidx star-tidx
+                                    okind oslot ogen fn2-pool)
+            (= pidx pe)))))))
+(in-theory (disable fn2-wildmat-pat-loop))
+
+(defun fn2-wildmat-alt-end (i pe pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix pe) (nfix i)))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp i) (natp pe))))
+  (if (>= (nfix i) (nfix pe)) (nfix pe)
+    (mv-let (ok b) (fn2-gram-read pslot pgen (nfix i) okind oslot ogen fn2-pool)
+      (cond ((not ok) (nfix pe))
+            ((= b 44) (nfix i))
+            ((and (= b 92) (< (+ 1 (nfix i)) (nfix pe)))
+             (fn2-wildmat-alt-end (+ 2 (nfix i)) pe pslot pgen okind oslot ogen fn2-pool))
+            ((= b 91)
+             (mv-let (okn nb) (fn2-gram-read pslot pgen (+ 1 (nfix i)) okind oslot ogen fn2-pool)
+               (let* ((neg (and (< (+ 1 (nfix i)) (nfix pe)) okn (or (= nb 94) (= nb 33))))
+                      (body-s (if neg (+ 2 (nfix i)) (+ 1 (nfix i))))
+                      (ce (fn2-wildmat-class-end body-s pe pslot pgen t okind oslot ogen fn2-pool))
+                      (next-i (if (< ce (nfix pe)) (max (+ 1 (nfix i)) (+ 1 ce)) (+ 1 (nfix i)))))
+                 (fn2-wildmat-alt-end next-i pe pslot pgen okind oslot ogen fn2-pool))))
+            (t (fn2-wildmat-alt-end (+ 1 (nfix i)) pe pslot pgen okind oslot ogen fn2-pool))))))
+(defthm fn2-wildmat-alt-end-natp
+  (natp (fn2-wildmat-alt-end i pe pslot pgen okind oslot ogen fn2-pool))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-wildmat-alt-end))
+
+(defun fn2-wildmat-loop (fuel ps pe pslot pgen ts te tslot tgen matched okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp ps) (natp pe) (natp ts) (natp te))))
+  (if (or (zp fuel) (>= (nfix ps) (nfix pe)))
+      (and matched t)
+    (let* ((ps (nfix ps)) (pe (nfix pe)) (ts (nfix ts)) (te (nfix te))
+           (alt-e (fn2-wildmat-alt-end ps pe pslot pgen okind oslot ogen fn2-pool)))
+      (mv-let (okb b0) (fn2-gram-read pslot pgen ps okind oslot ogen fn2-pool)
+        (let* ((neg (and (< ps alt-e) okb (= b0 33)))
+               (pat-s (if neg (+ 1 ps) ps))
+               (pfuel (nfix (* (+ 2 (nfix (- alt-e pat-s))) (+ 2 (nfix (- te ts))))))
+               (hit (fn2-wildmat-pat-loop pfuel pat-s alt-e pslot pgen ts te tslot tgen (+ 1 alt-e) ts
+                                          okind oslot ogen fn2-pool))
+               (next-matched (if hit (not neg) matched)))
+          (if (< alt-e pe)
+              (fn2-wildmat-loop (- fuel 1) (+ 1 alt-e) pe pslot pgen ts te tslot tgen next-matched
+                                okind oslot ogen fn2-pool)
+            (and next-matched t)))))))
+(in-theory (disable fn2-wildmat-loop))
+
+(defun fn2-wildmat-match-p (ps pe pslot pgen ts te tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp ps) (natp pe) (natp ts) (natp te))))
+  (fn2-wildmat-loop (+ 1 (nfix (- (nfix pe) (nfix ps)))) ps pe pslot pgen ts te tslot tgen nil
+                    okind oslot ogen fn2-pool))
+(in-theory (disable fn2-wildmat-match-p))
+
+;; ------------------------------------------------------------------------
 ;; Interim replies: commands whose machine is a later quest answer the reply
 ;; their own row declares for "not available here yet", after their
 ;; sub-form checks. Each row names the quest that replaces it; the table's
 ;; emptiness is a D9 acceptance check (section 4.3), so no interim outlives
 ;; its quest. NEXT and LAST answer 412: no D3 connection has a group.
 (defconst *fn2-answer-interim*
-  '((list :no-projection :d6)
-    (newgroups :no-projection :d6) (newnews :no-projection :d6)
-    (hdr :no-projection :d6) (xhdr :no-projection :d6) (xpat :no-projection :d6)
+  '((xpat :no-projection :d6)
     (xfn-zarticle :no-projection :d6) (xfncatchup :no-projection :e4)
     (ihave :retry :d5) (check :later :d5)
     (starttls :cannot :d7) (compress :algorithm :e2)))
@@ -202,14 +358,15 @@
   (if (atom arms) (list (list t '*fn2-nntp-reply-none*))
     (cons (list (list 'equal 'tag (car (car arms))) (cadr (car arms)))
           (fn2-answer-interim-conds (cdr arms)))))
-;; The reader commands the query cursor serves (D6 1/n, cursor.lisp): the
+;; The reader commands the query cursor serves (D6, cursor.lisp): the
 ;; connection moves to :query and takes a cursor when the profile serves
 ;; reading (read rows, :reading); without reading, the reply each gives a
 ;; node that serves no archive (NEXT and LAST: no group can be selected).
 (defconst *fn2-answer-unread*
   '((group :no-projection) (listgroup :no-projection) (next :no-group-selected) (last :no-group-selected)
     (article :no-projection) (head :no-projection) (body :no-projection)
-    (stat :no-projection) (over :no-projection) (xover :no-projection)))
+    (stat :no-projection) (over :no-projection) (xover :no-projection)
+    (hdr :no-projection) (xhdr :no-projection) (newgroups :no-projection) (newnews :no-projection)))
 (make-event
  (value `(defun fn2-answer-unread-reply (tag)
            (declare (xargs :guard t))
@@ -246,6 +403,7 @@
 ;; others). With no credential store and no invitations until E2, every
 ;; completed exchange fails by its declared word.
 (defun fn2-answer-ok (tag f0 a0 b0 rest mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool)
+  (declare (ignore rest))
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0))))
   (let ((c tag))
@@ -299,12 +457,15 @@
           (mv *fn2-nntp-reply-xredeem-password* :redeem))
         (mv-let (code fn2-pool) (fn2-answer-say c reply mask 0 tslot tgen okind oslot ogen fn2-pool)
           (mv code :command next fn2-pool))))
-     ;; LIST ACTIVE, COUNTS and NEWSGROUPS with no wildmat read the group
-     ;; directory: the query cursor answers them (section 15.0), as it does
-     ;; the reader commands
-     ((and reading (equal tag *fn2-nntp-command-list*)
-           (member (if (eq f0 :keyword) a0 0) '(0 2 7)) (not rest))
-      (mv :ok :query pending fn2-pool))
+     ;; LIST ACTIVE, ACTIVE.TIMES, COUNTS, NEWSGROUPS and SUBSCRIPTIONS read
+     ;; the group directory: the query cursor answers them (section 15.0), as
+     ;; it does the reader commands
+     ((and (equal tag *fn2-nntp-command-list*)
+           (member (if (eq f0 :keyword) a0 0) '(0 1 2 7 9)))
+      (if reading (mv :ok :query pending fn2-pool)
+        (mv-let (code fn2-pool)
+          (fn2-answer-say c *fn2-nntp-reply-list-no-projection* mask 0 tslot tgen okind oslot ogen fn2-pool)
+          (mv code :command pending fn2-pool))))
      ((equal tag *fn2-nntp-command-list*)
       (let ((variant (if (eq f0 :keyword) a0 0)))
         (mv-let (code fn2-pool)
@@ -314,10 +475,15 @@
                  (fn2-answer-say-body c *fn2-nntp-reply-list-headers* mask *fn2-answer-headers-text* tslot tgen okind oslot ogen fn2-pool))
                 ((equal variant 6)
                  (fn2-answer-say-body c *fn2-nntp-reply-list-motd* mask "" tslot tgen okind oslot ogen fn2-pool))
-                ((or (equal variant 3) (equal variant 4))
-                 (fn2-answer-say c *fn2-nntp-reply-list-not-stored* mask 0 tslot tgen okind oslot ogen fn2-pool))
-                (t (fn2-answer-say c (fn2-answer-interim-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)))
+                (t
+                 (fn2-answer-say c *fn2-nntp-reply-list-not-stored* mask 0 tslot tgen okind oslot ogen fn2-pool)))
           (mv code :command pending fn2-pool))))
+     ;; HDR/XHDR: an unknown metadata item (:foo) answers 503 (RFC 3977 8.5).
+     ((and (or (equal tag *fn2-nntp-command-hdr*) (equal tag *fn2-nntp-command-xhdr*))
+           (not (fn2-answer-hdr-meta-ok-p a0 b0 rslot rgen okind oslot ogen fn2-pool)))
+      (mv-let (code fn2-pool)
+        (fn2-answer-say c (fn2-answer-unread-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
+        (mv code :command pending fn2-pool)))
      ;; a reader command: no reply here; the connection takes a query cursor
      ;; (section 15.3), or answers as a node with no archive
      ((fn2-answer-query-p tag)
@@ -464,7 +630,9 @@
 
 (assert-event
  (fn2-assert-compliant-p
-  '(fn2-answer-put-text fn2-answer-civil fn2-answer-date-digits fn2-answer-field-p fn2-answer-digests-loop
-    fn2-answer-subform-p fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-ok
+  '(fn2-answer-put-text fn2-answer-civil fn2-answer-date-digits fn2-answer-field-p fn2-answer-hdr-meta-ok-p
+    fn2-answer-digests-loop fn2-answer-subform-p fn2-wildmat-class-end fn2-wildmat-class-in-p
+    fn2-wildmat-step-one fn2-wildmat-pat-loop fn2-wildmat-alt-end fn2-wildmat-loop fn2-wildmat-match-p
+    fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-ok
     fn2-answer fn2-answer-greeting fn2-answer-overflow fn2-answer-block-open fn2-answer-post-reply fn2-answer-outcome)
   (w state)))
