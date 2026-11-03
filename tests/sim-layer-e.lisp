@@ -28,7 +28,9 @@
    (defconst *fn2-sle-turn-profile*
      (put-assoc-equal :cns 2
        (put-assoc-equal :control-connections 2
-         (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096)) *fn2-conn-wire-profile*)))))
+         (put-assoc-equal :identity-overlays 32
+           (put-assoc-equal :identity-arena-bytes 4096
+             (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (16 . 65536)) *fn2-conn-wire-profile*)))))))
   (local
    (defun fn2-sle-set-published (pos fn2-core)
      (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -42,6 +44,24 @@
      (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core)))
        (fn2-cns-edges)
        (fn2-cns-wake-stream stream pos fn2-cns-edges)
+       fn2-core)))
+  (local
+   (defun fn2-sle-seed-article (principal stream art pos fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+          ((mv c0 fn2-core)
+           (fn2-addr-put 0 0 (principal principal) (position pos) (article art) (stream stream) (reasons 1) fn2-core))
+          ((unless (eq c0 :ok)) fn2-core)
+          ((mv rc fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
+          ((unless (eq rc :ok)) fn2-core)
+          ((mv scode & fn2-core) (fn2-successor-stage 0 fn2-core))
+          ((unless (eq scode :ok)) fn2-core)
+          ((mv bcode fn2-core) (fn2-successor-bind 0 pos pos fn2-core))
+          ((unless (eq bcode :ok)) fn2-core)
+          ((mv pcode fn2-core) (fn2-succ-core-publish pos fn2-core))
+          ((unless (eq pcode :ok)) fn2-core)
+          ((mv & fn2-core) (fn2-cns-core-stream-wake pos fn2-core))
+          ((mv & fn2-core) (fn2-successor-release 0 fn2-core)))
        fn2-core)))
   (local
    (defun fn2-sle-test-turn-read-and-stop ()
@@ -91,8 +111,56 @@
                     (equal wire2 '(1 0 0 1 1 0)))
                fn2-core))
          ok))))
+  (local
+   (defun fn2-sle-test-turn-full-verbs ()
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (ok fn2-core)
+         (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv nil fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              ;; Phase 1: register (fkind 1, consumer 1, cstart 0) then wait (fkind 3, consumer 1),
+              ;; followed by Phase 2's post-wake verbs (read, ack, dup-ack, behind-ack, beyond-frontier-ack,
+              ;; position, status, read-after-ack, stop). Because wait parks while fn2-ctl is in :waiting,
+              ;; Phase 1 stops at :quiet right after wait parks, before consuming the remaining chunks.
+              (clients (list (list '(1 1 1 0  1 3 1  1 2 1  1 4 1 2  1 4 1 2  1 4 1 1  1 4 1 9  1 5 1  1 6 1  1 2 1  5 0)
+                                   '(4 3 3 4 4 4 4 3 3 3 2)
+                                   nil nil)))
+              ((mv status1 clients fn2-core) (fn2-cw-loop 200 0 1 clients fn2-core))
+              (wire1 (car (car (fn2-cw-results clients))))
+              ((unless (and (eq status1 :quiet)
+                            (equal (fn2-core-stop-reason fn2-core) 0)
+                            (equal wire1 '(1 0 0 0 0 0))))
+               (mv nil fn2-core))
+              ;; Phase 2: post/publish article 1 at commit position 2 on stream 0, waking parked wait,
+              ;; which then answers the wait and drains the remaining verbs through stop.
+              (fn2-core (fn2-sle-seed-article 0 0 1 2 fn2-core))
+              ((mv status2 clients fn2-core) (fn2-cw-loop 800 0 1 clients fn2-core))
+              (res2 (car (fn2-cw-results clients)))
+              (wire2 (car res2))
+              (closed2 (cadr res2)))
+           (mv (and (eq status2 :quiet)
+                    (equal (fn2-core-stop-reason fn2-core) 0)
+                    (equal wire2
+                           '(1 0 0 0 0 0
+                             1 0 0 2 1 0
+                             1 0 0 2 1 0
+                             1 0 2 2 0 0
+                             1 0 2 2 0 0
+                             2 6 2 2 0 0
+                             2 7 2 2 0 0
+                             1 0 2 2 0 0
+                             1 0 2 2 0 0
+                             1 0 2 2 0 0))
+                    (eq closed2 t))
+               fn2-core))
+         ok))))
   (local (assert-event (fn2-sle-test-turn-read-and-stop)))
   (local (assert-event (fn2-sle-test-turn-wait-wake)))
+  (local (assert-event (fn2-sle-test-turn-full-verbs)))
   (defun fn2-sle-turn-e2e-witness () (declare (xargs :guard t)) t))
 
 (include-book "../sim/check-consumer")
@@ -481,6 +549,17 @@
           (mv ok fn2-cns-edges)))
       ok)))
 
+(defun fn2-k10-consumer-delivery-comes-from-committed-log-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-sle-test-oracle)
+       (fn2-sle-turn-e2e-witness)))
+
+(defun fn2-k10-consumer-delivery-comes-from-committed-log-negative ()
+  (declare (xargs :verify-guards nil))
+  (fn2-sle-test-controls))
+
 (assert! (fn2-sle-test-ctl-commands))
 (assert! (fn2-sle-test-cns-park-wake))
 (assert! (fn2-sle-turn-e2e-witness))
+(assert! (fn2-k10-consumer-delivery-comes-from-committed-log-positive))
+(assert! (fn2-k10-consumer-delivery-comes-from-committed-log-negative))

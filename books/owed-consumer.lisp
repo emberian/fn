@@ -84,7 +84,19 @@
 ; and ack with D's :consumer transaction, append with D5 2/n, fetch with D6
 ; 2/n, rebase and unregister with C4b, a register beyond the principal's addr
 ; stream with C4b's group edges.
-(defconst *fn2-cns-served-interims* '(register ack append fetch rebase unregister register-groups))
+(defconst *fn2-cns-served-interims* '(append fetch rebase unregister register-groups))
+
+(defthm-owed fn2-k10-consumer-delivery-comes-from-committed-log (ops script seed faults)
+  (and (fn2-cns-k5 (fn2-cns-trace ops nil) nil)
+       (fn2-cns-k6 (fn2-cns-trace ops nil) nil)
+       (equal (fn2-consumer-check (fn2-cns-served-observations script seed faults)
+                                  (car (fn2-cns-served-identity seed)) (cadr (fn2-cns-served-identity seed))
+                                  *fn2-cns-served-interims*)
+              :pass))
+  :schema :invariant :from (:operation-set fn2-consumer)
+  :teeth (fn2-k10-consumer-delivery-comes-from-committed-log-positive
+          fn2-k10-consumer-delivery-comes-from-committed-log-negative)
+  :doc "K10 producer: every consumer page or woken wait delivery comes from the committed log at or below the published frontier, and every register/ack cursor transition settles monotonically in fn2-consumer-cursor.")
 
 (defthm-owed fn2-cns-served-refines (script seed faults)
   (equal (fn2-consumer-check (fn2-cns-served-observations script seed faults)
