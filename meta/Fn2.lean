@@ -21,4 +21,4 @@ import Fn2.Instances.LayerAEqns2
 import Fn2.Instances.LayerAEqns3
 import Fn2.Instances.LayerAEqns4
 import Fn2.MachineProofs
-
+import Fn2.TypedModel
