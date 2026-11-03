@@ -11,6 +11,7 @@
 ; owed row with its fixture, so it cannot be forgotten.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "assembly-attach")
 (fn2-book-layer :d)
 
 (make-event (value (fn2-declare '(:operation-set fn2-conn-wire) nil nil nil)))
