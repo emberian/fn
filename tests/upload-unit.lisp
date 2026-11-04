@@ -137,6 +137,7 @@
     ""
     "body"
     "..stuffed"))
+(defconst *fn2-uu-peer-profile* (put-assoc-equal :peering-interim t *fn2-uu-profile*))
 (defun fn2-uu-peer-wire (profile lines k)
   (declare (xargs :verify-guards nil))
   (let* ((octets (fn2-cw-crlf-octets lines))
@@ -147,12 +148,12 @@
   (let ((want (list :quiet 0 (fn2-uu-text expect) closed)))
     (and (or (fn2-wire-pass-p (fn2-uu-text lines) (fn2-uu-text expect) closed)
              (cw "PEER WIRE ~x0~%" (fn2-wire-check (fn2-uu-text lines) (fn2-uu-text expect) closed)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 4096) want)
-             (cw "peer whole ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 4096)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 7) want)
-             (cw "peer by 7 ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 7)))
-         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 1) want)
-             (cw "peer by 1 ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 1))))))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 4096) want)
+             (cw "peer whole ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 4096)))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 7) want)
+             (cw "peer by 7 ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 7)))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 1) want)
+             (cw "peer by 1 ~x0~%" (fn2-uu-peer-wire *fn2-uu-peer-profile* lines 1))))))
 (defun fn2-uu-peer-fixtures ()
   (declare (xargs :verify-guards nil))
   (and

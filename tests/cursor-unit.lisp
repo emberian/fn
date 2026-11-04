@@ -435,9 +435,10 @@
                "211 5 1 5 local.test"
                "205 closing connection"))
         t))
+(defconst *fn2-cru-h5-profile* (put-assoc-equal :peering-interim t *fn2-cursor-profile*))
 (defun fn2-cursor-test-h5 (sizes)
   (declare (xargs :verify-guards nil))
-  (let* ((r (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+  (let* ((r (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
                                  (list (list (fn2-cw-crlf-octets *fn2-cru-h5-lines*) sizes t))))
          (got (car (nth 2 r)))
          (want (fn2-cru-h5-expected-wire)))
@@ -446,9 +447,9 @@
          (or (equal got want) (cw "h5 ~x0~%want ~x1~%" got want)))))
 (defun fn2-cursor-test-h5-negative ()
   (declare (xargs :verify-guards nil))
-  (not (equal (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+  (not (equal (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
                                    (list (list (fn2-cw-crlf-octets '("CHECK <b@example.invalid>" "QUIT")) nil t)))
-              (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+              (fn2-cursor-wire-run *fn2-cru-h5-profile* *fn2-cru-seeds*
                                    (list (list (fn2-cw-crlf-octets '("CHECK <ihave1@example.invalid>" "QUIT")) nil t))))))
 (assert-event (fn2-cursor-test-h5 nil))
 (assert-event (fn2-cursor-test-h5 '(11 3 1)))

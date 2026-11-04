@@ -78,12 +78,15 @@
 
 ;; The input configuration (a D core child, one row): whether posting is
 ;; served under the interim (section 14.5: the public capability stays off
-;; until a POST can succeed; tests set :posting-interim) and the article
-;; bound.
-(defcolumns fn2-input-config ((posting :bool) (article-max :u32)))
+;; until a POST can succeed; tests set :posting-interim), whether peers are
+;; admitted (the peer bit on a connection whose AcceptResult carries an
+;; address family; tests set :peering-interim; E4's grant replaces it) and
+;; the article bound.
+(defcolumns fn2-input-config ((posting :bool) (peering :bool) (article-max :u32)))
 (defun fn2-input-config-profilep (profile)
   (declare (xargs :guard t))
   (and (booleanp (fn2-profile-get :posting-interim profile))
+       (booleanp (fn2-profile-get :peering-interim profile))
        ;; article input needs the chunk class and a hasher row per window
        (or (not (fn2-profile-get :posting-interim profile))
            (and (true-listp (fn2-profile-get :pool-classes profile))
@@ -96,6 +99,7 @@
   (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config))
          (max (fn2-profile-get :article-max profile)))
     (fn2-input-config-put 0 (posting (if (fn2-profile-get :posting-interim profile) 1 0))
+                          (peering (if (fn2-profile-get :peering-interim profile) 1 0))
                           (article-max (if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)))))
 (defthm fn2-input-config-from-type
   (implies (fn2-input-configp fn2-input-config)

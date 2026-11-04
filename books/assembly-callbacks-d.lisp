@@ -105,6 +105,12 @@
     (p) (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
              (< 0 (fn2-input-config-rows fn2-input-config)) (equal (fn2-input-config-posting 0 fn2-input-config) 1))
     (if p 1 0)))
+(defun fn2-conn-peering-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
+    (p) (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
+             (< 0 (fn2-input-config-rows fn2-input-config)) (equal (fn2-input-config-peering 0 fn2-input-config) 1))
+    (if p 1 0)))
 (defun fn2-upload-gen-of (u fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (eq (fn2-upload-snapshot-read-code u fn2-core) :ok) (fn2-machine-generation u fn2-core) 0))
@@ -112,6 +118,10 @@
   (bitp (fn2-conn-posting-p fn2-core))
   :rule-classes ((:type-prescription :typed-term (fn2-conn-posting-p fn2-core))
                  (:rewrite :corollary (unsigned-byte-p 1 (fn2-conn-posting-p fn2-core)))))
+(defthm fn2-conn-peering-p-bit
+  (bitp (fn2-conn-peering-p fn2-core))
+  :rule-classes ((:type-prescription :typed-term (fn2-conn-peering-p fn2-core))
+                 (:rewrite :corollary (unsigned-byte-p 1 (fn2-conn-peering-p fn2-core)))))
 (defthm fn2-upload-gen-of-u60
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (unsigned-byte-p 60 (fn2-upload-gen-of u fn2-core))))
@@ -192,7 +202,7 @@
   (if (fn2-conn-cursor-live-p x xgen fn2-core) (fn2-cursor-put-core x (cancel 1) (turn 1)) fn2-core))
 (fn2-core-preserves fn2-conn-cursor-cancel (x xgen fn2-core) :rows nil)
 
-(in-theory (disable fn2-conn-posting-p fn2-upload-gen-of fn2-conn-run-block-open fn2-conn-run-outcome fn2-conn-feed-run
+(in-theory (disable fn2-conn-posting-p fn2-conn-peering-p fn2-upload-gen-of fn2-conn-run-block-open fn2-conn-run-outcome fn2-conn-feed-run
                     fn2-conn-wake fn2-conn-reading-p fn2-conn-cursor-live-p fn2-conn-cursor-go fn2-conn-cursor-cancel))
 (in-theory (disable fn2-conn-frame fn2-conn-fill fn2-conn-cap fn2-conn-clock fn2-conn-run-answer
                     fn2-conn-greet-op fn2-conn-run-overflow))

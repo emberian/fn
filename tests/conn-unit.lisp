@@ -290,10 +290,22 @@
 (assert-event
  (let* ((octets (fn2-cu-text *fn2-cu-peer-lines*))
         (want (list (fn2-cu-text *fn2-cu-peer-expect*) t))
-        (r1 (fn2-conn-wire-run (list (list octets nil t))))
-        (r2 (fn2-conn-wire-run (list (list octets '(7 3 1) t)))))
+        (peering (put-assoc-equal :peering-interim t *fn2-conn-wire-profile*))
+        (r1 (fn2-conn-wire-run-in peering (list (list octets nil t))))
+        (r2 (fn2-conn-wire-run-in peering (list (list octets '(7 3 1) t)))))
    (and (fn2-conn-safe-p r1)
         (fn2-conn-safe-p r2)
         (equal (car (nth 1 r1)) want)
         (equal (car (nth 1 r2)) want)
         (fn2-wire-pass-p octets (car want) t))))
+
+; Control: without :peering-interim the same AcceptResult family admits no
+; peer; the transit verbs are refused by state at once (no block is drained).
+(assert-event
+ (let* ((octets (fn2-cu-text '("TAKETHIS <a@example.invalid>" "QUIT")))
+        (r (fn2-conn-wire-run (list (list octets nil t))))
+        (wire (car (car (nth 1 r)))))
+   (and (fn2-conn-safe-p r)
+        (search (fn2-cw-chars (coerce "502" 'list)) wire)
+        (not (search (fn2-cw-chars (coerce "439" 'list)) wire))
+        (search (fn2-cw-chars (coerce "205" 'list)) wire))))
