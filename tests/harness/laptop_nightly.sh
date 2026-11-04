@@ -3,19 +3,23 @@
 # Fast-forwards the laptop worktree build/lanes/h-nightly to origin/dev, certifies the books the harness
 # needs, runs the nntp family against fn2 under the simulator and on the socket at 1,000 x 50, and writes
 # build/h8/nightly/<date>-<sha>/ {table.md, summary.txt, cert.log, sim/, native/} plus build/h8/nightly/LATEST.txt.
-# Started by cron (crontab: 30 3 * * * sh <repo>/tests/harness/laptop_nightly.sh); stop a running one with
+# Started by cron (crontab: 30 3 * * * sh <repo>/tests/harness/laptop_nightly.sh; the Mac runs local time); stop a running one with
 # kill -- -$(cat build/h8/nightly/running.pid) (the group leader). Refuses under 60 GiB free or with a run live.
 set -eu
 # cron's environment is bare: the interpreters tools/acl2 and certify.sh need.
 export PATH=/Library/Frameworks/Python.framework/Versions/3.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 tree=$repo/build/lanes/h-nightly
 base=$repo/build/h8/nightly
 python=$repo/build/h-venv/bin/python
 mkdir -p "$base"
 if [ -z "${H_NIGHTLY_LEADER:-}" ]; then
   # Re-exec as a session leader so the PID file names the whole group.
-  H_NIGHTLY_LEADER=1 exec /usr/bin/python3 -c 'import os,sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' \
+  # cron already starts the job as a session leader; setsid then fails with EPERM (every run since 2026-11-01).
+  H_NIGHTLY_LEADER=1 exec /usr/bin/python3 -c 'import os,sys
+try: os.setsid()
+except PermissionError: pass
+os.execvp(sys.argv[1], sys.argv[1:])' \
     sh "$0" "$@" >> "$base/cron.log" 2>&1 < /dev/null
 fi
 if [ -f "$base/running.pid" ] && kill -0 "$(cat "$base/running.pid")" 2>/dev/null; then
