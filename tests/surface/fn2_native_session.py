@@ -16,7 +16,7 @@ import select
 import socket
 import subprocess
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MARK = re.compile(rb'@@FN2SS (\S+) (\S+) (\S+) (\S+)@@')
 
 
