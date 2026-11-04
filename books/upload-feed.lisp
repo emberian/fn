@@ -102,7 +102,7 @@
            (if (not ok) (mv :fault (nfix i) mode discard (nfix copied) fn2-pool)
              (mv-let (next emit err term) (fn2-feed-step mode b)
                (let* ((discard (or discard err))
-                      (emit (if discard 0 emit)))
+                      (emit (if (or discard (equal (nfix dslot) *fn2-none*)) 0 emit)))
                  (cond
                   (term (mv :terminator (+ 1 (nfix i)) next discard (nfix copied) fn2-pool))
                   ((< (fn2-feed-cap dslot fn2-pool) (+ (fn2-gram-fill dslot fn2-pool) emit))

@@ -4,6 +4,10 @@
 (include-book "assembly-callbacks-d")
 (include-book "conn")
 
+(defconst *fn2-upload-word-framing* (fn2-upload-word-code :framing))
+(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
+(defconst *fn2-upload-word-refused* (fn2-upload-word-code :refused))
+
 (defun fn2-conn-release-rx (slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-core-release slot gen okind oslot ogen fn2-core))
@@ -61,15 +65,25 @@
    (:case status
      ((:line)
       (:do (ccode) (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1))
-      (:do (code after next)
+      (:do (code after next rule)
            (fn2-conn-run-answer s p row-mask row-auth-pending row-posting (fn2-conn-reading-p)
                                 row-rx-slot row-rx-gen row-tx-slot row-tx-gen)
            :case ((:otherwise (:stop :machine-phase))))
       (:cond ((not (eq ccode :ok)) (:stop :machine-phase))
-             ;; POST where posting is served: nothing rendered yet; the
-             ;; next run takes an upload and renders 340 (section 14.2)
+             ;; TAKETHIS refused before an upload exists (:discard, or posting off):
+             ;; TX[0, fill) holds the token; drain the immediate block and answer 439.
+             ((and (equal after *fn2-conn-after-article-input*) (equal rule *fn2-conn-rule-none*))
+              (:set (start p) (pos p) (overflow 0) (auth-pending next) (rule *fn2-conn-rule-takethis*)
+                    (line-e (fn2-conn-fill row-tx-slot)) (upload *fn2-none*) (upload-gen 0)
+                    (feed-mode 0) (feed-discard 0) (fed 0) (word *fn2-upload-word-refused*)
+                    (outcome-ready 0) (request row-ordinal) (ordinal (+ 1 row-ordinal)))
+              (:next :article-input)
+              (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
+             ;; POST/IHAVE/TAKETHIS where posting is served: TX[0, fill) holds any
+             ;; transit Message-ID; the next run takes an upload (section 14.2)
              ((equal after *fn2-conn-after-article-input*)
-              (:set (start p) (pos p) (overflow 0) (auth-pending next) (rule *fn2-conn-rule-post*)
+              (:set (start p) (pos p) (overflow 0) (auth-pending next) (rule rule)
+                    (line-e (fn2-conn-fill row-tx-slot))
                     (request row-ordinal) (ordinal (+ 1 row-ordinal)))
               (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
              ;; a reader command: nothing rendered; the next run takes a
@@ -110,26 +124,44 @@
    (:do (code after) (fn2-conn-greet-op refused posting row-mask row-tx-slot row-tx-gen))
    (:set (tx-off 0) (after after) (refused refused) (posting posting)
          (account-ref (if (equal refused 1) *fn2-none* ref))
-         (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*)))
+         (mask (logior (if (equal row-peer-family 0) 0 *fn2-nntp-state-peer*)
+                       (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*))))
    (:next :reply)
    (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (:command
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
-          ;; A POST line was answered :article-input: take an upload row and its
-          ;; window (A-S7) and render 340, or wait parked on the upload kind's FIFO
-          ;; and try again when granted (section 14.2).
+          ;; A POST, IHAVE, or TAKETHIS line awaits an upload row and its
+          ;; window (A-S7). POST/IHAVE render 340/335 or park on the upload
+          ;; FIFO; TAKETHIS has an immediate block and drains without a row
+          ;; when none is free (section 14.2).
           ((not (equal row-rule *fn2-conn-rule-none*))
            (:do (tcode u ugen)
-                (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
+                (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request
+                                             (if (equal row-rule *fn2-conn-rule-ihave*)
+                                                 *fn2-upload-rule-ihave*
+                                               (if (equal row-rule *fn2-conn-rule-takethis*)
+                                                   *fn2-upload-rule-takethis*
+                                                 *fn2-upload-rule-post*))
                                              row-principal-slot)
                 :case (((:ok)
-                        (:do (code) (fn2-conn-run-block-open row-mask row-tx-slot row-tx-gen)
-                             :case ((:otherwise (:stop :machine-phase))))
-                        (:set (tx-off 0) (after *fn2-conn-after-article-input*) (upload u) (upload-gen ugen)
-                              (feed-mode 0) (feed-discard 0) (fed 0) (word 0) (outcome-ready 0))
-                        (:next :reply)
-                        (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
-                       (:otherwise (:park :taken fn2-upload :steps *fn2-work-transition*)))))
+                        (:if (equal row-rule *fn2-conn-rule-takethis*)
+                             ((:set (upload u) (upload-gen ugen) (feed-mode 0) (feed-discard 0)
+                                    (fed 0) (word 0) (outcome-ready 0))
+                              (:next :article-input)
+                              (:charge :steps *fn2-work-transition* :runnable t))
+                             ((:do (code) (fn2-conn-run-block-open row-rule row-mask row-tx-slot row-tx-gen)
+                                   :case ((:otherwise (:stop :machine-phase))))
+                              (:set (tx-off row-line-e) (after *fn2-conn-after-article-input*) (upload u) (upload-gen ugen)
+                                    (feed-mode 0) (feed-discard 0) (fed 0) (word 0) (outcome-ready 0))
+                              (:next :reply)
+                              (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
+                       (:otherwise
+                        (:if (equal row-rule *fn2-conn-rule-takethis*)
+                             ((:set (upload *fn2-none*) (upload-gen 0) (feed-mode 0) (feed-discard 0)
+                                    (fed 0) (word *fn2-upload-word-unaffordable*) (outcome-ready 0))
+                              (:next :article-input)
+                              (:charge :steps *fn2-work-transition* :runnable t))
+                             ((:park :taken fn2-upload :steps *fn2-work-transition*)))))))
           ;; Move a retained partial line to the front of RX.
           ((equal row-compacting 1)
            (:do (code cursor)
@@ -144,10 +176,10 @@
   (:article-input
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((equal row-outcome-ready 1)
-           (:do (code after) (fn2-conn-run-outcome row-word row-mask row-tx-slot row-tx-gen)
+           (:do (code after) (fn2-conn-run-outcome row-rule row-word row-line-e row-mask row-tx-slot row-tx-gen)
                 :case ((:otherwise (:stop :machine-phase))))
-           (:set (tx-off 0) (after after) (upload *fn2-none*) (upload-gen 0) (rule *fn2-conn-rule-none*)
-                 (word 0) (outcome-ready 0) (feed-mode 0) (feed-discard 0) (fed 0))
+           (:set (tx-off row-line-e) (line-e 0) (after after) (upload *fn2-none*) (upload-gen 0)
+                 (rule *fn2-conn-rule-none*) (word 0) (outcome-ready 0) (feed-mode 0) (feed-discard 0) (fed 0))
            (:next :reply)
            (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
           ((equal row-feed-mode *fn2-conn-feed-done*) (:charge :steps *fn2-work-empty*))
@@ -167,8 +199,11 @@
                   ((:case status
                      ((:terminator)
                       (:set (start start) (pos start) (feed-mode *fn2-conn-feed-done*)
-                            (feed-discard why) (fed fed))
-                      (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition*))
+                            (feed-discard why) (fed fed)
+                            (word (if (and (equal u *fn2-none*) (equal why 1)) *fn2-upload-word-framing* row-word))
+                            (outcome-ready (if (equal u *fn2-none*) 1 row-outcome-ready)))
+                      (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition*
+                               :runnable (equal u *fn2-none*)))
                      ((:need-more)
                       (:set (start start) (pos start) (feed-mode mode) (feed-discard why) (fed fed))
                       (:goto block-input))
@@ -197,7 +232,9 @@
                          (:set (tx-off 0))
                          (:next :query)
                          (:charge :steps *fn2-work-mailbox* :runnable t))
-                        ((:do (code) (fn2-core-reset row-tx-slot row-tx-gen)
+                        ((:do (code)
+                              (fn2-core-truncate row-tx-slot row-tx-gen
+                                                 (if (equal after *fn2-conn-after-article-input*) row-line-e 0))
                               :case ((:otherwise (:stop :machine-phase))))
                          (:set (tx-off 0))
                          (:next (:if (equal after *fn2-conn-after-closing*) :closing
@@ -255,7 +292,9 @@
                  (:set (tx-off (:read child-cursor roff)) (after *fn2-conn-after-query*)) (:next :reply)
                  (:charge :steps *fn2-work-transition* :runnable t))
                 ((equal (:read child-cursor done) 1)
-                 (:do (rcode) (fn2-core-reset row-tx-slot row-tx-gen)
+                 (:do (rcode)
+                      (fn2-core-truncate row-tx-slot row-tx-gen
+                                         (if (equal (:read child-cursor update) 3) (:read child-cursor roff) 0))
                       :case ((:otherwise (:stop :machine-phase))))
                  (:let upd (:read child-cursor update))
                  (:let g (:read child-cursor sel))
@@ -266,10 +305,13 @@
                  (:do () (fn2-conn-cursor-go x xgen))
                  (:do () (fn2-conn-wake x))
                  (:let sel (equal upd 2))
+                 (:let ihv (equal upd 3))
                  (:set (query *fn2-none*) (query-gen 0)
                        (group (if sel g row-group))
                        (current (if (or sel (equal upd 1)) c row-current))
-                       (pin (if sel v row-pin)))
+                       (pin (if sel v row-pin))
+                       (rule (if ihv *fn2-conn-rule-ihave* row-rule))
+                       (line-e (if ihv c row-line-e)))
                  (:next :command)
                  (:charge :steps *fn2-work-transition* :runnable t))
                 (t (:do () (fn2-conn-cursor-go row-query row-query-gen))

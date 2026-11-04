@@ -261,3 +261,39 @@
                                     (fn2-cu-text (list *fn2-cu-greeting* "500 command not recognized"
                                                        "503 archive projection unavailable"
                                                        "412 no newsgroup selected")) t)))
+
+; Brick H5: peer connection (AcceptResult with peer family) admits MODE STREAM,
+; CHECK (431 when reading is off), IHAVE (436 when posting is off), and
+; TAKETHIS (drains the immediate block and answers 439 <id> when posting is off
+; or the command line is malformed :discard).
+(defconst *fn2-cu-peer-lines*
+  '("MODE STREAM"
+    "CHECK <a@example.invalid>"
+    "IHAVE <a@example.invalid>"
+    "TAKETHIS <a@example.invalid>"
+    "Path: peer!not-for-mail"
+    ""
+    "body"
+    "."
+    "TAKETHIS bad"
+    "HELP"
+    "."
+    "QUIT"))
+(defconst *fn2-cu-peer-expect*
+  (list *fn2-cu-greeting*
+        "203 streaming permitted"
+        "431 <a@example.invalid>"
+        "436 retry later; "
+        "439 <a@example.invalid>"
+        "439 bad"
+        "205 closing connection"))
+(assert-event
+ (let* ((octets (fn2-cu-text *fn2-cu-peer-lines*))
+        (want (list (fn2-cu-text *fn2-cu-peer-expect*) t))
+        (r1 (fn2-conn-wire-run (list (list octets nil t))))
+        (r2 (fn2-conn-wire-run (list (list octets '(7 3 1) t)))))
+   (and (fn2-conn-safe-p r1)
+        (fn2-conn-safe-p r2)
+        (equal (car (nth 1 r1)) want)
+        (equal (car (nth 1 r2)) want)
+        (fn2-wire-pass-p octets (car want) t))))

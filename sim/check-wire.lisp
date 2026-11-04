@@ -60,7 +60,7 @@
     ;; command's reply, and after 340 / 335 the reply to the article block
     ("POST" 340 440) ("POST-BLOCK" 240 441) ("IHAVE" 335 435 436) ("IHAVE-BLOCK" 235 436 437)
     ("CHECK" 238 431 438)
-    ("TAKETHIS" 239 439) ("AUTHINFO" 281 381 481 482 283 383 504) ("STARTTLS" 382 580)
+    ("TAKETHIS" 239 436 439) ("AUTHINFO" 281 381 481 482 283 383 504) ("STARTTLS" 382 580)
     ("XREDEEM" 281 381 482) ("COMPRESS" 206) ("GROUP" 211 411) ("LISTGROUP" 211 411 412)
     ("LIST" 215) ("NEXT" 223 412 420 421) ("LAST" 223 412 420 422) ("NEWGROUPS" 231) ("NEWNEWS" 230)
     ("ARTICLE" 220 412 420 423 430) ("HEAD" 221 412 420 423 430) ("BODY" 222 412 420 423 430)
@@ -163,9 +163,11 @@
   (declare (xargs :verify-guards nil))
   (let ((marker (cond ((and (equal keyword "POST") (equal code 340)) :post-block)
                       ((and (equal keyword "IHAVE") (equal code 335)) :ihave-block))))
-    (if (not marker) (mv t (cdr lines))
-      (mv-let (found rest) (fn2-wire-skip-block (cdr lines))
-        (if found (mv t (cons marker rest)) (mv nil nil))))))
+    (cond ((and (equal keyword "TAKETHIS") (member code '(239 436 439)))
+           (fn2-wire-skip-block (cdr lines)))
+          ((not marker) (mv t (cdr lines)))
+          (t (mv-let (found rest) (fn2-wire-skip-block (cdr lines))
+               (if found (mv t (cons marker rest)) (mv nil nil)))))))
 
 ; Walk the replies against the client's lines. Returns :pass or
 ; (:fail reason index).
@@ -208,8 +210,10 @@
                     (if (and (atom rest) (or closed cut)) :pass (list :fail :unended-block index))
                   (fn2-wire-walk rest next cut closed (+ 1 index)
                                  (cond ((equal code 205) t)
-                                       ((and (member-eq line '(:post-block :ihave-block))
-                                             (not (member code '(240 235)))) :may-close)
+                                       ((or (and (member-eq line '(:post-block :ihave-block))
+                                                 (not (member code '(240 235))))
+                                            (and (equal keyword "TAKETHIS") (member code '(436 439))))
+                                        :may-close)
                                        (t nil))
                                  (- fuel 1)))))))))))
 

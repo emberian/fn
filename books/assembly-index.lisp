@@ -6,8 +6,8 @@
 ; B/C/D registration books go HERE, before either registry is consumed.
 (include-book "machines-b")
 (include-book "machines-c-read")
-(include-book "conn")
-(include-book "upload")
+(include-book "conn-kind")
+(include-book "upload-kind")
 (include-book "txn-kind")
 (include-book "cursor-kind")
 (include-book "cns-kind")

@@ -1,7 +1,7 @@
 ;; Schema, core child, and partition registration for fn2-txn (layer D, quest D5).
 ;; Arm bodies and helper operations live in books/txn.lisp (a leaf book).
 (in-package "ACL2")
-(include-book "upload")
+(include-book "upload-kind")
 (include-book "claims")
 (include-book "machines-c-bind")
 (include-book "machine-arms")

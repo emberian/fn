@@ -125,3 +125,69 @@
                                                         "205 closing connection")) t))
         (not (fn2-wire-pass-p client (fn2-uu-text (list *fn2-uu-greeting* "340 send article to be posted"
                                                         "340 send article to be posted" "205 closing connection")) t)))))
+
+; Brick H5: peer transit IHAVE and TAKETHIS uploads through the served core.
+(defconst *fn2-uu-transit-good*
+  '("Path: peer!not-for-mail"
+    "From: a@example.invalid"
+    "Subject: hello"
+    "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+    "Newsgroups: local.test"
+    "Message-ID: <one@example.invalid>"
+    ""
+    "body"
+    "..stuffed"))
+(defun fn2-uu-peer-wire (profile lines k)
+  (declare (xargs :verify-guards nil))
+  (let* ((octets (fn2-cw-crlf-octets lines))
+         (r (fn2-conn-wire-run-in profile (list (list octets (fn2-uu-sizes (len octets) k) t)))))
+    (list (car r) (nth 2 r) (car (car (nth 1 r))) (cadr (car (nth 1 r))))))
+(defun fn2-uu-peer-check (lines expect closed)
+  (declare (xargs :verify-guards nil))
+  (let ((want (list :quiet 0 (fn2-uu-text expect) closed)))
+    (and (or (fn2-wire-pass-p (fn2-uu-text lines) (fn2-uu-text expect) closed)
+             (cw "PEER WIRE ~x0~%" (fn2-wire-check (fn2-uu-text lines) (fn2-uu-text expect) closed)))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 4096) want)
+             (cw "peer whole ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 4096)))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 7) want)
+             (cw "peer by 7 ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 7)))
+         (or (equal (fn2-uu-peer-wire *fn2-uu-profile* lines 1) want)
+             (cw "peer by 1 ~x0~%" (fn2-uu-peer-wire *fn2-uu-profile* lines 1))))))
+(defun fn2-uu-peer-fixtures ()
+  (declare (xargs :verify-guards nil))
+  (and
+   ;; IHAVE valid transfer: 335, then 235
+   (fn2-uu-peer-check (append '("IHAVE <one@example.invalid>") *fn2-uu-transit-good* '("." "QUIT"))
+                      (list *fn2-uu-greeting* "335 send it; end with <CR-LF>.<CR-LF>" "235 article transferred OK"
+                            "205 closing connection") t)
+   ;; IHAVE Message-ID mismatch: 335, then 437
+   (fn2-uu-peer-check (append '("IHAVE <other@example.invalid>") *fn2-uu-transit-good* '("." "QUIT"))
+                      (list *fn2-uu-greeting* "335 send it; end with <CR-LF>.<CR-LF>"
+                            "437 transfer rejected; "
+                            "205 closing connection") t)
+   ;; IHAVE missing Path header: 335, then 437
+   (fn2-uu-peer-check '("IHAVE <one@example.invalid>" "From: a@example.invalid" "Subject: s"
+                        "Date: Fri, 30 Oct 2026 12:00:00 +0000" "Newsgroups: g"
+                        "Message-ID: <one@example.invalid>" "" "x" "." "QUIT")
+                      (list *fn2-uu-greeting* "335 send it; end with <CR-LF>.<CR-LF>"
+                            "437 transfer rejected; "
+                            "205 closing connection") t)
+   ;; TAKETHIS valid transfer: immediate block, then 239 <id>
+   (fn2-uu-peer-check (append '("TAKETHIS <one@example.invalid>") *fn2-uu-transit-good* '("." "QUIT"))
+                      (list *fn2-uu-greeting* "239 <one@example.invalid>"
+                            "205 closing connection") t)
+   ;; TAKETHIS Message-ID mismatch: immediate block, then 439 <id>
+   (fn2-uu-peer-check (append '("TAKETHIS <other@example.invalid>") *fn2-uu-transit-good* '("." "QUIT"))
+                      (list *fn2-uu-greeting* "439 <other@example.invalid>"
+                            "205 closing connection") t)
+   ;; TAKETHIS malformed command (:discard): drains block, answers 439, then answers QUIT
+   (fn2-uu-peer-check (append '("TAKETHIS bad") *fn2-uu-transit-good* '("." "QUIT"))
+                      (list *fn2-uu-greeting* "439 bad"
+                            "205 closing connection") t)
+   ;; TAKETHIS oversize block: drained, answered 439 <id>, then closed
+   (fn2-uu-peer-check (append '("TAKETHIS <big@example.invalid>" "Path: peer!not-for-mail"
+                                "From: a" "Subject: s" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+                                "Newsgroups: g" "Message-ID: <big@example.invalid>" "")
+                              (fn2-uu-big 100) '("." "QUIT"))
+                      (list *fn2-uu-greeting* "439 <big@example.invalid>") t)))
+(assert-event (fn2-uu-peer-fixtures))

@@ -42,13 +42,23 @@
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (fn2-ops) (fn2-post-result cell op opgen event outcome *fn2-reason-none* count aux0 aux1 fn2-ops)
     fn2-core))
-(in-theory (disable fn2-cw-read-range fn2-cw-write-loan fn2-cw-post))
+(defun fn2-cw-post-accept (op opgen cap nonce peer fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if peer
+      (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+        (fn2-ops)
+        (fn2-post-accept-result op opgen *fn2-outcome-done* *fn2-reason-none* cap nonce
+                                *fn2-peer-family-inet* 0 0 0 0 0 fn2-ops)
+        fn2-core)
+    (fn2-cw-post 0 op opgen *fn2-event-accept-result* *fn2-outcome-done* 0 cap nonce fn2-core)))
+(in-theory (disable fn2-cw-read-range fn2-cw-write-loan fn2-cw-post fn2-cw-post-accept))
 
-; A client is (input sizes wire closed): remaining octets, remaining chunk
-; sizes, the octets received (newest first), and whether the core closed it.
+; A client is (input sizes wire closed peer): remaining octets, remaining chunk
+; sizes, the octets received (newest first), whether the core closed it, and
+; whether its AcceptResult carries a peer family.
 (defun fn2-cw-client (i clients)
   (declare (xargs :verify-guards nil))
-  (or (nth i clients) (list nil nil nil nil)))
+  (or (nth i clients) (list nil nil nil nil nil)))
 (defun fn2-cw-set (i client clients)
   (declare (xargs :verify-guards nil))
   (update-nth i client clients))
@@ -75,13 +85,14 @@
           (mv code op opgen kind cap rslot rgen roff rlen fn2-core)))
        ((unless (eq code :ok)) (mv nil accepted clients fn2-core))
        (c (fn2-cw-client cap clients))
-       (input (nth 0 c)) (sizes (nth 1 c)) (wire (nth 2 c)))
+       (input (nth 0 c)) (sizes (nth 1 c)) (wire (nth 2 c)) (peer (nth 4 c)))
     (cond
      ((and (equal kind *fn2-action-accept*) (>= accepted (len clients)))
       ; No more clients: the Accept stays submitted and pending.
       (mv t accepted clients fn2-core))
      ((equal kind *fn2-action-accept*)
-      (let ((fn2-core (fn2-cw-post 0 op opgen *fn2-event-accept-result* *fn2-outcome-done* 0 accepted 77 fn2-core)))
+      (let* ((ac (fn2-cw-client accepted clients))
+             (fn2-core (fn2-cw-post-accept op opgen accepted 77 (nth 4 ac) fn2-core)))
         (mv t (+ 1 accepted) clients fn2-core)))
      ((equal kind *fn2-action-receive*)
       (if (atom input) (mv t accepted clients fn2-core)
@@ -91,17 +102,17 @@
                          (fn2-cw-write-loan roff (take n input) rslot rgen op opgen fn2-pool) fn2-core))
              (fn2-core (fn2-cw-post 0 op opgen *fn2-event-receive-result* *fn2-outcome-done* n 0 0 fn2-core)))
           (mv t accepted
-              (fn2-cw-set cap (list (nthcdr n input) (if (consp sizes) (cdr sizes) nil) wire (nth 3 c)) clients)
+              (fn2-cw-set cap (list (nthcdr n input) (if (consp sizes) (cdr sizes) nil) wire (nth 3 c) peer) clients)
               fn2-core))))
      ((equal kind *fn2-action-send*)
       (b* ((octets (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
                      (fn2-cw-read-range roff (+ roff rlen) rslot fn2-pool) octets))
            (fn2-core (fn2-cw-post 0 op opgen *fn2-event-send-result* *fn2-outcome-done* rlen 1 0 fn2-core))
            (fn2-core (fn2-cw-post 1 op opgen *fn2-event-borrow-released* *fn2-outcome-done* 0 0 0 fn2-core)))
-        (mv t accepted (fn2-cw-set cap (list input sizes (revappend octets wire) (nth 3 c)) clients) fn2-core)))
+        (mv t accepted (fn2-cw-set cap (list input sizes (revappend octets wire) (nth 3 c) peer) clients) fn2-core)))
      ((equal kind *fn2-action-close*)
       (let ((fn2-core (fn2-cw-post 0 op opgen *fn2-event-close-result* *fn2-outcome-done* 0 0 0 fn2-core)))
-        (mv t accepted (fn2-cw-set cap (list input sizes wire t) clients) fn2-core)))
+        (mv t accepted (fn2-cw-set cap (list input sizes wire t peer) clients) fn2-core)))
      ((equal kind *fn2-action-write*)
       (let* ((fn2-core (fn2-cw-post 0 op opgen *fn2-event-write-result* *fn2-outcome-done* rlen 0 0 fn2-core))
              (fn2-core (fn2-cw-post 1 op opgen *fn2-event-borrow-released* *fn2-outcome-done* 0 0 0 fn2-core)))
@@ -128,7 +139,7 @@
 (defun fn2-cw-clients (transcripts)
   (declare (xargs :verify-guards nil))
   (if (atom transcripts) nil
-    (cons (list (car (car transcripts)) (cadr (car transcripts)) nil nil)
+    (cons (list (car (car transcripts)) (cadr (car transcripts)) nil nil (nth 2 (car transcripts)))
           (fn2-cw-clients (cdr transcripts)))))
 (defun fn2-cw-results (clients)
   (declare (xargs :verify-guards nil))

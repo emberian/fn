@@ -52,6 +52,7 @@
 (defconst *fn2-cursor-update-none* 0)
 (defconst *fn2-cursor-update-current* 1)
 (defconst *fn2-cursor-update-selection* 2)
+(defconst *fn2-cursor-update-ihave* 3)
 ;; Argument kinds after the parse: absent, a number or range (A..B), a
 ;; Message-ID or a token (the span A, length B in RX).
 (defconst *fn2-cursor-arg-none* 0)
@@ -140,6 +141,12 @@
    ((equal tag *fn2-nntp-command-newnews*)
     (case what (:listed *fn2-nntp-reply-newnews-listed*)
       (otherwise *fn2-nntp-reply-newnews-no-projection*)))
+   ((equal tag *fn2-nntp-command-check*)
+    (case what (:wanted *fn2-nntp-reply-check-wanted*) (:not-wanted *fn2-nntp-reply-check-not-wanted*)
+      (otherwise *fn2-nntp-reply-check-later*)))
+   ((equal tag *fn2-nntp-command-ihave*)
+    (case what (:not-wanted *fn2-nntp-reply-ihave-duplicate*)
+      (otherwise *fn2-nntp-reply-ihave-retry*)))
    (t 0)))
 ;; NEXT, LAST and STAT: one article, its 223 line.
 (defun fn2-cursor-single-p (tag)
@@ -711,6 +718,8 @@
  :doc "Append the article number or Message-ID label and a space for HDR/XHDR.")
 (defcost fn2-cursor-hdr-val :child fn2-cursor-pool-hdr-val :answers t :bytes 1024 :tables (fn2-core-pool)
  :doc "Extract the requested header or metadata value from an overview line and append CR LF.")
+(defcost fn2-cursor-copy-span :child fn2-gram-put-span :answers t :bytes 256 :tables (fn2-core-pool)
+ :doc "Copy a Message-ID span from RX into TX.")
 
 ; ---------------------------------------------------------------------------
 ; The kind. A cursor row in slot S reads through read row 2S, and LIST's
@@ -807,21 +816,46 @@
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              ((:found) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-                       (:if (or (equal row-pin 0) (<= (nfix article) row-pin))
-                            ((:if (equal row-tag *fn2-nntp-command-stat*)
-                                  ((:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask 0 0 0
-                                                              row-rx-slot row-rx-gen row-a0 row-b0 row-tx-slot row-tx-gen
-                                                              :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-                                    :accept (:ok))
-                                   (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
-                                  ((:set (spin article) (found 0) (lgroup (if (< 0 row-group) row-group 1))
-                                         (lo 1) (hi *fn2-none*) (step 8))
-                                   (:if (or (fn2-cursor-overview-p row-tag) (fn2-cursor-hdr-p row-tag))
-                                        ((:goto over-head))
-                                        ((:goto range))))))
-                            ((:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))))
+                       (:cond ((equal row-tag *fn2-nntp-command-check*)
+                               (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :not-wanted) row-mask 0 0 0
+                                                           row-rx-slot row-rx-gen row-a0 row-b0 row-tx-slot row-tx-gen
+                                                           :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                                :accept (:ok))
+                               (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
+                              ((equal row-tag *fn2-nntp-command-ihave*)
+                               (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :not-wanted) row-mask 0 0 0
+                                                           row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
+                                                           :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                                :accept (:ok))
+                               (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
+                              ((or (equal row-pin 0) (<= (nfix article) row-pin))
+                               (:if (equal row-tag *fn2-nntp-command-stat*)
+                                    ((:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask 0 0 0
+                                                                row-rx-slot row-rx-gen row-a0 row-b0 row-tx-slot row-tx-gen
+                                                                :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                                      :accept (:ok))
+                                     (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
+                                    ((:set (spin article) (found 0) (lgroup (if (< 0 row-group) row-group 1))
+                                           (lo 1) (hi *fn2-none*) (step 8))
+                                     (:if (or (fn2-cursor-overview-p row-tag) (fn2-cursor-hdr-p row-tag))
+                                          ((:goto over-head))
+                                          ((:goto range))))))
+                              (t (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))))
              ((:evidence :absent) (:do (rc) (fn2-read-release (* 2 row-slot)) :accept (:ok))
-                                  (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))
+                                  (:cond ((equal row-tag *fn2-nntp-command-check*)
+                                          (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :wanted) row-mask 0 0 0
+                                                                      row-rx-slot row-rx-gen row-a0 row-b0 row-tx-slot row-tx-gen
+                                                                      :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                                           :accept (:ok))
+                                          (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
+                                         ((equal row-tag *fn2-nntp-command-ihave*)
+                                          (:do (code) (fn2-cursor-copy-span row-b0 row-a0 row-rx-slot row-rx-gen
+                                                                            row-tx-slot row-tx-gen
+                                                                            :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                                           :accept (:ok))
+                                          (:set (done 1) (roff row-b0) (update *fn2-cursor-update-ihave*) (ncurrent row-b0))
+                                          (:goto hand))
+                                         (t (:set (reply (fn2-cursor-reply-of row-tag :no-msgid))) (:goto refuse))))
              (:otherwise (:stop :machine-phase)))))
   ;; the range's end, by what was read (render-step's :end, one sub-arm a branch)
   (end-last :on-refusal ((:stop :machine-phase))
@@ -1219,8 +1253,9 @@
     ((and (fn2-cursor-selects-p row-tag) (equal row-step 0)) (:goto lg-start))
     ((and (fn2-cursor-selects-p row-tag) (equal row-step 10)) (:goto lg-step))
     ((fn2-cursor-selects-p row-tag) (:goto lg-found))
-    ;; STAT/ARTICLE/HEAD/BODY/OVER <id>, HDR/XHDR <field> <id>: the identity read
-    ((or (and (or (fn2-cursor-single-p row-tag) (equal row-tag *fn2-nntp-command-over*))
+    ;; STAT/ARTICLE/HEAD/BODY/OVER <id>, HDR/XHDR <field> <id>, CHECK/IHAVE <id>: the identity read
+    ((or (and (or (fn2-cursor-single-p row-tag) (equal row-tag *fn2-nntp-command-over*)
+                  (equal row-tag *fn2-nntp-command-check*) (equal row-tag *fn2-nntp-command-ihave*))
               (equal row-k0 *fn2-cursor-arg-span*))
          (and (fn2-cursor-hdr-p row-tag) (equal row-k1 *fn2-cursor-arg-span*)))
      (:goto seek-identity))

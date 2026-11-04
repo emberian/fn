@@ -15,6 +15,7 @@
 ;; and continuations are materialized by assembly-callbacks-d-txn.lisp.
 (in-package "ACL2")
 (include-book "txn-kind")
+(include-book "upload")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one

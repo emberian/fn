@@ -380,3 +380,76 @@
 (assert-event (fn2-cursor-test-h3 '(9 4 1)))
 (assert-event (fn2-cursor-test-h3-negative))
 
+;; Brick H5: peer transit verbs CHECK, IHAVE, and TAKETHIS over the seeded store.
+(defconst *fn2-cru-h5-lines*
+  '("MODE STREAM"
+    "CHECK <b@example.invalid>"
+    "CHECK <ihave1@example.invalid>"
+    "IHAVE <a@example.invalid>"
+    "IHAVE <ihave1@example.invalid>"
+    "Path: peer!not-for-mail"
+    "From: peer@example.invalid"
+    "Subject: ihave one"
+    "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+    "Newsgroups: local.test"
+    "Message-ID: <ihave1@example.invalid>"
+    ""
+    "ihave body"
+    "."
+    "CHECK <ihave1@example.invalid>"
+    "TAKETHIS <take1@example.invalid>"
+    "Path: peer!not-for-mail"
+    "From: peer@example.invalid"
+    "Subject: take one"
+    "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+    "Newsgroups: local.test"
+    "Message-ID: <take1@example.invalid>"
+    ""
+    "take body"
+    "."
+    "TAKETHIS <take1@example.invalid>"
+    "Path: peer!not-for-mail"
+    "From: peer@example.invalid"
+    "Subject: take one"
+    "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+    "Newsgroups: local.test"
+    "Message-ID: <take1@example.invalid>"
+    ""
+    "take body"
+    "."
+    "GROUP local.test"
+    "QUIT"))
+(defun fn2-cru-h5-expected-wire ()
+  (declare (xargs :verify-guards nil))
+  (list (fn2-cw-crlf-octets
+         (list "200 fn-nntp experimental server ready"
+               "203 streaming permitted"
+               "438 <b@example.invalid>"
+               "238 <ihave1@example.invalid>"
+               "435 duplicate"
+               "335 send it; end with <CR-LF>.<CR-LF>"
+               "235 article transferred OK"
+               "438 <ihave1@example.invalid>"
+               "239 <take1@example.invalid>"
+               "439 <take1@example.invalid>"
+               "211 5 1 5 local.test"
+               "205 closing connection"))
+        t))
+(defun fn2-cursor-test-h5 (sizes)
+  (declare (xargs :verify-guards nil))
+  (let* ((r (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+                                 (list (list (fn2-cw-crlf-octets *fn2-cru-h5-lines*) sizes t))))
+         (got (car (nth 2 r)))
+         (want (fn2-cru-h5-expected-wire)))
+    (and (eq (nth 0 r) :ok)
+         (equal (nth 3 r) 0)
+         (or (equal got want) (cw "h5 ~x0~%want ~x1~%" got want)))))
+(defun fn2-cursor-test-h5-negative ()
+  (declare (xargs :verify-guards nil))
+  (not (equal (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+                                   (list (list (fn2-cw-crlf-octets '("CHECK <b@example.invalid>" "QUIT")) nil t)))
+              (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-seeds*
+                                   (list (list (fn2-cw-crlf-octets '("CHECK <ihave1@example.invalid>" "QUIT")) nil t))))))
+(assert-event (fn2-cursor-test-h5 nil))
+(assert-event (fn2-cursor-test-h5 '(11 3 1)))
+(assert-event (fn2-cursor-test-h5-negative))
