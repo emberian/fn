@@ -6,6 +6,7 @@
     "QUIT",
     "MODE",
     "DATE",
+    "POST",
     "AUTHINFO",
     "XREDEEM",
     "GROUP",
@@ -17,48 +18,21 @@
     "HEAD",
     "BODY",
     "OVER",
-    "XOVER"
+    "XOVER",
+    "HDR",
+    "XHDR",
+    "LIST",
+    "NEWGROUPS",
+    "NEWNEWS",
+    "CHECK",
+    "IHAVE",
+    "TAKETHIS"
   ],
   "interim": {
-    "CHECK": {
-      "code": 431,
-      "reply": "431 MESSAGE-ID",
-      "quest": "D5"
-    },
     "COMPRESS": {
       "code": 503,
       "reply": "503 compression algorithm not supported",
       "quest": "E2"
-    },
-    "HDR": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
-    "IHAVE": {
-      "code": 436,
-      "reply": "436 retry later; REASON",
-      "quest": "D5"
-    },
-    "LIST": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
-    "NEWGROUPS": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
-    "NEWNEWS": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
-    "POST": {
-      "code": 440,
-      "reply": "440 posting not permitted",
-      "quest": "D5"
     },
     "STARTTLS": {
       "code": 580,
@@ -75,11 +49,6 @@
       "reply": "503 archive projection unavailable",
       "quest": "E4"
     },
-    "XHDR": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
     "XPAT": {
       "code": 503,
       "reply": "503 archive projection unavailable",
@@ -87,9 +56,9 @@
     }
   },
   "notes": {
-    "LIST": "OVERVIEW.FMT, HEADERS and MOTD are served; DISTRIBUTIONS and DISTRIB.PATS answer 503 data item not stored; ACTIVE (or no keyword), COUNTS and NEWSGROUPS without a wildmat are the query cursor's where the profile serves reading; ACTIVE.TIMES, SUBSCRIPTIONS and any wildmat are the interim reply",
-    "IHAVE": "on a reader connection (every D3 connection) the 502 state refusal answers first",
-    "CHECK": "on a reader connection the 502 state refusal answers first",
-    "TAKETHIS": "on a reader connection the 502 state refusal; a peer TAKETHIS waits for D4 and E4"
+    "LIST": "every variant, with or without a wildmat, is the query cursor's where the profile serves reading (D6 2/n, 0f568f89b); DISTRIBUTIONS and DISTRIB.PATS answer 503 data item not stored",
+    "CHECK": "served on a peer connection (the AcceptResult's peer family sets the peer bit, D5 3/n 21b661477); on a reader connection the 502 state refusal answers first",
+    "IHAVE": "as CHECK; 436 where posting is off",
+    "TAKETHIS": "as CHECK; its block is drained and answered 439 where no upload row serves it"
   }
 }
