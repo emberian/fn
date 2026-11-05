@@ -533,41 +533,69 @@ Departures from the statement above, each with its remedy:
   with a declared maintenance reserve; admission backpressures before the debt exhausts that
   reserve (STORAGE-DESIGN-ASTRA §4's price: compaction bytes per committed byte, reported).
   Relocation under a stalled lease moves only placement; the lease keeps its content identity.
-- **Capacity today, at the concrete profile (Argon §9.13 item 1; measured from the books, not a
-  run).** `*fn2-profile-concrete*` sets no C key, so C's defaults hold: `:identity-overlays` 8,
-  `:identity-runs` 64, `:run-cache` 1024, `:identity-overlay-entries` 256, `:identity-arena-bytes`
-  64 KiB. The 64 installed-run rows are **one table shared by every schema**, not a bound per schema.
-  A batch takes one private overlay per schema it writes, and each frozen overlay seals into its own
-  run. A POST writes 8 schemas today (evidence 1, article 2, counts 5, outcome 9, history 11,
-  candidates 12, summary 13, article index 14) and 10 once D5 2/n adds overview 3 and addr 4.
-  - Installed runs: 8 runs per batch, so 64 rows last 8 batches (6 with overview and addr). At one
-    POST per batch that is the first 8 POSTs, minutes into helm's 7,000 events a day, not hours.
-    At the 65th run the sealer's install answers `:full` and the core stops `:sealer-full`
-    (C-SEAL-BACKPRESSURE above): nothing reclaims a row before C5.
-  - Pages: a sealed run's pages stay resident in `fn2-run-cache` until M2's cold leg, each in a
-    64 KiB pool slot, so the 64 KiB class bounds the runs before the run rows do: a test profile with
-    4 such slots (two of them upload windows) stopped `:sealer-full` on the first seeded POST's runs.
-  - Overlays: stage holds one spare per schema it writes (`fn2-idc-hold-spares`). With the old
-    default of 8 rows and 8 schemas a POST staged only when every overlay was spare (one batch in
-    flight); with overview and addr it needs 10 of 8 and never stages, a livelock reported as
-    backpressure (the units hit it once the identity records became five schemas). **The default is
-    now `*fn2-idc-overlays-default*` = 48** (`machines-c.lisp`): 16 schemas a transaction can name x 3
-    batches (B's two in flight, one being sealed). A profile names `:identity-overlays` to change it.
-    Each overlay in use holds one arena of `:identity-arena-bytes` (default 64 KiB) from the pool, so
-    the pool must carry up to 48 arenas: 3 MiB of 64 KiB slots, which the concrete profile's 80 such
-    slots (its read and write jobs) cannot spare. The concrete profile needs its own class for C:
-    48 x 64 KiB, or `:identity-arena-bytes` 4096 with 48 more 4 KiB slots (a batch's overflow takes a
-    second overlay). Owned by the profile's owner; asked through main.
-  - The minimal C5 before helm's concrete run: a merge phase in the sealer whose entry source is a
-    range scan over at most eight live runs of one schema (the k-way merge `fn2-rd-scan` already
-    does, resolving `:latest` to the newest row and `:union` by union; fold rows are `:latest`, so a
-    superseded fold key drops), feeding the same run builder, installed as one manifest replacement
-    that retires its inputs (their installed rows freed; their pages released once readers have
-    moved past the run version, which readers already check as `:stale`). Policy: size-tiered, merge
-    a schema's runs when two adjacent ones are within a factor of two in entries, so a schema holds
-    about log2(entries) runs: 22 at 2.5 million entries (a year of helm), 15 schemas, about 330
-    rows. So the concrete profile also sets `:identity-runs` to 512, and the per-op cost stays
-    O(log n) amortised (each entry is rewritten about log2 n times over its life).
+  The minimal C5 below is built; the reserve, the price report and relocation are owed.
+- **What one POST consumes (measured, 2026-11-05: the census of `fn2-run-installed`, the seal row
+  and the pool after N POSTs at the upload unit profile, on bb2).** A POST batch writes 10
+  schemas (evidence 1, article 2, overview 3, addr 4, counts 5, outcome 9, history 11, candidates
+  12, summary 13, article index 14); each frozen overlay seals into its own run of one 64 KiB page,
+  and the summary's run takes a Ribbon filter page: **10 installed rows and 11 pages of 64 KiB per
+  batch**. With the group directory's genesis run (schema 8) the first batch leaves 11 rows and
+  12 units in use. The installed rows (64 by default) are one table shared by every schema; the
+  pages bind first: before C5 the upload unit profile's 12 slots were all held after one batch,
+  and the next seal stopped the core `:sealer-full` (31) after three 240s (`fn2-uu-many`).
+- **The merge (built: `books/sealer.lisp`).** A seal of frozen overlay O of schema S takes S's
+  newest live runs with it, so the new run (whose identifier is greater than every run's) stands
+  exactly where they stood in run order. Selection (`fn2-seal-plan`): size-tiered, a run joins
+  while its entries are at most twice the entries gathered so far (O's, then each joined run's), so
+  a schema holds about log2(entries) runs and an entry is rewritten about log2 n times; every run
+  joins (at most seven, the overlay the eighth source) when at most one 64 KiB slot or one
+  installed row is free (the next seal needs a page and a row, and only a merge frees them), or
+  when S already holds `*fn2-seal-run-budget*` = 4 runs (a reader merges at most
+  `*fn2-read-sources*` = 8 sources and meets up to three overlays of a schema). The entries come
+  through the range engine's own merge (`fn2-range-advance-all`, `-pick`, `-consume`: equal keys
+  deliver once, the newest source winning, which is the merge rule every reader applies; a
+  `:latest` fold key that was superseded drops) over sources the sealer owns: range row R after
+  the R read rows, its sources 8R.., run cursors t+9R.. (`*fn2-idc-seal-cursors*`), the query key
+  and eight readers in its field stripe (`*fn2-b-seal-field-rows*` grew by one read stride). The
+  run's sources are opened with `fn2-range-add-runs`'s lower bound RLO; the sealer alone moves S's
+  runs and O is frozen, so they are never found again mid-merge. Install retires the inputs
+  (installed state `:retired`, invisible to every reader), installs the merged run with its unit
+  interval (UFIRST..ULAST: a run's pages are exactly the cached units of that interval), retires
+  O and releases the hash workspace in one step; the `:release` phase then drops one cached unit
+  per step and returns its workspace to the pool, and the row is free once past ULAST. A merged
+  summary run carries no filter (the band holds one overlay's keys; the partitioned filter is
+  owed, and nothing reads filters yet). The unit counter passes over a cache row a live page holds
+  (units are identities only) instead of answering `:cache`.
+- **Readers and released pages.** Every run reader re-finds its sources when its schema's run
+  version moved, and the merged run's install moves it, before it reads a page again: range reads
+  and scans (`fn2-rd-scan-refresh`, `fn2-range-step`), the exact lookup (`fn2-xl-step`), and the
+  transaction's run search, which restarts on a version move (`fn2-succ-resolve-step`, C5); a
+  delivered entry is read only under the version it was delivered under.
+- **What the profile holds.** A profile's 64 KiB class must hold one batch's pages, the summary
+  filter and the merge's output page before its inputs are released: 10 + 1 + 1, and the group
+  directory's run, so **13** at the upload unit profile (`tests/upload-unit.lisp`); from there the
+  merge keeps every schema at one run whenever pages are short, so the steady state is one page per
+  schema written (11) plus the merge's output page. Rows: one per live run, about
+  log2(entries) per schema; `*fn2-profile-concrete*` names `:identity-runs` 512 (15 schemas x 22
+  runs at 2.5 million entries, a year of helm, is about 330). The concrete profile still has no
+  64 KiB class for C (its 80 slots are its storage windows): owed to the profile's owner.
+- **Overlays.** Stage holds one spare per schema it writes (`fn2-idc-hold-spares`); the default is
+  `*fn2-idc-overlays-default*` = 48 (16 schemas a transaction can name x 3 batches), each holding one
+  arena of `:identity-arena-bytes` from the pool.
+- **What the merge frees (measured, `tests/sealer-capacity-unit.lisp`'s workload, the census
+  after 32 POSTs on one connection, each its own batch).** Without the merge the 32 batches would
+  hold 32 x 10 runs and 32 x 11 pages (and the reading unit profile's 64 slots of 64 KiB run out at
+  the sixth POST). With it: 29 installed rows and 29 pages (35 of 64 slots free): every schema at
+  three runs of 21, 8 and 3 entries (the size tiers of 32), the counts fold at one run of one
+  entry, the group directory's genesis run; 333 units handed out in all, so each page was
+  rewritten about once (32 entries per schema, log2 32 = 5 tiers deep at most). Every reply 240;
+  GROUP, OVER 1-32 and ARTICLE 1..32 read every article back.
+- **Stage backpressure (C5).** A reader merges at most eight sources of a schema; the sealer keeps
+  runs to `*fn2-idc-run-budget*` = 4 and stage keeps overlays (active, frozen, private) to
+  `*fn2-idc-overlay-budget*` = 4: a transaction whose schema already holds four waits (`:full`,
+  the transaction retries) until the sealer seals one. Measured before it: while the sealer merged
+  and released after the 13th POST, a schema's frozen overlays reached 7, the cursor's range read
+  met 9 sources and answered `:sources`, and the core stopped `:machine-phase` at the first OVER.
 
 ## 6. The read path and the read contract (C1-C4)
 
@@ -835,8 +863,10 @@ Departures from the statement above, each with its remedy:
   re-granted every turn: a spin. Both were found writing the arm table for the machine-form
   redesign. Until a page workspace, a cache row or an installed-run row freed is a wake, they stop
   the core by name: `:sealer-full` (a pool class or the installed-run rows exhausted) or
-  `:sealer-cache` (a direct-mapped cache row held by another page; no eviction before M2's cold
-  leg). Assert, never absorb. Controls are in tests/sealer-machine-unit, one per case: no hash
+  `:sealer-cache` (every cache row held; no eviction before M2's cold leg). Since C5 these mean a
+  profile that cannot hold one batch's runs and a merge: a seal that would leave a page or a row
+  short merges first and its release frees the inputs', and the unit counter passes over a row a
+  live page holds (section 5). Assert, never absorb. Controls are in tests/sealer-machine-unit, one per case: no hash
   workspace slot at the pick, no page workspace in the build, both cache rows held, the one run
   row held. Each stops by its name, with the row :stopped and the overlay still frozen; the same
   small profile without the pressure seals as before.

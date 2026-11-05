@@ -70,11 +70,21 @@
 
 ;; The genesis and readiness over the sealer's own tables (their core
 ;; wrappers below only bind the children).
+; The merge's read resources (C5): after the R read rows' range rows,
+; sources and run cursors (machines-c-read.lisp, machines-c.lisp), and in the
+; stripe after the build's rows: the query key, then eight sources' readers.
+(assert-event (<= (+ *fn2-seal-field-rows* *fn2-run-entry-rows* (* *fn2-idc-seal-cursors* *fn2-run-reader-fields*))
+                  *fn2-b-seal-field-rows*))
 (defun fn2-seal-genesis (profile fcrows trows frows fn2-seals)
- (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)))
+ (declare (xargs :stobjs fn2-seals :guard (fn2-seals-wfp fn2-seals)
+                 :guard-hints (("Goal" :in-theory (disable fn2-seal-init fn2-seal-merge-rows)))))
  (b* ((crow (+ 3 (fn2-sealer-windows profile)))
       ((unless (< crow (nfix fcrows))) (mv :no-row fn2-seals))
       ((mv c fbase) (fn2-sealer-fbase fcrows trows frows))
-      ((unless (eq c :ok)) (mv c fn2-seals)))
-  (fn2-seal-init 0 fbase crow *fn2-sealer-fill* *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-seals)))
-(fn2-seal-shape fn2-seal-genesis (profile fcrows trows frows fn2-seals) (fn2-seals) (fn2-seals) t (fn2-seal-init fn2-sealer-fbase))
+      ((unless (eq c :ok)) (mv c fn2-seals))
+      ((mv c fn2-seals) (fn2-seal-init 0 fbase crow *fn2-sealer-fill* *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-seals))
+      ((unless (eq c :ok)) (mv c fn2-seals))
+      (r (fn2-b-read-rows profile))
+      (qbase (+ (nfix fbase) *fn2-seal-field-rows*)))
+  (fn2-seal-merge-rows r (* *fn2-idc-seal-cursors* r) (+ (nfix trows) (* 9 r)) qbase (+ qbase *fn2-run-entry-rows*) fn2-seals)))
+(fn2-seal-shape fn2-seal-genesis (profile fcrows trows frows fn2-seals) (fn2-seals) (fn2-seals) t (fn2-seal-init fn2-seal-merge-rows fn2-sealer-fbase))

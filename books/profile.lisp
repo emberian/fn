@@ -184,11 +184,14 @@
 ; 512 4-KiB slots: separate RX and TX for every one of 256 connections.
 ; 80 64-KiB slots: one storage window for each of 64 read and 16 write jobs.
 ; Total: 592 slots and 7,340,032 bytes (7 MiB).
+; 512 installed runs (C5, docs/c-ordered-runs.md section 5): the sealer's
+; size-tiered merge keeps a schema at about log2(entries) runs, 22 at 2.5
+; million entries (a year of helm), so 15 schemas hold about 330.
 (defconst *fn2-profile-concrete*
   `((:c . 256) (:p . 64) (:u . 128) (:t . 128) (:x . 256) (:w . 256)
     (:fence-slots . 1) (:o . 1024) (:qa . 1024) (:h . 128) (:k . 64) (:aturn . 256)
     (:ncancel . 32) (:jread . 64) (:jwrite . 16) (:accept-credits . 8)
-    (:pool-classes . ((512 . 4096) (80 . 65536)))
+    (:pool-classes . ((512 . 4096) (80 . 65536))) (:identity-runs . 512)
     (:generation-start . 1) (:generation-limit . ,*fn2-u60-max*)
     (:trace-capacity . 768) (:trace . nil) (:path-identity . "fn2.invalid")))
 

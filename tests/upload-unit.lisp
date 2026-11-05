@@ -14,13 +14,18 @@
 
 ;; Two upload windows of 4 KiB chunks, and room for C's engine (4 KiB
 ;; arenas and the bind scratch): a valid article reaches the transaction's
-;; :ready (txn-unit.lisp has the transaction's answers).
+;; :ready (txn-unit.lisp has the transaction's answers). The 64 KiB class
+;; holds C's sealed pages (docs/c-ordered-runs.md section 5, measured): the
+;; group directory's run from genesis, a batch's 10 runs (one per schema it
+;; writes, one page each) and the identity summary's filter page are 12, and
+;; the sealer's merge needs one page for its output before it releases its
+;; inputs': 13.
 (defconst *fn2-uu-profile*
   (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
   (put-assoc-equal :identity-arena-bytes 4096
     (put-assoc-equal :posting-interim t
       (put-assoc-equal :large-upload-windows 2
-        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (12 . 65536)) *fn2-conn-wire-profile*))))))
+        (put-assoc-equal :pool-classes '((8 . 1024) (32 . 4096) (13 . 65536)) *fn2-conn-wire-profile*))))))
 
 (defun fn2-uu-text (lines)
   (declare (xargs :verify-guards nil))
@@ -111,7 +116,7 @@
       (and (equal (car results) want) (fn2-uu-all-wires (cdr results) want))))
 (assert-event
  (let* ((r (fn2-uu-many (append '("POST") (remove-equal "Message-ID: <one@example.invalid>" *fn2-uu-good*) '("." "QUIT")) 3 7))
-        (want (list (fn2-uu-text (list *fn2-uu-greeting* "340 send article to be posted" "441 posting failed"
+        (want (list (fn2-uu-text (list *fn2-uu-greeting* "340 send article to be posted" "240 article received OK"
                                        "205 closing connection")) t)))
    (or (and (equal (car r) :quiet) (equal (nth 2 r) 0) (equal (len (nth 1 r)) 3)
             (fn2-uu-all-wires (nth 1 r) want))
