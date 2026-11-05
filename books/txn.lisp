@@ -284,8 +284,9 @@
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defcost fn2-txn-payload-commit :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "An accepted article's payload extent becomes allocated to it (owner: the transaction kind, the article's event).")
-(defcost fn2-txn-grant-append :answers (:ok :access)
-  :doc "The authority seam (GRANT-ASTRA section 4, (fn2-grant-allows principal (:append :stream group) view)): whether the principal may append to this destination group. The authority lane fills it; today it answers :ok for every principal.")
+(defconst *fn2-authority-right-append* 2)
+(defcost fn2-authority-allows :answers (:ok :access :more :state :bounds) :faults (:state :bounds)
+  :doc "STUB of the authority lane's operation (books/authority.lisp, layer E): (fn2-authority-allows tx principal right target budget) -> (mv code grant head); this stub answers :ok with grant 0 and head 0 for every principal until the authority lane replaces it.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 
@@ -314,9 +315,11 @@
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                              ;; the authority seam (GRANT-ASTRA section 4): the
                              ;; principal's append grant for this destination
-                             (t (:do (acode) (fn2-txn-grant-append row-principal-slot group)
+                             (t (:do (acode agrant ahead)
+                                     (fn2-authority-allows gslot row-principal-slot *fn2-authority-right-append* group 4096)
                                  :accept (:ok)
-                                 :case (((:access) (:set (word *fn2-upload-word-refused*)) (:next :refused)
+                                 :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                        ((:access) (:set (word *fn2-upload-word-refused*)) (:next :refused)
                                          (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
                                 (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
                                                                  (+ no start) len :owner upload))
@@ -592,15 +595,15 @@
                 (natp (mv-nth 2 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))
                 (natp (mv-nth 3 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))))
   :hints (("Goal" :in-theory (enable fn2-txn-next-name))))
-;; The authority seam: the append grant of PRINCIPAL for destination GROUP,
-;; asked once per destination group the article names. Unfilled: every
-;; principal is allowed (the authority lane replaces the body).
-(defun fn2-txn-grant-append (principal group fn2-core)
+;; STUB of the authority seam (the authority lane's books/authority.lisp
+;; replaces it): whether PRINCIPAL holds RIGHT on TARGET (a group's stream)
+;; for the successor transaction TX: (mv code grant head fn2-core).
+(defun fn2-authority-allows (tx principal right target budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
-           (ignore principal group))
-  (mv :ok fn2-core))
-(fn2-core-preserves fn2-txn-grant-append (principal group fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-grant-append))
+           (ignore tx principal right target budget))
+  (mv :ok 0 0 fn2-core))
+(fn2-core-preserves fn2-authority-allows (tx principal right target budget fn2-core) :position 3 :rows nil)
+(in-theory (disable fn2-authority-allows))
 ;; Release C's claim; the FIFO's head W (a claim row = a transaction slot)
 ;; takes it in the same step and is woken.
 (defun fn2-claim-release-core (c fn2-core)

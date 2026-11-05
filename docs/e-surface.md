@@ -154,7 +154,7 @@ row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exa
 the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
 six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). An article without a Message-ID gets
 `<op-PRINCIPAL-OP@node>`, PRINCIPAL the principal slot, and fn2-outcome is keyed (principal, op). The
-grant check is the named seam fn2-txn-grant-append (one call per destination group; it answers `:ok` until
+grant check is the named seam fn2-authority-allows (a stub in txn.lisp, one call per destination group at its lookup; `:ok` until
 the authority lane fills it). Not yet served: the read of fn2-outcome before the grant (a retry is refused
 `duplicate` by its Message-ID, not answered its outcome), `operation-reused`, the Message-ID and numbers
 in the reply, and an article past one receive (the six-octet L frame is one frame per receive).
