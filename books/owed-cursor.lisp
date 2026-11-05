@@ -312,9 +312,26 @@
 (defun fn2-csp-body-of (lines)
   (declare (xargs :verify-guards nil))
   (cond ((atom lines) nil) ((equal (car lines) "") (cdr lines)) (t (fn2-csp-body-of (cdr lines)))))
-(defun fn2-csp-article-lines (verb text)
+;; An overview line's eighth TAB-separated field (PRF-206's "Xref: SERVER
+;; group:number"), nil when it has none.
+(defun fn2-csp-field-after-tabs (k cs)
   (declare (xargs :verify-guards nil))
-  (append (fn2-csp-stuffed (cond ((equal verb "HEAD") (fn2-csp-head-of text))
+  (cond ((atom cs) (and (zp k) cs))
+        ((zp k) cs)
+        ((equal (car cs) #\Tab) (fn2-csp-field-after-tabs (- k 1) (cdr cs)))
+        (t (fn2-csp-field-after-tabs k (cdr cs)))))
+(defun fn2-csp-xref-line (line)
+  (declare (xargs :verify-guards nil))
+  (let ((f (and (stringp line) (fn2-csp-field-after-tabs 7 (coerce line 'list)))))
+    (cond ((atom f) nil)
+          ((and (<= 6 (len f)) (equal (string-upcase (coerce (take 6 f) 'string)) "XREF: ")) (list (coerce f 'string)))
+          (t (list (fn2-csp-cat (list "Xref: " (coerce f 'string))))))))
+;; ARTICLE and HEAD serve the overview's Xref field as the first header line
+;; (RFC 5536 3.2.14; fn1 and H's model), then the stored source.
+(defun fn2-csp-article-lines (verb line text)
+  (declare (xargs :verify-guards nil))
+  (append (if (equal verb "BODY") nil (fn2-csp-xref-line line))
+          (fn2-csp-stuffed (cond ((equal verb "HEAD") (fn2-csp-head-of text))
                                  ((equal verb "BODY") (fn2-csp-body-of text))
                                  (t text)))
           (list ".")))
@@ -367,7 +384,7 @@
                    ;; by Message-ID the number is 0 (RFC 3977 6.2; H's model accepts 0)
                    (mv (cons (fn2-csp-cat (list head "0 " (car args) tail))
                              (if (equal verb "STAT") nil
-                               (fn2-csp-article-lines verb (fn2-csp-seed-text (car args) seeds))))
+                               (fn2-csp-article-lines verb (fn2-csp-seed-line (car args) seeds) (fn2-csp-seed-text (car args) seeds))))
                        sel nil)
                  (mv (list "430 no article with that message-id") sel nil)))
               ((not gname) (mv (list "412 no newsgroup selected") sel nil))
@@ -375,7 +392,7 @@
               (t (let* ((n (if args (fn2-csp-number (car args)) cur)) (r (fn2-csp-row n rows)))
                    (cond (r (mv (cons (fn2-csp-cat (list head (fn2-csp-str n) " " (nth 1 r) tail))
                                       (if (equal verb "STAT") nil
-                                        (fn2-csp-article-lines verb (nth 3 r))))
+                                        (fn2-csp-article-lines verb (nth 2 r) (nth 3 r))))
                                 (list gname n) nil))
                          (args (mv (list "423 no article with that number") sel nil))
                          (t (mv (list "420 no current article") sel nil))))))))

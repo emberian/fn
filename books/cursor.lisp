@@ -415,6 +415,58 @@
 (fn2-pool-preserves fn2-cursor-move-line (src len at slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-cursor-move-line))
 
+;; The overview line's Xref field (its eighth TAB-separated field, PRF-206's
+;; full form "Xref: SERVER group:number") as a header line at the slot's
+;; fill, CR LF ended; the line read from [AT, TO), up to an LF. No field:
+;; nothing. A field without its "Xref: " label gets it.
+(defun fn2-cursor-put-xref (at to slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp at) (natp to))))
+  (b* (((mv has-lf lf-pos) (fn2-cursor-next-lf at to slot gen okind oslot ogen fn2-pool))
+       (ov-to (if has-lf lf-pos to))
+       ((mv f1 t1) (fn2-cursor-next-tab at ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f2 t2) (fn2-cursor-next-tab (+ 1 t1) ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f3 t3) (fn2-cursor-next-tab (+ 1 t2) ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f4 t4) (fn2-cursor-next-tab (+ 1 t3) ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f5 t5) (fn2-cursor-next-tab (+ 1 t4) ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f6 t6) (fn2-cursor-next-tab (+ 1 t5) ov-to slot gen okind oslot ogen fn2-pool))
+       ((mv f7 t7) (fn2-cursor-next-tab (+ 1 t6) ov-to slot gen okind oslot ogen fn2-pool))
+       ((unless (and f1 f2 f3 f4 f5 f6 f7 (< (+ 1 t7) ov-to))) (mv :ok fn2-pool))
+       (xs (+ 1 t7)) (xl (nfix (- ov-to xs)))
+       (labelled (and (<= 6 xl) (fn2-gram-match xs 6 "XREF: " slot gen okind oslot ogen fn2-pool)))
+       ((mv code fn2-pool)
+        (if labelled (mv :ok fn2-pool)
+          (fn2-gram-put-template 0 "Xref: " 0 0 0 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool) (fn2-gram-put-span xl xs slot gen slot gen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool)))
+    (fn2-gram-put-crlf slot gen okind oslot ogen fn2-pool)))
+(fn2-pool-preserves fn2-cursor-put-xref (at to slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+;; ARTICLE's and HEAD's opening: the 22x line, then (XREF) the overview's
+;; Xref field as the article's first header line (RFC 5536 3.2.14: the
+;; serving node's; fn1 and H's model put it before the stored source). The
+;; overview line is TX's scratch at [AT, ROFF) (the page is sent from
+;; ROFF) and the 22x line's Message-ID is its span [MS, MS+ML): both lines
+;; are rendered after it, at the fill ROFF, so no copy reads what another
+;; wrote.
+(defun fn2-cursor-pool-art-open (cmd reply mask n xref at roff ms ml slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp at) (natp roff) (natp ms) (natp ml))
+                  :guard-hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
+                                                            fn2-nntp-reply-command fn2-nntp-reply-layer)))))
+  (b* ((at (nfix at)) (roff (max at (nfix roff)))
+       ((unless (equal (fn2-gram-fill slot fn2-pool) roff)) (mv :fault fn2-pool))
+       ((mv code fn2-pool) (fn2-cursor-render cmd reply mask (nfix n) 0 0 slot gen (nfix ms) (nfix ml)
+                                              slot gen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv :fault fn2-pool))
+       ((mv code fn2-pool) (if xref (fn2-cursor-put-xref at roff slot gen okind oslot ogen fn2-pool) (mv :ok fn2-pool)))
+       ((unless (eq code :ok)) (mv :fault fn2-pool)))
+    (mv :ok fn2-pool)))
+(fn2-pool-preserves fn2-cursor-pool-art-open (cmd reply mask n xref at roff ms ml slot gen okind oslot ogen fn2-pool)
+  :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
+                                      fn2-nntp-reply-command fn2-nntp-reply-layer))))
+(in-theory (disable fn2-cursor-put-xref fn2-cursor-pool-art-open))
+
 (defun fn2-cursor-pool-list-filter (variant k1 a1 b1 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp variant) (natp k1) (natp a1) (natp b1)
@@ -611,6 +663,9 @@
 (defcost fn2-cursor-tx-cap :child fn2-pool-slot-capacity :doc "A pool slot's capacity (0 out of range).")
 (defcost fn2-cursor-say :child fn2-cursor-render :answers t :bytes 1024 :tables (fn2-core-pool)
  :doc "Render one typed status line (numbers and one span) at the slot's fill.")
+(defcost fn2-cursor-art-open :child fn2-cursor-pool-art-open :answers (:ok :fault) :faults (:fault) :bytes 4096
+ :tables (fn2-core-pool)
+ :doc "ARTICLE/HEAD/BODY's 22x line and, for ARTICLE and HEAD, the overview's Xref field as the first header line.")
 (defcost fn2-cursor-put-line :child fn2-cursor-pool-put :answers t :bytes 64 :tables (fn2-core-pool)
  :doc "Append a number and TAB, a number line, CR LF, or the terminator.")
 (defcost fn2-cursor-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
@@ -1172,11 +1227,12 @@
            (:goto hand))))
   (art-copy :on-refusal ((:stop :machine-phase))
      (:cond ((equal row-said 0)
-             (:do (code) (fn2-cursor-say row-tag (fn2-cursor-reply-of row-tag :found) row-mask row-ncurrent 0 0
-                                         row-tx-slot row-tx-gen row-mso row-mln row-tx-slot row-tx-gen
-                                         :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+             (:do (code) (fn2-cursor-art-open row-tag (fn2-cursor-reply-of row-tag :found) row-mask row-ncurrent
+                                              (not (equal row-tag *fn2-nntp-command-body*))
+                                              row-oat row-roff row-mso row-mln row-tx-slot row-tx-gen
+                                              :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
               :accept (:ok))
-             (:set (said 1)) (:charge :bytes 1024 :steps *fn2-work-transition* :runnable t))
+             (:set (said 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
             (t (:do (sc used st) (fn2-cursor-stuff row-loff row-plen row-ast row-lslot row-lgen
                                                    row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
                 :accept ()

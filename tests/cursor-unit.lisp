@@ -466,3 +466,42 @@
 (assert-event (fn2-cursor-test-h5 nil))
 (assert-event (fn2-cursor-test-h5 '(11 3 1)))
 (assert-event (fn2-cursor-test-h5-negative))
+
+; The overview's Xref field (PRF-206's ninth field, "Xref: SERVER
+; group:number") is ARTICLE's and HEAD's first header line, before the
+; stored source, as fn1 served it and H's model reads it (RFC 5536
+; 3.2.14); BODY has none. The node's wire equals the reference's, and both
+; equal the hand-written lines.
+(defun fn2-cru-xref-seed (subject mid n)
+  (declare (xargs :verify-guards nil))
+  (list 1 mid (fn2-csp-cat (list (fn2-cru-line subject mid) (fn2-cru-tab) "Xref: .invalid local.test:" (fn2-csp-str n)))
+        (fn2-cru-text subject mid)))
+(defconst *fn2-cru-xref-seeds* (list (fn2-cru-xref-seed "one" "<a@example.invalid>" 1)))
+(defconst *fn2-cru-xref-lines* '("GROUP local.test" "ARTICLE 1" "HEAD <a@example.invalid>" "BODY 1" "QUIT"))
+(defun fn2-cursor-test-xref ()
+  (declare (xargs :verify-guards nil))
+  (let* ((head '("From: a@example.invalid" "Subject: one" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+                 "Message-ID: <a@example.invalid>" "Newsgroups: local.test"))
+         (body '("body one" "..dotted" ".." "end"))
+         (want (list (fn2-cw-crlf-octets
+                      (append '("200 fn-nntp experimental server ready" "211 1 1 1 local.test"
+                                "220 1 <a@example.invalid> article follows" "Xref: .invalid local.test:1")
+                              head '("") body '(".")
+                              '("221 0 <a@example.invalid> headers follow" "Xref: .invalid local.test:1")
+                              head '(".") '("222 1 <a@example.invalid> body follows") body
+                              '("." "205 closing connection")))
+                     t))
+         (spec (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-xref-seeds* *fn2-cru-xref-lines*))
+         (r (fn2-cursor-wire-run *fn2-cursor-profile* *fn2-cru-xref-seeds*
+                                 (list (list (fn2-cw-crlf-octets *fn2-cru-xref-lines*) nil)))))
+    (and (or (equal spec want) (cw "xref spec ~x0~%" spec))
+         (or (eq (nth 0 r) :ok) (cw "xref seeded ~x0~%" (nth 0 r)))
+         (equal (nth 3 r) 0)
+         (or (equal (car (nth 2 r)) want) (cw "xref wire ~x0~%" (car (nth 2 r)))))))
+; Negative: the same article without the field in its overview serves no
+; Xref line, so the wire differs.
+(defun fn2-cursor-test-xref-negative ()
+  (declare (xargs :verify-guards nil))
+  (not (equal (fn2-cursor-spec-wire *fn2-cru-groups* (list (fn2-cru-seed "one" "<a@example.invalid>")) *fn2-cru-xref-lines*)
+              (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-xref-seeds* *fn2-cru-xref-lines*))))
+(assert-event (and (fn2-cursor-test-xref) (fn2-cursor-test-xref-negative)))
