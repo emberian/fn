@@ -99,7 +99,7 @@
               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
              ((mv status clients & & fn2-core)
-              (fn2-cs-loop (* 20000 (+ 1 n)) 0 0 (fn2-cw-clients transcripts) nil nil 1 0 nil fn2-core)))
+              (fn2-cs-loop (* 20000 (+ 1 n)) 0 0 (fn2-cw-clients transcripts) nil nil nil 0 :ok fn2-core)))
           (mv (list status (car (fn2-cw-results clients)) (fn2-core-stop-reason fn2-core)) fn2-core))
         result))))
 (defun fn2-scu-check (n)
