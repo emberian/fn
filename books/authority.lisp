@@ -61,6 +61,9 @@
 ;; The grant schemas (authority-schema.lisp) and the port's right and scope
 ;; codes (their enums' order; fn2-grant-current keys them as octets).
 (defconst *fn2-grants-sid* 17)
+;; fn2-outcome's accepted code, as D's transaction writes it (txn.lisp's
+;; *fn2-txn-outcome-accepted*, a later book)
+(defconst *fn2-auth-outcome-code-accepted* 1)
 (defconst *fn2-grant-current-sid* 18)
 (defconst *fn2-authority-head-sid* 19)
 (defconst *fn2-authority-right-consume* 0)
@@ -114,6 +117,14 @@
 ;; grant-set (GRANT HEAD receipt), the receipt empty (no receipt is defined
 ;; for a grant yet); grant-get (FOUND HEAD) and, iff FOUND = 1, (GRANT
 ;; GRANTOR ENABLED PREVIOUS).
+(defun fn2-auth-write-word (ws i slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp i))))
+  (if (atom ws) (mv :ok fn2-pool)
+    (mv-let (c fn2-pool) (fn2-pool-write slot gen i (car ws) okind oslot ogen fn2-pool)
+      (if (eq c :ok) (fn2-auth-write-word (cdr ws) (+ 1 (nfix i)) slot gen okind oslot ogen fn2-pool)
+        (mv c fn2-pool)))))
+(fn2-pool-preserves fn2-auth-write-word (ws i slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+(in-theory (disable fn2-auth-write-word))
 (defun fn2-auth-encode-result (op p head grant grantor enabled previous found rb slot gen hend okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp rb)
@@ -223,6 +234,9 @@
 (defcost fn2-auth-find-grant :answers (:ok :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of the immutable grant row's lookup: (mv code grantor enabled previous).")
+(defcost fn2-auth-put-write :answers (:ok :state) :bytes 4096
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides fn2-core-pool)
+ :doc ":ready's write: grant-set's four (fn2-auth-put-grant) or principal-create's one (fn2-auth-put-create).")
 (defcost fn2-auth-put-grant :answers (:ok :state) :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides)
  :doc "Declare grant-set's four writes (grant row, current pointer, head, outcome) in the row's successor transaction and resolve them.")
@@ -341,7 +355,7 @@
                    (fn2-authority-req-grant-set-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
                  (fn2-authority-req-grant-get-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
                (if (not (and (eq dc :ok) (equal next end) (fn2-fields-wfp fn2-fields)
-                             (<= (+ base 16) (fn2-fields-rows fn2-fields))))
+                             (natp (fn2-fields-rows fn2-fields)) (<= (+ base 16) (fn2-fields-rows fn2-fields))))
                    (mv :frame 0 0 0 0 0 0 0 fn2-fields)
                  (let ((ge (fn2-fields-value (+ base 1) fn2-fields)) (rt (fn2-fields-value (+ base 2) fn2-fields))
                        (sc (fn2-fields-value (+ base 3) fn2-fields)) (tg (fn2-fields-value (+ base 4) fn2-fields)))
@@ -432,7 +446,7 @@
    ;; SAME whether its request identity equals the one at the key range's
    ;; [0, 32) (the recorded one is copied to [32, 64) and compared).
    (defun fn2-auth-same-octets (n i j slot gen okind oslot ogen fn2-pool)
-     (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp i) (natp j)) :measure (nfix n)))
+     (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp j)) :measure (nfix n)))
      (if (zp n) t
        (mv-let (c1 a) (fn2-pool-read slot gen i okind oslot ogen fn2-pool)
          (mv-let (c2 b) (fn2-pool-read slot gen j okind oslot ogen fn2-pool)
@@ -463,11 +477,13 @@
    ;; ids 8 octets big-endian), zero-padded: injective in the request (an
    ;; exact identity where the outcome schema has room for a digest).
    (defun fn2-auth-put-be (k v i slot gen okind oslot ogen fn2-pool)
-     (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp i)) :measure (nfix k)))
+     (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp k) (natp i)) :measure (nfix k)))
      (if (zp k) (mv :ok fn2-pool)
        (mv-let (c fn2-pool)
-         (fn2-pool-write slot gen i (mod (floor (nfix v) (expt 256 (- (nfix k) 1))) 256) okind oslot ogen fn2-pool)
+         (fn2-pool-write slot gen i (mod (ash (nfix v) (- (* 8 (- (nfix k) 1)))) 256) okind oslot ogen fn2-pool)
          (if (eq c :ok) (fn2-auth-put-be (- k 1) v (+ 1 (nfix i)) slot gen okind oslot ogen fn2-pool) (mv c fn2-pool)))))
+   (fn2-pool-preserves fn2-auth-put-be (k v i slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+   (in-theory (disable fn2-auth-put-be))
    (defun fn2-auth-put-identity (ge rt sc tg en eh slot gen okind oslot ogen fn2-pool)
      (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
      (b* (((mv c fn2-pool) (fn2-pool-reset slot gen okind oslot ogen fn2-pool))
@@ -487,6 +503,8 @@
           ((mv c fn2-pool) (fn2-auth-put-be 8 eh 20 slot gen okind oslot ogen fn2-pool))
           ((unless (eq c :ok)) (mv c fn2-pool)))
        (fn2-auth-put-be 4 0 28 slot gen okind oslot ogen fn2-pool)))
+   (fn2-pool-preserves fn2-auth-put-identity (ge rt sc tg en eh slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+   (in-theory (disable fn2-auth-put-identity))
    (defun fn2-auth-identity (ge rt sc tg en eh kslot kgen okind oslot ogen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                      :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
@@ -515,7 +533,7 @@
           ((unless (eq c :ok)) (mv :state fn2-core))
           ((mv c fn2-core)
            (fn2-outcome-put sx 3 (principal grantor) (operation op) (request kslot kgen 0)
-                            (outcome *fn2-txn-outcome-accepted*) (event :event 0)
+                            (outcome *fn2-auth-outcome-code-accepted*) (event :event 0)
                             :owner (okind oslot ogen) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core))
           ((mv rc fn2-core) (fn2-cns-resolve-loop 32 sx fn2-core)))
@@ -560,6 +578,18 @@
    (fn2-core-preserves fn2-auth-put-create (sx pid slot gen noff nlen kslot kgen dk ds dg okind oslot ogen fn2-core)
      :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-put-create))
+   ;; :ready's one write, per verb (grant-set's names the key range under the
+   ;; row's ownership DK DS DG; principal-create's copies the name from the
+   ;; frame, owner OKIND OSLOT OGEN)
+   (defun fn2-auth-put-write (op sx pid slot gen noff nlen kslot kgen dk ds dg grantor ge rt sc tg en prev gop
+                                 okind oslot ogen fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (if (equal op *fn2-auth-op-set*)
+         (fn2-auth-put-grant sx grantor ge rt sc tg en prev gop kslot kgen dk ds dg fn2-core)
+       (fn2-auth-put-create sx pid slot gen noff nlen kslot kgen dk ds dg okind oslot ogen fn2-core)))
+   (fn2-core-preserves fn2-auth-put-write (op sx pid slot gen noff nlen kslot kgen dk ds dg grantor ge rt sc tg en prev gop
+                                           okind oslot ogen fn2-core) :position 1 :rows nil)
+   (in-theory (disable fn2-auth-put-write))
    (defun fn2-auth-encode-reply (op outcome reason p head grant grantor enabled previous found sx slot gen okind oslot ogen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                      :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
@@ -573,7 +603,7 @@
                                          fn2-fields fn2-pool)
            (mv :state 0 0 fn2-fields fn2-pool)))
        (mv code (nfix w) (nfix end) fn2-core)))
-   (fn2-core-preserves fn2-auth-encode-reply (op outcome reason pid sx slot gen okind oslot ogen fn2-core)
+   (fn2-core-preserves fn2-auth-encode-reply (op outcome reason p head grant grantor enabled previous found sx slot gen okind oslot ogen fn2-core)
      :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defthm fn2-auth-encode-reply-natp-1
      (natp (mv-nth 1 (fn2-auth-encode-reply op outcome reason p head grant grantor enabled previous found sx slot gen okind oslot ogen fn2-core)))
@@ -582,7 +612,7 @@
      (natp (mv-nth 2 (fn2-auth-encode-reply op outcome reason p head grant grantor enabled previous found sx slot gen okind oslot ogen fn2-core)))
      :hints (("Goal" :in-theory (e/d (fn2-auth-encode-reply) (nfix)))))
    (in-theory (disable fn2-auth-encode-reply))
-   (defun fn2-auth-post-reply (ctl ctl-gen request op outcome reason pid sx slot gen fn2-core)
+   (defun fn2-auth-post-reply (ctl ctl-gen request op outcome reason p head grant grantor enabled previous found sx slot gen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
      (if (not (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
                    (equal (fn2-machine-generation ctl fn2-core) ctl-gen)
@@ -601,7 +631,7 @@
                   (fn2-core (fn2-machine-write-tx-off ctl w fn2-core))
                   (fn2-core (fn2-machine-write-tx-len ctl end fn2-core)))
              (mv :ok fn2-core))))))
-   (fn2-core-preserves fn2-auth-post-reply (ctl ctl-gen request op outcome reason pid sx slot gen fn2-core)
+   (fn2-core-preserves fn2-auth-post-reply (ctl ctl-gen request op outcome reason p head grant grantor enabled previous found sx slot gen fn2-core)
      :position 1 :rows nil)
    (in-theory (disable fn2-auth-post-reply))))
 
@@ -613,7 +643,7 @@
    (:do (rcode) (fn2-successor-release row-sx)
     :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
    (:do (pcode) (fn2-auth-post-reply row-ctl row-ctl-gen row-request row-opcode row-outcome row-reason row-pid
-                                     row-head row-grant row-grantor row-genabled row-previous row-found
+                                     row-ahead row-grant row-grantor row-genabled row-previous row-gfound
                                      row-sx row-rx-slot row-rx-gen)
     :accept (:ok :dropped) :why "the control connection may have closed while the request ran")
    (:wake-row row-ctl)
@@ -636,7 +666,7 @@
         (fn2-auth-decode-grant row-opcode row-sx row-rx-slot row-rx-gen (+ 2 row-fpos) (+ row-fpos row-flen)
                                :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
     :case (((:frame) (:set (reason *fn2-auth-reason-frame*)) (:goto refuse))))
-   (:set (grantee ge) (right rt) (scope sc) (target tg) (enabled en) (ehead eh) (op opid))
+   (:set (grantee ge) (gright rt) (gscope sc) (gtarget tg) (enabled en) (ehead eh) (gop opid))
    (:cond ((not (or (equal row-admin 1) (and (equal row-opcode *fn2-auth-op-get*) (equal row-principal ge))))
            (:set (reason *fn2-auth-reason-access*)) (:goto refuse))
           ((not (if (equal rt *fn2-authority-right-consume*)
@@ -650,15 +680,14 @@
                      (:set (cut fr) (gstep 0))
                      (:next :get) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                     (t (:do (icode) (fn2-auth-identity ge rt sc tg en eh row-ks-slot row-ks-gen)
-                        :case (((:otherwise) (:goto fault))))
+                        :case ((:otherwise (:goto fault))))
                        (:next :outcome) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))
  :arms
  ((:free (:idle))
   (:decode :on-refusal ((:stop :machine-phase))
    (:do (xcode sx) (fn2-auth-successor row-slot) :case (((:bounds) (:stop :machine-phase))))
-   (:set (sx sx))
-   (:do (xcode x) (fn2-auth-read-row row-slot) :case (((:bounds) (:stop :machine-phase))))
-   (:set (xrow x))
+   (:do (rxcode x) (fn2-auth-read-row row-slot) :case (((:bounds) (:stop :machine-phase))))
+   (:set (sx sx) (xrow x))
    (:do (dcode op noff nlen) (fn2-auth-decode row-fpos row-flen sx row-rx-slot row-rx-gen
                                               :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
     :case (((:frame) (:set (reason *fn2-auth-reason-frame*)) (:goto refuse))))
@@ -688,12 +717,12 @@
    (:next :ready) (:charge :steps *fn2-work-transition* :runnable t))
   ;; grant-set: the retry lookup first (the ruling: before the expected head)
   (:outcome :on-refusal ((:stop :machine-phase))
-   (:do (ocode oev same) (fn2-auth-find-outcome row-xrow row-principal row-op row-ks-slot row-ks-gen 4096)
+   (:do (ocode oev same) (fn2-auth-find-outcome row-xrow row-principal row-gop row-ks-slot row-ks-gen 4096)
     :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
            ((:absent) (:next :head) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
            ((:ok) (:if same
-                       ((:set (grant oev) (head oev) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
+                       ((:set (grant oev) (ahead oev) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
                        ((:set (reason *fn2-auth-reason-operation-reused*)) (:goto refuse))))
            (:otherwise (:goto fault)))))
   ;; the grantee's head against the request's expected head
@@ -702,7 +731,7 @@
     :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
            ((:ok) (:if (equal h row-ehead)
-                       ((:set (head h)) (:next :ready) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                       ((:set (ahead h)) (:next :ready) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                        ((:set (reason *fn2-auth-reason-stale-revision*)) (:goto refuse))))
            (:otherwise (:goto fault)))))
   ;; principal-bind's answer carries the bound principal's head
@@ -710,7 +739,7 @@
    (:do (hcode h) (fn2-auth-find-head row-xrow row-pid 4096)
     :accept ()
     :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-           ((:ok) (:set (head h) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
+           ((:ok) (:set (ahead h) (outcome *fn2-auth-outcome-accepted*)) (:goto answer))
            (:otherwise (:goto fault)))))
   ;; grant-get: current pointer (GSTEP 0), head (1), the immutable row (2),
   ;; at one committed cut: the frontier at the start (CUT) and at the end
@@ -718,17 +747,17 @@
   (:get :on-refusal ((:stop :machine-phase))
    (:cond
     ((equal row-gstep 0)
-     (:do (ccode g) (fn2-auth-find-current row-xrow row-grantee row-right row-scope row-target 4096)
+     (:do (ccode g) (fn2-auth-find-current row-xrow row-grantee row-gright row-gscope row-gtarget 4096)
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-             ((:ok) (:set (grant g) (found (if (equal g 0) 0 1)) (gstep 1))
+             ((:ok) (:set (grant g) (gfound (if (equal g 0) 0 1)) (gstep 1))
                     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              (:otherwise (:goto fault)))))
     ((equal row-gstep 1)
      (:do (hcode h) (fn2-auth-find-head row-xrow row-grantee 4096)
       :accept ()
       :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-             ((:ok) (:set (head h) (gstep (if (equal row-found 1) 2 3)))
+             ((:ok) (:set (ahead h) (gstep (if (equal row-gfound 1) 2 3)))
                     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
              (:otherwise (:goto fault)))))
     ((equal row-gstep 2)
@@ -752,14 +781,12 @@
         ((:if (not (eq (fn2-machine-pool-capacity-read-code row-ws-slot) :ok))
               ((:stop :machine-phase))
               ((:let cap (fn2-machine-pool-capacity row-ws-slot))
-               (:if (equal row-opcode *fn2-auth-op-set*)
-                    ((:do (wcode) (fn2-auth-put-grant row-sx row-principal row-grantee row-right row-scope row-target
-                                                      row-enabled row-head row-op row-ks-slot row-ks-gen)
-                      :case (((:state) (:goto fault)))))
-                    ((:do (wcode) (fn2-auth-put-create row-sx row-pid row-rx-slot row-rx-gen row-noff row-nlen
-                                                       row-ks-slot row-ks-gen *fn2-auth-kind* id row-generation
-                                                       :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
-                      :case (((:state) (:goto fault))))))
+               (:do (wcode) (fn2-auth-put-write row-opcode row-sx row-pid row-rx-slot row-rx-gen row-noff row-nlen
+                                                row-ks-slot row-ks-gen *fn2-auth-kind* id row-generation
+                                                row-principal row-grantee row-gright row-gscope row-gtarget
+                                                row-enabled row-ahead row-gop
+                                                :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
+                :case (((:state) (:goto fault))))
                (:do (scode i) (fn2-successor-stage row-sx)
                 :accept ()
                 :case (((:ok)
@@ -793,7 +820,7 @@
             (:cond ((equal tout *fn2-commit-outcome-accepted*)
                     (:set (outcome *fn2-auth-outcome-accepted*) (aslot 0)
                           (grant (if (equal row-opcode *fn2-auth-op-set*) tevent row-grant))
-                          (head (if (equal row-opcode *fn2-auth-op-set*) tevent row-head)))
+                          (ahead (if (equal row-opcode *fn2-auth-op-set*) tevent row-ahead)))
                     (:goto answer))
                    ((equal tout *fn2-commit-outcome-uncertain*)
                     (:set (outcome *fn2-auth-outcome-uncertain*) (reason *fn2-auth-reason-persistence*) (aslot 0))

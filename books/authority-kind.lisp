@@ -27,8 +27,8 @@
           (outcome (:enum fn2-auth-outcome (:none :accepted :refused :uncertain :fault))) (reason :u8)
           ;; grant-set's and grant-get's request (op the operation identity), the
           ;; row's read row, the heads and the grant read or written
-          (grantee :u60) (right :u8) (scope :u8) (target :u60) (enabled :bool) (ehead :u60) (op :u60)
-          (xrow :u32) (head :u60) (grant :u60) (grantor :u60) (genabled :bool) (previous :u60) (found :bool)
+          (grantee :u60) (gright :u8) (gscope :u8) (gtarget :u60) (enabled :bool) (ehead :u60) (gop :u60)
+          (xrow :u32) (ahead :u60) (grant :u60) (grantor :u60) (genabled :bool) (previous :u60) (gfound :bool)
           (gstep :u8) (cut :u60)
           (stopped :bool) (next-free :link))
  :holds ((:decode :tx-range :transaction-row) (:lookup :tx-range :transaction-row)
@@ -48,8 +48,8 @@
  :taken (:phase :decode :rows :transaction-row
          :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ks-slot :gen ks-gen :class 0))
          :copy (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal)
-         :clear (sx opcode noff nlen aslot pid outcome reason grantee right scope target enabled ehead op
-                 xrow head grant grantor genabled previous found gstep cut stopped))
+         :clear (sx opcode noff nlen aslot pid outcome reason grantee gright gscope gtarget enabled ehead gop
+                 xrow ahead grant grantor genabled previous gfound gstep cut stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (rx-slot *fn2-none*) (ws-slot *fn2-none*) (ks-slot *fn2-none*) (account-ref *fn2-none*)
            (next-free fn2-machine-initial-next-free))
