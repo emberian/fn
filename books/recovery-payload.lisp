@@ -10,12 +10,15 @@
 (include-book "assembly-callbacks-s")
 (include-book "assembly-callbacks-d")
 (fn2-book-layer :d)
+; B's recovery theory (recovery-machine.lisp): the core's child type and WFP rules.
+(make-event (value (fn2-recovery-local-theory)))
 
 ; The record's fields are decoded at the recovery row's fields (unused once
 ; the chain is verified), room for the largest layout the stream holds.
 (defconst *fn2-rp-room*
   (max (max *fn2-format-record-header-num-fields* *fn2-format-keyed-mutation-num-fields*)
-       (max *fn2-format-article-acceptance-num-fields* *fn2-run-entry-rows*)))
+       (max (max *fn2-format-article-acceptance-num-fields* *fn2-run-entry-rows*)
+            (max *fn2-am-header-fields* *fn2-am-entry-fields*))))
 (defmacro fn2-rp-roomp ()
   '(<= (+ *fn2-rec-field-base* *fn2-rp-room*) (fn2-fields-rows fn2-fields)))
 (defconst *fn2-rp-article-kind* (+ *fn2-commit-txn-schema-record-kind-base* *fn2-txn-article-sid*))
@@ -69,7 +72,7 @@
              (fn2-format-keyed-mutation-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
             ((equal kind *record-kind-article-acceptance*)
              (fn2-format-article-acceptance-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
-            ((and (natp kind) (<= *record-kind-identity-evidence* kind) (<= kind *record-kind-consumer-names*))
+            ((and (natp kind) (<= *record-kind-identity-evidence* kind) (<= kind *fn2-commit-txn-schema-record-kind-last*))
              (fn2-run-layout-decode (- kind *fn2-commit-txn-schema-record-kind-base*) 0 base slot gen off rend
                                     okind id ogen fn2-fields fn2-pool))
             (t (mv :kind 0 fn2-fields))))
@@ -94,6 +97,21 @@
             (nfix (fn2-fields-value (+ *fn2-rec-field-base* *fn2-article-entry-field-bytes*) fn2-fields)))
       (mv 0 0 0 0 0))
     (mv unit epoch alloc lkind bytes)))
+(defthm fn2-rp-location-natp-0
+  (natp (car (fn2-rp-location fn2-core))) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-rp-location))))
+(defthm fn2-rp-location-natp-1
+  (natp (mv-nth 1 (fn2-rp-location fn2-core))) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-rp-location))))
+(defthm fn2-rp-location-natp-2
+  (natp (mv-nth 2 (fn2-rp-location fn2-core))) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-rp-location))))
+(defthm fn2-rp-location-natp-3
+  (natp (mv-nth 3 (fn2-rp-location fn2-core))) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-rp-location))))
+(defthm fn2-rp-location-natp-4
+  (natp (mv-nth 4 (fn2-rp-location fn2-core))) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-rp-location))))
 (in-theory (disable fn2-rp-location))
 
 ;; One record of a chained commit's stream at ROFF; the window holds the
@@ -103,7 +121,7 @@
 ;; record that names no payload); :raw or :manifest (an article row: its
 ;; location's unit and allocation handle, its stored length, its event);
 ;; :invalid (a record this recovery cannot decode, so the payload its stream
-;; names cannot be known); :bounds when the fields have no room (a profile's).
+;; names cannot be known, or a manifest length one manifest cannot name); :bounds when the fields have no room (a profile's).
 (defun fn2-recovery-record-next (roff rend slot gen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (fn2-rp-room-ok fn2-core)) (mv :bounds 0 0 0 0 0 0 fn2-core))
@@ -122,7 +140,8 @@
        ((unless (equal kind *fn2-rp-article-kind*)) (mv :other bnext 0 0 0 0 event fn2-core))
        ((mv unit epoch alloc lkind bytes) (fn2-rp-location fn2-core)))
     (cond ((equal lkind *fn2-txn-location-raw-source*) (mv :raw bnext unit epoch alloc bytes event fn2-core))
-          ((equal lkind *fn2-txn-location-source-manifest*) (mv :manifest bnext unit epoch alloc bytes event fn2-core))
+          ((and (equal lkind *fn2-txn-location-source-manifest*) (fn2-am-manifestp bytes) (fn2-am-fits bytes))
+           (mv :manifest bnext unit epoch alloc bytes event fn2-core))
           (t (mv :invalid 0 0 0 0 0 0 fn2-core)))))
 (fn2-core-preserves fn2-recovery-record-next (roff rend slot gen id ogen fn2-core) :position 7 :rows nil)
 (defthm fn2-recovery-record-next-naturals
@@ -194,7 +213,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (fn2-rp-room-ok fn2-core)) (mv :bounds 0 0 fn2-core))
        ((unless (and (fn2-am-manifestp total) (fn2-am-fits total) (natp unit))) (mv :invalid 0 0 fn2-core))
-       ((mv code off)
+       ((mv code off fn2-core)
         (if (zp unit)
             (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
               (code next fn2-fields)
@@ -202,8 +221,8 @@
                   (fn2-am-get-header *fn2-rec-field-base* total slot gen 0 *fn2-commit-unit-bytes*
                                      *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool)
                 (mv :bounds 0 fn2-fields))
-              (mv code next))
-          (mv :ok 0)))
+              (mv code (nfix next) fn2-core))
+          (mv :ok 0 fn2-core)))
        ((unless (eq code :ok)) (mv :invalid 0 0 fn2-core)))
     (fn2-rp-entries (+ 1 *fn2-am-entries-per-unit*) off total event commit 0 0 slot gen id ogen fn2-core)))
 (fn2-core-preserves fn2-recovery-manifest-unit (unit total event commit slot gen id ogen fn2-core) :position 3 :rows nil)

@@ -19,7 +19,9 @@
 
 (defconst *fn2-ra-profile*
   (put-assoc-equal :pool-classes '((8 . 1024) (128 . 16384) (64 . 65536))
-                   (put-assoc-equal :reading t (put-assoc-equal :x 2 *fn2-txn-posting-profile*))))
+                   (put-assoc-equal :reading t (put-assoc-equal :x 2
+                    ;; the test's reads hold their descriptors (no owner row consumes the completions)
+                    (put-assoc-equal :o 32 (put-assoc-equal :qa 16 *fn2-txn-posting-profile*))))))
 (defun fn2-ra-text (lines) (declare (xargs :verify-guards nil)) (fn2-cw-crlf-octets lines))
 (defun fn2-ra-body (n)
   (declare (xargs :verify-guards nil))
@@ -51,10 +53,10 @@
 
 ; The payload allocations: (extent epoch counter owner) of every extent
 ; allocated to the transaction kind (an article), in extent order.
-(defun fn2-ra-allocs-from (i fn2-extents)
-  (declare (xargs :stobjs fn2-extents :verify-guards nil :measure (nfix (- (fn2-extents-rows fn2-extents) (nfix i)))))
-  (if (>= (nfix i) (fn2-extents-rows fn2-extents)) nil
-    (let ((rest (fn2-ra-allocs-from (+ 1 (nfix i)) fn2-extents)))
+(defun fn2-ra-allocs-from (left i fn2-extents)
+  (declare (xargs :stobjs fn2-extents :verify-guards nil :measure (nfix left)))
+  (if (or (zp left) (>= (nfix i) (fn2-extents-rows fn2-extents))) nil
+    (let ((rest (fn2-ra-allocs-from (- left 1) (+ 1 (nfix i)) fn2-extents)))
       (if (and (equal (fn2-extents-state (nfix i) fn2-extents) *fn2-extent-state-allocated*)
                (equal (fn2-extents-owner-kind (nfix i) fn2-extents) *fn2-txn-kind*))
           (cons (list (nfix i) (fn2-extents-epoch (nfix i) fn2-extents) (fn2-extents-counter (nfix i) fn2-extents)
@@ -63,7 +65,7 @@
         rest))))
 (defun fn2-ra-allocs (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (l) (fn2-ra-allocs-from 0 fn2-extents) l))
+  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (l) (fn2-ra-allocs-from (fn2-extents-rows fn2-extents) 0 fn2-extents) l))
 
 ; Before death: the wire and the device, and the payload allocations.
 (defun fn2-ra-post ()
@@ -95,6 +97,22 @@
        (octets (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
                  (fn2-cw-read-range 0 len lslot fn2-pool) octets)))
     (mv :ok octets fn2-core)))
+;; A read's lease stays the adapter's until its completion is delivered,
+;; which no row of the test's owner consumes; the manifest unit read into it
+;; is copied (as raw octets) into a workspace of the owner and decoded there.
+(defun fn2-ra-put (i octets slot gen fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len octets)))
+  (if (atom octets) (mv :ok fn2-core)
+    (mv-let (code fn2-core) (fn2-core-write slot gen i (car octets) 200 0 1 fn2-core)
+      (if (eq code :ok) (fn2-ra-put (+ 1 (nfix i)) (cdr octets) slot gen fn2-core) (mv code fn2-core)))))
+(defun fn2-ra-stage (lslot fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((octets (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
+                 (fn2-cw-read-range 0 4096 lslot fn2-pool) octets))
+       ((mv code slot gen fn2-core) (fn2-core-reserve 1 200 0 1 fn2-core))
+       ((unless (eq code :ok)) (mv code 0 0 fn2-core))
+       ((mv code fn2-core) (fn2-ra-put 0 octets slot gen fn2-core)))
+    (mv code slot gen fn2-core)))
 (defun fn2-ra-read-units (n pu epoch alloc total store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix n)))
   (if (or (zp n) (zp total)) (mv :ok nil fn2-core)
@@ -129,13 +147,15 @@
          ((unless (eq code :ok)) (mv code nil fn2-core))
          ((mv took & & & fn2-core) (fn2-cw-adapter-one 0 nil store fn2-core))
          ((unless took) (mv :not-taken nil fn2-core))
-         ((mv code off)
+         ((mv code lslot lgen fn2-core) (fn2-ra-stage lslot fn2-core))
+         ((unless (eq code :ok)) (mv (list :stage code) nil fn2-core))
+         ((mv code off fn2-core)
           (if (zp u)
               (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
                 (code next fn2-fields)
                 (fn2-am-get-header 256 total lslot lgen 0 4096 200 0 1 fn2-fields fn2-pool)
-                (mv code next))
-            (mv :ok 0)))
+                (mv code next fn2-core))
+            (mv :ok 0 fn2-core)))
          ((unless (eq code :ok)) (mv (list :header code) nil fn2-core))
          ((mv code done octets fn2-core) (fn2-ra-entries 32 off total lslot lgen store fn2-core))
          ((unless (eq code :ok)) (mv code nil fn2-core))
@@ -167,10 +187,13 @@
          ((mv code & & fn2-core) (fn2-block-read (* 3 (nth 0 a)) (nth 1 a) (nth 2 a) 0 4096 lslot lgen 200 0 1 0 fn2-core))
          ((unless (eq code :ok)) (mv nil fn2-core))
          ((mv & & & & fn2-core) (fn2-cw-adapter-one 0 nil store fn2-core))
-         (code (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-                 (code next fn2-fields)
-                 (fn2-am-get-header 256 total lslot lgen 0 4096 200 0 1 fn2-fields fn2-pool)
-                 (and (natp next) code))))
+         ((mv code lslot lgen fn2-core) (fn2-ra-stage lslot fn2-core))
+         ((unless (eq code :ok)) (mv nil fn2-core))
+         ((mv code fn2-core)
+          (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+            (code next fn2-fields)
+            (fn2-am-get-header 256 total lslot lgen 0 4096 200 0 1 fn2-fields fn2-pool)
+            (mv (and (natp next) code) fn2-core))))
       (if (eq code :ok) (mv a fn2-core) (fn2-ra-find-manifest (cdr allocs) total store fn2-core)))))
 (defun fn2-ra-readback (owner total allocs store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
