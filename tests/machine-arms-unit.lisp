@@ -204,6 +204,68 @@
             :arms ((:free (:idle)) (:cmd (:idle)))
             :observes ()))
 
+;; G3 (B's :uncertain): a retained phase (PHASE :retained) acquires nothing
+;; on entry and keeps what the entering path held; a path out of it starts
+;; from each entering set and must release by a real call. :cmd holds the
+;; window, :stuck keeps it, and the exit to :free releases it.
+(defun fn2-arms-retained-arms (free-next cmd stuck-exit)
+  (declare (xargs :mode :program))
+  `((:free (:do (code ws wg) (fn2-core-reserve 1) :effects ((:acquire (:storage-window)))
+            :case (((:ok) (:set (wslot ws) (wgen wg)) (:next ,free-next) (:charge :steps *fn2-work-small*))
+                   (:otherwise (:charge :steps *fn2-work-small*)))))
+    (:cmd ,@cmd)
+    (:stuck (:if (< row-count 3) ((:set (count (+ 1 row-count))) (:charge :steps *fn2-work-small*))
+                 ,stuck-exit))))
+(defmacro fn2-arms-retained-kind (name free-next cmd stuck-exit)
+  `(progn
+     (defmachine ,name
+      :phases (:free :cmd :stuck)
+      :fields ((wslot :u32) (wgen :u60) (count :u32))
+      :holds ((:cmd :storage-window) (:stuck :retained))
+      :budget (:bytes 4096 :steps 32 :descriptors 1)
+      :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+      :arms ,(fn2-arms-retained-arms free-next cmd stuck-exit)
+      :observes ())
+     (defmachine-arms ,name :children)))
+(defconst *fn2-arms-retained-release*
+  '((:do (code) (fn2-core-release row-wslot row-wgen) :effects ((:release (:storage-window)))
+     :case (((:ok) (:next :free) (:charge :steps *fn2-work-small*))
+            (:otherwise (:stop :machine-phase))))))
+;; the positive witness: enter holding the window, stay, release on the way out
+(make-event `(fn2-arms-retained-kind fn2-arms-retained :cmd ((:next :stuck) (:charge :steps *fn2-work-small*))
+                                     ,*fn2-arms-retained-release*))
+(make-event
+ (let* ((conts (fn2-arms-test-conts 'fn2-arms-retained (w state)))
+        (p (fn2-machine-arms-problem 'fn2-arms-retained conts nil (w state)))
+        (sets (fn2-machine-retained-sets 'fn2-arms-retained conts nil (w state))))
+   (cond (p (er hard 'retained "~@0" p))
+         ((not (equal sets '((:stuck (:storage-window))))) (er hard 'retained "entering sets ~x0" sets))
+         (t '(value-triple :retained-ok)))))
+;; mutant: :free enters the retained phase while acquiring the window
+(fn2-arms-retained-kind fn2-arms-retained-acquiring :stuck ((:idle))
+                        ((:charge :steps *fn2-work-small*)))
+(assert-event (fn2-machine-arms-problem 'fn2-arms-retained-acquiring
+                                        (fn2-arms-test-conts 'fn2-arms-retained-acquiring (w state)) nil (w state)))
+;; its control: the same kind entering through :cmd is accepted
+(fn2-arms-retained-kind fn2-arms-retained-quiet :cmd ((:next :stuck) (:charge :steps *fn2-work-small*))
+                        ((:charge :steps *fn2-work-small*)))
+(assert-event (not (fn2-machine-arms-problem 'fn2-arms-retained-quiet
+                                             (fn2-arms-test-conts 'fn2-arms-retained-quiet (w state)) nil (w state))))
+;; mutant: the exit gives the entered window up without releasing it
+(fn2-arms-retained-kind fn2-arms-retained-leaky :cmd ((:next :stuck) (:charge :steps *fn2-work-small*))
+                        ((:next :free) (:charge :steps *fn2-work-small*)))
+(assert-event (fn2-machine-arms-problem 'fn2-arms-retained-leaky
+                                        (fn2-arms-test-conts 'fn2-arms-retained-leaky (w state)) nil (w state)))
+;; :retained stands alone in its entry
+(must-fail (defmachine fn2-arms-retained-bad
+            :phases (:free :cmd)
+            :fields ((count :u32))
+            :holds ((:cmd :retained :storage-window))
+            :budget (:bytes 4096 :steps 32 :descriptors 0)
+            :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+            :arms ((:free (:idle)) (:cmd (:idle)))
+            :observes ()))
+
 ;; G3 (D F8): a typed link. The generator emits the link's liveness and its
 ;; reads over the probe's table (which joins the tuple), and :owner L stands
 ;; for the link's owner triple.

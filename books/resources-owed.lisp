@@ -21,7 +21,8 @@
  (value `(defconst *fn2-resource-machine-states*
            ',(fn2-resource-kind-states (fn2-machine-names (w state)) (w state)))))
 ; Each kind's holds per phase, read from its defmachine :holds (R7); every
-; declared phase listed, () when it holds nothing.
+; declared phase listed, () when it holds nothing; a retained phase holds
+; the union of its entering sets (fn2-machine-holds-resolved).
 (defun fn2-resource-phase-holds (states holds)
   (declare (xargs :verify-guards nil))
   (if (atom states) nil
@@ -31,7 +32,7 @@
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (cons (cons (car names) (fn2-resource-phase-holds (fn2-machine-property (car names) :states world)
-                                                      (fn2-machine-property (car names) :holds world)))
+                                                      (fn2-machine-holds-resolved (car names) world)))
           (fn2-resource-kind-holds (cdr names) world))))
 (make-event
  (value `(defconst *fn2-resource-machine-holds*
@@ -47,7 +48,7 @@
            (sources (if observationp (or (fn2-arm-get :from c) (fn2-machine-observe-default-from states))
                       (list (caar arms)))))
       (append (fn2-arm-effect-rows name sources (fn2-arm-get :uses c)
-                                   (fn2-machine-property name :holds world) world)
+                                   (fn2-machine-holds-resolved name world) world)
               (fn2-resource-arms-rows name (cdr arms) observationp world)))))
 (defun fn2-resource-all-arm-rows (names world)
   (declare (xargs :verify-guards nil))
