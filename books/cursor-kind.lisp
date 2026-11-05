@@ -4,6 +4,7 @@
 (include-book "txn-kind")
 (include-book "machines-c-read")
 (include-book "machine-arms")
+(include-book "machines-a-costs") ; fn2-machine-park: an :issue parks on :operation when the outbox is full
 (fn2-book-layer :d)
 
 (defmachine fn2-cursor
@@ -26,8 +27,11 @@
           (art :u60) (lunit :u60) (lepoch :u60) (lalloc :u60) (alen :u60) (apos :u60) (plen :u32) (loff :u32)
           (ast :u8) (lslot :link) (lgen :u60) (lease (:enum fn2-cursor-lease (:none :held)))
           (oat :u32) (mso :u32) (mln :u32) (said :bool) (apage :bool)
-          (revent :u8) (routcome :u8) (rcount :u32) (rready :bool))
- :holds ((:select :cursor-row) (:seek :cursor-row)
+          (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
+          ;; the pool class a row parked for its lease waits on (:park :pool's field)
+          (cursor :u32))
+ :holds ((:select :cursor-row (:storage-window :while (lease :held)))
+         (:seek :cursor-row (:storage-window :while (lease :held)))
          (:render :cursor-row (:storage-window :while (lease :held)))
          (:send :cursor-row (:storage-window :while (lease :held)))
          (:fetch :cursor-row (:storage-window :while (lease :held)))
@@ -38,7 +42,7 @@
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
-                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said apage revent routcome rcount rready))
+                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said apage revent routcome rcount rready cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))

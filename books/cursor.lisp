@@ -287,20 +287,20 @@
   :position 3 :rows nil
   :hints (("Goal" :induct (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
                   :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf logbitp))))
-(defun fn2-cursor-pool-stuff (from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+(defun fn2-cursor-pool-stuff (from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to) (natp st))))
   (mv-let (code used st fn2-pool)
     (fn2-cursor-stuff-loop (min *fn2-cursor-stuff-bytes* (nfix (- (nfix to) (nfix from)))) (nfix from) (nfix st) 0
                            lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
     (mv code (nfix used) (nfix st) fn2-pool)))
-(fn2-pool-preserves fn2-cursor-pool-stuff (from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+(fn2-pool-preserves fn2-cursor-pool-stuff (from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
   :position 3 :rows nil)
 (defthm fn2-cursor-pool-stuff-used-natp
-  (natp (mv-nth 1 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
+  (natp (mv-nth 1 (fn2-cursor-pool-stuff from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)))
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-stuff))))
 (defthm fn2-cursor-pool-stuff-st-natp
-  (natp (mv-nth 2 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
+  (natp (mv-nth 2 (fn2-cursor-pool-stuff from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)))
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-stuff))))
 (in-theory (disable fn2-cursor-stuff-loop fn2-cursor-pool-stuff))
@@ -645,7 +645,7 @@
  :doc "Copy at most 4,096 stored octets from the lease onto TX, dot-stuffed; (mv code used st).")
 (defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
  :doc "Reserve the cursor's read lease (one storage unit) under its own owner: (mv code slot gen).")
-(defcost fn2-cursor-lease-release :child fn2-pool-release :answers t :tables (fn2-core-pool)
+(defcost fn2-cursor-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
  :doc "Return the cursor's read lease.")
 (defcost fn2-cursor-lease-class :child fn2-cursor-lease-class-of :doc "The pool class of the cursor's read lease (nil: none).")
 (defcost fn2-cursor-copy-span :child fn2-gram-put-span :answers t :bytes 256 :tables (fn2-core-pool)
@@ -1152,8 +1152,9 @@
            (:issue (fn2-block-read (+ row-lunit (floor pos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc off len
                                    row-lslot row-lgen :principal row-principal-slot)
             :ok ((:set (plen len) (loff 0) (rready 0)) (:next :fetch)
-                 (:charge :bytes 4096 :steps *fn2-work-small* :descriptors 1))
-            :refused ((:goto art-fail))))))
+                 (:charge :bytes 4096 :steps *fn2-work-small* :descriptors 1))))))
+     ;; :stale or :bounds (a location the allocator no longer names) stops
+     ;; the core by the arm's refusal: the store contradicts its own row
   (art-end :on-refusal ((:stop :machine-phase))
      (:do (tc) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
@@ -1351,7 +1352,7 @@
   (:fetch :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-rready 0) (:charge :steps *fn2-work-poll*))
           ((and (equal row-revent *fn2-event-read-result*) (equal row-routcome *fn2-outcome-done*)
-                (eq (fn2-block-read-done row-rcount row-plen) :ok))
+                (equal row-rcount row-plen))
            (:set (rready 0) (step 24)) (:next :render) (:charge :steps *fn2-work-transition* :runnable t))
           (t (:set (rready 0) (step 25)) (:next :render) (:charge :steps *fn2-work-transition* :runnable t))))
   (:finish :on-refusal ((:stop :machine-phase))
