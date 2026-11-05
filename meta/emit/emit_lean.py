@@ -320,8 +320,11 @@ MACHINE_KEYS = [":STATES", ":COLUMNS", ":TABLE", ":HOLDS", ":ADMISSION", ":TAKEN
 MACHINE_OPTIONAL = [":PHASE-FIELDS"]
 # :layout duplicates :columns; :packed is deleted by DSL-METATHEORY 5.2; :calling-convention is not
 # authoritative; the step-language arms are consumed translated, from the embedding (LayerAKinds).
+# :genesis (G3 3/n, the arm the executor's init runs once per kind) is omitted by name: the embedding
+# does not translate it and the measure records no genesis call (owed, LEAN-METATHEORY section 6).
 MACHINE_OMITTED = [":LAYOUT", ":PACKED", ":CALLING-CONVENTION", ":ARMS", ":SUBARMS", ":OBSERVE-ARMS",
-                   ":STOPS"]
+                   ":STOPS", ":GENESIS", ":LINKS"]
+# :links (F8, typed links) is consumed translated from the embedding as well (LayerAKinds' `links`).
 
 
 def arm_entries(xs, sym):
@@ -447,7 +450,7 @@ def square_row(name, row, sym):
 
 def cost_decl(name, row, sym):
     d = row_dict(name, row, [":BYTES", ":STEPS", ":DESCRIPTORS", ":TABLES", ":OWN-WRITES", ":EFFECTS",
-                             ":TARGET", ":ANSWERS", ":CHILD", ":DOC", ":PROOF"], [], f"cost {name}")
+                             ":TARGET", ":ANSWERS", ":FAULTS", ":CHILD", ":DOC", ":PROOF"], [], f"cost {name}")
     child = "none" if is_nil(d[":CHILD"]) else f"(some {sym(d[':CHILD'])})"
     fields = [
         f"fn := {sym(name)}",
@@ -456,7 +459,7 @@ def cost_decl(name, row, sym):
         f"descriptors := {tagged_term(d[':DESCRIPTORS'], name)}",
         f"tables := {val(d[':TABLES'])}", f"ownWrites := {val(d[':OWN-WRITES'])}",
         f"effects := {val(d[':EFFECTS'])}", f"target := {val(d[':TARGET'])}",
-        f"answers := {val(d[':ANSWERS'])}", f"child := {child}",
+        f"answers := {val(d[':ANSWERS'])}", f"faults := {val(d[':FAULTS'])}", f"child := {child}",
         f"doc := {lean_str(str(d[':DOC']))}", f"proof := {val(d[':PROOF'])}",
         f"common := {common(name, d, sym, ':COST')}",
     ]
@@ -487,7 +490,13 @@ GENERIC = {
     ":CORRESPONDENCES": (".correspondence", ":CORRESPONDENCE", [], []),
     ":LAYOUTS": (".layout", None, [":LAYOUT", ":VALUE-WIDTH", ":PHASE", ":FIELDS", ":MAX-SIZE", ":ENCODE",
                                    ":DECODE", ":DECODE-STEP", ":START", ":SIZE", ":ROUNDTRIP-HYPS"], []),
-    ":ARM-CONTRACTS": (".armContract", None, [":CONTINUATIONS", ":OBSERVES", ":UNREACHED"], []),
+    ":ARM-CONTRACTS": (".armContract", None, [":CONTINUATIONS", ":OBSERVES", ":UNREACHED", ":GENESIS-ARM"], []),
+    # F5's application tables (resources.lisp): rows keyed by a keyword or a manifest name, written by
+    # defresource / defservice / defaction / fn2-assemble outside the declaration protocol.
+    ":RESOURCES": (".resource", None, [":UNIT", ":BOUND", ":RESERVE", ":AFTER", ":WHY"], []),
+    ":SERVICES": (".service", None, [":READY", ":STEP", ":BOUND", ":DOC"], []),
+    ":ACTIONS": (".action", None, [":EVENT", ":ISSUE", ":RESERVE", ":CANCELLABLE", ":DOC"], []),
+    ":APP-MANIFESTS": (".appManifest", None, [":KINDS", ":SERVICES", ":RESOURCES", ":ACTIONS"], []),
 }
 
 

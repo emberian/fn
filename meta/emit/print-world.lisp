@@ -48,7 +48,9 @@
     (:core-children fn2-core-children) (:squares fn2-squares) (:correspondences fn2-correspondences)
     (:commands fn2-commands) (:costs fn2-costs) (:schemas fn2-schemas) (:ports fn2-ports)
     (:waits fn2-waits) (:layouts fn2-layouts) (:arm-contracts fn2-machine-arm-contracts)
-    (:owed fn2-owed) (:core-instance fn2-core-instance)))
+    (:owed fn2-owed) (:core-instance fn2-core-instance)
+    (:resources fn2-resources) (:services fn2-services) (:actions fn2-actions)
+    (:app-manifests fn2-app-manifests)))
 (defparameter *meta-elided* '(:generated :signature :reuse :definition))
 
 (defun meta-elide (plist)
@@ -173,7 +175,8 @@
           :formals (and callee (getpropc callee 'formals nil *meta-w*))
           :stobjs-in (and callee (getpropc callee 'stobjs-in nil *meta-w*))
           :stobjs-out (and callee (getpropc callee 'stobjs-out nil *meta-w*))
-          :answers (fn2-decl-get :answers row) :descriptors (fn2-decl-get :descriptors row)
+          :answers (fn2-decl-get :answers row) :faults (fn2-decl-get :faults row)
+          :descriptors (fn2-decl-get :descriptors row)
           :effects (fn2-decl-get :effects row) :own-writes (fn2-decl-get :own-writes row)
           ;; the declared cost's static bound per dimension (G3: a :repeat's pass bound is its calls'
           ;; declared costs and one step); nil where the cost has no static bound

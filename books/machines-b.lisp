@@ -291,43 +291,10 @@
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 1
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
- :observes ((:read-result fn2-recovery-observe :cost (:steps *fn2-work-empty*)
-             :writes (rc-outcome rc-count rc-ready) :from (:read-result) :next (:read-result) :uses ()))
- :continuations
- ((:free fn2-recovery-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:free)
-   :uses (fn2-machine-idle))
-  (:read fn2-recovery-read
-   :cost (:bytes 4096 :steps *fn2-work-advance* :descriptors (:cost fn2-issue-read :descriptors))
-   :writes (rc-chain rc-pos rc-found rc-filled rc-stage pending rc-ready)
-   :tables (fn2-core-pool fn2-core-ops fn2-core-control)
-   :next (:read :read-result :search)
-   :uses (fn2-core-reset fn2-issue-read fn2-recovery-stop-bounds))
-  (:read-result fn2-recovery-result :cost (:steps *fn2-work-mailbox*)
-   :writes (rc-filled rc-stage rc-ready rc-pos rc-high rc-role rc-ambiguous rc-found)
-   :tables (fn2-core-rec-cand fn2-core-control)
-   :next (:read-result :verify :read :install)
-   :uses (fn2-recovery-cand-mark fn2-recovery-stop-bounds))
-  (:verify fn2-recovery-verify
-   :cost (:bytes (:cost fn2-recovery-discover-unit :bytes) :steps *fn2-work-stage*)
-   :writes (rc-stage rc-role rc-filled rc-pos rc-high rc-epoch rc-ready rc-chain rc-found rc-ambiguous)
-   :tables (fn2-core-pool fn2-core-fields fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
-            fn2-core-rec-cand fn2-core-commit-root fn2-core-control)
-   :next (:verify :read :search :install)
-   :uses (fn2-recovery-discover-unit fn2-recovery-chain-unit fn2-recovery-cand-epoch fn2-recovery-cand-mark
-          fn2-recovery-link fn2-recovery-stop-bounds))
-  (:search fn2-recovery-search :cost (:steps *fn2-work-advance*)
-   :writes (rc-ambiguous rc-stage rc-found rc-ready rc-pos rc-mode rc-role rc-filled)
-   :tables (fn2-core-control)
-   :next (:search :read :install)
-   :uses (fn2-recovery-scan fn2-recovery-stop-bounds))
-  (:install fn2-recovery-install :cost (:steps *fn2-work-transition*)
-   :writes (rc-found rc-dirty rc-stage rc-class rc-witness-outcome stopped)
-   :tables (fn2-core-pool fn2-core-extents fn2-core-alloc-edges fn2-core-commit-root fn2-core-control)
-   :next (:install :done)
-   :uses (fn2-recovery-install-scan fn2-recovery-install-classify fn2-recovery-install-adopt
-          fn2-recovery-install-finish fn2-recovery-stop-bounds))
-  (:done fn2-recovery-idle :cost (:steps (:cost fn2-machine-idle :steps)) :writes () :next (:done)
-   :uses (fn2-machine-idle))))
+ ;; The arms are in the arm language (recovery-machine.lisp), their
+ ;; contracts derived in the callbacks section (assembly-callbacks.lisp).
+ :arms ((:free) (:read) (:read-result) (:verify) (:search) (:install) (:done))
+ :observes ((:read-result)))
 (make-event (value `(assert-event
  (equal ',(strip-cars *fn2-recovery-transitions*)
         ',(fn2-machine-property 'fn2-recovery-machine :states (w state))))))
@@ -340,22 +307,22 @@
  :doc "Rebuild a recovered transaction member's rows from its record stream.")
 ; Declared costs of recovery's outside calls. Each is a table-level operation
 ; of recovery-machine.lisp over the row's owner triple; none writes the row.
-(defcost fn2-recovery-discover-unit :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
+(defcost fn2-recovery-discover-unit :answers (:again :more :empty :invalid :candidate :bounds) :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
    fn2-core-fc-context fn2-core-b3 fn2-core-digests fn2-core-rec-cand)
  :doc "One discovery stage over the filled seal-frame unit (at most 4 KiB verified).")
-(defcost fn2-recovery-chain-unit :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
+(defcost fn2-recovery-chain-unit :answers (:again :more :next-role :chained :broken :bounds) :bytes 4096 :tables (fn2-core-pool fn2-core-fields fn2-core-fc
    fn2-core-fc-context fn2-core-b3 fn2-core-digests)
  :doc "One chain-verification stage over the filled unit of the found position.")
 (defcost fn2-recovery-cand-epoch :doc "A candidate row's writer epoch.")
-(defcost fn2-recovery-cand-mark :tables (fn2-core-rec-cand) :doc "Record a position's discovery status.")
-(defcost fn2-recovery-link :tables (fn2-core-digests fn2-core-commit-root fn2-core-rec-cand)
+(defcost fn2-recovery-cand-mark :answers (:ok :bounds) :tables (fn2-core-rec-cand) :doc "Record a position's discovery status.")
+(defcost fn2-recovery-link :answers t :tables (fn2-core-digests fn2-core-commit-root fn2-core-rec-cand)
  :doc "Link a verified position into the chain, the commit directory and the root recipe.")
-(defcost fn2-recovery-scan :doc "Search 32 candidate rows for the chain's unique successor.")
+(defcost fn2-recovery-scan :answers (:ok :bounds) :doc "Search 32 candidate rows for the chain's unique successor.")
 (defcost fn2-recovery-dirty-scan :doc "Scan 32 candidate rows for anything beyond the chain.")
-(defcost fn2-recovery-witness-match :doc "Compare the presented witness seal with the chain's.")
+(defcost fn2-recovery-witness-match :answers (:ok :bounds) :doc "Compare the presented witness seal with the chain's.")
 (defcost fn2-rec-witness-outcome :doc "The witness outcome (scholar ch. 4 item 10) from the assumption bits.")
 (defcost fn2-rec-classify :doc "The recovery class from the assumption bits and the evidence words.")
-(defcost fn2-recovery-adopt :tables (fn2-core-extents fn2-core-alloc-edges)
+(defcost fn2-recovery-adopt :answers t :tables (fn2-core-extents fn2-core-alloc-edges)
  :doc "Adopt one arena position into the allocator with its recorded identity.")
 (defcost fn2-commit-admit-txn :answers (:ok :exhausted :admission) :bytes 4096
  :tables (fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root fn2-core-fields fn2-core-pool)

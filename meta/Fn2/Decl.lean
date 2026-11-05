@@ -56,11 +56,13 @@ inductive Artifact
   | simulatorHooks | owedStubs | atcLowering | leanPresentation
   deriving DecidableEq, Repr
 
-/-- The world's declaration tables (`fn2-decl-table`, `declare.lisp`), plus the two tables a form
-writes outside the protocol: B's `fn2-layouts` and the generator's `fn2-machine-arm-contracts`. -/
+/-- The world's declaration tables (`fn2-decl-table`, `declare.lisp`), plus the tables a form writes
+outside the protocol: B's `fn2-layouts`, the generator's `fn2-machine-arm-contracts`, and F5's
+`fn2-resources`, `fn2-services`, `fn2-actions` and `fn2-app-manifests` (`resources.lisp`). -/
 inductive Table
   | columns | machine | operationSet | coreChild | square | correspondence | command | cost
   | schema | port | wait | layout | armContract
+  | resource | service | action | appManifest
   deriving DecidableEq, Repr
 
 /-- A qualified identity, `(:machine fn2-echo)`: a table and a name. -/
@@ -218,6 +220,8 @@ structure CostDecl (S : Type) where
   effects : Datum
   target : Datum
   answers : Datum
+  /-- `defcost :faults`: the answers that may stop the node when no step routes them (F2) -/
+  faults : Datum
   child : Option S
   doc : String
   proof : Datum

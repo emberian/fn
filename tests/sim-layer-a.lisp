@@ -15,7 +15,7 @@
 
 ; The launcher writes HEAD and dirty runtime/test source hashes for this run.
 ; No checked-in revision can silently label a later acceptance.
-(ld "../../build/scenario-revision.lsp" :ld-error-action :error)
+(ld "../build/scenario-revision.lsp" :ld-error-action :error)
 
 ; Termination depends only on the explicit fuel, not the threaded states.
 (defthm fn2-test-countdown
