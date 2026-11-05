@@ -40,6 +40,22 @@
     (fn2-machine-set-admission-credits ord
       (- (fn2-machine-admission-credits ord fn2-core) 1) fn2-core))))
 (fn2-core-preserves fn2-listener-take-credit (ord fn2-core) :rows nil :prefix "")
+(fn2-defoperation (:operation-set fn2-machine-resources) :callbacks :infer
+(defun fn2-listener-move-credit (from to fn2-core)
+  ; The one reservation an Accept holds, moved from FROM's partition to TO's
+  ; (a :local peer admitted into another kind): FROM gains a credit, TO
+  ; loses one. TO without a credit, or an ordinal outside the admitted
+  ; kinds, is a caller's bug: stop before any field changes.
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (or (not (and (natp from) (< from *fn2-machine-admitted-max*)
+                    (natp to) (< to *fn2-machine-admitted-max*)))
+          (zp (fn2-machine-admission-credits to fn2-core)))
+      (fn2-machine-refuse-write fn2-core)
+    (let ((fn2-core (fn2-machine-set-admission-credits to
+                      (- (fn2-machine-admission-credits to fn2-core) 1) fn2-core)))
+      (fn2-machine-set-admission-credits from
+        (+ 1 (fn2-machine-admission-credits from fn2-core)) fn2-core)))))
+(fn2-core-preserves fn2-listener-move-credit (from to fn2-core) :rows nil :prefix "")
 
 (defun fn2-machine-observe-terminal (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

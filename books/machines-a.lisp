@@ -51,26 +51,34 @@
    (:next :accepting)
    (:charge :steps *fn2-work-transition* :runnable t))
   ;; a :local peer whose kind is not the listener's target (E's control kind
-  ;; beside NNTP): the Accept's row credit moves to that kind, or, with none
-  ;; free there, the capability closes; the booking made at issue for the
-  ;; target is released, and the local kind is admitted unbooked
+  ;; beside NNTP): the Accept's row reservation moves to that kind's
+  ;; partition, or, with none free there, is returned and the capability
+  ;; closes; the booking made at issue for the target is released, and the
+  ;; local kind is admitted unbooked
   (admit-local
-   (:do () (fn2-listener-return-credit row-target))
-   (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
-   (:set (event-ready 0) (account-ref *fn2-none*))
-   (:cond ((zp (fn2-machine-admission-credits row-local-target))
-           (:next :closing) (:charge :steps *fn2-work-refusal* :runnable t))
-          (t
-           (:do () (fn2-listener-take-credit row-local-target))
-           (:do (code) (fn2-machine-admit row-local-target row-cap-index row-cap-nonce row-mode row-principal-slot
-                                          *fn2-none* row-peer-family row-peer-port row-peer-w0 row-peer-w1
-                                          row-peer-w2 row-peer-w3)
-            :case ((:otherwise
-                    (:do () (fn2-listener-return-credit row-local-target))
-                    (:next :closing)
-                    (:charge :steps (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) :runnable t))))
-           (:next :accepting)
-           (:charge :steps *fn2-work-transition* :runnable t)))))
+   (:cond
+    ((not (< row-local-target *fn2-machine-admitted-max*)) (:stop :machine-phase))
+    ((zp (fn2-machine-admission-credits row-local-target))
+     (:do () (fn2-listener-return-credit row-target))
+     (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+     (:set (account-ref *fn2-none*))
+     (:next :closing)
+     (:charge :steps *fn2-work-refusal* :runnable t))
+    (t
+     (:do () (fn2-listener-move-credit row-target row-local-target))
+     (:do (code) (fn2-machine-admit row-local-target row-cap-index row-cap-nonce row-mode row-principal-slot
+                                    *fn2-none* row-peer-family row-peer-port row-peer-w0 row-peer-w1
+                                    row-peer-w2 row-peer-w3)
+      :case ((:otherwise
+              (:do () (fn2-listener-return-credit row-local-target))
+              (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+              (:set (account-ref *fn2-none*))
+              (:next :closing)
+              (:charge :steps (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) :runnable t))))
+     (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+     (:set (event-ready 0) (account-ref *fn2-none*))
+     (:next :accepting)
+     (:charge :steps *fn2-work-transition* :runnable t)))))
  :arms
  ;; :accepting holds only the accept credit. A successful Accept issue takes
  ;; one row credit and moves to :admitting; without a credit the listener
