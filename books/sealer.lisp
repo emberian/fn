@@ -155,11 +155,10 @@
 ; run joins (FORCE) when the 64 KiB class or the installed view has at most
 ; one free row left (backpressure: the next seal needs a page and a row, and
 ; a merge frees its inputs'), or when the schema already holds
-; *fn2-seal-run-budget* runs: a reader merges at most *fn2-read-sources* (8)
-; sources, and a schema meets at most three overlays (B's two batches in
-; flight and one being sealed), so its runs are kept to four. At most seven
-; runs join, the overlay being the eighth source.
-(defconst *fn2-seal-run-budget* 4)
+; *fn2-seal-run-budget* runs (a reader merges at most eight sources of a
+; schema; stage keeps its overlays to the other four, machines-c.lisp). At
+; most seven runs join, the overlay being the eighth source.
+(defconst *fn2-seal-run-budget* *fn2-idc-run-budget*)
 (defconst *fn2-seal-merge-runs* 7)
 ; Live runs of SID among rows R.. (K), and free rows.
 (defun fn2-seal-live-runs (k r sid fn2-run-installed)

@@ -1,6 +1,6 @@
 ; C5 evidence (docs/c-ordered-runs.md section 5, "Capacity"): the node keeps
 ; accepting POSTs. One connection posts 32 articles at the reading unit
-; profile (*fn2-cursor-profile*: 64 slots of 64 KiB), every reply 240, then
+; profile (*fn2-cursor-profile*: 64 slots of 64 KiB, its store sized below), every reply 240, then
 ; GROUP, OVER over all of them and ARTICLE of each read every one back. One
 ; batch seals into 10 runs (one per schema it writes; 11 pages with the
 ; identity summary's filter), so without the sealer's merge the 64 KiB class
@@ -13,6 +13,11 @@
 (include-book "../books/owed-cursor")
 
 (defconst *fn2-scu-n* 32)
+;; The reading unit profile with a device that stores 32 articles: B's
+;; extents (:extent-slots, 16 by default) hold each article's source and each
+;; batch's commit record, so the default refuses the ninth POST "441 ... the
+;; store is full" (B's admission, not C's); 128 holds two per POST.
+(defconst *fn2-scu-profile* (put-assoc-equal :extent-slots 128 *fn2-cursor-profile*))
 (defun fn2-scu-digits (n acc)
   (declare (xargs :verify-guards nil :measure (nfix n)))
   (if (or (zp n) (< n 10)) (cons (code-char (+ 48 (nfix n))) acc)
@@ -36,11 +41,11 @@
   (declare (xargs :verify-guards nil))
   (if (atom lines) 0 (+ (length (car lines)) 2 (fn2-scu-octets (cdr lines)))))
 (defun fn2-scu-posts (i n)
-  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (append (list "POST") (fn2-scu-article i) (list ".") (fn2-scu-posts (+ 1 i) n))))
 (defun fn2-scu-articles-cmds (i n)
-  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (cons (fn2-csp-cat (list "ARTICLE " (fn2-scu-dec i))) (fn2-scu-articles-cmds (+ 1 i) n))))
 (defun fn2-scu-lines (n)
@@ -51,7 +56,7 @@
 
 ;; The expected replies.
 (defun fn2-scu-accepts (i n)
-  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (list* "340 send article to be posted" "240 article received OK" (fn2-scu-accepts (+ 1 i) n))))
 (defun fn2-scu-ov (i)
@@ -61,10 +66,10 @@
                        tab tab (fn2-scu-dec (fn2-scu-octets (fn2-scu-article i))) tab
                        (fn2-scu-dec (len (fn2-scu-body i)))))))
 (defun fn2-scu-ovs (i n)
-  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil (cons (fn2-scu-ov i) (fn2-scu-ovs (+ 1 i) n))))
 (defun fn2-scu-article-replies (i n)
-  (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
+  (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (append (list (fn2-csp-cat (list "220 " (fn2-scu-dec i) " " (fn2-scu-mid i) " article follows")))
             (fn2-scu-article i) (list ".") (fn2-scu-article-replies (+ 1 i) n))))
@@ -83,7 +88,7 @@
   (let ((transcripts (list (list (fn2-cw-crlf-octets (fn2-scu-lines n)) nil))))
     (with-local-stobj fn2-core
       (mv-let (result fn2-core)
-        (b* ((fn2-core (fn2-init-executor *fn2-cursor-profile* :echo nil fn2-core))
+        (b* ((fn2-core (fn2-init-executor *fn2-scu-profile* :echo nil fn2-core))
              ((mv & fn2-core)
               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))

@@ -43,6 +43,14 @@
 ;; The sealer's merge (C5, sealer.lisp) reads at most eight sources, one run
 ;; cursor each, after every read row's (t + 9R ..).
 (defconst *fn2-idc-seal-cursors* 8)
+;; A reader merges at most *fn2-idc-seal-cursors* (8) sources of a schema:
+;; its overlays (active, frozen or private) and its live runs. The sealer
+;; keeps a schema to *fn2-idc-run-budget* runs (it merges every run once a
+;; schema holds that many, sealer.lisp) and stage keeps it to
+;; *fn2-idc-overlay-budget* overlays (a transaction that would take one more
+;; waits, :full, until the sealer catches up: machines-c-stage.lisp).
+(defconst *fn2-idc-run-budget* 4)
+(defconst *fn2-idc-overlay-budget* (- *fn2-idc-seal-cursors* *fn2-idc-run-budget*))
 (defun fn2-idc-profilep (profile)
  (declare (xargs :guard t))
  (and (unsigned-byte-p 32 (fn2-profile-t profile))
