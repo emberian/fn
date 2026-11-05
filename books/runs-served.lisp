@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "identity")
 (include-book "ordered")
+(include-book "authority-schema")
 (include-book "folds")
 (include-book "runs-manifest")
 (fn2-book-layer :c)

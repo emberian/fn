@@ -32,7 +32,9 @@
 
 (defconst *fn2-port-effects* '(:read :durable :park))
 (defconst *fn2-port-retries* '(:op :idempotent :position :repeat))
-(defconst *fn2-port-grant-scopes* '(:read :append :consume))
+; :administer is the node administrator's scope (served authority's verbs,
+; docs/design/AUTHORITY-20261105.md section 3): no grant row confers it.
+(defconst *fn2-port-grant-scopes* '(:read :append :consume :administer))
 ; The preconditions' refusal words, added to every verb (section 6).
 (defconst *fn2-port-precondition-reasons* '(access meter))
 ;; Losses (section 2.3) are independent, so a loss signature is a product:

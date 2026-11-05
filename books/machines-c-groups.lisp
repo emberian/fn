@@ -179,7 +179,9 @@
 ; the LEN octets at [OFF, OFF+LEN) of SLOT/GEN, readable under OKIND OSLOT
 ; OGEN; each call passes the same name. (mv code group txns cursors paths
 ; fields): :ok with the group identifier, :absent (441), :more, :miss.
-(defun fn2-grp-lookup (tx slot gen off len okind oslot ogen budget b0
+; SID's exact name lookup: a name of at most MAX octets to the entry's
+; integer field VFIELD (the group directory's, fn2-principals').
+(defun fn2-grp-lookup (sid max vfield tx slot gen off len okind oslot ogen budget b0
                        fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                        fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
@@ -192,7 +194,7 @@
        (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
                     (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (natp budget) (<= budget 4096)
-                    (posp len) (<= len *fn2-groups-name-max*) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
+                    (natp sid) (natp max) (natp vfield) (posp len) (<= len max) (unsigned-byte-p 32 len) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
                     (unsigned-byte-p 32 off) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
       ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
@@ -201,13 +203,13 @@
       (qb (+ b0 *fn2-idc-eb*)) (rb (+ b0 *fn2-idc-rb*))
       (fn2-fields (fn2-fields-put qb (value 0) (ref-slot slot) (ref-gen gen) (ref-off off) (ref-len len)))
       ((mv code erow fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-       (fn2-xl-step tx *fn2-groups-sid* budget qb rb okind oslot ogen fn2-succ-txns fn2-overlays fn2-overlay-index
+       (fn2-xl-step tx sid budget qb rb okind oslot ogen fn2-succ-txns fn2-overlays fn2-overlay-index
                     fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
-      (row (+ erow *fn2-groups-entry-field-group*))
+      (row (+ erow vfield))
       ((unless (< row (fn2-fields-rows fn2-fields))) (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
   (mv :ok (fn2-fields-value row fn2-fields) fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
-(fn2-idc-fn-shape fn2-grp-lookup (tx slot gen off len okind oslot ogen budget b0
+(fn2-idc-fn-shape fn2-grp-lookup (sid max vfield tx slot gen off len okind oslot ogen budget b0
                                   fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
                                   fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
  ((fn2-succ-txns 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
@@ -347,13 +349,13 @@
 ; engine arena, before any transaction exists. A malformed list, a repeated
 ; name or more groups than one overlay holds is refused by name; an empty
 ; list is :ok with nothing taken.
-(defun fn2-grp-groupsp (groups)
+(defun fn2-grp-groupsp (groups max)
  (declare (xargs :guard t))
  (or (null groups)
      (and (consp groups) (consp (car groups)) (stringp (caar groups))
-          (< 0 (length (caar groups))) (<= (length (caar groups)) *fn2-groups-name-max*)
+          (< 0 (length (caar groups))) (<= (length (caar groups)) (nfix max))
           (posp (cdar groups)) (unsigned-byte-p 60 (cdar groups))
-          (fn2-grp-groupsp (cdr groups)))))
+          (fn2-grp-groupsp (cdr groups) max))))
 (in-theory (disable fn2-grp-groupsp))
 (defun fn2-grp-write-name (i name slot gen fn2-pool)
  (declare (xargs :stobjs fn2-pool :measure (nfix (- (length name) (nfix i)))
@@ -368,12 +370,12 @@
 ; Insert one group (NAME . GROUP) into overlay O through the scratch (the
 ; name at 0): the entry at E, the decode scratch at EB; a repeated name is
 ; :duplicate (a :latest overlay would replace it).
-(defun fn2-grp-insert-one (name group o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(defun fn2-grp-insert-one (max name group o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
   :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp e) (natp eb))
   :guard-hints (("Goal" :in-theory (disable fn2-ov-insert fn2-pool-reset fn2-grp-write-name fn2-fields-rows fn2-overlays-rows)))))
- (b* (((unless (and (stringp name) (< 0 (length name)) (<= (length name) *fn2-groups-name-max*)
+ (b* (((unless (and (stringp name) (< 0 (length name)) (natp max) (<= (length name) max) (unsigned-byte-p 32 (length name))
                     (posp group) (unsigned-byte-p 60 group) (natp o) (< o (fn2-overlays-rows fn2-overlays))
                     (< 0 (fn2-id-engine-rows fn2-id-engine)) (natp e) (< (+ e 1) (fn2-fields-rows fn2-fields))))
        (mv :groups fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -392,24 +394,24 @@
       ((unless (eq code :ok)) (mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((when (equal (fn2-overlays-count o fn2-overlays) count)) (mv :duplicate fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
   (mv :ok fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-grp-insert-one (name group o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(fn2-idc-fn-shape fn2-grp-insert-one (max name group o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-id-engine-slot fn2-id-engine-gen fn2-grp-write-name fn2-overlays-count))
-(defun fn2-grp-insert-all (groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(defun fn2-grp-insert-all (max groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
   :guard (and (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp e) (natp eb))))
  (b* (((when (atom groups)) (mv :ok fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (consp (car groups))) (mv :groups fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-       (fn2-grp-insert-one (caar groups) (cdar groups) o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+       (fn2-grp-insert-one max (caar groups) (cdar groups) o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-  (fn2-grp-insert-all (cdr groups) o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-grp-insert-all (groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+  (fn2-grp-insert-all max (cdr groups) o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-grp-insert-all (max groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-grp-insert-one))
 
-(defun fn2-grp-genesis (groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(defun fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
   :guard-hints (("Goal" :in-theory (disable fn2-idc-scratch fn2-ov-start fn2-ov-advance fn2-grp-insert-all fn2-pool-reserve
                                             fn2-pool-class-for fn2-fields-rows fn2-overlays-rows fn2-overlay-index-rows
@@ -418,7 +420,7 @@
                     (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
        (mv :state fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((when (null groups)) (mv :ok fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
-      ((unless (and (fn2-grp-groupsp groups) (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
+      ((unless (and (natp sid) (natp max) (fn2-grp-groupsp groups max) (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
                     (< 0 (fn2-id-engine-rows fn2-id-engine))))
        (mv :groups fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       (rows (fn2-overlays-rows fn2-overlays))
@@ -435,11 +437,11 @@
       ((mv code slot gen fn2-pool) (fn2-pool-reserve class *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-pool)
-       (fn2-ov-start o *fn2-groups-sid* slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
+       (fn2-ov-start o sid slot gen (* o icap) icap *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* 0
                      fn2-overlays fn2-overlay-index fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv code fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-       (fn2-grp-insert-all groups o b0 (+ b0 *fn2-idc-eb*) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+       (fn2-grp-insert-all max groups o b0 (+ b0 *fn2-idc-eb*) fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       (seq (+ 1 (nfix (fn2-id-engine-seq 0 fn2-id-engine))))
       ((unless (unsigned-byte-p 60 seq)) (mv :bounds fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -447,15 +449,33 @@
       (fn2-overlays (fn2-overlays-set-seq o seq fn2-overlays))
       ((mv code fn2-overlays) (fn2-ov-advance o *fn2-overlay-phase-active* *fn2-overlay-phase-frozen* fn2-overlays)))
   (mv code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-(fn2-idc-fn-shape fn2-grp-genesis (groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+(fn2-idc-fn-shape fn2-grp-genesis (sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-grp-groupsp fn2-idc-find-overlay fn2-idc-scratch fn2-id-engine-arena fn2-id-engine-seq fn2-grp-insert-all fn2-pool-class-for))
+
+;; fn2-principals (authority-schema.lisp, id 16) shares the directory's
+;; shape: a name of at most 64 octets to an integer value, one exact lookup.
+(defconst *fn2-principals-sid* 16)
+(defconst *fn2-principals-name-max* 64)
+(assert-event (and (equal *fn2-principals-entry-field-name* 0) (equal *fn2-principals-entry-field-principal* 1)))
+;; The owner's account slot: the profile's :owner-account, else 1; a slot is
+;; an owner only below the system row (P), so a profile with P <= 1 has none.
+(defun fn2-principals-owner-slot (profile)
+ (declare (xargs :guard t))
+ (fn2-profile-owner-account profile))
 
 (defcost fn2-group-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
  :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
+(defcost fn2-principal-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+  :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
+ :bytes 4096
+ :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
+(defcost fn2-principal-of-slot :answers (:ok :state)
+ :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
 (defmacro fn2-groups-core-events ()
  '(progn
@@ -469,7 +489,8 @@
      (code group fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
      (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok)
-          (fn2-grp-lookup tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
+          (fn2-grp-lookup *fn2-groups-sid* *fn2-groups-name-max* *fn2-groups-entry-field-group*
+                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
                           fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
         (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
      (mv code group fn2-core)))
@@ -483,13 +504,84 @@
      (code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
      (mv-let (c b0) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
       (if (eq c :ok)
-          (fn2-grp-genesis (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          (fn2-grp-genesis *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
         (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code fn2-core)))
    (fn2-core-preserves fn2-groups-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-   (in-theory (disable fn2-group-lookup fn2-groups-genesis))
-   (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis) (w state)))))
+   ;; The principal directory's exact lookup (principal-create's repeat,
+   ;; principal-bind): NAME's durable id, or :absent.
+   (defun fn2-principal-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+                (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+                (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code principal fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+      (if (eq c :ok)
+          (fn2-grp-lookup *fn2-principals-sid* *fn2-principals-name-max* *fn2-principals-entry-field-principal*
+                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
+                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+     (mv code principal fn2-core)))
+   (fn2-core-preserves fn2-principal-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
+    :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ;; The store's two persisted principals (AUTHORITY-20261105 section 1): the
+   ;; anonymous account (slot 0) and the owner's, each bound once here
+   ;; (incarnation 0 -> 1, so every durable principal id is positive and 0
+   ;; stays the none value), then named in fn2-principals' genesis overlay.
+   ;; Both ids are functions of the profile, so every boot names them alike.
+   (defun fn2-principals-bind-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core)))
+     (code ids fn2-accounts)
+     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (< 0 (fn2-accounts-rows fn2-accounts)))
+         (b* ((o (fn2-principals-owner-slot profile))
+              (owner (< (+ 1 o) (fn2-accounts-rows fn2-accounts)))
+              ((mv c0 fn2-accounts) (fn2-account-rebind 0 fn2-accounts))
+              ((mv c1 fn2-accounts) (if owner (fn2-account-rebind o fn2-accounts) (mv :ok fn2-accounts)))
+              ((unless (and (eq c0 :ok) (eq c1 :ok))) (mv :state nil fn2-accounts)))
+          (mv :ok (cons (cons "anonymous" (fn2-account-principal-id 0 fn2-accounts))
+                        (and owner (list (cons "owner" (fn2-account-principal-id o fn2-accounts)))))
+              fn2-accounts))
+       (mv :state nil fn2-accounts))
+     (mv code ids fn2-core)))
+   (fn2-core-preserves fn2-principals-bind-genesis (profile fn2-core)
+    :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (defun fn2-principals-genesis (profile fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
+     (if (not (eq code :ok))
+         (mv code fn2-core)
+      (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                  (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+                  (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+       (code fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+       (mv-let (c b0) (fn2-idc-stripe 0 (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+        (if (eq c :ok)
+            (fn2-grp-genesis *fn2-principals-sid* *fn2-principals-name-max* ids b0
+                             fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+       (mv code fn2-core)))))
+   (fn2-core-preserves fn2-principals-genesis (profile fn2-core)
+    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ;; A connection's durable principal id from its account slot (D7's id).
+   (defun fn2-principal-of-slot (p fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core)))
+     (code id)
+     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (natp p) (< p (fn2-accounts-rows fn2-accounts)))
+         (mv :ok (fn2-account-principal-id p fn2-accounts))
+       (mv :state 0))
+     (mv code (nfix id))))
+   (in-theory (disable fn2-group-lookup fn2-groups-genesis fn2-principal-lookup fn2-principals-bind-genesis
+                       fn2-principals-genesis fn2-principal-of-slot))
+   (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
+                                          fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
 (defcost fn2-identity-decide-start :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)

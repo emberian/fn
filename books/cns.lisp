@@ -7,6 +7,7 @@
 ; grant service, never by a scan.
 (in-package "ACL2")
 (include-book "cns-kind")
+(include-book "authority-kind")
 (include-book "machines-c-bind")
 (include-book "machines-c-read")
 (include-book "fnct-pool")
@@ -65,6 +66,11 @@
 (defcost fn2-ctl-dispatch-cns :answers (:ok :no-row :pool)
  :tables (fn2-core-machines fn2-core-pool fn2-cns-table fn2-core-machine-tables)
  :doc "Take a consumer request row for a control frame and hand the frame metadata.")
+(defcost fn2-ctl-dispatch-auth :answers (:ok :no-row :pool)
+ :tables (fn2-core-machines fn2-core-pool fn2-auth-table fn2-core-machine-tables)
+ :doc "Take an authority request row (fn2-auth) for a kind-29 frame, handing it the frame and the connection's authority.")
+(defcost fn2-ctl-owner-principal :answers (:ok :absent)
+ :doc "The owner's persisted principal (the profile's owner account slot, D7's id), :absent when the profile has no owner slot below the system row.")
 
 
 (defcost fn2-cns-feed-article :bytes *fn2-conn-feed-cost*
@@ -534,7 +540,8 @@
 (in-theory (disable fn2-cns-reply-pool))
 
 ;; The control frame: open the received frame (mv code kind plen value ...),
-;; VALUE a kind 1 frame's command (1 to 5) or a kind 4 frame's code; and the
+;; VALUE a kind 1 frame's command (1 to 5), a kind 4 frame's code (below 29)
+;; or 0 for an authority request (kind 29, its payload fn2-auth's); and the
 ;; kind 2 reply carrying POSTURE (mv code k total ...).
 (defun fn2-ctl-open-pool (base row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
@@ -551,10 +558,12 @@
                (fn2-fnct-k1-decode base slot gen h (+ h plen) okind oslot ogen fn2-fields fn2-pool))
               ((equal kind *fn2-fnct-request-kind*)
                (fn2-fnct-k4-head-decode base slot gen h (+ h 1) okind oslot ogen fn2-fields fn2-pool))
+              ((equal kind *fn2-authority-request-kind*) (mv :ok (+ h 1) fn2-fields))
               (t (mv :frame 0 fn2-fields))))
-       (value (nfix (fn2-fields-value base fn2-fields)))
+       (value (if (equal kind *fn2-authority-request-kind*) 0 (nfix (fn2-fields-value base fn2-fields))))
        ((unless (and (eq dc :ok) (equal next (+ h (if (equal kind *fn2-fnct-control-kind*) plen 1)))
-                     (or (not (equal kind *fn2-fnct-control-kind*)) (and (<= 1 value) (<= value 5)))))
+                     (or (not (equal kind *fn2-fnct-control-kind*)) (and (<= 1 value) (<= value 5)))
+                     (or (not (equal kind *fn2-fnct-request-kind*)) (< value *fn2-authority-request-kind*))))
         (mv :frame 0 0 0 fn2-fields fn2-digests fn2-b3)))
     (mv :ok kind plen value fn2-fields fn2-digests fn2-b3)))
 (fn2-fnct-shape fn2-ctl-open-pool-shape
@@ -611,7 +620,12 @@
  ((:free (:idle))
   (:greeting
    (:if (fn2-ctl-owner-core-p row-peer-family row-peer-w0)
-        ((:set (owner 1) (fill 0) (pos 0)) (:next :frame) (:charge :steps *fn2-work-transition* :runnable t))
+        ;; an owner connection administers, as the persisted owner principal,
+        ;; until it binds to a named one (AUTHORITY-20261105 section 1)
+        ((:do (pcode pid) (fn2-ctl-owner-principal) :accept (:ok :absent)
+          :why "a profile with no owner slot below the system row has no owner principal")
+         (:set (owner 1) (principal pid) (admin 1) (worked 0) (fill 0) (pos 0)) (:next :frame)
+         (:charge :steps *fn2-work-transition* :runnable t))
         ((:next :closing) (:charge :steps *fn2-work-transition* :runnable t))))
   ;; :frame opens the FNCT frame received so far (one frame per receive
   ;; window): a prefix receives more at the fill; a control command (kind
@@ -625,8 +639,12 @@
             :accept (:ok :need-more :size :frame :bounds) :why "a received frame is a prefix, or refused by closing")
            (:cond ((eq ocode :need-more) (:set (flen 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((not (eq ocode :ok)) (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-                  ((equal okind *fn2-fnct-request-kind*)
-                   (:set (pos *fn2-fnct-header-octets*) (flen oplen) (fkind oval) (request (+ 1 row-request)))
+                  ((or (equal okind *fn2-fnct-request-kind*) (equal okind *fn2-authority-request-kind*))
+                   ;; a kind 4 request's FKIND is its code (every code below 29); an
+                   ;; authority request's (kind 29) is its kind
+                   (:set (pos *fn2-fnct-header-octets*) (flen oplen)
+                         (fkind (if (equal okind *fn2-fnct-request-kind*) oval *fn2-authority-request-kind*))
+                         (request (+ 1 row-request)))
                    (:next :dispatch) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                   ((not (equal okind *fn2-fnct-control-kind*))
                    (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
@@ -650,14 +668,20 @@
   (:dispatch
    (:cond ((equal row-posture *fn2-ctl-posture-stopped*)
            (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
+          ((equal row-fkind *fn2-authority-request-kind*)
+           (:do (tcode aid agen) (fn2-ctl-dispatch-auth id row-generation row-request row-pos row-flen
+                                                        row-rx-slot row-rx-gen row-admin row-worked row-principal)
+            :case (((:ok) (:set (auth aid) (auth-gen agen) (tx-off 0) (tx-len 0))
+                          (:next :waiting) (:charge :steps *fn2-work-transition*))
+                   (:otherwise (:next :closing) (:charge :steps *fn2-work-transition* :runnable t)))))
           (t (:do (tcode cid cgen) (fn2-ctl-dispatch-cns id row-generation row-request row-pos row-flen
                                                          row-fkind row-rx-slot row-rx-gen)
-              :case (((:ok) (:set (cns cid) (cns-gen cgen) (tx-off 0) (tx-len 0))
+              :case (((:ok) (:set (cns cid) (cns-gen cgen) (worked 1) (tx-off 0) (tx-len 0))
                             (:next :waiting) (:charge :steps *fn2-work-transition*))
                      (:otherwise (:next :closing) (:charge :steps *fn2-work-transition* :runnable t)))))))
   (:waiting
    (:if (< 0 row-tx-len)
-        ((:set (cns *fn2-none*) (cns-gen 0)) (:next :reply)
+        ((:set (cns *fn2-none*) (cns-gen 0) (auth *fn2-none*) (auth-gen 0)) (:next :reply)
          (:charge :steps *fn2-work-transition* :runnable t))
         ((:charge :steps *fn2-work-empty*))))
   (:reply
@@ -689,7 +713,7 @@
              (:let retire (>= row-generation (fn2-machine-gen-limit)))
              (:set (generation (if retire row-generation (+ 1 row-generation)))
                    (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0)
-                   (cap-index 0) (cap-nonce 0) (cns *fn2-none*) (cns-gen 0)
+                   (cap-index 0) (cap-nonce 0) (cns *fn2-none*) (cns-gen 0) (auth *fn2-none*) (auth-gen 0)
                    (next-free next) (wait-reason *fn2-wait-none*))
              (:next (:if retire :retired :free))
              (:do () (fn2-machine-reclaim id *fn2-ctl-admission-ordinal* retire))
@@ -953,6 +977,28 @@
      (fn2-core-preserves fn2-ctl-dispatch-cns (ctl ctl-gen request fpos flen fkind rx-slot rx-gen fn2-core)
        :position 3 :rows nil)
      (in-theory (disable fn2-ctl-dispatch-cns))
+     (defun fn2-ctl-dispatch-auth (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (if (and (unsigned-byte-p 32 ctl) (unsigned-byte-p 60 ctl-gen) (unsigned-byte-p 32 request)
+                (unsigned-byte-p 32 fpos) (unsigned-byte-p 32 flen)
+                (unsigned-byte-p 32 rx-slot) (unsigned-byte-p 60 rx-gen)
+                (unsigned-byte-p 1 admin) (unsigned-byte-p 1 worked) (unsigned-byte-p 60 principal))
+           (fn2-machine-take-fn2-auth *fn2-none* ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal fn2-core)
+         (mv :no-row *fn2-none* 0 fn2-core)))
+     (fn2-core-preserves fn2-ctl-dispatch-auth (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal fn2-core)
+       :position 3 :rows nil)
+     (in-theory (disable fn2-ctl-dispatch-auth))
+     (defun fn2-ctl-owner-principal (fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (let ((o (stobj-let ((fn2-control (fn2-core-control fn2-core))) (o) (fn2-control-owner-account fn2-control) o)))
+         (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core)))
+           (code id)
+           (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+                    (natp o) (< (+ 1 o) (fn2-accounts-rows fn2-accounts)))
+               (mv :ok (fn2-account-principal-id o fn2-accounts))
+             (mv :absent 0))
+           (mv code (nfix id)))))
+     (in-theory (disable fn2-ctl-owner-principal))
      (defun fn2-cns-lookup-loop (k r sid fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)

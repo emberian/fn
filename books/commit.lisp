@@ -547,7 +547,7 @@
 (in-theory (disable fn2-commit-txn-frame))
 ; A body in its kind's encoding, exactly [OFF, END). Each kind is admitted with
 ; its producer (D46): :article-acceptance with D's POST transaction, and each
-; of C's 15 run schemas (S12: *fn2-commit-txn-schema-record-kind-base* + sid)
+; of C's run schemas (S12: *fn2-commit-txn-schema-record-kind-base* + sid)
 ; decoded by fn2-run-layout-decode.
 (defun fn2-commit-txn-body (rkind base slot gen off end okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -564,7 +564,7 @@
       (mv (if (and (eq code :ok) (equal next end)) :ok :body) fn2-fields))
      (mv :bounds fn2-fields))
     (mv code fn2-core)))
-  ((and (natp rkind) (<= *record-kind-identity-evidence* rkind) (<= rkind *record-kind-consumer-names*))
+  ((and (natp rkind) (<= *record-kind-identity-evidence* rkind) (<= rkind *fn2-commit-txn-schema-record-kind-last*))
    (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (code fn2-fields)
     (if (and (natp base) (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))

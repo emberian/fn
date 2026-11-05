@@ -195,6 +195,16 @@
   ;; hypothesis-removal witness. (CTL-CREDITS-TAKEN CONN-CREDITS) after the
   ;; Accept's turn.
   (local (include-book "../books/owed-host"))
+  ;; turns until one does nothing (at most FUEL): the Accept's harvest and
+  ;; the admission take as many turns as the calendar's kinds need
+  (local
+   (defun fn2-sle-quiet (fuel fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+     (if (zp fuel) fn2-core
+       (mv-let (status nobs nvisits nactions fn2-core) (fn2-turn fn2-core)
+         (declare (ignore status))
+         (if (and (equal nobs 0) (equal nvisits 0) (equal nactions 0)) fn2-core
+           (fn2-sle-quiet (- fuel 1) fn2-core))))))
   (local
    (defun fn2-sle-admit-run (profile family w0)
      (declare (xargs :verify-guards nil))
@@ -209,8 +219,7 @@
                                                   family (if (equal family *fn2-peer-family-local*) 0 119)
                                                   w0 (if (equal family *fn2-peer-family-local*) 20 0) 0 0 fn2-ops)
                           fn2-core))
-              ((mv & & & & fn2-core) (fn2-turn fn2-core))
-              ((mv & & & & fn2-core) (fn2-turn fn2-core)))
+              (fn2-core (fn2-sle-quiet 16 fn2-core)))
            (mv (list (- ctl0 (fn2-machine-admission-credits *fn2-ctl-admission-ordinal* fn2-core))
                      (fn2-machine-admission-credits *fn2-conn-admission-ordinal* fn2-core))
                fn2-core))
