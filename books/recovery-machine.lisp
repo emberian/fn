@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-a-access")
 (include-book "recovery")
+(include-book "machine-arms")
 (fn2-book-layer :b)
 
 ; R5e2: a recovery row id is valid exactly when the kind's generated snapshot
@@ -525,218 +526,150 @@
 (fn2-core-preserves fn2-recovery-start (id assume witness fn2-core) :position 1 :rows nil)
 
 )))
-(defun fn2-recovery-event-forms-2 ()
- (list 'progn (fn2-recovery-local-theory) '(progn
-; ----------------------------------------------------------------------
-; The arms, in the checked arm language (contracts in machines-b.lisp).
-; A refused bound stops the core with :recovery-bounds; a refused release
-; of the recovery window with :recovery-release.
-(defmachine-callback fn2-recovery-stop-bounds fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-empty*) :writes () :tables (fn2-core-control) :next () :uses (fn2-core-stop))
- (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core)))
-  (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core)))
-(defmachine-callback fn2-recovery-stop-release fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-empty*) :writes () :tables (fn2-core-control) :next () :uses (fn2-core-stop))
- (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-release* fn2-core)))
-  (fn2-machine-result 0 *fn2-work-empty* 0 nil fn2-core)))
-
-(defmachine-callback fn2-recovery-observe fn2-recovery-machine (id event outcome reason count aux0 aux1) 1
- (let ((fn2-core (fn2-recovery-machine-put-core id (rc-outcome outcome) (rc-count count) (rc-ready 1))))
-  (mv id fn2-core)))
-
-; :read issues the next part of the current unit into the window, or, when
-; discovery has passed the arena, starts the chain search.
-(defmachine-callback fn2-recovery-read fn2-recovery-machine (id budget) 4
- (b* ((pos row-rc-pos) (filled row-rc-filled) (role row-rc-role) (slot row-pool-slot)
-      (gen row-pool-gen) (ogen row-generation) (pending row-pending) (principal row-principal-slot))
-  (cond
-   ((and (equal row-rc-mode *fn2-rec-mode-discover*) (>= pos row-rc-arena))
-    (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-search*)
-                      (rc-chain 0) (rc-pos 0) (rc-found *fn2-alloc-none*) (rc-filled 0) (rc-stage 0))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   ((not (and (natp budget) (< 0 budget) (< filled *fn2-commit-unit-bytes*)))
-    (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
-   (t
-    (mv-let (code fn2-core)
-     (if (equal filled 0) (fn2-core-reset slot gen *fn2-recovery-machine-kind* id ogen fn2-core) (mv :ok fn2-core))
-     (if (not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-      (mv-let (code op opgen fn2-core)
-       (fn2-issue-read (+ (* pos *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*) filled)
-                       slot gen (- *fn2-commit-unit-bytes* filled) *fn2-recovery-machine-kind* id ogen principal fn2-core)
-       (declare (ignore op opgen))
-       (cond ((eq code :exhausted) (fn2-machine-result 0 *fn2-work-empty* 0 t fn2-core))
-             ((not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget))
-             (t (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read-result*)
-                                  (pending (+ 1 pending)) (rc-ready 0))))
-                 (fn2-machine-result (- *fn2-commit-unit-bytes* filled) *fn2-work-small* 1 nil fn2-core)))))))))))
-
-; :read-result takes the harvested completion. A failed or unreadable unit:
-; discovery records the position as unreadable (evidence, never corruption);
-; chain verification cannot establish its read, so the chain is unknown.
-(defmachine-callback fn2-recovery-result fn2-recovery-machine (id budget) 4
- (b* ((filled row-rc-filled) (count row-rc-count) (pos row-rc-pos) (outcome row-rc-outcome))
-  (cond
-   ((equal row-rc-ready 0) (fn2-machine-result 0 *fn2-work-poll* 0 nil fn2-core))
-   ((and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))
-         (< 0 count) (<= (+ filled count) *fn2-commit-unit-bytes*))
-    (if (equal (+ filled count) *fn2-commit-unit-bytes*)
-        (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-verify*)
-                          (rc-filled (+ filled count)) (rc-stage 0) (rc-ready 0))))
-          (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
-      (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                        (rc-filled (+ filled count)) (rc-stage 0) (rc-ready 0))))
-        (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))))
-   ((equal row-rc-mode *fn2-rec-mode-discover*)
-    (mv-let (code fn2-core) (fn2-recovery-cand-mark pos *fn2-rec-status-unreadable* fn2-core)
-     (if (not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-      (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                        (rc-pos (+ 1 pos)) (rc-high (+ 1 pos)) (rc-role 2) (rc-filled 0) (rc-stage 0) (rc-ready 0))))
-       (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))))
-   (t (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-install*)
-                        (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))))
-       (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))))))
-
-; :verify runs one stage over the filled unit (at most 4 KiB verified).
-(defmachine-callback fn2-recovery-verify fn2-recovery-machine (id budget) 4
- (b* ((stage row-rc-stage) (p row-rc-pos) (role row-rc-role) (slot row-pool-slot) (gen row-pool-gen)
-      (ogen row-generation) (discover (equal row-rc-mode *fn2-rec-mode-discover*))
-      (chain row-rc-chain) (high row-rc-high) (epoch row-rc-epoch)
-      ((mv code fn2-core)
-       (if discover (fn2-recovery-discover-unit stage p role slot gen id ogen fn2-core)
-         (fn2-recovery-chain-unit stage p role slot gen id ogen fn2-core))))
-  (cond
-   ((eq code :again) (fn2-machine-result 4096 *fn2-work-stage* 0 t fn2-core))
-   ((eq code :more)
-    (let ((fn2-core (fn2-recovery-machine-put-core id (rc-stage (+ 1 stage)))))
-     (fn2-machine-result 4096 *fn2-work-stage* 0 t fn2-core)))
-   ((and discover (eq code :empty) (< 0 role))
-    (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                      (rc-role (- role 1)) (rc-filled 0) (rc-stage 0))))
-     (fn2-machine-result 4096 *fn2-work-stage* 0 t fn2-core)))
-   ((and discover (or (eq code :empty) (eq code :invalid) (eq code :candidate)))
-    (let ((ce (fn2-recovery-cand-epoch p fn2-core)))
-     (mv-let (mcode fn2-core)
-      (fn2-recovery-cand-mark p (cond ((eq code :empty) *fn2-rec-status-empty*)
-                                      ((eq code :invalid) *fn2-rec-status-invalid*)
-                                      (t *fn2-rec-status-candidate*)) fn2-core)
-      (if (not (eq mcode :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-       (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                         (rc-pos (+ 1 p)) (rc-high (if (eq code :empty) high (+ 1 p)))
-                         (rc-epoch (if (eq code :candidate) (max epoch ce) epoch))
-                         (rc-role 2) (rc-filled 0) (rc-stage 0) (rc-ready 0))))
-        (fn2-machine-result 4096 *fn2-work-stage* 0 t fn2-core))))))
-   (discover (fn2-call fn2-recovery-stop-bounds id budget))
-   ((and (eq code :next-role) (< 0 role))
-    (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                      (rc-role (- role 1)) (rc-filled 0) (rc-stage 0))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   ((eq code :chained)
-    (mv-let (lcode fn2-core) (fn2-recovery-link p fn2-core)
-     (if (not (eq lcode :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-      (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-search*)
-                        (rc-chain (+ 1 chain)) (rc-pos 0) (rc-found *fn2-alloc-none*) (rc-filled 0) (rc-stage 0))))
-       (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))))
-   ((eq code :broken)
-    (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-install*)
-                      (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   (t (fn2-call fn2-recovery-stop-bounds id budget)))))
-
-)))
 (defun fn2-recovery-event-forms-3 ()
  (list 'progn (fn2-recovery-local-theory) '(progn
-; :search finds the unique successor of the chain; a second match is a
-; branch, which recovery never resolves by position.
-(defmachine-callback fn2-recovery-search fn2-recovery-machine (id budget) 4
- (mv-let (code next found twice) (fn2-recovery-scan row-rc-pos row-rc-arena row-rc-chain row-rc-found fn2-core)
-  (cond
-   ((not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget))
-   (twice (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-install*)
-                            (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))))
-           (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   ((< next row-rc-arena)
-    (let ((fn2-core (fn2-recovery-machine-put-core id (rc-pos next) (rc-found found))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   ((equal found *fn2-alloc-none*)
-    (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-install*)
-                      (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   (t (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-read*)
-                        (rc-mode *fn2-rec-mode-chain*) (rc-pos found) (rc-role 2) (rc-filled 0) (rc-stage 0))))
-       (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))
-
-(defmachine-callback fn2-recovery-install-scan fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-advance*) :writes (rc-found rc-dirty rc-stage) :next ()
-            :uses (fn2-recovery-dirty-scan))
- (b* ((high row-rc-high)
-      ((mv next found) (fn2-recovery-dirty-scan row-rc-found high (equal row-rc-dirty 1) fn2-core)))
-  (let ((fn2-core (fn2-recovery-machine-put-core id (rc-found next) (rc-dirty (if found 1 0))
-                    (rc-stage (if (< next high) 0 1)))))
-   (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))
-(defmachine-callback fn2-recovery-install-classify fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-advance*)
-            :writes (rc-class rc-witness-outcome rc-stage rc-found stopped)
-            :tables (fn2-core-pool fn2-core-control) :next (:done)
-            :uses (fn2-recovery-witness-match fn2-rec-witness-outcome fn2-rec-classify
-                   (fn2-core-release :effects ((:release (:storage-window :storage-job))))
-                   fn2-recovery-stop-bounds fn2-recovery-stop-release))
- (b* ((assume row-rc-assume) (witness row-rc-witness) (chain row-rc-chain)
-      (dirty row-rc-dirty) (ambiguous row-rc-ambiguous)
-      (slot row-pool-slot) (gen row-pool-gen) (ogen row-generation)
-      ((mv code matches) (fn2-recovery-witness-match witness chain row-rc-arena fn2-core)))
-  (if (not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-   (let* ((outcome (fn2-rec-witness-outcome assume witness chain matches))
-          (class (fn2-rec-classify assume (equal dirty 1) (equal ambiguous 1) outcome)))
-    (if (or (equal class *fn2-rec-class-intact*) (equal class *fn2-rec-class-torn-tail*))
-        (let ((fn2-core (fn2-recovery-machine-put-core id (rc-class class) (rc-witness-outcome outcome)
-                          (rc-stage 2) (rc-found 0))))
-          (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))
-      (mv-let (rcode fn2-core) (fn2-core-release slot gen *fn2-recovery-machine-kind* id ogen fn2-core)
-       (if (not (or (eq rcode :ok) (eq rcode :retired))) (fn2-call fn2-recovery-stop-release id budget)
-        (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-done*)
-                          (rc-class class) (rc-witness-outcome outcome) (stopped 1))))
-         (fn2-machine-result 0 *fn2-work-advance* 0 nil fn2-core)))))))))
-(defmachine-callback fn2-recovery-install-adopt fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-advance*) :writes (rc-found)
-            :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-control) :next ()
-            :uses (fn2-recovery-adopt fn2-recovery-stop-bounds))
- (let ((cursor row-rc-found))
-  (mv-let (code fn2-core) (fn2-recovery-adopt cursor fn2-core)
-   (if (not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-    (let ((fn2-core (fn2-recovery-machine-put-core id (rc-found (+ 1 cursor)))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))
-(defmachine-callback fn2-recovery-install-finish fn2-recovery-machine (id budget) 4
- :contract (:cost (:steps *fn2-work-transition*) :writes (rc-class rc-witness-outcome stopped)
-            :tables (fn2-core-pool fn2-core-commit-root fn2-core-extents fn2-core-control) :next (:done)
-            :uses (fn2-recovery-finish (fn2-core-release :effects ((:release (:storage-window :storage-job))))
-                   fn2-recovery-stop-bounds fn2-recovery-stop-release))
- (b* ((class row-rc-class) (outcome row-rc-witness-outcome)
-      (slot row-pool-slot) (gen row-pool-gen) (ogen row-generation)
-      ((mv code fn2-core) (fn2-recovery-finish row-rc-chain row-rc-epoch fn2-core)))
-  (if (not (eq code :ok)) (fn2-call fn2-recovery-stop-bounds id budget)
-   (mv-let (rcode fn2-core) (fn2-core-release slot gen *fn2-recovery-machine-kind* id ogen fn2-core)
-    (if (not (or (eq rcode :ok) (eq rcode :retired))) (fn2-call fn2-recovery-stop-release id budget)
-     (let ((fn2-core (fn2-recovery-machine-put-core id (phase *fn2-recovery-machine-state-done*)
-                       (rc-class class) (rc-witness-outcome outcome) (stopped 1))))
-      (fn2-machine-result 0 *fn2-work-transition* 0 nil fn2-core)))))))
-; :install stages: 0 dirty scan, 1 witness and classification, 2 allocator
-; adoption below the high water, then frontier and writer epoch. Only
-; :intact and :torn-tail install; :damaged and :unknown keep the allocator's
-; epoch unbegun, so every mutation stays fenced until repair. Reaching :done
-; releases the recovery bundle.
-(defmachine-callback fn2-recovery-install fn2-recovery-machine (id budget) 4
- (let ((stage row-rc-stage))
-  (cond ((equal stage 0) (fn2-call fn2-recovery-install-scan id budget))
-        ((equal stage 1) (fn2-call fn2-recovery-install-classify id budget))
-        ((and (equal stage 2) (< row-rc-found row-rc-high)) (fn2-call fn2-recovery-install-adopt id budget))
-        ((equal stage 2) (fn2-call fn2-recovery-install-finish id budget))
-        (t (fn2-call fn2-recovery-stop-bounds id budget)))))
-
-(defmachine-callback fn2-recovery-idle fn2-recovery-machine (id budget) 4
- (fn2-machine-idle id fn2-core))
+(defmachine-arms fn2-recovery-machine)
 (defmachine-run fn2-recovery-machine)
 )))
 (defmacro fn2-recovery-events () (fn2-recovery-event-forms))
-(defmacro fn2-recovery-events-2 () (fn2-recovery-event-forms-2))
 (defmacro fn2-recovery-events-3 () (fn2-recovery-event-forms-3))
 
+
+; ----------------------------------------------------------------------
+; The arms, in the arm language; their contracts are derived where the core
+; exists (fn2-recovery-events-3, assembly-callbacks.lisp). A refused bound
+; stops the core with :recovery-bounds (each arm's :on-refusal); a refused
+; release of the recovery window with :recovery-release.
+(defmachine-arms fn2-recovery-machine :declare
+ :subarms
+ (;; :install stage 0: scan 32 candidate rows past the chain for anything dirty
+  (install-scan
+   (:do (next found) (fn2-recovery-dirty-scan row-rc-found row-rc-high (equal row-rc-dirty 1)))
+   (:set (rc-found next) (rc-dirty (if found 1 0)) (rc-stage (if (< next row-rc-high) 0 1)))
+   (:charge :steps *fn2-work-advance* :runnable t))
+  ;; stage 1: the witness and the class; only :intact and :torn-tail adopt,
+  ;; any other class releases the bundle and ends at :done
+  (install-classify :on-refusal ((:stop :recovery-bounds))
+   (:do (code matches) (fn2-recovery-witness-match row-rc-witness row-rc-chain row-rc-arena))
+   (:let wout (fn2-rec-witness-outcome row-rc-assume row-rc-witness row-rc-chain matches))
+   (:let rclass (fn2-rec-classify row-rc-assume (equal row-rc-dirty 1) (equal row-rc-ambiguous 1) wout))
+   (:if (or (equal rclass *fn2-rec-class-intact*) (equal rclass *fn2-rec-class-torn-tail*))
+        ((:set (rc-class rclass) (rc-witness-outcome wout) (rc-stage 2) (rc-found 0))
+         (:charge :steps *fn2-work-advance* :runnable t))
+        ((:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
+          :effects ((:release (:storage-window :storage-job)))
+          :accept ()
+          :case (((:ok :retired)
+                  (:set (rc-class rclass) (rc-witness-outcome wout) (stopped 1))
+                  (:next :done) (:charge :steps *fn2-work-advance*))
+                 (:otherwise (:stop :recovery-release)))))))
+  ;; stage 2 below the high water: adopt one arena position
+  (install-adopt :on-refusal ((:stop :recovery-bounds))
+   (:do (code) (fn2-recovery-adopt row-rc-found))
+   (:set (rc-found (+ 1 row-rc-found)))
+   (:charge :steps *fn2-work-advance* :runnable t))
+  ;; stage 2 at the high water: the frontier and the writer epoch, then release
+  (install-finish :on-refusal ((:stop :recovery-bounds))
+   (:do (code) (fn2-recovery-finish row-rc-chain row-rc-epoch))
+   (:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
+    :effects ((:release (:storage-window :storage-job)))
+    :accept ()
+    :case (((:ok :retired) (:set (stopped 1)) (:next :done) (:charge :steps *fn2-work-transition*))
+           (:otherwise (:stop :recovery-release))))))
+ :arms
+ ((:free (:idle))
+  ;; issue the next part of the current unit into the window, or, when
+  ;; discovery has passed the arena, start the chain search
+  (:read :on-refusal ((:stop :recovery-bounds))
+   (:cond ((and (equal row-rc-mode *fn2-rec-mode-discover*) (>= row-rc-pos row-rc-arena))
+           (:set (rc-chain 0) (rc-pos 0) (rc-found *fn2-alloc-none*) (rc-filled 0) (rc-stage 0))
+           (:next :search) (:charge :steps *fn2-work-advance* :runnable t))
+          ((not (and (natp budget) (< 0 budget) (< row-rc-filled *fn2-commit-unit-bytes*))) (:yield))
+          (t (:do (code) (fn2-core-reset row-pool-slot row-pool-gen) :when (equal row-rc-filled 0) :else (:ok))
+             (:do (icode op opgen)
+                  (fn2-issue-read (+ (* row-rc-pos *fn2-commit-extent-bytes*) (* row-rc-role *fn2-commit-unit-bytes*) row-rc-filled)
+                                  row-pool-slot row-pool-gen (- *fn2-commit-unit-bytes* row-rc-filled)
+                                  :principal row-principal-slot)
+              :accept ()
+              :case (((:ok) (:set (pending (+ 1 row-pending)) (rc-ready 0)) (:next :read-result)
+                            (:charge :bytes (- *fn2-commit-unit-bytes* row-rc-filled) :steps *fn2-work-small* :descriptors 1))
+                     ((:exhausted) (:yield)))))))
+  ;; the harvested completion. A failed or unreadable unit: discovery records
+  ;; the position as unreadable (evidence, never corruption); chain
+  ;; verification cannot establish its read, so the chain is unknown.
+  (:read-result :on-refusal ((:stop :recovery-bounds))
+   (:let filled (+ row-rc-filled row-rc-count))
+   (:cond ((equal row-rc-ready 0) (:charge :steps *fn2-work-poll*))
+          ((and (or (equal row-rc-outcome *fn2-outcome-done*) (equal row-rc-outcome *fn2-outcome-short*))
+                (< 0 row-rc-count) (<= filled *fn2-commit-unit-bytes*))
+           (:set (rc-filled filled) (rc-stage 0) (rc-ready 0))
+           (:next (:if (equal filled *fn2-commit-unit-bytes*) :verify :read))
+           (:charge :steps *fn2-work-mailbox* :runnable t))
+          ((equal row-rc-mode *fn2-rec-mode-discover*)
+           (:do (code) (fn2-recovery-cand-mark row-rc-pos *fn2-rec-status-unreadable*))
+           (:set (rc-pos (+ 1 row-rc-pos)) (rc-high (+ 1 row-rc-pos)) (rc-role 2) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+           (:next :read) (:charge :steps *fn2-work-mailbox* :runnable t))
+          (t (:set (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))
+             (:next :install) (:charge :steps *fn2-work-mailbox* :runnable t))))
+  ;; one stage over the filled unit (at most 4 KiB verified)
+  (:verify :on-refusal ((:stop :recovery-bounds))
+   (:if (equal row-rc-mode *fn2-rec-mode-discover*)
+        ((:do (code) (fn2-recovery-discover-unit row-rc-stage row-rc-pos row-rc-role row-pool-slot row-pool-gen id row-generation)
+          :accept ()
+          :case (((:again) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:more) (:set (rc-stage (+ 1 row-rc-stage))) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:empty :invalid :candidate)
+                  (:if (and (eq code :empty) (< 0 row-rc-role))
+                       ((:set (rc-role (- row-rc-role 1)) (rc-filled 0) (rc-stage 0))
+                        (:next :read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                       ((:let ce (fn2-recovery-cand-epoch row-rc-pos))
+                        (:do (mcode) (fn2-recovery-cand-mark row-rc-pos (cond ((eq code :empty) *fn2-rec-status-empty*)
+                                                                             ((eq code :invalid) *fn2-rec-status-invalid*)
+                                                                             (t *fn2-rec-status-candidate*))))
+                        (:set (rc-pos (+ 1 row-rc-pos)) (rc-high (if (eq code :empty) row-rc-high (+ 1 row-rc-pos)))
+                              (rc-epoch (if (eq code :candidate) (max row-rc-epoch ce) row-rc-epoch))
+                              (rc-role 2) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+                        (:next :read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t)))))))
+        ((:do (code) (fn2-recovery-chain-unit row-rc-stage row-rc-pos row-rc-role row-pool-slot row-pool-gen id row-generation)
+          :accept ()
+          :case (((:again) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:more) (:set (rc-stage (+ 1 row-rc-stage))) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:next-role)
+                  (:if (< 0 row-rc-role)
+                       ((:set (rc-role (- row-rc-role 1)) (rc-filled 0) (rc-stage 0))
+                        (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+                       ((:stop :recovery-bounds))))
+                 ((:chained)
+                  (:do (lcode) (fn2-recovery-link row-rc-pos))
+                  (:set (rc-chain (+ 1 row-rc-chain)) (rc-pos 0) (rc-found *fn2-alloc-none*) (rc-filled 0) (rc-stage 0))
+                  (:next :search) (:charge :steps *fn2-work-advance* :runnable t))
+                 ((:broken)
+                  (:set (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))
+                  (:next :install) (:charge :steps *fn2-work-advance* :runnable t)))))))
+  ;; the unique successor of the chain; a second match is a branch, which
+  ;; recovery never resolves by position
+  (:search :on-refusal ((:stop :recovery-bounds))
+   (:do (code next found twice) (fn2-recovery-scan row-rc-pos row-rc-arena row-rc-chain row-rc-found))
+   (:cond (twice (:set (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))
+                 (:next :install) (:charge :steps *fn2-work-advance* :runnable t))
+          ((< next row-rc-arena) (:set (rc-pos next) (rc-found found)) (:charge :steps *fn2-work-advance* :runnable t))
+          ((equal found *fn2-alloc-none*)
+           (:set (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))
+           (:next :install) (:charge :steps *fn2-work-advance* :runnable t))
+          (t (:set (rc-mode *fn2-rec-mode-chain*) (rc-pos found) (rc-role 2) (rc-filled 0) (rc-stage 0))
+             (:next :read) (:charge :steps *fn2-work-advance* :runnable t))))
+  ;; stages: 0 dirty scan, 1 witness and classification, 2 allocator adoption
+  ;; below the high water, then frontier and writer epoch. Only :intact and
+  ;; :torn-tail install; :damaged and :unknown keep the allocator's epoch
+  ;; unbegun, so every mutation stays fenced until repair. Reaching :done
+  ;; releases the recovery bundle.
+  (:install
+   (:cond ((equal row-rc-stage 0) (:goto install-scan))
+          ((equal row-rc-stage 1) (:goto install-classify))
+          ((and (equal row-rc-stage 2) (< row-rc-found row-rc-high)) (:goto install-adopt))
+          ((equal row-rc-stage 2) (:goto install-finish))
+          (t (:stop :recovery-bounds))))
+  (:done (:idle)))
+ :observes
+ ((:read-result :from (:read-result)
+   (:set (rc-outcome outcome) (rc-count count) (rc-ready 1)) (:wake))))
