@@ -763,7 +763,7 @@
 (defun fn2-txn-put-post-for (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups pext pepoch palloc
                                 okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
-                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp at) (natp hashed) (natp lines) (natp ngroups))))
+                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines) (natp ngroups))))
   ;; The source is durable at the location (the upload stored and fenced it
   ;; before :sealed) and its lines are counted, so chunk 0 after the header is
   ;; scratch: the digest moves to SCANNED in chunk 0 (wherever the source's
