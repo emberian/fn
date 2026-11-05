@@ -1535,6 +1535,36 @@ record. The txn binds them into C's `fn2-article` location field (C adds the fie
 holds an allocator `:promised-read` edge from the time it is published until the article is
 retired, so the extent cannot be reclaimed while it is named.
 
+**S9a. As built: the source manifest (lane article-octets, `books/article-manifest.lisp`).** Stored
+octets (the injected Message-ID field, when the POST named none, then the source) that fit one
+payload extent (`*fn2-commit-extent-bytes*`, three 4 KiB units) are stored there and the article's
+location names that extent. Longer ones are stored block by block: one 4 KiB unit per block, three
+blocks to an extent (block i is unit i mod 3 of its extent, the extent reserved when block i mod 3 =
+0 is reached). Each block gets a `source-manifest-entry`: its logical offset (4096 i) and length,
+its BLOCK- reference (physical unit, writer epoch, allocation, `:raw-source`, the length, the
+block's own BLAKE3) and its chaining value in the stored octets' BLAKE3 tree, the subtree of its
+four chunks at chunk counter 4i (`fn2-b3-subtree-cv-into`; a final block shorter than a unit is no
+complete subtree and its entry carries its BLAKE3 there). The manifest (a `source-manifest-header`:
+stored length, block size, the source's content identity; then the entries) is built in the
+upload's store page from offset 4480 and written, its units in order, to an extent of its own; that
+extent is the article's location, with location kind `:source-manifest`. Packing rule: an entry
+never straddles two units (`fn2-am-entry-at`), so a reader holding one manifest unit decodes the
+entry it needs. One manifest is one extent at most: 31 entries per unit, 93 blocks,
+`*fn2-am-stored-max*` = 380,928 stored octets, one reference per article and one level. The
+profile's `:article-max` plus the longest generated Message-ID field stays within it
+(`fn2-input-config-profilep`; the default 32,768 does), so `:store` answers `:unaffordable` for a
+manifest that would not fit only under a profile that broke that bound. Every step is bounded by the
+upload kind's 4,096-octet budget: the store page is zeroed to the manifest a unit per step, then the
+header; each stored block takes three steps (its BLAKE3, its chaining value, its entry; the upload's
+`mstep`); a manifest unit's tail is zeroed and written in one; the drain settles the block extents
+one manifest unit of entries per step (`mdrain`). The transaction's `:batched` commits every extent
+the manifest names in its one step (`fn2-upload-extents-of`, at most one extent of manifest
+decoded, within its 26,624-octet budget). The cursor reads the manifest unit holding the next
+entry, decodes it (`art-entry`) and reads the block. Owed: recovery allocating payload extents
+(it must follow manifests: block extents are named by the entries at unit 0 of their extent),
+read-side verification of a block's hash and chaining value (`fn2-block-read-done` checks none),
+the cursor's second manifest read per block (a manifest lease would halve the reads).
+
 **S10. The block read, for D6 3/n (ARTICLE, HEAD, BODY).** There are two operations. Each has a
 defcost that names `fn2-core-extents`, `fn2-core-alloc-edges` and the issuing kind's lease, and
 declares `:answers`.

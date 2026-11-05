@@ -64,6 +64,22 @@
   (+ (- (length *fn2-upload-mid-template*) 2) 40 *fn2-profile-path-identity-max* (length *fn2-upload-mid-close*)))
 (assert-event (equal (- *fn2-upload-mid-line-max* (+ *fn2-upload-mid-field-octets* 2)) 250))
 
+;; A source manifest (article-manifest.lisp) names stored octets one 4 KiB
+;; block per entry; its header and the entries of the largest size fill one
+;; extent at most, so one manifest names *fn2-am-stored-max* octets (93
+;; blocks, 380,928 octets) and the profile's article bound, with the
+;; generated Message-ID field, stays within it (fn2-input-config-profilep).
+(defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
+(defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
+(defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
+;; entries of the largest size one unit holds (the first holds the header too)
+(defconst *fn2-am-entries-per-unit*
+  (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))
+(defconst *fn2-am-stored-max*
+  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-commit-write-resources*))
+(assert-event (equal *fn2-am-stored-max* 380928))
+(assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))
+
 ;; Words an upload or a transaction posts to its connection (section 14.5),
 ;; by name; 0 is none.
 (defconst *fn2-upload-words*
@@ -119,7 +135,8 @@
                 (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))
                 (< 0 (fn2-b-upload-windows profile))))
        (or (null (fn2-profile-get :article-max profile))
-           (unsigned-byte-p 32 (fn2-profile-get :article-max profile)))))
+           (and (natp (fn2-profile-get :article-max profile))
+                (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*) *fn2-am-stored-max*)))))
 (defun fn2-input-config-from (profile fn2-input-config)
   (declare (xargs :stobjs fn2-input-config :guard (fn2-input-config-profilep profile)))
   (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config))
@@ -174,7 +191,17 @@
           ;; the store page (one storage unit under this row, held from :store
           ;; to the drain): the injected Message-ID field of a POST that named
           ;; none, written to storage before the source (ILEN its octets)
-          (lslot :link) (lgen :u60) (lease (:enum fn2-upload-lease (:none :held))) (ilen :u32))
+          (lslot :link) (lgen :u60) (lease (:enum fn2-upload-lease (:none :held))) (ilen :u32)
+          ;; stored octets longer than one extent (article-manifest.lisp):
+          ;; PEXT is the manifest's extent, CEXT the current block's (CFREE
+          ;; while no entry names it yet), MFILL the manifest's octets built
+          ;; in the store page and MUNIT its units written; MSTEP the sub-step
+          ;; of the step in hand (the page zeroed then the manifest's header; a
+          ;; stored block's BLAKE3, its chaining value, then its entry), one
+          ;; bounded operation each, and MDRAIN the manifest units the drain
+          ;; has settled
+          (cext :link) (cepoch :u60) (calloc :u60) (cfree :bool) (mfill :u32) (munit :u8)
+          (mstep :u8) (mdrain :u8))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
@@ -200,10 +227,10 @@
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen))
+                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
-           (pext *fn2-none*) (lslot *fn2-none*)
+           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:store-write) (:store-wrote)
         (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))

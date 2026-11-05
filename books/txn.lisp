@@ -282,8 +282,6 @@
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
-(defcost fn2-txn-payload-commit :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
-  :doc "An accepted article's payload extent becomes allocated to it (owner: the transaction kind, the article's event).")
 (defconst *fn2-authority-right-append* 2)
 (defcost fn2-authority-allows :answers (:ok :access :more :state :bounds) :faults (:state :bounds)
   :doc "STUB of the authority lane's operation (books/authority.lisp, layer E): (fn2-authority-allows tx principal right target budget) -> (mv code grant head); this stub answers :ok with grant 0 and head 0 for every principal until the authority lane replaces it.")
@@ -541,8 +539,15 @@
                          ((:set (ecommit *fn2-txn-ecommit-committed*) (word *fn2-upload-word-conflict*))
                           (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
                          ;; the article's payload extent is now the article's
-                         ((:do (acode) (fn2-txn-payload-commit (:read upload pext) (:read upload pepoch)
-                                                               (:read upload palloc) tevent)
+                         ;; (every extent its stored octets occupy: the
+                         ;; manifest's and each block's)
+                         ((:let hrow (fn2-upload-hasher row-upload))
+                          (:do (acode) (fn2-upload-extents-of t tevent (* 128 hrow)
+                                                              (+ (:read upload ilen) (:read upload hashed))
+                                                              (:read upload lslot) (:read upload lgen) (:read upload mfill)
+                                                              (:read upload pext) (:read upload pepoch)
+                                                              (:read upload palloc) *fn2-none* 0 0 0
+                                                              :owner upload)
                            :accept (:ok))
                           (:set (word *fn2-upload-word-accepted*))
                           (:next :accepted) (:charge :steps *fn2-work-transition* :runnable t))))
@@ -621,17 +626,6 @@
   :hints (("Goal" :in-theory (disable fn2-txn-snapshot-read-code nfix))))
 (in-theory (disable fn2-commit-admit-txn fn2-claim-release-core))
 
-;; An accepted POST's payload extent (its upload's reservation) becomes
-;; allocated, owned by the article (the transaction kind, EVENT).
-(defun fn2-txn-payload-commit (e epoch counter event fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (unsigned-byte-p 60 event)) (mv :fault fn2-core)
-    (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
-      (code fn2-extents)
-      (fn2-alloc-commit-allocation e epoch counter *fn2-txn-kind* event fn2-extents)
-      (mv (if (eq code :ok) :ok :fault) fn2-core))))
-(fn2-core-preserves fn2-txn-payload-commit (e epoch counter event fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-payload-commit))
 
 ;; At the drain: wake the upload U if it still names this row (ID of
 ;; generation GEN), so it sees the row gone and drains.
@@ -744,7 +738,9 @@
           (version *fn2-txn-article-version*) (source dslot dgen doff)
           (bytes bytes) (lines lines)
           (location-unit lunit) (location-epoch lepoch) (location-allocation lalloc)
-          (location-kind *fn2-txn-location-raw-source*)
+          ;; one extent's octets are its raw source; longer ones are named
+          ;; through their source manifest (article-manifest.lisp)
+          (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     ;; the operation is the append's identity (e-surface.md 3.3) when it
