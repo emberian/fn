@@ -2,17 +2,25 @@
 (include-book "../books/assembly")
 (include-book "std/testing/must-fail" :dir :system)
 
+;; The callback under test is this book's own: the kinds' continuations are
+;; derived arms (machine-arms.lisp), whose calls take no row fields, and
+;; fn2-conn's live in assembly-callbacks-d-conn, outside books/assembly.
+(defmachine-callback fn2-dm-frame fn2-listener (id budget) 1
+  :contract (:cost (:steps *fn2-work-transition*) :writes () :next (:accepting :closing)
+             :tables (fn2-core-machines) :uses () :language :unchecked)
+  (mv row-event-ready fn2-core))
+
 ; Every declared continuation resolved at :callbacks, with authoritative formals.
 (fn2-resolve :callbacks)
 (assert-event
- (let* ((row (fn2-operation-row 'fn2-conn-frame-run (w state)))
-        (owner (fn2-decl-row '(:machine fn2-conn) (w state))))
-   (and (assoc-eq 'fn2-conn-frame-run (fn2-decl-get :callbacks owner))
+ (let* ((row (fn2-operation-row 'fn2-dm-frame (w state)))
+        (owner (fn2-decl-row '(:machine fn2-listener) (w state))))
+   (and (assoc-eq 'fn2-dm-frame (fn2-decl-get :callbacks owner))
         (equal (fn2-decl-get :calling-convention row)
-               (getpropc 'fn2-conn-frame-run 'formals nil (w state)))
+               (getpropc 'fn2-dm-frame 'formals nil (w state)))
         ; only the fields its body reads, never the whole row
         (let ((reads (fn2-decl-get :row-bindings row))
-              (all (fn2-machine-row-vars (fn2-machine-property 'fn2-conn :columns (w state)))))
+              (all (fn2-machine-row-vars (fn2-machine-property 'fn2-listener :columns (w state)))))
           (and (consp reads) (subsetp-eq reads all) (< (len reads) (len all))))
         (eq (fn2-decl-get :section row) :callbacks))))
 (assert-event
@@ -32,29 +40,29 @@
 ; These DM0b controls exercise the emitter's snapshot refresh, which reads a
 ; row after writing it: the restricted arm language refuses that (a stale
 ; read), so they are declared :language :unchecked, the declared escape.
-(defmachine-callback fn2-dm-forward fn2-conn (id budget) 4
-  :contract (:cost (:steps *fn2-work-transition*) :writes () :next (:command :closing)
-             :tables (fn2-core-machines fn2-core-pool)
-             :uses (fn2-conn-frame-run) :language :unchecked)
-  (fn2-call fn2-conn-frame-run id budget))
+(defmachine-callback fn2-dm-forward fn2-listener (id budget) 1
+  :contract (:cost (:steps *fn2-work-transition*) :writes () :next (:accepting :closing)
+             :tables (fn2-core-machines)
+             :uses (fn2-dm-frame) :language :unchecked)
+  (fn2-call fn2-dm-frame id budget))
 (must-fail
  (make-event
-  (value (fn2-machine-callback-event 'fn2-dm-positional 'fn2-conn '(id budget) 4 nil
-           (list (cons 'fn2-conn-frame-run
+  (value (fn2-machine-callback-event 'fn2-dm-positional 'fn2-listener '(id budget) 1 nil
+           (list (cons 'fn2-dm-frame
                        (fn2-decl-get :calling-convention
-                         (fn2-operation-row 'fn2-conn-frame-run (w state))))) (w state))))
+                         (fn2-operation-row 'fn2-dm-frame (w state))))) (w state))))
  :expected :soft)
 (assert-event
  (not (fn2-callback-forwarding
-        '(quote (fn2-conn-frame-run id budget row-phase)) '(row-phase) (w state))))
+        '(quote (fn2-dm-frame id budget row-event-ready)) '(row-event-ready) (w state))))
 (assert-event
  (not (fn2-callback-forwarding
-        '(let ((row-phase 0)) (fn2-conn-frame-run row-phase)) '(row-phase) (w state))))
+        '(let ((row-event-ready 0)) (fn2-dm-frame row-event-ready)) '(row-event-ready) (w state))))
 
 (must-fail (defmachine-callback fn2-dm-missing fn2-listener (id budget) 4
              (fn2-call fn2-dm-absent id budget)) :expected :soft)
-(must-fail (defmachine-callback fn2-dm-arity fn2-conn (id budget) 4
-             (fn2-call fn2-conn-frame-run id)) :expected :soft)
+(must-fail (defmachine-callback fn2-dm-arity fn2-listener (id budget) 1
+             (fn2-call fn2-dm-frame id)) :expected :soft)
 (must-fail (defmachine-callback fn2-dm-binder fn2-listener (id budget) 1
              (b* (((when t) (mv id fn2-core))) (mv id fn2-core))) :expected :soft)
 (defmachine-callback fn2-dm-bstar fn2-listener (id budget) 1
