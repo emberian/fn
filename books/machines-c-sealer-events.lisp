@@ -11,9 +11,11 @@
 
 ;; The arms. :sealing: one seal step; more work keeps the row runnable;
 ;; nothing sealable (:idle) parks it on :sealable, which the grant service
-;; wakes once an overlay is sealable. Backpressure has no wake yet (a page
-;; workspace, a cache row or a run row freed: M2's eviction), so every other
-;; answer stops the core by name through fn2-sealer-refuse (:full is
+;; wakes once an overlay is sealable. A seal that needs a page or a run row
+;; merges first (C5, sealer.lisp: it joins the schema's runs whenever one
+;; free page or row is left, and its install and release free theirs), so
+;; :full is a pool that cannot hold one batch's runs and a merge; with no
+;; wake for that, every other answer stops the core by name through fn2-sealer-refuse (:full is
 ;; :sealer-full, :cache :sealer-cache, any other :sealer) rather than park a
 ;; row nothing would wake, and moves the row to :stopped.
 (defmachine-arms fn2-sealer :declare
@@ -40,12 +42,15 @@
                 (fn2-run-restarts (fn2-core-run-restarts fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-ribbon-builds (fn2-core-ribbon-builds fn2-core)) (fn2-ribbon-band (fn2-core-ribbon-band fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core))
-                (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
+                (fn2-fc-context (fn2-core-fc-context fn2-core)) (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+                (fn2-ranges (fn2-core-ranges fn2-core)) (fn2-range-sources (fn2-core-range-sources fn2-core))
+                (fn2-run-cursors (fn2-core-run-cursors fn2-core)) (fn2-run-paths (fn2-core-run-paths fn2-core)))
      (code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
-           fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+           fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+           fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
      (fn2-seal-step budget fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                     fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
-                    fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+                    fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-sealer-step (budget fn2-core) :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; Genesis: the seal row's resources, owned by the sealer's row. With no

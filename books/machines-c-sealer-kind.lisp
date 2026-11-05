@@ -19,19 +19,21 @@
 (defconst *fn2-sealer-tables*
  '(fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
    fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
-   fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests))
+   fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
+   fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths))
 (defcost fn2-sealer-step :answers (:bad-hash :bad-magic :bounds :busy :cache :capacity :done :empty :exhausted :failed
   :filter-capacity :filter-keys :format :full :idle :invariant :kind :length :levels :more
   :need-page :noncanonical :nonzero-padding :ok :order :overlap :owner :part :payload :pending
   :ready :redundant :retired :schema :sealed :stale :state :truncated :unknown-tag :value :version
-  :wide :wrong-allocation :wrong-commit :wrong-epoch :wrong-extent :wrong-geometry :wrong-history
+  :sources :miss :wide :wrong-allocation :wrong-commit :wrong-epoch :wrong-extent :wrong-geometry :wrong-history
   :wrong-incarnation :wrong-kind :wrong-length :wrong-location :wrong-previous-commit
   :wrong-previous-seal :wrong-slot)
  :bytes 4096
  :tables (fn2-core-seals fn2-core-overlays fn2-core-overlay-index fn2-core-run-installed fn2-core-run-builds
           fn2-core-run-writers fn2-core-run-restarts fn2-core-run-cache fn2-core-ribbon-builds fn2-core-ribbon-band
-          fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests)
- :doc "One bounded seal step: at most 4,096 bytes of page or filter work, one entry added, or one install.")
+          fn2-core-fields fn2-core-pool fn2-core-fc fn2-core-fc-context fn2-core-b3 fn2-core-digests
+          fn2-core-ranges fn2-core-range-sources fn2-core-run-cursors fn2-core-run-paths)
+ :doc "One bounded seal step: at most 4,096 bytes of page or filter work, one entry merged and added, one install, or one page released.")
 (defcost fn2-sealer-refuse :tables (fn2-core-control)
  :doc "Stop the core by name: a seal step refused for want of a pool slot (:sealer-full), a cache row (:sealer-cache), or as an invariant (:sealer).")
 

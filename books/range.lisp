@@ -116,7 +116,9 @@
  :rule-classes :type-prescription)
 (fn2-range-sources-preserves fn2-range-add-overlays (n i g sid fn2-ranges fn2-range-sources fn2-overlays) :position 2 :raw-rows t
  :hyps ((fn2-rangesp fn2-ranges) (fn2-ranges-wfp fn2-ranges) (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources)))
-(defun fn2-range-add-runs (n i g sid fn2-ranges fn2-range-sources fn2-run-installed)
+; The schema's live runs whose identifiers are at least RLO (0: every one;
+; C5's merge names the suffix it seals over).
+(defun fn2-range-add-runs (n i g sid rlo fn2-ranges fn2-range-sources fn2-run-installed)
  (declare (xargs :stobjs (fn2-ranges fn2-range-sources fn2-run-installed) :measure (nfix n)
   :guard (and (fn2-ranges-wfp fn2-ranges) (fn2-range-sources-wfp fn2-range-sources) (fn2-run-installed-wfp fn2-run-installed)
               (natp n) (<= n (fn2-run-installed-rows fn2-run-installed)) (natp i))
@@ -124,18 +126,19 @@
  (b* (((when (zp n)) (mv :ok i fn2-range-sources))
       (r (- n 1))
       ((unless (and (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
-                    (equal (fn2-run-installed-schema r fn2-run-installed) sid)))
-       (fn2-range-add-runs (- n 1) i g sid fn2-ranges fn2-range-sources fn2-run-installed))
+                    (equal (fn2-run-installed-schema r fn2-run-installed) sid)
+                    (<= (nfix rlo) (nfix (fn2-run-installed-run r fn2-run-installed)))))
+       (fn2-range-add-runs (- n 1) i g sid rlo fn2-ranges fn2-range-sources fn2-run-installed))
       ((mv code fn2-range-sources)
        (fn2-range-add-source g i *fn2-range-kind-run* r (fn2-run-installed-run r fn2-run-installed)
                              (fn2-run-installed-okind r fn2-run-installed) (fn2-run-installed-oslot r fn2-run-installed)
                              (fn2-run-installed-ogen r fn2-run-installed) fn2-ranges fn2-range-sources))
       ((unless (eq code :ok)) (mv code i fn2-range-sources)))
-  (fn2-range-add-runs (- n 1) (+ 1 i) g sid fn2-ranges fn2-range-sources fn2-run-installed)))
+  (fn2-range-add-runs (- n 1) (+ 1 i) g sid rlo fn2-ranges fn2-range-sources fn2-run-installed)))
 (defthm fn2-range-add-runs-natp
- (implies (natp i) (natp (mv-nth 1 (fn2-range-add-runs n i g sid fn2-ranges fn2-range-sources fn2-run-installed))))
+ (implies (natp i) (natp (mv-nth 1 (fn2-range-add-runs n i g sid rlo fn2-ranges fn2-range-sources fn2-run-installed))))
  :rule-classes :type-prescription)
-(fn2-range-sources-preserves fn2-range-add-runs (n i g sid fn2-ranges fn2-range-sources fn2-run-installed) :position 2 :raw-rows t
+(fn2-range-sources-preserves fn2-range-add-runs (n i g sid rlo fn2-ranges fn2-range-sources fn2-run-installed) :position 2 :raw-rows t
  :hyps ((fn2-rangesp fn2-ranges) (fn2-ranges-wfp fn2-ranges) (fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources)))
 ; (Re)find every source: the schema's overlays and live runs, all to seek
 ; strictly after the current query, the version taken now.
@@ -150,7 +153,7 @@
        (fn2-range-add-overlays (fn2-overlays-rows fn2-overlays) 0 g sid fn2-ranges fn2-range-sources fn2-overlays))
       ((unless (eq code :ok)) (mv code fn2-ranges fn2-range-sources))
       ((mv code i fn2-range-sources)
-       (fn2-range-add-runs (fn2-run-installed-rows fn2-run-installed) i g sid fn2-ranges fn2-range-sources fn2-run-installed))
+       (fn2-range-add-runs (fn2-run-installed-rows fn2-run-installed) i g sid 0 fn2-ranges fn2-range-sources fn2-run-installed))
       ((unless (eq code :ok)) (mv code fn2-ranges fn2-range-sources))
       (vrun (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
       ((unless (and (unsigned-byte-p 32 i) (unsigned-byte-p 60 vrun))) (mv :bounds fn2-ranges fn2-range-sources))
@@ -264,6 +267,21 @@
    (make-event (value `(defun fn2-range-keys-ok (sid)
                          (declare (xargs :guard t))
                          (if (member-equal sid ',(fn2-rga-integer-ids (fn2-decl-rows :schema (w state)))) t nil))))
+   ; The least key of SID at QB from field J on: integers 0, octet fields
+   ; empty references into WSLOT/WGEN (a scan's first query: the read rows'
+   ; scans, C-S4 (d), and the sealer's merge, C5).
+   (defun fn2-range-key-least (j nk sid qb wslot wgen fn2-fields)
+    (declare (xargs :stobjs fn2-fields :measure (nfix (- (nfix nk) (nfix j))) :guard (fn2-fields-wfp fn2-fields)))
+    (b* (((unless (and (natp j) (natp nk) (< j nk))) (mv :ok fn2-fields))
+         ((unless (and (natp qb) (< (+ qb j) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 32 wslot)
+                       (unsigned-byte-p 60 wgen)))
+          (mv :bounds fn2-fields))
+         (fn2-fields (if (fn2-run-layout-octets-max sid j)
+                         (fn2-fields-put (+ qb j) (value 0) (ref-slot wslot) (ref-gen wgen) (ref-off 0) (ref-len 0))
+                       (fn2-fields-put (+ qb j) (value 0) (ref-slot 0) (ref-gen 0) (ref-off 0) (ref-len 0)))))
+     (fn2-range-key-least (+ 1 j) nk sid qb wslot wgen fn2-fields)))
+   (fn2-fields-preserves fn2-range-key-least (j nk sid qb wslot wgen fn2-fields) :position 1
+    :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)))
    ;; Advance overlay source S: from :seek, locate the least entry at or
    ;; after the query; from :next, the following position.
    (defun fn2-range-advance-overlay (s qbase qk qs qg fn2-range-sources fn2-overlays fn2-overlay-index fn2-fields fn2-pool)

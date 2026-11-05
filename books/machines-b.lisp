@@ -89,9 +89,12 @@
 ; machines-c.lisp) per transaction at the table's end: a format constant (C
 ; asserts its slots fit).
 (defconst *fn2-b-txn-field-rows* 2048)
+(defconst *fn2-b-read-stride-rows* 1024)
 ;; Layer C's sealer stripe (C1c) below the transactions' stripes: a format
-;; constant (C asserts its *fn2-seal-field-rows* fits).
-(defconst *fn2-b-seal-field-rows* 1280)
+;; constant (C asserts its *fn2-seal-field-rows* fits): the build's 1,280
+;; rows and its merge's read region (C5: the query key and eight sources'
+;; reader rows, at most one read stride).
+(defconst *fn2-b-seal-field-rows* (+ 1280 *fn2-b-read-stride-rows*))
 ;; Layer C's read rows (C-S4, machines-c-read.lisp), each with a stripe of
 ;; *fn2-b-read-stride* rows below the sealer's (C asserts its
 ;; *fn2-read-stride* fits). Rows [0, 2X) are layer D's query cursors', two a
@@ -100,7 +103,7 @@
 ;; layer E's consumer requests', request row S using read row 2X+S (N the
 ;; profile's :cns, 0 until fn2-cns serves). D's cursor kind and E's request
 ;; kind take their capacities from these functions.
-(defconst *fn2-b-read-stride* 1024)
+(defconst *fn2-b-read-stride* *fn2-b-read-stride-rows*)
 (defun fn2-b-cursor-rows (profile)
  (declare (xargs :guard t))
  (if (fn2-profile-get :reading profile) (nfix (fn2-profile-x profile)) 0))

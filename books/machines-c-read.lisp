@@ -83,7 +83,7 @@
 ; profile predicate (the transaction-sized children's is fn2-idc-profilep).
 (defun fn2-read-profilep (profile)
  (declare (xargs :guard t))
- (unsigned-byte-p 32 (* *fn2-read-sources* (fn2-b-read-rows profile))))
+ (unsigned-byte-p 32 (* *fn2-read-sources* (+ 1 (fn2-b-read-rows profile)))))
 (defmacro fn2-read-child (field stobj init why)
  (let ((fn (fn2-columns-sym stobj "-INIT-FOR")))
   `(progn
@@ -103,11 +103,12 @@
 (in-theory (disable fn2-read-profilep))
 (fn2-read-child fn2-core-reads fn2-reads (fn2-reads-init (fn2-b-read-rows profile) fn2-reads)
  "One read row per query cursor slot (C-S4): its operation, its query owner and its delivered entry survive the cursor's yields.")
-(fn2-read-child fn2-core-ranges fn2-ranges (fn2-ranges-init (fn2-b-read-rows profile) fn2-ranges)
- "Read row X's range read (C3) resumes from its resume key across the cursor's yields.")
+(assert-event (equal *fn2-read-sources* *fn2-idc-seal-cursors*))
+(fn2-read-child fn2-core-ranges fn2-ranges (fn2-ranges-init (+ 1 (fn2-b-read-rows profile)) fn2-ranges)
+ "Read row X's range read (C3) resumes from its resume key across the cursor's yields; row R (after the R read rows) is the sealer's merge (C5).")
 (fn2-read-child fn2-core-range-sources fn2-range-sources
- (fn2-range-sources-init (* *fn2-read-sources* (fn2-b-read-rows profile)) fn2-range-sources)
- "Read row X's range sources [8X, 8X+8): one per overlay or live run of the schema.")
+ (fn2-range-sources-init (* *fn2-read-sources* (+ 1 (fn2-b-read-rows profile))) fn2-range-sources)
+ "Read row X's range sources [8X, 8X+8): one per overlay or live run of the schema; [8R, 8R+8) the sealer merge's.")
 (fn2-read-child fn2-core-seeks fn2-seeks (fn2-seeks-init (fn2-b-read-rows profile) fn2-seeks)
  "Read row X's positioned seek (INBOX 4.1) over its range row.")
 
@@ -744,16 +745,9 @@
 ; The least key of SID in the lo region from field J on: integers 0, octet
 ; fields empty references into WSLOT/WGEN.
 (defun fn2-rd-key-least (j nk sid b0 wslot wgen fn2-fields)
- (declare (xargs :stobjs fn2-fields :measure (nfix (- (nfix nk) (nfix j))) :guard (fn2-fields-wfp fn2-fields)))
- (b* (((unless (and (natp j) (natp nk) (< j nk))) (mv :ok fn2-fields))
-      ((unless (and (natp b0) (< (+ b0 *fn2-read-lo* j) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 32 wslot)
-                    (unsigned-byte-p 60 wgen)))
-       (mv :bounds fn2-fields))
-      (fn2-fields (if (fn2-run-layout-octets-max sid j)
-                      (fn2-fields-put (+ b0 *fn2-read-lo* j) (value 0) (ref-slot wslot) (ref-gen wgen) (ref-off 0) (ref-len 0))
-                    (fn2-fields-put (+ b0 *fn2-read-lo* j) (value 0) (ref-slot 0) (ref-gen 0) (ref-off 0) (ref-len 0)))))
-  (fn2-rd-key-least (+ 1 j) nk sid b0 wslot wgen fn2-fields)))
-(fn2-rd-shape fn2-rd-key-least (j nk sid b0 wslot wgen fn2-fields) ((fn2-fields 1)) (fn2-fields) (fn2-run-layout-octets-max))
+ (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)))
+ (fn2-range-key-least j nk sid (+ (nfix b0) *fn2-read-lo*) wslot wgen fn2-fields))
+(fn2-rd-shape fn2-rd-key-least (j nk sid b0 wslot wgen fn2-fields) ((fn2-fields 1)) (fn2-fields) (fn2-range-key-least))
 
 ; Start read row X's whole-schema scan of SID from its least key; the
 ; resume key's octets live in WSLOT/WGEN, written and read under WK WS WG.
