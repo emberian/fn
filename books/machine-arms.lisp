@@ -1422,18 +1422,18 @@
     (cons (list (car fields) (if (eq (car fields) 'phase) (fn2-arms-phase-choice (car formals) kind states) (car formals)))
           (fn2-arms-write-put-pairs kind (cdr fields) (cdr formals) states))))
 (defun fn2-arms-write-events (kind fields world)
-  ; the write function of FIELDS, once per kind and field set
+  ; the write function of FIELDS; emitted by every arm that writes FIELDS,
+  ; identical each time (ACL2 takes a repeat as redundant), so a hand
+  ; definition under the name, not this one, is refused
   (declare (xargs :verify-guards nil))
   (let* ((name (fn2-arms-write-name kind fields))
          (formals (fn2-arms-write-formals fields))
          (states (fn2-machine-property kind :states world)))
-    `(make-event
-      (if (function-symbolp ',name (w state)) (value '(value-triple :redundant))
-        (value '(progn
-                 (defun ,name (id ,@formals fn2-core)
-                   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-                   (,(fn2-arms-sym kind "-PUT-CORE") id ,@(fn2-arms-write-put-pairs kind fields formals states)))
-                 (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil)))))))
+    `(progn
+      (defun ,name (id ,@formals fn2-core)
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (,(fn2-arms-sym kind "-PUT-CORE") id ,@(fn2-arms-write-put-pairs kind fields formals states)))
+      (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil))))
 (mutual-recursion
  (defun fn2-arms-lift-writes (x put kind cols sigs)
    ; (mv x' sigs): every (PUT ID (F E) ...) in the term X a write function call
@@ -2278,8 +2278,9 @@
           (,child ,@cformals)
           ,(fn2-arms-mvx (append rvars (and sout '(fn2-core))))))
       ,@(and sout
-             `((fn2-core-preserves ,op (,@vformals fn2-core) ,@(if (zp k) '(:prefix "") `(:position ,k)) :rows nil
-                 :hints (("Goal" :in-theory (enable fn2-core-wfp))))))
+             ;; the core's per-child facts carry the proof: opening fn2-core-wfp
+             ;; walked every child (D26: 16 s per face, 0.3 s closed)
+             `((fn2-core-preserves ,op (,@vformals fn2-core) ,@(if (zp k) '(:prefix "") `(:position ,k)) :rows nil)))
       (in-theory (disable ,op)))))
 (defun fn2-arms-book-op-faces-1 (rows book world)
   (declare (xargs :verify-guards nil))

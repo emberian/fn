@@ -281,7 +281,8 @@
 (fn2-pool-preserves fn2-cursor-stuff-loop (n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
   :position 3 :rows nil
   :hints (("Goal" :induct (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
-                  :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf logbitp))))
+                  :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf logbitp
+                                      fn2-pool-slot-capacity))))
 (defun fn2-cursor-pool-stuff (from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to) (natp st))))
   (mv-let (code used st fn2-pool)
@@ -403,7 +404,9 @@
         (mv-let (wc fn2-pool) (fn2-pool-write slot gen (nfix dst) b okind oslot ogen fn2-pool)
           (if (not (eq wc :ok)) (mv wc fn2-pool)
             (fn2-cursor-move-loop (- left 1) (+ 1 (nfix src)) (+ 1 (nfix dst)) slot gen okind oslot ogen fn2-pool)))))))
-(fn2-pool-preserves fn2-cursor-move-loop (left src dst slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+;; the pool's read and write closed (D26: 45 s opened, 0.1 s closed)
+(fn2-pool-preserves fn2-cursor-move-loop (left src dst slot gen okind oslot ogen fn2-pool) :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-pool-write fn2-gram-read))))
 (in-theory (disable fn2-cursor-move-loop))
 
 (defun fn2-cursor-move-line (src len at slot gen okind oslot ogen fn2-pool)
@@ -596,7 +599,8 @@
                 (mv nil 0 0)))))))))
 (defthm fn2-cursor-scan-extra-hdr-types
   (and (natp (mv-nth 1 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)))
-       (natp (mv-nth 2 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)))))
+       (natp (mv-nth 2 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool))))
+  :hints (("Goal" :in-theory (disable fn2-gram-read fn2-cursor-ci-span-eq-p))))
 (in-theory (disable fn2-cursor-scan-extra-hdr))
 
 (local (in-theory (disable fn2-gram-match)))
@@ -654,7 +658,10 @@
                   (t (mv at at)))))
         (fn2-cursor-move-line vs (nfix (- ve vs)) at tslot tgen okind oslot ogen fn2-pool)))))
 (fn2-pool-preserves fn2-cursor-pool-hdr-val (a0 b0 at to rslot rgen tslot tgen okind oslot ogen fn2-pool)
-  :position 1 :rows nil)
+  :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-gram-match fn2-cursor-next-tab fn2-cursor-next-lf fn2-cursor-scan-extra-hdr
+                                      fn2-cursor-truncate-to fn2-answer-put-text fn2-gram-put-crlf
+                                      fn2-cursor-move-line))))
 (in-theory (disable fn2-cursor-pool-hdr-val))
 
 (defcost fn2-cursor-parse :child fn2-cursor-parse-line :answers (:ok :refused) :bytes 512

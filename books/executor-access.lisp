@@ -34,7 +34,7 @@
            (fn2-control)
            (if (unsigned-byte-p ,width value) (,write value fn2-control) fn2-control)
            fn2-core)))
-       (fn2-core-preserves ,put (value fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+       (fn2-core-preserves ,put (value fn2-core) :rows nil :prefix "")
        (in-theory (disable ,get)))))
 (fn2-exec-access h 32)
 (fn2-exec-access k 32)
@@ -65,7 +65,7 @@
         ((:ok :already) fn2-core)
         (:bounds (fn2-core-stop *fn2-stop-reason-wake-bounds* fn2-core))
         (otherwise (fn2-core-stop *fn2-stop-reason-wake-state* fn2-core))))))))
-(fn2-core-preserves fn2-exec-wake (id fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-wake (id fn2-core) :rows nil :prefix "")
 
 (defun fn2-exec-queued (fn2-core)
   (declare (xargs :stobjs fn2-core))
@@ -110,14 +110,14 @@
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (kind principal position fn2-sched) (fn2-sched-visit fn2-sched)
     (mv kind principal position fn2-core)))
-(fn2-core-preserves fn2-exec-visit (fn2-core) :position 3 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-visit (fn2-core) :position 3 :rows nil :prefix "")
 
 (defun fn2-exec-pop (principal fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-sched (fn2-core-sched fn2-core)))
     (code id fn2-sched) (fn2-sched-pop-head principal fn2-sched)
     (mv code id fn2-core)))
-(fn2-core-preserves fn2-exec-pop (principal fn2-core) :position 2 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-pop (principal fn2-core) :position 2 :rows nil :prefix "")
 
 (defun fn2-exec-clear-service (service fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -126,7 +126,7 @@
     (if (and (natp service) (< service 4))
         (fn2-sched-set-service service 0 fn2-sched) fn2-sched)
     fn2-core))
-(fn2-core-preserves fn2-exec-clear-service (service fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-clear-service (service fn2-core) :rows nil :prefix "")
 
 (defun fn2-exec-trace-actions (left ordinal start fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -142,7 +142,7 @@
                (if (eq code :ok) (fn2-trace-action ordinal slot gen fn2-trace) fn2-trace))
              fn2-core)))
       (fn2-exec-trace-actions (- left 1) (+ ordinal 1) start fn2-core))))
-(fn2-core-preserves fn2-exec-trace-actions (left ordinal start fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-trace-actions (left ordinal start fn2-core) :rows nil :prefix "")
 
 (defun fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -159,7 +159,7 @@
             fn2-core)))
     (if (and (natp actions) (natp start))
         (fn2-exec-trace-actions actions 0 start fn2-core) fn2-core))))
-(fn2-core-preserves fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core) :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-record (kind id principal position bytes steps actions runnable wake start fn2-core) :rows nil :prefix "")
 
 ; Run charges (D7's S2): every principal run's bytes and steps go to its
 ; principal's ledger row, a service visit's steps to the system row (row P,
@@ -173,5 +173,4 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (mv-let (code fn2-core) (fn2-account-charge-run principal bytes steps fn2-core)
     (if (eq code :ok) fn2-core (fn2-core-stop *fn2-stop-reason-account* fn2-core))))
-(fn2-core-preserves fn2-exec-charge-run (principal bytes steps fn2-core) :rows nil :prefix ""
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-exec-charge-run (principal bytes steps fn2-core) :rows nil :prefix "")
