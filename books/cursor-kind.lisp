@@ -22,11 +22,11 @@
           ;; allocation handle, length), the octets copied (APOS the piece's
           ;; first, PLEN its length, LOFF consumed of it, AST the stuffing
           ;; state), the lease, the 22x line's span in TX (OAT MSO MLN),
-          ;; whether it went (SAID) and the first page was handed (APAGE),
+          ;; whether it went (SAID),
           ;; and the block read's result
           (art :u60) (lunit :u60) (lepoch :u60) (lalloc :u60) (alen :u60) (apos :u60) (plen :u32) (loff :u32)
           (ast :u8) (lslot :link) (lgen :u60) (lease (:enum fn2-cursor-lease (:none :held)))
-          (oat :u32) (mso :u32) (mln :u32) (said :bool) (apage :bool)
+          (oat :u32) (mso :u32) (mln :u32) (said :bool)
           (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
@@ -44,7 +44,7 @@
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
-                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said apage revent routcome rcount rready cursor))
+                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))
