@@ -6,7 +6,28 @@
 ; callbacks sections above it.
 (in-package "ACL2")
 (include-book "machines-c-sealer")
+(include-book "machine-arms")
 (fn2-book-layer :c)
+
+;; The arms. :sealing: one seal step; more work keeps the row runnable;
+;; nothing sealable (:idle) parks it on :sealable, which the grant service
+;; wakes once an overlay is sealable. Backpressure has no wake yet (a page
+;; workspace, a cache row or a run row freed: M2's eviction), so every other
+;; answer stops the core by name through fn2-sealer-refuse (:full is
+;; :sealer-full, :cache :sealer-cache, any other :sealer) rather than park a
+;; row nothing would wake, and moves the row to :stopped.
+(defmachine-arms fn2-sealer :declare
+ :arms
+ ((:sealing
+   (:do (code) (fn2-sealer-step 4096)
+    :accept ()
+    :case (((:more :retired :done) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:idle) (:park :sealable :steps *fn2-work-transition*))
+           (:otherwise
+            (:do () (fn2-sealer-refuse code))
+            (:set (stopped 1)) (:next :stopped)
+            (:charge :bytes 4096 :steps *fn2-work-transition*)))))
+  (:stopped (:idle))))
 
 (defmacro fn2-sealer-core-events ()
  '(progn
@@ -93,26 +114,6 @@
    (assert-event (fn2-assert-compliant-p '(fn2-sealer-step fn2-sealer-genesis fn2-sealer-pending-p fn2-sealer-ready
                                            fn2-sealer-grant fn2-sealer-refuse) (w state)))
 
-   ;; The continuations. :sealing: one seal step; more work keeps the row
-   ;; runnable; nothing sealable (:idle) parks it on :sealable, which the
-   ;; grant service wakes once an overlay is sealable. Backpressure has no
-   ;; wake yet (a page workspace, a cache row or a run row freed: M2's
-   ;; eviction), so :full and :cache stop the core by name (:sealer-full,
-   ;; :sealer-cache) rather than park a row nothing would wake (or, at the
-   ;; pick, re-grant it every turn); any other answer is an invariant
-   ;; (:sealer). A stopped core moves the row to :stopped.
-   (defmachine-callback fn2-sealer-seal fn2-sealer (id budget) 4
-    (fn2-machine-with-work 4096 *fn2-work-transition* 0
-     (mv-let (code fn2-core) (fn2-sealer-step 4096 fn2-core)
-      (case code
-       ((:more :retired :done) (fn2-machine-result 4096 *fn2-work-transition* 0 t fn2-core))
-       (:idle
-        (let ((fn2-core (fn2-sealer-put-core id (wait-reason *fn2-wait-sealable*))))
-         (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core)))
-       (otherwise
-        (let* ((fn2-core (fn2-sealer-refuse code fn2-core))
-               (fn2-core (fn2-sealer-put-core id (phase *fn2-sealer-state-stopped*) (stopped 1))))
-         (fn2-machine-result 4096 *fn2-work-transition* 0 nil fn2-core)))))))
    ;; Layer C's genesis, called once by the executor's fn2-init-engine:
    ;; the group directory (S-GROUP), then the seal row; with no checker row
    ;; (C-SEAL-NO-ROW) the sealer's row is stopped instead.
@@ -135,6 +136,5 @@
      (if (member-eq code '(:ok :no-row)) (fn2-sealer-start-row (eq code :ok) fn2-core) (mv code fn2-core))))
    (fn2-core-preserves fn2-engine-genesis (profile fn2-core) :position 1 :rows nil)
    (in-theory (disable fn2-sealer-start-row fn2-engine-genesis))
-   (defmachine-callback fn2-sealer-idle fn2-sealer (id budget) 4
-    (fn2-machine-idle id fn2-core))
+   (defmachine-arms fn2-sealer)
    (defmachine-run fn2-sealer)))
