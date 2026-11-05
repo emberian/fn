@@ -5,6 +5,8 @@
 ; Lists and local stobjs are test adapters, never served operations.
 (in-package "ACL2")
 (include-book "commit-history")
+; fn2-ref-core, the reference copy the comparison runs against
+(include-book "../books/assembly-reference")
 (fn2-book-layer :b)
 
 ; The first child that differs from a newly created core, or nil.
