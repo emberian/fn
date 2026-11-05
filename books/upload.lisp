@@ -399,10 +399,10 @@
 ;; (mv code fn2-core), :more while TO is farther.
 (defun fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let* ((fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-slot-fill ls fn2-pool) (nfix n)))
-         (left (nfix (- (nfix to) fill))))
+  (let* ((pfill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-gram-fill ls fn2-pool) n))
+         (left (nfix (- (nfix to) pfill))))
     (mv-let (code fn2-core)
-      (fn2-upload-page-zero (min left *fn2-commit-unit-bytes*) fill ls lg okind oslot ogen fn2-core)
+      (fn2-upload-page-zero (min left *fn2-commit-unit-bytes*) pfill ls lg okind oslot ogen fn2-core)
       (mv (cond ((not (eq code :ok)) :fault) ((< *fn2-commit-unit-bytes* left) :more) (t :ok)) fn2-core))))
 (fn2-core-preserves fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
 ;; The manifest begun (the page zeroed to its start first, by
@@ -412,8 +412,8 @@
 ;; octets. Fields at the window's format stripe (row ROW).
 (defun fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
-  (b* ((fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-slot-fill ls fn2-pool) (nfix n)))
-       ((unless (equal fill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core))
+  (b* ((pfill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-gram-fill ls fn2-pool) n))
+       ((unless (equal pfill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core))
        ((mv in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))))
     (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
       (code end fn2-fields fn2-pool)
@@ -427,7 +427,7 @@
 ;; (mv code fn2-core).
 (defun fn2-upload-stage-loop (fuel ls lg ilen c0 g0 c1 g1 d bstart bend hashed okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix fuel)
-                  :guard (and (fn2-core-wfp fn2-core) (natp ilen) (natp d) (natp bstart) (natp bend) (natp hashed))))
+                  :guard (and (fn2-core-wfp fn2-core) (natp fuel) (natp ilen) (natp d) (natp bstart) (natp bend) (natp hashed))))
   (if (>= (nfix d) (nfix bend)) (mv :ok fn2-core)
     (if (zp fuel) (mv :bounds fn2-core)
       (b* (((mv s g o l) (fn2-upload-store-span ls lg ilen c0 g0 c1 g1 (nfix d) hashed fn2-core))
@@ -449,7 +449,7 @@
 ;; LEFT octets from OFF of SLOT GEN into the hasher row, a hasher step at a
 ;; time (FUEL steps at most): (mv code fn2-core).
 (defun fn2-upload-hash-span (fuel row slot gen off left id ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix fuel) :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :measure (nfix fuel) :guard (and (fn2-core-wfp fn2-core) (natp fuel) (natp left))))
   (if (zp left) (mv :ok fn2-core)
     (if (zp fuel) (mv :bounds fn2-core)
       (mv-let (code used fn2-core) (fn2-upload-hash-step row slot gen off left id ogen fn2-core)
@@ -461,7 +461,7 @@
 ;; window's hasher row ROW; after the verdict the source's digest is already
 ;; appended to it): (mv code fn2-core).
 (defun fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
   (b* (((mv code fn2-core) (fn2-upload-hash-begin row fn2-core))
        ((unless (eq code :ok)) (mv code fn2-core))
        ((mv code fn2-core)
@@ -483,13 +483,14 @@
 ;; complete subtree and its BLAKE3 (still the hasher row's result) goes there
 ;; again (article-manifest.lisp): (mv code fn2-core).
 (defun fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
   (b* ((fn2-core
         (if (equal blen *fn2-commit-unit-bytes*)
             (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
               (fn2-digests)
               (let ((dst (fn2-digest-slot (nfix row) *fn2-b3-result*))
-                    (off (+ (nfix (fn2-pool-slot-base ls fn2-pool)) *fn2-upload-page-stage*))
+                    (off (+ (if (and (natp ls) (< ls (fn2-pool-rows fn2-pool))) (nfix (fn2-pool-slot-base ls fn2-pool)) 0)
+                            *fn2-upload-page-stage*))
                     (counter (* 4 (nfix block))))
                 (if (and (natp row) (fn2-digest-rowp dst fn2-digests) (fn2-pool-wfp fn2-pool)
                          (<= (+ off *fn2-commit-unit-bytes*) (fn2-pool-data-length fn2-pool))
@@ -532,18 +533,17 @@
 ;; nothing committed is cancelled), FUEL entries at most: (mv code fn2-core).
 ;; Fields at BASE; the page is owned by OKIND OSLOT OGEN.
 (defun fn2-upload-manifest-extents (fuel commit event base ls lg rel lim mfill okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :measure (nfix fuel) :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :measure (nfix fuel) :guard (and (fn2-core-wfp fn2-core) (natp fuel))))
   (let ((at (fn2-am-entry-at rel)))
     (if (or (>= at (nfix mfill)) (>= at (nfix lim))) (mv :ok fn2-core)
       (if (zp fuel) (mv :bounds fn2-core)
-        (b* (((mv code next lo len unit epoch alloc fn2-core)
+        (b* (((mv code next ?lo ?len unit epoch alloc fn2-core)
               (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
                 (code next lo len unit epoch alloc fn2-fields)
                 (fn2-am-get-entry base ls lg (+ *fn2-upload-page-manifest* at) (+ *fn2-upload-page-manifest* (nfix mfill))
                                   okind oslot ogen fn2-fields fn2-pool)
                 (mv code next lo len unit epoch alloc fn2-core)))
-             (declare (ignore lo len))
-             ((unless (and (eq code :ok) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
+             ((unless (and (eq code :ok) (natp next) (natp unit) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
              ((mv code fn2-core)
               (cond ((not (equal (mod unit *fn2-commit-write-resources*) 0)) (mv :ok fn2-core))
                     (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
@@ -571,10 +571,10 @@
   (if (not (and (fn2-am-manifestp total) (< 0 (nfix mfill)))) (mv :ok fn2-core)
     (b* ((lim (if whole (nfix mfill) (* *fn2-commit-unit-bytes* (+ 1 (nfix unit)))))
          ((mv code rel fn2-core)
-          (if (zp unit) (fn2-upload-manifest-head base total ls lg mfill okind oslot ogen fn2-core)
-            (mv :ok (* *fn2-commit-unit-bytes* unit) fn2-core)))
+          (if (zp (nfix unit)) (fn2-upload-manifest-head base total ls lg mfill okind oslot ogen fn2-core)
+            (mv :ok (* *fn2-commit-unit-bytes* (nfix unit)) fn2-core)))
          ((unless (eq code :ok)) (mv code fn2-core)))
-      (fn2-upload-manifest-extents (+ 1 (fn2-am-blocks total)) commit event base ls lg rel lim mfill
+      (fn2-upload-manifest-extents (+ 1 (nfix (fn2-am-blocks total))) commit event base ls lg rel lim mfill
                                    okind oslot ogen fn2-core))))
 (fn2-core-preserves fn2-upload-manifest-walk (commit event base total ls lg mfill unit whole okind oslot ogen fn2-core)
   :position 1 :rows nil)
