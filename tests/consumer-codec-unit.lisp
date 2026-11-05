@@ -15,9 +15,9 @@
     (mv-let (bytes state) (read-file-bytes ,file state)
       (if (stringp bytes) (er soft 'fn2-cct-fixture "~s0" bytes)
         (value (list 'defconst ',name (list 'quote bytes)))))))
-(fn2-cct-fixture *fn2-cct-five-field* "../../tests/fixtures/consumer-position/five-field-v1.fncu")
-(fn2-cct-fixture *fn2-cct-max-cursor* "../../tests/fixtures/consumer-position/max-cursor-v1.fncu")
-(fn2-cct-fixture *fn2-cct-zero-position* "../../tests/fixtures/consumer-position/zero-position-high-octets-v1.fncu")
+(fn2-cct-fixture *fn2-cct-five-field* "fixtures/consumer-position/five-field-v1.fncu")
+(fn2-cct-fixture *fn2-cct-max-cursor* "fixtures/consumer-position/max-cursor-v1.fncu")
+(fn2-cct-fixture *fn2-cct-zero-position* "fixtures/consumer-position/zero-position-high-octets-v1.fncu")
 
 ;; 1. fn1's cursors decode, carry fn1's fields, and re-encode to fn1's octets.
 (defconst *fn2-cct-ff* (make-list 64 :initial-element 255))
