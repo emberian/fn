@@ -4,6 +4,11 @@
 (include-book "assembly-callbacks-d")
 (include-book "upload")
 
+;; The source manifest's pure decisions the arms read (article-manifest.lisp).
+(defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
+(defcost fn2-am-manifestp :doc "Whether stored octets of a length are longer than one extent (named through a manifest).")
+(defcost fn2-upload-manifest-units :doc "The manifest units the drain settles, a unit of entries per step.")
+
 (defun fn2-upload-release-c0 (slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-core-release slot gen okind oslot ogen fn2-core))
@@ -110,11 +115,10 @@
                            ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al) :accept (:ok))
                             (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
-                            (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
+                            (:next :store-write) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
-                            (:charge :steps *fn2-work-transition* :runnable t)))
-                      (:next :store-write))
+                            (:next :store-write) (:charge :steps *fn2-work-transition* :runnable t))))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                       (:charge :steps *fn2-work-transition* :runnable t)))))))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
