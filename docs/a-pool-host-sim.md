@@ -379,7 +379,12 @@ listener machine and the core see one listener. bind creates the file, chmod mak
 listen (no connection is taken while it is wider), and the node removes it at stop; an existing
 file at the path is a refusal to start, never removed. A connection on it posts the `:local` peer
 record with its uid and gid, which reaches the listener row and the connection row like any peer
-record. `FN2_LISTENER_PATH` sets the key for native-serve, which then also prints
+record. The kind it is admitted into is the listener's `local-target`, the profile's
+`:listener-local-target` (absent: `:listener-targets`, so one kind serves both sockets): a `:local`
+peer whose kind differs is admitted by the listener's `admit-local` subarm, which returns the
+Accept's row credit to the target, takes one of the local kind's (or closes the capability when it
+has none free), releases the issue-time booking and admits unbooked. tests/native-consumer.lsp
+serves NNTP on TCP and `fn2-ctl` on the Unix socket this way (E's carrier L). `FN2_LISTENER_PATH` sets the key for native-serve, which then also prints
 `LISTENING-LOCAL <path>`; native-serve-check serves a reader session over the socket, checks its
 mode and its removal at stop, and the refusal of a relative path. The simulator's network model
 carries a peer per capability (`fn2-network-set-peer slot family uid gid`: `:none`, the default,

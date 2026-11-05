@@ -1637,7 +1637,9 @@
            (runp (function-symbolp (fn2-columns-sym name "-RUN") world))
            (handler (if runp
                         (fn2-columns-col-name router name)
-                      (fn2-columns-col-name router (fn2-columns-sym name "-STUB"))))
+                      ;; the kind's attachable stub is one per kind (fn2-machine-stub-events),
+                      ;; named under fn2-machine-observe whichever router routes to it
+                      (fn2-columns-col-name 'fn2-machine-observe (fn2-columns-sym name "-STUB"))))
            (route (fn2-columns-col-name (fn2-columns-sym router "-ROUTE") name))
            (snap `(eq (,(fn2-columns-sym name "-SNAPSHOT-READ-CODE") id fn2-core) :ok))
            ;; the generic terminal (a closed operation with its own facts)

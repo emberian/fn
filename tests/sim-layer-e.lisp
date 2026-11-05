@@ -138,7 +138,9 @@
                (mv nil fn2-core))
               ;; Phase 2: post/publish article 1 at commit position 2 on stream 0, waking parked wait,
               ;; which then answers the wait and drains the remaining verbs through stop.
-              (fn2-core (fn2-sle-seed-article 0 0 1 2 fn2-core))
+              ;; Its addr entry's stream (1, the group it is filed through) is not
+              ;; its principal (0): the wake is the principal's own addr stream.
+              (fn2-core (fn2-sle-seed-article 0 1 1 2 fn2-core))
               ((mv status2 clients & fn2-core) (fn2-cw-loop 800 0 1 clients nil fn2-core))
               (res2 (car (fn2-cw-results clients)))
               (wire2 (car res2))
@@ -159,6 +161,49 @@
                     (eq closed2 t))
                fn2-core))
          ok))))
+  ;; The listener admits by peer family (D 4.5, E's carrier L): with
+  ;; :listener-local-target fn2-ctl a :local Accept is admitted into fn2-ctl
+  ;; (one of its control credits taken) and an :inet one into fn2-conn (no
+  ;; control credit); without the key a :local Accept is fn2-conn's too, the
+  ;; hypothesis-removal witness. (CTL-CREDITS-TAKEN CONN-CREDITS) after the
+  ;; Accept's turn.
+  (local (include-book "../books/owed-host"))
+  (local
+   (defun fn2-sle-admit-run (profile family w0)
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (r fn2-core)
+         (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+              (ctl0 (fn2-machine-admission-credits *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv found op opgen & fn2-core) (fn2-ah-take-accept 8 fn2-core))
+              ((unless found) (mv :no-accept fn2-core))
+              (fn2-core (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+                          (fn2-post-accept-result op opgen *fn2-outcome-done* *fn2-reason-none* 5 9
+                                                  family (if (equal family *fn2-peer-family-local*) 0 119)
+                                                  w0 (if (equal family *fn2-peer-family-local*) 20 0) 0 0 fn2-ops)
+                          fn2-core))
+              ((mv & & & & fn2-core) (fn2-turn fn2-core))
+              ((mv & & & & fn2-core) (fn2-turn fn2-core)))
+           (mv (list (- ctl0 (fn2-machine-admission-credits *fn2-ctl-admission-ordinal* fn2-core))
+                     (fn2-machine-admission-credits *fn2-conn-admission-ordinal* fn2-core))
+               fn2-core))
+         r))))
+  (local
+   (defconst *fn2-sle-local-profile*
+     (put-assoc-equal :owner-uid 1000 (put-assoc-equal :listener-local-target 'fn2-ctl *fn2-sle-turn-profile*))))
+  (local
+   (defun fn2-sle-test-admit-by-family ()
+     (declare (xargs :verify-guards nil))
+     (let ((local (fn2-sle-admit-run *fn2-sle-local-profile* *fn2-peer-family-local* 1000))
+           (inet (fn2-sle-admit-run *fn2-sle-local-profile* *fn2-peer-family-inet* #x7f000001))
+           (bare (fn2-sle-admit-run (put-assoc-equal :owner-uid 1000 *fn2-sle-turn-profile*)
+                                    *fn2-peer-family-local* 1000)))
+       (and (consp local) (consp inet) (consp bare)
+            (equal (car local) 1) (equal (car inet) 0) (equal (car bare) 0)
+            ;; the conn credit the local Accept took at issue went back
+            (equal (cadr local) (+ 1 (cadr inet)))
+            (equal (cadr bare) (cadr inet))))))
+  (local (assert-event (fn2-sle-test-admit-by-family)))
   ;; An append is a POST (e-surface.md 3.3): a control connection's append
   ;; frame (cmd 1, fkind 7, a one-octet operation identity 9, the article
   ;; with no Message-ID) runs the upload and the transaction a POST runs; the

@@ -23,6 +23,9 @@
  :fields ((cap-index :u32) (cap-nonce :u32) (pending :u32) (stopped :bool) (event-ready :bool) (mode :bool)
           ; the admitted kind's ordinal (D 4.5): echo unless :listener-targets names another
           (target :u8)
+          ; the kind a :local peer (the owner-only Unix socket) is admitted into
+          ; (D 4.5, E's carrier L): :listener-local-target, absent the target
+          (local-target :u8)
           ; the last Accept's peer record (layer doc 4.1.1), for an admitted kind's :copy
           (peer-family :u8) (peer-port :u16) (peer-w0 :u32) (peer-w1 :u32) (peer-w2 :u32) (peer-w3 :u32))
  :holds ((:accepting :accept-credit) (:admitting :accept-credit :connection-row) (:closing :accept-credit))
@@ -46,7 +49,36 @@
             (:charge :steps (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) :runnable t))))
    (:set (event-ready 0) (account-ref *fn2-none*))
    (:next :accepting)
-   (:charge :steps *fn2-work-transition* :runnable t)))
+   (:charge :steps *fn2-work-transition* :runnable t))
+  ;; a :local peer whose kind is not the listener's target (E's control kind
+  ;; beside NNTP): the Accept's row reservation moves to that kind's
+  ;; partition, or, with none free there, is returned and the capability
+  ;; closes; the booking made at issue for the target is released, and the
+  ;; local kind is admitted unbooked
+  (admit-local
+   (:cond
+    ((not (< row-local-target *fn2-machine-admitted-max*)) (:stop :machine-phase))
+    ((zp (fn2-machine-admission-credits row-local-target))
+     (:do () (fn2-listener-return-credit row-target))
+     (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+     (:set (account-ref *fn2-none*))
+     (:next :closing)
+     (:charge :steps *fn2-work-refusal* :runnable t))
+    (t
+     (:do () (fn2-listener-move-credit row-target row-local-target))
+     (:do (code) (fn2-machine-admit row-local-target row-cap-index row-cap-nonce row-mode row-principal-slot
+                                    *fn2-none* row-peer-family row-peer-port row-peer-w0 row-peer-w1
+                                    row-peer-w2 row-peer-w3)
+      :case ((:otherwise
+              (:do () (fn2-listener-return-credit row-local-target))
+              (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+              (:set (account-ref *fn2-none*))
+              (:next :closing)
+              (:charge :steps (if (eq code :no-row) *fn2-work-state* *fn2-work-refusal*) :runnable t))))
+     (:do (ucode) (fn2-account-unbook-ref row-account-ref) :case ((:otherwise (:stop :account))))
+     (:set (event-ready 0) (account-ref *fn2-none*))
+     (:next :accepting)
+     (:charge :steps *fn2-work-transition* :runnable t)))))
  :arms
  ;; :accepting holds only the accept credit. A successful Accept issue takes
  ;; one row credit and moves to :admitting; without a credit the listener
@@ -75,6 +107,9 @@
   ;; Accept pending or its capability ready; reached without either, it stops.
   (:admitting
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((and (equal row-event-ready 1) (equal row-peer-family *fn2-peer-family-local*)
+                (not (equal row-local-target row-target)))
+           (:goto admit-local))
           ((equal row-event-ready 1) (:goto admit))
           (t (:stop :machine-phase))))
   ;; :closing closes a capability whose admission was refused.

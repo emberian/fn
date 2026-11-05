@@ -88,6 +88,19 @@ def m2(out):
     return f"M2 cuts {data['passed']}/{data.get('total', 12)} ({data.get('source', 'tests/m2-cuts.lsp')})"
 
 
+def consumer(out):
+    """M2's sentence over the real socket (lane consumer-socket): tests/surface/fn2_consumer_socket.py
+    drives the served node over the owner-only Unix socket (register, wait, a POST over TCP, wake, read,
+    ack, position, status, then ARTICLE over NNTP) and writes OUT/consumer/report.json with verdict,
+    held and judgments; a run that wrote none says so."""
+    path = Path(out) / 'consumer' / 'report.json'
+    if not path.exists():
+        return 'M2 socket not run (no consumer/report.json; see consumer.log)'
+    data = json.loads(path.read_text())
+    held = data.get('held'); total = data.get('judgments')
+    return f"M2 socket {data.get('verdict', '?')} {held}/{total}"
+
+
 def m2_table(out):
     """One row per cut: its verdict and every reason it cannot pass yet."""
     data = m2_data(out)
@@ -113,14 +126,14 @@ def main(out, sha):
     waits = collections.Counter()
     for r in reports:
         waits += r['waits']
-    table = [f'# H nightly {out.name} (dev {sha})', '', m2(out), ''] + m2_table(out) + [surface(), '']
+    table = [f'# H nightly {out.name} (dev {sha})', '', m2(out), consumer(out), ''] + m2_table(out) + [surface(), '']
     for r in reports:
         table += [f"## --target {r['target']} (exit {r['exit']})", '', line(r), '',
                   '| form | test | outcome | reason |', '|---|---|---|---|']
         table += [f'| {f} | {n} | {o} | {why} |' for f, n, o, why in r['rows']]
         table += ['', 'NOT RUN by owner: ' + ', '.join(f'{w} {n}' for w, n in r['waits'].most_common()), '']
     (out / 'table.md').write_text('\n'.join(table) + '\n')
-    summary = (f'H nightly {out.name} {sha}: {m2(out)} | {surface()} | ' + ' | '.join(line(r) for r in reports) +
+    summary = (f'H nightly {out.name} {sha}: {m2(out)} | {consumer(out)} | {surface()} | ' + ' | '.join(line(r) for r in reports) +
                ' | NOT RUN by owner (both targets): ' + ', '.join(f'{w} {n}' for w, n in waits.most_common()))
     (out / 'summary.txt').write_text(summary + '\n')
     print(summary)
