@@ -201,7 +201,7 @@
     ((fn2-scribe :cancellation) :releases (:operation :storage-window))
     ((:connection :refusal) :releases nil)
     ((:connection :close)
-     :releases (:operation :control-output :subscription-edge :wait-row :cursor-row
+     :releases (:operation :control-output :subscription-edge :cursor-row :wait-row
                 :principal-reservation :tx-range :rx-range :connection-row))
     ((:request :cancellation)
      :releases (:operation :storage-window :storage-job :cache-pin :cursor-row :identity-reservation
