@@ -87,6 +87,8 @@
  fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal))))
 ; Both commit sections read child bounds from a core hypothesis by forward
 ; chaining through core.lisp's per-child facts.
+(defun fn2-commit-local-idp ()
+ '(local (in-theory (enable fn2-commit-idp-from-snapshot fn2-commit-idp-kind-value))))
 (defun fn2-commit-local-forward ()
  '(make-event (value `(local (in-theory (enable ,@(fn2-commit-child-forward-runes *fn2-commit-proof-children*)))))))
 ;
@@ -504,6 +506,11 @@
  (member-eq (fn2-commit-posture fn2-core) '(:serving :draining))
  :hints (("Goal" :in-theory (enable fn2-commit-posture))))
 (in-theory (disable fn2-commit-posture))
+; The kind's id facts stay in its own sections (fn2-commit-local-idp): left
+; enabled, every later proof that reads (fn2-machine-kind id fn2-core) tried
+; to prove the id a commit row by opening the snapshot read (D26, measured
+; 2026-11-05: a conn write function 3.5 s -> 0.45 s with them closed).
+(in-theory (disable fn2-commit-idp-from-snapshot fn2-commit-idp-kind-value))
 )))
 ; The first section's second half (assembly-callbacks-b2): the batch's root
 ; edges, refusal, and the collect and seal arms.
@@ -511,7 +518,7 @@
 ; transaction member's admission, its source reference, the block read, and
 ; the seal's verbatim copy of its records.
 (defun fn2-commit-event-forms-1t ()
- (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
+ (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
 ; B-S2 S2: decode one record frame of a transaction workspace (owned by OKIND
 ; OSLOT OGEN) at OFF, into the fields stripe at BASE: (mv code rkind len next).
 (defun fn2-commit-txn-frame (base slot gen off end okind oslot ogen fn2-core)
@@ -810,7 +817,7 @@
 (verify-guards fn2-commit-seal-txn )
 )))
 (defun fn2-commit-event-forms-1b ()
- (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
+ (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
 ; B-S2 S6: the :batch-membership wait kind's source (machines-b's defwait). A
 ; transaction answered :exhausted parks with that wait; the source is ready
 ; when a batch could take a member (an open collector or a free row, and a
@@ -1249,7 +1256,7 @@
 (fn2-core-preserves fn2-commit-drop-io (id fn2-core) :rows nil :prefix "")
 )))
 (defun fn2-commit-event-forms-2 ()
- (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
+ (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
 
 ; b54 M3: row ID has issued no journal write and its leader PEER (an older
 ; batch still in flight) has issued none either.
@@ -1281,7 +1288,7 @@
 ; The second section's second half (assembly-callbacks-r2): install,
 ; publish, settlement, drop, notify and drain, then the kind's run.
 (defun fn2-commit-event-forms-2b ()
- (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
+ (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
 (defun fn2-commit-root-swap (id publish fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv nil fn2-core)

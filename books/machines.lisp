@@ -1335,7 +1335,10 @@
                   (:type-prescription :corollary (implies ,hyps (natp ,value)))
                   (:linear :corollary (implies ,hyps (< ,value ,(expt 2 (fn2-columns-width (cadar columns))))))
                   (:rewrite :corollary (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
-                :hints (("Goal" :in-theory (enable ,reader)
+                :hints (("Goal" ,@(if (fn2-machine-directory-fieldp (caar columns))
+                                       `(:in-theory (enable ,reader))
+                                     ;; the row's slot bound once per kind (-SLOT), the read code closed
+                                     `(:use ,(fn2-columns-sym code "-SLOT") :in-theory (e/d (,reader) (,code))))
                          ,@(and (fn2-machine-directory-fieldp (caar columns))
                                 `(:use ((:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-NATP")
                                          (i id) (fn2-machines (fn2-core-machines fn2-core)))
@@ -1352,6 +1355,14 @@
              (if (not (eq code :ok)) code
                (if (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))) :ok :kind)))) nil nil)
+      ;; D26: a row's slot is in its table, proved once per kind; the field
+      ;; widths use it with the read code closed (0.25 s per field opened).
+      (defthm ,(fn2-columns-sym code "-SLOT")
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (equal (,code id fn2-core) :ok))
+                 (and (natp (fn2-machine-slot id fn2-core))
+                      (< (fn2-machine-slot id fn2-core) (,(fn2-columns-sym name "-ROWS") (,(fn2-columns-sym name "-TABLE") fn2-core)))))
+        :hints (("Goal" :in-theory (enable ,code)))
+        :rule-classes nil)
       ,@(fn2-machine-row-reader-events name columns code))))
 ; Row readers by layer (assembly-rows-*): a section book materializes the
 ; readers of its own layer's kinds only, so its cost does not grow with the

@@ -75,7 +75,7 @@
       (mv :bounds fn2-digests fn2-b3))
     (mv code fn2-core)))
 (fn2-core-preserves fn2-upload-hash-begin (row fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (defun fn2-upload-hash-step (row slot gen off len id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
@@ -86,7 +86,7 @@
       (mv :bounds 0 fn2-digests fn2-b3))
     (mv code (nfix consumed) fn2-core)))
 (fn2-core-preserves fn2-upload-hash-step (row slot gen off len id ogen fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (defun fn2-upload-hash-end (row fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
@@ -210,7 +210,8 @@
        (fn2-core (fn2-machine-write-pl id pl fn2-core))
        (fn2-core (fn2-machine-write-head-status id hs fn2-core)))
     (mv st hs fn2-core)))
-(fn2-core-preserves fn2-upload-scan-run (id gen c0 g0 fn2-core) :position 2 :rows nil)
+(fn2-core-preserves fn2-upload-scan-run (id gen c0 g0 fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code fn2-upload-head-code nfix unsigned-byte-p))))
 ;; The block is complete and hashed: the digest, the verdict, the word
 ;; written to the row and posted to the connection, in three steps each with
 ;; its own preservation facts (inline they cost two minutes to prove).
@@ -258,7 +259,7 @@
         (mv :bounds fn2-pool)))
     (mv code fn2-core)))
 (fn2-core-preserves fn2-upload-digest-store (row slot gen off id ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 ;; Wake a row (the upload's transaction).
 (defun fn2-upload-wake (x fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -367,7 +368,7 @@
       (mv :fault 0 fn2-pool))
     (mv code len fn2-core)))
 (fn2-core-preserves fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid))
 

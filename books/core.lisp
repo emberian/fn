@@ -556,10 +556,18 @@
            ;; the chain of the children's own type facts
            :hints (("Goal" :in-theory (disable fn2-core-profilep
                                                ,@(fn2-core-init-child-names *fn2-core-children*)))))))
-(defthm fn2-core-init-wfp
-  (implies (fn2-core-profilep profile)
-           (fn2-core-wfp (fn2-core-init profile fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-core-profilep fn2-machines-profilep))))
+(defun fn2-core-init-child-profiles (children)
+  (if (atom children) nil
+    (cons (fn2-columns-sym (fn2-core-init-child-name (caar children)) "-PROFILE")
+          (fn2-core-init-child-profiles (cdr children)))))
+;; from each child's own profile fact, the profile predicate closed (D26:
+;; 40 s -> 17 s against fn2-core-profilep and fn2-machines-profilep open)
+(make-event
+ (value `(defthm fn2-core-init-wfp
+           (implies (fn2-core-profilep profile)
+                    (fn2-core-wfp (fn2-core-init profile fn2-core)))
+           :hints (("Goal" :use ,(fn2-core-init-child-profiles *fn2-core-children*)
+                    :in-theory (e/d (fn2-core-wfp) (fn2-core-profilep fn2-profilep nfix)))))))
 (in-theory (disable fn2-core-init))
 (assert-event (fn2-assert-compliant-p '(fn2-core-init) (w state)))
 ))

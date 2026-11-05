@@ -1421,6 +1421,21 @@
   (if (atom fields) nil
     (cons (list (car fields) (if (eq (car fields) 'phase) (fn2-arms-phase-choice (car formals) kind states) (car formals)))
           (fn2-arms-write-put-pairs kind (cdr fields) (cdr formals) states))))
+;; The rules that decide an id's kind (a rewrite of (fn2-machine-kind id
+;; fn2-core) to a constant, e.g. commit's fn2-commit-idp-kind-value): a
+;; write function or an arm's preserves proof tests the kind, it never
+;; decides it, and each try backchained into the kind's snapshot read
+;; (D26, measured 2026-11-05: a conn write function 3.5 s -> 0.45 s).
+(defun fn2-arms-kind-value-runes (lemmas)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom lemmas) nil)
+        ((and (quotep (access rewrite-rule (car lemmas) :rhs))
+              (eq (car (access rewrite-rule (car lemmas) :rune)) :rewrite))
+         (cons (access rewrite-rule (car lemmas) :rune) (fn2-arms-kind-value-runes (cdr lemmas))))
+        (t (fn2-arms-kind-value-runes (cdr lemmas)))))
+(defun fn2-arms-kind-closed (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-kind-value-runes (getpropc 'fn2-machine-kind 'lemmas nil world)))
 (defun fn2-arms-write-events (kind fields world)
   ; the write function of FIELDS; emitted by every arm that writes FIELDS,
   ; identical each time (ACL2 takes a repeat as redundant), so a hand
@@ -1428,12 +1443,15 @@
   (declare (xargs :verify-guards nil))
   (let* ((name (fn2-arms-write-name kind fields))
          (formals (fn2-arms-write-formals fields))
-         (states (fn2-machine-property kind :states world)))
+         (states (fn2-machine-property kind :states world))
+         (closed (fn2-arms-kind-closed world)))
     `(progn
       (defun ,name (id ,@formals fn2-core)
-        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                        ,@(and closed `(:guard-hints (("Goal" :in-theory (disable ,@closed)))))))
         (,(fn2-arms-sym kind "-PUT-CORE") id ,@(fn2-arms-write-put-pairs kind fields formals states)))
-      (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil))))
+      (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil
+        ,@(and closed `(:hints (("Goal" :in-theory (disable ,@closed)))))))))
 (mutual-recursion
  (defun fn2-arms-lift-writes (x put kind cols sigs)
    ; (mv x' sigs): every (PUT ID (F E) ...) in the term X a write function call
@@ -1478,9 +1496,9 @@
    (if (atom l) acc (fn2-arms-core-reads-list (cdr l) world (fn2-arms-core-reads (car l) world acc)))))
 (defun fn2-arms-core-preserves (name formals pos code world)
   (declare (xargs :verify-guards nil))
-  (let ((reads (fn2-arms-core-reads code world nil)))
+  (let ((closed (append (fn2-arms-core-reads code world nil) (fn2-arms-kind-closed world))))
     `(fn2-core-preserves ,name ,formals :position ,pos :rows nil
-       ,@(and reads `(:hints (("Goal" :in-theory (disable ,@reads))))))))
+       ,@(and closed `(:hints (("Goal" :in-theory (disable ,@closed))))))))
 (defun fn2-arms-core-writes (kind code world)
   ; (mv code' events): CODE's writes through write functions, and their events
   (declare (xargs :verify-guards nil))
