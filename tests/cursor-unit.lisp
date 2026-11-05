@@ -276,7 +276,9 @@
 (assert-event (fn2-cursor-test-post-roundtrip))
 
 ;; D6 2/n (Brick H3): LIST variants & RFC 3977 wildmat filtering, NEWGROUPS,
-;; NEWNEWS, and HDR/XHDR over message-id, current article, and ranges.
+;; NEWNEWS, and HDR/XHDR over message-id, current article, and ranges; a header
+;; the overview lacks (Newsgroups) read from the stored octets, its name matched
+;; whole and case-insensitively.
 (defconst *fn2-cru-h3-lines*
   '("LIST ACTIVE local.*"
     "LIST ACTIVE *,!*.empty"
@@ -308,6 +310,8 @@
     "HDR Subject <z@example.invalid>"
     "XHDR Subject <z@example.invalid>"
     "HDR :unknown <b@example.invalid>"
+    "HDR Newsgroups <b@example.invalid>"
+    "XHDR newsgroups <c@example.invalid>"
     "GROUP local.empty"
     "HDR Subject"
     "XHDR Subject"
@@ -323,6 +327,9 @@
     "HDR :bytes 2-3"
     "XHDR :lines 1-2"
     "HDR X-Absent 1-2"
+    "HDR Newsgroups 1-3"
+    "HDR newsgroup 2"
+    "XHDR NEWSGROUPS 2-3"
     "HDR Subject 9"
     "XHDR Subject 9"
     "HDR Subject 7-9"
@@ -364,6 +371,8 @@
                "430 no article with that message-id"
                "430 no article with that message-id"
                "503 archive projection unavailable"
+               "225 headers follow" "0 local.test" "."
+               "221 header follows" "<c@example.invalid> local.test" "."
                "211 0 1 0 local.empty"
                "420 no current article"
                "420 no current article"
@@ -379,6 +388,9 @@
                "225 headers follow" "2 164" "3 168" "."
                "221 header follows" "1 4" "2 4" "."
                "225 headers follow" "1 " "2 " "."
+               "225 headers follow" "1 local.test" "2 local.test" "3 local.test" "."
+               "225 headers follow" "2 " "."
+               "221 header follows" "2 local.test" "3 local.test" "."
                "423 no articles in that range"
                "420 no article(s) selected"
                "423 no articles in that range"
