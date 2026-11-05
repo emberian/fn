@@ -97,7 +97,7 @@ def consumer(out):
     if not path.exists():
         return 'M2 socket not run (no consumer/report.json; see consumer.log)'
     data = json.loads(path.read_text())
-    held = data.get('held'); total = data.get('judgments')
+    held = data.get('held'); total = data.get('judged')
     return f"M2 socket {data.get('verdict', '?')} {held}/{total}"
 
 
