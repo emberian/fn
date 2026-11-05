@@ -259,6 +259,14 @@
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-core-wfp (fn2-init-engine profile fn2-core))))
 (in-theory (disable fn2-init-engine))
 
+; The kind a listener admits a :local peer into (D 4.5): the profile's
+; :listener-local-target when it names one, else its :listener-targets.
+(defun fn2-listener-local-target-name (profile)
+  (declare (xargs :guard t))
+  (if (and (alistp profile) (assoc-equal :listener-local-target profile))
+      (fn2-profile-get :listener-local-target profile)
+    (fn2-profile-get :listener-targets profile)))
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
@@ -269,7 +277,9 @@
        (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
-                  (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
+                  (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile))
+                  (fn2-machine-admission-ordinal-of (fn2-listener-local-target-name profile))
+                  fn2-core))
        (fn2-core (fn2-listener-set-principals (fn2-profile-get :listener-principals profile) fn2-core))
        (fn2-core (fn2-exec-genesis (fn2-exec-rows fn2-core) 0 fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))

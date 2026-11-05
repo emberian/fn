@@ -60,6 +60,8 @@
   :doc "Reserve one connection row at Accept issue.")
 (defcost fn2-listener-return-credit :tables (fn2-core-machines) :effects ((:release (:connection-row)))
   :doc "Return a reserved row: failed Accept, refused admission.")
+(defcost fn2-listener-move-credit :tables (fn2-core-machines)
+  :doc "Move the Accept's reserved row from one admitted kind's partition to another's (a :local peer's kind, D 4.5): the listener holds one reservation before and after.")
 ; The admission and reclamation operations of each admitted kind, and the
 ; listener's dispatcher fn2-machine-admit, declare their costs where they are
 ; generated (machines.lisp, fn2-machine-admission-events).
