@@ -28,6 +28,8 @@
           (ast :u8) (lslot :link) (lgen :u60) (lease (:enum fn2-cursor-lease (:none :held)))
           (oat :u32) (mso :u32) (mln :u32) (said :bool) (apage :bool)
           (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
+          ;; block reads in flight (the terminal of each completion consumes one)
+          (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
           (cursor :u32))
  :holds ((:select :cursor-row (:storage-window :while (lease :held)))

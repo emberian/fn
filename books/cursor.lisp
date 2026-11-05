@@ -1156,7 +1156,7 @@
            (:issue (fn2-block-read (+ row-lunit (floor pos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc off len
                                    row-lslot row-lgen :principal row-principal-slot)
             :ok ((:set (plen len) (loff 0) (rready 0)) (:next :fetch)
-                 (:charge :bytes 4096 :steps *fn2-work-small* :descriptors 1))))))
+                 (:wait :completion :bytes 4096 :steps *fn2-work-small*))))))
      ;; :stale or :bounds (a location the allocator no longer names) stops
      ;; the core by the arm's refusal: the store contradicts its own row
   (art-end :on-refusal ((:stop :machine-phase))

@@ -138,7 +138,9 @@
           ;; the payload extent the source is stored in (S-ARTICLE-LOCATION),
           ;; the octets of it written, and the storage job's last result
           (pext :link) (pepoch :u60) (palloc :u60) (pdone :u60)
-          (sevent :u8) (soutcome :u8) (scount :u32) (sready :bool))
+          (sevent :u8) (soutcome :u8) (scount :u32) (sready :bool)
+          ;; storage jobs in flight (the terminal of each completion consumes one)
+          (pending :u32))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
