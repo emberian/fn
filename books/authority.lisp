@@ -265,10 +265,6 @@
                                          fn2-fields fn2-pool)
            (mv :state 0 0 fn2-fields fn2-pool)))
        (mv code (nfix w) (nfix end) fn2-core)))
-   (defthm fn2-auth-encode-reply-natp-1
-     (natp (mv-nth 1 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core))))
-   (defthm fn2-auth-encode-reply-natp-2
-     (natp (mv-nth 2 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core))))
    (fn2-core-preserves fn2-auth-encode-reply (op outcome reason pid sx slot gen okind oslot ogen fn2-core)
      :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defthm fn2-auth-encode-reply-natp-1
