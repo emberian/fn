@@ -724,21 +724,7 @@
     (mv :bounds 0 0 0 0 fn2-fields))
    (mv code (nfix pu) (nfix epoch) (nfix alloc) (nfix elen) fn2-core))))
 (fn2-core-preserves fn2-commit-txn-source (slot gen len okind oslot ogen fn2-core) :position 5 :rows nil)
-; B-S2 S10: read [OFF, OFF+LEN) of a stored reference (physical unit, writer
-; epoch, allocation) into the caller's lease. The allocation handle must still
-; name the unit's extent (:stale otherwise); the read result arrives as the
-; caller's :read-result. (mv code slot gen fn2-core), as fn2-issue-read's.
-(defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (b* (((unless (and (natp pu) (natp off) (natp len) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)))
-       (mv :bounds 0 0 fn2-core))
-      (code (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code)
-             (fn2-alloc-handle-code (floor pu *fn2-commit-write-resources*) epoch alloc fn2-extents) code))
-      ((unless (eq code :ok)) (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-core))
-      ((mv code slot gen fn2-core)
-       (fn2-issue-read (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal fn2-core)))
-  (mv (cond ((eq code :ok) :ok) ((eq code :exhausted) :exhausted) (t :bounds)) slot gen fn2-core)))
-(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core) :position 3 :rows nil)
+; B-S2 S10's block read is fn2-block-read-children (machines-b.lisp), in child form.
 ; The read's completion: every requested octet arrived (:ok) or not (:io).
 ; Until D4 3/n names payload blocks by content there is no block hash to
 ; check here; a stored reference's expected hash is checked then.

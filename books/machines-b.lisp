@@ -364,7 +364,30 @@
  :doc "B-S2: the owner's settled outcome; (mv code batch event outcome).")
 (defcost fn2-commit-txn-source :answers (:ok :none :bounds) :tables (fn2-core-fields fn2-core-pool)
  :doc "B-S2 S9: the article's source reference from an admitted workspace's acceptance record.")
-(defcost fn2-block-read :answers (:ok :exhausted :stale :bounds) :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
+; B-S2 S10: read [OFF, OFF+LEN) of a stored reference (physical unit PU,
+; writer epoch, allocation) into the caller's lease LSLOT LGEN, in child
+; form (D6 3/n: the cursor's arms call it). The allocation handle must still
+; name the unit's extent (:stale otherwise); the read is one storage job, and
+; its result arrives as the caller's :read-result. (mv code slot gen ...),
+; as fn2-issue-read's.
+(defun fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                   fn2-extents fn2-pool fn2-ops fn2-control)
+ (declare (xargs :stobjs (fn2-extents fn2-pool fn2-ops fn2-control)
+                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
+                             (fn2-control-wfp fn2-control))))
+ (b* (((unless (and (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)))
+       (mv :bounds 0 0 fn2-pool fn2-ops fn2-control))
+      (code (fn2-alloc-handle-code (floor pu *fn2-commit-write-resources*) epoch alloc fn2-extents))
+      ((unless (eq code :ok)) (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-pool fn2-ops fn2-control))
+      ((mv code slot gen fn2-pool fn2-ops fn2-control)
+       (fn2-issue-read-children (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal
+                                fn2-pool fn2-ops fn2-control)))
+  (mv (cond ((eq code :ok) :ok) ((eq code :exhausted) :exhausted) (t :bounds)) slot gen fn2-pool fn2-ops fn2-control)))
+(fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+                                             fn2-extents fn2-pool fn2-ops fn2-control)
+  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+(defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
+ :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")

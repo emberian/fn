@@ -207,6 +207,26 @@
 ;; One typed status line (the grammar's renderer). ARTICLE, HEAD and BODY
 ;; follow it with the stored octets (fn2-cursor-stuff, after B's block read).
 (local (in-theory (disable fn2-gram-find fn2-gram-digits)))
+;; Spans of an overview line (HDR, NEWNEWS): its next TAB and LF.
+(defun fn2-cursor-span-len (from to)
+  (declare (xargs :guard t))
+  (nfix (- (nfix to) (nfix from))))
+(defthm fn2-cursor-span-len-natp (natp (fn2-cursor-span-len from to)) :rule-classes :type-prescription)
+(in-theory (disable fn2-cursor-span-len))
+(defun fn2-cursor-next-tab (from to slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to))))
+  (fn2-gram-find (fn2-cursor-span-len from to) from 9 slot gen okind oslot ogen fn2-pool))
+(defthm fn2-cursor-next-tab-natp
+  (natp (mv-nth 1 (fn2-cursor-next-tab from to slot gen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-cursor-next-tab))
+(defun fn2-cursor-next-lf (from to slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to))))
+  (fn2-gram-find (fn2-cursor-span-len from to) from 10 slot gen okind oslot ogen fn2-pool))
+(defthm fn2-cursor-next-lf-natp
+  (natp (mv-nth 1 (fn2-cursor-next-lf from to slot gen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-cursor-next-lf))
 (defun fn2-cursor-render (cmd reply mask n0 n1 n2 sslot sgen soff slen slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n0) (natp n1) (natp n2) (natp soff) (natp slen))
                   :guard-hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
@@ -264,24 +284,25 @@
           (fn2-cursor-stuff-loop (- n 1) (+ 1 i) (+ (* 4 mode) (if (equal b *fn2-gram-lf*) 2 0)) used
                                  lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool))))))
 (fn2-pool-preserves fn2-cursor-stuff-loop (n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
-  :position 3 :rows nil)
-(defthm fn2-cursor-stuff-loop-types
-  (implies (and (natp st) (natp used))
-           (and (natp (mv-nth 1 (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
-                (natp (mv-nth 2 (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))))
-  :rule-classes ((:rewrite) (:type-prescription :corollary
-    (implies (and (natp st) (natp used))
-             (natp (mv-nth 1 (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))))))
+  :position 3 :rows nil
+  :hints (("Goal" :induct (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+                  :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf logbitp))))
 (defun fn2-cursor-pool-stuff (from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to) (natp st))))
-  (fn2-cursor-stuff-loop (min *fn2-cursor-stuff-bytes* (nfix (- (nfix to) (nfix from)))) (nfix from) (nfix st) 0
-                         lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool))
+  (mv-let (code used st fn2-pool)
+    (fn2-cursor-stuff-loop (min *fn2-cursor-stuff-bytes* (nfix (- (nfix to) (nfix from)))) (nfix from) (nfix st) 0
+                           lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+    (mv code (nfix used) (nfix st) fn2-pool)))
 (fn2-pool-preserves fn2-cursor-pool-stuff (from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
   :position 3 :rows nil)
-(defthm fn2-cursor-pool-stuff-types
-  (and (natp (mv-nth 1 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
-       (natp (mv-nth 2 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool))))
-  :rule-classes :type-prescription)
+(defthm fn2-cursor-pool-stuff-used-natp
+  (natp (mv-nth 1 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-cursor-pool-stuff))))
+(defthm fn2-cursor-pool-stuff-st-natp
+  (natp (mv-nth 2 (fn2-cursor-pool-stuff from to st lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-cursor-pool-stuff))))
 (in-theory (disable fn2-cursor-stuff-loop fn2-cursor-pool-stuff))
 ;; The lease's pool class: the smallest that holds one storage unit.
 (defun fn2-cursor-lease-class-of (fn2-pool)
@@ -622,6 +643,10 @@
 (defcost fn2-cursor-stuff :child fn2-cursor-pool-stuff :answers (:ok :full :end :fault) :faults (:fault) :bytes 8192
  :tables (fn2-core-pool)
  :doc "Copy at most 4,096 stored octets from the lease onto TX, dot-stuffed; (mv code used st).")
+(defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
+ :doc "Reserve the cursor's read lease (one storage unit) under its own owner: (mv code slot gen).")
+(defcost fn2-cursor-lease-release :child fn2-pool-release :answers t :tables (fn2-core-pool)
+ :doc "Return the cursor's read lease.")
 (defcost fn2-cursor-lease-class :child fn2-cursor-lease-class-of :doc "The pool class of the cursor's read lease (nil: none).")
 (defcost fn2-cursor-copy-span :child fn2-gram-put-span :answers t :bytes 256 :tables (fn2-core-pool)
  :doc "Copy a Message-ID span from RX into TX.")
@@ -1105,7 +1130,7 @@
   (art-lease :on-refusal ((:stop :machine-phase))
      (:let class (fn2-cursor-lease-class))
      (:if (null class) ((:goto art-refuse))
-          ((:do (code ls lg) (fn2-core-reserve class) :effects ((:acquire (:storage-window)))
+          ((:do (code ls lg) (fn2-cursor-lease-reserve class) :effects ((:acquire (:storage-window)))
             :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
                    (:otherwise (:goto art-refuse))))
            (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 23))
@@ -1114,7 +1139,8 @@
   ;; reply cannot be completed and the core stops (owed: close the connection)
   (art-fail :on-refusal ((:stop :machine-phase))
      (:if (equal row-said 1) ((:stop :machine-phase))
-          ((:do (lc) (fn2-core-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired))
+          ((:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+      :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:goto art-refuse))))
   (art-read :on-refusal ((:stop :machine-phase))
@@ -1122,7 +1148,7 @@
      (:let off (mod pos *fn2-commit-unit-bytes*))
      (:let len (min (- *fn2-commit-unit-bytes* off) (nfix (- row-alen pos))))
      (:if (not (and (natp budget) (< 0 budget))) ((:yield))
-          ((:do (zc) (fn2-core-reset row-lslot row-lgen) :accept (:ok))
+          ((:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
            (:issue (fn2-block-read (+ row-lunit (floor pos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc off len
                                    row-lslot row-lgen :principal row-principal-slot)
             :ok ((:set (plen len) (loff 0) (rready 0)) (:next :fetch)
@@ -1131,7 +1157,8 @@
   (art-end :on-refusal ((:stop :machine-phase))
      (:do (tc) (fn2-cursor-put-line 3 0 row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
       :accept (:ok))
-     (:do (lc) (fn2-core-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired))
+     (:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+      :why ":retired: the lease's slot reached its generation limit and leaves the pool")
      (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0) (done 1) (step 0)
            (roff (if (equal row-apage 0) row-roff 0)))
      (:goto hand))
@@ -1331,7 +1358,8 @@
    (:do (rc1) (fn2-read-release (* 2 row-slot)) :accept (:ok))
    (:do (rc2) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
    (:if (equal row-lease *fn2-cursor-lease-held*)
-        ((:do (lc) (fn2-core-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired))
+        ((:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+      :why ":retired: the lease's slot reached its generation limit and leaves the pool")
          (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
          (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
         ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
