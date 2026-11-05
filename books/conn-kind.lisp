@@ -32,6 +32,16 @@
 (assert-event (and (equal *fn2-conn-run-bytes* 4096) (equal *fn2-conn-input-bytes* 4096)
                    (<= (* 2 *fn2-nntp-line-cap*) *fn2-conn-range-min*)))
 
+;; A query cursor's UPDATE (the link reads it): what its finished reply
+;; moves the connection's selection to, or CLOSE: a reply that cannot be
+;; completed after its status line went (a storage read failed mid-article),
+;; so the connection closes rather than send a truncated block as complete.
+(defconst *fn2-cursor-update-none* 0)
+(defconst *fn2-cursor-update-current* 1)
+(defconst *fn2-cursor-update-selection* 2)
+(defconst *fn2-cursor-update-ihave* 3)
+(defconst *fn2-cursor-update-close* 4)
+
 (defmachine fn2-conn
  :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query)
  :fields ((cap-index :u32) (cap-nonce :u32)

@@ -50,11 +50,6 @@
 (defconst *fn2-cursor-hdr-room* 512)
 ;; Stored octets copied onto the wire per run (one storage unit).
 (defconst *fn2-cursor-stuff-bytes* 4096)
-;; UPDATE: what the reply moves the connection's selection to.
-(defconst *fn2-cursor-update-none* 0)
-(defconst *fn2-cursor-update-current* 1)
-(defconst *fn2-cursor-update-selection* 2)
-(defconst *fn2-cursor-update-ihave* 3)
 ;; Argument kinds after the parse: absent, a number or range (A..B), a
 ;; Message-ID or a token (the span A, length B in RX).
 (defconst *fn2-cursor-arg-none* 0)
@@ -1138,15 +1133,21 @@
                    (:otherwise (:goto art-refuse))))
            (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 23))
            (:charge :steps *fn2-work-transition* :runnable t))))
-  ;; a failed read: before the 22x line the reply is refused; after it the
-  ;; reply cannot be completed and the core stops (owed: close the connection)
+  ;; a failed read: the lease returned; before the 22x line the reply is
+  ;; refused; after it the reply cannot be completed, so what TX holds is
+  ;; dropped and the connection closes (UPDATE close; this replaced the
+  ;; core's stop :machine-phase)
   (art-fail :on-refusal ((:stop :machine-phase))
-     (:cond ((equal row-said 1) (:stop :machine-phase))
-            ((not (equal row-lease *fn2-cursor-lease-held*)) (:goto art-refuse))
-            (t (:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
-      :why ":retired: the lease's slot reached its generation limit and leaves the pool")
-           (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
-           (:goto art-refuse))))
+     (:cond ((equal row-lease *fn2-cursor-lease-held*)
+             (:do (lc) (fn2-cursor-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
+              :why ":retired: the lease's slot reached its generation limit and leaves the pool")
+             (:set (lease *fn2-cursor-lease-none*) (lslot *fn2-none*) (lgen 0))
+             (:charge :steps *fn2-work-transition* :runnable t))
+            ((equal row-said 0) (:goto art-refuse))
+            (t (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+                :accept (:ok))
+               (:set (done 1) (roff 0) (update *fn2-cursor-update-close*) (step 0))
+               (:goto hand))))
   (art-read :on-refusal ((:stop :machine-phase))
      (:let pos row-apos)
      (:let off (mod pos *fn2-commit-unit-bytes*))

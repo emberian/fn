@@ -42,6 +42,11 @@
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (fn2-ops) (fn2-post-result cell op opgen event outcome *fn2-reason-none* count aux0 aux1 fn2-ops)
     fn2-core))
+(defun fn2-cw-post-failed (op opgen event reason fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+    (fn2-ops) (fn2-post-result 0 op opgen event *fn2-outcome-failed* reason 0 0 0 fn2-ops)
+    fn2-core))
 (defun fn2-cw-post-accept (op opgen cap nonce peer fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if peer
@@ -135,6 +140,10 @@
            (fn2-core (fn2-cw-post 0 op opgen *fn2-event-write-result* *fn2-outcome-done* rlen 0 0 fn2-core))
            (fn2-core (fn2-cw-post 1 op opgen *fn2-event-borrow-released* *fn2-outcome-done* 0 0 0 fn2-core)))
         (mv t accepted clients (cons (cons soff octets) store) fn2-core)))
+     ((and (equal kind *fn2-action-read*) (member-equal (cons soff :io) store))
+      ;; a bad sector: a Read at a storage offset the device marks (SOFF . :io) fails
+      (let ((fn2-core (fn2-cw-post-failed op opgen *fn2-event-read-result* *fn2-reason-io* fn2-core)))
+        (mv t accepted clients store fn2-core)))
      ((equal kind *fn2-action-read*)
       ;; a Read is given the device's octets at its storage offset
       (b* ((octets (fn2-cw-store-read soff rlen store))

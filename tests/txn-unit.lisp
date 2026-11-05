@@ -75,7 +75,8 @@
       (if (eq code :ok) (fn2-tu-seed-all (cdr seeds) (+ 1 batch) fn2-core) (mv code fn2-core)))))
 
 ; The wires of TRANSCRIPTS after SEEDS: (seeded status wires stop-reason).
-(defun fn2-tu-run (profile seeds transcripts)
+(defun fn2-tu-run-on (profile seeds transcripts store)
+  ;; STORE: the device before the run ((offset . octets) or a bad sector (offset . :io))
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -86,9 +87,12 @@
            ((mv seeded fn2-core) (fn2-tu-seed-all seeds 1 fn2-core))
            ((mv status clients & fn2-core)
             (fn2-cw-loop (+ 2500 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
-                         0 0 (fn2-cw-clients transcripts) nil fn2-core)))
+                         0 0 (fn2-cw-clients transcripts) store fn2-core)))
         (mv (list seeded status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)) fn2-core))
       result)))
+(defun fn2-tu-run (profile seeds transcripts)
+  (declare (xargs :verify-guards nil))
+  (fn2-tu-run-on profile seeds transcripts nil))
 (defun fn2-tu-wire (seeds lines k)
   (declare (xargs :verify-guards nil))
   (let* ((octets (fn2-tu-text lines))
@@ -325,3 +329,36 @@
     (and (< 4096 (len (fn2-tu-text *fn2-tu-long*)))
          (or (equal got want) (cw "two-chunks ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-txn-test-two-chunks))
+
+; A Read that fails after the 22x line went closes the connection (it
+; replaced the core's stop :machine-phase): the second storage unit of every
+; extent is a bad sector, so BODY 1 of the two-chunk article sends its 222
+; line and the pages of the first unit, then the read of the second fails.
+; The wire is a proper prefix of the complete reply (no terminator, no 205
+; for the QUIT behind it), the client is closed, and the core runs on.
+(defun fn2-tu-bad-second-units (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (cons (+ (* (- n 1) *fn2-commit-extent-bytes*) *fn2-commit-unit-bytes*) :io)
+          (fn2-tu-bad-second-units (- n 1)))))
+(defun fn2-tu-prefix-p (p l)
+  (declare (xargs :verify-guards nil))
+  (or (atom p) (and (consp l) (equal (car p) (car l)) (fn2-tu-prefix-p (cdr p) (cdr l)))))
+(defun fn2-txn-test-read-fail-closes ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-long*) '(".") '("GROUP local.test" "BODY 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (said (fn2-tu-text (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                  "222 1 <long@example.invalid> body follows")))
+         (whole (fn2-tu-text (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                           "222 1 <long@example.invalid> body follows")
+                                     (fn2-tu-stuff (fn2-tu-long-body 100))
+                                     (list "." *fn2-tu-205*))))
+         (r (fn2-tu-run-on *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))
+                           (fn2-tu-bad-second-units 64)))
+         (wire (car (car (nth 2 r)))) (closed (cadr (car (nth 2 r)))))
+    (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
+             (fn2-tu-prefix-p said wire) (fn2-tu-prefix-p wire whole) (< (len wire) (len whole)) closed)
+        (cw "read-fail-closes ~x0 closed ~x1 wire ~x2 of ~x3 octets~%" (list (car r) (nth 1 r) (nth 3 r)) closed
+            (len wire) (len whole)))))
+(assert-event (fn2-txn-test-read-fail-closes))
