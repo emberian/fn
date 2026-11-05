@@ -31,6 +31,7 @@
 (in-package "ACL2")
 (include-book "../books/assembly-attach")
 (include-book "../books/owed-txn")
+(include-book "fnct-client")
 (include-book "std/util/bstar" :dir :system)
 
 (defconst *fn2-as-profile*
@@ -96,10 +97,10 @@
    (put-assoc-equal :control-connections 3
     (put-assoc-equal :cns 1 *fn2-txn-posting-profile*)))))
 (defun fn2-as-o (s) (declare (xargs :verify-guards nil)) (fn2-as-chars (coerce s 'list)))
-;; a client's kind-29 frame: the carrier's command (1) and kind octets, then the request
+;; a client's kind-29 frame: FNCT (consumer-codec.lisp fn2-fnct-seal) whose payload is the request
 (defun fn2-as-frame (verb values)
  (declare (xargs :verify-guards nil))
- (list* 1 *fn2-authority-request-kind* (fn2-authority-request-octets verb values)))
+ (fn2-fnct-seal *fn2-authority-request-kind* (fn2-authority-request-octets verb values)))
 (defun fn2-as-frames (frames)
  (declare (xargs :verify-guards nil))
  (if (atom frames) (mv nil nil)
@@ -197,20 +198,21 @@
 (assert-event (fn2-authority-local-binding-positive))
 
 ;; Controls, each a served branch.
-;; A bind after consumer work (a consumer read frame first) is refused access.
+;; A bind after consumer work (a consumer read frame, kind 4, first) is refused access.
 (assert-event
  (let ((r (fn2-as-served-run *fn2-as-served-profile*
-                             (list (fn2-as-client (list '(1 2 1) (fn2-as-frame 'principal-bind (list (fn2-as-o "owner"))))))
+                             (list (fn2-as-client (list (fnc-read (fnc-issued 1 0 0 1 0) 8) (fn2-as-frame 'principal-bind (list (fn2-as-o "owner"))))))
                              nil)))
   (and (equal (nth 1 r) 0)
        (equal (nthcdr (- (len (car (nth 2 r))) (len (fn2-as-refused 'principal-bind "access"))) (car (nth 2 r)))
               (fn2-as-refused 'principal-bind "access")))))
-;; A frame one octet longer than its layout, and an unknown opcode, are refused frame;
+;; A payload one octet longer than its layout, and an unknown opcode, are refused frame;
 ;; grant-set answers fault (not served until the grants land).
 (assert-event
  (let ((r (fn2-as-served-run *fn2-as-served-profile*
-                             (list (fn2-as-client (list (append (fn2-as-frame 'principal-create (list (fn2-as-o "mini"))) '(0))
-                                                        (list 1 *fn2-authority-request-kind* 9 0 0)
+                             (list (fn2-as-client (list (fn2-fnct-seal *fn2-authority-request-kind*
+                                                                       (append (fn2-authority-request-octets 'principal-create (list (fn2-as-o "mini"))) '(0)))
+                                                        (fn2-fnct-seal *fn2-authority-request-kind* '(9 0 0))
                                                         (fn2-as-frame 'grant-set (list 1 0 0 0 1 0 (fn2-as-o "op"))))))
                              (list "mini"))))
   (and (equal (nth 1 r) 0)

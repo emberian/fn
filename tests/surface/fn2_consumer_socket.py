@@ -11,15 +11,17 @@ FN2_LISTENER_PATH=<out>/node.sock and FN2_OWNER_UID=os.getuid(), runs the scenar
 <out>/report.json (every exchange, its octets and the verdict of each judgment) and exits 0 when
 every judgment holds, 1 otherwise, 2 when the node does not start.
 
-The frame on the socket is the served control kind's (books/cns.lisp, fn2-ctl and fn2-cns), not yet
-the port's FNCT (e-surface.md 4.2; owed, see the report's `owed`): a request is one send of the
-octets CMD FKIND CONSUMER ARG [LIMIT EPOCH] (CMD 1..5 status pause resume drain stop; FKIND 1..6
-register read wait ack position status; ARG the register's start or the ack's proposal), answered
-by six octets OUTCOME REASON POSITION FRONTIER COUNT MORE (OUTCOME 1 accepted, 2 refused, 3
-uncertain; REASON 6 behind, 7 beyond-frontier). Each judgment is a sentence of the consumer port's
-statement (e-surface.md 3, 3.2; books/consumer-port.lisp) over the node's own answers: the client
-computes no value the port computes; it proposes what the node answered, and probes one below and
-one past the frontier the node reported.
+The frames on the socket are the port's FNCT (e-surface.md 4.2; books/consumer-codec.lisp, served by
+books/fnct-pool.lisp and books/cns.lisp): "FNCT", version 1, kind, a four-octet length, the payload and
+BLAKE3-256 of everything before it. A control command is kind 1 (one octet: 1 status .. 5 stop),
+answered by kind 2 (the posture octet; stop closes without one); a consumer request is kind 4, a code
+octet and its fields (14 register-query, 15 read, 16 wait-cursor, 1 ack, 2 position, 18 status-wide),
+answered by kind 28: the class (accepted refused uncertain fault), the reason word and the verb's
+result (a cursor; a page's more, next cursor, count and items; ack's position; status's position,
+frontier and gap). Each judgment is a sentence of the consumer port's statement (e-surface.md 3, 3.2;
+books/consumer-port.lisp) over the node's own answers: the client computes no value the port
+computes; it re-sends the cursor the node issued, proposes what the node answered as an ack's
+position, and probes one below and one past the frontier the node reported.
 """
 import argparse
 import json
@@ -36,12 +38,113 @@ import time
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 DRIVER = os.path.join('tests', 'native-consumer.lsp')
 
-OUTCOMES = {0: 'none', 1: 'accepted', 2: 'refused', 3: 'uncertain'}
-REASONS = {0: 'none', 1: 'unavailable', 2: 'access', 3: 'meter', 4: 'scope', 5: 'equal', 6: 'behind',
-           7: 'beyond-frontier'}
-VERBS = {'register': 1, 'read': 2, 'wait': 3, 'ack': 4, 'position': 5, 'status': 6}
+from tests.surface.blake3_pure import blake3
+
+CLASSES = ('accepted', 'refused', 'uncertain', 'fault')
 CMD_STATUS, CMD_STOP = 1, 5
 CONSUMER = 1
+MAGIC = b'FNCT'
+KIND_CONTROL, KIND_POSTURE, KIND_REQUEST, KIND_PORT_REPLY = 1, 2, 4, 28
+CODES = {'register': 14, 'read': 15, 'wait': 16, 'ack': 1, 'position': 2, 'status': 18}
+
+
+def seal(kind, payload):
+    prefix = MAGIC + bytes([1, kind]) + len(payload).to_bytes(4, 'big') + payload
+    return prefix + blake3(prefix)
+
+
+def be(n):
+    return n.to_bytes(max(1, (n.bit_length() + 7) // 8), 'big')
+
+
+def octets(b):
+    """A (:octets 64) field: one length octet (below 128), then the octets."""
+    assert len(b) < 128
+    return bytes([len(b)]) + b
+
+
+def u16(b):
+    return len(b).to_bytes(2, 'big') + b
+
+
+def cursor_fields(c):
+    """fncu v1: magic, version, five length-prefixed IDs, four u32 counters."""
+    assert c[:5] == b'fncu\x01', c
+    i, ids = 5, []
+    for _ in range(5):
+        n = c[i]
+        ids.append(c[i + 1:i + 1 + n])
+        i += 1 + n
+    words = [int.from_bytes(c[i + 4 * k:i + 4 * k + 4], 'big') for k in range(4)]
+    assert i + 16 == len(c), c
+    return ids, words
+
+
+def cursor_position(c):
+    return cursor_fields(c)[1][3]
+
+
+def cursor_at(c, position):
+    """The issued cursor C proposing POSITION (an ack's payload)."""
+    return c[:-4] + position.to_bytes(4, 'big')
+
+
+def request(verb, cursor=None, position=None, items=8, seconds=30):
+    code = CODES[verb]
+    if verb == 'register':      # consumer, the empty stream list (the inbox), start :history
+        fields = octets(be(CONSUMER)) + u16(b'') + bytes([1])
+    elif verb in ('position', 'status'):
+        fields = octets(be(CONSUMER))
+    elif verb == 'read':
+        fields = u16(cursor) + items.to_bytes(4, 'big') + (65536).to_bytes(4, 'big')
+    elif verb == 'wait':
+        fields = u16(cursor) + items.to_bytes(4, 'big') + (65536).to_bytes(4, 'big') + seconds.to_bytes(4, 'big')
+    elif verb == 'ack':
+        fields = cursor_at(cursor, position)
+    return seal(KIND_REQUEST, bytes([code]) + fields)
+
+
+def open_frame(f):
+    """(kind, payload) of one whole frame; raises when the frame is not FNCT or its trailer is wrong."""
+    if len(f) < 42 or f[:5] != MAGIC + b'\x01':
+        raise ValueError(f'not an FNCT frame: {f.hex()}')
+    n = int.from_bytes(f[6:10], 'big')
+    if len(f) != 42 + n or blake3(f[:10 + n]) != f[10 + n:]:
+        raise ValueError(f'FNCT extent or trailer wrong: {f.hex()}')
+    return f[5], f[10:10 + n]
+
+
+def decode(verb, frame):
+    """A kind 28 reply as the judgments read it."""
+    kind, p = open_frame(frame)
+    if kind != KIND_PORT_REPLY:
+        raise ValueError(f'{verb}: reply kind {kind}')
+    cls = CLASSES[p[0]]
+    wl = int.from_bytes(p[1:3], 'big')
+    word = p[3:3 + wl].decode('ascii')
+    rl = int.from_bytes(p[3 + wl:7 + wl], 'big')
+    q = p[7 + wl:7 + wl + rl]
+    if 7 + wl + rl != len(p):
+        raise ValueError(f'{verb}: kind 28 payload {p.hex()}')
+    r = dict(outcome=cls, reason=word or 'none', result=q.hex())
+    if cls != 'accepted':
+        if q:
+            raise ValueError(f'{verb}: a {cls} reply carries a result {q.hex()}')
+        return r
+    if verb in ('register', 'position'):
+        r.update(cursor=q, position=cursor_position(q))
+    elif verb == 'ack':
+        r.update(position=int.from_bytes(q[4:12], 'big'))
+    elif verb == 'status':
+        r.update(position=int.from_bytes(q[4:12], 'big'), frontier=int.from_bytes(q[12:20], 'big'),
+                 gap=int.from_bytes(q[20:28], 'big'))
+    elif verb in ('read', 'wait'):
+        nl = int.from_bytes(q[1:3], 'big')
+        nxt = q[3:3 + nl]
+        count = int.from_bytes(q[3 + nl:7 + nl], 'big')
+        il = int.from_bytes(q[7 + nl:11 + nl], 'big')
+        r.update(more=q[0], cursor=nxt, next=cursor_position(nxt), count=count, items=q[11 + nl:11 + nl + il].hex())
+    return r
 
 
 class Report:
@@ -58,14 +161,8 @@ class Report:
         return holds
 
 
-def decode(reply):
-    outcome, reason, position, frontier, count, more = reply
-    return dict(outcome=OUTCOMES.get(outcome, outcome), reason=REASONS.get(reason, reason),
-                position=position, frontier=frontier, count=count, more=more)
-
-
 class Consumer:
-    """The local carrier's client: one request in flight, its reply exactly six octets."""
+    """The local carrier's client: one request in flight, its reply one FNCT frame."""
 
     def __init__(self, path, report):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -73,26 +170,32 @@ class Consumer:
         self.sock.connect(path)
         self.report = report
 
-    def send(self, verb, arg=None):
-        frame = bytes([CMD_STATUS, VERBS[verb], CONSUMER] + ([] if arg is None else [arg]))
+    def send(self, verb, **fields):
+        frame = request(verb, **fields)
         self.sock.sendall(frame)
         return frame
 
-    def receive(self, frame, verb, seconds=30):
+    def _read(self, n):
         got = b''
-        self.sock.settimeout(seconds)
-        while len(got) < 6:
-            chunk = self.sock.recv(6 - len(got))
+        while len(got) < n:
+            chunk = self.sock.recv(n - len(got))
             if not chunk:
                 break
             got += chunk
-        self.report.exchange('L', frame, got, verb)
-        if len(got) != 6:
-            raise RuntimeError(f'{verb}: the node answered {got!r} and closed')
-        return decode(got)
+        return got
 
-    def call(self, verb, arg=None):
-        return self.receive(self.send(verb, arg), verb)
+    def receive(self, frame, verb, seconds=30):
+        self.sock.settimeout(seconds)
+        got = self._read(10)
+        if len(got) == 10:
+            got += self._read(int.from_bytes(got[6:10], 'big') + 32)
+        self.report.exchange('L', frame, got, verb)
+        if len(got) < 42:
+            raise RuntimeError(f'{verb}: the node answered {got!r} and closed')
+        return decode(verb, got)
+
+    def call(self, verb, **fields):
+        return self.receive(self.send(verb, **fields), verb)
 
     def quiet(self, seconds):
         """True when no octet arrives within SECONDS (a parked request)."""
@@ -100,7 +203,7 @@ class Consumer:
         return not ready
 
     def stop(self):
-        frame = bytes([CMD_STOP, 0])
+        frame = seal(KIND_CONTROL, bytes([CMD_STOP]))
         self.sock.sendall(frame)
         self.sock.settimeout(30)
         rest = b''
@@ -218,35 +321,36 @@ def scenario(port, path, report, mid):
     c = Consumer(path, report)
 
     # register: accepted with the recorded cursor (e-surface 3).
-    r = c.call('register', 0)
-    j('register(c1, start 0) is accepted', r['outcome'] == 'accepted' and r['reason'] == 'none', r)
-    again = c.call('register', 0)
+    r = c.call('register')
+    j('register(c1, the inbox, from history) is accepted', r['outcome'] == 'accepted' and r['reason'] == 'none', r)
+    cur = r.get('cursor', b'')
+    again = c.call('register')
     j('the same registration again answers the recorded cursor', again['outcome'] == 'accepted'
-      and again['position'] == r['position'], again)
+      and again.get('cursor') == cur, again)
     s0 = c.call('status')
     j('status answers accepted with position <= frontier', s0['outcome'] == 'accepted'
-      and s0['position'] <= s0['frontier'], s0)
+      and s0['position'] <= s0['frontier'] and s0['gap'] == s0['frontier'] - s0['position'], s0)
     p0 = c.call('position')
     j('position answers the recorded cursor (status\'s position)', p0['outcome'] == 'accepted'
-      and p0['position'] == s0['position'], p0)
+      and p0['position'] == s0['position'] and p0.get('cursor') == cursor_at(cur, s0['position']), p0)
 
     # read: a page in commit-position order from the recorded position to the frontier (3, 4.1).
-    page = c.call('read')
-    j('read is accepted and never past the published frontier', page['outcome'] == 'accepted'
-      and page['position'] == p0['position'] and page['frontier'] >= s0['frontier'], page)
-    j('the page is complete within the default limit (more 0), so its frontier is its next proposal',
+    page = c.call('read', cursor=cur)
+    j('read is accepted and its next proposal is the frontier status answered', page['outcome'] == 'accepted'
+      and page['next'] >= s0['frontier'], page)
+    j('the page is complete within the client\'s limit (more 0), so its next cursor is its next proposal',
       page['more'] == 0, page)
     if page['count'] > 0:
-        a = c.call('ack', page['frontier'])
-        j('ack of the page\'s frontier is accepted and recorded', a['outcome'] == 'accepted'
-          and a['position'] == page['frontier'], a)
-    caught = c.call('position')
+        a = c.call('ack', cursor=cur, position=page['next'])
+        j('ack of the page\'s next is accepted and recorded', a['outcome'] == 'accepted'
+          and a['position'] == page['next'], a)
+    caught = c.call('status')
     frontier = caught['frontier']
-    j('after the ack, position is the frontier (nothing unread)', caught['outcome'] == 'accepted'
-      and caught['position'] == caught['frontier'], caught)
+    j('after the ack, the recorded position is the frontier (nothing unread)', caught['outcome'] == 'accepted'
+      and caught['position'] == caught['frontier'] and caught['gap'] == 0, caught)
 
     # wait: parks while nothing past the cursor is published (3, 5; K4).
-    w = c.send('wait')
+    w = c.send('wait', cursor=cur)
     j('wait with nothing unread parks (no reply within 2 s)', c.quiet(2), 'quiet')
 
     # append on carrier N: an NNTP POST (consumer-port.lisp: append is POST).
@@ -278,30 +382,32 @@ def scenario(port, path, report, mid):
         new = seen['frontier']
     else:
         j('the woken wait is accepted', woke['outcome'] == 'accepted', woke)
-        j('the woken page holds exactly the one new commit, from the recorded position', woke['count'] == 1
-          and woke['position'] == frontier and woke['frontier'] == frontier + 1 and woke['more'] == 0, woke)
-        new = woke['frontier']
+        j('the woken page holds exactly the one new commit, its next the post\'s position', woke['count'] == 1
+          and woke['next'] == frontier + 1 and woke['more'] == 0, woke)
+        new = woke['next']
 
     # ack contract (3.2): forward only; equal accepted, lower behind, past the frontier refused.
-    a = c.call('ack', new)
-    j('ack of the woken page\'s frontier is accepted, recorded at it', a['outcome'] == 'accepted'
+    a = c.call('ack', cursor=cur, position=new)
+    j('ack of the woken page\'s next is accepted, recorded at it', a['outcome'] == 'accepted'
       and a['position'] == new, a)
     p = c.call('position')
     j('position answers the acknowledged position', p['outcome'] == 'accepted' and p['position'] == new, p)
     s = c.call('status')
     j('status answers position and frontier, nothing unread', s['outcome'] == 'accepted' and s['position'] == new
       and s['frontier'] == new, s)
-    a = c.call('ack', new)
+    a = c.call('ack', cursor=cur, position=new)
     j('an equal ack is accepted with no change', a['outcome'] == 'accepted' and a['position'] == new, a)
-    a = c.call('ack', new - 1)
+    a = c.call('ack', cursor=cur, position=new - 1)
+    p = c.call('position')
     j('a lower ack is refused behind, without rewind', a['outcome'] == 'refused' and a['reason'] == 'behind'
-      and a['position'] == new, a)
-    a = c.call('ack', new + 1)
+      and p.get('position') == new, [a, p])
+    a = c.call('ack', cursor=cur, position=new + 1)
+    p = c.call('position')
     j('an ack past the committed frontier is refused beyond-frontier', a['outcome'] == 'refused'
-      and a['reason'] == 'beyond-frontier' and a['position'] == new, a)
-    after = c.call('read')
+      and a['reason'] == 'beyond-frontier' and p.get('position') == new, [a, p])
+    after = c.call('read', cursor=cur)
     j('a read after the ack starts at the acknowledged position: an empty page', after['outcome'] == 'accepted'
-      and after['position'] == new and after['count'] == 0, after)
+      and after['next'] == new and after['count'] == 0, after)
     rest = c.stop()
     j('the stop command closes the control connection', rest == b'', rest.hex())
 
@@ -359,10 +465,11 @@ def main(argv=None):
         socket_removed=not os.path.exists(path),
         judgments=report.judgments, exchanges=report.exchanges,
         judged=len(report.judgments), held=sum(x['holds'] for x in report.judgments),
-        owed=['FNCT framing and kind 28 replies on L (e-surface.md 4.2): the served fn2-ctl reads the interim '
-              'octet frame above', 'page items (Message-ID, octets, streams, reasons; 4.1) in a read or wait answer: '
-              'the served reply carries the count only, so "the same article" is judged by its position (the one '
-              'commit past the frontier) and by ARTICLE over N'],
+        owed=['page items (Message-ID, octets, streams, reasons; 4.1) in a read or wait answer: the served '
+              'page carries its count and next cursor only, so "the same article" is judged by its position (the '
+              'one commit past the frontier) and by ARTICLE over N',
+              'the fncu cursor\'s history and incarnation (one 0 octet each until B serves the store\'s) and a '
+              'durable principal id (the principal\'s slot until then): e-surface.md 14 item 8'],
         verdict='pass' if started and error is None and held and code == 0 else 'fail')
     with open(os.path.join(out, 'report.json'), 'w') as f:
         json.dump(result, f, indent=1)

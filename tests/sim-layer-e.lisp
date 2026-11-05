@@ -16,6 +16,7 @@
 ; its observations.
 (in-package "ACL2")
 (include-book "../books/cns")
+(include-book "fnct-client")
 
 ;; End-to-end turn test (Brick F6): drive fn2-ctl and fn2-cns through fn2-turn
 ;; and the adapter loop (fn2-cw-loop). Placed in an encapsulate before
@@ -65,6 +66,14 @@
           ((mv & fn2-core) (fn2-successor-release 0 fn2-core)))
        fn2-core)))
   (local
+   (defun fn2-sle-cat (frames)
+     (declare (xargs :verify-guards nil))
+     (if (atom frames) nil (append (car frames) (fn2-sle-cat (cdr frames))))))
+  (local
+   (defun fn2-sle-lens (frames)
+     (declare (xargs :verify-guards nil))
+     (if (atom frames) nil (cons (len (car frames)) (fn2-sle-lens (cdr frames))))))
+  (local
    (defun fn2-sle-test-turn-read-and-stop ()
      (declare (xargs :verify-guards nil))
      (with-local-stobj fn2-core
@@ -76,14 +85,25 @@
               ((unless (eq acode :ok)) (mv nil fn2-core))
               ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
               (fn2-core (fn2-exec-wake wake fn2-core))
-              (clients (list (list '(1 2 5 0) '(2 2) nil nil)))
+              ;; pause and resume (kind 1, each answered by its posture in
+              ;; kind 2), a read of consumer 1's cursor at 0 arriving in two
+              ;; receives (the first a prefix: the frame waits for the rest;
+              ;; nothing recorded, so the page runs from 0 to the published 3),
+              ;; then stop (closed, no reply)
+              (pause (fnc-control 2)) (resume (fnc-control 3))
+              (read (fnc-read (fnc-issued 1 0 0 1 0) 8))
+              (stop (fnc-control 5))
+              (clients (list (list (append pause resume read stop)
+                                   (list (len pause) (len resume) 20 (- (len read) 20) (len stop)) nil nil)))
               ((mv status clients & fn2-core) (fn2-cw-loop 200 0 1 clients nil fn2-core))
               (res (car (fn2-cw-results clients)))
               (wire (car res))
               (closed (cadr res)))
            (mv (and (eq status :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal wire '(1 0 0 3 3 0))
+                    (equal (fnc-replies '(control control read) wire)
+                           '((:posture 1) (:posture 0) (:accepted "" (0 3 3))))
+                    (equal (len (fnc-replies '(control control read read) wire)) 3)
                     (eq closed t))
                fn2-core))
          ok))))
@@ -98,7 +118,8 @@
               ((unless (eq acode :ok)) (mv nil fn2-core))
               ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
               (fn2-core (fn2-exec-wake wake fn2-core))
-              (clients (list (list '(1 3) '(2) nil nil)))
+              (wait (fnc-wait (fnc-issued 1 0 0 1 0) 8 30))
+              (clients (list (list wait (list (len wait)) nil nil)))
               ((mv status1 clients & fn2-core) (fn2-cw-loop 100 0 1 clients nil fn2-core))
               (wire1 (car (car (fn2-cw-results clients))))
               ((unless (and (eq status1 :quiet) (null wire1) (equal (fn2-core-stop-reason fn2-core) 0)))
@@ -109,7 +130,7 @@
               (wire2 (car (car (fn2-cw-results clients)))))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal wire2 '(1 0 0 1 1 0)))
+                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 1)))))
                fn2-core))
          ok))))
   (local
@@ -123,18 +144,24 @@
               ((unless (eq acode :ok)) (mv nil fn2-core))
               ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
               (fn2-core (fn2-exec-wake wake fn2-core))
-              ;; Phase 1: register (fkind 1, consumer 1, cstart 0) then wait (fkind 3, consumer 1),
-              ;; followed by Phase 2's post-wake verbs (read, ack, dup-ack, behind-ack, beyond-frontier-ack,
-              ;; position, status, read-after-ack, stop). Because wait parks while fn2-ctl is in :waiting,
-              ;; Phase 1 stops at :quiet right after wait parks, before consuming the remaining chunks.
-              (clients (list (list '(1 1 1 0  1 3 1  1 2 1  1 4 1 2  1 4 1 2  1 4 1 1  1 4 1 9  1 5 1  1 6 1  1 2 1  5 0)
-                                   '(4 3 3 4 4 4 4 3 3 3 2)
-                                   nil nil)))
+              ;; Phase 1: register (consumer 1 from :history) then wait on the
+              ;; cursor it issues, followed by Phase 2's post-wake verbs (read,
+              ;; ack, dup-ack, behind-ack, beyond-frontier-ack, position,
+              ;; status, read-after-ack, stop): each frame its own chunk. The
+              ;; wait parks while fn2-ctl is in :waiting, so Phase 1 stops at
+              ;; :quiet right after it parks, before the remaining chunks.
+              (c (fnc-issued 1 0 1 1 0))
+              (frames (list (fnc-register 1 1) (fnc-wait c 8 30) (fnc-read c 8) (fnc-ack c 2) (fnc-ack c 2)
+                            (fnc-ack c 1) (fnc-ack c 9) (fnc-position 1) (fnc-status 1) (fnc-read c 8)
+                            (fnc-control 5)))
+              (clients (list (list (fn2-sle-cat frames) (fn2-sle-lens frames) nil nil)))
               ((mv status1 clients & fn2-core) (fn2-cw-loop 200 0 1 clients nil fn2-core))
               (wire1 (car (car (fn2-cw-results clients))))
               ((unless (and (eq status1 :quiet)
                             (equal (fn2-core-stop-reason fn2-core) 0)
-                            (equal wire1 '(1 0 0 0 0 0))))
+                            (equal (fnc-replies '(register) wire1) '((:accepted "" 0)))
+                            ;; the register's cursor is the issued one (version 1, epoch 1, at 0)
+                            (equal (fnc-reply-cursor 'register wire1) c)))
                (mv nil fn2-core))
               ;; Phase 2: post/publish article 1 at commit position 2 on stream 0, waking parked wait,
               ;; which then answers the wait and drains the remaining verbs through stop.
@@ -147,17 +174,17 @@
               (closed2 (cadr res2)))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal wire2
-                           '(1 0 0 0 0 0
-                             1 0 0 2 1 0
-                             1 0 0 2 1 0
-                             1 0 2 2 0 0
-                             1 0 2 2 0 0
-                             2 6 2 2 0 0
-                             2 7 2 2 0 0
-                             1 0 2 2 0 0
-                             1 0 2 2 0 0
-                             1 0 2 2 0 0))
+                    (equal (fnc-replies '(register wait read ack ack ack ack position status read) wire2)
+                           '((:accepted "" 0)
+                             (:accepted "" (0 2 1))
+                             (:accepted "" (0 2 1))
+                             (:accepted "" 2)
+                             (:accepted "" 2)
+                             (:refused "behind" nil)
+                             (:refused "beyond-frontier" nil)
+                             (:accepted "" 2)
+                             (:accepted "" (2 2 0))
+                             (:accepted "" (0 2 0))))
                     (eq closed2 t))
                fn2-core))
          ok))))
@@ -231,7 +258,7 @@
   (local
    (defun fn2-sle-append-wire ()
      (declare (xargs :verify-guards nil))
-     (append (list 1 7 1 9) (fn2-cw-crlf-octets *fn2-sle-append-article*))))
+     (fnc-append 9 (fn2-cw-crlf-octets *fn2-sle-append-article*))))
   (local
    (defun fn2-sle-append-nntp-expected ()
      (declare (xargs :verify-guards nil))
@@ -291,7 +318,8 @@
               ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
               (fn2-core (fn2-exec-wake wake fn2-core))
               (frame (fn2-sle-append-wire))
-              (clients (list (list (append frame '(5 0)) (list (len frame) 2) nil nil)))
+              (stop (fnc-control 5))
+              (clients (list (list (append frame stop) (list (len frame) (len stop)) nil nil)))
               ((mv status1 clients store held fn2-core) (fn2-sle-loop 4000 0 clients nil nil fn2-core))
               ((unless held) (mv (list :no-accept status1) fn2-core))
               (wire1 (car (car (fn2-cw-results clients))))
@@ -302,7 +330,7 @@
               ((mv status2 clients & fn2-core) (fn2-cw-loop 8000 0 2 clients store fn2-core))
               (wire2 (car (cadr (fn2-cw-results clients)))))
            (mv (list status1 wire1 status2 wire2 (fn2-core-stop-reason fn2-core)) fn2-core))
-         (let ((ok (and (eq (nth 0 r) :quiet) (equal (nth 1 r) '(1 0 1 0 0 0))
+         (let ((ok (and (eq (nth 0 r) :quiet) (equal (fnc-replies '(append) (nth 1 r)) '((:accepted "" (1 1))))
                         (eq (nth 2 r) :quiet) (equal (nth 3 r) (fn2-sle-append-nntp-expected))
                         (equal (nth 4 r) 0))))
            (or ok (cw "append ~x0 ~x1 ~x2 stop ~x3~%nntp ~s4~%" (nth 0 r) (nth 1 r) (nth 2 r) (nth 4 r)
