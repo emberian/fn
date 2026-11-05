@@ -11,7 +11,7 @@
 # (tools/certify.sh books/reference.lisp meta/emit/meta-probe.lisp).
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-root=$(CDPATH= cd -- "$here/../../.." && pwd)
+root=$(CDPATH= cd -- "$here/../.." && pwd)
 : "${ACL2:=$root/tools/acl2}"
 : "${ACL2_SYSTEM_BOOKS:=$HOME/tools/acl2-fn/acl2-8.7/books}"
 export ACL2_SYSTEM_BOOKS
@@ -25,7 +25,8 @@ fi
 if ! grep -F 'FN2-META-PRINT-WORLD PASS' "$log.probe" >/dev/null; then
   grep -F 'META ERROR' "$log.probe" | head -40; tail -20 "$log.probe"; echo "print-probe FAILED (log $log.probe)"; exit 1
 fi
-src=$(git -C "$root" rev-parse --short HEAD)
+# FN2_EMIT_SRC names the source when the tree is a copy without .git (a box tree, tools/box_certify_bb2.sh).
+src=${FN2_EMIT_SRC:-$(git -C "$root" rev-parse --short HEAD)}
 python3 -I "$here/emit_lean.py" "$here/world.sexp" "$root/meta/Fn2/Instances/LayerA.lean" "dev $src"
 python3 -I "$here/emit_embed.py" "$here/world-probe.sexp" "$root/meta/Fn2/Instances/LayerAWorld.lean" \
   "$root/meta/Fn2/Instances/LayerAKinds.lean" Fn2.Instances.LayerA \

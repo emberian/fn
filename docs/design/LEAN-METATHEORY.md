@@ -4,7 +4,7 @@ Brief: `build/coordinator/briefs/LEAN-METATHEORY-20261028.md`, then ember's work
 
 The project: `meta/` on dev (lane branch `fn2/lean`, worktree `/Users/ember/dev/fn/build/lanes/fn2/lean`). Astra's sessions: `fn2/lean-meta-astra-1..3.md` (2026-10-28, the metatheory, §11) and `fn2/lean-meta-astra-4.md` (2026-10-31, the embedding and the pathway, §11).
 
-**Scope of what this note claims, in one sentence.** Every Lean theorem named below as proved elaborates (`lake build` of `meta` on the Mac, Lean 4.30.0, Mathlib at minidregg's pin, on 2026-10-31) and the axiom census (`AxiomCensus.lean`) shows only `propext`, `Quot.sound` and `Classical.choice`; every measured number is from the run named beside it, on 24fce1ecd (the books; the Lean on dev at cc3750e91).
+**Scope of what this note claims, in one sentence.** Every Lean theorem named below as proved elaborates (`lake build` of `meta` on bb2, Lean 4.30.0, Mathlib at minidregg's pin, 635 jobs, 2026-11-05 at lane/notebooks-lean over dev aeeb60068) and the axiom census (`AxiomCensus.lean`, 269 entries) shows only `propext`, `Quot.sound` and `Classical.choice` and no `sorryAx`; every measured number is from the run named beside it. The status block at the head of §0 is the present state; dated paragraphs below it are the history they say.
 
 ## Contents
 -1. Ruling (ember, 2026-10-31)
@@ -31,6 +31,28 @@ Ember: "the lean model of the machine should be aligned with our present status 
 This is ember's work order; it runs beside the spine (the spine-only ruling of 07:10 covers the layer seats, not this). Items 1-3 are built (§3-§6); item 4 is §9, read once by Astra (§11).
 
 ## 0. The answer in one page
+
+**Status at the tip (2026-11-05; lane/notebooks-lean over dev aeeb60068, re-emitted and built on bb2).**
+- **Registry** (`Fn2.Instances.LayerA`): 12 machines, 54 columns tables, 54 core children, 521 squares, 262 costs, 4 waits, 66
+  operation sets, 31 commands, 0 ports, 15 schemas, 87 layouts, 9 arm-contract rows, and F5's tables (1 resource, 1 service,
+  2 actions, 1 app manifest, newly printed); 2,272 symbols; 126 machine cases (Q1 catalogue 134 with the router's fallback and
+  the executor's seven). `fn2-ports` prints 0 rows: reference's world does not include `consumer-port`.
+- **Embedding** (`LayerAWorld`, `LayerAKinds`, `LayerAEqns1-4`): 4,560 functions translated, 3,753 guards, 38 natives,
+  **0 refused, 0 dropped**; 34 kinds (17 child form: echo, scribe, cursor, the measure's probe and thirteen
+  `machine-arms-unit` test kinds); 146 operations; 8,313 dispatch equations by `rfl`. The step reader reads all 1,399
+  expressions of the child-form kinds, **0 refused**.
+- **Proved**: `lake build` 635 jobs green; census 269 entries, 0 `sorryAx` (65 propext only, 58 propext+Quot.sound,
+  105 all three, 7 Quot.sound only, 32 none).
+- **Measure** (records at the tip, `meta/emit/record-*.lsp` on bb2): echo+scribe 963/963, the cursor 596/596 (35 functions),
+  the probe 31/31, each in interp, generated, guard and frame. **No named difference.**
+- **Defects the re-emission found and fixed (generator vocabulary the Lean side lacked):** `defcost :faults` (F2) was not
+  printed and the interpreter did not route an unrouted fault code to `(:stop :machine-phase)` (`faultRoute`, `Fn2.Arms`);
+  `(:refuse WORD)` (F2) was not read (it desugars by the kind's word field and `refuse` sub-arm, `expandRefuse`, mirroring
+  `machine-arms.lisp` `:refuse`), and a bare-step `:on-refusal` was not normalised (`fn2-arms-norm-refusal`): together they
+  made `fn2-arms-f2-probe` read empty and failed `layerA_childForm_contracts_agree`. Machine rows' `:genesis` and `:links`
+  are omitted from the registry by name (`:links` is carried by `LayerAKinds`; genesis arms are not translated: owed).
+- **Owed**: genesis arms in the embedding; `:park :taken` and a declared wait with a parker (no `:child`); core-form kinds
+  (listener, conn, upload, txn, cns, ctl) are not measured; `Fn2.Arms.Derive` does not yet derive the fault route's stop.
 
 **ACL2 is the right home for the instances and the wrong engineering home for the frame** (§1): every generated square, kit instance, functional instantiation and guard is a statement about named functions of one world and ACL2 proves it where the code is; the frame-level theorems quantify over declarations, theories and diagrams, and Lean with Mathlib holds them. Since ember's order of 2026-10-31 the Lean side is also **a model of the machine itself**, read from the world, never transcribed.
 
