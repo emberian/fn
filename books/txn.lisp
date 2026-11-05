@@ -860,9 +860,9 @@
        ((unless (eq code :ok)) (mv code fn2-core))
        ((mv code fn2-core) (fn2-txn-xref-pairs k 0 tx 0 c0 g0 c1 g1 okind oslot ogen fn2-core))
        ((unless (eq code :ok)) (mv code fn2-core))
-       (fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
-       ((unless (and (<= ov-off fill) (<= (- fill ov-off) *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
-    (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- fill ov-off) okind oslot ogen fn2-core)))
+       (ov-end (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
+       ((unless (and (<= ov-off ov-end) (<= (- ov-end ov-off) *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
+    (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- ov-end ov-off) okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-txn-xref))

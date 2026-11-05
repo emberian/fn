@@ -256,8 +256,8 @@
        (ov-off (+ scanned *fn2-upload-digest-octets*))
        ((mv c fn2-core) (fn2-cs-admit k c0 g0 c1 g1 ov-off fn2-core))
        ((unless (eq c :ok)) (mv c nil store fn2-core))
-       (fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
-       (line (fn2-cs-octets-at c0 g0 ov-off (nfix (- fill ov-off)) fn2-core))
+       (ov-end (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
+       (line (fn2-cs-octets-at c0 g0 ov-off (nfix (- ov-end ov-off)) fn2-core))
        ((unless (equal line (fn2-cs-octets (nth 2 seed)))) (mv (list :line line) nil store fn2-core)))
     (mv :ok (list e epoch counter c0 g0 c1 g1) store fn2-core)))
 ;; The settled member's extent allocated to its article, the successor and
