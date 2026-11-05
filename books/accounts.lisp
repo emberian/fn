@@ -459,6 +459,55 @@
               (fn2-account-principal-id p (mv-nth 1 (fn2-account-rebind p fn2-accounts))))))
 (in-theory (disable fn2-account-rebind))
 
+;; A durable principal's slot (AUTHORITY-20261105 section 1, principal-create):
+;; the first :free row in [1, P) other than SKIP (the owner's), rebound (a
+;; fresh incarnation) and marked :configured, so no later claim takes it:
+;; (mv code slot fn2-accounts), :exhausted when no row is free. A claim whose
+;; transaction is refused is returned :free (fn2-account-unclaim); its
+;; incarnation stays bumped, so its id is never issued again.
+(defun fn2-account-claim-scan (k i skip fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (and (fn2-account-guard) (natp i) (natp k)) :measure (nfix k)))
+  (cond ((zp k) *fn2-none*)
+        ((not (and (natp i) (< (+ 1 i) (fn2-accounts-rows fn2-accounts)))) *fn2-none*)
+        ((and (not (equal i (nfix skip)))
+              (equal (fn2-accounts-state i fn2-accounts) *fn2-account-state-free*)
+              (< (fn2-accounts-incarnation i fn2-accounts) *fn2-account-u32-max*))
+         i)
+        (t (fn2-account-claim-scan (- k 1) (+ 1 i) skip fn2-accounts))))
+(defthm fn2-account-claim-scan-bound
+  (implies (not (equal (fn2-account-claim-scan k i skip fn2-accounts) *fn2-none*))
+           (and (natp (fn2-account-claim-scan k i skip fn2-accounts))
+                (< (+ 1 (fn2-account-claim-scan k i skip fn2-accounts)) (fn2-accounts-rows fn2-accounts))))
+  :rule-classes nil)
+(defun fn2-account-claim (skip fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)
+                  :guard-hints (("Goal" :use ((:instance fn2-account-claim-scan-bound
+                                               (k (fn2-accounts-rows fn2-accounts)) (i 1)))))))
+  (let ((p (fn2-account-claim-scan (fn2-accounts-rows fn2-accounts) 1 skip fn2-accounts)))
+    (if (equal p *fn2-none*) (mv :exhausted 0 fn2-accounts)
+      (mv-let (code fn2-accounts) (fn2-account-rebind p fn2-accounts)
+        (if (not (eq code :ok)) (mv :exhausted 0 fn2-accounts)
+          (let ((fn2-accounts (fn2-accounts-set-state p *fn2-account-state-configured* fn2-accounts)))
+            (mv :ok p fn2-accounts)))))))
+(defthm fn2-account-claim-preserves
+  (implies (fn2-account-guard)
+           (let ((fn2-accounts (mv-nth 2 (fn2-account-claim skip fn2-accounts)))) (fn2-account-guard)))
+  :hints (("Goal" :use ((:instance fn2-account-claim-scan-bound (k (fn2-accounts-rows fn2-accounts)) (i 1))))))
+(defthm fn2-account-claim-rows
+  (equal (nth *fn2-accounts-rows* (mv-nth 2 (fn2-account-claim skip fn2-accounts))) (nth *fn2-accounts-rows* fn2-accounts)))
+(defthm fn2-account-claim-natp (natp (mv-nth 1 (fn2-account-claim skip fn2-accounts))) :rule-classes :type-prescription)
+(defun fn2-account-unclaim (p skip fn2-accounts)
+  (declare (xargs :stobjs fn2-accounts :guard (fn2-account-guard)))
+  (if (and (natp p) (< 0 p) (not (equal p (nfix skip))) (< (+ 1 p) (fn2-accounts-rows fn2-accounts))
+           (equal (fn2-accounts-state p fn2-accounts) *fn2-account-state-configured*))
+      (fn2-accounts-set-state p *fn2-account-state-free* fn2-accounts)
+    fn2-accounts))
+(defthm fn2-account-unclaim-preserves
+  (implies (fn2-account-guard) (let ((fn2-accounts (fn2-account-unclaim p skip fn2-accounts))) (fn2-account-guard))))
+(defthm fn2-account-unclaim-rows
+  (equal (nth *fn2-accounts-rows* (fn2-account-unclaim p skip fn2-accounts)) (nth *fn2-accounts-rows* fn2-accounts)))
+(in-theory (disable fn2-account-claim-scan fn2-account-claim fn2-account-unclaim))
+
 ;; ------------------------------------------------------------------------
 ;; The invariant, executable: per dimension committed = sum of
 ;; max(hold, reserve) <= capacity, and hold <= limit on every row.
