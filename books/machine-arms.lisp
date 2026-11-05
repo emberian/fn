@@ -1387,6 +1387,106 @@
 (defmacro fn2-arms-child-emit (name prefix k kind tuple body guard measure callees readers rowsp)
   `(make-event (value (cons 'progn (fn2-arms-child-emit-events ',name ',prefix ',k ',kind ',tuple ',body ',guard
                                                                ',measure ',callees ',readers ',rowsp (w state))))))
+; One write function per field set (D26, measured 2026-11-05): a path's
+; batched write is a call of K-WRITE+F1+...+FN, its values the arguments,
+; never the PUT macro's expansion inline. Inline, every value's case split
+; and the batch's width checks multiplied the arm's paths in its guard and
+; preserves proofs (conn's :draining 143 s); the function is proved once
+; per field set and is closed in every arm. The fields are in column order
+; (the batch's bindings are parallel and its fields distinct, so the order
+; is not observable); a phase argument is chosen among the kind's phase
+; constants, as the put's policy requires (identity on every phase code).
+(defun fn2-arms-cols-order (fields cols)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom cols) nil)
+        ((member-eq (caar cols) fields) (cons (caar cols) (fn2-arms-cols-order fields (cdr cols))))
+        (t (fn2-arms-cols-order fields (cdr cols)))))
+(defun fn2-arms-write-suffix (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) "" (concatenate 'string "+" (symbol-name (car fields)) (fn2-arms-write-suffix (cdr fields)))))
+(defun fn2-arms-write-name (kind fields)
+  (declare (xargs :verify-guards nil))
+  (fn2-arms-sym kind (concatenate 'string "-WRITE" (fn2-arms-write-suffix fields))))
+(defun fn2-arms-write-formals (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (intern-in-package-of-symbol (concatenate 'string "FN2-ARMS-W-" (symbol-name (car fields))) 'fn2-arms-w)
+          (fn2-arms-write-formals (cdr fields)))))
+(defun fn2-arms-write-values (fields pairs)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (cadr (assoc-eq (car fields) pairs)) (fn2-arms-write-values (cdr fields) pairs))))
+(defun fn2-arms-write-put-pairs (kind fields formals states)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (list (car fields) (if (eq (car fields) 'phase) (fn2-arms-phase-choice (car formals) kind states) (car formals)))
+          (fn2-arms-write-put-pairs kind (cdr fields) (cdr formals) states))))
+(defun fn2-arms-write-events (kind fields world)
+  ; the write function of FIELDS, once per kind and field set
+  (declare (xargs :verify-guards nil))
+  (let* ((name (fn2-arms-write-name kind fields))
+         (formals (fn2-arms-write-formals fields))
+         (states (fn2-machine-property kind :states world)))
+    `(make-event
+      (if (function-symbolp ',name (w state)) (value '(value-triple :redundant))
+        (value '(progn
+                 (defun ,name (id ,@formals fn2-core)
+                   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+                   (,(fn2-arms-sym kind "-PUT-CORE") id ,@(fn2-arms-write-put-pairs kind fields formals states)))
+                 (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil)))))))
+(mutual-recursion
+ (defun fn2-arms-lift-writes (x put kind cols sigs)
+   ; (mv x' sigs): every (PUT ID (F E) ...) in the term X a write function call
+   (declare (xargs :verify-guards nil :measure (acl2-count x)))
+   (cond ((atom x) (mv x sigs))
+         ((eq (car x) 'quote) (mv x sigs))
+         ((and (eq (car x) put) (consp (cdr x)) (doublet-listp (cddr x)))
+          (let ((fields (fn2-arms-cols-order (strip-cars (cddr x)) cols)))
+            (mv-let (pairs sigs) (fn2-arms-lift-writes-list (cddr x) put kind cols sigs)
+              (mv `(,(fn2-arms-write-name kind fields) ,(cadr x) ,@(fn2-arms-write-values fields pairs) fn2-core)
+                  (if (member-equal fields sigs) sigs (append sigs (list fields)))))))
+         (t (mv-let (a sigs) (fn2-arms-lift-writes (car x) put kind cols sigs)
+              (mv-let (d sigs) (fn2-arms-lift-writes-list (cdr x) put kind cols sigs)
+                (mv (cons a d) sigs))))))
+ (defun fn2-arms-lift-writes-list (l put kind cols sigs)
+   (declare (xargs :verify-guards nil :measure (acl2-count l)))
+   (if (atom l) (mv l sigs)
+     (mv-let (a sigs) (fn2-arms-lift-writes (car l) put kind cols sigs)
+       (mv-let (d sigs) (fn2-arms-lift-writes-list (cdr l) put kind cols sigs)
+         (mv (cons a d) sigs))))))
+(defun fn2-arms-write-events-list (kind sigs world)
+  (declare (xargs :verify-guards nil))
+  (if (atom sigs) nil
+    (cons (fn2-arms-write-events kind (car sigs) world) (fn2-arms-write-events-list kind (cdr sigs) world))))
+;; The core's pure readers a body calls (stobj in, none out): closed in its
+;; preserves proofs, which need only its writers' facts. Opened, a test's
+;; reader multiplies the walk by its own cases (D26: fn2-transition's
+;; preserves walked 9,133 subgoals through the scheduler's predicates).
+(mutual-recursion
+ (defun fn2-arms-core-reads (x world acc)
+   (declare (xargs :verify-guards nil :measure (acl2-count x)))
+   (cond ((atom x) acc)
+         ((eq (car x) 'quote) acc)
+         (t (fn2-arms-core-reads-list (cdr x) world
+              (if (and (symbolp (car x)) (not (member-eq (car x) acc))
+                       (member-eq 'fn2-core (getpropc (car x) 'stobjs-in nil world))
+                       (fn2-arms-no-stobj (getpropc (car x) 'stobjs-out nil world)))
+                  (cons (car x) acc)
+                (if (consp (car x)) (fn2-arms-core-reads (car x) world acc) acc))))))
+ (defun fn2-arms-core-reads-list (l world acc)
+   (declare (xargs :verify-guards nil :measure (acl2-count l)))
+   (if (atom l) acc (fn2-arms-core-reads-list (cdr l) world (fn2-arms-core-reads (car l) world acc)))))
+(defun fn2-arms-core-preserves (name formals pos code world)
+  (declare (xargs :verify-guards nil))
+  (let ((reads (fn2-arms-core-reads code world nil)))
+    `(fn2-core-preserves ,name ,formals :position ,pos :rows nil
+       ,@(and reads `(:hints (("Goal" :in-theory (disable ,@reads))))))))
+(defun fn2-arms-core-writes (kind code world)
+  ; (mv code' events): CODE's writes through write functions, and their events
+  (declare (xargs :verify-guards nil))
+  (mv-let (code sigs) (fn2-arms-lift-writes code (fn2-arms-sym kind "-PUT-CORE") kind
+                                            (fn2-machine-property kind :columns world) nil)
+    (mv code (fn2-arms-write-events-list kind sigs world))))
 ;; A :repeat's pass function (child form over the arm's children, or core form).
 (defun fn2-arms-repeat-events (helper kind ucode bcode bacc env)
   (declare (xargs :verify-guards nil))
@@ -1406,14 +1506,15 @@
               ;; the loop keeps the row's table and the directory their sizes (the
               ;; arm's later writes are checked against them)
               t)))
-      (let* ((bindings (fn2-machine-read-bindings kind reads cols))
-             (inner `(if ,ucode (mv n fn2-core) ,bcode)))
-        `((defun ,helper (n id budget fn2-core)
-            (declare (xargs :stobjs fn2-core :measure (nfix n) :guard (and (natp n) (fn2-core-wfp fn2-core)))
-                     (ignorable id budget))
-            (if (or (zp n) (not (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok))) (mv 0 fn2-core)
-              ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
-          (fn2-core-preserves ,helper (n id budget fn2-core) :position 1 :rows nil))))))
+      (let* ((bindings (fn2-machine-read-bindings kind reads cols)))
+        (mv-let (inner writes) (fn2-arms-core-writes kind `(if ,ucode (mv n fn2-core) ,bcode) world)
+          `(,@writes
+            (defun ,helper (n id budget fn2-core)
+              (declare (xargs :stobjs fn2-core :measure (nfix n) :guard (and (natp n) (fn2-core-wfp fn2-core)))
+                       (ignorable id budget))
+              (if (or (zp n) (not (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok))) (mv 0 fn2-core)
+                ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,inner) inner)))
+            ,(fn2-arms-core-preserves helper '(n id budget fn2-core) 1 inner world)))))))
 ;; Auto-split for long :do chains (> 4 :do steps): emit a disabled child helper
 ;; carrying the referenced bound variables as formals.
 (mutual-recursion
@@ -1907,6 +2008,7 @@
             (and observe from (list :from from)))))
 (defun fn2-arms-fn-events (name kind observe acc body contract world)
   (declare (xargs :verify-guards nil))
+  (mv-let (body writes) (fn2-arms-core-writes kind body world)
   (let* ((args (if observe *fn2-arms-observe-args* '(id budget)))
          (pos (if observe 1 4))
          (reads (fn2-arm-get :reads acc))
@@ -1919,14 +2021,14 @@
          (wrapped `(if (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
                        ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body)
                      ,refused)))
-    (list (fn2-operation-events (list :machine kind) name 'fn2-core args
+    (append writes (list (fn2-operation-events (list :machine kind) name 'fn2-core args
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
             `(declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable ,@args))
             (list wrapped)
-            `((fn2-core-preserves ,name (,@args fn2-core) :position ,pos :rows nil))
+            (list (fn2-arms-core-preserves name (append args '(fn2-core)) pos wrapped world))
             (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
                   :refusal nil :contract contract
-                  :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))
+                  :cost-values (fn2-cost-values (fn2-arm-get :cost contract) world))))))))
 
 (defun fn2-arms-child-fn-events (name kind observe acc body world)
   (declare (xargs :verify-guards nil))

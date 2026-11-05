@@ -105,7 +105,10 @@
        (fn2-core (fn2-exec-record *fn2-trace-kind-service* *fn2-none* service position 0
                     (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) actions nil wake start fn2-core)))
     (mv 0 1 actions 0 (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) fn2-core)))
-(fn2-core-preserves fn2-exec-service (service position budget fn2-core) :position 5 :rows nil)
+; the predicates its tests read stay closed: opened, their cases multiplied
+; the walk to 9,000 subgoals (D26: 44 s, 0.1 s closed)
+(fn2-core-preserves fn2-exec-service (service position budget fn2-core) :position 5 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-exec-grant-p fn2-exec-system-row fn2-exec-queued))))
 
 ; Observation order is the posted FIFO, then the coalesced clock mailbox,
 ; then sticky signals. Each turn stops at the first exhausted budget.
@@ -122,7 +125,8 @@
           (fn2-exec-principal principal position action-budget fn2-core)
         (fn2-exec-service (nfix (- (nfix kind) *fn2-visit-commit*)) position action-budget fn2-core))))
    (t (mv 0 0 0 0 0 fn2-core))))
-(fn2-core-preserves fn2-transition (allow-observation action-budget fn2-core) :position 5 :rows nil)
+(fn2-core-preserves fn2-transition (allow-observation action-budget fn2-core) :position 5 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-exec-observation-p fn2-core-posted-p fn2-exec-eligible-p))))
 
 (defun fn2-exec-account-work (bytes steps fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
