@@ -71,7 +71,7 @@
          (:accepted :transaction-row :identity-reservation) (:refused :transaction-row :identity-reservation)
          (:uncertain :transaction-row :identity-reservation) (:releasing :transaction-row :identity-reservation)
          (:draining :transaction-row))
- :budget (:bytes 24576 :steps 32 :descriptors 4)
+ :budget (:bytes 26624 :steps 32 :descriptors 4)
  :capacity (fn2-txn-capacity profile)
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)

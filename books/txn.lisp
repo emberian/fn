@@ -51,13 +51,15 @@
 ;; Newsgroups is scanned at most this many octets per :prepare run.
 (defconst *fn2-txn-scan-bytes* 1024)
 
-;; The :ready transition's byte bound: C-S3's stage, emit and bind and B's
-;; admission happen in one run (nothing may stage or bind between a
-;; transaction's stage and its bind), so the run's bound is their sum, above
-;; ROUND2 B.3's 4 KiB (a departure recorded in the layer doc, 14.4).
+;; The :ready transition's byte bound: C-S3's stage, the overview line's
+;; Xref field (fn2-txn-xref, 2 KiB), emit and bind and B's admission happen
+;; in one run (nothing may stage or bind between a transaction's stage and
+;; its bind), so the run's bound is their sum, above ROUND2 B.3's 4 KiB (a
+;; departure recorded in the layer doc, 14.4).
 (defconst *fn2-txn-admit-bytes* 4096)
-(defconst *fn2-txn-ready-bytes* (+ 4096 8192 8192 *fn2-txn-admit-bytes*))
-(assert-event (equal *fn2-txn-ready-bytes* 24576))  ; the kind's :budget below
+(defconst *fn2-txn-xref-bytes* 2048)
+(defconst *fn2-txn-ready-bytes* (+ 4096 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
+(assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
 (defconst *fn2-upload-word-accepted* (fn2-upload-word-code :accepted))
 (defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
@@ -271,7 +273,7 @@
 (defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
   :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
 (defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
-  :bytes 2048
+  :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
 (defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
   :doc "Declare the article's identity, article and outcome slots and synthesize the overview line's first seven fields in chunk 0.")
@@ -746,10 +748,10 @@
   ;; appended to chunk 1 as one length octet and the name, for the Xref field.
   ;; Chunk 1 is scratch here: the source is durable and counted and its
   ;; digest already copied into chunk 0 (fn2-txn-put-post-for).
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k) (natp noff) (natp nlen))))
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
   (b* ((ac (+ *fn2-txn-slot-accepts* (* 2 (nfix k))))
        (ov (+ 1 ac))
-       ((unless (and (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
+       ((unless (and (natp noff) (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
        ((mv c fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
           (c fn2-pool)

@@ -125,7 +125,7 @@
 (defun fn2-cs-count (fuel c0 g0 c1 g1 counted hashed lines fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (or (zp fuel) (>= counted hashed)) (mv (if (zp fuel) :fuel :ok) lines fn2-core)
-    (mv-let (code counted lines fn2-core) (fn2-txn-count-next c0 g0 c1 g1 counted hashed lines 200 0 1 fn2-core)
+    (mv-let (code counted lines) (fn2-txn-count-next c0 g0 c1 g1 counted hashed lines 200 0 1 fn2-core)
       (if (eq code :ok) (fn2-cs-count (- fuel 1) c0 g0 c1 g1 counted hashed lines fn2-core) (mv code 0 fn2-core)))))
 (defun fn2-cs-lookup (fuel c0 g0 off len fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -182,7 +182,7 @@
             ((eq took t) (fn2-cs-device (- fuel 1) store fn2-core))
             (t (mv took store fn2-core))))))
 ;; B settles the owner's member: (mv code event store fn2-core).
-(defun fn2-cs-settle (fuel store fn2-core)
+(defun fn2-cs-seed-settle (fuel store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (zp fuel) (mv :fuel 0 store fn2-core)
     (b* (((mv code & event outcome fn2-core) (fn2-commit-take 200 0 1 fn2-core))
@@ -192,7 +192,7 @@
          ((mv & & & & fn2-core) (fn2-turn fn2-core))
          ((mv code store fn2-core) (fn2-cs-device 64 store fn2-core))
          ((unless (eq code :ok)) (mv code 0 store fn2-core)))
-      (fn2-cs-settle (- fuel 1) store fn2-core))))
+      (fn2-cs-seed-settle (- fuel 1) store fn2-core))))
 ;; From transaction slot 0 resolved: stage, prebind, the Xref field of K
 ;; groups (none for an evidence fact), emission into C1, B's admission and
 ;; the bind to its batch and event: (mv code fn2-core).
@@ -274,7 +274,7 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv c pending store fn2-core) (fn2-cs-submit seed store fn2-core))
        ((unless (eq c :ok)) (mv c store fn2-core))
-       ((mv c event store fn2-core) (fn2-cs-settle 4000 store fn2-core))
+       ((mv c event store fn2-core) (fn2-cs-seed-settle 4000 store fn2-core))
        ((unless (eq c :ok)) (mv (list :settle c) store fn2-core)))
     (mv-let (c fn2-core) (fn2-cs-finish pending event fn2-core) (mv c store fn2-core))))
 ;; (mv code store fn2-core): STORE the seeding device's writes, oldest
@@ -726,7 +726,7 @@
        ((unless (eq c :ok)) (mv (list a :resolve c) store fn2-core))
        ((mv c fn2-core) (fn2-cs-admit 0 0 0 c1 g1 0 fn2-core))
        ((unless (eq c :ok)) (mv (list a c) store fn2-core))
-       ((mv c & store fn2-core) (fn2-cs-settle 4000 store fn2-core))
+       ((mv c & store fn2-core) (fn2-cs-seed-settle 4000 store fn2-core))
        ((unless (eq c :ok)) (mv (list a :settle c) store fn2-core))
        ((mv c fn2-core)
         (fn2-cs-chain (mv-let (c fn2-core) (fn2-successor-release 0 fn2-core) (mv (if (member-eq c '(:ok :state)) :ok c) fn2-core))
