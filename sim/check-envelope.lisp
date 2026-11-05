@@ -167,7 +167,9 @@
 
 ; The whole trace. Result (mv verdict caps fn2-core): :pass, or (FAILURE STEP).
 (defun fn2-env-steps (trace i bytes-p taken caps fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len trace)))
+  ;; the measure's goal is proved before clausify splits the rulers' case tests (D26: 56 s -> 1.7 s)
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len trace)
+                  :hints (("Goal" :do-not '(preprocess)))))
   (if (atom trace) (mv :pass caps fn2-core)
     (b* ((e (car trace)) (tag (and (consp e) (car e)))
          ((mv failure taken caps fn2-core)

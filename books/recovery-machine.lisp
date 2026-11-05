@@ -524,10 +524,12 @@
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core))))
   (mv :ok fn2-core)))
 (fn2-core-preserves fn2-recovery-start (id assume witness fn2-core) :position 1 :rows nil)
-
+; The kind's id fact stays in its own sections (as commit's, D26).
+(in-theory (disable fn2-recovery-idp-kind-value))
 )))
 (defun fn2-recovery-event-forms-3 ()
  (list 'progn (fn2-recovery-local-theory) '(progn
+(local (in-theory (enable fn2-recovery-idp-kind-value)))
 (defmachine-arms fn2-recovery-machine)
 (defmachine-run fn2-recovery-machine)
 )))

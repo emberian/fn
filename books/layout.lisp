@@ -446,7 +446,8 @@
        (- i pos))
     (mv code next fn2-pool)))
 (encapsulate ()
-  (local (in-theory (disable fn2-pool-rows)))
+  ;; D26: the size bound and the range check closed (13 s -> 0.1 s)
+  (local (in-theory (disable fn2-pool-rows nfix fn2-layout-max-size fn2-layout-range-code)))
   (fn2-pool-preserves fn2-layout-encode (layout slot gen off okind oslot ogen fn2-fields fn2-pool) :position 2 :disable nil))
 (in-theory (disable fn2-layout-encode))
 

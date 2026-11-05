@@ -183,7 +183,7 @@
               (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (natp b0))
   :guard-hints (("Goal" :in-theory (disable fn2-succ-eval-args fn2-succ-tip-scan fn2-succ-fits fn2-run-layout-size fn2-fields-rows
                                             fn2-succ-key-rows fn2-ov-entry fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign
-                                            fn2-fold-apply)))))
+                                            fn2-fold-apply nfix)))))
  (b* (((unless (and (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (< i *fn2-succ-slots*) (natp b0)
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
        (mv :bounds fn2-succ-slots fn2-fields))
@@ -242,7 +242,7 @@
  (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-vrun fn2-succ-slots-found
   fn2-succ-kindkw fn2-fold-arity fn2-succ-required fn2-run-layout-keys fn2-run-layout-fields fn2-succ-eval-args fn2-succ-key-rows
   fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign fn2-fold-apply
-  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh))
+  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh nfix))
 
 ;; Every slot of TX from I (K of them), in order: (mv code i slots fields).
 (defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
@@ -293,6 +293,7 @@
   (mv (+ bytes (nfix (fn2-succ-slots-size s fn2-succ-slots))) (+ 1 count))))
 (defthm fn2-succ-schema-sum-natp
  (and (natp (mv-nth 0 (fn2-succ-schema-sum k j tx sid fn2-succ-slots))) (natp (mv-nth 1 (fn2-succ-schema-sum k j tx sid fn2-succ-slots))))
+ :hints (("Goal" :in-theory (disable nfix)))
  :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-succ-schema-sum k j tx sid fn2-succ-slots))))
                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-succ-schema-sum k j tx sid fn2-succ-slots))))))
 (defun fn2-succ-seen (k j i tx sid fn2-succ-slots)
@@ -332,7 +333,8 @@
        (mv :full (nfix need))))
   (fn2-succ-room (- k 1) (+ 1 i) tx arena icap (+ 1 (nfix need)) fn2-succ-slots fn2-overlays)))
 (defthm fn2-succ-room-natp
- (natp (mv-nth 1 (fn2-succ-room k i tx arena icap need fn2-succ-slots fn2-overlays))) :rule-classes :type-prescription)
+ (natp (mv-nth 1 (fn2-succ-room k i tx arena icap need fn2-succ-slots fn2-overlays)))
+ :hints (("Goal" :in-theory (disable nfix))) :rule-classes :type-prescription)
 (in-theory (disable fn2-succ-schema-sum fn2-succ-seen fn2-succ-schema-overlays fn2-succ-room))
 
 ; Hold the bind scratch (once): :ok, or :full when the pool has none.
