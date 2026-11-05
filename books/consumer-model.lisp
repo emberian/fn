@@ -488,19 +488,19 @@
       (mv-let (answers st3) (fn2-cns-wake st2 fault) (mv o answers st3)))))
 
 ; A run: the trace ((OP OUTCOME ANSWERS STATE-BEFORE STATE-AFTER) ...) and the final state.
-(defun fn2-cns-run (ops st fault)
+(defun fn2-cns-model-run (ops st fault)
   (declare (xargs :verify-guards nil))
   (if (atom ops) (mv nil st)
     (mv-let (o answers st2) (fn2-cns-step (car ops) st fault)
-      (mv-let (trace st3) (fn2-cns-run (cdr ops) st2 fault)
+      (mv-let (trace st3) (fn2-cns-model-run (cdr ops) st2 fault)
         (mv (cons (list (car ops) o answers st st2) trace) st3)))))
 (defun fn2-cns-final (ops fault)
   (declare (xargs :verify-guards nil))
-  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
+  (mv-let (trace st) (fn2-cns-model-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
     (declare (ignore trace)) st))
 (defun fn2-cns-trace (ops fault)
   (declare (xargs :verify-guards nil))
-  (mv-let (trace st) (fn2-cns-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
+  (mv-let (trace st) (fn2-cns-model-run ops (fn2-cns-model-init "fn2-history" "fn2-incarnation") fault)
     (declare (ignore st)) trace))
 
 ;; The NNTP view (carrier N): what ARTICLE and GROUP answer over the same log.
