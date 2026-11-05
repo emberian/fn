@@ -12,7 +12,9 @@ name=${1:?lane name}; shift
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 remote=fn2-$name
 ssh_opts="-o ServerAliveInterval=10 -o ServerAliveCountMax=3"
-rsync -az -e "ssh $ssh_opts" --exclude='.git' --exclude='build' --exclude='*.fasl' \
+# Content sync without mtimes: a changed file gets a fresh remote mtime, so make recertifies
+# exactly its closure; an old local mtime can no longer hide behind a newer remote cert.
+rsync -rlpgoDz --checksum -e "ssh $ssh_opts" --exclude='.git' --exclude='build' --exclude='*.fasl' \
   --exclude='*.cert' --exclude='*.cert.out' --exclude='meta/.lake' \
   "$root/" "bb2:~/$remote/"
 ssh $ssh_opts bb2 "cd ~/$remote && SWARM_MEM_MAX=${SWARM_MEM_MAX:-20G} swarm-build env \
