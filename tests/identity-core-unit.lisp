@@ -560,5 +560,5 @@
 (assert-event
  (equal (fn2-icu-tips-result)
         '(:unstage :ok :ok :ok :ok :ok :state :ok :applied :ok :ok
-          :stream :ok :ok :ok :ok :ok 9 20 :done :done
+          :stream :ok :ok :ok :ok :ok 3 20 :done :done
           :names :ok :ok :ok (:duplicate 0))))

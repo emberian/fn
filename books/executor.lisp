@@ -265,7 +265,11 @@
        (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
-                  (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile)) fn2-core))
+                  (fn2-machine-admission-ordinal-of (fn2-profile-get :listener-targets profile))
+                  (fn2-machine-admission-ordinal-of
+                   (fn2-profile-get (if (assoc-equal :listener-local-target profile) :listener-local-target :listener-targets)
+                                    profile))
+                  fn2-core))
        (fn2-core (fn2-listener-set-principals (fn2-profile-get :listener-principals profile) fn2-core))
        (fn2-core (fn2-exec-genesis (fn2-exec-rows fn2-core) 0 fn2-core))
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))

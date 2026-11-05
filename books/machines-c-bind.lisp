@@ -368,8 +368,12 @@
 ;; transaction of B is released): its fn2-addr writes, one per call. Cursor
 ;; I = tx * W + slot walks the transaction rows bound to B (now :published)
 ;; and their non-empty addr slots, reading the staged row (its position the
-;; member's commit position, filled at bind). (mv code stream position next):
-;; :ok with the slot's stream and position and the cursor of the next call;
+;; member's commit position, filled at bind). An addr entry is a position in
+;; its principal's own addr stream (e-surface.md 7), the stream a served
+;; registration reads and parks on, so the member's stream is the entry's
+;; principal (the entry's stream field is the stream it was selected through,
+;; an item's detail). (mv code stream position next):
+;; :ok with the entry's principal and position and the cursor of the next call;
 ;; :done past the last; :state when the tables are not well formed. At most
 ;; K slots visited per call (the whole table: W x t, a profile bound).
 (defconst *fn2-succ-addr-sid* 4)
@@ -387,8 +391,10 @@
       ((mv c b0) (fn2-idc-stripe tx fcrows fn2-id-decides fn2-fields))
       ((unless (eq c :ok)) (mv c 0 0 0))
       (entry (+ b0 (* *fn2-succ-block* j)))
-      ((unless (< (+ entry *fn2-addr-entry-field-stream*) (fn2-fields-rows fn2-fields))) (mv :bounds 0 0 0)))
-  (mv :ok (fn2-fields-value (+ entry *fn2-addr-entry-field-stream*) fn2-fields)
+      ((unless (and (< (+ entry *fn2-addr-entry-field-principal*) (fn2-fields-rows fn2-fields))
+                    (< (+ entry *fn2-addr-entry-field-position*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds 0 0 0)))
+  (mv :ok (fn2-fields-value (+ entry *fn2-addr-entry-field-principal*) fn2-fields)
       (fn2-fields-value (+ entry *fn2-addr-entry-field-position*) fn2-fields) (+ 1 i))))
 (defun fn2-succ-stream-member (b i fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :guard t))

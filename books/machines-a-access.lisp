@@ -500,38 +500,46 @@
            (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-listener-set-mode-all))
-; The admitted kind every listener admits into (D 4.5), from the profile.
-(defun fn2-listener-target-rows (left target fn2-listener)
+; The admitted kind every listener admits into (D 4.5), from the profile, and
+; the kind its :local peers are admitted into (the profile's
+; :listener-local-target; the same kind when the profile names none).
+(defun fn2-listener-target-rows (left target local fn2-listener)
   (declare (xargs :stobjs fn2-listener :measure (nfix left)
                   :guard (and (fn2-listener-wfp fn2-listener) (natp left)
-                              (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target))))
+                              (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target)
+                              (unsigned-byte-p 8 local))))
   (if (zp left) fn2-listener
-    (let ((fn2-listener (fn2-listener-set-target (- left 1) target fn2-listener)))
-      (fn2-listener-target-rows (- left 1) target fn2-listener))))
+    (let* ((fn2-listener (fn2-listener-set-target (- left 1) target fn2-listener))
+           (fn2-listener (fn2-listener-set-local-target (- left 1) local fn2-listener)))
+      (fn2-listener-target-rows (- left 1) target local fn2-listener))))
 (defthm fn2-listener-target-rows-type
   (implies (and (fn2-listenerp fn2-listener) (fn2-listener-wfp fn2-listener)
-                (natp left) (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target))
-           (fn2-listenerp (fn2-listener-target-rows left target fn2-listener))))
+                (natp left) (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target)
+                (unsigned-byte-p 8 local))
+           (fn2-listenerp (fn2-listener-target-rows left target local fn2-listener))))
 (defthm fn2-listener-target-rows-wfp
   (implies (and (fn2-listener-wfp fn2-listener) (natp left)
-                (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target))
-           (fn2-listener-wfp (fn2-listener-target-rows left target fn2-listener))))
+                (<= left (fn2-listener-rows fn2-listener)) (unsigned-byte-p 8 target)
+                (unsigned-byte-p 8 local))
+           (fn2-listener-wfp (fn2-listener-target-rows left target local fn2-listener))))
 (in-theory (disable fn2-listener-target-rows))
-(defun fn2-listener-set-target-all (target fn2-core)
+(defun fn2-listener-set-target-all (target local fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (and (natp target) (< target *fn2-machine-admitted-max*))) (fn2-machine-refuse-write fn2-core)
+  (if (not (and (natp target) (< target *fn2-machine-admitted-max*)
+                (natp local) (< local *fn2-machine-admitted-max*)))
+      (fn2-machine-refuse-write fn2-core)
     (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
-      (fn2-listener-target-rows (fn2-listener-rows fn2-listener) target fn2-listener) fn2-core)))
+      (fn2-listener-target-rows (fn2-listener-rows fn2-listener) target local fn2-listener) fn2-core)))
 (defthm fn2-listener-set-target-all-type
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-target-all target fn2-core)))
+           (fn2-corep (fn2-listener-set-target-all target local fn2-core)))
   :hints (("Goal" :use ((:instance fn2-listener-target-rows-type
                          (fn2-listener (fn2-listener-table fn2-core))
                          (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
                   :in-theory (enable fn2-core-wfp))))
 (defthm fn2-listener-set-target-all-wfp
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-target-all target fn2-core)))
+           (fn2-core-wfp (fn2-listener-set-target-all target local fn2-core)))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-listener-set-target-all))
 
