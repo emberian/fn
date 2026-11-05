@@ -39,17 +39,18 @@ def seeded_article(letter, subject):
 
 
 # Each carrier's store and profile, as its session serves it:
-# - SIM (D's sim-session.lsp at 689d196a1): reading over a seeded store, reader-only. The Xref server is the model's
-#   default `.invalid` agent: specs/nntp.md 330-349 (PRF-206) puts a ninth field `Xref: SERVER group:number` on
-#   every OVER line, and SERVER is the path identity, `.invalid` when unset. local.test holds three
-#   articles numbered 1-3 before any client opens; local.empty holds none.
+# - SIM (D's sim-session.lsp at 689d196a1): reading over a seeded store, reader-only. The Xref server is the node's
+#   path identity, the profile's `fn2.invalid`: specs/nntp.md 330-349 (PRF-206) puts a ninth field
+#   `Xref: SERVER group:number` on every OVER line, and SERVER is the path identity. local.test holds three
+#   articles numbered 1-3 before any client opens, each committed through the core's transaction path
+#   (sim/seeded-store.lisp); local.empty holds none.
 # - NATIVE (A's native session, 8e42831b8): the same seeded store and profile (tests/seeded-store.lsp, shared
 #   by sim-session, native-serve and native-session). D3_POLICY's archive False remains the model's statement of a
 #   profile without read rows (*fn2-answer-unread*).
 CARRIERS = {
     'SIM': dict(groups={'local.test': {}, 'local.empty': {}},
                 articles=[seeded_article('a', 'one'), seeded_article('b', 'two'), seeded_article('c', 'three')],
-                policy=dict(D3_POLICY, archive=True)),
+                policy=dict(D3_POLICY, archive=True, server='fn2.invalid')),
 }
 CARRIERS['NATIVE'] = CARRIERS['SIM']
 

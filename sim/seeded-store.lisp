@@ -7,10 +7,13 @@
 ; The profile is the cursor's (read rows, x 2; the groups local.test 1 and
 ; local.empty 2) less its posting, so the posting replies stay the
 ; reader-only node's. Before any client opens, the store holds three
-; articles in local.test, published through C-S3 as tests/cursor-unit.lisp
-; seeds them (numbers 1-3, Message-IDs <a|b|c@example.invalid>, each overview
-; line with its Xref field, each source on the carrier's device at its
-; article row's location); local.empty holds none. fn2-ss-replay is ENVELOPE's replay of a boundary trace from
+; articles in local.test, each produced by the transaction's own path and
+; committed by B on the core's turns (owed-cursor's fn2-cs-seed): numbers
+; 1-3 in batches and events 1-3, Message-IDs <a|b|c@example.invalid>, each
+; overview line synthesized from its source with its Xref field, each
+; source and B's log on the carrier's device; local.empty holds none. So B's
+; commit frontier is batch 4 and C's read frontier batch 3, and a POST after
+; seeding is batch 4. fn2-ss-replay is ENVELOPE's replay of a boundary trace from
 ; this store (sim/check-envelope.lisp's fn2-envelope-replay, seeded), and
 ; fn2-ss-envelope-check its check against the clients' bytes.
 (in-package "ACL2")
@@ -33,16 +36,18 @@
   (declare (xargs :verify-guards nil))
   (cond ((atom text) 0) ((equal (car text) "") (len (cdr text))) (t (fn2-ss-body-lines (cdr text)))))
 ;; A stored overview line is the full form (RFC 3977 8.3.2, 8.4; specs/nntp.md
-;; PRF-206): its ninth field is "Xref: SERVER group:number", SERVER the path
-;; identity (.invalid while unset), as the transaction's late fill of the
-;; overview row writes it (C-S3a); the cursor renders the line as stored.
-;; Its :bytes and :lines are the stored source's (CRLF lines, unstuffed).
+;; PRF-206): its ninth field is "Xref: SERVER group:number", SERVER the
+;; profile's path identity, as the transaction's late fill of the overview
+;; row writes it (fn2-txn-xref, C-S3a); the cursor renders the line as
+;; stored. Its :bytes and :lines are the stored source's (CRLF lines,
+;; unstuffed). This is the reference's statement of the line; seeding
+;; refuses a seed whose synthesized line differs.
 (defun fn2-ss-line (subject mid n text)
   (declare (xargs :verify-guards nil))
   (fn2-csp-cat (list subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
                      (fn2-ss-tab) mid (fn2-ss-tab) "" (fn2-ss-tab) (fn2-csp-str (len (fn2-cs-source text)))
                      (fn2-ss-tab) (fn2-csp-str (fn2-ss-body-lines text))
-                     (fn2-ss-tab) "Xref: .invalid local.test:" (fn2-csp-str n))))
+                     (fn2-ss-tab) "Xref: " (fn2-profile-path-identity *fn2-ss-profile*) " local.test:" (fn2-csp-str n))))
 (defun fn2-ss-seed (subject mid n)
   (declare (xargs :verify-guards nil))
   (let ((text (fn2-ss-text subject mid)))

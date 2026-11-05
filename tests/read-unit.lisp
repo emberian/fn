@@ -234,7 +234,7 @@
       ((mv id0 fn2-core) (fn2-rdu-identity 0 "<a@example.invalid>" fn2-core))
       ((mv id1 fn2-core) (fn2-rdu-identity 1 "<c@example.invalid>" fn2-core))
       ((mv id2 fn2-core) (fn2-rdu-identity 0 "<nobody@example.invalid>" fn2-core))
-      ((mv conflict fn2-core) (fn2-cs-conflict "<a@example.invalid>" 0 5 fn2-core))
+      ((mv conflict & fn2-core) (fn2-cs-conflict "<a@example.invalid>" 0 nil fn2-core))
       ((mv id3 fn2-core) (fn2-rdu-identity 1 "<a@example.invalid>" fn2-core))
       ((mv refused fn2-core) (fn2-rdu-refusals fn2-core)))
   (mv (list :rows rows :seeded seeded :groups (list g1 g2 g3) :counts (list n1 n2 n3) :all all :limit lim :mid mid
@@ -370,13 +370,13 @@
 ;; (the CRC of test_live_state_machine's id).
 (defun fn2-rdu-head (n mid subject)
  (declare (xargs :verify-guards nil))
- (list (fn2-csp-cat (list "221 " n " " mid " headers follow")) (fn2-csp-cat (list "Xref: .invalid local.test:" n))
+ (list (fn2-csp-cat (list "221 " n " " mid " headers follow")) (fn2-csp-cat (list "Xref: fn2.invalid local.test:" n))
        "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject)) "Date: Fri, 30 Oct 2026 12:00:00 +0000"
        (fn2-csp-cat (list "Message-ID: " mid)) "Newsgroups: local.test" "."))
 (defun fn2-rdu-over (n subject mid bytes)
  (declare (xargs :verify-guards nil))
  (fn2-csp-cat (list n (fn2-ss-tab) subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
-                    (fn2-ss-tab) mid (fn2-ss-tab) (fn2-ss-tab) bytes (fn2-ss-tab) "3" (fn2-ss-tab) "Xref: .invalid local.test:" n)))
+                    (fn2-ss-tab) mid (fn2-ss-tab) (fn2-ss-tab) bytes (fn2-ss-tab) "3" (fn2-ss-tab) "Xref: fn2.invalid local.test:" n)))
 (defconst *fn2-rdu-session-lines*
  '("GROUP local.test" "OVER 1-" "HEAD <c@example.invalid>" "HEAD 3" "BODY <a@example.invalid>"))
 (defun fn2-rdu-session-expected ()
@@ -398,4 +398,37 @@
 ;; than serve a store the device never received.
 (assert-event (equal (fn2-ss-transcript 138560 *fn2-ss-profile* *fn2-rdu-session-lines*)
                      '(:unseeded (:device :bounds 24576))))
+;; The seeds are the core's own commits (owed-cursor's fn2-cs-seed: the
+;; transaction's path, B's admission and commit on the core's turns), so B's
+;; commit frontier and C's read frontier agree after seeding: B proposes
+;; batch 4 at event 4, C has published batch 3. Control: no seeds leaves
+;; both at genesis (batch 1 at event 1, nothing published).
+(assert-event (equal (fn2-cs-frontiers *fn2-ss-sim-profile* *fn2-ss-seeds*) '(:ok 4 4 :ok 3)))
+(assert-event (equal (fn2-cs-frontiers *fn2-ss-sim-profile* nil) '(:ok 1 1 :ok 0)))
+;; A POST after seeding at the posting profile is B's batch 4: it answers
+;; 240, GROUP counts four articles, and ARTICLE 4 serves the posted octets
+;; read back from the device (dot-stuffed again) after its Xref field, the
+;; group's new number 4. (Before the seeds went through B, the POST was B's
+;; batch 1 on the first seed's event and the read frontier never moved.)
+(defconst *fn2-rdu-post-profile* (put-assoc-equal :posting-interim t *fn2-ss-sim-profile*))
+(defconst *fn2-rdu-posted*
+ '("From: p@example.invalid" "Subject: four" "Newsgroups: local.test" "Message-ID: <p@example.invalid>" ""
+   "posted body" "..stuffed"))
+(defun fn2-rdu-flat (replies)
+ (declare (xargs :verify-guards nil))
+ (if (atom replies) nil (append (car replies) (fn2-rdu-flat (cdr replies)))))
+(defun fn2-rdu-post-after-seeds ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ss-transcript 138560 *fn2-rdu-post-profile*
+                             (append '("POST") *fn2-rdu-posted* '("." "GROUP local.test" "ARTICLE 4")))))
+   (and (consp r)
+        (or (equal (car r) (fn2-cw-crlf-octets '("200 fn-nntp experimental server ready"))) (cw "greeting ~x0~%" r))
+        (or (equal (fn2-rdu-flat (cadr r))
+                   (fn2-cw-crlf-octets
+                    '("340 send article to be posted" "240 article received OK" "211 4 1 4 local.test"
+                      "220 4 <p@example.invalid> article follows" "Xref: fn2.invalid local.test:4"
+                      "From: p@example.invalid" "Subject: four" "Newsgroups: local.test" "Message-ID: <p@example.invalid>" ""
+                      "posted body" "..stuffed" ".")))
+            (cw "post after seeds ~x0~%" r)))))
+(assert-event (fn2-rdu-post-after-seeds))
 (value-triple (cw "READ-UNIT PASS~%"))

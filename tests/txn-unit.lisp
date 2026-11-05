@@ -239,7 +239,8 @@
 (defun fn2-tu-ov-line (num)
   (declare (xargs :verify-guards nil))
   (concatenate 'string num (fn2-tu-tab) "hello" (fn2-tu-tab) "a@example.invalid" (fn2-tu-tab)
-               (fn2-tu-tab) *fn2-tu-mid* (fn2-tu-tab) (fn2-tu-tab) "118" (fn2-tu-tab) "2"))
+               (fn2-tu-tab) *fn2-tu-mid* (fn2-tu-tab) (fn2-tu-tab) "118" (fn2-tu-tab) "2"
+               (fn2-tu-tab) "Xref: fn2.invalid local.test:" num))
 (defconst *fn2-tu-post-read-lines*
   (append '("POST") *fn2-tu-good* '(".")
           '("GROUP local.test"
@@ -261,8 +262,10 @@
         "224 overview information follows"
         (fn2-tu-ov-line "1")
         "."
-        ;; the posted header, in its order, as stored
+        ;; the overview's Xref field (the path identity, the group and the
+        ;; number assigned at stage), then the posted header in its order, as stored
         "221 1 <one@example.invalid> headers follow"
+        "Xref: fn2.invalid local.test:1"
         "From: a@example.invalid"
         "Subject: hello"
         "Newsgroups: local.test"
@@ -273,6 +276,7 @@
         "..stuffed"
         "."
         "220 1 <one@example.invalid> article follows"
+        "Xref: fn2.invalid local.test:1"
         "From: a@example.invalid"
         "Subject: hello"
         "Newsgroups: local.test"
@@ -404,18 +408,67 @@
          (got (fn2-tu-lines-of wire))
          (mid (fn2-tu-mid-of (or (nth 4 got) "")))
          (field (concatenate 'string "Message-ID: " (or mid "")))
+         (xref (concatenate 'string "Xref: " path " local.test:1"))
          (expect (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
                        (concatenate 'string "221 1 " (or mid "") " headers follow")
-                       field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" "."
+                       xref field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" "."
                        (concatenate 'string "220 1 " (or mid "") " article follows")
-                       field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" ""
+                       xref field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" ""
                        "body" "..stuffed" "." *fn2-tu-205*)))
     (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
              (stringp mid) (fn2-tu-generated-mid-p mid path)
              (equal wire (fn2-tu-text expect)) (cadr (car (nth 2 r))))
         (cw "generated-read ~x0 ~x1~%" (list (car r) (nth 1 r) (nth 3 r) mid) got))))
-; The identifier's right side is the profile's path identity: the tiny
-; profile's, and another node's.
+; The identifier's right side is the profile's path identity, and so is the
+; Xref field's server: the tiny profile's, and another node's.
 (assert-event (and (fn2-txn-test-generated-read "fn2.invalid")
                    (fn2-txn-test-generated-read "news.example-1.org")
                    (not (fn2-tu-generated-mid-p "<fn2.1.7@fn2.invalid>" "news.example-1.org"))))
+
+; Xref across groups: the field names every group the article was filed in,
+; in its Newsgroups order (an unknown name skipped), each with the number
+; its group assigned at stage. The first article goes to local.two and
+; local.test (number 1 in each), the second to local.test only (number 2);
+; OVER in local.test serves both lines, HEAD 1 the first's field as its first
+; header line. Teeth: the pairs in the group table's order are not the wire.
+(defconst *fn2-tu-two-groups-profile*
+  (put-assoc-equal :groups '(("local.test" . 1) ("local.two" . 2)) *fn2-tu-read-profile*))
+(defun fn2-tu-xref-post (mid groups)
+  (declare (xargs :verify-guards nil))
+  (append '("POST") (list "From: a@example.invalid" "Subject: hello" (concatenate 'string "Newsgroups: " groups)
+                          (concatenate 'string "Message-ID: " mid) "" "body") '(".")))
+(defun fn2-tu-xref-wire (first-groups)
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append (fn2-tu-xref-post "<x1@example.invalid>" first-groups)
+                        (fn2-tu-xref-post "<x2@example.invalid>" "local.test")
+                        '("GROUP local.test" "OVER 1-2" "HEAD 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (r (fn2-tu-run *fn2-tu-two-groups-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096))))))
+    (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))))))
+(defun fn2-tu-xref-ov (n mid bytes xref)
+  (declare (xargs :verify-guards nil))
+  (concatenate 'string n (fn2-tu-tab) "hello" (fn2-tu-tab) "a@example.invalid" (fn2-tu-tab) (fn2-tu-tab) mid
+               (fn2-tu-tab) (fn2-tu-tab) bytes (fn2-tu-tab) "1" (fn2-tu-tab) xref))
+(defun fn2-tu-xref-want (xref1)
+  (declare (xargs :verify-guards nil))
+  (list :ok :quiet 0
+        (fn2-tu-text (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK"
+                           *fn2-tu-340* "240 article received OK" "211 2 1 2 local.test"
+                           "224 overview information follows"
+                           (fn2-tu-xref-ov "1" "<x1@example.invalid>" "128" xref1)
+                           (fn2-tu-xref-ov "2" "<x2@example.invalid>" "107" "Xref: fn2.invalid local.test:2")
+                           "."
+                           "221 1 <x1@example.invalid> headers follow"
+                           xref1
+                           "From: a@example.invalid" "Subject: hello"
+                           "Newsgroups: local.nope,local.two,local.test"
+                           "Message-ID: <x1@example.invalid>" "."
+                           *fn2-tu-205*))))
+(defun fn2-txn-test-xref-groups ()
+  (declare (xargs :verify-guards nil))
+  (let ((want (fn2-tu-xref-want "Xref: fn2.invalid local.two:1 local.test:1"))
+        (got (fn2-tu-xref-wire "local.nope,local.two,local.test")))
+    (and (or (equal got want) (cw "xref-groups ~x0~%want ~x1~%" got want))
+         ;; the pairs follow the Newsgroups header, not the group table
+         (not (equal got (fn2-tu-xref-want "Xref: fn2.invalid local.test:1 local.two:1"))))))
+(assert-event (fn2-txn-test-xref-groups))

@@ -268,10 +268,13 @@
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
-(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
-  :doc "Declare the group's count accept, overview row, and addressing entry.")
+(defcost fn2-txn-add-group :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
+  :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
+(defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
+  :bytes 2048
+  :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
 (defcost fn2-txn-put-post-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
-  :doc "Declare the article's identity, article and outcome slots and synthesize the overview slice in the private successor.")
+  :doc "Declare the article's identity, article and outcome slots and synthesize the overview line's first seven fields in chunk 0.")
 (defcost fn2-txn-put-evidence-for :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
@@ -288,6 +291,7 @@
    (:let gslot row-slot)
    (:let no (:read upload no)) (:let nl (:read upload nl))
    (:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
+   (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
    (:do (status start len next skip2)
         (fn2-txn-next-name no row-gcur nl (equal row-gskip 1) c0 g0 :owner upload)
     :accept (:run :end :name) :why "the name scan's three continuations; :fault goes to :on-refusal")
@@ -303,9 +307,13 @@
                       (:cond ((>= row-ngroups *fn2-txn-groups-max*)
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                             (t (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 :owner upload))
-                                (:set (ngroups (+ 1 row-ngroups)) (gcur next))
-                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))
+                             (t (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
+                                                                 (+ no start) len :owner upload))
+                                (:if (eq pcode :ok)
+                                     ((:set (ngroups (+ 1 row-ngroups)) (gcur next))
+                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                     ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))
   ;; the outcome: the word to the connection (waking it), the successor released
   (reply :on-refusal ((:stop :machine-phase))
    (:let rslot row-slot)
@@ -417,6 +425,23 @@
                             ((:set (counted counted2) (lines lines2))
                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                             ((:stop :machine-phase))))
+                      ;; the article's slots and its overview line's first
+                      ;; seven fields, then its groups (chunk 1 keeps their names)
+                      ((equal row-filed 0)
+                       (:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
+                       (:do (pcode) (fn2-txn-put-post-for row-slot
+                                                          (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
+                                                          (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
+                                                          (:read upload mo) (:read upload ml)
+                                                          c0 g0 c1 g1 scanned hashed (:read upload ilen)
+                                                          h row-principal-slot row-lines
+                                                          (:read upload pext) (:read upload pepoch)
+                                                          (:read upload palloc)
+                                                          :owner upload))
+                       (:if (eq pcode :ok)
+                            ((:set (filed 1)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                            ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
                       ((< row-gcur nl) (:goto group))
                       ((equal row-ngroups 0)
                        (:set (word *fn2-upload-word-group*)) (:next :refused)
@@ -425,18 +450,7 @@
                          (:if (not (equal inj 0))
                               ((:set (word inj)) (:next :refused)
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                              ((:do (fcode verdict selection h evidence coverage) (fn2-identity-facts row-slot))
-                               (:do (pcode) (fn2-txn-put-post-for row-slot
-                                                                  (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
-                                                                  (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
-                                                                  (:read upload mo) (:read upload ml)
-                                                                  c0 g0 c1 g1 scanned hashed (:read upload ilen)
-                                                                  h row-principal-slot
-                                                                  row-lines row-ngroups
-                                                                  (:read upload pext) (:read upload pepoch)
-                                                                  (:read upload palloc)
-                                                                  :owner upload))
-                               (:set (prepared 1))
+                              ((:set (prepared 1))
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
   ;; stage every slot against the tip, emit into chunk 1, admit the member, bind on :ok (one run)
   (:ready :on-refusal ((:stop :machine-phase))
@@ -454,7 +468,12 @@
                        ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                         (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                        ((:do (pcode) (fn2-txn-prebind sslot))
-                        (:do (ecode elen)
+                        (:do (xcode) (fn2-txn-xref sslot row-ngroups c0 (:read upload c0-gen) c1 g1
+                                                   (+ scanned *fn2-upload-digest-octets*) :owner upload))
+                        (:if (not (eq xcode :ok))
+                             ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                              (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                             ((:do (ecode elen)
                              (fn2-successor-emit sslot c1 g1 0 (fn2-upload-chunk-cap c1) :owner upload)
                          :accept ()
                          :case (((:ok)
@@ -477,11 +496,11 @@
                                                 (:next :refused) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
                                 ((:room)
                                  (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                 (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))
+                                 (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t)))))))))
                  ((:full) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:stale)
                   (:do (rcode) (fn2-successor-release sslot))
-                  (:set (offered 0) (prepared 0) (gcur 0) (gskip 0) (ngroups 0))
+                  (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0))
                   (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:refused :evidence)
                   (:do (rcode) (fn2-successor-release sslot))
@@ -720,10 +739,26 @@
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post))
 
-(defun fn2-txn-add-group (tx k group principal c0 g0 okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
+(defun fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core)
+  ;; Group K's count accept, overview row (its line given late, after stage,
+  ;; when the Xref field's numbers exist) and, for the first, the addressing
+  ;; entry; its name (NLEN octets at NOFF of chunk 0's Newsgroups field) is
+  ;; appended to chunk 1 as one length octet and the name, for the Xref field.
+  ;; Chunk 1 is scratch here: the source is durable and counted and its
+  ;; digest already copied into chunk 0 (fn2-txn-put-post-for).
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k) (natp noff) (natp nlen))))
   (b* ((ac (+ *fn2-txn-slot-accepts* (* 2 (nfix k))))
        (ov (+ 1 ac))
+       ((unless (and (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
+       ((mv c fn2-core)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+          (c fn2-pool)
+          (fn2-gram-put-chain
+           (if (equal (nfix k) 0) (fn2-txn-truncate-to 0 c1 g1 okind oslot ogen fn2-pool) (mv :ok fn2-pool))
+           (fn2-gram-put nlen c1 g1 okind oslot ogen fn2-pool)
+           (fn2-gram-put-span nlen noff c0 g0 c1 g1 okind oslot ogen fn2-pool))
+          (mv c fn2-core)))
+       ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core) (fn2-group-counts-put-accept tx ac ':value group fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
@@ -731,13 +766,17 @@
           (number :out (+ (* ac 256) *fn2-group-counts-entry-field-high*))
           (article :event 0) (position :event 0) (line c0 g0 0 0)
           :owner (okind oslot ogen) fn2-core))
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ((mv c fn2-core)
+        (fn2-successor-arg-octets-late tx ov *fn2-overview-entry-field-line* *fn2-overview-octets-max* fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     (if (equal (nfix k) 0)
         (fn2-addr-put tx *fn2-txn-slot-addr*
           (principal principal) (position :event 0) (article :event 0)
           (stream group) (reasons 1) fn2-core)
       (mv :ok fn2-core))))
-(fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 okind oslot ogen fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-txn-add-group))
 
 (defun fn2-txn-synth-ov (ms mg mo ml scanned at hashed lines slot gen okind oslot ogen fn2-core)
@@ -751,31 +790,97 @@
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-txn-synth-ov))
 
-(defun fn2-txn-update-ov-lines (k j tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)
+(defun fn2-txn-fill-ov-lines (k j tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix k)
                   :guard (and (fn2-core-wfp fn2-core) (natp k) (natp j))))
   (if (zp k) (mv :ok fn2-core)
     (mv-let (c fn2-core)
-      (fn2-successor-arg-octets tx (+ 1 *fn2-txn-slot-accepts* (* 2 (nfix j)))
-                                *fn2-overview-entry-field-line* c0 g0 ov-off ov-len okind oslot ogen fn2-core)
+      (fn2-successor-fill-octets tx (+ 1 *fn2-txn-slot-accepts* (* 2 (nfix j)))
+                                 *fn2-overview-entry-field-line* c0 g0 ov-off ov-len okind oslot ogen fn2-core)
       (if (not (eq c :ok)) (mv c fn2-core)
-        (fn2-txn-update-ov-lines (- k 1) (+ 1 (nfix j)) tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)))))
-(fn2-core-preserves fn2-txn-update-ov-lines (k j tx c0 g0 ov-off ov-len okind oslot ogen fn2-core) :position 1 :rows nil)
-(in-theory (disable fn2-txn-update-ov-lines))
+        (fn2-txn-fill-ov-lines (- k 1) (+ 1 (nfix j)) tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)))))
+(fn2-core-preserves fn2-txn-fill-ov-lines (k j tx c0 g0 ov-off ov-len okind oslot ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-fill-ov-lines))
+
+;; One Xref pair of the overview line: " NAME:NUMBER", NAME the length-prefixed
+;; name at OFF of chunk 1 (fn2-txn-add-group), appended to chunk 0:
+;; (mv code next fn2-pool), NEXT the following name's offset.
+(defun fn2-txn-xref-pair-pool (off number c0 g0 c1 g1 okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp off) (natp number))))
+  (mv-let (ok len) (fn2-gram-read c1 g1 off okind oslot ogen fn2-pool)
+    (if (not ok) (mv :bounds 0 fn2-pool)
+      (mv-let (code fn2-pool)
+        (fn2-gram-put-chain
+         (fn2-gram-put 32 c0 g0 okind oslot ogen fn2-pool)
+         (fn2-gram-put-span len (+ 1 off) c1 g1 c0 g0 okind oslot ogen fn2-pool)
+         (fn2-gram-put 58 c0 g0 okind oslot ogen fn2-pool)
+         (fn2-gram-put-number number c0 g0 okind oslot ogen fn2-pool))
+        (mv code (+ 1 off len) fn2-pool)))))
+(fn2-pool-preserves fn2-txn-xref-pair-pool (off number c0 g0 c1 g1 okind oslot ogen fn2-pool) :position 2 :rows nil)
+(defthm fn2-txn-xref-pair-pool-natp
+  (implies (natp off) (natp (mv-nth 1 (fn2-txn-xref-pair-pool off number c0 g0 c1 g1 okind oslot ogen fn2-pool))))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-txn-xref-pair-pool))
+;; The pairs of groups J.. (K of them): each group's staged number (the
+;; overview slot's number, assigned at stage) after its name.
+(defun fn2-txn-xref-pairs (k j tx off c0 g0 c1 g1 okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :measure (nfix k)
+                  :guard (and (fn2-core-wfp fn2-core) (natp k) (natp j) (natp off))))
+  (if (zp k) (mv :ok fn2-core)
+    (b* (((mv vcode number)
+          (fn2-successor-out tx (+ 1 *fn2-txn-slot-accepts* (* 2 (nfix j))) *fn2-overview-entry-field-number* fn2-core))
+         ((unless (and (eq vcode :ok) (natp number))) (mv :bounds fn2-core))
+         ((mv code next fn2-core)
+          (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+            (code next fn2-pool)
+            (fn2-txn-xref-pair-pool off number c0 g0 c1 g1 okind oslot ogen fn2-pool)
+            (mv code next fn2-core)))
+         ((unless (eq code :ok)) (mv code fn2-core)))
+      (fn2-txn-xref-pairs (- k 1) (+ 1 (nfix j)) tx next c0 g0 c1 g1 okind oslot ogen fn2-core))))
+(fn2-core-preserves fn2-txn-xref-pairs (k j tx off c0 g0 c1 g1 okind oslot ogen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-txn-xref-pairs))
+;; The overview line's Xref field (PRF-206, RFC 5536 3.2.14), after stage:
+;; TAB "Xref: " the node's path identity, then " NAME:NUMBER" for each of the
+;; K groups, appended to the line synthesized at OV-OFF of chunk 0 (it ends
+;; at chunk 0's fill); each group's overview slot is then given the whole
+;; line. A line past the overview row's bound is :bounds (the transaction
+;; refuses it as unaffordable).
+(defun fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k) (natp ov-off))))
+  (b* (((mv code fn2-core)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+          (code fn2-pool)
+          (fn2-gram-put-chain
+           (fn2-gram-put 9 c0 g0 okind oslot ogen fn2-pool)
+           (fn2-gram-put-template 0 "Xref: " 0 0 0 0 c0 g0 0 0 c0 g0 okind oslot ogen fn2-pool)
+           (fn2-upload-put-path 0 c0 g0 okind oslot ogen fn2-control fn2-pool))
+          (mv code fn2-core)))
+       ((unless (eq code :ok)) (mv code fn2-core))
+       ((mv code fn2-core) (fn2-txn-xref-pairs k 0 tx 0 c0 g0 c1 g1 okind oslot ogen fn2-core))
+       ((unless (eq code :ok)) (mv code fn2-core))
+       (fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
+       ((unless (and (<= ov-off fill) (<= (- fill ov-off) *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
+    (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- fill ov-off) okind oslot ogen fn2-core)))
+(fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-txn-xref))
 
 ;; The article's location is its upload's payload extent: the extent's first
 ;; unit (an extent is *fn2-commit-write-resources* units) and its handle; its
 ;; length the stored octets' (the injected field's ILEN and the source's HASHED).
-(defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines ngroups pext pepoch palloc
+(defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc
                                 okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp ilen)
-                              (natp lines) (natp ngroups))))
+                              (natp lines))))
   ;; The source is durable at the location (the upload stored and fenced it
   ;; before :sealed) and its lines are counted, so chunk 0 after the header is
   ;; scratch: the digest moves to SCANNED in chunk 0 (wherever the source's
-  ;; length put it) and the overview line follows it, and chunk 1 stays free
-  ;; for the emission (:ready) however far the source runs into it.
+  ;; length put it) and the overview line's first seven fields follow it
+  ;; (the groups' Xref field is appended after stage, fn2-txn-xref), and
+  ;; chunk 1 is free for the group names and then the emission (:ready)
+  ;; however far the source runs into it.
   (b* ((cap0 (fn2-upload-chunk-cap c0 fn2-core))
        ((mv in1 doff) (fn2-upload-digest-at hashed cap0))
        ((mv c fn2-core)
@@ -790,9 +895,9 @@
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv ov-off ov-len fn2-core)
         (fn2-txn-synth-ov ms mg mo ml scanned scanned (+ hashed ilen) lines c0 g0 okind oslot ogen fn2-core)))
-    (fn2-txn-update-ov-lines ngroups 0 tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)))
+    (mv (if (and (equal ov-off (+ scanned *fn2-upload-digest-octets*)) (posp ov-len)) :ok :bounds) fn2-core)))
 (fn2-core-preserves fn2-txn-put-post-for
-  (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines ngroups pext pepoch palloc okind oslot ogen fn2-core) :position 1 :rows nil)
+  (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-txn-put-evidence-for (tx ms mg mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
   (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))

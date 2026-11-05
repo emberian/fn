@@ -43,8 +43,10 @@
 (defun fn2-cs-source (lines)
   (declare (xargs :verify-guards nil))
   (if (atom lines) nil (append (fn2-cs-octets (car lines)) (list 13 10) (fn2-cs-source (cdr lines)))))
-;; The seed's payload extent: reserved and allocated to the article (event B).
-(defun fn2-cs-extent (b fn2-core)
+;; The seed's payload extent, reserved from B's allocator as an upload
+;; reserves its own; the transaction allocates it to the article once the
+;; batch commits (fn2-txn-payload-commit). (mv code e epoch counter fn2-core).
+(defun fn2-cs-extent (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
     (code e epoch counter fn2-extents)
@@ -55,9 +57,7 @@
                            fn2-extents)))
         (fn2-alloc-reserve fn2-extents))
       (declare (ignore pressure))
-      (if (not (eq code :ok)) (mv code 0 0 0 fn2-extents)
-        (mv-let (code fn2-extents) (fn2-alloc-commit-allocation e epoch counter *fn2-txn-kind* b fn2-extents)
-          (mv code e epoch counter fn2-extents))))
+      (mv code e epoch counter fn2-extents))
     (mv code e epoch counter fn2-core)))
 (defun fn2-cs-write (bytes slot gen off fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -84,69 +84,226 @@
   (if (atom calls) '(mv :ok fn2-core)
     (if (atom (cdr calls)) (car calls)
       `(mv-let (c fn2-core) ,(car calls) (if (eq c :ok) (fn2-cs-chain ,@(cdr calls)) (mv (list c ',(car (car calls))) fn2-core))))))
-(defun fn2-cs-seed (seed b fn2-core)
+
+; ---------------------------------------------------------------------------
+; Seeding through the transaction's own path (D6; C-S3 and B-S2). A seed is
+; laid out as an upload leaves a POST: chunk 0 (the upload chunk class)
+; holds the source and its BLAKE3 content identity after it, chunk 1 is
+; empty, and the source is on the device at a payload extent reserved from
+; B's allocator. The transaction's operations then run in its order:
+; the identity decision, the line count (fn2-txn-count-next), the article's
+; slots and overview fields (fn2-txn-put-post-for), each Newsgroups name
+; looked up and its group declared (fn2-txn-next-name, fn2-group-lookup,
+; fn2-txn-add-group), resolve, stage, prebind, the Xref field
+; (fn2-txn-xref), the emission into chunk 1, B's admission
+; (fn2-commit-admit-txn) and the bind to B's batch and event. B commits
+; the batch on the core's own turns (its log writes on the seeding device,
+; its root swap publishing C's batch), the owner takes the settled outcome
+; (fn2-commit-take) and the payload extent becomes the article's. So the
+; numbers, the overview line with its Xref field and the commit and read
+; frontiers come out of the served core's path; the seed's LINE is the
+; reference's statement of that line, and a seed whose synthesized line
+; differs is refused (:line).
+; The harness is the transaction's owner (kind 200, slot 0, generation 1):
+; no transaction row exists in a reader-only profile, and the seeds run one
+; at a time before any client, so no claim is taken.
+(defun fn2-cs-field-span (lines name off)
+  ;; (mv voff vlen) of header field NAME's value ("Name: value") in LINES
+  ;; laid out from OFF with CR LF; (mv 0 0) when absent.
+  (declare (xargs :verify-guards nil))
+  (cond ((or (atom lines) (equal (car lines) "")) (mv 0 0))
+        ((and (<= (+ 2 (length name)) (length (car lines)))
+              (equal (subseq (car lines) 0 (+ 2 (length name))) (concatenate 'string name ": ")))
+         (mv (+ off 2 (length name)) (- (length (car lines)) (+ 2 (length name)))))
+        (t (fn2-cs-field-span (cdr lines) name (+ off 2 (length (car lines)))))))
+(defun fn2-cs-header-octets (lines)
+  ;; the header's octets and the empty line's CR LF: where the body starts
+  (declare (xargs :verify-guards nil))
+  (cond ((atom lines) 0)
+        ((equal (car lines) "") 2)
+        (t (+ 2 (length (car lines)) (fn2-cs-header-octets (cdr lines))))))
+(defun fn2-cs-count (fuel c0 g0 c1 g1 counted hashed lines fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* ((group (nth 0 seed)) (mid (fn2-cs-octets (nth 1 seed))) (line (fn2-cs-octets (nth 2 seed)))
-       ((mv c1 mslot mgen fn2-core) (fn2-cs-fill mid fn2-core))
-       ((mv c2 dslot dgen fn2-core) (fn2-cs-fill (make-list 32 :initial-element (mod b 256)) fn2-core))
-       ((mv c3 lslot lgen fn2-core) (fn2-cs-fill line fn2-core))
-       ((unless (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))) (mv (list :fill c1 c2 c3) nil fn2-core))
-       (source (fn2-cs-source (nth 3 seed)))
-       ((mv c e epoch counter fn2-core) (fn2-cs-extent b fn2-core))
-       ((unless (and (eq c :ok) (<= (len source) *fn2-commit-extent-bytes*))) (mv (list :extent c) nil fn2-core))
-       ((mv c fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
-       ((unless (eq c :ok)) (mv (list :offer c) nil fn2-core))
+  (if (or (zp fuel) (>= counted hashed)) (mv (if (zp fuel) :fuel :ok) lines fn2-core)
+    (mv-let (code counted lines fn2-core) (fn2-txn-count-next c0 g0 c1 g1 counted hashed lines 200 0 1 fn2-core)
+      (if (eq code :ok) (fn2-cs-count (- fuel 1) c0 g0 c1 g1 counted hashed lines fn2-core) (mv code 0 fn2-core)))))
+(defun fn2-cs-lookup (fuel c0 g0 off len fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel 0 fn2-core)
+    (mv-let (code group fn2-core) (fn2-group-lookup 0 c0 g0 off len 200 0 1 4096 fn2-core)
+      (if (eq code :more) (fn2-cs-lookup (- fuel 1) c0 g0 off len fn2-core) (mv code group fn2-core)))))
+;; The Newsgroups names from CUR of [NO, NO+NL): (mv code ngroups fn2-core).
+(defun fn2-cs-groups (fuel no nl cur skip k c0 g0 c1 g1 fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel k fn2-core)
+    (b* (((mv status start len next skip2) (fn2-txn-next-name no cur nl skip c0 g0 200 0 1 fn2-core)))
+      (case status
+        (:run (fn2-cs-groups (- fuel 1) no nl next skip2 k c0 g0 c1 g1 fn2-core))
+        (:end (mv :ok k fn2-core))
+        (:name
+         (b* (((mv code group fn2-core) (fn2-cs-lookup 400 c0 g0 (+ no start) len fn2-core)))
+           (case code
+             (:absent (fn2-cs-groups (- fuel 1) no nl next nil k c0 g0 c1 g1 fn2-core))
+             (:ok (if (>= k *fn2-txn-groups-max*) (mv :groups k fn2-core)
+                    (mv-let (c fn2-core) (fn2-txn-add-group 0 k group 0 c0 g0 c1 g1 (+ no start) len 200 0 1 fn2-core)
+                      (if (eq c :ok) (fn2-cs-groups (- fuel 1) no nl next nil (+ 1 k) c0 g0 c1 g1 fn2-core)
+                        (mv (list :group c) k fn2-core)))))
+             (otherwise (mv (list :lookup code) k fn2-core)))))
+        (otherwise (mv (list :names status) k fn2-core))))))
+
+; The seeding device: the core's turns, with its storage actions completed
+; against STORE (writes (OFFSET . OCTETS), newest first, as fn2-cw-adapter-one
+; keeps them) and every Accept answered failed (no connection exists yet:
+; the listener returns its credit and accepts again once a carrier serves).
+; (mv took store fn2-core); an action of another kind is (:action KIND).
+(defun fn2-cs-device-one (store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv code op opgen kind)
+        (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (code op opgen kind)
+          (mv-let (code op opgen) (fn2-outbox-peek 0 fn2-ops)
+            (if (eq code :ok) (mv :ok op opgen (fn2-ops-kind op fn2-ops)) (mv code 0 0 0)))
+          (mv code op opgen kind)))
+       ((unless (eq code :ok)) (mv nil store fn2-core)))
+    (cond ((equal kind *fn2-action-accept*)
+           (b* (((mv & fn2-core)
+                 (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (code fn2-ops) (fn2-outbox-ack 1 fn2-ops) (mv code fn2-core)))
+                (fn2-core (fn2-cw-post-failed op opgen *fn2-event-accept-result* *fn2-reason-aborted* fn2-core)))
+             (mv t store fn2-core)))
+          ((member kind (list *fn2-action-write* *fn2-action-read* *fn2-action-fence*))
+           (mv-let (took accepted clients store fn2-core) (fn2-cw-adapter-one 0 nil store fn2-core)
+             (declare (ignore accepted clients))
+             (mv took store fn2-core)))
+          (t (mv (list :action kind) store fn2-core)))))
+(defun fn2-cs-device (fuel store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :ok store fn2-core)
+    (mv-let (took store fn2-core) (fn2-cs-device-one store fn2-core)
+      (cond ((null took) (mv :ok store fn2-core))
+            ((eq took t) (fn2-cs-device (- fuel 1) store fn2-core))
+            (t (mv took store fn2-core))))))
+;; B settles the owner's member: (mv code event store fn2-core).
+(defun fn2-cs-settle (fuel store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp fuel) (mv :fuel 0 store fn2-core)
+    (b* (((mv code & event outcome fn2-core) (fn2-commit-take 200 0 1 fn2-core))
+         ((when (eq code :ok))
+          (mv (if (equal outcome *fn2-commit-outcome-accepted*) :ok (list :outcome outcome)) event store fn2-core))
+         ((unless (equal (fn2-core-stop-reason fn2-core) 0)) (mv (list :stop (fn2-core-stop-reason fn2-core)) 0 store fn2-core))
+         ((mv & & & & fn2-core) (fn2-turn fn2-core))
+         ((mv code store fn2-core) (fn2-cs-device 64 store fn2-core))
+         ((unless (eq code :ok)) (mv code 0 store fn2-core)))
+      (fn2-cs-settle (- fuel 1) store fn2-core))))
+;; From transaction slot 0 resolved: stage, prebind, the Xref field of K
+;; groups (none for an evidence fact), emission into C1, B's admission and
+;; the bind to its batch and event: (mv code fn2-core).
+(defun fn2-cs-admit (k c0 g0 c1 g1 ov-off fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list :stage c) fn2-core))
+       ((mv & fn2-core) (fn2-txn-prebind 0 fn2-core))
+       ((mv c fn2-core) (if (zp k) (mv :ok fn2-core) (fn2-txn-xref 0 k c0 g0 c1 g1 ov-off 200 0 1 fn2-core)))
+       ((unless (eq c :ok)) (mv (list :xref c) fn2-core))
+       ((mv c elen fn2-core) (fn2-successor-emit 0 c1 g1 0 (fn2-upload-chunk-cap c1 fn2-core) 200 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv (list :emit c) fn2-core))
+       ((mv c b ev fn2-core) (fn2-commit-admit-txn c1 g1 elen 200 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv (list :admit c) fn2-core)))
+    (fn2-successor-bind 0 b ev fn2-core)))
+(defun fn2-cs-chunk (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-core-reserve *fn2-upload-chunk-class* 200 0 1 fn2-core))
+(defun fn2-cs-octets-at (slot gen off len fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (zp len) nil
+    (cons (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (b)
+            (mv-let (ok b) (fn2-gram-read slot gen off 200 0 1 fn2-pool) (declare (ignore ok)) b) b)
+          (fn2-cs-octets-at slot gen (+ 1 off) (- len 1) fn2-core))))
+;; Seed SEED submitted up to the bind: (mv code pending store fn2-core),
+;; PENDING what the owner settles (extent and chunks), the source put on
+;; STORE at its extent.
+(defun fn2-cs-submit (seed store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((text (nth 3 seed)) (source (fn2-cs-source text)) (hashed (len source))
+       (scanned (fn2-cs-header-octets text))
+       ((mv mo ml) (fn2-cs-field-span text "Message-ID" 0))
+       ((mv no nl) (fn2-cs-field-span text "Newsgroups" 0))
+       ((mv c c0 g0 fn2-core) (fn2-cs-chunk fn2-core))
+       ((unless (eq c :ok)) (mv (list :chunk c) nil store fn2-core))
+       ((mv c c1 g1 fn2-core) (fn2-cs-chunk fn2-core))
+       ((unless (eq c :ok)) (mv (list :chunk c) nil store fn2-core))
+       ((unless (and (posp ml) (posp nl) (< scanned hashed)
+                     (<= (+ hashed *fn2-upload-digest-octets*) (fn2-upload-chunk-cap c0 fn2-core))
+                     (<= hashed *fn2-commit-extent-bytes*)))
+        (mv (list :layout hashed) nil store fn2-core))
+       ((mv c fn2-core) (fn2-cs-write (append source (fn-blake3 source)) c0 g0 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list :fill c) nil store fn2-core))
+       ((mv c e epoch counter fn2-core) (fn2-cs-extent fn2-core))
+       ((unless (eq c :ok)) (mv (list :extent c) nil store fn2-core))
+       (store (cons (cons (* *fn2-commit-extent-bytes* e) source) store))
+       ((mv c fn2-core) (fn2-identity-decide-start 0 c0 g0 mo ml c0 g0 hashed 200 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv (list :offer c) nil store fn2-core))
        ((mv a fn2-core) (fn2-cs-drive 100 0 fn2-core))
-       ((unless (eq a :stored)) (mv (list :decide a) nil fn2-core))
+       ((unless (eq a :stored)) (mv (list :decide a) nil store fn2-core))
        ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
-       ((mv c fn2-core)
-        (fn2-cs-chain
-         (fn2-txn-put-identity 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 h 3 1 fn2-core)
-         (fn2-successor-put 0 7 *fn2-txn-counts-sid* :accept fn2-core)
-         (fn2-successor-arg 0 7 0 :value group fn2-core)
-         (fn2-successor-put 0 8 *fn2-cursor-overview-sid* :insert fn2-core)
-         (fn2-successor-arg 0 8 *fn2-overview-entry-field-group* :value group fn2-core)
-         (fn2-successor-arg 0 8 *fn2-overview-entry-field-number* :out
-                            (+ (* 7 256) *fn2-group-counts-entry-field-high*) fn2-core)
-         (fn2-successor-arg 0 8 *fn2-overview-entry-field-article* :event 0 fn2-core)
-         (fn2-successor-arg 0 8 *fn2-overview-entry-field-position* :event 0 fn2-core)
-         (fn2-successor-arg-octets 0 8 *fn2-overview-entry-field-line* lslot lgen 0 (len line) 200 0 1 fn2-core)
-         (fn2-successor-put 0 5 *fn2-txn-article-sid* :insert fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-article* :event 0 fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-birth* :event 0 fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-state* :value *fn2-txn-article-live* fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-version* :value *fn2-txn-article-version* fn2-core)
-         (fn2-successor-arg-octets 0 5 *fn2-article-entry-field-source* dslot dgen 0 32 200 0 1 fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-bytes* :value (len source) fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-lines* :value 1 fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-location-unit* :value
-                            (* *fn2-commit-write-resources* e) fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-location-epoch* :value epoch fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-location-allocation* :value counter fn2-core)
-         (fn2-successor-arg 0 5 *fn2-article-entry-field-location-kind* :value *fn2-txn-location-raw-source* fn2-core)))
-       ((unless (eq c :ok)) (mv (list :slots c) nil fn2-core))
-       ((mv c fn2-core) (fn2-cs-resolve 40 0 fn2-core))
-       ((unless (eq c :ok)) (mv (list :resolve c) nil fn2-core))
-       ((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
-       ((unless (eq c :ok)) (mv (list :stage c) nil fn2-core))
-       ((mv c fn2-core)
-        (fn2-cs-chain
-         (fn2-successor-bind 0 b b fn2-core)
-         (fn2-successor-publish b fn2-core)
-         (fn2-successor-release 0 fn2-core)
-         (fn2-core-release mslot mgen 200 0 1 fn2-core)
-         (fn2-core-release dslot dgen 200 0 1 fn2-core)
-         (fn2-core-release lslot lgen 200 0 1 fn2-core))))
-    (mv c (cons (* *fn2-commit-extent-bytes* e) source) fn2-core)))
-;; (mv code store fn2-core): STORE the seeds' storage writes, oldest first.
-;; The allocator's writer epoch is begun first (1) when nothing began it.
+       ((mv c lines fn2-core) (fn2-cs-count 64 c0 g0 c1 g1 scanned hashed 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list :count c) nil store fn2-core))
+       ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 c1 g1 scanned hashed 0 h 0 lines e epoch counter
+                                              200 0 1 fn2-core))
+       ((unless (eq c :ok)) (mv (list :post c) nil store fn2-core))
+       ((mv c k fn2-core) (fn2-cs-groups 64 no nl 0 nil 0 c0 g0 c1 g1 fn2-core))
+       ((unless (and (eq c :ok) (posp k))) (mv (list :groups c k) nil store fn2-core))
+       ((mv c fn2-core) (fn2-cs-resolve 400 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list :resolve c) nil store fn2-core))
+       (ov-off (+ scanned *fn2-upload-digest-octets*))
+       ((mv c fn2-core) (fn2-cs-admit k c0 g0 c1 g1 ov-off fn2-core))
+       ((unless (eq c :ok)) (mv c nil store fn2-core))
+       (fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
+       (line (fn2-cs-octets-at c0 g0 ov-off (nfix (- fill ov-off)) fn2-core))
+       ((unless (equal line (fn2-cs-octets (nth 2 seed)))) (mv (list :line line) nil store fn2-core)))
+    (mv :ok (list e epoch counter c0 g0 c1 g1) store fn2-core)))
+;; The settled member's extent allocated to its article, the successor and
+;; chunks released: (mv code fn2-core).
+(defun fn2-cs-finish (pending event fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-cs-chain
+   (fn2-txn-payload-commit (nth 0 pending) (nth 1 pending) (nth 2 pending) event fn2-core)
+   (mv-let (c fn2-core) (fn2-successor-release 0 fn2-core) (mv (if (member-eq c '(:ok :state)) :ok c) fn2-core))
+   (fn2-core-release (nth 3 pending) (nth 4 pending) 200 0 1 fn2-core)
+   (fn2-core-release (nth 5 pending) (nth 6 pending) 200 0 1 fn2-core)))
+;; One seed through the path before any client: (mv code store fn2-core).
+(defun fn2-cs-seed (seed store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv c pending store fn2-core) (fn2-cs-submit seed store fn2-core))
+       ((unless (eq c :ok)) (mv c store fn2-core))
+       ((mv c event store fn2-core) (fn2-cs-settle 4000 store fn2-core))
+       ((unless (eq c :ok)) (mv (list :settle c) store fn2-core)))
+    (mv-let (c fn2-core) (fn2-cs-finish pending event fn2-core) (mv c store fn2-core))))
+;; (mv code store fn2-core): STORE the seeding device's writes, oldest
+;; first (the seeds' sources and B's log), which a carrier puts on its
+;; device before any client reads. B numbers the batches and events from
+;; its frontier (batch and event I+1 for seed I on a fresh core).
+(defun fn2-cs-seed-rev (seeds b store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom seeds) (mv :ok store fn2-core)
+    (mv-let (code store fn2-core) (fn2-cs-seed (car seeds) store fn2-core)
+      (if (not (eq code :ok)) (mv (list b code) store fn2-core)
+        (fn2-cs-seed-rev (cdr seeds) (+ 1 b) store fn2-core)))))
 (defun fn2-cs-seed-all (seeds b fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (if (atom seeds) (mv :ok nil fn2-core)
-    (mv-let (code write fn2-core) (fn2-cs-seed (car seeds) b fn2-core)
-      (if (not (eq code :ok)) (mv (list b code) nil fn2-core)
-        (mv-let (code store fn2-core) (fn2-cs-seed-all (cdr seeds) (+ 1 b) fn2-core)
-          (mv code (append store (list write)) fn2-core))))))
+  (mv-let (code store fn2-core) (fn2-cs-seed-rev seeds b nil fn2-core)
+    (mv code (reverse store) fn2-core)))
+;; After seeding, B's commit frontier is the next batch and event (one past
+;; the seeds') and C's read frontier the last seed's batch: (commit-batch
+;; commit-key read-code read-batch).
+(defun fn2-cs-frontiers (profile seeds)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (r fn2-core)
+      (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+           ((mv code & fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
+           ((mv batch key & &) (fn2-commit-frontier fn2-core))
+           ((mv rcode published) (fn2-read-frontier fn2-core)))
+        (mv (list code batch key rcode published) fn2-core))
+      r)))
 
 ; The adapter loop of fn2-cw-loop, counting the core's visits, and
 ; publishing one seed of LATER (batch B on) after every round in which the
@@ -156,25 +313,34 @@
 (defun fn2-cs-replies (clients)
   (declare (xargs :verify-guards nil))
   (if (atom clients) 0 (+ (count 10 (nth 2 (car clients))) (fn2-cs-replies (cdr clients)))))
-(defun fn2-cs-loop (fuel idle accepted clients store later b visits seeded fn2-core)
+(defun fn2-cs-loop (fuel idle accepted clients store later inflight visits seeded fn2-core)
+  ;; INFLIGHT: the later seed submitted and not yet settled (its pending), or nil
   (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
   (if (zp fuel) (mv :fuel clients visits seeded fn2-core)
     (b* (((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
          ((mv took accepted clients store fn2-core) (fn2-cw-adapter-one accepted clients store fn2-core))
-         ((mv seeded store later b fn2-core)
-          (if (and took (consp later) (eq seeded :ok) (<= 2 (fn2-cs-replies clients)))
-              (mv-let (code write fn2-core) (fn2-cs-seed (car later) b fn2-core)
-                (mv code (if (eq code :ok) (cons write store) store) (cdr later) (+ 1 b) fn2-core))
-            (mv seeded store later b fn2-core)))
+         ((mv seeded inflight fn2-core)
+          (if (and inflight (eq seeded :ok))
+              (b* (((mv code & event outcome fn2-core) (fn2-commit-take 200 0 1 fn2-core)))
+                (cond ((eq code :pending) (mv seeded inflight fn2-core))
+                      ((and (eq code :ok) (equal outcome *fn2-commit-outcome-accepted*))
+                       (mv-let (c fn2-core) (fn2-cs-finish inflight event fn2-core) (mv c nil fn2-core)))
+                      (t (mv (list :later code outcome) nil fn2-core))))
+            (mv seeded inflight fn2-core)))
+         ((mv seeded store later inflight fn2-core)
+          (if (and took (consp later) (null inflight) (eq seeded :ok) (<= 2 (fn2-cs-replies clients)))
+              (mv-let (code pending store fn2-core) (fn2-cs-submit (car later) store fn2-core)
+                (mv code store (cdr later) pending fn2-core))
+            (mv seeded store later inflight fn2-core)))
          (visits (+ visits (nfix nvisits)))
-         (idle (if (or took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
+         (idle (if (or took inflight (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
       (if (or (<= 3 idle) (not (equal (fn2-core-stop-reason fn2-core) 0)))
           (mv :quiet clients visits seeded fn2-core)
-        (fn2-cs-loop (- fuel 1) idle accepted clients store later b visits seeded fn2-core)))))
+        (fn2-cs-loop (- fuel 1) idle accepted clients store later inflight visits seeded fn2-core)))))
 
 ; The served core after SEEDS, then the clients of TRANSCRIPTS (octets and
-; chunk sizes), with LATER published while they read: (seeded status wires
-; stop-reason visits).
+; chunk sizes), with LATER submitted while they read and committed by the
+; same turns: (seeded status wires stop-reason visits).
 (defun fn2-cursor-serve-run (profile seeds later transcripts)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
@@ -183,10 +349,10 @@
            ((mv & fn2-core)
             (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
-           ((mv seeded store fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
+           ((mv seeded store fn2-core) (fn2-cs-seed-rev seeds 1 nil fn2-core))
            ((mv status clients visits seeded fn2-core)
             (fn2-cs-loop (+ 2000 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
-                         0 0 (fn2-cw-clients transcripts) store later (+ 1 (len seeds)) 0 seeded fn2-core)))
+                         0 0 (fn2-cw-clients transcripts) store later nil 0 seeded fn2-core)))
         (mv (list seeded status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core) visits) fn2-core))
       result)))
 (defun fn2-cursor-wire-run (profile seeds transcripts)
@@ -539,32 +705,39 @@
   (put-assoc-equal :reading t
    (put-assoc-equal :x 2
     *fn2-cursor-profile*))))
-(defun fn2-cs-conflict (mid byte b fn2-core)
+(defun fn2-cs-conflict (mid byte store fn2-core)
+  ;; a competing binding's evidence (C §4a), committed through B as a seed is:
+  ;; (mv code store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((mid (fn2-cs-octets mid))
        ((mv & mslot mgen fn2-core) (fn2-cs-fill mid fn2-core))
        ((mv & dslot dgen fn2-core) (fn2-cs-fill (make-list 32 :initial-element byte) fn2-core))
+       ((mv c c1 g1 fn2-core) (fn2-cs-chunk fn2-core))
+       ((unless (eq c :ok)) (mv (list :chunk c) store fn2-core))
        ((mv c fn2-core) (fn2-identity-decide-start 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 fn2-core))
-       ((unless (eq c :ok)) (mv (list :offer c) fn2-core))
+       ((unless (eq c :ok)) (mv (list :offer c) store fn2-core))
        ((mv a fn2-core) (fn2-cs-drive 100 0 fn2-core))
        ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
        ((mv c fn2-core) (fn2-txn-put-identity 0 mslot mgen 0 (len mid) dslot dgen 0 200 0 1 h 3 0 fn2-core))
-       ((unless (eq c :ok)) (mv (list a :slots c) fn2-core))
+       ((unless (eq c :ok)) (mv (list a :slots c) store fn2-core))
        ;; one resolve step per run of each slot's schema: after the sealer
        ;; has made a run per seeded overlay, more than the seeds' 40
        ((mv c fn2-core) (fn2-cs-resolve 400 0 fn2-core))
-       ((unless (eq c :ok)) (mv (list a :resolve c) fn2-core))
-       ((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
-       ((unless (eq c :ok)) (mv (list a :stage c) fn2-core))
+       ((unless (eq c :ok)) (mv (list a :resolve c) store fn2-core))
+       ((mv c fn2-core) (fn2-cs-admit 0 0 0 c1 g1 0 fn2-core))
+       ((unless (eq c :ok)) (mv (list a c) store fn2-core))
+       ((mv c & store fn2-core) (fn2-cs-settle 4000 store fn2-core))
+       ((unless (eq c :ok)) (mv (list a :settle c) store fn2-core))
        ((mv c fn2-core)
-        (fn2-cs-chain (fn2-successor-bind 0 b b fn2-core) (fn2-successor-publish b fn2-core) (fn2-successor-release 0 fn2-core)
-                      (fn2-core-release mslot mgen 200 0 1 fn2-core) (fn2-core-release dslot dgen 200 0 1 fn2-core))))
-    (mv (if (and (eq a :conflict) (eq c :ok)) :ok (list a c)) fn2-core)))
-(defun fn2-cs-conflict-all (conflicts b fn2-core)
+        (fn2-cs-chain (mv-let (c fn2-core) (fn2-successor-release 0 fn2-core) (mv (if (member-eq c '(:ok :state)) :ok c) fn2-core))
+                      (fn2-core-release mslot mgen 200 0 1 fn2-core) (fn2-core-release dslot dgen 200 0 1 fn2-core)
+                      (fn2-core-release c1 g1 200 0 1 fn2-core))))
+    (mv (if (and (eq a :conflict) (eq c :ok)) :ok (list a c)) store fn2-core)))
+(defun fn2-cs-conflict-all (conflicts b store fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (if (atom conflicts) (mv :ok fn2-core)
-    (mv-let (code fn2-core) (fn2-cs-conflict (car (car conflicts)) (cadr (car conflicts)) b fn2-core)
-      (if (eq code :ok) (fn2-cs-conflict-all (cdr conflicts) (+ 1 b) fn2-core) (mv (list b code) fn2-core)))))
+  (if (atom conflicts) (mv :ok store fn2-core)
+    (mv-let (code store fn2-core) (fn2-cs-conflict (car (car conflicts)) (cadr (car conflicts)) store fn2-core)
+      (if (eq code :ok) (fn2-cs-conflict-all (cdr conflicts) (+ 1 b) store fn2-core) (mv (list b code) store fn2-core)))))
 (defun fn2-ri-loop (fuel x slot gen len fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (zp fuel) (mv :fuel 0 0 fn2-core)
@@ -578,8 +751,8 @@
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
       (b* ((fn2-core (fn2-init-executor *fn2-read-profile* :null nil fn2-core))
-           ((mv c1 & fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
-           ((mv c2 fn2-core) (fn2-cs-conflict-all conflicts (+ 1 (len seeds)) fn2-core))
+           ((mv c1 store fn2-core) (fn2-cs-seed-rev seeds 1 nil fn2-core))
+           ((mv c2 & fn2-core) (fn2-cs-conflict-all conflicts (+ 1 (len seeds)) store fn2-core))
            ((unless (and (eq c1 :ok) (eq c2 :ok))) (mv (list :seeding c1 c2) fn2-core))
            (octets (fn2-cs-octets mid))
            ((mv & slot gen fn2-core) (fn2-cs-fill octets fn2-core))
