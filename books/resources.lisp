@@ -31,6 +31,10 @@
      :why "Octets a principal's appended articles keep durable (4,096-octet blocks, rounded up per article), charged in the append's transaction and released when retention reclaims them.")
     (:tls-slot :unit :slot :bound (:round2 :ltls 16) :reserve nil
      :why "A handshake job, held for the handshake only.")
+    ;; ranked below the upload row: a consumer request takes the upload of
+    ;; its append (e-surface.md 3.3) as a connection takes a POST's
+    (:wait-row :unit :row :bound (:profile :w) :reserve nil
+     :why "A consumer request's row: a parked consumer wait from registration to its reply or cancellation, or an append until its outcome.")
     (:upload-row :unit :row :bound (:profile :u) :reserve nil
      :why "An article input in progress, held while its bytes arrive.")
     (:chunk-window :unit :window :bound (:round2 :large-upload-windows 16) :reserve nil
@@ -41,8 +45,6 @@
      :why "The Message-ID and operation identity claim of one transaction.")
     (:cursor-row :unit :row :bound (:profile :x) :reserve nil
      :why "A query cursor from its command to its last reply byte.")
-    (:wait-row :unit :row :bound (:profile :w) :reserve nil
-     :why "A parked consumer wait from registration to its reply or cancellation.")
     (:subscription-edge :unit :edge :bound (:profile :esub) :reserve nil
      :why "One wait row's edge to a stream, reserved at registration.")
     (:control-output :unit :bytes :bound (:profile :w) :reserve nil

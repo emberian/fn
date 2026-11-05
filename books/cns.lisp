@@ -555,12 +555,14 @@
            (:do (acode nop aoff) (fn2-cns-decode-append row-fpos row-flen row-ctl row-ctl-gen row-tx-slot row-tx-gen)
             :accept (:ok)
             :case (((:malformed) (:set (reason *fn2-cns-append-malformed*)) (:goto refuse))))
-           (:do (tcode u ugen)
+           (:if (not (and (unsigned-byte-p 60 nop) (unsigned-byte-p 32 aoff)))
+                ((:set (reason *fn2-cns-append-malformed*)) (:goto refuse))
+                ((:do (tcode u ugen)
                 (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
                                              row-principal-slot nop)
             :case (((:ok) (:set (upload u) (upload-gen ugen) (op nop) (fstart aoff) (fed 0) (feed-mode 0) (feed-discard 0))
                     (:charge :steps *fn2-work-transition* :runnable t))
-                   (:otherwise (:park :taken fn2-upload :steps *fn2-work-transition*)))))
+                   (:otherwise (:park :taken fn2-upload :steps *fn2-work-transition*)))))))
           ((not (equal row-feed-mode *fn2-conn-feed-done*))
            (:do (status start mode why copied)
                 (fn2-cns-feed-article row-fstart row-feed-mode row-feed-discard row-fed (+ row-fpos row-flen)
@@ -635,6 +637,12 @@
          (ok op aoff)
          (fn2-cns-decode-append-pool pos flen tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-pool)
          (mv (if ok :ok :malformed) (nfix op) (nfix aoff))))
+     (defthm fn2-cns-decode-append-natp-1
+       (natp (mv-nth 1 (fn2-cns-decode-append pos flen ctl ctl-gen tx-slot tx-gen fn2-core)))
+       :rule-classes (:rewrite :type-prescription))
+     (defthm fn2-cns-decode-append-natp-2
+       (natp (mv-nth 2 (fn2-cns-decode-append pos flen ctl ctl-gen tx-slot tx-gen fn2-core)))
+       :rule-classes (:rewrite :type-prescription))
      (in-theory (disable fn2-cns-decode-append))
      ;; The frame's end is the article's: a last line without its CR LF is a
      ;; framing error, as an unterminated line before a POST's terminator is.
