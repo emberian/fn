@@ -64,8 +64,6 @@
 (defconst *fn2-upload-word-duplicate* (fn2-upload-word-code :duplicate))
 (defconst *fn2-upload-word-conflict* (fn2-upload-word-code :conflict))
 (defconst *fn2-upload-word-group* (fn2-upload-word-code :group))
-(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
-(defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
 
 (defun fn2-txn-hash-pool (n slot gen off okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off))))
@@ -183,24 +181,6 @@
        (natp (mv-nth 1 (fn2-txn-find-header left off end target slot gen okind oslot ogen fn2-pool)))))
 (in-theory (disable fn2-txn-find-header))
 
-;; Append [i, i+left) of the unstuffed source body to the end of chunk 0,
-;; dot-stuffing any leading '.' at the start of a line.
-(defun fn2-txn-put-wire-body (left i bol slot gen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix left)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
-  (if (zp left) (mv :ok fn2-pool)
-    (b* (((mv ok b) (fn2-gram-read slot gen i okind oslot ogen fn2-pool))
-         ((unless ok) (mv :span fn2-pool))
-         ((mv code fn2-pool)
-          (if (and bol (equal b *fn2-gram-dot*))
-              (fn2-gram-put *fn2-gram-dot* slot gen okind oslot ogen fn2-pool)
-            (mv :ok fn2-pool)))
-         ((unless (eq code :ok)) (mv code fn2-pool))
-         ((mv code fn2-pool) (fn2-gram-put b slot gen okind oslot ogen fn2-pool))
-         ((unless (eq code :ok)) (mv code fn2-pool)))
-      (fn2-txn-put-wire-body (- left 1) (+ 1 i) (equal b *fn2-gram-lf*) slot gen okind oslot ogen fn2-pool))))
-(fn2-pool-preserves fn2-txn-put-wire-body (left i bol slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
-(in-theory (disable fn2-txn-put-wire-body))
 
 ;; Reset the workspace's fill to OFF before synthesizing the overview slice.
 (defun fn2-txn-truncate-to (off slot gen okind oslot ogen fn2-pool)
@@ -240,15 +220,13 @@
 (fn2-pool-preserves fn2-txn-synth-ov-2 (dto dtl mo ml slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-txn-synth-ov-2))
 
-(defun fn2-txn-synth-ov-3 (hashed lines scanned slot gen okind oslot ogen fn2-pool)
+(defun fn2-txn-synth-ov-3 (hashed lines slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
   (fn2-txn-put-chain
    (fn2-gram-put-number (nfix hashed) slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put *fn2-gram-tab* slot gen okind oslot ogen fn2-pool)
-   (fn2-gram-put-number (nfix lines) slot gen okind oslot ogen fn2-pool)
-   (fn2-gram-put *fn2-gram-lf* slot gen okind oslot ogen fn2-pool)
-   (fn2-txn-put-wire-body (min 180 (nfix (- (nfix hashed) (nfix scanned)))) (nfix scanned) t slot gen okind oslot ogen fn2-pool)))
-(fn2-pool-preserves fn2-txn-synth-ov-3 (hashed lines scanned slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+   (fn2-gram-put-number (nfix lines) slot gen okind oslot ogen fn2-pool)))
+(fn2-pool-preserves fn2-txn-synth-ov-3 (hashed lines slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-txn-synth-ov-3))
 
 (defun fn2-txn-synth-ov-pool (mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool)
@@ -263,7 +241,7 @@
          (fn2-txn-truncate-to ov-off slot gen okind oslot ogen fn2-pool)
          (fn2-txn-synth-ov-1 so sl fo fl slot gen okind oslot ogen fn2-pool)
          (fn2-txn-synth-ov-2 dto dtl mo ml slot gen okind oslot ogen fn2-pool)
-         (fn2-txn-synth-ov-3 hashed lines scanned slot gen okind oslot ogen fn2-pool)))
+         (fn2-txn-synth-ov-3 hashed lines slot gen okind oslot ogen fn2-pool)))
        ((unless (eq code :ok)) (mv 0 0 fn2-pool))
        (ov-len (min *fn2-overview-octets-max* (nfix (- (fn2-gram-fill slot fn2-pool) ov-off)))))
     (mv ov-off ov-len fn2-pool)))
@@ -304,6 +282,8 @@
   :doc "Declare the competing binding's evidence slots in the private successor (ruling 6).")
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
+(defcost fn2-txn-payload-commit :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
+  :doc "An accepted article's payload extent becomes allocated to it (owner: the transaction kind, the article's event).")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 
@@ -448,6 +428,8 @@
                                (:do (pcode) (fn2-txn-put-post-for row-slot (:read upload mo) (:read upload ml)
                                                                   c0 g0 c1 g1 scanned hashed h row-principal-slot
                                                                   row-lines row-ngroups
+                                                                  (:read upload pext) (:read upload pepoch)
+                                                                  (:read upload palloc)
                                                                   :owner upload))
                                (:set (prepared 1))
                                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))))))))
@@ -515,7 +497,11 @@
                     (:if (equal row-tmode *fn2-txn-mode-evidence*)
                          ((:set (ecommit *fn2-txn-ecommit-committed*) (word *fn2-upload-word-conflict*))
                           (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
-                         ((:set (word *fn2-upload-word-accepted*))
+                         ;; the article's payload extent is now the article's
+                         ((:do (acode) (fn2-txn-payload-commit (:read upload pext) (:read upload pepoch)
+                                                               (:read upload palloc) tevent)
+                           :accept (:ok))
+                          (:set (word *fn2-upload-word-accepted*))
                           (:next :accepted) (:charge :steps *fn2-work-transition* :runnable t))))
                    ((equal tout *fn2-commit-outcome-uncertain*)
                     (:set (ecommit (if (equal row-tmode *fn2-txn-mode-evidence*) *fn2-txn-ecommit-uncertain* row-ecommit))
@@ -582,6 +568,18 @@
 (fn2-core-preserves fn2-claim-release-core (c fn2-core) :position 1 :rows nil
   :hints (("Goal" :in-theory (e/d (fn2-core-wfp) (fn2-txn-snapshot-read-code)))))
 (in-theory (disable fn2-commit-admit-txn fn2-claim-release-core))
+
+;; An accepted POST's payload extent (its upload's reservation) becomes
+;; allocated, owned by the article (the transaction kind, EVENT).
+(defun fn2-txn-payload-commit (e epoch counter event fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (not (unsigned-byte-p 60 event)) (mv :fault fn2-core)
+    (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
+      (code fn2-extents)
+      (fn2-alloc-commit-allocation e epoch counter *fn2-txn-kind* event fn2-extents)
+      (mv (if (eq code :ok) :ok :fault) fn2-core))))
+(fn2-core-preserves fn2-txn-payload-commit (e epoch counter event fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-txn-payload-commit))
 
 ;; At the drain: wake the upload U if it still names this row (ID of
 ;; generation GEN), so it sees the row gone and drains.
@@ -686,32 +684,34 @@
 (fn2-core-preserves fn2-txn-put-identity
   (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal local fn2-core) :position 1 :rows nil)
 
-(defun fn2-txn-put-article (tx dslot dgen doff bytes lines principal okind oslot ogen fn2-core)
+(defun fn2-txn-put-article (tx dslot dgen doff bytes lines lunit lepoch lalloc principal okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv c fn2-core)
         (fn2-article-put tx *fn2-txn-slot-article*
           (article :event 0) (birth :event 0) (state *fn2-txn-article-live*)
           (version *fn2-txn-article-version*) (source dslot dgen doff)
           (bytes bytes) (lines lines)
+          (location-unit lunit) (location-epoch lepoch) (location-allocation lalloc)
+          (location-kind *fn2-txn-location-raw-source*)
           :owner (okind oslot ogen) fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
     (fn2-outcome-put tx *fn2-txn-slot-outcome*
       (principal principal) (operation :event 0) (request dslot dgen doff)
       (outcome *fn2-txn-outcome-accepted*) (event :event 0)
       :owner (okind oslot ogen) fn2-core)))
-(fn2-core-preserves fn2-txn-put-article (tx dslot dgen doff bytes lines principal okind oslot ogen fn2-core)
+(fn2-core-preserves fn2-txn-put-article (tx dslot dgen doff bytes lines lunit lepoch lalloc principal okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-identity fn2-txn-put-article))
 
 ;; A POST's slots: the identity admission (a local acceptance) and the
 ;; article row with its outcome, one call for the declaring run.
-(defun fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines okind oslot ogen h principal fn2-core)
+(defun fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines lunit lepoch lalloc okind oslot ogen h principal fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv c fn2-core)
         (fn2-txn-put-identity tx mslot mgen moff mlen dslot dgen doff okind oslot ogen h principal 1 fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core)))
-    (fn2-txn-put-article tx dslot dgen doff bytes lines principal okind oslot ogen fn2-core)))
-(fn2-core-preserves fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines okind oslot ogen h principal fn2-core)
+    (fn2-txn-put-article tx dslot dgen doff bytes lines lunit lepoch lalloc principal okind oslot ogen fn2-core)))
+(fn2-core-preserves fn2-txn-put-post (tx mslot mgen moff mlen dslot dgen doff bytes lines lunit lepoch lalloc okind oslot ogen h principal fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-post))
 
@@ -758,18 +758,22 @@
 (fn2-core-preserves fn2-txn-update-ov-lines (k j tx c0 g0 ov-off ov-len okind oslot ogen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-update-ov-lines))
 
-(defun fn2-txn-put-post-for (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups okind oslot ogen fn2-core)
+;; The article's location is its upload's payload extent: the extent's first
+;; unit (an extent is *fn2-commit-write-resources* units) and its handle.
+(defun fn2-txn-put-post-for (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups pext pepoch palloc
+                                okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines) (natp ngroups))))
   (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
     (mv-let (c fn2-core)
-      (fn2-txn-put-post tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff hashed lines okind oslot ogen h principal fn2-core)
+      (fn2-txn-put-post tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff hashed lines
+                        (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal fn2-core)
       (if (not (and (eq c :ok) (not in1))) (mv c fn2-core)
         (mv-let (ov-off ov-len fn2-core)
           (fn2-txn-synth-ov mo ml scanned hashed lines c0 g0 okind oslot ogen fn2-core)
           (fn2-txn-update-ov-lines ngroups 0 tx c0 g0 ov-off ov-len okind oslot ogen fn2-core))))))
 (fn2-core-preserves fn2-txn-put-post-for
-  (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups okind oslot ogen fn2-core) :position 1 :rows nil)
+  (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups pext pepoch palloc okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-txn-put-evidence-for (tx mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
   (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))

@@ -13,6 +13,8 @@
 (defconst *fn2-txn-summary-sid* 13)
 (defconst *fn2-txn-index-sid* 14)
 (defconst *fn2-txn-article-sid* 2)
+;; fn2-article's LOCATION-KIND: the reference names the raw source.
+(defconst *fn2-txn-location-raw-source* 0)
 (defconst *fn2-txn-counts-sid* 5)
 (defconst *fn2-txn-outcome-sid* 9)
 
