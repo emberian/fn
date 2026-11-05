@@ -8,17 +8,14 @@
 ; - C's IDENTITY checker (sim/check-identity.lisp): the seeded facts are recorded offers, and the
 ;   served transaction's answer, read from its reply, is a query judged against the checker's own
 ;   Binding (the first content recorded for a Message-ID is its accepted content).
-; Premise B-S2-ADMISSION-INTERIM (named in *fn2-q1t-premises*): until B lands the transaction
-; member, the batch admission answers :not-served, so an article the model admits is answered with
-; the interim "441 posting failed" and nothing is recorded; its identity answer is :stored, judged
-; as a query. When B-S2 lands, the admitted article is answered 240 by the model's pattern and the
-; query becomes an offer recorded with outcome :ok; this row then changes with it.
+; The admitted article is answered 240 (B's transaction member landed; q1-contracts judges :accept
+; the same way since 32481b0c1). The reply's identity answer is judged as a query at its point: it is
+; the trace's last event, after the seeded offers, so no later record can change its judgement.
 (in-package "ACL2")
 (include-book "q1-contracts")
 (include-book "txn-unit")
 (include-book "../sim/check-identity")
 
-(defconst *fn2-q1t-premises* '(:b-s2-admission-interim))
 ; CASE is (name block data judgement mid seeds identity), as the model export writes it.
 (defun fn2-q1t-seeds (seeds)
   ; the identity facts to seed: (mid-octets content-identity), the content B's BLAKE3 of the source
@@ -34,15 +31,9 @@
 (defun fn2-q1t-answer (line)
   (declare (xargs :verify-guards nil))
   (cond ((equal (fn2-wire-code line) 240) :stored)
-        ((equal line *fn2-q1c-upload-interim*) :stored)
         ((fn2-q1c-contains-p (fn2-cw-chars (coerce "already stored here" 'list)) line) :duplicate)
         ((fn2-q1c-contains-p (fn2-cw-chars (coerce "a different article with this Message-ID" 'list)) line) :conflict)
         (t nil)))
-(defun fn2-q1t-reply-p (judgement mid line)
-  (declare (xargs :verify-guards nil))
-  (if (eq (car judgement) :accept)
-      (if mid (equal (fn2-wire-code line) 240) (equal line *fn2-q1c-upload-interim*))
-    (fn2-q1c-model-reply-p judgement line)))
 (defun fn2-q1t-ok (case sizes)
   (declare (xargs :verify-guards nil))
   (b* ((data (nth 2 case)) (judgement (nth 3 case)) (mid (nth 4 case)) (seeds (nth 5 case))
@@ -53,18 +44,17 @@
     (and (equal (nth 0 r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
          (fn2-wire-pass-p client wire closed)
          (equal (fn2-wire-code (fn2-q1c-line 1 wire)) 340)
-         (fn2-q1t-reply-p judgement mid reply)
+         (fn2-q1c-model-reply-p judgement reply)
          (or (not (nth 6 case))
              (equal (car (fn2-check-identity
                           (append (fn2-q1t-seeded-events seeds) (list (list :query mid (fn-blake3 data) (fn2-q1t-answer reply))))))
                     :ok)))))
 (defthm-owed fn2-txn-answers-by-identity (case sizes)
-  (implies (and (member-equal case *fn2-txn-model-cases*) (nat-listp sizes)
-                (member-eq :b-s2-admission-interim *fn2-q1t-premises*))
+  (implies (and (member-equal case *fn2-txn-model-cases*) (nat-listp sizes))
            (fn2-q1t-ok case sizes))
   :schema :invariant :claim :semantic
   :teeth (fn2-txn-answers-positive fn2-txn-answers-negative)
-  :doc "For H's model's POST fixtures over a seeded store, in any chunks: the served POST through the upload and the transaction passes WIRE's two-phase read; its reply is the model's outcome, where an admitted article gets the interim 441 under premise B-S2-ADMISSION-INTERIM; and where the outcome is the identity decision, C's IDENTITY checker accepts the reply's answer against its own Binding of the seeded facts.")
+  :doc "For H's model's POST fixtures over a seeded store, in any chunks: the served POST through the upload and the transaction passes WIRE's two-phase read; its reply is the model's outcome (an admitted article is answered 240); and where the outcome is the identity decision, C's IDENTITY checker accepts the reply's answer against its own Binding of the seeded facts.")
 (defun fn2-q1t-all (cases k)
   (declare (xargs :verify-guards nil))
   (or (atom cases)
