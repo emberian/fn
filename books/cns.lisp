@@ -162,6 +162,38 @@
 (defcost fn2-cns-decode-frame :answers (:ok) :bytes 64
  :doc "Decode consumer request parameters (consumer, cstart, to, page-limit, epoch) from the control frame.")
 
+;; The append frame (fkind 7, e-surface.md 3.3): cmd, 7, N (0..8), the
+;; operation identity in N octets big-endian (N = 0: none; below 2^60), then
+;; the article's own octets to the frame's end (CR LF lines, not
+;; dot-stuffed). (mv ok op aoff), AOFF the article's first octet.
+(defun fn2-cns-read-be (k n off acc slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp k) (natp n) (natp off) (natp acc))
+                  :measure (nfix (- (nfix n) (nfix k)))))
+  (if (>= (nfix k) (nfix n)) (mv t (nfix acc))
+    (mv-let (c b) (fn2-pool-read slot gen (+ (nfix off) (nfix k)) okind oslot ogen fn2-pool)
+      (if (not (and (eq c :ok) (natp b) (< b 256))) (mv nil 0)
+        (fn2-cns-read-be (+ 1 (nfix k)) n off (+ (* 256 (nfix acc)) b) slot gen okind oslot ogen fn2-pool)))))
+(defthm fn2-cns-read-be-natp
+  (natp (mv-nth 1 (fn2-cns-read-be k n off acc slot gen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(defun fn2-cns-decode-append-pool (pos flen slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (mv-let (c n) (if (< 2 (nfix flen)) (fn2-pool-read slot gen (+ 2 (nfix pos)) okind oslot ogen fn2-pool) (mv :range 0))
+    (if (not (and (eq c :ok) (natp n) (<= n 8) (<= (+ 3 n) (nfix flen)))) (mv nil 0 0)
+      (mv-let (ok op) (fn2-cns-read-be 0 n (+ 3 (nfix pos)) 0 slot gen okind oslot ogen fn2-pool)
+        (if (and ok (unsigned-byte-p 60 op)) (mv t op (+ 3 n (nfix pos))) (mv nil 0 0))))))
+(defthm fn2-cns-decode-append-pool-types
+  (and (natp (mv-nth 1 (fn2-cns-decode-append-pool pos flen slot gen okind oslot ogen fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-decode-append-pool pos flen slot gen okind oslot ogen fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-decode-append-pool pos flen slot gen okind oslot ogen fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-decode-append-pool pos flen slot gen okind oslot ogen fn2-pool))))))
+(in-theory (disable fn2-cns-read-be fn2-cns-decode-append-pool))
+(defcost fn2-cns-decode-append :answers (:ok :malformed) :bytes 64
+ :doc "Decode an append frame's operation identity and the article's offset: (mv code op aoff).")
+(defcost fn2-cns-feed-article :bytes *fn2-conn-feed-cost*
+  :answers (:need-more :budget :bounds :fault) :faults (:bounds :fault) :tables (fn2-core-pool)
+  :doc "Feed the append frame's article octets into the request's upload, as a connection feeds a POST (fn2-upload-feed-run, raw): (mv status start mode why copied).")
+
 (defcost fn2-cns-lookup-cursor :answers (:ok) :bytes 2048
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "Read the consumer cursor (position, version) from fn2-consumer-cursor and the published commit frontier.")
@@ -402,8 +434,9 @@
            (:next :check) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
           (t (:next :check) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
   (:check :on-refusal ((:stop :machine-phase))
-   (:cond ((or (equal row-verb *fn2-cns-verb-append*)
-               (equal row-verb *fn2-cns-verb-fetch*)
+   (:cond ((equal row-verb *fn2-cns-verb-append*)
+           (:next :append) (:charge :steps *fn2-work-transition* :runnable t))
+          ((or (equal row-verb *fn2-cns-verb-fetch*)
                (equal row-verb *fn2-cns-verb-rebase*)
                (equal row-verb *fn2-cns-verb-unregister*))
            (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
@@ -511,11 +544,45 @@
           ((*fn2-cns-posted-refused*) (:set (reason row-posted-word)) (:goto refuse))
           ((*fn2-cns-posted-uncertain*) (:set (outcome *fn2-cns-outcome-uncertain*)) (:goto answer))
           (:otherwise (:set (outcome *fn2-cns-outcome-accepted*) (cpos row-to)) (:goto answer))))))
+  ;; :append (e-surface.md 3.3): an append is a POST through the one write
+  ;; path. Take an upload row for this request, feed it the frame's article
+  ;; octets as a connection feeds a POST's block, and wait for the outcome
+  ;; its transaction (or its refusal) posts here (fn2-cns-post-outcome):
+  ;; the reply's reason is then the D word, its cpos the commit position.
+  (:append :on-refusal ((:stop :machine-phase))
+   (:cond ((equal row-ctl *fn2-none*) (:goto cancel))
+          ((equal row-upload *fn2-none*)
+           (:do (acode nop aoff) (fn2-cns-decode-append row-fpos row-flen row-ctl row-ctl-gen row-tx-slot row-tx-gen)
+            :accept (:ok)
+            :case (((:malformed) (:set (reason *fn2-cns-append-malformed*)) (:goto refuse))))
+           (:do (tcode u ugen)
+                (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
+                                             row-principal-slot nop)
+            :case (((:ok) (:set (upload u) (upload-gen ugen) (op nop) (fstart aoff) (fed 0) (feed-mode 0) (feed-discard 0))
+                    (:charge :steps *fn2-work-transition* :runnable t))
+                   (:otherwise (:park :taken fn2-upload :steps *fn2-work-transition*)))))
+          ((not (equal row-feed-mode *fn2-conn-feed-done*))
+           (:do (status start mode why copied)
+                (fn2-cns-feed-article row-fstart row-feed-mode row-feed-discard row-fed (+ row-fpos row-flen)
+                                      row-tx-slot row-tx-gen row-ctl row-ctl-gen row-upload row-upload-gen)
+            :accept (:need-more :budget) :why "a feed step ends at the frame's end or at its quantum")
+           (:let nfed (+ row-fed (nfix copied)))
+           (:if (not (and (unsigned-byte-p 32 start) (unsigned-byte-p 8 mode) (unsigned-byte-p 8 why)
+                          (unsigned-byte-p 60 nfed)))
+                ((:stop :machine-phase))
+                ((:set (fstart start) (fed nfed) (feed-discard why)
+                       (feed-mode (if (eq status :need-more) *fn2-conn-feed-done* mode)))
+                 (:wake-row row-upload)
+                 (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition* :runnable (eq status :budget)))))
+          ((equal row-posted *fn2-cns-posted-none*) (:charge :steps *fn2-work-empty*))
+          ((equal row-posted *fn2-cns-posted-accepted*) (:set (outcome *fn2-cns-outcome-accepted*)) (:goto answer))
+          ((equal row-posted *fn2-cns-posted-uncertain*) (:set (outcome *fn2-cns-outcome-uncertain*)) (:goto answer))
+          (t (:set (reason row-posted-word)) (:goto refuse))))
   (:draining
    (:let next (fn2-machine-free-head *fn2-cns-admission-ordinal*))
    (:let retire (>= row-generation (fn2-machine-gen-limit)))
    (:set (generation (if retire row-generation (+ 1 row-generation)))
-         (ctl *fn2-none*) (ctl-gen 0) (edge *fn2-none*) (txn *fn2-none*) (txn-gen 0)
+         (ctl *fn2-none*) (ctl-gen 0) (edge *fn2-none*) (txn *fn2-none*) (txn-gen 0) (upload *fn2-none*) (upload-gen 0)
          (tx-slot *fn2-none*) (tx-gen 0) (next-free next) (wait-reason *fn2-wait-none*))
    (:next (:if retire :retired :free))
    (:do () (fn2-cns-reclaim id *fn2-cns-admission-ordinal* retire))
@@ -560,6 +627,27 @@
 
 (defmacro fn2-cns-events ()
   '(progn
+     (defconst *fn2-cns-append-malformed* (fn2-upload-word-code :malformed))
+     (defun fn2-cns-decode-append (pos flen ctl ctl-gen tx-slot tx-gen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                       :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+       (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+         (ok op aoff)
+         (fn2-cns-decode-append-pool pos flen tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-pool)
+         (mv (if ok :ok :malformed) (nfix op) (nfix aoff))))
+     (in-theory (disable fn2-cns-decode-append))
+     ;; The frame's end is the article's: a last line without its CR LF is a
+     ;; framing error, as an unterminated line before a POST's terminator is.
+     (defun fn2-cns-feed-article (start mode why fed end tx-slot tx-gen ctl ctl-gen u ugen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (mv-let (status start2 mode2 why2 copied fn2-core)
+         (fn2-upload-feed-run start end mode why fed t tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen u ugen fn2-core)
+         (mv status start2 mode2
+             (if (and (eq status :need-more) (equal why2 0) (not (equal mode2 *fn2-feed-bol*))) 1 why2)
+             copied fn2-core)))
+     (fn2-core-preserves fn2-cns-feed-article (start mode why fed end tx-slot tx-gen ctl ctl-gen u ugen fn2-core)
+       :position 5 :rows nil)
+     (in-theory (disable fn2-cns-feed-article))
      (defun fn2-ctl-dispatch-cns (ctl ctl-gen request fpos flen fkind rx-slot rx-gen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (if (and (unsigned-byte-p 32 ctl) (unsigned-byte-p 60 ctl-gen) (unsigned-byte-p 32 request)
