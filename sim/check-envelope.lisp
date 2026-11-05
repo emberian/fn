@@ -118,9 +118,12 @@
                    (not (equal outcome *fn2-outcome-cancelled*))))
         (mv :post-after-close taken caps fn2-core))
        (stray (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n))
-       ; Receive: the recorded octets are written under the replay's loan first.
+       ; Receive and a storage Read: the recorded octets (what the peer sent,
+       ; what the device held) are written under the replay's loan first, so
+       ; the replay's pool holds what the host's did.
        ((mv wcode fn2-core)
-        (if (and (equal kind *fn2-action-receive*) (equal outcome *fn2-outcome-done*))
+        (if (and (or (equal kind *fn2-action-receive*) (equal kind *fn2-action-read*))
+                 (equal outcome *fn2-outcome-done*))
             (if (not (equal (len octets) count)) (mv :receive-count fn2-core)
               (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
                 (fn2-env-write-loan off octets rslot rgen slot gen fn2-pool) (mv code fn2-core)))
