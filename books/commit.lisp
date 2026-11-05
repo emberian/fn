@@ -724,7 +724,19 @@
     (mv :bounds 0 0 0 0 fn2-fields))
    (mv code (nfix pu) (nfix epoch) (nfix alloc) (nfix elen) fn2-core))))
 (fn2-core-preserves fn2-commit-txn-source (slot gen len okind oslot ogen fn2-core) :position 5 :rows nil)
-; B-S2 S10's block read is fn2-block-read-children (machines-b.lisp), in child form.
+; B-S2 S10: the block read's core face over its child, fn2-block-read-children
+; (machines-b.lisp), which the cursor's child-form arms call.
+(defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+  (code slot gen fn2-pool fn2-ops fn2-control)
+  (fn2-block-read-children pu epoch alloc off len lslot lgen okind oslot ogen principal
+                           fn2-extents fn2-pool fn2-ops fn2-control)
+  (mv code slot gen fn2-core)))
+(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; The read's completion: every requested octet arrived (:ok) or not (:io).
 ; Until D4 3/n names payload blocks by content there is no block hash to
 ; check here; a stored reference's expected hash is checked then.
