@@ -962,7 +962,19 @@ requires every named fault class and the fence-count control to be exercised.
 
 ### Resource threads and notification debt (B3c)
 
-R7 `:holds` is absent on this base. `*fn2-commit-holds*` beside `defmachine`
+The kind's D0 `:holds` (`defmachine fn2-commit`, `books/machines-b.lisp`) are
+`:batch-membership` and `:storage-window` from `:collect` through `:publish` and in
+`:dropping`, `:storage-window` alone in `:notify` and `:draining`, nothing in `:free`,
+and `(:uncertain :retained)`: an uncertain batch acquires nothing on entry and keeps
+exactly what the failing path held, until recovery replaces the core.
+No phase holds `:storage-job` or `:fence-slot` (ruled 2026-11-05). The journal IO
+runs on the row's own commit-io rows (`fn2-commit-io-edge` records and drops the
+issuing op as the holder of a role's IO edge); it draws from no shared job table,
+and acquiring `:storage-job` there would also take a lower rank under the held
+`:storage-window`. The fence slot is A's holding: taken at adapter take and released
+by physical completion (below), as for `fn2-scribe`, whose fence phase holds none.
+`*fn2-resource-batch-phases*` (resources.lisp) states the same holds.
+`*fn2-commit-holds*` beside `defmachine`
 is the phase-entry potential; the registry checks its state coverage.
 `*fn2-commit-transitions*` names the graph. Phase alone is insufficient: operation
 lifecycle, drain cursor and retained failure state refine the potential.

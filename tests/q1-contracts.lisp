@@ -8,6 +8,7 @@
 (include-book "../sim/sim-recovery")
 (include-book "../sim/echo")
 (include-book "evidence/upload-model")
+(include-book "../books/owed-txn")
 
 ; ------------------------------------------------------------------------
 ; fn2-conn: WIRE correctness. The served connection, alone, given any client
@@ -82,8 +83,9 @@
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
       (let ((fn2-core (fn2-init-executor *fn2-q1c-echo-profile* :echo nil fn2-core)))
-        (mv-let (status clients fn2-core)
-          (fn2-cw-loop 2600 0 0 (fn2-cw-clients (list (list input sizes))) fn2-core)
+        (mv-let (status clients store fn2-core)
+          (fn2-cw-loop 2600 0 0 (fn2-cw-clients (list (list input sizes))) nil fn2-core)
+          (declare (ignore store))
           (mv (list status (car (fn2-cw-results clients)) (fn2-core-stop-reason fn2-core)) fn2-core)))
       result)))
 (defthm-owed fn2-echo-replies-its-input (input sizes)
@@ -143,7 +145,7 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
   (if (zp fuel) (mv :fuel clients ok fn2-core)
     (b* (((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
-         ((mv took accepted clients fn2-core) (fn2-cw-adapter-one accepted clients fn2-core))
+         ((mv took accepted clients & fn2-core) (fn2-cw-adapter-one accepted clients nil fn2-core))
          (ok (and ok (fn2-q1c-within-limit-p fn2-core)))
          (idle (if (or took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
       (if (or (<= 3 idle) (not (equal (fn2-core-stop-reason fn2-core) 0)))
@@ -326,13 +328,10 @@
 ; upload-unit's profile: two upload windows of 4 KiB chunks, the fixtures'
 ; groups, and room for C's engine, so an admissible article reaches the
 ; transaction's :ready (D5 1/n).
+; The transaction's posting profile (owed-txn.lisp: identity overlays, the pool
+; classes a durable POST seals into) with the model's second group.
 (defconst *fn2-q1c-upload-profile*
-  (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2))
-    (put-assoc-equal :identity-arena-bytes 4096
-      (put-assoc-equal :posting-interim t
-        (put-assoc-equal :large-upload-windows 2
-          (put-assoc-equal :pool-classes '((8 . 1024) (16 . 4096) (4 . 65536)) *fn2-conn-wire-profile*))))))
-(defconst *fn2-q1c-upload-interim* (fn2-cw-chars (coerce "441 posting failed" 'list)))
+  (put-assoc-equal :groups '(("local.test" . 1) ("g" . 2)) *fn2-txn-posting-profile*))
 (defun fn2-q1c-hasher-result (row fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-digests (fn2-core-digests fn2-core))) (d)
@@ -343,9 +342,14 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
-      (let ((fn2-core (fn2-init-executor *fn2-q1c-upload-profile* :echo nil fn2-core)))
-        (mv-let (status clients fn2-core)
-          (fn2-cw-loop (+ 2600 (* 4 (len sizes))) 0 0 (fn2-cw-clients (list (list client sizes))) fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-q1c-upload-profile* :echo nil fn2-core))
+           ;; the writer epoch, as fn2-conn-wire-run-in begins it: a durable POST allocates
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core))))
+        (mv-let (status clients store fn2-core)
+          (fn2-cw-loop (+ 2600 (* 4 (len sizes))) 0 0 (fn2-cw-clients (list (list client sizes))) nil fn2-core)
+          (declare (ignore store))
           (mv (list status (fn2-core-stop-reason fn2-core) (car (fn2-cw-results clients))
                     (fn2-q1c-hasher-result 3 fn2-core))
               fn2-core)))
@@ -369,7 +373,7 @@
 (defun fn2-q1c-model-reply-p (judgement line)
   (declare (xargs :verify-guards nil))
   (case (car judgement)
-    (:accept (equal line *fn2-q1c-upload-interim*))
+    (:accept (equal (fn2-wire-code line) 240))
     (:refuse (and (equal (fn2-wire-code line) 441) (fn2-q1c-any-alt-p (cdr judgement) (nthcdr 4 line))))
     (:framing (equal (fn2-wire-code line) 441))
     (otherwise nil)))

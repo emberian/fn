@@ -75,7 +75,8 @@
       (if (eq code :ok) (fn2-tu-seed-all (cdr seeds) (+ 1 batch) fn2-core) (mv code fn2-core)))))
 
 ; The wires of TRANSCRIPTS after SEEDS: (seeded status wires stop-reason).
-(defun fn2-tu-run (profile seeds transcripts)
+(defun fn2-tu-run-on (profile seeds transcripts store)
+  ;; STORE: the device before the run ((offset . octets) or a bad sector (offset . :io))
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -84,11 +85,14 @@
             (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv seeded fn2-core) (fn2-tu-seed-all seeds 1 fn2-core))
-           ((mv status clients fn2-core)
+           ((mv status clients & fn2-core)
             (fn2-cw-loop (+ 2500 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
-                         0 0 (fn2-cw-clients transcripts) fn2-core)))
+                         0 0 (fn2-cw-clients transcripts) store fn2-core)))
         (mv (list seeded status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)) fn2-core))
       result)))
+(defun fn2-tu-run (profile seeds transcripts)
+  (declare (xargs :verify-guards nil))
+  (fn2-tu-run-on profile seeds transcripts nil))
 (defun fn2-tu-wire (seeds lines k)
   (declare (xargs :verify-guards nil))
   (let* ((octets (fn2-tu-text lines))
@@ -156,14 +160,15 @@
                  (fn2-tu-expect "441 posting failed; a different article with this Message-ID is stored here"))
    (fn2-tu-check nil (fn2-tu-post (update-nth 2 "Newsgroups: x.y,local.test , z" *fn2-tu-good*))
                  (fn2-tu-expect "240 article received OK"))
-   ;; no Message-ID: the interim (the generated one comes with injection)
+   ;; no Message-ID: the node generates one (injection), so the seeded
+   ;; article's Message-ID is not this one's
    (fn2-tu-check *fn2-tu-same* (fn2-tu-post (remove-equal (nth 3 *fn2-tu-good*) *fn2-tu-good*))
-                 (fn2-tu-expect "441 posting failed"))
+                 (fn2-tu-expect "240 article received OK"))
    ;; two posts pipelined on one connection, the second a duplicate
    (fn2-tu-check *fn2-tu-same*
                  (append '("POST") (remove-equal (nth 3 *fn2-tu-good*) *fn2-tu-good*) '(".")
                          (fn2-tu-post *fn2-tu-good*))
-                 (list *fn2-tu-greeting* *fn2-tu-340* "441 posting failed" *fn2-tu-340*
+                 (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" *fn2-tu-340*
                        "441 posting failed; this article is already stored here" *fn2-tu-205*))))
 (assert-event (fn2-tu-fixtures))
 
@@ -191,9 +196,9 @@
        (cw "two ~x0~%" r))))
 
 ; ------------------------------------------------------------------------
-; The interims' teeth (owed-txn.lisp). Each positive tooth is the row's
+; The owed rows' teeth (owed-txn.lisp). Each positive tooth is the row's
 ; statement at three fragmentations; each negative shows the predicate
-; refuses the answer the interim stands in for.
+; refuses the answer it states.
 (defun fn2-tu-solo-all (lines want)
   (declare (xargs :verify-guards nil))
   (let ((octets (fn2-txn-post-octets lines)))
@@ -207,25 +212,27 @@
   (declare (xargs :verify-guards nil))
   (not (equal (fn2-txn-wire-solo (fn2-txn-post-octets *fn2-txn-article*) '(4096))
               (fn2-txn-interim-wire "441 posting failed"))))
-(defun fn2-txn-test-generated-interim ()
+(defun fn2-txn-test-generated ()
   (declare (xargs :verify-guards nil))
   (fn2-tu-solo-all (remove-equal (nth 3 *fn2-txn-article*) *fn2-txn-article*)
-                   (fn2-txn-interim-wire "441 posting failed")))
-(defun fn2-txn-test-generated-interim-negative ()
+                   (fn2-txn-interim-wire "240 article received OK")))
+(defun fn2-txn-test-generated-negative ()
   (declare (xargs :verify-guards nil))
-  ;; the same article without Subject: the verdict, not the interim
+  ;; the same article without Subject: the verdict refuses it, generated identifier or not
   (not (equal (fn2-txn-wire-solo (fn2-txn-post-octets (remove-equal "Subject: hello"
                                                                     (remove-equal (nth 3 *fn2-txn-article*) *fn2-txn-article*)))
                                  '(4096))
-              (fn2-txn-interim-wire "441 posting failed"))))
+              (fn2-txn-interim-wire "240 article received OK"))))
 (assert-event (and (fn2-txn-test-admission-interim) (fn2-txn-test-admission-interim-negative)
-                   (fn2-txn-test-generated-interim) (fn2-txn-test-generated-interim-negative)))
+                   (fn2-txn-test-generated) (fn2-txn-test-generated-negative)))
 
-; End-to-end M2 spine (Brick F6): POST stages group counts, overview, and
-; group-address entries, prebinds the prospective event number before
-; emitting journal records, and publishes so a reader on the same connection
-; immediately sees the posted article via GROUP, OVER, OVER <id>, HEAD, BODY,
-; and ARTICLE with its real stored body octets (not fabricated 'x' bytes).
+; End-to-end M2 spine: POST stores the source in an extent of its own
+; (written and fenced before the batch's journal), binds its location into
+; the article row with group counts, overview and group-address entries, and
+; publishes, so a reader on the same connection sees the posted article via
+; GROUP, OVER, OVER <id>, HEAD, BODY and ARTICLE: the octets read back from
+; the device through B's block read, the header in its posted order and the
+; body dot-stuffed again.
 (defconst *fn2-tu-read-profile*
   (put-assoc-equal :reading t (put-assoc-equal :x 2 *fn2-tu-profile*)))
 (defun fn2-tu-tab () (declare (xargs :verify-guards nil)) (coerce (list (code-char 9)) 'string))
@@ -254,9 +261,11 @@
         "224 overview information follows"
         (fn2-tu-ov-line "1")
         "."
+        ;; the posted header, in its order, as stored
         "221 1 <one@example.invalid> headers follow"
         "From: a@example.invalid"
         "Subject: hello"
+        "Newsgroups: local.test"
         "Message-ID: <one@example.invalid>"
         "."
         "222 1 <one@example.invalid> body follows"
@@ -266,6 +275,7 @@
         "220 1 <one@example.invalid> article follows"
         "From: a@example.invalid"
         "Subject: hello"
+        "Newsgroups: local.test"
         "Message-ID: <one@example.invalid>"
         ""
         "body"
@@ -286,3 +296,126 @@
          (or (equal got want) (cw "post-and-read ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-txn-test-post-and-read))
 
+
+; A two-chunk POST (the upload window's chunk 0 holds 4096 octets; this
+; source is 6,296): 240, and BODY reads every posted line back from the
+; device, the line that starts with "." stuffed again (it lies in chunk 1).
+(defun fn2-tu-long-body (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (concatenate 'string (if (equal n 7) "." "") "line "
+                       (coerce (explode-nonnegative-integer n 10 nil) 'string)
+                       " 0123456789012345678901234567890123456789012345678901")
+          (fn2-tu-long-body (- n 1)))))
+(defun fn2-tu-stuff (lines)
+  (declare (xargs :verify-guards nil))
+  (if (atom lines) nil
+    (cons (if (and (< 0 (length (car lines))) (equal (char (car lines) 0) #\.))
+              (concatenate 'string "." (car lines)) (car lines))
+          (fn2-tu-stuff (cdr lines)))))
+(defconst *fn2-tu-long* (append (list "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
+                                      "Message-ID: <long@example.invalid>" "")
+                                (fn2-tu-long-body 100)))
+(defun fn2-txn-test-two-chunks ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-long*) '(".") '("GROUP local.test" "BODY 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (expect (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                               "222 1 <long@example.invalid> body follows")
+                         (fn2-tu-stuff (fn2-tu-long-body 100))
+                         (list "." *fn2-tu-205*)))
+         (want (list :ok :quiet 0 (fn2-tu-text expect) t))
+         (r (fn2-tu-run *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
+    (and (< 4096 (len (fn2-tu-text *fn2-tu-long*)))
+         (or (equal got want) (cw "two-chunks ~x0~%want ~x1~%" got want)))))
+(assert-event (fn2-txn-test-two-chunks))
+
+; A Read that fails after the 22x line went closes the connection (it
+; replaced the core's stop :machine-phase): the second storage unit of every
+; extent is a bad sector, so BODY 1 of the two-chunk article sends its 222
+; line and the pages of the first unit, then the read of the second fails.
+; The wire is a proper prefix of the complete reply (no terminator, no 205
+; for the QUIT behind it), the client is closed, and the core runs on.
+(defun fn2-tu-bad-second-units (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (cons (+ (* (- n 1) *fn2-commit-extent-bytes*) *fn2-commit-unit-bytes*) :io)
+          (fn2-tu-bad-second-units (- n 1)))))
+(defun fn2-tu-prefix-p (p l)
+  (declare (xargs :verify-guards nil))
+  (or (atom p) (and (consp l) (equal (car p) (car l)) (fn2-tu-prefix-p (cdr p) (cdr l)))))
+(defun fn2-txn-test-read-fail-closes ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-long*) '(".") '("GROUP local.test" "BODY 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (said (fn2-tu-text (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                  "222 1 <long@example.invalid> body follows")))
+         (whole (fn2-tu-text (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                           "222 1 <long@example.invalid> body follows")
+                                     (fn2-tu-stuff (fn2-tu-long-body 100))
+                                     (list "." *fn2-tu-205*))))
+         (r (fn2-tu-run-on *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))
+                           (fn2-tu-bad-second-units 64)))
+         (wire (car (car (nth 2 r)))) (closed (cadr (car (nth 2 r)))))
+    (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
+             (fn2-tu-prefix-p said wire) (fn2-tu-prefix-p wire whole) (< (len wire) (len whole)) closed)
+        (cw "read-fail-closes ~x0 closed ~x1 wire ~x2 of ~x3 octets~%" (list (car r) (nth 1 r) (nth 3 r)) closed
+            (len wire) (len whole)))))
+(assert-event (fn2-txn-test-read-fail-closes))
+
+; Injection read back: a POST without a Message-ID answers 240, and HEAD 1
+; and ARTICLE 1 serve the stored octets: the generated field first
+; (<fn2.1.A@P>, P the profile's :path-identity, the writer epoch 1 and the payload extent's
+; allocation), then the posted header in its order and the body; the 221
+; and 220 lines carry the same identifier the field does.
+(defun fn2-tu-mid-of (line)
+  ;; "221 1 <id> headers follow" -> "<id>"
+  (declare (xargs :verify-guards nil))
+  (let* ((s (coerce line 'list)) (a (member #\< s)) (b (member #\> a)))
+    (and a b (coerce (take (+ 1 (- (len a) (len b))) a) 'string))))
+(defun fn2-tu-codes-chars (l)
+  (declare (xargs :verify-guards nil))
+  (if (atom l) nil (cons (code-char (nfix (car l))) (fn2-tu-codes-chars (cdr l)))))
+(defun fn2-tu-lines-of (octets)
+  (declare (xargs :verify-guards nil :measure (len octets)))
+  (mv-let (found line rest) (fn2-wire-take-line octets nil)
+    (if (or (not found) (>= (len rest) (len octets))) nil
+      (cons (coerce (fn2-tu-codes-chars line) 'string) (fn2-tu-lines-of rest)))))
+(defun fn2-tu-digits-p (cs)
+  (declare (xargs :verify-guards nil))
+  (and (consp cs) (true-listp cs) (subsetp cs '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))))
+(defun fn2-tu-generated-mid-p (mid path)
+  ;; <fn2.1.DIGITS@PATH>
+  (declare (xargs :verify-guards nil))
+  (let* ((s (coerce mid 'list)) (pre (coerce "<fn2.1." 'list))
+         (post (coerce (concatenate 'string "@" path ">") 'list)))
+    (and (< (+ (len pre) (len post)) (len s))
+         (equal (take (len pre) s) pre)
+         (equal (nthcdr (- (len s) (len post)) s) post)
+         (fn2-tu-digits-p (take (- (len s) (+ (len pre) (len post))) (nthcdr (len pre) s))))))
+(defun fn2-txn-test-generated-read (path)
+  (declare (xargs :verify-guards nil))
+  (let* ((posted (remove-equal (nth 3 *fn2-tu-good*) *fn2-tu-good*))
+         (lines (append '("POST") posted '(".") '("GROUP local.test" "HEAD 1" "ARTICLE 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (r (fn2-tu-run (put-assoc-equal :path-identity path *fn2-tu-read-profile*) nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (wire (car (car (nth 2 r))))
+         (got (fn2-tu-lines-of wire))
+         (mid (fn2-tu-mid-of (or (nth 4 got) "")))
+         (field (concatenate 'string "Message-ID: " (or mid "")))
+         (expect (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                       (concatenate 'string "221 1 " (or mid "") " headers follow")
+                       field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" "."
+                       (concatenate 'string "220 1 " (or mid "") " article follows")
+                       field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" ""
+                       "body" "..stuffed" "." *fn2-tu-205*)))
+    (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
+             (stringp mid) (fn2-tu-generated-mid-p mid path)
+             (equal wire (fn2-tu-text expect)) (cadr (car (nth 2 r))))
+        (cw "generated-read ~x0 ~x1~%" (list (car r) (nth 1 r) (nth 3 r) mid) got))))
+; The identifier's right side is the profile's path identity: the tiny
+; profile's, and another node's.
+(assert-event (and (fn2-txn-test-generated-read "fn2.invalid")
+                   (fn2-txn-test-generated-read "news.example-1.org")
+                   (not (fn2-tu-generated-mid-p "<fn2.1.7@fn2.invalid>" "news.example-1.org"))))

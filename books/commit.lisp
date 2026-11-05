@@ -169,8 +169,10 @@
 (defthm fn2-commit-resource-index-bound
  (implies (and (natp row) (< row 2) (natp role) (< role 3))
           (< (+ (* 3 row) role) 6)))
+; Total over ids (an arm reads it for its own row): a non-commit id has no resource.
 (defun fn2-commit-resource (id role fn2-core)
- (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core))))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (fn2-commit-idp id fn2-core)) (mv *fn2-commit-no-extent* 0 0 0 0)
  (let ((r (+ (* 3 (fn2-commit-row id fn2-core)) (nfix role))))
  (stobj-let ((fn2-commit-io (fn2-core-commit-io fn2-core)))
   (e epoch counter slot gen)
@@ -178,7 +180,7 @@
    (mv (fn2-commit-io-extent r fn2-commit-io) (fn2-commit-io-epoch r fn2-commit-io)
        (fn2-commit-io-counter r fn2-commit-io) (fn2-commit-io-pool-slot r fn2-commit-io)
        (fn2-commit-io-pool-gen r fn2-commit-io))
-   (mv *fn2-commit-no-extent* 0 0 0 0)) (mv e epoch counter slot gen))))
+   (mv *fn2-commit-no-extent* 0 0 0 0)) (mv e epoch counter slot gen)))))
 (in-theory (disable fn2-commit-resource))
 (defun fn2-commit-uncertain (id reason fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -724,21 +726,19 @@
     (mv :bounds 0 0 0 0 fn2-fields))
    (mv code (nfix pu) (nfix epoch) (nfix alloc) (nfix elen) fn2-core))))
 (fn2-core-preserves fn2-commit-txn-source (slot gen len okind oslot ogen fn2-core) :position 5 :rows nil)
-; B-S2 S10: read [OFF, OFF+LEN) of a stored reference (physical unit, writer
-; epoch, allocation) into the caller's lease. The allocation handle must still
-; name the unit's extent (:stale otherwise); the read result arrives as the
-; caller's :read-result. (mv code slot gen fn2-core), as fn2-issue-read's.
+; B-S2 S10: the block read's core face over its child, fn2-block-read-children
+; (machines-b.lisp), which the cursor's child-form arms call.
 (defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (b* (((unless (and (natp pu) (natp off) (natp len) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)))
-       (mv :bounds 0 0 fn2-core))
-      (code (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code)
-             (fn2-alloc-handle-code (floor pu *fn2-commit-write-resources*) epoch alloc fn2-extents) code))
-      ((unless (eq code :ok)) (mv (if (eq code :bounds) :bounds :stale) 0 0 fn2-core))
-      ((mv code slot gen fn2-core)
-       (fn2-issue-read (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal fn2-core)))
-  (mv (cond ((eq code :ok) :ok) ((eq code :exhausted) :exhausted) (t :bounds)) slot gen fn2-core)))
-(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core) :position 3 :rows nil)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+  (code slot gen fn2-pool fn2-ops fn2-control)
+  (fn2-block-read-children pu epoch alloc off len lslot lgen okind oslot ogen principal
+                           fn2-extents fn2-pool fn2-ops fn2-control)
+  (mv code slot gen fn2-core)))
+(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; The read's completion: every requested octet arrived (:ok) or not (:io).
 ; Until D4 3/n names payload blocks by content there is no block hash to
 ; check here; a stored reference's expected hash is checked then.
@@ -947,15 +947,6 @@
          (fn2-core (if quiet (fn2-commit-put-core id (stopped 1)) fn2-core)))
    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
 (fn2-core-preserves fn2-commit-stop-written-follower (id fn2-core) :position 4 :rows nil)
-(defmachine-callback fn2-commit-collect fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-follower id fn2-core))
-       (t
- (mv-let (code fn2-core) (fn2-commit-root-edge id nil fn2-core)
-  (if (not (eq code :ok)) (fn2-commit-stop-arm *fn2-stop-reason-commit-edge*)
-   (let ((fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-seal*) (cb-open 0))))
-    (fn2-machine-result 0 *fn2-work-stage* 0 t fn2-core))))))))
 
 (defun fn2-commit-zero (left at slot gen id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -1215,20 +1206,6 @@
   ((= stage *fn2-commit-seal-stage-save-seal*) (fn2-commit-seal-context id nil fn2-core))
   (t (mv :state fn2-core))))))
 (fn2-core-preserves fn2-commit-seal-step (id fn2-core) :position 1 :rows nil)
-(defmachine-callback fn2-commit-seal fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-follower id fn2-core))
-       (t
- (let ((stage row-cb-stage))
- (mv-let (code fn2-core) (fn2-commit-seal-step id fn2-core)
-  (let* ((fn2-core
-   (cond ((eq code :more) fn2-core)
-         ((eq code :ok) (fn2-commit-seal-advance id (+ 1 stage)
-            (= stage *fn2-commit-seal-stage-hash-seal-frame*) fn2-core))
-         (t (fn2-commit-fail id *fn2-commit-reason-seal* fn2-core)))))
-   ; a refused seal stays runnable for its :dropping arm (b54 M3)
-   (fn2-machine-result 4096 *fn2-work-stage* 0 t fn2-core))))))))
 
 ; Edge row is the resource index; its holder is the exact issuing op generation.
 ; Keep both log edges until all results in that class are harvested: the router
@@ -1273,37 +1250,21 @@
 )))
 (defun fn2-commit-event-forms-2 ()
  (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) '(
-(defmachine-callback fn2-commit-observe fn2-commit (id event outcome reason count aux0 aux1) 1
- ; Every row field is read before the first core rebinding: no later write in
- ; this observer changes cb-bytes or cb-failed, and DM0b inserts no refresh.
- (let* ((issued row-cb-issued) (done row-cb-done) (bytes row-cb-bytes)
-        (failed row-cb-failed)
-        (fence (= row-cb-fence-live 1))
-        (write (equal event *fn2-event-write-result*))
-        (phase row-phase)
-        (write-phase (or (= phase *fn2-commit-state-dependencies*)
-                         (= phase *fn2-commit-state-log-write*)
-                         (and (= phase *fn2-commit-state-uncertain*)
-                              (< 0 row-pending))))
-        (match (if write (and write-phase (not fence) (< done issued))
-                    (and fence (or (= phase *fn2-commit-state-fence*)
-                                   (= phase *fn2-commit-state-uncertain*))
-                         (equal event *fn2-event-fence-result*))))
-        (success (and match (equal outcome *fn2-outcome-done*)
-                      (equal count (if write *fn2-commit-unit-bytes* 0))))
-        (fn2-core (if (and match fence) (fn2-commit-clear-fence id fn2-core) fn2-core))
-        (fn2-core (if (and match write)
-                   (fn2-commit-write-completed id (+ done 1) (+ bytes (nfix count)) fn2-core) fn2-core))
-        (fn2-core (if (and match write (= (+ done 1) issued)) (fn2-commit-drop-io id fn2-core) fn2-core))
-        (fn2-core (if success
-                    (if fence (fn2-commit-fence-completed id fn2-core) fn2-core)
-                   (let ((fn2-core (if (= failed 0)
-                                    (fn2-commit-note-outcome id outcome fn2-core) fn2-core)))
-                    (fn2-commit-uncertain id (if match reason *fn2-commit-reason-stray*) fn2-core)))))
-  (mv id fn2-core)))
 
 ; b54 M3: row ID has issued no journal write and its leader PEER (an older
 ; batch still in flight) has issued none either.
+; :durable's allocator step: the batch's dependency extent committed to it.
+(defun fn2-commit-allocate (id fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-commit-checked id (mv :bounds fn2-core)
+  (mv-let (e epoch counter slot gen) (fn2-commit-resource id 0 fn2-core)
+   (declare (ignore slot gen))
+   (let ((batch (fn2-machine-batch-no id fn2-core)))
+    (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+     (fn2-alloc-commit-allocation e epoch counter *fn2-commit-kind* batch fn2-extents)
+     (mv code fn2-core))))))
+(fn2-core-preserves fn2-commit-allocate (id fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-commit-allocate))
 (defun fn2-commit-follower-waits (id peer fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (and (fn2-commit-idp id fn2-core) (fn2-commit-idp peer fn2-core)
@@ -1313,104 +1274,8 @@
       (equal (fn2-machine-cb-wrote peer fn2-core) 0)))
 (in-theory (disable fn2-commit-follower-waits))
 
-(defmachine-callback fn2-commit-writes fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-follower id fn2-core))
-       (t
-  (let* ((dep (= row-phase *fn2-commit-state-dependencies*))
-         (issued row-cb-issued) (target (if dep 1 2)))
-   (cond
-    ((equal (fn2-machine-phase row-partner fn2-core) *fn2-commit-state-uncertain*)
-     (let ((fn2-core (fn2-commit-fail id *fn2-commit-reason-predecessor* fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))
-    ((= issued target)
-     (if (< row-cb-done issued) (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)
-      (let ((fn2-core (fn2-commit-writes-finished id (if dep 1 row-cb-deps-ok)
-                       (if dep 0 1) dep row-cb-mode fn2-core)))
-       (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))
-    ((not (and (natp budget) (< 0 budget) (< issued target)))
-     (fn2-machine-yield id fn2-core))
-    ; b54 M3: a follower's first journal write waits for its leader's.
-    ((fn2-commit-follower-waits id row-partner fn2-core)
-     (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
-    (t
-     (let ((role (if dep 0 (+ 1 issued))))
-      (mv-let (e epoch counter slot gen) (fn2-commit-resource id role fn2-core)
-       (declare (ignore epoch counter))
-       (if (not (unsigned-byte-p 32 e))
-        (fn2-commit-stop-arm *fn2-stop-reason-commit-resource*)
-        (mv-let (code opslot opgen fn2-core)
-          (fn2-issue-write (+ (* e *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*))
-            slot gen 0 *fn2-commit-unit-bytes* (if dep 0 row-cb-mode)
-            *fn2-commit-kind* id row-generation 0 fn2-core)
-         (cond
-          ((eq code :exhausted) (fn2-machine-yield id fn2-core))
-          ((not (eq code :ok))
-           (let ((fn2-core (fn2-commit-fail id *fn2-commit-reason-issue* fn2-core)))
-            (fn2-machine-result 0 *fn2-work-mailbox* 0 (= row-cb-wrote 0) fn2-core)))
-          (t
-           (mv-let (code fn2-core) (fn2-commit-io-edge id role t opslot opgen fn2-core)
-            (if (not (eq code :ok)) (fn2-commit-stop-arm *fn2-stop-reason-commit-io*)
-             (let ((fn2-core (fn2-commit-write-issued id (+ issued 1) (+ 1 row-pending) fn2-core)))
-              (fn2-machine-result 4096 *fn2-work-stage* 1 t fn2-core)))))))))))))))))
 
-(defmachine-callback fn2-commit-fence fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-written-follower id fn2-core))
-       (t
-  (let ((peer row-partner) (now (fn2-commit-now fn2-core)))
-   (cond
-    ((and (= row-cb-fence-live 1) (<= row-deadline now))
-     (let ((fn2-core (fn2-commit-timeout id fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
-    ((= row-cb-fence-ok 1)
-     (let ((fn2-core (fn2-commit-put-core id
-                       (phase (if (= row-cb-mode 1) *fn2-commit-state-log-write*
-                                *fn2-commit-state-durable*)))))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)))
-    ((= (fn2-machine-phase peer fn2-core) *fn2-commit-state-uncertain*)
-     (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
-    ((or (= row-cb-fence-live 1) (= (fn2-machine-cb-fence-live peer fn2-core) 1))
-     (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
-    ((not (and (natp budget) (< 0 budget))) (fn2-machine-yield id fn2-core))
-    ((not (and (natp now) (unsigned-byte-p 60 (+ now 1024))))
-     (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-timeout* fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
-    (t
-     (mv-let (code opslot opgen fn2-core)
-       (fn2-issue-fence *fn2-commit-kind* id row-generation 0 fn2-core)
-      (declare (ignore opslot opgen))
-      (cond
-       ((eq code :exhausted) (fn2-machine-yield id fn2-core))
-       ((not (eq code :ok))
-        (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-issue* fn2-core)))
-         (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
-       (t
-        (let ((fn2-core (fn2-commit-put-core id (cb-fence-live 1)
-                          (deadline (+ now 1024)) (pending (+ 1 row-pending)))))
-         (fn2-machine-result 0 *fn2-work-transition* 1 t fn2-core))))))))))))
 
-(defmachine-callback fn2-commit-durable fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-written-follower id fn2-core))
-       (t
-  (if (not (and (unsigned-byte-p 60 row-batch-no) (= row-cb-deps-ok 1)
-                (= row-cb-log-ok 1) (= row-cb-fence-ok 1) (= row-cb-failed 0)))
-   (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core)))
-    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-   (mv-let (e epoch counter slot gen) (fn2-commit-resource id 0 fn2-core)
-    (declare (ignore slot gen))
-    (let ((batch row-batch-no))
-     (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
-       (fn2-alloc-commit-allocation e epoch counter *fn2-commit-kind* batch fn2-extents)
-       (let ((fn2-core (if (eq code :ok)
-                         (fn2-commit-put-core id (phase *fn2-commit-state-install*))
-                        (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core))))
-        (fn2-machine-result 0 *fn2-work-transition* 0 t fn2-core))))))))))
 
 )))
 ; The second section's second half (assembly-callbacks-r2): install,
@@ -1542,106 +1407,12 @@
 ; b54 M3 :dropping, in batch order: C drops the batch's private successor,
 ; the batch gives back what it prepared, its members settle :refused, the
 ; newest batch restores the frontier, and the drain path releases the rest.
-(defmachine-callback fn2-commit-drop fn2-commit (id budget) 4
- (let ((peer row-partner))
- (cond
-  ((not (fn2-commit-idp peer fn2-core)) (fn2-commit-invalid-row fn2-core))
-  ((and (= (fn2-machine-phase peer fn2-core) *fn2-commit-state-dropping*)
-        (< (fn2-machine-batch-no peer fn2-core) row-batch-no))
-   (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
-  ((= row-cb-stage 0)
-   (mv-let (code fn2-core) (fn2-successor-drop row-batch-no fn2-core)
-    (if (not (eq code :ok))
-     (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-drop* fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-     (mv-let (code fn2-core) (fn2-commit-unprepare id (= row-outcome 1) fn2-core)
-      (let ((fn2-core (if (eq code :ok) (fn2-commit-put-core id (cb-stage 1))
-                        (fn2-core-stop *fn2-stop-reason-commit-drop* fn2-core))))
-       (fn2-machine-result 0 *fn2-work-advance* 0 (eq code :ok) fn2-core))))))
-  ((< row-cb-cursor row-member-count)
-   (let* ((fn2-core (fn2-commit-settle-member id row-cb-cursor *fn2-commit-outcome-refused* 0 fn2-core))
-          (fn2-core (fn2-commit-put-core id (cb-cursor (+ 1 row-cb-cursor)))))
-    (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-  (t
-   (let* ((fn2-core (fn2-commit-end-abort id fn2-core))
-          (fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-draining*) (cb-stage 0))))
-    (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))
 
-(defmachine-callback fn2-commit-install fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-written-follower id fn2-core))
-       (t
- (mv-let (ok fn2-core) (fn2-commit-root-swap id nil fn2-core)
-  (if (not ok) (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core)
-   (mv-let (code fn2-core) (fn2-commit-root-edge id t fn2-core)
-    (if (not (eq code :ok)) (fn2-commit-stop-arm *fn2-stop-reason-commit-edge*)
-     (let ((fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-publish*))))
-      (fn2-machine-result 0 *fn2-work-stage* 0 t fn2-core))))))))))
 
-(defmachine-callback fn2-commit-publish fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-written-follower id fn2-core))
-       (t
- (mv-let (ok fn2-core) (fn2-commit-root-swap id t fn2-core)
-  (if (not ok)
-   (let ((fn2-core (fn2-commit-uncertain id *fn2-commit-reason-durable* fn2-core)))
-    (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))
-   ; b54 M6: C publishes the batch's private successor before any outcome.
-   (mv-let (code fn2-core) (fn2-successor-publish row-batch-no fn2-core)
-    (if (not (eq code :ok))
-     (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-publish* fn2-core)))
-      (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-     (mv-let (code fn2-core) (fn2-commit-stream-wake row-batch-no fn2-core)
-      (if (not (member-eq code '(:ok :unregistered)))
-       (fn2-commit-stop-arm *fn2-stop-reason-commit-publish*)
-       (let ((fn2-core (fn2-commit-put-core id (cb-published 1) (phase *fn2-commit-state-notify*))))
-        (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))))))))
 
-(defmachine-callback fn2-commit-notify fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ((eq partner :failed) (fn2-commit-stop-written-follower id fn2-core))
-       (t
- (let* ((n row-cb-acks)
-        (more (< n row-member-count))
-        (fn2-core (if more (fn2-commit-settle-member id n *fn2-commit-outcome-accepted* row-batch-no fn2-core) fn2-core))
-        (fn2-core (fn2-commit-put-core id (cb-acks (if more (+ 1 n) n))
-                    (phase (if more *fn2-commit-state-notify* *fn2-commit-state-draining*))
-                    (cb-stage (if more row-cb-stage 0)))))
-  (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))
 
-(defmachine-callback fn2-commit-drain fn2-commit (id budget) 4
- (let ((partner (fn2-commit-partner-state row-batch-no row-partner fn2-core)))
- (cond ((eq partner :invalid) (fn2-commit-invalid-row fn2-core))
-       ; a dropped batch (no journal write) drains whatever its partner does
-       ((and (eq partner :failed) (= row-cb-wrote 1)) (fn2-commit-stop-written-follower id fn2-core))
-       (t
-  (cond
-   ; b54 M3/M6: an uncertain batch's outcomes are known; settle them before
-   ; waiting for its completions.
-   ((and (= row-phase *fn2-commit-state-uncertain*) (< row-cb-cursor row-member-count))
-    (let* ((fn2-core (fn2-commit-settle-member id row-cb-cursor *fn2-commit-outcome-uncertain* 0 fn2-core))
-           (fn2-core (fn2-commit-put-core id (cb-cursor (+ 1 row-cb-cursor)))))
-     (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core)))
-   ((not (and (= row-pending 0) (= row-cb-fence-live 0)))
-    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-   ((= row-phase *fn2-commit-state-uncertain*)
-    (let ((fn2-core (fn2-commit-put-core id (stopped 1))))
-     (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))
-   (t
-    (let ((cursor row-cb-stage))
-     (if (>= cursor 4)
-      (let ((fn2-core (fn2-commit-put-core id (phase *fn2-commit-state-free*) (stopped 1))))
-       (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
-      (mv-let (code fn2-core) (fn2-commit-release-pool id cursor row-generation fn2-core)
-       (if (not (member-eq code '(:ok :retired))) (fn2-commit-stop-arm *fn2-stop-reason-commit-pool*)
-        (let ((fn2-core (fn2-commit-put-core id (cb-stage (+ 1 cursor)))))
-         (fn2-machine-result 0 *fn2-work-advance* 0 t fn2-core))))))))))))
 
-(defmachine-callback fn2-commit-idle fn2-commit (id budget) 4
- (fn2-machine-idle id fn2-core))
+(defmachine-arms fn2-commit)
 (defmachine-run fn2-commit)
 
 ; Keep the exact assembled invariant opaque in input hypotheses.

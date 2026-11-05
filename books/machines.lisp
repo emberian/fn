@@ -615,6 +615,9 @@
       (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
              (problem (or sub-problem (and sub (not newp) (msg "~x0: an inner machine needs the arm language (:arms)." name))
                           phase-problem while-problem
+                          (and (not newp) (fn2-arm-retained-phases holds)
+                               (msg "~x0: the retained phase(s) ~x1 need the arm language (:arms)."
+                                    name (fn2-arm-retained-phases holds)))
                           (and (not newp) (fn2-arm-contracts-problem name continuations states own nil))
                           (and (not newp) (fn2-arm-contracts-problem name observes states own t))
                           (fn2-arm-holds-problem-syntax name rank-holds states)
@@ -901,12 +904,12 @@
 ;; (its :paths, G3 D F14), else per arm over its :next and :uses. Every other
 ;; generated arm's paths are checked too and reported, not refused, until
 ;; their owners have read them (fn2-machine-arm-path-report).
-(defun fn2-machine-arm-paths-problem (name sources c holds world)
+(defun fn2-machine-arm-paths-problem (name sources c holds ret world)
   (declare (xargs :verify-guards nil))
   (let ((while (fn2-machine-declared name :holds-while world)))
     (fn2-arm-paths-problem sources (fn2-arm-get :paths c)
                            (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
-                           holds while world)))
+                           holds while ret world)))
 (defun fn2-machine-arm-path-report (name entries world)
   ; every generated arm with :paths is checked and enforced by fn2-machine-arm-resource-problem
   (declare (xargs :verify-guards nil) (ignore name entries world))
@@ -916,20 +919,143 @@
   (if (atom report) nil
     (cons `(value-triple (cw "~x0 arm ~x1, D0 per path (reported, G3 F14): ~@2~%" ',name ',(caar report) ',(cdar report)))
           (fn2-machine-path-report-events name (cdr report)))))
-(defun fn2-machine-arm-resource-problem (name sources c holds world)
+(defun fn2-machine-arm-resource-problem (name sources c holds ret world)
   (declare (xargs :verify-guards nil))
-  (if (member-eq :paths c)
-      (fn2-machine-arm-paths-problem name sources c holds world)
-    (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds (fn2-arm-get :uses c) world)))
-(defun fn2-machine-arm-effect-rows (name sources c uses holds world)
+  (cond ((member-eq :paths c) (fn2-machine-arm-paths-problem name sources c holds ret world))
+        ((intersection-eq (fn2-arm-retained-phases holds) (append sources (fn2-arm-get :next c)))
+         (msg "moves through the retained phase(s) ~x0, which D0 checks per path: a generated arm's :paths."
+              (intersection-eq (fn2-arm-retained-phases holds) (append sources (fn2-arm-get :next c)))))
+        (t (fn2-arm-resource-problem sources (fn2-arm-get :next c) holds (fn2-arm-get :uses c) world))))
+(defun fn2-machine-arm-effect-rows (name sources c uses holds ret world)
   (declare (xargs :verify-guards nil))
   (if (member-eq :paths c)
       (let ((while (fn2-machine-declared name :holds-while world)))
         (fn2-arm-paths-effect-rows name sources (fn2-arm-get :paths c)
                                    (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
-                                   holds while world))
+                                   holds while ret world))
     (fn2-arm-effect-rows name sources uses holds world)))
-(defun fn2-machine-arm-problem (name entry observationp world)
+;; D0's effect table is keyed by call site. A call on paths whose entry a
+;; conditional hold splits (G3) has one row per holding set: each row is
+;; checked on its own, and the table keeps one row per site whose
+;; :holds-before is everything any of those paths may hold.
+(defun fn2-machine-effect-rows-each-p (rows order)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) t
+    (and (fn2-resource-effects-p (list (car rows)) order)
+         (fn2-machine-effect-rows-each-p (cdr rows) order))))
+(defun fn2-machine-effect-row-holds (row)
+  (declare (xargs :verify-guards nil))
+  (cadr (member-eq :holds-before (cdr row))))
+(defun fn2-machine-effect-row-effects (row)
+  (declare (xargs :verify-guards nil))
+  (cadr (member-eq :effects (cdr row))))
+(defun fn2-machine-effect-rows-join (rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (let* ((row (car rows)) (rest (fn2-machine-effect-rows-join (cdr rows)))
+           (same (and (consp row) (assoc-equal (car row) rest))))
+      (if (and same (equal (fn2-machine-effect-row-effects row) (fn2-machine-effect-row-effects same)))
+          (cons (list (car row)
+                      :holds-before (union-equal (fn2-machine-effect-row-holds row) (fn2-machine-effect-row-holds same))
+                      :effects (fn2-machine-effect-row-effects row))
+                (remove1-equal same rest))
+        (cons row rest)))))
+(defun fn2-machine-effect-rows-ok-p (rows order)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-machine-effect-rows-each-p rows order)
+       (fn2-resource-effects-p (fn2-machine-effect-rows-join rows) order)))
+;; Teeth: a site acquiring :operation with and without :storage-window held
+;; is one row holding both; a variant acquiring below what it holds fails,
+;; though the joined row alone would not.
+(assert-event
+ (let* ((k '((fn2-upload :store-write) fn2-issue-write)) (e '((:acquire (:operation))))
+        (a (list k :holds-before '(:upload-row :chunk-window) :effects e))
+        (b (list k :holds-before '(:upload-row :chunk-window :storage-window) :effects e))
+        (bad (list k :holds-before '(:upload-row :fence-slot) :effects '((:acquire (:storage-window))))))
+   (and (not (fn2-resource-effects-p (list a b) *fn2-resource-order*))
+        (fn2-machine-effect-rows-ok-p (list a b) *fn2-resource-order*)
+        (equal (fn2-machine-effect-rows-join (list a b))
+               (list (list k :holds-before '(:upload-row :chunk-window :storage-window) :effects e)))
+        (not (fn2-machine-effect-rows-ok-p (list a bad) *fn2-resource-order*)))))
+;; A retained phase's entering sets (G3): every set a path into it from
+;; another phase starts with, over every arm and handler (ENTRIES with the
+;; kind's registered ones); a path into it keeps that set, so it is the set
+;; a path out of it starts with.
+(defun fn2-machine-path-entering-sets-at (s as holds while)
+  (declare (xargs :verify-guards nil))
+  (if (atom as) nil
+    (cons (fn2-arm-holds-under s (car as) holds while)
+          (fn2-machine-path-entering-sets-at s (cdr as) holds while))))
+(defun fn2-machine-path-entering-sets (r srcs as holds while)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom srcs) nil)
+        ((or (eq (car srcs) r) (fn2-arm-retained-p (car srcs) holds))
+         (fn2-machine-path-entering-sets r (cdr srcs) as holds while))
+        (t (append (fn2-machine-path-entering-sets-at (car srcs) as holds while)
+                   (fn2-machine-path-entering-sets r (cdr srcs) as holds while)))))
+(defun fn2-machine-paths-entering-sets (r sources paths doms holds while)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) nil
+    (let ((path (car paths)))
+      (append (and (not (nth 5 path)) (not (eq (cadr path) :stay)) (member-eq r (cadr path))
+                   (fn2-machine-path-entering-sets
+                    r (if (eq (car path) :any) sources (intersection-eq (car path) sources))
+                    (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path))) holds while))
+              (fn2-machine-paths-entering-sets r sources (cdr paths) doms holds while)))))
+(defun fn2-machine-entries-entering-sets (r entries observationp states doms holds while)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (let ((c (cddar entries)))
+      (append (fn2-machine-paths-entering-sets
+               r (if observationp (or (fn2-arm-get :from c) (fn2-machine-observe-default-from states))
+                   (list (caar entries)))
+               (fn2-arm-get :paths c) doms holds while)
+              (fn2-machine-entries-entering-sets r (cdr entries) observationp states doms holds while)))))
+(defun fn2-machine-retained-sets-of (rs name entries observationp world)
+  (declare (xargs :verify-guards nil))
+  (if (atom rs) nil
+    (let* ((states (fn2-machine-property name :states world))
+           (holds (fn2-machine-property name :holds world))
+           (while (fn2-machine-declared name :holds-while world))
+           (doms (fn2-machine-holds-domains while (fn2-machine-property name :columns world)))
+           (r (car rs)))
+      (cons (cons r (remove-duplicates-equal
+                     (append (fn2-machine-entries-entering-sets r entries observationp states doms holds while)
+                             (fn2-machine-entries-entering-sets r (append (fn2-machine-property name :continuations world)
+                                                                          (fn2-machine-property name :genesis-arm world))
+                                                                nil states doms holds while)
+                             (fn2-machine-entries-entering-sets r (fn2-machine-property name :observes world)
+                                                                t states doms holds while))))
+            (fn2-machine-retained-sets-of (cdr rs) name entries observationp world)))))
+(defun fn2-machine-retained-sets (name entries observationp world)
+  ; ((R SET ...) ...) for each retained phase R of NAME
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-retained-sets-of (fn2-arm-retained-phases (fn2-machine-property name :holds world))
+                                name entries observationp world))
+(defun fn2-machine-in-any-p (k sets)
+  (declare (xargs :verify-guards nil))
+  (and (consp sets) (or (member-equal k (car sets)) (fn2-machine-in-any-p k (cdr sets))) t))
+(defun fn2-machine-rank-union (order sets)
+  ; every kind in SETS, in ORDER's rank order
+  (declare (xargs :verify-guards nil))
+  (if (atom order) nil
+    (if (fn2-machine-in-any-p (car order) sets) (cons (car order) (fn2-machine-rank-union (cdr order) sets))
+      (fn2-machine-rank-union (cdr order) sets))))
+(defun fn2-machine-holds-resolved-1 (holds ret)
+  (declare (xargs :verify-guards nil))
+  (if (atom holds) holds
+    (cons (if (and (consp (car holds)) (equal (cdar holds) '(:retained)))
+              (cons (caar holds) (fn2-machine-rank-union (strip-cars *fn2-resource-order*)
+                                                         (cdr (assoc-eq (caar holds) ret))))
+            (car holds))
+          (fn2-machine-holds-resolved-1 (cdr holds) ret))))
+(defun fn2-machine-holds-resolved (name world)
+  ; NAME's holds with each retained phase's potential: the union of its
+  ; entering sets (the D0 deadlock table's static row for the phase)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-holds-resolved-1 (fn2-machine-property name :holds world)
+                                (fn2-machine-retained-sets name nil nil world)))
+(defun fn2-machine-arm-problem (name entry observationp ret world)
   (declare (xargs :verify-guards nil))
   (let* ((tag (car entry)) (c (cddr entry))
          (budget (fn2-machine-property name :budget world))
@@ -956,12 +1082,15 @@
       (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
            name tag (fn2-machine-unresolved-use name uses world)))
      ((and (not (eq (fn2-arm-get :language c) :unchecked))
-           (fn2-machine-arm-resource-problem name sources c holds world))
-      (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds world)))
-     ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds world))
-                                   *fn2-resource-order*))
+           (fn2-machine-arm-resource-problem name sources c holds ret world))
+      (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds ret world)))
+     ((not (fn2-machine-effect-rows-ok-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds ret world))
+                                         *fn2-resource-order*))
       (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
-           (fn2-machine-arm-effect-rows name sources c uses holds world)))
+           (fn2-machine-arm-effect-rows name sources c uses holds ret world)))
+     ((and posture (or (fn2-arm-retained-p (car sources) holds)
+                       (fn2-arm-retained-p (fn2-arm-get :to (cdr posture)) holds)))
+      (msg "~x0: arm ~x1's :on-refusal ~x2 moves through a retained phase; route the refusal in the arm." name tag posture))
      ((and posture
            (not (and (true-listp posture) (member-eq (car posture) *fn2-arm-postures*)
                      (member-eq (fn2-arm-get :to (cdr posture)) (fn2-arm-get :next c)))))
@@ -977,11 +1106,15 @@
            (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
                           (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
      (t nil))))
-(defun fn2-machine-arms-problem (name entries observationp world)
+(defun fn2-machine-arms-problem-1 (name entries observationp ret world)
   (declare (xargs :verify-guards nil))
   (if (atom entries) nil
-    (or (fn2-machine-arm-problem name (car entries) observationp world)
-        (fn2-machine-arms-problem name (cdr entries) observationp world))))
+    (or (fn2-machine-arm-problem name (car entries) observationp ret world)
+        (fn2-machine-arms-problem-1 name (cdr entries) observationp ret world))))
+(defun fn2-machine-arms-problem (name entries observationp world)
+  (declare (xargs :verify-guards nil))
+  (fn2-machine-arms-problem-1 name entries observationp
+                              (fn2-machine-retained-sets name entries observationp world) world))
 
 ; ----------------------------------------------------------------------
 ; Owed obligations per arm (D's section 4 item 4), into fn2-squares with

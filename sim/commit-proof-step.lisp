@@ -72,13 +72,8 @@
    ((and (member-eq tag '(:run :bypass-notify)) (member-equal arg '(0 1)))
     (b* (((mv & & & & fn2-core)
           (if (eq tag :run) (fn2-commit-run id 4 fn2-core)
-           ; Deliberately bypass phase dispatch, but pass the actual row fields
-           ; the callback reads (its row bindings) through the same scalar
-           ; boundary as generated dispatch.
-           (fn2-commit-notify id 4
-             (fn2-commit-row-batch-no id fn2-core) (fn2-commit-row-member-count id fn2-core)
-             (fn2-commit-row-partner id fn2-core) (fn2-commit-row-cb-stage id fn2-core)
-             (fn2-commit-row-cb-acks id fn2-core) fn2-core))))
+           ; Deliberately bypass phase dispatch: the generated :notify arm.
+           (fn2-commit-run-notify id 4 fn2-core))))
      (mv (eq tag :run) nil fn2-core fn2-sim fn2-own)))
    ((and (eq tag :start) (equal (len command) 5) (member-equal arg '(0 1)))
     (b* (((mv & events & fn2-core)

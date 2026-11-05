@@ -32,7 +32,10 @@
             (append (make-list 600 :initial-element '(:auto 24)) '((:bypass-notify 0))) p 0 2 1)))
   (and (fn2-cm-profilep p) (fn2-cm-persistence-fence p)
        (not (fn2-commit-proof-admitted r)) (fn2-commit-proof-saw-uncertain r)
-       (not (fn2-commit-proof-stable r))
+       ;; the generated :notify arm writes no phase on a stay, so the bypass
+       ;; leaves the uncertain row uncertain (the hand callback rewrote it to
+       ;; :notify); the removal is caught by the ack without evidence
+       (fn2-commit-proof-stable r)
        (equal (car (fn2-commit-proof-acks r)) 1)
        (not (fn2-commit-ack-evidencep r)))))
 

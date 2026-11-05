@@ -93,12 +93,27 @@
          (idle (if (equal (fn2-core-stop-reason fn2-core) 0) idle 64)))
       (fn2-ss-run (- fuel 1) idle allow clients fn2-core fn2-sim fn2-own))))
 
+;; The seeds' storage writes ((OFFSET . OCTETS) ...) put on the simulated
+;; device, durable, before any client: the device the reads are served from.
+(defun fn2-ss-put-octets (addr octets fn2-sim-storage)
+  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
+  (if (atom octets) fn2-sim-storage
+    (mv-let (code fn2-sim-storage) (fn2-storage-write-byte addr addr (car octets) 0 t nil fn2-sim-storage)
+      (declare (ignore code))
+      (fn2-ss-put-octets (+ 1 addr) (cdr octets) fn2-sim-storage))))
+(defun fn2-ss-put-store (store fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil))
+  (if (atom store) fn2-sim
+    (let ((fn2-sim (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (fn2-sim-storage)
+                     (fn2-ss-put-octets (car (car store)) (cdr (car store)) fn2-sim-storage) fn2-sim)))
+      (fn2-ss-put-store (cdr store) fn2-sim))))
 (defun fn2-ss-start (seed fn2-core fn2-sim fn2-own state)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own state) :verify-guards nil))
   (b* ((fn2-core (fn2-init-executor *fn2-ss-profile* :echo nil fn2-core))
-       ((mv seeded fn2-core) (fn2-cs-seed-all *fn2-ss-seeds* 1 fn2-core))
+       ((mv seeded store fn2-core) (fn2-cs-seed-all *fn2-ss-seeds* 1 fn2-core))
        (- (or (eq seeded :ok) (cw "@@FN2SS seeding ~x0@@~%" seeded)))
        (fn2-sim (fn2-sim-init seed :crash-only "sim-session" *fn2-ss-profile* fn2-sim))
+       (fn2-sim (fn2-ss-put-store store fn2-sim))
        (fn2-sim (fn2-sim-echo-network-reset fn2-sim))
        (fn2-sim (update-fn2-sim-probabilitiesi *fn2-fault-crash* 0 fn2-sim))
        (fn2-sim (update-fn2-sim-fault-budget 100000 fn2-sim))
