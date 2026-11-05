@@ -54,6 +54,8 @@
 
 (defmachine fn2-txn
  :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
+ ;; CONN is the upload's owner the outcome goes to: a connection, or a
+ ;; consumer request whose append this is (e-surface.md 3.3).
  :fields ((upload :link) (upload-gen :u60) (conn :link) (conn-gen :u60) (request :u32)
           (rule (:enum fn2-txn-rule (:post :ihave :takethis)))
           (tmode (:enum fn2-txn-mode (:article :evidence)))
@@ -63,7 +65,7 @@
           (gcur :u32) (gskip :bool) (ngroups :u8)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
-                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen mfill)))
+                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen mfill op)))
  :stops (:txn-uncertain)
  :holds ((:admit :transaction-row) (:reserve :transaction-row)
          (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)

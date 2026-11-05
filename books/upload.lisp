@@ -56,6 +56,10 @@
 (defcost fn2-upload-bound :doc "The article bound (the input configuration, at most two chunks).")
 (defcost fn2-conn-post-word :tables (fn2-conn-table fn2-core-machines)
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
+(defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
+  :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
+(defcost fn2-upload-post-owner :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
+  :doc "Post an outcome to the upload's owner: a consumer request (fn2-cns-post-outcome) or a connection (fn2-conn-post-word).")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*
   :answers (:run :idle :identity :receiving :sealed :discard :draining :stop)
   :faults (:stop)
@@ -100,7 +104,7 @@
 (defcost fn2-upload-extents-close :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "Settle the extent reserved for a block no entry names and the manifest's own (or the one payload extent).")
 (defcost fn2-upload-put-mid :answers (:ok :fault) :faults (:fault) :bytes 264 :tables (fn2-core-pool fn2-core-control)
-  :doc "Write the generated Message-ID field into the store page: (mv code len).")
+  :doc "Write the generated Message-ID field into the store page, <op-PRINCIPAL-OP@P> for an append's operation, else <fn2.E.A@P>: (mv code len).")
 
 ;; ------------------------------------------------------------------------
 ;; The operations both machines call, materialized after the core instance
@@ -209,6 +213,38 @@
            (fn2-core (fn2-machine-set-wake-id conn fn2-core)))
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-conn-post-word (conn conn-gen request word fn2-core) :position 1 :rows nil)
+;; A consumer request's append (e-surface.md 3.3) awaits its outcome in
+;; :append: the word (accepted, uncertain, or the refusal's word) and, for
+;; an accepted article, its commit position, recorded once on the row,
+;; which is woken to answer. A request that moved on drops it, as a
+;; connection's does.
+(defun fn2-cns-post-outcome (cns cns-gen request word position fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok) (unsigned-byte-p 8 word)
+                (unsigned-byte-p 60 position)
+                (equal (fn2-machine-generation cns fn2-core) cns-gen)
+                (equal (fn2-cns-row-request cns fn2-core) request)
+                (equal (fn2-cns-row-phase cns fn2-core) *fn2-cns-state-append*)
+                (equal (fn2-cns-row-posted cns fn2-core) *fn2-cns-posted-none*)))
+      (mv :dropped fn2-core)
+    (let* ((fn2-core (fn2-machine-write-posted
+                      cns (cond ((equal word (fn2-upload-word-code :accepted)) *fn2-cns-posted-accepted*)
+                                ((equal word (fn2-upload-word-code :uncertain)) *fn2-cns-posted-uncertain*)
+                                (t *fn2-cns-posted-refused*))
+                      fn2-core))
+           (fn2-core (fn2-machine-write-posted-word cns word fn2-core))
+           (fn2-core (fn2-machine-write-cpos cns position fn2-core))
+           (fn2-core (fn2-machine-set-wake-id cns fn2-core)))
+      (mv :ok fn2-core))))
+(fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position fn2-core) :position 1 :rows nil)
+;; The owner's post: a consumer request's outcome, else a connection's word.
+(defun fn2-upload-post-owner (conn conn-gen request word position fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
+      (fn2-cns-post-outcome conn conn-gen request word position fn2-core)
+    (fn2-conn-post-word conn conn-gen request word fn2-core)))
+(fn2-core-preserves fn2-upload-post-owner (conn conn-gen request word position fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-cns-post-outcome))
 
 ;; The upload's work, in stages each with its own preservation facts (a
 ;; single body with every stage inline costs minutes to prove).
@@ -325,10 +361,10 @@
 (defun fn2-upload-deliver-word (id code conn conn-gen request fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 8 code))))
   (b* ((fn2-core (fn2-machine-write-word id code fn2-core))
-       ((mv & fn2-core) (fn2-conn-post-word conn conn-gen request code fn2-core)))
+       ((mv & fn2-core) (fn2-upload-post-owner conn conn-gen request code 0 fn2-core)))
     fn2-core))
 (fn2-core-preserves fn2-upload-deliver-word (id code conn conn-gen request fn2-core) :rows nil)
-(in-theory (disable fn2-upload-digest fn2-upload-word-now fn2-upload-digest-store fn2-upload-wake fn2-upload-hand-over
+(in-theory (disable fn2-upload-post-owner fn2-upload-digest fn2-upload-word-now fn2-upload-digest-store fn2-upload-wake fn2-upload-hand-over
                     fn2-upload-deliver-word))
 ;; The payload extent (S-ARTICLE-LOCATION). Reserved from B's allocator
 ;; before the source is written: (mv code extent epoch counter fn2-core),
@@ -638,21 +674,24 @@
 ;; The generated Message-ID field appended to the empty store page: the
 ;; template (*fn2-upload-mid-template*, to the "@"), the profile's path
 ;; identity, *fn2-upload-mid-close*: (mv code len fn2-core), LEN the field's
-;; octets.
-(defun fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core)
+;; octets. An append with operation OP (not 0) gets *fn2-upload-op-mid-template*
+;; over (PRINCIPAL, OP) instead.
+(defun fn2-upload-put-mid (slot gen epoch alloc op principal okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
     (code len fn2-pool)
-    (if (and (natp epoch) (natp alloc) (equal (fn2-gram-fill slot fn2-pool) 0))
+    (if (and (natp epoch) (natp alloc) (natp op) (natp principal) (equal (fn2-gram-fill slot fn2-pool) 0))
         (mv-let (code fn2-pool)
           (fn2-gram-put-chain
-           (fn2-gram-put-template 0 *fn2-upload-mid-template* 0 epoch alloc 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)
+           (if (equal op 0)
+               (fn2-gram-put-template 0 *fn2-upload-mid-template* 0 epoch alloc 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)
+             (fn2-gram-put-template 0 *fn2-upload-op-mid-template* 0 principal op 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool))
            (fn2-upload-put-path 0 slot gen okind oslot ogen fn2-control fn2-pool)
            (fn2-gram-put-template 0 *fn2-upload-mid-close* 0 0 0 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool))
           (mv (if (eq code :ok) :ok :fault) (nfix (fn2-gram-fill slot fn2-pool)) fn2-pool))
       (mv :fault 0 fn2-pool))
     (mv code len fn2-core)))
-(fn2-core-preserves fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core) :position 2 :rows nil
+(fn2-core-preserves fn2-upload-put-mid (slot gen epoch alloc op principal okind oslot ogen fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid fn2-upload-page-zero fn2-upload-page-zero-to fn2-upload-manifest-begin
@@ -709,7 +748,7 @@
               (mv (if (equal ph *fn2-upload-state-discard*) :idle :discard) fn2-core))
              (w (fn2-upload-word-code (if (equal discard 1) :framing :too-large)))
              ((unless (equal txn *fn2-none*)) (let ((fn2-core (fn2-upload-hand-over id w 0 txn fn2-core))) (mv :sealed fn2-core)))
-             ((mv & fn2-core) (fn2-conn-post-word conn conn-gen request w fn2-core)))
+             ((mv & fn2-core) (fn2-upload-post-owner conn conn-gen request w 0 fn2-core)))
           (mv :draining fn2-core)))
        ((mv hcode hashed fn2-core) (fn2-upload-hash-run id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core))
        ((unless (and (eq hcode :ok) (unsigned-byte-p 60 hashed))) (mv :stop fn2-core))

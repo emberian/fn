@@ -173,11 +173,15 @@
   (declare (xargs :verify-guards nil))
   (equal (fn2-executor-unit-tests) '(t t t t t t t)))
 
-(defun fn2-executor-test-control-logic-names (fields)
+; A scalar field's accessor and updater; an array field (the path identity) has
+; indexed accessors instead, so only names that are functions in the world count.
+(defun fn2-executor-test-control-logic-names (fields wrld)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
-    (append (list (caar fields) (fn2-columns-pre "UPDATE-" (caar fields)))
-            (fn2-executor-test-control-logic-names (cdr fields)))))
+    (let ((acc (caar fields)) (upd (fn2-columns-pre "UPDATE-" (caar fields))))
+      (append (if (function-symbolp acc wrld) (list acc) nil)
+              (if (function-symbolp upd wrld) (list upd) nil)
+              (fn2-executor-test-control-logic-names (cdr fields) wrld)))))
 (defun fn2-executor-test-execution-runes (names)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -194,7 +198,7 @@
                          update-fn2-core-control
                          fn2-control-wfp fn2-control-rows)
                        (strip-cars *fn2-core-children*)
-                       (fn2-executor-test-control-logic-names fields))))
+                       (fn2-executor-test-control-logic-names fields (w state)))))
    (value
     `(defthm fn2-executor-test-bounds-hypothesis-removal
        (let ((bad *fn2-executor-test-bad-h*))

@@ -233,7 +233,10 @@
         (di (- (fn2-b-h-io after) (fn2-b-h-io before)))
         (dg (- (fn2-b-h-gate after) (fn2-b-h-gate before))))
   (and (or (eq a b) (member-eq b (cdr (assoc-eq a *fn2-commit-transitions*))))
-       (= dp (if (and (eq a :draining) (eq b :draining))
+       ; a draining row gives back one pool range per step, the last one on its
+       ; :draining -> :free step (commit-arms' drain body: the last range's
+       ; release carries the :storage-window and frees the row, 4a0028bbd)
+       (= dp (if (and (eq a :draining) (member-eq b '(:draining :free)))
                   (- (fn2-b-h-stage before) (fn2-b-h-stage after)) 0))
        (member-equal dp '(-1 0))
        (if (and (eq a :dropping) (eq b :dropping))
@@ -345,7 +348,9 @@
          (t (b* (((mv & harvested fn2-core) (fn2-b-turn fn2-core)))
               (mv hit harvested 0 fn2-core fn2-sim fn2-own)))))
        (fn2-core (assert$ (fn2-b-sticky-failures-p failures fn2-core) fn2-core))
-       (fn2-core (assert$ (fn2-b-hold-steps-p held (fn2-b-holdings-list ids fn2-core)) fn2-core))
+       (fn2-core (assert$ (or (fn2-b-hold-steps-p held (fn2-b-holdings-list ids fn2-core))
+                                  (cw "B HOLD STEP ~x0 -> ~x1~%" held (fn2-b-holdings-list ids fn2-core)))
+                              fn2-core))
        (expired (and (eq new-hit :clock-observed) (fn2-b-expired-batch ids fn2-core)))
        (new-hit (if expired :late-success new-hit))
        (events (append (if expired (list (list :timeout expired)) nil)
