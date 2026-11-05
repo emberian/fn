@@ -10,7 +10,8 @@
 ; exact lookup answers each; an unnamed principal, "mini" before its
 ; principal-create, is :absent; a second boot names the same ids (the ids are
 ; functions of the profile, never of boot order); and a profile with no owner
-; slot below the system row names "anonymous" only. Its controls: a lookup
+; slot below the system row names "anonymous" only; a profile serving no
+; authority binds the accounts and names none (no reader of the names). Its controls: a lookup
 ; of a name one octet longer and one shorter than "owner" is :absent.
 ;
 ; fn2-authority-local-binding-positive (served, through fn2-turn and the
@@ -34,10 +35,12 @@
 (include-book "fnct-client")
 (include-book "std/util/bstar" :dir :system)
 
+;; a profile serving authority (:authority 1): store genesis names the principals
 (defconst *fn2-as-profile*
+ (put-assoc-equal :authority 1
  (put-assoc-equal :owner-account 2
   (put-assoc-equal :identity-arena-bytes 4096
-   (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096)) *fn2-profile-tiny*))))
+   (put-assoc-equal :pool-classes '((8 . 64) (4 . 256) (16 . 4096)) *fn2-profile-tiny*)))))
 (defun fn2-as-write (bytes slot gen off fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (if (atom bytes) (mv :ok fn2-core)
@@ -88,6 +91,17 @@
 (assert-event
  (let ((r (fn2-as-genesis (put-assoc-equal :p 1 *fn2-as-profile*))))
   (and (equal (nth 0 r) :ok) (equal (nth 1 r) (list :ok *fn2-as-anonymous-id*)) (equal (car (nth 2 r)) :absent))))
+;; A profile serving no authority (every tiny unit profile, whose pool
+;; classes hold no directory overlay) boots: genesis answers :ok, the
+;; owner's account is bound to its id, and no name is written.
+(assert-event
+ (let ((r (fn2-as-genesis (put-assoc-equal :authority 0 *fn2-as-profile*))))
+  (and (equal (nth 0 r) :ok) (equal (car (nth 1 r)) :absent) (equal (car (nth 2 r)) :absent)
+       (equal (nth 6 r) (list :ok *fn2-as-owner-id*)))))
+(assert-event
+ (let ((r (fn2-as-genesis (put-assoc-equal :listener-targets 'fn2-conn
+                           (put-assoc-equal :pool-classes '((8 . 1024) (4 . 256)) *fn2-profile-tiny*)))))
+  (equal (nth 0 r) :ok)))
 
 ;; ---------------------------------------------------------------------------
 ;; fn2-authority-local-binding-positive
