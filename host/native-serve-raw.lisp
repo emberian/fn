@@ -11,14 +11,24 @@
     (and (= (length parts) 4) (every (lambda (p) (<= 0 p 255)) parts)
          (reduce (lambda (a p) (+ (* a 256) p)) parts :initial-value 0))))
 
+(defvar *fn2-nserve-base* nil
+  "The served profile before the environment's keys; nil names the surface sessions'.
+A driver that serves another profile over the same seeded store (tests/native-consumer.lsp)
+sets it before fn2-nserve-main.")
+
 (defun fn2-nserve-profile ()
-  "The served profile, the listener from the environment (absent: the profile's defaults).
-The surface sessions' (tests/seeded-store.lsp): the cursor's profile less its posting,
-so the node serves reading over the store it seeds."
-  (let* ((profile *fn2-ss-profile*)
+  "The served profile, the listener and the owner from the environment (absent: the
+profile's own). By default the surface sessions' (tests/seeded-store.lsp): the cursor's
+profile less its posting, so the node serves reading over the store it seeds.
+FN2_OWNER_UID names the local control socket's owner (:owner-uid, E's carrier L); the
+core reads a value that is not a u32 as uid 0."
+  (let* ((profile (or *fn2-nserve-base* *fn2-ss-profile*))
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
          (address (sb-ext:posix-getenv "FN2_LISTENER_ADDRESS"))
-         (path (sb-ext:posix-getenv "FN2_LISTENER_PATH")))
+         (path (sb-ext:posix-getenv "FN2_LISTENER_PATH"))
+         (owner (sb-ext:posix-getenv "FN2_OWNER_UID")))
+    (when owner
+      (setf profile (put-assoc-equal :owner-uid (or (ignore-errors (parse-integer owner)) -1) profile)))
     (when port
       (setf profile (put-assoc-equal :listener-port (or (ignore-errors (parse-integer port)) -1) profile)))
     (when address

@@ -9,6 +9,8 @@
 ; Run: sh tools/certify.sh tests/identity-core-unit.lisp
 (in-package "ACL2")
 (include-book "../books/assembly")
+; fn2-txn-put-identity (fn2-icu-identity) is the transaction book's.
+(include-book "../books/txn")
 (include-book "std/util/bstar" :dir :system)
 
 (defun fn2-icu-write (bytes slot gen off fn2-core)
