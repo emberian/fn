@@ -51,10 +51,11 @@ FN2_SURFACE_NATIVE_NNTP=tests.surface.fn2_native_session:session \
   "$python" -m tests.surface.run_surface --target fn2-native --family nntp --box laptop --out "$out/native" \
   > "$out/native.log" 2>&1 &
 wait
-# The primary number, M2 spine cuts (REVIEW-ARGON-RESPONSE §9.12): E's sim-layer-e over the served machines
-# writes $out/m2.json once its invocation lands here (H_NIGHTLY_M2, a command run in the tree with OUT set);
-# without it the line reports 0/12.
-if [ -n "${H_NIGHTLY_M2:-}" ]; then OUT="$out" sh -c "$H_NIGHTLY_M2" > "$out/m2.log" 2>&1 || :; fi
+# The primary number, M2 spine cuts (REVIEW-ARGON-RESPONSE §9.12): Mini's twelve cuts over the served core
+# (tests/m2-cuts.lisp) write $out/m2.json. H_NIGHTLY_M2 overrides the command (run in the tree with OUT set);
+# a run that writes no m2.json leaves the line at 0/12 and its log in $out/m2.log.
+m2_default='sh tools/certify.sh tests/m2-cuts.lisp > "$OUT/m2-cert.log" 2>&1 && tools/acl2 --timeout 1800 < tests/m2-cuts.lsp > "$OUT/m2-run.log" 2>&1; python3 tests/m2_json.py "$OUT" < "$OUT/m2-run.log"'
+OUT="$out" sh -c "${H_NIGHTLY_M2:-$m2_default}" > "$out/m2.log" 2>&1 || :
 "$python" -m tests.surface.nightly_nntp "$out" "$sha" > /dev/null
 cp "$out/summary.txt" "$base/LATEST.txt"
 echo "$(date) done $sha: $(cat "$out/summary.txt")"

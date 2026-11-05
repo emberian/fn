@@ -3,7 +3,7 @@
     python -m tests.surface.nightly_nntp OUT SHA     (OUT holds sim/ and native/, each a run_surface --out)
 
 Writes OUT/table.md (per target: per-form status and every test's outcome) and OUT/summary.txt, one line:
-the primary number first (M2 spine cuts n/12, OUT/m2.json from E's sim-layer-e, 0/12 until it runs), then the
+the primary number first (M2 spine cuts n/12, OUT/m2.json from tests/m2-cuts.lsp, the failing cuts named in table.md), then the
 served surface (fn2_conn_interim.json at the tree under test: the verbs served, the interim rows left by
 owner, BRICKS-20261031 section 3's burndown), then served / interim / WIRE opened-judged-unjudged /
 disagreements per target, and NOT RUN rows grouped by owner.
@@ -72,16 +72,31 @@ def line(r):
     return head + ('; ' + s['detail'] if s.get('detail') else '') + ('; errors ' + '; '.join(r['errors']) if r['errors'] else '')
 
 
-def m2(out):
-    """The primary number (REVIEW-ARGON-RESPONSE-20261031 §9.12): M2 spine cuts, Mini's twelve crash cuts and
-    helm's room scenario through fn2-turn over the real core, from E's sim-layer-e against the served machines.
-    OUT/m2.json ({"passed": n, "total": 12, "source": ...}) is written by that run once it exists; until the
-    consumer machines serve, the line says 0/12 on purpose."""
+def m2_data(out):
     path = Path(out) / 'm2.json'
-    if not path.exists():
-        return 'M2 cuts 0/12 (sim-layer-e over the served machines not yet run)'
-    data = json.loads(path.read_text())
-    return f"M2 cuts {data['passed']}/{data.get('total', 12)} ({data.get('source', 'sim-layer-e')})"
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def m2(out):
+    """The primary number (REVIEW-ARGON-RESPONSE-20261031 §9.12): M2 spine cuts, Mini's twelve crash cuts
+    through fn2-turn over the real core (tests/m2-cuts.lisp: fn2-ctl and fn2-cns served, the replies read off
+    the wire). OUT/m2.json ({"passed": n, "total": 12, "source": ..., "cuts": {c: {verdict, reasons}}}) is
+    written by tests/m2_json.py; a run that wrote none is 0/12 and says so."""
+    data = m2_data(out)
+    if data is None:
+        return 'M2 cuts 0/12 (tests/m2-cuts.lsp wrote no m2.json; see m2.log)'
+    return f"M2 cuts {data['passed']}/{data.get('total', 12)} ({data.get('source', 'tests/m2-cuts.lsp')})"
+
+
+def m2_table(out):
+    """One row per cut: its verdict and every reason it cannot pass yet."""
+    data = m2_data(out)
+    if data is None:
+        return []
+    rows = ['| cut | verdict | reasons |', '|---|---|---|']
+    for cut, row in data.get('cuts', {}).items():
+        rows.append(f"| {cut} | {row['verdict']} | {'; '.join(row['reasons'])} |")
+    return rows + ['']
 
 
 def surface():
@@ -98,7 +113,7 @@ def main(out, sha):
     waits = collections.Counter()
     for r in reports:
         waits += r['waits']
-    table = [f'# H nightly {out.name} (dev {sha})', '', m2(out), '', surface(), '']
+    table = [f'# H nightly {out.name} (dev {sha})', '', m2(out), ''] + m2_table(out) + [surface(), '']
     for r in reports:
         table += [f"## --target {r['target']} (exit {r['exit']})", '', line(r), '',
                   '| form | test | outcome | reason |', '|---|---|---|---|']
