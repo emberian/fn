@@ -31,12 +31,15 @@
  ((work
    (:cond ((equal row-lease *fn2-upload-lease-held*) (:stop :machine-phase))
           (t
-   (:if (not (:live conn))
+   ;; the owner feeding the source: a connection, or a consumer request
+   ;; whose append frame is the article (e-surface.md 3.3)
+   (:let lcns (:live cns))
+   (:if (not (or lcns (:live conn)))
         ((:next :aborting) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
         ((:do (next)
-              (fn2-upload-advance id (:read conn fed)
-                                  (equal (:read conn feed-mode) *fn2-conn-feed-done*)
-                                  (:read conn feed-discard))
+              (fn2-upload-advance id (if lcns (:read cns fed) (:read conn fed))
+                                  (equal (if lcns (:read cns feed-mode) (:read conn feed-mode)) *fn2-conn-feed-done*)
+                                  (if lcns (:read cns feed-discard) (:read conn feed-discard)))
               :accept ()
               :case (((:run) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
                      ((:idle) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
@@ -58,9 +61,9 @@
   (:head (:goto work))
   ;; :identity: take the transaction row (A-S7), the transaction's copies this
   ;; row's; refused, the take parked this row on the transaction kind's FIFO
-  ;; and its grant runs this arm again. The connection gone: abort.
+  ;; and its grant runs this arm again. The owner gone: abort.
   (:identity
-   (:if (not (:live conn))
+   (:if (not (or (:live conn) (:live cns)))
         ((:next :aborting) (:charge :steps *fn2-work-transition* :runnable t))
         ((:do (code tid tgen)
               (fn2-machine-take-fn2-txn *fn2-none* id row-generation row-conn row-conn-gen
@@ -104,7 +107,7 @@
               :accept ()
               :case (((:ok)
                       (:if inject
-                           ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al) :accept (:ok))
+                           ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al row-op row-principal-slot) :accept (:ok))
                             (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen))
                             (:next :store-write) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0))

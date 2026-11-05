@@ -143,7 +143,7 @@
                                                (if (equal row-rule *fn2-conn-rule-takethis*)
                                                    *fn2-upload-rule-takethis*
                                                  *fn2-upload-rule-post*))
-                                             row-principal-slot)
+                                             row-principal-slot 0)
                 :case (((:ok)
                         (:if (equal row-rule *fn2-conn-rule-takethis*)
                              ((:set (upload u) (upload-gen ugen) (feed-mode 0) (feed-discard 0)

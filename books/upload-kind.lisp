@@ -51,6 +51,13 @@
 (defconst *fn2-upload-mid-template*
   (concatenate 'string "Message-ID: <fn2." (string (code-char 1)) "." (string (code-char 1)) "@"))
 (defconst *fn2-upload-mid-close* (coerce (list #\> (code-char 13) (code-char 10)) 'string))
+;; A consumer's append with an operation identity (e-surface.md 3.3) that
+;; names no Message-ID gets <op-PRINCIPAL-OP@P> instead, so a retry of the
+;; same operation is the same article on every carrier: the template's two
+;; counters are the upload's principal and its operation.
+(defconst *fn2-upload-op-mid-template*
+  (concatenate 'string "Message-ID: <op-" (string (code-char 1)) "-" (string (code-char 1)) "@"))
+(assert-event (<= (length *fn2-upload-op-mid-template*) (length *fn2-upload-mid-template*)))
 ;; Its longest form: two 20-digit counters and the longest path identity, a
 ;; 250-octet Message-ID (RFC 5536 3.1.3).
 (defconst *fn2-upload-mid-line-max*
@@ -145,8 +152,12 @@
 (defmachine fn2-upload
  :states (:free :head :identity :receiving :validating :discard :store :store-write :store-wrote
           :store-fence :store-fenced :sealed :aborting :draining :retired)
+ ;; CONN is the owner the source comes from and the word goes to: a
+ ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
+ ;; e-surface.md 3.3: the same upload and transaction as a POST). OP is the
+ ;; append's operation identity (0: none).
  :fields ((conn :link) (conn-gen :u60) (request :u32)
-          (rule (:enum fn2-upload-rule (:post :ihave :takethis)))
+          (rule (:enum fn2-upload-rule (:post :ihave :takethis))) (op :u60)
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
           (filled :u60) (hashed :u60)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
@@ -166,6 +177,8 @@
           (lslot :link) (lgen :u60) (lease (:enum fn2-upload-lease (:none :held))) (ilen :u32))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
+         (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
+              :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
@@ -184,7 +197,7 @@
  :taken (:phase :head :rows :upload-row
          :ranges ((:chunk-window :slot c0-slot :gen c0-gen :class 1)
                   (:chunk-window :slot c1-slot :gen c1-gen :class 1))
-         :copy (conn conn-gen request rule principal-slot)
+         :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
                  lgen lease ilen))

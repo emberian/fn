@@ -23,6 +23,7 @@
 ;; collide in the global namespace with consumer-model's fn2-cns-run.
 (encapsulate ()
   (local (include-book "../books/owed-conn"))
+  (local (include-book "../books/owed-cursor"))
   (local (include-book "../books/assembly-attach"))
   (local
    (defconst *fn2-sle-turn-profile*
@@ -158,6 +159,101 @@
                     (eq closed2 t))
                fn2-core))
          ok))))
+  ;; An append is a POST (e-surface.md 3.3): a control connection's append
+  ;; frame (cmd 1, fkind 7, a one-octet operation identity 9, the article
+  ;; with no Message-ID) runs the upload and the transaction a POST runs; the
+  ;; reply is accepted at the article's commit position, and an NNTP reader
+  ;; then reads the same article by GROUP, by number and by the generated
+  ;; Message-ID <op-0-9@fn2.invalid>.
+  (local
+   (defconst *fn2-sle-append-profile*
+     (put-assoc-equal :cns 1 (put-assoc-equal :control-connections 1
+       (put-assoc-equal :extent-slots 128 *fn2-cursor-profile*)))))
+  (local
+   (defconst *fn2-sle-append-article*
+     '("From: mini@example.invalid" "Subject: r1" "Newsgroups: local.test" "" "report r1")))
+  (local
+   (defconst *fn2-sle-append-mid* "<op-0-9@fn2.invalid>"))
+  (local
+   (defun fn2-sle-append-wire ()
+     (declare (xargs :verify-guards nil))
+     (append (list 1 7 1 9) (fn2-cw-crlf-octets *fn2-sle-append-article*))))
+  (local
+   (defun fn2-sle-append-nntp-expected ()
+     (declare (xargs :verify-guards nil))
+     (fn2-cw-crlf-octets
+      (append (list "200 fn-nntp experimental server ready" "211 1 1 1 local.test"
+                    (fn2-csp-cat (list "220 1 " *fn2-sle-append-mid* " article follows"))
+                    "Xref: fn2.invalid local.test:1" (fn2-csp-cat (list "Message-ID: " *fn2-sle-append-mid*)))
+              *fn2-sle-append-article*
+              (list "." (fn2-csp-cat (list "220 0 " *fn2-sle-append-mid* " article follows"))
+                    "Xref: fn2.invalid local.test:1" (fn2-csp-cat (list "Message-ID: " *fn2-sle-append-mid*)))
+              *fn2-sle-append-article*
+              (list "." "205 closing connection")))))
+  (local
+   (defun fn2-sle-chars (octets)
+     (declare (xargs :verify-guards nil))
+     (if (atom octets) nil (cons (code-char (nfix (car octets))) (fn2-sle-chars (cdr octets))))))
+  ;; The NNTP listener's Accept is the outbox's first action; the reader
+  ;; connects only after the append's reply, so the Accept is taken off the
+  ;; outbox and held, (op . opgen), and completed for client 1 then (as
+  ;; m2-cuts defers a starved Receive).
+  (local
+   (defun fn2-sle-hold-accept (held fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (if held (mv nil held fn2-core)
+       (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+         (took held fn2-ops)
+         (mv-let (code op opgen) (fn2-outbox-peek 0 fn2-ops)
+           (if (not (and (eq code :ok) (equal (fn2-ops-kind op fn2-ops) *fn2-action-accept*)))
+               (mv nil nil fn2-ops)
+             (mv-let (ack fn2-ops) (fn2-outbox-ack 1 fn2-ops)
+               (mv (eq ack :ok) (and (eq ack :ok) (cons op opgen)) fn2-ops))))
+         (mv took held fn2-core)))))
+  (local
+   (defun fn2-sle-loop (fuel idle clients store held fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
+     (if (zp fuel) (mv :fuel clients store held fn2-core)
+       (b* (((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
+            ((mv h held fn2-core) (fn2-sle-hold-accept held fn2-core))
+            ((mv took & clients store fn2-core)
+             (if h (mv t 1 clients store fn2-core) (fn2-cw-adapter-one 1 clients store fn2-core)))
+            (idle (if (or took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
+         (if (or (<= 3 idle) (not (equal (fn2-core-stop-reason fn2-core) 0)))
+             (mv :quiet clients store held fn2-core)
+           (fn2-sle-loop (- fuel 1) idle clients store held fn2-core))))))
+  (local
+   (defun fn2-sle-test-turn-append ()
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (r fn2-core)
+         (b* ((fn2-core (fn2-init-executor *fn2-sle-append-profile* :echo nil fn2-core))
+              ((mv & fn2-core)
+               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv (list :admit acode) fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              (frame (fn2-sle-append-wire))
+              (clients (list (list (append frame '(5 0)) (list (len frame) 2) nil nil)))
+              ((mv status1 clients store held fn2-core) (fn2-sle-loop 4000 0 clients nil nil fn2-core))
+              ((unless held) (mv (list :no-accept status1) fn2-core))
+              (wire1 (car (car (fn2-cw-results clients))))
+              (reader (fn2-cw-crlf-octets (list "GROUP local.test" "ARTICLE 1"
+                                                (fn2-csp-cat (list "ARTICLE " *fn2-sle-append-mid*)) "QUIT")))
+              (clients (append clients (fn2-cw-clients (list (list reader nil)))))
+              (fn2-core (fn2-cw-post-accept (car held) (cdr held) 1 77 nil fn2-core))
+              ((mv status2 clients & fn2-core) (fn2-cw-loop 8000 0 2 clients store fn2-core))
+              (wire2 (car (cadr (fn2-cw-results clients)))))
+           (mv (list status1 wire1 status2 wire2 (fn2-core-stop-reason fn2-core)) fn2-core))
+         (let ((ok (and (eq (nth 0 r) :quiet) (equal (nth 1 r) '(1 0 1 0 0 0))
+                        (eq (nth 2 r) :quiet) (equal (nth 3 r) (fn2-sle-append-nntp-expected))
+                        (equal (nth 4 r) 0))))
+           (or ok (cw "append ~x0 ~x1 ~x2 stop ~x3~%nntp ~s4~%" (nth 0 r) (nth 1 r) (nth 2 r) (nth 4 r)
+                      (coerce (fn2-sle-chars (nth 3 r)) 'string))))))))
+  (local (assert-event (fn2-sle-test-turn-append)))
   (local (assert-event (fn2-sle-test-turn-read-and-stop)))
   (local (assert-event (fn2-sle-test-turn-wait-wake)))
   (local (assert-event (fn2-sle-test-turn-full-verbs)))

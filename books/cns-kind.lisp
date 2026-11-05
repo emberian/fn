@@ -96,7 +96,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :park :commit :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :park :commit :append :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -105,20 +105,25 @@
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
           (posted (:enum fn2-cns-posted (:none :accepted :unchanged :refused :uncertain))) (posted-word :u8)
           (edge :link) (txn :link) (txn-gen :u60) (tx-slot :link) (tx-gen :u60) (tx-len :u32)
+          ;; an append (e-surface.md 3.3) is a POST: the upload row this
+          ;; request owns, fed from the frame's article octets at FSTART
+          ;; (FED of them written, FEED-MODE the feed's line state, then
+          ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
+          (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
           (stopped :bool) (next-free :link))
  :holds ((:decode :wait-row) (:check :wait-row) (:lookup :wait-row)
          (:read :wait-row) (:page :wait-row) (:park :wait-row)
-         (:commit :wait-row) (:draining :wait-row))
+         (:commit :wait-row) (:append :wait-row) (:draining :wait-row))
  :budget (:bytes 8192 :steps 32 :descriptors 4)
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ()
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen tx-len stopped))
+                 reason posted posted-word txn-gen tx-len upload-gen fstart fed feed-mode feed-discard stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
-           (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*)
+           (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:park) (:commit) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:park) (:commit) (:append) (:draining) (:retired))
  :observes ())
 
 (defmachine-registry fn2-cns)

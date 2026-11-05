@@ -148,6 +148,16 @@ until `position` settles it; the recorded position is the old or the proposed on
 accepted in both cases (K6).
 
 ### 3.3 Append, retry identity, and the same article for NNTP
+**Served (L, fkind 7):** the frame is cmd, 7, N (0-8), the operation identity in N octets big-endian,
+then the article's CR LF lines (not dot-stuffed) to the frame's end. fn2-cns `:append` takes an fn2-upload
+row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exactly as for a POST, and
+the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
+six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). An article without a Message-ID gets
+`<op-PRINCIPAL-OP@node>`, PRINCIPAL the principal slot, and fn2-outcome is keyed (principal, op). The
+grant check is the named seam fn2-authority-allows (a stub in txn.lisp, one call per destination group at its lookup; `:ok` until
+the authority lane fills it). Not yet served: the read of fn2-outcome before the grant (a retry is refused
+`duplicate` by its Message-ID, not answered its outcome), `operation-reused`, the Message-ID and numbers
+in the reply, and an article past one receive (the six-octet L frame is one frame per receive).
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.
