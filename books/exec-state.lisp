@@ -33,6 +33,7 @@
    (fn2-control-turn-bytes :type (unsigned-byte 60) :initially 0 :why "Aggregate byte charge of the current turn.")
    (fn2-control-turn-steps :type (unsigned-byte 60) :initially 0 :why "Aggregate step charge of the current turn.")
    (fn2-control-owner-uid :type (unsigned-byte 32) :initially 0 :why "Configured local owner UID for the local control/consumer endpoint (E.P1).")
+   (fn2-control-owner-account :type (unsigned-byte 32) :initially 1 :why "The owner's account slot (the profile's :owner-account, else 1): an owner control connection acts as its persisted principal (AUTHORITY-20261105 section 1).")
    (fn2-control-path-identity :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t
     :why "The profile's path identity (RFC 5537 3.2), the right side of a generated Message-ID: octets, sized by the profile.")))
 
@@ -53,6 +54,16 @@
          (fn2-control-path-identity-length fn2-control)))
 (in-theory (disable fn2-control-put-path))
 
+;; The owner's account slot: the profile's :owner-account, else 1. Store
+;; genesis binds it once (fn2-principals-genesis, machines-c-groups.lisp) and
+;; an owner control connection acts as its principal.
+(defun fn2-profile-owner-account (profile)
+  (declare (xargs :guard t))
+  (let ((s (fn2-profile-get :owner-account profile)))
+    (if (and (posp s) (unsigned-byte-p 32 s)) s 1)))
+(defthm fn2-profile-owner-account-type
+  (and (posp (fn2-profile-owner-account profile)) (unsigned-byte-p 32 (fn2-profile-owner-account profile)))
+  :rule-classes ((:type-prescription :typed-term (fn2-profile-owner-account profile)) :rewrite))
 (defun fn2-control-init (profile fn2-control)
   (declare (xargs :stobjs fn2-control :guard (fn2-profilep profile)
                   :guard-hints (("Goal" :in-theory (enable fn2-profilep)))))
@@ -74,6 +85,7 @@
                        (let ((u (fn2-profile-get :owner-uid profile)))
                          (if (unsigned-byte-p 32 u) u 0))
                        fn2-control))
+         (fn2-control (update-fn2-control-owner-account (fn2-profile-owner-account profile) fn2-control))
          (path (coerce (fn2-profile-path-identity profile) 'list))
          (fn2-control (resize-fn2-control-path-identity (len path) fn2-control))
          (fn2-control (fn2-control-put-path 0 path fn2-control)))

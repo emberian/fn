@@ -462,8 +462,7 @@
 ;; an owner only below the system row (P), so a profile with P <= 1 has none.
 (defun fn2-principals-owner-slot (profile)
  (declare (xargs :guard t))
- (let ((s (fn2-profile-get :owner-account profile)))
-  (if (posp s) s 1)))
+ (fn2-profile-owner-account profile))
 
 (defcost fn2-group-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)

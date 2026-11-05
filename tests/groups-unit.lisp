@@ -79,7 +79,7 @@
 ;; S-OUTCOME and S-ARTICLE-ID. Transaction 0 writes, in one batch: the
 ; outcome of (principal 3, operation 5) (request digest by reference, reply
 ; 240, the event), and the article row keyed by the commit position (:event
-; on its key). Its article index entry (C §4a) takes the article as :event
+; on its key), every field given (its location a raw source). Its article index entry (C §4a) takes the article as :event
 ; too; its name octets never (:kind). After publication the index entry's
 ; article is the event, 42, and a second transaction's outcome for (3, 5)
 ; is :duplicate at stage.
@@ -140,6 +140,11 @@
       ((mv & fn2-core) (fn2-successor-arg-octets 0 2 4 dslot dgen 0 32 5 1 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 5 :value 100 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 6 :value 3 fn2-core))
+      ;; the location (unit, writer epoch, allocation, kind :raw-source): every one of the row's 11 fields
+      ((mv & fn2-core) (fn2-successor-arg 0 2 7 :value 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 2 8 :value 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 2 9 :value 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg 0 2 10 :value 0 fn2-core))
       ((mv r1 fn2-core) (fn2-gu-resolve 40 0 fn2-core))
       ((mv s1 & fn2-core) (fn2-successor-stage 0 fn2-core))
       ((mv b1 fn2-core) (fn2-successor-bind 0 1 42 fn2-core))
