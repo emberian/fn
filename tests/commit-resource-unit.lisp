@@ -1,92 +1,50 @@
-; Static callback-level change detector, not a per-source-phase refinement proof.
-; Shared callbacks use the UNION of their source states' successors. Scenario
-; microsteps separately check exact source/destination edges, including harvest.
+; The commit kind's derived contracts (MACHINE-FORM: the arms are in the
+; arm language, so each arm's next phases are derived from its :next steps,
+; never stated by hand): every arm moves only along *fn2-commit-transitions*
+; from its own phase, every handler only to a phase some live phase may
+; reach. Scenario microsteps separately check exact source/destination edges.
 (in-package "ACL2")
 (include-book "../sim/commit-resources")
 (fn2-book-layer :b)
-(make-event (value `(defconst *fn2-cru-arms*
- ',(fn2-machine-property 'fn2-commit :continuations (w state)))))
-(make-event (value `(defconst *fn2-cru-observers*
- ',(fn2-machine-property 'fn2-commit :observes (w state)))))
-(make-event (value `(defconst *fn2-cru-phases*
- ',(pairlis$ (strip-cars (strip-cdrs (fn2-columns-enum-constants 'fn2-commit-state
-      (fn2-machine-property 'fn2-commit :states (w state)) 0)))
-             (fn2-machine-property 'fn2-commit :states (w state))))))
-(defun fn2-cru-definitions (forms)
+(make-event (value `(defconst *fn2-cru-contracts*
+ ',(cdr (assoc-eq 'fn2-commit (table-alist 'fn2-machine-arm-contracts (w state)))))))
+(defun fn2-cru-arm-next (tag entries)
  (declare (xargs :verify-guards nil))
- (if (atom forms) nil
-  (let ((form (car forms)))
-   (if (member-eq (car form) '(defun defmachine-callback))
-       (cons (cons (cadr form) (if (eq (car form) 'defun) (cdddr form) (nthcdr 5 form)))
-             (fn2-cru-definitions (cdr forms))) (fn2-cru-definitions (cdr forms))))))
-(defun fn2-cru-calls (term names)
- (declare (xargs :verify-guards nil))
- (if (or (atom term) (member-eq (car term) '(quote declare))) nil
-  (union-eq (and (member-eq (car term) names) (list (car term)))
-   (union-eq (fn2-cru-calls (car term) names) (fn2-cru-calls (cdr term) names)))))
-(defun fn2-cru-expand (names defs)
- (declare (xargs :verify-guards nil))
- (if (atom names) nil
-  (union-eq (fn2-cru-calls (cdr (assoc-eq (car names) defs)) (strip-cars defs))
-            (fn2-cru-expand (cdr names) defs))))
-; N definitions bound every simple callgraph path by N-1 edges. No magic fuel.
-(defun fn2-cru-closure (left names defs)
- (declare (xargs :verify-guards nil :measure (nfix left)))
- (if (zp left) names
-  (let ((next (union-eq names (fn2-cru-expand names defs))))
-   (if (subsetp-eq next names) names (fn2-cru-closure (- left 1) next defs)))))
-(defun fn2-cru-phase-values (expression)
- (declare (xargs :verify-guards nil))
- (cond ((assoc-eq expression *fn2-cru-phases*) (list (cdr (assoc-eq expression *fn2-cru-phases*))))
-       ((and (consp expression) (eq (car expression) 'if))
-        (union-eq (fn2-cru-phase-values (caddr expression)) (fn2-cru-phase-values (cadddr expression))))
-       (t (list :unknown-phase-expression))))
-(defun fn2-cru-writes (term)
- (declare (xargs :verify-guards nil))
- (if (or (atom term) (member-eq (car term) '(quote declare))) nil
-  (if (eq (car term) 'fn2-commit-put-core)
-      (let ((phase (assoc-eq 'phase (cddr term)))) (and phase (fn2-cru-phase-values (cadr phase))))
-    (union-eq (fn2-cru-writes (car term)) (fn2-cru-writes (cdr term))))))
-(defun fn2-cru-targets (names defs)
- (declare (xargs :verify-guards nil))
- (if (atom names) nil
-  (union-eq (fn2-cru-writes (cdr (assoc-eq (car names) defs))) (fn2-cru-targets (cdr names) defs))))
-(defun fn2-cru-allowed (callback arms)
- (declare (xargs :verify-guards nil))
- (if (atom arms) nil
-  (union-eq (and (eq callback (cadar arms))
-                (cons (caar arms) (cdr (assoc-eq (caar arms) *fn2-commit-transitions*))))
-            (fn2-cru-allowed callback (cdr arms)))))
+ (cond ((atom entries) nil)
+       ((eq (caar entries) tag) (fn2-arm-get :next (cddar entries)))
+       (t (fn2-cru-arm-next tag (cdr entries)))))
 (defun fn2-cru-observer-allowed (states)
  (declare (xargs :verify-guards nil))
  (if (atom states) (strip-cars *fn2-commit-transitions*)
   (intersection-eq (cons (car states) (cdr (assoc-eq (car states) *fn2-commit-transitions*)))
                    (fn2-cru-observer-allowed (cdr states)))))
-(defun fn2-cru-audit (callbacks defs)
+(defun fn2-cru-audit-arms (entries)
  (declare (xargs :verify-guards nil))
- (if (atom callbacks) t
-  (let* ((name (car callbacks)) (observer (member-eq name (strip-cars (strip-cdrs *fn2-cru-observers*))))
-         (allowed (if observer (fn2-cru-observer-allowed (remove-eq :free (strip-cars *fn2-commit-transitions*)))
-                    (fn2-cru-allowed name *fn2-cru-arms*))))
-   (and (assoc-eq name defs)
-        (subsetp-eq (fn2-cru-targets (fn2-cru-closure (len defs) (list name) defs) defs) allowed)
-        (fn2-cru-audit (cdr callbacks) defs)))))
-;; The commit kind's events are four sections (71c1fb2f2, B5-4a's splits); the audit reads all.
-(defconst *fn2-cru-defs* (fn2-cru-definitions (append (cdr (fn2-commit-event-forms))
-                                                      (cdr (fn2-commit-event-forms-1b))
-                                                      (cdr (fn2-commit-event-forms-2))
-                                                      (cdr (fn2-commit-event-forms-2b)))))
-(defconst *fn2-cru-callbacks* (remove-duplicates-equal
- (append (strip-cars (strip-cdrs *fn2-cru-arms*)) (strip-cars (strip-cdrs *fn2-cru-observers*)))))
-(assert-event (fn2-cru-audit *fn2-cru-callbacks* *fn2-cru-defs*))
+ (if (atom entries) t
+  (and (subsetp-eq (fn2-arm-get :next (cddar entries))
+                   (cons (caar entries) (cdr (assoc-eq (caar entries) *fn2-commit-transitions*))))
+       (fn2-cru-audit-arms (cdr entries)))))
+(defun fn2-cru-audit-observers (entries)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) t
+  (and (subsetp-eq (remove-eq :stay (fn2-arm-get :next (cddar entries)))
+                   (fn2-cru-observer-allowed (remove-eq :free (strip-cars *fn2-commit-transitions*))))
+       (fn2-cru-audit-observers (cdr entries)))))
+(defconst *fn2-cru-arms* (fn2-arm-get :continuations *fn2-cru-contracts*))
+(defconst *fn2-cru-observers* (fn2-arm-get :observes *fn2-cru-contracts*))
+(assert-event (and (equal (strip-cars *fn2-cru-arms*) (strip-cars *fn2-commit-transitions*))
+                   (fn2-cru-audit-arms *fn2-cru-arms*)
+                   (equal (strip-cars *fn2-cru-observers*) '(:write-result :fence-result))
+                   (fn2-cru-audit-observers *fn2-cru-observers*)))
+;; teeth: the derived edges are the ones the pipeline takes
 (assert-event
- (and (member-eq :seal (fn2-cru-targets (fn2-cru-closure (len *fn2-cru-defs*) '(fn2-commit-collect) *fn2-cru-defs*) *fn2-cru-defs*))
-      (member-eq :draining (fn2-cru-targets (fn2-cru-closure (len *fn2-cru-defs*) '(fn2-commit-notify) *fn2-cru-defs*) *fn2-cru-defs*))
-      (equal (fn2-cru-targets (fn2-cru-closure (len *fn2-cru-defs*) '(fn2-commit-observe) *fn2-cru-defs*) *fn2-cru-defs*) '(:uncertain))))
-(assert-event (not (fn2-cru-audit *fn2-cru-callbacks*
- (put-assoc-eq 'fn2-commit-notify
-  (cons '(fn2-commit-put-core id (phase *fn2-commit-state-free*))
-        (cdr (assoc-eq 'fn2-commit-notify *fn2-cru-defs*))) *fn2-cru-defs*))))
+ (and (member-eq :seal (fn2-cru-arm-next :collect *fn2-cru-arms*))
+      (member-eq :draining (fn2-cru-arm-next :notify *fn2-cru-arms*))
+      (member-eq :free (fn2-cru-arm-next :draining *fn2-cru-arms*))
+      (member-eq :uncertain (fn2-cru-arm-next :write-result *fn2-cru-observers*))))
+;; the control: a :notify arm that could free its row is refused
+(assert-event (not (fn2-cru-audit-arms
+ (put-assoc-eq :notify (list* 'fn2-commit-run-notify '(:next (:free))) *fn2-cru-arms*))))
 ; Independent prefix inventory check over the ACTUAL generated P/V word.
 ; Reusable holdings return to zero; immutable-root holdings remain declared.
 (defun fn2-cru-potential-delta (values)
@@ -124,25 +82,3 @@
              '(fn2-commit-io-init 6 fn2-commit-io))
       (< (+ (* 1 *fn2-commit-write-resources*) (- *fn2-commit-write-resources* 1)) 6)))))
 
-; DM0b: check every B arm against the same input and forwarding checks used by
-; defmachine-callback, and check the admitted operation's authoritative formals.
-(defun fn2-cru-callback-contracts (names defs world)
- (declare (xargs :verify-guards nil))
- (if (atom names) t
-  (let* ((name (car names)) (body (cdr (assoc-eq name defs)))
-         (operation (fn2-operation-row name world))
-         (rows (fn2-decl-get :row-bindings operation)))
-   (and body operation
-        (equal (fn2-decl-get :owner operation) '(:machine fn2-commit))
-        (equal (fn2-decl-get :calling-convention operation)
-               (getpropc name 'formals nil world))
-        (not (fn2-callback-input-error body world))
-        (not (fn2-callback-forwarding body rows world))
-        (fn2-cru-callback-contracts (cdr names) defs world)))))
-(assert-event (fn2-cru-callback-contracts *fn2-cru-callbacks* *fn2-cru-defs* (w state)))
-(assert-event
- (not (fn2-cru-callback-contracts *fn2-cru-callbacks*
-  (put-assoc-eq 'fn2-commit-writes
-   '((b* (((when t) (fn2-machine-yield id fn2-core)))
-       (fn2-machine-yield id fn2-core))) *fn2-cru-defs*) (w state))))
-(value-triple (cw "B3c DM0b: 11 callback contracts; unsupported-binder control PASS~%"))

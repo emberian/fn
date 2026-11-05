@@ -321,15 +321,27 @@
   (cond ((atom holds) (and holds (msg "~x0: :holds is a list of (PHASE KIND ...)." name)))
         ((not (and (consp (car holds)) (member-eq (caar holds) states)
                    (true-listp (cdar holds))
-                   (fn2-resource-kinds-known-p (cdar holds) *fn2-resource-order*)
-                   (fn2-resource-ascending-p (cdar holds) *fn2-resource-order*)
+                   (or (equal (cdar holds) '(:retained))
+                       (and (fn2-resource-kinds-known-p (cdar holds) *fn2-resource-order*)
+                            (fn2-resource-ascending-p (cdar holds) *fn2-resource-order*)))
                    (not (assoc-eq (caar holds) (cdr holds)))))
-         (msg "~x0: :holds entry ~x1 must be a phase with D0 resource kinds in rank order, once."
-              name (car holds)))
+         (msg "~x0: :holds entry ~x1 must be a phase with D0 resource kinds in rank order, or ~
+               (PHASE :retained), once." name (car holds)))
         (t (fn2-arm-holds-problem-syntax name (cdr holds) states))))
 (defun fn2-arm-holds-of (phase holds)
   (declare (xargs :verify-guards nil))
   (let ((entry (and (alistp holds) (assoc-eq phase holds)))) (and (consp entry) (cdr entry))))
+; A retained phase (PHASE :retained) acquires nothing on entry and keeps
+; exactly what the entering path held: its holds are the path's, not a
+; static set. D0 checks it per path only (fn2-arm-paths-problem).
+(defun fn2-arm-retained-p (phase holds)
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-arm-holds-of phase holds) '(:retained)))
+(defun fn2-arm-retained-phases (holds)
+  (declare (xargs :verify-guards nil))
+  (if (atom holds) nil
+    (append (and (consp (car holds)) (equal (cdar holds) '(:retained)) (list (caar holds)))
+            (fn2-arm-retained-phases (cdr holds)))))
 
 ; ----------------------------------------------------------------------
 ; The restricted arm language (decision 2), checked over the submitted body
@@ -602,7 +614,12 @@
            (row (fn2-decl-row (list :cost name) world))
            (target (fn2-decl-get :target row))
            (effects (fn2-arm-use-effects (car uses) world)))
-      (or (and target (not (eq effects :per-use))
+      (or (and target
+               (let ((holds (fn2-decl-get :holds (fn2-decl-row (list :machine (car target)) world))))
+                 (or (fn2-arm-retained-p (cadr target) holds) (fn2-arm-retained-p (caddr target) holds)))
+               (msg "uses ~x0, which moves a ~x1 row ~x2 -> ~x3 through a retained phase on its behalf; ~
+                     a retained phase's holds are its own row's path's." name (car target) (cadr target) (caddr target)))
+          (and target (not (eq effects :per-use))
                (let* ((kind (car target))
                       (holds (fn2-decl-get :holds (fn2-decl-row (list :machine kind) world)))
                       (gain (fn2-arm-minus (fn2-arm-minus (fn2-arm-holds-of (caddr target) holds)
@@ -693,12 +710,13 @@
   (declare (xargs :verify-guards nil))
   (append (fn2-arm-holds-of phase holds) (fn2-arm-while-holds phase a while)))
 (defun fn2-arm-path-end-problem (s srch e a endas uses holds while world)
-  ; the move S -> E under every end assignment
+  ; the move S -> E under every end assignment; a retained E keeps SRCH
   (declare (xargs :verify-guards nil))
   (if (atom endas) nil
     (let ((p (fn2-arm-resource-problem-1 '(:path-from) '(:path-to)
                                          (list (cons :path-from srch)
-                                               (cons :path-to (fn2-arm-holds-under e (car endas) holds while)))
+                                               (cons :path-to (if (fn2-arm-retained-p e holds) srch
+                                                                (fn2-arm-holds-under e (car endas) holds while))))
                                          uses world t)))
       (if p (msg "on a path ~x0 -> ~x1~@2 calling ~x3: ~@4" s e
                  (if a (msg " (at entry ~x0, at its end ~x1)" a (car endas)) "")
@@ -709,28 +727,41 @@
   (if (atom ends) nil
     (or (fn2-arm-path-end-problem s srch (car ends) a endas uses holds while world)
         (fn2-arm-path-ends-problem-all s srch (cdr ends) a endas uses holds while world))))
-(defun fn2-arm-path-entries-problem (s as path doms holds while world)
+; RET ((R SET ...) ...): each retained phase R with every set a path entering
+; it can hold (fn2-machine-retained-sets); a path from R is checked from each.
+(defun fn2-arm-start-holds (s a holds while ret)
+  (declare (xargs :verify-guards nil))
+  (if (fn2-arm-retained-p s holds) (or (cdr (assoc-eq s ret)) (list nil))
+    (list (fn2-arm-holds-under s a holds while))))
+(defun fn2-arm-path-starts-problem (s srchs ends a endas uses holds while world)
+  (declare (xargs :verify-guards nil))
+  (if (atom srchs) nil
+    (let ((p (fn2-arm-path-ends-problem-all s (car srchs) ends a endas uses holds while world)))
+      (if p (if (fn2-arm-retained-p s holds) (msg "~@0 (retained ~x1, entered holding ~x2)" p s (car srchs)) p)
+        (fn2-arm-path-starts-problem s (cdr srchs) ends a endas uses holds while world)))))
+(defun fn2-arm-path-entries-problem (s as path doms holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom as) nil
     (let* ((a (car as)) (ends (if (eq (cadr path) :stay) (list s) (cadr path)))
            (endas (fn2-arm-assignments (fn2-arm-end-doms doms (nth 4 path) a))))
-      (or (fn2-arm-path-ends-problem-all s (fn2-arm-holds-under s a holds while) ends a endas (caddr path) holds while world)
-          (fn2-arm-path-entries-problem s (cdr as) path doms holds while world)))))
-(defun fn2-arm-path-sources-problem (sources path doms holds while world)
+      (or (fn2-arm-path-starts-problem s (fn2-arm-start-holds s a holds while ret) ends a endas (caddr path)
+                                       holds while world)
+          (fn2-arm-path-entries-problem s (cdr as) path doms holds while ret world)))))
+(defun fn2-arm-path-sources-problem (sources path doms holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom sources) nil
     (or (fn2-arm-path-entries-problem (car sources) (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path)))
-                                      path doms holds while world)
-        (fn2-arm-path-sources-problem (cdr sources) path doms holds while world))))
-(defun fn2-arm-paths-problem (sources paths doms holds while world)
+                                      path doms holds while ret world)
+        (fn2-arm-path-sources-problem (cdr sources) path doms holds while ret world))))
+(defun fn2-arm-paths-problem (sources paths doms holds while ret world)
   ; SOURCES the arm's phases, DOMS ((F V ...) ...) the conditional fields' values
   (declare (xargs :verify-guards nil))
   (if (atom paths) nil
     (let ((path (car paths)))
       (or (and (not (nth 5 path))
                (fn2-arm-path-sources-problem (if (eq (car path) :any) sources (intersection-eq (car path) sources))
-                                             path doms holds while world))
-          (fn2-arm-paths-problem sources (cdr paths) doms holds while world)))))
+                                             path doms holds while ret world))
+          (fn2-arm-paths-problem sources (cdr paths) doms holds while ret world)))))
 ; The same declarations as D0's effect rows, for D0's checker.
 ;; One row per operation reached (through forwarded callbacks), each from
 ;; the holds of the arm's source phase: alternative paths are separate rows.
@@ -771,29 +802,34 @@
   (if (atom sources) nil
     (append (fn2-arm-effect-rows-from kind (car sources) uses holds 256 world)
             (fn2-arm-effect-rows kind (cdr sources) uses holds world))))
-(defun fn2-arm-path-entries-effect-rows (kind s as uses holds while world)
+(defun fn2-arm-path-starts-effect-rows (kind s srchs uses world)
+  (declare (xargs :verify-guards nil))
+  (if (atom srchs) nil
+    (mv-let (rows held)
+      (fn2-arm-effect-rows-seq kind s uses (car srchs) 256 world)
+      (declare (ignore held))
+      (append rows (fn2-arm-path-starts-effect-rows kind s (cdr srchs) uses world)))))
+(defun fn2-arm-path-entries-effect-rows (kind s as uses holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom as) nil
-    (mv-let (rows held)
-      (fn2-arm-effect-rows-seq kind s uses (fn2-arm-holds-under s (car as) holds while) 256 world)
-      (declare (ignore held))
-      (append rows (fn2-arm-path-entries-effect-rows kind s (cdr as) uses holds while world)))))
-(defun fn2-arm-path-sources-effect-rows (kind sources path doms holds while world)
+    (append (fn2-arm-path-starts-effect-rows kind s (fn2-arm-start-holds s (car as) holds while ret) uses world)
+            (fn2-arm-path-entries-effect-rows kind s (cdr as) uses holds while ret world))))
+(defun fn2-arm-path-sources-effect-rows (kind sources path doms holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom sources) nil
     (append (fn2-arm-path-entries-effect-rows kind (car sources)
               (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path)))
-              (caddr path) holds while world)
-            (fn2-arm-path-sources-effect-rows kind (cdr sources) path doms holds while world))))
-(defun fn2-arm-paths-effect-rows (kind sources paths doms holds while world)
+              (caddr path) holds while ret world)
+            (fn2-arm-path-sources-effect-rows kind (cdr sources) path doms holds while ret world))))
+(defun fn2-arm-paths-effect-rows (kind sources paths doms holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom paths) nil
     (let ((path (car paths)))
       (append (and (not (nth 5 path))
                    (fn2-arm-path-sources-effect-rows kind
                      (if (eq (car path) :any) sources (intersection-eq (car path) sources))
-                     path doms holds while world))
-              (fn2-arm-paths-effect-rows kind sources (cdr paths) doms holds while world)))))
+                     path doms holds while ret world))
+              (fn2-arm-paths-effect-rows kind sources (cdr paths) doms holds while ret world)))))
 ; ----------------------------------------------------------------------
 ; The frame predicate of an arm's invariant row: cores as lists of children.
 ; Every child outside CHILDREN is unchanged; in the kind's table (child TABLE)
