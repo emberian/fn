@@ -366,7 +366,7 @@
 
 ; Injection read back: a POST without a Message-ID answers 240, and HEAD 1
 ; and ARTICLE 1 serve the stored octets: the generated field first
-; (<fn2.1.A@fn2.invalid>, the writer epoch 1 and the payload extent's
+; (<fn2.1.A@P>, P the profile's :path-identity, the writer epoch 1 and the payload extent's
 ; allocation), then the posted header in its order and the body; the 221
 ; and 220 lines carry the same identifier the field does.
 (defun fn2-tu-mid-of (line)
@@ -385,20 +385,21 @@
 (defun fn2-tu-digits-p (cs)
   (declare (xargs :verify-guards nil))
   (and (consp cs) (true-listp cs) (subsetp cs '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))))
-(defun fn2-tu-generated-mid-p (mid)
-  ;; <fn2.1.DIGITS@fn2.invalid>
+(defun fn2-tu-generated-mid-p (mid path)
+  ;; <fn2.1.DIGITS@PATH>
   (declare (xargs :verify-guards nil))
-  (let* ((s (coerce mid 'list)) (pre (coerce "<fn2.1." 'list)) (post (coerce "@fn2.invalid>" 'list)))
+  (let* ((s (coerce mid 'list)) (pre (coerce "<fn2.1." 'list))
+         (post (coerce (concatenate 'string "@" path ">") 'list)))
     (and (< (+ (len pre) (len post)) (len s))
          (equal (take (len pre) s) pre)
          (equal (nthcdr (- (len s) (len post)) s) post)
          (fn2-tu-digits-p (take (- (len s) (+ (len pre) (len post))) (nthcdr (len pre) s))))))
-(defun fn2-txn-test-generated-read ()
+(defun fn2-txn-test-generated-read (path)
   (declare (xargs :verify-guards nil))
   (let* ((posted (remove-equal (nth 3 *fn2-tu-good*) *fn2-tu-good*))
          (lines (append '("POST") posted '(".") '("GROUP local.test" "HEAD 1" "ARTICLE 1" "QUIT")))
          (octets (fn2-tu-text lines))
-         (r (fn2-tu-run *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (r (fn2-tu-run (put-assoc-equal :path-identity path *fn2-tu-read-profile*) nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
          (wire (car (car (nth 2 r))))
          (got (fn2-tu-lines-of wire))
          (mid (fn2-tu-mid-of (or (nth 4 got) "")))
@@ -410,7 +411,11 @@
                        field "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test" ""
                        "body" "..stuffed" "." *fn2-tu-205*)))
     (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
-             (stringp mid) (fn2-tu-generated-mid-p mid)
+             (stringp mid) (fn2-tu-generated-mid-p mid path)
              (equal wire (fn2-tu-text expect)) (cadr (car (nth 2 r))))
         (cw "generated-read ~x0 ~x1~%" (list (car r) (nth 1 r) (nth 3 r) mid) got))))
-(assert-event (fn2-txn-test-generated-read))
+; The identifier's right side is the profile's path identity: the tiny
+; profile's, and another node's.
+(assert-event (and (fn2-txn-test-generated-read "fn2.invalid")
+                   (fn2-txn-test-generated-read "news.example-1.org")
+                   (not (fn2-tu-generated-mid-p "<fn2.1.7@fn2.invalid>" "news.example-1.org"))))

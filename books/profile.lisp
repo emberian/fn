@@ -33,6 +33,26 @@
 (fn2-def-profile-reader fn2-profile-generation-limit :generation-limit)
 (fn2-def-profile-reader fn2-profile-trace :trace)
 (fn2-def-profile-reader fn2-profile-trace-capacity :trace-capacity)
+;; The node's path identity (RFC 5537 3.2), profile key :path-identity: the
+;; name the node signs Path and Xref with and the right side of every
+;; Message-ID it generates.  A letter or digit, then letters, digits, "-",
+;; "." or "_"; at most *fn2-profile-path-identity-max* octets, RFC 5536
+;; 3.1.3's 250-octet Message-ID less the generated form's other 48
+;; ("<fn2." N "." N "@" ">", N at most 20 digits).
+(defconst *fn2-profile-path-identity-max* 202)
+(fn2-def-profile-reader fn2-profile-path-identity :path-identity)
+(defun fn2-profile-path-chars-p (cs first)
+  (declare (xargs :guard t))
+  (if (atom cs) (null cs)
+    (let ((c (car cs)))
+      (and (characterp c)
+           (or (alpha-char-p c) (digit-char-p c)
+               (and (not first) (member c '(#\- #\. #\_))))
+           (fn2-profile-path-chars-p (cdr cs) nil)))))
+(defun fn2-profile-path-identityp (x)
+  (declare (xargs :guard t))
+  (and (stringp x) (< 0 (length x)) (<= (length x) *fn2-profile-path-identity-max*)
+       (fn2-profile-path-chars-p (coerce x 'list) t)))
 ;; Calendar weights (D7's S3) come from the ledger's configuration, profile key :accounts,
 ;; ((SLOT :weight W ...) ...): slot I's weight is W, 1 when unconfigured.  The ledger
 ;; (fn2-accounts-profilep) and the scheduler (fn2-sched-profilep) each refuse a weight outside
@@ -129,7 +149,8 @@
    (<= (fn2-profile-generation-start profile)
        (fn2-profile-generation-limit profile))
    (consp (assoc-equal :trace profile))
-   (booleanp (fn2-profile-trace profile))))
+   (booleanp (fn2-profile-trace profile))
+   (fn2-profile-path-identityp (fn2-profile-path-identity profile))))
 
 ; Init callers use these field facts without opening the full profile schema.
 (defthm fn2-profile-o-bounds
@@ -169,7 +190,7 @@
     (:ncancel . 32) (:jread . 64) (:jwrite . 16) (:accept-credits . 8)
     (:pool-classes . ((512 . 4096) (80 . 65536)))
     (:generation-start . 1) (:generation-limit . ,*fn2-u60-max*)
-    (:trace-capacity . 768) (:trace . nil)))
+    (:trace-capacity . 768) (:trace . nil) (:path-identity . "fn2.invalid")))
 
 ; Tiny calendar: principal slots 0..3, commit, timer/grant, wake, maintenance.
 ; The run quanta remain the declared per-run caps; resident capacities shrink.
@@ -179,7 +200,7 @@
     (:ncancel . 2) (:jread . 2) (:jwrite . 2) (:accept-credits . 2)
     (:pool-classes . ((8 . 64) (4 . 256)))
     (:generation-start . 1) (:generation-limit . ,*fn2-u60-max*)
-    (:trace-capacity . 48) (:trace . t)))
+    (:trace-capacity . 48) (:trace . t) (:path-identity . "fn2.invalid")))
 
 (defconst *fn2-profile-tiny-near-limit*
   (put-assoc-equal :generation-start (- *fn2-u60-max* 3) *fn2-profile-tiny*))
@@ -200,6 +221,12 @@
       (not (fn2-profilep (put-assoc-equal :fence-slots 0 *fn2-profile-tiny*)))
       (not (fn2-profilep nil))
       (not (fn2-profilep (put-assoc-equal :qa 0 *fn2-profile-tiny*)))
+      (fn2-profilep (put-assoc-equal :path-identity "news.example-1.org" *fn2-profile-tiny*))
+      (not (fn2-profilep (remove1-assoc-equal :path-identity *fn2-profile-tiny*)))
+      (not (fn2-profilep (put-assoc-equal :path-identity ".invalid" *fn2-profile-tiny*)))
+      (not (fn2-profilep (put-assoc-equal :path-identity "a b" *fn2-profile-tiny*)))
+      (not (fn2-profilep (put-assoc-equal :path-identity (coerce (make-list 203 :initial-element #\a) 'string)
+                                          *fn2-profile-tiny*)))
       (not (fn2-profilep
             (put-assoc-equal :generation-start 1152921504606846976
                              *fn2-profile-tiny*)))))
@@ -215,6 +242,7 @@
     fn2-profile-jread fn2-profile-jwrite fn2-profile-accept-credits
     fn2-profile-pool-classes fn2-profile-generation-start
     fn2-profile-generation-limit fn2-profile-trace fn2-profile-trace-capacity fn2-profile-calendar-length
+    fn2-profile-path-identity fn2-profile-path-chars-p fn2-profile-path-identityp
     fn2-profile-plist-get fn2-profile-slot-weight fn2-profile-weights-from fn2-profile-weights
     fn2-profile-weight-sum
     fn2-profile-positive-u32p fn2-profile-positive-fields-p

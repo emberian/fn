@@ -52,7 +52,7 @@
   :doc "At the drain: a payload extent no transaction committed has its reservation cancelled.")
 (defcost fn2-upload-store-span :doc "The next storage write's pool range, offset and length: (mv slot gen off len).")
 (defcost fn2-upload-lease-class :doc "The pool class of the store page (one storage unit; nil: none).")
-(defcost fn2-upload-put-mid :answers (:ok :fault) :faults (:fault) :bytes 128 :tables (fn2-core-pool)
+(defcost fn2-upload-put-mid :answers (:ok :fault) :faults (:fault) :bytes 264 :tables (fn2-core-pool fn2-core-control)
   :doc "Write the generated Message-ID field into the store page: (mv code len).")
 
 ;; ------------------------------------------------------------------------
@@ -337,15 +337,32 @@
 (defun fn2-upload-lease-class (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for *fn2-commit-unit-bytes* fn2-pool) class))
-;; The generated Message-ID field (*fn2-upload-mid-template*) appended to the
-;; empty store page: (mv code len fn2-core), LEN the field's octets.
+;; The path identity's octets [I, length) of fn2-control-path-identity,
+;; appended to the page.
+(defun fn2-upload-put-path (i slot gen okind oslot ogen fn2-control fn2-pool)
+  (declare (xargs :stobjs (fn2-control fn2-pool)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp i))
+                  :measure (nfix (- (fn2-control-path-identity-length fn2-control) (nfix i)))))
+  (if (or (not (natp i)) (>= i (fn2-control-path-identity-length fn2-control))) (mv :ok fn2-pool)
+    (mv-let (code fn2-pool)
+      (fn2-gram-put (nfix (fn2-control-path-identityi i fn2-control)) slot gen okind oslot ogen fn2-pool)
+      (if (not (eq code :ok)) (mv code fn2-pool)
+        (fn2-upload-put-path (+ 1 i) slot gen okind oslot ogen fn2-control fn2-pool)))))
+(fn2-pool-preserves fn2-upload-put-path (i slot gen okind oslot ogen fn2-control fn2-pool) :position 1 :rows nil)
+;; The generated Message-ID field appended to the empty store page: the
+;; template (*fn2-upload-mid-template*, to the "@"), the profile's path
+;; identity, *fn2-upload-mid-close*: (mv code len fn2-core), LEN the field's
+;; octets.
 (defun fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
     (code len fn2-pool)
     (if (and (natp epoch) (natp alloc) (equal (fn2-gram-fill slot fn2-pool) 0))
         (mv-let (code fn2-pool)
-          (fn2-gram-put-template 0 *fn2-upload-mid-template* 0 epoch alloc 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)
+          (fn2-gram-put-chain
+           (fn2-gram-put-template 0 *fn2-upload-mid-template* 0 epoch alloc 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)
+           (fn2-upload-put-path 0 slot gen okind oslot ogen fn2-control fn2-pool)
+           (fn2-gram-put-template 0 *fn2-upload-mid-close* 0 0 0 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool))
           (mv (if (eq code :ok) :ok :fault) (nfix (fn2-gram-fill slot fn2-pool)) fn2-pool))
       (mv :fault 0 fn2-pool))
     (mv code len fn2-core)))

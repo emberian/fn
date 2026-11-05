@@ -449,6 +449,13 @@
             (fn2-gram-put-span (- left 1) (+ 1 i) sslot sgen slot gen okind oslot ogen fn2-pool)))))))
 (fn2-pool-preserves fn2-gram-put-span (left i sslot sgen slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 
+; Puts in order, stopping at the first that does not answer :ok: (mv code fn2-pool).
+(defmacro fn2-gram-put-chain (&rest calls)
+  (if (atom calls) '(mv :ok fn2-pool)
+    (if (atom (cdr calls)) (car calls)
+      `(mv-let (code fn2-pool) ,(car calls)
+         (if (eq code :ok) (fn2-gram-put-chain ,@(cdr calls)) (mv code fn2-pool))))))
+
 ; A compiled template: literal octets, and field markers taking N0, N1, N2
 ; in order (numbers) or the one span. K is the next template position.
 (defun fn2-gram-put-template (k tmpl nidx n0 n1 n2 sslot sgen soff slen slot gen okind oslot ogen fn2-pool)

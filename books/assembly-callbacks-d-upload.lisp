@@ -106,7 +106,7 @@
                       (:if inject
                            ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al) :accept (:ok))
                             (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen))
-                            (:next :store-write) (:charge :bytes 128 :steps *fn2-work-transition* :runnable t))
+                            (:next :store-write) (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0))
                             (:next :store-write) (:charge :steps *fn2-work-transition* :runnable t))))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)

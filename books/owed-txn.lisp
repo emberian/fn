@@ -52,4 +52,4 @@
                   (fn2-txn-interim-wire "240 article received OK")))
   :schema :invariant :from (:operation-set fn2-conn-wire)
   :teeth (fn2-txn-test-generated fn2-txn-test-generated-negative)
-  :doc "Injection (D5 2/n, RFC 5537 3.5): a POST that supplies no Message-ID is given one by the node, <fn2.E.A@P> (RFC 5536 3.1.3; E.A its payload extent's writer epoch and allocation, P the path identity), stored as the article's first field before the source; it is claimed and decided like a supplied one and answers 240, however it is chunked. Owed with injection: Date, Path, Injection-Info and Injection-Date, and P from the profile.")
+  :doc "Injection (D5 2/n, RFC 5537 3.5): a POST that supplies no Message-ID is given one by the node, <fn2.E.A@P> (RFC 5536 3.1.3; E.A its payload extent's writer epoch and allocation, P the profile's :path-identity), stored as the article's first field before the source; it is claimed and decided like a supplied one and answers 240, however it is chunked. Owed with injection: Date, Path, Injection-Info and Injection-Date.")

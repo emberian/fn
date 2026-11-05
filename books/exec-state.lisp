@@ -32,7 +32,26 @@
    (fn2-control-timer-cursor :type (unsigned-byte 32) :initially 0 :why "One resumable scan position for timer service.")
    (fn2-control-turn-bytes :type (unsigned-byte 60) :initially 0 :why "Aggregate byte charge of the current turn.")
    (fn2-control-turn-steps :type (unsigned-byte 60) :initially 0 :why "Aggregate step charge of the current turn.")
-   (fn2-control-owner-uid :type (unsigned-byte 32) :initially 0 :why "Configured local owner UID for the local control/consumer endpoint (E.P1).")))
+   (fn2-control-owner-uid :type (unsigned-byte 32) :initially 0 :why "Configured local owner UID for the local control/consumer endpoint (E.P1).")
+   (fn2-control-path-identity :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t
+    :why "The profile's path identity (RFC 5537 3.2), the right side of a generated Message-ID: octets, sized by the profile.")))
+
+;; Write the path identity's octets [I, length) from CS.
+(defun fn2-control-put-path (i cs fn2-control)
+  (declare (xargs :stobjs fn2-control :measure (len cs)
+                  :guard (and (natp i) (character-listp cs)
+                              (<= (+ i (len cs)) (fn2-control-path-identity-length fn2-control)))))
+  (if (or (atom cs) (not (natp i)) (>= i (fn2-control-path-identity-length fn2-control))) fn2-control
+    (let ((fn2-control (update-fn2-control-path-identityi i (char-code (car cs)) fn2-control)))
+      (fn2-control-put-path (+ 1 i) (cdr cs) fn2-control))))
+(defthm fn2-control-put-path-type
+  (implies (fn2-controlp fn2-control) (fn2-controlp (fn2-control-put-path i cs fn2-control))))
+(defthm fn2-control-put-path-wfp
+  (implies (fn2-control-wfp fn2-control) (fn2-control-wfp (fn2-control-put-path i cs fn2-control))))
+(defthm fn2-control-put-path-length
+  (equal (fn2-control-path-identity-length (fn2-control-put-path i cs fn2-control))
+         (fn2-control-path-identity-length fn2-control)))
+(in-theory (disable fn2-control-put-path))
 
 (defun fn2-control-init (profile fn2-control)
   (declare (xargs :stobjs fn2-control :guard (fn2-profilep profile)
@@ -54,7 +73,10 @@
          (fn2-control (update-fn2-control-owner-uid
                        (let ((u (fn2-profile-get :owner-uid profile)))
                          (if (unsigned-byte-p 32 u) u 0))
-                       fn2-control)))
+                       fn2-control))
+         (path (coerce (fn2-profile-path-identity profile) 'list))
+         (fn2-control (resize-fn2-control-path-identity (len path) fn2-control))
+         (fn2-control (fn2-control-put-path 0 path fn2-control)))
     fn2-control))
 (defthm fn2-control-init-type
   (implies (and (fn2-controlp fn2-control) (fn2-profilep profile))

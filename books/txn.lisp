@@ -193,15 +193,9 @@
 (fn2-pool-preserves fn2-txn-truncate-to (off slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-txn-truncate-to))
 
-(defmacro fn2-txn-put-chain (&rest calls)
-  (if (atom calls) '(mv :ok fn2-pool)
-    (if (atom (cdr calls)) (car calls)
-      `(mv-let (code fn2-pool) ,(car calls)
-         (if (eq code :ok) (fn2-txn-put-chain ,@(cdr calls)) (mv code fn2-pool))))))
-
 (defun fn2-txn-synth-ov-1 (so sl fo fl slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-txn-put-chain
+  (fn2-gram-put-chain
    (fn2-gram-put-span (min 180 (nfix sl)) (nfix so) slot gen slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put *fn2-gram-tab* slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put-span (min 180 (nfix fl)) (nfix fo) slot gen slot gen okind oslot ogen fn2-pool)
@@ -211,7 +205,7 @@
 
 (defun fn2-txn-synth-ov-2 (dto dtl ms mg mo ml slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-txn-put-chain
+  (fn2-gram-put-chain
    (fn2-gram-put-span (min 80 (nfix dtl)) (nfix dto) slot gen slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put *fn2-gram-tab* slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put-span (min 250 (nfix ml)) (nfix mo) ms mg slot gen okind oslot ogen fn2-pool)
@@ -222,7 +216,7 @@
 
 (defun fn2-txn-synth-ov-3 (hashed lines slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-txn-put-chain
+  (fn2-gram-put-chain
    (fn2-gram-put-number (nfix hashed) slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put *fn2-gram-tab* slot gen okind oslot ogen fn2-pool)
    (fn2-gram-put-number (nfix lines) slot gen okind oslot ogen fn2-pool)))
@@ -237,7 +231,7 @@
        ((mv fo fl) (fn2-txn-find-header 64 0 scanned *fn2-upload-field-from* slot gen okind oslot ogen fn2-pool))
        ((mv dto dtl) (fn2-txn-find-header 64 0 scanned *fn2-upload-field-date* slot gen okind oslot ogen fn2-pool))
        ((mv code fn2-pool)
-        (fn2-txn-put-chain
+        (fn2-gram-put-chain
          (fn2-txn-truncate-to ov-off slot gen okind oslot ogen fn2-pool)
          (fn2-txn-synth-ov-1 so sl fo fl slot gen okind oslot ogen fn2-pool)
          (fn2-txn-synth-ov-2 dto dtl ms mg mo ml slot gen okind oslot ogen fn2-pool)
