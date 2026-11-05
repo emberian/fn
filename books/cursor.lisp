@@ -334,7 +334,14 @@
            (and (fn2-fieldsp (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
                 (fn2-fields-wfp (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
                 (equal (fn2-fields-rows (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
-                       (fn2-fields-rows fn2-fields)))))
+                       (fn2-fields-rows fn2-fields))))
+  :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp))))
+(defthm fn2-cursor-manifest-entry-of-natp-1 (natp (mv-nth 1 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-2 (natp (mv-nth 2 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-3 (natp (mv-nth 3 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-4 (natp (mv-nth 4 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-5 (natp (mv-nth 5 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-6 (natp (mv-nth 6 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
 (in-theory (disable fn2-cursor-manifest-entry-of))
 
 ;; WHAT 0: "N TAB"; 1: "N CR LF"; 2: CR LF; 3: ". CR LF" (the terminator).
