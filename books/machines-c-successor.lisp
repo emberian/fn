@@ -583,6 +583,13 @@
                                         (+ entry *fn2-succ-raw*) entry fn2-fields))
          (fn2-succ-txns (fn2-succ-txns-put tx (rstate *fn2-succ-resolve-next*) (rbound *fn2-u60-max*))))
      (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
+   ;; The schema's runs moved since the search began (a seal, or C5's merge,
+   ;; which retires the runs it searched and releases their pages): the
+   ;; slot's search starts again over the runs now installed.
+   ((not (equal (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
+                (fn2-succ-slots-vrun s fn2-succ-slots)))
+    (let ((fn2-succ-txns (fn2-succ-txns-put tx (rstate *fn2-succ-resolve-fresh*) (rbound 0))))
+     (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
    ((equal rstate *fn2-succ-resolve-next*)
     (mv-let (c fn2-succ-txns fn2-succ-slots fn2-run-cursors)
       (fn2-succ-resolve-next tx s b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-run-cursors)
@@ -609,7 +616,7 @@
  (fn2-succ-txns-ri fn2-succ-txns-rstate fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-run-version
   fn2-succ-reads-key fn2-run-layout-keys fn2-run-layout-fields fn2-succ-kindkw fn2-succ-resolved fn2-succ-resolve-next
   fn2-run-lookup-step fn2-succ-key-rows fn2-succ-copy-rows fn2-run-cursors-rows fn2-run-paths-rows
-  fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg))
+  fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-vrun))
 
 ; One bounded step of resolve for TX (BUDGET at most 4,096): :more, :miss
 ; (a run page to load, as C-S1), or :ok when every slot is resolved. A

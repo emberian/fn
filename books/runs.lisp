@@ -351,6 +351,24 @@
   (let ((fn2-run-cache (fn2-run-cache-put i (state *fn2-run-cache-state-ready*) (unit unit) (counter counter) (slot slot) (gen gen))))
    (mv :ok fn2-run-cache))))
 (fn2-run-cache-preserves fn2-run-cache-install (unit counter slot gen fn2-run-cache) :position 1 :raw-rows t)
+; The page cached under exactly UNIT leaves the cache: (mv code slot gen
+; cache), :ok with the workspace it was held in (its owner releases it), or
+; :absent when UNIT's row holds no page of that unit.
+(defun fn2-run-cache-drop (unit fn2-run-cache)
+ (declare (xargs :stobjs fn2-run-cache :guard (fn2-run-cache-wfp fn2-run-cache)))
+ (b* (((unless (and (natp unit) (< 0 (fn2-run-cache-rows fn2-run-cache)))) (mv :bounds 0 0 fn2-run-cache))
+      (i (nfix (fn2-run-cache-row unit fn2-run-cache)))
+      ((unless (< i (fn2-run-cache-rows fn2-run-cache))) (mv :bounds 0 0 fn2-run-cache))
+      ((unless (and (equal (fn2-run-cache-state i fn2-run-cache) *fn2-run-cache-state-ready*)
+                    (equal (fn2-run-cache-unit i fn2-run-cache) unit)))
+       (mv :absent 0 0 fn2-run-cache))
+      (slot (nfix (fn2-run-cache-slot i fn2-run-cache))) (gen (nfix (fn2-run-cache-gen i fn2-run-cache)))
+      (fn2-run-cache (fn2-run-cache-put i (state *fn2-run-cache-state-empty*))))
+  (mv :ok slot gen fn2-run-cache)))
+(fn2-run-cache-preserves fn2-run-cache-drop (unit fn2-run-cache) :position 3 :raw-rows t)
+(defthm fn2-run-cache-drop-types
+ (and (natp (mv-nth 1 (fn2-run-cache-drop unit fn2-run-cache))) (natp (mv-nth 2 (fn2-run-cache-drop unit fn2-run-cache))))
+ :hints (("Goal" :in-theory (enable fn2-run-cache-drop))))
 
 ; A cursor: one resumable descent from a run's root to level 0, then (for a
 ; scan) a walk forward over level 0. Each step does at most BUDGET entry
@@ -451,13 +469,17 @@
 ; Installed runs: the engine's resident view of each schema's sealed runs (the
 ; manifest, C1c, makes it durable). A row names a run's root page (its level,
 ; cache slot and physical identity, the owner its pages are read under) and
-; its entry count; FILTER says whether the run has a Ribbon filter page
+; its entry count; UFIRST..ULAST the physical units its pages (and its
+; filter page) were sealed under (the seal row hands units out in order, one
+; build at a time, so a run's pages are exactly the cached units in that
+; interval: another run's page under a unit of it has another unit, since
+; the cache is keyed by the exact unit); FILTER says whether the run has a Ribbon filter page
 ; (ribbon.lisp), named by its physical identity (FUNIT, FCOUNTER) and read
 ; through the verified-page cache under the run's owner.
 (defcolumns fn2-run-installed
- ((state (:enum fn2-run-installed-state (:free :live)))
+ ((state (:enum fn2-run-installed-state (:free :live :retired)))
   (schema :u60) (run :u60) (top :u8) (slot :u32) (gen :u60) (unit :u60) (counter :u60) (entries :u60)
-  (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60)))
+  (okind :u8) (oslot :u32) (ogen :u60) (filter :bool) (funit :u60) (fcounter :u60) (ufirst :u60) (ulast :u60)))
 (defun fn2-run-install (r schema run top slot gen unit counter entries okind oslot ogen fn2-run-installed)
  (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
  (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
@@ -484,6 +506,41 @@
       (fn2-run-installed (fn2-run-installed-put r (filter 1) (funit unit) (fcounter counter))))
   (mv :ok fn2-run-installed)))
 (fn2-run-installed-preserves fn2-run-install-filter (r unit counter fn2-run-installed) :position 1 :raw-rows t)
+; Name live run R's units UFIRST..ULAST.
+(defun fn2-run-install-units (r ufirst ulast fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed))
+                    (unsigned-byte-p 60 ufirst) (unsigned-byte-p 60 ulast)))
+       (mv :bounds fn2-run-installed))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
+       (mv :state fn2-run-installed))
+      (fn2-run-installed (fn2-run-installed-put r (ufirst ufirst) (ulast ulast))))
+  (mv :ok fn2-run-installed)))
+(fn2-run-installed-preserves fn2-run-install-units (r ufirst ulast fn2-run-installed) :position 1 :raw-rows t)
+; C5's merge retires live run R: no reader enumerates it again; its pages
+; stay cached until the sealer releases them unit by unit (sealer.lisp).
+(defun fn2-run-retire (r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
+       (mv :state fn2-run-installed))
+      (fn2-run-installed (fn2-run-installed-put r (state *fn2-run-installed-state-retired*))))
+  (mv :ok fn2-run-installed)))
+(fn2-run-installed-preserves fn2-run-retire (r fn2-run-installed) :position 1 :raw-rows t)
+; Retired run R's next unit is released: UFIRST moves on, and the row is
+; free once it passes ULAST.
+(defun fn2-run-retired-next (r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (fn2-run-installed-wfp fn2-run-installed)))
+ (b* (((unless (and (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) (mv :bounds fn2-run-installed))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-retired*))
+       (mv :state fn2-run-installed))
+      (next (+ 1 (nfix (fn2-run-installed-ufirst r fn2-run-installed))))
+      ((unless (unsigned-byte-p 60 next)) (mv :bounds fn2-run-installed))
+      (fn2-run-installed (if (< (nfix (fn2-run-installed-ulast r fn2-run-installed)) next)
+                             (fn2-run-installed-put r (state *fn2-run-installed-state-free*) (ufirst next))
+                           (fn2-run-installed-put r (ufirst next)))))
+  (mv :ok fn2-run-installed)))
+(fn2-run-installed-preserves fn2-run-retired-next (r fn2-run-installed) :position 1 :raw-rows t)
 ; A schema's version: the greatest run identifier among its live runs.
 ; Run identifiers only grow, and every installation (a seal, C5's merge)
 ; installs a new one, so the version moves whenever facts move from an

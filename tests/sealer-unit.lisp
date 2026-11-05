@@ -12,7 +12,7 @@
 
 (defconst *fn2-su-stobjs*
  '(fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-   fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths))
+   fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))
 ;; A b* binding (fn2-su-bind (v ...) call) binds V ... and every stobj.
 (defun fn2-su-expand (x)
  (declare (xargs :verify-guards nil))
@@ -28,13 +28,14 @@
 (defmacro fn2-su-mv (&rest values) `(mv ,@values ,@*fn2-su-stobjs*))
 (defmacro fn2-su-call (name &rest args) `(,name ,@args ,@*fn2-su-stobjs*))
 
-; Field plan: the sealer's rows from 1500; an entry being loaded at 3000, the
-; overlay's decode scratch at 3100; the run adapter's reader at 1200 and
+; Field plan: the sealer's rows from 1500 (its merge's query at 2780 and
+; sources' readers from 2860, C5); an entry being loaded at 3700, the
+; overlay's decode scratch at 3800; the run adapter's reader at 1200 and
 ; query at 1310. Writer rows 0-6 the sealer's; checker row 0, digest rows
 ; 0-135. Owner (9 0 1); the query's (10 0 1).
 (defconst *fn2-su-fbase* 1500)
-(defconst *fn2-su-e* 3000)
-(defconst *fn2-su-eb* 3100)
+(defconst *fn2-su-e* 3700)
+(defconst *fn2-su-eb* 3800)
 (defconst *fn2-su-icap* 64)
 (fn2-su-defun fn2-su-setup (rows pfill)
  (b* ((fn2-seals (fn2-seals-init 1 fn2-seals))
@@ -47,15 +48,21 @@
       (fn2-run-cache (fn2-run-cache-init 1024 fn2-run-cache))
       (fn2-ribbon-builds (fn2-ribbon-builds-init 1 fn2-ribbon-builds))
       (fn2-ribbon-band (fn2-ribbon-band-init (fn2-ribbon-slots *fn2-su-icap*) fn2-ribbon-band))
-      (fn2-fields (fn2-fields-init 3200 fn2-fields))
+      (fn2-fields (fn2-fields-init 3900 fn2-fields))
       (fn2-pool (fn2-pool-init '((300 . 65536)) 1 100 fn2-pool))
       (fn2-fc (fn2-fc-init 1 fn2-fc))
       (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
       (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
       (fn2-digests (fn2-digests-init 150 fn2-digests))
-      (fn2-run-cursors (fn2-run-cursors-init 1 fn2-run-cursors))
-      (fn2-run-paths (fn2-run-paths-init *fn2-run-max-levels* fn2-run-paths))
-      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 fn2-seals)))
+      (fn2-run-cursors (fn2-run-cursors-init 9 fn2-run-cursors))
+      (fn2-run-paths (fn2-run-paths-init (* 9 *fn2-run-max-levels*) fn2-run-paths))
+      (fn2-ranges (fn2-ranges-init 1 fn2-ranges))
+      (fn2-range-sources (fn2-range-sources-init 8 fn2-range-sources))
+      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 fn2-seals))
+      ((unless (eq code :ok)) (fn2-su-mv code))
+      ;; the merge (C5): range row 0, sources 0-7 through cursors 1-8
+      ((mv code fn2-seals) (fn2-seal-merge-rows 0 0 1 (+ *fn2-su-fbase* *fn2-seal-field-rows*)
+                                                (+ *fn2-su-fbase* *fn2-seal-field-rows* *fn2-run-entry-rows*) fn2-seals)))
   (fn2-su-mv code)))
 ; Load overlay O of SID with ENTRIES (inserted in order), SEQ, then publish
 ; it (frozen) unless PRIVATE.
@@ -89,10 +96,11 @@
 (fn2-su-defun fn2-su-drive (fuel limit done) :measure (nfix fuel)
  (if (or (zp fuel) (and (natp limit) (<= limit done))) (fn2-su-mv (if (zp fuel) :fuel :limit) done)
   (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
-            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+            fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
         (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                        fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
-                       fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+                       fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)))
    (case code
     (:idle (fn2-su-mv :idle done))
     ((:more :retired) (fn2-su-call fn2-su-drive (- fuel 1) limit done))
@@ -149,14 +157,14 @@
 (defun fn2-sealer-image (sid layout batches seqs private limit pfill queries)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
   (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
     (fn2-su-run sid layout batches seqs private limit pfill queries fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed
                 fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
-                fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
    (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths))))
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
 
 ; ---------------------------------------------------------------------------
 ; Specification: the newest batch (the last in SEQ order) holding Q's key.
@@ -233,10 +241,11 @@
 (fn2-su-defun fn2-su-cuts (fuel prev acc) :measure (nfix fuel)
  (if (zp fuel) (fn2-su-mv (reverse acc))
   (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
-            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+            fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
         (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
                        fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
-                       fn2-fc fn2-fc-context fn2-b3 fn2-digests))
+                       fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths))
        (fn2-su-bind (installed) (fn2-su-call fn2-su-installed 0 16))
        (fn2-su-bind (phases) (fn2-su-call fn2-su-phases 0 1))
        (view (list installed phases))
@@ -254,14 +263,14 @@
 (defun fn2-sealer-cut-views (sid layout batch pfill)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
   (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
     (fn2-su-cut-run sid layout batch pfill fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed
                     fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
-                    fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                    fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
    (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths))))
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
 ; The views of one seal of a nonempty batch: before (no run, the overlay
 ; frozen) and after (one run of its entries, the overlay free), nothing else.
 (defun fn2-sealer-cuts-ok (sid batch views)
@@ -340,11 +349,11 @@
 (defun fn2-su-pending-result ()
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
   (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
     (fn2-su-pending-check fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-                          fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths)
+                          fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
    (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
-       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths))))
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
 (assert-event (equal (fn2-su-pending-result) '(nil t t t nil t :ok :cache 5)))
