@@ -43,35 +43,68 @@
 (defun m2-outcome (r) (declare (xargs :guard t)) (and (consp r) (car r)))
 (defun m2-accepted-p (r) (declare (xargs :guard t)) (equal (m2-outcome r) *fn2-cns-outcome-accepted*))
 
-; The adapter's Receive completion consumes the operation even when the client
-; has nothing to send (fn2-cw-adapter-one). A scripted client sends its next
-; frame only after it has read the reply, so the loop holds a Receive at the
-; outbox head until that client's frame is there.
-(defun m2-starved-p (clients fn2-core)
+;; The adapter's Receive completion consumes the operation even when the
+; client has nothing to send (fn2-cw-adapter-one), and the outbox is one FIFO
+; across connections. A scripted client sends its next frame only after it
+; has read its reply, so a Receive that finds its client empty is taken off
+; the outbox here and DEFERRED, ((cap op opgen rslot rgen roff rlen) ...), and
+; completed exactly as the adapter completes one once that client's frame is
+; there.
+(defun m2-take-starved (clients deferred fn2-core)
+  ; (mv took deferred fn2-core): the outbox head deferred when it is a
+  ; Receive whose client has nothing to send.
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-    (starved)
-    (mv-let (code op opgen) (fn2-outbox-peek 0 fn2-ops)
-      (declare (ignore opgen))
-      (and (eq code :ok)
-           (equal (fn2-ops-kind op fn2-ops) *fn2-action-receive*)
-           (mv-let (cap nonce) (fn2-op-capability op fn2-ops)
-             (declare (ignore nonce))
-             (atom (nth 0 (nth cap clients))))))
-    starved))
-(defun m2-loop (fuel idle clients fn2-core)
+  (b* (((mv hit d fn2-core)
+        (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+          (hit d fn2-ops)
+          (mv-let (code op opgen) (fn2-outbox-peek 0 fn2-ops)
+            (if (not (and (eq code :ok) (equal (fn2-ops-kind op fn2-ops) *fn2-action-receive*)))
+                (mv nil nil fn2-ops)
+              (mv-let (cap nonce) (fn2-op-capability op fn2-ops)
+                (declare (ignore nonce))
+                (if (consp (nth 0 (nth cap clients)))
+                    (mv nil nil fn2-ops)
+                  (mv-let (rslot rgen roff rlen) (fn2-op-range op fn2-ops)
+                    (mv-let (ack fn2-ops) (fn2-outbox-ack 1 fn2-ops)
+                      (mv (eq ack :ok) (list cap op opgen rslot rgen roff rlen) fn2-ops)))))))
+          (mv hit d fn2-core))))
+    (mv hit (if hit (append deferred (list d)) deferred) fn2-core)))
+(defun m2-complete-deferred (deferred clients fn2-core)
+  ; (mv took deferred clients fn2-core): every deferred Receive whose client
+  ; now has octets is given its next chunk.
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom deferred) (mv nil nil clients fn2-core)
+    (b* (((list cap op opgen rslot rgen roff rlen) (car deferred))
+         (c (nth cap clients))
+         (input (nth 0 c)) (sizes (nth 1 c))
+         ((when (atom input))
+          (mv-let (took rest clients fn2-core) (m2-complete-deferred (cdr deferred) clients fn2-core)
+            (mv took (cons (car deferred) rest) clients fn2-core)))
+         (want (if (and (consp sizes) (posp (car sizes))) (car sizes) (len input)))
+         (n (min want (min rlen (len input))))
+         (fn2-core (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
+                     (fn2-cw-write-loan roff (take n input) rslot rgen op opgen fn2-pool) fn2-core))
+         (fn2-core (fn2-cw-post 0 op opgen *fn2-event-receive-result* *fn2-outcome-done* n 0 0 fn2-core))
+         (clients (update-nth cap (list (nthcdr n input) (if (consp sizes) (cdr sizes) nil) (nth 2 c) (nth 3 c) (nth 4 c))
+                              clients))
+         ((mv & rest clients fn2-core) (m2-complete-deferred (cdr deferred) clients fn2-core)))
+      (mv t rest clients fn2-core))))
+(defun m2-loop (fuel idle clients store deferred fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil :measure (nfix fuel)))
-  (if (zp fuel) (mv :fuel clients fn2-core)
-    (b* (((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
-         (hold (m2-starved-p clients fn2-core))
-         ((mv took & clients fn2-core)
-          (if hold (mv nil (len clients) clients fn2-core) (fn2-cw-adapter-one (len clients) clients fn2-core)))
-         (idle (if (or took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
+  (if (zp fuel) (mv :fuel clients store deferred fn2-core)
+    (b* (((mv done deferred clients fn2-core) (m2-complete-deferred deferred clients fn2-core))
+         ((mv & nobs nvisits nactions fn2-core) (fn2-turn fn2-core))
+         ((mv held deferred fn2-core) (m2-take-starved clients deferred fn2-core))
+         ((mv took & clients store fn2-core)
+          (if held (mv t (len clients) clients store fn2-core)
+            (fn2-cw-adapter-one (len clients) clients store fn2-core)))
+         (idle (if (or done took (< 0 nobs) (< 0 nvisits) (< 0 nactions)) 0 (+ 1 idle))))
       (if (or (<= 3 idle) (not (equal (fn2-core-stop-reason fn2-core) 0)))
-          (mv :quiet clients fn2-core)
-        (m2-loop (- fuel 1) idle clients fn2-core)))))
+          (mv :quiet clients store deferred fn2-core)
+        (m2-loop (- fuel 1) idle clients store deferred fn2-core)))))
 ; Send FRAME on connection CONN (nil: send nothing, only run the core) and
-; return what arrived on every connection's wire meanwhile: (mv new clients fn2-core),
+; return what arrived on every connection's wire meanwhile: (mv new clients
+; io fn2-core), IO the adapter's storage device and the deferred Receives,
 ; NEW ((conn . octets) ...) in connection order.
 (defun m2-wire-lens (clients)
   (declare (xargs :verify-guards nil))
@@ -82,7 +115,8 @@
     (let ((wire (nth 2 (car clients))))
       (cons (cons i (reverse (take (- (len wire) (nfix (car lens))) wire)))
             (m2-new-octets (+ 1 i) (cdr clients) (cdr lens))))))
-(defun m2-exchange (conn frame clients fn2-core)
+(defun m2-exchange (conn frame clients io fn2-core)
+  ; IO is (store . deferred).
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((lens (m2-wire-lens clients))
        (c (nth conn clients))
@@ -91,8 +125,8 @@
                                            (nth 2 c) (nth 3 c) (nth 4 c))
                                 clients)
                   clients))
-       ((mv & clients fn2-core) (m2-loop 2000 0 clients fn2-core)))
-    (mv (m2-new-octets 0 clients lens) clients fn2-core)))
+       ((mv & clients store deferred fn2-core) (m2-loop 2000 0 clients (car io) (cdr io) fn2-core)))
+    (mv (m2-new-octets 0 clients lens) clients (cons store deferred) fn2-core)))
 
 ; Origin's R where the served append refuses it: the direct core writes of F6
 ; (sim-layer-e.lisp fn2-sle-seed-article) at the next commit position.
@@ -117,16 +151,32 @@
     (mv :ok fn2-core)))
 
 ;; Mini over the served node --------------------------------------------------------
-; S is (clients db reasons mutate): the connections, Mini's database
+; S is (clients db reasons mutate store): the connections, Mini's database
 ; (consumer-mini.lisp), the reasons the cut cannot pass (in order, no
-; duplicates) and the control's mutation of the replies Mini reads.
-(defun m2-s (clients db reasons mutate) (declare (xargs :guard t)) (list clients db reasons mutate))
+; duplicates), the control's mutation of the replies Mini reads, and the
+; adapter's storage device with the deferred Receives (m2-exchange's IO).
+(defun m2-s (clients db reasons mutate store) (declare (xargs :guard t)) (list clients db reasons mutate store))
 (defun m2-why (reason s)
   (declare (xargs :verify-guards nil))
   (let ((rs (nth 2 s)))
-    (m2-s (nth 0 s) (nth 1 s) (if (member-equal reason rs) rs (append rs (list reason))) (nth 3 s))))
-(defun m2-db (db s) (declare (xargs :verify-guards nil)) (m2-s (nth 0 s) db (nth 2 s) (nth 3 s)))
-(defun m2-reply-text (r) (declare (xargs :verify-guards nil)) (fms-to-string "~x0" (list (cons #\0 r))))
+    (m2-s (nth 0 s) (nth 1 s) (if (member-equal reason rs) rs (append rs (list reason))) (nth 3 s) (nth 4 s))))
+(defun m2-db (db s) (declare (xargs :verify-guards nil)) (m2-s (nth 0 s) db (nth 2 s) (nth 3 s) (nth 4 s)))
+(defun m2-wired (clients io s) (declare (xargs :verify-guards nil)) (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s) io))
+; Replies and codes as text: a natural, a symbol, or a flat list of them.
+(defun m2-atom-text (x)
+  (declare (xargs :verify-guards nil))
+  (cond ((natp x) (coerce (explode-nonnegative-integer x 10 nil) 'string))
+        ((symbolp x) (symbol-name x))
+        ((stringp x) x)
+        (t "?")))
+(defun m2-items-text (xs)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom xs) "")
+        ((atom (cdr xs)) (m2-atom-text (car xs)))
+        (t (concatenate 'string (m2-atom-text (car xs)) " " (m2-items-text (cdr xs))))))
+(defun m2-reply-text (r)
+  (declare (xargs :verify-guards nil))
+  (if (consp r) (concatenate 'string "(" (m2-items-text r) ")") (m2-atom-text r)))
 (defun m2-reason-text (what r)
   (declare (xargs :verify-guards nil))
   (concatenate 'string what " answered " (m2-reply-text r)))
@@ -136,12 +186,12 @@
 ; arrived. The control's mutation (:register-refused) rewrites one reply.
 (defun m2-mini-send (verb frame s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* (((mv new clients fn2-core) (m2-exchange *m2-mini-conn* frame (nth 0 s) fn2-core))
+  (b* (((mv new clients store fn2-core) (m2-exchange *m2-mini-conn* frame (nth 0 s) (nth 4 s) fn2-core))
        (r (cdr (assoc-equal *m2-mini-conn* new)))
        (r (if (and r (eq verb 'register) (eq (nth 3 s) :register-refused))
               (update-nth 0 *fn2-cns-outcome-refused* r)
             r)))
-    (mv r new (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s)) fn2-core)))
+    (mv r new (m2-wired clients store s) fn2-core)))
 
 (defconst *m2-no-items*
   "page: the served reply is six octets (outcome reason cpos pfront count more) and carries no item, so Mini sees no Message-ID, source or reference")
@@ -216,16 +266,16 @@
     (append
      ; Origin appends R on its own connection; Mini's may hold a parked wait.
      (b* ((art (if (equal (car (nth 3 op)) "<r2@origin>") 2 1))
-          ((mv new clients fn2-core) (m2-exchange *m2-origin-conn* (m2-frame 7 0) (nth 0 s) fn2-core))
-          (s (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s)))
+          ((mv new clients store fn2-core) (m2-exchange *m2-origin-conn* (m2-frame 7 0) (nth 0 s) (nth 4 s) fn2-core))
+          (s (m2-wired clients store s))
           (ro (cdr (assoc-equal *m2-origin-conn* new)))
           ((mv s fn2-core) (m2-woken new s fn2-core))
           ((when (m2-accepted-p ro)) (mv s fn2-core))
           (s (m2-why *m2-append-r* s))
           ((mv code fn2-core) (m2-seed-article art fn2-core))
           (s (if (eq code :ok) s (m2-why (concatenate 'string "the stand-in seed of R stopped: " (m2-reply-text code)) s)))
-          ((mv new clients fn2-core) (m2-exchange *m2-mini-conn* nil (nth 0 s) fn2-core)))
-       (m2-woken new (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s)) fn2-core)))
+          ((mv new clients store fn2-core) (m2-exchange *m2-mini-conn* nil (nth 0 s) (nth 4 s) fn2-core)))
+       (m2-woken new (m2-wired clients store s) fn2-core)))
     (:grant (mv (m2-why "grant: the served node has no authority verb (fn2-ctl admits the owner only; every frame is the owner's)" s) fn2-core))
     (:withdraw (mv (m2-why "withdraw: no served cancel, and fn2-cns delivers no withdrawal report" s) fn2-core))
     (otherwise (mv (m2-why (concatenate 'string "world step " (m2-reply-text (car op)) " is not served") s) fn2-core))))
@@ -301,7 +351,7 @@
            (clients (list (list nil nil nil nil nil) (list nil nil nil nil nil)))
            (script (append (pairlis$ (make-list (len *mini-grants*) :initial-element :world) (pairlis$ *mini-grants* nil))
                            (cdr (assoc-eq cut *mini-cuts*))))
-           ((mv s fn2-core) (m2-drive script (m2-s clients (mini-db-init 0) nil mutate) fn2-core))
+           ((mv s fn2-core) (m2-drive script (m2-s clients (mini-db-init 0) nil mutate (cons nil nil)) fn2-core))
            (s (if (equal (fn2-core-stop-reason fn2-core) 0) s
                 (m2-why (concatenate 'string "the core stopped: " (m2-reply-text (fn2-core-stop-reason fn2-core))) s)))
            (ok (m2-accept cut (nth 1 s)))
@@ -342,4 +392,10 @@
     (declare (ignore pass0))
     (mv-let (pass1 r1) (m2-cut-run :c0-wait :register-refused)
       (and (not pass1) (m2-register-refused-p r1) (not (m2-register-refused-p r0))))))
-(assert! (m2-test-mutation))
+(make-event
+ ; The control prints both runs' reasons so a red names what the judge saw.
+ (mv-let (pass0 r0) (m2-cut-run :c0-wait nil)
+   (mv-let (pass1 r1) (m2-cut-run :c0-wait :register-refused)
+     (prog2$ (cw "M2CONTROL plain ~x0 ~x1~%M2CONTROL mutated ~x2 ~x3~%" pass0 r0 pass1 r1)
+             (if (m2-test-mutation) (value '(value-triple :m2-control-ok))
+               (er soft 'm2-control "the mutated register reply was not judged"))))))

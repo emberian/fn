@@ -16,10 +16,10 @@ def main(out):
     cuts = {}
     total = None
     for line in sys.stdin:
-        m = re.match(r'M2CUT (c\d+) (PASS|FAIL) ?(.*)$', line.rstrip('\n'))
+        m = re.search(r'M2CUT (c\d+) (PASS|FAIL) ?(.*)$', line.rstrip('\n'))
         if m:
             cuts[m.group(1)] = {'verdict': m.group(2), 'reasons': [r for r in m.group(3).split(' | ') if r]}
-        m = re.match(r'M2 (\d+)/(\d+)$', line.strip())
+        m = re.search(r'(?:^|>)M2 (\d+)/(\d+)$', line.strip())
         if m:
             total = (int(m.group(1)), int(m.group(2)))
     for c in CUTS:
