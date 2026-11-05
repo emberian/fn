@@ -21,6 +21,7 @@
 (include-book "consumer-mini")
 (include-book "../books/owed-conn")
 (include-book "../books/owed-cursor")
+(include-book "fnct-client")
 (include-book "std/testing/assert-bang" :dir :system)
 
 ; The reading and posting profile (owed-cursor.lisp *fn2-cursor-profile*,
@@ -35,18 +36,18 @@
 (defconst *m2-origin-conn* 1)
 
 ;; The served wire --------------------------------------------------------------
-; A request frame is (cmd fkind consumer arg3 limit epoch) (fn2-ctl-parse-frame,
-; fn2-cns-decode-frame): cmd 1 keeps the posture, fkind the verb, consumer 1
-; is Mini's, arg3 the register's start or the ack's target, Mini's 8 items,
-; epoch 1. A reply is (outcome reason cpos pfront count more) (fn2-cns-encode-reply-pool).
-(defun m2-frame (fkind arg3) (declare (xargs :guard t)) (list 1 fkind 1 arg3 8 1))
-; An append frame (cns.lisp fn2-cns-decode-append): cmd 1, fkind 7, the
-; operation identity's length and octets (OP a string of at most 7
-; octets), the article's CR LF lines.
+; Frames are the L carrier's FNCT (tests/fnct-client.lisp, e-surface.md 4.2):
+; Mini registers consumer 1 on its inbox from history and re-sends the cursor
+; the node issued (held in its database as :fncu) with every read, wait and
+; ack; position and status name consumer 1. A reply is read as (CLASS WORD
+; RESULT) (fnc-reply): a cursor's position, a page's (MORE NEXT COUNT).
+; An append frame (code 11): no stream (the article's Newsgroups names its
+; group), the operation identity (OP a string of at most 7 octets, read
+; big-endian by the node), the article's CR LF lines.
 (defun m2-append-frame (op lines)
   (declare (xargs :verify-guards nil))
-  (let ((o (fn2-cw-chars (coerce op 'list))))
-    (append (list 1 7 (len o)) o (fn2-cw-crlf-octets lines))))
+  (fnc-request :append (list (cons 'stream nil) (cons 'op (fn2-cw-chars (coerce op 'list)))
+                             (cons 'article (fn2-cw-crlf-octets lines)))))
 ; R as origin appends it: Mini's group, R's Message-ID and its source's
 ; operation tag; Q as Mini appends it to the reply group under its opid.
 ; R's carried size (198,919 octets) is past one L frame (one receive of
@@ -61,7 +62,8 @@
   (list "From: mini@example.invalid" (concatenate 'string "Subject: Q for " opid)
         (concatenate 'string "Newsgroups: " *mini-reply-group*) "" (concatenate 'string "Q for " opid)))
 (defun m2-outcome (r) (declare (xargs :guard t)) (and (consp r) (car r)))
-(defun m2-accepted-p (r) (declare (xargs :guard t)) (equal (m2-outcome r) *fn2-cns-outcome-accepted*))
+(defun m2-accepted-p (r) (declare (xargs :guard t)) (eq (m2-outcome r) :accepted))
+(defun m2-cursor (s) (declare (xargs :verify-guards nil)) (mini-get :fncu (nth 1 s)))
 
 ;; The adapter's Receive completion consumes the operation even when the
 ; client has nothing to send (fn2-cw-adapter-one), and the outbox is one FIFO
@@ -180,19 +182,20 @@
   (concatenate 'string what " answered " (m2-reply-text r)))
 
 ; Mini's request on its own connection: (mv reply new s fn2-core). REPLY is
-; Mini's six octets (nil while a wait is parked); NEW is everything that
-; arrived. The control's mutation (:register-refused) rewrites one reply.
+; Mini's reply read as VERB's (nil while a wait is parked); NEW is everything
+; that arrived. The control's mutation (:register-refused) rewrites one reply.
 (defun m2-mini-send (verb frame s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv new clients store fn2-core) (m2-exchange *m2-mini-conn* frame (nth 0 s) (nth 4 s) fn2-core))
-       (r (cdr (assoc-equal *m2-mini-conn* new)))
+       (o (cdr (assoc-equal *m2-mini-conn* new)))
+       (r (and (consp o) (fnc-reply verb o)))
        (r (if (and r (eq verb 'register) (eq (nth 3 s) :register-refused))
-              (update-nth 0 *fn2-cns-outcome-refused* r)
+              (list :refused "unavailable" nil)
             r)))
     (mv r new (m2-wired clients store s) fn2-core)))
 
 (defconst *m2-no-items*
-  "page: the served reply is six octets (outcome reason cpos pfront count more) and carries no item, so Mini sees no Message-ID, source or reference")
+  "page: the served kind 28 page carries its count and next cursor but no item, so Mini sees no Message-ID, source or reference")
 (defconst *m2-r-size*
   "R is appended as its header and operation tag: its 198,919 octets are past one L frame (one receive)")
 
@@ -206,26 +209,25 @@
                  (m2-mini-send 'append (m2-append-frame (caar outbox) (m2-q-lines (caar outbox))) s fn2-core))
                 (db (nth 1 s))
                 (o (cond ((m2-accepted-p r) (list :accepted nil))
-                         ((equal (m2-outcome r) *fn2-cns-outcome-uncertain*) (list :uncertain nil))
+                         ((eq (m2-outcome r) :uncertain) (list :uncertain nil))
                          (t (list :refused (nth 1 r)))))
                 (s (if (m2-accepted-p r)
-                       (m2-why "append accepted: the six-octet reply carries no Message-ID to hold across retries" s)
+                       (m2-why "append accepted: the kind 28 append result carries no Message-ID to hold across retries" s)
                      (m2-why (m2-reason-text "Mini's append of Q" r) s)))
                 (db (mini-put :posted (cons (cons (caar outbox) o) (mini-get :posted db)) db))
                 (db (if (or lose (eq (car o) :uncertain)) db
                       (mini-put :outbox (remove1-equal (car outbox) (mini-get :outbox db)) db))))
              (m2-post-outbox (cdr outbox) lose (m2-db db s) fn2-core)))))
 (defun m2-page-next (r)
-  ; The page's next position: its frontier when the page is the whole range,
-  ; else the position of its last item.
+  ; The page's next proposal: its next cursor's position.
   (declare (xargs :verify-guards nil))
-  (if (equal (nfix (nth 5 r)) 0) (nfix (nth 3 r)) (+ (nfix (nth 2 r)) (nfix (nth 4 r)))))
+  (nfix (nth 1 (nth 2 r))))
 (defun m2-after-page (r flag s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((s (if (eq flag :reclaim-before-fetch)
               (m2-why "reclaim: no served world step reclaims a stored article (fn2-cns has no reclaim of R)" s)
             s))
-       (s (if (and (m2-accepted-p r) (< 0 (nfix (nth 4 r)))) (m2-why *m2-no-items* s) s))
+       (s (if (and (m2-accepted-p r) (< 0 (nfix (nth 2 (nth 2 r))))) (m2-why *m2-no-items* s) s))
        (items nil)
        (db (mini-put :parked nil (nth 1 s)))
        (s (m2-db db s)))
@@ -236,7 +238,7 @@
       (b* ((db (mini-commit items db))
            ((when (eq flag :die-after-commit)) (mv (m2-db (mini-put :uncertain-ack t db) s) fn2-core))
            (next (m2-page-next r))
-           ((mv a & s fn2-core) (m2-mini-send 'ack (m2-frame 4 next) (m2-db db s) fn2-core))
+           ((mv a & s fn2-core) (m2-mini-send 'ack (fnc-ack (mini-get :fncu db) next) (m2-db db s) fn2-core))
            (s (if (m2-accepted-p a) s (m2-why (m2-reason-text "the ack of a page's next" a) s)))
            (db (if (or (eq flag :lose-ack) (not (m2-accepted-p a))) (mini-put :uncertain-ack t (nth 1 s))
                  (mini-put :cursor next (nth 1 s)))))
@@ -247,7 +249,7 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((db (nth 1 s))
        ((unless (mini-get :uncertain-ack db)) (m2-post-outbox (mini-get :outbox db) nil s fn2-core))
-       ((mv r & s fn2-core) (m2-mini-send 'position (m2-frame 5 0) s fn2-core))
+       ((mv r & s fn2-core) (m2-mini-send 'position (fnc-position 1) s fn2-core))
        (s (if (m2-accepted-p r) s (m2-why (m2-reason-text "position" r) s)))
        (db (if (m2-accepted-p r) (mini-put :uncertain-ack nil (mini-put :cursor (nfix (nth 2 r)) (nth 1 s))) (nth 1 s))))
     (m2-post-outbox (mini-get :outbox db) nil (m2-db db s) fn2-core)))
@@ -255,7 +257,7 @@
 (defun m2-woken (new s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (let ((r (cdr (assoc-equal *m2-mini-conn* new))))
-    (if (and r (mini-get :parked (nth 1 s))) (m2-after-page r nil s fn2-core) (mv s fn2-core))))
+    (if (and r (mini-get :parked (nth 1 s))) (m2-after-page (fnc-reply 'wait r) nil s fn2-core) (mv s fn2-core))))
 
 (defun m2-world (op s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -266,7 +268,7 @@
           (frame (m2-append-frame (nth 4 op) (m2-r-lines (car r) (cadr r))))
           ((mv new clients store fn2-core) (m2-exchange *m2-origin-conn* frame (nth 0 s) (nth 4 s) fn2-core))
           (s (m2-why *m2-r-size* (m2-wired clients store s)))
-          (ro (cdr (assoc-equal *m2-origin-conn* new)))
+          (ro (fnc-reply 'append (cdr (assoc-equal *m2-origin-conn* new))))
           (s (if (m2-accepted-p ro) s (m2-why (m2-reason-text "origin's append of R" ro) s))))
        (m2-woken new s fn2-core)))
     (:grant (mv (m2-why "grant: the served node has no authority verb (fn2-ctl admits the owner only; every frame is the owner's)" s) fn2-core))
@@ -279,9 +281,10 @@
     (let ((st (car script)))
       (case (car st)
         (:register
-         (b* (((mv r & s fn2-core) (m2-mini-send 'register (m2-frame 1 0) s fn2-core))
-              (s (if (m2-accepted-p r) s (m2-why (m2-reason-text "register" r) s))))
-           (m2-drive (cdr script) (m2-db (mini-db-init (nfix (nth 2 r))) s) fn2-core)))
+         (b* (((mv r new s fn2-core) (m2-mini-send 'register (fnc-register 1 1) s fn2-core))
+              (s (if (m2-accepted-p r) s (m2-why (m2-reason-text "register" r) s)))
+              (c (and (m2-accepted-p r) (fnc-reply-cursor 'register (cdr (assoc-equal *m2-mini-conn* new))))))
+           (m2-drive (cdr script) (m2-db (mini-put :fncu c (mini-db-init (nfix (nth 2 r)))) s) fn2-core)))
         (:world (b* (((mv s fn2-core) (m2-world (cadr st) s fn2-core))) (m2-drive (cdr script) s fn2-core)))
         (:crash
          (m2-drive (cdr script)
@@ -289,7 +292,7 @@
                    fn2-core))
         (:wait
          (b* (((mv s fn2-core) (m2-settle s fn2-core))
-              ((mv r & s fn2-core) (m2-mini-send 'wait (m2-frame 3 0) s fn2-core))
+              ((mv r & s fn2-core) (m2-mini-send 'wait (fnc-wait (m2-cursor s) 8 30) s fn2-core))
               ((mv s fn2-core) (if r (m2-after-page r nil s fn2-core)
                                  (mv (m2-db (mini-put :parked t (nth 1 s)) s) fn2-core))))
            (m2-drive (cdr script) s fn2-core)))
@@ -298,13 +301,13 @@
               ((mv r & s fn2-core)
                (if (mini-get :parked (nth 1 s))
                    (mv nil nil (m2-why "a read while Mini's wait is still parked: the wait never answered" s) fn2-core)
-                 (m2-mini-send 'read (m2-frame 2 0) s fn2-core)))
+                 (m2-mini-send 'read (fnc-read (m2-cursor s) 8) s fn2-core)))
               ((mv s fn2-core) (if r (m2-after-page r (cadr st) s fn2-core) (mv s fn2-core))))
            (m2-drive (cdr script) s fn2-core)))
         (:stale-ack
-         (b* (((mv r & s fn2-core) (m2-mini-send 'ack (m2-frame 4 (nfix (cadr st))) s fn2-core))
+         (b* (((mv r & s fn2-core) (m2-mini-send 'ack (fnc-ack (m2-cursor s) (nfix (cadr st))) s fn2-core))
               ; The stale duplicate is refused behind and changes nothing (K2).
-              (s (if (and (equal (m2-outcome r) *fn2-cns-outcome-refused*) (equal (nth 1 r) *fn2-cns-reason-behind*))
+              (s (if (and (eq (m2-outcome r) :refused) (equal (nth 1 r) "behind"))
                      s (m2-why (m2-reason-text "a stale duplicate ack" r) s))))
            (m2-drive (cdr script) s fn2-core)))
         (otherwise (m2-drive (cdr script) s fn2-core))))))
@@ -380,7 +383,7 @@
 (defun m2-register-refused-p (rs)
   (declare (xargs :verify-guards nil))
   (and (consp rs)
-       (or (and (stringp (car rs)) (equal (search "register answered (2 " (car rs)) 0))
+       (or (and (stringp (car rs)) (equal (search "register answered (REFUSED " (car rs)) 0))
            (m2-register-refused-p (cdr rs)))))
 (defun m2-test-mutation ()
   (declare (xargs :verify-guards nil))

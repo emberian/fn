@@ -97,12 +97,15 @@
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
           (posted (:enum fn2-cns-posted (:none :accepted :unchanged :refused :uncertain))) (posted-word :u8)
-          (edge :link) (txn :link) (txn-gen :u60) (tx-slot :link) (tx-gen :u60) (tx-len :u32)
+          (edge :link) (txn :link) (txn-gen :u60) (tx-slot :link) (tx-gen :u60)
           ;; an append (e-surface.md 3.3) is a POST: the upload row this
           ;; request owns, fed from the frame's article octets at FSTART
           ;; (FED of them written, FEED-MODE the feed's line state, then
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
+          ;; a register's consumer name, the octets of its request's consumer
+          ;; field in the control range (the names row it writes)
+          (name-off :u32) (name-len :u8)
           (stopped :bool) (next-free :link))
  :holds ((:decode :wait-row) (:check :wait-row) (:lookup :wait-row)
          (:read :wait-row) (:page :wait-row) (:park :wait-row)
@@ -112,7 +115,7 @@
  :taken (:phase :decode :rows :wait-row :ranges ()
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen tx-len upload-gen fstart fed feed-mode feed-discard stopped))
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (next-free fn2-machine-initial-next-free))

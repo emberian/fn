@@ -634,9 +634,14 @@ pending work) land with the served verb each exercises.
 7. **The progress number is M2 spine cuts:** Mini's twelve cuts and helm's room run through `fn2-turn` over
    the real core (sim-layer-e against the served machines), reported n/12 on H's line; sim-layer-e is its
    source. Today 0/12 served (the oracle node passes all five scenarios).
-8. In progress (lane e-frames): the served L carrier speaks FNCT through `books/fnct-pool.lisp` (the
-   generated header and kind 28 codecs over a fields stripe, B's hasher for the trailer; replies built forward,
-   scratch first, sent from the frame's offset). Interim rulings (deputy, 2026-11-05), each owed its full form:
+8. Served (lane e-frames): the L carrier speaks FNCT through `books/fnct-pool.lisp` (the generated header
+   and kind 28 codecs over a fields stripe, B's hasher for the trailer; replies built forward, scratch first,
+   sent from the frame's offset): `fn2-ctl`'s :frame opens the frame (kind 1 command, answered in kind 2; kind 4
+   dispatched with its code), `fn2-cns-decode-port` decodes codes 1 2 11 14 15 16 18 by the generated K4 codecs
+   and `fn2-cns-post-reply` answers in kind 28 (a refusal or uncertainty carries no result). The clients are
+   `tests/fnct-client.lisp` (sim-layer-e, m2-cuts) and `tests/surface/fn2_consumer_socket.py`. Owed: page items
+   (a page carries its count and next cursor; next is the frontier when complete, its start when a limit
+   stopped it), fetch, append's Message-ID in its result, fncu v2 issuance past u32 counters. Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
    `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
    and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
