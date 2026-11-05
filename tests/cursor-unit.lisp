@@ -14,10 +14,20 @@
   (declare (xargs :verify-guards nil))
   (fn2-csp-cat (list subject (fn2-cru-tab) "a@example.invalid" (fn2-cru-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
                      (fn2-cru-tab) mid (fn2-cru-tab) "" (fn2-cru-tab) "120" (fn2-cru-tab) "1")))
+;; Each seed's stored source: its header, an empty line, and a body with a
+;; line that starts with "." (stuffed on the wire) and one that is only ".".
+(defun fn2-cru-text (subject mid)
+  (declare (xargs :verify-guards nil))
+  (list "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject))
+        "Date: Fri, 30 Oct 2026 12:00:00 +0000" (fn2-csp-cat (list "Message-ID: " mid))
+        "Newsgroups: local.test" "" (fn2-csp-cat (list "body " subject)) ".dotted" "." "end"))
+(defun fn2-cru-seed (subject mid)
+  (declare (xargs :verify-guards nil))
+  (list 1 mid (fn2-cru-line subject mid) (fn2-cru-text subject mid)))
 (defconst *fn2-cru-seeds*
-  (list (list 1 "<a@example.invalid>" (fn2-cru-line "one" "<a@example.invalid>"))
-        (list 1 "<b@example.invalid>" (fn2-cru-line "two" "<b@example.invalid>"))
-        (list 1 "<c@example.invalid>" (fn2-cru-line "three" "<c@example.invalid>"))))
+  (list (fn2-cru-seed "one" "<a@example.invalid>")
+        (fn2-cru-seed "two" "<b@example.invalid>")
+        (fn2-cru-seed "three" "<c@example.invalid>")))
 (assert-event (fn2-csp-seedsp *fn2-cru-seeds* *fn2-cru-groups* nil))
 
 ; One transcript, every covered command positive and refused.
@@ -48,13 +58,15 @@
         "423 no articles in that range" "420 no article(s) selected"
         "224 overview information follows" (fn2-cru-ov 1 "one" "<a@example.invalid>") "."
         "224 overview information follows" (fn2-cru-ov 3 "three" "<c@example.invalid>") "."
+        ;; the stored octets: the posted header in its order, the body
+        ;; dot-stuffed (".dotted" and "." each doubled)
         "220 1 <a@example.invalid> article follows"
         "From: a@example.invalid" "Subject: one" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
-        "Message-ID: <a@example.invalid>" "" "xxxxx" "."
+        "Message-ID: <a@example.invalid>" "Newsgroups: local.test" "" "body one" "..dotted" ".." "end" "."
         "221 2 <b@example.invalid> headers follow"
         "From: a@example.invalid" "Subject: two" "Date: Fri, 30 Oct 2026 12:00:00 +0000"
-        "Message-ID: <b@example.invalid>" "."
-        "222 0 <b@example.invalid> body follows" "xxxxx" "."
+        "Message-ID: <b@example.invalid>" "Newsgroups: local.test" "."
+        "222 0 <b@example.invalid> body follows" "body two" "..dotted" ".." "end" "."
         "423 no article with that number" "430 no article with that message-id"
         "205 closing connection"))
 (defun fn2-cru-expected-wire ()
@@ -78,8 +90,7 @@
                                                                         (fn2-cru-expected))))
                                 t)))
          (not (equal want (fn2-cursor-spec-wire *fn2-cru-groups*
-                                                (append *fn2-cru-seeds* (list (list 1 "<d@example.invalid>"
-                                                                                   (fn2-cru-line "four" "<d@example.invalid>"))))
+                                                (append *fn2-cru-seeds* (list (fn2-cru-seed "four" "<d@example.invalid>")))
                                                 *fn2-cru-lines*))))))
 ; The subject runs: the seeds publish through C-S3 (seeded :ok), the core
 ; does not stop, and the cursor serves GROUP (D6 1/n).
@@ -117,7 +128,7 @@
 ; view-pinned. Positive: the reference reads only the state at the pin.
 ; Negative: a reader without the position limit would see the later
 ; publication (the reference over the union differs).
-(defconst *fn2-cru-later* (list (list 1 "<d@example.invalid>" (fn2-cru-line "four" "<d@example.invalid>"))))
+(defconst *fn2-cru-later* (list (fn2-cru-seed "four" "<d@example.invalid>")))
 (defconst *fn2-cru-pinned-lines* '("GROUP local.test" "OVER 1-" "NEXT" "NEXT" "NEXT" "LAST" "STAT 3" "QUIT"))
 (defun fn2-cursor-test-pinned ()
   (declare (xargs :verify-guards nil))
@@ -183,9 +194,8 @@
 (assert-event (fn2-cursor-test-list-pages-negative))
 
 ;; End-to-end POST -> GROUP / OVER / OVER <id> / ARTICLE / HEAD / BODY without
-;; manual seeding: verifies that a posted article with non-'x' body content and
-;; dot-stuffed lines is immediately visible to fn2-cursor and streams its real
-;; stored headers and body octets.
+;; seeding: the posted source is stored and read back through B's block read,
+;; its header in its posted order and its body dot-stuffed again.
 (defconst *fn2-cru-post-lines*
   '("POST"
     "From: poster@example.invalid"
@@ -225,6 +235,7 @@
                "221 1 <post1@example.invalid> headers follow"
                "From: poster@example.invalid"
                "Subject: real body test"
+               "Newsgroups: local.test"
                "Message-ID: <post1@example.invalid>"
                "."
                "222 1 <post1@example.invalid> body follows"
@@ -234,6 +245,7 @@
                "220 1 <post1@example.invalid> article follows"
                "From: poster@example.invalid"
                "Subject: real body test"
+               "Newsgroups: local.test"
                "Message-ID: <post1@example.invalid>"
                ""
                "real line 1"

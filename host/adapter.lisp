@@ -17,7 +17,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
-  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil))
+  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
 ;; Unix-domain socket beside it when the profile names :listener-path: one
@@ -28,6 +28,10 @@
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
+  ;; the storage device Read, Write and Fence act on: the process's memory,
+  ;; by unit (offset / 4096 -> its octets). No durability across processes is
+  ;; claimed for it; E's device backend replaces it.
+  (device (make-hash-table))
   ;; the Unix-domain listener socket (-1: none), its path, and which of the
   ;; two sockets an Accept tries first when both are ready (alternating)
   (local-fd -1 :type fixnum) (local-path nil) (local-first nil)
@@ -158,7 +162,23 @@
     (when (and tcp-ready local-ready) (setf (fn2-nhost-local-first host) (not use-local)))
     (if use-local (fn2-native-accept-local local) (fn2-native-accept (fn2-ncap-fd cap)))))
 
-;;; Ops started at take: Close, Cancel, and the kinds with no facility.
+(defvar *fn2-n-seed-store* nil "The seeded store's storage writes, put on the device at start.")
+;;; The memory device: an octet at OFFSET (0 where nothing was written).
+(defun fn2-n-device-unit (host unit)
+  (or (gethash unit (fn2-nhost-device host))
+      (setf (gethash unit (fn2-nhost-device host))
+            (make-array 4096 :element-type '(unsigned-byte 8) :initial-element 0))))
+(defun fn2-n-device-ref (host offset)
+  (let ((u (gethash (floor offset 4096) (fn2-nhost-device host))))
+    (if u (aref u (mod offset 4096)) 0)))
+(defun fn2-n-device-set (host offset byte)
+  (setf (aref (fn2-n-device-unit host (floor offset 4096)) (mod offset 4096)) byte))
+(defun fn2-n-device-put (host store)
+  "STORE's writes ((OFFSET . OCTETS) ...) on the device (the seeded store's sources)."
+  (dolist (w store)
+    (loop for b in (cdr w) for i from (car w) do (fn2-n-device-set host i b))))
+
+;;; Ops started at take: Close, Cancel, Read, Write, Fence, and the kinds with no facility.
 (defun fn2-n-start-now (host slot)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)))
     (cond
@@ -185,10 +205,23 @@
              (progn (fn2-n-complete host target :cancelled 0)
                     (fn2-n-complete host slot :ok 0 0 t))
            (fn2-n-complete host slot :ok 0 0 nil))))
+      ((= kind *fn2-action-write*)
+       ;; the loaned octets onto the device at the storage offset
+       (let ((bytes (fn2-nhost-bytes host)) (address (fn2-nop-address op)) (off (fn2-nop-offset op)))
+         (dotimes (i (fn2-nop-len op)) (fn2-n-device-set host (+ off i) (aref bytes (+ address i))))
+         (fn2-n-complete host slot :ok (fn2-nop-len op))))
+      ((= kind *fn2-action-read*)
+       ;; the device's octets into the leased span
+       (let ((bytes (fn2-nhost-bytes host)) (address (fn2-nop-address op)) (off (fn2-nop-offset op)))
+         (dotimes (i (fn2-nop-len op)) (setf (aref bytes (+ address i)) (fn2-n-device-ref host (+ off i))))
+         (fn2-n-complete host slot :ok (fn2-nop-len op) 0 nil (fn2-n-octets host address (fn2-nop-len op)))))
+      ((= kind *fn2-action-fence*)
+       ;; every write completed at take: the fence has nothing outstanding
+       (fn2-n-complete host slot :ok 0))
       ((or (= kind *fn2-action-connect*) (= kind *fn2-action-tls-start*))
        ;; No facility in layer A: explicit failure, never a simulated success.
        (fn2-n-complete host slot :failed 0))
-      (t (error "fn2 native: op kind ~d has no backend yet (storage arrives with B's durable POST)" kind)))))
+      (t (error "fn2 native: op kind ~d has no backend" kind)))))
 
 (defun fn2-n-resultless-p (kind)
   (or (= kind *fn2-action-arm-wake*) (= kind *fn2-action-trace*) (= kind *fn2-action-service-posture*)))
@@ -212,7 +245,8 @@
             (multiple-value-bind (span address span-len) (fn2-host-op-span slot gen core)
               (unless (eq span :ok) (error "fn2 native: descriptor ~d has no valid span (~s)" slot span))
               (setf op (make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce
-                                     :address address :len span-len :target cslot :target-gen cgen))
+                                     :address address :len span-len :target cslot :target-gen cgen
+                                     :offset storage-offset))
               (setf (aref (fn2-nhost-ops host) slot) op))
             (fn2-n-record host (list :take slot gen kind cap nonce rslot rgen off len storage-offset fua
                                      may-release cslot cgen deadline observation-gen))
@@ -418,8 +452,9 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
          (ncaps (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n)))
     (fn2-init-executor profile :echo nil core)
     (when seeds
-      (let ((code (funcall 'fn2-cs-seed-all seeds 1 core)))
-        (unless (eq code :ok) (error "fn2 native: the store's seed was refused: ~(~a~)" code))))
+      (multiple-value-bind (code store) (funcall 'fn2-cs-seed-all seeds 1 core)
+        (unless (eq code :ok) (error "fn2 native: the store's seed was refused: ~(~a~)" code))
+        (setf *fn2-n-seed-store* store)))
     (multiple-value-bind (lfd lport) (fn2-native-listen port address)
       (let ((host (make-fn2-nhost
                    :core core
@@ -435,6 +470,7 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
                    :control-window (fn2-native-window 4096))))
         (assert (typep (fn2-nhost-bytes host) '(simple-array (unsigned-byte 8) (*))))
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
+        (fn2-n-device-put host *fn2-n-seed-store*)
         (when path
           (setf (fn2-nhost-local-fd host) (fn2-native-listen-local path)
                 (fn2-nhost-local-path host) path))

@@ -1125,6 +1125,13 @@ Departures from the statement above, each with its remedy:
    octets.
    Under `:latest` a withdrawal rewrites the whole entry, so its writer copies the location from the
    entry it read.
+   **As built (lane article-octets, 2026-11-04).** The successor's 12-field bound
+   (`*fn2-succ-fields-max*`) leaves room for four of the seven: `location-unit` (physical unit),
+   `location-epoch`, `location-allocation`, `location-kind` (`:raw-source` / `:source-manifest`). The
+   reference's encoded length is `bytes` and its expected hash `source` (the stored octets are the
+   source the identity digests); the storage domain is the node's one domain. The writer is not yet
+   the acceptance record: the transaction binds the upload's payload extent (d-machines-nntp.md
+   15.6, D6 3/n as built).
 
 15. **The tip a stage reads (Argon §9.5 bug 3; built).** `fn2-succ-tip-scan` reads the `:active`,
    `:frozen` and `:private` overlays of a schema. A private overlay holds only rows bound after their

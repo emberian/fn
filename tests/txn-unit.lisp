@@ -84,9 +84,9 @@
             (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv seeded fn2-core) (fn2-tu-seed-all seeds 1 fn2-core))
-           ((mv status clients fn2-core)
+           ((mv status clients & fn2-core)
             (fn2-cw-loop (+ 2500 (* 600 (len transcripts)) (* 4 (fn2-cw-arrivals transcripts)))
-                         0 0 (fn2-cw-clients transcripts) fn2-core)))
+                         0 0 (fn2-cw-clients transcripts) nil fn2-core)))
         (mv (list seeded status (fn2-cw-results clients) (fn2-core-stop-reason fn2-core)) fn2-core))
       result)))
 (defun fn2-tu-wire (seeds lines k)
@@ -221,11 +221,13 @@
 (assert-event (and (fn2-txn-test-admission-interim) (fn2-txn-test-admission-interim-negative)
                    (fn2-txn-test-generated-interim) (fn2-txn-test-generated-interim-negative)))
 
-; End-to-end M2 spine (Brick F6): POST stages group counts, overview, and
-; group-address entries, prebinds the prospective event number before
-; emitting journal records, and publishes so a reader on the same connection
-; immediately sees the posted article via GROUP, OVER, OVER <id>, HEAD, BODY,
-; and ARTICLE with its real stored body octets (not fabricated 'x' bytes).
+; End-to-end M2 spine: POST stores the source in an extent of its own
+; (written and fenced before the batch's journal), binds its location into
+; the article row with group counts, overview and group-address entries, and
+; publishes, so a reader on the same connection sees the posted article via
+; GROUP, OVER, OVER <id>, HEAD, BODY and ARTICLE: the octets read back from
+; the device through B's block read, the header in its posted order and the
+; body dot-stuffed again.
 (defconst *fn2-tu-read-profile*
   (put-assoc-equal :reading t (put-assoc-equal :x 2 *fn2-tu-profile*)))
 (defun fn2-tu-tab () (declare (xargs :verify-guards nil)) (coerce (list (code-char 9)) 'string))
@@ -254,9 +256,11 @@
         "224 overview information follows"
         (fn2-tu-ov-line "1")
         "."
+        ;; the posted header, in its order, as stored
         "221 1 <one@example.invalid> headers follow"
         "From: a@example.invalid"
         "Subject: hello"
+        "Newsgroups: local.test"
         "Message-ID: <one@example.invalid>"
         "."
         "222 1 <one@example.invalid> body follows"
@@ -266,6 +270,7 @@
         "220 1 <one@example.invalid> article follows"
         "From: a@example.invalid"
         "Subject: hello"
+        "Newsgroups: local.test"
         "Message-ID: <one@example.invalid>"
         ""
         "body"
@@ -286,3 +291,37 @@
          (or (equal got want) (cw "post-and-read ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-txn-test-post-and-read))
 
+
+; A two-chunk POST (the upload window's chunk 0 holds 4096 octets; this
+; source is 6,296): 240, and BODY reads every posted line back from the
+; device, the line that starts with "." stuffed again (it lies in chunk 1).
+(defun fn2-tu-long-body (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (concatenate 'string (if (equal n 7) "." "") "line "
+                       (coerce (explode-nonnegative-integer n 10 nil) 'string)
+                       " 0123456789012345678901234567890123456789012345678901")
+          (fn2-tu-long-body (- n 1)))))
+(defun fn2-tu-stuff (lines)
+  (declare (xargs :verify-guards nil))
+  (if (atom lines) nil
+    (cons (if (and (< 0 (length (car lines))) (equal (char (car lines) 0) #\.))
+              (concatenate 'string "." (car lines)) (car lines))
+          (fn2-tu-stuff (cdr lines)))))
+(defconst *fn2-tu-long* (append (list "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
+                                      "Message-ID: <long@example.invalid>" "")
+                                (fn2-tu-long-body 100)))
+(defun fn2-txn-test-two-chunks ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-long*) '(".") '("GROUP local.test" "BODY 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (expect (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                               "222 1 <long@example.invalid> body follows")
+                         (fn2-tu-stuff (fn2-tu-long-body 100))
+                         (list "." *fn2-tu-205*)))
+         (want (list :ok :quiet 0 (fn2-tu-text expect) t))
+         (r (fn2-tu-run *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
+    (and (< 4096 (len (fn2-tu-text *fn2-tu-long*)))
+         (or (equal got want) (cw "two-chunks ~x0~%want ~x1~%" got want)))))
+(assert-event (fn2-txn-test-two-chunks))

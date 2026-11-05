@@ -9,10 +9,14 @@
 ;; 4 KiB per run, and once the terminator was framed and every octet is
 ;; hashed it gives its verdict and posts the word to its connection.
 ;; Schema and partition registration live in books/upload-kind.lisp;
-;; continuations are materialized by assembly-callbacks-d-upload.lisp.
+;; its arms are declared and materialized by assembly-callbacks-d-upload.lisp.
 (in-package "ACL2")
 (include-book "upload-kind")
 (fn2-book-layer :d)
+
+;; The words the store's refusals give (also the transaction's).
+(defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
+(defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
 
 (defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*
   :answers (:terminator :need-more :budget :bounds :fault)
@@ -42,77 +46,11 @@
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
 (defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
 (defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
-
-(defmachine-arms fn2-upload :declare
- :subarms
- ((work
-   (:if (not (:live conn))
-        ((:next :aborting) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
-        ((:do (next)
-              (fn2-upload-advance id (:read conn fed)
-                                  (equal (:read conn feed-mode) *fn2-conn-feed-done*)
-                                  (:read conn feed-discard))
-              :accept ()
-              :case (((:run) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
-                     ((:idle) (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
-                     ((:identity) (:next :identity)
-                      (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
-                     ((:receiving) (:next :receiving)
-                      (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))
-                     ((:sealed) (:next :sealed)
-                      (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
-                     ((:discard) (:next :discard)
-                      (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*))
-                     ((:draining) (:next :draining)
-                      (:charge :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition* :runnable t))))))))
- :arms
- ((:free (:idle))
-  (:head (:goto work))
-  ;; :identity: take the transaction row (A-S7), the transaction's copies this
-  ;; row's; refused, the take parked this row on the transaction kind's FIFO
-  ;; and its grant runs this arm again. The connection gone: abort.
-  (:identity
-   (:if (not (:live conn))
-        ((:next :aborting) (:charge :steps *fn2-work-transition* :runnable t))
-        ((:do (code tid tgen)
-              (fn2-machine-take-fn2-txn *fn2-none* id row-generation row-conn row-conn-gen
-                                        row-request row-rule row-principal-slot)
-              :case (((:ok) (:set (txn tid) (txn-gen tgen)) (:next :receiving)
-                      (:charge :steps *fn2-work-transition* :runnable t))
-                     (:otherwise (:park :taken fn2-txn :steps *fn2-work-transition*)))))))
-  (:receiving (:goto work))
-  (:validating (:goto work))
-  (:discard (:goto work))
-  ;; :sealed: wait for the transaction's outcome (relaying any settlement wake
-  ;; to the transaction while it still names this upload), then drain.
-  (:sealed
-   (:if (:live child-txn)
-        ((:do () (fn2-upload-wake row-txn)) (:charge :steps *fn2-work-transition*))
-        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
-  ;; :aborting: the connection left. A transaction that still names this row
-  ;; holds its octets: wake it (it finishes without a word) and wait for it to
-  ;; let go; then drain.
-  (:aborting
-   (:if (:live child-txn)
-        ((:do () (fn2-upload-wake row-txn)) (:charge :steps *fn2-work-transition*))
-        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
-  ;; :draining releases the second chunk, then the first, then the row.
-  (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:do (c1code) (fn2-core-release row-c1-slot row-c1-gen)
-        :effects ((:release (:chunk-window))) :accept (:ok :retired))
-   (:do (c0code) (fn2-core-release row-c0-slot row-c0-gen)
-        :effects ((:release (:chunk-window))) :accept (:ok :retired))
-   (:let ((retire (>= row-generation (fn2-machine-gen-limit)))
-          (next (fn2-machine-free-head *fn2-upload-admission-ordinal*)))
-     (:set (generation (if retire row-generation (+ 1 row-generation)))
-           (c0-slot *fn2-none*) (c0-gen 0) (c1-slot *fn2-none*) (c1-gen 0)
-           (conn *fn2-none*) (conn-gen 0) (filled 0) (hashed 0) (txn *fn2-none*)
-           (next-free next) (wait-reason *fn2-wait-none*))
-     (:do () (fn2-machine-reclaim-fn2-upload id retire))
-     (:if retire ((:next :retired)) ((:next :free)))
-     (:charge :steps *fn2-work-release*)))
-  (:retired (:idle)))
- :observes ())
+(defcost fn2-upload-payload-reserve :answers (:ok :no-space :fault) :faults (:fault) :tables (fn2-core-extents)
+  :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
+(defcost fn2-upload-payload-settle :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
+  :doc "At the drain: a payload extent no transaction committed has its reservation cancelled.")
+(defcost fn2-upload-store-span :doc "The next storage write's source chunk, offset and length: (mv slot gen off len).")
 
 ;; ------------------------------------------------------------------------
 ;; The operations both machines call, materialized after the core instance
@@ -342,6 +280,56 @@
 (fn2-core-preserves fn2-upload-deliver-word (id code conn conn-gen request fn2-core) :rows nil)
 (in-theory (disable fn2-upload-digest fn2-upload-word-now fn2-upload-digest-store fn2-upload-wake fn2-upload-hand-over
                     fn2-upload-deliver-word))
+;; The payload extent (S-ARTICLE-LOCATION). Reserved from B's allocator
+;; before the source is written: (mv code extent epoch counter fn2-core),
+;; :no-space when no extent is free, :fault for a broken allocator (the
+;; core stops :alloc-links on a broken free list, as the commit kind's
+;; reservation does).
+(defun fn2-upload-payload-reserve (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((mv code e epoch counter fn2-core)
+        (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
+          (code e epoch counter fn2-extents)
+          (mv-let (code pressure e epoch counter fn2-extents) (fn2-alloc-reserve fn2-extents)
+            (declare (ignore pressure))
+            (mv code e epoch counter fn2-extents))
+          (mv code e epoch counter fn2-core)))
+       (fn2-core (if (eq code :links) (fn2-core-stop *fn2-stop-reason-alloc-links* fn2-core) fn2-core)))
+    (cond ((and (eq code :ok) (unsigned-byte-p 32 e) (not (equal e *fn2-none*))
+                (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))
+           (mv :ok e epoch counter fn2-core))
+          ((eq code :no-space) (mv :no-space 0 0 0 fn2-core))
+          (t (mv :fault 0 0 0 fn2-core)))))
+(fn2-core-preserves fn2-upload-payload-reserve (fn2-core) :position 4 :rows nil)
+;; At the drain: an extent still reserved under this handle (no transaction
+;; committed it) is returned; an allocated one is the article's. No extent
+;; (*fn2-none*) is nothing to settle.
+(defun fn2-upload-payload-settle (e epoch counter fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (equal e *fn2-none*) (mv :ok fn2-core)
+    (b* (((mv code fn2-core)
+          (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
+            (code fn2-extents)
+            (cond ((not (eq (fn2-alloc-handle-code e epoch counter fn2-extents) :ok)) (mv :fault fn2-extents))
+                  ((equal (fn2-extents-state e fn2-extents) *fn2-extent-state-allocated*) (mv :ok fn2-extents))
+                  (t (fn2-alloc-cancel-reservation e epoch counter fn2-extents)))
+            (mv code fn2-core)))
+         (fn2-core (if (eq code :links) (fn2-core-stop *fn2-stop-reason-alloc-links* fn2-core) fn2-core)))
+      (mv (if (eq code :ok) :ok :fault) fn2-core))))
+(fn2-core-preserves fn2-upload-payload-settle (e epoch counter fn2-core) :position 1 :rows nil)
+;; The next storage write of the source after DONE octets: its chunk, the
+;; offset in it and the length (at most one unit, never past the source or
+;; the chunk): (mv slot gen off len).
+(defun fn2-upload-store-span (c0 g0 c1 g1 done hashed fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp done) (natp hashed))))
+  (b* ((cap0 (fn2-upload-chunk-cap c0 fn2-core))
+       (in0 (< done cap0))
+       (off (if in0 done (- done cap0)))
+       (room (if in0 (- cap0 done) (nfix (- (fn2-upload-chunk-cap c1 fn2-core) off)))))
+    (mv (if in0 c0 c1) (if in0 g0 g1) off
+        (min *fn2-commit-unit-bytes* (min room (nfix (- hashed done)))))))
+(in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span))
+
 ;; The block is complete and hashed: (mv next fn2-core). With a transaction
 ;; (the header was complete): the digest stored, the verdict handed over,
 ;; :sealed. Without one (the header was refused): the refusal posted to the

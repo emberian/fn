@@ -8,11 +8,23 @@
 (fn2-book-layer :c)
 
 ; Article metadata, latest-only: the article's birth event, its state, the
-; version of this row, the source's content identity and its sizes.
+; version of this row, the source's content identity and its sizes, and
+; where the stored source is (S-ARTICLE-LOCATION, c-ordered-runs.md 14): one
+; reference in the format's shape, LOCATION-UNIT the physical unit it starts
+; at, LOCATION-EPOCH and LOCATION-ALLOCATION the allocation handle that must
+; still name its extent, LOCATION-KIND what the reference names (the raw
+; source, or a source manifest). The reference's encoded length is BYTES and
+; its expected hash SOURCE (the stored octets are the source the identity
+; digests); its storage domain is the node's one domain. Written by the
+; transaction at :prepare from its upload's payload extent; read by
+; ARTICLE/HEAD/BODY before fn2-block-read.
 (defrunschema fn2-article :id 2
  :key ((article (:id article)))
  :value ((birth (:id event)) (state (:enum fn2-article-state (:live :withdrawn))) (version (:id version))
-         (source :digest) (bytes :varint) (lines :varint))
+         (source :digest) (bytes :varint) (lines :varint)
+         (location-unit (:id physical-unit)) (location-epoch (:id writer-epoch))
+         (location-allocation (:id allocation))
+         (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest))))
  :merge :latest)
 
 ; Overview, keyed (group, number) from first materialization; the stored

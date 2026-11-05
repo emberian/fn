@@ -29,13 +29,13 @@ D3_POLICY = {'posting': False, 'starttls': False, 'sasl_mechanisms': [], 'advert
 
 
 def seeded_article(letter, subject):
-    """One of the simulator session's seeds (tests/sim-session.lsp *fn2-ss-seeds*): its overview row is subject,
-    from a@example.invalid, the date, the Message-ID, no references, 120 octets, 1 line; the octets that give
-    exactly that row, the only article content the S form reads (ARTICLE/HEAD/BODY stay interim, D6 3/n)."""
+    """One of the seeded store's articles (tests/seeded-store.lsp fn2-ss-text): the source stored at its
+    article row's location, which ARTICLE/HEAD/BODY serve through B's block read; its overview row is the
+    same source's (subject, from, date, Message-ID, no references, its octets, its body lines)."""
     ident = f'<{letter}@example.invalid>'
-    head = (f'From: a@example.invalid\r\nSubject: {subject}\r\nDate: Fri, 30 Oct 2026 12:00:00 +0000\r\n'
-            f'Message-ID: {ident}\r\n\r\n').encode()
-    return ident, head + b'x' * (120 - len(head) - 2) + b'\r\n', ['local.test']
+    lines = ['From: a@example.invalid', f'Subject: {subject}', 'Date: Fri, 30 Oct 2026 12:00:00 +0000',
+             f'Message-ID: {ident}', 'Newsgroups: local.test', '', f'body {subject}', '.dotted', 'end']
+    return ident, ''.join(line + '\r\n' for line in lines).encode(), ['local.test']
 
 
 # Each carrier's store and profile, as its session serves it:
@@ -85,7 +85,9 @@ def machine(case, target, owed, served=None, carrier='SIM'):
         b'GROUP local.test', b'GROUP local.empty', b'GROUP absent.group', b'LISTGROUP local.test',
         b'LISTGROUP local.test 2-', b'LISTGROUP local.empty', b'STAT 1', b'STAT 3', b'STAT 4',
         b'STAT <b@example.invalid>', b'STAT <z@example.invalid>', b'OVER 1-3', b'OVER 2', b'XOVER 2-',
-        b'XOVER 9', b'LIST', b'LIST COUNTS'])
+        b'XOVER 9', b'LIST', b'LIST COUNTS',
+        b'ARTICLE 1', b'HEAD 2', b'BODY 3', b'ARTICLE <b@example.invalid>', b'HEAD <c@example.invalid>',
+        b'BODY <a@example.invalid>'])
     store = CARRIERS[carrier]
 
     class SimNntp(RuleBasedStateMachine):

@@ -124,7 +124,8 @@
 (in-theory (disable fn2-upload-capacity))
 
 (defmachine fn2-upload
- :states (:free :head :identity :receiving :validating :discard :sealed :aborting :draining :retired)
+ :states (:free :head :identity :receiving :validating :discard :store :store-write :store-wrote
+          :store-fence :store-fenced :sealed :aborting :draining :retired)
  :fields ((conn :link) (conn-gen :u60) (request :u32)
           (rule (:enum fn2-upload-rule (:post :ihave :takethis)))
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
@@ -133,13 +134,22 @@
           (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32)
           (head-status (:enum fn2-upload-head (:scanning :done :malformed :line-length :header-fields
                                                 :header-lines :header-octets)))
-          (word :u8) (inj :u8) (txn :link) (txn-gen :u60) (stopped :bool) (next-free :link))
+          (word :u8) (inj :u8) (txn :link) (txn-gen :u60) (stopped :bool) (next-free :link)
+          ;; the payload extent the source is stored in (S-ARTICLE-LOCATION),
+          ;; the octets of it written, and the storage job's last result
+          (pext :link) (pepoch :u60) (palloc :u60) (pdone :u60)
+          (sevent :u8) (soutcome :u8) (scount :u32) (sready :bool)
+          ;; storage jobs in flight (the terminal of each completion consumes one)
+          (pending :u32))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
  :holds ((:head :upload-row :chunk-window) (:identity :upload-row :chunk-window)
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
-         (:discard :upload-row :chunk-window) (:sealed :upload-row :chunk-window)
+         (:discard :upload-row :chunk-window) (:store :upload-row :chunk-window)
+         (:store-write :upload-row :chunk-window) (:store-wrote :upload-row :chunk-window)
+         (:store-fence :upload-row :chunk-window) (:store-fenced :upload-row :chunk-window)
+         (:sealed :upload-row :chunk-window)
          (:aborting :upload-row :chunk-window) (:draining :upload-row :chunk-window))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-upload-capacity profile)
@@ -149,12 +159,14 @@
                   (:chunk-window :slot c1-slot :gen c1-gen :class 1))
          :copy (conn conn-gen request rule principal-slot)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
-                 head-status word inj txn-gen stopped))
+                 head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
+           (pext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:sealed) (:aborting) (:draining) (:retired))
- :observes ())
+ :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:store-write) (:store-wrote)
+        (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
+ :observes ((:write-result) (:fence-result) (:borrow-released)))
 
 ; MACHINE-FORM 6.5 P4: the kind's take in child form, proved here;
 ; the admission section (assembly-callbacks-a) makes its core face.
