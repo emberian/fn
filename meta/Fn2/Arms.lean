@@ -88,6 +88,14 @@ structure Sig where
   results : Nat
   deriving Inhabited, Repr
 
+/-- The facts `(:refuse WORD)` desugars by (F2; `fn2-arms-steps`' `:refuse` case in
+`machine-arms.lisp`): the kind's word field (the first of `WORD`, `REPLY`, `REASON` among its
+columns) and whether it has a `refuse` sub-arm. The emitter prints them per kind. -/
+structure RefuseCtx where
+  field : Option String := none
+  sub : Bool := false
+  deriving Inhabited, Repr
+
 /-- One arm, handler or sub-arm: its declaration as the kind writes it (`decl`, the entry after
 its tag: `:from`, `:on-refusal`, then the steps), the name of the child-form function ACL2
 generated for it and, when the generator narrowed it, its signature. -/
@@ -96,6 +104,7 @@ structure Arm where
   sig : Option Sig
   decl : Val
   fn : String
+  refuse : RefuseCtx := {}
   deriving Inhabited, Repr
 
 /-- A true list (no dotted tail). -/
@@ -148,10 +157,22 @@ def readCodes (cs : Val) : Option (List Val) :=
 
 def stepOpt (key : String) (pl : List Val) : Option Expr := plistGet key pl
 
-def readStepsF (readSteps : Val → Except String (List Step)) (ss : Val) :
+/-- `(:refuse W)` as the generator expands it: set the word field to `W`, then `(:goto refuse)` when
+the kind has a `refuse` sub-arm, else `(:next :refused)` and a transition's charge. Without a word
+field the step is left as written and the reader refuses it, as the generator does. -/
+def expandRefuse (rc : RefuseCtx) (s : Val) : List Val :=
+  match s.toList, rc.field with
+  | [.sym ":REFUSE", w], some f =>
+    let set := Val.ofList [.sym ":SET", Val.ofList [.sym f, w]]
+    if rc.sub then [set, Val.ofList [.sym ":GOTO", .sym "REFUSE"]]
+    else [set, Val.ofList [.sym ":NEXT", .sym ":REFUSED"],
+          Val.ofList [.sym ":CHARGE", .sym ":STEPS", .sym "*FN2-WORK-TRANSITION*", .sym ":RUNNABLE", .sym "T"]]
+  | _, _ => [s]
+
+def readStepsF (rc : RefuseCtx) (readSteps : Val → Except String (List Step)) (ss : Val) :
     Except String (List Step) := do
   if !ss.properList then throw s!"steps with a dotted tail: {ss.render}"
-  ss.toList.mapM readStep
+  (ss.toList.flatMap (expandRefuse rc)).mapM readStep
 where
   readStep (s : Val) : Except String Step := do
     if !s.properList then throw s!"a step with a dotted tail: {s.render}"
@@ -233,8 +254,8 @@ where
     | _ => throw s!"unknown step {s.render}"
 
 /-- The step reader: `readStepsF` unfolded `readDepth` times. -/
-def readSteps : Val → Except String (List Step) :=
-  fixN readDepth readStepsF (fun ss => .error s!"steps nested too deep: {ss.render}")
+def readSteps (rc : RefuseCtx := {}) : Val → Except String (List Step) :=
+  fixN readDepth (readStepsF rc) (fun ss => .error s!"steps nested too deep: {ss.render}")
 
 /-- An arm's declaration read: `:from` and `:on-refusal` (in any order, as `fn2-arms-options`
 reads them), then the steps. -/
@@ -253,7 +274,12 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
       pure (fr, r, ss)
     | ss => pure ([], Val.nil, ss)
   let (fr, r, ss) ← opts a.decl
-  pure ⟨fr, ← readSteps r, ← readSteps ss⟩
+  -- `:on-refusal` takes one step or a list of steps: a bare step (its head a keyword) is a list of
+  -- one (`fn2-arms-norm-refusal`)
+  let r := match r with
+    | .cons (.sym h) _ => if h.startsWith ":" then Val.ofList [r] else r
+    | _ => r
+  pure ⟨fr, ← readSteps a.refuse r, ← readSteps a.refuse ss⟩
 
 /-- A column's carrier, for the checked write: an unsigned width, or an enum's tag count. -/
 inductive ColType
@@ -310,6 +336,10 @@ structure Op where
   stobjsIn : List (Option String)
   stobjsOut : List (Option String)
   answers : Answers
+  /-- `defcost :faults` (F2): an unrouted answer in this list stops the kind (`:machine-phase`) when
+  the arm's `:on-refusal` does not itself end in a stop; any other unrouted answer takes the
+  `:on-refusal` (`fn2-arms-do`'s `fault-codes`) -/
+  faults : List Val := []
   /-- the declared cost's static bound `(bytes, steps, descriptors)`, as the generator bounds it
   (`fn2-arms-bound`); `none` where a dimension has none -/
   bound : Option (Int × Int × Int) := none
@@ -819,6 +849,18 @@ def stopEnd (f : Frame) (st : St) (steps : Option Expr) : Except String Res := d
 
 def codeIn (code : Val) (codes : List Val) : Bool := codes.contains code
 
+/-- The steps an unrouted answer takes when the arm has an `:on-refusal` (`fn2-arms-do`'s `fault-codes`,
+F2): a code in the operation's `defcost :faults` stops the kind (`:machine-phase`) when the answer set
+is listed and the `:on-refusal` does not itself end in a stop; any other code takes the `:on-refusal`. -/
+def faultRoute (answers : Answers) (faults : List Val) (code : Val) (refusal : List Step) : List Step :=
+  let listed := match answers with
+    | .list _ => true
+    | _ => false
+  let stops := match refusal.getLast? with
+    | some (.stop _ _) => true
+    | _ => false
+  if listed && !stops && faults.contains code then [.stop "MACHINE-PHASE" none] else refusal
+
 /-- The interpreter: run a path's steps to its terminal. -/
 def run (f : Frame) : Nat → St → List Step → Except String Res
   | 0, _, _ => .error "fuel"
@@ -864,7 +906,7 @@ def run (f : Frame) : Nat → St → List Step → Except String Res
           | none => match cases.find? (·.1.isNone) with
             | some (_, steps) => run f fuel st steps
             | none =>
-              if !f.refusal.isEmpty then run f fuel st f.refusal
+              if !f.refusal.isEmpty then run f fuel st (faultRoute answers op.faults code f.refusal)
               else run f fuel st [.stop "MACHINE-CONTRACT" none]
     | .issue c ok refused => do
       let st ← flush w f st

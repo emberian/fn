@@ -73,872 +73,968 @@ open Fn2.ACL2
     fns "UPDATE-FN2-OPS-RESERVED-CREDITS" [a0, a1] = some («UPDATE-FN2-OPS-RESERVED-CREDITS» a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-OP-SLOTP».fns_eq (a0 : Val) (a1 : Val) :
     fns "FN2-OP-SLOTP" [a0, a1] = some («FN2-OP-SLOTP» a0 a1) := rfl
-@[fn2_dispatch] theorem «=».fns_eq (a0 : Val) (a1 : Val) :
-    fns "=" [a0, a1] = some («=» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-GEN$AI" [a0, a1] = some («FN2-POOL-GEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-OWNER-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-OWNER-GEN" [a0, a1] = some («FN2-POOL-OWNER-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-OWNER-KIND».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-OWNER-KIND" [a0, a1] = some («FN2-POOL-OWNER-KIND» a0 a1) := rfl
-@[fn2_dispatch] theorem «EQ».fns_eq (a0 : Val) (a1 : Val) :
-    fns "EQ" [a0, a1] = some («EQ» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-OUT-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-POOL-OUT-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-OUT-COUNT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-FILL$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-FILL$AI" [a0, a1] = some («FN2-POOL-FILL$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-LEASE-OP-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-POOL-LEASE-OP-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-LEASE-OP-SLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-LEASE-OFF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-POOL-LEASE-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-LEASE-OFF$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-LEASE-IN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-POOL-LEASE-IN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-POOL-LEASE-IN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-OP-UNRESERVE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-OP-UNRESERVE" [a0, a1, a2] = some («FN2-OP-UNRESERVE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-OP-SET-CANCEL-TARGET».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-OP-SET-CANCEL-TARGET" [a0, a1, a2, a3, a4] = some («FN2-OP-SET-CANCEL-TARGET» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-RING-NEXT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RING-NEXT" [a0, a1] = some («FN2-RING-NEXT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OP-ENQUEUE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-OP-ENQUEUE" [a0, a1, a2] = some («FN2-OP-ENQUEUE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-STOP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROL-STOP" [a0] = some («FN2-CONTROL-STOP» a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-STOPPED$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-READY-PREV$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-MACHINES-READY-PREV$AI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-READY-PREV$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-WAIT-HEAD».fns_eq (a0 : Val) (a1 : Val) :
-    fns "UPDATE-FN2-MACHINES-WAIT-HEAD" [a0, a1] = some («UPDATE-FN2-MACHINES-WAIT-HEAD» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-STOP-WRITE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-MACHINES-STOP-WRITE" [a0, a1] = some («FN2-MACHINES-STOP-WRITE» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-PENDING$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-PENDING$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-PENDING$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-RUN-COMMAND-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-ECHO-RUN-COMMAND-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ECHO-RUN-COMMAND-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-MODE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ECHO-MODE" [a0, a1] = some («FN2-ECHO-MODE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-LENGTH».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ECHO-LENGTH" [a0, a1] = some («FN2-ECHO-LENGTH» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-BORROWS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ECHO-SET-BORROWS" [a0, a1, a2] = some («FN2-ECHO-SET-BORROWS» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-OFF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-OFF$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «ENDP».fns_eq (a0 : Val) :
-    fns "ENDP" [a0] = some («ENDP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-RUN-CLOSING-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-ECHO-RUN-CLOSING-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ECHO-RUN-CLOSING-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-HEADSI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-CLASS-HEADSI" [a0, a1] = some («FN2-POOL-CLASS-HEADSI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SET-NEXT-FREE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-POOL-SET-NEXT-FREE" [a0, a1, a2] = some («FN2-POOL-SET-NEXT-FREE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RETIRED-COUNT».fns_eq (a0 : Val) :
-    fns "FN2-POOL-RETIRED-COUNT" [a0] = some («FN2-POOL-RETIRED-COUNT» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RELEASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
-    fns "FN2-POOL-RELEASE" [a0, a1, a2, a3, a4, a5] = some («FN2-POOL-RELEASE» a0 a1 a2 a3 a4 a5) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-GEN-LIMIT».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-GEN-LIMIT" [a0] = some («FN2-MACHINES-GEN-LIMIT» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-POOL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ECHO-SET-POOL-SLOT" [a0, a1, a2] = some («FN2-ECHO-SET-POOL-SLOT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-CAP-INDEX».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ECHO-SET-CAP-INDEX" [a0, a1, a2] = some («FN2-ECHO-SET-CAP-INDEX» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-NEXT-FREE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ECHO-SET-NEXT-FREE" [a0, a1, a2] = some («FN2-ECHO-SET-NEXT-FREE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-ADMISSION-CREDITSI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-MACHINES-ADMISSION-CREDITSI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-ADMISSION-CREDITSI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-RUN-RETIRED-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-ECHO-RUN-RETIRED-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ECHO-RUN-RETIRED-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-ON-BORROW-RELEASED-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
-    fns "FN2-ECHO-ON-BORROW-RELEASED-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-ECHO-ON-BORROW-RELEASED-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-ACCOUNT-REF$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ECHO-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-DEADLINE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ECHO-STOPPED$AI" [a0, a1] = some («FN2-ECHO-STOPPED$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SCRIBE-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-STOPPED$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SCRIBE-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT-READY$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-EVENT-READY$AI" [a0, a1] = some («FN2-SCRIBE-EVENT-READY$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-PHASE$AI" [a0, a1] = some («FN2-SCRIBE-PHASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-COUNT$AI" [a0, a1] = some («FN2-SCRIBE-COUNT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-CURSOR$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-CURSOR$AI" [a0, a1] = some («FN2-SCRIBE-CURSOR$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-COMPLETED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SCRIBE-COMPLETED$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-COMPLETED$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-GENERATION$AI" [a0, a1] = some («FN2-SCRIBE-GENERATION$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-POOL-CLASS-SCAN" [a0, a1, a2, a3, a4] = some («FN2-POOL-CLASS-SCAN» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-NEXT-FREE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-NEXT-FREE" [a0, a1] = some («FN2-POOL-NEXT-FREE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SET-OWNER-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-POOL-SET-OWNER-SLOT" [a0, a1, a2] = some («FN2-POOL-SET-OWNER-SLOT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RESERVE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-POOL-RESERVE" [a0, a1, a2, a3, a4] = some («FN2-POOL-RESERVE» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-POOL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-POOL-SLOT" [a0, a1, a2] = some («FN2-SCRIBE-SET-POOL-SLOT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-CHECKSUM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-CHECKSUM" [a0, a1, a2] = some («FN2-SCRIBE-SET-CHECKSUM» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-POOL-SLOT$AI" [a0, a1] = some («FN2-SCRIBE-POOL-SLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «EQL».fns_eq (a0 : Val) (a1 : Val) :
-    fns "EQL" [a0, a1] = some («EQL» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-DATAI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-POOL-DATAI" [a0, a1, a2] = some («UPDATE-FN2-POOL-DATAI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-WRITE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-POOL-WRITE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-POOL-WRITE» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-FILL-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-SCRIBE-RUN-FILL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-FILL-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-PRINCIPAL-SLOT" [a0, a1] = some («FN2-SCRIBE-PRINCIPAL-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-WRITE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-SCRIBE-RUN-WRITE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-SCRIBE-RUN-WRITE-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-READ-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-SCRIBE-RUN-READ-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-RUN-READ-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-VERIFY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-SCRIBE-RUN-VERIFY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-VERIFY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-SEQUENCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-SEQUENCE" [a0, a1, a2] = some («FN2-SCRIBE-SET-SEQUENCE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-EVENT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-EVENT" [a0, a1, a2] = some («FN2-SCRIBE-SET-EVENT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-COUNT" [a0, a1, a2] = some («FN2-SCRIBE-SET-COUNT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-AUX1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-SCRIBE-SET-AUX1" [a0, a1, a2] = some («FN2-SCRIBE-SET-AUX1» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SCRIBE-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-GENERATION$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-ACCOUNT-REF$AI" [a0, a1] = some («FN2-SCRIBE-ACCOUNT-REF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-DEADLINE$AI" [a0, a1] = some («FN2-SCRIBE-DEADLINE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-PENDING$AI" [a0, a1] = some («FN2-SCRIBE-PENDING$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-BORROWS$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SCRIBE-BORROWS$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-BORROWS$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-VERIFIED$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-VERIFIED$AI" [a0, a1] = some («FN2-SCRIBE-VERIFIED$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-AUX0$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SCRIBE-AUX0$AI" [a0, a1] = some («FN2-SCRIBE-AUX0$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-CAP-INDEX$AI" [a0, a1] = some («FN2-ARMS-PROBE-CAP-INDEX$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-GENERATION$AI" [a0, a1] = some («FN2-ARMS-PROBE-GENERATION$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CONTROL-STOP-KIND».fns_eq (a0 : Val) (a1 : Val) :
-    fns "UPDATE-FN2-CONTROL-STOP-KIND" [a0, a1] = some («UPDATE-FN2-CONTROL-STOP-KIND» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-PENDING».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE-SET-PENDING" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-PENDING» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SUB-CLOSE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-ARMS-PROBE-SUB-CLOSE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARMS-PROBE-SUB-CLOSE-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-TARGET$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-TARGET$AI" [a0, a1] = some («FN2-ARMS-PROBE-TARGET$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-COUNT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-RUN-DONE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-ARMS-PROBE-RUN-DONE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE-RUN-DONE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-HAND-TO-GEN" [a0, a1] = some («FN2-POOL-HAND-TO-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-KIND».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-POOL-HAND-TO-KIND" [a0, a1] = some («FN2-POOL-HAND-TO-KIND» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-ON-CLOSE-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
-    fns "FN2-ARMS-PROBE-ON-CLOSE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-ARMS-PROBE-ON-CLOSE-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-GENERATION» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PROBE-ACCOUNT-REF» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-DEADLINE" [a0, a1] = some («FN2-ARMS-PROBE-DEADLINE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PENDING».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE-PENDING" [a0, a1] = some («FN2-ARMS-PROBE-PENDING» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-STOPPED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE-SET-STOPPED" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-STOPPED» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-CAP-INDEX».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE-SET-CAP-INDEX" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-CAP-INDEX» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-AFTER$AI" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-AFTER$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-ROWS" [a0] = some («FN2-ARMS-PHASE-FIELD-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-COMMAND-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-RUN-COMMAND-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PHASE-FIELD-RUN-COMMAND-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-GENERATION$AI" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-GENERATION$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-ACCOUNT-REF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-DEADLINE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-PHASE$AI" [a0, a1] = some («FN2-ARMS-SHARED-PHASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-SHARED-ROWS" [a0] = some («FN2-ARMS-SHARED-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-RUN-B-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-ARMS-SHARED-RUN-B-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-SHARED-RUN-B-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-GENERATION».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-GENERATION" [a0, a1] = some («FN2-ARMS-SHARED-GENERATION» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-SHARED-PRINCIPAL-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-SHARED-ACCOUNT-REF» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-DEADLINE" [a0, a1] = some («FN2-ARMS-SHARED-DEADLINE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-COUNT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-SHARED-COUNT" [a0, a1] = some («FN2-ARMS-SHARED-COUNT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PER-PATH-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-PHASE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RESERVED$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-RESERVED$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-RESERVED$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-RESERVED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PER-PATH-RESERVED$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-RESERVED$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-WGEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PER-PATH-WGEN$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-WGEN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WSLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-WSLOT" [a0, a1] = some («FN2-ARMS-PER-PATH-WSLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-PHASE$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-PHASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-ACCOUNT-REF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-DEADLINE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PER-PATH-BLIND-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-SET-RESERVED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-SET-RESERVED" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-BLIND-SET-RESERVED» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-SET-WGEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-SET-WGEN" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-BLIND-SET-WGEN» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WGEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-WGEN$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-WGEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PHASE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-PHASE" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-PHASE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-DEADLINE" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-DEADLINE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RESERVED».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-RESERVED" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-RESERVED» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-PEER-GEN$AI" [a0, a1] = some («FN2-ARMS-LINKER-PEER-GEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WSLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-WSLOT$AI" [a0, a1] = some («FN2-ARMS-LINKER-WSLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-MACHINES-SLOT$AI" [a0, a1] = some («FN2-MACHINES-SLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-SEEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-LINKER-SET-SEEN" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-SEEN» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-ROWS" [a0] = some («FN2-ARMS-LINKER-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-RUN-WORK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-ARMS-LINKER-RUN-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARMS-LINKER-RUN-WORK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-GENERATION$AI" [a0, a1] = some («FN2-ARMS-LINKER-GENERATION$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-LINKER-PRINCIPAL-SLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-LINKER-ACCOUNT-REF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-LINKER-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-LINKER-DEADLINE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-LINKER-PEER$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-LINKER-PEER$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-LINKER-PEER$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-LINKER-PEER-KIND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-LINKER-PEER-KIND$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-LINKER-PEER-KIND$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-LINKER-WSLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-LINKER-WSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-LINKER-WSLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-STEP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-INNER-STEP$AI" [a0, a1] = some («FN2-ARMS-INNER-STEP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-INNER-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-COUNT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-STEP$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-INNER-STEP$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-STEP$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-ARMS-INNER-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-INNER-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-PHASE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-INNER-PHASE" [a0, a1] = some («FN2-ARMS-INNER-PHASE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-INNER-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-GENERATION» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-INNER-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-PRINCIPAL-SLOT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-INNER-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-ACCOUNT-REF» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-DEADLINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-INNER-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-DEADLINE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-TX-VALUE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-TX-VALUE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-TX-VALUE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TY-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-TY-ROWS" [a0] = some («FN2-ARMS-TY-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE4-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-PHASE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE4-PHASE$AI" [a0, a1] = some («FN2-ARMS-PROBE4-PHASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE4-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE4-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE4-GENERATION$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE4-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE4-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE4-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE4-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE4-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE4-ACCOUNT-REF$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE4-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE4-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE4-DEADLINE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-ARMS-PROBE6-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE6-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE6-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-ARMS-PROBE6-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE6-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE6-ROWS" [a0] = some («FN2-ARMS-PROBE6-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PHASE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-ARMS-PROBE6-PHASE" [a0, a1] = some («FN2-ARMS-PROBE6-PHASE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE6-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-GENERATION» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE6-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-ACCOUNT-REF» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-DEADLINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-ARMS-PROBE6-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-DEADLINE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-META-PROBE-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-COUNT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-META-PROBE-ROWS" [a0] = some («FN2-META-PROBE-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-RUN-SEAL-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-META-PROBE-RUN-SEAL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-META-PROBE-RUN-SEAL-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-ADMISSION-TAILI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-MACHINES-ADMISSION-TAILI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-ADMISSION-TAILI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-COUNT$AI" [a0, a1] = some («FN2-META-PROBE-COUNT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-META-PROBE-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-STOPPED$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-ON-RECEIVE-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    fns "FN2-META-PROBE-ON-RECEIVE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-META-PROBE-ON-RECEIVE-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-GENERATION».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-GENERATION" [a0, a1] = some («FN2-META-PROBE-GENERATION» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-PRINCIPAL-SLOT" [a0, a1] = some («FN2-META-PROBE-PRINCIPAL-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-ACCOUNT-REF" [a0, a1] = some («FN2-META-PROBE-ACCOUNT-REF» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-DEADLINE" [a0, a1] = some («FN2-META-PROBE-DEADLINE» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-SET-CLASS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-META-PROBE-SET-CLASS" [a0, a1, a2] = some («FN2-META-PROBE-SET-CLASS» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-CURSOR».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-META-PROBE-CURSOR" [a0, a1] = some («FN2-META-PROBE-CURSOR» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CONN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-CONN" [a0, a1] = some («FN2-CURSOR-CONN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-PHASE" [a0, a1, a2] = some («FN2-CURSOR-SET-PHASE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-TAG».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-TAG" [a0, a1] = some («FN2-CURSOR-TAG» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-MASK».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-MASK" [a0, a1] = some («FN2-CURSOR-MASK» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-TX-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-TX-GEN" [a0, a1] = some («FN2-CURSOR-TX-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CONN-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-CONN-GEN" [a0, a1] = some («FN2-CURSOR-CONN-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-PUT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-GRAM-PUT" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GRAM-PUT» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-NEXT-POWER».fns_eq (a0 : Val) :
-    fns "FN2-GRAM-NEXT-POWER" [a0] = some («FN2-GRAM-NEXT-POWER» a0) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-PUT-NUMBER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-GRAM-PUT-NUMBER" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GRAM-PUT-NUMBER» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-REPLY-LAYER».fns_eq (a0 : Val) :
-    fns "FN2-NNTP-REPLY-LAYER" [a0] = some («FN2-NNTP-REPLY-LAYER» a0) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-REPLY-COMMAND».fns_eq (a0 : Val) :
-    fns "FN2-NNTP-REPLY-COMMAND" [a0] = some («FN2-NNTP-REPLY-COMMAND» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-DONE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-DONE" [a0, a1, a2] = some («FN2-CURSOR-SET-DONE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-UPDATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-UPDATE" [a0, a1, a2] = some («FN2-CURSOR-SET-UPDATE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LO$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-LO$AI" [a0, a1] = some («FN2-CURSOR-LO$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OUT-SLOT-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-OUT-SLOT-LENGTH" [a0] = some («FN2-OPS-OUT-SLOT-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «UNSIGNED-BYTE-P».fns_eq (a0 : Val) (a1 : Val) :
+    fns "UNSIGNED-BYTE-P" [a0, a1] = some («UNSIGNED-BYTE-P» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HANDLE-CODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-POOL-HANDLE-CODE" [a0, a1, a2] = some («FN2-POOL-HANDLE-CODE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-OWNER-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-OWNER-SLOT" [a0, a1] = some («FN2-POOL-OWNER-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-STATE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-STATE$AI" [a0, a1] = some («FN2-POOL-STATE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-STATE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-POOL-STATE$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-STATE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-OUT-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-OUT-COUNT$AI" [a0, a1] = some («FN2-POOL-OUT-COUNT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-LEASE-OUT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-POOL-LEASE-OUT" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-POOL-LEASE-OUT» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-LEASE-OP-GEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-POOL-LEASE-OP-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-LEASE-OP-GEN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-LEASE-LEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-POOL-LEASE-LEN$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-LEASE-LEN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OP-HANDLE-CODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-OP-HANDLE-CODE" [a0, a1, a2] = some («FN2-OP-HANDLE-CODE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OP-SET-RANGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-OP-SET-RANGE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-OP-SET-RANGE» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OUT-TAIL».fns_eq (a0 : Val) :
+    fns "FN2-OPS-OUT-TAIL" [a0] = some («FN2-OPS-OUT-TAIL» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-OPS-OUT-TAIL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "UPDATE-FN2-OPS-OUT-TAIL" [a0, a1] = some («UPDATE-FN2-OPS-OUT-TAIL» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CORE-OUTBOX-READY».fns_eq (a0 : Val) :
+    fns "FN2-CORE-OUTBOX-READY" [a0] = some («FN2-CORE-OUTBOX-READY» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-RECORD-STOP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONTROL-RECORD-STOP" [a0, a1] = some («FN2-CONTROL-RECORD-STOP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-STOPPED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ECHO-SET-STOPPED" [a0, a1, a2] = some («FN2-ECHO-SET-STOPPED» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-SET-READY-PREV».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-MACHINES-SET-READY-PREV" [a0, a1, a2] = some («FN2-MACHINES-SET-READY-PREV» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-WAIT-TAIL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "UPDATE-FN2-MACHINES-WAIT-TAIL" [a0, a1] = some («UPDATE-FN2-MACHINES-WAIT-TAIL» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-WAIT-TAIL».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-WAIT-TAIL" [a0] = some («FN2-MACHINES-WAIT-TAIL» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-PENDING».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ECHO-SET-PENDING" [a0, a1, a2] = some («FN2-ECHO-SET-PENDING» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-BORROWS$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-BORROWS$AI" [a0, a1] = some («FN2-ECHO-BORROWS$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-OFF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-OFF$AI" [a0, a1] = some («FN2-ECHO-OFF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ISSUE-SEND-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    fns "FN2-ISSUE-SEND-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-ISSUE-SEND-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-FILL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-POOL-SET-FILL" [a0, a1, a2] = some («FN2-POOL-SET-FILL» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-LENGTH$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ECHO-LENGTH$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-LENGTH$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «MEMBER-EQ-EXEC$GUARD-CHECK».fns_eq (a0 : Val) (a1 : Val) :
+    fns "MEMBER-EQ-EXEC$GUARD-CHECK" [a0, a1] = some («MEMBER-EQ-EXEC$GUARD-CHECK» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-RUN-REPLY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ECHO-RUN-REPLY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ECHO-RUN-REPLY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-CLASS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-CLASS" [a0, a1] = some («FN2-POOL-CLASS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-POOL-SET-GEN" [a0, a1, a2] = some («FN2-POOL-SET-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-CLASS-COUNTSI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-POOL-CLASS-COUNTSI" [a0, a1, a2] = some («UPDATE-FN2-POOL-CLASS-COUNTSI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-GEN-LIMIT».fns_eq (a0 : Val) :
+    fns "FN2-POOL-GEN-LIMIT" [a0] = some («FN2-POOL-GEN-LIMIT» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-FREE-HEADI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MACHINES-FREE-HEADI" [a0, a1] = some («FN2-MACHINES-FREE-HEADI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ECHO-SET-GENERATION" [a0, a1, a2] = some («FN2-ECHO-SET-GENERATION» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-POOL-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ECHO-SET-POOL-GEN" [a0, a1, a2] = some («FN2-ECHO-SET-POOL-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-CAP-NONCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ECHO-SET-CAP-NONCE" [a0, a1, a2] = some («FN2-ECHO-SET-CAP-NONCE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-FREE-HEADI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-MACHINES-FREE-HEADI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-FREE-HEADI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-RECLAIM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
+    fns "FN2-MACHINES-RECLAIM" [a0, a1, a2, a3, a4] = some («FN2-MACHINES-RECLAIM» a0 a1 a2 a3 a4) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SLOT-BORROWS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-SLOT-BORROWS" [a0, a1] = some («FN2-POOL-SLOT-BORROWS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-PHASE$AI" [a0, a1] = some («FN2-ECHO-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ECHO-ACCOUNT-REF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-DEADLINE$AI" [a0, a1] = some («FN2-ECHO-DEADLINE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-NEXT-FREE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ECHO-NEXT-FREE$AI" [a0, a1] = some («FN2-ECHO-NEXT-FREE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-MODE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ECHO-MODE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-MODE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-EVENT-READY$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SCRIBE-EVENT-READY$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-EVENT-READY$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-ROWS" [a0] = some («FN2-SCRIBE-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-OUTCOME$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-OUTCOME$AI" [a0, a1] = some («FN2-SCRIBE-OUTCOME$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-EVENT$AI" [a0, a1] = some («FN2-SCRIBE-EVENT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SEQUENCE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-SEQUENCE$AI" [a0, a1] = some («FN2-SCRIBE-SEQUENCE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-CURSOR$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SCRIBE-CURSOR$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-CURSOR$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SUB-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-SCRIBE-SUB-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-SUB-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-CLASS-SIZESI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-CLASS-SIZESI" [a0, a1] = some («FN2-POOL-CLASS-SIZESI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-WINDOW-CLASS-OF».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-WINDOW-CLASS-OF" [a0] = some («FN2-SCRIBE-WINDOW-CLASS-OF» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-OWNER-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-POOL-SET-OWNER-KIND" [a0, a1, a2] = some («FN2-POOL-SET-OWNER-KIND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-OWNER-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-POOL-SET-OWNER-GEN" [a0, a1, a2] = some («FN2-POOL-SET-OWNER-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-PARK-POOL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-MACHINES-PARK-POOL" [a0, a1, a2] = some («FN2-MACHINES-PARK-POOL» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-POOL-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SCRIBE-SET-POOL-GEN" [a0, a1, a2] = some («FN2-SCRIBE-SET-POOL-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-CHECKSUM$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-CHECKSUM$AI" [a0, a1] = some («FN2-SCRIBE-CHECKSUM$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-POOL-GEN$AI" [a0, a1] = some («FN2-SCRIBE-POOL-GEN$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-BYTE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SCRIBE-BYTE" [a0, a1, a2] = some («FN2-SCRIBE-BYTE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-BASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-BASE$AI" [a0, a1] = some («FN2-POOL-BASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FNV-STEP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FNV-STEP" [a0, a1] = some («FN2-FNV-STEP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-PATCH-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-SCRIBE-RUN-PATCH-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-PATCH-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-PENDING$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SCRIBE-PENDING$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-PENDING$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ISSUE-FENCE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ISSUE-FENCE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ISSUE-FENCE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ISSUE-READ-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-ISSUE-READ-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ISSUE-READ-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-READ».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-POOL-READ" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-POOL-READ» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-VERIFIED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SCRIBE-SET-VERIFIED" [a0, a1, a2] = some («FN2-SCRIBE-SET-VERIFIED» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-STOPPED-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-SCRIBE-RUN-STOPPED-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-SCRIBE-RUN-STOPPED-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-OUTCOME$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SCRIBE-OUTCOME$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-OUTCOME$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-AUX0$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SCRIBE-AUX0$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-AUX0$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    fns "FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SCRIBE-SET-GENERATION" [a0, a1, a2] = some («FN2-SCRIBE-SET-GENERATION» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-ACCOUNT-REF" [a0, a1] = some («FN2-SCRIBE-ACCOUNT-REF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-DEADLINE" [a0, a1] = some («FN2-SCRIBE-DEADLINE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-PENDING" [a0, a1] = some («FN2-SCRIBE-PENDING» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-BORROWS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SCRIBE-SET-BORROWS" [a0, a1, a2] = some («FN2-SCRIBE-SET-BORROWS» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-VERIFIED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-VERIFIED" [a0, a1] = some («FN2-SCRIBE-VERIFIED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-AUX0».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SCRIBE-AUX0" [a0, a1] = some («FN2-SCRIBE-AUX0» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE-CAP-INDEX" [a0, a1] = some («FN2-ARMS-PROBE-CAP-INDEX» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE-GENERATION" [a0, a1] = some («FN2-ARMS-PROBE-GENERATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CONTROL-STOP-DETAIL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "UPDATE-FN2-CONTROL-STOP-DETAIL" [a0, a1] = some («UPDATE-FN2-CONTROL-STOP-DETAIL» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-PHASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-PROBE-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-TARGET».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE-TARGET" [a0, a1] = some («FN2-ARMS-PROBE-TARGET» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE-SET-COUNT" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-COUNT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-REPEAT-LOOP-0».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARMS-PROBE-REPEAT-LOOP-0" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PROBE-REPEAT-LOOP-0» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-HAND-TO-SLOT$AI" [a0, a1] = some («FN2-POOL-HAND-TO-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-ACCEPT-HAND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
+    fns "FN2-POOL-ACCEPT-HAND" [a0, a1, a2, a3, a4, a5] = some («FN2-POOL-ACCEPT-HAND» a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE-PHASE$AI" [a0, a1] = some («FN2-ARMS-PROBE-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE-STOPPED$AI" [a0, a1] = some («FN2-ARMS-PROBE-STOPPED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-TARGET$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-TARGET$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-TARGET$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-AFTER" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-AFTER» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-GENERATION" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-GENERATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-ACCOUNT-REF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-DEADLINE" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-DEADLINE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PHASE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-SHARED-PHASE" [a0, a1] = some («FN2-ARMS-SHARED-PHASE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-SUB-WORK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-SHARED-SUB-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-SHARED-SUB-WORK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-RUN-C-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-SHARED-RUN-C-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-SHARED-RUN-C-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-SHARED-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-SHARED-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-SHARED-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-COUNT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-ROWS" [a0] = some («FN2-ARMS-PER-PATH-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RESERVED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-RESERVED" [a0, a1] = some («FN2-ARMS-PER-PATH-RESERVED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-RESERVED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PER-PATH-SET-RESERVED" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-RESERVED» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-WGEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PER-PATH-SET-WGEN" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-WGEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WGEN$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-WGEN$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-WGEN$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PHASE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-PHASE" [a0, a1] = some («FN2-ARMS-PER-PATH-PHASE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PER-PATH-PRINCIPAL-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PER-PATH-ACCOUNT-REF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-DEADLINE" [a0, a1] = some («FN2-ARMS-PER-PATH-DEADLINE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-BLIND-SET-PHASE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-GENERATION$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-GENERATION$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WGEN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-WGEN" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-WGEN» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-LINKER-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-LINKER-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER-GEN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-PEER-GEN" [a0, a1] = some («FN2-ARMS-LINKER-PEER-GEN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WSLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-WSLOT" [a0, a1] = some («FN2-ARMS-LINKER-WSLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MACHINES-SLOT" [a0, a1] = some («FN2-MACHINES-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-TRUNCATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-POOL-TRUNCATE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-POOL-TRUNCATE» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-KIND$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MACHINES-KIND$AI" [a0, a1] = some («FN2-MACHINES-KIND$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-RUN-DONE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-LINKER-RUN-DONE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-LINKER-RUN-DONE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-GENERATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-GENERATION" [a0, a1] = some («FN2-ARMS-LINKER-GENERATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-LINKER-PRINCIPAL-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-LINKER-ACCOUNT-REF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-LINKER-DEADLINE" [a0, a1] = some («FN2-ARMS-LINKER-DEADLINE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PEER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-LINKER-SET-PEER" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PEER» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PEER-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-LINKER-SET-PEER-KIND" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PEER-KIND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-WSLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-LINKER-SET-WSLOT" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-WSLOT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-STEP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-INNER-STEP" [a0, a1] = some («FN2-ARMS-INNER-STEP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-INNER-SET-COUNT" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-COUNT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-INNER-SET-STEP" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-STEP» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-RUN-WORK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-INNER-RUN-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-INNER-RUN-WORK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-INNER-GENERATION$AI" [a0, a1] = some («FN2-ARMS-INNER-GENERATION$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-INNER-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-INNER-PRINCIPAL-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-INNER-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-INNER-ACCOUNT-REF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-INNER-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-INNER-DEADLINE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-PROBE4-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE4-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TX-SET-VALUE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-TX-SET-VALUE" [a0, a1, a2] = some («FN2-ARMS-TX-SET-VALUE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TX-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TX-ROWS" [a0] = some («FN2-ARMS-TX-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE4-ROWS" [a0] = some («FN2-ARMS-PROBE4-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE4-PHASE" [a0, a1] = some («FN2-ARMS-PROBE4-PHASE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE4-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-GENERATION» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE4-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-ACCOUNT-REF» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-DEADLINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE4-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-DEADLINE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE6-COUNT$AI" [a0, a1] = some («FN2-ARMS-PROBE6-COUNT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-PROBE6-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-PHASE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-RUN-WORK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-PROBE6-RUN-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PROBE6-RUN-WORK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE6-GENERATION$AI" [a0, a1] = some («FN2-ARMS-PROBE6-GENERATION$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE6-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PROBE6-ACCOUNT-REF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PROBE6-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PROBE6-DEADLINE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-BORN-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-BORN-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-RUN-READY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ARMS-BORN-RUN-READY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-BORN-RUN-READY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-BORN-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-BORN-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-BORN-PHASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-BORN-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-BORN-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-BORN-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-BORN-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-BORN-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-BORN-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-BORN-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-BORN-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-BORN-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-BORN-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-BORN-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-BORN-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PARK-WAIT-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-WAIT-HEAD».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ACCOUNTS-WAIT-HEAD" [a0, a1] = some («FN2-ACCOUNTS-WAIT-HEAD» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-SET-WAIT-HEAD».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ACCOUNTS-SET-WAIT-HEAD" [a0, a1, a2] = some («FN2-ACCOUNTS-SET-WAIT-HEAD» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-COMMITTED-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-COMMITTED-LENGTH" [a0] = some («FN2-ACCOUNTS-COMMITTED-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-RESERVE-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-RESERVE-LENGTH" [a0] = some («FN2-ACCOUNTS-RESERVE-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-CAPACITYP».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-CAPACITYP" [a0] = some («FN2-ACCOUNTS-CAPACITYP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-LIMITP».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-LIMITP" [a0] = some («FN2-ACCOUNTS-LIMITP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-WAIT-TAIL$AP».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-WAIT-TAIL$AP" [a0] = some («FN2-ACCOUNTS-WAIT-TAIL$AP» a0) := rfl
+@[fn2_dispatch] theorem «LENGTH».fns_eq (a0 : Val) :
+    fns "LENGTH" [a0] = some («LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «HIDE».fns_eq (a0 : Val) :
+    fns "HIDE" [a0] = some («HIDE» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PARK-WAIT-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PARK-WAIT-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PARK-WAIT-PHASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PARK-WAIT-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-PARK-WAIT-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PARK-WAIT-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PARK-WAIT-ACCOUNT-REF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PARK-WAIT-DEADLINE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SEEN$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-SEEN$AI" [a0, a1] = some («FN2-ARMS-PARK-WAIT-SEEN$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-ARMS-COST-SUM-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-COST-SUM-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-COST-SUM-COUNT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-COST-SUM-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-COST-SUM-COUNT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-COST-SUM-ROWS" [a0] = some («FN2-ARMS-COST-SUM-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-PHASE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-COST-SUM-PHASE" [a0, a1] = some («FN2-ARMS-COST-SUM-PHASE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-GENERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-COST-SUM-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-GENERATION» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-ACCOUNT-REF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-COST-SUM-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-ACCOUNT-REF» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-DEADLINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-COST-SUM-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-DEADLINE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-T-FOP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-T-FOP" [a0] = some («FN2-ARMS-T-FOP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-ARMS-F2-PROBE-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-F2-PROBE-SET-PHASE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-CHAIN-WORK-0-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARMS-F2-PROBE-CHAIN-WORK-0-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-F2-PROBE-CHAIN-WORK-0-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARMS-F2-PROBE-PHASE$AI" [a0, a1] = some («FN2-ARMS-F2-PROBE-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-F2-PROBE-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-F2-PROBE-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-F2-PROBE-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-F2-PROBE-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-F2-PROBE-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-F2-PROBE-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-F2-PROBE-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-ARMS-F2-PROBE-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-F2-PROBE-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-META-PROBE-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-META-PROBE-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-SET-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-META-PROBE-SET-COUNT" [a0, a1, a2] = some («FN2-META-PROBE-SET-COUNT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-RUN-POOL-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-META-PROBE-RUN-POOL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-META-PROBE-RUN-POOL-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-TARGET$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-META-PROBE-TARGET$AI" [a0, a1] = some («FN2-META-PROBE-TARGET$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-ADMISSION-TAILI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MACHINES-ADMISSION-TAILI" [a0, a1] = some («FN2-MACHINES-ADMISSION-TAILI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-COUNT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-META-PROBE-COUNT" [a0, a1] = some («FN2-META-PROBE-COUNT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-SET-STOPPED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-META-PROBE-SET-STOPPED" [a0, a1, a2] = some («FN2-META-PROBE-SET-STOPPED» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-META-PROBE-PHASE$AI" [a0, a1] = some («FN2-META-PROBE-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-GENERATION$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-META-PROBE-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-GENERATION$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-PRINCIPAL-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-META-PROBE-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-PRINCIPAL-SLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-ACCOUNT-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-META-PROBE-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-ACCOUNT-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-DEADLINE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-META-PROBE-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-DEADLINE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-TARGET$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-META-PROBE-TARGET$AI" [a0, a1, a2] = some («UPDATE-FN2-META-PROBE-TARGET$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-META-PROBE-STOPPED$AI" [a0, a1] = some («FN2-META-PROBE-STOPPED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-TURN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-TURN$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-TURN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-ROWS" [a0] = some («FN2-CURSOR-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-REPLY$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-REPLY$AI" [a0, a1] = some («FN2-CURSOR-REPLY$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-TX-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-TX-SLOT$AI" [a0, a1] = some («FN2-CURSOR-TX-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CONN-KIND$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-CONN-KIND$AI" [a0, a1] = some («FN2-CURSOR-CONN-KIND$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-REPLY-TEMPLATE».fns_eq (a0 : Val) :
+    fns "FN2-NNTP-REPLY-TEMPLATE" [a0] = some («FN2-NNTP-REPLY-TEMPLATE» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-READ».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-GRAM-READ" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GRAM-READ» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-PUT-DIGITS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GRAM-PUT-DIGITS" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-PUT-DIGITS» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-PUT-TEMPLATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
+    fns "FN2-GRAM-PUT-TEMPLATE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-GRAM-PUT-TEMPLATE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
+@[fn2_dispatch] theorem «LOGTEST».fns_eq (a0 : Val) (a1 : Val) :
+    fns "LOGTEST" [a0, a1] = some («LOGTEST» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SPAN-LEN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-SPAN-LEN" [a0, a1] = some («FN2-CURSOR-SPAN-LEN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-DIGITS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GRAM-DIGITS" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-DIGITS» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ANSWER-PUT-TEXT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-ANSWER-PUT-TEXT" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ANSWER-PUT-TEXT» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POOL-BODY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-CURSOR-POOL-BODY" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CURSOR-POOL-BODY» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-DONE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-DONE$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-DONE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-UPDATE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-UPDATE$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-UPDATE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-STEP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-STEP" [a0, a1] = some («FN2-CURSOR-STEP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-GROUP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-GROUP" [a0, a1] = some («FN2-CURSOR-GROUP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-READS-ROWS" [a0] = some («FN2-READS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-VALUE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-VALUE$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-VALUE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-REF-GEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-REF-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-REF-GEN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-REF-LEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-REF-LEN$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-REF-LEN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-ENTRY$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-READS-ENTRY$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-ENTRY$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-DECODE-REF$A-LENGTH" [a0] = some («FN2-FIELDS-DECODE-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-POS$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-DECODE-POS$A-LENGTH" [a0] = some («FN2-FIELDS-DECODE-POS$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-OFF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-REF-OFF$A-LENGTH" [a0] = some («FN2-FIELDS-REF-OFF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-WFP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-WFP" [a0] = some («FN2-FIELDS-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-READS-EXCL$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-READS-EXCL$A-LENGTH" [a0] = some («FN2-READS-EXCL$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-READS-EG$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-READS-EG$A-LENGTH" [a0] = some («FN2-READS-EG$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-READS-ENTRY$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-READS-ENTRY$A-LENGTH" [a0] = some («FN2-READS-ENTRY$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-READS-QSET$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-READS-QSET$A-LENGTH" [a0] = some («FN2-READS-QSET$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RD-KEY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-RD-KEY" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RD-KEY» a0 a1 a2 a3 a4 a5 a6) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-PIN$AI».fns_eq (a0 : Val) (a1 : Val) :
     fns "FN2-CURSOR-PIN$AI" [a0, a1] = some («FN2-CURSOR-PIN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ID-DECIDES-ROWS" [a0] = some («FN2-ID-DECIDES-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-VALUE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-FIELDS-SET-VALUE" [a0, a1, a2] = some («FN2-FIELDS-SET-VALUE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-REF-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-FIELDS-SET-REF-GEN" [a0, a1, a2] = some («FN2-FIELDS-SET-REF-GEN» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-REF-LEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-FIELDS-SET-REF-LEN" [a0, a1, a2] = some («FN2-FIELDS-SET-REF-LEN» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-SET-ENTRY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-READS-SET-ENTRY" [a0, a1, a2] = some («FN2-READS-SET-ENTRY» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-SIZE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-DECODE-SIZE$A-LENGTH" [a0] = some («FN2-FIELDS-DECODE-SIZE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PHASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-DECODE-PHASE$A-LENGTH" [a0] = some («FN2-FIELDS-DECODE-PHASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-GEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-REF-GEN$A-LENGTH" [a0] = some («FN2-FIELDS-REF-GEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READS-EVIDENCE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-READS-EVIDENCE$A-LENGTH" [a0] = some («FN2-READS-EVIDENCE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READS-WGEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-READS-WGEN$A-LENGTH" [a0] = some («FN2-READS-WGEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READS-ES$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-READS-ES$A-LENGTH" [a0] = some («FN2-READS-ES$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READS-QG$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-READS-QG$A-LENGTH" [a0] = some («FN2-READS-QG$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READS-SID$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-READS-SID$A-LENGTH" [a0] = some («FN2-READS-SID$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READ-KEY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-READ-KEY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-READ-KEY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-READS-QG».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-READS-QG" [a0, a1] = some («FN2-READS-QG» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-READS-QK».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-READS-QK" [a0, a1] = some («FN2-READS-QK» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-SCHEMA».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-SCHEMA" [a0, a1, a2] = some («FN2-RANGES-SET-SCHEMA» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-HBASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-HBASE" [a0, a1, a2] = some («FN2-RANGES-SET-HBASE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-SMAX».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-SMAX" [a0, a1, a2] = some («FN2-RANGES-SET-SMAX» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-CBASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-CBASE" [a0, a1, a2] = some («FN2-RANGES-SET-CBASE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-VRUN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-VRUN" [a0, a1, a2] = some («FN2-RANGES-SET-VRUN» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-PLIMIT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-PLIMIT" [a0, a1, a2] = some («FN2-RANGES-SET-PLIMIT» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-OK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-OK" [a0, a1, a2] = some («FN2-RANGES-SET-OK» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-OG».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-OG" [a0, a1, a2] = some («FN2-RANGES-SET-OG» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-QK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-QK" [a0, a1, a2] = some («FN2-RANGES-SET-QK» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SET-QG».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RANGES-SET-QG" [a0, a1, a2] = some («FN2-RANGES-SET-QG» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-OGEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-OGEN$AI" [a0, a1] = some («FN2-OVERLAYS-OGEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-OKIND$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-OKIND$AI" [a0, a1] = some («FN2-OVERLAYS-OKIND$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-SBASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-SBASE$AI" [a0, a1] = some («FN2-RANGES-SBASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-RBASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-RBASE$AI" [a0, a1] = some («FN2-RANGES-RBASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RANGE-SOURCES-SRC$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RANGE-SOURCES-SRC$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGE-SOURCES-SRC$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RANGE-SOURCES-POS$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RANGE-SOURCES-POS$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGE-SOURCES-POS$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RANGE-SOURCES-CURSOR$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RANGE-SOURCES-CURSOR$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGE-SOURCES-CURSOR$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RANGE-SOURCES-RUN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RANGE-SOURCES-RUN$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGE-SOURCES-RUN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RANGE-SOURCES-OSLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RANGE-SOURCES-OSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGE-SOURCES-OSLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-ROWS" [a0] = some («FN2-RANGE-SOURCES-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-ADD-SOURCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-RANGE-ADD-SOURCE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RANGE-ADD-SOURCE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «MEMBER-EQL-EXEC».fns_eq (a0 : Val) (a1 : Val) :
-    fns "MEMBER-EQL-EXEC" [a0, a1] = some («MEMBER-EQL-EXEC» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OGEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-OGEN$AI" [a0, a1] = some («FN2-RUN-INSTALLED-OGEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OKIND$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-OKIND$AI" [a0, a1] = some («FN2-RUN-INSTALLED-OKIND$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-SCHEMA$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-SCHEMA$AI" [a0, a1] = some («FN2-RUN-INSTALLED-SCHEMA$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-ADD-RUNS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-RANGE-ADD-RUNS" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RANGE-ADD-RUNS» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-START».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) :
-    fns "FN2-RANGE-START" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16] = some («FN2-RANGE-START» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-FCOUNTER$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-FCOUNTER$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-FCOUNTER$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OSLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-OSLOT$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-OSLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-UNIT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-UNIT$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-UNIT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-RUN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-RUN$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-RUN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-SEQ$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-SEQ$A-LENGTH" [a0] = some («FN2-OVERLAYS-SEQ$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-OSLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-OSLOT$A-LENGTH" [a0] = some («FN2-OVERLAYS-OSLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-COUNT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-COUNT$A-LENGTH" [a0] = some («FN2-OVERLAYS-COUNT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-SLOT$A-LENGTH" [a0] = some («FN2-OVERLAYS-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-OGEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-OGEN$A-LENGTH" [a0] = some («FN2-RANGE-SOURCES-OGEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-RB$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-RB$A-LENGTH" [a0] = some («FN2-RANGE-SOURCES-RB$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-STATE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-STATE$A-LENGTH" [a0] = some («FN2-RANGE-SOURCES-STATE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-QG$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-QG$A-LENGTH" [a0] = some («FN2-RANGES-QG$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-OG$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-OG$A-LENGTH" [a0] = some («FN2-RANGES-OG$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-PLIMIT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-PLIMIT$A-LENGTH" [a0] = some («FN2-RANGES-PLIMIT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-CBASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-CBASE$A-LENGTH" [a0] = some («FN2-RANGES-CBASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-HBASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-HBASE$A-LENGTH" [a0] = some («FN2-RANGES-HBASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-WFP».fns_eq (a0 : Val) :
-    fns "FN2-RANGES-WFP" [a0] = some («FN2-RANGES-WFP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-HAVE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-HAVE" [a0, a1, a2] = some («FN2-CURSOR-SET-HAVE» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-REPLY-OF».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-REPLY-OF" [a0, a1] = some («FN2-CURSOR-REPLY-OF» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-RX-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-RX-GEN$AI" [a0, a1] = some («FN2-CURSOR-RX-GEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-B0$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-B0$AI" [a0, a1] = some («FN2-CURSOR-B0$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-QK$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-QK$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QK$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-QG$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-QG$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QG$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «POSP».fns_eq (a0 : Val) :
-    fns "POSP" [a0] = some («POSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-STEP" [a0, a1, a2] = some («FN2-CURSOR-SET-STEP» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-OP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-READS-OP$AI" [a0, a1] = some («FN2-READS-OP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LBOUND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SUCC-TXNS-LBOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LBOUND$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LVER$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SUCC-TXNS-LVER$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LVER$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LPHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SUCC-TXNS-LPHASE$AI" [a0, a1] = some («FN2-SUCC-TXNS-LPHASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-RB$AI" [a0, a1] = some («FN2-RUN-CURSORS-RB$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-TOP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-TOP$AI" [a0, a1] = some («FN2-RUN-CURSORS-TOP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OSLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-OSLOT$AI" [a0, a1] = some («FN2-RUN-CURSORS-OSLOT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATH-ROW».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-PATH-ROW" [a0, a1] = some («FN2-RUN-PATH-ROW» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-PATHS-GEN" [a0, a1] = some («FN2-RUN-PATHS-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-COUNTER».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-PATHS-COUNTER" [a0, a1] = some («FN2-RUN-PATHS-COUNTER» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-ROW».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CACHE-ROW" [a0, a1] = some («FN2-RUN-CACHE-ROW» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CACHE-SLOT" [a0, a1] = some («FN2-RUN-CACHE-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-UNIT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CACHE-UNIT" [a0, a1] = some («FN2-RUN-CACHE-UNIT» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-FIELDS-DECODE-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-ACC$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-FIELDS-DECODE-ACC$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-ACC$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-SIZE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-FIELDS-DECODE-SIZE$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-SIZE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «HARD-ERROR».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "HARD-ERROR" [a0, a1, a2] = some («HARD-ERROR» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CAPACITY-BYTES».fns_eq (a0 : Val) :
-    fns "FN2-POOL-CAPACITY-BYTES" [a0] = some («FN2-POOL-CAPACITY-BYTES» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-NEXT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-DECODE-NEXT$AI" [a0, a1] = some («FN2-FIELDS-DECODE-NEXT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-REF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-DECODE-REF$AI" [a0, a1] = some («FN2-FIELDS-DECODE-REF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-HIGH$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-DECODE-HIGH$AI" [a0, a1] = some («FN2-FIELDS-DECODE-HIGH$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-POS$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-DECODE-POS$AI" [a0, a1] = some («FN2-FIELDS-DECODE-POS$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-FIELD-INDEX».fns_eq (a0 : Val) :
-    fns "FN2-FORMAT-PAGE-HEADER-FIELD-INDEX" [a0] = some («FN2-FORMAT-PAGE-HEADER-FIELD-INDEX» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-VALUE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-VALUE$AI" [a0, a1] = some («FN2-FIELDS-VALUE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-REF-GEN$AI" [a0, a1] = some («FN2-FIELDS-REF-GEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-LEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-FIELDS-REF-LEN$AI" [a0, a1] = some («FN2-FIELDS-REF-LEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-NEXT-PHASE».fns_eq (a0 : Val) :
-    fns "FN2-FORMAT-PAGE-HEADER-NEXT-PHASE" [a0] = some («FN2-FORMAT-PAGE-HEADER-NEXT-PHASE» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    fns "FN2-FORMAT-PAGE-HEADER-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-FORMAT-PAGE-HEADER-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-FIELD-INDEX».fns_eq (a0 : Val) :
-    fns "FN2-RUN-PAGE-HEADER-FIELD-INDEX" [a0] = some («FN2-RUN-PAGE-HEADER-FIELD-INDEX» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    fns "FN2-RUN-PAGE-HEADER-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-RUN-PAGE-HEADER-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-READ-HEADER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-RUN-READ-HEADER" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-RUN-READ-HEADER» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSOR-SET-LEFT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSOR-SET-LEFT" [a0, a1] = some («FN2-RUN-CURSOR-SET-LEFT» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-SLOT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-LO$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-LO$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-LO$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-IDX$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-IDX$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-IDX$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-UNIT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-UNIT$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-UNIT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSOR-SAVE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    fns "FN2-RUN-CURSOR-SAVE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RUN-CURSOR-SAVE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-LAYOUT-KEYS».fns_eq (a0 : Val) :
-    fns "FN2-RUN-LAYOUT-KEYS" [a0] = some («FN2-RUN-LAYOUT-KEYS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SLOT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-SLOT" [a0, a1] = some («FN2-RUN-CURSORS-SLOT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-IDX».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-IDX" [a0, a1] = some («FN2-RUN-CURSORS-IDX» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-UNIT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-UNIT" [a0, a1] = some («FN2-RUN-CURSORS-UNIT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-DIRECTORY».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-DIRECTORY" [a0, a1] = some («FN2-RUN-DIRECTORY» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-RESTART-BYTE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-RUN-RESTART-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RUN-RESTART-BYTE» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-RESTART-DECODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-RUN-RESTART-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RUN-RESTART-DECODE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-MANIFEST-ENTRY-EMPTY-P" [a0] = some («FN2-MANIFEST-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-MANIFEST-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-MANIFEST-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-MANIFEST-INDEX-EMPTY-P" [a0] = some («FN2-MANIFEST-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-MANIFEST-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-MANIFEST-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-PRINCIPAL-CHARGES-ENTRY-EMPTY-P" [a0] = some («FN2-PRINCIPAL-CHARGES-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-PRINCIPAL-CHARGES-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-PRINCIPAL-CHARGES-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-PRINCIPAL-CHARGES-INDEX-EMPTY-P" [a0] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-CONSUMER-CURSOR-ENTRY-EMPTY-P" [a0] = some («FN2-CONSUMER-CURSOR-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-CONSUMER-CURSOR-INDEX-EMPTY-P" [a0] = some («FN2-CONSUMER-CURSOR-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-CONSUMER-CURSOR-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-CONSUMER-CURSOR-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-GROUP-COUNTS-ENTRY-EMPTY-P" [a0] = some («FN2-GROUP-COUNTS-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-GROUP-COUNTS-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GROUP-COUNTS-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-GROUP-COUNTS-INDEX-EMPTY-P" [a0] = some («FN2-GROUP-COUNTS-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-GROUP-COUNTS-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GROUP-COUNTS-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-OUTCOME-ENTRY-EMPTY-P" [a0] = some («FN2-OUTCOME-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-OUTCOME-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OUTCOME-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-OUTCOME-INDEX-EMPTY-P" [a0] = some («FN2-OUTCOME-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-OUTCOME-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OUTCOME-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-GROUPS-ENTRY-EMPTY-P" [a0] = some («FN2-GROUPS-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-GROUPS-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GROUPS-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-GROUPS-INDEX-EMPTY-P" [a0] = some («FN2-GROUPS-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-GROUPS-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GROUPS-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-ADDR-ENTRY-EMPTY-P" [a0] = some («FN2-ADDR-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-ADDR-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ADDR-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-ADDR-INDEX-EMPTY-P" [a0] = some («FN2-ADDR-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-ADDR-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ADDR-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-OVERVIEW-ENTRY-EMPTY-P" [a0] = some («FN2-OVERVIEW-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-OVERVIEW-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OVERVIEW-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-OVERVIEW-INDEX-EMPTY-P" [a0] = some («FN2-OVERVIEW-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-OVERVIEW-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OVERVIEW-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-ARTICLE-ENTRY-EMPTY-P" [a0] = some («FN2-ARTICLE-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-ARTICLE-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ARTICLE-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-ARTICLE-INDEX-EMPTY-P" [a0] = some («FN2-ARTICLE-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-ARTICLE-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ARTICLE-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-ARTICLE-ENTRY-EMPTY-P" [a0] = some («FN2-IDENTITY-ARTICLE-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-ARTICLE-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-ARTICLE-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-ARTICLE-INDEX-EMPTY-P" [a0] = some («FN2-IDENTITY-ARTICLE-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-ARTICLE-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-ARTICLE-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-CANDIDATES-ENTRY-EMPTY-P" [a0] = some («FN2-IDENTITY-CANDIDATES-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-CANDIDATES-INDEX-EMPTY-P" [a0] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-SUMMARY-ENTRY-EMPTY-P" [a0] = some («FN2-IDENTITY-SUMMARY-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-SUMMARY-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-SUMMARY-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-SUMMARY-INDEX-EMPTY-P" [a0] = some («FN2-IDENTITY-SUMMARY-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-SUMMARY-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-SUMMARY-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-HISTORY-ENTRY-EMPTY-P" [a0] = some («FN2-IDENTITY-HISTORY-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-HISTORY-INDEX-EMPTY-P" [a0] = some («FN2-IDENTITY-HISTORY-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-ENTRY-EMPTY-P" [a0] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-EVIDENCE-ENTRY-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMPTY-P».fns_eq (a0 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-INDEX-EMPTY-P" [a0] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMPTY-P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-EVIDENCE-INDEX-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-NTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-RUN-NTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-NTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LO».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-LO" [a0, a1] = some («FN2-RUN-CURSORS-LO» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-SET-IDX».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-RUN-PATHS-SET-IDX" [a0, a1, a2] = some («FN2-RUN-PATHS-SET-IDX» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEFT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-CURSORS-LEFT$AI" [a0, a1] = some («FN2-RUN-CURSORS-LEFT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-MANIFEST-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-CONSUMER-CURSOR-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-COMPARE-LOOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-POOL-COMPARE-LOOP" [a0, a1, a2, a3, a4] = some («FN2-POOL-COMPARE-LOOP» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-OCTETS-FIELD-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-RUN-OCTETS-FIELD-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RUN-OCTETS-FIELD-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-OVERVIEW-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-ARTICLE-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-CANDIDATES-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-8».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-HISTORY-COMPARE-8" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-8» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-4».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-HISTORY-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-4» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-HISTORY-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-5».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-COMPARE-5" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-5» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-IDENTITY-EVIDENCE-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-STEP-SEEK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) (a23 : Val) :
-    fns "FN2-RUN-STEP-SEEK" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23] = some («FN2-RUN-STEP-SEEK» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-PATHS-GEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-PATHS-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-PATHS-GEN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-PATHS-COUNTER$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-PATHS-COUNTER$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-PATHS-COUNTER$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATH-NOTE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-RUN-PATH-NOTE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-RUN-PATH-NOTE» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-LOOKUP-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-RUN-LOOKUP-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-LOOKUP-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-COUNTER$AI" [a0, a1] = some («FN2-RUN-INSTALLED-COUNTER$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-GEN$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-GEN$AI" [a0, a1] = some («FN2-RUN-INSTALLED-GEN$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RUN-INSTALLED-TOP$AI" [a0, a1] = some («FN2-RUN-INSTALLED-TOP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-TOP$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-TOP$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-TOP$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-OKIND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-OKIND$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-OKIND$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-OGEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-RUN-CURSORS-OGEN$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-OGEN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-SUCC-TXNS-LVER$AI" [a0, a1] = some («FN2-SUCC-TXNS-LVER$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-COUNT».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-COUNT" [a0, a1] = some («FN2-OVERLAYS-COUNT» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-FILL».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-FILL" [a0, a1] = some («FN2-OVERLAYS-FILL» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-GEN».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-GEN" [a0, a1] = some («FN2-OVERLAYS-GEN» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-ICAP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-OVERLAYS-ICAP$AI" [a0, a1] = some («FN2-OVERLAYS-ICAP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OV-OKP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-OV-OKP" [a0, a1, a2] = some («FN2-OV-OKP» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-OV-LOCATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    fns "FN2-OV-LOCATE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OV-LOCATE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-EROW$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-EROW$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EROW$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-ES$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-ES$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-ES$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-EVER$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-EVER$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EVER$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-GEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-HAND-TO-GEN$A-LENGTH" [a0] = some («FN2-POOL-HAND-TO-GEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-OUT-COUNT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-OUT-COUNT$A-LENGTH" [a0] = some («FN2-POOL-OUT-COUNT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-LEASE-OP-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-LEASE-OP-SLOT$A-LENGTH" [a0] = some («FN2-POOL-LEASE-OP-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-STATE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-STATE$A-LENGTH" [a0] = some («FN2-POOL-STATE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-WFP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-WFP" [a0] = some («FN2-POOL-WFP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-UNIT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CACHE-UNIT$A-LENGTH" [a0] = some («FN2-RUN-CACHE-UNIT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-IDX$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-PATHS-IDX$A-LENGTH" [a0] = some («FN2-RUN-PATHS-IDX$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-PATHS-SLOT$A-LENGTH" [a0] = some («FN2-RUN-PATHS-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OKIND$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-OKIND$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-OKIND$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OFF$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-OFF$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-OFF$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-GEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-GEN$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-GEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEVEL$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-LEVEL$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-LEVEL$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNS-LVER$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-LVER$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RBOUND$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNS-RBOUND$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-RBOUND$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-BATCH$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNS-BATCH$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-BATCH$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-READ-LOOKUP-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) :
-    fns "FN2-READ-LOOKUP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14] = some («FN2-READ-LOOKUP-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := rfl
-@[fn2_dispatch] theorem «FN2-READS-EROW».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-READS-EROW" [a0, a1] = some («FN2-READS-EROW» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-READS-ENTRY$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-READS-ENTRY$AI" [a0, a1] = some («FN2-READS-ENTRY$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-READ-VALUE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-READ-VALUE-CHILDREN" [a0, a1, a2, a3, a4] = some («FN2-READ-VALUE-CHILDREN» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-ID-ENGINE-PUBLISHED$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ID-ENGINE-PUBLISHED$A-LENGTH" [a0] = some («FN2-ID-ENGINE-PUBLISHED$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-ENGINE-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ID-ENGINE-SLOT$A-LENGTH" [a0] = some («FN2-ID-ENGINE-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SEEKS-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-SEEKS-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-SEEKS-PHASE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-WGEN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-WGEN$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-WGEN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-FOUND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-FOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-FOUND$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-EVIDENCE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-READS-EVIDENCE$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EVIDENCE$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SEEKS-PFIELD$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SEEKS-PFIELD$A-LENGTH" [a0] = some («FN2-SEEKS-PFIELD$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SEEKS-LO$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SEEKS-LO$A-LENGTH" [a0] = some («FN2-SEEKS-LO$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RD-RELEASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
-    fns "FN2-RD-RELEASE" [a0, a1, a2, a3, a4, a5] = some («FN2-RD-RELEASE» a0 a1 a2 a3 a4 a5) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-SPIN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-CURSOR-SPIN$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-SPIN$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SEL».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-SEL" [a0, a1] = some («FN2-CURSOR-SEL» a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-LOW$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-CURSOR-LOW$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-LOW$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-QG$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-READS-QG$AI" [a0, a1] = some («FN2-READS-QG$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READS-QK$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-READS-QK$AI" [a0, a1] = some («FN2-READS-QK$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-SCHEMA$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-SCHEMA$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-SCHEMA$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-HBASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-HBASE$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-HBASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-SMAX$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-SMAX$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-SMAX$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-CBASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-CBASE$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-CBASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-VRUN$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-VRUN$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-VRUN$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-PLIMIT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-PLIMIT$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-PLIMIT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-OK$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-OK$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-OK$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-OG$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-OG$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-OG$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-QK$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-QK$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-QK$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RANGES-QG$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RANGES-QG$AI" [a0, a1, a2] = some («UPDATE-FN2-RANGES-QG$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-ROWS" [a0] = some («FN2-OVERLAYS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-OSLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAYS-OSLOT" [a0, a1] = some («FN2-OVERLAYS-OSLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-SEQ».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAYS-SEQ" [a0, a1] = some («FN2-OVERLAYS-SEQ» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-CBASE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RANGES-CBASE" [a0, a1] = some («FN2-RANGES-CBASE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-KIND" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-KIND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-STATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-STATE" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-STATE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-COUNT" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-COUNT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-RB».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-RB" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-RB» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-OKIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-OKIND" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-OKIND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-SET-OGEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RANGE-SOURCES-SET-OGEN" [a0, a1, a2] = some («FN2-RANGE-SOURCES-SET-OGEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-ROWS" [a0] = some («FN2-RANGES-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «MEMBER-EQL-EXEC$GUARD-CHECK».fns_eq (a0 : Val) (a1 : Val) :
+    fns "MEMBER-EQL-EXEC$GUARD-CHECK" [a0, a1] = some («MEMBER-EQL-EXEC$GUARD-CHECK» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-ADD-OVERLAYS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-RANGE-ADD-OVERLAYS" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RANGE-ADD-OVERLAYS» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OSLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-OSLOT" [a0, a1] = some («FN2-RUN-INSTALLED-OSLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-RUN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-RUN" [a0, a1] = some («FN2-RUN-INSTALLED-RUN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-STATE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-STATE" [a0, a1] = some («FN2-RUN-INSTALLED-STATE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-ENUMERATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
+    fns "FN2-RANGE-ENUMERATE" [a0, a1, a2, a3, a4] = some («FN2-RANGE-ENUMERATE» a0 a1 a2 a3 a4) := rfl
+@[fn2_dispatch] theorem «FN2-RD-RANGE-ARGS-OK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
+    fns "FN2-RD-RANGE-ARGS-OK" [a0, a1, a2, a3, a4, a5] = some («FN2-RD-RANGE-ARGS-OK» a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OGEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-OGEN$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-OGEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-COUNTER$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-COUNTER$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-TOP$A-LENGTH" [a0] = some («FN2-RUN-INSTALLED-TOP$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-WFP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-WFP" [a0] = some («FN2-RUN-INSTALLED-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-OGEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-OGEN$A-LENGTH" [a0] = some («FN2-OVERLAYS-OGEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-IBASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-IBASE$A-LENGTH" [a0] = some («FN2-OVERLAYS-IBASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-GEN$A-LENGTH" [a0] = some («FN2-OVERLAYS-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-WFP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-WFP" [a0] = some («FN2-OVERLAYS-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-RUN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-RUN$A-LENGTH" [a0] = some («FN2-RANGE-SOURCES-RUN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-POS$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-POS$A-LENGTH" [a0] = some («FN2-RANGE-SOURCES-POS$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-WFP».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-WFP" [a0] = some («FN2-RANGE-SOURCES-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-DELIVERED$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-DELIVERED$A-LENGTH" [a0] = some («FN2-RANGES-DELIVERED$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-OUT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-OUT$A-LENGTH" [a0] = some («FN2-RANGES-OUT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-RBASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-RBASE$A-LENGTH" [a0] = some («FN2-RANGES-RBASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-SBASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-SBASE$A-LENGTH" [a0] = some («FN2-RANGES-SBASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-PHASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RANGES-PHASE$A-LENGTH" [a0] = some («FN2-RANGES-PHASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-HAVE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-HAVE$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-HAVE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
+    fns "FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-RX-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-RX-SLOT$AI" [a0, a1] = some («FN2-CURSOR-RX-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-A0$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-A0$AI" [a0, a1] = some («FN2-CURSOR-A0$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-QSET$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-READS-QSET$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QSET$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-QS$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-READS-QS$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QS$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-QSET$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-READS-QSET$AI" [a0, a1] = some («FN2-READS-QSET$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READ-KEY-OCTETS-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    fns "FN2-READ-KEY-OCTETS-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-READ-KEY-OCTETS-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SID$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-READS-SID$AI" [a0, a1] = some («FN2-READS-SID$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LPHASE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SUCC-TXNS-LPHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LPHASE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LROW$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-SUCC-TXNS-LROW$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LROW$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-ROWS" [a0] = some («FN2-SUCC-TXNS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-PHASE$AI" [a0, a1] = some («FN2-RUN-CURSORS-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEVEL$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-LEVEL$AI" [a0, a1] = some («FN2-RUN-CURSORS-LEVEL$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OKIND$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-OKIND$AI" [a0, a1] = some («FN2-RUN-CURSORS-OKIND$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OGEN$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-OGEN$AI" [a0, a1] = some («FN2-RUN-CURSORS-OGEN$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-PATHS-SLOT" [a0, a1] = some («FN2-RUN-PATHS-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-UNIT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-PATHS-UNIT" [a0, a1] = some («FN2-RUN-PATHS-UNIT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-IDX».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-PATHS-IDX" [a0, a1] = some («FN2-RUN-PATHS-IDX» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-GEN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CACHE-GEN" [a0, a1] = some («FN2-RUN-CACHE-GEN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-COUNTER».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CACHE-COUNTER" [a0, a1] = some («FN2-RUN-CACHE-COUNTER» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-STATE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CACHE-STATE" [a0, a1] = some («FN2-RUN-CACHE-STATE» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-POS$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-DECODE-POS$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-POS$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-HIGH$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-DECODE-HIGH$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-HIGH$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-REF$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-DECODE-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-REF$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-NEXT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-FIELDS-DECODE-NEXT$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-NEXT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-START».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FORMAT-PAGE-HEADER-START" [a0, a1] = some («FN2-FORMAT-PAGE-HEADER-START» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SLOT-FILL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-POOL-SLOT-FILL" [a0, a1] = some («FN2-POOL-SLOT-FILL» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PAYLOAD$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-DECODE-PAYLOAD$AI" [a0, a1] = some («FN2-FIELDS-DECODE-PAYLOAD$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-SIZE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-DECODE-SIZE$AI" [a0, a1] = some («FN2-FIELDS-DECODE-SIZE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-ACC$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-DECODE-ACC$AI" [a0, a1] = some («FN2-FIELDS-DECODE-ACC$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-DECODE-PHASE$AI" [a0, a1] = some («FN2-FIELDS-DECODE-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «ASH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "ASH" [a0, a1] = some («ASH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-REF-SLOT$AI" [a0, a1] = some («FN2-FIELDS-REF-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-OFF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-REF-OFF$AI" [a0, a1] = some («FN2-FIELDS-REF-OFF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-STATUS$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FIELDS-STATUS$AI" [a0, a1] = some («FN2-FIELDS-STATUS$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-SET-STATUS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-FIELDS-SET-STATUS" [a0, a1, a2] = some («FN2-FIELDS-SET-STATUS» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-DECODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-FORMAT-PAGE-HEADER-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-FORMAT-PAGE-HEADER-DECODE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-BYTE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-RUN-PAGE-HEADER-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RUN-PAGE-HEADER-BYTE» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-DECODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-RUN-PAGE-HEADER-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RUN-PAGE-HEADER-DECODE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-ROWS" [a0] = some («FN2-RUN-CURSORS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-RUN-PATHS-ROWS" [a0] = some («FN2-RUN-PATHS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-LEVEL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-LEVEL" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-LEVEL» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-GEN" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-HI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-HI" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-HI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-OFF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-OFF" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-OFF» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-COUNTER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-COUNTER" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-COUNTER» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SCHEMA».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-SCHEMA" [a0, a1] = some («FN2-RUN-CURSORS-SCHEMA» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-SLOT$AI" [a0, a1] = some («FN2-RUN-CURSORS-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-IDX$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-IDX$AI" [a0, a1] = some («FN2-RUN-CURSORS-IDX$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-UNIT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-UNIT$AI" [a0, a1] = some («FN2-RUN-CURSORS-UNIT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-HEADER-VALUE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-HEADER-VALUE" [a0, a1, a2] = some («FN2-RUN-HEADER-VALUE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-RESTART-EMPTY-P».fns_eq (a0 : Val) :
+    fns "FN2-RUN-RESTART-EMPTY-P" [a0] = some («FN2-RUN-RESTART-EMPTY-P» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-RESTART-DECODE-STEP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-RUN-RESTART-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-RESTART-DECODE-STEP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-MANIFEST-ENTRY-FIELD-INDEX" [a0] = some («FN2-MANIFEST-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-MANIFEST-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-MANIFEST-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-MANIFEST-INDEX-FIELD-INDEX" [a0] = some («FN2-MANIFEST-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-MANIFEST-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-MANIFEST-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-ENTRY-FIELD-INDEX" [a0] = some («FN2-PRINCIPAL-CHARGES-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-PRINCIPAL-CHARGES-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-FIELD-INDEX" [a0] = some («FN2-PRINCIPAL-CHARGES-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-PRINCIPAL-CHARGES-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-FIELD-INDEX" [a0] = some («FN2-CONSUMER-CURSOR-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-CURSOR-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-FIELD-INDEX" [a0] = some («FN2-CONSUMER-CURSOR-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-CURSOR-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-FIELD-INDEX" [a0] = some («FN2-GROUP-COUNTS-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-GROUP-COUNTS-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-FIELD-INDEX" [a0] = some («FN2-GROUP-COUNTS-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-GROUP-COUNTS-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-CONSUMER-NAMES-ENTRY-FIELD-INDEX" [a0] = some («FN2-CONSUMER-NAMES-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-CONSUMER-NAMES-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-NAMES-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-FIELD-INDEX" [a0] = some («FN2-CONSUMER-NAMES-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-NAMES-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-OUTCOME-ENTRY-FIELD-INDEX" [a0] = some («FN2-OUTCOME-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-OUTCOME-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OUTCOME-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-OUTCOME-INDEX-FIELD-INDEX" [a0] = some («FN2-OUTCOME-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-OUTCOME-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OUTCOME-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-GROUPS-ENTRY-FIELD-INDEX" [a0] = some («FN2-GROUPS-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-GROUPS-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-GROUPS-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-GROUPS-INDEX-FIELD-INDEX" [a0] = some («FN2-GROUPS-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-GROUPS-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-GROUPS-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-ADDR-ENTRY-FIELD-INDEX" [a0] = some («FN2-ADDR-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-ADDR-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ADDR-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-ADDR-INDEX-FIELD-INDEX" [a0] = some («FN2-ADDR-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-ADDR-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ADDR-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-FIELD-INDEX" [a0] = some («FN2-OVERVIEW-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OVERVIEW-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-OVERVIEW-INDEX-FIELD-INDEX" [a0] = some («FN2-OVERVIEW-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-OVERVIEW-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OVERVIEW-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-ARTICLE-ENTRY-FIELD-INDEX" [a0] = some («FN2-ARTICLE-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-ARTICLE-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ARTICLE-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-ARTICLE-INDEX-FIELD-INDEX" [a0] = some («FN2-ARTICLE-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-ARTICLE-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ARTICLE-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-FIELD-INDEX" [a0] = some («FN2-IDENTITY-ARTICLE-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-ARTICLE-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-FIELD-INDEX" [a0] = some («FN2-IDENTITY-ARTICLE-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-ARTICLE-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-FIELD-INDEX" [a0] = some («FN2-IDENTITY-CANDIDATES-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-FIELD-INDEX" [a0] = some («FN2-IDENTITY-CANDIDATES-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-CANDIDATES-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-FIELD-INDEX" [a0] = some («FN2-IDENTITY-SUMMARY-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-SUMMARY-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-FIELD-INDEX" [a0] = some («FN2-IDENTITY-SUMMARY-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-SUMMARY-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-FIELD-INDEX" [a0] = some («FN2-IDENTITY-HISTORY-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-HISTORY-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-FIELD-INDEX" [a0] = some («FN2-IDENTITY-HISTORY-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-HISTORY-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-FIELD-INDEX" [a0] = some («FN2-IDENTITY-EVIDENCE-ENTRY-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-FIELD-INDEX».fns_eq (a0 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-FIELD-INDEX" [a0] = some («FN2-IDENTITY-EVIDENCE-INDEX-FIELD-INDEX» a0) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-EVIDENCE-INDEX-SCAN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-SKIP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    fns "FN2-RUN-SKIP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RUN-SKIP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LO$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-CURSORS-LO$AI" [a0, a1] = some («FN2-RUN-CURSORS-LO$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-PATHS-IDX$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-RUN-PATHS-IDX$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-PATHS-IDX$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PHASE-CHILD».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-RUN-PHASE-CHILD" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-PHASE-CHILD» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-CURSOR-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-RANGE-IN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
+    fns "FN2-POOL-RANGE-IN" [a0, a1, a2, a3] = some («FN2-POOL-RANGE-IN» a0 a1 a2 a3) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-COMPARE-1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-NAMES-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-COMPARE-1» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUPS-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OVERVIEW-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE-4».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE-4» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-7».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-COMPARE-7" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-7» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-3».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-COMPARE-3" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-3» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-8».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-COMPARE-8" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-8» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-4».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-4» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PHASE-SEEK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-RUN-PHASE-SEEK" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-PHASE-SEEK» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-SET-GEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-PATHS-SET-GEN" [a0, a1, a2] = some («FN2-RUN-PATHS-SET-GEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-SET-COUNTER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-PATHS-SET-COUNTER" [a0, a1, a2] = some («FN2-RUN-PATHS-SET-COUNTER» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-STEP-HEADER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    fns "FN2-RUN-STEP-HEADER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-RUN-STEP-HEADER» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LBOUND$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SUCC-TXNS-LBOUND$AI" [a0, a1] = some («FN2-SUCC-TXNS-LBOUND$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-COUNTER" [a0, a1] = some («FN2-RUN-INSTALLED-COUNTER» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-GEN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-GEN" [a0, a1] = some («FN2-RUN-INSTALLED-GEN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-INSTALLED-TOP" [a0, a1] = some («FN2-RUN-INSTALLED-TOP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-TOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-TOP" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-TOP» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-OKIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-OKIND" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-OKIND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-OGEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-CURSORS-SET-OGEN" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-OGEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SUCC-TXNS-LVER" [a0, a1] = some («FN2-SUCC-TXNS-LVER» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-IBASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAYS-IBASE$AI" [a0, a1] = some («FN2-OVERLAYS-IBASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAY-INDEX-OFF$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAY-INDEX-OFF$AI" [a0, a1] = some («FN2-OVERLAY-INDEX-OFF$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-SLOT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAYS-SLOT$AI" [a0, a1] = some («FN2-OVERLAYS-SLOT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-ICAP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERLAYS-ICAP" [a0, a1] = some («FN2-OVERLAYS-ICAP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OV-ENTRY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    fns "FN2-OV-ENTRY" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-OV-ENTRY» a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-XL-OVERLAY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    fns "FN2-XL-OVERLAY" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-XL-OVERLAY» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-EROW».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-EROW" [a0, a1, a2] = some («FN2-READS-SET-EROW» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-ES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-ES" [a0, a1, a2] = some («FN2-READS-SET-ES» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-EVER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-EVER" [a0, a1, a2] = some («FN2-READS-SET-EVER» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-POOL-HAND-TO-SLOT$A-LENGTH" [a0] = some («FN2-POOL-HAND-TO-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-LEASE-LEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-POOL-LEASE-LEN$A-LENGTH" [a0] = some («FN2-POOL-LEASE-LEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-OWNER-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-POOL-OWNER-GEN$A-LENGTH" [a0] = some («FN2-POOL-OWNER-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-CAP$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-POOL-CAP$A-LENGTH" [a0] = some («FN2-POOL-CAP$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CACHE-GEN$A-LENGTH" [a0] = some («FN2-RUN-CACHE-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-STATE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CACHE-STATE$A-LENGTH" [a0] = some («FN2-RUN-CACHE-STATE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-COUNTER$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-PATHS-COUNTER$A-LENGTH" [a0] = some («FN2-RUN-PATHS-COUNTER$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-WFP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-PATHS-WFP" [a0] = some («FN2-RUN-PATHS-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-RB$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-RB$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-IDX$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-IDX$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-IDX$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-SLOT$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SCHEMA$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-SCHEMA$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-SCHEMA$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LROW$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-LROW$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-LROW$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RSTATE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-RSTATE$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-RSTATE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-PHASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-PHASE$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-PHASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-REPLY$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-REPLY$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-REPLY$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-LAYOUT-FIELDS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RUN-LAYOUT-FIELDS" [a0, a1] = some («FN2-RUN-LAYOUT-FIELDS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READS-ENTRY».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-READS-ENTRY" [a0, a1] = some («FN2-READS-ENTRY» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-PUBLISHED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ID-ENGINE-PUBLISHED$AI" [a0, a1] = some («FN2-ID-ENGINE-PUBLISHED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-SEQ$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ID-ENGINE-SEQ$A-LENGTH" [a0] = some («FN2-ID-ENGINE-SEQ$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-SCRATCH$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ID-ENGINE-SCRATCH$A-LENGTH" [a0] = some («FN2-ID-ENGINE-SCRATCH$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-SET-PHASE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-SEEKS-SET-PHASE" [a0, a1, a2] = some («FN2-SEEKS-SET-PHASE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-WGEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-WGEN" [a0, a1, a2] = some («FN2-READS-SET-WGEN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-FOUND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-FOUND" [a0, a1, a2] = some («FN2-READS-SET-FOUND» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-EVIDENCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-READS-SET-EVIDENCE" [a0, a1, a2] = some («FN2-READS-SET-EVIDENCE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-AFTER$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SEEKS-AFTER$A-LENGTH" [a0] = some («FN2-SEEKS-AFTER$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-G$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SEEKS-G$A-LENGTH" [a0] = some («FN2-SEEKS-G$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-READ-RELEASE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
+    fns "FN2-READ-RELEASE-CHILDREN" [a0, a1, a2, a3, a4, a5] = some («FN2-READ-RELEASE-CHILDREN» a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-SPIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CURSOR-SET-SPIN" [a0, a1, a2] = some («FN2-CURSOR-SET-SPIN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    fns "FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-LOW».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CURSOR-SET-LOW" [a0, a1, a2] = some («FN2-CURSOR-SET-LOW» a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
     fns "FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-LOW».fns_eq (a0 : Val) (a1 : Val) :
@@ -959,12 +1055,16 @@ open Fn2.ACL2
     fns "FN2-RD-IDENTITY-BEGIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-RD-IDENTITY-BEGIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
 @[fn2_dispatch] theorem «FN2-READS-SELECTED».fns_eq (a0 : Val) (a1 : Val) :
     fns "FN2-READS-SELECTED" [a0, a1] = some («FN2-READS-SELECTED» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
-    fns "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-END-SINGLE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
-    fns "FN2-CURSOR-SUB-END-SINGLE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-CURSOR-SUB-END-SINGLE-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POOL-FILL».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-POOL-FILL" [a0, a1] = some («FN2-CURSOR-POOL-FILL» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-FOUND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-FOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-FOUND$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-HDR-P».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-HDR-P" [a0] = some («FN2-CURSOR-HDR-P» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-FOUND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-FOUND" [a0, a1] = some («FN2-CURSOR-FOUND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-END-EMPTY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    fns "FN2-CURSOR-SUB-END-EMPTY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-CURSOR-SUB-END-EMPTY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-END-LIST-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    fns "FN2-CURSOR-SUB-END-LIST-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-CURSOR-SUB-END-LIST-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
 @[fn2_dispatch] theorem «FN2-RD-KEY-LEAST».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
     fns "FN2-RD-KEY-LEAST" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RD-KEY-LEAST» a0 a1 a2 a3 a4 a5 a6) := rfl
 @[fn2_dispatch] theorem «FN2-RANGES-SCOUNT$AI».fns_eq (a0 : Val) (a1 : Val) :
@@ -1005,82 +1105,92 @@ open Fn2.ACL2
     fns "FN2-READ-OCTETS-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-READ-OCTETS-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SUB-LG-FOUND-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
     fns "FN2-CURSOR-SUB-LG-FOUND-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-CURSOR-SUB-LG-FOUND-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-LGROUP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-LGROUP" [a0, a1, a2] = some («FN2-CURSOR-SET-LGROUP» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LGROUP$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-LGROUP$AI" [a0, a1] = some («FN2-CURSOR-LGROUP$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POSTING».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-POSTING" [a0, a1] = some («FN2-CURSOR-POSTING» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-ROFF$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-ROFF$AI" [a0, a1] = some («FN2-CURSOR-ROFF$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-STEP».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-STEP" [a0, a1] = some («FN2-CURSOR-STEP» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-HBASE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-HBASE$AI" [a0, a1] = some («FN2-RANGES-HBASE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-PLIMIT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-PLIMIT$AI" [a0, a1] = some («FN2-RANGES-PLIMIT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-COPY-ROWS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
-    fns "FN2-RANGE-COPY-ROWS" [a0, a1, a2, a3] = some («FN2-RANGE-COPY-ROWS» a0 a1 a2 a3) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-DELIVER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    fns "FN2-RANGE-DELIVER" [a0, a1, a2, a3, a4] = some («FN2-RANGE-DELIVER» a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-OK$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-OK$AI" [a0, a1] = some («FN2-RANGES-OK$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RANGES-OG$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-RANGES-OG$AI" [a0, a1] = some («FN2-RANGES-OG$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SINGLE-P».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-SINGLE-P" [a0] = some («FN2-CURSOR-SINGLE-P» a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-FOUND$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-CURSOR-FOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-FOUND$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LPOS».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-LPOS" [a0, a1] = some («FN2-CURSOR-LPOS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-WILDMAT-CLASS-END».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-WILDMAT-CLASS-END" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-WILDMAT-CLASS-END» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-WILDMAT-PAT-LOOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) :
+    fns "FN2-WILDMAT-PAT-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14] = some («FN2-WILDMAT-PAT-LOOP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POOL-LIST-FILTER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    fns "FN2-CURSOR-POOL-LIST-FILTER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-CURSOR-POOL-LIST-FILTER» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-LIST-KEY-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    fns "FN2-CURSOR-SUB-LIST-KEY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-SUB-LIST-KEY-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-LIST-COUNTS-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
+    fns "FN2-CURSOR-SUB-LIST-COUNTS-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-LIST-COUNTS-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ROFF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-ROFF" [a0, a1] = some («FN2-CURSOR-ROFF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POOL-NEWNEWS-FILTER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    fns "FN2-CURSOR-POOL-NEWNEWS-FILTER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-POOL-NEWNEWS-FILTER» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-RD-REFRESH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
+    fns "FN2-RD-REFRESH" [a0, a1, a2, a3, a4] = some («FN2-RD-REFRESH» a0 a1 a2 a3 a4) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-PFIELD».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RANGES-PFIELD" [a0, a1] = some («FN2-RANGES-PFIELD» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-COPY-ROW».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-RUN-COPY-ROW" [a0, a1, a2] = some («FN2-RUN-COPY-ROW» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-DELIVERED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RANGES-DELIVERED" [a0, a1] = some («FN2-RANGES-DELIVERED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-OUT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RANGES-OUT" [a0, a1] = some («FN2-RANGES-OUT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RANGES-OS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RANGES-OS" [a0, a1] = some («FN2-RANGES-OS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READ-NEXT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    fns "FN2-READ-NEXT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-READ-NEXT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-MID-SPAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
     fns "FN2-CURSOR-MID-SPAN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-CURSOR-MID-SPAN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-SINGLE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
-    fns "FN2-CURSOR-SUB-RENDER-SINGLE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-SUB-RENDER-SINGLE-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-RUN-FREE-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    fns "FN2-CURSOR-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CURSOR-RUN-FREE-CHILDREN» a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LINE-E».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-LINE-E" [a0, a1] = some («FN2-CURSOR-LINE-E» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-CHECK-LINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-GRAM-CHECK-LINE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-CHECK-LINE» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-MID-SEEN-P».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-CURSOR-MID-SEEN-P" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-CURSOR-MID-SEEN-P» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SEEN$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-SEEN$AI" [a0, a1] = some («FN2-CURSOR-SEEN$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-WALK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
+    fns "FN2-CURSOR-SUB-RENDER-WALK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-SUB-RENDER-WALK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CHAIN-SUB-RENDER-SINGLE-0-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) :
+    fns "FN2-CURSOR-CHAIN-SUB-RENDER-SINGLE-0-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18] = some («FN2-CURSOR-CHAIN-SUB-RENDER-SINGLE-0-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LPOS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-LPOS" [a0, a1] = some («FN2-CURSOR-LPOS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-UPCASE».fns_eq (a0 : Val) :
+    fns "FN2-GRAM-UPCASE" [a0] = some («FN2-GRAM-UPCASE» a0) := rfl
 @[fn2_dispatch] theorem «FN2-GRAM-MATCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
     fns "FN2-GRAM-MATCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-MATCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-ARG-TIME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-GRAM-ARG-TIME" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-ARG-TIME» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-WILDMAT-LOOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    fns "FN2-GRAM-WILDMAT-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GRAM-WILDMAT-LOOP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-ARG-DIGITS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-GRAM-ARG-DIGITS" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-ARG-DIGITS» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-TOKEN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-GRAM-TOKEN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-TOKEN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-CHECK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-CHECK" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-CHECK» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-HDR».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-HDR" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-HDR» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-BODY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-BODY" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-BODY» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-NEWGROUPS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-NEWGROUPS" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-NEWGROUPS» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-LISTGROUP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-LISTGROUP" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-LISTGROUP» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-STARTTLS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-STARTTLS" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-STARTTLS» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS-MODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-NNTP-ARGS-MODE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-MODE» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-NNTP-ARGS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-NNTP-ARGS" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-NNTP-ARGS» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-STRUCTURAL-P».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    fns "FN2-GRAM-STRUCTURAL-P" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-STRUCTURAL-P» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-PARSE-LINE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    fns "FN2-CURSOR-PARSE-LINE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CURSOR-PARSE-LINE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-K0».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-K0" [a0, a1, a2] = some («FN2-CURSOR-SET-K0» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-B0».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-B0" [a0, a1, a2] = some («FN2-CURSOR-SET-B0» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-A1».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "FN2-CURSOR-SET-A1" [a0, a1, a2] = some («FN2-CURSOR-SET-A1» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CURRENT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-CURRENT$AI" [a0, a1] = some («FN2-CURSOR-CURRENT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-HDR-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) :
+    fns "FN2-CURSOR-SUB-RENDER-HDR-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16] = some («FN2-CURSOR-SUB-RENDER-HDR-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LINE-E$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-LINE-E$AI" [a0, a1] = some («FN2-CURSOR-LINE-E$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-WSPP».fns_eq (a0 : Val) :
+    fns "FN2-GRAM-WSPP" [a0] = some («FN2-GRAM-WSPP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-COUNT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GRAM-COUNT" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-COUNT» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-ARG-LABEL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-GRAM-ARG-LABEL" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-ARG-LABEL» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-ARG-MSGID».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-GRAM-ARG-MSGID" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-ARG-MSGID» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-ARG».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GRAM-ARG" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-ARG» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-TAKETHIS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-TAKETHIS" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-TAKETHIS» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-XHDR».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-XHDR" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-XHDR» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-STAT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-STAT" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-STAT» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-NEWNEWS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-NEWNEWS" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-NEWNEWS» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-LIST».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-LIST" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-LIST» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-XREDEEM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-XREDEEM" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-XREDEEM» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-DATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-DATE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-DATE» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-ARGS-CAPABILITIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-NNTP-ARGS-CAPABILITIES" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-ARGS-CAPABILITIES» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-GRAM-CLEAN-SCAN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    fns "FN2-GRAM-CLEAN-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-CLEAN-SCAN» a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ARG-KIND».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-ARG-KIND" [a0] = some («FN2-CURSOR-ARG-KIND» a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-K0$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-K0$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-K0$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-B0$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-B0$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-B0$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-A1$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-A1$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-A1$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-RUN-SELECT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CURSOR-RUN-SELECT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CURSOR-RUN-SELECT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-RUN-SEEK-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) (a23 : Val) :
     fns "FN2-CURSOR-RUN-SEEK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23] = some («FN2-CURSOR-RUN-SEEK-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-TURN$AI».fns_eq (a0 : Val) (a1 : Val) :
@@ -1109,166 +1219,110 @@ open Fn2.ACL2
     fns "UPDATE-FN2-CURSOR-LINE-S$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-LINE-S$AI» a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-CURRENT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     fns "UPDATE-FN2-CURSOR-CURRENT$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-CURRENT$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-CANCEL$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    fns "UPDATE-FN2-CURSOR-CANCEL$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-CANCEL$AI» a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-STOPPED$AI" [a0, a1] = some («FN2-CURSOR-STOPPED$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-NEXT-FREE$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-CURSOR-NEXT-FREE$AI" [a0, a1] = some («FN2-CURSOR-NEXT-FREE$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-READY-NEXT$AI».fns_eq (a0 : Val) (a1 : Val) :
-    fns "FN2-MACHINES-READY-NEXT$AI" [a0, a1] = some («FN2-MACHINES-READY-NEXT$AI» a0 a1) := rfl
-@[fn2_dispatch] theorem «ZIP».fns_eq (a0 : Val) :
-    fns "ZIP" [a0] = some («ZIP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-WAKE-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-WAKE-DEADLINE$A-LENGTH" [a0] = some («FN2-OPS-WAKE-DEADLINE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-COUNT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C1-COUNT$A-LENGTH" [a0] = some («FN2-OPS-C1-COUNT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-HARVESTED$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C1-HARVESTED$A-LENGTH" [a0] = some («FN2-OPS-C1-HARVESTED$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PEER-W1$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-PEER-W1$A-LENGTH" [a0] = some («FN2-OPS-PEER-W1$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-AUX1$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C0-AUX1$A-LENGTH" [a0] = some («FN2-OPS-C0-AUX1$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-OUTCOME$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C0-OUTCOME$A-LENGTH" [a0] = some («FN2-OPS-C0-OUTCOME$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-CANCEL-REQUESTED$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-CANCEL-REQUESTED$A-LENGTH" [a0] = some («FN2-OPS-CANCEL-REQUESTED$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-FUA$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-FUA$A-LENGTH" [a0] = some («FN2-OPS-FUA$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-RANGE-LEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-RANGE-LEN$A-LENGTH" [a0] = some («FN2-OPS-RANGE-LEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PRINCIPAL$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-PRINCIPAL$A-LENGTH" [a0] = some («FN2-OPS-PRINCIPAL$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-KIND$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-OPS-KIND$A-LENGTH" [a0] = some («FN2-OPS-KIND$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-TURN-STEPSP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROL-TURN-STEPSP" [a0] = some («FN2-CONTROL-TURN-STEPSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-ARMED-DEADLINEP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROL-ARMED-DEADLINEP" [a0] = some («FN2-CONTROL-ARMED-DEADLINEP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-STOP-KINDP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROL-STOP-KINDP" [a0] = some («FN2-CONTROL-STOP-KINDP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-KP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROL-KP" [a0] = some («FN2-CONTROL-KP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROLP».fns_eq (a0 : Val) :
-    fns "FN2-CONTROLP" [a0] = some («FN2-CONTROLP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-FREE-HEADP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-FREE-HEADP" [a0] = some («FN2-OPS-FREE-HEADP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-SEEN-PEER-W0P».fns_eq (a0 : Val) :
-    fns "FN2-OPS-SEEN-PEER-W0P" [a0] = some («FN2-OPS-SEEN-PEER-W0P» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-SIGNALSP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-SIGNALSP" [a0] = some («FN2-OPS-SIGNALSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-CLOCK-REALP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-CLOCK-REALP" [a0] = some («FN2-OPS-CLOCK-REALP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-POST-COUNTP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-POST-COUNTP" [a0] = some («FN2-OPS-POST-COUNTP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-QUEUEDP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-QUEUEDP" [a0] = some («FN2-OPS-QUEUEDP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-OUT-GENP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-OUT-GENP" [a0] = some («FN2-OPS-OUT-GENP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-WAKE-DEADLINE$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-WAKE-DEADLINE$AP" [a0] = some («FN2-OPS-WAKE-DEADLINE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-COUNT$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C1-COUNT$AP" [a0] = some («FN2-OPS-C1-COUNT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-HARVESTED$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C1-HARVESTED$AP" [a0] = some («FN2-OPS-C1-HARVESTED$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PEER-W1$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-PEER-W1$AP" [a0] = some («FN2-OPS-PEER-W1$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-AUX1$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C0-AUX1$AP" [a0] = some («FN2-OPS-C0-AUX1$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-OUTCOME$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-C0-OUTCOME$AP" [a0] = some («FN2-OPS-C0-OUTCOME$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-CANCEL-REQUESTED$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-CANCEL-REQUESTED$AP" [a0] = some («FN2-OPS-CANCEL-REQUESTED$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-FUA$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-FUA$AP" [a0] = some («FN2-OPS-FUA$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-RANGE-LEN$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-RANGE-LEN$AP" [a0] = some («FN2-OPS-RANGE-LEN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PRINCIPAL$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-PRINCIPAL$AP" [a0] = some («FN2-OPS-PRINCIPAL$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-KIND$AP».fns_eq (a0 : Val) :
-    fns "FN2-OPS-KIND$AP" [a0] = some («FN2-OPS-KIND$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RETIRED-COUNTP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-RETIRED-COUNTP" [a0] = some («FN2-POOL-RETIRED-COUNTP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-COUNTSP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-CLASS-COUNTSP" [a0] = some («FN2-POOL-CLASS-COUNTSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS$AP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-CLASS$AP" [a0] = some («FN2-POOL-CLASS$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-KIND$AP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-HAND-TO-KIND$AP" [a0] = some («FN2-POOL-HAND-TO-KIND$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-LEASE-OFF$AP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-LEASE-OFF$AP" [a0] = some («FN2-POOL-LEASE-OFF$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-OWNER-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-OWNER-SLOT$AP" [a0] = some («FN2-POOL-OWNER-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-BASE$AP».fns_eq (a0 : Val) :
-    fns "FN2-POOL-BASE$AP" [a0] = some («FN2-POOL-BASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TZ-ROWS».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-TZ-ROWS" [a0] = some («FN2-ARMS-TZ-ROWS» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TZP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-TZP" [a0] = some («FN2-ARMS-TZP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-SLOT$A-LENGTH" [a0] = some («FN2-MACHINES-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-ADMISSION-CREDITSP».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-ADMISSION-CREDITSP" [a0] = some («FN2-MACHINES-ADMISSION-CREDITSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-WAIT-TAILP».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-WAIT-TAILP" [a0] = some («FN2-MACHINES-WAIT-TAILP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-KIND-BASESP».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-KIND-BASESP" [a0] = some («FN2-MACHINES-KIND-BASESP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-ACCEPT-COUNTP».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-ACCEPT-COUNTP" [a0] = some («FN2-MACHINES-ACCEPT-COUNTP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-READY-PREV$AP».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-READY-PREV$AP" [a0] = some («FN2-MACHINES-READY-PREV$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-NEXT-FREE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-NEXT-FREE$A-LENGTH" [a0] = some («FN2-CURSOR-NEXT-FREE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POSTING$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-POSTING$A-LENGTH" [a0] = some («FN2-CURSOR-POSTING$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-HAVE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-HAVE$A-LENGTH" [a0] = some («FN2-CURSOR-HAVE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-REPLY$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-REPLY$A-LENGTH" [a0] = some («FN2-CURSOR-REPLY$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SEL$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-SEL$A-LENGTH" [a0] = some («FN2-CURSOR-SEL$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-FOUND$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-FOUND$A-LENGTH" [a0] = some («FN2-CURSOR-FOUND$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-STEP$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-STEP$A-LENGTH" [a0] = some («FN2-CURSOR-STEP$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-B0$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-B0$A-LENGTH" [a0] = some («FN2-CURSOR-B0$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-PIN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-PIN$A-LENGTH" [a0] = some («FN2-CURSOR-PIN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-TX-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-TX-SLOT$A-LENGTH" [a0] = some («FN2-CURSOR-TX-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-RX-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-RX-SLOT$A-LENGTH" [a0] = some («FN2-CURSOR-RX-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CONN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-CONN$A-LENGTH" [a0] = some («FN2-CURSOR-CONN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-GENERATION$A-LENGTH" [a0] = some («FN2-CURSOR-GENERATION$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-NEXT-FREE$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-NEXT-FREE$AP" [a0] = some («FN2-CURSOR-NEXT-FREE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POSTING$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-POSTING$AP" [a0] = some («FN2-CURSOR-POSTING$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-HAVE$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-HAVE$AP" [a0] = some («FN2-CURSOR-HAVE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-REPLY$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-REPLY$AP" [a0] = some («FN2-CURSOR-REPLY$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SEL$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-SEL$AP" [a0] = some («FN2-CURSOR-SEL$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-FOUND$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-FOUND$AP" [a0] = some («FN2-CURSOR-FOUND$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-STEP$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-STEP$AP" [a0] = some («FN2-CURSOR-STEP$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-B0$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-B0$AP" [a0] = some («FN2-CURSOR-B0$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-PIN$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-PIN$AP" [a0] = some («FN2-CURSOR-PIN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-TX-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-TX-SLOT$AP" [a0] = some («FN2-CURSOR-TX-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-RX-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-RX-SLOT$AP" [a0] = some («FN2-CURSOR-RX-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CONN$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-CONN$AP" [a0] = some («FN2-CURSOR-CONN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-GENERATION$AP».fns_eq (a0 : Val) :
-    fns "FN2-CURSOR-GENERATION$AP" [a0] = some («FN2-CURSOR-GENERATION$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-UPDATE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CURSOR-UPDATE$AI" [a0, a1] = some («FN2-CURSOR-UPDATE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-POSTING$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-POSTING$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-POSTING$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-STOPPED$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CURSOR-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-STOPPED$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-READY-PREV$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MACHINES-READY-PREV$AI" [a0, a1] = some («FN2-MACHINES-READY-PREV$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-T-TOUCH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-T-TOUCH" [a0] = some («FN2-ARMS-T-TOUCH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-STATE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-STATE" [a0, a1, a2] = some («FN2-CLAIMS-SET-STATE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-SLOT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-SLOT" [a0, a1, a2] = some («FN2-CLAIMS-SET-SLOT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-OFF».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-OFF" [a0, a1, a2] = some («FN2-CLAIMS-SET-OFF» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-OK».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-OK" [a0, a1, a2] = some («FN2-CLAIMS-SET-OK» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-OG».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-OG" [a0, a1, a2] = some («FN2-CLAIMS-SET-OG» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-PREV».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-PREV" [a0, a1, a2] = some («FN2-CLAIMS-SET-PREV» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-WAIT-TAIL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIMS-SET-WAIT-TAIL" [a0, a1, a2] = some («FN2-CLAIMS-SET-WAIT-TAIL» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-HEAD».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-HEAD" [a0, a1] = some («FN2-CLAIMS-HEAD» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-STAMP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-STAMP" [a0, a1] = some («FN2-CLAIMS-STAMP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-STATE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-STATE" [a0, a1] = some («FN2-CLAIMS-STATE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-HASH$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-HASH$AI" [a0, a1] = some («FN2-CLAIMS-HASH$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-CURSOR$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-CURSOR$AI" [a0, a1] = some («FN2-CLAIMS-CURSOR$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-STAMP$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-CLAIMS-STAMP$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-STAMP$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-NEXT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-NEXT" [a0, a1] = some («FN2-CLAIMS-NEXT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIM-ENQUEUE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CLAIM-ENQUEUE" [a0, a1, a2] = some («FN2-CLAIM-ENQUEUE» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OS».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-OS" [a0, a1] = some («FN2-CLAIMS-OS» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OFF».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-OFF" [a0, a1] = some («FN2-CLAIMS-OFF» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CLAIMS-SLOT" [a0, a1] = some («FN2-CLAIMS-SLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIM-WALK-LOOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
+    fns "FN2-CLAIM-WALK-LOOP" [a0, a1, a2, a3] = some («FN2-CLAIM-WALK-LOOP» a0 a1 a2 a3) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-BUCKET».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CNS-BUCKET" [a0, a1] = some («FN2-CNS-BUCKET» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-FREE-HEAD».fns_eq (a0 : Val) :
+    fns "FN2-CNS-FREE-HEAD" [a0] = some («FN2-CNS-FREE-HEAD» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-ENEXT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CNS-EDGES-ENEXT" [a0, a1] = some («FN2-CNS-EDGES-ENEXT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-USED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-USED" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-USED» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-WAITER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-WAITER" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-WAITER» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-FROM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-FROM" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-FROM» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BHEAD».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-BHEAD" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BHEAD» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BTAIL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-BTAIL" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BTAIL» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-USED-COUNT».fns_eq (a0 : Val) :
+    fns "FN2-CNS-USED-COUNT" [a0] = some («FN2-CNS-USED-COUNT» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-STREAM$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CNS-EDGES-STREAM$AI" [a0, a1] = some («FN2-CNS-EDGES-STREAM$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BPNEXT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CNS-EDGES-BPNEXT$AI" [a0, a1] = some («FN2-CNS-EDGES-BPNEXT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CNS-PENDING-HEAD».fns_eq (a0 : Val) (a1 : Val) :
+    fns "UPDATE-FN2-CNS-PENDING-HEAD" [a0, a1] = some («UPDATE-FN2-CNS-PENDING-HEAD» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BPNEXT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-BPNEXT" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BPNEXT» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BCUR».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-CNS-EDGES-SET-BCUR" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BCUR» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-USED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CNS-EDGES-USED$AI" [a0, a1] = some («FN2-CNS-EDGES-USED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-STATE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-COMMIT-SETTLED-STATE" [a0, a1] = some («FN2-COMMIT-SETTLED-STATE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-OSLOT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-COMMIT-SETTLED-OSLOT" [a0, a1] = some («FN2-COMMIT-SETTLED-OSLOT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-ROWS" [a0] = some («FN2-COMMIT-SETTLED-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-EVENT$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-COMMIT-SETTLED-EVENT$AI" [a0, a1] = some («FN2-COMMIT-SETTLED-EVENT$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-COMMIT-SETTLED-STATE$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-COMMIT-SETTLED-STATE$AI" [a0, a1, a2] = some («UPDATE-FN2-COMMIT-SETTLED-STATE$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CS-ROWP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CS-ROWP" [a0, a1] = some («FN2-CS-ROWP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-DROP-PREFIX».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-POOL-DROP-PREFIX" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-POOL-DROP-PREFIX» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CTL-PARSE-FRAME-POOL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CTL-PARSE-FRAME-POOL" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CTL-PARSE-FRAME-POOL» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-GAPS$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ID-DECIDES-GAPS$AI" [a0, a1] = some («FN2-ID-DECIDES-GAPS$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-QUALIFIED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ID-DECIDES-QUALIFIED$AI" [a0, a1] = some («FN2-ID-DECIDES-QUALIFIED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-SELECTION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ID-SELECTION" [a0, a1] = some («FN2-ID-SELECTION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ID-DECIDED" [a0, a1] = some («FN2-ID-DECIDED» a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-ID-DECIDES-QUALIFIED$A-LENGTH».fns_eq (a0 : Val) :
     fns "FN2-ID-DECIDES-QUALIFIED$A-LENGTH" [a0] = some («FN2-ID-DECIDES-QUALIFIED$A-LENGTH» a0) := rfl
 @[fn2_dispatch] theorem «FN2-ID-DECIDES-GAPS$A-LENGTH».fns_eq (a0 : Val) :
@@ -1277,6 +1331,718 @@ open Fn2.ACL2
     fns "FN2-ID-DECIDES-QG$A-LENGTH" [a0] = some («FN2-ID-DECIDES-QG$A-LENGTH» a0) := rfl
 @[fn2_dispatch] theorem «FN2-ID-DECIDES-WFP».fns_eq (a0 : Val) :
     fns "FN2-ID-DECIDES-WFP" [a0] = some («FN2-ID-DECIDES-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    fns "FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN" [a0, a1, a2] = some («FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN» a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-IDC-STRIPE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
+    fns "FN2-IDC-STRIPE" [a0, a1, a2, a3] = some («FN2-IDC-STRIPE» a0 a1 a2 a3) := rfl
+@[fn2_dispatch] theorem «FN2-LAYOUT-VARSIZE».fns_eq (a0 : Val) :
+    fns "FN2-LAYOUT-VARSIZE" [a0] = some («FN2-LAYOUT-VARSIZE» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MANIFEST-ENTRY-SIZE-ENTRIES" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MANIFEST-ENTRY-SIZE" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION" [a0, a1] = some («FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-SIZE-LOW».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-SIZE-LOW" [a0, a1] = some («FN2-GROUP-COUNTS-ENTRY-SIZE-LOW» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-GROUP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-SIZE-GROUP" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-GROUP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL" [a0, a1] = some («FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-SIZE" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-SIZE-OPERATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OUTCOME-ENTRY-SIZE-OPERATION" [a0, a1] = some («FN2-OUTCOME-ENTRY-SIZE-OPERATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-PRINCIPAL».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OUTCOME-INDEX-SIZE-PRINCIPAL" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-PRINCIPAL» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUPS-ENTRY-SIZE" [a0, a1] = some («FN2-GROUPS-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-SIZE-STREAM».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ADDR-ENTRY-SIZE-STREAM" [a0, a1] = some («FN2-ADDR-ENTRY-SIZE-STREAM» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ADDR-ENTRY-SIZE" [a0, a1] = some («FN2-ADDR-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SIZE-LINE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-SIZE-LINE" [a0, a1] = some («FN2-OVERVIEW-ENTRY-SIZE-LINE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SIZE-GROUP».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-SIZE-GROUP" [a0, a1] = some («FN2-OVERVIEW-ENTRY-SIZE-GROUP» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-OVERVIEW-INDEX-SIZE" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-SIZE-VERSION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARTICLE-ENTRY-SIZE-VERSION" [a0, a1] = some («FN2-ARTICLE-ENTRY-SIZE-VERSION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARTICLE-ENTRY-SIZE" [a0, a1] = some («FN2-ARTICLE-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H" [a0, a1] = some («FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY" [a0, a1] = some («FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED" [a0, a1] = some («FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-SIZE" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-SIZE-LENGTH».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-FORMAT-TXN-RECORD-SIZE-LENGTH" [a0, a1] = some («FN2-FORMAT-TXN-RECORD-SIZE-LENGTH» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-EMIT-LENGTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-FORMAT-TXN-RECORD-EMIT-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-FORMAT-TXN-RECORD-EMIT-LENGTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-HEIGHT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-ENTRY-CHECK-HEIGHT" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-HEIGHT» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-LAYOUT-COPY-LOOP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    fns "FN2-LAYOUT-COPY-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-LAYOUT-COPY-LOOP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-RUN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-ENTRY-EMIT-RUN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-RUN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-SCHEMA».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-INDEX-CHECK-SCHEMA" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-SCHEMA» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-MANIFEST-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-CURSOR-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-CHECK-LOW».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-CHECK-LOW" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-ENTRY-CHECK-LOW» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUP-COUNTS-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUP-COUNTS-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-NAMES-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-CONSUMER-NAMES-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-CHECK-OUTCOME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-ENTRY-CHECK-OUTCOME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-ENTRY-CHECK-OUTCOME» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-ENTRY-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-EMIT-OPERATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OUTCOME-ENTRY-EMIT-OPERATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-ENTRY-EMIT-OPERATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-PRINCIPAL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-INDEX-CHECK-PRINCIPAL" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-PRINCIPAL» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OUTCOME-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-EMIT-GROUP».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUPS-ENTRY-EMIT-GROUP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-ENTRY-EMIT-GROUP» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-GROUPS-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-CHECK-STREAM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-ENTRY-CHECK-STREAM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-ENTRY-CHECK-STREAM» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-ENTRY-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-EMIT-POSITION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ADDR-ENTRY-EMIT-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-ENTRY-EMIT-POSITION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-PRINCIPAL».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-INDEX-CHECK-PRINCIPAL" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-PRINCIPAL» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ADDR-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-CHECK-NUMBER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-CHECK-NUMBER" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-ENTRY-CHECK-NUMBER» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-EMIT-POSITION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-EMIT-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-ENTRY-EMIT-POSITION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OVERVIEW-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-NUMBER».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-OVERVIEW-INDEX-EMIT-NUMBER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-NUMBER» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-CHECK-BYTES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARTICLE-ENTRY-CHECK-BYTES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-ENTRY-CHECK-BYTES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-CHECK-BIRTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARTICLE-ENTRY-CHECK-BIRTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-ENTRY-CHECK-BIRTH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-EMIT-BYTES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ARTICLE-ENTRY-EMIT-BYTES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-ENTRY-EMIT-BYTES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-EMIT-BIRTH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ARTICLE-ENTRY-EMIT-BIRTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-ENTRY-EMIT-BIRTH» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-ARTICLE-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-ENCODE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-ENCODE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES» a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    fns "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-UNCHANGED$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SUCC-SLOTS-UNCHANGED$AI" [a0, a1] = some («FN2-SUCC-SLOTS-UNCHANGED$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-ROWS».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-ROWS" [a0] = some («FN2-SUCC-SLOTS-ROWS» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-FILLED».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SUCC-SLOTS-FILLED" [a0, a1] = some («FN2-SUCC-SLOTS-FILLED» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-PHASE$AI».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-SUCC-TXNS-PHASE$AI" [a0, a1] = some («FN2-SUCC-TXNS-PHASE$AI» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-LATE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-LATE$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-LATE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OSET$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-OSET$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-OSET$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OUTS$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-OUTS$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-OUTS$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-SID$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-SID$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-SID$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH" [a0] = some («FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-ZERO$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-FC-ZERO$A-LENGTH" [a0] = some («FN2-FC-ZERO$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-EMIT-CHILDREN».fns_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    fns "FN2-SUCC-EMIT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-SUCC-EMIT-CHILDREN» a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-RIBBON-XOR32».fns_eq (a0 : Val) (a1 : Val) :
+    fns "FN2-RIBBON-XOR32" [a0, a1] = some («FN2-RIBBON-XOR32» a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-TXN-SEP-P».fns_eq (a0 : Val) :
+    fns "FN2-TXN-SEP-P" [a0] = some («FN2-TXN-SEP-P» a0) := rfl
+@[fn2_dispatch] theorem «ZIP».fns_eq (a0 : Val) :
+    fns "ZIP" [a0] = some («ZIP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-DEADLINE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-DEADLINE$AP" [a0] = some («FN2-ARMS-PARK-WAIT-DEADLINE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-PHASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-PHASE$AP" [a0] = some («FN2-ARMS-PARK-WAIT-PHASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-NCLASSESP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-NCLASSESP" [a0] = some («FN2-POOL-NCLASSESP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-DATAP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-DATAP" [a0] = some («FN2-POOL-DATAP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-GEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-HAND-TO-GEN$AP" [a0] = some («FN2-POOL-HAND-TO-GEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-OUT-COUNT$AP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-OUT-COUNT$AP" [a0] = some («FN2-POOL-OUT-COUNT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-LEASE-OP-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-LEASE-OP-SLOT$AP" [a0] = some («FN2-POOL-LEASE-OP-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-STATE$AP».fns_eq (a0 : Val) :
+    fns "FN2-POOL-STATE$AP" [a0] = some («FN2-POOL-STATE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOLP».fns_eq (a0 : Val) :
+    fns "FN2-POOLP" [a0] = some («FN2-POOLP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-PAD-END$AP».fns_eq (a0 : Val) :
+    fns "FN2-FC-PAD-END$AP" [a0] = some («FN2-FC-PAD-END$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-PHASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-FC-PHASE$AP" [a0] = some («FN2-FC-PHASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-RESUME-REFP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-RESUME-REFP" [a0] = some («FN2-FIELDS-RESUME-REFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-POSP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-POSP" [a0] = some («FN2-FIELDS-POSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PAYLOAD$AP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-DECODE-PAYLOAD$AP" [a0] = some («FN2-FIELDS-DECODE-PAYLOAD$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-ACC$AP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-DECODE-ACC$AP" [a0] = some («FN2-FIELDS-DECODE-ACC$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-LEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-REF-LEN$AP" [a0] = some («FN2-FIELDS-REF-LEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-VALUE$AP».fns_eq (a0 : Val) :
+    fns "FN2-FIELDS-VALUE$AP" [a0] = some («FN2-FIELDS-VALUE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-QUALIFIED$AP».fns_eq (a0 : Val) :
+    fns "FN2-ID-DECIDES-QUALIFIED$AP" [a0] = some («FN2-ID-DECIDES-QUALIFIED$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-GAPS$AP».fns_eq (a0 : Val) :
+    fns "FN2-ID-DECIDES-GAPS$AP" [a0] = some («FN2-ID-DECIDES-GAPS$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-QG$AP».fns_eq (a0 : Val) :
+    fns "FN2-ID-DECIDES-QG$AP" [a0] = some («FN2-ID-DECIDES-QG$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDESP».fns_eq (a0 : Val) :
+    fns "FN2-ID-DECIDESP" [a0] = some («FN2-ID-DECIDESP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-LATE$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-LATE$AP" [a0] = some («FN2-SUCC-SLOTS-LATE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OSET$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-OSET$AP" [a0] = some («FN2-SUCC-SLOTS-OSET$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OUTS$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-OUTS$AP" [a0] = some («FN2-SUCC-SLOTS-OUTS$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-SID$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-SLOTS-SID$AP" [a0] = some («FN2-SUCC-SLOTS-SID$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-LVER$AP" [a0] = some («FN2-SUCC-TXNS-LVER$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RBOUND$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-RBOUND$AP" [a0] = some («FN2-SUCC-TXNS-RBOUND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-BATCH$AP».fns_eq (a0 : Val) :
+    fns "FN2-SUCC-TXNS-BATCH$AP" [a0] = some («FN2-SUCC-TXNS-BATCH$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-WFP».fns_eq (a0 : Val) :
+    fns "FN2-CONTROL-WFP" [a0] = some («FN2-CONTROL-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-SLOT$A-LENGTH" [a0] = some («FN2-MACHINES-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-TURN-STEPSP».fns_eq (a0 : Val) :
+    fns "FN2-CONTROL-TURN-STEPSP" [a0] = some («FN2-CONTROL-TURN-STEPSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-ARMED-DEADLINEP».fns_eq (a0 : Val) :
+    fns "FN2-CONTROL-ARMED-DEADLINEP" [a0] = some («FN2-CONTROL-ARMED-DEADLINEP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-STOP-KINDP».fns_eq (a0 : Val) :
+    fns "FN2-CONTROL-STOP-KINDP" [a0] = some («FN2-CONTROL-STOP-KINDP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CONTROL-KP».fns_eq (a0 : Val) :
+    fns "FN2-CONTROL-KP" [a0] = some («FN2-CONTROL-KP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-ACTIVE-COUNTP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-ACTIVE-COUNTP" [a0] = some («FN2-MACHINES-ACTIVE-COUNTP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-REFUSALSP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-REFUSALSP" [a0] = some («FN2-MACHINES-REFUSALSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-WAKE-IDP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-WAKE-IDP" [a0] = some («FN2-MACHINES-WAKE-IDP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-CONNECTION-COUNTP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-CONNECTION-COUNTP" [a0] = some («FN2-MACHINES-CONNECTION-COUNTP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-READY-NEXT$AP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINES-READY-NEXT$AP" [a0] = some («FN2-MACHINES-READY-NEXT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINESP».fns_eq (a0 : Val) :
+    fns "FN2-MACHINESP" [a0] = some («FN2-MACHINESP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-AUX1$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C1-AUX1$A-LENGTH" [a0] = some («FN2-OPS-C1-AUX1$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-OUTCOME$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C1-OUTCOME$A-LENGTH" [a0] = some («FN2-OPS-C1-OUTCOME$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-W3$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-PEER-W3$A-LENGTH" [a0] = some («FN2-OPS-PEER-W3$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-PORT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-PEER-PORT$A-LENGTH" [a0] = some («FN2-OPS-PEER-PORT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-COUNT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C0-COUNT$A-LENGTH" [a0] = some («FN2-OPS-C0-COUNT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-HARVESTED$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C0-HARVESTED$A-LENGTH" [a0] = some («FN2-OPS-C0-HARVESTED$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CANCEL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-CANCEL-SLOT$A-LENGTH" [a0] = some («FN2-OPS-CANCEL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CAP-NONCE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-CAP-NONCE$A-LENGTH" [a0] = some («FN2-OPS-CAP-NONCE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-RANGE-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-RANGE-GEN$A-LENGTH" [a0] = some («FN2-OPS-RANGE-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OWNER-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-OWNER-SLOT$A-LENGTH" [a0] = some («FN2-OPS-OWNER-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-OPS-GEN$A-LENGTH" [a0] = some («FN2-OPS-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-FREE-COUNTP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-FREE-COUNTP" [a0] = some («FN2-OPS-FREE-COUNTP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SEEN-PEER-W1P».fns_eq (a0 : Val) :
+    fns "FN2-OPS-SEEN-PEER-W1P" [a0] = some («FN2-OPS-SEEN-PEER-W1P» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-STRAYP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-STRAYP" [a0] = some («FN2-OPS-STRAYP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CLOCK-FLAGSP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-CLOCK-FLAGSP" [a0] = some («FN2-OPS-CLOCK-FLAGSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CLOCK-POSTEDP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-CLOCK-POSTEDP" [a0] = some («FN2-OPS-CLOCK-POSTEDP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-RESERVED-CREDITSP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-RESERVED-CREDITSP" [a0] = some («FN2-OPS-RESERVED-CREDITSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-POSTED-FIFOP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-POSTED-FIFOP" [a0] = some («FN2-OPS-POSTED-FIFOP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-WAKE-OBSERVATION-GEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-WAKE-OBSERVATION-GEN$AP" [a0] = some («FN2-OPS-WAKE-OBSERVATION-GEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-AUX0$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C1-AUX0$AP" [a0] = some («FN2-OPS-C1-AUX0$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-EVENT$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C1-EVENT$AP" [a0] = some («FN2-OPS-C1-EVENT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-W2$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-PEER-W2$AP" [a0] = some («FN2-OPS-PEER-W2$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-FAMILY$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-PEER-FAMILY$AP" [a0] = some («FN2-OPS-PEER-FAMILY$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-REASON$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C0-REASON$AP" [a0] = some («FN2-OPS-C0-REASON$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-POSTED$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-C0-POSTED$AP" [a0] = some («FN2-OPS-C0-POSTED$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-MAY-RELEASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-MAY-RELEASE$AP" [a0] = some («FN2-OPS-MAY-RELEASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CAP-INDEX$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-CAP-INDEX$AP" [a0] = some («FN2-OPS-CAP-INDEX$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-RANGE-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-RANGE-SLOT$AP" [a0] = some («FN2-OPS-RANGE-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OWNER-KIND$AP».fns_eq (a0 : Val) :
+    fns "FN2-OPS-OWNER-KIND$AP" [a0] = some («FN2-OPS-OWNER-KIND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPSP».fns_eq (a0 : Val) :
+    fns "FN2-OPSP" [a0] = some («FN2-OPSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-EVENT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-EVENT$A-LENGTH" [a0] = some («FN2-COMMIT-SETTLED-EVENT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-OKIND$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-OKIND$A-LENGTH" [a0] = some («FN2-COMMIT-SETTLED-OKIND$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-PUBLISHED$AP».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-PUBLISHED$AP" [a0] = some («FN2-COMMIT-SETTLED-PUBLISHED$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-BATCH$AP».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-BATCH$AP" [a0] = some («FN2-COMMIT-SETTLED-BATCH$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-STATE$AP».fns_eq (a0 : Val) :
+    fns "FN2-COMMIT-SETTLED-STATE$AP" [a0] = some («FN2-COMMIT-SETTLED-STATE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BPEND$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-BPEND$A-LENGTH" [a0] = some («FN2-CNS-EDGES-BPEND$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BHEAD$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-BHEAD$A-LENGTH" [a0] = some («FN2-CNS-EDGES-BHEAD$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-GEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-GEN$A-LENGTH" [a0] = some («FN2-CNS-EDGES-GEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-WFP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-WFP" [a0] = some («FN2-CNS-EDGES-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-FREE-HEADP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-FREE-HEADP" [a0] = some («FN2-CNS-FREE-HEADP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BPEND$AP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-BPEND$AP" [a0] = some («FN2-CNS-EDGES-BPEND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BHEAD$AP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-BHEAD$AP" [a0] = some («FN2-CNS-EDGES-BHEAD$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-GEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGES-GEN$AP" [a0] = some («FN2-CNS-EDGES-GEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGESP».fns_eq (a0 : Val) :
+    fns "FN2-CNS-EDGESP" [a0] = some («FN2-CNS-EDGESP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-HEAD$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-HEAD$A-LENGTH" [a0] = some («FN2-CLAIMS-HEAD$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-PREV$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-PREV$A-LENGTH" [a0] = some («FN2-CLAIMS-PREV$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OK$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-OK$A-LENGTH" [a0] = some («FN2-CLAIMS-OK$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-SLOT$A-LENGTH" [a0] = some («FN2-CLAIMS-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-ROWSP" [a0] = some («FN2-CLAIMS-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-HEAD$AP».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-HEAD$AP" [a0] = some («FN2-CLAIMS-HEAD$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-PREV$AP».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-PREV$AP" [a0] = some («FN2-CLAIMS-PREV$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OK$AP».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-OK$AP" [a0] = some («FN2-CLAIMS-OK$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-CLAIMS-SLOT$AP" [a0] = some («FN2-CLAIMS-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TZ-VALUE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TZ-VALUE$A-LENGTH" [a0] = some («FN2-ARMS-TZ-VALUE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TZ-VALUE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TZ-VALUE$AP" [a0] = some («FN2-ARMS-TZ-VALUE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-KLEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-KLEN$A-LENGTH" [a0] = some («FN2-CURSOR-KLEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-DONE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-DONE$A-LENGTH" [a0] = some («FN2-CURSOR-DONE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LPOS$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LPOS$A-LENGTH" [a0] = some («FN2-CURSOR-LPOS$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SPIN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-SPIN$A-LENGTH" [a0] = some («FN2-CURSOR-SPIN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LOW$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LOW$A-LENGTH" [a0] = some («FN2-CURSOR-LOW$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-HI$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-HI$A-LENGTH" [a0] = some («FN2-CURSOR-HI$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-A1$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-A1$A-LENGTH" [a0] = some («FN2-CURSOR-A1$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-K0$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-K0$A-LENGTH" [a0] = some («FN2-CURSOR-K0$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-GROUP$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-GROUP$A-LENGTH" [a0] = some («FN2-CURSOR-GROUP$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LINE-S$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LINE-S$A-LENGTH" [a0] = some («FN2-CURSOR-LINE-S$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CONN-KIND$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-CONN-KIND$A-LENGTH" [a0] = some («FN2-CURSOR-CONN-KIND$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-CURSOR-ACCOUNT-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-WFP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-WFP" [a0] = some («FN2-CURSOR-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-KLEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-KLEN$AP" [a0] = some («FN2-CURSOR-KLEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-DONE$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-DONE$AP" [a0] = some («FN2-CURSOR-DONE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LPOS$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LPOS$AP" [a0] = some («FN2-CURSOR-LPOS$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SPIN$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-SPIN$AP" [a0] = some («FN2-CURSOR-SPIN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LOW$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LOW$AP" [a0] = some («FN2-CURSOR-LOW$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-HI$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-HI$AP" [a0] = some («FN2-CURSOR-HI$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-A1$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-A1$AP" [a0] = some («FN2-CURSOR-A1$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-K0$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-K0$AP" [a0] = some («FN2-CURSOR-K0$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-GROUP$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-GROUP$AP" [a0] = some («FN2-CURSOR-GROUP$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LINE-S$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-LINE-S$AP" [a0] = some («FN2-CURSOR-LINE-S$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CONN-KIND$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-CONN-KIND$AP" [a0] = some («FN2-CURSOR-CONN-KIND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-CURSOR-ACCOUNT-REF$AP" [a0] = some («FN2-CURSOR-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSORP».fns_eq (a0 : Val) :
+    fns "FN2-CURSORP" [a0] = some («FN2-CURSORP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-SEEKS-AFTER$AP».fns_eq (a0 : Val) :
     fns "FN2-SEEKS-AFTER$AP" [a0] = some («FN2-SEEKS-AFTER$AP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-SEEKS-G$AP».fns_eq (a0 : Val) :
@@ -1303,82 +2069,48 @@ open Fn2.ACL2
     fns "FN2-READS-QK$AP" [a0] = some («FN2-READS-QK$AP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-READSP».fns_eq (a0 : Val) :
     fns "FN2-READSP" [a0] = some («FN2-READSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LBOUND$AP».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNS-LBOUND$AP" [a0] = some («FN2-SUCC-TXNS-LBOUND$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RI$AP».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNS-RI$AP" [a0] = some («FN2-SUCC-TXNS-RI$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNSP».fns_eq (a0 : Val) :
-    fns "FN2-SUCC-TXNSP" [a0] = some («FN2-SUCC-TXNSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-EVIDENCE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ID-DECIDES-EVIDENCE$AP" [a0] = some («FN2-ID-DECIDES-EVIDENCE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-CANDIDATES$AP».fns_eq (a0 : Val) :
-    fns "FN2-ID-DECIDES-CANDIDATES$AP" [a0] = some («FN2-ID-DECIDES-CANDIDATES$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-QS$AP».fns_eq (a0 : Val) :
-    fns "FN2-ID-DECIDES-QS$AP" [a0] = some («FN2-ID-DECIDES-QS$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH" [a0] = some («FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-ZERO$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-FC-ZERO$A-LENGTH" [a0] = some («FN2-FC-ZERO$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-ROWSP" [a0] = some («FN2-RANGE-SOURCES-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-RUN$AP».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-RUN$AP" [a0] = some («FN2-RANGE-SOURCES-RUN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-POS$AP».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCES-POS$AP" [a0] = some («FN2-RANGE-SOURCES-POS$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RANGE-SOURCESP».fns_eq (a0 : Val) :
-    fns "FN2-RANGE-SOURCESP" [a0] = some («FN2-RANGE-SOURCESP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-COUNTER$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CACHE-COUNTER$AP" [a0] = some («FN2-RUN-CACHE-COUNTER$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-PATHS-ROWSP" [a0] = some («FN2-RUN-PATHS-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-UNIT$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-PATHS-UNIT$AP" [a0] = some («FN2-RUN-PATHS-UNIT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-ROWSP" [a0] = some («FN2-RUN-CURSORS-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-RB$AP" [a0] = some («FN2-RUN-CURSORS-RB$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-IDX$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-IDX$AP" [a0] = some («FN2-RUN-CURSORS-IDX$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-SLOT$AP" [a0] = some («FN2-RUN-CURSORS-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SCHEMA$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-CURSORS-SCHEMA$AP" [a0] = some («FN2-RUN-CURSORS-SCHEMA$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-FCOUNTER$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-FCOUNTER$AP" [a0] = some («FN2-RUN-INSTALLED-FCOUNTER$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OSLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-OSLOT$AP" [a0] = some («FN2-RUN-INSTALLED-OSLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-UNIT$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-UNIT$AP" [a0] = some («FN2-RUN-INSTALLED-UNIT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-RUN$AP».fns_eq (a0 : Val) :
-    fns "FN2-RUN-INSTALLED-RUN$AP" [a0] = some («FN2-RUN-INSTALLED-RUN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAY-INDEX-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAY-INDEX-ROWSP" [a0] = some («FN2-OVERLAY-INDEX-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-SEQ$AP».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-SEQ$AP" [a0] = some («FN2-OVERLAYS-SEQ$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-OSLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-OSLOT$AP" [a0] = some («FN2-OVERLAYS-OSLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-COUNT$AP».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-COUNT$AP" [a0] = some («FN2-OVERLAYS-COUNT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-OVERLAYS-SLOT$AP" [a0] = some («FN2-OVERLAYS-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-NEXTP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-NEXTP" [a0] = some («FN2-FIELDS-NEXTP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-HIGHP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-HIGHP" [a0] = some («FN2-FIELDS-HIGHP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-ROWSP" [a0] = some («FN2-FIELDS-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-SIZE$AP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-DECODE-SIZE$AP" [a0] = some («FN2-FIELDS-DECODE-SIZE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PHASE$AP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-DECODE-PHASE$AP" [a0] = some («FN2-FIELDS-DECODE-PHASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-GEN$AP».fns_eq (a0 : Val) :
-    fns "FN2-FIELDS-REF-GEN$AP" [a0] = some («FN2-FIELDS-REF-GEN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-FC-ROWSP" [a0] = some («FN2-FC-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-PAD$AP».fns_eq (a0 : Val) :
-    fns "FN2-FC-PAD$AP" [a0] = some («FN2-FC-PAD$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-FCP».fns_eq (a0 : Val) :
-    fns "FN2-FCP" [a0] = some («FN2-FCP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-OKIND$AP».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-OKIND$AP" [a0] = some («FN2-RANGE-SOURCES-OKIND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-COUNT$AP».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-COUNT$AP" [a0] = some («FN2-RANGE-SOURCES-COUNT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RANGE-SOURCES-KIND$AP».fns_eq (a0 : Val) :
+    fns "FN2-RANGE-SOURCES-KIND$AP" [a0] = some («FN2-RANGE-SOURCES-KIND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CACHE-SLOT$AP" [a0] = some («FN2-RUN-CACHE-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHEP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CACHEP" [a0] = some («FN2-RUN-CACHEP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-COUNTER$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-PATHS-COUNTER$AP" [a0] = some («FN2-RUN-PATHS-COUNTER$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHSP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-PATHSP" [a0] = some («FN2-RUN-PATHSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OKIND$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-OKIND$AP" [a0] = some («FN2-RUN-CURSORS-OKIND$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OFF$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-OFF$AP" [a0] = some («FN2-RUN-CURSORS-OFF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-GEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-GEN$AP" [a0] = some («FN2-RUN-CURSORS-GEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEVEL$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-CURSORS-LEVEL$AP" [a0] = some («FN2-RUN-CURSORS-LEVEL$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-ROWSP" [a0] = some («FN2-RUN-INSTALLED-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-OGEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-OGEN$AP" [a0] = some («FN2-RUN-INSTALLED-OGEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-COUNTER$AP" [a0] = some («FN2-RUN-INSTALLED-COUNTER$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP$AP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLED-TOP$AP" [a0] = some («FN2-RUN-INSTALLED-TOP$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLEDP».fns_eq (a0 : Val) :
+    fns "FN2-RUN-INSTALLEDP" [a0] = some («FN2-RUN-INSTALLEDP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-ROWSP" [a0] = some («FN2-OVERLAYS-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-OGEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-OGEN$AP" [a0] = some («FN2-OVERLAYS-OGEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-IBASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-IBASE$AP" [a0] = some («FN2-OVERLAYS-IBASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-GEN$AP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYS-GEN$AP" [a0] = some («FN2-OVERLAYS-GEN$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYSP».fns_eq (a0 : Val) :
+    fns "FN2-OVERLAYSP" [a0] = some («FN2-OVERLAYSP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-ID-ENGINE-ARENA$AP».fns_eq (a0 : Val) :
     fns "FN2-ID-ENGINE-ARENA$AP" [a0] = some («FN2-ID-ENGINE-ARENA$AP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-ID-ENGINEP».fns_eq (a0 : Val) :
@@ -1395,202 +2127,232 @@ open Fn2.ACL2
     fns "FN2-META-PROBE-DEADLINE$AP" [a0] = some («FN2-META-PROBE-DEADLINE$AP» a0) := rfl
 @[fn2_dispatch] theorem «FN2-META-PROBE-PHASE$AP».fns_eq (a0 : Val) :
     fns "FN2-META-PROBE-PHASE$AP" [a0] = some («FN2-META-PROBE-PHASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-COUNT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE6-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-COUNT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE6-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-GENERATION$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-COUNT$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE6-COUNT$AP" [a0] = some («FN2-ARMS-PROBE6-COUNT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-GENERATION$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE6-GENERATION$AP" [a0] = some («FN2-ARMS-PROBE6-GENERATION$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE4-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-DEADLINE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE4-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-PHASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-DEADLINE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE4-DEADLINE$AP" [a0] = some («FN2-ARMS-PROBE4-DEADLINE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE4-PHASE$AP" [a0] = some («FN2-ARMS-PROBE4-PHASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TX-VALUE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-TX-VALUE$A-LENGTH" [a0] = some («FN2-ARMS-TX-VALUE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TYP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-TYP" [a0] = some («FN2-ARMS-TYP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-STEP$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-INNER-STEP$A-LENGTH" [a0] = some («FN2-ARMS-INNER-STEP$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-INNER-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-INNER-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-INNER-ROWSP" [a0] = some («FN2-ARMS-INNER-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-INNER-ACCOUNT-REF$AP" [a0] = some («FN2-ARMS-INNER-ACCOUNT-REF$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNERP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-INNERP" [a0] = some («FN2-ARMS-INNERP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER-KIND$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-PEER-KIND$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-PEER-KIND$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-ACCOUNT-REF$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WFP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-WFP" [a0] = some («FN2-ARMS-LINKER-WFP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SEEN$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-SEEN$AP" [a0] = some («FN2-ARMS-LINKER-SEEN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-DEADLINE$AP" [a0] = some («FN2-ARMS-LINKER-DEADLINE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PHASE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-LINKER-PHASE$AP" [a0] = some («FN2-ARMS-LINKER-PHASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-COUNT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-COUNT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-DEADLINE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PHASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-PHASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-CAP-INDEX$AP" [a0] = some («FN2-ARMS-PROBE-CAP-INDEX$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PENDING$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-PENDING$AP" [a0] = some («FN2-ARMS-PROBE-PENDING$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PROBE-GENERATION$AP" [a0] = some («FN2-ARMS-PROBE-GENERATION$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-ROWSP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-DEADLINE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-DEADLINE$AP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-DEADLINE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PHASE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-BLIND-PHASE$AP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-PHASE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RESERVED$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-RESERVED$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-RESERVED$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-GENERATION$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WGEN$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-WGEN$AP" [a0] = some («FN2-ARMS-PER-PATH-WGEN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATH-ACCOUNT-REF$AP" [a0] = some («FN2-ARMS-PER-PATH-ACCOUNT-REF$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATHP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PER-PATHP" [a0] = some («FN2-ARMS-PER-PATHP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ROWSP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-SHARED-ROWSP" [a0] = some («FN2-ARMS-SHARED-ROWSP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-SHARED-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ARMS-SHARED-PRINCIPAL-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-AFTER$AP" [a0] = some («FN2-ARMS-PHASE-FIELD-AFTER$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION$AP».fns_eq (a0 : Val) :
-    fns "FN2-ARMS-PHASE-FIELD-GENERATION$AP" [a0] = some («FN2-ARMS-PHASE-FIELD-GENERATION$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-AUX1$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-AUX1$A-LENGTH" [a0] = some («FN2-SCRIBE-AUX1$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-EVENT$A-LENGTH" [a0] = some («FN2-SCRIBE-EVENT$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-CHECKSUM$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-CHECKSUM$A-LENGTH" [a0] = some («FN2-SCRIBE-CHECKSUM$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-PENDING$A-LENGTH" [a0] = some («FN2-SCRIBE-PENDING$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-SCRIBE-ACCOUNT-REF$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-WFP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-WFP" [a0] = some («FN2-SCRIBE-WFP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-AUX0$AP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-AUX0$AP" [a0] = some («FN2-SCRIBE-AUX0$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-STOPPED$AP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-STOPPED$AP" [a0] = some («FN2-SCRIBE-STOPPED$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-CURSOR$AP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-CURSOR$AP" [a0] = some («FN2-SCRIBE-CURSOR$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-GEN$AP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-POOL-GEN$AP" [a0] = some («FN2-SCRIBE-POOL-GEN$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-SCRIBE-PRINCIPAL-SLOT$AP" [a0] = some («FN2-SCRIBE-PRINCIPAL-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-SIZES-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-CLASS-SIZES-LENGTH" [a0] = some («FN2-POOL-CLASS-SIZES-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-BORROWS$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-BORROWS$A-LENGTH" [a0] = some («FN2-ECHO-BORROWS$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-POOL-GEN$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-POOL-GEN$A-LENGTH" [a0] = some («FN2-ECHO-POOL-GEN$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-DEADLINE$A-LENGTH" [a0] = some («FN2-ECHO-DEADLINE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PHASE$A-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-PHASE$A-LENGTH" [a0] = some («FN2-ECHO-PHASE$A-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-STOPPED$AP».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-STOPPED$AP" [a0] = some («FN2-ECHO-STOPPED$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-LENGTH$AP».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-LENGTH$AP" [a0] = some («FN2-ECHO-LENGTH$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-CAP-NONCE$AP».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-CAP-NONCE$AP" [a0] = some («FN2-ECHO-CAP-NONCE$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
-    fns "FN2-ECHO-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ECHO-PRINCIPAL-SLOT$AP» a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-ACTIVE-COUNT-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-MACHINES-ACTIVE-COUNT-LENGTH" [a0] = some («FN2-MACHINES-ACTIVE-COUNT-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-HEADS-LENGTH».fns_eq (a0 : Val) :
-    fns "FN2-POOL-CLASS-HEADS-LENGTH" [a0] = some («FN2-POOL-CLASS-HEADS-LENGTH» a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PENDING».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-PENDING" [a0, a1] = some («FN2-ECHO-PENDING».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-CAP-INDEX».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-CAP-INDEX" [a0, a1] = some («FN2-ECHO-CAP-INDEX».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-POOL-GEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-POOL-GEN" [a0, a1] = some («FN2-ECHO-POOL-GEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ECHO-PRINCIPAL-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SLOT-CAPACITY».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-SLOT-CAPACITY" [a0, a1] = some («FN2-POOL-SLOT-CAPACITY».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-FREE-HEAD».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-FREE-HEAD" [a0] = some («FN2-OPS-FREE-HEAD».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-NEXT-FREE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OPS-NEXT-FREE" [a0, a1] = some («FN2-OPS-NEXT-FREE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-PHASE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-OWNER-KIND$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-OWNER-KIND$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-OWNER-KIND$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-OWNER-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-OWNER-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-OWNER-GEN$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-RANGE-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-RANGE-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-RANGE-SLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-RANGE-OFF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-RANGE-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-RANGE-OFF$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-CAP-INDEX$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-CAP-INDEX$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-CAP-INDEX$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-STORAGE-OFFSET$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-STORAGE-OFFSET$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-STORAGE-OFFSET$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-MAY-RELEASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-MAY-RELEASE$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-MAY-RELEASE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-CANCEL-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-CANCEL-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-CANCEL-GEN$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C0-POSTED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C0-POSTED$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C0-POSTED$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C0-EVENT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C0-EVENT$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C0-EVENT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C0-REASON$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C0-REASON$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C0-REASON$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C0-AUX0$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C0-AUX0$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C0-AUX0$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-PEER-FAMILY$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-PEER-FAMILY$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-PEER-FAMILY$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-PEER-W0$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-PEER-W0$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-PEER-W0$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-PEER-W2$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-PEER-W2$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-PEER-W2$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C1-POSTED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C1-POSTED$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C1-POSTED$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C1-EVENT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C1-EVENT$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C1-EVENT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C1-REASON$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C1-REASON$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C1-REASON$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-C1-AUX0$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-C1-AUX0$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-C1-AUX0$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-NEXT-FREE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-NEXT-FREE$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-NEXT-FREE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-WAKE-OBSERVATION-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-OPS-WAKE-OBSERVATION-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-OPS-WAKE-OBSERVATION-GEN$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-OPS-FREE-COUNT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "UPDATE-FN2-OPS-FREE-COUNT" [a0, a1] = some («UPDATE-FN2-OPS-FREE-COUNT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-ROWS" [a0] = some («FN2-OPS-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «ZP».guard_eq (a0 : Val) :
-    guardOf "ZP" [a0] = some («ZP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-COUNT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-F2-PROBE-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-F2-PROBE-COUNT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-F2-PROBE-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-F2-PROBE-ROWSP" [a0] = some («FN2-ARMS-F2-PROBE-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-F2-PROBE-ACCOUNT-REF$AP" [a0] = some («FN2-ARMS-F2-PROBE-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBEP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-F2-PROBEP" [a0] = some («FN2-ARMS-F2-PROBEP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-COST-SUM-ROWSP" [a0] = some («FN2-ARMS-COST-SUM-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH" [a0] = some («FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-GRANT-AT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-GRANT-AT$A-LENGTH" [a0] = some («FN2-ACCOUNTS-GRANT-AT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-STATE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ACCOUNTS-STATE$A-LENGTH" [a0] = some («FN2-ACCOUNTS-STATE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-WFP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-BORN-WFP" [a0] = some («FN2-ARMS-BORN-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-BORN-ACCOUNT-REF$AP" [a0] = some («FN2-ARMS-BORN-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORNP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-BORNP" [a0] = some («FN2-ARMS-BORNP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE6-ROWSP" [a0] = some («FN2-ARMS-PROBE6-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ARMS-PROBE6-PRINCIPAL-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-COUNT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE4-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-COUNT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE4-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-GENERATION$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-COUNT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE4-COUNT$AP" [a0] = some («FN2-ARMS-PROBE4-COUNT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-GENERATION$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE4-GENERATION$AP" [a0] = some («FN2-ARMS-PROBE4-GENERATION$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TY-WFP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TY-WFP" [a0] = some («FN2-ARMS-TY-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TY-VALUE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TY-VALUE$AP" [a0] = some («FN2-ARMS-TY-VALUE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TXP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-TXP" [a0] = some («FN2-ARMS-TXP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-INNER-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-INNER-ACCOUNT-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-WFP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-INNER-WFP" [a0] = some («FN2-ARMS-INNER-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-DEADLINE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-INNER-DEADLINE$AP" [a0] = some («FN2-ARMS-INNER-DEADLINE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-PHASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-INNER-PHASE$AP" [a0] = some («FN2-ARMS-INNER-PHASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SEEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-SEEN$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-SEEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-DEADLINE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PHASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-PHASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WSLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-WSLOT$AP" [a0] = some («FN2-ARMS-LINKER-WSLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-PEER$AP" [a0] = some («FN2-ARMS-LINKER-PEER$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-GENERATION$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-LINKER-GENERATION$AP" [a0] = some («FN2-ARMS-LINKER-GENERATION$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PENDING$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-PENDING$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-PENDING$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-GENERATION$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-NONCE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-CAP-NONCE$AP" [a0] = some («FN2-ARMS-PROBE-CAP-NONCE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-STOPPED$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-STOPPED$AP" [a0] = some («FN2-ARMS-PROBE-STOPPED$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PROBE-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ARMS-PROBE-PRINCIPAL-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WGEN$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-WGEN$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-WGEN$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WFP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-WFP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RESERVED$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-RESERVED$AP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-RESERVED$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-GENERATION$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-BLIND-GENERATION$AP" [a0] = some («FN2-ARMS-PER-PATH-BLIND-GENERATION$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WSLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-WSLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-WSLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-ROWSP" [a0] = some («FN2-ARMS-PER-PATH-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-DEADLINE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-DEADLINE$AP" [a0] = some («FN2-ARMS-PER-PATH-DEADLINE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PHASE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PER-PATH-PHASE$AP" [a0] = some («FN2-ARMS-PER-PATH-PHASE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ACCOUNT-REF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-SHARED-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-SHARED-ACCOUNT-REF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-WFP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-SHARED-WFP" [a0] = some («FN2-ARMS-SHARED-WFP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-SHARED-ACCOUNT-REF$AP" [a0] = some («FN2-ARMS-SHARED-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHAREDP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-SHAREDP" [a0] = some («FN2-ARMS-SHAREDP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-ROWSP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-ROWSP" [a0] = some («FN2-ARMS-PHASE-FIELD-ROWSP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AP" [a0] = some («FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT-READY$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-EVENT-READY$A-LENGTH" [a0] = some («FN2-SCRIBE-EVENT-READY$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-OUTCOME$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-OUTCOME$A-LENGTH" [a0] = some («FN2-SCRIBE-OUTCOME$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-COMPLETED$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-COMPLETED$A-LENGTH" [a0] = some («FN2-SCRIBE-COMPLETED$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-BORROWS$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-BORROWS$A-LENGTH" [a0] = some («FN2-SCRIBE-BORROWS$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-DEADLINE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-DEADLINE$A-LENGTH" [a0] = some («FN2-SCRIBE-DEADLINE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PHASE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-PHASE$A-LENGTH" [a0] = some («FN2-SCRIBE-PHASE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-AUX1$AP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-AUX1$AP" [a0] = some («FN2-SCRIBE-AUX1$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT$AP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-EVENT$AP" [a0] = some («FN2-SCRIBE-EVENT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-CHECKSUM$AP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-CHECKSUM$AP" [a0] = some («FN2-SCRIBE-CHECKSUM$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING$AP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-PENDING$AP" [a0] = some («FN2-SCRIBE-PENDING$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBE-ACCOUNT-REF$AP" [a0] = some («FN2-SCRIBE-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBEP».fns_eq (a0 : Val) :
+    fns "FN2-SCRIBEP" [a0] = some («FN2-SCRIBEP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-NEXT-FREE$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-NEXT-FREE$A-LENGTH" [a0] = some («FN2-ECHO-NEXT-FREE$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-OFF$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-OFF$A-LENGTH" [a0] = some («FN2-ECHO-OFF$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-CAP-INDEX$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-CAP-INDEX$A-LENGTH" [a0] = some («FN2-ECHO-CAP-INDEX$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-GENERATION$A-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-GENERATION$A-LENGTH" [a0] = some («FN2-ECHO-GENERATION$A-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-MODE$AP».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-MODE$AP" [a0] = some («FN2-ECHO-MODE$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-PENDING$AP».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-PENDING$AP" [a0] = some («FN2-ECHO-PENDING$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-POOL-SLOT$AP».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-POOL-SLOT$AP" [a0] = some («FN2-ECHO-POOL-SLOT$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-ACCOUNT-REF$AP».fns_eq (a0 : Val) :
+    fns "FN2-ECHO-ACCOUNT-REF$AP" [a0] = some («FN2-ECHO-ACCOUNT-REF$AP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHOP».fns_eq (a0 : Val) :
+    fns "FN2-ECHOP" [a0] = some («FN2-ECHOP» a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-CLASS-COUNTS-LENGTH».fns_eq (a0 : Val) :
+    fns "FN2-POOL-CLASS-COUNTS-LENGTH" [a0] = some («FN2-POOL-CLASS-COUNTS-LENGTH» a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-PENDING$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-PENDING$AI" [a0, a1] = some («FN2-ECHO-PENDING$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-CAP-INDEX$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-CAP-INDEX$AI" [a0, a1] = some («FN2-ECHO-CAP-INDEX$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-POOL-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-POOL-GEN$AI" [a0, a1] = some («FN2-ECHO-POOL-GEN$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ECHO-PRINCIPAL-SLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-ROWS" [a0] = some («FN2-POOL-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-FREE-COUNT».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-FREE-COUNT" [a0] = some («FN2-OPS-FREE-COUNT».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-NEXT-FREE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OPS-NEXT-FREE$AI" [a0, a1] = some («FN2-OPS-NEXT-FREE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-GEN" [a0, a1, a2] = some («FN2-OPS-SET-GEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-KIND" [a0, a1, a2] = some («FN2-OPS-SET-KIND».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-OWNER-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-OWNER-SLOT" [a0, a1, a2] = some («FN2-OPS-SET-OWNER-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-PRINCIPAL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-PRINCIPAL" [a0, a1, a2] = some («FN2-OPS-SET-PRINCIPAL».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-RANGE-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-RANGE-GEN" [a0, a1, a2] = some («FN2-OPS-SET-RANGE-GEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-RANGE-LEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-RANGE-LEN" [a0, a1, a2] = some («FN2-OPS-SET-RANGE-LEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-CAP-NONCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-CAP-NONCE" [a0, a1, a2] = some («FN2-OPS-SET-CAP-NONCE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-FUA».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-FUA" [a0, a1, a2] = some («FN2-OPS-SET-FUA».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-CANCEL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-CANCEL-SLOT" [a0, a1, a2] = some («FN2-OPS-SET-CANCEL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-CANCEL-REQUESTED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-CANCEL-REQUESTED" [a0, a1, a2] = some («FN2-OPS-SET-CANCEL-REQUESTED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C0-HARVESTED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C0-HARVESTED" [a0, a1, a2] = some («FN2-OPS-SET-C0-HARVESTED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C0-OUTCOME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C0-OUTCOME" [a0, a1, a2] = some («FN2-OPS-SET-C0-OUTCOME».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C0-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C0-COUNT" [a0, a1, a2] = some («FN2-OPS-SET-C0-COUNT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C0-AUX1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C0-AUX1" [a0, a1, a2] = some («FN2-OPS-SET-C0-AUX1».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-PEER-PORT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-PEER-PORT" [a0, a1, a2] = some («FN2-OPS-SET-PEER-PORT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-PEER-W1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-PEER-W1" [a0, a1, a2] = some («FN2-OPS-SET-PEER-W1».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-PEER-W3».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-PEER-W3" [a0, a1, a2] = some («FN2-OPS-SET-PEER-W3».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C1-HARVESTED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C1-HARVESTED" [a0, a1, a2] = some («FN2-OPS-SET-C1-HARVESTED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C1-OUTCOME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C1-OUTCOME" [a0, a1, a2] = some («FN2-OPS-SET-C1-OUTCOME».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C1-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C1-COUNT" [a0, a1, a2] = some («FN2-OPS-SET-C1-COUNT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-C1-AUX1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-C1-AUX1" [a0, a1, a2] = some («FN2-OPS-SET-C1-AUX1».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-SET-WAKE-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OPS-SET-WAKE-DEADLINE" [a0, a1, a2] = some («FN2-OPS-SET-WAKE-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-OPS-FREE-HEAD».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "UPDATE-FN2-OPS-FREE-HEAD" [a0, a1] = some («UPDATE-FN2-OPS-FREE-HEAD».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OPS-PHASE" [a0, a1] = some («FN2-OPS-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-QUEUED».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-QUEUED" [a0] = some («FN2-OPS-QUEUED».guard a0) := rfl
 @[fn2_dispatch] theorem «FN2-POOL-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-POOL-GEN$AI" [a0, a1] = some («FN2-POOL-GEN$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-POOL-OWNER-GEN».guard_eq (a0 : Val) (a1 : Val) :
@@ -1609,316 +2371,384 @@ open Fn2.ACL2
     guardOf "UPDATE-FN2-POOL-LEASE-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-LEASE-OFF$AI».guard a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-POOL-LEASE-IN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
     guardOf "FN2-POOL-LEASE-IN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-POOL-LEASE-IN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-OP-UNRESERVE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-OP-UNRESERVE" [a0, a1, a2] = some («FN2-OP-UNRESERVE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-OP-SET-CANCEL-TARGET».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    guardOf "FN2-OP-SET-CANCEL-TARGET" [a0, a1, a2, a3, a4] = some («FN2-OP-SET-CANCEL-TARGET».guard a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-RING-NEXT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RING-NEXT" [a0, a1] = some («FN2-RING-NEXT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OP-ENQUEUE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-OP-ENQUEUE" [a0, a1, a2] = some («FN2-OP-ENQUEUE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CONTROL-STOP».guard_eq (a0 : Val) :
-    guardOf "FN2-CONTROL-STOP" [a0] = some («FN2-CONTROL-STOP».guard a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-STOPPED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ECHO-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-STOPPED$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-READY-PREV$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-MACHINES-READY-PREV$AI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-READY-PREV$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-WAIT-HEAD».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "UPDATE-FN2-MACHINES-WAIT-HEAD" [a0, a1] = some («UPDATE-FN2-MACHINES-WAIT-HEAD».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-STOP-WRITE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-MACHINES-STOP-WRITE" [a0, a1] = some («FN2-MACHINES-STOP-WRITE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-PENDING$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ECHO-PENDING$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-PENDING$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-RUN-COMMAND-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-ECHO-RUN-COMMAND-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ECHO-RUN-COMMAND-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-MODE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-MODE" [a0, a1] = some («FN2-ECHO-MODE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-LENGTH».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-LENGTH" [a0, a1] = some («FN2-ECHO-LENGTH».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-FILL$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-POOL-FILL$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-FILL$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-OFF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ECHO-SET-OFF" [a0, a1, a2] = some («FN2-ECHO-SET-OFF».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ECHO-SET-PHASE" [a0, a1, a2] = some («FN2-ECHO-SET-PHASE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-RUN-REPLY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-ECHO-RUN-REPLY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ECHO-RUN-REPLY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-CLASS" [a0, a1] = some («FN2-POOL-CLASS».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SET-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-POOL-SET-GEN" [a0, a1, a2] = some («FN2-POOL-SET-GEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-CLASS-COUNTSI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-POOL-CLASS-COUNTSI" [a0, a1, a2] = some («UPDATE-FN2-POOL-CLASS-COUNTSI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-GEN-LIMIT».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-GEN-LIMIT" [a0] = some («FN2-POOL-GEN-LIMIT».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-FREE-HEADI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-MACHINES-FREE-HEADI" [a0, a1] = some («FN2-MACHINES-FREE-HEADI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ECHO-SET-GENERATION" [a0, a1, a2] = some («FN2-ECHO-SET-GENERATION».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-POOL-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ECHO-SET-POOL-GEN" [a0, a1, a2] = some («FN2-ECHO-SET-POOL-GEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-SET-CAP-NONCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ECHO-SET-CAP-NONCE" [a0, a1, a2] = some («FN2-ECHO-SET-CAP-NONCE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-FREE-HEADI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-MACHINES-FREE-HEADI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-FREE-HEADI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-RECLAIM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    guardOf "FN2-MACHINES-RECLAIM" [a0, a1, a2, a3, a4] = some («FN2-MACHINES-RECLAIM».guard a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SLOT-BORROWS».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-SLOT-BORROWS" [a0, a1] = some («FN2-POOL-SLOT-BORROWS».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-PHASE$AI" [a0, a1] = some («FN2-ECHO-PHASE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ECHO-ACCOUNT-REF$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-DEADLINE$AI" [a0, a1] = some («FN2-ECHO-DEADLINE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-NEXT-FREE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ECHO-NEXT-FREE$AI" [a0, a1] = some («FN2-ECHO-NEXT-FREE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-MODE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ECHO-MODE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-MODE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-EVENT-READY$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-SCRIBE-EVENT-READY$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-EVENT-READY$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-ROWS" [a0] = some («FN2-SCRIBE-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-OUTCOME$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-OUTCOME$AI" [a0, a1] = some («FN2-SCRIBE-OUTCOME$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-EVENT$AI" [a0, a1] = some («FN2-SCRIBE-EVENT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SEQUENCE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-SEQUENCE$AI" [a0, a1] = some («FN2-SCRIBE-SEQUENCE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-CURSOR$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-SCRIBE-CURSOR$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-CURSOR$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SUB-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-SCRIBE-SUB-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-SUB-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-SIZESI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-CLASS-SIZESI" [a0, a1] = some («FN2-POOL-CLASS-SIZESI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-NEXT-FREE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-NEXT-FREE$AI" [a0, a1] = some («FN2-POOL-NEXT-FREE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-OWNER-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-POOL-OWNER-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-OWNER-SLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RESERVE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    guardOf "FN2-POOL-RESERVE" [a0, a1, a2, a3, a4] = some («FN2-POOL-RESERVE».guard a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-POOL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SCRIBE-SET-POOL-SLOT" [a0, a1, a2] = some («FN2-SCRIBE-SET-POOL-SLOT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-CHECKSUM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SCRIBE-SET-CHECKSUM" [a0, a1, a2] = some («FN2-SCRIBE-SET-CHECKSUM».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-POOL-SLOT$AI" [a0, a1] = some («FN2-SCRIBE-POOL-SLOT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «EQL».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "EQL" [a0, a1] = some («EQL».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-POOL-DATAI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-POOL-DATAI" [a0, a1, a2] = some («UPDATE-FN2-POOL-DATAI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-WRITE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-POOL-WRITE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-POOL-WRITE».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PATCH-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-SCRIBE-PATCH-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-PATCH-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-ISSUE-WRITE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
-    guardOf "FN2-ISSUE-WRITE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-ISSUE-WRITE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-WRITE-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-SCRIBE-RUN-WRITE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-RUN-WRITE-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-RESET-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-SCRIBE-RUN-RESET-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-RESET-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-DATAI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-DATAI" [a0, a1] = some («FN2-POOL-DATAI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-VERIFIED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-SCRIBE-VERIFIED$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-VERIFIED$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-NEXT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-SCRIBE-RUN-NEXT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-NEXT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-OUTCOME$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-SCRIBE-OUTCOME$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-OUTCOME$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-AUX0$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-SCRIBE-AUX0$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-AUX0$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
-    guardOf "FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-SCRIBE-ON-WRITE-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SCRIBE-SET-GENERATION" [a0, a1, a2] = some («FN2-SCRIBE-SET-GENERATION».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-ACCOUNT-REF" [a0, a1] = some («FN2-SCRIBE-ACCOUNT-REF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-DEADLINE" [a0, a1] = some («FN2-SCRIBE-DEADLINE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-PENDING" [a0, a1] = some («FN2-SCRIBE-PENDING».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-SET-BORROWS».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SCRIBE-SET-BORROWS" [a0, a1, a2] = some («FN2-SCRIBE-SET-BORROWS».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-VERIFIED».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-VERIFIED" [a0, a1] = some («FN2-SCRIBE-VERIFIED».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-AUX0».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SCRIBE-AUX0" [a0, a1] = some («FN2-SCRIBE-AUX0».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE-CAP-INDEX" [a0, a1] = some («FN2-ARMS-PROBE-CAP-INDEX».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE-GENERATION" [a0, a1] = some («FN2-ARMS-PROBE-GENERATION».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CONTROL-STOP-DETAIL».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "UPDATE-FN2-CONTROL-STOP-DETAIL" [a0, a1] = some («UPDATE-FN2-CONTROL-STOP-DETAIL».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-PHASE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-RUN-FREE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-PROBE-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE-RUN-FREE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-TARGET».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE-TARGET" [a0, a1] = some («FN2-ARMS-PROBE-TARGET».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-SET-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PROBE-SET-COUNT" [a0, a1, a2] = some («FN2-ARMS-PROBE-SET-COUNT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-REPEAT-LOOP-0».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-ARMS-PROBE-REPEAT-LOOP-0" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PROBE-REPEAT-LOOP-0».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-HAND-TO-SLOT$AI" [a0, a1] = some («FN2-POOL-HAND-TO-SLOT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-ACCEPT-HAND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
-    guardOf "FN2-POOL-ACCEPT-HAND" [a0, a1, a2, a3, a4, a5] = some («FN2-POOL-ACCEPT-HAND».guard a0 a1 a2 a3 a4 a5) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE-PHASE$AI" [a0, a1] = some («FN2-ARMS-PROBE-PHASE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-PRINCIPAL-SLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-ACCOUNT-REF$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-DEADLINE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-STOPPED$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE-STOPPED$AI" [a0, a1] = some («FN2-ARMS-PROBE-STOPPED$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-TARGET$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-TARGET$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-TARGET$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-CAP-NONCE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-AFTER" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-AFTER».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PHASE-FIELD-RUN-REPLY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PHASE-FIELD-RUN-QUERY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-GENERATION" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-GENERATION».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-PRINCIPAL-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-ACCOUNT-REF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-DEADLINE" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-DEADLINE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PHASE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-SHARED-PHASE" [a0, a1] = some («FN2-ARMS-SHARED-PHASE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-SUB-WORK-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-ARMS-SHARED-SUB-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-SHARED-SUB-WORK-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-RUN-C-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-SHARED-RUN-C-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-SHARED-RUN-C-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-SHARED-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-GENERATION$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-ACCOUNT-REF$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-SHARED-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-DEADLINE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-SHARED-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-SHARED-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-SHARED-COUNT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-ROWS" [a0] = some («FN2-ARMS-PER-PATH-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RESERVED».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-RESERVED" [a0, a1] = some («FN2-ARMS-PER-PATH-RESERVED».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-RESERVED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-SET-RESERVED" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-RESERVED».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-WGEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-SET-WGEN" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-WGEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WGEN$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-WGEN$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-WGEN$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PHASE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-PHASE" [a0, a1] = some («FN2-ARMS-PER-PATH-PHASE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PER-PATH-PRINCIPAL-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PER-PATH-ACCOUNT-REF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-DEADLINE" [a0, a1] = some («FN2-ARMS-PER-PATH-DEADLINE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-BLIND-SET-PHASE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-GENERATION$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-WSLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PER-PATH-BLIND-RUN-CMD-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WGEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-WGEN" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-WGEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-GENERATION$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-RUN-FREE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-LINKER-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-LINKER-RUN-FREE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER-GEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-PEER-GEN" [a0, a1] = some («FN2-ARMS-LINKER-PEER-GEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WSLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-WSLOT" [a0, a1] = some («FN2-ARMS-LINKER-WSLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-MACHINES-SLOT" [a0, a1] = some («FN2-MACHINES-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-TRUNCATE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-POOL-TRUNCATE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-POOL-TRUNCATE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-KIND$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-MACHINES-KIND$AI" [a0, a1] = some («FN2-MACHINES-KIND$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-RUN-DONE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-LINKER-RUN-DONE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-LINKER-RUN-DONE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-GENERATION" [a0, a1] = some («FN2-ARMS-LINKER-GENERATION».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-LINKER-PRINCIPAL-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-LINKER-ACCOUNT-REF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-LINKER-DEADLINE" [a0, a1] = some («FN2-ARMS-LINKER-DEADLINE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PEER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-LINKER-SET-PEER" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PEER».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PEER-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-LINKER-SET-PEER-KIND" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PEER-KIND».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-WSLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-LINKER-SET-WSLOT" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-WSLOT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-STEP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-INNER-STEP" [a0, a1] = some («FN2-ARMS-INNER-STEP».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-INNER-SET-COUNT" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-COUNT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-INNER-SET-STEP" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-STEP».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-RUN-WORK-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-ARMS-INNER-RUN-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-INNER-RUN-WORK-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-INNER-GENERATION$AI" [a0, a1] = some («FN2-ARMS-INNER-GENERATION$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-INNER-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-INNER-PRINCIPAL-SLOT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-INNER-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-INNER-ACCOUNT-REF$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-INNER-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-INNER-DEADLINE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-RUN-FREE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-PROBE4-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE4-RUN-FREE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TX-SET-VALUE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-TX-SET-VALUE" [a0, a1, a2] = some («FN2-ARMS-TX-SET-VALUE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TX-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-TX-ROWS" [a0] = some («FN2-ARMS-TX-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE4-ROWS" [a0] = some («FN2-ARMS-PROBE4-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE4-PHASE" [a0, a1] = some («FN2-ARMS-PROBE4-PHASE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PROBE4-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-GENERATION».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PROBE4-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-ARMS-PROBE4-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-DEADLINE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE6-COUNT$AI" [a0, a1] = some («FN2-ARMS-PROBE6-COUNT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE6-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-ARMS-PROBE6-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE6-COUNT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-RUN-DONE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-ARMS-PROBE6-RUN-DONE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE6-RUN-DONE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE6-GENERATION" [a0, a1] = some («FN2-ARMS-PROBE6-GENERATION».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE6-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PROBE6-PRINCIPAL-SLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE6-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PROBE6-ACCOUNT-REF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ARMS-PROBE6-DEADLINE" [a0, a1] = some («FN2-ARMS-PROBE6-DEADLINE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «ZP».guard_eq (a0 : Val) :
+    guardOf "ZP" [a0] = some («ZP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OP-SET-STORAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
+    guardOf "FN2-OP-SET-STORAGE" [a0, a1, a2, a3, a4] = some («FN2-OP-SET-STORAGE».guard a0 a1 a2 a3 a4) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-OPS-OUT-GENI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-OPS-OUT-GENI" [a0, a1, a2] = some («UPDATE-FN2-OPS-OUT-GENI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OUT-GEN-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-OUT-GEN-LENGTH" [a0] = some («FN2-OPS-OUT-GEN-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CONTROL-STOP-REASON».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "UPDATE-FN2-CONTROL-STOP-REASON" [a0, a1] = some («UPDATE-FN2-CONTROL-STOP-REASON».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ISSUE-RECEIVE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    guardOf "FN2-ISSUE-RECEIVE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-ISSUE-RECEIVE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-SET-WAIT-REASON».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-MACHINES-SET-WAIT-REASON" [a0, a1, a2] = some («FN2-MACHINES-SET-WAIT-REASON».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-SET-READY-NEXT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-MACHINES-SET-READY-NEXT" [a0, a1, a2] = some («FN2-MACHINES-SET-READY-NEXT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-WAIT-REASON».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MACHINES-WAIT-REASON" [a0, a1] = some («FN2-MACHINES-WAIT-REASON».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-PARK».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-MACHINES-PARK" [a0, a1, a2] = some («FN2-MACHINES-PARK».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SLOT-READ-CODE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-SLOT-READ-CODE" [a0, a1] = some («FN2-POOL-SLOT-READ-CODE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-MODE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-MODE$AI" [a0, a1] = some («FN2-ECHO-MODE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-LENGTH$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-LENGTH$AI" [a0, a1] = some («FN2-ECHO-LENGTH$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-BORROWS».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ECHO-SET-BORROWS" [a0, a1, a2] = some («FN2-ECHO-SET-BORROWS».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-OFF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ECHO-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-OFF$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ECHO-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «MEMBER-EQ-EXEC».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "MEMBER-EQ-EXEC" [a0, a1] = some («MEMBER-EQ-EXEC».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-CLASS$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-CLASS$AI" [a0, a1] = some («FN2-POOL-CLASS$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-POOL-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-POOL-GEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-CLASS-HEADSI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-POOL-CLASS-HEADSI" [a0, a1, a2] = some («UPDATE-FN2-POOL-CLASS-HEADSI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-POOL-RETIRED-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "UPDATE-FN2-POOL-RETIRED-COUNT" [a0, a1] = some («UPDATE-FN2-POOL-RETIRED-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CORE-RELEASE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-CORE-RELEASE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CORE-RELEASE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ECHO-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-GENERATION$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-POOL-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ECHO-POOL-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-POOL-GEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ECHO-CAP-NONCE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ECHO-CAP-NONCE$AI" [a0, a1, a2] = some («UPDATE-FN2-ECHO-CAP-NONCE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-ACTIVE-COUNTI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MACHINES-ACTIVE-COUNTI" [a0, a1] = some («FN2-MACHINES-ACTIVE-COUNTI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-MACHINES-ACTIVE-COUNTI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-MACHINES-ACTIVE-COUNTI" [a0, a1, a2] = some («UPDATE-FN2-MACHINES-ACTIVE-COUNTI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-ON-RECEIVE-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    guardOf "FN2-ECHO-ON-RECEIVE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-ECHO-ON-RECEIVE-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-ON-CLOSE-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    guardOf "FN2-ECHO-ON-CLOSE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-ECHO-ON-CLOSE-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ECHO-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ECHO-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ECHO-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ECHO-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ECHO-SET-DEADLINE" [a0, a1, a2] = some («FN2-ECHO-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-STOPPED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ECHO-STOPPED" [a0, a1] = some («FN2-ECHO-STOPPED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-STOPPED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-STOPPED" [a0, a1, a2] = some («FN2-SCRIBE-SET-STOPPED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-PHASE" [a0, a1, a2] = some («FN2-SCRIBE-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT-READY».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-EVENT-READY" [a0, a1] = some («FN2-SCRIBE-EVENT-READY».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-PHASE" [a0, a1] = some («FN2-SCRIBE-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-COUNT" [a0, a1] = some («FN2-SCRIBE-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-CURSOR».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-CURSOR" [a0, a1] = some («FN2-SCRIBE-CURSOR».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-COMPLETED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-COMPLETED" [a0, a1, a2] = some («FN2-SCRIBE-SET-COMPLETED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-GENERATION" [a0, a1] = some («FN2-SCRIBE-GENERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-WINDOW-CLASS-OF».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-WINDOW-CLASS-OF" [a0] = some («FN2-SCRIBE-WINDOW-CLASS-OF».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-OWNER-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-POOL-SET-OWNER-KIND" [a0, a1, a2] = some («FN2-POOL-SET-OWNER-KIND».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SET-OWNER-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-POOL-SET-OWNER-GEN" [a0, a1, a2] = some («FN2-POOL-SET-OWNER-GEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-POOL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SCRIBE-POOL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-POOL-SLOT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-CHECKSUM$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SCRIBE-CHECKSUM$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-CHECKSUM$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-CHECKSUM».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-CHECKSUM" [a0, a1] = some («FN2-SCRIBE-CHECKSUM».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-GEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-POOL-GEN" [a0, a1] = some («FN2-SCRIBE-POOL-GEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «MAX».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "MAX" [a0, a1] = some («MAX».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-BASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-BASE" [a0, a1] = some («FN2-POOL-BASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-FILL-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-SCRIBE-RUN-FILL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-FILL-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-PRINCIPAL-SLOT" [a0, a1] = some («FN2-SCRIBE-PRINCIPAL-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-WRITE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-SCRIBE-RUN-WRITE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-SCRIBE-RUN-WRITE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-RUN-FENCE-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-READ-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-SCRIBE-RUN-READ-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-SCRIBE-RUN-READ-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-RUN-VERIFY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-SCRIBE-RUN-VERIFY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-SCRIBE-RUN-VERIFY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-SEQUENCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-SEQUENCE" [a0, a1, a2] = some («FN2-SCRIBE-SET-SEQUENCE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-EVENT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SCRIBE-EVENT$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-EVENT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SCRIBE-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-COUNT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SCRIBE-AUX1$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SCRIBE-AUX1$AI" [a0, a1, a2] = some («UPDATE-FN2-SCRIBE-AUX1$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ON-READ-RESULT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    guardOf "FN2-SCRIBE-ON-READ-RESULT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-SCRIBE-ON-READ-RESULT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-SCRIBE-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-SCRIBE-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SCRIBE-SET-DEADLINE" [a0, a1, a2] = some («FN2-SCRIBE-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-BORROWS».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-BORROWS" [a0, a1] = some («FN2-SCRIBE-BORROWS».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-COMPLETED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-COMPLETED" [a0, a1] = some («FN2-SCRIBE-COMPLETED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-STOPPED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-STOPPED" [a0, a1] = some («FN2-SCRIBE-STOPPED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-AUX1».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SCRIBE-AUX1" [a0, a1] = some («FN2-SCRIBE-AUX1».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-NONCE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-CAP-NONCE" [a0, a1] = some («FN2-ARMS-PROBE-CAP-NONCE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PROBE-PRINCIPAL-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-PENDING$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE-PENDING$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-PENDING$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE-ROWS" [a0] = some («FN2-ARMS-PROBE-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-COUNT" [a0, a1] = some («FN2-ARMS-PROBE-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-WAKE-ROW».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-MACHINES-WAKE-ROW" [a0, a1, a2] = some («FN2-MACHINES-WAKE-ROW».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-RUN-WAIT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-ARMS-PROBE-RUN-WAIT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE-RUN-WAIT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-HAND-TO-GEN$AI" [a0, a1] = some («FN2-POOL-HAND-TO-GEN$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-KIND$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-HAND-TO-KIND$AI" [a0, a1] = some («FN2-POOL-HAND-TO-KIND$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-RUN-TAKE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARMS-PROBE-RUN-TAKE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PROBE-RUN-TAKE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-GENERATION$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PROBE-ACCOUNT-REF$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PROBE-DEADLINE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PENDING$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE-PENDING$AI" [a0, a1] = some («FN2-ARMS-PROBE-PENDING$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-STOPPED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE-STOPPED$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-STOPPED$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE-CAP-INDEX$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE-CAP-INDEX$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE-CAP-INDEX$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-RUN-FREE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PHASE-FIELD-RUN-FREE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-AFTER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-AFTER" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-AFTER».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-PHASE" [a0, a1] = some («FN2-ARMS-PHASE-FIELD-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PHASE-FIELD-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-SHARED-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-SHARED-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-RUN-A-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-ARMS-SHARED-RUN-A-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-SHARED-RUN-A-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-SHARED-GENERATION$AI" [a0, a1] = some («FN2-ARMS-SHARED-GENERATION$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-SHARED-PRINCIPAL-SLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-SHARED-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-SHARED-ACCOUNT-REF$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-SHARED-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-SHARED-DEADLINE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-SHARED-COUNT$AI" [a0, a1] = some («FN2-ARMS-SHARED-COUNT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PER-PATH-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RUN-FREE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-RUN-FREE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PER-PATH-RUN-FREE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-GENERATION" [a0, a1] = some («FN2-ARMS-PER-PATH-GENERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-WSLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-SET-WSLOT" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-WSLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WSLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-WSLOT$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-WSLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-RUN-REP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-RUN-REP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARMS-PER-PATH-RUN-REP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PER-PATH-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-SUB-ANSWER-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-SUB-ANSWER-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-PER-PATH-BLIND-SUB-ANSWER-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-RESERVED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-RESERVED$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-RESERVED$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PER-PATH-BLIND-WGEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PER-PATH-BLIND-WGEN$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PER-PATH-BLIND-WGEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WSLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-WSLOT" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-WSLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-PHASE$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-PHASE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-ACCOUNT-REF$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-DEADLINE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RESERVED$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-RESERVED$AI" [a0, a1] = some («FN2-ARMS-PER-PATH-BLIND-RESERVED$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-LINKER-PEER" [a0, a1] = some («FN2-ARMS-LINKER-PEER».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-LINKER-PEER-KIND" [a0, a1] = some («FN2-ARMS-LINKER-PEER-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WGEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-LINKER-WGEN" [a0, a1] = some («FN2-ARMS-LINKER-WGEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-LINKER-SEEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-LINKER-SEEN$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-LINKER-SEEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-LINK-PEER-LIVE-P».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
+    guardOf "FN2-ARMS-LINKER-LINK-PEER-LIVE-P" [a0, a1, a2, a3, a4, a5] = some («FN2-ARMS-LINKER-LINK-PEER-LIVE-P».guard a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-LINKER-PHASE" [a0, a1] = some («FN2-ARMS-LINKER-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-PEER-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-PEER-GEN" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-PEER-GEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SEEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-LINKER-SEEN" [a0, a1] = some («FN2-ARMS-LINKER-SEEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SET-WGEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-LINKER-SET-WGEN" [a0, a1, a2] = some («FN2-ARMS-LINKER-SET-WGEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-INNER-COUNT" [a0, a1] = some («FN2-ARMS-INNER-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-INNER-SET-PHASE" [a0, a1, a2] = some («FN2-ARMS-INNER-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-SUB-SEAL-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-ARMS-INNER-SUB-SEAL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-INNER-SUB-SEAL-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-INNER-PHASE$AI" [a0, a1] = some («FN2-ARMS-INNER-PHASE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-GENERATION$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-INNER-GENERATION$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-GENERATION$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-PRINCIPAL-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-INNER-PRINCIPAL-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-PRINCIPAL-SLOT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-ACCOUNT-REF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-INNER-ACCOUNT-REF$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-ACCOUNT-REF$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-INNER-DEADLINE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-INNER-DEADLINE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-INNER-DEADLINE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE4-COUNT" [a0, a1] = some («FN2-ARMS-PROBE4-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TY-SET-VALUE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-TY-SET-VALUE" [a0, a1, a2] = some («FN2-ARMS-TY-SET-VALUE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE4-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE4-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE4-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-RUN-DONE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-ARMS-PROBE4-RUN-DONE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-ARMS-PROBE4-RUN-DONE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE4-GENERATION" [a0, a1] = some («FN2-ARMS-PROBE4-GENERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE4-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-PROBE4-PRINCIPAL-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE4-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-PROBE4-ACCOUNT-REF».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE4-DEADLINE" [a0, a1] = some («FN2-ARMS-PROBE4-DEADLINE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-SET-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PROBE4-SET-COUNT" [a0, a1, a2] = some («FN2-ARMS-PROBE4-SET-COUNT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-PROBE6-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-PROBE6-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-PROBE6-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE6-ROWS" [a0] = some («FN2-ARMS-PROBE6-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PROBE6-PHASE" [a0, a1] = some («FN2-ARMS-PROBE6-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PROBE6-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PROBE6-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PROBE6-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PROBE6-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-BORN-ROWS" [a0] = some («FN2-ARMS-BORN-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-PHASE" [a0, a1] = some («FN2-ARMS-BORN-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-GENERATION" [a0, a1] = some («FN2-ARMS-BORN-GENERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-PRINCIPAL-SLOT" [a0, a1] = some («FN2-ARMS-BORN-PRINCIPAL-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-ACCOUNT-REF" [a0, a1] = some («FN2-ARMS-BORN-ACCOUNT-REF».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-DEADLINE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-DEADLINE" [a0, a1] = some («FN2-ARMS-BORN-DEADLINE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-SEEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-BORN-SEEN" [a0, a1] = some («FN2-ARMS-BORN-SEEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-WAIT-HEAD$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ACCOUNTS-WAIT-HEAD$AI" [a0, a1] = some («FN2-ACCOUNTS-WAIT-HEAD$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ACCOUNTS-WAIT-HEAD$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ACCOUNTS-WAIT-HEAD$AI" [a0, a1, a2] = some («UPDATE-FN2-ACCOUNTS-WAIT-HEAD$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ACCOUNTS-ROWS" [a0] = some («FN2-ACCOUNTS-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-HOLD-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ACCOUNTS-HOLD-LENGTH" [a0] = some («FN2-ACCOUNTS-HOLD-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «LENGTH».guard_eq (a0 : Val) :
+    guardOf "LENGTH" [a0] = some («LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-PHASE" [a0, a1] = some («FN2-ARMS-PARK-WAIT-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-GENERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-GENERATION" [a0, a1] = some («FN2-ARMS-PARK-WAIT-GENERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-PARK-WAIT-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-PARK-WAIT-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-PARK-WAIT-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SET-SEEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-SET-SEEN" [a0, a1, a2] = some («FN2-ARMS-PARK-WAIT-SET-SEEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-COST-SUM-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-COST-SUM-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-COST-SUM-COUNT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-ROWS" [a0] = some («FN2-ARMS-COST-SUM-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-PHASE" [a0, a1] = some («FN2-ARMS-COST-SUM-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-COST-SUM-SET-DEADLINE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-ARMS-F2-PROBE-WORD$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-ARMS-F2-PROBE-WORD$AI" [a0, a1, a2] = some («UPDATE-FN2-ARMS-F2-PROBE-WORD$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-ROWS" [a0] = some («FN2-ARMS-F2-PROBE-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-RUN-WORK-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-RUN-WORK-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-ARMS-F2-PROBE-RUN-WORK-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-PHASE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-PHASE" [a0, a1] = some («FN2-ARMS-F2-PROBE-PHASE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-SET-GENERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-SET-GENERATION" [a0, a1, a2] = some («FN2-ARMS-F2-PROBE-SET-GENERATION».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-SET-PRINCIPAL-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-SET-PRINCIPAL-SLOT" [a0, a1, a2] = some («FN2-ARMS-F2-PROBE-SET-PRINCIPAL-SLOT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-SET-ACCOUNT-REF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-SET-ACCOUNT-REF" [a0, a1, a2] = some («FN2-ARMS-F2-PROBE-SET-ACCOUNT-REF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-SET-DEADLINE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-SET-DEADLINE" [a0, a1, a2] = some («FN2-ARMS-F2-PROBE-SET-DEADLINE».guard a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-META-PROBE-CLASS$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-META-PROBE-CLASS$AI" [a0, a1] = some («FN2-META-PROBE-CLASS$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «UPDATE-FN2-META-PROBE-CURSOR$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
@@ -1963,16 +2793,22 @@ open Fn2.ACL2
     guardOf "FN2-GRAM-DIGIT-BYTE" [a0, a1] = some («FN2-GRAM-DIGIT-BYTE».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-GRAM-POW10».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "FN2-GRAM-POW10" [a0, a1, a2] = some («FN2-GRAM-POW10».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-PUT-CRLF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
-    guardOf "FN2-GRAM-PUT-CRLF" [a0, a1, a2, a3, a4, a5] = some («FN2-GRAM-PUT-CRLF».guard a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «ZEROP».guard_eq (a0 : Val) :
+    guardOf "ZEROP" [a0] = some («ZEROP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-NEXT-LF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-CURSOR-NEXT-LF" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-CURSOR-NEXT-LF».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-PARSE-OV».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-CURSOR-PARSE-OV" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-CURSOR-PARSE-OV».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-PUT-X-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-CURSOR-PUT-X-LOOP" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CURSOR-PUT-X-LOOP».guard a0 a1 a2 a3 a4 a5 a6) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-RENDER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
     guardOf "FN2-CURSOR-RENDER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-RENDER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SET-ROFF».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "FN2-CURSOR-SET-ROFF" [a0, a1, a2] = some («FN2-CURSOR-SET-ROFF».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-STEP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-STEP$AI" [a0, a1] = some («FN2-CURSOR-STEP$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-GROUP$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-CURSOR-GROUP$AI" [a0, a1] = some («FN2-CURSOR-GROUP$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-HI$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-HI$AI" [a0, a1] = some («FN2-CURSOR-HI$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-FC-ROWS».guard_eq (a0 : Val) :
     guardOf "FN2-FC-ROWS" [a0] = some («FN2-FC-ROWS».guard a0) := rfl
 @[fn2_dispatch] theorem «FN2-READ-STRIPE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
@@ -2001,6 +2837,8 @@ open Fn2.ACL2
     guardOf "FN2-READS-QK$A-LENGTH" [a0] = some («FN2-READS-QK$A-LENGTH».guard a0) := rfl
 @[fn2_dispatch] theorem «FN2-READS-WFP».guard_eq (a0 : Val) :
     guardOf "FN2-READS-WFP" [a0] = some («FN2-READS-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-HI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-HI" [a0, a1] = some («FN2-CURSOR-HI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-READS-SET-SID».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "FN2-READS-SET-SID" [a0, a1, a2] = some («FN2-READS-SET-SID».guard a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-READS-QS».guard_eq (a0 : Val) (a1 : Val) :
@@ -2095,336 +2933,346 @@ open Fn2.ACL2
     guardOf "FN2-RANGES-PHASE$A-LENGTH" [a0] = some («FN2-RANGES-PHASE$A-LENGTH».guard a0) := rfl
 @[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-HAVE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "UPDATE-FN2-CURSOR-HAVE$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-HAVE$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RANGE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
-    guardOf "FN2-CURSOR-SUB-RANGE-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-SUB-RANGE-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-RX-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-RX-GEN$AI" [a0, a1] = some («FN2-CURSOR-RX-GEN$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-B0$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-B0$AI" [a0, a1] = some («FN2-CURSOR-B0$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-QK$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-READS-QK$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QK$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-QG$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-READS-QG$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-QG$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RD-KEY-OCTETS».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    guardOf "FN2-RD-KEY-OCTETS" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RD-KEY-OCTETS».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-NAME-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    guardOf "FN2-CURSOR-SUB-SEEK-NAME-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-SUB-SEEK-NAME-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-READS-OP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-READS-OP" [a0, a1] = some («FN2-READS-OP».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-SET-LBOUND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SUCC-TXNS-SET-LBOUND" [a0, a1, a2] = some («FN2-SUCC-TXNS-SET-LBOUND».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-SET-LVER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-SUCC-TXNS-SET-LVER" [a0, a1, a2] = some («FN2-SUCC-TXNS-SET-LVER».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LPHASE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SUCC-TXNS-LPHASE" [a0, a1] = some («FN2-SUCC-TXNS-LPHASE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-RB" [a0, a1] = some («FN2-RUN-CURSORS-RB».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-TOP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-TOP" [a0, a1] = some («FN2-RUN-CURSORS-TOP».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OSLOT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-OSLOT" [a0, a1] = some («FN2-RUN-CURSORS-OSLOT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-PATHS-SLOT$AI" [a0, a1] = some («FN2-RUN-PATHS-SLOT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-UNIT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-PATHS-UNIT$AI" [a0, a1] = some («FN2-RUN-PATHS-UNIT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-IDX$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-PATHS-IDX$AI" [a0, a1] = some («FN2-RUN-PATHS-IDX$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CACHE-GEN$AI" [a0, a1] = some («FN2-RUN-CACHE-GEN$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-COUNTER$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CACHE-COUNTER$AI" [a0, a1] = some («FN2-RUN-CACHE-COUNTER$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-STATE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CACHE-STATE$AI" [a0, a1] = some («FN2-RUN-CACHE-STATE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-DECODE-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-FIELDS-SET-DECODE-PHASE" [a0, a1, a2] = some («FN2-FIELDS-SET-DECODE-PHASE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-DECODE-ACC».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-FIELDS-SET-DECODE-ACC" [a0, a1, a2] = some («FN2-FIELDS-SET-DECODE-ACC».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-DECODE-SIZE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-FIELDS-SET-DECODE-SIZE" [a0, a1, a2] = some («FN2-FIELDS-SET-DECODE-SIZE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-SET-DECODE-PAYLOAD».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-FIELDS-SET-DECODE-PAYLOAD" [a0, a1, a2] = some («FN2-FIELDS-SET-DECODE-PAYLOAD».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FORMAT-PAGE-HEADER-START" [a0, a1] = some («FN2-FORMAT-PAGE-HEADER-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-SLOT-FILL».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-POOL-SLOT-FILL" [a0, a1] = some («FN2-POOL-SLOT-FILL».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PAYLOAD$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-DECODE-PAYLOAD$AI" [a0, a1] = some («FN2-FIELDS-DECODE-PAYLOAD$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-SIZE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-DECODE-SIZE$AI" [a0, a1] = some («FN2-FIELDS-DECODE-SIZE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-ACC$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-DECODE-ACC$AI" [a0, a1] = some («FN2-FIELDS-DECODE-ACC$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-DECODE-PHASE$AI" [a0, a1] = some («FN2-FIELDS-DECODE-PHASE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-VALUE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-VALUE$AI" [a0, a1] = some («FN2-FIELDS-VALUE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-REF-GEN$AI" [a0, a1] = some («FN2-FIELDS-REF-GEN$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-FIELDS-REF-LEN$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-FIELDS-REF-LEN$AI" [a0, a1] = some («FN2-FIELDS-REF-LEN$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-STATUS$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-FIELDS-STATUS$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-STATUS$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-FORMAT-PAGE-HEADER-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-FORMAT-PAGE-HEADER-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-RUN-PAGE-HEADER-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-RUN-PAGE-HEADER-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-LEFT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-RUN-CURSORS-LEFT$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-LEFT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-ENTRIES$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-PATHS-ENTRIES$AI" [a0, a1] = some («FN2-RUN-PATHS-ENTRIES$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-PHASE" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-PHASE».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-SLOT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-SLOT" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-SLOT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-LO».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-LO" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-LO».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-IDX».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-IDX" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-IDX».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-UNIT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-UNIT" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-UNIT».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-STEP-UP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    guardOf "FN2-RUN-STEP-UP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RUN-STEP-UP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PHASE-UP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-RUN-PHASE-UP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-PHASE-UP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-GEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-GEN" [a0, a1] = some («FN2-RUN-CURSORS-GEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OFF».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-OFF" [a0, a1] = some («FN2-RUN-CURSORS-OFF».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-COUNTER».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-COUNTER" [a0, a1] = some («FN2-RUN-CURSORS-COUNTER».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-RESTART-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-RUN-RESTART-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RUN-RESTART-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-RESTART-OFFSET».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-RUN-RESTART-OFFSET" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-RUN-RESTART-OFFSET».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-MANIFEST-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-MANIFEST-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-MANIFEST-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-MANIFEST-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-PRINCIPAL-CHARGES-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-START" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-CONSUMER-CURSOR-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-CONSUMER-CURSOR-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-CURSOR-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-GROUP-COUNTS-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GROUP-COUNTS-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-GROUP-COUNTS-INDEX-START" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-GROUP-COUNTS-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-OUTCOME-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OUTCOME-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-OUTCOME-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OUTCOME-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-GROUPS-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GROUPS-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-GROUPS-INDEX-START" [a0, a1] = some («FN2-GROUPS-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-GROUPS-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-ADDR-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ADDR-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-ADDR-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ADDR-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-OVERVIEW-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-OVERVIEW-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OVERVIEW-INDEX-START" [a0, a1] = some («FN2-OVERVIEW-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-OVERVIEW-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-ARTICLE-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ARTICLE-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-ARTICLE-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-ARTICLE-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-ARTICLE-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-IDENTITY-ARTICLE-INDEX-START" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-ARTICLE-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-CANDIDATES-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-CANDIDATES-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-SUMMARY-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-IDENTITY-SUMMARY-INDEX-START" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-SUMMARY-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-HISTORY-ENTRY-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-IDENTITY-HISTORY-INDEX-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-HISTORY-INDEX-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-EVIDENCE-ENTRY-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-START».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-START" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-START».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-STEP-DELIVER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
-    guardOf "FN2-RUN-STEP-DELIVER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-RUN-STEP-DELIVER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-HI$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-HI$AI" [a0, a1] = some («FN2-RUN-CURSORS-HI$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATH-TAKE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
-    guardOf "FN2-RUN-PATH-TAKE" [a0, a1, a2, a3] = some («FN2-RUN-PATH-TAKE».guard a0 a1 a2 a3) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEFT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-CURSORS-LEFT" [a0, a1] = some («FN2-RUN-CURSORS-LEFT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-COMPARE-1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-PRINCIPAL-CHARGES-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-COMPARE-1».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-GROUP-COUNTS-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-RANGE-IN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
-    guardOf "FN2-POOL-RANGE-IN" [a0, a1, a2, a3] = some («FN2-POOL-RANGE-IN».guard a0 a1 a2 a3) := rfl
-@[fn2_dispatch] theorem «FN2-GROUPS-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-GROUPS-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-OVERVIEW-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-OVERVIEW-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE-4».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-CANDIDATES-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE-4».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-CANDIDATES-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-7».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-HISTORY-COMPARE-7" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-7».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-3».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-HISTORY-COMPARE-3" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-3».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-8».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-COMPARE-8" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-8».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-4».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-4».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
-    guardOf "FN2-IDENTITY-EVIDENCE-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PHASE-SEEK».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
-    guardOf "FN2-RUN-PHASE-SEEK" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-PHASE-SEEK».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-SET-GEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-PATHS-SET-GEN" [a0, a1, a2] = some («FN2-RUN-PATHS-SET-GEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-SET-COUNTER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-PATHS-SET-COUNTER" [a0, a1, a2] = some («FN2-RUN-PATHS-SET-COUNTER».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-STEP-HEADER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
-    guardOf "FN2-RUN-STEP-HEADER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-RUN-STEP-HEADER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LBOUND$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SUCC-TXNS-LBOUND$AI" [a0, a1] = some («FN2-SUCC-TXNS-LBOUND$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-INSTALLED-COUNTER" [a0, a1] = some («FN2-RUN-INSTALLED-COUNTER».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-GEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-INSTALLED-GEN" [a0, a1] = some («FN2-RUN-INSTALLED-GEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-RUN-INSTALLED-TOP" [a0, a1] = some («FN2-RUN-INSTALLED-TOP».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-TOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-TOP" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-TOP».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-OKIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-OKIND" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-OKIND».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SET-OGEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-RUN-CURSORS-SET-OGEN" [a0, a1, a2] = some («FN2-RUN-CURSORS-SET-OGEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-SUCC-TXNS-LVER" [a0, a1] = some («FN2-SUCC-TXNS-LVER».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-IBASE$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OVERLAYS-IBASE$AI" [a0, a1] = some («FN2-OVERLAYS-IBASE$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAY-INDEX-OFF$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OVERLAY-INDEX-OFF$AI" [a0, a1] = some («FN2-OVERLAY-INDEX-OFF$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OVERLAYS-SLOT$AI" [a0, a1] = some («FN2-OVERLAYS-SLOT$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OVERLAYS-ICAP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-OVERLAYS-ICAP" [a0, a1] = some («FN2-OVERLAYS-ICAP».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-OV-ENTRY».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
-    guardOf "FN2-OV-ENTRY" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-OV-ENTRY».guard a0 a1 a2 a3 a4 a5 a6) := rfl
-@[fn2_dispatch] theorem «FN2-XL-OVERLAY».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
-    guardOf "FN2-XL-OVERLAY" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-XL-OVERLAY».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
-@[fn2_dispatch] theorem «FN2-READS-SET-EROW».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-READS-SET-EROW" [a0, a1, a2] = some («FN2-READS-SET-EROW».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-SET-ES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-READS-SET-ES" [a0, a1, a2] = some («FN2-READS-SET-ES».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-SET-EVER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-READS-SET-EVER" [a0, a1, a2] = some («FN2-READS-SET-EVER».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-SLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-HAND-TO-SLOT$A-LENGTH" [a0] = some («FN2-POOL-HAND-TO-SLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-LEASE-LEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-LEASE-LEN$A-LENGTH" [a0] = some («FN2-POOL-LEASE-LEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-OWNER-GEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-OWNER-GEN$A-LENGTH" [a0] = some («FN2-POOL-OWNER-GEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CAP$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-CAP$A-LENGTH" [a0] = some («FN2-POOL-CAP$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-GEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CACHE-GEN$A-LENGTH" [a0] = some («FN2-RUN-CACHE-GEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CACHE-STATE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CACHE-STATE$A-LENGTH" [a0] = some («FN2-RUN-CACHE-STATE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-COUNTER$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-PATHS-COUNTER$A-LENGTH" [a0] = some («FN2-RUN-PATHS-COUNTER$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-PATHS-WFP».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-PATHS-WFP" [a0] = some («FN2-RUN-PATHS-WFP».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CURSORS-RB$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-RB$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-IDX$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CURSORS-IDX$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-IDX$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CURSORS-SLOT$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-SLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-RUN-CURSORS-SCHEMA$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-RUN-CURSORS-SCHEMA$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-SCHEMA$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LROW$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SUCC-TXNS-LROW$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-LROW$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RSTATE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SUCC-TXNS-RSTATE$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-RSTATE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SUCC-TXNS-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SUCC-TXNS-PHASE$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-REPLY$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-CURSOR-REPLY$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-REPLY$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-EVER$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-READS-EVER$AI" [a0, a1] = some («FN2-READS-EVER$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RD-ENTRY-ROW».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
-    guardOf "FN2-RD-ENTRY-ROW" [a0, a1, a2, a3, a4] = some («FN2-RD-ENTRY-ROW».guard a0 a1 a2 a3 a4) := rfl
-@[fn2_dispatch] theorem «FN2-ID-ENGINE-PUBLISHED».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-ID-ENGINE-PUBLISHED" [a0, a1] = some («FN2-ID-ENGINE-PUBLISHED».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ID-ENGINE-ARENA$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ID-ENGINE-ARENA$A-LENGTH" [a0] = some («FN2-ID-ENGINE-ARENA$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-ENGINE-WFP».guard_eq (a0 : Val) :
-    guardOf "FN2-ID-ENGINE-WFP" [a0] = some («FN2-ID-ENGINE-WFP».guard a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-WSLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-READS-WSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-WSLOT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-EXCL$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-READS-EXCL$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EXCL$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-READS-SELECTED$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-READS-SELECTED$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-SELECTED$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-SEEKS-ROWS».guard_eq (a0 : Val) :
-    guardOf "FN2-SEEKS-ROWS" [a0] = some («FN2-SEEKS-ROWS».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SEEKS-MID$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SEEKS-MID$A-LENGTH" [a0] = some («FN2-SEEKS-MID$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SEEKS-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SEEKS-PHASE$A-LENGTH" [a0] = some («FN2-SEEKS-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-SEL$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-CURSOR-SEL$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-SEL$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-GROUP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) :
-    guardOf "FN2-CURSOR-SUB-SEEK-GROUP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22] = some («FN2-CURSOR-SUB-SEEK-GROUP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-COUNT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-CURSOR-COUNT$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-COUNT$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-HIGH$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "UPDATE-FN2-CURSOR-HIGH$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-HIGH$AI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-COUNT».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-COUNT" [a0, a1] = some («FN2-CURSOR-COUNT».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-HIGH».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-HIGH" [a0, a1] = some («FN2-CURSOR-HIGH».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-KLEN».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-KLEN" [a0, a1] = some («FN2-CURSOR-KLEN».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-K1».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-K1" [a0, a1] = some («FN2-CURSOR-K1».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-B1».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-B1" [a0, a1] = some («FN2-CURSOR-B1».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-PIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-PIN" [a0, a1, a2] = some («FN2-CURSOR-SET-PIN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-HI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-HI" [a0, a1, a2] = some («FN2-CURSOR-SET-HI».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-SEEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-SEEN" [a0, a1, a2] = some («FN2-CURSOR-SET-SEEN».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-READS-FOUND».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-READS-FOUND" [a0, a1] = some («FN2-READS-FOUND».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-RD-IDENTITY».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) :
-    guardOf "FN2-RD-IDENTITY" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20] = some («FN2-RD-IDENTITY».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-FOUND».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-FOUND" [a0, a1] = some («FN2-CURSOR-FOUND».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POOL-PUT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
-    guardOf "FN2-CURSOR-POOL-PUT" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-CURSOR-POOL-PUT».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) :
+    guardOf "FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15] = some («FN2-CURSOR-CHAIN-SUB-RANGE-0-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-RX-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-RX-SLOT" [a0, a1] = some («FN2-CURSOR-RX-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-A0».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-A0" [a0, a1] = some («FN2-CURSOR-A0».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-QSET».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-READS-SET-QSET" [a0, a1, a2] = some («FN2-READS-SET-QSET».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-QS».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-READS-SET-QS" [a0, a1, a2] = some («FN2-READS-SET-QS».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-QSET».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-READS-QSET" [a0, a1] = some («FN2-READS-QSET».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-STEP" [a0, a1, a2] = some («FN2-CURSOR-SET-STEP».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-OP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-READS-OP$AI" [a0, a1] = some («FN2-READS-OP$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LBOUND$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SUCC-TXNS-LBOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LBOUND$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-SUCC-TXNS-LVER$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-SUCC-TXNS-LVER$AI" [a0, a1, a2] = some («UPDATE-FN2-SUCC-TXNS-LVER$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LPHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SUCC-TXNS-LPHASE$AI" [a0, a1] = some («FN2-SUCC-TXNS-LPHASE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-RB$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-RB$AI" [a0, a1] = some («FN2-RUN-CURSORS-RB$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-TOP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-TOP$AI" [a0, a1] = some («FN2-RUN-CURSORS-TOP$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OSLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-OSLOT$AI" [a0, a1] = some («FN2-RUN-CURSORS-OSLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATH-ROW».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-PATH-ROW" [a0, a1] = some («FN2-RUN-PATH-ROW».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-GEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-PATHS-GEN" [a0, a1] = some («FN2-RUN-PATHS-GEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-COUNTER».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-PATHS-COUNTER" [a0, a1] = some («FN2-RUN-PATHS-COUNTER».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-ROW».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CACHE-ROW" [a0, a1] = some («FN2-RUN-CACHE-ROW».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CACHE-SLOT" [a0, a1] = some («FN2-RUN-CACHE-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-UNIT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CACHE-UNIT" [a0, a1] = some («FN2-RUN-CACHE-UNIT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-FIELDS-DECODE-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-ACC$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-FIELDS-DECODE-ACC$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-ACC$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-SIZE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-FIELDS-DECODE-SIZE$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-SIZE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI" [a0, a1, a2] = some («UPDATE-FN2-FIELDS-DECODE-PAYLOAD$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CODEC-SAVE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CODEC-SAVE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CODEC-SAVE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-SLOT-CAP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-POOL-SLOT-CAP" [a0, a1] = some («FN2-POOL-SLOT-CAP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-NEXT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-DECODE-NEXT" [a0, a1] = some («FN2-FIELDS-DECODE-NEXT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-REF».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-DECODE-REF" [a0, a1] = some («FN2-FIELDS-DECODE-REF».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-HIGH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-DECODE-HIGH" [a0, a1] = some («FN2-FIELDS-DECODE-HIGH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-DECODE-POS».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-DECODE-POS" [a0, a1] = some («FN2-FIELDS-DECODE-POS».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-FORMAT-PAGE-HEADER-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-FORMAT-PAGE-HEADER-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-SLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-REF-SLOT" [a0, a1] = some («FN2-FIELDS-REF-SLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-REF-OFF».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-REF-OFF" [a0, a1] = some («FN2-FIELDS-REF-OFF».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FIELDS-STATUS».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FIELDS-STATUS" [a0, a1] = some («FN2-FIELDS-STATUS».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-PAGE-HEADER-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-FORMAT-PAGE-HEADER-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-FORMAT-PAGE-HEADER-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PAGE-HEADER-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-RUN-PAGE-HEADER-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-RUN-PAGE-HEADER-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-READ-HEADER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-RUN-READ-HEADER" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-RUN-READ-HEADER».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSOR-SET-LEFT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSOR-SET-LEFT" [a0, a1] = some («FN2-RUN-CURSOR-SET-LEFT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-PHASE$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-PHASE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-SLOT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-LO$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-LO$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-LO$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-IDX$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-IDX$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-IDX$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-UNIT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-UNIT$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-UNIT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSOR-SAVE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    guardOf "FN2-RUN-CURSOR-SAVE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RUN-CURSOR-SAVE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-READERP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-READERP" [a0, a1] = some («FN2-RUN-READERP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-GEN$AI" [a0, a1] = some («FN2-RUN-CURSORS-GEN$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OFF$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-OFF$AI" [a0, a1] = some («FN2-RUN-CURSORS-OFF$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-COUNTER$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-COUNTER$AI" [a0, a1] = some («FN2-RUN-CURSORS-COUNTER$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-RESTART-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-RESTART-START" [a0, a1] = some («FN2-RUN-RESTART-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-RESTART-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-RUN-RESTART-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RUN-RESTART-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-MANIFEST-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-MANIFEST-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-START" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-PRINCIPAL-CHARGES-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-CURSOR-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CONSUMER-CURSOR-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-START" [a0, a1] = some («FN2-GROUP-COUNTS-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-GROUP-COUNTS-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-CONSUMER-NAMES-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CONSUMER-NAMES-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-START" [a0, a1] = some («FN2-OUTCOME-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-OUTCOME-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-GROUPS-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-GROUPS-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-GROUPS-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-GROUPS-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ADDR-ENTRY-START" [a0, a1] = some («FN2-ADDR-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ADDR-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-ADDR-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ADDR-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-OVERVIEW-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-OVERVIEW-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-START" [a0, a1] = some («FN2-ARTICLE-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-ARTICLE-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-ARTICLE-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-ARTICLE-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-START" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-CANDIDATES-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-SUMMARY-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-SUMMARY-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-START».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-START" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-START».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-IDENTITY-HISTORY-INDEX-DECODE-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SCAN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-SCAN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SCAN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-BYTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-BYTE" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-IDENTITY-EVIDENCE-INDEX-BYTE».guard a0 a1 a2 a3 a4 a5 a6) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-LAYOUT-DECODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    guardOf "FN2-RUN-LAYOUT-DECODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-RUN-LAYOUT-DECODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PHASE-DELIVER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-RUN-PHASE-DELIVER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-PHASE-DELIVER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-HI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-CURSORS-HI" [a0, a1] = some («FN2-RUN-CURSORS-HI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-STEP-CHILD».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
+    guardOf "FN2-RUN-STEP-CHILD" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-RUN-STEP-CHILD».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-VALUE-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-RUN-VALUE-COMPARE" [a0, a1, a2] = some («FN2-RUN-VALUE-COMPARE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-COMPARE-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) :
+    guardOf "FN2-POOL-COMPARE-LOOP" [a0, a1, a2, a3, a4] = some («FN2-POOL-COMPARE-LOOP».guard a0 a1 a2 a3 a4) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-OCTETS-FIELD-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-RUN-OCTETS-FIELD-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-RUN-OCTETS-FIELD-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OUTCOME-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-COMPARE-1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OVERVIEW-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-COMPARE-1».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-COMPARE-1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-COMPARE-1».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-8».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-COMPARE-8" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-8».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE-4».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-COMPARE-4" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE-4».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-COMPARE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-COMPARE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-COMPARE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-5».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-COMPARE-5" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-5».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-COMPARE-1».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-COMPARE-1" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-COMPARE-1».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-STEP-SEEK».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) (a23 : Val) :
+    guardOf "FN2-RUN-STEP-SEEK" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23] = some («FN2-RUN-STEP-SEEK».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22 a23) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-PATHS-GEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-PATHS-GEN$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-PATHS-GEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-PATHS-COUNTER$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-PATHS-COUNTER$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-PATHS-COUNTER$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATH-NOTE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-RUN-PATH-NOTE" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-RUN-PATH-NOTE».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-LOOKUP-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-RUN-LOOKUP-STEP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-RUN-LOOKUP-STEP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-COUNTER$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-INSTALLED-COUNTER$AI" [a0, a1] = some («FN2-RUN-INSTALLED-COUNTER$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-GEN$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-INSTALLED-GEN$AI" [a0, a1] = some («FN2-RUN-INSTALLED-GEN$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-INSTALLED-TOP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RUN-INSTALLED-TOP$AI" [a0, a1] = some («FN2-RUN-INSTALLED-TOP$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-TOP$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-TOP$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-TOP$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-OKIND$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-OKIND$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-OKIND$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-RUN-CURSORS-OGEN$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-RUN-CURSORS-OGEN$AI" [a0, a1, a2] = some («UPDATE-FN2-RUN-CURSORS-OGEN$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SUCC-TXNS-LVER$AI" [a0, a1] = some («FN2-SUCC-TXNS-LVER$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-COUNT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERLAYS-COUNT" [a0, a1] = some («FN2-OVERLAYS-COUNT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-FILL».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERLAYS-FILL" [a0, a1] = some («FN2-OVERLAYS-FILL».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-GEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERLAYS-GEN" [a0, a1] = some («FN2-OVERLAYS-GEN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERLAYS-ICAP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERLAYS-ICAP$AI" [a0, a1] = some («FN2-OVERLAYS-ICAP$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OV-OKP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-OV-OKP" [a0, a1, a2] = some («FN2-OV-OKP».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-OV-LOCATE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OV-LOCATE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OV-LOCATE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-EROW$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-READS-EROW$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EROW$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-ES$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-READS-ES$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-ES$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-READS-EVER$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-READS-EVER$AI" [a0, a1, a2] = some («UPDATE-FN2-READS-EVER$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-HAND-TO-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-HAND-TO-GEN$A-LENGTH" [a0] = some («FN2-POOL-HAND-TO-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-OUT-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-OUT-COUNT$A-LENGTH" [a0] = some («FN2-POOL-OUT-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-LEASE-OP-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-LEASE-OP-SLOT$A-LENGTH" [a0] = some («FN2-POOL-LEASE-OP-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-STATE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-STATE$A-LENGTH" [a0] = some («FN2-POOL-STATE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-POOL-WFP" [a0] = some («FN2-POOL-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CACHE-UNIT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-CACHE-UNIT$A-LENGTH" [a0] = some («FN2-RUN-CACHE-UNIT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-IDX$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-PATHS-IDX$A-LENGTH" [a0] = some («FN2-RUN-PATHS-IDX$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-PATHS-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-PATHS-SLOT$A-LENGTH" [a0] = some («FN2-RUN-PATHS-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OKIND$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-CURSORS-OKIND$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-OKIND$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-OFF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-CURSORS-OFF$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-OFF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-CURSORS-GEN$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-RUN-CURSORS-LEVEL$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-RUN-CURSORS-LEVEL$A-LENGTH" [a0] = some («FN2-RUN-CURSORS-LEVEL$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-LVER$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-TXNS-LVER$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-LVER$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-RBOUND$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-TXNS-RBOUND$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-RBOUND$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-BATCH$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-TXNS-BATCH$A-LENGTH" [a0] = some («FN2-SUCC-TXNS-BATCH$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-READ-LOOKUP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) :
+    guardOf "FN2-READ-LOOKUP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14] = some («FN2-READ-LOOKUP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14) := rfl
+@[fn2_dispatch] theorem «FN2-READS-EROW».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-READS-EROW" [a0, a1] = some («FN2-READS-EROW».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-READS-ENTRY».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-READS-ENTRY" [a0, a1] = some («FN2-READS-ENTRY».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-PUBLISHED$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ID-ENGINE-PUBLISHED$AI" [a0, a1] = some («FN2-ID-ENGINE-PUBLISHED$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-SEQ$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-ENGINE-SEQ$A-LENGTH" [a0] = some («FN2-ID-ENGINE-SEQ$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-ENGINE-SCRATCH$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-ENGINE-SCRATCH$A-LENGTH" [a0] = some («FN2-ID-ENGINE-SCRATCH$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-SET-PHASE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-SEEKS-SET-PHASE" [a0, a1, a2] = some («FN2-SEEKS-SET-PHASE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-WGEN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-READS-SET-WGEN" [a0, a1, a2] = some («FN2-READS-SET-WGEN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-FOUND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-READS-SET-FOUND" [a0, a1, a2] = some («FN2-READS-SET-FOUND».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SET-EVIDENCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-READS-SET-EVIDENCE" [a0, a1, a2] = some («FN2-READS-SET-EVIDENCE».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-AFTER$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SEEKS-AFTER$A-LENGTH" [a0] = some («FN2-SEEKS-AFTER$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SEEKS-G$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SEEKS-G$A-LENGTH" [a0] = some («FN2-SEEKS-G$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-READ-RELEASE-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) :
+    guardOf "FN2-READ-RELEASE-CHILDREN" [a0, a1, a2, a3, a4, a5] = some («FN2-READ-RELEASE-CHILDREN».guard a0 a1 a2 a3 a4 a5) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-SPIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-SPIN" [a0, a1, a2] = some («FN2-CURSOR-SET-SPIN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    guardOf "FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-SUB-SEEK-COUNTS-KEY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-LOW».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-LOW" [a0, a1, a2] = some («FN2-CURSOR-SET-LOW».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
+    guardOf "FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-SEEK-COUNTS-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LOW».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-LOW" [a0, a1] = some («FN2-CURSOR-LOW».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-K0».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-K0" [a0, a1] = some («FN2-CURSOR-K0».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SPIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-SPIN" [a0, a1] = some («FN2-CURSOR-SPIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-A1».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-A1" [a0, a1] = some («FN2-CURSOR-A1».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-GROUP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-GROUP" [a0, a1, a2] = some («FN2-CURSOR-SET-GROUP».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-LO».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-LO" [a0, a1, a2] = some («FN2-CURSOR-SET-LO».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-NCURRENT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-NCURRENT" [a0, a1, a2] = some («FN2-CURSOR-SET-NCURRENT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-RD-IDENTITY-BEGIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    guardOf "FN2-RD-IDENTITY-BEGIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-RD-IDENTITY-BEGIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-READS-SELECTED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-READS-SELECTED" [a0, a1] = some («FN2-READS-SELECTED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-FOUND$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CURSOR-FOUND$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-FOUND$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) :
+    guardOf "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22] = some («FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-END-MATCH-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) :
+    guardOf "FN2-CURSOR-SUB-END-MATCH-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18] = some («FN2-CURSOR-SUB-END-MATCH-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-TRIM-OV-BODY».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
+    guardOf "FN2-CURSOR-TRIM-OV-BODY" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CURSOR-TRIM-OV-BODY».guard a0 a1 a2 a3 a4 a5 a6) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-POOL-PAD».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) :
     guardOf "FN2-CURSOR-POOL-PAD" [a0, a1, a2, a3, a4, a5, a6] = some («FN2-CURSOR-POOL-PAD».guard a0 a1 a2 a3 a4 a5 a6) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SUB-LG-START-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) :
@@ -2465,16 +3313,20 @@ open Fn2.ACL2
     guardOf "FN2-RD-OCTETS" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-RD-OCTETS».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SUB-LG-STEP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
     guardOf "FN2-CURSOR-SUB-LG-STEP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-LG-STEP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-LGROUP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-LGROUP" [a0, a1, a2] = some («FN2-CURSOR-SET-LGROUP».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LGROUP$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-LGROUP$AI" [a0, a1] = some («FN2-CURSOR-LGROUP$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-POSTING».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-POSTING" [a0, a1] = some («FN2-CURSOR-POSTING».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-ROFF$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-ROFF$AI" [a0, a1] = some («FN2-CURSOR-ROFF$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-STEP».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-STEP" [a0, a1] = some («FN2-CURSOR-STEP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-WILDMAT-ALT-END».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-WILDMAT-ALT-END" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-WILDMAT-ALT-END».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-WILDMAT-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    guardOf "FN2-WILDMAT-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-WILDMAT-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POOL-TAIL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-CURSOR-POOL-TAIL" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-CURSOR-POOL-TAIL».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POSTING$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-POSTING$AI" [a0, a1] = some («FN2-CURSOR-POSTING$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-HAVE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-HAVE$AI" [a0, a1] = some («FN2-CURSOR-HAVE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-LIST-RENDER-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) :
+    guardOf "FN2-CURSOR-SUB-LIST-RENDER-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22] = some («FN2-CURSOR-SUB-LIST-RENDER-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-NEWNEWS-GROUP-STEP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
+    guardOf "FN2-CURSOR-SUB-NEWNEWS-GROUP-STEP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-NEWNEWS-GROUP-STEP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
 @[fn2_dispatch] theorem «FN2-RANGES-HBASE$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-RANGES-HBASE$AI" [a0, a1] = some («FN2-RANGES-HBASE$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-RANGES-PLIMIT$AI».guard_eq (a0 : Val) (a1 : Val) :
@@ -2487,24 +3339,30 @@ open Fn2.ACL2
     guardOf "FN2-RANGES-OK$AI" [a0, a1] = some («FN2-RANGES-OK$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-RANGES-OG$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-RANGES-OG$AI" [a0, a1] = some («FN2-RANGES-OG$AI».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-STEP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) (a22 : Val) :
-    guardOf "FN2-CURSOR-SUB-RENDER-STEP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, a22] = some («FN2-CURSOR-SUB-RENDER-STEP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21 a22) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-FOUND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-FOUND" [a0, a1, a2] = some («FN2-CURSOR-SET-FOUND».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-NCURRENT$AI».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-NCURRENT$AI" [a0, a1] = some («FN2-CURSOR-NCURRENT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-NEWNEWS-OV-STEP-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) (a17 : Val) (a18 : Val) (a19 : Val) (a20 : Val) (a21 : Val) :
+    guardOf "FN2-CURSOR-SUB-NEWNEWS-OV-STEP-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21] = some («FN2-CURSOR-SUB-NEWNEWS-OV-STEP-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 a21) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-MOVE-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CURSOR-MOVE-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CURSOR-MOVE-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-POOL-NEWNEWS-MID».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CURSOR-POOL-NEWNEWS-MID" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CURSOR-POOL-NEWNEWS-MID».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SEEN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-SEEN" [a0, a1] = some («FN2-CURSOR-SEEN».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «UPDATE-FN2-CURSOR-LPOS$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "UPDATE-FN2-CURSOR-LPOS$AI" [a0, a1, a2] = some («UPDATE-FN2-CURSOR-LPOS$AI».guard a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-NUMBER-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) :
     guardOf "FN2-CURSOR-SUB-RENDER-NUMBER-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16] = some («FN2-CURSOR-SUB-RENDER-NUMBER-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-ROW-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) (a14 : Val) (a15 : Val) (a16 : Val) :
+    guardOf "FN2-CURSOR-SUB-RENDER-ROW-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16] = some («FN2-CURSOR-SUB-RENDER-ROW-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SCAN-EXTRA-HDR».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) :
+    guardOf "FN2-CURSOR-SCAN-EXTRA-HDR" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12] = some («FN2-CURSOR-SCAN-EXTRA-HDR».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SUB-RENDER-HDR-VAL-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) :
+    guardOf "FN2-CURSOR-SUB-RENDER-HDR-VAL-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11] = some («FN2-CURSOR-SUB-RENDER-HDR-VAL-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-LINE-S$AI».guard_eq (a0 : Val) (a1 : Val) :
     guardOf "FN2-CURSOR-LINE-S$AI" [a0, a1] = some («FN2-CURSOR-LINE-S$AI».guard a0 a1) := rfl
 @[fn2_dispatch] theorem «FN2-GRAM-UTF8-STEP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
     guardOf "FN2-GRAM-UTF8-STEP" [a0, a1, a2, a3] = some («FN2-GRAM-UTF8-STEP».guard a0 a1 a2 a3) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-UPCASE».guard_eq (a0 : Val) :
-    guardOf "FN2-GRAM-UPCASE" [a0] = some («FN2-GRAM-UPCASE».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-GRAM-COUNT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-GRAM-COUNT" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GRAM-COUNT».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-NNTP-KEYWORD-TAG».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-NNTP-KEYWORD-TAG" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-NNTP-KEYWORD-TAG».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
 @[fn2_dispatch] theorem «FN2-GRAM-LABEL-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
     guardOf "FN2-GRAM-LABEL-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-GRAM-LABEL-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
 @[fn2_dispatch] theorem «FN2-GRAM-MSGID-MIDDLE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
@@ -2565,149 +3423,747 @@ open Fn2.ACL2
     guardOf "FN2-CURSOR-SET-MASK" [a0, a1, a2] = some («FN2-CURSOR-SET-MASK».guard a0 a1 a2) := rfl
 @[fn2_dispatch] theorem «FN2-CURSOR-SET-LINE-E».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
     guardOf "FN2-CURSOR-SET-LINE-E" [a0, a1, a2] = some («FN2-CURSOR-SET-LINE-E».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-UPDATE».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-CURSOR-UPDATE" [a0, a1] = some («FN2-CURSOR-UPDATE».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-POSTING».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-POSTING" [a0, a1, a2] = some («FN2-CURSOR-SET-POSTING».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SET-STOPPED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
-    guardOf "FN2-CURSOR-SET-STOPPED" [a0, a1, a2] = some («FN2-CURSOR-SET-STOPPED».guard a0 a1 a2) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-READY-PREV».guard_eq (a0 : Val) (a1 : Val) :
-    guardOf "FN2-MACHINES-READY-PREV" [a0, a1] = some («FN2-MACHINES-READY-PREV».guard a0 a1) := rfl
-@[fn2_dispatch] theorem «FN2-ISSUE-ACCEPT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
-    guardOf "FN2-ISSUE-ACCEPT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ISSUE-ACCEPT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-WAKE-OBSERVATION-GEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-WAKE-OBSERVATION-GEN$A-LENGTH" [a0] = some («FN2-OPS-WAKE-OBSERVATION-GEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-AUX0$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-C1-AUX0$A-LENGTH" [a0] = some («FN2-OPS-C1-AUX0$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C1-EVENT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-C1-EVENT$A-LENGTH" [a0] = some («FN2-OPS-C1-EVENT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PEER-W2$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-PEER-W2$A-LENGTH" [a0] = some («FN2-OPS-PEER-W2$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-PEER-FAMILY$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-PEER-FAMILY$A-LENGTH" [a0] = some («FN2-OPS-PEER-FAMILY$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-REASON$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-C0-REASON$A-LENGTH" [a0] = some («FN2-OPS-C0-REASON$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-C0-POSTED$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-C0-POSTED$A-LENGTH" [a0] = some («FN2-OPS-C0-POSTED$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-MAY-RELEASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-MAY-RELEASE$A-LENGTH" [a0] = some («FN2-OPS-MAY-RELEASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-CAP-INDEX$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-CAP-INDEX$A-LENGTH" [a0] = some («FN2-OPS-CAP-INDEX$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-RANGE-SLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-RANGE-SLOT$A-LENGTH" [a0] = some («FN2-OPS-RANGE-SLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-OWNER-KIND$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-OWNER-KIND$A-LENGTH" [a0] = some («FN2-OPS-OWNER-KIND$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-OPS-WFP».guard_eq (a0 : Val) :
-    guardOf "FN2-OPS-WFP" [a0] = some («FN2-OPS-WFP».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-WAIT-REASON$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-MACHINES-WAIT-REASON$A-LENGTH" [a0] = some («FN2-MACHINES-WAIT-REASON$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-KIND$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-MACHINES-KIND$A-LENGTH" [a0] = some («FN2-MACHINES-KIND$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-KLEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-KLEN$A-LENGTH" [a0] = some («FN2-CURSOR-KLEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-DONE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-DONE$A-LENGTH" [a0] = some («FN2-CURSOR-DONE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LPOS$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-LPOS$A-LENGTH" [a0] = some («FN2-CURSOR-LPOS$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-SPIN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-SPIN$A-LENGTH" [a0] = some («FN2-CURSOR-SPIN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LOW$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-LOW$A-LENGTH" [a0] = some («FN2-CURSOR-LOW$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-HI$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-HI$A-LENGTH" [a0] = some («FN2-CURSOR-HI$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-A1$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-A1$A-LENGTH" [a0] = some («FN2-CURSOR-A1$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-K0$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-K0$A-LENGTH" [a0] = some («FN2-CURSOR-K0$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-GROUP$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-GROUP$A-LENGTH" [a0] = some («FN2-CURSOR-GROUP$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-LINE-S$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-LINE-S$A-LENGTH" [a0] = some («FN2-CURSOR-LINE-S$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-CONN-KIND$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-CONN-KIND$A-LENGTH" [a0] = some («FN2-CURSOR-CONN-KIND$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-ACCOUNT-REF$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-CURSOR-ACCOUNT-REF$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-CURSOR-WFP».guard_eq (a0 : Val) :
-    guardOf "FN2-CURSOR-WFP" [a0] = some («FN2-CURSOR-WFP».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-H$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ID-DECIDES-H$A-LENGTH" [a0] = some («FN2-ID-DECIDES-H$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-SELECTED$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ID-DECIDES-SELECTED$A-LENGTH" [a0] = some («FN2-ID-DECIDES-SELECTED$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ID-DECIDES-QK$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ID-DECIDES-QK$A-LENGTH" [a0] = some («FN2-ID-DECIDES-QK$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-GEOM$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-FC-GEOM$A-LENGTH" [a0] = some («FN2-FC-GEOM$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-FC-POS$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-FC-POS$A-LENGTH" [a0] = some («FN2-FC-POS$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-CURSOR$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-META-PROBE-CURSOR$A-LENGTH" [a0] = some («FN2-META-PROBE-CURSOR$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-META-PROBE-DEADLINE$A-LENGTH" [a0] = some («FN2-META-PROBE-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-META-PROBE-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-META-PROBE-PHASE$A-LENGTH" [a0] = some («FN2-META-PROBE-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-COUNT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE6-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-COUNT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE6-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-GENERATION$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE4-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE4-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-TX-VALUE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-TX-VALUE$A-LENGTH" [a0] = some («FN2-ARMS-TX-VALUE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-INNER-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-INNER-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-INNER-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-INNER-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-INNER-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-SEEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-LINKER-SEEN$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-SEEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-LINKER-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-LINKER-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-COUNT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-COUNT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PROBE-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-RESERVED$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-RESERVED$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-RESERVED$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-BLIND-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-GENERATION$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WSLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-WSLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-WSLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-COUNT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-SHARED-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-SHARED-COUNT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-SHARED-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-SHARED-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-SHARED-GENERATION$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-DEADLINE$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ARMS-PHASE-FIELD-PHASE$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-AUX0$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-AUX0$A-LENGTH" [a0] = some («FN2-SCRIBE-AUX0$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-STOPPED$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-STOPPED$A-LENGTH" [a0] = some («FN2-SCRIBE-STOPPED$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-CURSOR$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-CURSOR$A-LENGTH" [a0] = some («FN2-SCRIBE-CURSOR$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-POOL-GEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-POOL-GEN$A-LENGTH" [a0] = some («FN2-SCRIBE-POOL-GEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-SCRIBE-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-SCRIBE-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-SCRIBE-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-POOL-CLASS-SIZES-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-POOL-CLASS-SIZES-LENGTH" [a0] = some («FN2-POOL-CLASS-SIZES-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-BORROWS$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ECHO-BORROWS$A-LENGTH" [a0] = some («FN2-ECHO-BORROWS$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-POOL-GEN$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ECHO-POOL-GEN$A-LENGTH" [a0] = some («FN2-ECHO-POOL-GEN$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-DEADLINE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ECHO-DEADLINE$A-LENGTH" [a0] = some («FN2-ECHO-DEADLINE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-ECHO-PHASE$A-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-ECHO-PHASE$A-LENGTH" [a0] = some («FN2-ECHO-PHASE$A-LENGTH».guard a0) := rfl
-@[fn2_dispatch] theorem «FN2-MACHINES-FREE-HEAD-LENGTH».guard_eq (a0 : Val) :
-    guardOf "FN2-MACHINES-FREE-HEAD-LENGTH" [a0] = some («FN2-MACHINES-FREE-HEAD-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-NCURRENT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-NCURRENT" [a0, a1] = some («FN2-CURSOR-NCURRENT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-SET-CANCEL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CURSOR-SET-CANCEL" [a0, a1, a2] = some («FN2-CURSOR-SET-CANCEL».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-STOPPED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-STOPPED" [a0, a1] = some («FN2-CURSOR-STOPPED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-NEXT-FREE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CURSOR-NEXT-FREE" [a0, a1] = some («FN2-CURSOR-NEXT-FREE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-READY-NEXT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MACHINES-READY-NEXT" [a0, a1] = some («FN2-MACHINES-READY-NEXT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-STATE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-STATE$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-STATE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-SLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-SLOT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-OFF$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-OFF$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-OFF$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-OK$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-OK$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-OK$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-OG$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-OG$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-OG$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-PREV$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-PREV$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-PREV$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CLAIMS-WAIT-TAIL$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-CLAIMS-WAIT-TAIL$AI" [a0, a1, a2] = some («UPDATE-FN2-CLAIMS-WAIT-TAIL$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-HEAD$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-HEAD$AI" [a0, a1] = some («FN2-CLAIMS-HEAD$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-STAMP$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-STAMP$AI" [a0, a1] = some («FN2-CLAIMS-STAMP$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-STATE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-STATE$AI" [a0, a1] = some («FN2-CLAIMS-STATE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIM-STATE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIM-STATE" [a0, a1] = some («FN2-CLAIM-STATE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-WSTAMP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-WSTAMP" [a0, a1] = some («FN2-CLAIMS-WSTAMP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SET-HEAD».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CLAIMS-SET-HEAD" [a0, a1, a2] = some («FN2-CLAIMS-SET-HEAD».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-NEXT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-NEXT$AI" [a0, a1] = some («FN2-CLAIMS-NEXT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-WAIT-TAIL».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-WAIT-TAIL" [a0, a1] = some («FN2-CLAIMS-WAIT-TAIL».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OS$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-OS$AI" [a0, a1] = some («FN2-CLAIMS-OS$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OFF$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-OFF$AI" [a0, a1] = some («FN2-CLAIMS-OFF$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-SLOT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CLAIMS-SLOT$AI" [a0, a1] = some («FN2-CLAIMS-SLOT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIM-SAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
+    guardOf "FN2-CLAIM-SAME" [a0, a1, a2, a3] = some («FN2-CLAIM-SAME».guard a0 a1 a2 a3) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-BUCKET».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CNS-BUCKET" [a0, a1] = some («FN2-CNS-BUCKET».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-FREE-HEAD».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-FREE-HEAD" [a0] = some («FN2-CNS-FREE-HEAD».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-ENEXT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CNS-EDGES-ENEXT" [a0, a1] = some («FN2-CNS-EDGES-ENEXT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-USED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-USED" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-USED».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-WAITER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-WAITER" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-WAITER».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-FROM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-FROM" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-FROM».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BHEAD».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-BHEAD" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BHEAD».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BTAIL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-BTAIL" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BTAIL».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-USED-COUNT».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-USED-COUNT" [a0] = some («FN2-CNS-USED-COUNT».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-STREAM$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CNS-EDGES-STREAM$AI" [a0, a1] = some («FN2-CNS-EDGES-STREAM$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BPNEXT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CNS-EDGES-BPNEXT$AI" [a0, a1] = some («FN2-CNS-EDGES-BPNEXT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-CNS-PENDING-HEAD».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "UPDATE-FN2-CNS-PENDING-HEAD" [a0, a1] = some («UPDATE-FN2-CNS-PENDING-HEAD».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BPNEXT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-BPNEXT" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BPNEXT».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-SET-BCUR».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-CNS-EDGES-SET-BCUR" [a0, a1, a2] = some («FN2-CNS-EDGES-SET-BCUR».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-USED$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CNS-EDGES-USED$AI" [a0, a1] = some («FN2-CNS-EDGES-USED$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-STATE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-STATE" [a0, a1] = some («FN2-COMMIT-SETTLED-STATE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-OSLOT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-OSLOT" [a0, a1] = some («FN2-COMMIT-SETTLED-OSLOT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-ROWS" [a0] = some («FN2-COMMIT-SETTLED-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-EVENT$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-EVENT$AI" [a0, a1] = some («FN2-COMMIT-SETTLED-EVENT$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-COMMIT-SETTLED-STATE$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-COMMIT-SETTLED-STATE$AI" [a0, a1, a2] = some («UPDATE-FN2-COMMIT-SETTLED-STATE$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI" [a0, a1, a2] = some («UPDATE-FN2-COMMIT-SETTLED-OSLOT$AI».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-CS-ROWP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CS-ROWP" [a0, a1] = some («FN2-CS-ROWP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-POOL-DROP-PREFIX».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-POOL-DROP-PREFIX" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-POOL-DROP-PREFIX».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-H$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ID-DECIDES-H$AI" [a0, a1] = some («FN2-ID-DECIDES-H$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-CFOUND$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ID-DECIDES-CFOUND$AI" [a0, a1] = some («FN2-ID-DECIDES-CFOUND$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-SELECTED$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ID-DECIDES-SELECTED$AI" [a0, a1] = some («FN2-ID-DECIDES-SELECTED$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ID-DECIDED" [a0, a1] = some («FN2-ID-DECIDED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-QUALIFIED$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-DECIDES-QUALIFIED$A-LENGTH" [a0] = some («FN2-ID-DECIDES-QUALIFIED$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-GAPS$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-DECIDES-GAPS$A-LENGTH" [a0] = some («FN2-ID-DECIDES-GAPS$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-QG$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-DECIDES-QG$A-LENGTH" [a0] = some («FN2-ID-DECIDES-QG$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ID-DECIDES-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ID-DECIDES-WFP" [a0] = some («FN2-ID-DECIDES-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) :
+    guardOf "FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN" [a0, a1, a2] = some («FN2-MACHINE-PARK-TAKEN-FN2-CNS-CHILDREN».guard a0 a1 a2) := rfl
+@[fn2_dispatch] theorem «FN2-IDC-STRIPE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) :
+    guardOf "FN2-IDC-STRIPE" [a0, a1, a2, a3] = some («FN2-IDC-STRIPE».guard a0 a1 a2 a3) := rfl
+@[fn2_dispatch] theorem «FN2-LAYOUT-VARSIZE».guard_eq (a0 : Val) :
+    guardOf "FN2-LAYOUT-VARSIZE" [a0] = some («FN2-LAYOUT-VARSIZE».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE-ROOT-HASH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-SIZE-ENTRIES" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-SIZE" [a0, a1] = some («FN2-MANIFEST-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-MANIFEST-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-MANIFEST-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-ENTRY-SIZE-CHARGED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-CHILD-ALLOCATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION" [a0, a1] = some («FN2-PRINCIPAL-CHARGES-INDEX-SIZE-DIMENSION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION" [a0, a1] = some («FN2-CONSUMER-CURSOR-ENTRY-SIZE-POSITION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-CHILD-ALLOCATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH" [a0, a1] = some («FN2-CONSUMER-CURSOR-INDEX-SIZE-EPOCH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-SIZE-LOW».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-SIZE-LOW" [a0, a1] = some («FN2-GROUP-COUNTS-ENTRY-SIZE-LOW».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-CHILD-ALLOCATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-SIZE-GROUP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-SIZE-GROUP" [a0, a1] = some («FN2-GROUP-COUNTS-INDEX-SIZE-GROUP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL" [a0, a1] = some («FN2-CONSUMER-NAMES-ENTRY-SIZE-PRINCIPAL».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-ENCODED-LENGTH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE-CHILD-PHYSICAL-UNIT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-SIZE" [a0, a1] = some («FN2-CONSUMER-NAMES-INDEX-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-SIZE-OPERATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-SIZE-OPERATION" [a0, a1] = some («FN2-OUTCOME-ENTRY-SIZE-OPERATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-CHILD-EXPECTED-HASH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-CHILD-WRITER-EPOCH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-SIZE-PRINCIPAL».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-SIZE-PRINCIPAL" [a0, a1] = some («FN2-OUTCOME-INDEX-SIZE-PRINCIPAL».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUPS-ENTRY-SIZE" [a0, a1] = some («FN2-GROUPS-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-GROUPS-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-GROUPS-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-SIZE-STREAM».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ADDR-ENTRY-SIZE-STREAM" [a0, a1] = some («FN2-ADDR-ENTRY-SIZE-STREAM».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ADDR-ENTRY-SIZE" [a0, a1] = some («FN2-ADDR-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-ADDR-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-ADDR-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SIZE-LINE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-SIZE-LINE" [a0, a1] = some («FN2-OVERVIEW-ENTRY-SIZE-LINE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-SIZE-GROUP».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-SIZE-GROUP" [a0, a1] = some («FN2-OVERVIEW-ENTRY-SIZE-GROUP».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE-CHILD-ENCODED-LENGTH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE-CHILD-PHYSICAL-UNIT».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-SIZE" [a0, a1] = some («FN2-OVERVIEW-INDEX-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-SIZE-VERSION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-SIZE-VERSION" [a0, a1] = some («FN2-ARTICLE-ENTRY-SIZE-VERSION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-SIZE" [a0, a1] = some («FN2-ARTICLE-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-ARTICLE-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-ARTICLE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H" [a0, a1] = some («FN2-IDENTITY-ARTICLE-ENTRY-SIZE-H».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-CHILD-ALLOCATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-ARTICLE-INDEX-SIZE-NAME».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-QUALIFIED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE-ALGORITHM».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-SIZE" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-CANDIDATES-INDEX-SIZE-NAME».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY" [a0, a1] = some («FN2-IDENTITY-SUMMARY-ENTRY-SIZE-HISTORY».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED" [a0, a1] = some («FN2-IDENTITY-SUMMARY-ENTRY-SIZE-SELECTED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ENTRIES».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-CHILD-ALLOCATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-SUMMARY-INDEX-SIZE-NAME».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-EVIDENCE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-LINEAGE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-HISTORY-ENTRY-SIZE-NAME».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-EXPECTED-HASH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-CHILD-WRITER-EPOCH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-INCARNATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE-ALGORITHM».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-SIZE" [a0, a1] = some («FN2-IDENTITY-HISTORY-INDEX-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-INCARNATION».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE-ALGORITHM».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-SIZE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-SIZE" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-ENTRY-SIZE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-PAGE-KIND».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-CHILD-STORAGE-DOMAIN».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-LINEAGE».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME" [a0, a1] = some («FN2-IDENTITY-EVIDENCE-INDEX-SIZE-NAME».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-SIZE-LENGTH».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-FORMAT-TXN-RECORD-SIZE-LENGTH" [a0, a1] = some («FN2-FORMAT-TXN-RECORD-SIZE-LENGTH».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-FORMAT-TXN-RECORD-CHECK-RECORD-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-FORMAT-TXN-RECORD-EMIT-LENGTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-FORMAT-TXN-RECORD-EMIT-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-FORMAT-TXN-RECORD-EMIT-LENGTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-FILTER-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-ROOT-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-CHECK-HEIGHT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-CHECK-HEIGHT" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-ENTRY-CHECK-HEIGHT».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-LAYOUT-COPY-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) :
+    guardOf "FN2-LAYOUT-COPY-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10] = some («FN2-LAYOUT-COPY-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-FILTER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-ROOT-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-ENTRY-EMIT-RUN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-MANIFEST-ENTRY-EMIT-RUN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-ENTRY-EMIT-RUN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-CHECK-SCHEMA».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-CHECK-SCHEMA" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-CHECK-SCHEMA».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-MANIFEST-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-MANIFEST-INDEX-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-MANIFEST-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-MANIFEST-INDEX-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-ENTRY-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-PRINCIPAL-CHARGES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-PRINCIPAL-CHARGES-INDEX-EMIT-DIMENSION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-ENTRY-CHECK-POSITION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-ENTRY-EMIT-VERSION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-CURSOR-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-CURSOR-INDEX-EMIT-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-CHECK-LOW».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-CHECK-LOW" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-ENTRY-CHECK-LOW».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-ENTRY-EMIT-HIGH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUP-COUNTS-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUP-COUNTS-INDEX-EMIT-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUP-COUNTS-INDEX-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUP-COUNTS-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUP-COUNTS-INDEX-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-ENTRY-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-CONSUMER-NAMES-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-CONSUMER-NAMES-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-CONSUMER-NAMES-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-CONSUMER-NAMES-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-CHECK-OUTCOME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-CHECK-OUTCOME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-ENTRY-CHECK-OUTCOME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-ENTRY-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-ENTRY-EMIT-OPERATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OUTCOME-ENTRY-EMIT-OPERATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-ENTRY-EMIT-OPERATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-CHECK-PRINCIPAL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-CHECK-PRINCIPAL" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-CHECK-PRINCIPAL».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OUTCOME-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OUTCOME-INDEX-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OUTCOME-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OUTCOME-INDEX-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-ENTRY-EMIT-GROUP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUPS-ENTRY-EMIT-GROUP" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-ENTRY-EMIT-GROUP».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-GROUPS-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-GROUPS-INDEX-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-INDEX-EMIT-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-GROUPS-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-CHECK-STREAM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-ENTRY-CHECK-STREAM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-ENTRY-CHECK-STREAM».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-ENTRY-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-ENTRY-EMIT-POSITION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ADDR-ENTRY-EMIT-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-ENTRY-EMIT-POSITION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-CHECK-PRINCIPAL».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-INDEX-CHECK-PRINCIPAL" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-CHECK-PRINCIPAL».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-INDEX-EMIT-CHILD-ENCODED-LENGTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ADDR-INDEX-EMIT-CHILD-PHYSICAL-UNIT».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ADDR-INDEX-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ADDR-INDEX-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ADDR-INDEX-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-CHECK-NUMBER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-CHECK-NUMBER" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-ENTRY-CHECK-NUMBER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-EMIT-POSITION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-EMIT-POSITION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-ENTRY-EMIT-POSITION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OVERVIEW-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-OVERVIEW-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-OVERVIEW-INDEX-EMIT-NUMBER».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-OVERVIEW-INDEX-EMIT-NUMBER" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-OVERVIEW-INDEX-EMIT-NUMBER».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-CHECK-BYTES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-CHECK-BYTES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-ENTRY-CHECK-BYTES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-CHECK-BIRTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-CHECK-BIRTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-ENTRY-CHECK-BIRTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-EMIT-BYTES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-EMIT-BYTES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-ENTRY-EMIT-BYTES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-ENTRY-EMIT-BIRTH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ARTICLE-ENTRY-EMIT-BIRTH" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-ENTRY-EMIT-BIRTH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-ARTICLE-INDEX-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-INDEX-EMIT-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-ARTICLE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-ENTRY-CHECK-H».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-ENTRY-EMIT-ARTICLE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-ARTICLE-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-ARTICLE-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-QUALIFIED».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-ALGORITHM».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-ENTRY-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-H».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-ENTRY-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-ALGORITHM».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-CANDIDATES-INDEX-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-CANDIDATES-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-CHECK-HISTORY».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-CHECK-SELECTED».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-ENTRY-EMIT-GAPS».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-ENTRY-EMIT-RESOLUTION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-ENTRY-ENCODE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-ENTRY-ENCODE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-ENTRY-ENCODE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-SUMMARY-INDEX-CHECK-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ENTRIES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-CHILD-ALLOCATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-SUMMARY-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-EVIDENCE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-ENTRY-CHECK-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-EVIDENCE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-ENTRY-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-INCARNATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-ALGORITHM».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-HISTORY-INDEX-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-HISTORY-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-ENTRY-CHECK-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-ENTRY-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-EXPECTED-HASH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-CHILD-WRITER-EPOCH».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-INCARNATION».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-ALGORITHM».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES" [a0, a1, a2, a3, a4, a5, a6, a7, a8] = some («FN2-IDENTITY-EVIDENCE-INDEX-CHECK-VALUES».guard a0 a1 a2 a3 a4 a5 a6 a7 a8) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-PAGE-KIND».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-CHILD-STORAGE-DOMAIN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-LINEAGE».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) :
+    guardOf "FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9] = some («FN2-IDENTITY-EVIDENCE-INDEX-EMIT-NAME».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-UNCHANGED$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SUCC-SLOTS-UNCHANGED$AI" [a0, a1] = some («FN2-SUCC-SLOTS-UNCHANGED$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-SLOTS-ROWS" [a0] = some («FN2-SUCC-SLOTS-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-FILLED».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SUCC-SLOTS-FILLED" [a0, a1] = some («FN2-SUCC-SLOTS-FILLED».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-TXNS-PHASE$AI».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-SUCC-TXNS-PHASE$AI" [a0, a1] = some («FN2-SUCC-TXNS-PHASE$AI».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-LATE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-SLOTS-LATE$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-LATE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OSET$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-SLOTS-OSET$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-OSET$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-OUTS$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-SLOTS-OUTS$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-OUTS$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-SLOTS-SID$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SUCC-SLOTS-SID$A-LENGTH" [a0] = some («FN2-SUCC-SLOTS-SID$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH" [a0] = some («FN2-FC-PREVIOUS-SEAL-OFFSET$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-FC-ZERO$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-FC-ZERO$A-LENGTH" [a0] = some («FN2-FC-ZERO$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SUCC-EMIT-CHILDREN».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) (a8 : Val) (a9 : Val) (a10 : Val) (a11 : Val) (a12 : Val) (a13 : Val) :
+    guardOf "FN2-SUCC-EMIT-CHILDREN" [a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13] = some («FN2-SUCC-EMIT-CHILDREN».guard a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13) := rfl
+@[fn2_dispatch] theorem «FN2-RIBBON-XOR32».guard_eq (a0 : Val) (a1 : Val) :
+    guardOf "FN2-RIBBON-XOR32" [a0, a1] = some («FN2-RIBBON-XOR32».guard a0 a1) := rfl
+@[fn2_dispatch] theorem «FN2-TXN-SKIP-LOOP».guard_eq (a0 : Val) (a1 : Val) (a2 : Val) (a3 : Val) (a4 : Val) (a5 : Val) (a6 : Val) (a7 : Val) :
+    guardOf "FN2-TXN-SKIP-LOOP" [a0, a1, a2, a3, a4, a5, a6, a7] = some («FN2-TXN-SKIP-LOOP».guard a0 a1 a2 a3 a4 a5 a6 a7) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-ROWS».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-ROWS" [a0] = some («FN2-ARMS-PARK-WAIT-ROWS».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-READY-NEXT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-MACHINES-READY-NEXT$A-LENGTH" [a0] = some («FN2-MACHINES-READY-NEXT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-MACHINES-WFP" [a0] = some («FN2-MACHINES-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-AUX1$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-C1-AUX1$A-LENGTH" [a0] = some («FN2-OPS-C1-AUX1$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C1-OUTCOME$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-C1-OUTCOME$A-LENGTH" [a0] = some («FN2-OPS-C1-OUTCOME$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-W3$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-PEER-W3$A-LENGTH" [a0] = some («FN2-OPS-PEER-W3$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-PEER-PORT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-PEER-PORT$A-LENGTH" [a0] = some («FN2-OPS-PEER-PORT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-C0-COUNT$A-LENGTH" [a0] = some («FN2-OPS-C0-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-C0-HARVESTED$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-C0-HARVESTED$A-LENGTH" [a0] = some («FN2-OPS-C0-HARVESTED$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CANCEL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-CANCEL-SLOT$A-LENGTH" [a0] = some («FN2-OPS-CANCEL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-CAP-NONCE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-CAP-NONCE$A-LENGTH" [a0] = some («FN2-OPS-CAP-NONCE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-RANGE-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-RANGE-GEN$A-LENGTH" [a0] = some («FN2-OPS-RANGE-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-OWNER-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-OWNER-SLOT$A-LENGTH" [a0] = some («FN2-OPS-OWNER-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-OPS-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-OPS-GEN$A-LENGTH" [a0] = some («FN2-OPS-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-OUTCOME$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-OUTCOME$A-LENGTH" [a0] = some («FN2-COMMIT-SETTLED-OUTCOME$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-COMMIT-SETTLED-OSLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-COMMIT-SETTLED-OSLOT$A-LENGTH" [a0] = some («FN2-COMMIT-SETTLED-OSLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BPPREV$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-EDGES-BPPREV$A-LENGTH" [a0] = some («FN2-CNS-EDGES-BPPREV$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-BCUR$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-EDGES-BCUR$A-LENGTH" [a0] = some («FN2-CNS-EDGES-BCUR$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-ENEXT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-EDGES-ENEXT$A-LENGTH" [a0] = some («FN2-CNS-EDGES-ENEXT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CNS-EDGES-STREAM$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CNS-EDGES-STREAM$A-LENGTH" [a0] = some («FN2-CNS-EDGES-STREAM$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-CURSOR$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CLAIMS-CURSOR$A-LENGTH" [a0] = some («FN2-CLAIMS-CURSOR$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-WAIT-TAIL$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CLAIMS-WAIT-TAIL$A-LENGTH" [a0] = some («FN2-CLAIMS-WAIT-TAIL$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OG$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CLAIMS-OG$A-LENGTH" [a0] = some («FN2-CLAIMS-OG$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-OFF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CLAIMS-OFF$A-LENGTH" [a0] = some («FN2-CLAIMS-OFF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CLAIMS-STATE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CLAIMS-STATE$A-LENGTH" [a0] = some («FN2-CLAIMS-STATE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TZ-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-TZ-WFP" [a0] = some («FN2-ARMS-TZ-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LGROUP$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-LGROUP$A-LENGTH" [a0] = some («FN2-CURSOR-LGROUP$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-TURN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-TURN$A-LENGTH" [a0] = some («FN2-CURSOR-TURN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-ROFF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-ROFF$A-LENGTH" [a0] = some («FN2-CURSOR-ROFF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-NCURRENT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-NCURRENT$A-LENGTH" [a0] = some («FN2-CURSOR-NCURRENT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-COUNT$A-LENGTH" [a0] = some («FN2-CURSOR-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-LO$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-LO$A-LENGTH" [a0] = some («FN2-CURSOR-LO$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-K1$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-K1$A-LENGTH" [a0] = some («FN2-CURSOR-K1$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-TAG$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-TAG$A-LENGTH" [a0] = some («FN2-CURSOR-TAG$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-TX-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-TX-GEN$A-LENGTH" [a0] = some («FN2-CURSOR-TX-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-RX-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-RX-GEN$A-LENGTH" [a0] = some («FN2-CURSOR-RX-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-CONN-GEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-CONN-GEN$A-LENGTH" [a0] = some («FN2-CURSOR-CONN-GEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-CURSOR-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-CURSOR-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-CURSOR-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-STOPPED$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-META-PROBE-STOPPED$A-LENGTH" [a0] = some («FN2-META-PROBE-STOPPED$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-META-PROBE-COUNT$A-LENGTH" [a0] = some («FN2-META-PROBE-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-META-PROBE-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-META-PROBE-GENERATION$A-LENGTH" [a0] = some («FN2-META-PROBE-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-ADMISSION-HEAD-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-MACHINES-ADMISSION-HEAD-LENGTH" [a0] = some («FN2-MACHINES-ADMISSION-HEAD-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-ACCOUNT-REF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-F2-PROBE-ACCOUNT-REF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-F2-PROBE-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-F2-PROBE-WFP" [a0] = some («FN2-ARMS-F2-PROBE-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-COST-SUM-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH" [a0] = some («FN2-ARMS-PARK-WAIT-SEEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PARK-WAIT-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-GRANT-AT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ACCOUNTS-GRANT-AT$A-LENGTH" [a0] = some («FN2-ACCOUNTS-GRANT-AT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ACCOUNTS-STATE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ACCOUNTS-STATE$A-LENGTH" [a0] = some («FN2-ACCOUNTS-STATE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-BORN-ACCOUNT-REF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-BORN-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-BORN-WFP" [a0] = some («FN2-ARMS-BORN-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE6-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE4-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE4-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE4-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE4-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-TY-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-TY-WFP" [a0] = some («FN2-ARMS-TY-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-COUNT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-INNER-COUNT$A-LENGTH" [a0] = some («FN2-ARMS-INNER-COUNT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-INNER-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-INNER-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-INNER-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-WSLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-LINKER-WSLOT$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-WSLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-PEER$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-LINKER-PEER$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-PEER$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-LINKER-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-LINKER-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-LINKER-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-CAP-INDEX$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-PENDING$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE-PENDING$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-PENDING$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PROBE-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PROBE-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PROBE-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-WSLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-BLIND-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WGEN$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-WGEN$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-WGEN$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-ACCOUNT-REF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-ARMS-PER-PATH-ACCOUNT-REF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PER-PATH-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PER-PATH-WFP" [a0] = some («FN2-ARMS-PER-PATH-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH" [a0] = some («FN2-ARMS-SHARED-PRINCIPAL-SLOT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-AFTER$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH" [a0] = some («FN2-ARMS-PHASE-FIELD-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-AUX1$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-AUX1$A-LENGTH" [a0] = some («FN2-SCRIBE-AUX1$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-EVENT$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-EVENT$A-LENGTH" [a0] = some («FN2-SCRIBE-EVENT$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-CHECKSUM$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-CHECKSUM$A-LENGTH" [a0] = some («FN2-SCRIBE-CHECKSUM$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-PENDING$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-PENDING$A-LENGTH" [a0] = some («FN2-SCRIBE-PENDING$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-ACCOUNT-REF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-ACCOUNT-REF$A-LENGTH" [a0] = some («FN2-SCRIBE-ACCOUNT-REF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-SCRIBE-WFP».guard_eq (a0 : Val) :
+    guardOf "FN2-SCRIBE-WFP" [a0] = some («FN2-SCRIBE-WFP».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-NEXT-FREE$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ECHO-NEXT-FREE$A-LENGTH" [a0] = some («FN2-ECHO-NEXT-FREE$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-OFF$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ECHO-OFF$A-LENGTH" [a0] = some («FN2-ECHO-OFF$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-CAP-INDEX$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ECHO-CAP-INDEX$A-LENGTH" [a0] = some («FN2-ECHO-CAP-INDEX$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-ECHO-GENERATION$A-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-ECHO-GENERATION$A-LENGTH" [a0] = some («FN2-ECHO-GENERATION$A-LENGTH».guard a0) := rfl
+@[fn2_dispatch] theorem «FN2-MACHINES-ADMISSION-CREDITS-LENGTH».guard_eq (a0 : Val) :
+    guardOf "FN2-MACHINES-ADMISSION-CREDITS-LENGTH" [a0] = some («FN2-MACHINES-ADMISSION-CREDITS-LENGTH».guard a0) := rfl
 
 end Fn2.Instances.LayerAWorld

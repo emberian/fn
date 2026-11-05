@@ -324,8 +324,9 @@ def plist(xs):
     return {str(k): v for k, v in zip(xs[::2], xs[1::2])}
 
 
-def arm(e):
-    # an arm as the declaration writes it; Fn2.Arms.readSteps reads its steps
+def arm(e, rc="{}"):
+    # an arm as the declaration writes it; Fn2.Arms.readSteps reads its steps. RC is the kind's
+    # refusal context (the facts `(:refuse WORD)` desugars by: machine-arms.lisp fn2-arms-steps :refuse)
     e = as_list(e)
     d = plist(e[1:])
     sig = as_list(d.get(":SIG", List([])))
@@ -337,7 +338,16 @@ def arm(e):
         sigl = "none"
     return (f"{{ tag := {lean_str(str(e[0]))}, sig := {sigl},\n"
             f"      decl := {val(d[':DECL'])},\n"
-            f"      fn := {lean_str(str(d[':FUNCTION']))} }}")
+            f"      fn := {lean_str(str(d[':FUNCTION']))}, refuse := {rc} }}")
+
+
+def refuse_ctx(cols, subarms):
+    # the word field: the first of WORD, REPLY, REASON among the kind's columns; a REFUSE sub-arm or not
+    names = [str(c[0]) for c in cols]
+    field = next((f for f in ("WORD", "REPLY", "REASON") if f in names), None)
+    sub = any(str(as_list(a)[0]) == "REFUSE" for a in subarms)
+    fl = "none" if field is None else f"(some {lean_str(field)})"
+    return f"{{ field := {fl}, sub := {'true' if sub else 'false'} }}"
 
 
 def coltype(k):
@@ -370,6 +380,7 @@ def kind(e, reg_links=None):
     if (raw_links is None or is_nil(raw_links)) and reg_links is not None:
         raw_links = reg_links.get(str(e[0]), List([]))
     links = [link_entry(l) for l in as_list(raw_links or List([]))]
+    rc = refuse_ctx(cols, as_list(d[":SUBARMS"]))
     return (f"{{ name := {lean_str(str(e[0]))},\n"
             f"    childForm := {'true' if str(d[':FORM']) == ':CHILDREN' else 'false'},\n"
             f"    tuple := [{', '.join(lean_str(str(x)) for x in as_list(d[':TUPLE']))}],\n"
@@ -379,9 +390,9 @@ def kind(e, reg_links=None):
             f"    table := [{', '.join(lean_str(str(as_list(c)[0])) for c in as_list(d[':TABLE']))}],\n"
             f"    stops := [{', '.join(lean_str(str(x).lstrip(':')) for x in as_list(d[':STOPS']))}],\n"
             f"    links := [{', '.join(links)}],\n"
-            f"    subarms := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':SUBARMS']))}],\n"
-            f"    arms := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':ARMS']))}],\n"
-            f"    observes := [\n    {(',' + chr(10) + '    ').join(arm(a) for a in as_list(d[':OBSERVES']))}] }}")
+            f"    subarms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':SUBARMS']))}],\n"
+            f"    arms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':ARMS']))}],\n"
+            f"    observes := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':OBSERVES']))}] }}")
 
 
 def op(e):
@@ -397,6 +408,7 @@ def op(e):
     return (f"{{ name := {lean_str(str(e[0]))}, callee := {callee}, "
             f"formals := [{', '.join(lean_str(str(x)) for x in as_list(d[':FORMALS']))}], "
             f"stobjsIn := {so(d[':STOBJS-IN'])}, stobjsOut := {so(d[':STOBJS-OUT'])}, answers := {answers}, "
+            f"faults := [{', '.join(val(c) for c in as_list(d[':FAULTS']))}], "
             f"bound := {bound(d.get(':BOUND'))} }}")
 
 
