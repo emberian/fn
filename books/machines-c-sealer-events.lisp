@@ -120,7 +120,8 @@
                                            fn2-sealer-grant fn2-sealer-refuse) (w state)))
 
    ;; Layer C's genesis, called once by the executor's fn2-init-engine:
-   ;; the group directory (S-GROUP), then the seal row; with no checker row
+   ;; the group directory (S-GROUP), the principal directory (fn2-principals'
+   ;; anonymous and owner), then the seal row; with no checker row
    ;; (C-SEAL-NO-ROW) the sealer's row is stopped instead.
    ;; READY: park the row on :sealable (its seal row is set); else stop it.
    (defun fn2-sealer-start-row (ready fn2-core)
@@ -136,6 +137,8 @@
    (defun fn2-engine-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (b* (((mv code fn2-core) (fn2-groups-genesis profile fn2-core))
+         ((unless (eq code :ok)) (mv code fn2-core))
+         ((mv code fn2-core) (fn2-principals-genesis profile fn2-core))
          ((unless (eq code :ok)) (mv code fn2-core))
          ((mv code fn2-core) (fn2-sealer-genesis profile fn2-core)))
      (if (member-eq code '(:ok :no-row)) (fn2-sealer-start-row (eq code :ok) fn2-core) (mv code fn2-core))))

@@ -422,7 +422,7 @@
                  (equal (fn2-succ-slots-unchanged s fn2-succ-slots) 1)))
        (mv :ok len fn2-fields fn2-pool))
       (sid (fn2-succ-slots-sid s fn2-succ-slots))
-      ((unless (and (posp sid) (<= sid 15)))
+      ((unless (and (posp sid) (<= (+ *fn2-commit-txn-schema-record-kind-base* sid) *fn2-commit-txn-schema-record-kind-last*)))
        (mv :bounds len fn2-fields fn2-pool))
       (entry (+ b0 (* *fn2-succ-block* i)))
       (fbase (+ b0 *fn2-idc-ident*))
