@@ -50,7 +50,10 @@
   :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
 (defcost fn2-upload-payload-settle :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "At the drain: a payload extent no transaction committed has its reservation cancelled.")
-(defcost fn2-upload-store-span :doc "The next storage write's source chunk, offset and length: (mv slot gen off len).")
+(defcost fn2-upload-store-span :doc "The next storage write's pool range, offset and length: (mv slot gen off len).")
+(defcost fn2-upload-lease-class :doc "The pool class of the store page (one storage unit; nil: none).")
+(defcost fn2-upload-put-mid :answers (:ok :fault) :faults (:fault) :bytes 128 :tables (fn2-core-pool)
+  :doc "Write the generated Message-ID field into the store page: (mv code len).")
 
 ;; ------------------------------------------------------------------------
 ;; The operations both machines call, materialized after the core instance
@@ -317,18 +320,39 @@
          (fn2-core (if (eq code :links) (fn2-core-stop *fn2-stop-reason-alloc-links* fn2-core) fn2-core)))
       (mv (if (eq code :ok) :ok :fault) fn2-core))))
 (fn2-core-preserves fn2-upload-payload-settle (e epoch counter fn2-core) :position 1 :rows nil)
-;; The next storage write of the source after DONE octets: its chunk, the
-;; offset in it and the length (at most one unit, never past the source or
-;; the chunk): (mv slot gen off len).
-(defun fn2-upload-store-span (c0 g0 c1 g1 done hashed fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp done) (natp hashed))))
-  (b* ((cap0 (fn2-upload-chunk-cap c0 fn2-core))
-       (in0 (< done cap0))
-       (off (if in0 done (- done cap0)))
-       (room (if in0 (- cap0 done) (nfix (- (fn2-upload-chunk-cap c1 fn2-core) off)))))
-    (mv (if in0 c0 c1) (if in0 g0 g1) off
-        (min *fn2-commit-unit-bytes* (min room (nfix (- hashed done)))))))
-(in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span))
+;; The next storage write of the stored octets after DONE of them (the
+;; injected field's ILEN octets from the store page LS LG, then the source
+;; from the chunks): its pool range, the offset in it and the length (at most
+;; one unit, never past the part or the chunk): (mv slot gen off len).
+(defun fn2-upload-store-span (ls lg ilen c0 g0 c1 g1 done hashed fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp ilen) (natp done) (natp hashed))))
+  (if (< done ilen) (mv ls lg done (min *fn2-commit-unit-bytes* (- ilen done)))
+    (b* ((src (- done ilen))
+         (cap0 (fn2-upload-chunk-cap c0 fn2-core))
+         (in0 (< src cap0))
+         (off (if in0 src (- src cap0)))
+         (room (if in0 (- cap0 src) (nfix (- (fn2-upload-chunk-cap c1 fn2-core) off)))))
+      (mv (if in0 c0 c1) (if in0 g0 g1) off
+          (min *fn2-commit-unit-bytes* (min room (nfix (- hashed src))))))))
+(defun fn2-upload-lease-class (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for *fn2-commit-unit-bytes* fn2-pool) class))
+;; The generated Message-ID field (*fn2-upload-mid-template*) appended to the
+;; empty store page: (mv code len fn2-core), LEN the field's octets.
+(defun fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (code len fn2-pool)
+    (if (and (natp epoch) (natp alloc) (equal (fn2-gram-fill slot fn2-pool) 0))
+        (mv-let (code fn2-pool)
+          (fn2-gram-put-template 0 *fn2-upload-mid-template* 0 epoch alloc 0 slot gen 0 0 slot gen okind oslot ogen fn2-pool)
+          (mv (if (eq code :ok) :ok :fault) (nfix (fn2-gram-fill slot fn2-pool)) fn2-pool))
+      (mv :fault 0 fn2-pool))
+    (mv code len fn2-core)))
+(fn2-core-preserves fn2-upload-put-mid (slot gen epoch alloc okind oslot ogen fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
+                    fn2-upload-lease-class fn2-upload-put-mid))
 
 ;; The block is complete and hashed: (mv next fn2-core). With a transaction
 ;; (the header was complete): the digest stored, the verdict handed over,

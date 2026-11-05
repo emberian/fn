@@ -934,6 +934,49 @@
                                    (fn2-machine-holds-domains while (fn2-machine-property name :columns world))
                                    holds while ret world))
     (fn2-arm-effect-rows name sources uses holds world)))
+;; D0's effect table is keyed by call site. A call on paths whose entry a
+;; conditional hold splits (G3) has one row per holding set: each row is
+;; checked on its own, and the table keeps one row per site whose
+;; :holds-before is everything any of those paths may hold.
+(defun fn2-machine-effect-rows-each-p (rows order)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) t
+    (and (fn2-resource-effects-p (list (car rows)) order)
+         (fn2-machine-effect-rows-each-p (cdr rows) order))))
+(defun fn2-machine-effect-row-holds (row)
+  (declare (xargs :verify-guards nil))
+  (cadr (member-eq :holds-before (cdr row))))
+(defun fn2-machine-effect-row-effects (row)
+  (declare (xargs :verify-guards nil))
+  (cadr (member-eq :effects (cdr row))))
+(defun fn2-machine-effect-rows-join (rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (let* ((row (car rows)) (rest (fn2-machine-effect-rows-join (cdr rows)))
+           (same (and (consp row) (assoc-equal (car row) rest))))
+      (if (and same (equal (fn2-machine-effect-row-effects row) (fn2-machine-effect-row-effects same)))
+          (cons (list (car row)
+                      :holds-before (union-equal (fn2-machine-effect-row-holds row) (fn2-machine-effect-row-holds same))
+                      :effects (fn2-machine-effect-row-effects row))
+                (remove1-equal same rest))
+        (cons row rest)))))
+(defun fn2-machine-effect-rows-ok-p (rows order)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-machine-effect-rows-each-p rows order)
+       (fn2-resource-effects-p (fn2-machine-effect-rows-join rows) order)))
+;; Teeth: a site acquiring :operation with and without :storage-window held
+;; is one row holding both; a variant acquiring below what it holds fails,
+;; though the joined row alone would not.
+(assert-event
+ (let* ((k '((fn2-upload :store-write) fn2-issue-write)) (e '((:acquire (:operation))))
+        (a (list k :holds-before '(:upload-row :chunk-window) :effects e))
+        (b (list k :holds-before '(:upload-row :chunk-window :storage-window) :effects e))
+        (bad (list k :holds-before '(:upload-row :fence-slot) :effects '((:acquire (:storage-window))))))
+   (and (not (fn2-resource-effects-p (list a b) *fn2-resource-order*))
+        (fn2-machine-effect-rows-ok-p (list a b) *fn2-resource-order*)
+        (equal (fn2-machine-effect-rows-join (list a b))
+               (list (list k :holds-before '(:upload-row :chunk-window :storage-window) :effects e)))
+        (not (fn2-machine-effect-rows-ok-p (list a bad) *fn2-resource-order*)))))
 ;; A retained phase's entering sets (G3): every set a path into it from
 ;; another phase starts with, over every arm and handler (ENTRIES with the
 ;; kind's registered ones); a path into it keeps that set, so it is the set
@@ -1041,8 +1084,8 @@
      ((and (not (eq (fn2-arm-get :language c) :unchecked))
            (fn2-machine-arm-resource-problem name sources c holds ret world))
       (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds ret world)))
-     ((not (fn2-resource-effects-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds ret world))
-                                   *fn2-resource-order*))
+     ((not (fn2-machine-effect-rows-ok-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds ret world))
+                                         *fn2-resource-order*))
       (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
            (fn2-machine-arm-effect-rows name sources c uses holds ret world)))
      ((and posture (or (fn2-arm-retained-p (car sources) holds)

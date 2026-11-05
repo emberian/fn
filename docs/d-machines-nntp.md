@@ -1698,7 +1698,7 @@ one row. Departures: the kind's
 budget is 16 KiB, not B.3's 4 KiB, because stage (4 KiB), bind (8 KiB) and the admission are one
 run by C-S3's design; `:full` and an exhausted batch re-run the arm (no wake source until C1c and
 B-S2: owed with them). Owed rows (`books/owed-txn.lisp`, teeth in `tests/txn-unit.lisp`):
-`fn2-txn-admission-interim` (B-S2), `fn2-txn-generated-message-id-interim` (injection, D5 2/n).
+`fn2-txn-admission-interim` (B-S2), `fn2-txn-generated-message-id` (injection, D5 2/n: a POST without a Message-ID gets `<fn2.E.A@P>`, E.A its payload extent's writer epoch and allocation, stored as its first field; Date, Path, Injection-Info, Injection-Date and P from the profile owed).
 Also owed: a waiter's cancellation in a claim FIFO (an aborted upload's transaction waits for the
 hand-over, then releases at once); the overview row and the addr entries (D5 2/n, with the
 overview line). Evidence: `tests/txn-unit.lisp` (refused, duplicate and conflict over facts seeded

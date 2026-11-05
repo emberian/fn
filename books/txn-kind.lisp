@@ -62,7 +62,7 @@
           (gcur :u32) (gskip :bool) (ngroups :u8)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
-                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc)))
+                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen)))
  :stops (:txn-uncertain)
  :holds ((:admit :transaction-row) (:reserve :transaction-row)
          (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)
