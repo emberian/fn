@@ -30,7 +30,8 @@
          (:allocate :tx-range :transaction-row) (:ready :tx-range :transaction-row)
          (:batched :tx-range :transaction-row :batch-membership)
          (:draining :tx-range :transaction-row))
- :budget (:bytes 8192 :steps 32 :descriptors 4)
+ ;; :ready's one run puts, stages, emits, admits and binds (28,672 bytes, as fn2-txn's :ready)
+ :budget (:bytes 32768 :steps 32 :descriptors 4)
  :capacity (fn2-auth-capacity profile)
  ;; the row's workspace: B's transaction records are emitted into it and
  ;; admitted from it, so the frame in the connection's range stays intact

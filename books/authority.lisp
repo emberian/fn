@@ -265,8 +265,18 @@
                                          fn2-fields fn2-pool)
            (mv :state 0 0 fn2-fields fn2-pool)))
        (mv code (nfix w) (nfix end) fn2-core)))
+   (defthm fn2-auth-encode-reply-natp-1
+     (natp (mv-nth 1 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core))))
+   (defthm fn2-auth-encode-reply-natp-2
+     (natp (mv-nth 2 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core))))
    (fn2-core-preserves fn2-auth-encode-reply (op outcome reason pid sx slot gen okind oslot ogen fn2-core)
      :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (defthm fn2-auth-encode-reply-natp-1
+     (natp (mv-nth 1 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core)))
+     :hints (("Goal" :in-theory (e/d (fn2-auth-encode-reply) (nfix)))))
+   (defthm fn2-auth-encode-reply-natp-2
+     (natp (mv-nth 2 (fn2-auth-encode-reply op outcome reason pid sx slot gen okind oslot ogen fn2-core)))
+     :hints (("Goal" :in-theory (e/d (fn2-auth-encode-reply) (nfix)))))
    (in-theory (disable fn2-auth-encode-reply))
    (defun fn2-auth-post-reply (ctl ctl-gen request op outcome reason pid sx slot gen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -281,9 +291,9 @@
              (let* ((fn2-core (fn2-machine-write-tx-off ctl 0 fn2-core))
                     (fn2-core (fn2-machine-write-tx-len ctl 0 fn2-core)))
                (mv :dropped fn2-core))
-           (let* ((bind (and (equal op *fn2-auth-op-bind*) (equal (nfix outcome) *fn2-auth-outcome-accepted*)))
-                  (fn2-core (if bind (fn2-machine-write-principal ctl pid fn2-core) fn2-core))
-                  (fn2-core (if bind (fn2-machine-write-admin ctl 0 fn2-core) fn2-core))
+           (let* ((bind (and (equal op *fn2-auth-op-bind*) (equal (nfix outcome) *fn2-auth-outcome-accepted*)
+                              (unsigned-byte-p 60 pid)))
+                  (fn2-core (if bind (fn2-ctl-put-core ctl (principal pid) (admin 0)) fn2-core))
                   (fn2-core (fn2-machine-write-tx-off ctl w fn2-core))
                   (fn2-core (fn2-machine-write-tx-len ctl end fn2-core)))
              (mv :ok fn2-core))))))
