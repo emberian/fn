@@ -29,7 +29,8 @@
  fn2-digestsp fn2-digests-wfp fn2-digests-rows
  fn2-fc-context-hash fn2-fc-context-geometry fn2-fc-context-previous-seal
  fn2-rec-cand-status fn2-rec-cand-commit fn2-rec-cand-epoch fn2-rec-cand-allocation
- fn2-rec-cand-first fn2-rec-cand-last fn2-rec-cand-seal-off fn2-rec-cand-seal-len)))
+ fn2-rec-cand-first fn2-rec-cand-last fn2-rec-cand-seal-off fn2-rec-cand-seal-len
+ fn2-rec-cand-owner-kind fn2-rec-cand-owner)))
 ; The commit section disabled the child type/WFP forward rules after its own
 ; proofs; recovery's helpers need them back, locally.
 (make-event (value `(local (in-theory (enable ,@(fn2-commit-child-forward-runes *fn2-commit-proof-children*))))))))
@@ -81,7 +82,7 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core))) (code fn2-rec-cand)
   (if (and (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand)) (unsigned-byte-p 3 status)
-           (< status 6)
+           (< status 7)
            (unsigned-byte-p 60 commit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
            (unsigned-byte-p 60 first) (unsigned-byte-p 60 last)
            (unsigned-byte-p 32 off) (unsigned-byte-p 32 len))
@@ -99,7 +100,7 @@
 (defun fn2-recovery-cand-mark (p status fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core))) (code fn2-rec-cand)
-  (if (and (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand)) (unsigned-byte-p 3 status) (< status 6))
+  (if (and (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand)) (unsigned-byte-p 3 status) (< status 7))
       (let ((fn2-rec-cand (fn2-rec-cand-set-status p status fn2-rec-cand))) (mv :ok fn2-rec-cand))
    (mv :bounds fn2-rec-cand))
   (mv code fn2-core)))
@@ -169,7 +170,21 @@
 (defthm fn2-recovery-cand-seal-len-type (unsigned-byte-p 32 (fn2-recovery-cand-seal-len p fn2-core)))
 (defthm fn2-recovery-cand-seal-len-natp (natp (fn2-recovery-cand-seal-len p fn2-core)) :rule-classes :type-prescription)
 (defthm fn2-recovery-cand-seal-len-bound (< (fn2-recovery-cand-seal-len p fn2-core) 4294967296) :rule-classes :linear)
-(in-theory (disable fn2-recovery-cand-status fn2-recovery-cand-commit fn2-recovery-cand-epoch fn2-recovery-cand-allocation fn2-recovery-cand-first fn2-recovery-cand-last fn2-recovery-cand-seal-off fn2-recovery-cand-seal-len))
+;; A payload position's owner (the payload pass's claim).
+(defun fn2-recovery-cand-owner-kind (p fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core))) (v)
+  (if (and (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand))) (fn2-rec-cand-owner-kind p fn2-rec-cand) 0)
+  (fn2-recovery-u 8 v)))
+(defthm fn2-recovery-cand-owner-kind-type (unsigned-byte-p 8 (fn2-recovery-cand-owner-kind p fn2-core)))
+(defun fn2-recovery-cand-owner (p fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core))) (v)
+  (if (and (natp p) (< p (fn2-rec-cand-rows fn2-rec-cand))) (fn2-rec-cand-owner p fn2-rec-cand) 0)
+  (fn2-recovery-u 60 v)))
+(defthm fn2-recovery-cand-owner-type (unsigned-byte-p 60 (fn2-recovery-cand-owner p fn2-core)))
+(in-theory (disable fn2-recovery-cand-status fn2-recovery-cand-commit fn2-recovery-cand-epoch fn2-recovery-cand-allocation fn2-recovery-cand-first fn2-recovery-cand-last fn2-recovery-cand-seal-off fn2-recovery-cand-seal-len
+                    fn2-recovery-cand-owner-kind fn2-recovery-cand-owner))
 
 ; Table-level operations of the recovery row. Each takes the row's owner
 ; triple and window explicitly (the arm reads its own fields) and reports a
@@ -443,15 +458,88 @@
                  (fn2-recovery-digest-equal (fn2-rec-witness-row base arena) (+ dir witness) fn2-core)))))))
 (in-theory (disable fn2-recovery-witness-match))
 
+;; The payload pass (recovery-payload.lisp walks the records and the
+;; manifests): the position of chained commit C, its records frame's stream,
+;; and the claim of a payload position.
+(defun fn2-recovery-commit-extent (c fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (arena base fits) (fn2-recovery-geometry fn2-core)
+  (declare (ignore base))
+  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (code p)
+   (let ((p (if (and (posp c) (< c (fn2-commit-root-rows fn2-commit-root))) (nfix (fn2-commit-root-extent c fn2-commit-root)) arena)))
+    (mv (if (and fits (posp c) (< p arena) (unsigned-byte-p 32 p)) :ok :bounds) p))
+   (mv code p))))
+(defthm fn2-recovery-commit-extent-natp (natp (mv-nth 1 (fn2-recovery-commit-extent c fn2-core)))
+ :rule-classes :type-prescription)
+(in-theory (disable fn2-recovery-commit-extent))
+;; The window holds unit 1 of position P, chained commit COMMIT's records
+;; frame: (mv code roff rend fn2-core), the record stream [ROFF, REND).
+(defun fn2-recovery-records-open (p commit slot gen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((mv code next fn2-core) (fn2-recovery-decode nil 0 *fn2-commit-unit-bytes* slot gen id ogen fn2-core))
+      ((unless (and (eq code :ok) (natp next) (natp p))) (mv :invalid 0 0 fn2-core))
+      ((mv ok payload)
+       (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (ok payload)
+        (if (<= (+ *fn2-rec-field-base* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+            (fn2-rec-records-check p commit fn2-fields) (mv nil 0))
+        (mv ok payload))))
+  (if (and ok (<= (+ next payload) *fn2-commit-unit-bytes*))
+      (mv :ok next (+ next payload) fn2-core)
+   (mv :invalid 0 0 fn2-core))))
+(fn2-core-preserves fn2-recovery-records-open (p commit slot gen id ogen fn2-core) :position 3 :rows nil)
+(defthm fn2-recovery-records-open-naturals
+ (and (natp (mv-nth 1 (fn2-recovery-records-open p commit slot gen id ogen fn2-core)))
+      (natp (mv-nth 2 (fn2-recovery-records-open p commit slot gen id ogen fn2-core))))
+ :hints (("Goal" :in-theory (enable fn2-recovery-records-open))))
+(in-theory (disable fn2-recovery-records-open))
+;; Position P is an article's payload, written with identity EPOCH
+;; ALLOCATION, owned by OWNER-KIND OWNER, named by chained commit COMMIT.
+;; Only a position discovery found written and no commit's (:invalid), or
+;; zero (:empty), can be one; any other status (a commit's extent, an
+;; unreadable unit, a second claim) is a :conflict, which the pass reports
+;; as ambiguity. (mv code hi fn2-core), HI the position after P.
+(defun fn2-recovery-claim (p epoch allocation owner-kind owner commit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (arena base fits) (fn2-recovery-geometry fn2-core)
+  (declare (ignore base))
+  (let ((status (fn2-recovery-cand-status p fn2-core)))
+   (cond ((not (and fits (natp p) (< p arena) (unsigned-byte-p 32 (+ 1 p)) (unsigned-byte-p 60 epoch)
+                    (unsigned-byte-p 60 allocation) (unsigned-byte-p 8 owner-kind) (unsigned-byte-p 60 owner)
+                    (unsigned-byte-p 60 commit)))
+          (mv :bounds 0 fn2-core))
+         ((not (member-equal status (list *fn2-rec-status-invalid* *fn2-rec-status-empty*)))
+          (mv :conflict 0 fn2-core))
+         (t (stobj-let ((fn2-rec-cand (fn2-core-rec-cand fn2-core))) (code fn2-rec-cand)
+             (if (< p (fn2-rec-cand-rows fn2-rec-cand))
+                 (let* ((fn2-rec-cand (fn2-rec-cand-set-status p *fn2-rec-status-payload* fn2-rec-cand))
+                        (fn2-rec-cand (fn2-rec-cand-set-commit p commit fn2-rec-cand))
+                        (fn2-rec-cand (fn2-rec-cand-set-epoch p epoch fn2-rec-cand))
+                        (fn2-rec-cand (fn2-rec-cand-set-allocation p allocation fn2-rec-cand))
+                        (fn2-rec-cand (fn2-rec-cand-set-owner-kind p owner-kind fn2-rec-cand)))
+                  (let ((fn2-rec-cand (fn2-rec-cand-set-owner p owner fn2-rec-cand))) (mv :ok fn2-rec-cand)))
+              (mv :bounds fn2-rec-cand))
+             (mv code (+ 1 p) fn2-core)))))))
+(fn2-core-preserves fn2-recovery-claim (p epoch allocation owner-kind owner commit fn2-core) :position 2 :rows nil)
+(defthm fn2-recovery-claim-hi-natp (natp (mv-nth 1 (fn2-recovery-claim p epoch allocation owner-kind owner commit fn2-core)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-recovery-claim))))
+(defthm fn2-recovery-claim-hi-bound (< (mv-nth 1 (fn2-recovery-claim p epoch allocation owner-kind owner commit fn2-core)) 4294967296)
+ :rule-classes :linear :hints (("Goal" :in-theory (enable fn2-recovery-claim))))
+(in-theory (disable fn2-recovery-claim))
+
 ; One adopted position (part H): chained extents become ALLOCATED to their
-; commit with an installed-root edge; every other position below the high
-; water is quarantined with a recovery-candidate edge, never reused.
+; commit with an installed-root edge; a chained commit's payload becomes
+; ALLOCATED to its owner with its recorded identity (as the transaction's
+; :batched made it, fn2-upload-extent-commit), so a stored reference to it
+; reads again; every other position below the high water is quarantined
+; with a recovery-candidate edge, never reused.
 (defun fn2-recovery-adopt (p fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (let ((status (fn2-recovery-cand-status p fn2-core)) (commit (fn2-recovery-cand-commit p fn2-core))
-       (epoch (fn2-recovery-cand-epoch p fn2-core)) (allocation (fn2-recovery-cand-allocation p fn2-core)))
+       (epoch (fn2-recovery-cand-epoch p fn2-core)) (allocation (fn2-recovery-cand-allocation p fn2-core))
+       (okind (fn2-recovery-cand-owner-kind p fn2-core)) (owner (fn2-recovery-cand-owner p fn2-core)))
   (let* ((chained (equal status *fn2-rec-status-chained*))
-         (known (member-equal status (list *fn2-rec-status-chained* *fn2-rec-status-candidate*)))
+         (payload (equal status *fn2-rec-status-payload*))
+         (known (member-equal status (list *fn2-rec-status-chained* *fn2-rec-status-candidate* *fn2-rec-status-payload*)))
          (epoch (if known epoch 0)) (allocation (if known allocation p)))
    (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-alloc-edges (fn2-core-alloc-edges fn2-core)))
     (code fn2-extents fn2-alloc-edges)
@@ -465,6 +553,9 @@
               (fn2-alloc-commit-allocation p epoch allocation *fn2-commit-kind* commit fn2-extents)
               (if (not (eq code :ok)) (mv code fn2-extents fn2-alloc-edges)
                (fn2-alloc-edge-add (+ 7 (* 2 p)) commit p epoch allocation :installed-root fn2-extents fn2-alloc-edges))))
+            (payload
+             (mv-let (code fn2-extents) (fn2-alloc-commit-allocation p epoch allocation okind owner fn2-extents)
+              (mv code fn2-extents fn2-alloc-edges)))
             (t (fn2-alloc-edge-add (+ 6 (* 2 p)) 0 p epoch allocation :recovery-candidate fn2-extents fn2-alloc-edges)))))
     (mv code fn2-core)))))
 (fn2-core-preserves fn2-recovery-adopt (p fn2-core) :position 1 :rows nil)
@@ -518,7 +609,8 @@
         (rc-ready 0) (rc-outcome 0) (rc-count 0) (rc-chain 0) (rc-arena arena) (rc-high 0)
         (rc-dirty 0) (rc-ambiguous 0) (rc-class *fn2-rec-class-none*) (rc-witness witness)
         (rc-witness-outcome *fn2-rec-witness-none*) (rc-assume assume) (rc-epoch 0)
-        (rc-found *fn2-alloc-none*) (principal-slot 0)))
+        (rc-found *fn2-alloc-none*) (rc-commit 0) (rc-roff 0) (rc-rend 0) (rc-mpos 0) (rc-munit 0)
+        (rc-munits 0) (rc-mtotal 0) (rc-mevent 0) (principal-slot 0)))
       ((mv rcode fn2-core) (fn2-recovery-ready id fn2-core))
       ((unless (member-eq rcode '(:ok :already)))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core))))
@@ -544,7 +636,81 @@
 ; release of the recovery window with :recovery-release.
 (defmachine-arms fn2-recovery-machine :declare
  :subarms
- (;; :install stage 0: scan 32 candidate rows past the chain for anything dirty
+ (;; The payload pass (b-durability.md S9a), after the chain search: every
+  ;; chained commit's records unit is read and its record stream walked one
+  ;; record per step; an article row's location is claimed for the article
+  ;; (its raw source's extent, or its source manifest's extent and then,
+  ;; one manifest unit per step, the extent of each block at unit 0 of its
+  ;; extent), so adoption allocates it with its recorded identity. A record
+  ;; or manifest the pass cannot decode, or a claim on a position that is
+  ;; not plain written data, is ambiguity.
+  (payload-begin :on-refusal ((:stop :recovery-bounds))
+   (:if (< 0 row-rc-chain)
+        ((:do (pcode p) (fn2-recovery-commit-extent 1) :accept (:ok))
+         (:set (rc-mode *fn2-rec-mode-payload*) (rc-commit 1) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
+               (rc-munits 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+         (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+        ((:set (rc-stage 0) (rc-found 0) (rc-ready 0))
+         (:next :install) (:charge :steps *fn2-work-advance* :runnable t))))
+  (payload-ambiguous
+   (:set (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))
+   (:next :install) (:charge :steps *fn2-work-advance* :runnable t))
+  ;; the next chained commit's records, or the install
+  (payload-next :on-refusal ((:stop :recovery-bounds))
+   (:if (< row-rc-commit row-rc-chain)
+        ((:do (pcode p) (fn2-recovery-commit-extent (+ 1 row-rc-commit)) :accept (:ok))
+         (:set (rc-commit (+ 1 row-rc-commit)) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
+               (rc-filled 0) (rc-stage 0) (rc-ready 0))
+         (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+        ((:set (rc-stage 0) (rc-found 0) (rc-ready 0))
+         (:next :install) (:charge :steps *fn2-work-advance* :runnable t))))
+  (payload-open :on-refusal ((:stop :recovery-bounds))
+   (:do (code roff rend) (fn2-recovery-records-open row-rc-pos row-rc-commit row-pool-slot row-pool-gen id row-generation)
+    :accept ()
+    :case (((:ok) (:set (rc-roff roff) (rc-rend rend)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:invalid) (:goto payload-ambiguous)))))
+  (payload-record :on-refusal ((:stop :recovery-bounds))
+   (:do (code next unit epoch alloc bytes event)
+        (fn2-recovery-record-next row-rc-roff row-rc-rend row-pool-slot row-pool-gen id row-generation)
+    :accept ()
+    :case (((:end) (:goto payload-next))
+           ((:other) (:set (rc-roff next)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:raw :manifest)
+            (:do (ccode hi) (fn2-recovery-claim-article unit epoch alloc event row-rc-commit)
+             :accept ()
+             :case (((:ok)
+                     (:if (and (eq code :manifest) (fn2-am-fits bytes))
+                          ;; follow the manifest from its unit 0; the records
+                          ;; unit is read again after it
+                          ((:set (rc-roff next) (rc-high (max row-rc-high hi)) (rc-epoch (max row-rc-epoch epoch))
+                                 (rc-mpos (- hi 1)) (rc-munit 0) (rc-munits (fn2-am-units bytes)) (rc-mtotal bytes)
+                                 (rc-mevent event) (rc-pos (- hi 1)) (rc-role 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+                           (:next :read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                          ((:if (eq code :raw)
+                                ((:set (rc-roff next) (rc-high (max row-rc-high hi)) (rc-epoch (max row-rc-epoch epoch)))
+                                 (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                                ((:goto payload-ambiguous))))))
+                    ((:conflict :invalid) (:goto payload-ambiguous)))))
+           ((:invalid) (:goto payload-ambiguous)))))
+  ;; one unit of the followed manifest's entries; then its next unit, or the
+  ;; records unit again
+  (payload-manifest :on-refusal ((:stop :recovery-bounds))
+   (:do (code hi ep) (fn2-recovery-manifest-unit row-rc-munit row-rc-mtotal row-rc-mevent row-rc-commit
+                                                  row-pool-slot row-pool-gen id row-generation)
+    :accept ()
+    :case (((:more)
+            (:if (< (+ 1 row-rc-munit) row-rc-munits)
+                 ((:set (rc-high (max row-rc-high hi)) (rc-epoch (max row-rc-epoch ep))
+                        (rc-munit (+ 1 row-rc-munit)) (rc-role (+ 1 row-rc-munit)) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+                  (:next :read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:goto payload-ambiguous))))
+           ((:done)
+            (:do (pcode p) (fn2-recovery-commit-extent row-rc-commit) :accept (:ok))
+            (:set (rc-high (max row-rc-high hi)) (rc-epoch (max row-rc-epoch ep))
+                  (rc-munits 0) (rc-pos p) (rc-role 1) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+            (:next :read) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:conflict :invalid) (:goto payload-ambiguous)))))
+  ;; :install stage 0: scan 32 candidate rows past the chain for anything dirty
   (install-scan
    (:do (next found) (fn2-recovery-dirty-scan row-rc-found row-rc-high (equal row-rc-dirty 1)))
    (:set (rc-found next) (rc-dirty (if found 1 0)) (rc-stage (if (< next row-rc-high) 0 1)))
@@ -615,6 +781,10 @@
              (:next :install) (:charge :steps *fn2-work-mailbox* :runnable t))))
   ;; one stage over the filled unit (at most 4 KiB verified)
   (:verify :on-refusal ((:stop :recovery-bounds))
+   (:cond ((and (equal row-rc-mode *fn2-rec-mode-payload*) (< 0 row-rc-munits)) (:goto payload-manifest))
+          ((and (equal row-rc-mode *fn2-rec-mode-payload*) (equal row-rc-rend 0)) (:goto payload-open))
+          ((equal row-rc-mode *fn2-rec-mode-payload*) (:goto payload-record))
+          (t
    (:if (equal row-rc-mode *fn2-rec-mode-discover*)
         ((:do (code) (fn2-recovery-discover-unit row-rc-stage row-rc-pos row-rc-role row-pool-slot row-pool-gen id row-generation)
           :accept ()
@@ -645,9 +815,7 @@
                   (:do (lcode) (fn2-recovery-link row-rc-pos))
                   (:set (rc-chain (+ 1 row-rc-chain)) (rc-pos 0) (rc-found *fn2-alloc-none*) (rc-filled 0) (rc-stage 0))
                   (:next :search) (:charge :steps *fn2-work-advance* :runnable t))
-                 ((:broken)
-                  (:set (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))
-                  (:next :install) (:charge :steps *fn2-work-advance* :runnable t)))))))
+                 ((:broken) (:goto payload-begin)))))))))
   ;; the unique successor of the chain; a second match is a branch, which
   ;; recovery never resolves by position
   (:search :on-refusal ((:stop :recovery-bounds))
@@ -655,9 +823,7 @@
    (:cond (twice (:set (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))
                  (:next :install) (:charge :steps *fn2-work-advance* :runnable t))
           ((< next row-rc-arena) (:set (rc-pos next) (rc-found found)) (:charge :steps *fn2-work-advance* :runnable t))
-          ((equal found *fn2-alloc-none*)
-           (:set (rc-ambiguous 0) (rc-stage 0) (rc-found 0) (rc-ready 0))
-           (:next :install) (:charge :steps *fn2-work-advance* :runnable t))
+          ((equal found *fn2-alloc-none*) (:goto payload-begin))
           (t (:set (rc-mode *fn2-rec-mode-chain*) (rc-pos found) (rc-role 2) (rc-filled 0) (rc-stage 0))
              (:next :read) (:charge :steps *fn2-work-advance* :runnable t))))
   ;; stages: 0 dirty scan, 1 witness and classification, 2 allocator adoption
