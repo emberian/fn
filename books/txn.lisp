@@ -618,7 +618,7 @@
         (mv :bounds fn2-core)))
     (let ((fn2-core (fn2-machine-set-wake-id waiter fn2-core))) (mv :ok fn2-core))))
 (fn2-core-preserves fn2-claim-release-core (c fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (e/d (fn2-core-wfp) (fn2-txn-snapshot-read-code)))))
+  :hints (("Goal" :in-theory (disable fn2-txn-snapshot-read-code nfix))))
 (in-theory (disable fn2-commit-admit-txn fn2-claim-release-core))
 
 ;; An accepted POST's payload extent (its upload's reservation) becomes
@@ -811,7 +811,7 @@
           (stream group) (reasons 1) fn2-core)
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 c1 g1 noff nlen okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-add-group))
 
 (defun fn2-txn-synth-ov (ms mg mo ml scanned at hashed lines slot gen okind oslot ogen fn2-core)
@@ -874,7 +874,7 @@
          ((unless (eq code :ok)) (mv code fn2-core)))
       (fn2-txn-xref-pairs (- k 1) (+ 1 (nfix j)) tx next c0 g0 c1 g1 okind oslot ogen fn2-core))))
 (fn2-core-preserves fn2-txn-xref-pairs (k j tx off c0 g0 c1 g1 okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-xref-pairs))
 ;; The overview line's Xref field (PRF-206, RFC 5536 3.2.14), after stage:
 ;; TAB "Xref: " the node's path identity, then " NAME:NUMBER" for each of the
@@ -899,7 +899,7 @@
        ((unless (and (<= ov-off ov-end) (<= (- ov-end ov-off) *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
     (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- ov-end ov-off) okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-xref))
 
 ;; The article's location is its upload's payload extent: the extent's first
@@ -985,7 +985,7 @@
           fn2-fields))
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-txn-prebind (tx fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-prebind))
 ))
 

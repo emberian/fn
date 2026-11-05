@@ -1363,10 +1363,33 @@
       (if (if (eq layer :other) (not (member-eq l '(:a :b :c))) (eq l layer))
           (cons (car names) (fn2-machine-names-in-layer (cdr names) layer world))
         (fn2-machine-names-in-layer (cdr names) layer world)))))
+;; :other-1 and :other-2 split :other's kinds where their columns halve
+;; (D26: one section book of :other's row readers took 88 s, 562 events).
+(defun fn2-machine-columns-count (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) 0
+    (+ (len (fn2-machine-property (car names) :columns world))
+       (fn2-machine-columns-count (cdr names) world))))
+(defun fn2-machine-names-upto (names budget world)
+  ;; the leading kinds of NAMES whose columns stay within BUDGET (at least one)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let ((n (len (fn2-machine-property (car names) :columns world))))
+      (if (< (nfix budget) n) nil
+        (cons (car names) (fn2-machine-names-upto (cdr names) (- (nfix budget) n) world))))))
+(defun fn2-machine-other-part (names part world)
+  (declare (xargs :verify-guards nil))
+  (let* ((other (fn2-machine-names-in-layer names :other world))
+         (first (or (fn2-machine-names-upto other (floor (fn2-machine-columns-count other world) 2) world)
+                    (take 1 other))))
+    (if (eql part 1) first (nthcdr (len first) other))))
 (defun fn2-machine-names-in-layers (names layers world)
   (declare (xargs :verify-guards nil))
   (if (atom layers) nil
-    (append (fn2-machine-names-in-layer names (car layers) world)
+    (append (case (car layers)
+              (:other-1 (fn2-machine-other-part names 1 world))
+              (:other-2 (fn2-machine-other-part names 2 world))
+              (otherwise (fn2-machine-names-in-layer names (car layers) world)))
             (fn2-machine-names-in-layers names (cdr layers) world))))
 (defmacro fn2-machine-row-events (&rest layers)
   ; No LAYERS: every kind (a test instance in one book).
