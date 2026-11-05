@@ -9,8 +9,9 @@
 ; Run: sh tools/certify.sh tests/identity-core-unit.lisp
 (in-package "ACL2")
 (include-book "../books/assembly")
-; fn2-txn-put-identity (fn2-icu-identity) is the transaction book's.
-(include-book "../books/txn")
+; fn2-txn-put-identity (fn2-icu-identity) is materialized after the core
+; instance, in assembly-callbacks-d-txn (txn.lisp's fn2-txn-op-events).
+(include-book "../books/assembly-callbacks-d-txn")
 (include-book "std/util/bstar" :dir :system)
 
 (defun fn2-icu-write (bytes slot gen off fn2-core)
