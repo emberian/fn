@@ -163,7 +163,12 @@
           ;; the store page (one storage unit under this row, held from :store
           ;; to the drain): the injected Message-ID field of a POST that named
           ;; none, written to storage before the source (ILEN its octets)
-          (lslot :link) (lgen :u60) (lease (:enum fn2-upload-lease (:none :held))) (ilen :u32))
+          (lslot :link) (lgen :u60) (lease (:enum fn2-upload-lease (:none :held))) (ilen :u32)
+          ;; stored octets longer than one extent (article-manifest.lisp):
+          ;; PEXT is the manifest's extent, CEXT the current block's (CFREE
+          ;; while no entry names it yet), MFILL the manifest's octets built
+          ;; in the store page and MUNIT its units written
+          (cext :link) (cepoch :u60) (calloc :u60) (cfree :bool) (mfill :u32) (munit :u8))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
@@ -187,10 +192,10 @@
          :copy (conn conn-gen request rule principal-slot)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen))
+                 lgen lease ilen cepoch calloc cfree mfill munit))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
-           (pext *fn2-none*) (lslot *fn2-none*)
+           (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:store-write) (:store-wrote)
         (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))

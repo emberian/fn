@@ -28,6 +28,11 @@
           (ast :u8) (lslot :link) (lgen :u60) (lease (:enum fn2-cursor-lease (:none :held)))
           (oat :u32) (mso :u32) (mln :u32) (said :bool)
           (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
+          ;; octets named through a source manifest (MKIND): the next entry's
+          ;; manifest octet (MPOS), the block it names (BUNIT BEPOCH BALLOC
+          ;; BLEN, BREADY once decoded) and whether the read in flight is the
+          ;; manifest's (MREAD)
+          (mkind :bool) (mpos :u32) (bunit :u60) (bepoch :u60) (balloc :u60) (blen :u32) (bready :bool) (mread :bool)
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
@@ -44,7 +49,8 @@
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
-                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready cursor))
+                 art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
+                 mkind mpos bunit bepoch balloc blen bready mread cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))

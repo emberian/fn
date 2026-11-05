@@ -45,7 +45,7 @@
   (if (atom lines) nil (append (fn2-cs-octets (car lines)) (list 13 10) (fn2-cs-source (cdr lines)))))
 ;; The seed's payload extent, reserved from B's allocator as an upload
 ;; reserves its own; the transaction allocates it to the article once the
-;; batch commits (fn2-txn-payload-commit). (mv code e epoch counter fn2-core).
+;; batch commits (fn2-upload-extent-commit). (mv code e epoch counter fn2-core).
 (defun fn2-cs-extent (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-extents (fn2-core-extents fn2-core)))
@@ -265,7 +265,7 @@
 (defun fn2-cs-finish (pending event fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (fn2-cs-chain
-   (fn2-txn-payload-commit (nth 0 pending) (nth 1 pending) (nth 2 pending) event fn2-core)
+   (fn2-upload-extent-commit (nth 0 pending) (nth 1 pending) (nth 2 pending) event fn2-core)
    (mv-let (c fn2-core) (fn2-successor-release 0 fn2-core) (mv (if (member-eq c '(:ok :state)) :ok c) fn2-core))
    (fn2-core-release (nth 3 pending) (nth 4 pending) 200 0 1 fn2-core)
    (fn2-core-release (nth 5 pending) (nth 6 pending) 200 0 1 fn2-core)))
