@@ -819,7 +819,8 @@
 (fn2-pool-preserves fn2-txn-xref-pair-pool (off number c0 g0 c1 g1 okind oslot ogen fn2-pool) :position 2 :rows nil)
 (defthm fn2-txn-xref-pair-pool-natp
   (implies (natp off) (natp (mv-nth 1 (fn2-txn-xref-pair-pool off number c0 g0 c1 g1 okind oslot ogen fn2-pool))))
-  :rule-classes :type-prescription)
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-txn-xref-pair-pool))))
 (in-theory (disable fn2-txn-xref-pair-pool))
 ;; The pairs of groups J.. (K of them): each group's staged number (the
 ;; overview slot's number, assigned at stage) after its name.
