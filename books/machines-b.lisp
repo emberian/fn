@@ -389,6 +389,20 @@
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
+; Its core face (the shape defcost-faces generates for a kind's own book;
+; this defcost is B's, so its face is made here).
+(defun fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-extents (fn2-core-extents fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
+             (fn2-ops (fn2-core-ops fn2-core)) (fn2-control (fn2-core-control fn2-core)))
+  (code slot gen fn2-pool fn2-ops fn2-control)
+  (fn2-block-read-children pu epoch alloc off len lslot lgen okind oslot ogen principal
+                           fn2-extents fn2-pool fn2-ops fn2-control)
+  (mv code slot gen fn2-core)))
+(fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
+ :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-block-read))
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
 (defcost fn2-block-read-done :answers (:ok :io) :doc "B-S2 S10: the read's completion.")
