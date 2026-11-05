@@ -6,7 +6,7 @@ A long-lived ACL2 process (tests/sim-session.lsp) holds the served fn2 core, its
 admitting fn2-conn, and the simulator's network; each call is one top-level ACL2 form and each
 answer one marker line `@@FN2SS <tag> <hex|-> <closed> <id>@@`. Every call is deterministic given
 the seed: FN2_SIM_SEED if set, else a CRC of the case id. The ACL2 books it includes must be
-certified in the tree (tools/certify.sh tests/conn-unit.lisp sim/echo.lisp sim/check-wire.lisp).
+certified in the tree (tools/certify.sh tests/conn-unit.lisp sim/session.lisp).
 """
 import os
 import pty

@@ -7,6 +7,7 @@
 ; refusals of a row out of range, a step with no read, a second owner.
 (in-package "ACL2")
 (include-book "../books/owed-cursor")
+(include-book "../sim/session")
 (include-book "std/util/bstar" :dir :system)
 
 ; Reading served with four read rows, two a cursor slot (two transactions:
@@ -358,4 +359,43 @@
                   (fn2-read-identity-spec *fn2-rdu-tooth-seeds* nil "<b@example.invalid>")))))
 (assert-event (fn2-read-identity-test-selection))
 (assert-event (fn2-read-identity-test-negative))
+;; The simulator session's loop (sim/session.lisp, the surface harness's
+;; SIM carrier) over the seeded store: HEAD by Message-ID after OVER serves
+;; the third article's stored header through B's block read, each reply
+;; whole at its own quiescence (nightly 2026-11-05 at b7be07591: the device
+;; was 4 sectors, so article 3's extent at 24,576 was never written and the
+;; read refused 503; and quiescence was 64 rounds without an action while
+;; the sealer's background seals kept the core :more, so a reply could
+;; arrive after the session answered). Seed 138560 is the nightly's
+;; (the CRC of test_live_state_machine's id).
+(defun fn2-rdu-head (n mid subject)
+ (declare (xargs :verify-guards nil))
+ (list (fn2-csp-cat (list "221 " n " " mid " headers follow")) (fn2-csp-cat (list "Xref: .invalid local.test:" n))
+       "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject)) "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+       (fn2-csp-cat (list "Message-ID: " mid)) "Newsgroups: local.test" "."))
+(defun fn2-rdu-over (n subject mid bytes)
+ (declare (xargs :verify-guards nil))
+ (fn2-csp-cat (list n (fn2-ss-tab) subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
+                    (fn2-ss-tab) mid (fn2-ss-tab) (fn2-ss-tab) bytes (fn2-ss-tab) "3" (fn2-ss-tab) "Xref: .invalid local.test:" n)))
+(defconst *fn2-rdu-session-lines*
+ '("GROUP local.test" "OVER 1-" "HEAD <c@example.invalid>" "HEAD 3" "BODY <a@example.invalid>"))
+(defun fn2-rdu-session-expected ()
+ (declare (xargs :verify-guards nil))
+ (list (fn2-cw-crlf-octets '("201 fn-nntp experimental reader ready"))
+       (list (fn2-cw-crlf-octets '("211 3 1 3 local.test"))
+             (fn2-cw-crlf-octets (list "224 overview information follows"
+                                       (fn2-rdu-over "1" "one" "<a@example.invalid>" "161")
+                                       (fn2-rdu-over "2" "two" "<b@example.invalid>" "161")
+                                       (fn2-rdu-over "3" "three" "<c@example.invalid>" "165") "."))
+             (fn2-cw-crlf-octets (cons "221 0 <c@example.invalid> headers follow"
+                                       (cdr (fn2-rdu-head "3" "<c@example.invalid>" "three"))))
+             (fn2-cw-crlf-octets (fn2-rdu-head "3" "<c@example.invalid>" "three"))
+             (fn2-cw-crlf-octets '("222 0 <a@example.invalid> body follows" "body one" "..dotted" "end" ".")))))
+(assert-event (equal (fn2-ss-transcript 138560 *fn2-ss-sim-profile* *fn2-rdu-session-lines*)
+                     (fn2-rdu-session-expected)))
+;; Control: the simulator's default device under the same profile cannot
+;; hold the third seed's extent, and the session refuses to start rather
+;; than serve a store the device never received.
+(assert-event (equal (fn2-ss-transcript 138560 *fn2-ss-profile* *fn2-rdu-session-lines*)
+                     '(:unseeded (:device :bounds 24576))))
 (value-triple (cw "READ-UNIT PASS~%"))
