@@ -59,12 +59,18 @@
   (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (list* "340 send article to be posted" "240 article received OK" (fn2-scu-accepts (+ 1 i) n))))
+;; The Xref field the transaction files (the profile's path identity, the
+;; article's number): the overview line's last field and the article's
+;; first header line.
+(defun fn2-scu-xref (i)
+  (declare (xargs :verify-guards nil))
+  (fn2-csp-cat (list "Xref: fn2.invalid local.test:" (fn2-scu-dec i))))
 (defun fn2-scu-ov (i)
   (declare (xargs :verify-guards nil))
   (let ((tab (fn2-scu-tab)))
     (fn2-csp-cat (list (fn2-scu-dec i) tab (fn2-scu-subject i) tab "c@example.invalid" tab tab (fn2-scu-mid i)
                        tab tab (fn2-scu-dec (fn2-scu-octets (fn2-scu-article i))) tab
-                       (fn2-scu-dec (len (fn2-scu-body i)))))))
+                       (fn2-scu-dec (len (fn2-scu-body i))) tab (fn2-scu-xref i)))))
 (defun fn2-scu-ovs (i n)
   (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil (cons (fn2-scu-ov i) (fn2-scu-ovs (+ 1 i) n))))
@@ -72,7 +78,7 @@
   (declare (xargs :verify-guards nil :measure (nfix (- (+ 1 (nfix n)) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (> i n)) nil
     (append (list (fn2-csp-cat (list "220 " (fn2-scu-dec i) " " (fn2-scu-mid i) " article follows")))
-            (fn2-scu-article i) (list ".") (fn2-scu-article-replies (+ 1 i) n))))
+            (list (fn2-scu-xref i)) (fn2-scu-article i) (list ".") (fn2-scu-article-replies (+ 1 i) n))))
 (defun fn2-scu-expected (n)
   (declare (xargs :verify-guards nil))
   (fn2-cw-crlf-octets
