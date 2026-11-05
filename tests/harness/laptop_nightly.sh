@@ -56,6 +56,10 @@ wait
 # a run that writes no m2.json leaves the line at 0/12 and its log in $out/m2.log.
 m2_default='sh tools/certify.sh tests/m2-cuts.lisp > "$OUT/m2-cert.log" 2>&1 && tools/acl2 --timeout 1800 < tests/m2-cuts.lsp > "$OUT/m2-run.log" 2>&1; python3 tests/m2_json.py "$OUT" < "$OUT/m2-run.log"'
 OUT="$out" sh -c "${H_NIGHTLY_M2:-$m2_default}" > "$out/m2.log" 2>&1 || :
+# M2's sentence over the real socket (lane consumer-socket): the served node on the owner-only Unix socket,
+# a consumer registers and waits, a POST over TCP wakes it, it reads and acks, an NNTP reader sees the article.
+# Writes $out/consumer/report.json (verdict, held, judgments); the node takes a few minutes to start.
+python3 -m tests.surface.fn2_consumer_socket --out "$out/consumer" > "$out/consumer.log" 2>&1 || :
 "$python" -m tests.surface.nightly_nntp "$out" "$sha" > /dev/null
 cp "$out/summary.txt" "$base/LATEST.txt"
 echo "$(date) done $sha: $(cat "$out/summary.txt")"
