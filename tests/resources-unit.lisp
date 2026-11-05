@@ -11,7 +11,9 @@
 ; written): no duplicate kind, no prose-free row; ranks follow the order.
 (assert-event (fn2-resource-order-p *fn2-resource-order*))
 (assert-event (and (equal (fn2-resource-rank :service-work *fn2-resource-order*) 1)
-                   (equal (fn2-resource-rank :cursor-row *fn2-resource-order*) 13)
+                   (equal (fn2-resource-rank :cursor-row *fn2-resource-order*) 14)
+                   ;; a consumer request takes its append's upload (e-surface.md 3.3)
+                   (< (fn2-resource-rank :wait-row *fn2-resource-order*) (fn2-resource-rank :upload-row *fn2-resource-order*))
                    (equal (fn2-resource-rank :bogus *fn2-resource-order*) 0)))
 (fn2-resource-rejects :order-duplicate
   (fn2-resource-order-p

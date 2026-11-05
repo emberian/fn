@@ -15,9 +15,31 @@
 ; :format-slots derived) and 64 KiB pages for its runs, which stay resident
 ; (C-SEAL-RESIDENT): owed-cursor.lisp's *fn2-read-profile*.
 (defconst *fn2-rdu-profile* *fn2-read-profile*)
+;; A seed as the transaction's path commits it (owed-cursor fn2-cs-seed):
+;; (group-number mid overview-line text), TEXT filed in GROUP as its
+;; article N, LINE the overview line the path synthesizes (source octets,
+;; body lines, the Xref field with the profile's path identity).
+(defun fn2-rdu-text (group subject mid)
+ (declare (xargs :verify-guards nil))
+ (list "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject))
+       "Date: Fri, 30 Oct 2026 12:00:00 +0000" (fn2-csp-cat (list "Message-ID: " mid))
+       (fn2-csp-cat (list "Newsgroups: " group)) "" (fn2-csp-cat (list "body " subject))))
+(defun fn2-rdu-seed (gno group subject mid n)
+ (declare (xargs :verify-guards nil))
+ (let ((text (fn2-rdu-text group subject mid)))
+   (list gno mid
+         (fn2-csp-cat (list subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
+                            (fn2-ss-tab) mid (fn2-ss-tab) "" (fn2-ss-tab) (fn2-csp-str (len (fn2-cs-source text)))
+                            (fn2-ss-tab) (fn2-csp-str (fn2-ss-body-lines text))
+                            (fn2-ss-tab) "Xref: " (fn2-profile-path-identity *fn2-read-profile*) " " group ":"
+                            (fn2-csp-str n)))
+         text)))
 (defconst *fn2-rdu-seeds*
- '((1 "<a@example.invalid>" "first	a@example.invalid") (2 "<z@example.invalid>" "other group")
-   (1 "<b@example.invalid>" "second") (1 "<c@example.invalid>" "third line")))
+ (list (fn2-rdu-seed 1 "local.test" "first" "<a@example.invalid>" 1)
+       (fn2-rdu-seed 2 "local.empty" "other group" "<z@example.invalid>" 1)
+       (fn2-rdu-seed 1 "local.test" "second" "<b@example.invalid>" 2)
+       (fn2-rdu-seed 1 "local.test" "third line" "<c@example.invalid>" 3)))
+(assert-event (fn2-csp-seedsp *fn2-rdu-seeds* (fn2-profile-get :groups *fn2-read-profile*) nil))
 (defconst *fn2-rdu-max* 2147483647)
 
 (defun fn2-rdu-chars (cs) (declare (xargs :verify-guards nil)) (if (atom cs) nil (cons (char-code (car cs)) (fn2-rdu-chars (cdr cs)))))
@@ -234,7 +256,7 @@
       ((mv id0 fn2-core) (fn2-rdu-identity 0 "<a@example.invalid>" fn2-core))
       ((mv id1 fn2-core) (fn2-rdu-identity 1 "<c@example.invalid>" fn2-core))
       ((mv id2 fn2-core) (fn2-rdu-identity 0 "<nobody@example.invalid>" fn2-core))
-      ((mv conflict fn2-core) (fn2-cs-conflict "<a@example.invalid>" 0 5 fn2-core))
+      ((mv conflict & fn2-core) (fn2-cs-conflict "<a@example.invalid>" 0 nil fn2-core))
       ((mv id3 fn2-core) (fn2-rdu-identity 1 "<a@example.invalid>" fn2-core))
       ((mv refused fn2-core) (fn2-rdu-refusals fn2-core)))
   (mv (list :rows rows :seeded seeded :groups (list g1 g2 g3) :counts (list n1 n2 n3) :all all :limit lim :mid mid
@@ -279,9 +301,11 @@
 (value-triple (cw "READ-UNIT ~x0~%" *fn2-rdu-result*))
 
 (defconst *fn2-rdu-three*
- '((1 1 "first	a@example.invalid") (2 3 "second") (3 4 "third line")))
-;; Read rows: two a cursor slot (x 2 gives four), no consumer requests.
-(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 4 (+ 2 4) (+ 2 (* 9 4)))))
+ (list (list 1 1 (nth 2 (nth 0 *fn2-rdu-seeds*))) (list 2 3 (nth 2 (nth 2 *fn2-rdu-seeds*)))
+       (list 3 4 (nth 2 (nth 3 *fn2-rdu-seeds*)))))
+;; Read rows: two a cursor slot (x 2 gives four), no consumer requests; run
+;; cursors t + 9 per read row + the sealer's eight (*fn2-idc-seal-cursors*).
+(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 4 (+ 2 4) (+ 2 (* 9 4) *fn2-idc-seal-cursors*))))
 (assert-event (equal (cadr (member :seeded *fn2-rdu-result*)) :ok))
 (assert-event (equal (cadr (member :groups *fn2-rdu-result*)) '((:ok :ok 1) (:ok :ok 2) (:absent))))
 (assert-event (equal (cadr (member :counts *fn2-rdu-result*)) '((:ok 3 1 3) (:ok 1 1 1) (:absent))))
@@ -291,7 +315,7 @@
 ;; The position limit stops at the first entry past it (position 4 > 3).
 (assert-event (equal (cadr (member :limit *fn2-rdu-result*)) (take 2 *fn2-rdu-three*)))
 (assert-event (equal (cadr (member :mid *fn2-rdu-result*)) (list (nth 1 *fn2-rdu-three*))))
-(assert-event (equal (cadr (member :other *fn2-rdu-result*)) '((1 2 "other group"))))
+(assert-event (equal (cadr (member :other *fn2-rdu-result*)) (list (list 1 2 (nth 2 (nth 1 *fn2-rdu-seeds*))))))
 ;; The least number from which every entry is newer than P.
 ;; (C-POSITION-SEEK bisects [1, 2^31): 31 probes, 93 steps over overlays and
 ;; 431 over the four runs the sealer makes of them; a cursor bounds hi by the
@@ -302,7 +326,9 @@
 ;; the read went on from its resume key and delivered exactly the same
 ;; entries, and the entry held across the seal answers :stale to both its
 ;; value and its octets.
-(assert-event (equal (cadr (member :runs *fn2-rdu-result*)) '(0 4)))
+;; (C5: the seal's size-tiered merge takes the newest runs with it, so the
+;; four overlays stand in two runs, not one run each.)
+(assert-event (equal (cadr (member :runs *fn2-rdu-result*)) '(0 2)))
 (assert-event (equal (cadr (member :sealed *fn2-rdu-result*)) *fn2-rdu-three*))
 (assert-event (equal (cadr (member :stale *fn2-rdu-result*)) '(:idle :stale :stale)))
 (assert-event (equal (cadr (member :after-seal *fn2-rdu-result*)) *fn2-rdu-three*))
@@ -338,7 +364,9 @@
 ;; fields are not served yet. Negative: the reference tells a store with
 ;; conflict evidence from one without (the candidates), and an absent name
 ;; from a selected one.
-(defconst *fn2-rdu-tooth-seeds* '((1 "<a@example.invalid>" "first") (1 "<b@example.invalid>" "second")))
+(defconst *fn2-rdu-tooth-seeds*
+ (list (fn2-rdu-seed 1 "local.test" "first" "<a@example.invalid>" 1)
+       (fn2-rdu-seed 1 "local.test" "second" "<b@example.invalid>" 2)))
 (defun fn2-read-identity-test-selection ()
  (declare (xargs :verify-guards nil))
  (and (equal (take 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<b@example.invalid>"))
@@ -370,13 +398,13 @@
 ;; (the CRC of test_live_state_machine's id).
 (defun fn2-rdu-head (n mid subject)
  (declare (xargs :verify-guards nil))
- (list (fn2-csp-cat (list "221 " n " " mid " headers follow")) (fn2-csp-cat (list "Xref: .invalid local.test:" n))
+ (list (fn2-csp-cat (list "221 " n " " mid " headers follow")) (fn2-csp-cat (list "Xref: fn2.invalid local.test:" n))
        "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject)) "Date: Fri, 30 Oct 2026 12:00:00 +0000"
        (fn2-csp-cat (list "Message-ID: " mid)) "Newsgroups: local.test" "."))
 (defun fn2-rdu-over (n subject mid bytes)
  (declare (xargs :verify-guards nil))
  (fn2-csp-cat (list n (fn2-ss-tab) subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
-                    (fn2-ss-tab) mid (fn2-ss-tab) (fn2-ss-tab) bytes (fn2-ss-tab) "3" (fn2-ss-tab) "Xref: .invalid local.test:" n)))
+                    (fn2-ss-tab) mid (fn2-ss-tab) (fn2-ss-tab) bytes (fn2-ss-tab) "3" (fn2-ss-tab) "Xref: fn2.invalid local.test:" n)))
 (defconst *fn2-rdu-session-lines*
  '("GROUP local.test" "OVER 1-" "HEAD <c@example.invalid>" "HEAD 3" "BODY <a@example.invalid>"))
 (defun fn2-rdu-session-expected ()
@@ -397,5 +425,108 @@
 ;; hold the third seed's extent, and the session refuses to start rather
 ;; than serve a store the device never received.
 (assert-event (equal (fn2-ss-transcript 138560 *fn2-ss-profile* *fn2-rdu-session-lines*)
-                     '(:unseeded (:device :bounds 24576))))
+                     '(:unseeded (:device :bounds 16384))))
+;; The seeds are the core's own commits (owed-cursor's fn2-cs-seed: the
+;; transaction's path, B's admission and commit on the core's turns), so B's
+;; commit frontier and C's read frontier agree after seeding: B proposes
+;; batch 4 at event 4, C has published batch 3. Control: no seeds leaves
+;; both at genesis (batch 1 at event 1, nothing published).
+(assert-event (equal (fn2-cs-frontiers *fn2-ss-sim-profile* *fn2-ss-seeds*) '(:ok 4 4 :ok 3)))
+(assert-event (equal (fn2-cs-frontiers *fn2-ss-sim-profile* nil) '(:ok 1 1 :ok 0)))
+;; A POST after seeding at the posting profile is B's batch 4: it answers
+;; 240, GROUP counts four articles, and ARTICLE 4 serves the posted octets
+;; read back from the device (dot-stuffed again) after its Xref field, the
+;; group's new number 4. (Before the seeds went through B, the POST was B's
+;; batch 1 on the first seed's event and the read frontier never moved.)
+(defconst *fn2-rdu-post-profile* (put-assoc-equal :posting-interim t *fn2-ss-sim-profile*))
+(defconst *fn2-rdu-posted*
+ '("From: p@example.invalid" "Subject: four" "Newsgroups: local.test" "Message-ID: <p@example.invalid>" ""
+   "posted body" "..stuffed"))
+(defun fn2-rdu-flat (replies)
+ (declare (xargs :verify-guards nil))
+ (if (atom replies) nil (append (car replies) (fn2-rdu-flat (cdr replies)))))
+(defun fn2-rdu-post-after-seeds ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-ss-transcript 138560 *fn2-rdu-post-profile*
+                             (append '("POST") *fn2-rdu-posted* '("." "GROUP local.test" "ARTICLE 4")))))
+   (and (consp r)
+        (or (equal (car r) (fn2-cw-crlf-octets '("200 fn-nntp experimental server ready"))) (cw "greeting ~x0~%" r))
+        (or (equal (fn2-rdu-flat (cadr r))
+                   (fn2-cw-crlf-octets
+                    '("340 send article to be posted" "240 article received OK" "211 4 1 4 local.test"
+                      "220 4 <p@example.invalid> article follows" "Xref: fn2.invalid local.test:4"
+                      "From: p@example.invalid" "Subject: four" "Newsgroups: local.test" "Message-ID: <p@example.invalid>" ""
+                      "posted body" "..stuffed" ".")))
+            (cw "post after seeds ~x0~%" r)))))
+(assert-event (fn2-rdu-post-after-seeds))
+;; The session's rest waits for the device (sim/session.lisp
+;; fn2-ss-device-busy). The nightly at 003d77c94 (seed 138560, connection
+;; 3326 of one long session) found HEAD <c@example.invalid> unanswered at
+;; quiescence: the block read's flight had drawn fail-slow (a landing 10,000
+;; or 100,000 ticks out), and 64 rounds that only re-delayed the held Accept
+;; by 100 ticks each counted as rest. (1) That connection's lines replayed
+;; on a fresh session: every status the nightly saw, then the HEAD's reply.
+(defconst *fn2-rdu-nightly-3326*
+ '(("ARTICLE <a@b> extra" "501 syntax error")
+   ("GROUP local.empty" "211 0 1 0 local.empty")
+   ("ARTICLE <a@b> extra" "501 syntax error")
+   ("XFN-ZARTICLE <a@b> 0000000000000000000000000000000000000000000000000000000000000000" "503 archive projection unavailable")
+   ("TAKETHIS <t@x>" "502 transit is not permitted on this connection")
+   ("POST" "440 posting not permitted")
+   ("XPAT subject 1- *x*" "503 archive projection unavailable")
+   ("GROUP local.empty" "211 0 1 0 local.empty")
+   ("BODY" "420 no current article")
+   ("DATE x" "501 syntax error")
+   ("XREDEEM x" "501 syntax error")
+   ("CAPABILITIES x" "501 syntax error")
+   ("MODE STREAM" "501 syntax error")
+   ("XHDR subject 1-" "420 no article(s) selected")
+   ("BODY 3" "423 no article with that number")
+   ("LIST HEADERS" "215 field list follows")
+   ("ARTICLE 1" "423 no article with that number")
+   ("AUTHINFO USER hu-reader" "381 password required")
+   ("LISTGROUP local.empty" "211 0 1 0 local.empty list follows")
+   ("LIST HEADERS" "215 field list follows")
+   ("AUTHINFO SASL SCRAM-SHA-256" "503 mechanism not recognized")
+   ("STAT 1" "423 no article with that number")
+   ("LIST NEWSGROUPS" "215 list of newsgroups follows")))
+(defun fn2-rdu-first-line (octets)
+ (declare (xargs :verify-guards nil))
+ (let ((at (search (list 13 10) octets))) (if at (take (+ 2 at) octets) octets)))
+(defun fn2-rdu-statuses (replies)
+ (declare (xargs :verify-guards nil))
+ (if (atom replies) nil (cons (fn2-rdu-first-line (car replies)) (fn2-rdu-statuses (cdr replies)))))
+(defun fn2-rdu-crlf-each (lines)
+ (declare (xargs :verify-guards nil))
+ (if (atom lines) nil (cons (fn2-cw-crlf-octets (list (car lines))) (fn2-rdu-crlf-each (cdr lines)))))
+(defun fn2-rdu-head-c ()
+ (declare (xargs :verify-guards nil))
+ (fn2-cw-crlf-octets (cons "221 0 <c@example.invalid> headers follow"
+                           (cdr (fn2-rdu-head "3" "<c@example.invalid>" "three")))))
+(defun fn2-rdu-nightly-replay ()
+ (declare (xargs :verify-guards nil))
+ (let* ((lines (append (strip-cars *fn2-rdu-nightly-3326*) '("HEAD <c@example.invalid>")))
+        (r (fn2-ss-transcript 138560 *fn2-ss-sim-profile* lines))
+        (replies (and (consp r) (cadr r))))
+   (or (and (equal (len replies) (len lines))
+            (equal (fn2-rdu-statuses (butlast replies 1))
+                   (fn2-rdu-crlf-each (strip-cadrs *fn2-rdu-nightly-3326*)))
+            (equal (car (last replies)) (fn2-rdu-head-c)))
+       (cw "nightly replay ~x0~%" r))))
+(assert-event (fn2-rdu-nightly-replay))
+;; (2) The fault that connection drew, made certain: only fail-slow is drawn
+;; (probability 255 of 256 when a flight's class list offers it; storage
+;; flights only), and 48 HEADs by Message-ID each answer the stored headers
+;; whole. HITS shows fail-slow landed on the device during the run.
+(defconst *fn2-rdu-slow-heads* 48)
+(defun fn2-rdu-slow-device ()
+ (declare (xargs :verify-guards nil))
+ (let* ((r (fn2-ss-transcript-faults 138560 *fn2-ss-sim-profile* (list (cons *fn2-fault-fail-slow* 255))
+                                     (make-list *fn2-rdu-slow-heads* :initial-element "HEAD <c@example.invalid>")))
+        (hits (and (consp r) (cdr (assoc-equal *fn2-fault-fail-slow* (caddr r))))))
+   (or (and (consp r)
+            (equal (cadr r) (make-list *fn2-rdu-slow-heads* :initial-element (fn2-rdu-head-c)))
+            (posp hits))
+       (cw "slow device ~x0~%" (if (consp r) (list (fn2-rdu-statuses (cadr r)) (caddr r)) r)))))
+(assert-event (fn2-rdu-slow-device))
 (value-triple (cw "READ-UNIT PASS~%"))

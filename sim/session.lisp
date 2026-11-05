@@ -14,7 +14,7 @@
 ;   (fn2-ss-stop)                     WIRE (sim/check-wire.lisp) per connection
 ; Quiescence: 64 rounds in a row in which the core's turn ended :idle (no
 ; machine runnable, no wake due, no observation unharvested), emitted no
-; action, and no client octets moved (every round observes a clock reading). Network
+; action, no storage flight was on the device, and no client octets moved (every round observes a clock reading). Network
 ; faults follow the seed; process death is excluded (probability 0).
 (in-package "ACL2")
 (include-book "seeded-store")
@@ -77,6 +77,21 @@
          ((mv rest any fn2-sim) (fn2-ss-drain (cdr clients) fn2-sim)))
       (mv (cons (cons id r) rest) (or moved any) fn2-sim))))
 
+;; Whether a storage flight (a read, write or fence) is on the simulated
+;; device: the node is waiting on its device, never at rest. Network flights
+;; are not counted: a held Accept (allow nil) or an idle connection's Receive
+;; is re-delayed every round while no client moves, which is the rest the
+;; session waits for; a device flight always completes (a fail-slow fault
+;; lands it up to 100,000 ticks later), and every round in between only
+;; bounces the held Accept by 100 ticks, so 64 such rounds are not rest.
+(defun fn2-ss-device-busy (left fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil :measure (nfix left)))
+  (if (zp left) nil
+    (let ((i (- left 1)))
+      (or (and (< 0 (fn2-sim-active i fn2-sim))
+               (member-equal (fn2-sim-kind i fn2-sim) (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*)))
+          (fn2-ss-device-busy i fn2-sim)))))
+
 (defun fn2-ss-run (fuel idle allow clients fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
   (if (or (zp fuel) (<= 64 idle)) (mv clients fn2-core fn2-sim fn2-own)
@@ -90,8 +105,10 @@
          ;; a turn that ends :more (a machine runnable, a wake due, an
          ;; observation unharvested) is the node working, never idle: the
          ;; sealer's background seals share the visits a reply waits on
+         ;; nor is a turn whose device still holds a flight
          (idle (if (or moved (< 0 nactions) (not (eq status :idle))
-                       (not (equal (fn2-core-stop-reason fn2-core) 0)))
+                       (not (equal (fn2-core-stop-reason fn2-core) 0))
+                       (fn2-ss-device-busy (fn2-sim-rows fn2-sim) fn2-sim))
                    0 (+ 1 idle)))
          (idle (if (equal (fn2-core-stop-reason fn2-core) 0) idle 64)))
       (fn2-ss-run (- fuel 1) idle allow clients fn2-core fn2-sim fn2-own))))
@@ -308,7 +325,19 @@
                            fn2-core fn2-sim fn2-own))
          ((mv rest fn2-core fn2-sim fn2-own) (fn2-ss-lines (cdr lines) id clients fn2-core fn2-sim fn2-own)))
       (mv (cons got rest) fn2-core fn2-sim fn2-own))))
-(defun fn2-ss-transcript (seed profile lines)
+;; FAULTS ((index . probability) ...), when non-nil, replaces the seed's
+;; fault draw after boot: every other fault's probability is 0. The answer
+;; is (greeting replies hits), HITS each listed fault's landed count.
+(defun fn2-ss-set-faults (i faults fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil :measure (nfix (- *fn2-fault-count* (nfix i)))))
+  (if (or (not (natp i)) (>= i *fn2-fault-count*)) fn2-sim
+    (let ((fn2-sim (update-fn2-sim-probabilitiesi i (nfix (cdr (assoc-equal i faults))) fn2-sim)))
+      (fn2-ss-set-faults (+ 1 i) faults fn2-sim))))
+(defun fn2-ss-hits (faults fn2-sim)
+  (declare (xargs :stobjs fn2-sim :verify-guards nil))
+  (if (atom faults) nil
+    (cons (cons (car (car faults)) (fn2-sim-hitsi (car (car faults)) fn2-sim)) (fn2-ss-hits (cdr faults) fn2-sim))))
+(defun fn2-ss-transcript-faults (seed profile faults lines)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -318,11 +347,16 @@
             (mv-let (result fn2-core fn2-sim fn2-own)
               (b* (((mv code fn2-core fn2-sim fn2-own) (fn2-ss-boot seed profile fn2-core fn2-sim fn2-own))
                    ((unless (eq code :ok)) (mv (list :unseeded code) fn2-core fn2-sim fn2-own))
+                   (fn2-sim (if faults (fn2-ss-set-faults 0 faults fn2-sim) fn2-sim))
                    ((mv found clients fn2-core fn2-sim fn2-own) (fn2-ss-admit 1 nil fn2-core fn2-sim fn2-own))
                    ((unless found) (mv :refused fn2-core fn2-sim fn2-own))
                    ((mv greeting &) (fn2-ss-reply 1 0 clients nil))
                    ((mv replies fn2-core fn2-sim fn2-own) (fn2-ss-lines lines 1 clients fn2-core fn2-sim fn2-own)))
-                (mv (list greeting replies) fn2-core fn2-sim fn2-own))
+                (mv (list greeting replies (fn2-ss-hits faults fn2-sim)) fn2-core fn2-sim fn2-own))
               (mv result fn2-core fn2-sim)))
           (mv result fn2-core)))
       result)))
+(defun fn2-ss-transcript (seed profile lines)
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-ss-transcript-faults seed profile nil lines)))
+    (if (and (consp r) (consp (cdr r)) (consp (cddr r))) (list (car r) (cadr r)) r)))

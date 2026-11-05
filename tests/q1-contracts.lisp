@@ -316,9 +316,8 @@
 ; with the model's digest), the digest reference is B's list-level
 ; fn-blake3, and the observation is the wire and the hasher row's result
 ; slot after the run.
-;   (:accept)         the model admits 240 or a 441: until B-S2's batch
-;                     admission the transaction's answer is the interim
-;                     :not-stored, exactly "441 posting failed" (layer doc 14.5)
+;   (:accept)         the model admits: the durable POST answers 240 (B's
+;                     transaction member landed; 32481b0c1)
 ;   (:refuse ALT ...) a 441 whose text after its code contains an ALT (the
 ;                     model's 441 .*?(?:ALT|...).*)
 ;   (:framing)        a 441 (WIRE checks the close after it)
@@ -401,7 +400,7 @@
            (fn2-q1c-upload-ok case sizes))
   :schema :invariant :claim :semantic
   :teeth (fn2-upload-judged-positive fn2-upload-judged-negative)
-  :doc "For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article gets the interim 441 until B-S2), and the upload's hasher row holds B's BLAKE3 of the article the model decoded.")
+  :doc "For H's model's article fixtures, in any chunks: the served POST's wire passes WIRE's two-phase read, the block's reply is the model's judgement (a definite refusal by one of its reasons; an admissible article is answered 240), and the upload's hasher row holds B's BLAKE3 of the article the model decoded.")
 (defun fn2-q1c-upload-all (cases k)
   ; every model case whole (K nil) or in K-octet chunks
   (declare (xargs :verify-guards nil))

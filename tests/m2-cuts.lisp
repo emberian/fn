@@ -11,26 +11,26 @@
 ; A cut passes only when every step it takes is served and Mini's acceptance
 ; holds over what it observed. A step the served node cannot take (no verb, no
 ; world step, a reply without the fields Mini needs) is a named reason and
-; the cut FAILs; it is never skipped. Where the served node refuses origin's
-; append of R, R is put in Mini's addr stream by the same direct core writes
-; F6 uses (fn2-addr-put, bind, publish, wake) so the later steps are still
-; exercised; the refusal stays a reason.
+; the cut FAILs; it is never skipped. Origin's append of R and Mini's of Q
+; are served appends (e-surface.md 3.3: the upload and transaction a POST
+; runs), each a frame carrying its operation identity and its article.
 ;
 ; tests/m2-cuts.lsp prints one line per cut and the total; tests/m2_json.py
 ; writes OUT/m2.json for H's nightly line.
 (in-package "ACL2")
 (include-book "consumer-mini")
 (include-book "../books/owed-conn")
+(include-book "../books/owed-cursor")
 (include-book "std/testing/assert-bang" :dir :system)
 
-; F6's profile (tests/sim-layer-e.lisp *fn2-sle-turn-profile*): two control
-; connections (Mini's and origin's), two consumer request rows.
+; The reading and posting profile (owed-cursor.lisp *fn2-cursor-profile*,
+; its device sized as sealer-capacity-unit's) with Mini's two groups, two
+; control connections (Mini's and origin's) and two consumer request rows.
 (defconst *m2-profile*
   (put-assoc-equal :cns 2
     (put-assoc-equal :control-connections 2
-      (put-assoc-equal :identity-overlays 32
-        (put-assoc-equal :identity-arena-bytes 4096
-          (put-assoc-equal :pool-classes '((8 . 1024) (64 . 4096) (16 . 65536)) *fn2-conn-wire-profile*))))))
+      (put-assoc-equal :extent-slots 128
+        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))
 (defconst *m2-mini-conn* 0)
 (defconst *m2-origin-conn* 1)
 
@@ -40,6 +40,26 @@
 ; is Mini's, arg3 the register's start or the ack's target, Mini's 8 items,
 ; epoch 1. A reply is (outcome reason cpos pfront count more) (fn2-cns-encode-reply-pool).
 (defun m2-frame (fkind arg3) (declare (xargs :guard t)) (list 1 fkind 1 arg3 8 1))
+; An append frame (cns.lisp fn2-cns-decode-append): cmd 1, fkind 7, the
+; operation identity's length and octets (OP a string of at most 7
+; octets), the article's CR LF lines.
+(defun m2-append-frame (op lines)
+  (declare (xargs :verify-guards nil))
+  (let ((o (fn2-cw-chars (coerce op 'list))))
+    (append (list 1 7 (len o)) o (fn2-cw-crlf-octets lines))))
+; R as origin appends it: Mini's group, R's Message-ID and its source's
+; operation tag; Q as Mini appends it to the reply group under its opid.
+; R's carried size (198,919 octets) is past one L frame (one receive of
+; *fn2-ctl-io-bytes*), so the frame carries R's header and tag only.
+(defun m2-r-lines (mid source)
+  (declare (xargs :verify-guards nil))
+  (list "From: origin@example.invalid" "Subject: R" (concatenate 'string "Newsgroups: " *mini-group*)
+        (concatenate 'string "Message-ID: " mid) ""
+        (let ((at (search "op=" source))) (if at (subseq source at (+ at 10)) "op="))))
+(defun m2-q-lines (opid)
+  (declare (xargs :verify-guards nil))
+  (list "From: mini@example.invalid" (concatenate 'string "Subject: Q for " opid)
+        (concatenate 'string "Newsgroups: " *mini-reply-group*) "" (concatenate 'string "Q for " opid)))
 (defun m2-outcome (r) (declare (xargs :guard t)) (and (consp r) (car r)))
 (defun m2-accepted-p (r) (declare (xargs :guard t)) (equal (m2-outcome r) *fn2-cns-outcome-accepted*))
 
@@ -128,28 +148,6 @@
        ((mv & clients store deferred fn2-core) (m2-loop 2000 0 clients (car io) (cdr io) fn2-core)))
     (mv (m2-new-octets 0 clients lens) clients (cons store deferred) fn2-core)))
 
-; Origin's R where the served append refuses it: the direct core writes of F6
-; (sim-layer-e.lisp fn2-sle-seed-article) at the next commit position.
-(defun m2-seed-article (art fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* (((mv pcode pf) (fn2-successor-published fn2-core))
-       (pos (+ 1 (if (eq pcode :ok) (nfix pf) 0)))
-       ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
-       ((mv c0 fn2-core)
-        (fn2-addr-put 0 0 (principal 0) (position pos) (article art) (stream 0) (reasons 1) fn2-core))
-       ((unless (eq c0 :ok)) (mv c0 fn2-core))
-       ((mv rc fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
-       ((unless (eq rc :ok)) (mv rc fn2-core))
-       ((mv scode & fn2-core) (fn2-successor-stage 0 fn2-core))
-       ((unless (eq scode :ok)) (mv scode fn2-core))
-       ((mv bcode fn2-core) (fn2-successor-bind 0 pos pos fn2-core))
-       ((unless (eq bcode :ok)) (mv bcode fn2-core))
-       ((mv pcode fn2-core) (fn2-succ-core-publish pos fn2-core))
-       ((unless (eq pcode :ok)) (mv pcode fn2-core))
-       ((mv & fn2-core) (fn2-cns-core-stream-wake pos fn2-core))
-       ((mv & fn2-core) (fn2-successor-release 0 fn2-core)))
-    (mv :ok fn2-core)))
-
 ;; Mini over the served node --------------------------------------------------------
 ; S is (clients db reasons mutate store): the connections, Mini's database
 ; (consumer-mini.lisp), the reasons the cut cannot pass (in order, no
@@ -195,10 +193,8 @@
 
 (defconst *m2-no-items*
   "page: the served reply is six octets (outcome reason cpos pfront count more) and carries no item, so Mini sees no Message-ID, source or reference")
-(defconst *m2-append*
-  "append (fkind 7) refused unavailable at fn2-cns :check")
-(defconst *m2-append-r*
-  "origin's append of R (fkind 7) refused unavailable; R stood in by a direct fn2-addr-put")
+(defconst *m2-r-size*
+  "R is appended as its header and operation tag: its 198,919 octets are past one L frame (one receive)")
 
 ; Mini's half after a page (consumer-mini.lisp mini-after-page): references
 ; fetched, the items committed, the page's next acknowledged, the outbox posted.
@@ -206,14 +202,15 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (cond ((atom outbox) (mv s fn2-core))
         ((eq lose :request) (mv s fn2-core))
-        (t (b* (((mv r & s fn2-core) (m2-mini-send 'append (m2-frame 7 0) s fn2-core))
+        (t (b* (((mv r & s fn2-core)
+                 (m2-mini-send 'append (m2-append-frame (caar outbox) (m2-q-lines (caar outbox))) s fn2-core))
                 (db (nth 1 s))
                 (o (cond ((m2-accepted-p r) (list :accepted nil))
                          ((equal (m2-outcome r) *fn2-cns-outcome-uncertain*) (list :uncertain nil))
                          (t (list :refused (nth 1 r)))))
                 (s (if (m2-accepted-p r)
                        (m2-why "append accepted: the six-octet reply carries no Message-ID to hold across retries" s)
-                     (m2-why *m2-append* s)))
+                     (m2-why (m2-reason-text "Mini's append of Q" r) s)))
                 (db (mini-put :posted (cons (cons (caar outbox) o) (mini-get :posted db)) db))
                 (db (if (or lose (eq (car o) :uncertain)) db
                       (mini-put :outbox (remove1-equal (car outbox) (mini-get :outbox db)) db))))
@@ -265,17 +262,13 @@
   (case (car op)
     (append
      ; Origin appends R on its own connection; Mini's may hold a parked wait.
-     (b* ((art (if (equal (car (nth 3 op)) "<r2@origin>") 2 1))
-          ((mv new clients store fn2-core) (m2-exchange *m2-origin-conn* (m2-frame 7 0) (nth 0 s) (nth 4 s) fn2-core))
-          (s (m2-wired clients store s))
+     (b* ((r (nth 3 op))
+          (frame (m2-append-frame (nth 4 op) (m2-r-lines (car r) (cadr r))))
+          ((mv new clients store fn2-core) (m2-exchange *m2-origin-conn* frame (nth 0 s) (nth 4 s) fn2-core))
+          (s (m2-why *m2-r-size* (m2-wired clients store s)))
           (ro (cdr (assoc-equal *m2-origin-conn* new)))
-          ((mv s fn2-core) (m2-woken new s fn2-core))
-          ((when (m2-accepted-p ro)) (mv s fn2-core))
-          (s (m2-why *m2-append-r* s))
-          ((mv code fn2-core) (m2-seed-article art fn2-core))
-          (s (if (eq code :ok) s (m2-why (concatenate 'string "the stand-in seed of R stopped: " (m2-reply-text code)) s)))
-          ((mv new clients store fn2-core) (m2-exchange *m2-mini-conn* nil (nth 0 s) (nth 4 s) fn2-core)))
-       (m2-woken new (m2-wired clients store s) fn2-core)))
+          (s (if (m2-accepted-p ro) s (m2-why (m2-reason-text "origin's append of R" ro) s))))
+       (m2-woken new s fn2-core)))
     (:grant (mv (m2-why "grant: the served node has no authority verb (fn2-ctl admits the owner only; every frame is the owner's)" s) fn2-core))
     (:withdraw (mv (m2-why "withdraw: no served cancel, and fn2-cns delivers no withdrawal report" s) fn2-core))
     (otherwise (mv (m2-why (concatenate 'string "world step " (m2-reply-text (car op)) " is not served") s) fn2-core))))
@@ -344,6 +337,9 @@
   (with-local-stobj fn2-core
     (mv-let (pass reasons fn2-core)
       (b* ((fn2-core (fn2-init-executor *m2-profile* :echo nil fn2-core))
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv a0 fn2-core) (m2-admit *m2-mini-conn* fn2-core))
            ((mv a1 fn2-core) (m2-admit *m2-origin-conn* fn2-core))
            ((unless (and (eq a0 :ok) (eq a1 :ok)))
