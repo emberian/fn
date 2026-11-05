@@ -211,24 +211,27 @@
     ((:commit-batch :publish) :releases (:batch-membership))
     ((:commit-batch :failed-result) :releases (:operation :fence-slot :storage-window :storage-job))))
 
-; Notification debt (f): what each commit-batch phase may hold. From publish
-; on, a batch owes nothing per recipient: each outcome is a state bit on its
+; Notification debt (f): what each commit-batch phase may hold. Once
+; published (from :notify on), a batch owes nothing per recipient: each outcome is a state bit on its
 ; own transaction row, each affected subscription is reached by the wake
 ; service's dirty-subscription cursor over the published frontier, and a late
 ; registrant compares its cursor with the frontier. Two slow recipients hold
 ; their own rows and windows, never a batch slot.
 (defconst *fn2-resource-batch-phases*
-  '((:collect :holds (:batch-membership) :after-publish nil)
-    (:seal :holds (:batch-membership) :after-publish nil)
-    (:dependencies :holds (:batch-membership) :after-publish nil)
-    (:log-write :holds (:batch-membership :storage-job :storage-window) :after-publish nil)
-    (:fence :holds (:batch-membership :storage-job :storage-window :fence-slot) :after-publish nil)
-    (:durable :holds (:batch-membership :storage-job :storage-window) :after-publish nil)
+  ;; the same holds as fn2-commit's :holds (machines-b.lisp); :uncertain is
+  ;; retained there, and every path into it holds these two
+  '((:collect :holds (:batch-membership :storage-window) :after-publish nil)
+    (:seal :holds (:batch-membership :storage-window) :after-publish nil)
+    (:dependencies :holds (:batch-membership :storage-window) :after-publish nil)
+    (:log-write :holds (:batch-membership :storage-window) :after-publish nil)
+    (:fence :holds (:batch-membership :storage-window) :after-publish nil)
+    (:durable :holds (:batch-membership :storage-window) :after-publish nil)
     (:install :holds (:batch-membership :storage-window) :after-publish nil)
-    (:publish :holds (:storage-window) :after-publish t)
-    (:notify :holds nil :after-publish t)
+    (:publish :holds (:batch-membership :storage-window) :after-publish nil)
+    (:notify :holds (:storage-window) :after-publish t)
     (:uncertain :holds (:batch-membership :storage-window) :after-publish nil)
-    (:draining :holds nil :after-publish t)))
+    (:dropping :holds (:batch-membership :storage-window) :after-publish nil)
+    (:draining :holds (:storage-window) :after-publish t)))
 (defconst *fn2-resource-per-recipient*
   '(:connection-row :rx-range :tx-range :principal-reservation :transaction-row :wait-row
     :subscription-edge :control-output :batch-membership))

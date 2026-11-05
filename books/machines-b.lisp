@@ -231,37 +231,27 @@
           (cb-log-ok :bool) (cb-published :bool) (cb-acks :u32)
           (cb-seal-len :u32) (cb-wrote :bool) (cb-open :bool) (dep-bytes :u32) (rec-bytes :u32))
 
+ ;; b-durability 11: the journal IO is the row's own commit-io rows (no shared
+ ;; :storage-job) and the fence slot is A's, taken at adapter take and released
+ ;; by physical completion, so no commit phase holds either
  :holds ((:collect :batch-membership :storage-window) (:seal :batch-membership :storage-window)
-         (:dependencies :batch-membership :storage-job :storage-window)
-         (:log-write :batch-membership :storage-job :storage-window)
-         (:fence :batch-membership :storage-job :storage-window :fence-slot)
+         (:dependencies :batch-membership :storage-window)
+         (:log-write :batch-membership :storage-window)
+         (:fence :batch-membership :storage-window)
          (:durable :batch-membership :storage-window) (:install :batch-membership :storage-window)
          (:publish :batch-membership :storage-window) (:notify :storage-window) (:draining :storage-window)
-         (:uncertain :batch-membership :storage-job :storage-window :fence-slot)
+         ;; S11: an uncertain batch keeps exactly what the failing path held
+         ;; (its members, windows, jobs and fence) until recovery replaces the core
+         (:uncertain :retained)
          (:dropping :batch-membership :storage-window))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity 2
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
- ; R7 port by the A/D DSL seat: every arm is declared :language :unchecked
- ; (the bodies were written before the restricted arm language), costs are
- ; the per-run caps, and each arm's successors are *fn2-commit-transitions*
- ; with its own phase; B states the real contracts.
- :observes ((:write-result fn2-commit-observe :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:free :collect :seal :dependencies :log-write :fence :durable :install :publish :notify :draining :uncertain :dropping) :uses () :language :unchecked)
-            (:fence-result fn2-commit-observe :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:free :collect :seal :dependencies :log-write :fence :durable :install :publish :notify :draining :uncertain :dropping) :uses () :language :unchecked))
- :continuations
- ((:free fn2-commit-idle :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:free :collect) :uses () :language :unchecked)
-  (:collect fn2-commit-collect :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:collect :seal :uncertain :dropping) :uses () :language :unchecked)
-  (:seal fn2-commit-seal :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:seal :dependencies :uncertain :dropping) :uses () :language :unchecked)
-  (:dependencies fn2-commit-writes :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:dependencies :log-write :fence :uncertain :dropping) :uses () :language :unchecked)
-  (:log-write fn2-commit-writes :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:log-write :fence :durable :uncertain) :uses () :language :unchecked)
-  (:fence fn2-commit-fence :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:fence :log-write :durable :uncertain) :uses () :language :unchecked)
-  (:durable fn2-commit-durable :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:durable :install :uncertain) :uses () :language :unchecked)
-  (:install fn2-commit-install :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:install :publish :uncertain) :uses () :language :unchecked)
-  (:publish fn2-commit-publish :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:publish :notify :uncertain) :uses () :language :unchecked)
-  (:notify fn2-commit-notify :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:notify :draining :uncertain) :uses () :language :unchecked)
-  (:draining fn2-commit-drain :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:draining :free :uncertain) :uses () :language :unchecked)
-  (:uncertain fn2-commit-drain :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:uncertain) :uses () :language :unchecked)
-  (:dropping fn2-commit-drop :cost (:bytes 4096 :steps 32 :descriptors 4) :writes () :next (:dropping :draining) :uses () :language :unchecked)))
+ ;; The arms are in the arm language (commit-arms.lisp), their contracts
+ ;; derived in the commit's last callbacks section (assembly-callbacks-r2).
+ :arms ((:free) (:collect) (:seal) (:dependencies) (:log-write) (:fence) (:durable)
+        (:install) (:publish) (:notify) (:draining) (:uncertain) (:dropping))
+ :observes ((:write-result) (:fence-result)))
 (make-event (value `(assert-event
  (equal ',(strip-cars *fn2-commit-holds*)
         ',(fn2-machine-property 'fn2-commit :states (w state))))))
@@ -336,7 +326,7 @@
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
 (defcost fn2-block-read-done :answers (:ok :io) :doc "B-S2 S10: the read's completion.")
-(defcost fn2-recovery-finish :tables (fn2-core-commit-root fn2-core-extents)
+(defcost fn2-recovery-finish :answers t :tables (fn2-core-commit-root fn2-core-extents)
  :doc "Install the commit frontier and begin the writer epoch above every adopted identity.")
 
 ; Keep child array bodies opaque only while admitting this declaration book.
