@@ -634,6 +634,17 @@ pending work) land with the served verb each exercises.
 7. **The progress number is M2 spine cuts:** Mini's twelve cuts and helm's room run through `fn2-turn` over
    the real core (sim-layer-e against the served machines), reported n/12 on H's line; sim-layer-e is its
    source. Today 0/12 served (the oracle node passes all five scenarios).
+8. In progress (lane e-frames): the served L carrier speaks FNCT through `books/fnct-pool.lisp` (the
+   generated header and kind 28 codecs over a fields stripe, B's hasher for the trailer; replies built forward,
+   scratch first, sent from the frame's offset). Interim rulings (deputy, 2026-11-05), each owed its full form:
+   the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
+   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
+   and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
+   the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
+   register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
+   an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);
+   one frame per receive window (octets past a frame's extent close the connection; owed: a separate tx range
+   for pipelining); control commands ride kind 1 with the posture as the kind 2 reply (fn1's native-control kinds).
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's
