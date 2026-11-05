@@ -10,6 +10,7 @@
 (in-package "ACL2")
 (include-book "../books/owed-conn")
 (include-book "../sim/check-wire")
+(include-book "std/testing/must-fail" :dir :system)
 
 (defun fn2-cu-octets (cs)
   (declare (xargs :guard (character-listp cs)))
@@ -309,3 +310,25 @@
         (search (fn2-cw-chars (coerce "502" 'list)) wire)
         (not (search (fn2-cw-chars (coerce "439" 'list)) wire))
         (search (fn2-cw-chars (coerce "205" 'list)) wire))))
+
+;; D26 (machine-arms fn2-arms-core-writes): a core-form arm's write is its
+;; field set's generated write function, never the PUT expanded inline.
+;; Positive: :draining calls one and holds no inline write (the expansion's
+;; refusal, fn2-machine-refuse-write, appears only inside the put).
+;; Mutant: a hand function under a generated write's name (here writing one
+;; of its two fields) is refused: no hand twin stands in for the generator's.
+(defun fn2-cu-write-call-p (fns)
+  (declare (xargs :guard (symbol-listp fns)))
+  (and (consp fns)
+       (or (and (<= 15 (length (symbol-name (car fns))))
+                (equal (subseq (symbol-name (car fns)) 0 15) "FN2-CONN-WRITE+"))
+           (fn2-cu-write-call-p (cdr fns)))))
+(assert-event
+ (let ((fns (all-fnnames (body 'fn2-conn-run-draining nil (w state)))))
+   (and (fn2-cu-write-call-p fns)
+        (not (member-eq 'fn2-machine-refuse-write fns)))))
+(assert-event (function-symbolp 'fn2-conn-write+start+pos (w state)))
+(must-fail
+ (defun fn2-conn-write+start+pos (id fn2-arms-w-start fn2-arms-w-pos fn2-core)
+   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-arms-w-pos))
+   (fn2-conn-put-core id (start fn2-arms-w-start))))

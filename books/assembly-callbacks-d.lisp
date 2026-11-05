@@ -79,8 +79,7 @@
       (fn2-answer (nfix s) (nfix e) mask (fn2-conn-auth-keyword pending) (equal posting 1) reading seen flags real
                        rslot rgen tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
       (mv code (fn2-conn-after-code after) (fn2-conn-auth-code next) (fn2-conn-rule-code after) fn2-core))))
-(fn2-core-preserves fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core) :position 4 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core) :position 4 :rows nil)
 
 (defun fn2-conn-greet-op (refused posting mask tslot tgen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -88,8 +87,7 @@
     (code after fn2-pool)
     (fn2-answer-greeting (equal refused 1) (equal posting 1) mask tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
     (mv code (fn2-conn-after-code after) fn2-core)))
-(fn2-core-preserves fn2-conn-greet-op (refused posting mask tslot tgen oslot ogen fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-conn-greet-op (refused posting mask tslot tgen oslot ogen fn2-core) :position 2 :rows nil)
 
 (defun fn2-conn-run-overflow (mask tslot tgen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -97,8 +95,7 @@
     (code fn2-pool)
     (fn2-answer-overflow mask tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
     (mv code fn2-core)))
-(fn2-core-preserves fn2-conn-run-overflow (mask tslot tgen oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-conn-run-overflow (mask tslot tgen oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-conn-posting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
@@ -131,8 +128,7 @@
     (code fn2-pool)
     (fn2-answer-block-open (equal rule *fn2-conn-rule-ihave*) mask tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
     (mv code fn2-core)))
-(fn2-core-preserves fn2-conn-run-block-open (rule mask tslot tgen oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-conn-run-block-open (rule mask tslot tgen oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-conn-run-outcome (rule word mlen mask tslot tgen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -140,8 +136,7 @@
     (fn2-answer-outcome (fn2-conn-rule-keyword rule) (fn2-upload-word-of (nfix word)) (nfix mlen)
                         mask tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
     (mv code (fn2-conn-after-code after) fn2-core)))
-(fn2-core-preserves fn2-conn-run-outcome (rule word mlen mask tslot tgen oslot ogen fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-conn-run-outcome (rule word mlen mask tslot tgen oslot ogen fn2-core) :position 2 :rows nil)
 (defun fn2-conn-feed-pool (left start mode discard rslot rgen oslot ogen slot sgen u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -150,7 +145,7 @@
                      slot sgen *fn2-upload-kind* u ugen fn2-pool)
     (mv status start2 mode2 discard2 copied fn2-core)))
 (fn2-core-preserves fn2-conn-feed-pool (left start mode discard rslot rgen oslot ogen slot sgen u ugen fn2-core)
-  :position 5 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :position 5 :rows nil)
 (in-theory (disable fn2-conn-feed-pool))
 (defun fn2-conn-feed-run (start mode why fed rslot rgen u ugen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
