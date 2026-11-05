@@ -291,3 +291,37 @@
          (or (equal got want) (cw "post-and-read ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-txn-test-post-and-read))
 
+
+; A two-chunk POST (the upload window's chunk 0 holds 4096 octets; this
+; source is 6,296): 240, and BODY reads every posted line back from the
+; device, the line that starts with "." stuffed again (it lies in chunk 1).
+(defun fn2-tu-long-body (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (concatenate 'string (if (equal n 7) "." "") "line "
+                       (coerce (explode-nonnegative-integer n 10 nil) 'string)
+                       " 0123456789012345678901234567890123456789012345678901")
+          (fn2-tu-long-body (- n 1)))))
+(defun fn2-tu-stuff (lines)
+  (declare (xargs :verify-guards nil))
+  (if (atom lines) nil
+    (cons (if (and (< 0 (length (car lines))) (equal (char (car lines) 0) #\.))
+              (concatenate 'string "." (car lines)) (car lines))
+          (fn2-tu-stuff (cdr lines)))))
+(defconst *fn2-tu-long* (append (list "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
+                                      "Message-ID: <long@example.invalid>" "")
+                                (fn2-tu-long-body 100)))
+(defun fn2-txn-test-two-chunks ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-long*) '(".") '("GROUP local.test" "BODY 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (expect (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                               "222 1 <long@example.invalid> body follows")
+                         (fn2-tu-stuff (fn2-tu-long-body 100))
+                         (list "." *fn2-tu-205*)))
+         (want (list :ok :quiet 0 (fn2-tu-text expect) t))
+         (r (fn2-tu-run *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))))
+         (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
+    (and (< 4096 (len (fn2-tu-text *fn2-tu-long*)))
+         (or (equal got want) (cw "two-chunks ~x0~%want ~x1~%" got want)))))
+(assert-event (fn2-txn-test-two-chunks))

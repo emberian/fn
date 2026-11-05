@@ -229,10 +229,10 @@
 (fn2-pool-preserves fn2-txn-synth-ov-3 (hashed lines slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-txn-synth-ov-3))
 
-(defun fn2-txn-synth-ov-pool (mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool)
+(defun fn2-txn-synth-ov-pool (mo ml scanned at hashed lines slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines))))
-  (b* ((ov-off (+ hashed *fn2-upload-digest-octets*))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp mo) (natp ml) (natp scanned) (natp at) (natp hashed) (natp lines))))
+  (b* ((ov-off (+ at *fn2-upload-digest-octets*))
        ((mv so sl) (fn2-txn-find-header 64 0 scanned *fn2-upload-field-subject* slot gen okind oslot ogen fn2-pool))
        ((mv fo fl) (fn2-txn-find-header 64 0 scanned *fn2-upload-field-from* slot gen okind oslot ogen fn2-pool))
        ((mv dto dtl) (fn2-txn-find-header 64 0 scanned *fn2-upload-field-date* slot gen okind oslot ogen fn2-pool))
@@ -245,11 +245,11 @@
        ((unless (eq code :ok)) (mv 0 0 fn2-pool))
        (ov-len (min *fn2-overview-octets-max* (nfix (- (fn2-gram-fill slot fn2-pool) ov-off)))))
     (mv ov-off ov-len fn2-pool)))
-(fn2-pool-preserves fn2-txn-synth-ov-pool (mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool) :position 2 :rows nil)
+(fn2-pool-preserves fn2-txn-synth-ov-pool (mo ml scanned at hashed lines slot gen okind oslot ogen fn2-pool) :position 2 :rows nil)
 (defthm fn2-txn-synth-ov-pool-types
-  (implies (and (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines))
-           (and (natp (mv-nth 0 (fn2-txn-synth-ov-pool mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool)))
-                (natp (mv-nth 1 (fn2-txn-synth-ov-pool mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool)))))
+  (implies (and (natp mo) (natp ml) (natp scanned) (natp at) (natp hashed) (natp lines))
+           (and (natp (mv-nth 0 (fn2-txn-synth-ov-pool mo ml scanned at hashed lines slot gen okind oslot ogen fn2-pool)))
+                (natp (mv-nth 1 (fn2-txn-synth-ov-pool mo ml scanned at hashed lines slot gen okind oslot ogen fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-txn-synth-ov-pool))))
 (in-theory (disable fn2-txn-synth-ov-pool))
 
@@ -444,8 +444,8 @@
           :case (((:ok)
                   (:let c0 (:read upload c0-slot))
                   (:let c1 (:read upload c1-slot)) (:let g1 (:read upload c1-gen))
-                  (:let hashed (:read upload hashed))
-                  (:if (not (<= (+ hashed *fn2-upload-digest-octets*) (fn2-upload-chunk-cap c0)))
+                  (:let scanned (:read upload scan-off))
+                  (:if (not (<= (+ scanned *fn2-upload-digest-octets*) (fn2-upload-chunk-cap c0)))
                        ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                         (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                        ((:do (pcode) (fn2-txn-prebind sslot))
@@ -735,14 +735,14 @@
 (fn2-core-preserves fn2-txn-add-group (tx k group principal c0 g0 okind oslot ogen fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-txn-add-group))
 
-(defun fn2-txn-synth-ov (mo ml scanned hashed lines slot gen okind oslot ogen fn2-core)
+(defun fn2-txn-synth-ov (mo ml scanned at hashed lines slot gen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
-                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines))))
+                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp at) (natp hashed) (natp lines))))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
     (ov-off ov-len fn2-pool)
-    (fn2-txn-synth-ov-pool mo ml scanned hashed lines slot gen okind oslot ogen fn2-pool)
+    (fn2-txn-synth-ov-pool mo ml scanned at hashed lines slot gen okind oslot ogen fn2-pool)
     (mv ov-off ov-len fn2-core)))
-(fn2-core-preserves fn2-txn-synth-ov (mo ml scanned hashed lines slot gen okind oslot ogen fn2-core) :position 2 :rows nil
+(fn2-core-preserves fn2-txn-synth-ov (mo ml scanned at hashed lines slot gen okind oslot ogen fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 (in-theory (disable fn2-txn-synth-ov))
 
@@ -763,15 +763,27 @@
 (defun fn2-txn-put-post-for (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups pext pepoch palloc
                                 okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core
-                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp hashed) (natp lines) (natp ngroups))))
-  (mv-let (in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))
-    (mv-let (c fn2-core)
-      (fn2-txn-put-post tx c0 g0 mo ml (if in1 c1 c0) (if in1 g1 g0) doff hashed lines
-                        (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal fn2-core)
-      (if (not (and (eq c :ok) (not in1))) (mv c fn2-core)
-        (mv-let (ov-off ov-len fn2-core)
-          (fn2-txn-synth-ov mo ml scanned hashed lines c0 g0 okind oslot ogen fn2-core)
-          (fn2-txn-update-ov-lines ngroups 0 tx c0 g0 ov-off ov-len okind oslot ogen fn2-core))))))
+                  :guard (and (fn2-core-wfp fn2-core) (natp mo) (natp ml) (natp scanned) (natp at) (natp hashed) (natp lines) (natp ngroups))))
+  ;; The source is durable at the location (the upload stored and fenced it
+  ;; before :sealed) and its lines are counted, so chunk 0 after the header is
+  ;; scratch: the digest moves to SCANNED in chunk 0 (wherever the source's
+  ;; length put it) and the overview line follows it, and chunk 1 stays free
+  ;; for the emission (:ready) however far the source runs into it.
+  (b* ((cap0 (fn2-upload-chunk-cap c0 fn2-core))
+       ((mv in1 doff) (fn2-upload-digest-at hashed cap0))
+       ((mv c fn2-core)
+        (if (<= (+ scanned *fn2-upload-digest-octets*) cap0)
+            (fn2-core-copy-range (if in1 c1 c0) (if in1 g1 g0) doff c0 g0 scanned *fn2-upload-digest-octets*
+                                 okind oslot ogen fn2-core)
+          (mv :bounds fn2-core)))
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ((mv c fn2-core)
+        (fn2-txn-put-post tx c0 g0 mo ml c0 g0 scanned hashed lines
+                          (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal fn2-core))
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ((mv ov-off ov-len fn2-core)
+        (fn2-txn-synth-ov mo ml scanned scanned hashed lines c0 g0 okind oslot ogen fn2-core)))
+    (fn2-txn-update-ov-lines ngroups 0 tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)))
 (fn2-core-preserves fn2-txn-put-post-for
   (tx mo ml c0 g0 c1 g1 scanned hashed h principal lines ngroups pext pepoch palloc okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-txn-put-evidence-for (tx mo ml c0 g0 c1 g1 hashed h principal okind oslot ogen fn2-core)

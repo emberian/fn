@@ -561,7 +561,7 @@
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
       (b* ((fn2-core (fn2-init-executor *fn2-read-profile* :null nil fn2-core))
-           ((mv c1 fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
+           ((mv c1 & fn2-core) (fn2-cs-seed-all seeds 1 fn2-core))
            ((mv c2 fn2-core) (fn2-cs-conflict-all conflicts (+ 1 (len seeds)) fn2-core))
            ((unless (and (eq c1 :ok) (eq c2 :ok))) (mv (list :seeding c1 c2) fn2-core))
            (octets (fn2-cs-octets mid))
