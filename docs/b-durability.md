@@ -1560,10 +1560,37 @@ header; each stored block takes three steps (its BLAKE3, its chaining value, its
 one manifest unit of entries per step (`mdrain`). The transaction's `:batched` commits every extent
 the manifest names in its one step (`fn2-upload-extents-of`, at most one extent of manifest
 decoded, within its 26,624-octet budget). The cursor reads the manifest unit holding the next
-entry, decodes it (`art-entry`) and reads the block. Owed: recovery allocating payload extents
-(it must follow manifests: block extents are named by the entries at unit 0 of their extent),
-read-side verification of a block's hash and chaining value (`fn2-block-read-done` checks none),
-the cursor's second manifest read per block (a manifest lease would halve the reads).
+entry, decodes it (`art-entry`) and reads the block. Recovery allocates payload extents (S9b).
+Owed: read-side verification of a block's hash and chaining value (`fn2-block-read-done` checks
+none), the cursor's second manifest read per block (a manifest lease would halve the reads).
+
+**S9b. As built: recovery adopts the payload extents (lane article-octets,
+`books/recovery-payload.lisp`).** After the chain search ends (no successor, or a broken link) the
+recovery row runs a payload pass (mode `:payload`) before `:install`. For each chained commit 1..N
+(its position from `fn2-commit-root`'s extent) it reads the records unit (role 1),
+`fn2-recovery-records-open` checks the records frame header (magic, kind, ordinal 0, its own
+position and commit) and gives the record stream's span, and `fn2-recovery-record-next` decodes one
+record per step: the record header, then the body in its kind's encoding (keyed mutation, article
+acceptance, C's run schemas through `fn2-run-layout-decode`); the frame's zero padding ends the
+stream. An `fn2-article` row's location is claimed for the article (the transaction kind, the
+row's event): a raw source's extent, or the manifest's extent, after which the manifest is read a
+unit per step (`fn2-recovery-manifest-unit`) and the extent of each block at unit 0 of its extent is
+claimed. A claim marks the position `:payload` with its writer epoch, allocation and owner, and is
+accepted only on a position discovery found written and no commit's (`:invalid`) or zero
+(`:empty`); any other status (a commit's extent, an unreadable unit, a second claim) is `:conflict`.
+A conflict, or a record or manifest that does not decode, makes the recovery ambiguous. Adoption
+allocates a `:payload` position to its owner with its recorded identity
+(`fn2-alloc-commit-allocation`, no edge, as the transaction's `:batched` did), and the dirty scan
+counts it as chained data. Control, `tests/recovery-article-unit.lisp`: a raw article (6,296 stored
+octets, one extent) and a manifest article (15,746, its manifest extent and two block extents) are
+POSTed on one connection, the core is dropped, and a fresh core recovers over the device. Before the
+pass (dev at 48895c67f) recovery classified the run `:unknown` (assumption bits 2) or `:torn-tail`
+(bits 3) with no payload allocation; with it the class is `:intact` under both, the allocator holds
+exactly the live run's four payload allocations, both articles read back whole through
+`fn2-block-read`, and a handle whose allocation counter moved answers `:stale`. Owed (M7): recovery
+does not replay C's rows, so after recovery the article's row is absent and ARTICLE cannot find
+it, though its octets are allocated and readable; the next step is `fn2-member-replay` for every
+chained member in order (M7's replay), after the payload pass.
 
 **S10. The block read, for D6 3/n (ARTICLE, HEAD, BODY).** There are two operations. Each has a
 defcost that names `fn2-core-extents`, `fn2-core-alloc-edges` and the issuing kind's lease, and

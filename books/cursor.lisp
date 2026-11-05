@@ -301,6 +301,83 @@
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-stuff))))
 (in-theory (disable fn2-cursor-stuff-loop fn2-cursor-pool-stuff))
+;; HDR over stored headers (RFC 3977 §8.5): the named field's value read
+;; from the article's stored octets, the lease's octets [FROM, TO) scanned
+;; one octet per step of a state machine that survives the unit boundary.
+;; ST: 0 a line starts, 1 the name matched for K octets, 2 after its colon,
+;; 3 the value, 4 a CR in the value, 5 a CR LF in the value (a fold when
+;; white space follows), 6 another line, 7 a CR in it, 8 a CR at a line's
+;; start (the header block ends at its LF). The first field of the name
+;; wins; the value loses one leading space and its folds' CR LF, and TAB,
+;; NUL, CR and LF become a space (the NOV transformation). Answers (mv code
+;; nst nk consume emit done): EMIT an octet to append or NIL; CONSUME
+;; whether the octet is used up (a state that only changes is read again).
+(defun fn2-cursor-hscan-step (st k b match b0)
+  (declare (xargs :guard (and (natp st) (natp k) (natp b) (natp b0))))
+  (let ((cr (equal b *fn2-gram-cr*)) (lf (equal b *fn2-gram-lf*)) (wsp (or (equal b 32) (equal b 9))))
+    (case st
+      (0 (cond (cr (mv 8 0 t nil nil)) ((and (< 0 b0) match) (mv 1 1 t nil nil)) (t (mv 6 0 t nil nil))))
+      (1 (cond ((and (< k b0) match) (mv 1 (+ 1 k) t nil nil))
+               ((and (equal k b0) (equal b 58)) (mv 2 0 t nil nil))
+               (cr (mv 7 0 t nil nil))
+               (t (mv 6 0 t nil nil))))
+      (2 (if (equal b 32) (mv 3 0 t nil nil) (mv 3 0 nil nil nil)))
+      (3 (cond (cr (mv 4 0 t nil nil)) ((or lf (equal b 9) (equal b 0)) (mv 3 0 t 32 nil)) (t (mv 3 0 t b nil))))
+      (4 (if lf (mv 5 0 t nil nil) (mv 3 0 nil 32 nil)))
+      (5 (if wsp (mv 3 0 t 32 nil) (mv 5 0 nil nil t)))
+      (7 (cond (lf (mv 0 0 t nil nil)) (cr (mv 7 0 t nil nil)) (t (mv 6 0 t nil nil))))
+      (8 (if lf (mv 8 0 t nil t) (mv 6 0 nil nil nil)))
+      (otherwise (if cr (mv 7 0 t nil nil) (mv 6 0 t nil nil))))))
+;; N steps over the lease (LSLOT LGEN, owner OKIND OSLOT OGEN) from octet I
+;; to TO, the name the span [A0, A0+B0) of RX (RSLOT RGEN) and the value
+;; appended to TX (TSLOT TGEN), both the connection's (TK TS TG). TX keeps
+;; three octets of room (the octet and the value's CR LF): with less the
+;; scan stops (:full) and the page goes. (mv code used st k fn2-pool):
+;; :done once the value (empty when the block ends first) and its CR LF
+;; are in TX; :ok when the octets ran out first.
+(defun fn2-cursor-hscan-loop (n i to st k used a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix n)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp i) (natp to) (natp st) (natp k) (natp used)
+                              (natp a0) (natp b0))))
+  (b* ((i (nfix i)) (st (nfix st)) (k (nfix k)) (used (nfix used))
+       ((when (or (zp n) (>= i (nfix to)))) (mv :ok used st k fn2-pool))
+       ((when (< (fn2-pool-slot-capacity tslot fn2-pool) (+ (fn2-gram-fill tslot fn2-pool) 3)))
+        (mv :full used st k fn2-pool))
+       ((mv ok b) (fn2-gram-read lslot lgen i okind oslot ogen fn2-pool))
+       ((unless ok) (mv :fault used st k fn2-pool))
+       ((mv okn nb) (if (< k (nfix b0)) (fn2-gram-read rslot rgen (+ (nfix a0) k) tk ts tg fn2-pool) (mv t 0)))
+       ((unless okn) (mv :fault used st k fn2-pool))
+       (match (and (< k (nfix b0)) (equal (fn2-gram-upcase b) (fn2-gram-upcase nb))))
+       ((mv nst nk consume emit done) (fn2-cursor-hscan-step st k b match (nfix b0)))
+       (used (if consume (+ 1 used) used))
+       ((mv code fn2-pool) (if (natp emit) (fn2-gram-put emit tslot tgen tk ts tg fn2-pool) (mv :ok fn2-pool)))
+       ((unless (eq code :ok)) (mv :fault used st k fn2-pool))
+       ((when done)
+        (b* (((mv code fn2-pool) (fn2-gram-put-crlf tslot tgen tk ts tg fn2-pool)))
+          (mv (if (eq code :ok) :done :fault) used (nfix nst) (nfix nk) fn2-pool))))
+    (fn2-cursor-hscan-loop (- n 1) (if consume (+ 1 i) i) to (nfix nst) (nfix nk) used a0 b0 rslot rgen lslot lgen okind oslot ogen
+                           tslot tgen tk ts tg fn2-pool)))
+(fn2-pool-preserves fn2-cursor-hscan-loop (n i to st k used a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+  :position 4 :rows nil
+  :hints (("Goal" :induct (fn2-cursor-hscan-loop n i to st k used a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+                  :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf fn2-gram-upcase
+                                      fn2-cursor-hscan-step fn2-pool-slot-capacity nfix))))
+(defun fn2-cursor-pool-hscan (from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to) (natp st) (natp k)
+                                               (natp a0) (natp b0))))
+  (mv-let (code used st k fn2-pool)
+    (fn2-cursor-hscan-loop (+ 1 (* 2 (min *fn2-cursor-stuff-bytes* (nfix (- (nfix to) (nfix from))))))
+                           (nfix from) (min (nfix to) (+ (nfix from) *fn2-cursor-stuff-bytes*)) (nfix st) (nfix k) 0
+                           a0 b0 rslot rgen lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
+    (mv code (nfix used) (nfix st) (nfix k) fn2-pool)))
+(fn2-pool-preserves fn2-cursor-pool-hscan (from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
+  :position 4 :rows nil :hints (("Goal" :in-theory (disable fn2-cursor-hscan-loop))))
+(defthm fn2-cursor-pool-hscan-naturals
+  (and (natp (mv-nth 1 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)))
+       (natp (mv-nth 2 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)))
+       (natp (mv-nth 3 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool))))
+  :hints (("Goal" :in-theory (enable fn2-cursor-pool-hscan))))
+(in-theory (disable fn2-cursor-hscan-step fn2-cursor-hscan-loop fn2-cursor-pool-hscan))
 ;; The lease's pool class: the smallest that holds one storage unit.
 (defun fn2-cursor-lease-class-of (fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
@@ -587,61 +664,19 @@
   :position 1 :rows nil)
 (in-theory (disable fn2-cursor-pool-hdr-label))
 
-(defun fn2-cursor-ci-span-eq-p (len s1 slot1 gen1 s2 slot2 gen2 okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix len)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp len) (natp s1) (natp s2))))
-  (if (zp len) t
-    (mv-let (ok1 b1) (fn2-gram-read slot1 gen1 (nfix s1) okind oslot ogen fn2-pool)
-      (mv-let (ok2 b2) (fn2-gram-read slot2 gen2 (nfix s2) okind oslot ogen fn2-pool)
-        (and ok1 ok2 (= (fn2-gram-upcase b1) (fn2-gram-upcase b2))
-             (fn2-cursor-ci-span-eq-p (- len 1) (+ 1 (nfix s1)) slot1 gen1 (+ 1 (nfix s2)) slot2 gen2
-                                      okind oslot ogen fn2-pool))))))
-(in-theory (disable fn2-cursor-ci-span-eq-p))
 
-(defun fn2-cursor-skip-wsp (fuel i end slot gen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp i) (natp end))))
-  (if (or (zp fuel) (>= (nfix i) (nfix end))) (nfix i)
-    (mv-let (ok b) (fn2-gram-read slot gen (nfix i) okind oslot ogen fn2-pool)
-      (if (and ok (or (= b 32) (= b 9)))
-          (fn2-cursor-skip-wsp (- fuel 1) (+ 1 (nfix i)) end slot gen okind oslot ogen fn2-pool)
-        (nfix i)))))
-(defthm fn2-cursor-skip-wsp-natp
-  (natp (fn2-cursor-skip-wsp fuel i end slot gen okind oslot ogen fn2-pool))
-  :rule-classes :type-prescription)
-(in-theory (disable fn2-cursor-skip-wsp))
-
-(defun fn2-cursor-scan-extra-hdr (fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
-                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp i) (natp to) (natp a0) (natp b0))))
-  (if (or (zp fuel) (>= (nfix i) (nfix to))) (mv nil 0 0)
-    (mv-let (has-lf lf-pos) (fn2-cursor-next-lf (nfix i) (nfix to) tslot tgen okind oslot ogen fn2-pool)
-      (let* ((line-e (if has-lf lf-pos (nfix to)))
-             (val-e (if (< (nfix i) line-e)
-                        (mv-let (okc cb) (fn2-gram-read tslot tgen (- line-e 1) okind oslot ogen fn2-pool)
-                          (if (and okc (= cb 13)) (- line-e 1) line-e))
-                      line-e)))
-        (if (<= val-e (nfix i))
-            (mv nil 0 0)
-          (mv-let (okcol col-pos) (fn2-gram-read tslot tgen (+ (nfix i) (nfix b0)) okind oslot ogen fn2-pool)
-            (if (and (<= (+ (nfix i) (nfix b0) 1) val-e)
-                     okcol (= col-pos 58)
-                     (fn2-cursor-ci-span-eq-p (nfix b0) (nfix a0) rslot rgen (nfix i) tslot tgen
-                                              okind oslot ogen fn2-pool))
-                (let ((vs (fn2-cursor-skip-wsp (nfix (- val-e (+ (nfix i) (nfix b0) 1)))
-                                               (+ (nfix i) (nfix b0) 1) val-e tslot tgen
-                                               okind oslot ogen fn2-pool)))
-                  (mv t vs (max vs val-e)))
-              (if has-lf
-                  (fn2-cursor-scan-extra-hdr (- fuel 1) (+ 1 lf-pos) to a0 b0 rslot rgen tslot tgen
-                                             okind oslot ogen fn2-pool)
-                (mv nil 0 0)))))))))
-(defthm fn2-cursor-scan-extra-hdr-types
-  (and (natp (mv-nth 1 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)))
-       (natp (mv-nth 2 (fn2-cursor-scan-extra-hdr fuel i to a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool))))
-  :hints (("Goal" :in-theory (disable fn2-gram-read fn2-cursor-ci-span-eq-p nfix))))
-(in-theory (disable fn2-cursor-scan-extra-hdr))
-
+;; A header the overview line does not carry (not one of its seven fields
+;; nor Xref, nor a metadata item): its value is read from the stored octets.
+(defun fn2-cursor-hdr-stored-p (a0 b0 rslot rgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp a0) (natp b0))))
+  (mv-let (ok c) (fn2-gram-read rslot rgen (nfix a0) okind oslot ogen fn2-pool)
+    (not (or (not ok) (equal c 58) (zp b0)
+             (fn2-gram-match a0 b0 "SUBJECT" rslot rgen okind oslot ogen fn2-pool)
+             (fn2-gram-match a0 b0 "FROM" rslot rgen okind oslot ogen fn2-pool)
+             (fn2-gram-match a0 b0 "DATE" rslot rgen okind oslot ogen fn2-pool)
+             (fn2-gram-match a0 b0 "MESSAGE-ID" rslot rgen okind oslot ogen fn2-pool)
+             (fn2-gram-match a0 b0 "REFERENCES" rslot rgen okind oslot ogen fn2-pool)
+             (fn2-gram-match a0 b0 "XREF" rslot rgen okind oslot ogen fn2-pool)))))
 (local (in-theory (disable fn2-gram-match)))
 (defun fn2-cursor-pool-hdr-val (a0 b0 at to rslot rgen tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
@@ -654,7 +689,9 @@
              ((mv code fn2-pool) (fn2-answer-put-text 0 "absent no-field" tslot tgen okind oslot ogen fn2-pool))
              ((unless (eq code :ok)) (mv code fn2-pool)))
           (fn2-gram-put-crlf tslot tgen okind oslot ogen fn2-pool))
-      (b* (((mv has-lf lf-pos) (fn2-cursor-next-lf at to tslot tgen okind oslot ogen fn2-pool))
+      (b* (((when (fn2-cursor-hdr-stored-p a0 b0 rslot rgen okind oslot ogen fn2-pool))
+            (let ((fn2-pool (fn2-cursor-truncate-to at tslot tgen okind oslot ogen fn2-pool))) (mv :stored fn2-pool)))
+           ((mv has-lf lf-pos) (fn2-cursor-next-lf at to tslot tgen okind oslot ogen fn2-pool))
            (ov-to (if has-lf lf-pos to))
            ((mv f1 t1) (fn2-cursor-next-tab at ov-to tslot tgen okind oslot ogen fn2-pool))
            ((mv f2 t2) (fn2-cursor-next-tab (+ 1 t1) ov-to tslot tgen okind oslot ogen fn2-pool))
@@ -689,16 +726,11 @@
                                    (+ 1 t7))))
                          (mv xs (max xs ov-to)))
                      (mv at at)))
-                  (has-lf
-                   (mv-let (found es ee)
-                     (fn2-cursor-scan-extra-hdr (nfix (- to (+ 1 lf-pos))) (+ 1 lf-pos) to
-                                                a0 b0 rslot rgen tslot tgen okind oslot ogen fn2-pool)
-                     (if found (mv es (max es ee)) (mv at at))))
                   (t (mv at at)))))
         (fn2-cursor-move-line vs (nfix (- ve vs)) at tslot tgen okind oslot ogen fn2-pool)))))
 (fn2-pool-preserves fn2-cursor-pool-hdr-val (a0 b0 at to rslot rgen tslot tgen okind oslot ogen fn2-pool)
   :position 1 :rows nil
-  :hints (("Goal" :in-theory (disable fn2-gram-match fn2-cursor-next-tab fn2-cursor-next-lf fn2-cursor-scan-extra-hdr
+  :hints (("Goal" :in-theory (disable fn2-gram-match fn2-cursor-next-tab fn2-cursor-next-lf fn2-cursor-hdr-stored-p
                                       fn2-cursor-truncate-to fn2-answer-put-text fn2-gram-put-crlf
                                       fn2-cursor-move-line nfix))))
 (in-theory (disable fn2-cursor-pool-hdr-val))
@@ -735,10 +767,13 @@
 (defcost fn2-cursor-hdr-label :child fn2-cursor-pool-hdr-label :answers t :bytes 256 :tables (fn2-core-pool)
  :doc "Append the article number or Message-ID label and a space for HDR/XHDR.")
 (defcost fn2-cursor-hdr-val :child fn2-cursor-pool-hdr-val :answers t :bytes 1024 :tables (fn2-core-pool)
- :doc "Extract the requested header or metadata value from an overview line and append CR LF.")
+ :doc "Extract the requested header or metadata value from an overview line and append CR LF (:stored: a header the line lacks, TX back at AT).")
 (defcost fn2-cursor-stuff :child fn2-cursor-pool-stuff :answers (:ok :full :end :fault) :faults (:fault) :bytes 8192
  :tables (fn2-core-pool)
  :doc "Copy at most 4,096 stored octets from the lease onto TX, dot-stuffed; (mv code used st).")
+(defcost fn2-cursor-hscan :child fn2-cursor-pool-hscan :answers (:ok :done :full :fault) :faults (:fault) :bytes 8192
+ :tables (fn2-core-pool)
+ :doc "Scan at most 4,096 stored octets of the lease for HDR's field, its value appended to TX; (mv code used st k).")
 (defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
  :doc "Reserve the cursor's read lease (one storage unit) under its own owner: (mv code slot gen).")
 (defcost fn2-cursor-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
@@ -1194,6 +1229,32 @@
                                  (equal row-k0 *fn2-cursor-arg-range*))
                              *fn2-cursor-update-current* *fn2-cursor-update-none*)))
            (:goto hand))))
+  ;; the range goes on at the next number (the lease stays for the next row)
+  (hdr-next
+     (:set (hmode 0) (hk 0) (ast 0) (step row-hstep) (seen 1) (have 0) (lpos 0))
+     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+  ;; the stored octets ended inside the header block, or there are none
+  (hdr-end :on-refusal ((:stop :machine-phase))
+     (:do (tc) (fn2-cursor-put-line 2 0 row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+      :accept (:ok))
+     (:goto hdr-next))
+  ;; HDR's field in the stored octets read so far (the header block ends
+  ;; the scan, so the body is never read); a page breaks inside a long value
+  (hdr-copy :on-refusal ((:stop :machine-phase))
+     (:do (hc used st k) (fn2-cursor-hscan row-loff row-plen row-ast row-hk row-a0 row-b0 row-rx-slot row-rx-gen
+                                          row-lslot row-lgen row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
+      :accept ()
+      :case (((:full) (:set (loff (+ row-loff (nfix used))) (ast st) (hk k))
+                      (:goto hand))
+             ((:ok) (:cond ((< (+ row-loff (nfix used)) row-plen)
+                            (:set (loff (+ row-loff (nfix used))) (ast st) (hk k))
+                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                           ((< (+ row-apos row-plen) row-alen)
+                            (:set (loff 0) (apos (+ row-apos row-plen)) (ast st) (hk k) (step 23))
+                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                           (t (:goto hdr-end))))
+             ((:done) (:goto hdr-next))
+             (:otherwise (:stop :machine-phase)))))
   ;; ARTICLE/HEAD/BODY's stored octets (D6 3/n, S-ARTICLE-LOCATION): the
   ;; article row through read row 2S+1 (its location), a lease of one
   ;; storage unit, B's block read of each unit into it, and the octets
@@ -1202,10 +1263,13 @@
      (:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
      (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
   (art-refuse :on-refusal ((:stop :machine-phase))
-     (:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-      :accept (:ok))
-     (:set (reply (fn2-cursor-reply-of row-tag :no-projection)) (step 0))
-     (:goto refuse))
+     (:if (equal row-hmode 1)
+          ;; HDR over an article with no stored octets: an empty value
+          ((:goto hdr-end))
+          ((:do (xc) (fn2-cursor-reset row-tx-slot row-tx-gen :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+            :accept (:ok))
+           (:set (reply (fn2-cursor-reply-of row-tag :no-projection)) (step 0))
+           (:goto refuse))))
   (art-lookup :on-refusal ((:stop :machine-phase))
      (:do (lc) (fn2-read-lookup (+ 1 (* 2 row-slot)) *fn2-txn-article-sid* *fn2-cursor-step-budget*)
       :accept ()
@@ -1219,9 +1283,10 @@
                               (< 0 (nfix b)))
                          ((:set (lunit u) (lepoch e) (lalloc a) (alen b) (apos 0)
                                 (mkind (if (equal k *fn2-txn-location-source-manifest*) 1 0)) (mpos 0) (bready 0) (mread 0)
-                                (ast (+ 2 (* 4 (cond ((equal row-tag *fn2-nntp-command-head*) 1)
-                                                     ((equal row-tag *fn2-nntp-command-body*) 2)
-                                                     (t 0)))))
+                                (ast (if (equal row-hmode 1) 0
+                                       (+ 2 (* 4 (cond ((equal row-tag *fn2-nntp-command-head*) 1)
+                                                       ((equal row-tag *fn2-nntp-command-body*) 2)
+                                                       (t 0))))))
                                 (step 22))
                           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                          ((:goto art-refuse))))
@@ -1301,7 +1366,8 @@
           ((:set (done 1) (step 0))
            (:goto hand))))
   (art-copy :on-refusal ((:stop :machine-phase))
-     (:cond ((equal row-said 0)
+     (:cond ((equal row-hmode 1) (:goto hdr-copy))
+            ((equal row-said 0)
              (:do (code) (fn2-cursor-art-open row-tag (fn2-cursor-reply-of row-tag :found) row-mask row-ncurrent
                                               (not (equal row-tag *fn2-nntp-command-body*))
                                               row-oat row-roff row-mso row-mln row-tx-slot row-tx-gen
@@ -1372,9 +1438,18 @@
      (:do (hc) (fn2-cursor-hdr-val row-a0 row-b0 at (+ at (nfix copied))
                                    row-rx-slot row-rx-gen row-tx-slot row-tx-gen
                                    :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
-      :accept (:ok))
-     (:set (seen 1) (have 0) (lpos 0) (next (+ 1 (nfix n))))
-     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+      :accept ()
+      :case (((:ok) (:set (seen 1) (have 0) (lpos 0) (next (+ 1 (nfix n))))
+                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ;; a header the overview lacks: the article's stored octets
+             ;; (art-key on), scanned for it (hdr-copy); the range's step
+             ;; comes back after (hdr-next); the 225 line went, so a failed
+             ;; read closes the connection (SAID)
+             ((:stored)
+              (:do (ac art) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-article*) :accept (:ok))
+              (:set (art art) (hmode 1) (hk 0) (hstep row-step) (said 1) (next (+ 1 (nfix n))) (step 20))
+              (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             (:otherwise (:stop :machine-phase)))))
   (render-hdr :on-refusal ((:stop :machine-phase))
      (:do (vc n) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-number*) :accept (:ok :stale)
       :why ":stale: the range restarts at the next number")

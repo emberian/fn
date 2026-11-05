@@ -11,10 +11,14 @@
 
 ; One row per arena position, written once by discovery before the chain
 ; pass reads it. Digest rows live in the recovery region of fn2-digests.
+; A :payload position is an extent a chained commit's records name as an
+; article's stored octets (the payload pass, recovery-payload.lisp): its
+; recorded identity is EPOCH ALLOCATION, COMMIT the chained commit that
+; names it, and OWNER-KIND OWNER the allocation's owner (the article).
 (defcolumns fn2-rec-cand
- ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained)))
+ ((status (:enum fn2-rec-status (:unread :empty :invalid :unreadable :candidate :chained :payload)))
   (commit :u60) (epoch :u60) (allocation :u60) (first :u60) (last :u60)
-  (seal-off :u32) (seal-len :u32)))
+  (seal-off :u32) (seal-len :u32) (owner-kind :u8) (owner :u60)))
 
 ; Classification and witness outcome vocabularies (ROUND2 §E.4, scholar ch. 4).
 (make-event (value (cons 'progn (fn2-columns-enum-constants
@@ -23,9 +27,11 @@
  'fn2-rec-witness '(:none :uncredited :consistent :rollback-detected :discontinuity) 0))))
 (defconst *fn2-rec-classes* '(:none :intact :torn-tail :damaged :unknown))
 (defconst *fn2-rec-witness-outcomes* '(:none :uncredited :consistent :rollback-detected :discontinuity))
-; Discovery reads only seal frames; chain verification reads all three units.
+; Discovery reads only seal frames; chain verification reads all three units;
+; the payload pass reads each chained commit's records unit and the source
+; manifests its records name.
 (make-event (value (cons 'progn (fn2-columns-enum-constants
- 'fn2-rec-mode '(:discover :chain) 0))))
+ 'fn2-rec-mode '(:discover :chain :payload) 0))))
 ; B-ASSUMPTIONS-AS-PARAMETERS: the profile's assumption bits are recovery
 ; inputs. :torn-tail needs crash-only AND A-PERSISTENCE-FENCE; a witness
 ; is credited only under A-INDEPENDENT-FRONTIER. A-INTEGRITY-EVIDENCE scopes
@@ -237,6 +243,18 @@
            (posp commit) (unsigned-byte-p 60 commit) (unsigned-byte-p 60 epoch)
            (unsigned-byte-p 60 allocation) (natp payload) (<= payload *fn2-commit-unit-bytes*))
       commit epoch allocation payload)))
+;; The records frame header of chained commit COMMIT at position P (its
+;; unit 1, chain-verified), decoded at the recovery fields: (mv ok payload).
+(defun fn2-rec-records-check (p commit fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (and (fn2-rec-fieldsp) (natp p))))
+ (let ((payload (fn2-rec-field *fn2-format-frame-header-field-payload-length* fn2-fields)))
+  (mv (and (equal (fn2-rec-field *fn2-format-frame-header-field-magic* fn2-fields) *fn2-format-frame-magic*)
+           (equal (fn2-rec-field *fn2-format-frame-header-field-frame-kind* fn2-fields) *frame-kind-records*)
+           (equal (fn2-rec-field *fn2-format-frame-header-field-ordinal* fn2-fields) 0)
+           (equal (fn2-rec-field *fn2-format-frame-header-field-extent* fn2-fields) p)
+           (equal (fn2-rec-field *fn2-format-frame-header-field-commit* fn2-fields) commit)
+           (natp payload) (<= payload *fn2-commit-unit-bytes*))
+      (nfix payload))))
 (defun fn2-rec-digest-fieldp (k fn2-fields)
  (declare (xargs :stobjs fn2-fields
   :guard (and (fn2-rec-fieldsp) (natp k) (< k *fn2-format-sealed-batch-num-fields*))))
@@ -278,11 +296,12 @@
     (if (and match (equal found *fn2-alloc-none*)) p found)
     (or twice (and match (not (equal found *fn2-alloc-none*)))) base fn2-rec-cand fn2-digests))))
 
-; Anything beyond the chain: a position that is neither empty nor chained.
+; Anything beyond the chain: a position that is neither empty, chained, nor
+; a chained commit's payload.
 (defun fn2-rec-dirty (left p high dirty fn2-rec-cand)
  (declare (xargs :stobjs fn2-rec-cand :measure (nfix left)
   :guard (and (fn2-rec-cand-wfp fn2-rec-cand) (natp left) (natp p) (natp high))))
  (if (or (zp left) (not (natp p)) (>= p high) (>= p (fn2-rec-cand-rows fn2-rec-cand))) (mv p dirty)
   (fn2-rec-dirty (- left 1) (+ 1 p) high
    (or dirty (not (member-equal (fn2-rec-cand-status p fn2-rec-cand)
-                               (list *fn2-rec-status-empty* *fn2-rec-status-chained*)))) fn2-rec-cand)))
+                               (list *fn2-rec-status-empty* *fn2-rec-status-chained* *fn2-rec-status-payload*)))) fn2-rec-cand)))

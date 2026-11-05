@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-s")
 (include-book "assembly-callbacks-d")
+; Recovery's payload pass reads layers C's and D's record shapes.
+(include-book "recovery-payload")
 ; Other layers' continuation event macros go HERE, before final dispatch.
 ; B5 recovery's arms (recovery-machine.lisp, in the arm language).
 (fn2-recovery-events-3)

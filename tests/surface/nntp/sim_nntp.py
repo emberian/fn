@@ -88,7 +88,9 @@ def machine(case, target, owed, served=None, carrier='SIM'):
         b'STAT <b@example.invalid>', b'STAT <z@example.invalid>', b'OVER 1-3', b'OVER 2', b'XOVER 2-',
         b'XOVER 9', b'LIST', b'LIST COUNTS',
         b'ARTICLE 1', b'HEAD 2', b'BODY 3', b'ARTICLE <b@example.invalid>', b'HEAD <c@example.invalid>',
-        b'BODY <a@example.invalid>'])
+        b'BODY <a@example.invalid>',
+        # HDR over a header the overview lacks: read from the stored octets
+        b'HDR Newsgroups 1-3', b'XHDR newsgroups 2', b'HDR X-Absent 1-', b'HDR Newsgroups <c@example.invalid>'])
     store = CARRIERS[carrier]
 
     class SimNntp(RuleBasedStateMachine):
