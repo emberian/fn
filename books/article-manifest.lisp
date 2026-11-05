@@ -24,14 +24,11 @@
 (include-book "upload-kind")
 (fn2-book-layer :d)
 
-(defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
-(defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
-(defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
+; The block size, the layouts' largest sizes, the entries one unit holds and
+; the largest stored length one manifest names (*fn2-am-stored-max*) are
+; upload-kind.lisp's, where the profile's article bound is held within it.
 (defconst *fn2-am-header-fields* *fn2-format-source-manifest-header-num-fields*)
 (defconst *fn2-am-entry-fields* *fn2-format-source-manifest-entry-num-fields*)
-;; entries of the largest size one unit holds (the first holds the header too)
-(defconst *fn2-am-entries-per-unit*
-  (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))
 (assert-event (equal *fn2-am-entries-per-unit* 31))
 (assert-event (<= *fn2-am-entry-max* *fn2-commit-unit-bytes*))
 
@@ -51,9 +48,6 @@
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))
   (<= (fn2-am-units total) *fn2-commit-write-resources*))
-;; The largest stored length a manifest names.
-(defconst *fn2-am-stored-max*
-  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-commit-write-resources*))
 (assert-event (and (fn2-am-fits *fn2-am-stored-max*) (not (fn2-am-fits (+ 1 *fn2-am-stored-max*)))))
 ;; Where the entry after manifest octet OFF starts (the packing rule).
 (defun fn2-am-entry-at (off)

@@ -109,17 +109,18 @@
                       (:if inject
                            ((:do (mcode mlen) (fn2-upload-put-mid row-lslot row-lgen ep al) :accept (:ok))
                             (:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen mlen) (mfill 0) (munit 0)
-                                  (cfree 0))
+                                  (cfree 0) (mstep 0) (mdrain 0))
                             (:charge :bytes 264 :steps *fn2-work-transition* :runnable t))
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
-                                  (cfree 0))
+                                  (cfree 0) (mstep 0) (mdrain 0))
                             (:charge :steps *fn2-work-transition* :runnable t)))
                       (:next :store-write))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                       (:charge :steps *fn2-work-transition* :runnable t)))))))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
-  ;; or a manifest unit); a manifest's header goes into the store page first,
-  ;; and a block at unit 0 of an extent reserves that extent first
+  ;; or a manifest unit); a manifest's header goes into the store page first
+  ;; (the page zeroed to it a unit per step, MSTEP 0, then the header), and a
+  ;; block at unit 0 of an extent reserves that extent first
   (:store-write :on-refusal ((:stop :machine-phase))
    (:let total (+ row-ilen row-hashed))
    (:let blk (floor row-pdone *fn2-commit-unit-bytes*))
@@ -132,12 +133,17 @@
            (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) row-pdone) wslot wgen woff wlen 0
                                     :principal row-principal-slot)
             :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
+          ((and (equal row-mfill 0) (equal row-mstep 0))
+           (:do (zcode) (fn2-upload-page-zero-to *fn2-upload-page-manifest* row-lslot row-lgen)
+            :accept ()
+            :case (((:ok) (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))
           ((equal row-mfill 0)
            (:let hrow (fn2-upload-hasher id))
            (:do (hcode mf) (fn2-upload-manifest-begin hrow row-lslot row-lgen total row-c0-slot row-c0-gen
                                                       row-c1-slot row-c1-gen row-hashed)
             :accept (:ok))
-           (:set (mfill mf)) (:charge :bytes *fn2-upload-page-manifest* :steps *fn2-work-transition* :runnable t))
+           (:set (mfill mf) (mstep 0)) (:charge :bytes *fn2-upload-head-bytes* :steps *fn2-work-transition* :runnable t))
           ((and (< row-pdone total) (equal (mod blk *fn2-commit-write-resources*) 0) (equal row-cfree 0))
            (:do (rcode e ep al) (fn2-upload-payload-reserve)
             :accept ()
@@ -156,11 +162,15 @@
             :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
           (t
            (:let at (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* row-munit)))
-           (:do (zcode) (fn2-upload-page-zero-to (+ at *fn2-commit-unit-bytes*) row-lslot row-lgen) :accept (:ok))
-           (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) (* *fn2-commit-unit-bytes* row-munit))
-                                    row-lslot row-lgen at *fn2-commit-unit-bytes* 0
-                                    :principal row-principal-slot)
-            :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))))))
+           ;; the unit's tail zeroed (a unit of zeros at most), then written
+           (:do (zcode) (fn2-upload-page-zero-to (+ at *fn2-commit-unit-bytes*) row-lslot row-lgen)
+            :accept ()
+            :case (((:ok)
+                    (:issue (fn2-issue-write (+ (* *fn2-commit-extent-bytes* row-pext) (* *fn2-commit-unit-bytes* row-munit))
+                                             row-lslot row-lgen at *fn2-commit-unit-bytes* 0
+                                             :principal row-principal-slot)
+                     :ok ((:set (sready 0)) (:next :store-wrote) (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
+                   ((:more) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t)))))))))
   (:store-wrote :on-refusal ((:stop :machine-phase))
    (:let total (+ row-ilen row-hashed))
    (:let blen (min *fn2-commit-unit-bytes* (nfix (- total row-pdone))))
@@ -175,18 +185,27 @@
            (:set (pdone done2) (sready 0))
            (:next (:if (< done2 total) :store-write :store-fence))
            (:charge :steps *fn2-work-transition* :runnable t))
-          ;; a block stored: its digests and entry into the manifest
+          ;; a block stored: its BLAKE3 (MSTEP 0), its chaining value (1),
+          ;; then its entry into the manifest (2), a step each; the write's
+          ;; completion stays ready until the entry is built
+          ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 0))
+           (:let hrow (fn2-upload-hasher id))
+           (:do (hcode) (fn2-upload-block-hash hrow row-lslot row-lgen blen) :accept (:ok))
+           (:set (mstep 1)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+          ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen) (equal row-mstep 1))
+           (:let hrow (fn2-upload-hasher id))
+           (:do (vcode) (fn2-upload-block-cv hrow row-lslot row-lgen blen blk) :accept (:ok))
+           (:set (mstep 2)) (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
           ((and (fn2-am-manifestp total) (< row-pdone total) (equal row-scount blen))
            (:let hrow (fn2-upload-hasher id))
-           (:do (hcode) (fn2-upload-block-hash hrow row-lslot row-lgen blen blk) :accept (:ok))
            (:do (ecode mf) (fn2-upload-block-entry hrow row-lslot row-lgen blk blen
                                                    (+ (* *fn2-commit-write-resources* row-cext)
                                                       (mod blk *fn2-commit-write-resources*))
                                                    row-cepoch row-calloc row-mfill)
             :accept (:ok))
-           (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0))
+           (:set (pdone (+ row-pdone blen)) (mfill mf) (cfree 0) (sready 0) (mstep 0))
            (:next :store-write)
-           (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+           (:charge :bytes *fn2-upload-entry-bytes* :steps *fn2-work-transition* :runnable t))
           ;; a manifest unit stored: the next, or the fence after the last
           ((and (fn2-am-manifestp total) (<= total row-pdone) (equal row-scount *fn2-commit-unit-bytes*))
            (:let u2 (+ 1 row-munit))
@@ -227,20 +246,28 @@
           ((:live child-txn) (:do () (fn2-upload-wake row-txn)) (:charge :steps *fn2-work-transition*))
           (t (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
   ;; :draining settles the extents the stored octets occupy (through the
-  ;; manifest in the store page), returns the store page, then releases the
-  ;; second chunk, then the first, then the row.
+  ;; manifest in the store page, a unit of its entries per step, MDRAIN),
+  ;; returns the store page, then releases the second chunk, then the first,
+  ;; then the row.
   (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:if (equal row-lease *fn2-upload-lease-held*)
-        ((:let hrow (fn2-upload-hasher id))
-         (:do (pcode) (fn2-upload-extents-of nil 0 (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill
-                                             row-pext row-pepoch row-palloc row-cext row-cepoch row-calloc row-cfree)
-          :accept (:ok))
-         (:do (lc) (fn2-upload-page-release row-lslot row-lgen) :effects ((:release (:storage-window)))
-              :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)")
-         (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0) (pext *fn2-none*) (cext *fn2-none*)
-               (cfree 0) (mfill 0))
-         (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-        ((:do (pcode) (fn2-upload-payload-settle row-pext row-pepoch row-palloc) :accept (:ok))
+   (:cond ((and (equal row-lease *fn2-upload-lease-held*)
+                (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
+           (:let hrow (fn2-upload-hasher id))
+           (:do (pcode) (fn2-upload-settle-unit (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill
+                                                row-mdrain)
+            :accept (:ok))
+           (:set (mdrain (+ 1 row-mdrain)))
+           (:charge :bytes *fn2-commit-unit-bytes* :steps *fn2-work-transition* :runnable t))
+          ((equal row-lease *fn2-upload-lease-held*)
+           (:do (pcode) (fn2-upload-extents-close row-pext row-pepoch row-palloc row-cext row-cepoch row-calloc row-cfree)
+            :accept (:ok))
+           (:do (lc) (fn2-upload-page-release row-lslot row-lgen) :effects ((:release (:storage-window)))
+                :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)")
+           (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0) (pext *fn2-none*) (cext *fn2-none*)
+                 (cfree 0) (mfill 0) (mdrain 0))
+           (:charge :steps *fn2-work-transition* :runnable t))
+          (t
+         (:do (pcode) (fn2-upload-payload-settle row-pext row-pepoch row-palloc) :accept (:ok))
          (:do (c1code) (fn2-core-release row-c1-slot row-c1-gen)
               :effects ((:release (:chunk-window)))
               :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)")

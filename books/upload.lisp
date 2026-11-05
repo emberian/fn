@@ -24,6 +24,10 @@
 (defconst *fn2-upload-page-stage* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
 (defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
 (defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))
+;; The octets the manifest's header and one entry touch (each encoded with
+;; the 32-octet digests it names; an entry after the zeros that pad its unit).
+(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))
+(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))
 (defun fn2-upload-page-bytes (total)
   (declare (xargs :guard t))
   (if (fn2-am-manifestp total)
@@ -70,21 +74,31 @@
 (defcost fn2-upload-lease-class :doc "The pool class of the store page for stored octets of a length (nil: none).")
 ;; The source manifest's operations (stored octets longer than one extent).
 (defcost fn2-upload-hasher :doc "The upload row's hasher row (3 + its slot), whose format stripe the manifest's fields use.")
-(defcost fn2-upload-manifest-begin :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-page-manifest*
+(defcost fn2-upload-manifest-begin :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-head-bytes*
   :tables (fn2-core-pool fn2-core-fields)
-  :doc "Zero the store page to its manifest and encode the manifest's header there: (mv code mfill).")
+  :doc "Encode the manifest's header at the (zeroed) store page's manifest: (mv code mfill).")
 (defcost fn2-upload-stage :answers (:ok :fault) :faults (:fault) :bytes 4096 :tables (fn2-core-pool)
   :doc "Copy the next block of the stored octets into the store page's stage: (mv code len).")
-(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes 8192
+(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
-  :doc "The staged block's BLAKE3 and chaining value into the store page.")
-(defcost fn2-upload-block-entry :answers (:ok :fault) :faults (:fault) :bytes 256 :tables (fn2-core-pool fn2-core-fields)
+  :doc "The staged block's BLAKE3 into the store page.")
+(defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+  :tables (fn2-core-digests fn2-core-pool)
+  :doc "The staged block's chaining value (its BLAKE3 for a short final block) into the store page.")
+(defcost fn2-upload-block-entry :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-entry-bytes*
+  :tables (fn2-core-pool fn2-core-fields)
   :doc "Encode the staged block's manifest entry after the manifest's octets: (mv code mfill).")
-(defcost fn2-upload-page-zero-to :answers (:ok :fault) :faults (:fault) :bytes 4096 :tables (fn2-core-pool)
-  :doc "Zero the store page from its fill to an offset (a manifest unit's end).")
-(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes 4096
+(defcost fn2-upload-page-zero-to :answers (:ok :more :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+  :tables (fn2-core-pool)
+  :doc "Zero the store page from its fill toward an offset, one unit at most (:more: not yet there).")
+(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-extent-bytes*
   :tables (fn2-core-extents fn2-core-pool fn2-core-fields)
   :doc "Commit (to the article) or settle every extent stored octets occupy: the manifest's and each block's.")
+(defcost fn2-upload-settle-unit :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+  :tables (fn2-core-extents fn2-core-pool fn2-core-fields)
+  :doc "Settle the block extents the entries in one unit of the manifest name.")
+(defcost fn2-upload-extents-close :answers (:ok :fault) :faults (:fault) :tables (fn2-core-extents)
+  :doc "Settle the extent reserved for a block no entry names and the manifest's own (or the one payload extent).")
 (defcost fn2-upload-put-mid :answers (:ok :fault) :faults (:fault) :bytes 264 :tables (fn2-core-pool fn2-core-control)
   :doc "Write the generated Message-ID field into the store page: (mv code len).")
 
@@ -381,21 +395,25 @@
       (if (eq code :ok) (fn2-upload-page-zero (- left 1) (+ at 1) slot gen okind oslot ogen fn2-core)
         (mv code fn2-core)))))
 (fn2-core-preserves fn2-upload-page-zero (left at slot gen okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The page zeroed from its fill to TO: (mv code fn2-core).
+;; The page zeroed from its fill toward TO, one unit of zeros at most:
+;; (mv code fn2-core), :more while TO is farther.
 (defun fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-slot-fill ls fn2-pool) (nfix n))))
-    (mv-let (code fn2-core) (fn2-upload-page-zero (nfix (- (nfix to) fill)) fill ls lg okind oslot ogen fn2-core)
-      (mv (if (eq code :ok) :ok :fault) fn2-core))))
+  (let* ((fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-slot-fill ls fn2-pool) (nfix n)))
+         (left (nfix (- (nfix to) fill))))
+    (mv-let (code fn2-core)
+      (fn2-upload-page-zero (min left *fn2-commit-unit-bytes*) fill ls lg okind oslot ogen fn2-core)
+      (mv (cond ((not (eq code :ok)) :fault) ((< *fn2-commit-unit-bytes* left) :more) (t :ok)) fn2-core))))
 (fn2-core-preserves fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The manifest begun: the page zeroed to the manifest's start, the header
-;; (TOTAL stored octets, the source identity where the verdict appended it)
-;; encoded at *fn2-upload-page-manifest*: (mv code mfill fn2-core), MFILL the
-;; manifest's octets. Fields at the window's format stripe (row ROW).
+;; The manifest begun (the page zeroed to its start first, by
+;; fn2-upload-page-zero-to): the header (TOTAL stored octets, the source
+;; identity where the verdict appended it) encoded at
+;; *fn2-upload-page-manifest*: (mv code mfill fn2-core), MFILL the manifest's
+;; octets. Fields at the window's format stripe (row ROW).
 (defun fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
-  (b* (((mv code fn2-core) (fn2-upload-page-zero-to *fn2-upload-page-manifest* ls lg okind oslot ogen fn2-core))
-       ((unless (eq code :ok)) (mv :fault 0 fn2-core))
+  (b* ((fill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-slot-fill ls fn2-pool) (nfix n)))
+       ((unless (equal fill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core))
        ((mv in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))))
     (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
       (code end fn2-fields fn2-pool)
@@ -439,11 +457,10 @@
             (fn2-upload-hash-span (- fuel 1) row slot gen (+ (nfix off) used) (- left used) id ogen fn2-core)
           (mv :bounds fn2-core))))))
 (fn2-core-preserves fn2-upload-hash-span (fuel row slot gen off left id ogen fn2-core) :position 1 :rows nil)
-;; The staged block's digests into the page: its BLAKE3 (the window's hasher
-;; row ROW, after the verdict its digest is already appended to the source)
-;; and its chaining value at chunk counter 4 BLOCK (a whole unit), else its
-;; BLAKE3 again (article-manifest.lisp): (mv code fn2-core).
-(defun fn2-upload-block-hash-run (row ls lg blen block okind oslot ogen fn2-core)
+;; The staged block's BLAKE3 into the page at *fn2-upload-page-hash* (the
+;; window's hasher row ROW; after the verdict the source's digest is already
+;; appended to it): (mv code fn2-core).
+(defun fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv code fn2-core) (fn2-upload-hash-begin row fn2-core))
        ((unless (eq code :ok)) (mv code fn2-core))
@@ -453,10 +470,21 @@
           (mv :bounds fn2-core)))
        ((unless (eq code :ok)) (mv :bounds fn2-core))
        ((mv code fn2-core) (fn2-upload-hash-end row fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core) (fn2-upload-digest-store row ls lg *fn2-upload-page-hash* oslot ogen fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       (fn2-core
+       ((unless (eq code :ok)) (mv code fn2-core)))
+    (fn2-upload-digest-store row ls lg *fn2-upload-page-hash* oslot ogen fn2-core)))
+(fn2-core-preserves fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
+(defun fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (code fn2-core) (fn2-upload-block-hash-run row ls lg blen okind oslot ogen fn2-core)
+    (mv (if (eq code :ok) :ok :fault) fn2-core)))
+(fn2-core-preserves fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
+;; The staged block's chaining value at chunk counter 4 BLOCK (a whole unit)
+;; into the page 32 octets after its BLAKE3; a short final block is no
+;; complete subtree and its BLAKE3 (still the hasher row's result) goes there
+;; again (article-manifest.lisp): (mv code fn2-core).
+(defun fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* ((fn2-core
         (if (equal blen *fn2-commit-unit-bytes*)
             (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
               (fn2-digests)
@@ -469,15 +497,11 @@
                     (fn2-b3-subtree-cv-into dst off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)
                   fn2-digests))
               fn2-core)
-          fn2-core)))
-    (fn2-upload-digest-store row ls lg (+ 32 *fn2-upload-page-hash*) oslot ogen fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash-run (row ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-(defun fn2-upload-block-hash (row ls lg blen block okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (code fn2-core) (fn2-upload-block-hash-run row ls lg blen block okind oslot ogen fn2-core)
+          fn2-core))
+       ((mv code fn2-core) (fn2-upload-digest-store row ls lg (+ 32 *fn2-upload-page-hash*) oslot ogen fn2-core)))
     (mv (if (eq code :ok) :ok :fault) fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash (row ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ;; The block's entry after the manifest's MFILL octets (the packing rule):
 ;; (mv code mfill fn2-core).
 (defun fn2-upload-block-entry (row ls lg block blen unit epoch alloc mfill okind oslot ogen fn2-core)
@@ -502,15 +526,15 @@
       (fn2-alloc-commit-allocation e epoch counter *fn2-txn-kind* event fn2-extents)
       (mv (if (eq code :ok) :ok :fault) fn2-core))))
 (fn2-core-preserves fn2-upload-extent-commit (e epoch counter event fn2-core) :position 1 :rows nil)
-;; Every extent a manifest of MFILL octets names (the extent of each entry at
-;; unit 0 of its extent), taken by COMMIT (owned by the transaction kind's
-;; EVENT) or else settled (a reservation nothing committed is cancelled),
-;; FUEL entries at most: (mv code fn2-core). Fields at BASE; the page is
-;; owned by OKIND OSLOT OGEN.
-(defun fn2-upload-manifest-extents (fuel commit event base ls lg rel mfill okind oslot ogen fn2-core)
+;; Every extent the entries of a manifest of MFILL octets starting before LIM
+;; name (the extent of each entry at unit 0 of its extent), taken by COMMIT
+;; (owned by the transaction kind's EVENT) or else settled (a reservation
+;; nothing committed is cancelled), FUEL entries at most: (mv code fn2-core).
+;; Fields at BASE; the page is owned by OKIND OSLOT OGEN.
+(defun fn2-upload-manifest-extents (fuel commit event base ls lg rel lim mfill okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix fuel) :guard (fn2-core-wfp fn2-core)))
   (let ((at (fn2-am-entry-at rel)))
-    (if (>= at (nfix mfill)) (mv :ok fn2-core)
+    (if (or (>= at (nfix mfill)) (>= at (nfix lim))) (mv :ok fn2-core)
       (if (zp fuel) (mv :bounds fn2-core)
         (b* (((mv code next lo len unit epoch alloc fn2-core)
               (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
@@ -525,9 +549,9 @@
                     (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
                     (t (fn2-upload-payload-settle (floor unit *fn2-commit-write-resources*) epoch alloc fn2-core))))
              ((unless (eq code :ok)) (mv code fn2-core)))
-          (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) mfill
+          (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) lim mfill
                                        okind oslot ogen fn2-core))))))
-(fn2-core-preserves fn2-upload-manifest-extents (fuel commit event base ls lg rel mfill okind oslot ogen fn2-core)
+(fn2-core-preserves fn2-upload-manifest-extents (fuel commit event base ls lg rel lim mfill okind oslot ogen fn2-core)
   :position 1 :rows nil)
 ;; The manifest's header length (where its first entry follows): (mv code rel).
 (defun fn2-upload-manifest-head (base total ls lg mfill okind oslot ogen fn2-core)
@@ -538,25 +562,56 @@
                        okind oslot ogen fn2-fields fn2-pool)
     (mv code (nfix (- next *fn2-upload-page-manifest*)) fn2-core)))
 (fn2-core-preserves fn2-upload-manifest-head (base total ls lg mfill okind oslot ogen fn2-core) :position 2 :rows nil)
-;; The extents of stored octets of TOTAL: the manifest's (PEXT, its own) and
-;; every block's, committed (COMMIT, EVENT) or settled; a current extent
-;; reserved for a block whose entry never came (CFREE) is settled too.
-(defun fn2-upload-extents-run (commit event base total ls lg mfill pext pepoch palloc cext cepoch calloc cfree
-                                     okind oslot ogen fn2-core)
+;; The block extents a manifest of MFILL octets for TOTAL stored octets
+;; names, by the entries in its unit UNIT (all of them, WHOLE; the header
+;; is at the start of unit 0), committed (COMMIT, EVENT) or settled:
+;; (mv code fn2-core).
+(defun fn2-upload-manifest-walk (commit event base total ls lg mfill unit whole okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (b* (((mv code fn2-core)
-        (if (and (fn2-am-manifestp total) (< 0 (nfix mfill)))
-            (b* (((mv code rel fn2-core) (fn2-upload-manifest-head base total ls lg mfill okind oslot ogen fn2-core))
-                 ((unless (eq code :ok)) (mv code fn2-core)))
-              (fn2-upload-manifest-extents (+ 1 (fn2-am-blocks total)) commit event base ls lg rel mfill
-                                           okind oslot ogen fn2-core))
-          (mv :ok fn2-core)))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core) (if (and (equal cfree 1) (not commit))
+  (if (not (and (fn2-am-manifestp total) (< 0 (nfix mfill)))) (mv :ok fn2-core)
+    (b* ((lim (if whole (nfix mfill) (* *fn2-commit-unit-bytes* (+ 1 (nfix unit)))))
+         ((mv code rel fn2-core)
+          (if (zp unit) (fn2-upload-manifest-head base total ls lg mfill okind oslot ogen fn2-core)
+            (mv :ok (* *fn2-commit-unit-bytes* unit) fn2-core)))
+         ((unless (eq code :ok)) (mv code fn2-core)))
+      (fn2-upload-manifest-extents (+ 1 (fn2-am-blocks total)) commit event base ls lg rel lim mfill
+                                   okind oslot ogen fn2-core))))
+(fn2-core-preserves fn2-upload-manifest-walk (commit event base total ls lg mfill unit whole okind oslot ogen fn2-core)
+  :position 1 :rows nil)
+;; The manifest's units the drain settles one per step (none without one).
+(defun fn2-upload-manifest-units (total mfill)
+  (declare (xargs :guard t))
+  (if (fn2-am-manifestp total) (ceiling (nfix mfill) *fn2-commit-unit-bytes*) 0))
+(defun fn2-upload-settle-unit (base total ls lg mfill unit okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (code fn2-core) (fn2-upload-manifest-walk nil 0 base total ls lg mfill unit nil okind oslot ogen fn2-core)
+    (mv (if (eq code :ok) :ok :fault) fn2-core)))
+(fn2-core-preserves fn2-upload-settle-unit (base total ls lg mfill unit okind oslot ogen fn2-core) :position 1 :rows nil)
+;; After the blocks' extents: a current extent reserved for a block whose
+;; entry never came (CFREE) is settled, and the manifest's own extent (or the
+;; one payload extent, PEXT) is committed (COMMIT, EVENT) or settled.
+(defun fn2-upload-extents-close-run (commit event pext pepoch palloc cext cepoch calloc cfree fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((mv code fn2-core) (if (and (equal cfree 1) (not commit))
                                (fn2-upload-payload-settle cext cepoch calloc fn2-core) (mv :ok fn2-core)))
        ((unless (eq code :ok)) (mv code fn2-core)))
     (if commit (fn2-upload-extent-commit pext pepoch palloc event fn2-core)
       (fn2-upload-payload-settle pext pepoch palloc fn2-core))))
+(fn2-core-preserves fn2-upload-extents-close-run (commit event pext pepoch palloc cext cepoch calloc cfree fn2-core)
+  :position 1 :rows nil)
+(defun fn2-upload-extents-close (pext pepoch palloc cext cepoch calloc cfree fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (code fn2-core) (fn2-upload-extents-close-run nil 0 pext pepoch palloc cext cepoch calloc cfree fn2-core)
+    (mv (if (eq code :ok) :ok :fault) fn2-core)))
+(fn2-core-preserves fn2-upload-extents-close (pext pepoch palloc cext cepoch calloc cfree fn2-core) :position 1 :rows nil)
+;; The extents of stored octets of TOTAL: every block's (the whole manifest
+;; in one call, at most one extent of it decoded) and then the close.
+(defun fn2-upload-extents-run (commit event base total ls lg mfill pext pepoch palloc cext cepoch calloc cfree
+                                     okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((mv code fn2-core) (fn2-upload-manifest-walk commit event base total ls lg mfill 0 t okind oslot ogen fn2-core))
+       ((unless (eq code :ok)) (mv code fn2-core)))
+    (fn2-upload-extents-close-run commit event pext pepoch palloc cext cepoch calloc cfree fn2-core)))
 (fn2-core-preserves fn2-upload-extents-run (commit event base total ls lg mfill pext pepoch palloc cext cepoch calloc cfree
                                                   okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-upload-extents-of (commit event base total ls lg mfill pext pepoch palloc cext cepoch calloc cfree
@@ -602,7 +657,9 @@
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid fn2-upload-page-zero fn2-upload-page-zero-to fn2-upload-manifest-begin
                     fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-block-hash-run fn2-upload-block-hash fn2-upload-block-entry
-                    fn2-upload-extent-commit fn2-upload-manifest-extents fn2-upload-manifest-head fn2-upload-extents-run fn2-upload-extents-of))
+                    fn2-upload-extent-commit fn2-upload-manifest-extents fn2-upload-manifest-head fn2-upload-extents-run fn2-upload-extents-of
+                    fn2-upload-block-cv fn2-upload-manifest-walk fn2-upload-manifest-units fn2-upload-settle-unit
+                    fn2-upload-extents-close-run fn2-upload-extents-close))
 
 ;; The block is complete and hashed: (mv next fn2-core). With a transaction
 ;; (the header was complete): the digest stored, the verdict handed over,
