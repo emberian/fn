@@ -282,7 +282,7 @@
   :position 3 :rows nil
   :hints (("Goal" :induct (fn2-cursor-stuff-loop n i st used lslot lgen okind oslot ogen tslot tgen tk ts tg fn2-pool)
                   :in-theory (disable fn2-gram-read fn2-gram-fill fn2-gram-put fn2-gram-put-crlf logbitp
-                                      fn2-pool-slot-capacity))))
+                                      fn2-pool-slot-capacity nfix))))
 (defun fn2-cursor-pool-stuff (from to st lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp from) (natp to) (natp st))))
   (mv-let (code used st fn2-pool)
@@ -467,7 +467,7 @@
 (fn2-pool-preserves fn2-cursor-pool-art-open (cmd reply mask n xref at roff ms ml slot gen okind oslot ogen fn2-pool)
   :position 1 :rows nil
   :hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
-                                      fn2-nntp-reply-command fn2-nntp-reply-layer))))
+                                      fn2-nntp-reply-command fn2-nntp-reply-layer nfix))))
 (in-theory (disable fn2-cursor-put-xref fn2-cursor-pool-art-open))
 
 (defun fn2-cursor-pool-list-filter (variant k1 a1 b1 at copied rslot rgen tslot tgen okind oslot ogen fn2-pool)

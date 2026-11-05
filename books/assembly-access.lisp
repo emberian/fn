@@ -1,10 +1,9 @@
 ; Materialize machine access through the assembled core.
 (in-package "ACL2")
-(include-book "assembly-init")
-; The ledger's core wrappers first: the access section's grant source
-; (fn2-machine-grant-ready-p / -grant-one, D7's S5) and the listener's
-; Accept booking (S1) call them.
-(fn2-account-events)
+; The ledger's core wrappers first (assembly-access-a): the access
+; section's grant source (fn2-machine-grant-ready-p / -grant-one, D7's S5)
+; and the listener's Accept booking (S1) call them.
+(include-book "assembly-access-a")
 (fn2-machine-access-events)
 ; The ledger's request FIFO and its grant source (D7 4/n-a), attached to
 ; the access section's constrained pair.

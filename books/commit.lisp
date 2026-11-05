@@ -1158,7 +1158,8 @@
               ((unless (eq code :ok)) (mv code end fn2-core)))
           (fn2-commit-pack-core id :record 1 index end fn2-core)))))
    (mv code (nfix end) fn2-core))))
-(fn2-core-preserves fn2-commit-seal-member (id index cursor slot gen fn2-core) :position 2 :rows nil)
+(fn2-core-preserves fn2-commit-seal-member (id index cursor slot gen fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (disable nfix))))
 (defthm fn2-commit-seal-member-natp
  (natp (mv-nth 1 (fn2-commit-seal-member id index cursor slot gen fn2-core)))
  :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-seal-member))))
@@ -1246,7 +1247,8 @@
        (let ((fn2-commit-io (if (eq code :ok) (fn2-commit-io-set-lent r 0 fn2-commit-io) fn2-commit-io)))
         (mv code fn2-commit-io fn2-extents fn2-alloc-edges)))))))
   (fn2-commit-shape-stop code *fn2-stop-reason-commit-io*)))))
-(fn2-core-preserves fn2-commit-io-edge (id role add opslot opgen fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-commit-io-edge (id role add opslot opgen fn2-core) :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable nfix))))
 (defun fn2-commit-drop-io (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((mv a fn2-core) (fn2-commit-io-edge id 0 nil 0 0 fn2-core))

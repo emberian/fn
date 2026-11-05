@@ -1365,9 +1365,10 @@
                                       (natp slot) (< slot (,(fn2-arms-sym kind "-ROWS") ,kind))
                                       (natp id) (< id (fn2-machines-rows fn2-machines)))
                           ;; the guard walks the paths with the row readers, the
-                          ;; children's predicates and the callees closed: their own
-                          ;; facts (widths, shapes, sizes) carry every obligation
-                          :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system)
+                          ;; children's predicates, the callees and nfix closed: their own
+                          ;; facts (widths, shapes, sizes) carry every obligation (D26: nfix
+                          ;; open, cursor's render chain guard took 15 s)
+                          :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system) nfix
                                                                     ,@readers ,@(fn2-arms-shape-fns ins) ,@(fn2-arms-rows-fns (list kind 'fn2-machines))
                                                                     ,@(fn2-arms-stobj-callees (remove-duplicates-eq callees) world))
                                          :do-not '(generalize fertilize eliminate-destructors))))
