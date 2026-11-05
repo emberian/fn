@@ -15,9 +15,31 @@
 ; :format-slots derived) and 64 KiB pages for its runs, which stay resident
 ; (C-SEAL-RESIDENT): owed-cursor.lisp's *fn2-read-profile*.
 (defconst *fn2-rdu-profile* *fn2-read-profile*)
+;; A seed as the transaction's path commits it (owed-cursor fn2-cs-seed):
+;; (group-number mid overview-line text), TEXT filed in GROUP as its
+;; article N, LINE the overview line the path synthesizes (source octets,
+;; body lines, the Xref field with the profile's path identity).
+(defun fn2-rdu-text (group subject mid)
+ (declare (xargs :verify-guards nil))
+ (list "From: a@example.invalid" (fn2-csp-cat (list "Subject: " subject))
+       "Date: Fri, 30 Oct 2026 12:00:00 +0000" (fn2-csp-cat (list "Message-ID: " mid))
+       (fn2-csp-cat (list "Newsgroups: " group)) "" (fn2-csp-cat (list "body " subject))))
+(defun fn2-rdu-seed (gno group subject mid n)
+ (declare (xargs :verify-guards nil))
+ (let ((text (fn2-rdu-text group subject mid)))
+   (list gno mid
+         (fn2-csp-cat (list subject (fn2-ss-tab) "a@example.invalid" (fn2-ss-tab) "Fri, 30 Oct 2026 12:00:00 +0000"
+                            (fn2-ss-tab) mid (fn2-ss-tab) "" (fn2-ss-tab) (fn2-csp-str (len (fn2-cs-source text)))
+                            (fn2-ss-tab) (fn2-csp-str (fn2-ss-body-lines text))
+                            (fn2-ss-tab) "Xref: " (fn2-profile-path-identity *fn2-read-profile*) " " group ":"
+                            (fn2-csp-str n)))
+         text)))
 (defconst *fn2-rdu-seeds*
- '((1 "<a@example.invalid>" "first	a@example.invalid") (2 "<z@example.invalid>" "other group")
-   (1 "<b@example.invalid>" "second") (1 "<c@example.invalid>" "third line")))
+ (list (fn2-rdu-seed 1 "local.test" "first" "<a@example.invalid>" 1)
+       (fn2-rdu-seed 2 "local.empty" "other group" "<z@example.invalid>" 1)
+       (fn2-rdu-seed 1 "local.test" "second" "<b@example.invalid>" 2)
+       (fn2-rdu-seed 1 "local.test" "third line" "<c@example.invalid>" 3)))
+(assert-event (fn2-csp-seedsp *fn2-rdu-seeds* (fn2-profile-get :groups *fn2-read-profile*) nil))
 (defconst *fn2-rdu-max* 2147483647)
 
 (defun fn2-rdu-chars (cs) (declare (xargs :verify-guards nil)) (if (atom cs) nil (cons (char-code (car cs)) (fn2-rdu-chars (cdr cs)))))
@@ -279,9 +301,11 @@
 (value-triple (cw "READ-UNIT ~x0~%" *fn2-rdu-result*))
 
 (defconst *fn2-rdu-three*
- '((1 1 "first	a@example.invalid") (2 3 "second") (3 4 "third line")))
-;; Read rows: two a cursor slot (x 2 gives four), no consumer requests.
-(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 4 (+ 2 4) (+ 2 (* 9 4)))))
+ (list (list 1 1 (nth 2 (nth 0 *fn2-rdu-seeds*))) (list 2 3 (nth 2 (nth 2 *fn2-rdu-seeds*)))
+       (list 3 4 (nth 2 (nth 3 *fn2-rdu-seeds*)))))
+;; Read rows: two a cursor slot (x 2 gives four), no consumer requests; run
+;; cursors t + 9 per read row + the sealer's eight (*fn2-idc-seal-cursors*).
+(assert-event (equal (cadr (member :rows *fn2-rdu-result*)) (list 4 (+ 2 4) (+ 2 (* 9 4) *fn2-idc-seal-cursors*))))
 (assert-event (equal (cadr (member :seeded *fn2-rdu-result*)) :ok))
 (assert-event (equal (cadr (member :groups *fn2-rdu-result*)) '((:ok :ok 1) (:ok :ok 2) (:absent))))
 (assert-event (equal (cadr (member :counts *fn2-rdu-result*)) '((:ok 3 1 3) (:ok 1 1 1) (:absent))))
@@ -291,7 +315,7 @@
 ;; The position limit stops at the first entry past it (position 4 > 3).
 (assert-event (equal (cadr (member :limit *fn2-rdu-result*)) (take 2 *fn2-rdu-three*)))
 (assert-event (equal (cadr (member :mid *fn2-rdu-result*)) (list (nth 1 *fn2-rdu-three*))))
-(assert-event (equal (cadr (member :other *fn2-rdu-result*)) '((1 2 "other group"))))
+(assert-event (equal (cadr (member :other *fn2-rdu-result*)) (list (list 1 2 (nth 2 (nth 1 *fn2-rdu-seeds*))))))
 ;; The least number from which every entry is newer than P.
 ;; (C-POSITION-SEEK bisects [1, 2^31): 31 probes, 93 steps over overlays and
 ;; 431 over the four runs the sealer makes of them; a cursor bounds hi by the
@@ -302,7 +326,9 @@
 ;; the read went on from its resume key and delivered exactly the same
 ;; entries, and the entry held across the seal answers :stale to both its
 ;; value and its octets.
-(assert-event (equal (cadr (member :runs *fn2-rdu-result*)) '(0 4)))
+;; (C5: the seal's size-tiered merge takes the newest runs with it, so the
+;; four overlays stand in two runs, not one run each.)
+(assert-event (equal (cadr (member :runs *fn2-rdu-result*)) '(0 2)))
 (assert-event (equal (cadr (member :sealed *fn2-rdu-result*)) *fn2-rdu-three*))
 (assert-event (equal (cadr (member :stale *fn2-rdu-result*)) '(:idle :stale :stale)))
 (assert-event (equal (cadr (member :after-seal *fn2-rdu-result*)) *fn2-rdu-three*))
@@ -338,7 +364,9 @@
 ;; fields are not served yet. Negative: the reference tells a store with
 ;; conflict evidence from one without (the candidates), and an absent name
 ;; from a selected one.
-(defconst *fn2-rdu-tooth-seeds* '((1 "<a@example.invalid>" "first") (1 "<b@example.invalid>" "second")))
+(defconst *fn2-rdu-tooth-seeds*
+ (list (fn2-rdu-seed 1 "local.test" "first" "<a@example.invalid>" 1)
+       (fn2-rdu-seed 1 "local.test" "second" "<b@example.invalid>" 2)))
 (defun fn2-read-identity-test-selection ()
  (declare (xargs :verify-guards nil))
  (and (equal (take 2 (fn2-read-identity-typed *fn2-rdu-tooth-seeds* nil "<b@example.invalid>"))
@@ -397,7 +425,7 @@
 ;; hold the third seed's extent, and the session refuses to start rather
 ;; than serve a store the device never received.
 (assert-event (equal (fn2-ss-transcript 138560 *fn2-ss-profile* *fn2-rdu-session-lines*)
-                     '(:unseeded (:device :bounds 24576))))
+                     '(:unseeded (:device :bounds 16384))))
 ;; The seeds are the core's own commits (owed-cursor's fn2-cs-seed: the
 ;; transaction's path, B's admission and commit on the core's turns), so B's
 ;; commit frontier and C's read frontier agree after seeding: B proposes
