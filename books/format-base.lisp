@@ -16,7 +16,7 @@
 ; ENVELOPE-AND-HOST section 1.6: exact Message-ID octets, maximum 250.
 (defconst *fn2-format-message-id-max* 250)
 (defconst *fn2-format-page-kind* '(:enum page-kind (:run-data :run-index :partitioned-filter :manifest :allocation-map :source-manifest :range-proof :checkpoint-descriptor :merkle-node :raw-source :key-list :recovery-arena :dependency-manifest :membership-list :obligation-list)))
-(defconst *fn2-format-record-kind* '(:enum record-kind (:article-acceptance :cursor-advance :registration-change :configuration-change :withdrawal :obligation-create :obligation-release :keyed-mutation :allocation :relocation :run-replacement :retirement :release-allocation :checkpoint-installation :begin-writer-epoch :checkpoint-statement :identity-evidence :article :overview :addr :group-counts :consumer-cursor :principal-charges :groups :outcome :manifest :identity-history :identity-candidates :identity-summary :identity-article :consumer-names :principals)))
+(defconst *fn2-format-record-kind* '(:enum record-kind (:article-acceptance :cursor-advance :registration-change :configuration-change :withdrawal :obligation-create :obligation-release :keyed-mutation :allocation :relocation :run-replacement :retirement :release-allocation :checkpoint-installation :begin-writer-epoch :checkpoint-statement :identity-evidence :article :overview :addr :group-counts :consumer-cursor :principal-charges :groups :outcome :manifest :identity-history :identity-candidates :identity-summary :identity-article :consumer-names :principals :grants :grant-current :authority-head)))
 ; Defconst-time composition only, never called by the served codec.
 (defun fn2-format-prefix (prefix fields)
   (declare (xargs :verify-guards nil))
