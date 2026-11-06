@@ -489,6 +489,7 @@ otherwise the bound one. Values: (index . cap) or nil."
 Unix socket, when named), and return the host. SEEDS, when given, are published into the
 store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session seeds it)."
   (when (and device-path seeds) (error "fn2 native: image startup cannot use a seeded memory store"))
+  (when device-path (setf profile (fn2-image-profile profile)))
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
@@ -533,6 +534,19 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
         (setf *fn2-n-signal* 0 *fn2-n-signal-mux* (fn2-nhost-mux host))
         (sb-sys:enable-interrupt sb-unix:sigterm #'fn2-n-signal-handler)
         (sb-sys:enable-interrupt sb-unix:sigint #'fn2-n-signal-handler)
+        (when device-path
+          (handler-case
+              (progn
+                (multiple-value-bind (code c)
+                    (fn2-boot-start (not (null create-size)) (fn2-device-size (fn2-nhost-storage host)) core)
+                  (declare (ignore c))
+                  (unless (eq code :ok) (error "fn2 image boot: ~s" code)))
+                (loop for status = (fn2-boot-status core)
+                      until (eq status :ready)
+                      do (when (eq status :failed)
+                           (error "fn2 image boot stopped: ~d" (fn2-host-stop-reason core)))
+                         (fn2-n-iteration host)))
+            (error (condition) (fn2-n-destroy host) (error condition))))
         host)))))
 
 (defun fn2-n-run (host)
