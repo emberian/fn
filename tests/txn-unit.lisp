@@ -76,7 +76,7 @@
 
 ; The wires of TRANSCRIPTS after SEEDS: (seeded status wires stop-reason).
 (defun fn2-tu-run-on (profile seeds transcripts store)
-  ;; STORE: the device before the run ((offset . octets) or a bad sector (offset . :io))
+  ;; STORE: the device before the run ((offset . octets), a bad sector (offset . :io) or a corrupt one (offset . :corrupt))
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (result fn2-core)
@@ -397,6 +397,42 @@
         (cw "read-fail-closes ~x0 closed ~x1 wire ~x2 of ~x3 octets~%" (list (car r) (nth 1 r) (nth 3 r)) closed
             (len wire) (len whole)))))
 (assert-event (fn2-txn-test-read-fail-closes))
+
+; A block that is not its manifest entry's fails the read (docs/b-durability.md
+; S9a): the second storage unit of every extent is a corrupt sector (its
+; first octet's low bit flipped on every read; the device answers the read
+; whole), so ARTICLE 1 of the 15,745-octet article reads its manifest unit
+; and block 0 (whose BLAKE3 and chaining value match their entry) and sends
+; its 220 line and pages of block 0; block 1 (unit 1 of its extent) does not
+; match its entry's BLAKE3, B's completion answers :hash, and the connection
+; closes after the 22x line: the wire is a proper prefix of the clean reply
+; holding no octet past block 0, and the core runs on (stop reason 0: the
+; :hash answer is the arm's, not a refusal of the core).
+(defun fn2-tu-corrupt-second-units (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil
+    (cons (cons (+ (* (- n 1) *fn2-commit-extent-bytes*) *fn2-commit-unit-bytes*) :corrupt)
+          (fn2-tu-corrupt-second-units (- n 1)))))
+(defun fn2-txn-test-big-corrupt ()
+  (declare (xargs :verify-guards nil))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-big*) '(".") '("GROUP local.test" "ARTICLE 1" "QUIT")))
+         (octets (fn2-tu-text lines))
+         (said (fn2-tu-text (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                  "220 1 <big@example.invalid> article follows" "Xref: fn2.invalid local.test:1")))
+         (whole (fn2-tu-text (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
+                                           "220 1 <big@example.invalid> article follows" "Xref: fn2.invalid local.test:1")
+                                     *fn2-tu-big-head* (list "") (fn2-tu-stuff (fn2-tu-long-body 250))
+                                     (list "." *fn2-tu-205*))))
+         (r (fn2-tu-run-on *fn2-tu-big-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))
+                           (fn2-tu-corrupt-second-units 64)))
+         (wire (car (car (nth 2 r)))) (closed (cadr (car (nth 2 r)))))
+    (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)
+             (fn2-tu-prefix-p said wire) (fn2-tu-prefix-p wire whole) (< (len wire) (len whole)) closed
+             ;; block 0 is the stored octets [0, 4096), at most a few stuffed dots more on the wire
+             (< (len wire) (+ (len said) *fn2-commit-unit-bytes* 64)))
+        (cw "big-corrupt ~x0 closed ~x1 wire ~x2 of ~x3 octets (said ~x4)~%" (list (car r) (nth 1 r) (nth 3 r)) closed
+            (len wire) (len whole) (len said)))))
+(assert-event (fn2-txn-test-big-corrupt))
 
 ; Injection read back: a POST without a Message-ID answers 240, and HEAD 1
 ; and ARTICLE 1 serve the stored octets: the generated field first

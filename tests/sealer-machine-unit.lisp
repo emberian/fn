@@ -19,7 +19,7 @@
 (include-book "std/util/bstar" :dir :system)
 
 (defconst *fn2-smu-groups* '(("comp.lang.lisp" . 7) ("alt.test" . 9) ("misc.misc" . 11)))
-;; :format-slots is derived (4 + the windows + the control connections,
+;; :format-slots is derived (5 + the windows + the control connections,
 ;; default 2), so the checker row 3 + windows exists in every profile.
 (defconst *fn2-smu-profile*
  (put-assoc-equal :groups *fn2-smu-groups*
@@ -111,11 +111,11 @@
                 `((nil (,*fn2-overlay-phase-frozen*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*))
                   (((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*) :idle ,*fn2-stop-reason-none*)
                   ((:ok 7) (:ok 11) (:absent 0)))))
-;; The row cannot be missing: the default windows (16) give 20 format slots,
-;; and a profile naming fewer slots than 4 + windows is refused.
+;; The row cannot be missing: the default windows (16) give 23 format slots,
+;; and a profile naming fewer slots than 5 + windows + 2 is refused.
 (assert-event
- (and (equal (fn2-b-format-slots *fn2-smu-norow*) 22)
-      (equal (fn2-b-format-slots *fn2-smu-profile*) 7)
+ (and (equal (fn2-b-format-slots *fn2-smu-norow*) 23)
+      (equal (fn2-b-format-slots *fn2-smu-profile*) 8)
       (fn2-core-profilep *fn2-smu-profile*)
       (not (fn2-core-profilep (put-assoc-equal :format-slots 4 *fn2-smu-profile*)))))
 

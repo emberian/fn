@@ -378,22 +378,26 @@
        (natp (mv-nth 3 (fn2-cursor-pool-hscan from to st k a0 b0 rslot rgen lslot lgen tslot tgen tk ts tg okind oslot ogen fn2-pool))))
   :hints (("Goal" :in-theory (enable fn2-cursor-pool-hscan))))
 (in-theory (disable fn2-cursor-hscan-step fn2-cursor-hscan-loop fn2-cursor-pool-hscan))
-;; The lease's pool class: the smallest that holds one storage unit.
+;; The lease's pool class: the smallest that holds two storage units (a
+;; block named through a source manifest is read at the lease's fill, after
+;; the manifest unit that names it, and checked against that entry there).
 (defun fn2-cursor-lease-class-of (fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
-  (fn2-pool-class-for *fn2-commit-unit-bytes* fn2-pool))
+  (fn2-pool-class-for (* 2 *fn2-commit-unit-bytes*) fn2-pool))
 
 ;; The entry of the next block of stored octets named through a source
 ;; manifest (article-manifest.lisp), from the manifest unit the lease holds:
 ;; MPOS the manifest octet it starts at (0: the header first, its stored
 ;; length checked against TOTAL), decoded in the stripe of read row X (its
 ;; lookups are done; the stripe is idle). (mv code mpos logical-offset
-;; length unit epoch alloc fn2-fields), MPOS where the entry after it starts.
+;; length unit epoch alloc hoff cvoff fn2-fields), MPOS where the entry after
+;; it starts, HOFF and CVOFF where the lease holds the entry's BLAKE3 and
+;; chaining value (B's block read checks the block against them).
 (defun fn2-cursor-manifest-entry-of (x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* (((mv c base) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields))
-       ((unless (eq c :ok)) (mv :bounds 0 0 0 0 0 0 fn2-fields))
+       ((unless (eq c :ok)) (mv :bounds 0 0 0 0 0 0 0 0 fn2-fields))
        (mpos (nfix mpos))
        (u0 (* *fn2-commit-unit-bytes* (floor mpos *fn2-commit-unit-bytes*)))
        ((mv c at fn2-fields)
@@ -402,15 +406,22 @@
               (fn2-am-get-header base total lslot lgen 0 *fn2-commit-unit-bytes* okind oslot ogen fn2-fields fn2-pool)
               (mv c (fn2-am-entry-at h) fn2-fields))
           (mv :ok mpos fn2-fields)))
-       ((unless (and (eq c :ok) (<= u0 at) (< (- at u0) *fn2-commit-unit-bytes*))) (mv :bounds 0 0 0 0 0 0 fn2-fields))
+       ((unless (and (eq c :ok) (<= u0 at) (< (- at u0) *fn2-commit-unit-bytes*))) (mv :bounds 0 0 0 0 0 0 0 0 fn2-fields))
        ((mv c next lo len unit epoch alloc fn2-fields)
-        (fn2-am-get-entry base lslot lgen (- at u0) *fn2-commit-unit-bytes* okind oslot ogen fn2-fields fn2-pool)))
-    (mv (if (eq c :ok) :ok :bounds) (fn2-am-entry-at (+ u0 next)) lo len unit epoch alloc fn2-fields)))
+        (fn2-am-get-entry base lslot lgen (- at u0) *fn2-commit-unit-bytes* okind oslot ogen fn2-fields fn2-pool))
+       (h (+ (nfix base) *fn2-format-source-manifest-entry-field-block-expected-hash*))
+       (cv (+ (nfix base) *fn2-format-source-manifest-entry-field-subtree-cv*))
+       ((unless (and (eq c :ok) (< h (nfix (fn2-fields-rows fn2-fields))) (< cv (nfix (fn2-fields-rows fn2-fields)))
+                     (equal (fn2-fields-ref-slot h fn2-fields) lslot) (equal (fn2-fields-ref-len h fn2-fields) 32)
+                     (equal (fn2-fields-ref-slot cv fn2-fields) lslot) (equal (fn2-fields-ref-len cv fn2-fields) 32)))
+        (mv :bounds 0 0 0 0 0 0 0 0 fn2-fields)))
+    (mv :ok (fn2-am-entry-at (+ u0 next)) lo len unit epoch alloc
+        (nfix (fn2-fields-ref-off h fn2-fields)) (nfix (fn2-fields-ref-off cv fn2-fields)) fn2-fields)))
 (defthm fn2-cursor-manifest-entry-of-shape
   (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
-           (and (fn2-fieldsp (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
-                (fn2-fields-wfp (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
-                (equal (fn2-fields-rows (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
+           (and (fn2-fieldsp (mv-nth 9 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
+                (fn2-fields-wfp (mv-nth 9 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
+                (equal (fn2-fields-rows (mv-nth 9 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool)))
                        (fn2-fields-rows fn2-fields))))
   :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp))))
 (defthm fn2-cursor-manifest-entry-of-natp-1 (natp (mv-nth 1 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
@@ -419,6 +430,8 @@
 (defthm fn2-cursor-manifest-entry-of-natp-4 (natp (mv-nth 4 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
 (defthm fn2-cursor-manifest-entry-of-natp-5 (natp (mv-nth 5 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
 (defthm fn2-cursor-manifest-entry-of-natp-6 (natp (mv-nth 6 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-7 (natp (mv-nth 7 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
+(defthm fn2-cursor-manifest-entry-of-natp-8 (natp (mv-nth 8 (fn2-cursor-manifest-entry-of x lslot lgen mpos total okind oslot ogen fn2-reads fn2-id-decides fn2-fc fn2-fields fn2-pool))) :rule-classes :type-prescription)
 (in-theory (disable fn2-cursor-manifest-entry-of))
 
 ;; WHAT 0: "N TAB"; 1: "N CR LF"; 2: CR LF; 3: ". CR LF" (the terminator).
@@ -775,12 +788,12 @@
  :tables (fn2-core-pool)
  :doc "Scan at most 4,096 stored octets of the lease for HDR's field, its value appended to TX; (mv code used st k).")
 (defcost fn2-cursor-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
- :doc "Reserve the cursor's read lease (one storage unit) under its own owner: (mv code slot gen).")
+ :doc "Reserve the cursor's read lease (two storage units) under its own owner: (mv code slot gen).")
 (defcost fn2-cursor-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
  :doc "Return the cursor's read lease.")
 (defcost fn2-cursor-manifest-entry :child fn2-cursor-manifest-entry-of :answers (:ok :bounds)
  :bytes 512 :tables (fn2-core-reads fn2-core-id-decides fn2-core-fc fn2-core-fields fn2-core-pool)
- :doc "Decode the next block's source-manifest entry from the manifest unit in the lease: (mv code mpos lo len unit epoch alloc).")
+ :doc "Decode the next block's source-manifest entry from the manifest unit in the lease: (mv code mpos lo len unit epoch alloc hoff cvoff).")
 (defcost fn2-cursor-lease-class :child fn2-cursor-lease-class-of :doc "The pool class of the cursor's read lease (nil: none).")
 (defcost fn2-cursor-copy-span :child fn2-gram-put-span :answers t :bytes 256 :tables (fn2-core-pool)
  :doc "Copy a Message-ID span from RX into TX.")
@@ -1241,7 +1254,8 @@
   ;; HDR's field in the stored octets read so far (the header block ends
   ;; the scan, so the body is never read); a page breaks inside a long value
   (hdr-copy :on-refusal ((:stop :machine-phase))
-     (:do (hc used st k) (fn2-cursor-hscan row-loff row-plen row-ast row-hk row-a0 row-b0 row-rx-slot row-rx-gen
+     (:let base (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0))
+     (:do (hc used st k) (fn2-cursor-hscan (+ base row-loff) (+ base row-plen) row-ast row-hk row-a0 row-b0 row-rx-slot row-rx-gen
                                           row-lslot row-lgen row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
       :accept ()
       :case (((:full) (:set (loff (+ row-loff (nfix used))) (ast st) (hk k))
@@ -1321,20 +1335,23 @@
                (:goto hand))))
   ;; one extent's octets are read unit by unit from LUNIT; octets named
   ;; through a source manifest read the manifest's unit holding the next
-  ;; block's entry (art-entry decodes it), then the block
+  ;; block's entry (art-entry decodes it), then the block, with no reset
+  ;; between: the block lands at the lease's fill, [4096, 4096+BLEN), beside
+  ;; the entry it is checked against (:fetch)
   (art-read :on-refusal ((:stop :machine-phase))
      (:let pos row-apos)
      (:let off (mod pos *fn2-commit-unit-bytes*))
      (:let len (min (- *fn2-commit-unit-bytes* off) (nfix (- row-alen pos))))
      (:if (not (and (natp budget) (< 0 budget))) ((:yield))
-          ((:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
-           (:cond
+          ((:cond
             ((equal row-mkind 0)
+             (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
              (:issue (fn2-block-read (+ row-lunit (floor pos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc off len
                                      row-lslot row-lgen :principal row-principal-slot)
               :ok ((:set (plen len) (loff 0) (rready 0) (mread 0)) (:next :fetch)
                    (:wait :completion :bytes 4096 :steps *fn2-work-small*))))
             ((equal row-bready 0)
+             (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
              (:issue (fn2-block-read (+ row-lunit (floor row-mpos *fn2-commit-unit-bytes*)) row-lepoch row-lalloc
                                      0 *fn2-commit-unit-bytes* row-lslot row-lgen :principal row-principal-slot)
               :ok ((:set (plen *fn2-commit-unit-bytes*) (loff 0) (rready 0) (mread 1)) (:next :fetch)
@@ -1346,11 +1363,13 @@
                    (:wait :completion :bytes 4096 :steps *fn2-work-small*))))))))
   ;; the next block's manifest entry: it must name the octets from APOS on
   (art-entry :on-refusal ((:stop :machine-phase))
-     (:do (ec mp lo len unit epoch alloc) (fn2-cursor-manifest-entry (+ 1 (* 2 row-slot)) row-lslot row-lgen row-mpos row-alen)
+     (:do (ec mp lo len unit epoch alloc hoff cvoff)
+          (fn2-cursor-manifest-entry (+ 1 (* 2 row-slot)) row-lslot row-lgen row-mpos row-alen)
       :accept (:ok :bounds) :why ":bounds: a manifest that does not name the next octets fails the read")
      (:if (and (eq ec :ok) (equal lo row-apos) (< 0 len) (<= len *fn2-commit-unit-bytes*)
-               (<= (+ row-apos len) row-alen))
-          ((:set (mpos mp) (bunit unit) (bepoch epoch) (balloc alloc) (blen len) (bready 1) (step 23))
+               (<= (+ row-apos len) row-alen) (unsigned-byte-p 32 hoff) (unsigned-byte-p 32 cvoff))
+          ((:set (mpos mp) (bunit unit) (bepoch epoch) (balloc alloc) (blen len) (bhash hoff) (bcv cvoff)
+                 (bready 1) (step 23))
            (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
           ((:set (step 25)) (:goto art-fail))))
      ;; :stale or :bounds (a location the allocator no longer names) stops
@@ -1374,7 +1393,9 @@
                                               :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
               :accept (:ok))
              (:set (said 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-            (t (:do (sc used st) (fn2-cursor-stuff row-loff row-plen row-ast row-lslot row-lgen
+            (t (:do (sc used st) (fn2-cursor-stuff (+ (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-loff)
+                                                   (+ (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-plen)
+                                                   row-ast row-lslot row-lgen
                                                    row-tx-slot row-tx-gen row-conn-kind row-conn row-conn-gen)
                 :accept ()
                 :case (((:full) (:set (loff (+ row-loff (nfix used))) (ast st))
@@ -1561,14 +1582,26 @@
           ((equal row-turn 0) (:charge :steps *fn2-work-empty*))
           ((equal row-done 1) (:next :finish) (:charge :steps *fn2-work-transition* :runnable t))
           (t (:next :render) (:charge :steps *fn2-work-transition* :runnable t))))
-  ;; B's block read is in flight; its result decides
+  ;; B's block read is in flight; its result decides: a manifest unit is
+  ;; decoded (art-entry); a block named through it is checked against its
+  ;; entry by B's completion (BLAKE3 and chaining value), a mismatch failing
+  ;; the read as an I/O failure does (art-fail: refused before the 22x line,
+  ;; the connection closed after it)
   (:fetch :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-rready 0) (:charge :steps *fn2-work-poll*))
-          ((and (equal row-revent *fn2-event-read-result*) (equal row-routcome *fn2-outcome-done*)
-                (equal row-rcount row-plen))
-           (:set (rready 0) (step (if (equal row-mread 1) 26 24)) (mread 0)) (:next :render)
+          ((not (and (equal row-revent *fn2-event-read-result*) (equal row-routcome *fn2-outcome-done*)))
+           (:set (rready 0) (step 25)) (:next :render) (:charge :steps *fn2-work-transition* :runnable t))
+          ((equal row-mread 1)
+           (:set (rready 0) (mread 0) (step (if (equal row-rcount row-plen) 26 25))) (:next :render)
            (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:set (rready 0) (step 25)) (:next :render) (:charge :steps *fn2-work-transition* :runnable t))))
+          (t
+           (:do (dc) (fn2-block-read-done row-rcount row-plen (if (equal row-mkind 1) 1 0) row-lslot row-lgen
+                                          (if (equal row-mkind 1) *fn2-commit-unit-bytes* 0) row-bhash row-bcv
+                                          (floor row-apos *fn2-commit-unit-bytes*))
+            :accept (:ok :io :hash)
+            :why ":io: fewer octets than asked; :hash: a block its manifest entry does not name (S9a)")
+           (:set (rready 0) (step (if (eq dc :ok) 24 25))) (:next :render)
+           (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
   (:finish :on-refusal ((:stop :machine-phase))
    (:do (rc1) (fn2-read-release (* 2 row-slot)) :accept (:ok))
    (:do (rc2) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))

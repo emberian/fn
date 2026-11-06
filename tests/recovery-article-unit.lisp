@@ -281,11 +281,11 @@
 ; one its manifest's extent and two block extents; recovery :done and :intact
 ; under broad assumptions with A-PERSISTENCE-FENCE (assume 2) and crash-only
 ; too (assume 3), the same allocations, both articles read back whole, and a
-; moved allocation refused :stale.
-(defun fn2-ra-test (assume)
+; moved allocation refused :stale. One POST run (PRE) serves both
+; assumptions: recovery reads only the device it left.
+(defun fn2-ra-test (assume pre)
   (declare (xargs :verify-guards nil))
-  (b* ((pre (fn2-ra-post))
-       (store (nth 2 pre)) (allocs (nth 3 pre))
+  (b* ((store (nth 2 pre)) (allocs (nth 3 pre))
        (owners (fn2-ra-owners allocs nil))
        (post (fn2-ra-recover store assume owners)))
     (or (and (equal (nth 0 pre) :quiet) (equal (nth 1 pre) *fn2-ra-wire*) (equal (nth 4 pre) 0)
@@ -299,4 +299,4 @@
         (cw "recovery-article ~x0~%pre ~x1~%post ~x2~%" assume
             (list (nth 0 pre) (equal (nth 1 pre) *fn2-ra-wire*) (nth 4 pre) allocs owners)
             post))))
-(assert-event (and (fn2-ra-test 2) (fn2-ra-test 3)))
+(assert-event (let ((pre (fn2-ra-post))) (and (fn2-ra-test 2 pre) (fn2-ra-test 3 pre))))

@@ -1571,8 +1571,32 @@ one manifest unit of entries per step (`mdrain`). The transaction's `:batched` c
 the manifest names in its one step (`fn2-upload-extents-of`, at most one extent of manifest
 decoded, within its 26,624-octet budget). The cursor reads the manifest unit holding the next
 entry, decodes it (`art-entry`) and reads the block. Recovery allocates payload extents (S9b).
-Owed: read-side verification of a block's hash and chaining value (`fn2-block-read-done` checks
-none), the cursor's second manifest read per block (a manifest lease would halve the reads).
+
+The read-side check (ruled 2026-11-05, the fill route). The cursor's lease holds two units
+(`fn2-cursor-lease-class-of`: the smallest pool class of at least 8,192 octets). Per block the cursor
+resets the lease, reads the manifest unit holding the entry into [0, 4096), and decodes it
+(`art-entry`; `fn2-cursor-manifest-entry` also answers where the lease holds the entry's BLAKE3 and
+chaining value, kept in BHASH and BCV). It then reads the block with no reset in between, so the
+block lands at the lease's fill, [4096, 4096+len) (`fn2-pool-lease-in` leases at the fill;
+`fn2-issue-read` takes no destination offset). B's completion `fn2-block-read-done` (child
+`fn2-block-read-done-children`, `:answers (:ok :io :hash :bounds)`, 8,192 octets) checks that every
+octet arrived (`:io`). It hashes the block in the BLAKE3 table's top row and compares the result
+with the entry's BLAKE3. It then compares the chaining value: `fn2-b3-subtree-cv-into` at chunk
+counter 4i for a whole unit, the BLAKE3 again for a short final block. Either mismatch answers
+`:hash`. The row is one more format row: the floor is 5 + w + c, the top row 4 + w + c, and E's
+control rows stay at 4 + w + S (`fn2-ctl-fc-row` is FC-ROWS - C - 1 + S). One row serves every cursor
+row because the init, the update and the finalize all run within the one call. The cursor's
+`:fetch` routes `:hash` like a failed read (`art-fail`): it is refused before the 22x line, and the
+connection closes after it. `:bounds` (the row or the lease range is missing) stops the core,
+because then the core contradicts its own layout. Control: tests/txn-unit
+`fn2-txn-test-big-corrupt`. Unit 1 of every extent is a corrupt sector (`:corrupt` in owed-conn's
+device: the first octet's low bit is flipped on every read, and the read still completes whole).
+ARTICLE 1 sends the 220 line and no octet past block 0, then closes, with stop reason 0.
+`fn2-txn-test-big` reads back unchanged. Not checked: stored octets within one payload extent
+(location kind `:extent`) have no per-unit hash. Their check is the source digest over all the
+stored octets, which needs a hasher row held across steps (owed). Also owed: the second manifest
+read per block (a manifest lease would halve the reads), and an 8,192-octet pool class in the
+served profiles (today the lease takes the 64 KiB class where no 8 KiB one exists).
 
 **S9b. As built: recovery adopts the payload extents (lane article-octets,
 `books/recovery-payload.lisp`).** After the chain search ends (no successor, or a broken link) the
@@ -1632,7 +1656,9 @@ declares `:answers`.
 - `(fn2-block-read-done ref-row lease-slot lease-gen fn2-core) -> (mv code fn2-core)`, with
   `:answers (:ok :hash :io)`. It runs after the result. For a whole block it verifies the block's
   expected hash with the BLAKE3 hasher row (`:hash` is damage, never served). It drops the
-  `:borrow` edge.
+  `:borrow` edge. As built (S9a) it is `(fn2-block-read-done bytes len verify lslot lgen boff hoff
+  cvoff block)` over `fn2-core-b3 fn2-core-digests fn2-core-pool`, `:answers (:ok :io :hash
+  :bounds)`; no borrow edge is taken or dropped.
 A cursor's `:need-page` issues the same pair. The caller owns the lease, so B writes no other kind's
 row.
 

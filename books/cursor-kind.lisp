@@ -30,9 +30,11 @@
           (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
           ;; octets named through a source manifest (MKIND): the next entry's
           ;; manifest octet (MPOS), the block it names (BUNIT BEPOCH BALLOC
-          ;; BLEN, BREADY once decoded) and whether the read in flight is the
-          ;; manifest's (MREAD)
+          ;; BLEN, BREADY once decoded), where the lease holds the entry's
+          ;; BLAKE3 and chaining value (BHASH BCV, the block read's check)
+          ;; and whether the read in flight is the manifest's (MREAD)
           (mkind :bool) (mpos :u32) (bunit :u60) (bepoch :u60) (balloc :u60) (blen :u32) (bready :bool) (mread :bool)
+          (bhash :u32) (bcv :u32)
           ;; HDR over stored headers (HMODE): the scan's matched name octets
           ;; (HK; its state is AST) and the range's step to resume (HSTEP)
           (hmode :bool) (hk :u32) (hstep :u8)
@@ -53,7 +55,7 @@
          :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
-                 mkind mpos bunit bepoch balloc blen bready mread hmode hk hstep cursor))
+                 mkind mpos bunit bepoch balloc blen bready mread bhash bcv hmode hk hstep cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))
