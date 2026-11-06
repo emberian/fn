@@ -275,7 +275,7 @@
 ; holds it to :done.
 (defconst *fn2-recovery-transitions*
  '((:free :read) (:read :read-result :search) (:read-result :verify :read :install)
-   (:verify :read :search :install) (:search :read :install) (:install :done) (:done)))
+   (:verify :read :search :install :done) (:search :read :install) (:install :read :done) (:done)))
 (defmachine fn2-recovery-machine
  :states (:free :read :read-result :verify :search :install :done)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
@@ -289,11 +289,17 @@
           ;; source manifest being followed (its position, unit, units, stored
           ;; length and owner event)
           (rc-commit :u60) (rc-roff :u32) (rc-rend :u32)
-          (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60))
+          (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60)
+          ;; M7's replay: the member workspace (held with the window), its
+          ;; length and its member's event, the members replayed of the
+          ;; current commit, and whether any was
+          (rc-wslot :u32) (rc-wgen :u60) (rc-wlen :u32) (rc-wevent :u60) (rc-wmembers :u32) (rc-replayed :bool))
  :holds ((:read :storage-job :storage-window) (:read-result :storage-job :storage-window)
          (:verify :storage-job :storage-window) (:search :storage-job :storage-window)
          (:install :storage-job :storage-window))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
+ ;; a replay hook's refusal, after the replayed prefix (M7)
+ :stops (:recovery-replay)
  :capacity 1
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  ;; The arms are in the arm language (recovery-machine.lisp), their
@@ -308,7 +314,7 @@
 ; tables are named by layer group, never by an upper layer's child names.
 (defcost fn2-runs-install :bytes 4096 :tables (fn2-core-pool (:layers :c))
  :doc "C installs a durable batch's run-replacement member: decode its workspace, swap the schema's runs.")
-(defcost fn2-member-replay :bytes 4096 :tables (fn2-core-pool (:layers :c :d))
+(defcost fn2-member-replay :answers t :bytes 4096 :tables (fn2-core-pool (:layers :c :d))
  :doc "Rebuild a recovered transaction member's rows from its record stream.")
 ; Declared costs of recovery's outside calls. Each is a table-level operation
 ; of recovery-machine.lisp over the row's owner triple; none writes the row.
@@ -367,6 +373,8 @@
 (defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
 (defcost fn2-block-read-done :answers (:ok :io) :doc "B-S2 S10: the read's completion.")
+(defcost fn2-recovery-release-workspace :answers t :tables (fn2-core-pool)
+ :doc "Release M7's member workspace, the recovery bundle's range beside its window.")
 (defcost fn2-recovery-finish :answers t :tables (fn2-core-commit-root fn2-core-extents)
  :doc "Install the commit frontier and begin the writer epoch above every adopted identity.")
 

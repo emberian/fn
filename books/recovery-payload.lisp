@@ -232,6 +232,84 @@
   :hints (("Goal" :in-theory (enable fn2-recovery-manifest-unit))))
 (in-theory (disable fn2-recovery-manifest-unit))
 
+;; The member workspace WSLOT WGEN (emptied first when WLEN is 0) gains at
+;; WLEN the transaction frame of a KIND record of BLEN octets, then those
+;; octets copied from NEXT of the window: (mv code wnext fn2-core).
+(defun fn2-rp-frame-copy (kind blen next wlen wslot wgen slot gen id ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-encode fn2-format-txn-record-size)))))
+  (b* (((unless (and (unsigned-byte-p 60 kind) (unsigned-byte-p 60 blen) (natp next) (natp wlen)
+                     (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
+        (mv :bounds 0 fn2-core))
+       ((mv code wnext fn2-core)
+        (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+        (code wnext fn2-fields fn2-pool)
+        (b* ((base *fn2-rec-field-base*) (okind *fn2-recovery-machine-kind*)
+             ((unless (and (fn2-rp-roomp) (<= (+ base *fn2-format-txn-record-num-fields*) (fn2-fields-rows fn2-fields))))
+              (mv :bounds 0 fn2-fields fn2-pool))
+             ((mv code fn2-pool)
+              (if (zp wlen) (fn2-pool-reset wslot wgen okind id ogen fn2-pool) (mv :ok fn2-pool)))
+             ((unless (eq code :ok)) (mv :bounds 0 fn2-fields fn2-pool))
+             (fn2-fields (fn2-fields-set-value (+ base *fn2-format-txn-record-field-record-kind*) kind fn2-fields))
+             (fn2-fields (fn2-fields-set-value (+ base *fn2-format-txn-record-field-length*) blen fn2-fields))
+             ((mv code hnext fn2-pool)
+              (fn2-format-txn-record-encode base wslot wgen wlen okind id ogen fn2-fields fn2-pool))
+             ((unless (and (eq code :ok) (natp hnext) (<= (+ hnext blen) *fn2-commit-unit-bytes*)))
+              (mv :bounds 0 fn2-fields fn2-pool))
+             ((mv code fn2-pool) (fn2-pool-copy-range slot gen next wslot wgen hnext blen okind id ogen fn2-pool)))
+          (mv (if (eq code :ok) :ok :bounds) (+ hnext blen) fn2-fields fn2-pool))
+        (mv code wnext fn2-core))))
+    (mv code (nfix wnext) fn2-core)))
+(fn2-core-preserves fn2-rp-frame-copy (kind blen next wlen wslot wgen slot gen id ogen fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-format-txn-record-encode fn2-pool-copy-range fn2-pool-reset))))
+(defthm fn2-rp-frame-copy-natp (natp (mv-nth 1 (fn2-rp-frame-copy kind blen next wlen wslot wgen slot gen id ogen fn2-core)))
+  :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-rp-frame-copy))))
+(in-theory (disable fn2-rp-frame-copy))
+
+;; M7's replay (b-durability.md M7), after the payload pass and the install:
+;; one record of a chained commit's stream at ROFF, rebuilt into the member
+;; workspace WSLOT WGEN (WLEN octets so far, of the member at event WEVENT)
+;; as admission took it: the transaction frame (its kind, its body's
+;; length), then the body verbatim. (mv code next wlen event fn2-core):
+;; :end (the stream is done); :appended (NEXT the record after it, WLEN the
+;; workspace's length, EVENT its member's); :boundary (the record begins
+;; another member while the workspace holds one: replay that one first,
+;; nothing read past it); :skip (a keyed mutation, a member no layer
+;; replays); :invalid (a record that does not decode: the stream decoded at
+;; the payload pass, so its unit read back otherwise); :bounds.
+(defun fn2-recovery-replay-record (roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-encode fn2-format-txn-record-size)))))
+  (b* (((unless (fn2-rp-room-ok fn2-core)) (mv :bounds 0 0 0 fn2-core))
+       ((unless (and (natp roff) (natp rend) (<= rend *fn2-commit-unit-bytes*) (natp wlen) (<= wlen *fn2-commit-unit-bytes*)
+                     (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
+        (mv :invalid 0 0 0 fn2-core))
+       ((when (<= rend roff)) (mv :end roff wlen wevent fn2-core))
+       ((mv vcode version)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (vcode version)
+          (fn2-rec-byte-at slot gen (if (< (+ 1 roff) rend) (+ 1 roff) roff) *fn2-recovery-machine-kind* id ogen fn2-pool)
+          (mv vcode version)))
+       ((unless (eq vcode :ok)) (mv :invalid 0 0 0 fn2-core))
+       ((when (equal version 0)) (mv :end roff wlen wevent fn2-core))
+       ((mv code next kind event fn2-core) (fn2-rp-header roff rend slot gen id ogen fn2-core))
+       ((unless (and (eq code :ok) (< roff next) (<= next rend))) (mv :invalid 0 0 0 fn2-core))
+       ((mv code bnext fn2-core) (fn2-rp-body kind next rend slot gen id ogen fn2-core))
+       ((unless (and (eq code :ok) (<= next bnext) (<= bnext rend))) (mv :invalid 0 0 0 fn2-core))
+       ((when (and (< 0 wlen) (or (equal kind *record-kind-keyed-mutation*) (not (equal event wevent)))))
+        (mv :boundary roff wlen wevent fn2-core))
+       ((when (equal kind *record-kind-keyed-mutation*)) (mv :skip bnext 0 0 fn2-core))
+       ((unless (member kind *fn2-commit-txn-record-kinds*)) (mv :invalid 0 0 0 fn2-core))
+       (blen (- bnext next))
+       ((mv code wnext fn2-core) (fn2-rp-frame-copy kind blen next wlen wslot wgen slot gen id ogen fn2-core))
+       ((unless (eq code :ok)) (mv :bounds 0 0 0 fn2-core)))
+    (mv :appended bnext (nfix wnext) event fn2-core)))
+(fn2-core-preserves fn2-recovery-replay-record (roff rend wslot wgen wlen wevent slot gen id ogen fn2-core) :position 4 :rows nil)
+(defthm fn2-recovery-replay-record-naturals
+  (and (natp (mv-nth 1 (fn2-recovery-replay-record roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)))
+       (natp (mv-nth 2 (fn2-recovery-replay-record roff rend wslot wgen wlen wevent slot gen id ogen fn2-core))))
+  :hints (("Goal" :in-theory (enable fn2-recovery-replay-record))))
+(in-theory (disable fn2-recovery-replay-record))
+
 (defcost fn2-am-units :doc "The units of the source manifest that names stored octets of a length.")
 (defcost fn2-recovery-record-next :answers (:end :other :raw :manifest :invalid :bounds) :bytes 4096
   :tables (fn2-core-pool fn2-core-fields)
@@ -241,3 +319,6 @@
 (defcost fn2-recovery-manifest-unit :answers (:more :done :conflict :invalid :bounds) :bytes 4096
   :tables (fn2-core-pool fn2-core-fields fn2-core-rec-cand)
   :doc "Recovery's payload pass: claim the block extents one source manifest unit names.")
+(defcost fn2-recovery-replay-record :answers (:end :appended :boundary :skip :invalid :bounds) :bytes 4096
+  :tables (fn2-core-pool fn2-core-fields)
+  :doc "M7's replay: one record of a chained commit's stream rebuilt into its member's workspace as admission took it.")
