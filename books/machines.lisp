@@ -578,6 +578,61 @@
   (if (atom while) nil
     (let ((rest (fn2-machine-holds-domains (cdr while) fields)) (f (caddr (car while))))
       (if (assoc-eq f rest) rest (cons (cons f (caddr (cadr (assoc-eq f fields)))) rest)))))
+;; The declaration's shape, every failed rule by name (DEV-LOOP 2; it was one
+;; "Invalid machine declaration"). States and fields first: the rest read them.
+(defun fn2-machine-declaration-problems (name states fields stops newp arms observe-arms subarms links
+                                              genesis continuations observes initial budget capacity)
+  ;; :normalize nil: the twenty independent conditionals would otherwise be
+  ;; case-split into the definition's normal form (105 s; 0.02 s without)
+  (declare (xargs :verify-guards nil :normalize nil))
+  (cond
+   ((not (and (consp states) (fn2-columns-keyword-listp states) (no-duplicatesp-eq states) (<= (len states) 256)))
+    (list (msg ":states ~x0 is one to 256 distinct keywords." states)))
+   ((not (fn2-columns-declarationsp fields))
+    (list (msg ":fields ~x0 is a list of column declarations (NAME TYPE)." fields)))
+   (t
+    (fn2-arm-nonnil
+     (list
+      (and (not (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*) (strip-cars fields))))
+           (msg ":fields names a field twice, or PHASE or a common field ~x0: ~x1."
+                (strip-cars *fn2-machine-common-fields*) (strip-cars fields)))
+      ;; a kind's own stop reasons, by index (MACHINE-FORM 6.10)
+      (and (not (and (fn2-columns-keyword-listp stops) (no-duplicatesp-eq stops) (< (len stops) 256)))
+           (msg ":stops ~x0 is fewer than 256 distinct keywords." stops))
+      (and newp (not (fn2-machine-arm-entriesp arms))
+           (msg ":arms is a list of (PHASE [:from ..] [:on-refusal ..] STEP ...) entries."))
+      (and newp (not (fn2-machine-arm-entriesp observe-arms))
+           (msg ":observes (handlers) is a list of (EVENT [:from ..] [:on-refusal ..] STEP ...) entries."))
+      (and newp (not (and (alistp subarms) (symbol-listp (strip-cars subarms))))
+           (msg ":subarms is a list of (NAME STEP ...) entries."))
+      ;; typed links (G3, D F8), checked whole by defmachine-arms
+      (and (not (and (alistp links) (symbol-listp (strip-cars links)) (no-duplicatesp-eq (strip-cars links))))
+           (msg ":links is a list of (NAME ...) entries with distinct names."))
+      (and links (not newp) (msg ":links need the arm language (:arms)."))
+      (and (not (true-listp genesis)) (msg ":genesis is a list of steps."))
+      (and genesis (not newp) (msg ":genesis needs the arm language (:arms)."))
+      (and (not (fn2-machine-continuationsp continuations nil))
+           (msg "the continuations ~x0 are not well-formed arm contracts." (strip-cars continuations)))
+      (and (not (fn2-machine-continuationsp observes t))
+           (msg "the handlers ~x0 are not well-formed arm contracts." (strip-cars observes)))
+      (and (not (no-duplicatesp-eq (strip-cars observes)))
+           (msg "two handlers observe one event: ~x0." (strip-cars observes)))
+      (and (not (fn2-columns-keyword-listp (strip-cars observes)))
+           (msg "handler events ~x0 are keywords." (strip-cars observes)))
+      (and (not (equal (strip-cars continuations) states))
+           (msg "the arms' phases ~x0 are not :states ~x1, one arm per phase in order." (strip-cars continuations) states))
+      (and (not (and (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))))
+           (msg ":initial ~x0 is ((FIELD VALUE) ...), each field once." initial))
+      (and (not (fn2-machine-directory-initial-p initial))
+           (msg ":initial ~x0 gives a directory field a value it cannot start with." initial))
+      (and (doublet-listp initial)
+           (not (fn2-machine-initialp name (append `((phase (:enum state ,states))) *fn2-machine-common-fields* fields)
+                                      states initial))
+           (msg ":initial ~x0 names a field ~x1 lacks or a value outside its type." initial name))
+      (and (not (and (natp (cadr (member-eq :bytes budget))) (natp (cadr (member-eq :steps budget)))
+                     (natp (cadr (member-eq :descriptors budget)))))
+           (msg ":budget ~x0 is (:bytes N :steps N :descriptors N), naturals." budget))
+      (and (not capacity) (msg ":capacity is nil.")))))))
 (defmacro defmachine (name &key states phases fields budget continuations observes (capacity '1) initial holds
                            admission taken arms subarms stops links sub genesis)
   (let* ((states (or states phases))
@@ -602,31 +657,8 @@
          (observe-arms (and newp observes))
          (continuations (if newp (fn2-machine-arm-skeleton name arms "-RUN-") continuations))
          (observes (if newp (fn2-machine-arm-skeleton name observes "-ON-") observes)))
-  (if (and (consp states)
-           (fn2-columns-keyword-listp states) (no-duplicatesp-eq states)
-           (<= (len states) 256) (fn2-columns-declarationsp fields)
-           (no-duplicatesp-eq (append '(phase) (strip-cars *fn2-machine-common-fields*)
-                                      (strip-cars fields)))
-           ;; a kind's own stop reasons, by index (MACHINE-FORM 6.10)
-           (and (fn2-columns-keyword-listp stops) (no-duplicatesp-eq stops) (< (len stops) 256))
-           (or (not newp) (and (fn2-machine-arm-entriesp arms) (fn2-machine-arm-entriesp observe-arms)
-                               (alistp subarms) (symbol-listp (strip-cars subarms))))
-           ;; typed links (G3, D F8), checked whole by defmachine-arms
-           (and (alistp links) (symbol-listp (strip-cars links)) (no-duplicatesp-eq (strip-cars links))
-                (or newp (null links)))
-           (and (true-listp genesis) (or newp (null genesis)))
-           (fn2-machine-continuationsp continuations nil)
-           (fn2-machine-continuationsp observes t) (no-duplicatesp-eq (strip-cars observes))
-           (doublet-listp initial) (no-duplicatesp-eq (strip-cars initial))
-           (fn2-machine-directory-initial-p initial)
-           (fn2-machine-initialp name
-             (append `((phase (:enum state ,states))) *fn2-machine-common-fields* fields)
-             states initial)
-           (fn2-columns-keyword-listp (strip-cars observes))
-           (equal (strip-cars continuations) states)
-           (natp (cadr (member-eq :bytes budget)))
-           (natp (cadr (member-eq :steps budget)))
-           (natp (cadr (member-eq :descriptors budget))) capacity)
+  (if (null (fn2-machine-declaration-problems name states fields stops newp arms observe-arms subarms links
+                                               genesis continuations observes initial budget capacity))
       (let* ((own (remove-eq 'phase (strip-cars (append *fn2-machine-common-fields* fields))))
              (problem (or sub-problem (and sub (not newp) (msg "~x0: an inner machine needs the arm language (:arms)." name))
                           phase-problem while-problem
@@ -639,13 +671,20 @@
                           (fn2-machine-admission-problem name admission states own)
                           (fn2-machine-taken-problem name taken admission states own))))
         (if problem `(make-event (er soft 'defmachine "~@0" ',problem))
-          (fn2-machine-events name states fields budget continuations observes capacity initial holds
+          `(progn
+             ;; fields of one name across kinds share one dispatcher (assembly-access)
+             (make-event (let ((p (fn2-arm-nonnil (fn2-machine-shared-field-problems ',name ',fields (fn2-machine-names (w state)) (w state)))))
+                           (if p (er soft 'defmachine "~@0" (fn2-arm-problems (msg "~x0 " ',name) p))
+                             (value '(value-triple :shared-fields-ok)))))
+             ,(fn2-machine-events name states fields budget continuations observes capacity initial holds
                               admission taken (and newp (list* :arms arms :subarms subarms :observe-arms observe-arms :stops stops
                                                     (append (and phase-fields (list :phase-fields phase-fields))
                                                             (and holds-while (list :holds-while holds-while))
                                                             (and links (list :links links))
-                                                            (and genesis (list :genesis genesis))))))))
-    (er hard 'defmachine "Invalid machine declaration ~x0." name))))
+                                                            (and genesis (list :genesis genesis)))))))))
+    (er hard 'defmachine "Invalid machine declaration ~x0: ~@1" name
+        (fn2-arm-problems "" (fn2-machine-declaration-problems name states fields stops newp arms observe-arms subarms
+                                                               links genesis continuations observes initial budget capacity))))))
 
 ; ----------------------------------------------------------------------
 ; Owner-declared wait kinds (MACHINE-FORM 6.10, D F4): a D0 wait kind whose
@@ -732,6 +771,43 @@
                       (cdr (assoc-eq name (table-alist 'fn2-machine-arm-contracts world))))))
     (if derived (cadr (member-eq key derived))
       (fn2-machine-declared name key world))))
+;; A field F of kinds K1 ... Kn is one dispatcher FN2-MACHINE-F over all of
+;; them, typed by the first kind's F (fn2-machine-all-field-events): a later
+;; kind's wider F would fail the dispatcher's -BOUND in assembly-access, and a
+;; new F whose dispatcher name is already a function collides. Checked when
+;; the kind registers, every field at once.
+(defun fn2-machine-field-first-kind (field names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let ((e (assoc-eq field (fn2-machine-property (car names) :columns world))))
+      (if e (list (car names) (cadr e)) (fn2-machine-field-first-kind field (cdr names) world)))))
+(defun fn2-machine-dispatch-names (field)
+  (declare (xargs :verify-guards nil))
+  (let ((get (fn2-columns-col-name 'fn2-machine field)))
+    (list get (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field))
+          (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "WRITE-" field))
+          (fn2-columns-sym get "-READ-CODE") (fn2-columns-sym get "-READ"))))
+(defun fn2-machine-defined-names (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (if (or (function-symbolp (car names) world) (getpropc (car names) 'macro-body nil world))
+        (cons (car names) (fn2-machine-defined-names (cdr names) world))
+      (fn2-machine-defined-names (cdr names) world))))
+(defun fn2-machine-shared-field-problems (name fields names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let* ((f (caar fields)) (ty (cadar fields))
+           (first (fn2-machine-field-first-kind f (remove-eq name names) world))
+           (taken (and (not first) (fn2-machine-defined-names (fn2-machine-dispatch-names f) world))))
+      (cons (cond ((and first (< (fn2-columns-width (cadr first)) (fn2-columns-width ty)))
+                   (msg "field ~x0 is ~x1 (~x2 bits), wider than ~x3's field ~x0 (~x4, ~x5 bits): one dispatcher ~
+                         ~x6 serves every kind's ~x0, bounded by the first kind's width; rename the field or narrow it."
+                        f ty (fn2-columns-width ty) (car first) (cadr first) (fn2-columns-width (cadr first))
+                        (car (fn2-machine-dispatch-names f))))
+                  (taken
+                   (msg "field ~x0's dispatcher names ~x1 are already defined; rename the field." f taken))
+                  (t nil))
+            (fn2-machine-shared-field-problems name (cdr fields) names world)))))
 (defun fn2-machine-arm-call (kind fn fixed bound world)
   ; FN's call with its row fields: those not already BOUND are read here.
   (declare (xargs :verify-guards nil))
@@ -1082,50 +1158,58 @@
                     (list tag)))
          (uses (fn2-arm-get :uses c))
          (posture (fn2-arm-get :on-refusal c)))
-    (cond
-     ((not (and (natp (car v)) (natp (cadr v)) (natp (caddr v))))
-      (msg "~x0: arm ~x1's cost ~x2 cites a call with no declared cost." name tag (fn2-arm-get :cost c)))
-     ((not (and (<= (car v) (car caps)) (<= (cadr v) (cadr caps)) (<= (caddr v) (caddr caps))))
-      (msg "~x0: arm ~x1 costs ~x2 (bytes steps descriptors), over the per-run caps ~x3."
-           name tag v caps))
-     ((and (not observationp)
-           (or (equal (car v) (car caps)) (equal (cadr v) (cadr caps)) (equal (caddr v) (caddr caps)))
-           (not (member-eq tag (fn2-arm-get :next c))))
-      (msg "~x0: arm ~x1 can reach a per-run cap (~x2 of ~x3) and must list its own phase in :next ~
-            to continue there." name tag v caps))
-     ((fn2-machine-unresolved-use name uses world)
-      (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
-           name tag (fn2-machine-unresolved-use name uses world)))
-     ((and (not (eq (fn2-arm-get :language c) :unchecked))
-           (fn2-machine-arm-resource-problem name sources c holds ret world))
-      (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds ret world)))
-     ((not (fn2-machine-effect-rows-ok-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds ret world))
-                                         *fn2-resource-order*))
-      (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
-           (fn2-machine-arm-effect-rows name sources c uses holds ret world)))
-     ((and posture (or (fn2-arm-retained-p (car sources) holds)
-                       (fn2-arm-retained-p (fn2-arm-get :to (cdr posture)) holds)))
-      (msg "~x0: arm ~x1's :on-refusal ~x2 moves through a retained phase; route the refusal in the arm." name tag posture))
-     ((and posture
-           (not (and (true-listp posture) (member-eq (car posture) *fn2-arm-postures*)
-                     (member-eq (fn2-arm-get :to (cdr posture)) (fn2-arm-get :next c)))))
-      (msg "~x0: arm ~x1's :on-refusal ~x2 is (POSTURE :to PHASE [:releases KINDS]) with POSTURE in ~x3 ~
-            and PHASE in its :next." name tag posture *fn2-arm-postures*))
-     ((and posture
-           (let ((released (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
-                                          (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
-             (not (and (fn2-arm-subsetp released (fn2-arm-get :releases (cdr posture)))
-                       (fn2-arm-subsetp (fn2-arm-get :releases (cdr posture)) released)))))
-      (msg "~x0: arm ~x1's :on-refusal releases ~x2, but moving ~x3 -> ~x4 gives up ~x5." name tag
-           (fn2-arm-get :releases (cdr posture)) (car sources) (fn2-arm-get :to (cdr posture))
-           (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
-                          (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
-     (t nil))))
+    ;; every independent problem of the arm (cost, uses, D0, refusal posture), each its first
+    (fn2-arm-nonnil
+     (list
+      (cond
+       ((not (and (natp (car v)) (natp (cadr v)) (natp (caddr v))))
+        (msg "~x0: arm ~x1's cost ~x2 cites a call with no declared cost." name tag (fn2-arm-get :cost c)))
+       ((not (and (<= (car v) (car caps)) (<= (cadr v) (cadr caps)) (<= (caddr v) (caddr caps))))
+        (msg "~x0: arm ~x1 costs ~x2 (bytes steps descriptors), over the per-run caps ~x3."
+             name tag v caps))
+       ((and (not observationp)
+             (or (equal (car v) (car caps)) (equal (cadr v) (cadr caps)) (equal (caddr v) (caddr caps)))
+             (not (member-eq tag (fn2-arm-get :next c))))
+        (msg "~x0: arm ~x1 can reach a per-run cap (~x2 of ~x3) and must list its own phase in :next ~
+              to continue there." name tag v caps))
+       (t nil))
+      (cond
+       ((fn2-machine-unresolved-use name uses world)
+        (msg "~x0: arm ~x1 uses ~x2, which is neither a defcost nor a callback of ~x0."
+             name tag (fn2-machine-unresolved-use name uses world)))
+       ((and (not (eq (fn2-arm-get :language c) :unchecked))
+             (fn2-machine-arm-resource-problem name sources c holds ret world))
+        (msg "~x0: arm ~x1 ~@2" name tag (fn2-machine-arm-resource-problem name sources c holds ret world)))
+       ((not (fn2-machine-effect-rows-ok-p (remove-duplicates-equal (fn2-machine-arm-effect-rows name sources c uses holds ret world))
+                                           *fn2-resource-order*))
+        (msg "~x0: arm ~x1's resource effects fail D0's order: ~x2." name tag
+             (fn2-machine-arm-effect-rows name sources c uses holds ret world)))
+       (t nil))
+      (cond
+       ((and posture (or (fn2-arm-retained-p (car sources) holds)
+                         (fn2-arm-retained-p (fn2-arm-get :to (cdr posture)) holds)))
+        (msg "~x0: arm ~x1's :on-refusal ~x2 moves through a retained phase; route the refusal in the arm." name tag posture))
+       ((and posture
+             (not (and (true-listp posture) (member-eq (car posture) *fn2-arm-postures*)
+                       (member-eq (fn2-arm-get :to (cdr posture)) (fn2-arm-get :next c)))))
+        (msg "~x0: arm ~x1's :on-refusal ~x2 is (POSTURE :to PHASE [:releases KINDS]) with POSTURE in ~x3 ~
+              and PHASE in its :next." name tag posture *fn2-arm-postures*))
+       ((and posture
+             (let ((released (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
+                                            (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
+               (not (and (fn2-arm-subsetp released (fn2-arm-get :releases (cdr posture)))
+                         (fn2-arm-subsetp (fn2-arm-get :releases (cdr posture)) released)))))
+        (msg "~x0: arm ~x1's :on-refusal releases ~x2, but moving ~x3 -> ~x4 gives up ~x5." name tag
+             (fn2-arm-get :releases (cdr posture)) (car sources) (fn2-arm-get :to (cdr posture))
+             (fn2-arm-minus (fn2-arm-holds-of (car sources) holds)
+                            (fn2-arm-holds-of (fn2-arm-get :to (cdr posture)) holds))))
+       (t nil))))))
 (defun fn2-machine-arms-problem-1 (name entries observationp ret world)
+  ; every arm's problems, a list
   (declare (xargs :verify-guards nil))
   (if (atom entries) nil
-    (or (fn2-machine-arm-problem name (car entries) observationp ret world)
-        (fn2-machine-arms-problem-1 name (cdr entries) observationp ret world))))
+    (append (fn2-machine-arm-problem name (car entries) observationp ret world)
+            (fn2-machine-arms-problem-1 name (cdr entries) observationp ret world))))
 (defun fn2-machine-arms-problem (name entries observationp world)
   (declare (xargs :verify-guards nil))
   (fn2-machine-arms-problem-1 name entries observationp
@@ -1581,9 +1665,10 @@
   (let* ((run (fn2-columns-sym name "-RUN"))
          (leafp (assoc-eq name (table-alist 'fn2-machine-arm-bodies world)))
          ;; the genesis arm (G3) is checked as an arm from the row's initial phase
-         (problem (or (fn2-machine-arms-problem name (fn2-machine-property name :continuations world) nil world)
-                      (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world)
-                      (fn2-machine-arms-problem name (fn2-machine-property name :genesis-arm world) nil world))))
+         (problem (fn2-arm-problems ""
+                    (append (fn2-machine-arms-problem name (fn2-machine-property name :continuations world) nil world)
+                            (fn2-machine-arms-problem name (fn2-machine-property name :observes world) t world)
+                            (fn2-machine-arms-problem name (fn2-machine-property name :genesis-arm world) nil world)))))
     (if problem `(make-event (er soft 'defmachine-run "~@0" ',problem))
     `(progn
        ,@(fn2-machine-path-report-events name (fn2-machine-arm-path-report

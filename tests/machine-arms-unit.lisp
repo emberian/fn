@@ -8,9 +8,9 @@
 
 (defmachine fn2-arms-probe
  :phases (:free :work :wait :done :loop :take)
- :fields ((pending :u32) (stopped :bool) (target :link) (count :u32) (cap-index :u32) (cap-nonce :u32))
+ :fields ((pending :u32) (stopped :bool) (tgt :link) (count :u32) (cap-index :u32) (cap-nonce :u32))
  :budget (:bytes 4096 :steps 32 :descriptors 1)
- :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (target *fn2-none*))
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (tgt *fn2-none*))
  :stops (:probe-overflow :probe-refused)
  :subarms
  ;; a sub-arm with its own refusal posture (D F1): close's unrouted answers go there
@@ -21,16 +21,16 @@
  ((:free (:idle))
   (:work
    (:cond ((>= row-count 100) (:stop :probe-overflow))
-          ((equal row-target *fn2-none*) (:set (count (+ 1 row-count))) (:charge :steps *fn2-work-empty* :runnable t))
+          ((equal row-tgt *fn2-none*) (:set (count (+ 1 row-count))) (:charge :steps *fn2-work-empty* :runnable t))
           ;; row-slot (D F7) and a wake of another row (D F5)
-          (t (:wake-row row-target) (:set (count row-slot)) (:goto close))))
+          (t (:wake-row row-tgt) (:set (count row-slot)) (:goto close))))
   (:wait (:charge :steps *fn2-work-empty*))
   (:done (:idle))
   ;; a bounded loop (D F6): at most 4 passes, each reading the row afresh
   (:loop (:repeat 4 ((:set (count (+ 1 row-count)))) :until (>= row-count 10))
          (:next :done) (:charge :steps *fn2-work-small*))
   ;; a range handed to this row is accepted as its own (D F9)
-  (:take (:do (code) (fn2-core-accept-hand row-target 0)
+  (:take (:do (code) (fn2-core-accept-hand row-tgt 0)
           :case (((:ok) (:next :done) (:charge :steps *fn2-work-small*))
                  (:otherwise (:stop :probe-refused))))))
  :observes
@@ -73,15 +73,15 @@
 ;; :issue on a kind with no descriptors is checked elsewhere.
 (defmachine fn2-arms-probe2
  :phases (:free :work)
- :fields ((target :link))
+ :fields ((tgt :link))
  :budget (:bytes 4096 :steps 32 :descriptors 0)
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
- :arms ((:free (:idle)) (:work (:wake-row row-target) (:wake-row row-target) (:idle)))
+ :arms ((:free (:idle)) (:work (:wake-row row-tgt) (:wake-row row-tgt) (:idle)))
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe2 :children))
 (defmachine fn2-arms-probe3
  :phases (:free :work)
- :fields ((target :link))
+ :fields ((tgt :link))
  :budget (:bytes 4096 :steps 32 :descriptors 0)
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free (:idle)) (:work (:stop :no-such-reason)))
@@ -272,7 +272,7 @@
 (defmachine fn2-arms-linker
  :phases (:free :work :done)
  :fields ((peer :link) (peer-gen :u60) (peer-kind :u8) (seen :u32) (wslot :u32) (wgen :u60))
- :links ((peer :kind fn2-arms-probe :slot peer :gen peer-gen :kind-field peer-kind :back (target) :reads (count)))
+ :links ((peer :kind fn2-arms-probe :slot peer :gen peer-gen :kind-field peer-kind :back (tgt) :reads (count)))
  :budget (:bytes 4096 :steps 32 :descriptors 0)
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (peer *fn2-none*))
  :arms ((:free (:idle))
@@ -589,3 +589,120 @@
  :observes ())
 (must-fail (defmachine-arms fn2-arms-f2-bad :children))
 (value-triple (cw "MACHINE ARMS UNIT: Brick F2 sequential D0 holdings, derived call-cost summation, :faults + (:refuse WORD), and :do-chain auto-split PASS~%"))
+
+;; DEV-LOOP 2: the generator reports every problem of a declaration at once,
+;; each by name. FN2-ARMS-TEST-DIAG renders defmachine-arms's error as text.
+(defun fn2-arms-test-diag (kind world)
+  (declare (xargs :mode :program))
+  (mv-let (err form) (fn2-arms-events kind :children world)
+    (declare (ignore form))
+    (and err (mv-let (col str) (fmt-to-string "~@0" (list (cons #\0 err))
+                                              :fmt-control-alist '((fmt-soft-right-margin . 100000)
+                                                                   (fmt-hard-right-margin . 100000)))
+               (declare (ignore col)) str))))
+(defun fn2-arms-test-has-all (needles str)
+  (declare (xargs :mode :program))
+  (or (atom needles) (and (stringp str) (search (car needles) str)
+                          (fn2-arms-test-has-all (cdr needles) str))))
+;; five independent problems in one declaration: a reserved payload name, a
+;; COMMON-LISP symbol bound, an undeclared :goto target, answers routed
+;; nowhere without an :on-refusal, and a sub-arm's own reserved binding
+;; (whose caller then says the sub-arm failed, not that it is missing)
+(defmachine fn2-arms-diag
+ :phases (:free :a :b :c :d :e)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((broken (:let outcome 1) (:charge :steps *fn2-work-small*)))
+ :arms ((:free (:idle))
+        (:a (:let event 1) (:charge :steps *fn2-work-small*))
+        (:b (:let fill 2) (:charge :steps *fn2-work-small*))
+        (:c (:goto nowhere))
+        (:d (:do (c v) (fn2-arms-t-fop row-count)) (:set (count v)) (:charge :steps *fn2-work-small*))
+        (:e (:goto broken)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-diag :children))
+(assert-event
+ (fn2-arms-test-has-all
+  '("6 problems, all of them"
+    "sub-arm BROKEN: (:LET OUTCOME 1): OUTCOME is reserved: a handler's payload argument"
+    "arm :A: (:LET EVENT 1): EVENT is reserved: a handler's payload argument"
+    "arm :B: (:LET FILL 2): FILL is no ACL2 variable"
+    "arm :C: (:GOTO NOWHERE): the kind declares no sub-arm NOWHERE"
+    "arm :D: FN2-ARMS-T-FOP's answers (:SOFT :FAULT) are routed by no :accept or :case, and the arm has no :on-refusal"
+    "arm :E: (:GOTO BROKEN): sub-arm BROKEN has its own problem")
+  (fn2-arms-test-diag 'fn2-arms-diag (w state))))
+;; a sub-arm may :goto one declared after it: sub-arms are generated callee
+;; first. The control declares the same sub-arms callee first: the same contracts.
+(defmachine fn2-arms-fwd
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((first (:set (count 1)) (:goto second))
+           (second (:next :done) (:charge :steps *fn2-work-small*)))
+ :arms ((:free (:idle)) (:work (:goto first)) (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-fwd :children)
+(defmachine fn2-arms-fwd-control
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((second (:next :done) (:charge :steps *fn2-work-small*))
+           (first (:set (count 1)) (:goto second)))
+ :arms ((:free (:idle)) (:work (:goto first)) (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-fwd-control :children)
+(assert-event (and (function-symbolp 'fn2-arms-fwd-sub-first-children (w state))
+                   (function-symbolp 'fn2-arms-fwd-sub-second-children (w state))))
+(make-event
+ (let ((a (fn2-arms-test-conts 'fn2-arms-fwd (w state)))
+       (b (fn2-arms-test-conts 'fn2-arms-fwd-control (w state))))
+   (if (and a (equal (fn2-arms-test-next :work a) '(:done))
+            (equal (strip-cars a) (strip-cars b))
+            (equal (cddr (assoc-eq :work a)) (cddr (assoc-eq :work b))))
+       '(value-triple :forward-goto-ok)
+     (er hard 'forward-goto "contracts differ: ~x0 ~x1" a b))))
+;; a :goto cycle is named with its edges
+(defmachine fn2-arms-cycle
+ :phases (:free :work)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :subarms ((p (:goto q)) (q (:goto p)))
+ :arms ((:free (:idle)) (:work (:goto p)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-cycle :children))
+(assert-event (fn2-arms-test-has-all '("sub-arms (P Q) :goto one another in a cycle" "((P Q) (Q P))")
+                                     (fn2-arms-test-diag 'fn2-arms-cycle (w state))))
+;; registry: a field wider than an earlier kind's field of that name is
+;; refused when the kind registers (FN2-ARMS-PROBE's COUNT is :u32), with
+;; both kinds named; the same width is accepted
+(must-fail (defmachine fn2-arms-wide
+            :phases (:free :work)
+            :fields ((count :u60))
+            :budget (:bytes 4096 :steps 32 :descriptors 0)
+            :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+            :arms ((:free (:idle)) (:work (:idle)))
+            :observes ()))
+(assert-event
+ (let ((ps (fn2-machine-shared-field-problems 'fn2-arms-wide '((count :u60) (stopped :bool))
+                                              (fn2-machine-names (w state)) (w state))))
+   (and (car ps) (null (cadr ps))
+        (null (fn2-arm-nonnil (fn2-machine-shared-field-problems 'fn2-arms-wide '((count :u32))
+                                                                (fn2-machine-names (w state)) (w state)))))))
+;; registry: a malformed declaration names each rule it breaks
+(assert-event
+ (equal (len (fn2-machine-declaration-problems 'fn2-arms-bad '(:free :work) '((count :u32)) '(:x :x) t
+                                               '((:free (:idle)) (:work (:idle))) nil nil nil nil
+                                               (fn2-machine-arm-skeleton 'fn2-arms-bad '((:free (:idle)) (:work (:idle))) "-RUN-")
+                                               nil '((generation 1)) '(:bytes 4096 :steps 32) 1))
+        2))
+;; an arm's independent run checks together: over the caps and an unresolved use
+(assert-event
+ (equal (len (fn2-machine-arm-problem 'fn2-arms-probe
+               '(:work fn2-arms-probe-run-work :cost (:bytes 5000) :writes () :next (:work) :uses (fn2-arms-no-such-op))
+               nil nil (w state)))
+        2))
+(value-triple (cw "MACHINE ARMS UNIT: DEV-LOOP 2 every problem at once by name (reserved, COMMON-LISP, undeclared and cyclic :goto, unrouted answers, failed sub-arm, wide shared field, declaration rules, run checks); forward :goto PASS~%"))

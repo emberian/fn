@@ -66,13 +66,13 @@
 ; 7. over budget and the cap-reaching arm without its own phase: run checks.
 (assert-event
  (fn2-machine-arm-problem 'fn2-test-machine
-   '(:step fn2-test-machine-step :cost (:bytes 5000) :writes () :next (:step) :uses ()) nil (w state)))
+   '(:step fn2-test-machine-step :cost (:bytes 5000) :writes () :next (:step) :uses ()) nil nil (w state)))
 (assert-event
  (fn2-machine-arm-problem 'fn2-test-machine
-   '(:step fn2-test-machine-step :cost (:bytes 4096) :writes () :next () :uses ()) nil (w state)))
+   '(:step fn2-test-machine-step :cost (:bytes 4096) :writes () :next () :uses ()) nil nil (w state)))
 (assert-event
  (not (fn2-machine-arm-problem 'fn2-test-machine
-        '(:step fn2-test-machine-step :cost (:bytes 4096) :writes () :next (:step) :uses ()) nil (w state))))
+        '(:step fn2-test-machine-step :cost (:bytes 4096) :writes () :next (:step) :uses ()) nil nil (w state))))
 (value-triple (cw "R7 ARM LANGUAGE: undeclared write, undeclared next, hidden helper (twice), stale read, uncosted call, undeclared resource effect, over budget, cap without continuation refused; positives admitted PASS~%"))
 
 (fn2-resolve :callbacks)

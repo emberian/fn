@@ -24,6 +24,22 @@
 ; reason; every arm may therefore change the control child.
 (defconst *fn2-arm-implicit-tables* '(fn2-core-control))
 
+; Every problem of a check at once (DEV-LOOP 2): the non-nil messages of
+; PS, one per numbered line after HEAD (a message), or the one alone.
+(defun fn2-arm-nonnil (ps)
+  (declare (xargs :guard t))
+  (cond ((atom ps) nil) ((car ps) (cons (car ps) (fn2-arm-nonnil (cdr ps)))) (t (fn2-arm-nonnil (cdr ps)))))
+(defun fn2-arm-problem-lines (ps n)
+  (declare (xargs :verify-guards nil))
+  (if (atom ps) ""
+    (msg "~%  (~x0) ~@1~@2" n (car ps) (fn2-arm-problem-lines (cdr ps) (+ 1 n)))))
+(defun fn2-arm-problems (head ps)
+  (declare (xargs :verify-guards nil))
+  (let ((ps (fn2-arm-nonnil ps)))
+    (cond ((atom ps) nil)
+          ((atom (cdr ps)) (msg "~@0~@1" head (car ps)))
+          (t (msg "~@0~x1 problems, all of them:~@2" head (len ps) (fn2-arm-problem-lines ps 1))))))
+
 (defun fn2-arm-get (key plist)
   (declare (xargs :verify-guards nil))
   (cond ((atom plist) nil)
@@ -753,15 +769,19 @@
     (or (fn2-arm-path-entries-problem (car sources) (fn2-arm-assignments (fn2-arm-entry-doms doms (nth 3 path)))
                                       path doms holds while ret world)
         (fn2-arm-path-sources-problem (cdr sources) path doms holds while ret world))))
-(defun fn2-arm-paths-problem (sources paths doms holds while ret world)
-  ; SOURCES the arm's phases, DOMS ((F V ...) ...) the conditional fields' values
+(defun fn2-arm-paths-problems (sources paths doms holds while ret world)
   (declare (xargs :verify-guards nil))
   (if (atom paths) nil
     (let ((path (car paths)))
-      (or (and (not (nth 5 path))
-               (fn2-arm-path-sources-problem (if (eq (car path) :any) sources (intersection-eq (car path) sources))
-                                             path doms holds while ret world))
-          (fn2-arm-paths-problem sources (cdr paths) doms holds while ret world)))))
+      (cons (and (not (nth 5 path))
+                 (fn2-arm-path-sources-problem (if (eq (car path) :any) sources (intersection-eq (car path) sources))
+                                               path doms holds while ret world))
+            (fn2-arm-paths-problems sources (cdr paths) doms holds while ret world)))))
+(defun fn2-arm-paths-problem (sources paths doms holds while ret world)
+  ; SOURCES the arm's phases, DOMS ((F V ...) ...) the conditional fields' values
+  (declare (xargs :verify-guards nil))
+  ; every path's problem (fn2-arm-problems), not only the first path's
+  (fn2-arm-problems "" (fn2-arm-paths-problems sources paths doms holds while ret world)))
 ; The same declarations as D0's effect rows, for D0's checker.
 ;; One row per operation reached (through forwarded callbacks), each from
 ;; the holds of the arm's source phase: alternative paths are separate rows.
