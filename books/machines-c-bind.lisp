@@ -67,6 +67,20 @@
 (fn2-fields-preserves fn2-succ-fill-events (k j entry events event fn2-fields) :position nil :raw-rows t
  :hints (("Goal" :in-theory (disable fn2-succ-has))))
 
+; Fold slot (SID, event KW): for each arg J.. (K of them) given :event, the
+; entry field fn2-fold-event-field names (the value field its :set copies
+; the arg into) takes EVENT; stage applied the step with 0 in its place.
+(defun fn2-succ-fill-fold-events (k j sid kw entry events event fn2-fields)
+ (declare (xargs :stobjs fn2-fields :measure (nfix k) :guard (and (fn2-fields-wfp fn2-fields) (natp j) (natp entry))))
+ (cond ((not (and (posp k) (natp j) (natp entry) (unsigned-byte-p 60 event))) fn2-fields)
+       ((and (fn2-succ-has events j) (natp (fn2-fold-event-field sid kw j))
+             (< (+ entry (fn2-fold-event-field sid kw j)) (fn2-fields-rows fn2-fields)))
+        (let ((fn2-fields (fn2-fields-set-value (+ entry (fn2-fold-event-field sid kw j)) event fn2-fields)))
+         (fn2-succ-fill-fold-events (- k 1) (+ 1 j) sid kw entry events event fn2-fields)))
+       (t (fn2-succ-fill-fold-events (- k 1) (+ 1 j) sid kw entry events event fn2-fields))))
+(fn2-fields-preserves fn2-succ-fill-fold-events (k j sid kw entry events event fn2-fields) :position nil :raw-rows t
+ :hints (("Goal" :in-theory (disable fn2-succ-has))))
+
 ; BATCH's newest private overlay of SID (greatest SEQ) among rows O.. (K of
 ; them); BEST the row count when none.
 (defun fn2-succ-newest-private (k o b sid best fn2-overlays)
@@ -110,7 +124,7 @@
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-engine-wfp fn2-id-engine)
               (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
               (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-rehome-octets fn2-succ-fill-events fn2-succ-target
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-rehome-octets fn2-succ-fill-events fn2-succ-fill-fold-events fn2-succ-target
                                             fn2-ov-insert fn2-pool-reset fn2-fields-rows fn2-overlays-rows)))))
  (b* (((unless (and (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (< i *fn2-succ-slots*) (natp b0)
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (< 0 (fn2-id-engine-rows fn2-id-engine))))
@@ -131,15 +145,19 @@
                (fn2-succ-rehome-octets nf 0 sid entry 0 (fn2-succ-slots-sk s fn2-succ-slots) (fn2-succ-slots-ss s fn2-succ-slots)
                                        (fn2-succ-slots-sg s fn2-succ-slots) sslot sgen fn2-fields fn2-pool)))
              ;; A fold row's octet key fields (C §4a) are copied into the
-             ;; scratch as an insert's are.
+             ;; scratch as an insert's are; its :event args' fields take EVENT.
              ((equal (fn2-succ-slots-oset s fn2-succ-slots) 1)
               (b* ((nk (nfix (fn2-run-layout-keys sid)))
+                   (fn2-fields (fn2-succ-fill-fold-events *fn2-succ-fields-max* 0 sid (fn2-succ-kindkw code) entry
+                                                          (fn2-succ-slots-events s fn2-succ-slots) event fn2-fields))
                    (sslot (fn2-id-engine-slot 0 fn2-id-engine)) (sgen (fn2-id-engine-gen 0 fn2-id-engine))
                    ((mv c fn2-pool) (fn2-pool-reset sslot sgen *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen* fn2-pool))
                    ((unless (eq c :ok)) (mv c fn2-fields fn2-pool)))
                (fn2-succ-rehome-octets nk 0 sid entry 0 (fn2-succ-slots-sk s fn2-succ-slots) (fn2-succ-slots-ss s fn2-succ-slots)
                                        (fn2-succ-slots-sg s fn2-succ-slots) sslot sgen fn2-fields fn2-pool)))
-             (t (mv :ok fn2-fields fn2-pool))))
+             (t (let ((fn2-fields (fn2-succ-fill-fold-events *fn2-succ-fields-max* 0 sid (fn2-succ-kindkw code) entry
+                                                             (fn2-succ-slots-events s fn2-succ-slots) event fn2-fields)))
+                  (mv :ok fn2-fields fn2-pool)))))
       ((unless (eq code2 :ok)) (mv code2 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((mv c o fn2-id-engine fn2-overlays) (fn2-succ-target b sid (fn2-succ-slots-size s fn2-succ-slots) fn2-id-engine fn2-overlays))
       ((unless (eq c :ok)) (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
@@ -152,7 +170,7 @@
  (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-slots-events fn2-succ-slots-oset fn2-succ-slots-sk
   fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-size fn2-run-layout-fields fn2-id-engine-slot fn2-id-engine-gen
   fn2-succ-fill-events fn2-succ-rehome-octets fn2-succ-target fn2-ov-insert fn2-fields-value
-  fn2-run-layout-keys fn2-succ-slots-unchanged))
+  fn2-run-layout-keys fn2-succ-slots-unchanged fn2-succ-fill-fold-events fn2-succ-kindkw))
 (defun fn2-succ-bind-slots (k i tx b0 b event fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :measure (nfix k)
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-engine-wfp fn2-id-engine)

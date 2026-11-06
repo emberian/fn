@@ -398,7 +398,7 @@
  (if (zp fuel) (mv :fuel fn2-core)
   (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
    (if (eq answer :more) (fn2-as-resolve (- fuel 1) tx fn2-core) (mv answer fn2-core)))))
-;; slot 0 of TX: KIND (:insert or :depend) of fn2-authority-head, P -> H
+;; slot 0 of TX: KIND (the fold's :grant event, or :depend) of fn2-authority-head, P -> H
 (defun fn2-as-head-slot (tx kind p h fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 *fn2-as-head-sid* kind fn2-core))
@@ -427,7 +427,7 @@
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-as-race-profile* fn2-core))
       (p 77)
-      ((mv d0 fn2-core) (fn2-as-head-slot 0 :insert p 5 fn2-core))
+      ((mv d0 fn2-core) (fn2-as-head-slot 0 :grant p 5 fn2-core))
       ((mv s0 & fn2-core) (fn2-successor-stage 0 fn2-core))
       ((mv b0 fn2-core) (fn2-successor-bind 0 1 5 fn2-core))
       ((mv p0 fn2-core) (fn2-successor-publish 1 fn2-core))
@@ -436,7 +436,7 @@
       ((mv d1 fn2-core) (fn2-as-head-slot 1 :depend p 5 fn2-core))
       ((mv s1 i1 fn2-core) (fn2-successor-stage 1 fn2-core))
       ;; the grant event ordered before it: head 9 bound into batch 2
-      ((mv d2 fn2-core) (fn2-as-head-slot 2 :insert p 9 fn2-core))
+      ((mv d2 fn2-core) (fn2-as-head-slot 2 :grant p 9 fn2-core))
       ((mv s2 & fn2-core) (fn2-successor-stage 2 fn2-core))
       ((mv b2 fn2-core) (fn2-successor-bind 2 2 9 fn2-core))
       (ph1 (fn2-as-phase 1 fn2-core))
@@ -449,7 +449,7 @@
       ((mv b3 fn2-core) (fn2-successor-bind 3 3 11 fn2-core))
       (n1 (fn2-as-overlay-entries fn2-core))
       ;; the grant event ordered after it
-      ((mv d4 fn2-core) (fn2-as-head-slot 4 :insert p 12 fn2-core))
+      ((mv d4 fn2-core) (fn2-as-head-slot 4 :grant p 12 fn2-core))
       ((mv s4 & fn2-core) (fn2-successor-stage 4 fn2-core))
       ((mv b4 fn2-core) (fn2-successor-bind 4 4 12 fn2-core))
       (ph3 (fn2-as-phase 3 fn2-core))

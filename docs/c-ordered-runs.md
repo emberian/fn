@@ -803,6 +803,18 @@ Departures from the statement above, each with its remedy:
   head its append grants were read under) at slot 20 (`fn2-authority-depend`); a grant event
   ordered before the member's commit eligibility changes the head and refuses it on the
   re-decision, one ordered after leaves it bound (`fn2-authority-commit-race-positive`).
+- **C-FOLD-EVENT (an event-filled fold arg; authority, 2026-11-06).** A fold event's arg may be
+  given `:event` (the member's own commit position) when the event's `:set` copies it straight
+  into one value field and nothing else reads it (not a key, not assigned, absent from `:when`,
+  `:assign` and every other `:set`): the generated `fn2-fold-event-field (sid kind j)` names that
+  entry field, else nil and `fn2-succ-arg` answers `:kind`. Stage applies the step with 0 in the
+  arg's place (as an insert's `:event` field is 0 until bind); bind writes the position into the
+  field after the staged row is placed (`fn2-succ-fill-fold-events`), so the post-image emit
+  writes and replay reads is the step over the event bind gave it. `fn2-grant-current` (18) and
+  `fn2-authority-head` (19) are folds over the grant events this way
+  (`(:grant (grantee right scope target g) :set ((grant g)))`, `(:grant (principal g) ...)`):
+  their invariant, that they equal the interpretation of the grant events, is folds-served's
+  summary keystones for them (AUTHORITY-20261105 §2).
 - **C-UNION-STAGE (§4a vocabulary, 2026-10-31).** An insert into a `:union` schema reads its key at
   the tip, as a `:unique` one does. Found with the same payload, it is already present: stage answers
   `:ok`, the slot binds nothing, and `fn2-successor-applied` is unavailable for inserts (`:kind`).

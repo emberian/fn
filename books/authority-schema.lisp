@@ -35,19 +35,26 @@
 
 ; The current grant per (grantee, right, scope, target): the newest grant
 ; event naming it, in local committed order (never wall-clock); RIGHT and
-; SCOPE are the port enums' codes. Declared :latest entries, not folds: the
-; value is the writing member's own commit event, and a fold event's args
-; cannot take it (fn2-succ-arg: :event is an insert's source only). The fold
-; declaration over the grant events is owed with that generator growth.
+; SCOPE are the port enums' codes. A fold over the grant events (section 2:
+; its invariant is that it equals that interpretation): grant-set's member
+; writes the event (:grant GRANTEE RIGHT SCOPE TARGET G) with G :event
+; (an event arg is never named as a value field), the member's own commit position (fn2-fold-event-field: :set
+; copies it straight into the field, so bind writes it after the step).
 (defrunschema fn2-grant-current :id 18
  :key ((grantee (:id principal)) (right :u8) (scope :u8) (target (:id stream)))
  :value ((grant (:id grant)))
- :merge :latest)
+ :merge :latest
+ :fold (:events ((:grant (grantee right scope target g) :set ((grant g))))
+        :init :empty :coverage :history-start
+        :observe (grant)))
 
 ; A principal's authority head: its newest grant event, the revision that
-; names its complete grant state (B's envelope grant field names it).
-; :latest entries for the same reason as fn2-grant-current.
+; names its complete grant state (B's envelope grant field names it). The
+; fold over the same grant events, keyed by the grantee.
 (defrunschema fn2-authority-head :id 19
  :key ((principal (:id principal)))
  :value ((grant (:id grant)))
- :merge :latest)
+ :merge :latest
+ :fold (:events ((:grant (principal g) :set ((grant g))))
+        :init :empty :coverage :history-start
+        :observe (grant)))

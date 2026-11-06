@@ -681,8 +681,10 @@
    (fn2-core-preserves fn2-auth-identity (ge rt sc tg en eh kslot kgen okind oslot ogen fn2-core) :position 1 :rows nil
      :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-identity))
-   ;; grant-set's four writes in one transaction: the immutable grant row,
-   ;; the current pointer, the grantee's head (each the member's own event)
+   ;; grant-set's four writes declared in one transaction (:ready resolves
+   ;; them a bounded step at a time): the immutable grant row,
+   ;; the current pointer's and the grantee's head's fold events (each
+   ;; carrying the member's own event)
    ;; and the operation outcome naming the request identity in the key range.
    (defun fn2-auth-put-grant (sx grantor ge rt sc tg en prev op kslot kgen okind oslot ogen fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -692,17 +694,16 @@
                            (target tg) (enabled en) (previous prev) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core))
           ((mv c fn2-core)
-           (fn2-grant-current-put sx 1 (grantee ge) (right rt) (scope sc) (target tg) (grant :event 0) fn2-core))
+           (fn2-grant-current-grant sx 1 (grantee ge) (right rt) (scope sc) (target tg) (g :event 0) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core))
-          ((mv c fn2-core) (fn2-authority-head-put sx 2 (principal ge) (grant :event 0) fn2-core))
+          ((mv c fn2-core) (fn2-authority-head-grant sx 2 (principal ge) (g :event 0) fn2-core))
           ((unless (eq c :ok)) (mv :state fn2-core))
           ((mv c fn2-core)
            (fn2-outcome-put sx 3 (principal grantor) (operation op) (request kslot kgen 0)
                             (outcome *fn2-auth-outcome-code-accepted*) (event :event 0)
                             :owner (okind oslot ogen) fn2-core))
-          ((unless (eq c :ok)) (mv :state fn2-core))
-          ((mv rc fn2-core) (fn2-cns-resolve-loop 32 sx fn2-core)))
-       (mv (if (eq rc :ok) :ok :state) fn2-core)))
+          ((unless (eq c :ok)) (mv :state fn2-core)))
+       (mv :ok fn2-core)))
    (fn2-core-preserves fn2-auth-put-grant (sx grantor ge rt sc tg en prev op kslot kgen okind oslot ogen fn2-core)
      :position 1 :rows nil)
    (in-theory (disable fn2-auth-put-grant))
@@ -738,8 +739,7 @@
              (fn2-principals-put-row sx 0 kslot kgen 0 nlen :value pid dk ds dg fn2-core)
              (if (not (eq c0 :ok))
                  (mv :state fn2-core)
-               (mv-let (rc fn2-core) (fn2-cns-resolve-loop 32 sx fn2-core)
-                 (mv (if (eq rc :ok) :ok :state) fn2-core))))))))
+               (mv :ok fn2-core)))))))
    (fn2-core-preserves fn2-auth-put-create (sx pid slot gen noff nlen kslot kgen dk ds dg okind oslot ogen fn2-core)
      :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-put-create))
@@ -941,12 +941,26 @@
         ((:if (not (eq (fn2-machine-pool-capacity-read-code row-ws-slot) :ok))
               ((:stop :machine-phase))
               ((:let cap (fn2-machine-pool-capacity row-ws-slot))
-               (:do (wcode) (fn2-auth-put-write row-opcode row-sx row-pid row-rx-slot row-rx-gen row-noff row-nlen
-                                                row-ks-slot row-ks-gen *fn2-auth-kind* id row-generation
-                                                row-principal row-grantee row-gright row-gscope row-gtarget
-                                                row-enabled row-ahead row-gop
-                                                :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
-                :case (((:state) (:goto fault))))
+               (:cond
+                ;; declare the write once (WSTEP 0), then resolve its
+                ;; reads a bounded step per run (a fold's key row, read in
+                ;; the installed runs), then stage
+                ((equal row-wstep 0)
+                 (:do (wcode) (fn2-auth-put-write row-opcode row-sx row-pid row-rx-slot row-rx-gen row-noff row-nlen
+                                                  row-ks-slot row-ks-gen *fn2-auth-kind* id row-generation
+                                                  row-principal row-grantee row-gright row-gscope row-gtarget
+                                                  row-enabled row-ahead row-gop
+                                                  :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
+                  :case (((:state) (:goto fault))))
+                 (:set (wstep 1))
+                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                ((equal row-wstep 1)
+                 (:do (rvcode) (fn2-successor-resolve row-sx 4096)
+                  :accept ()
+                  :case (((:ok) (:set (wstep 2)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                         ((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                         (:otherwise (:goto fault)))))
+                (t
                (:do (scode i) (fn2-successor-stage row-sx)
                 :accept ()
                 :case (((:ok)
@@ -968,9 +982,10 @@
                        ;; the tip moved, or another create of this name won: look again
                        ((:stale :duplicate)
                         (:do (rcode) (fn2-successor-release row-sx))
+                        (:set (wstep 0))
                         (:next (:if (equal row-opcode *fn2-auth-op-set*) :outcome :lookup))
                         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                       ((:refused :capacity) (:goto fault)))))))))
+                       ((:refused :capacity) (:goto fault)))))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout) (fn2-commit-take)
     :effects ((:release (:batch-membership)))

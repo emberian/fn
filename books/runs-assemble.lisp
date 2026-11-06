@@ -82,6 +82,53 @@
                 (case kind ,@(fn2-ra-kind-arms (fn2-ra-evs (cdar rows)) what (fn2-decl-get :key (cdar rows))) (otherwise nil)))
               (fn2-ra-fold-info-arms (cdr rows) what)))
        (t (fn2-ra-fold-info-arms (cdr rows) what))))
+;; An event-filled arg (C-S3 grown for AUTHORITY-20261105 section 2's folds):
+;; arg A of event EV whose :set copies it straight into one value field F,
+;; (F A), and which nothing else reads (not a key, not assigned, absent from
+;; :when, :assign and every other :set). Its value may be the member's own
+;; commit position, :event at fn2-succ-arg: stage applies the step with 0 in
+;; its place and bind writes the position into F (entry field NK + F's
+;; position), so the post-image is the step over the event bind gave it.
+(defun fn2-ra-occurs (x tree)
+ (declare (xargs :verify-guards nil))
+ (if (atom tree) (eq x tree) (or (fn2-ra-occurs x (car tree)) (fn2-ra-occurs x (cdr tree)))))
+(defun fn2-ra-straight-sets (a sets)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom sets) nil)
+       ((eq (cadar sets) a) (cons (caar sets) (fn2-ra-straight-sets a (cdr sets))))
+       (t (fn2-ra-straight-sets a (cdr sets)))))
+(defun fn2-ra-other-sets (a sets)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom sets) nil)
+       ((eq (cadar sets) a) (fn2-ra-other-sets a (cdr sets)))
+       (t (cons (cadar sets) (fn2-ra-other-sets a (cdr sets))))))
+(defun fn2-ra-event-arg-arms (args j ev knames vnames)
+ (declare (xargs :verify-guards nil))
+ (if (atom args) nil
+  (let* ((a (car args)) (sets (cadr (member-eq :set (cddr ev))))
+         (fs (fn2-ra-straight-sets a sets))
+         (ok (and (not (member-eq a knames)) (not (member-eq a (fn2-ra-ev-assigns ev)))
+                  (equal (len fs) 1) (member-eq (car fs) vnames)
+                  (not (fn2-ra-occurs a (cadr (member-eq :when (cddr ev)))))
+                  (not (fn2-ra-occurs a (cadr (member-eq :assign (cddr ev)))))
+                  (not (fn2-ra-occurs a (fn2-ra-other-sets a sets))))))
+   (if ok (cons `(,j ,(+ (len knames) (fn2-ra-pos (car fs) vnames))) (fn2-ra-event-arg-arms (cdr args) (+ 1 j) ev knames vnames))
+     (fn2-ra-event-arg-arms (cdr args) (+ 1 j) ev knames vnames)))))
+(defun fn2-ra-event-kind-arms (evs knames vnames)
+ (declare (xargs :verify-guards nil))
+ (if (atom evs) nil
+  (cons `(,(caar evs) (case j ,@(fn2-ra-event-arg-arms (cadar evs) 0 (car evs) knames vnames) (otherwise nil)))
+        (fn2-ra-event-kind-arms (cdr evs) knames vnames))))
+(defun fn2-ra-event-field-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom rows) nil)
+       ((fn2-decl-get :fold (cdar rows))
+        (cons `(,(fn2-decl-get :id (cdar rows))
+                (case kind ,@(fn2-ra-event-kind-arms (fn2-ra-evs (cdar rows)) (strip-cars (fn2-decl-get :key (cdar rows)))
+                                                     (strip-cars (fn2-decl-get :value (cdar rows))))
+                 (otherwise nil)))
+              (fn2-ra-event-field-arms (cdr rows))))
+       (t (fn2-ra-event-field-arms (cdr rows)))))
 (defun fn2-ra-assign-arms (rows)
  (declare (xargs :verify-guards nil))
  (cond ((atom rows) nil)
@@ -184,6 +231,12 @@
    (defun fn2-fold-key-arg (sid kind k)
     (declare (xargs :guard t) (ignorable kind k))
     (case sid ,@(fn2-ra-fold-info-arms rows :key) (otherwise nil)))
+   ;; The entry field bind fills with the member's commit position when
+   ;; arg J of event KIND of fold SID is given :event, or nil when J may not
+   ;; be (fn2-ra-event-arg-arms).
+   (defun fn2-fold-event-field (sid kind j)
+    (declare (xargs :guard t) (ignorable kind j))
+    (case sid ,@(fn2-ra-event-field-arms rows) (otherwise nil)))
    ;; Entry field F of schema SID: the greatest length when it is octets
    ;; (a digest's is 32), else nil; whether V fits it (for an octet field V
    ;; is the length: a digest's is exactly 32).
@@ -227,12 +280,14 @@
     :hints (("Goal" :in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows))))
    (defthm fn2-fold-key-arg-type
     (or (null (fn2-fold-key-arg sid kind k)) (natp (fn2-fold-key-arg sid kind k))) :rule-classes :type-prescription)
+   (defthm fn2-fold-event-field-type
+    (or (null (fn2-fold-event-field sid kind j)) (natp (fn2-fold-event-field sid kind j))) :rule-classes :type-prescription)
    (defthm fn2-fold-arity-type
     (or (null (fn2-fold-arity sid kind)) (natp (fn2-fold-arity sid kind))) :rule-classes :type-prescription)
    (defthm fn2-run-layout-octets-max-type
     (or (null (fn2-run-layout-octets-max sid f)) (natp (fn2-run-layout-octets-max sid f))) :rule-classes :type-prescription)
-   (in-theory (disable fn2-fold-assign fn2-fold-arity fn2-fold-assigned-p fn2-fold-key-arg fn2-run-layout-octets-max
-                       fn2-run-layout-value-ok fn2-run-layout-fold-p))
+   (in-theory (disable fn2-fold-assign fn2-fold-arity fn2-fold-assigned-p fn2-fold-key-arg fn2-fold-event-field
+                       fn2-run-layout-octets-max fn2-run-layout-value-ok fn2-run-layout-fold-p))
    (defthm fn2-run-layout-decode-shape
     (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))
              (and (fn2-fieldsp (mv-nth 2 (fn2-run-layout-decode sid lv base slot gen off end okind oslot ogen fn2-fields fn2-pool)))

@@ -30,6 +30,8 @@
           (grantee :u60) (gright :u8) (gscope :u8) (gtarget :u60) (enabled :bool) (ehead :u60) (gop :u60)
           (xrow :u32) (ahead :u60) (grant :u60) (grantor :u60) (genabled :bool) (previous :u60) (gfound :bool)
           (gstep :u8) (cut :u60)
+          ;; :ready's write: 0 to declare, 1 declared and resolving, 2 resolved
+          (wstep :u8)
           (stopped :bool) (next-free :link))
  :holds ((:decode :tx-range :transaction-row) (:lookup :tx-range :transaction-row)
          (:allocate :tx-range :transaction-row) (:bhead :tx-range :transaction-row)
@@ -49,7 +51,7 @@
          :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ks-slot :gen ks-gen :class 0))
          :copy (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal)
          :clear (sx opcode noff nlen aslot pid outcome reason grantee gright gscope gtarget enabled ehead gop
-                 xrow ahead grant grantor genabled previous gfound gstep cut stopped))
+                 xrow ahead grant grantor genabled previous gfound gstep cut wstep stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (rx-slot *fn2-none*) (ws-slot *fn2-none*) (ks-slot *fn2-none*) (account-ref *fn2-none*)
            (next-free fn2-machine-initial-next-free))

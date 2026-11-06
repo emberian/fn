@@ -320,7 +320,8 @@
 (in-theory (disable fn2-succ-declared))
 
 ; Arg J of slot I of TX from SRC: :value (the integer VALUE), :event (the
-; member's commit position, written at bind; an insert's integer field), or
+; member's commit position, written at bind; an insert's integer field, or a
+; fold arg its :set copies straight into a value field, fn2-fold-event-field), or
 ; :out (VALUE = K * 2^8 + F: integer field F of slot K < I's staged row;
 ; never a fold's key arg, which resolve must read),
 ; or :new (VALUE = K: 1 when slot K < I staged fresh, 0 when it binds
@@ -351,7 +352,7 @@
       (ks (+ (* tx *fn2-succ-slots*) k))
       ((unless (case src
                 (:value t)
-                (:event insert)
+                (:event (or insert (and fold (natp (fn2-fold-event-field sid kw j)))))
                 (:new (and (< k i) (< ks (fn2-succ-slots-rows fn2-succ-slots))
                            (not (equal (fn2-succ-slots-phase ks fn2-succ-slots) *fn2-succ-slot-phase-empty*))
                            (not (and fold (fn2-succ-key-arg-p (fn2-run-layout-keys sid) 0 sid kw j)))))
@@ -381,7 +382,7 @@
  (fn2-succ-txns fn2-succ-slots fn2-fields) t
  (fn2-succ-slots-phase fn2-succ-slots-kind fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-events fn2-succ-slots-outs
   fn2-succ-slots-late fn2-run-layout-octets-max fn2-fold-assigned-p fn2-succ-key-arg-p fn2-run-layout-fields fn2-run-layout-keys
-  fn2-succ-octet-field))
+  fn2-succ-octet-field fn2-fold-event-field))
 
 ; Octet arg J of insert slot I of TX: LEN octets at [OFF, OFF+LEN) of
 ; SLOT/GEN, readable under OKIND OSLOT OGEN until bind (which copies them
