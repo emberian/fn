@@ -45,7 +45,7 @@ CMD_STATUS, CMD_STOP = 1, 5
 CONSUMER = 1
 MAGIC = b'FNCT'
 KIND_CONTROL, KIND_POSTURE, KIND_REQUEST, KIND_PORT_REPLY = 1, 2, 4, 28
-CODES = {'register': 14, 'read': 15, 'wait': 16, 'ack': 1, 'position': 2, 'status': 18}
+CODES = {'register': 14, 'read': 15, 'wait': 16, 'ack': 1, 'position': 2, 'status': 18, 'fetch': 13}
 
 
 def seal(kind, payload):
@@ -89,7 +89,7 @@ def cursor_at(c, position):
     return c[:-4] + position.to_bytes(4, 'big')
 
 
-def request(verb, cursor=None, position=None, items=8, seconds=30):
+def request(verb, cursor=None, position=None, items=8, seconds=30, mid=b''):
     code = CODES[verb]
     if verb == 'register':      # consumer, the empty stream list (the inbox), start :history
         fields = octets(be(CONSUMER)) + u16(b'') + bytes([1])
@@ -101,6 +101,8 @@ def request(verb, cursor=None, position=None, items=8, seconds=30):
         fields = u16(cursor) + items.to_bytes(4, 'big') + (65536).to_bytes(4, 'big') + seconds.to_bytes(4, 'big')
     elif verb == 'ack':
         fields = cursor_at(cursor, position)
+    elif verb == 'fetch':       # Message-ID, domain 0, the occurrence's position
+        fields = u16(mid) + (0).to_bytes(4, 'big') + position.to_bytes(8, 'big')
     return seal(KIND_REQUEST, bytes([code]) + fields)
 
 
@@ -138,13 +140,46 @@ def decode(verb, frame):
     elif verb == 'status':
         r.update(position=int.from_bytes(q[4:12], 'big'), frontier=int.from_bytes(q[12:20], 'big'),
                  gap=int.from_bytes(q[20:28], 'big'))
+    elif verb == 'fetch':
+        al = int.from_bytes(q[0:4], 'big')
+        if 4 + al != len(q):
+            raise ValueError(f'fetch: result {q.hex()}')
+        r.update(article=q[4:])
     elif verb in ('read', 'wait'):
         nl = int.from_bytes(q[1:3], 'big')
         nxt = q[3:3 + nl]
         count = int.from_bytes(q[3 + nl:7 + nl], 'big')
         il = int.from_bytes(q[7 + nl:11 + nl], 'big')
-        r.update(more=q[0], cursor=nxt, next=cursor_position(nxt), count=count, items=q[11 + nl:11 + nl + il].hex())
+        items = parse_items(q[11 + nl:11 + nl + il])
+        if len(items) != count:
+            raise ValueError(f'{verb}: count {count} but {len(items)} items')
+        r.update(more=q[0], cursor=nxt, next=cursor_position(nxt), count=count, items=items)
     return r
+
+
+ITEM_TYPES = ('record', 'withdrawn', 'reference', 'gap')
+
+
+def parse_items(b):
+    """A page's items (e-surface.md 4.2; consumer-codec.lisp *fn2-fnct-item-layout*): type, domain, position,
+    reasons, streams, Message-ID and body (a reference's body is its octet count and content identity)."""
+    items, i = [], 0
+    while i < len(b):
+        t, dom, pos, reasons = b[i], int.from_bytes(b[i + 1:i + 5], 'big'), int.from_bytes(b[i + 5:i + 13], 'big'), b[i + 13]
+        i += 14
+        sl = int.from_bytes(b[i:i + 2], 'big'); streams = b[i + 2:i + 2 + sl]; i += 2 + sl
+        ml = int.from_bytes(b[i:i + 2], 'big'); mid = b[i + 2:i + 2 + ml]; i += 2 + ml
+        bl = int.from_bytes(b[i:i + 4], 'big'); body = b[i + 4:i + 4 + bl]; i += 4 + bl
+        if i > len(b) or t >= len(ITEM_TYPES):
+            raise ValueError(f'items: malformed at {i}: {b.hex()}')
+        item = dict(type=ITEM_TYPES[t], domain=dom, position=pos, reasons=reasons, streams=streams.hex(),
+                    message_id=mid.decode('latin-1'), body=body)
+        if item['type'] == 'reference':
+            if bl != 41:
+                raise ValueError(f'items: a reference body of {bl} octets')
+            item.update(octets=int.from_bytes(body[:8], 'big'), content=body[9:].hex())
+        items.append(item)
+    return items
 
 
 class Report:
@@ -371,6 +406,7 @@ def scenario(port, path, report, mid):
     second.stop()
 
     # the waiter wakes with the post's position (K4: woken by the publish, never a scan).
+    item = {}
     try:
         woke = c.receive(w, 'wait', seconds=60)
     except socket.timeout:
@@ -385,6 +421,17 @@ def scenario(port, path, report, mid):
         j('the woken page holds exactly the one new commit, its next the post\'s position', woke['count'] == 1
           and woke['next'] == frontier + 1 and woke['more'] == 0, woke)
         new = woke['next']
+        item = woke['items'][0] if woke['items'] else {}
+        j('the woken page\'s item is the post\'s record: its position, its Message-ID',
+          item.get('type') == 'record' and item.get('position') == new
+          and item.get('message_id') == mid.decode(), {k: v for k, v in item.items() if k != 'body'})
+        f = c.call('fetch', mid=mid, position=new)
+        j('fetch of the occurrence (its Message-ID, its position) answers the item\'s octets (3.4)',
+          f['outcome'] == 'accepted' and f.get('article') == item.get('body') and len(f.get('article', b'')) > 0,
+          {k: v for k, v in f.items() if k != 'article'})
+        f = c.call('fetch', mid=b'<not-' + mid[1:], position=new)
+        j('fetch naming another Message-ID at that position is unavailable, never another selection',
+          f['outcome'] == 'refused' and f['reason'] == 'unavailable', f)
 
     # ack contract (3.2): forward only; equal accepted, lower behind, past the frontier refused.
     a = c.call('ack', cursor=cur, position=new)
@@ -419,6 +466,9 @@ def scenario(port, path, report, mid):
     lines = reader.block() if head.startswith(b'220') else []
     body = b''.join(lines)
     j('ARTICLE <mid> answers 220 with the posted Message-ID', head.startswith(b'220') and mid in head, head)
+    unstuffed = b''.join(l[1:] if l.startswith(b'..') else l for l in lines)
+    j('the same article on L and N: the woken item\'s octets are ARTICLE <mid>\'s', woke is not None
+      and item.get('body') == unstuffed and len(unstuffed) > 0, [len(unstuffed), len(item.get('body', b'') if woke else b'')])
     j('the article\'s octets are the posted header lines and body', all(
         piece in body for piece in (b'Subject: m2 sentence\r\n', b'Message-ID: ' + mid + b'\r\n',
                                     b'the consumer sees this\r\n', b'..dotted line\r\n', b'end\r\n')), body.decode('latin-1'))
@@ -465,9 +515,8 @@ def main(argv=None):
         socket_removed=not os.path.exists(path),
         judgments=report.judgments, exchanges=report.exchanges,
         judged=len(report.judgments), held=sum(x['holds'] for x in report.judgments),
-        owed=['page items (Message-ID, octets, streams, reasons; 4.1) in a read or wait answer: the served '
-              'page carries its count and next cursor only, so "the same article" is judged by its position (the '
-              'one commit past the frontier) and by ARTICLE over N',
+        owed=['an item\'s streams and reasons (4.1): the one served query is the principal\'s inbox, so items carry '
+              'none',
               'the fncu cursor\'s history and incarnation (one 0 octet each until B serves the store\'s) and a '
               'durable principal id (the principal\'s slot until then): e-surface.md 14 item 8'],
         verdict='pass' if started and error is None and held and code == 0 else 'fail')

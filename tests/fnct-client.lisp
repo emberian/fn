@@ -43,6 +43,10 @@
   (declare (xargs :verify-guards nil))
   (fnc-request :wait-cursor (list (cons 'cursor cursor) (cons 'max-items items) (cons 'max-octets 65536)
                                   (cons 'seconds seconds))))
+(defun fnc-fetch (mid position)
+  ; fetch (13) of the occurrence at POSITION whose Message-ID is MID (octets), domain 0.
+  (declare (xargs :verify-guards nil))
+  (fnc-request :fetch (list (cons 'message-id mid) (cons 'domain 0) (cons 'position position))))
 (defun fnc-at (cursor position)
   ; The issued CURSOR proposing POSITION.
   (declare (xargs :verify-guards nil))
@@ -72,8 +76,19 @@
 (defun fnc-cursor-position (octets)
   (declare (xargs :verify-guards nil))
   (let ((c (fn2-fncu-decode octets))) (if (eq (car c) :ok) (nth 10 (cadr c)) (list :bad-cursor octets))))
+; A page's items (consumer-codec.lisp *fn2-fnct-item-layout*), each
+; (TYPE POSITION MESSAGE-ID BODY) with TYPE a keyword and MESSAGE-ID a
+; string; :bad for octets that are not whole items. FUEL bounds the walk.
+(defun fnc-items (octets fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (atom octets) (zp fuel)) nil
+    (mv-let (code vs rest) (fn2-layout-parse *fn2-fnct-item-layout* octets)
+      (if (not (and (eq code :ok) (< (len rest) (len octets)))) (list :bad)
+        (cons (list (nth (nth 0 vs) '(:record :withdrawn :reference :gap)) (nth 2 vs)
+                    (fnc-chars-string (nth 5 vs)) (nth 6 vs))
+              (fnc-items rest (- fuel 1)))))))
 ; An accepted result's summary: a cursor's POSITION; ack's POSITION;
-; status's (POSITION FRONTIER GAP); a page's (MORE NEXT-POSITION COUNT);
+; status's (POSITION FRONTIER GAP); a page's (MORE NEXT-POSITION COUNT ITEMS);
 ; append's (POSITION EVIDENCE).
 (defun fnc-result (verb octets)
   (declare (xargs :verify-guards nil))
@@ -82,10 +97,12 @@
     (ack (let ((r (fnc-parse (cadr (assoc-eq 'ack *fn2-fnct-results*)) octets))) (if r (nth 1 (cadr r)) (list :bad octets))))
     (status (let ((r (fnc-parse (cadr (assoc-eq 'status *fn2-fnct-results*)) octets))) (if r (cdr (cadr r)) (list :bad octets))))
     ((read wait)
-     (let ((r (fnc-parse (cadr (assoc-eq 'read *fn2-fnct-results*)) octets)))
-       (if (and r (atom (nth 3 (cadr r))))
-           (list (nth 0 (cadr r)) (fnc-cursor-position (nth 1 (cadr r))) (nth 2 (cadr r)))
+     (let* ((r (fnc-parse (cadr (assoc-eq 'read *fn2-fnct-results*)) octets))
+            (items (and r (fnc-items (nth 3 (cadr r)) (len octets)))))
+       (if (and r (equal (len items) (nth 2 (cadr r))) (not (member-eq :bad items)))
+           (list (nth 0 (cadr r)) (fnc-cursor-position (nth 1 (cadr r))) (nth 2 (cadr r)) items)
          (list :bad octets))))
+    (fetch (let ((r (fnc-parse (cadr (assoc-eq 'fetch *fn2-fnct-results*)) octets))) (if r (car (cadr r)) (list :bad octets))))
     (append (let ((r (fnc-parse (cadr (assoc-eq 'append *fn2-fnct-results*)) octets)))
               (if r (list (nth 2 (cadr r)) (nth 5 (cadr r))) (list :bad octets))))
     (otherwise octets)))
