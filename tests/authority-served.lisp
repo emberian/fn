@@ -495,7 +495,6 @@
               :before '(:ok :ok :ok :ok) :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-open* :state :changed 0
               :after '(:ok :ok :ok :ok) :ok :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-bound*
               :controls :ok :kind :ok :kind)))
-(value-triple (cw "OBSERVED-RACE ~x0~%" (fn2-as-race-result)))
 (assert-event (fn2-authority-commit-race-positive))
 
 ;; ---------------------------------------------------------------------------
@@ -509,6 +508,11 @@
 ;; refusal: a revocation ordered after A does not undo it), and B is refused.
 ;; Controls: origin, holding no append grant, is refused; an unbound
 ;; administrator connection appends under the owner's bootstrap authority.
+;; A's retry is answered "duplicate" (its Message-ID is recorded; observed at
+;; c6, the authority refusal never reaches it). The owner's append rides the
+;; revoking connection: in this profile (:control-connections 8) a seventh
+;; admitted connection's append was never answered, authority aside (an
+;; owner-only probe at cap 6 answered nothing; open, named in the lane dump).
 (defconst *fn2-as-append-profile* (put-assoc-equal :cns 2 *fn2-as-grant-profile*))
 (defun fn2-as-article (mid subject)
  (declare (xargs :verify-guards nil))
@@ -525,7 +529,7 @@
 ;; the first N append replies (CLASS WORD) in XS
 (defun fn2-as-append-replies (xs n)
  (declare (xargs :verify-guards nil))
- (fn2-as-class-words (fnc-replies (repeat (nfix n) 'append) xs)))
+ (fn2-as-class-words (fnc-replies (make-list (nfix n) :initial-element 'append) xs)))
 (defun fn2-as-after-bind (xs n)
  (declare (xargs :verify-guards nil))
  (mv-let (pl rest) (fn2-as-unseal xs) (declare (ignore pl)) (fn2-as-append-replies rest n)))
@@ -547,16 +551,20 @@
         (g1 (car (fn2-as-set-grants w1 1)))
         ((unless (natp g1)) (mv (list :grant w0 w1) fn2-core))
         ((mv & w2 cl fn2-core) (fn2-as-round 2 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")) cl fn2-core))
-        ((mv & w3 cl fn2-core) (fn2-as-round 3 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 0 g1 2)) cl fn2-core))
+        ;; the revoking (unbound administrator) connection then appends D
+        ;; under the owner's bootstrap authority
+        ((mv & w3 cl fn2-core)
+         (fn2-as-round 3 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 0 g1 2) (fn2-as-append 14 "<d@authority.invalid>" "D"))
+                       cl fn2-core))
         (g2 (car (fn2-as-set-grants w3 1)))
         ((mv & w4 cl fn2-core)
          (fn2-as-round 4 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")
                                (fn2-as-append 12 "<b@authority.invalid>" "B")) cl fn2-core))
-        ((mv & w5 cl fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") (fn2-as-append 13 "<c@authority.invalid>" "C")) cl fn2-core))
-        ((mv s6 w6 & fn2-core) (fn2-as-round 6 (list (fn2-as-append 14 "<d@authority.invalid>" "D")) cl fn2-core)))
+        ((mv s5 w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") (fn2-as-append 13 "<c@authority.invalid>" "C")) cl fn2-core)))
     (mv (list :revoked (and (natp g2) (< g1 g2))
               :a (fn2-as-after-bind w2 1) :retry-and-b (fn2-as-after-bind w4 2) :origin (fn2-as-after-bind w5 1)
-              :owner (fn2-as-append-replies w6 1) :end s6 (fn2-core-stop-reason fn2-core))
+              :owner (mv-let (g h rest) (fn2-as-set-reply w3) (declare (ignore g h)) (fn2-as-append-replies rest 1))
+              :end s5 (fn2-core-stop-reason fn2-core))
         fn2-core))
    r)))
 (defun fn2-authority-append-retry-after-revoke-positive ()
@@ -564,10 +572,9 @@
  (let ((r (fn2-authority-append-run)))
   (and (equal (nth 1 r) t)
        (equal (nth 3 r) '((:accepted "")))
-       (member-equal (car (nth 5 r)) '((:accepted "") (:refused "duplicate")))
+       (equal (car (nth 5 r)) '(:refused "duplicate"))
        (equal (cadr (nth 5 r)) '(:refused "refused"))
        (equal (nth 7 r) '((:refused "refused")))
        (equal (nth 9 r) '((:accepted "")))
        (equal (nth 11 r) :quiet) (equal (nth 12 r) 0))))
-(value-triple (cw "OBSERVED-APPEND ~x0~%" (fn2-authority-append-run)))
 (assert-event (fn2-authority-append-retry-after-revoke-positive))
