@@ -405,7 +405,7 @@
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                      :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
      (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (live)
-       (and (fn2-reads-wfp fn2-reads) (natp x) (< x (fn2-reads-rows fn2-reads))
+       (and (fn2-reads-wfp fn2-reads) (natp x) (natp (fn2-reads-rows fn2-reads)) (< x (fn2-reads-rows fn2-reads))
             (equal (fn2-reads-op x fn2-reads) *fn2-read-op-lookup*) (equal (fn2-reads-sid x fn2-reads) sid))
        live))
    (in-theory (disable fn2-auth-lookup-live))
