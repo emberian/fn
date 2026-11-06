@@ -296,6 +296,17 @@
  (declare (xargs :guard t))
  (put-assoc-equal :image-boot t (if (alistp profile) profile nil)))
 
+(defun fn2-image-sizep (size extents groups)
+ (declare (xargs :guard t))
+ (and (unsigned-byte-p 60 size) (equal (mod size 4096) 0)
+      (unsigned-byte-p 32 extents) (posp extents) (unsigned-byte-p 32 groups)
+      (<= (+ (* 12288 extents) (* 4096 (+ groups 3))) size)))
+
+(defun fn2-image-create-request (size profile)
+ (declare (xargs :guard t))
+ (if (fn2-image-sizep size (fn2-b-capacity :extent-slots 16 profile)
+                      (len (fn2-profile-get :groups profile))) :ok :geometry))
+
 (defun fn2-boot-start (create size fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* ((id (fn2-machine-kind-base *fn2-boot-kind* fn2-core))
@@ -306,8 +317,7 @@
       ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
                         (mv (* 12288 (fn2-boot-config-extents fn2-boot-config))
                             (fn2-boot-config-count fn2-boot-config)) (mv base total)))
-      ((unless (and (unsigned-byte-p 60 base) (unsigned-byte-p 32 total)
-                    (<= (+ base (* 4096 (+ total 3))) size))) (mv :geometry fn2-core))
+      ((unless (fn2-image-sizep size (/ base 12288) total)) (mv :geometry fn2-core))
       (gen (fn2-machine-generation id fn2-core))
       (class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for 4096 fn2-pool) class))
       ((unless class) (mv :window fn2-core))
@@ -330,6 +340,11 @@
         ((not (equal (fn2-core-stop-reason fn2-core) 0)) :failed)
         ((equal (fn2-machine-phase id fn2-core) *fn2-boot-state-ready*) :ready)
         (t :booting))))
+
+(assert-event
+ (fn2-assert-compliant-p
+  '(fn2-image-profile fn2-image-sizep fn2-image-create-request fn2-boot-start fn2-boot-status)
+  (w state)))
 
 (defthm-owed fn2-turn-bounds (core)
   (implies (and (fn2-corep core) (fn2-core-wfp core))

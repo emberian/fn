@@ -15,6 +15,7 @@ import re
 import select
 import socket
 import subprocess
+import tempfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MARK = re.compile(rb'@@FN2SS (\S+) (\S+) (\S+) (\S+)@@')
@@ -56,9 +57,12 @@ def _ready(fds, timeout):
 class Fn2NativeSession:
     def __init__(self, log=None):
         self.log = open(log, 'wb') if log else None
+        self.image_directory = tempfile.mkdtemp(prefix='surface-image-', dir=os.path.join(ROOT, 'build'))
+        self.image = os.path.join(self.image_directory, 'node.img')
         master, slave = pty.openpty()
         self.proc = subprocess.Popen([os.path.join(ROOT, 'tools', 'acl2')], cwd=ROOT,
-                                     stdin=subprocess.PIPE, stdout=slave, stderr=slave)
+                                     stdin=subprocess.PIPE, stdout=slave, stderr=slave,
+                                     env=dict(os.environ, FN2_SURFACE_IMAGE=self.image))
         os.close(slave)
         self.out = master
         self.pending = b''
@@ -201,6 +205,8 @@ class Fn2NativeSession:
                 c.sock.close()
         self._write('(sb-ext:exit :code 0)')
         self.proc.wait(timeout=60)
+        os.unlink(self.image)
+        os.rmdir(self.image_directory)
         if self.log:
             self.log.close()
         return verdicts

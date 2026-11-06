@@ -490,6 +490,8 @@ Unix socket, when named), and return the host. SEEDS, when given, are published 
 store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session seeds it)."
   (when (and device-path seeds) (error "fn2 native: image startup cannot use a seeded memory store"))
   (when device-path (setf profile (fn2-image-profile profile)))
+  (when (and create-size (not (eq (fn2-image-create-request create-size profile) :ok)))
+    (error "fn2 image create: geometry"))
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
