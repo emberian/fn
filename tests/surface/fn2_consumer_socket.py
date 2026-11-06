@@ -27,6 +27,7 @@ import argparse
 import json
 import os
 import queue
+import re
 import select
 import signal
 import socket
@@ -467,8 +468,17 @@ def scenario(port, path, report, mid):
     body = b''.join(lines)
     j('ARTICLE <mid> answers 220 with the posted Message-ID', head.startswith(b'220') and mid in head, head)
     unstuffed = b''.join(l[1:] if l.startswith(b'..') else l for l in lines)
-    j('the same article on L and N: the woken item\'s octets are ARTICLE <mid>\'s', woke is not None
-      and item.get('body') == unstuffed and len(unstuffed) > 0, [len(unstuffed), len(item.get('body', b'') if woke else b'')])
+    # N renders the node's group projection as the article's first line
+    # (Xref from the overview row, cursor.lisp fn2-cursor-put-xref); a
+    # RECORD item is the exact stored octets, the projection not among them
+    # (e-surface.md 4.1), so L's octets are N's after that one line, and the
+    # line is exactly the projection of the posted article's group number.
+    num = g.split()[3] if g.startswith(b'211 ') else b''
+    xref = re.match(rb'Xref: [^ \r\n]+ local\.test:' + re.escape(num) + rb'\r\n', unstuffed) if num else None
+    stored = unstuffed[xref.end():] if xref else b''
+    j('the same article on L and N: the woken item\'s octets are ARTICLE <mid>\'s after N\'s Xref projection line',
+      woke is not None and xref is not None and item.get('body') == stored and len(stored) > 0,
+      [len(unstuffed), len(stored), len(item.get('body', b'') if woke else b'')])
     j('the article\'s octets are the posted header lines and body', all(
         piece in body for piece in (b'Subject: m2 sentence\r\n', b'Message-ID: ' + mid + b'\r\n',
                                     b'the consumer sees this\r\n', b'..dotted line\r\n', b'end\r\n')), body.decode('latin-1'))
