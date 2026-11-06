@@ -149,7 +149,7 @@
                ((register rebase position) (fn2-cnsk-cursor (car v)))
                (ack (if (eq form :k5)
                         (let* ((k (nth 2 op)) (p (nth 1 op)) (c (fn2-cns-cursor-consumer k)))
-                          (fn2-cnsk-cursor (fn2-cns-cursor st p c (fn2-cns-reg st p c) (car v))))
+                          (fn2-cnsk-cursor (fn2-cns-model-cursor st p c (fn2-cns-reg st p c) (car v))))
                       (list 0 (car v))))
                (status (list 0 (nth 0 v) (nth 1 v) (car (nth 2 v))))
                ((read wait) (list (if (nth 1 v) 1 0) (fn2-cnsk-cursor (nth 2 v)) (len (nth 0 v))

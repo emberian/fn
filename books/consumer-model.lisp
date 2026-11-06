@@ -183,7 +183,7 @@
 (defun fn2-cns-acked (st p c epoch)
   (declare (xargs :verify-guards nil))
   (nfix (fn2-cns-at (list p c epoch) (fn2-cns-get :acks st))))
-(defun fn2-cns-cursor (st p c r position)
+(defun fn2-cns-model-cursor (st p c r position)
   (declare (xargs :verify-guards nil))
   (list (fn2-cns-get :history st) (fn2-cns-get :incarnation st) c p c
         (fn2-cns-reg-qv r) (fn2-cns-reg-vv r) (fn2-cns-reg-epoch r) position))
@@ -196,7 +196,7 @@
   (let* ((c (fn2-cns-cursor-consumer k)) (r (fn2-cns-reg st p c)))
     (cond ((not (and (true-listp k) (equal (len k) 9) (natp (nth 8 k)))) 'scope)
           ((null r) 'unknown-consumer)
-          ((not (equal (take 6 k) (take 6 (fn2-cns-cursor st p c r 0)))) 'scope)
+          ((not (equal (take 6 k) (take 6 (fn2-cns-model-cursor st p c r 0)))) 'scope)
           ((not (equal (nth 7 k) (fn2-cns-reg-epoch r))) 'scope)
           ((and view (not (equal (nth 6 k) (fn2-cns-reg-vv r)))) 'scope)
           (t nil))))
@@ -235,7 +235,7 @@
                (mv-let (items more next)
                  (fn2-cns-walk (fn2-cns-get :log st) from (fn2-cns-reg-edges r) grants p st
                                (nfix (car limits)) (nfix (cadr limits)) nil from fault)
-                 (list :accepted (list items more (fn2-cns-cursor st p c r (max from (nfix next)))))))))))
+                 (list :accepted (list items more (fn2-cns-model-cursor st p c r (max from (nfix next)))))))))))
 (defun fn2-cns-read (st p k limits fault)
   (declare (xargs :verify-guards nil))
   (mv-let (answer st1) (fn2-cns-admit 'read st p (fn2-cns-may-consume st p) 0 fault)
@@ -309,7 +309,7 @@
          (st (fn2-cns-model-put :regs (fn2-cns-set (cons p c) r (fn2-cns-get :regs st)) st))
          (st (fn2-cns-model-put :acks (fn2-cns-set (list p c epoch) pos (fn2-cns-get :acks st)) st))
          (st (fn2-cns-model-charge st p *fn2-cns-record-octets*)))
-    (mv (fn2-cns-cursor st p c r pos) st)))
+    (mv (fn2-cns-model-cursor st p c r pos) st)))
 ; START is :now (from the frontier) or :history (from the beginning).
 (defun fn2-cns-register (st p c streams start fault)
   (declare (xargs :verify-guards nil))
@@ -319,7 +319,7 @@
             ((not (and (consp streams) (fn2-cns-model-edges-p streams p) (member start '(:now :history)))) (mv '(:refused query) st))
             ; The same registration again answers the recorded one (a lost reply never resets progress).
             ((and r (equal (strip-cars (fn2-cns-reg-edges r)) streams))
-             (mv (list :accepted (list (fn2-cns-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))) st))
+             (mv (list :accepted (list (fn2-cns-model-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))) st))
             (r (mv '(:refused rebase-required) st))
             (t (mv-let (k st2) (fn2-cns-install st p c (fn2-cns-model-edges-from streams pos) pos 1)
                  (mv (list :accepted (list k)) st2)))))))
@@ -379,7 +379,7 @@
     (let ((r (fn2-cns-reg st p c)))
       (cond ((not (eq answer :proceed)) (mv answer st1))
             ((null r) (mv '(:refused unknown-consumer) st))
-            (t (mv (list :accepted (list (fn2-cns-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))) st))))))
+            (t (mv (list :accepted (list (fn2-cns-model-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r))))) st))))))
 (defun fn2-cns-status (st p c fault)
   (declare (xargs :verify-guards nil))
   (mv-let (answer st1) (fn2-cns-admit 'status st p (fn2-cns-may-consume st p) 0 fault)
@@ -562,7 +562,7 @@
   (declare (xargs :verify-guards nil))
   (if (atom regs) t
     (let* ((p (caaar regs)) (c (cdaar regs)) (r (cdar regs))
-           (k (fn2-cns-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r)))))
+           (k (fn2-cns-model-cursor st p c r (fn2-cns-acked st p c (fn2-cns-reg-epoch r)))))
       (and (or (not (equal (fn2-cns-reg-vv r) (fn2-cns-auth st p)))
                (mv-let (got problem) (fn2-cns-drain st p k limits fault (+ 2 (fn2-cns-frontier st)))
                  (and (null problem)

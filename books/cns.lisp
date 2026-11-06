@@ -1660,7 +1660,7 @@
      ;; frontier's commits): its line copied into the lease after its fill
      ;; and the Message-ID field found in it: (mv code mstart mlen fn2-core),
      ;; code :ok or :absent.
-     (defun fn2-cns-item-mid (stream art position pf lslot lgen lk ls lg fn2-core)
+     (defun fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (disable nfix)))))
        (b* (((mv c0 fn2-core) (fn2-read-key 0 :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
@@ -1687,10 +1687,10 @@
             ((mv & fn2-core) (fn2-read-release 0 fn2-core))
             ((mv mc ms ml) (fn2-cns-core-mid-span lslot lgen at (+ at (nfix copied)) lk ls lg fn2-core)))
          (if (and (eq oc :ok) (eq mc :ok)) (mv :ok (nfix ms) (nfix ml) fn2-core) (mv :absent 0 0 fn2-core))))
-     (fn2-cns-natp-outputs fn2-cns-item-mid (stream art position pf lslot lgen lk ls lg fn2-core) (1 2))
-     (fn2-core-preserves fn2-cns-item-mid (stream art position pf lslot lgen lk ls lg fn2-core)
+     (fn2-cns-natp-outputs fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core) (1 2))
+     (fn2-core-preserves fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
-     (in-theory (disable fn2-cns-item-mid))
+     (in-theory (disable fn2-cns-entry-mid))
      ;; The L carrier's frames over the core (books/fnct-pool.lisp): the
      ;; control slot's stripe and hasher row, opening a received frame, the
      ;; kind 2 posture reply, a kind 4 request's decode and its kind 28 reply.
@@ -1799,7 +1799,7 @@
             (type (nfix type))
             (body (if (equal type *fn2-fnct-item-record*) (nfix bytes) 0))
             ((mv mc ms ml fn2-core)
-             (if ok0 (fn2-cns-item-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
+             (if ok0 (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
             (ms (if (eq mc :ok) ms 0)) (ml (if (eq mc :ok) ml 0))
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
             (type (if (and (equal type *fn2-fnct-item-record*)
@@ -1851,7 +1851,7 @@
        (b* ((live (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
                        (equal (fn2-machine-generation ctl fn2-core) ctl-gen)))
             ((mv mc ms ml fn2-core)
-             (if live (fn2-cns-item-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
+             (if live (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
             (same (and (eq mc :ok) (equal ml (nfix mlen))
                        (fn2-cns-core-same ml lslot lgen ms lk ls lg tx-slot tx-gen (nfix moff) *fn2-ctl-kind* ctl ctl-gen fn2-core)))
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))

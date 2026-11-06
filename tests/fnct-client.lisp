@@ -80,7 +80,8 @@
 ; (TYPE POSITION MESSAGE-ID BODY) with TYPE a keyword and MESSAGE-ID a
 ; string; :bad for octets that are not whole items. FUEL bounds the walk.
 (defun fnc-items (octets fuel)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (declare (xargs :verify-guards nil :measure (nfix fuel)
+                  :hints (("Goal" :in-theory (disable fn2-layout-parse)))))
   (if (or (atom octets) (zp fuel)) nil
     (mv-let (code vs rest) (fn2-layout-parse *fn2-fnct-item-layout* octets)
       (if (not (and (eq code :ok) (< (len rest) (len octets)))) (list :bad)
