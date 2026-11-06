@@ -4,6 +4,7 @@
 ; through these guard-verified functions, so the adapter decides nothing.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "device-boundary")
 (include-book "assembly-attach")
 (include-book "../sim/sim")
 

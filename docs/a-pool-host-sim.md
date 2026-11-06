@@ -282,7 +282,7 @@ core: outbox peek/ack, a descriptor's fields, the validated physical span of its
 deadline, and the result normalization `fn2-host-result` (physical kind, syscall return, errno
 class, length -> the cell's words, by the simulator's `fn2-sim-terminal-values`). The loop
 implements physical scheduling and reports observations; ACL2 owns their interpretation.
-One thread; per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
+One semantic executor; file devices additionally use one FIFO worker. Per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
 closed under it: its loan is retained until the core cancels it, and no syscall result is
 invented), `completed`; per capability index an fd, nonce, the physical peer (captured from
 `accept(2)`'s sockaddr) and test counters. One iteration:
@@ -297,11 +297,12 @@ invented), `completed`; per capability index an fd, nonce, the physical peer (ca
 4. interests to the mux: a waiting Accept/Receive wants readable, a Send writable, a Close and
    every non-socket kind is started now (Close: unregister, `close(2)`, then retire every other
    waiting op on that capability *without* inventing a syscall result: the core cancels and
-   harvests them; storage kinds stop the host by name until the storage backend lands with
-   B's durable POST, because the served core issues none yet; Connect and TlsStart complete
+   harvests them; storage kinds submit to the file worker when attached, otherwise use the
+   seeded session's memory device; Connect and TlsStart complete
    `failed`/`refused` and `failed`/`handshake`: no facility, explicit, never simulated; Cancel
    checks its target's generation and state: a waiting or closed-waiting target gets its
-   terminal `cancelled` result, then the Cancel `done`; else the Cancel `not-found`);
+   terminal `cancelled` result, then the Cancel `done`; a file-device operation keeps its loan
+   until the physical result and Cancel reports `not-found`, as does an already completed target);
 5. wait: timeout 0 if the turn said `:more` or completions are queued, else until the core's
    idle deadline (ArmWake) or a control/signal wake;
 6. for each ready descriptor, one syscall for one of its waiting ops (one readiness report is
@@ -316,6 +317,25 @@ compost's `fn2-native-boundary`), so a kill at every boundary is a test row, not
 This loop is the simulator's adapter with the physical world choosing the schedule: posting
 order is the completion order (E1), a byte enters the core only at harvest, and nothing else is
 observable.
+
+File-device primitives (`host/device.lisp`, disk-boot lane): exclusive file creation,
+physical preallocation, an exclusive writer lock, observed size and backend; `pread` and
+`pwrite` at the action's offset; `fdatasync` on Linux and `F_FULLFSYNC` on Darwin for Fence.
+Creation fences both the image and its parent directory. The worker performs one call and
+reports its actual count and errno; `books/device-boundary.lisp` classifies those observations
+before the ordinary terminal normalizer. No retries complete a short read or write implicitly.
+Its two bounded rings have one entry per operation slot. The executor alone posts results;
+the worker wakes its mux. A stalled call holds its borrowed bytes and does not block turns.
+Shutdown leaves a stalled fd with the worker until return, so it cannot act on a reused fd.
+The harness's quiet marker also requires no outstanding storage call. Worker syscall entry
+and return join the death-cut counter under a short mutex, held outside the physical call.
+
+`tests/native-device-unit.lsp` controls FIFO fence ordering, a deliberately stalled worker,
+short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
+primitive test, not a node restart or power-loss qualification. The image startup parameters
+on `fn2-n-make-host` are an internal integration seam: persistent genesis, boot/recovery gating,
+and the fresh-process node restart fixture remain unimplemented. The ordinary native launcher
+still uses the seeded memory device until that boot path lands.
 
 #### 4.1.4 The socket and the session H speaks
 `tests/native-session.lsp` (LD script: includes the served books and check-wire/check-envelope,
