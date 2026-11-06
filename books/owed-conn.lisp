@@ -145,8 +145,13 @@
       (let ((fn2-core (fn2-cw-post-failed op opgen *fn2-event-read-result* *fn2-reason-io* fn2-core)))
         (mv t accepted clients store fn2-core)))
      ((equal kind *fn2-action-read*)
-      ;; a Read is given the device's octets at its storage offset
+      ;; a Read is given the device's octets at its storage offset; a
+      ;; corrupt sector (SOFF . :corrupt) returns them with the first one's
+      ;; low bit flipped
       (b* ((octets (fn2-cw-store-read soff rlen store))
+           (octets (if (and (consp octets) (member-equal (cons soff :corrupt) store))
+                       (cons (logxor 1 (nfix (car octets))) (cdr octets))
+                     octets))
            (fn2-core (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool)
                        (fn2-cw-write-loan roff octets rslot rgen op opgen fn2-pool) fn2-core))
            (fn2-core (fn2-cw-post 0 op opgen *fn2-event-read-result* *fn2-outcome-done* rlen 0 0 fn2-core)))

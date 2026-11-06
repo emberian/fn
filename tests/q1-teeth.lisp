@@ -17,7 +17,8 @@
 ; Posting is served (D4 2/n) so that every kind, the upload included, has
 ; rows: an upload row needs a hasher row and the sealer its checker row
 ; (:format-slots is derived, machines-b): two windows, rows 3-4 the
-; uploads', row 5 the sealer's, rows 6-7 the control connections'. Reading
+; uploads', row 5 the sealer's, rows 6-7 the control connections', row 8
+; the block read's check. Reading
 ; is served (D6 1/n, the owed-cursor profile) so the cursor kind has rows.
 (defconst *fn2-q1-teeth-profile*
   (put-assoc-equal :cns 2

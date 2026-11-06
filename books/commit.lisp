@@ -746,12 +746,6 @@
   (mv code slot gen fn2-core)))
 (fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
  :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-; The read's completion: every requested octet arrived (:ok) or not (:io).
-; Until D4 3/n names payload blocks by content there is no block hash to
-; check here; a stored reference's expected hash is checked then.
-(defun fn2-block-read-done (bytes len)
- (declare (xargs :guard t))
- (if (and (natp bytes) (natp len) (equal bytes len)) :ok :io))
 ; B-S2 S4: a member's records copied verbatim from its owner's workspace
 ; (owner FKIND FID FGEN) into the commit row's frame, octet by octet until A's
 ; cross-owner range copy exists (departure B-TXN-COPY; fn2-core-copy-range
