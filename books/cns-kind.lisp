@@ -54,6 +54,13 @@
    (in-theory (disable fn2-cns-core-ready fn2-cns-core-grant))
    (defattach (fn2-cns-wait-ready-p fn2-cns-core-ready) (fn2-cns-wait-grant-one fn2-cns-core-grant))))
 
+;; A control connection's one range holds its frames (at most this many
+;; octets a receive or send) and, after a request, the reply the request row
+;; builds there (the page's items, books/cns.lisp fn2-cns-item-fits): it is
+;; the profile's smallest pool class of at least this many octets, so a page
+;; holds record items in any profile, whatever its class numbering.
+(defconst *fn2-ctl-io-bytes* 4096)
+
 (defun fn2-ctl-capacity (profile)
   (declare (xargs :guard t))
   (if (and (alistp profile) (assoc-equal :control-connections profile))
@@ -83,7 +90,7 @@
          (:draining :connection-row :rx-range))
  :budget (:bytes 8192 :steps 32 :descriptors 4)
  :capacity (fn2-ctl-capacity profile)
- :admission (:phase :greeting :ranges (:rx-range)
+ :admission (:phase :greeting :ranges ((:rx-range :slot rx-slot :gen rx-gen :class (:bytes *fn2-ctl-io-bytes*)))
              :copy (peer-family peer-w0)
              :clear (fill pos flen fkind cns-gen owner tx-off tx-len request pending borrows stopped cmd posture
                      principal admin worked auth-gen))
@@ -96,7 +103,7 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :park :commit :append :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :fetch :park :commit :append :draining :retired)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
@@ -116,21 +123,37 @@
           ;; the consume check in progress at :check (AUTHORITY-20261105
           ;; section 4; fn2-cns-authority-allows' step, head and grant)
           (xstep :u8) (xhead :u60) (xgrant :u60)
+          ;; a page's items (e-surface.md 4.1): IPOS the position through
+          ;; which the walk is complete, the items' octets [IOFF, IOFF+ILEN)
+          ;; of the control range; the entry in hand (its position, article,
+          ;; type, stored length and location) and the read lease its octets
+          ;; and Message-ID are read into, with the block read's result
+          (ipos :u60) (ioff :u32) (ilen :u32)
+          (npos :u60) (art :u60) (istream :u60) (itype :u8) (alen :u60) (lunit :u60) (lepoch :u60) (lalloc :u60)
+          (lslot :link) (lgen :u60) (lease (:enum fn2-cns-lease (:none :held)))
+          (revent :u8) (routcome :u8) (rcount :u32) (rready :bool)
+          ;; block reads in flight (the terminal of each completion consumes one)
+          (pending :u32)
+          ;; the pool class a row parked for its lease waits on (:park :pool's field)
+          (cursor :u32)
+          ;; the row's read row (fn2-cns-read-row)
+          (xrow :u32)
           (stopped :bool) (next-free :link))
- :holds ((:decode :wait-row) (:check :wait-row) (:lookup :wait-row)
-         (:read :wait-row) (:page :wait-row) (:park :wait-row)
-         (:commit :wait-row) (:append :wait-row) (:draining :wait-row))
- :budget (:bytes 8192 :steps 32 :descriptors 4)
+ :holds ((:decode :wait-row (:storage-window :while (lease :held))) (:check :wait-row (:storage-window :while (lease :held))) (:lookup :wait-row (:storage-window :while (lease :held)))
+         (:read :wait-row (:storage-window :while (lease :held))) (:page :wait-row (:storage-window :while (lease :held)))
+         (:fetch :wait-row (:storage-window :while (lease :held))) (:park :wait-row (:storage-window :while (lease :held)))
+         (:commit :wait-row (:storage-window :while (lease :held))) (:append :wait-row (:storage-window :while (lease :held))) (:draining :wait-row (:storage-window :while (lease :held))))
+ :budget (:bytes 16384 :steps 32 :descriptors 4)
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ()
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
-                 xstep xhead xgrant stopped))
+                 ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
-           (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:park) (:commit) (:append) (:draining) (:retired))
- :observes ())
+           (lslot *fn2-none*) (next-free fn2-machine-initial-next-free))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:park) (:commit) (:append) (:draining) (:retired))
+ :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

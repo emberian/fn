@@ -88,7 +88,8 @@
               ;; pause and resume (kind 1, each answered by its posture in
               ;; kind 2), a read of consumer 1's cursor at 0 arriving in two
               ;; receives (the first a prefix: the frame waits for the rest;
-              ;; nothing recorded, so the page runs from 0 to the published 3),
+              ;; nothing recorded, so the page walks from 0 to the published 3 and,
+              ;; no addr entry of the principal's there, holds no item),
               ;; then stop (closed, no reply)
               (pause (fnc-control 2)) (resume (fnc-control 3))
               (read (fnc-read (fnc-issued 1 0 0 1 0) 8))
@@ -102,7 +103,7 @@
            (mv (and (eq status :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
                     (equal (fnc-replies '(control control read) wire)
-                           '((:posture 1) (:posture 0) (:accepted "" (0 3 3))))
+                           '((:posture 1) (:posture 0) (:accepted "" (0 3 0 nil))))
                     (equal (len (fnc-replies '(control control read read) wire)) 3)
                     (eq closed t))
                fn2-core))
@@ -130,7 +131,7 @@
               (wire2 (car (car (fn2-cw-results clients)))))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 1)))))
+                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 0 nil)))))
                fn2-core))
          ok))))
   (local
@@ -167,6 +168,8 @@
               ;; which then answers the wait and drains the remaining verbs through stop.
               ;; Its addr entry's stream (1, the group it is filed through) is not
               ;; its principal (0): the wake is the principal's own addr stream.
+              ;; No article row stands behind the seeded entry, so its item is a
+              ;; gap (the article reclaimed) with no Message-ID.
               (fn2-core (fn2-sle-seed-article 0 1 1 2 fn2-core))
               ((mv status2 clients & fn2-core) (fn2-cw-loop 800 0 1 clients nil fn2-core))
               (res2 (car (fn2-cw-results clients)))
@@ -176,15 +179,15 @@
                     (equal (fn2-core-stop-reason fn2-core) 0)
                     (equal (fnc-replies '(register wait read ack ack ack ack position status read) wire2)
                            '((:accepted "" 0)
-                             (:accepted "" (0 2 1))
-                             (:accepted "" (0 2 1))
+                             (:accepted "" (0 2 1 ((:gap 2 "" nil))))
+                             (:accepted "" (0 2 1 ((:gap 2 "" nil))))
                              (:accepted "" 2)
                              (:accepted "" 2)
                              (:refused "behind" nil)
                              (:refused "beyond-frontier" nil)
                              (:accepted "" 2)
                              (:accepted "" (2 2 0))
-                             (:accepted "" (0 2 0))))
+                             (:accepted "" (0 2 0 nil))))
                     (eq closed2 t))
                fn2-core))
          ok))))

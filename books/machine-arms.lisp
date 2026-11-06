@@ -2367,7 +2367,7 @@
   (if (atom specs) install
     (let ((code (packn-pos (list 'code n) 'fn2-core)))
       `(mv-let (,code ,(packn-pos (list 'slot n) 'fn2-core) ,(packn-pos (list 'pgen n) 'fn2-core) fn2-pool)
-         (fn2-pool-reserve ,(fn2-arm-get :class (cdar specs)) kind target gen fn2-pool)
+         (fn2-pool-reserve ,(fn2-machine-class-form (fn2-arm-get :class (cdar specs)) 'fn2-pool) kind target gen fn2-pool)
          (if (not (eq ,code :ok))
              ,(fn2-arms-registry-releases n fail)
            ,(fn2-arms-registry-reserves (cdr specs) (+ 1 (nfix n)) install fail))))))

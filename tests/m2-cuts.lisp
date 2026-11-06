@@ -206,8 +206,17 @@
             r)))
     (mv r new (m2-wired clients store s) fn2-core)))
 
-(defconst *m2-no-items*
-  "page: the served kind 28 page carries its count and next cursor but no item, so Mini sees no Message-ID, source or reference")
+(defconst *m2-no-fetch*
+  "page: a reference item, and fetch (code 13) is not served, so Mini cannot resolve it")
+; The served page's items (tests/fnct-client.lisp fnc-items) as the model's
+; (POSITION TYPE MESSAGE-ID PAYLOAD): a record's payload its octets as a string.
+(defun m2-model-items (items)
+  (declare (xargs :verify-guards nil))
+  (if (atom items) nil
+    (let ((i (car items)))
+      (cons (list (nth 1 i) (if (eq (nth 0 i) :reference) :ref (nth 0 i)) (nth 2 i)
+                  (and (eq (nth 0 i) :record) (fnc-chars-string (nth 3 i))))
+            (m2-model-items (cdr items))))))
 (defconst *m2-r-size*
   "R is appended as its header and operation tag: its 198,919 octets are past one L frame (one receive)")
 
@@ -239,8 +248,8 @@
   (b* ((s (if (eq flag :reclaim-before-fetch)
               (m2-why "reclaim: no served world step reclaims a stored article (fn2-cns has no reclaim of R)" s)
             s))
-       (s (if (and (m2-accepted-p r) (< 0 (nfix (nth 2 (nth 2 r))))) (m2-why *m2-no-items* s) s))
-       (items nil)
+       (items (and (m2-accepted-p r) (m2-model-items (nth 3 (nth 2 r)))))
+       (s (if (assoc-equal :ref (strip-cdrs items)) (m2-why *m2-no-fetch* s) s))
        (db (mini-put :parked nil (nth 1 s)))
        (s (m2-db db s)))
     (cond
