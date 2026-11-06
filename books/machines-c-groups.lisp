@@ -551,10 +551,16 @@
      (mv code ids fn2-core)))
    (fn2-core-preserves fn2-principals-bind-genesis (profile fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   ;; The accounts are bound under every profile (the ids are functions of
+   ;; the profile); the names are written only where the profile serves
+   ;; authority (:authority rows, fn2-auth): that is where principal-create
+   ;; and principal-bind read them, and where the profile must give the
+   ;; directory its overlay. A profile serving no authority (the tiny unit
+   ;; profiles) has no reader of the names and need not hold the overlay.
    (defun fn2-principals-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
-     (if (not (eq code :ok))
+     (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
       (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                   (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))

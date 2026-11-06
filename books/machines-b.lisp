@@ -110,17 +110,23 @@
 (defun fn2-b-cns-rows (profile)
  (declare (xargs :guard t))
  (nfix (fn2-profile-get :cns profile)))
+;; the authority rows' (fn2-auth, authority.lisp): the last :authority read
+;; rows, one per row slot (its capacity is at most this)
+(defun fn2-b-auth-rows (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-profile-get :authority profile)))
 (defun fn2-b-read-rows (profile)
  (declare (xargs :guard t))
- (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile)))
+ (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
 (defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
+(defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-read-rows-natp (natp (fn2-b-read-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-read-rows-parts
  (and (<= (* 2 (fn2-b-cursor-rows profile)) (fn2-b-read-rows profile))
       (<= (fn2-b-cns-rows profile) (fn2-b-read-rows profile)))
  :rule-classes :linear :hints (("Goal" :in-theory (enable fn2-b-read-rows))))
-(in-theory (disable fn2-b-cursor-rows fn2-b-cns-rows fn2-b-read-rows))
+(in-theory (disable fn2-b-cursor-rows fn2-b-cns-rows fn2-b-auth-rows fn2-b-read-rows))
 (defun fn2-b-field-rows (profile)
  (declare (xargs :guard t))
  (+ (* 128 (nfix (fn2-b-format-slots profile))) (* *fn2-b-txn-field-rows* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
@@ -277,7 +283,13 @@
           (rc-ready :bool) (rc-outcome :u8) (rc-count :u32)
           (rc-chain :u60) (rc-arena :u32) (rc-high :u32) (rc-dirty :bool) (rc-ambiguous :bool)
           (rc-class :u8) (rc-witness :u60) (rc-witness-outcome :u8) (rc-assume :u8)
-          (rc-epoch :u60) (rc-found :u32))
+          (rc-epoch :u60) (rc-found :u32)
+          ;; the payload pass: the chained commit whose records are read, the
+          ;; record stream's cursor and end in its records unit, and the
+          ;; source manifest being followed (its position, unit, units, stored
+          ;; length and owner event)
+          (rc-commit :u60) (rc-roff :u32) (rc-rend :u32)
+          (rc-mpos :u32) (rc-munit :u8) (rc-munits :u8) (rc-mtotal :u60) (rc-mevent :u60))
  :holds ((:read :storage-job :storage-window) (:read-result :storage-job :storage-window)
          (:verify :storage-job :storage-window) (:search :storage-job :storage-window)
          (:install :storage-job :storage-window))
@@ -315,6 +327,9 @@
 (defcost fn2-recovery-witness-match :answers (:ok :bounds) :doc "Compare the presented witness seal with the chain's.")
 (defcost fn2-rec-witness-outcome :doc "The witness outcome (scholar ch. 4 item 10) from the assumption bits.")
 (defcost fn2-rec-classify :doc "The recovery class from the assumption bits and the evidence words.")
+(defcost fn2-recovery-commit-extent :answers (:ok :bounds) :doc "The arena position of a chained commit.")
+(defcost fn2-recovery-records-open :answers (:ok :invalid) :tables (fn2-core-pool fn2-core-fields)
+ :doc "Decode a chained commit's records frame header: the record stream's start and end in its unit.")
 (defcost fn2-recovery-adopt :answers t :tables (fn2-core-extents fn2-core-alloc-edges)
  :doc "Adopt one arena position into the allocator with its recorded identity.")
 (defcost fn2-commit-admit-txn :answers (:ok :exhausted :admission) :bytes 4096

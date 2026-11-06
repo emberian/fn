@@ -33,6 +33,9 @@
           ;; BLEN, BREADY once decoded) and whether the read in flight is the
           ;; manifest's (MREAD)
           (mkind :bool) (mpos :u32) (bunit :u60) (bepoch :u60) (balloc :u60) (blen :u32) (bready :bool) (mread :bool)
+          ;; HDR over stored headers (HMODE): the scan's matched name octets
+          ;; (HK; its state is AST) and the range's step to resume (HSTEP)
+          (hmode :bool) (hk :u32) (hstep :u8)
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
@@ -50,7 +53,7 @@
          :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
-                 mkind mpos bunit bepoch balloc blen bready mread cursor))
+                 mkind mpos bunit bepoch balloc blen bready mread hmode hk hstep cursor))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (conn *fn2-none*) (rx-slot *fn2-none*) (tx-slot *fn2-none*) (lslot *fn2-none*)
            (next-free fn2-machine-initial-next-free))
