@@ -980,7 +980,7 @@
   ;; the generated FN2-FNCT-K4 codecs); a request that does not decode is
   ;; refused with its word and no verb (its reply names no result).
   (:decode :on-refusal ((:stop :machine-phase))
-   (:do (rxcode x) (fn2-cns-read-row row-slot) :case (((:bounds) (:stop :machine-phase))))
+   (:do (rxcode x) (fn2-cns-read-row id) :case (((:bounds) (:stop :machine-phase))))
    (:set (xrow x))
    (:cond ((equal row-ctl *fn2-none*) (:goto cancel))
           (t (:do (dcode dreason nverb ncid ncstart nto nlim nepoch nwait nop nfstart nnoff nnlen)
@@ -1274,18 +1274,22 @@
              (mv :absent 0))
            (mv code (nfix id)))))
      (in-theory (disable fn2-ctl-owner-principal))
-     ;; The row's read row: the cns block is the N read rows just before the
-     ;; authority block (the last A; machines-b's fn2-b-read-rows counts 2C
-     ;; cursor rows, then :cns, then :authority), N and A the kinds' capacities.
-     (defun fn2-cns-read-row (slot fn2-core)
+     ;; A consumer request's read row: the cns block, the C read rows below the
+     ;; authority block (machines-b's fn2-b-read-rows: 2X cursor rows, then C,
+     ;; then A), row R - A - C + S for request slot S. (Lane authority's
+     ;; branch defines this same function in books/authority.lisp; one copy
+     ;; stays when both land.)
+     (defun fn2-cns-read-row (cns fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-       (let ((a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
-             (n (fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core))
-             (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
-         (if (and (natp slot) (natp a) (natp n) (natp r) (< slot n) (<= (+ a n) r))
-             (mv :ok (+ (- r (+ a n)) slot))
-           (mv :bounds 0))))
+       (if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)) (mv :bounds 0)
+         (let ((s (fn2-machine-slot cns fn2-core))
+               (a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
+               (c (fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core))
+               (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
+           (if (and (natp s) (natp a) (natp c) (natp r) (< s c) (<= (+ a c) r))
+               (mv :ok (+ (- r (+ a c)) s))
+             (mv :bounds 0)))))
      (in-theory (disable fn2-cns-read-row))
      (defun fn2-cns-lookup-loop (k r sid fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
