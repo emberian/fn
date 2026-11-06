@@ -1,7 +1,7 @@
 ; Boot's operations and arms. Instantiated after B's recovery and C's replay.
 (in-package "ACL2")
 (include-book "boot-kind")
-(include-book "fnct-pool")
+(include-book "pool-block")
 (include-book "machines-a-access")
 (fn2-book-layer :b)
 
@@ -15,20 +15,35 @@
 (fn2-pool-preserves fn2-boot-pad (n off slot gen kind id ogen fn2-pool) :position 1)
 (in-theory (disable fn2-boot-pad))
 
-(defun fn2-boot-text (i text slot gen kind id ogen fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix (- (length text) (nfix i)))
-                 :guard (and (fn2-pool-wfp fn2-pool) (stringp text) (natp i))))
- (if (>= i (length text)) (mv :ok fn2-pool)
-  (mv-let (code fn2-pool) (fn2-pool-write slot gen i (char-code (char text i)) kind id ogen fn2-pool)
-   (if (eq code :ok) (fn2-boot-text (+ 1 i) text slot gen kind id ogen fn2-pool)
-    (mv code fn2-pool)))))
-(fn2-pool-preserves fn2-boot-text (i text slot gen kind id ogen fn2-pool) :position 1)
-(in-theory (disable fn2-boot-text))
+; Stage the generated codec's fields separately from pool I/O, so shape
+; proofs compose across one field-table operation instead of every setter.
+(defun fn2-boot-fields (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)))
+ (let* (
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-magic*) *fn2-boot-magic* fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-version*) 1 fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-kind*) kind fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-index*) index fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-image-size*) size fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-extents*) extents fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-groups*) groups fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-owner*) owner fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-authority*) authority fn2-fields))
+      (fn2-fields (fn2-fields-put (+ 256 *fn2-boot-record-field-identity*)
+                    (value 1) (ref-slot scratch) (ref-gen sgen) (ref-off 0) (ref-len textlen)))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-value*) value fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-epoch*) epoch fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-previous*) (if (posp epoch) (- epoch 1) 0) fn2-fields))
+) fn2-fields))
+(fn2-fields-preserves fn2-boot-fields
+ (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
+ :hints (("Goal" :in-theory (e/d (fn2-boot-fields) (fn2-fieldsp fn2-fields-wfp fn2-fields-rows)))))
+(in-theory (disable fn2-boot-fields))
 
 ; The generated record codec is the single encoding. The last 32 bytes
 ; are BLAKE3 of the whole padded prefix, including geometry and record role.
 (defun fn2-boot-pack-pool (kind index size extents groups owner authority text value epoch
-                         slot gen scratch sgen id ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+                         slot gen scratch sgen okind id ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
@@ -40,40 +55,27 @@
                     (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)
                     (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
-      ((mv c fn2-pool) (fn2-pool-reset slot gen *fn2-boot-kind* id ogen fn2-pool))
+      ((mv c fn2-pool) (fn2-pool-reset slot gen okind id ogen fn2-pool))
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
       ((mv c fn2-pool) (if (equal kind 2) (mv :ok fn2-pool)
-                         (fn2-pool-reset scratch sgen *fn2-boot-kind* id ogen fn2-pool)))
+                         (fn2-pool-reset scratch sgen okind id ogen fn2-pool)))
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
-      ((mv c fn2-pool) (fn2-boot-text 0 text scratch sgen *fn2-boot-kind* id ogen fn2-pool))
+      ((mv c fn2-pool) (fn2-pool-append-text 0 text scratch sgen okind id ogen fn2-pool))
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-magic*) *fn2-boot-magic* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-version*) 1 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-kind*) kind fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-index*) index fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-image-size*) size fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-extents*) extents fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-groups*) groups fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-owner*) owner fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-authority*) authority fn2-fields))
-      (fn2-fields (fn2-fields-put (+ 256 *fn2-boot-record-field-identity*)
-                    (value 1) (ref-slot scratch) (ref-gen sgen) (ref-off 0) (ref-len (length text))))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-value*) value fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-epoch*) epoch fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-previous*) (nfix (- epoch 1)) fn2-fields))
-      ((mv c end fn2-pool) (fn2-boot-record-encode 256 slot gen 0 *fn2-boot-kind* id ogen fn2-fields fn2-pool))
+      (fn2-fields (fn2-boot-fields kind index size extents groups owner authority (length text) value epoch scratch sgen fn2-fields))
+      ((mv c end fn2-pool) (fn2-boot-record-encode 256 slot gen 0 okind id ogen fn2-fields fn2-pool))
       ((unless (and (eq c :ok) (natp end) (<= end *fn2-boot-hash-offset*)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
-      ((mv c fn2-pool) (fn2-boot-pad (- *fn2-boot-hash-offset* end) end slot gen *fn2-boot-kind* id ogen fn2-pool))
+      ((mv c fn2-pool) (fn2-boot-pad (- *fn2-boot-hash-offset* end) end slot gen okind id ogen fn2-pool))
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
-      ((mv c fn2-digests fn2-b3) (fn2-fnct-hash 2 slot gen 0 *fn2-boot-hash-offset* *fn2-boot-kind* id ogen fn2-digests fn2-b3 fn2-pool))
+      ((mv c fn2-digests fn2-b3) (fn2-pool-block-hash 2 slot gen 0 *fn2-boot-hash-offset* okind id ogen fn2-digests fn2-b3 fn2-pool))
       (dst (fn2-digest-slot 2 *fn2-b3-result*))
       ((unless (and (eq c :ok) (fn2-digest-rowp dst fn2-digests)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
-      ((mv c fn2-pool) (fn2-digest-store 32 dst slot gen *fn2-boot-hash-offset* *fn2-boot-kind* id ogen fn2-digests fn2-pool)))
+      ((mv c fn2-pool) (fn2-digest-store 32 dst slot gen *fn2-boot-hash-offset* okind id ogen fn2-digests fn2-pool)))
    (mv c fn2-fields fn2-digests fn2-b3 fn2-pool)))
-(fn2-fnct-shape fn2-boot-pack-pool-shape
- (fn2-boot-pack-pool kind index size extents groups owner authority text value epoch slot gen scratch sgen id ogen
+(fn2-pool-block-shape fn2-boot-pack-pool-shape
+ (fn2-boot-pack-pool kind index size extents groups owner authority text value epoch slot gen scratch sgen okind id ogen
                      fn2-fields fn2-digests fn2-b3 fn2-pool)
  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
       (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
@@ -82,7 +84,7 @@
          fn2-b3p fn2-b3-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows fn2-digests-rows fn2-b3-rows)))))
 (in-theory (disable fn2-boot-pack-pool))
 
-(defcost fn2-boot-pack :answers t :bytes 8192
+(defcost fn2-boot-pack :answers t :bytes 12288
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Encode one genesis or epoch unit and its BLAKE3, from trusted configuration scalars.")
 (defcost fn2-boot-match :answers (:ok :different :bounds) :bytes 8192
@@ -91,7 +93,7 @@
  :doc "Advance exactly one trusted configuration group after its image unit matches or completes.")
 (defcost fn2-boot-read-epoch :answers (:ok :bounds :format) :bytes 4096 :tables (fn2-core-fields)
  :doc "Decode a candidate epoch; it has no authority until the whole unit matches a canonical hashed record.")
-(defcost fn2-boot-check-anchor :answers t :bytes 20480
+(defcost fn2-boot-check-anchor :answers t :bytes 24576
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Decode the epoch and compare the entire anchor to its canonical generated, BLAKE3-covered record.")
 (defcost fn2-boot-recover :answers t :tables (fn2-core-machine-tables fn2-core-pool fn2-core-sched fn2-core-digests fn2-core-control)
@@ -120,7 +122,7 @@
           (value (if (and (equal kind 1) (consp gs) (consp (car gs))) (cdar gs) 0)))
     (fn2-boot-pack-pool kind index size (fn2-boot-config-extents fn2-boot-config)
       (fn2-boot-config-count fn2-boot-config) (fn2-boot-config-owner fn2-boot-config)
-      (fn2-boot-config-authority fn2-boot-config) text value epoch slot gen scratch sgen id ogen
+      (fn2-boot-config-authority fn2-boot-config) text value epoch slot gen scratch sgen *fn2-boot-kind* id ogen
       fn2-fields fn2-digests fn2-b3 fn2-pool))
    (mv code fn2-core)))
  (fn2-core-preserves fn2-boot-pack (kind index size epoch slot gen scratch sgen id ogen fn2-core) :position 1 :rows nil)
@@ -130,7 +132,7 @@
   (mv-let (code result at) (fn2-core-compare slot gen 0 *fn2-boot-kind* id ogen
                            rx rgen 0 *fn2-boot-kind* id ogen 4096 fn2-core)
    (declare (ignore at))
-   (cond ((not (eq code :ok)) :bounds) ((equal result 0) :ok) (t :different))))
+   (cond ((not (eq code :ok)) :bounds) ((eq result :equal) :ok) (t :different))))
 
  (defun fn2-boot-pop-config (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -218,9 +220,9 @@
                             row-pool-slot row-pool-gen row-rx-slot row-rx-gen id row-generation))
    (:set (offset (+ row-base (* 4096 row-index))))
    (:if (equal row-create 1)
-        ((:next :write) (:charge :bytes 8192 :steps *fn2-work-stage* :runnable t))
+        ((:next :write) (:charge :bytes 12288 :steps *fn2-work-stage* :runnable t))
         ((:do (rcode) (fn2-core-reset row-rx-slot row-rx-gen))
-         (:next :read) (:charge :bytes 8192 :steps *fn2-work-stage* :runnable t))))
+         (:next :read) (:charge :bytes 12288 :steps *fn2-work-stage* :runnable t))))
   (:write :on-refusal ((:stop :io))
    (:if (not (and (natp budget) (< 0 budget))) ((:yield))
     ((:issue (fn2-issue-write row-offset row-pool-slot row-pool-gen 0 4096 0 :principal 0)
@@ -251,8 +253,8 @@
                                             row-rx-slot row-rx-gen id row-generation))
      (:if (equal row-stage 1)
       ((:set (epoch0 epoch) (stage 2) (anchor-slot 1)) (:next :anchor)
-       (:charge :bytes 20480 :steps *fn2-work-stage* :runnable t))
-      ((:set (epoch1 epoch)) (:next :recover) (:charge :bytes 20480 :steps *fn2-work-stage* :runnable t))))))
+       (:charge :bytes 24576 :steps *fn2-work-stage* :runnable t))
+      ((:set (epoch1 epoch)) (:next :recover) (:charge :bytes 24576 :steps *fn2-work-stage* :runnable t))))))
   (:advance :on-refusal ((:stop :bounds))
    (:if (< 0 row-index) ((:do (code) (fn2-boot-pop-config))) ())
    (:if (< row-index row-total)
@@ -263,7 +265,7 @@
    (:if (equal row-create 1)
     ((:do (code) (fn2-boot-pack 2 row-anchor-slot row-image-size 0 row-pool-slot row-pool-gen
                               row-rx-slot row-rx-gen id row-generation))
-     (:next :write) (:charge :bytes 8192 :steps *fn2-work-stage* :runnable t))
+     (:next :write) (:charge :bytes 12288 :steps *fn2-work-stage* :runnable t))
     ((:do (code) (fn2-core-reset row-rx-slot row-rx-gen))
      (:next :read) (:charge :steps *fn2-work-small* :runnable t))))
   (:recover :on-refusal ((:stop :recovery))
@@ -280,7 +282,7 @@
    (:do (pcode) (fn2-boot-pack 2 anchor row-image-size epoch row-pool-slot row-pool-gen
                              row-rx-slot row-rx-gen id row-generation))
    (:set (next-epoch epoch) (stage 3) (anchor-slot anchor) (offset (+ (- row-image-size 8192) (* 4096 anchor))))
-   (:next :write) (:charge :bytes 8192 :steps *fn2-work-stage* :runnable t))
+   (:next :write) (:charge :bytes 12288 :steps *fn2-work-stage* :runnable t))
   (:epoch-fence :on-refusal ((:stop :io))
    (:if (not (and (natp budget) (< 0 budget))) ((:yield))
     ((:issue (fn2-issue-fence :principal 0)

@@ -306,7 +306,7 @@
                  (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool))))
                  (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (e/d (fn2-cns-decode-cursor) (fn2-pool-read)))))
-(fn2-fnct-shape fn2-cns-decode-cursor-shape
+(fn2-pool-block-shape fn2-cns-decode-cursor-shape
   (fn2-cns-decode-cursor cbase off len principal slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
        (natp cbase) (<= (+ cbase *fn2-fncu-v1-num-fields*) (fn2-fields-rows fn2-fields)))
@@ -381,7 +381,7 @@
   :hints (("Goal" :in-theory (e/d (fn2-cns-dec-cursor-field) (fn2-cns-decode-cursor-types))
            :use ((:instance fn2-cns-decode-cursor-types (cbase (+ 16 base)) (off (fn2-fields-ref-off ci fn2-fields))
                             (len (fn2-fields-ref-len ci fn2-fields)))))))
-(fn2-fnct-shape fn2-cns-dec-cursor-field-shape
+(fn2-pool-block-shape fn2-cns-dec-cursor-field-shape
   (fn2-cns-dec-cursor-field base ci principal slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp base)
        (<= (+ base 128) (fn2-fields-rows fn2-fields)))
@@ -458,7 +458,7 @@
     (17 (mv 0 *fn2-cns-verb-unregister* 0 0 0 0 0 0 0 0 0 0 fn2-fields))
     (otherwise (fn2-cns-dec-refuse *fn2-cns-reason-frame*))))
 (defmacro fn2-cns-dec-shape (name args)
-  `(fn2-fnct-shape ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-SHAPE") name)
+  `(fn2-pool-block-shape ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-SHAPE") name)
      (,name ,@args)
      (and (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-cns-dec-guard))
      ((fn2-fields 12))
@@ -483,7 +483,7 @@
 ;; fewest octets; query and view version the row's version.
 (defun fn2-cns-put-cursor (base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* ((start (fn2-fnct-fill slot fn2-pool))
+  (b* ((start (fn2-pool-fill-value slot fn2-pool))
        (cid (nfix cid)) (principal (nfix principal))
        (cl (fn2-fnct-be-width cid)) (pl (fn2-fnct-be-width principal))
        ((mv c0 fn2-pool) (fn2-fnct-put-be 0 0 2 slot gen okind oslot ogen fn2-pool))
@@ -492,7 +492,7 @@
        ((mv c3 fn2-pool) (fn2-fnct-put-be 0 1 1 slot gen okind oslot ogen fn2-pool))
        ((unless (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))) (mv :size 0 0 fn2-fields fn2-pool)))
     (fn2-fnct-put-cursor base start 1 1 cl pl 1 version version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))
-(fn2-fnct-shape fn2-cns-put-cursor-shape
+(fn2-pool-block-shape fn2-cns-put-cursor-shape
   (fn2-cns-put-cursor base cid principal version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
@@ -611,7 +611,7 @@
                                 slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (let ((v (nfix verb)) (cpos (nfix cpos)) (pfront (nfix pfront)) (inext (nfix inext)))
-    (cond ((not (equal class 0)) (mv :ok (fn2-fnct-fill slot fn2-pool) 0 fn2-fields fn2-pool))
+    (cond ((not (equal class 0)) (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-append*)
            (fn2-cns-put-append base cpos 1 slot gen okind oslot ogen fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-ack*)
@@ -633,8 +633,8 @@
              (fn2-fnct-put-page base (if (equal more 0) 0 1) noff nlen count
                                 (if (equal count 0) noff ioff) (if (equal count 0) 0 ilen)
                                 slot gen okind oslot ogen fn2-fields fn2-pool)))
-          (t (mv :ok (fn2-fnct-fill slot fn2-pool) 0 fn2-fields fn2-pool)))))
-(fn2-fnct-shape fn2-cns-put-result-shape
+          (t (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool)))))
+(fn2-pool-block-shape fn2-cns-put-result-shape
   (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
@@ -652,11 +652,11 @@
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* ((class (fn2-cns-reply-class outcome))
-       (roff (fn2-fnct-fill slot fn2-pool))
+       (roff (fn2-pool-fill-value slot fn2-pool))
        ((mv wc fn2-pool) (if (equal class 1)
-                             (fn2-fnct-put-word 0 (fn2-cns-reason-word verb reason) slot gen okind oslot ogen fn2-pool)
+                             (fn2-pool-append-text 0 (fn2-cns-reason-word verb reason) slot gen okind oslot ogen fn2-pool)
                            (mv :ok fn2-pool)))
-       (rlen (nfix (- (fn2-fnct-fill slot fn2-pool) roff)))
+       (rlen (nfix (- (fn2-pool-fill-value slot fn2-pool) roff)))
        ((unless (eq wc :ok)) (mv :size 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv qc qoff qlen fn2-fields fn2-pool)
         (fn2-cns-put-result base verb class cid epoch version cpos pfront count more ioff ilen inext principal
@@ -665,7 +665,7 @@
        ((mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
         (fn2-fnct-put-k28 base row class roff rlen qoff qlen slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
     (mv code (nfix k) (nfix total) fn2-fields fn2-digests fn2-b3 fn2-pool)))
-(fn2-fnct-shape fn2-cns-reply-pool-shape
+(fn2-pool-block-shape fn2-cns-reply-pool-shape
   (fn2-cns-reply-pool base row verb outcome reason cid epoch version cpos pfront count more ioff ilen inext principal slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5) (fn2-pool 6))
@@ -705,7 +705,7 @@
                      (or (not (equal kind *fn2-fnct-request-kind*)) (< value *fn2-authority-request-kind*))))
         (mv :frame 0 0 0 fn2-fields fn2-digests fn2-b3)))
     (mv :ok kind plen value fn2-fields fn2-digests fn2-b3)))
-(fn2-fnct-shape fn2-ctl-open-pool-shape
+(fn2-pool-block-shape fn2-ctl-open-pool-shape
   (fn2-ctl-open-pool base row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 4) (fn2-digests 5) (fn2-b3 6))
@@ -714,7 +714,7 @@
 (defun fn2-ctl-posture-pool (base row posture slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
-  (b* ((k (fn2-fnct-fill slot fn2-pool))
+  (b* ((k (fn2-pool-fill-value slot fn2-pool))
        ((unless (and (natp base) (<= (+ base 16) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 8 posture)))
         (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv code fn2-pool) (fn2-fnct-put-be 0 0 *fn2-fnct-header-octets* slot gen okind oslot ogen fn2-pool))
@@ -727,7 +727,7 @@
         (fn2-fnct-seal-pool base row k *fn2-fnct-control-reply-kind* slot gen okind oslot ogen
                             fn2-fields fn2-digests fn2-b3 fn2-pool)))
     (mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool)))
-(fn2-fnct-shape fn2-ctl-posture-pool-shape
+(fn2-pool-block-shape fn2-ctl-posture-pool-shape
   (fn2-ctl-posture-pool base row posture slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5) (fn2-pool 6))
@@ -1576,7 +1576,7 @@
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (at cap)
-         (mv (fn2-fnct-fill slot fn2-pool) (fn2-fnct-cap slot fn2-pool)) (mv (nfix at) (nfix cap))))
+         (mv (fn2-pool-fill-value slot fn2-pool) (fn2-fnct-cap slot fn2-pool)) (mv (nfix at) (nfix cap))))
      (defthm fn2-cns-fill-cap-types
        (and (natp (car (fn2-cns-fill-cap slot fn2-core))) (natp (mv-nth 1 (fn2-cns-fill-cap slot fn2-core))))
        :rule-classes ((:type-prescription :corollary (natp (car (fn2-cns-fill-cap slot fn2-core))))

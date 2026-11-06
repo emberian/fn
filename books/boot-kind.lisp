@@ -39,7 +39,9 @@
           (fn2-boot-config (update-fn2-boot-config-owner (if (and (posp owner) (unsigned-byte-p 32 owner)) owner 1) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-authority (if (posp (nfix (fn2-profile-get :authority profile))) 1 0) fn2-boot-config)))
      fn2-boot-config))))
-(defthm fn2-boot-config-prepare-type (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config)))
+(defthm fn2-boot-config-prepare-type
+ (implies (fn2-boot-configp fn2-boot-config)
+          (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config))))
 (defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config)))
 (in-theory (disable fn2-boot-config-prepare))
 (defcorechild fn2-core-boot-config fn2-boot-config
@@ -59,7 +61,7 @@
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
          (:advance :storage-window) (:anchor :storage-window) (:recover :storage-window)
          (:recover-wait :storage-window) (:epoch :storage-window) (:epoch-fence :storage-window)
-         (:epoch-result :storage-window) (:release :storage-window))
+         (:epoch-result :storage-window))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
  :stops (:geometry :configuration :io :anchor :recovery :epoch :bounds)
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
