@@ -34,23 +34,20 @@
  :merge :unique)
 
 ; The current grant per (grantee, right, scope, target): the newest grant
-; event naming it, in local committed order (never wall-clock). A fold over
-; the grant events; RIGHT and SCOPE are the port enums' codes (a fold's key
-; is an integer, fn2-authority-right's and -scope's order).
+; event naming it, in local committed order (never wall-clock); RIGHT and
+; SCOPE are the port enums' codes. Declared :latest entries, not folds: the
+; value is the writing member's own commit event, and a fold event's args
+; cannot take it (fn2-succ-arg: :event is an insert's source only). The fold
+; declaration over the grant events is owed with that generator growth.
 (defrunschema fn2-grant-current :id 18
  :key ((grantee (:id principal)) (right :u8) (scope :u8) (target (:id stream)))
  :value ((grant (:id grant)))
- :merge :latest
- :fold (:events ((:publish (grantee right scope target g) :set ((grant g))))
-        :init :empty :coverage :history-start
-        :observe (grant)))
+ :merge :latest)
 
 ; A principal's authority head: its newest grant event, the revision that
 ; names its complete grant state (B's envelope grant field names it).
+; :latest entries for the same reason as fn2-grant-current.
 (defrunschema fn2-authority-head :id 19
  :key ((principal (:id principal)))
  :value ((grant (:id grant)))
- :merge :latest
- :fold (:events ((:advance (principal g) :set ((grant g))))
-        :init :empty :coverage :history-start
-        :observe (grant)))
+ :merge :latest)
