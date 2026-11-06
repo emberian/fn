@@ -563,7 +563,10 @@ def print_result(result: dict, verbose: bool) -> int:
 
 
 def cmd_start(args) -> int:
-    lane = lane_of(args)
+    # A start names its tree: --lane, else this worktree's; never an earlier record of the name.
+    lane = args.lane or local_lane()
+    if not lane:
+        raise SystemExit("bb2-repl: not in build/lanes/<lane>: pass --lane")
     name = args.name or Path(args.book).stem
     args.name = name
     book = args.book if args.book.endswith(".lisp") else args.book + ".lisp"
