@@ -661,12 +661,12 @@ pending work) land with the served verb each exercises.
    the Message-ID is the overview row's sought by position in the group, and `fn2-cns-put-item` encodes the
    item (`fn2-fnct-item`) and appends it after the request, so the items are contiguous and the page's next
    is the position through which the walk is complete (MORE when the client's limit, the walk's step bound or
-   the range's room stopped it; the range holds the items three times, `fn2-cns-item-fits`). `fetch` (code
+   the range's room stopped it; the range holds the items three times, `fn2-cns-item-fits`). The control connection's one range is the profile's smallest pool class of at least `*fn2-ctl-io-bytes*` (4096) octets (admission class `(:bytes B)`, machines.lisp), so a page carries records whatever the class numbering; each request row reads on its own read row (`fn2-cns-read-row`: the `:cns` rows before the authority block). `fetch` (code
    13) answers the occurrence's stored octets when its Message-ID is the request's and they fit one reply,
    `withdrawn`, else `unavailable` (never another selection). Owed: an item's streams and reasons (the one
    served query is the inbox), fetch of an article larger than one reply (frames past the receive window),
-   max-octets, append's Message-ID in its result, fncu v2 issuance past u32 counters, the cns callbacks'
-   read row (row 0, shared with cursor slot 0's). Interim rulings (deputy, 2026-11-05), each owed its full form:
+   max-octets, append's Message-ID in its result, fncu v2 issuance past u32 counters, the cns callbacks' transaction slot (successor slot 0 in
+   commit-register, commit-ack and stage-ack-slot). Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
    `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
    and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
