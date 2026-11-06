@@ -332,10 +332,33 @@ and return join the death-cut counter under a short mutex, held outside the phys
 
 `tests/native-device-unit.lsp` controls FIFO fence ordering, a deliberately stalled worker,
 short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
-primitive test, not a node restart or power-loss qualification. The image startup parameters
-on `fn2-n-make-host` are an internal integration seam: persistent genesis, boot/recovery gating,
-and the fresh-process node restart fixture remain unimplemented. The ordinary native launcher
-still uses the seeded memory device until that boot path lands.
+primitive test. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
+init exclusively creates a preallocated image (default 32 MiB), and serve opens it without
+truncation. `books/node-profile.lisp` names the small native profile, including its 128-extent
+arena and `local.test` genesis group. Image size is checked by ACL2 before creation and again
+from the open observation. A larger file does not change that profile's arena geometry.
+
+`books/boot-kind.lisp` and `books/boot.lisp` declare the image startup machine. The immutable
+genesis units follow the arena: one header, then one unit per group. The image's last two
+units hold alternating epoch anchors. Each 4096-byte unit uses the generated boot-record
+codec, zero padding and a 32-byte BLAKE3 trailer. Opening compares every genesis unit to the
+supplied profile's canonical record; both anchors must validate and name adjacent epochs.
+An empty, mismatched or damaged image stops boot. It is never silently initialized.
+
+The volatile genesis rows cannot serve until boot has verified those records, run B's
+recovery and C's replay, written the next epoch and received a successful Fence. The executor
+suppresses listener genesis for image profiles; the boot machine releases listeners only
+after that fence. `tests/boot-unit.lisp` holds the startup fence as the no-Accept control and
+checks successive epochs and invalid-image refusals. `tests/native-image-restart.py` creates
+an image, POSTs two articles (one over an extent), kills the recorded SBCL PID after `240`,
+and compares GROUP/ARTICLE/HEAD octets after two fresh opens. These boot and restart fixtures
+are pending execution at this lane checkpoint; the device primitive tests passed on Linux
+and Darwin. The tests do not qualify a physical device's power-loss behavior.
+
+The socket measurement fixture writes and fences its declared seed snapshot to a private
+file before serving, then uses the same storage worker. Its setup remains outside the
+measured boundary trace so WIRE/ENVELOPE replay starts at the declared seeded state. The
+fresh-process fixture, separately, exercises persisted genesis and image boot.
 
 #### 4.1.4 The socket and the session H speaks
 `tests/native-session.lsp` (LD script: includes the served books and check-wire/check-envelope,
