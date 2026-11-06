@@ -17,8 +17,18 @@
 
 ; Stage the generated codec's fields separately from pool I/O, so shape
 ; proofs compose across one field-table operation instead of every setter.
+(defun fn2-boot-field-inputsp (kind index size extents groups owner authority textlen value epoch scratch sgen)
+ (declare (xargs :guard t))
+ (and (unsigned-byte-p 8 kind) (unsigned-byte-p 32 index) (unsigned-byte-p 60 size)
+      (unsigned-byte-p 32 extents) (unsigned-byte-p 32 groups) (unsigned-byte-p 32 owner)
+      (unsigned-byte-p 1 authority) (unsigned-byte-p 32 textlen)
+      (unsigned-byte-p 60 value) (unsigned-byte-p 60 epoch)
+      (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)))
 (defun fn2-boot-fields (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
- (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)))
+ (declare (xargs :stobjs fn2-fields
+  :guard (and (fn2-fields-wfp fn2-fields)
+              (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
+              (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch scratch sgen))))
  (let* (
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-magic*) *fn2-boot-magic* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-version*) 1 fn2-fields))
@@ -37,8 +47,12 @@
 ) fn2-fields))
 (fn2-fields-preserves fn2-boot-fields
  (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
+ :raw-rows t
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
+        (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
+        (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch scratch sgen))
  :hints (("Goal" :in-theory (e/d (fn2-boot-fields) (fn2-fieldsp fn2-fields-wfp fn2-fields-rows)))))
-(in-theory (disable fn2-boot-fields))
+(in-theory (disable fn2-boot-fields fn2-boot-field-inputsp))
 
 ; The generated record codec is the single encoding. The last 32 bytes
 ; are BLAKE3 of the whole padded prefix, including geometry and record role.
@@ -47,12 +61,10 @@
  (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
-                    (unsigned-byte-p 8 kind) (unsigned-byte-p 32 index) (unsigned-byte-p 60 size)
-                    (unsigned-byte-p 32 extents) (unsigned-byte-p 32 groups) (unsigned-byte-p 32 owner)
-                    (unsigned-byte-p 1 authority) (stringp text) (<= (length text) 250)
-                    (unsigned-byte-p 60 value) (unsigned-byte-p 60 epoch)
+                    (stringp text) (<= (length text) 250)
+                    (fn2-boot-field-inputsp kind index size extents groups owner authority
+                                           (length text) value epoch scratch sgen)
                     (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
-                    (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)
                     (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
       ((mv c fn2-pool) (fn2-pool-reset slot gen okind id ogen fn2-pool))
@@ -80,7 +92,7 @@
  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
       (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  ((fn2-fields 1) (fn2-digests 2) (fn2-b3 3) (fn2-pool 4))
- (("Goal" :in-theory (e/d (fn2-boot-pack-pool) (fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp
+ (("Goal" :in-theory (e/d (fn2-boot-pack-pool) (fn2-pool-reset fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp
          fn2-b3p fn2-b3-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows fn2-digests-rows fn2-b3-rows)))))
 (in-theory (disable fn2-boot-pack-pool))
 
@@ -96,7 +108,7 @@
 (defcost fn2-boot-check-anchor :answers t :bytes 24576
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Decode the epoch and compare the entire anchor to its canonical generated, BLAKE3-covered record.")
-(defcost fn2-boot-recover :answers t :tables (fn2-core-machine-tables fn2-core-pool fn2-core-sched fn2-core-digests fn2-core-control)
+(defcost fn2-boot-recover :answers t :tables (fn2-recovery-machine-table fn2-core-pool fn2-core-sched fn2-core-digests fn2-core-control)
  :doc "Start the existing recovery machine, with persistence-fence assumption and no external witness.")
 (defcost fn2-boot-recovered :answers (:more :ok :failed) :doc "Observe completion and classification of the real recovery/replay machine.")
 (defcost fn2-boot-next-epoch :answers (:ok :bounds) :doc "Choose above both persisted epoch anchors and recovery's allocator epoch.")
