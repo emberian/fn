@@ -1,0 +1,712 @@
+#!/usr/bin/env python3
+"""A persistent ACL2 session on bb2 over a lane's remote tree, driven from the Mac.
+
+The lanes' inner loop was a bb2 certify of 20-45 minutes; the Mac REPL refuses
+bb2 certificates (their system-book hashes differ), so seats hand-rolled an `ld`
+on bb2 over the certified closure.  This is that, supported:
+
+    tools/bb2_repl start books/cns.lisp            # sync, include the book's includes, wait
+    tools/bb2_repl load cns                        # ld the book's events; EVERY error with its form
+    tools/bb2_repl load cns --skip-proofs          # the same without proofs: generator errors in seconds
+    tools/bb2_repl load cns --until fn2-x            # the prefix; then, after an edit:
+    tools/bb2_repl load cns --from fn2-x --through fn2-y   # --from keeps the session's world
+    tools/bb2_repl send cns '(pe (quote fn2-cns-step))'
+    tools/bb2_repl status cns | list | stop cns
+
+The session lives in bb2:~/fn2-<lane>/ (the lane is this worktree's name under
+build/lanes/, else `--lane`).  `start` rsyncs this worktree there first, exactly as
+tools/box_certify_bb2.sh does (content-compared, so unchanged files keep their
+remote mtimes and certificates), unless the lane is not this worktree's (the
+deputy's ~/fn2-main is never written from a lane) or `--no-sync`.  It then runs a
+server under swarm-build (SWARM_MEM_MAX, default 12G), detached with `nohup
+setsid`; the server writes its own PID to build/bb2-repl/NAME/server.pid on bb2
+and stops itself after `--idle` minutes without a request (default 60).
+
+The warm-up sends the book's own top-level `include-book` forms (its certified
+closure, from the certificates in the remote tree; a dependency whose source no
+longer matches its certificate is included uncertified, and `status` names it),
+then `(deflabel bb2-repl-base)`.  `load` undoes the world back to that label
+(`ubt!`), syncs, and sends every top-level form of the book (or the range) one at a
+time, continuing past refusals, and prints each refused form with its first error;
+a refusal whose error names an event refused earlier in the same load is marked
+"follow-on".  The whole output of the load is kept on bb2 and its path printed.
+
+A green here means ACL2 admitted the forms in a session over the remote tree's
+certificates (with `--skip-proofs`, only that they translate and expand).  It is
+not a certificate: certify with tools/box_certify_bb2.sh.
+
+Never kill by pattern: `stop` asks the server; if it does not answer, the client
+signals the PID in server.pid only after checking that /proc/PID/cmdline is this
+session's `bb2_repl serve NAME`.
+"""
+from __future__ import annotations
+
+import argparse
+import contextlib
+import json
+import os
+from pathlib import Path
+import queue
+import re
+import shlex
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+
+TOOLS = Path(__file__).resolve().parent
+ROOT = TOOLS.parent
+sys.path.insert(0, str(TOOLS))
+import proof_repl as pr  # noqa: E402  (the form reader and ACL2 output judges)
+
+HOST = "bb2"
+ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+SYSTEM_BOOKS = "/tank/fn/acl2-8.7/books"
+SSH_OPTS = ["-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3",
+            "-o", "ControlMaster=auto", "-o", "ControlPath=~/.ssh/cm-bb2repl-%C",
+            "-o", "ControlPersist=15m"]
+RSYNC_EXCLUDES = [".git", "build", "*.fasl", "*.cert", "*.cert.out", "meta/.lake"]
+SENTINEL = ";;BB2-REPL-DONE"
+BASE_LABEL = "bb2-repl-base"
+CERT_LOCK = "build/fn2-certify.lock"  # tools/certify.sh's lock: never sync under a certify
+UNCERTIFIED = re.compile(r"(?:uncertified|certificate[^\n]*(?:invalid|out of date|does not exist))",
+                         re.IGNORECASE)
+
+
+# --- shared ------------------------------------------------------------------
+
+REMOTE_HOME = "bb2-repl"  # bb2:~/bb2-repl/{tools,sessions}: nothing is written into a lane's tree
+
+
+def session_dir(name: str) -> Path:
+    """The Mac's record of a session (which lane it is in)."""
+    return ROOT / "build" / "bb2-repl" / name
+
+
+def server_dir(name: str) -> Path:
+    """On bb2: ~/bb2-repl/sessions/<tree>-<name>, the tree being the cwd (~/fn2-<lane>)."""
+    return Path.home() / REMOTE_HOME / "sessions" / f"{Path.cwd().name}-{name}"
+
+
+def remote_dir(lane: str, name: str) -> str:
+    return f"~/{REMOTE_HOME}/sessions/fn2-{lane}-{name}"
+
+
+def local_lane() -> str | None:
+    parts = ROOT.parts
+    if len(parts) >= 3 and parts[-3:-1] == ("build", "lanes"):
+        return parts[-1]
+    return None
+
+
+# --- the server (runs on bb2, in the lane's remote tree) ------------------------
+
+class Acl2:
+    """One ACL2 child, a reader thread, and a sentinel form after every form."""
+
+    def __init__(self, log_path: Path):
+        tree = Path.cwd()
+        env = dict(os.environ, ACL2_SYSTEM_BOOKS=SYSTEM_BOOKS,
+                   ACL2_PROJECTS=str(tree / "acl2-projects"), ACL2_BOOK_HASH_ALISTP="NIL")
+        self.log = open(log_path, "a", encoding="utf-8")
+        self.process = subprocess.Popen(
+            [os.environ.get("BB2_REPL_ACL2", ACL2)], stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+            encoding="utf-8", errors="backslashreplace", bufsize=1, cwd=tree,
+            env=env, start_new_session=True)
+        self.lines: queue.Queue = queue.Queue()
+        self.counter = 0
+        threading.Thread(target=self._pump, daemon=True).start()
+
+    def _pump(self) -> None:
+        assert self.process.stdout is not None
+        for line in self.process.stdout:
+            self.log.write(line)
+            self.log.flush()
+            self.lines.put(line)
+        self.lines.put(None)
+
+    def send(self, form: str, timeout: float) -> tuple[str, str | None]:
+        """(output, problem): problem is None, 'timeout', or why the session is gone."""
+        assert self.process.stdin is not None
+        self.counter += 1
+        marker = f"{SENTINEL} {self.counter}"
+        self.log.write(">>> " + form.rstrip() + "\n")
+        self.process.stdin.write(form.rstrip() + "\n" + f'(cw "~%{marker}~%")\n')
+        self.process.stdin.flush()
+        collected: list[str] = []
+        deadline = time.monotonic() + timeout
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return "".join(collected), "timeout"
+            try:
+                line = self.lines.get(timeout=min(remaining, 1.0))
+            except queue.Empty:
+                continue
+            if line is None:
+                return "".join(collected), "ACL2 exited"
+            if line.strip() == marker:
+                return "".join(collected), None
+            if line.strip().startswith(SENTINEL):
+                continue  # a stale marker after a swallowed form
+            if "debugger invoked on" in line or pr.RAW_DEBUGGER_PROMPT.search(line):
+                collected.append(line)
+                return "".join(collected), "raw Lisp debugger: the session is not in the ACL2 loop"
+            collected.append(line)
+
+    def stop(self) -> None:
+        with contextlib.suppress(Exception):
+            assert self.process.stdin is not None
+            self.process.stdin.write("(good-bye)\n")
+            self.process.stdin.flush()
+            self.process.wait(timeout=10)
+        if self.process.poll() is None:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(self.process.pid, signal.SIGKILL)  # its own group, from Popen
+            self.process.wait(timeout=10)
+
+
+def first_error(output: str, keep: int = 24) -> str:
+    """The first error block of OUTPUT: from its first error mark, KEEP lines."""
+    lines = output.splitlines()
+    for index, line in enumerate(lines):
+        if any(mark in line for mark in pr.ERROR_MARKS + pr.CRASH_MARKS) or pr.FAILED_BANNER in line:
+            return "\n".join(line for line in lines[index:index + keep]
+                             if line.strip() and not pr.ACL2_PROMPT.match(line))
+    return "\n".join(line for line in lines[-keep:] if line.strip())
+
+
+class Server:
+    def __init__(self, name: str, book: str, idle: float, limit: float):
+        self.name, self.book, self.idle, self.limit = name, book, idle, limit
+        self.dir = server_dir(name)
+        self.tree = Path.cwd()
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.state: dict = {"name": name, "book": book, "pid": os.getpid(), "phase": "starting",
+                            "started": time.time(), "includes": [], "uncertified": [],
+                            "loads": 0, "base": False}
+        (self.dir / "server.pid").write_text(f"{os.getpid()}\n")
+        self.save()
+        self.acl2 = Acl2(self.dir / "acl2.log")
+        self.state["acl2_pid"] = self.acl2.process.pid
+        self.last = time.monotonic()
+
+    def save(self) -> None:
+        tmp = self.dir / "state.json.tmp"
+        tmp.write_text(json.dumps(self.state, indent=1))
+        tmp.replace(self.dir / "state.json")
+
+    def book_forms(self, book: str) -> list[str]:
+        return pr.commands((self.tree / book).read_text(encoding="utf-8"))
+
+    def warm(self) -> None:
+        path = self.tree / self.book
+        forms = self.book_forms(self.book)
+        out, problem = self.acl2.send("(value-triple :bb2-repl-up)", 600)
+        if problem:
+            raise SystemExit(f"bb2-repl: ACL2 did not start: {problem}\n{out[-2000:]}")
+        self.acl2.send(f'(set-cbd "{path.parent}/")', 60)
+        self.acl2.send("(set-inhibit-output-lst '(proof-tree))", 60)
+        self.state["phase"] = "including"
+        self.save()
+        t0 = time.monotonic()
+        for form in forms:
+            text = form.strip()
+            if not (text.lower().startswith("(in-package") or pr.INCLUDE.match(text)):
+                continue
+            began = time.monotonic()
+            out, problem = self.acl2.send(text, 3600)
+            row = {"form": " ".join(text.split())[:120], "seconds": round(time.monotonic() - began, 2)}
+            if problem or pr.errored(out):
+                row["refused"] = problem or first_error(out)
+            hits = sorted({m.group(0) for m in UNCERTIFIED.finditer(out)})
+            if hits:
+                self.state["uncertified"].append({"form": row["form"], "notes": hits[:4]})
+            self.state["includes"].append(row)
+            self.save()
+        self.state["warm_seconds"] = round(time.monotonic() - t0, 2)
+        out, problem = self.acl2.send(f"(deflabel {BASE_LABEL})", 60)
+        self.state["base"] = not (problem or pr.errored(out))
+        self.state["phase"] = "ready"
+        self.save()
+
+    def send_items(self, items: list[tuple[str, str]], limit: float | None, timeout: float,
+                   keep_going: bool, tag: str) -> dict:
+        rows, refused_names, whole = [], [], []
+        t0 = time.monotonic()
+        for label, form in items:
+            began = time.monotonic()
+            out, problem = self.acl2.send(pr.wrap_limit(form, limit), timeout)
+            whole.append(f";;; ===== {label}\n{out}")
+            row = {"label": label, "seconds": round(time.monotonic() - began, 2)}
+            cost = pr.measure(out)
+            if cost["steps"] is not None:
+                row["steps"] = cost["steps"]
+            if problem or pr.errored(out):
+                error = (problem + "\n" if problem else "") + first_error(out)
+                row["error"] = error
+                follow = [n for n in refused_names
+                          if re.search(r"(?<![\w-])" + re.escape(n) + r"(?![\w-])", error, re.IGNORECASE)]
+                if follow:
+                    row["follow_on"] = follow[:3]
+                _, event = pr.head_and_name(form)
+                if event:
+                    refused_names.append(event)
+                if problem in ("ACL2 exited",) or (problem or "").startswith("raw Lisp"):
+                    rows.append(row)
+                    self.state["phase"] = "dead: " + problem
+                    break
+                if problem == "timeout":
+                    rows.append(row)
+                    self.state["phase"] = "busy: a form outlived its timeout; stop and start again"
+                    break
+                if not keep_going:
+                    rows.append(row)
+                    break
+            elif label.startswith("#") or len(items) == 1:
+                row["value"] = "\n".join(pr.value_lines(form, out, keep=12))
+            rows.append(row)
+        self.state["outputs"] = self.state.get("outputs", 0) + 1
+        stamp = time.strftime("%Y%m%dT%H%M%S") + f"-{self.state['outputs']}"
+        out_path = self.dir / f"{tag}-{stamp}.txt"
+        out_path.write_text("".join(whole), encoding="utf-8")
+        self.save()
+        return {"rows": rows, "seconds": round(time.monotonic() - t0, 2), "output": str(out_path),
+                "sent": len(rows), "of": len(items),
+                "refused": sum(1 for r in rows if "error" in r)}
+
+    def undo_from(self, form: str) -> str:
+        """Undo the world through FORM's event when this session admitted it after the base."""
+        _, event = pr.head_and_name(form)
+        if not event:
+            return f"--from: {pr.form_label(0, form)[3:]} names no event; nothing undone"
+        probe = (f'(cw "~%BB2-AFTER-BASE ~x0~%" (let ((n (getpropc (quote {event}) '
+                 f"'absolute-event-number nil (w state))) (b (getpropc '{BASE_LABEL} "
+                 f"'absolute-event-number nil (w state)))) (and n b (> n b))))")
+        out, _ = self.acl2.send(probe, 60)
+        if "BB2-AFTER-BASE T" not in out:
+            return f"--from {event}: not in this session after {BASE_LABEL}; nothing undone"
+        out, problem = self.acl2.send(f"(ubt! '{event})", 600)
+        if problem or pr.errored(out):
+            return f"--from {event}: undo refused: " + (problem or first_error(out))
+        return f"undone through {event}"
+
+    def handle(self, request: dict) -> dict:
+        op = request.get("op")
+        limit = request.get("limit", self.limit)
+        timeout = float(request.get("timeout", 1800))
+        if op == "status":
+            return {"state": self.state}
+        if op == "send":
+            items = [(f"form {i + 1}", f) for i, f in enumerate(pr.commands(request["forms"]))]
+            return self.send_items(items, limit, timeout, request.get("keep_going", False), "send")
+        if op == "load":
+            book = request.get("book") or self.book
+            forms = self.book_forms(book)
+            chosen = pr.select_range(forms, request.get("from"), request.get("until"),
+                                     request.get("through"))
+            prelude = []
+            if not (request.get("append") or request.get("from")):
+                if self.state["loads"] or self.state.get("sent_since_base"):
+                    out, problem = self.acl2.send(f"(ubt! '{BASE_LABEL})", 600)
+                    if problem or pr.errored(out):
+                        return {"error": "could not undo to the base label: "
+                                + (problem or first_error(out))}
+                    out, problem = self.acl2.send(f"(deflabel {BASE_LABEL})", 60)
+                prelude.append("undone to " + BASE_LABEL)
+            elif request.get("from"):
+                prelude.append(self.undo_from(forms[chosen.start]))
+            skip = request.get("skip_proofs", False)
+            self.acl2.send(f"(set-ld-skip-proofsp {'t' if skip else 'nil'} state)", 60)
+            items = [(pr.form_label(i + 1, forms[i]), forms[i]) for i in chosen]
+            result = self.send_items(items, None if skip else limit, timeout, True, "load")
+            if skip:
+                self.acl2.send("(set-ld-skip-proofsp nil state)", 60)
+            self.state["loads"] += 1
+            result["prelude"] = prelude
+            result["book"] = book
+            return result
+        if op == "stop":
+            return {"stopping": True}
+        return {"error": f"unknown op {op!r}"}
+
+    def serve(self) -> None:
+        try:
+            self.warm()
+        except SystemExit as stop:
+            self.state["phase"] = f"dead: {stop}"
+            self.save()
+            self.acl2.stop()
+            return
+        sock_path = self.dir / "sock"
+        with contextlib.suppress(FileNotFoundError):
+            sock_path.unlink()
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        listener.bind(str(sock_path))
+        listener.listen(4)
+        listener.settimeout(30)
+        try:
+            while True:
+                if self.idle and time.monotonic() - self.last > self.idle * 60:
+                    self.state["phase"] = f"stopped: idle {self.idle:g} min"
+                    break
+                if self.acl2.process.poll() is not None:
+                    self.state["phase"] = "dead: ACL2 exited"
+                    break
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                with connection:
+                    connection.settimeout(None)
+                    request = json.loads(read_all(connection) or b"{}")
+                    self.last = time.monotonic()
+                    try:
+                        if self.state["phase"].startswith(("dead", "busy")) and request.get("op") != "stop":
+                            answer = {"error": "session " + self.state["phase"], "state": self.state}
+                        else:
+                            answer = self.handle(request)
+                    except SystemExit as refusal:
+                        answer = {"error": str(refusal)}
+                    except Exception as error:  # an answer, never a dead server
+                        answer = {"error": f"{type(error).__name__}: {error}"}
+                    if request.get("op") == "send":
+                        self.state["sent_since_base"] = True
+                    with contextlib.suppress(OSError):
+                        connection.sendall(json.dumps(answer).encode())
+                    self.last = time.monotonic()
+                    if answer.get("stopping"):
+                        self.state["phase"] = "stopped: asked"
+                        break
+        finally:
+            self.save()
+            listener.close()
+            with contextlib.suppress(FileNotFoundError):
+                sock_path.unlink()
+            self.acl2.stop()
+            with contextlib.suppress(FileNotFoundError):
+                (self.dir / "server.pid").unlink()
+
+
+def read_all(connection: socket.socket) -> bytes:
+    chunks = []
+    while True:
+        chunk = connection.recv(1 << 16)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def ask_local(name: str, request: dict) -> dict:
+    """On bb2: one request to the session's socket."""
+    path = server_dir(name) / "sock"
+    if not path.exists():
+        state = server_dir(name) / "state.json"
+        phase = json.loads(state.read_text()).get("phase") if state.exists() else "never started"
+        return {"error": f"no live session {name} ({phase})"}
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.connect(str(path))
+        connection.sendall(json.dumps(request).encode())
+        connection.shutdown(socket.SHUT_WR)
+        return json.loads(read_all(connection) or b"{}")
+
+
+# --- the client (runs on the Mac) ----------------------------------------------
+
+def ssh(lane: str, command: str, timeout: float, stdin: str | None = None) -> subprocess.CompletedProcess:
+    remote = f"cd ~/fn2-{lane} && {command}"
+    try:
+        return subprocess.run(["ssh", *SSH_OPTS, HOST, remote], input=stdin, text=True,
+                              capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise SystemExit(f"bb2-repl: ssh to {HOST} outlived {timeout:g} s: {command[:80]}") from None
+
+
+def sync(lane: str, force: bool) -> str:
+    """rsync this worktree to bb2:~/fn2-<lane>/ as box_certify_bb2.sh does, under its lock."""
+    if lane != local_lane() and not force:
+        return f"not synced: lane {lane} is not this worktree's ({local_lane()})"
+    began = time.monotonic()
+    got = ssh(lane, f"mkdir -p build && mkdir {CERT_LOCK}", 60)
+    if got.returncode != 0:
+        raise SystemExit(f"bb2-repl: a certify holds bb2:~/fn2-{lane}/{CERT_LOCK}; "
+                         "sync after it ends, or pass --no-sync")
+    try:
+        command = ["rsync", "-rlpgoDz", "--checksum", "-e", "ssh " + " ".join(SSH_OPTS)]
+        for pattern in RSYNC_EXCLUDES:
+            command += ["--exclude", pattern]
+        command += [f"{ROOT}/", f"{HOST}:~/fn2-{lane}/"]
+        done = subprocess.run(command, capture_output=True, text=True, timeout=600)
+        if done.returncode != 0:
+            raise SystemExit("bb2-repl: rsync failed: " + done.stderr[-800:])
+    finally:
+        ssh(lane, f"rmdir {CERT_LOCK}", 60)
+    return f"synced to bb2:~/fn2-{lane} in {time.monotonic() - began:.1f} s"
+
+
+def ship_tools() -> None:
+    """The server runs from bb2:~/bb2-repl/tools (this tree's tools/), so a tree that is
+    not synced from here (the deputy's ~/fn2-main) is never written."""
+    command = ["rsync", "-rlpz", "--checksum", "--include", "*.py", "--include", "bb2_repl",
+               "--exclude", "*", "-e", "ssh " + " ".join(SSH_OPTS),
+               f"{TOOLS}/", f"{HOST}:~/{REMOTE_HOME}/tools/"]
+    subprocess.run(["ssh", *SSH_OPTS, HOST, f"mkdir -p ~/{REMOTE_HOME}/tools"], timeout=60,
+                   check=True, capture_output=True)
+    done = subprocess.run(command, capture_output=True, text=True, timeout=300)
+    if done.returncode != 0:
+        raise SystemExit("bb2-repl: shipping tools failed: " + done.stderr[-800:])
+
+
+def record(name: str, lane: str) -> None:
+    directory = session_dir(name)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "remote.json").write_text(json.dumps({"lane": lane, "host": HOST}))
+
+
+def lane_of(args) -> str:
+    if getattr(args, "lane", None):
+        return args.lane
+    remote = session_dir(args.name) / "remote.json" if getattr(args, "name", None) else None
+    if remote and remote.exists():
+        return json.loads(remote.read_text())["lane"]
+    lane = local_lane()
+    if not lane:
+        raise SystemExit("bb2-repl: not in build/lanes/<lane>: pass --lane")
+    return lane
+
+
+def ask(lane: str, name: str, request: dict, timeout: float) -> dict:
+    got = ssh(lane, f"python3 ~/{REMOTE_HOME}/tools/bb2_repl ask {shlex.quote(name)}", timeout,
+              stdin=json.dumps(request))
+    if got.returncode != 0:
+        raise SystemExit(f"bb2-repl: ask failed ({got.returncode}): {got.stderr[-1500:]}")
+    return json.loads(got.stdout or "{}")
+
+
+def remote_state(lane: str, name: str) -> dict | None:
+    got = ssh(lane, f"cat {remote_dir(lane, name)}/state.json 2>/dev/null", 60)
+    if got.returncode != 0 or not got.stdout.strip():
+        return None
+    with contextlib.suppress(json.JSONDecodeError):
+        return json.loads(got.stdout)
+    return None
+
+
+def print_state(state: dict) -> None:
+    age = time.time() - state.get("started", time.time())
+    print(f"session {state['name']} book {state['book']}: {state['phase']} "
+          f"(pid {state.get('pid')}, acl2 {state.get('acl2_pid')}, up {age / 60:.1f} min, "
+          f"loads {state.get('loads', 0)})")
+    if "warm_seconds" in state:
+        slow = sorted(state["includes"], key=lambda r: -r["seconds"])[:3]
+        print(f"  warm-up {state['warm_seconds']} s over {len(state['includes'])} forms; slowest: "
+              + "; ".join(f"{r['form'][:60]} {r['seconds']} s" for r in slow))
+    for row in state.get("includes", []):
+        if "refused" in row:
+            print(f"  REFUSED {row['form']}\n    " + row["refused"].replace("\n", "\n    "))
+    for row in state.get("uncertified", []):
+        print(f"  uncertified (loaded from source, proofs skipped): {row['form']}: {row['notes']}")
+    if not state.get("base", True):
+        print(f"  warning: (deflabel {BASE_LABEL}) refused: `load` cannot undo")
+
+
+def print_result(result: dict, verbose: bool) -> int:
+    if "error" in result:
+        print("bb2-repl: " + result["error"])
+        return 2
+    for note in result.get("prelude", []):
+        print(note)
+    for row in result["rows"]:
+        if "error" in row:
+            tag = " (follow-on: " + ", ".join(row["follow_on"]) + ")" if row.get("follow_on") else ""
+            print(f"REFUSED {row['label']} [{row['seconds']} s]{tag}")
+            print("  " + row["error"].replace("\n", "\n  "))
+        elif verbose or result["of"] == 1 or row.get("seconds", 0) > 10:
+            line = f"ok {row['label']} [{row['seconds']} s" + (
+                f", {row['steps']} steps]" if "steps" in row else "]")
+            print(line)
+            if row.get("value") and (verbose or result["of"] == 1):
+                print("  " + row["value"].replace("\n", "\n  "))
+    first_refused = next((r["label"] for r in result["rows"] if "error" in r), None)
+    print(f"{result.get('book', 'sent')}: {result['sent']}/{result['of']} forms sent, "
+          f"{result['refused']} refused, {result['seconds']} s"
+          + (f"; first refusal {first_refused}" if first_refused else "")
+          + f"; whole output bb2:{result['output']}")
+    return 1 if result["refused"] else 0
+
+
+def cmd_start(args) -> int:
+    lane = lane_of(args)
+    name = args.name or Path(args.book).stem
+    args.name = name
+    book = args.book if args.book.endswith(".lisp") else args.book + ".lisp"
+    if not args.no_sync:
+        print(sync(lane, args.sync))
+    state = remote_state(lane, name)
+    if state and not state["phase"].startswith(("dead", "stopped")):
+        got = ask(lane, name, {"op": "status"}, 60)
+        if "state" in got:
+            print(f"bb2-repl: session {name} is already live; `stop {name}` first")
+            print_state(got["state"])
+            return 1
+    record(name, lane)
+    ship_tools()
+    mem = args.mem
+    directory = remote_dir(lane, name)
+    launch = (f"test -f {shlex.quote(book)} && mkdir -p {directory} && rm -f {directory}/state.json "
+              f"|| exit 1; SWARM_BUILD_TAG=bb2repl-{lane}-{name} SWARM_MEM_MAX={mem} nohup setsid swarm-build "
+              f"python3 ~/{REMOTE_HOME}/tools/bb2_repl serve {shlex.quote(name)} {shlex.quote(book)} "
+              f"--idle {args.idle} --limit {args.limit} > {directory}/server.log 2>&1 < /dev/null &")
+    got = ssh(lane, launch, 60)
+    if got.returncode != 0:
+        raise SystemExit("bb2-repl: launch failed: " + got.stderr[-800:])
+    began = time.monotonic()
+    shown = 0
+    while time.monotonic() - began < args.wait:
+        time.sleep(3)
+        state = remote_state(lane, name)
+        if not state:
+            continue
+        rows = state.get("includes", [])
+        for row in rows[shown:]:
+            print(f"  {row['form'][:90]}  {row['seconds']} s" + ("  REFUSED" if "refused" in row else ""))
+        shown = len(rows)
+        if state["phase"] == "ready" or state["phase"].startswith(("dead", "stopped")):
+            print_state(state)
+            print(f"start: {time.monotonic() - began:.1f} s to {state['phase']}")
+            return 0 if state["phase"] == "ready" else 1
+    print(f"bb2-repl: not ready after {args.wait} s; `status {name}` follows it")
+    return 1
+
+
+def cmd_send(args) -> int:
+    lane = lane_of(args)
+    forms = args.forms if args.forms != "-" else sys.stdin.read()
+    began = time.monotonic()
+    result = ask(lane, args.name, {"op": "send", "forms": forms, "limit": args.limit,
+                                   "keep_going": args.keep_going, "timeout": args.timeout},
+                 args.timeout + 120)
+    rc = print_result(result, True)
+    print(f"round trip {time.monotonic() - began:.1f} s")
+    return rc
+
+
+def cmd_load(args) -> int:
+    lane = lane_of(args)
+    if not args.no_sync:
+        print(sync(lane, args.sync))
+    began = time.monotonic()
+    request = {"op": "load", "book": args.book, "from": args.from_, "until": args.until,
+               "through": args.through, "skip_proofs": args.skip_proofs, "limit": args.limit,
+               "append": args.append, "timeout": args.timeout}
+    result = ask(lane, args.name, request, args.timeout * 4 + 600)
+    rc = print_result(result, args.verbose)
+    print(f"round trip {time.monotonic() - began:.1f} s")
+    return rc
+
+
+def cmd_status(args) -> int:
+    lane = lane_of(args)
+    state = remote_state(lane, args.name)
+    if not state:
+        print(f"bb2-repl: no session {args.name} in bb2:~/fn2-{lane}")
+        return 1
+    print_state(state)
+    return 0
+
+
+def cmd_list(args) -> int:
+    lane = lane_of(args)
+    got = ssh(lane, f"for f in ~/{REMOTE_HOME}/sessions/fn2-{lane}-*/state.json; do [ -f \"$f\" ] && cat \"$f\" && echo; done", 60)
+    for chunk in got.stdout.split("\n}\n"):
+        chunk = chunk.strip()
+        if chunk:
+            with contextlib.suppress(json.JSONDecodeError):
+                print_state(json.loads(chunk if chunk.endswith("}") else chunk + "\n}"))
+    return 0
+
+
+def cmd_stop(args) -> int:
+    lane = lane_of(args)
+    with contextlib.suppress(SystemExit):
+        result = ask(lane, args.name, {"op": "stop"}, 120)
+        if result.get("stopping"):
+            print(f"session {args.name} stopped")
+            return 0
+    # The server did not answer: signal the PID its own file names, after checking it is this server.
+    directory = remote_dir(lane, args.name)
+    check = (f"p=$(cat {directory}/server.pid 2>/dev/null) && [ -n \"$p\" ] && "
+             f"tr '\\0' ' ' < /proc/$p/cmdline | grep -q 'bb2_repl serve {args.name} ' && "
+             f"kill $p && echo signalled $p")
+    got = ssh(lane, check, 60)
+    print(got.stdout.strip() or f"bb2-repl: session {args.name}: no live server named in its PID file")
+    return 0 if got.stdout.strip() else 1
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("start")
+    p.add_argument("book")
+    p.add_argument("--name")
+    p.add_argument("--lane")
+    p.add_argument("--mem", default=os.environ.get("SWARM_MEM_MAX", "12G"))
+    p.add_argument("--idle", type=float, default=60, help="minutes; 0 = never")
+    p.add_argument("--limit", type=float, default=120, help="prover seconds per event")
+    p.add_argument("--wait", type=float, default=900)
+    p.add_argument("--no-sync", action="store_true")
+    p.add_argument("--sync", action="store_true", help="sync even into another lane's tree")
+    p.set_defaults(func=cmd_start)
+    p = sub.add_parser("send")
+    p.add_argument("name")
+    p.add_argument("forms", help="forms, or - for stdin")
+    p.add_argument("--lane")
+    p.add_argument("--limit", type=float, default=120)
+    p.add_argument("--timeout", type=float, default=1800)
+    p.add_argument("--keep-going", action="store_true")
+    p.set_defaults(func=cmd_send)
+    p = sub.add_parser("load")
+    p.add_argument("name")
+    p.add_argument("book", nargs="?")
+    p.add_argument("--lane")
+    p.add_argument("--from", dest="from_", help="start at this event or #N; implies --append "
+                   "(the session keeps what it holds, e.g. from a load --until FROM)")
+    p.add_argument("--until")
+    p.add_argument("--through")
+    p.add_argument("--skip-proofs", action="store_true")
+    p.add_argument("--append", action="store_true", help="do not undo to the base first")
+    p.add_argument("--limit", type=float, default=120)
+    p.add_argument("--timeout", type=float, default=1800, help="seconds per form")
+    p.add_argument("--no-sync", action="store_true")
+    p.add_argument("--sync", action="store_true")
+    p.add_argument("-v", "--verbose", action="store_true")
+    p.set_defaults(func=cmd_load)
+    for verb, func in (("status", cmd_status), ("stop", cmd_stop)):
+        p = sub.add_parser(verb)
+        p.add_argument("name")
+        p.add_argument("--lane")
+        p.set_defaults(func=func)
+    p = sub.add_parser("list")
+    p.add_argument("--lane")
+    p.set_defaults(func=cmd_list)
+    # The bb2 side.
+    p = sub.add_parser("serve")
+    p.add_argument("name")
+    p.add_argument("book")
+    p.add_argument("--idle", type=float, default=60)
+    p.add_argument("--limit", type=float, default=120)
+    p.set_defaults(func=lambda a: Server(a.name, a.book, a.idle, a.limit).serve() or 0)
+    p = sub.add_parser("ask")
+    p.add_argument("name")
+    p.set_defaults(func=lambda a: print(json.dumps(ask_local(a.name, json.loads(sys.stdin.read()))))
+                   or 0)
+    args = parser.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
