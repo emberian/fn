@@ -54,6 +54,16 @@ answer is C's `fn2-outcome` (S-OUTCOME). The port adds no store, no queue and no
 R binds the cursor's principal to the connection's login, rechecks current authority on every read and
 wake, and admits the remote whitelist (§3). N is a translation of the port with declared losses (§2.3).
 
+Served authority (AUTHORITY-20261105; `books/authority*.lisp`) is the L carrier's binding: an owner
+connection administers until it binds a named principal (FNCT 29/30), then acts as it. Its keystone
+is `fn2-authority-served-enforced` (`books/owed-authority.lisp`, CRITICAL): over the served trace
+(`fn2-oa-trace`: genesis, fn2-turn, the adapter, the wire) every accepted create or grant-set comes
+from an administering connection, every bind names a directory principal, every append and consumer
+verb under a bound principal holds its current grant at commit; its hypotheses (binding,
+current-grant validation, publication coherence) each have a served removal witness. K7 and K10 link
+to its refinement obligations (`*fn2-authority-keystone-links*`). Delivered items are owed with
+kind 28 items.
+
 ## 2. The port as data (`defport`, `defcarrier`; `books/port.lisp`)
 WIDEST §2: "an interface as data, generated from the command grammar and read by parser, machine,
 client, checker and wiring validator alike".

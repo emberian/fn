@@ -711,6 +711,13 @@ from `(seed, class, mask, budget)`.
 
 ## 7. Keystones, phased
 
+Served authority's seam with D (AUTHORITY-20261105 §4): the transaction's append check
+(`books/txn.lisp`, step 3b: every destination group's current append grant for the bound
+principal, then the `fn2-authority-depend` read dependency on its head at slot 20, validated at
+stage) is the commit-eligibility decision `fn2-authority-served-enforced`
+(`books/owed-authority.lisp`) states over the served trace; an unbound owner connection appends
+under the owner's bootstrap authority. NNTP POST shares that decision.
+
 | statement | admitted with | over |
 |---|---|---|
 | T10 `fn2-core-state-bounded` | D1a (owed, with teeth) | the assembled core's children and their `fn2-columns` rows: a generated resident measure, the same for every core initialized from one profile, and unchanged by `fn2-turn` and by the adapter-boundary entries `fn2-outbox-ack`, `fn2-post-result`, `fn2-post-clock` (no array grows after init) |

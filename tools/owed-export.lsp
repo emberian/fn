@@ -44,6 +44,7 @@
 (include-book "tests/folds-unit")
 (include-book "tests/sealer-unit")
 (include-book "books/owed-consumer")
+(include-book "tests/owed-authority-unit")
 (include-book "tests/consumer-mini")
 (include-book "tests/consumer-helm")
 (include-book "tests/sim-layer-e")

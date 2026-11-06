@@ -455,6 +455,16 @@ identity as well as its allocation pair, binding the physical context required b
 | key-entry | 1 | 1–9 | key |
 | configuration-generation-entry | 1 | 1–9 | configuration |
 
+Served authority's records (AUTHORITY-20261105 §2) are run-schema rows of four kinds,
+`:principals` (16), `:grants` (17), `:grant-current` (18) and `:authority-head` (19), written in one
+transaction member by grant-set (the grant row, the two fold events, the operation outcome), so a
+recovered store holds a grant only with its current pointer, head and outcome (the member's
+records replay together, S9c). The envelope's `grant` names the authority revision (the head) a
+mutation was decided under; `fn2-authority-served-enforced` (`books/owed-authority.lisp`) states
+the served enforcement; `fn2-authority-crash-positive` (process-death cuts around grant
+persistence) is owed.
+
+
 Allocation owner-kind is an opaque u8 machine/object category; owner is a typed `owner` ID
 matching the allocator’s owner-kind/owner-id fields.
 
