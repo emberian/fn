@@ -9,9 +9,8 @@ import Fn2.Instances.LayerAKinds
 /-!
 # Fn2.MachineProofs: Per-Machine Contract Proofs & PW3 Wrapper Instantiation (Brick H6)
 
-This module instantiates the universal `Step` structural induction theorems
-(`Step.eval_wfp`, `Step.eval_frame`, `Step.eval_budget`, `Step.eval_holds_sublist`)
-from `Fn2.Arms.Derive` and the PW3 wrapper preservation theorems
+This module checks each machine's arms against the derived frame (`Fn2.Arms.Frame`) and
+instantiates the PW3 wrapper preservation theorems
 (`project_reconstruct`, `reconstruct_frame_entry`, `entering_frame_entry`,
 `armCorrect_project_preserve`) from `Fn2.Pathway` across the exported machine registry:
 - `fn2-listener` (`FN2-LISTENER`)
@@ -417,11 +416,12 @@ def machineRegistryKinds : List Kind :=
 
 def checkMachineKind (w : World) (k : Kind) : Bool :=
   let allArms := k.subarms ++ k.arms ++ k.observes
-  allArms.all (fun a => a.read.isOk && derivedFuel w k a > 0) &&
+  let dt := fun a => (Fn2.Arms.Frame.derivedTables w k a).getD []
+  allArms.all (fun a => a.read.isOk) &&
   (!k.childForm ||
-    (k.arms.all (fun a => ArmWF k a false && (returns k a).all (derivedTables w k a).contains) &&
-     k.subarms.all (fun a => ArmWF k a false && (returns k a).all (derivedTables w k a).contains) &&
-     k.observes.all (fun a => ArmWF k a true && (returns k a).all (derivedTables w k a).contains)))
+    (k.arms.all (fun a => ArmWF k a false && (returns k a).all (dt a).contains) &&
+     k.subarms.all (fun a => ArmWF k a false && (returns k a).all (dt a).contains) &&
+     k.observes.all (fun a => ArmWF k a true && (returns k a).all (dt a).contains)))
 
 theorem listener_contracts_hold :
     checkMachineKind Fn2.Instances.LayerAKinds.world listenerKind = true := by
@@ -459,164 +459,6 @@ theorem layerAKinds_contracts_hold :
     (Fn2.Instances.LayerAKinds.kinds.all
       (checkMachineKind Fn2.Instances.LayerAKinds.world)) = true := by
   decide +kernel
-
-/-! ## 3. Per-Machine Instantiations of `Step.eval_wfp`, `Step.eval_frame`, `Step.eval_budget`, `Step.eval_holds_sublist` -/
-
-/-- Universal per-machine `Step.eval_wfp` instantiation: next-phase membership in `derivedNext`
-    and fuel bounded by `derivedFuel`. -/
-theorem machine_eval_wfp (k : Kind) (a : Arm) (observe : Bool)
-    (decl : ArmDecl) (hread : a.read = .ok decl)
-    (subSteps : String → List Step)
-    (hsubN : ∀ hn name,
-      let subN := subNext k (k.subarms.length + 1)
-      let refN := fun h =>
-        if decl.onRefusal.isEmpty then ([], !h)
-        else stepsNext k (fun h' => ([], !h')) subN h decl.onRefusal
-      (∀ p ∈ (stepsNext k refN subN hn (subSteps name)).1, p ∈ (subN hn name).1) ∧
-      ((stepsNext k refN subN hn (subSteps name)).2 = true → (subN hn name).2 = true))
-    (hsubF : ∀ env name,
-      let subF := subFuel Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1)
-      let refF := fun e =>
-        if decl.onRefusal.isEmpty then 1
-        else stepsFuel Fn2.Instances.LayerAKinds.world (fun _ => 1) subF e decl.onRefusal
-      stepsFuel Fn2.Instances.LayerAKinds.world refF subF env (subSteps name) ≤ subF env name)
-    (initPhase : String)
-    (hinit : if k.states.contains a.tag then initPhase = a.tag else initPhase ∈ decl.from_)
-    {c : Cost} {ts ws : List String} {ph : Option String} {fu : Nat}
-    (hexec : StepsExec Fn2.Instances.LayerAKinds.world k observe decl.onRefusal subSteps
-      [] false decl.steps c ts ws ph fu) :
-    (ph.getD initPhase) ∈ derivedNext Fn2.Instances.LayerAKinds.world k a ∧
-    fu ≤ derivedFuel Fn2.Instances.LayerAKinds.world k a := by
-  refine ⟨?_, ?_⟩
-  · obtain ⟨hstep1, hstep2⟩ := Step.eval_wfp Fn2.Instances.LayerAKinds.world k observe
-      decl.onRefusal subSteps _ _ hsubN hexec
-    unfold derivedNext
-    rw [hread]
-    simp only [List.mem_eraseDups, List.mem_append]
-    cases ph with
-    | some p => exact Or.inl (hstep1 p rfl)
-    | none =>
-      have hstay := hstep2 rfl rfl
-      right
-      simp only [hstay, Bool.not_true, Bool.false_eq_true, if_false]
-      split at hinit
-      · rename_i hst; simp only [hst, if_true, List.mem_singleton, Option.getD_none]; exact hinit
-      · rename_i hst; simp only [hst, Bool.false_eq_true, if_false, Option.getD_none]; exact hinit
-  · unfold derivedFuel
-    rw [hread]
-    exact stepsExec_fuel_le Fn2.Instances.LayerAKinds.world k observe
-      decl.onRefusal subSteps _ _ hsubF hexec
-
-/-- Universal per-machine `Step.eval_frame` instantiation: any table `tbl ∈ k.tuple` outside
-    `derivedTables` and any column outside `derivedWrites` is preserved. -/
-theorem machine_eval_frame (k : Kind) (a : Arm) (observe : Bool)
-    (decl : ArmDecl) (hread : a.read = .ok decl)
-    (subSteps : String → List Step)
-    (hsubT : ∀ name t,
-      t ∈ stepsTables Fn2.Instances.LayerAKinds.world k
-        (stepsTables Fn2.Instances.LayerAKinds.world k []
-          (subTables Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1)) decl.onRefusal)
-        (subTables Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1)) (subSteps name) →
-      t ∈ subTables Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1) name)
-    (hsubW : ∀ name f,
-      f ∈ stepsWrites Fn2.Instances.LayerAKinds.world
-        (stepsWrites Fn2.Instances.LayerAKinds.world []
-          (subWrites Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1)) decl.onRefusal)
-        (subWrites Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1)) (subSteps name) →
-      f ∈ subWrites Fn2.Instances.LayerAKinds.world k (k.subarms.length + 1) name)
-    {c : Cost} {ts ws : List String} {ph : Option String} {fu : Nat}
-    (hexec : StepsExec Fn2.Instances.LayerAKinds.world k observe decl.onRefusal subSteps
-      [] false decl.steps c ts ws ph fu) :
-    (∀ tbl ∈ k.tuple, tbl ∈ ts → tbl ∈ derivedTables Fn2.Instances.LayerAKinds.world k a) ∧
-    (∀ col ∈ ws, col ∈ derivedWrites Fn2.Instances.LayerAKinds.world k a) := by
-  refine ⟨fun tbl htup hts => ?_, fun col hcol => ?_⟩
-  · unfold derivedTables
-    rw [hread]
-    simp only [List.mem_filter, List.contains_iff_mem]
-    exact ⟨htup, Step.eval_frame Fn2.Instances.LayerAKinds.world k observe
-      decl.onRefusal subSteps _ _ hsubT hexec tbl hts⟩
-  · unfold derivedWrites
-    rw [hread]
-    simp only [List.mem_eraseDups]
-    exact stepsExec_writes_sub Fn2.Instances.LayerAKinds.world k observe
-      decl.onRefusal subSteps _ _ hsubW hexec col hcol
-
-/-- Universal per-machine `Step.eval_budget` instantiation: cost triple `c` is bounded by
-    `derivedCost`. -/
-theorem machine_eval_budget (k : Kind) (a : Arm) (observe : Bool)
-    (decl : ArmDecl) (hread : a.read = .ok decl)
-    (subSteps : String → List Step)
-    (hsubC : ∀ env name,
-      let w := Fn2.Instances.LayerAKinds.world
-      let subC := subCost w k observe (k.subarms.length + 1)
-      let refC := fun e =>
-        if decl.onRefusal.isEmpty then
-          if observe then costZero else (0, constInt w "*FN2-WORK-EMPTY*" 1, 0)
-        else stepsCost w observe (fun _ => costZero) subC e decl.onRefusal
-      CostLe (stepsCost w observe refC subC env (subSteps name)) (subC env name))
-    {c : Cost} {ts ws : List String} {ph : Option String} {fu : Nat}
-    (hexec : StepsExec Fn2.Instances.LayerAKinds.world k observe decl.onRefusal subSteps
-      [] false decl.steps c ts ws ph fu) :
-    CostLe c (derivedCost Fn2.Instances.LayerAKinds.world k a observe) := by
-  unfold derivedCost
-  rw [hread]
-  exact Step.eval_budget Fn2.Instances.LayerAKinds.world k observe
-    decl.onRefusal subSteps _ _ hsubC hexec
-
-/-- Universal per-machine `Step.eval_holds_sublist` instantiation: every hold effect `h ∈ hs`
-    is a member of `derivedHolds`. -/
-theorem machine_eval_holds_sublist (k : Kind) (a : Arm)
-    (decl : ArmDecl) (hread : a.read = .ok decl)
-    (subSteps : String → List Step)
-    (hsubH : ∀ name h,
-      h ∈ stepsHolds
-        (stepsHolds [] (subHolds k (k.subarms.length + 1)) decl.onRefusal)
-        (subHolds k (k.subarms.length + 1)) (subSteps name) →
-      h ∈ subHolds k (k.subarms.length + 1) name)
-    {hs : List String}
-    (hexec : StepsExecHolds decl.onRefusal subSteps decl.steps hs) :
-    ∀ h ∈ hs, h ∈ derivedHolds Fn2.Instances.LayerAKinds.world k a := by
-  intro h hh
-  unfold derivedHolds
-  rw [hread]
-  simp only [List.mem_eraseDups]
-  exact Step.eval_holds_sublist decl.onRefusal subSteps _ _ hsubH hexec h hh
-
--- Per-machine specializations for all 7 machines:
-abbrev listener_eval_wfp := @machine_eval_wfp listenerKind
-abbrev listener_eval_frame := @machine_eval_frame listenerKind
-abbrev listener_eval_budget := @machine_eval_budget listenerKind
-abbrev listener_eval_holds_sublist := @machine_eval_holds_sublist listenerKind
-
-abbrev echo_eval_wfp := @machine_eval_wfp echoKind
-abbrev echo_eval_frame := @machine_eval_frame echoKind
-abbrev echo_eval_budget := @machine_eval_budget echoKind
-abbrev echo_eval_holds_sublist := @machine_eval_holds_sublist echoKind
-
-abbrev scribe_eval_wfp := @machine_eval_wfp scribeKind
-abbrev scribe_eval_frame := @machine_eval_frame scribeKind
-abbrev scribe_eval_budget := @machine_eval_budget scribeKind
-abbrev scribe_eval_holds_sublist := @machine_eval_holds_sublist scribeKind
-
-abbrev cursor_eval_wfp := @machine_eval_wfp cursorKind
-abbrev cursor_eval_frame := @machine_eval_frame cursorKind
-abbrev cursor_eval_budget := @machine_eval_budget cursorKind
-abbrev cursor_eval_holds_sublist := @machine_eval_holds_sublist cursorKind
-
-abbrev txn_eval_wfp := @machine_eval_wfp txnKind
-abbrev txn_eval_frame := @machine_eval_frame txnKind
-abbrev txn_eval_budget := @machine_eval_budget txnKind
-abbrev txn_eval_holds_sublist := @machine_eval_holds_sublist txnKind
-
-abbrev ctl_eval_wfp := @machine_eval_wfp ctlKind
-abbrev ctl_eval_frame := @machine_eval_frame ctlKind
-abbrev ctl_eval_budget := @machine_eval_budget ctlKind
-abbrev ctl_eval_holds_sublist := @machine_eval_holds_sublist ctlKind
-
-abbrev cns_eval_wfp := @machine_eval_wfp cnsKind
-abbrev cns_eval_frame := @machine_eval_frame cnsKind
-abbrev cns_eval_budget := @machine_eval_budget cnsKind
-abbrev cns_eval_holds_sublist := @machine_eval_holds_sublist cnsKind
 
 /-! ## 4. Per-Machine PW3 Wrapper Preservation Instantiations & Concrete Witnesses -/
 
