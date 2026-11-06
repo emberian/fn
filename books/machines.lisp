@@ -280,9 +280,24 @@
 ;; :admission (:phase P :ranges RANGES [:copy (FIELD ...)] [:clear (FIELD ...)]):
 ;; the kind is admitted by the listener into phase P from :free (D's section
 ;; 4.5). A range is :rx-range / :tx-range (fields rx-slot rx-gen, tx-slot
-;; tx-gen, class 0) or (KIND :slot F :gen F [:class N]). :copy names listener
-;; fields copied into the row at admission; :clear fields are zeroed. The row
-;; needs a :link next-free field (its partition's free chain).
+;; tx-gen, class 0) or (KIND :slot F :gen F [:class C]). C is a class number
+;; or (:bytes B): the profile's smallest class of at least B octets
+;; (fn2-pool-class-for, chosen at admission; none such refuses it :pool), B a
+;; number or a constant's name; (:bytes B) is for a kind whose registry is in
+;; child form (defmachine-registry). :copy names listener fields copied into
+;; the row at admission; :clear fields are zeroed. The row needs a :link
+;; next-free field (its partition's free chain).
+(defun fn2-machine-class-specp (c)
+  (declare (xargs :guard t))
+  (or (natp c)
+      (and (true-listp c) (equal (len c) 2) (eq (car c) :bytes)
+           (or (natp (cadr c)) (and (symbolp (cadr c)) (cadr c) (not (keywordp (cadr c))))))))
+;; The class expression a reservation takes over the pool stobj POOL.
+(defun fn2-machine-class-form (c pool)
+  (declare (xargs :guard t))
+  (if (and (consp c) (eq (car c) :bytes) (consp (cdr c)))
+      `(fn2-pool-class-for ,(cadr c) ,pool)
+    c))
 (defun fn2-machine-range-spec (range)
   (declare (xargs :verify-guards nil))
   (cond ((eq range :rx-range) '(:rx-range :slot rx-slot :gen rx-gen :class 0))
@@ -300,7 +315,7 @@
   (if (atom specs) t
     (and (consp (car specs)) (member-eq (caar specs) '(:rx-range :tx-range))
          (member-eq (fn2-arm-get :slot (cdar specs)) own) (member-eq (fn2-arm-get :gen (cdar specs)) own)
-         (natp (fn2-arm-get :class (cdar specs)))
+         (fn2-machine-class-specp (fn2-arm-get :class (cdar specs)))
          (fn2-machine-range-specs-p (cdr specs) own))))
 (defun fn2-machine-admission-problem (name admission states own)
   (declare (xargs :verify-guards nil))
@@ -2218,7 +2233,10 @@
   (if (atom specs) install
     (let ((code (packn-pos (list 'code n) 'fn2-core)))
       `(mv-let (,code ,(packn-pos (list 'slot n) 'fn2-core) ,(packn-pos (list 'pgen n) 'fn2-core) fn2-core)
-         (fn2-core-reserve ,(fn2-arm-get :class (cdar specs)) ,kind target gen fn2-core)
+         (fn2-core-reserve ,(let ((c (fn2-arm-get :class (cdar specs))))
+                              (if (natp c) c
+                                (er hard 'defmachine "A (:bytes B) range class needs the kind's registry in child form (defmachine-registry): ~x0." kind)))
+                           ,kind target gen fn2-core)
          (if (not (eq ,code :ok))
              ,(fn2-machine-range-releases n kind '(mv :pool fn2-core))
            ,(fn2-machine-range-reserves (cdr specs) (+ 1 (nfix n)) kind install))))))

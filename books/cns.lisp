@@ -27,7 +27,6 @@
 
 ;; ---------------------------------------------------------------------------
 ;; Pure helpers for fn2-ctl (L carrier) and fn2-cns (request).
-(defconst *fn2-ctl-io-bytes* 4096)
 
 (defconst *fn2-ctl-cmd-none* 0)
 (defconst *fn2-ctl-cmd-status* 1)
@@ -88,6 +87,8 @@
           fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-fields fn2-core-pool)
  :doc "Stage, bind and publish a consumer register or ack transaction in Layer C.")
 
+(defcost fn2-cns-read-row :answers (:ok :bounds)
+ :doc "The row's read row, in the cns block (the N read rows before the authority block's; machines-b's fn2-b-read-rows).")
 (defcost fn2-cns-item-next :answers (:found :end :more :fault) :bytes 4096
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-ranges fn2-core-range-sources
           fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths
@@ -907,7 +908,7 @@
   (put-article :on-refusal ((:stop :machine-phase))
    (:do (pc at nl) (fn2-cns-put-article row-npos row-art row-alen row-istream row-pub-frontier row-name-off row-name-len
                                         row-lslot row-lgen *fn2-cns-kind* id row-generation
-                                        row-tx-slot row-tx-gen row-ctl row-ctl-gen)
+                                        row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :absent :full :dropped :fault)
     :why ":absent: the occurrence's Message-ID is not the request's; :full: its octets do not fit the reply; :dropped: the control connection closed; :fault: the store contradicts its own rows")
    (:case pc
@@ -924,7 +925,7 @@
     (t
    (:do (pc at nl) (fn2-cns-put-item row-itype row-npos row-art row-alen row-istream row-pub-frontier row-ilen
                                      row-lslot row-lgen *fn2-cns-kind* id row-generation
-                                     row-tx-slot row-tx-gen row-ctl row-ctl-gen)
+                                     row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow)
     :accept (:ok :full :dropped :fault)
     :why ":dropped: the control connection closed while the page was read; :fault: the store contradicts its own rows")
    (:case pc
@@ -979,6 +980,8 @@
   ;; the generated FN2-FNCT-K4 codecs); a request that does not decode is
   ;; refused with its word and no verb (its reply names no result).
   (:decode :on-refusal ((:stop :machine-phase))
+   (:do (rxcode x) (fn2-cns-read-row row-slot) :case (((:bounds) (:stop :machine-phase))))
+   (:set (xrow x))
    (:cond ((equal row-ctl *fn2-none*) (:goto cancel))
           (t (:do (dcode dreason nverb ncid ncstart nto nlim nepoch nwait nop nfstart nnoff nnlen)
                   (fn2-cns-decode-port row-fpos row-flen row-fkind row-principal-slot
@@ -1013,7 +1016,7 @@
          (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
          (:charge :steps *fn2-work-transition* :runnable t))
         ((:do (fcode ncpos nver pfront)
-        (fn2-cns-lookup-cursor row-consumer row-epoch row-cpos row-version row-pub-frontier))
+        (fn2-cns-lookup-cursor row-consumer row-epoch row-cpos row-version row-pub-frontier row-xrow))
    (:cond ((equal row-epoch 0)
            (:set (cpos ncpos) (version nver) (pub-frontier pfront) (reason *fn2-cns-reason-scope*))
            (:goto refuse))
@@ -1036,7 +1039,7 @@
              (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:read :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
-        (fn2-cns-lookup-cursor row-consumer row-epoch row-cpos row-version row-pub-frontier))
+        (fn2-cns-lookup-cursor row-consumer row-epoch row-cpos row-version row-pub-frontier row-xrow))
    (:set (cpos ncpos) (version nver) (pub-frontier pfront) (count 0) (more 0) (ioff 0) (ilen 0)
          (ipos (if (equal row-verb *fn2-cns-verb-fetch*) (- row-to 1) ncpos)))
    (:next :page)
@@ -1057,7 +1060,7 @@
            (:do (icode np a st ty bytes u e al)
                 (fn2-cns-item-next row-principal-slot row-ipos
                                    (if (equal row-verb *fn2-cns-verb-fetch*) (min row-to row-pub-frontier) row-pub-frontier)
-                                   row-ilen (if (equal row-verb *fn2-cns-verb-fetch*) 1 0) row-tx-slot)
+                                   row-ilen (if (equal row-verb *fn2-cns-verb-fetch*) 1 0) row-tx-slot row-xrow)
             :accept (:found :end :more :fault)
             :why ":end: no entry of the principal's past IPOS up to the frontier; :more: the walk's steps ran out (the page stops, MORE); :fault: the store contradicts its own rows")
            (:cond ((eq icode :end) (:set (ipos row-pub-frontier)) (:goto page-end))
@@ -1109,7 +1112,7 @@
         ((:do (ccode nposted nreason ncpos nver npfront)
               (fn2-cns-commit-op row-verb row-principal-slot row-consumer row-epoch row-cstart row-to
                                  row-cpos row-version row-pub-frontier row-name-off row-name-len
-                                 row-tx-slot row-tx-gen row-ctl row-ctl-gen))
+                                 row-tx-slot row-tx-gen row-ctl row-ctl-gen row-xrow))
          (:case nposted
           ((*fn2-cns-posted-accepted*)
            (:set (posted *fn2-cns-posted-accepted*) (cpos ncpos) (version nver) (pub-frontier npfront)
@@ -1271,6 +1274,19 @@
              (mv :absent 0))
            (mv code (nfix id)))))
      (in-theory (disable fn2-ctl-owner-principal))
+     ;; The row's read row: the cns block is the N read rows just before the
+     ;; authority block (the last A; machines-b's fn2-b-read-rows counts 2C
+     ;; cursor rows, then :cns, then :authority), N and A the kinds' capacities.
+     (defun fn2-cns-read-row (slot fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                       :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+       (let ((a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
+             (n (fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core))
+             (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
+         (if (and (natp slot) (natp a) (natp n) (natp r) (< slot n) (<= (+ a n) r))
+             (mv :ok (+ (- r (+ a n)) slot))
+           (mv :bounds 0))))
+     (in-theory (disable fn2-cns-read-row))
      (defun fn2-cns-lookup-loop (k r sid fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
@@ -1281,18 +1297,18 @@
              (mv code fn2-core)))))
      (fn2-core-preserves fn2-cns-lookup-loop (k r sid fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-lookup-loop))
-     (defun fn2-cns-lookup-cursor (consumer epoch cpos0 version0 pfront0 fn2-core)
+     (defun fn2-cns-lookup-cursor (consumer epoch cpos0 version0 pfront0 x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (mv-let (code pfront) (fn2-successor-published fn2-core)
-         (mv-let (kc0 fn2-core) (fn2-read-key 0 :lo *fn2-consumer-cursor-entry-field-consumer* (nfix consumer) fn2-core)
-           (mv-let (kc1 fn2-core) (fn2-read-key 0 :lo *fn2-consumer-cursor-entry-field-epoch* (nfix epoch) fn2-core)
+         (mv-let (kc0 fn2-core) (fn2-read-key x :lo *fn2-consumer-cursor-entry-field-consumer* (nfix consumer) fn2-core)
+           (mv-let (kc1 fn2-core) (fn2-read-key x :lo *fn2-consumer-cursor-entry-field-epoch* (nfix epoch) fn2-core)
              (mv-let (lcode fn2-core)
                (if (and (eq kc0 :ok) (eq kc1 :ok))
-                   (fn2-cns-lookup-loop 16 0 *fn2-consumer-cursor-sid* fn2-core)
+                   (fn2-cns-lookup-loop 16 x *fn2-consumer-cursor-sid* fn2-core)
                  (mv :absent fn2-core))
-               (mv-let (vc0 pos) (fn2-read-value 0 *fn2-consumer-cursor-entry-field-position* fn2-core)
-                 (mv-let (vc1 ver) (fn2-read-value 0 *fn2-consumer-cursor-entry-field-version* fn2-core)
-                   (mv-let (rcode fn2-core) (fn2-read-release 0 fn2-core)
+               (mv-let (vc0 pos) (fn2-read-value x *fn2-consumer-cursor-entry-field-position* fn2-core)
+                 (mv-let (vc1 ver) (fn2-read-value x *fn2-consumer-cursor-entry-field-version* fn2-core)
+                   (mv-let (rcode fn2-core) (fn2-read-release x fn2-core)
                      (declare (ignore rcode))
                      (mv :ok
                          (nfix (if (and (eq lcode :ok) (eq vc0 :ok)) pos cpos0))
@@ -1300,18 +1316,18 @@
                          (nfix (fn2-cns-pf-merge code pfront pfront0))
                          fn2-core)))))))))
      (defthm fn2-cns-lookup-cursor-natp-1
-       (natp (mv-nth 1 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 fn2-core)))
+       (natp (mv-nth 1 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-lookup-cursor) (nfix)))))
      (defthm fn2-cns-lookup-cursor-natp-2
-       (natp (mv-nth 2 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 fn2-core)))
+       (natp (mv-nth 2 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-lookup-cursor) (nfix)))))
      (defthm fn2-cns-lookup-cursor-natp-3
-       (natp (mv-nth 3 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 fn2-core)))
+       (natp (mv-nth 3 (fn2-cns-lookup-cursor consumer epoch cpos0 version0 pfront0 x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-lookup-cursor) (nfix)))))
-     (fn2-core-preserves fn2-cns-lookup-cursor (consumer epoch cpos0 version0 pfront0 fn2-core)
+     (fn2-core-preserves fn2-cns-lookup-cursor (consumer epoch cpos0 version0 pfront0 x fn2-core)
        :position 4 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-lookup-cursor))
      (defun fn2-cns-resolve-loop (k tx fn2-core)
@@ -1352,7 +1368,7 @@
              (mv (and (eq bcode :ok) (eq pubcode :ok)) fn2-core)))))
      (fn2-core-preserves fn2-cns-bind-publish-release (batch pf fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-bind-publish-release))
-     (defun fn2-cns-commit-register (p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
+     (defun fn2-cns-commit-register (p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (mv-let (rok fn2-core)
          (fn2-cns-stage-register-slots p cid ep start noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
@@ -1364,7 +1380,7 @@
            (cond ((and rok (eq scode :duplicate))
                   (mv-let (rcode fn2-core) (fn2-successor-release 0 fn2-core)
                     (declare (ignore rcode))
-                    (mv-let (lcode rpos rver rpf fn2-core) (fn2-cns-lookup-cursor cid ep cpos60 ver60 pf fn2-core)
+                    (mv-let (lcode rpos rver rpf fn2-core) (fn2-cns-lookup-cursor cid ep cpos60 ver60 pf x fn2-core)
                       (declare (ignore lcode))
                       (mv :ok (if (< 0 rver) *fn2-cns-posted-accepted* *fn2-cns-posted-refused*)
                           (if (< 0 rver) *fn2-cns-reason-none* *fn2-cns-reason-equal*)
@@ -1378,32 +1394,32 @@
                  (t (mv-let (bok fn2-core) (fn2-cns-bind-publish-release batch pf fn2-core)
                       (if (not bok)
                           (mv :ok *fn2-cns-posted-uncertain* *fn2-cns-reason-none* (nfix cpos60) (nfix ver60) (nfix pf) fn2-core)
-                        (mv-let (lcode rpos rver rpf fn2-core) (fn2-cns-lookup-cursor cid ep start 1 pf fn2-core)
+                        (mv-let (lcode rpos rver rpf fn2-core) (fn2-cns-lookup-cursor cid ep start 1 pf x fn2-core)
                           (declare (ignore lcode))
                           (mv :ok *fn2-cns-posted-accepted* *fn2-cns-reason-none*
                               (nfix rpos) (nfix rver) (nfix rpf) fn2-core)))))))))
      (defthm fn2-cns-commit-register-natp-1
-       (natp (mv-nth 1 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 1 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-register) (nfix)))))
      (defthm fn2-cns-commit-register-natp-2
-       (natp (mv-nth 2 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 2 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-register) (nfix)))))
      (defthm fn2-cns-commit-register-natp-3
-       (natp (mv-nth 3 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 3 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-register) (nfix)))))
      (defthm fn2-cns-commit-register-natp-4
-       (natp (mv-nth 4 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 4 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-register) (nfix)))))
      (defthm fn2-cns-commit-register-natp-5
-       (natp (mv-nth 5 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 5 (fn2-cns-commit-register p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-register) (nfix)))))
      (fn2-core-preserves fn2-cns-commit-register
-       (p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
+       (p cid ep start cpos60 ver60 pf batch noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
        :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-commit-register))
      (defun fn2-cns-stage-ack-slot (cid ep target fn2-core)
@@ -1430,7 +1446,7 @@
                   (mv-let (rcode fn2-core) (fn2-successor-release 0 fn2-core)
                     (declare (ignore rcode))
                     (mv-let (lcode cpos-now ver-now pf-now fn2-core)
-                      (fn2-cns-lookup-cursor cid ep cpos60 ver60 pf fn2-core)
+                      (fn2-cns-lookup-cursor cid ep cpos60 ver60 pf x fn2-core)
                       (declare (ignore lcode))
                       (mv :ok *fn2-cns-posted-unchanged* *fn2-cns-reason-none*
                           (nfix cpos-now) (nfix ver-now) (nfix pf-now) fn2-core))))
@@ -1468,7 +1484,7 @@
        :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-commit-ack))
      (defun fn2-cns-commit-op (verb principal consumer epoch cstart to cpos0 ver0 pfront0
-                               noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
+                               noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (mv-let (fcode pf0) (fn2-successor-published fn2-core)
          (let* ((pf (fn2-cns-pf-merge fcode pf0 pfront0))
@@ -1477,30 +1493,30 @@
                 (ep (fn2-cns-ep-default epoch)))
            (if (equal (nfix verb) *fn2-cns-verb-register*)
                (fn2-cns-commit-register (nfix principal) cid ep (nfix cstart) (nfix cpos0) (nfix ver0) pf batch
-                                        noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
+                                        noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
              (fn2-cns-commit-ack cid ep (nfix to) (nfix cpos0) (nfix ver0) pf batch fn2-core)))))
      (defthm fn2-cns-commit-op-natp-1
-       (natp (mv-nth 1 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 1 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-op) (nfix)))))
      (defthm fn2-cns-commit-op-natp-2
-       (natp (mv-nth 2 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 2 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-op) (nfix)))))
      (defthm fn2-cns-commit-op-natp-3
-       (natp (mv-nth 3 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 3 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-op) (nfix)))))
      (defthm fn2-cns-commit-op-natp-4
-       (natp (mv-nth 4 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 4 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-op) (nfix)))))
      (defthm fn2-cns-commit-op-natp-5
-       (natp (mv-nth 5 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)))
+       (natp (mv-nth 5 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-op) (nfix)))))
      (fn2-core-preserves fn2-cns-commit-op
-       (verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
+       (verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
        :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-commit-op))
      (defun fn2-cns-seek-loop (k r fn2-core)
@@ -1517,14 +1533,14 @@
        :hints (("Goal" :in-theory (e/d (fn2-cns-seek-loop) (nfix)))))
      (fn2-core-preserves fn2-cns-seek-loop (k r fn2-core) :position 2 :rows nil)
      (in-theory (disable fn2-cns-seek-loop))
-     (defun fn2-cns-range-addr-keys (p lo-pos pf fn2-core)
+     (defun fn2-cns-range-addr-keys (p lo-pos pf x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (mv-let (c0 fn2-core) (fn2-read-key 0 :lo *fn2-addr-entry-field-principal* p fn2-core)
-         (mv-let (c1 fn2-core) (fn2-read-key 0 :lo *fn2-addr-entry-field-position* lo-pos fn2-core)
-           (mv-let (c2 fn2-core) (fn2-read-key 0 :hi *fn2-addr-entry-field-principal* p fn2-core)
-             (mv-let (c3 fn2-core) (fn2-read-key 0 :hi *fn2-addr-entry-field-position* pf fn2-core)
+       (mv-let (c0 fn2-core) (fn2-read-key x :lo *fn2-addr-entry-field-principal* p fn2-core)
+         (mv-let (c1 fn2-core) (fn2-read-key x :lo *fn2-addr-entry-field-position* lo-pos fn2-core)
+           (mv-let (c2 fn2-core) (fn2-read-key x :hi *fn2-addr-entry-field-principal* p fn2-core)
+             (mv-let (c3 fn2-core) (fn2-read-key x :hi *fn2-addr-entry-field-position* pf fn2-core)
                (mv (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok)) fn2-core))))))
-     (fn2-core-preserves fn2-cns-range-addr-keys (p lo-pos pf fn2-core) :position 1 :rows nil)
+     (fn2-core-preserves fn2-cns-range-addr-keys (p lo-pos pf x fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-range-addr-keys))
      ;; The first entry of read row R's range: (mv code position article stream fn2-core),
      ;; :more when the steps ran out before it (the page stops there, MORE).
@@ -1608,23 +1624,23 @@
      ;; epoch allocation fn2-core), code :ok, :absent (no row: reclaimed),
      ;; :more (the lookup's steps ran out) or :fault. The core is threaded
      ;; straight through; the answer is fn2-cns-article-answer's.
-     (defun fn2-cns-article-row (art fn2-core)
+     (defun fn2-cns-article-row (art x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (b* (((mv kc fn2-core) (fn2-read-key 0 :lo *fn2-article-entry-field-article* (nfix art) fn2-core))
-            ((mv lc fn2-core) (if (eq kc :ok) (fn2-cns-lookup-loop 16 0 *fn2-article-sid* fn2-core) (mv :fault fn2-core)))
-            ((mv c0 st) (fn2-read-value 0 *fn2-article-entry-field-state* fn2-core))
-            ((mv c1 bytes) (fn2-read-value 0 *fn2-article-entry-field-bytes* fn2-core))
-            ((mv c2 kind) (fn2-read-value 0 *fn2-article-entry-field-location-kind* fn2-core))
-            ((mv c3 u) (fn2-read-value 0 *fn2-article-entry-field-location-unit* fn2-core))
-            ((mv c4 e) (fn2-read-value 0 *fn2-article-entry-field-location-epoch* fn2-core))
-            ((mv c5 al) (fn2-read-value 0 *fn2-article-entry-field-location-allocation* fn2-core))
-            ((mv & fn2-core) (fn2-read-release 0 fn2-core))
+       (b* (((mv kc fn2-core) (fn2-read-key x :lo *fn2-article-entry-field-article* (nfix art) fn2-core))
+            ((mv lc fn2-core) (if (eq kc :ok) (fn2-cns-lookup-loop 16 x *fn2-article-sid* fn2-core) (mv :fault fn2-core)))
+            ((mv c0 st) (fn2-read-value x *fn2-article-entry-field-state* fn2-core))
+            ((mv c1 bytes) (fn2-read-value x *fn2-article-entry-field-bytes* fn2-core))
+            ((mv c2 kind) (fn2-read-value x *fn2-article-entry-field-location-kind* fn2-core))
+            ((mv c3 u) (fn2-read-value x *fn2-article-entry-field-location-unit* fn2-core))
+            ((mv c4 e) (fn2-read-value x *fn2-article-entry-field-location-epoch* fn2-core))
+            ((mv c5 al) (fn2-read-value x *fn2-article-entry-field-location-allocation* fn2-core))
+            ((mv & fn2-core) (fn2-read-release x fn2-core))
             ((mv code st bytes kind u e al)
              (fn2-cns-article-answer lc (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq c4 :ok) (eq c5 :ok))
                                      st bytes kind u e al)))
          (mv code st bytes kind u e al fn2-core)))
-     (fn2-cns-natp-outputs fn2-cns-article-row (art fn2-core) (1 2 3 4 5 6))
-     (fn2-core-preserves fn2-cns-article-row (art fn2-core) :position 7 :rows nil :hints (("Goal" :in-theory (disable nfix))))
+     (fn2-cns-natp-outputs fn2-cns-article-row (art x fn2-core) (1 2 3 4 5 6))
+     (fn2-core-preserves fn2-cns-article-row (art x fn2-core) :position 7 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-article-row))
      ;; The principal's next addr entry past IPOS up to the frontier PF and
      ;; the item it is (e-surface.md 3.4, 4.1; fn2-cns-item-answer): a gap when
@@ -1633,26 +1649,26 @@
      ;; octets of items already in the control range TX-SLOT (FETCH 1: fits as
      ;; fetch's article), else a reference.
      ;; (mv code position article stream type bytes unit epoch allocation fn2-core).
-     (defun fn2-cns-item-next (principal ipos pf ilen fetch tx-slot fn2-core)
+     (defun fn2-cns-item-next (principal ipos pf ilen fetch tx-slot x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (disable nfix)))))
        (b* ((walk (< (nfix ipos) (nfix pf)))
             ((mv kok fn2-core)
-             (if walk (fn2-cns-range-addr-keys (nfix principal) (+ 1 (nfix ipos)) (nfix pf) fn2-core) (mv nil fn2-core)))
+             (if walk (fn2-cns-range-addr-keys (nfix principal) (+ 1 (nfix ipos)) (nfix pf) x fn2-core) (mv nil fn2-core)))
             ((mv rgc fn2-core)
-             (if kok (fn2-read-range 0 *fn2-addr-sid* *fn2-addr-entry-field-position* (nfix pf) fn2-core) (mv :fault fn2-core)))
+             (if kok (fn2-read-range x *fn2-addr-sid* *fn2-addr-entry-field-position* (nfix pf) fn2-core) (mv :fault fn2-core)))
             ((mv code pos art strm fn2-core)
-             (if (eq rgc :ok) (fn2-cns-first-entry 64 0 fn2-core) (mv :fault 0 0 0 fn2-core)))
-            ((mv & fn2-core) (fn2-read-release 0 fn2-core))
+             (if (eq rgc :ok) (fn2-cns-first-entry 64 x fn2-core) (mv :fault 0 0 0 fn2-core)))
+            ((mv & fn2-core) (fn2-read-release x fn2-core))
             (found (and walk (eq code :found) (< (nfix ipos) pos) (<= pos (nfix pf))))
             ((mv ac st bytes kind u e al fn2-core)
-             (if found (fn2-cns-article-row art fn2-core) (mv :fault 0 0 0 0 0 0 fn2-core)))
+             (if found (fn2-cns-article-row art x fn2-core) (mv :fault 0 0 0 0 0 0 fn2-core)))
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
             ((mv c p a sm ty by uu ee aa)
              (fn2-cns-item-answer walk code found pos art strm ac st bytes kind u e al at cap ilen fetch)))
          (mv c p a sm ty by uu ee aa fn2-core)))
-     (fn2-cns-natp-outputs fn2-cns-item-next (principal ipos pf ilen fetch tx-slot fn2-core) (1 2 3 4 5 6 7 8))
-     (fn2-core-preserves fn2-cns-item-next (principal ipos pf ilen fetch tx-slot fn2-core)
+     (fn2-cns-natp-outputs fn2-cns-item-next (principal ipos pf ilen fetch tx-slot x fn2-core) (1 2 3 4 5 6 7 8))
+     (fn2-core-preserves fn2-cns-item-next (principal ipos pf ilen fetch tx-slot x fn2-core)
        :position 9 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-item-next))
      ;; The overview row of (group STREAM, the number at POSITION) sought by
@@ -1660,35 +1676,35 @@
      ;; frontier's commits): its line copied into the lease after its fill
      ;; and the Message-ID field found in it: (mv code mstart mlen fn2-core),
      ;; code :ok or :absent.
-     (defun fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core)
+     (defun fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (disable nfix)))))
-       (b* (((mv c0 fn2-core) (fn2-read-key 0 :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
-            ((mv c1 fn2-core) (fn2-read-key 0 :hi *fn2-overview-entry-field-group* (nfix stream) fn2-core))
+       (b* (((mv c0 fn2-core) (fn2-read-key x :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
+            ((mv c1 fn2-core) (fn2-read-key x :hi *fn2-overview-entry-field-group* (nfix stream) fn2-core))
             ((mv skc fn2-core)
-             (fn2-read-seek 0 *fn2-overview-sid* 1 (+ 1 (nfix pf)) (nfix (- (nfix position) 1))
+             (fn2-read-seek x *fn2-overview-sid* 1 (+ 1 (nfix pf)) (nfix (- (nfix position) 1))
                             *fn2-overview-entry-field-position* fn2-core))
             ((mv scode number fn2-core)
-             (if (and (eq c0 :ok) (eq c1 :ok) (eq skc :ok)) (fn2-cns-seek-loop 32 0 fn2-core) (mv :fault 0 fn2-core)))
-            ((mv & fn2-core) (fn2-read-release 0 fn2-core))
-            ((mv k0 fn2-core) (fn2-read-key 0 :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
-            ((mv k1 fn2-core) (fn2-read-key 0 :lo *fn2-overview-entry-field-number* number fn2-core))
+             (if (and (eq c0 :ok) (eq c1 :ok) (eq skc :ok)) (fn2-cns-seek-loop 32 x fn2-core) (mv :fault 0 fn2-core)))
+            ((mv & fn2-core) (fn2-read-release x fn2-core))
+            ((mv k0 fn2-core) (fn2-read-key x :lo *fn2-overview-entry-field-group* (nfix stream) fn2-core))
+            ((mv k1 fn2-core) (fn2-read-key x :lo *fn2-overview-entry-field-number* number fn2-core))
             ((mv lc fn2-core)
-             (if (and (eq scode :found) (eq k0 :ok) (eq k1 :ok)) (fn2-cns-lookup-loop 16 0 *fn2-overview-sid* fn2-core)
+             (if (and (eq scode :done) (eq k0 :ok) (eq k1 :ok)) (fn2-cns-lookup-loop 16 x *fn2-overview-sid* fn2-core)
                (mv :fault fn2-core)))
-            ((mv v0 opos) (fn2-read-value 0 *fn2-overview-entry-field-position* fn2-core))
-            ((mv v1 oart) (fn2-read-value 0 *fn2-overview-entry-field-article* fn2-core))
+            ((mv v0 opos) (fn2-read-value x *fn2-overview-entry-field-position* fn2-core))
+            ((mv v1 oart) (fn2-read-value x *fn2-overview-entry-field-article* fn2-core))
             ((mv at &) (fn2-cns-fill-cap lslot fn2-core))
             (row (and (eq lc :ok) (eq v0 :ok) (eq v1 :ok) (equal opos (nfix position)) (equal oart (nfix art))))
             ((mv oc copied & fn2-core)
              (if row
-                 (fn2-read-octets 0 *fn2-overview-entry-field-line* 0 *fn2-overview-octets-max* lslot lgen at lk ls lg fn2-core)
+                 (fn2-read-octets x *fn2-overview-entry-field-line* 0 *fn2-overview-octets-max* lslot lgen at lk ls lg fn2-core)
                (mv :absent 0 0 fn2-core)))
-            ((mv & fn2-core) (fn2-read-release 0 fn2-core))
+            ((mv & fn2-core) (fn2-read-release x fn2-core))
             ((mv mc ms ml) (fn2-cns-core-mid-span lslot lgen at (+ at (nfix copied)) lk ls lg fn2-core)))
          (if (and (eq oc :ok) (eq mc :ok)) (mv :ok (nfix ms) (nfix ml) fn2-core) (mv :absent 0 0 fn2-core))))
-     (fn2-cns-natp-outputs fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core) (1 2))
-     (fn2-core-preserves fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg fn2-core)
+     (fn2-cns-natp-outputs fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core) (1 2))
+     (fn2-core-preserves fn2-cns-entry-mid (stream art position pf lslot lgen lk ls lg x fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-entry-mid))
      ;; The L carrier's frames over the core (books/fnct-pool.lisp): the
@@ -1788,7 +1804,7 @@
      ;; lease at 0 by :fetch) when the item still fits with them, else its
      ;; reference; :full when not even that fits (the page ends before it).
      ;; (mv code at len fn2-core), the item at [AT, AT+LEN) of TX-SLOT.
-     (defun fn2-cns-put-item (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core)
+     (defun fn2-cns-put-item (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (disable nfix)))))
        (b* ((live (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
@@ -1799,7 +1815,7 @@
             (type (nfix type))
             (body (if (equal type *fn2-fnct-item-record*) (nfix bytes) 0))
             ((mv mc ms ml fn2-core)
-             (if ok0 (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
+             (if ok0 (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg x fn2-core) (mv :absent 0 0 fn2-core)))
             (ms (if (eq mc :ok) ms 0)) (ml (if (eq mc :ok) ml 0))
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
             (type (if (and (equal type *fn2-fnct-item-record*)
@@ -1809,15 +1825,15 @@
             ;; a reference's body: the octet count and the source digest
             (ref (and ok0 (equal type *fn2-fnct-item-reference*)))
             ((mv kc fn2-core)
-             (if ref (fn2-read-key 0 :lo *fn2-article-entry-field-article* (nfix art) fn2-core) (mv :fault fn2-core)))
+             (if ref (fn2-read-key x :lo *fn2-article-entry-field-article* (nfix art) fn2-core) (mv :fault fn2-core)))
             ((mv lc fn2-core)
-             (if (and ref (eq kc :ok)) (fn2-cns-lookup-loop 16 0 *fn2-article-sid* fn2-core) (mv :fault fn2-core)))
+             (if (and ref (eq kc :ok)) (fn2-cns-lookup-loop 16 x *fn2-article-sid* fn2-core) (mv :fault fn2-core)))
             ((mv coff &) (fn2-cns-fill-cap lslot fn2-core))
             ((mv dc n & fn2-core)
              (if (and ref (eq lc :ok))
-                 (fn2-read-octets 0 *fn2-article-entry-field-source* 0 32 lslot lgen coff lk ls lg fn2-core)
+                 (fn2-read-octets x *fn2-article-entry-field-source* 0 32 lslot lgen coff lk ls lg fn2-core)
                (mv :fault 0 0 fn2-core)))
-            ((mv & fn2-core) (if ref (fn2-read-release 0 fn2-core) (mv :ok fn2-core)))
+            ((mv & fn2-core) (if ref (fn2-read-release x fn2-core) (mv :ok fn2-core)))
             (digest (and ref (eq dc :ok) (equal n 32)))
             ((mv rc boff blen fn2-core)
              (if digest
@@ -1835,9 +1851,9 @@
                (mv :none fn2-core))))
          (mv (fn2-cns-put-answer live ok0 rc code fits cc) (nfix at) (nfix len) fn2-core)))
      (fn2-cns-natp-outputs fn2-cns-put-item
-       (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core) (1 2))
+       (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core) (1 2))
      (fn2-core-preserves fn2-cns-put-item
-       (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core)
+       (type position art bytes stream pf ilen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-put-item))
      ;; Fetch's article (e-surface.md 3.4): the occurrence at POSITION whose
@@ -1845,13 +1861,13 @@
      ;; overview row's) must be the request's [MOFF, MOFF+MLEN) of the range,
      ;; else :absent (unavailable: never another selection); the octets
      ;; appended after the request, the reply's scratch. (mv code at len fn2-core).
-     (defun fn2-cns-put-article (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core)
+     (defun fn2-cns-put-article (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (disable nfix)))))
        (b* ((live (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
                        (equal (fn2-machine-generation ctl fn2-core) ctl-gen)))
             ((mv mc ms ml fn2-core)
-             (if live (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg fn2-core) (mv :absent 0 0 fn2-core)))
+             (if live (fn2-cns-entry-mid stream art position pf lslot lgen lk ls lg x fn2-core) (mv :absent 0 0 fn2-core)))
             (same (and (eq mc :ok) (equal ml (nfix mlen))
                        (fn2-cns-core-same ml lslot lgen ms lk ls lg tx-slot tx-gen (nfix moff) *fn2-ctl-kind* ctl ctl-gen fn2-core)))
             ((mv at cap) (fn2-cns-fill-cap tx-slot fn2-core))
@@ -1863,9 +1879,9 @@
          (mv (cond ((not live) :dropped) ((not same) :absent) ((not fits) :full) ((eq cc :ok) :ok) (t :fault))
              (nfix at) (nfix bytes) fn2-core)))
      (fn2-cns-natp-outputs fn2-cns-put-article
-       (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core) (1 2))
+       (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core) (1 2))
      (fn2-core-preserves fn2-cns-put-article
-       (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen fn2-core)
+       (position art bytes stream pf moff mlen lslot lgen lk ls lg tx-slot tx-gen ctl ctl-gen x fn2-core)
        :position 3 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-put-article))
      (defun fn2-cns-post-reply (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more

@@ -54,6 +54,13 @@
    (in-theory (disable fn2-cns-core-ready fn2-cns-core-grant))
    (defattach (fn2-cns-wait-ready-p fn2-cns-core-ready) (fn2-cns-wait-grant-one fn2-cns-core-grant))))
 
+;; A control connection's one range holds its frames (at most this many
+;; octets a receive or send) and, after a request, the reply the request row
+;; builds there (the page's items, books/cns.lisp fn2-cns-item-fits): it is
+;; the profile's smallest pool class of at least this many octets, so a page
+;; holds record items in any profile, whatever its class numbering.
+(defconst *fn2-ctl-io-bytes* 4096)
+
 (defun fn2-ctl-capacity (profile)
   (declare (xargs :guard t))
   (if (and (alistp profile) (assoc-equal :control-connections profile))
@@ -83,7 +90,7 @@
          (:draining :connection-row :rx-range))
  :budget (:bytes 8192 :steps 32 :descriptors 4)
  :capacity (fn2-ctl-capacity profile)
- :admission (:phase :greeting :ranges (:rx-range)
+ :admission (:phase :greeting :ranges ((:rx-range :slot rx-slot :gen rx-gen :class (:bytes *fn2-ctl-io-bytes*)))
              :copy (peer-family peer-w0)
              :clear (fill pos flen fkind cns-gen owner tx-off tx-len request pending borrows stopped cmd posture
                      principal admin worked auth-gen))
@@ -126,6 +133,8 @@
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
           (cursor :u32)
+          ;; the row's read row (fn2-cns-read-row)
+          (xrow :u32)
           (stopped :bool) (next-free :link))
  :holds ((:decode :wait-row (:storage-window :while (lease :held))) (:check :wait-row (:storage-window :while (lease :held))) (:lookup :wait-row (:storage-window :while (lease :held)))
          (:read :wait-row (:storage-window :while (lease :held))) (:page :wait-row (:storage-window :while (lease :held)))
@@ -137,7 +146,7 @@
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
-                 ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor stopped))
+                 ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (next-free fn2-machine-initial-next-free))
