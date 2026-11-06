@@ -576,6 +576,12 @@
      (mv code fn2-commit-root fn2-extents))))
   (mv code fn2-core)))
 (fn2-core-preserves fn2-recovery-finish (chain epoch fn2-core) :position 1 :rows nil)
+;; M7's member workspace, a range of the recovery bundle beside the window
+;; (released before it, which returns the bundle's :storage-window).
+(defun fn2-recovery-release-workspace (slot gen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-core-release slot gen *fn2-recovery-machine-kind* id ogen fn2-core))
+(fn2-core-preserves fn2-recovery-release-workspace (slot gen id ogen fn2-core) :position 1 :rows nil)
 
 (defun fn2-recovery-ready (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -600,6 +606,11 @@
        (fn2-core-reserve (fn2-scribe-window-class fn2-core) *fn2-recovery-machine-kind* id gen fn2-core))
       ((unless (and (eq code :ok) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 sgen)))
        (mv (if (eq code :ok) :bounds code) fn2-core))
+      ;; M7's replay rebuilds each member's workspace beside the window
+      ((mv code wslot wgen fn2-core)
+       (fn2-core-reserve (fn2-scribe-window-class fn2-core) *fn2-recovery-machine-kind* id gen fn2-core))
+      ((unless (and (eq code :ok) (unsigned-byte-p 32 wslot) (unsigned-byte-p 60 wgen)))
+       (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core)))
       ((mv zcode fn2-core) (fn2-recovery-zero-row (fn2-rec-chain-row base arena) fn2-core))
       ((unless (eq zcode :ok))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core)))
@@ -610,7 +621,8 @@
         (rc-dirty 0) (rc-ambiguous 0) (rc-class *fn2-rec-class-none*) (rc-witness witness)
         (rc-witness-outcome *fn2-rec-witness-none*) (rc-assume assume) (rc-epoch 0)
         (rc-found *fn2-alloc-none*) (rc-commit 0) (rc-roff 0) (rc-rend 0) (rc-mpos 0) (rc-munit 0)
-        (rc-munits 0) (rc-mtotal 0) (rc-mevent 0) (principal-slot 0)))
+        (rc-munits 0) (rc-mtotal 0) (rc-mevent 0) (principal-slot 0)
+        (rc-wslot wslot) (rc-wgen wgen) (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-replayed 0)))
       ((mv rcode fn2-core) (fn2-recovery-ready id fn2-core))
       ((unless (member-eq rcode '(:ok :already)))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core))))
@@ -727,7 +739,9 @@
    (:if (or (equal rclass *fn2-rec-class-intact*) (equal rclass *fn2-rec-class-torn-tail*))
         ((:set (rc-class rclass) (rc-witness-outcome wout) (rc-stage 2) (rc-found 0))
          (:charge :steps *fn2-work-advance* :runnable t))
-        ((:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
+        ((:do (wcode) (fn2-recovery-release-workspace row-rc-wslot row-rc-wgen id row-generation) :accept (:ok :retired)
+          :why ":retired: the workspace's slot reached its generation limit and leaves the pool")
+         (:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
           :effects ((:release (:storage-window :storage-job)))
           :accept ()
           :case (((:ok :retired)
@@ -739,14 +753,71 @@
    (:do (code) (fn2-recovery-adopt row-rc-found))
    (:set (rc-found (+ 1 row-rc-found)))
    (:charge :steps *fn2-work-advance* :runnable t))
-  ;; stage 2 at the high water: the frontier and the writer epoch, then release
+  ;; the recovery bundle released: the workspace, then the window
+  (replay-release
+   (:do (wcode) (fn2-recovery-release-workspace row-rc-wslot row-rc-wgen id row-generation) :accept ()
+    :case (((:ok :retired)
+            (:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
+             :effects ((:release (:storage-window :storage-job)))
+             :accept ()
+             :case (((:ok :retired) (:set (stopped 1)) (:next :done) (:charge :steps *fn2-work-transition*))
+                    (:otherwise (:stop :recovery-release)))))
+           (:otherwise (:stop :recovery-release)))))
+  ;; stage 2 at the high water: the frontier and the writer epoch, then the
+  ;; replay of every chained commit's members (M7)
   (install-finish :on-refusal ((:stop :recovery-bounds))
    (:do (code) (fn2-recovery-finish row-rc-chain row-rc-epoch))
-   (:do (rcode) (fn2-core-release row-pool-slot row-pool-gen)
-    :effects ((:release (:storage-window :storage-job)))
+   (:if (< 0 row-rc-chain)
+        ((:do (pcode p) (fn2-recovery-commit-extent 1) :accept (:ok))
+         (:set (rc-mode *fn2-rec-mode-replay*) (rc-commit 1) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
+               (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+         (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+        ((:goto replay-release))))
+  ;; M7's replay (b-durability.md M7): classification is done and the
+  ;; allocator installed; every chained commit's records unit is read again
+  ;; and its stream walked one record per step, each transaction member's
+  ;; records rebuilt into the workspace as admission took them and handed to
+  ;; C's fn2-member-replay in member order, then the commit's batch
+  ;; published (fn2-successor-publish). A hook's refusal stops the core
+  ;; :recovery-replay after the replayed prefix; keyed members replay nothing.
+  (replay-open :on-refusal ((:stop :recovery-bounds))
+   (:do (code roff rend) (fn2-recovery-records-open row-rc-pos row-rc-commit row-pool-slot row-pool-gen id row-generation)
     :accept ()
-    :case (((:ok :retired) (:set (stopped 1)) (:next :done) (:charge :steps *fn2-work-transition*))
-           (:otherwise (:stop :recovery-release))))))
+    :case (((:ok) (:set (rc-roff roff) (rc-rend rend)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:invalid) (:stop :recovery-replay)))))
+  ;; stage 1: the workspace's member to C, in member order
+  (replay-flush :on-refusal ((:stop :recovery-replay))
+   (:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen) :accept (:ok))
+   (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1) (rc-stage 0))
+   (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+  ;; stage 2, the stream's end: its last member (one step), then the
+  ;; batch's publish and the next chained commit's records, or the replay's
+  ;; end (one call ending it, when anything was replayed)
+  (replay-commit-end :on-refusal ((:stop :recovery-replay))
+   (:if (< 0 row-rc-wlen)
+        ((:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen) :accept (:ok))
+         (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1))
+         (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+        ((:do (pcode) (fn2-successor-publish row-rc-commit) :when (< 0 row-rc-wmembers) :else (:ok) :accept (:ok))
+         (:if (< row-rc-commit row-rc-chain)
+              ((:do (xcode p) (fn2-recovery-commit-extent (+ 1 row-rc-commit)) :accept (:ok))
+               (:set (rc-commit (+ 1 row-rc-commit)) (rc-pos p) (rc-role 1) (rc-roff 0) (rc-rend 0)
+                     (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-filled 0) (rc-stage 0) (rc-ready 0))
+               (:next :read) (:charge :steps *fn2-work-advance* :runnable t))
+              ((:do (ecode) (fn2-member-replay 0 0 row-rc-wslot row-rc-wgen 0)
+                :when (equal row-rc-replayed 1) :else (:ok) :accept (:ok))
+               (:goto replay-release))))))
+  (replay-record :on-refusal ((:stop :recovery-bounds))
+   (:do (code next wlen ev)
+        (fn2-recovery-replay-record row-rc-roff row-rc-rend row-rc-wslot row-rc-wgen row-rc-wlen row-rc-wevent
+                                    row-pool-slot row-pool-gen id row-generation)
+    :accept ()
+    :case (((:end) (:set (rc-stage 2)) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:appended) (:set (rc-roff next) (rc-wlen wlen) (rc-wevent ev)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:skip) (:set (rc-roff next)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:boundary) (:set (rc-stage 1)) (:charge :steps *fn2-work-stage* :runnable t))
+           ((:invalid) (:stop :recovery-replay))
+           ((:bounds) (:stop :recovery-bounds))))))
  :arms
  ((:free (:idle))
   ;; issue the next part of the current unit into the window, or, when
@@ -780,6 +851,8 @@
            (:do (code) (fn2-recovery-cand-mark row-rc-pos *fn2-rec-status-unreadable*))
            (:set (rc-pos (+ 1 row-rc-pos)) (rc-high (+ 1 row-rc-pos)) (rc-role 2) (rc-filled 0) (rc-stage 0) (rc-ready 0))
            (:next :read) (:charge :steps *fn2-work-mailbox* :runnable t))
+          ;; the replay's unit decoded at the payload pass: reading it again failed
+          ((equal row-rc-mode *fn2-rec-mode-replay*) (:stop :recovery-replay))
           (t (:set (rc-ambiguous 1) (rc-stage 0) (rc-found 0) (rc-ready 0))
              (:next :install) (:charge :steps *fn2-work-mailbox* :runnable t))))
   ;; one stage over the filled unit (at most 4 KiB verified)
@@ -787,6 +860,10 @@
    (:cond ((and (equal row-rc-mode *fn2-rec-mode-payload*) (< 0 row-rc-munits)) (:goto payload-manifest))
           ((and (equal row-rc-mode *fn2-rec-mode-payload*) (equal row-rc-rend 0)) (:goto payload-open))
           ((equal row-rc-mode *fn2-rec-mode-payload*) (:goto payload-record))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-rend 0)) (:goto replay-open))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 1)) (:goto replay-flush))
+          ((and (equal row-rc-mode *fn2-rec-mode-replay*) (equal row-rc-stage 2)) (:goto replay-commit-end))
+          ((equal row-rc-mode *fn2-rec-mode-replay*) (:goto replay-record))
           (t
    (:if (equal row-rc-mode *fn2-rec-mode-discover*)
         ((:do (code) (fn2-recovery-discover-unit row-rc-stage row-rc-pos row-rc-role row-pool-slot row-pool-gen id row-generation)
