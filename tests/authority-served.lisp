@@ -399,3 +399,172 @@
  (declare (xargs :verify-guards nil))
  (equal (car (fn2-authority-grant-roundtrip-run)) t))
 (assert-event (fn2-authority-grant-roundtrip-positive))
+
+;; ---------------------------------------------------------------------------
+;; fn2-authority-commit-race-positive (C's successor, the read dependency of
+;; step 3a, over the assembled core): a member that decided under authority
+;; head H validates it at stage against the immediate predecessor, an earlier
+;; prepared (bound, unpublished) batch included. Transaction 0 publishes
+;; principal P's head 5. Transaction 1 decided under 5 (its :depend slot P ->
+;; 5) and stages :ok; transaction 2, a grant event ordered before it, binds
+;; head 9 into batch 2 (not yet published): transaction 1 is open again (its
+;; bind answers :state) and its stage now answers :changed (re-decide;
+;; nothing was submitted). Transaction 3 decided under 9 stages :ok, binds
+;; into batch 3 and writes no row (its slot is unchanged, size 0); a grant
+;; event ordered after it (transaction 4, head 12) binds, and transaction 3
+;; stays bound: a later grant does not undo it. Controls: a :depend slot
+;; takes values only (an :event arg is :kind) and integer fields only (the
+;; principals directory's octet name is :kind).
+(defconst *fn2-as-head-sid* 19)
+(defconst *fn2-as-race-profile* (put-assoc-equal :t 6 *fn2-as-profile*))
+(defun fn2-as-resolve (fuel tx fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (zp fuel) (mv :fuel fn2-core)
+  (mv-let (answer fn2-core) (fn2-successor-resolve tx 4096 fn2-core)
+   (if (eq answer :more) (fn2-as-resolve (- fuel 1) tx fn2-core) (mv answer fn2-core)))))
+;; slot 0 of TX: KIND (:insert or :depend) of fn2-authority-head, P -> H
+(defun fn2-as-head-slot (tx kind p h fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv c1 fn2-core) (fn2-successor-put tx 0 *fn2-as-head-sid* kind fn2-core))
+      ((mv c2 fn2-core) (fn2-successor-arg tx 0 0 :value p fn2-core))
+      ((mv c3 fn2-core) (fn2-successor-arg tx 0 1 :value h fn2-core))
+      ((mv c4 fn2-core) (fn2-as-resolve 40 tx fn2-core)))
+  (mv (list c1 c2 c3 c4) fn2-core)))
+(defun fn2-as-phase (tx fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core))) (p) (fn2-succ-txns-phase tx fn2-succ-txns) p))
+;; the entries of fn2-authority-head in overlays O.. (K of them) a reader or a batch holds
+(defun fn2-as-count-entries (o k fn2-overlays)
+ (declare (xargs :stobjs fn2-overlays :verify-guards nil :measure (nfix (- (nfix k) (nfix o)))))
+ (if (>= (nfix o) (nfix k)) 0
+  (+ (if (and (equal (fn2-overlays-schema o fn2-overlays) *fn2-as-head-sid*)
+              (member (fn2-overlays-phase o fn2-overlays)
+                      (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen* *fn2-overlay-phase-private*)))
+         (nfix (fn2-overlays-count o fn2-overlays)) 0)
+     (fn2-as-count-entries (+ 1 (nfix o)) k fn2-overlays))))
+(defun fn2-as-overlay-entries (fn2-core)
+ ;; entries of fn2-authority-head in every overlay
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-overlays (fn2-core-overlays fn2-core))) (n)
+  (fn2-as-count-entries 0 (fn2-overlays-rows fn2-overlays) fn2-overlays) n))
+(defun fn2-as-race (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-as-race-profile* fn2-core))
+      (p 77)
+      ((mv d0 fn2-core) (fn2-as-head-slot 0 :insert p 5 fn2-core))
+      ((mv s0 & fn2-core) (fn2-successor-stage 0 fn2-core))
+      ((mv b0 fn2-core) (fn2-successor-bind 0 1 5 fn2-core))
+      ((mv p0 fn2-core) (fn2-successor-publish 1 fn2-core))
+      ((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+      ;; decided under 5, staged before the grant event
+      ((mv d1 fn2-core) (fn2-as-head-slot 1 :depend p 5 fn2-core))
+      ((mv s1 i1 fn2-core) (fn2-successor-stage 1 fn2-core))
+      ;; the grant event ordered before it: head 9 bound into batch 2
+      ((mv d2 fn2-core) (fn2-as-head-slot 2 :insert p 9 fn2-core))
+      ((mv s2 & fn2-core) (fn2-successor-stage 2 fn2-core))
+      ((mv b2 fn2-core) (fn2-successor-bind 2 2 9 fn2-core))
+      (ph1 (fn2-as-phase 1 fn2-core))
+      ((mv b1 fn2-core) (fn2-successor-bind 1 2 10 fn2-core))
+      ((mv s1b i1b fn2-core) (fn2-successor-stage 1 fn2-core))
+      ;; decided under 9: staged and bound, writing nothing
+      ((mv d3 fn2-core) (fn2-as-head-slot 3 :depend p 9 fn2-core))
+      ((mv s3 & fn2-core) (fn2-successor-stage 3 fn2-core))
+      (n0 (fn2-as-overlay-entries fn2-core))
+      ((mv b3 fn2-core) (fn2-successor-bind 3 3 11 fn2-core))
+      (n1 (fn2-as-overlay-entries fn2-core))
+      ;; the grant event ordered after it
+      ((mv d4 fn2-core) (fn2-as-head-slot 4 :insert p 12 fn2-core))
+      ((mv s4 & fn2-core) (fn2-successor-stage 4 fn2-core))
+      ((mv b4 fn2-core) (fn2-successor-bind 4 4 12 fn2-core))
+      (ph3 (fn2-as-phase 3 fn2-core))
+      ;; controls: values only, integer fields only
+      ((mv k1 fn2-core) (fn2-successor-put 5 0 *fn2-as-head-sid* :depend fn2-core))
+      ((mv k2 fn2-core) (fn2-successor-arg 5 0 1 :event 0 fn2-core))
+      ((mv k3 fn2-core) (fn2-successor-put 5 1 16 :depend fn2-core))
+      ((mv k4 fn2-core) (fn2-successor-arg 5 1 0 :value 3 fn2-core)))
+  (mv (list :publish d0 s0 b0 p0 :before d1 s1 i1 d2 s2 b2 ph1 b1 s1b i1b
+            :after d3 s3 b3 (- n1 n0) d4 s4 b4 ph3 :controls k1 k2 k3 k4)
+      fn2-core)))
+(defun fn2-as-race-result ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-as-race fn2-core) r)))
+(defun fn2-authority-commit-race-positive ()
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-as-race-result)
+        (list :publish '(:ok :ok :ok :ok) :ok :ok :ok
+              :before '(:ok :ok :ok :ok) :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-open* :state :changed 0
+              :after '(:ok :ok :ok :ok) :ok :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-bound*
+              :controls :ok :kind :ok :kind)))
+(assert-event (fn2-authority-commit-race-positive))
+
+;; ---------------------------------------------------------------------------
+;; fn2-authority-append-retry-after-revoke-positive (served): appends are
+;; governed by the bound principal's current append grant, read at the
+;; transaction's :prepare and held as its read dependency. The administrator
+;; creates "mini" and "origin" and grants mini append on dregg.fn.e1; mini's
+;; connection (bound) appends A: accepted. The administrator revokes the grant
+;; (an enabled-0 grant-set at mini's head). Mini, bound again, retries A and
+;; appends B: A's retry answers A's recorded identity (never the authority
+;; refusal: a revocation ordered after A does not undo it), and B is refused.
+;; Controls: origin, holding no append grant, is refused; an unbound
+;; administrator connection appends under the owner's bootstrap authority.
+(defconst *fn2-as-append-profile* (put-assoc-equal :cns 2 *fn2-as-grant-profile*))
+(defun fn2-as-article (mid subject)
+ (declare (xargs :verify-guards nil))
+ (fn2-cw-crlf-octets (list "From: mini@example.invalid" (concatenate 'string "Subject: " subject)
+                           "Newsgroups: dregg.fn.e1" (concatenate 'string "Message-ID: " mid) "" "body")))
+(defun fn2-as-append (op mid subject)
+ (declare (xargs :verify-guards nil))
+ (fnc-append op (fn2-as-article mid subject)))
+(defun fn2-as-bind (name) (declare (xargs :verify-guards nil)) (fn2-as-frame 'principal-bind (list (fn2-as-o name))))
+;; the append replies (CLASS WORD) after a bind's sealed reply (BOUND) or none
+(defun fn2-as-append-replies (xs n)
+ (declare (xargs :verify-guards nil :measure (nfix n)))
+ (if (or (zp n) (atom xs)) nil
+  (let ((r (fnc-reply 'append xs)))
+   (cons (list (nth 0 r) (nth 1 r))
+         (fn2-as-append-replies (nthcdr (fnc-frame-extent xs) xs) (- n 1))))))
+(defun fn2-as-after-bind (xs n)
+ (declare (xargs :verify-guards nil))
+ (mv-let (pl rest) (fn2-as-unseal xs) (declare (ignore pl)) (fn2-as-append-replies rest n)))
+(defun fn2-authority-append-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (r fn2-core)
+   (b* ((m *fn2-as-mini-id*)
+        (fn2-core (fn2-init-executor *fn2-as-append-profile* :echo nil fn2-core))
+        ((mv & fn2-core)
+         (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+          (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+        ((mv e1 fn2-core) (fn2-as-group "dregg.fn.e1" fn2-core))
+        ((unless (posp e1)) (mv (list :groups e1) fn2-core))
+        ((mv & w0 cl fn2-core)
+         (fn2-as-round 0 (list (fn2-as-frame 'principal-create (list (fn2-as-o "mini")))
+                               (fn2-as-frame 'principal-create (list (fn2-as-o "origin")))) nil fn2-core))
+        ((mv & w1 cl fn2-core) (fn2-as-round 1 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 1 0 1)) cl fn2-core))
+        (g1 (car (fn2-as-set-grants w1 1)))
+        ((unless (natp g1)) (mv (list :grant w0 w1) fn2-core))
+        ((mv & w2 cl fn2-core) (fn2-as-round 2 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")) cl fn2-core))
+        ((mv & w3 cl fn2-core) (fn2-as-round 3 (list (fn2-as-set m *fn2-as-a* *fn2-as-st* e1 0 g1 2)) cl fn2-core))
+        (g2 (car (fn2-as-set-grants w3 1)))
+        ((mv & w4 cl fn2-core)
+         (fn2-as-round 4 (list (fn2-as-bind "mini") (fn2-as-append 11 "<a@authority.invalid>" "A")
+                               (fn2-as-append 12 "<b@authority.invalid>" "B")) cl fn2-core))
+        ((mv & w5 cl fn2-core) (fn2-as-round 5 (list (fn2-as-bind "origin") (fn2-as-append 13 "<c@authority.invalid>" "C")) cl fn2-core))
+        ((mv s6 w6 & fn2-core) (fn2-as-round 6 (list (fn2-as-append 14 "<d@authority.invalid>" "D")) cl fn2-core)))
+    (mv (list :revoked (and (natp g2) (< g1 g2))
+              :a (fn2-as-after-bind w2 1) :retry-and-b (fn2-as-after-bind w4 2) :origin (fn2-as-after-bind w5 1)
+              :owner (fn2-as-append-replies w6 1) :end s6 (fn2-core-stop-reason fn2-core))
+        fn2-core))
+   r)))
+(defun fn2-authority-append-retry-after-revoke-positive ()
+ (declare (xargs :verify-guards nil))
+ (let ((r (fn2-authority-append-run)))
+  (and (equal (nth 1 r) t)
+       (equal (nth 3 r) '((:accepted "")))
+       (member-equal (car (nth 5 r)) '((:accepted "") (:refused "duplicate")))
+       (equal (cadr (nth 5 r)) '(:refused "refused"))
+       (equal (nth 7 r) '((:refused "refused")))
+       (equal (nth 9 r) '((:accepted "")))
+       (equal (nth 11 r) :quiet) (equal (nth 12 r) 0))))
+(assert-event (fn2-authority-append-retry-after-revoke-positive))

@@ -41,7 +41,11 @@
 (defconst *fn2-txn-slot-addr* 7)
 (defconst *fn2-txn-slot-accepts* 8)
 (defconst *fn2-txn-groups-max* 6)
-(assert-event (<= (+ *fn2-txn-slot-accepts* (* 2 *fn2-txn-groups-max*)) *fn2-succ-slots*))
+;; then the read dependency on the principal's authority head (authority.lisp's
+;; fn2-authority-depend declares it, asserted at the same slot in
+;; assembly-callbacks-d-txn), when a grant governed the append
+(defconst *fn2-txn-slot-depend* (+ *fn2-txn-slot-accepts* (* 2 *fn2-txn-groups-max*)))
+(assert-event (< *fn2-txn-slot-depend* *fn2-succ-slots*))
 ;; The article row's values: a born article is live, version 1; the
 ;; operation outcome recorded with it is accepted (it is bound only into the
 ;; batch that accepts it).
@@ -283,8 +287,19 @@
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
-(defcost fn2-authority-allows :answers (:ok :access :more :state :bounds) :faults (:state :bounds)
-  :doc "STUB of the authority lane's operation (books/authority.lisp, layer E): (fn2-authority-allows tx principal right target budget) -> (mv code grant head); this stub answers :ok with grant 0 and head 0 for every principal until the authority lane replaces it.")
+(defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
+  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+  :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
+(defcost fn2-txn-principal :answers (:ok :state)
+  :doc "The transaction's effective durable principal: a consumer request's control connection's (its owner or the principal it bound), else the account slot's (D7's id).")
+(defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
+  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+  :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
+(defcost fn2-txn-group-of :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+  :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
+  :bytes 4096
+  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+  :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 
@@ -303,7 +318,7 @@
           ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
           ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-          (t (:do (code group) (fn2-group-lookup gslot c0 g0 (+ no start) len :budget 4096 :owner upload)
+          (t (:do (code group) (fn2-txn-group-of gslot row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
               :accept ()
               :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
@@ -311,18 +326,28 @@
                       (:cond ((>= row-ngroups *fn2-txn-groups-max*)
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                             ;; the authority seam (GRANT-ASTRA section 4): the
-                             ;; principal's append grant for this destination
-                             (t (:do (acode agrant ahead)
-                                     (fn2-authority-allows gslot row-principal-slot *fn2-authority-right-append* group 4096)
+                             ;; the authority seam (AUTHORITY-20261105 section
+                             ;; 4): the principal's append grant for this
+                             ;; destination, in bounded steps, then the read
+                             ;; dependency on the head it was decided under
+                             (t (:do (ncode pid) (fn2-txn-principal row-conn row-conn-gen row-principal-slot)
+                                 :accept (:ok) :why "the request or its connection moved on: no principal to decide for")
+                                (:do (acode astep ahead agrant)
+                                     (fn2-authority-allows gslot pid *fn2-authority-right-append* group
+                                                           (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
                                  :accept (:ok)
-                                 :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                        ((:access) (:set (word *fn2-upload-word-refused*)) (:next :refused)
+                                 :case (((:more)
+                                         (:cond ((< astep 255)
+                                                 (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
+                                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                                (t (:stop :machine-phase))))
+                                        ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
                                          (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                                (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
                                 (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
                                                                  (+ no start) len :owner upload))
                                 (:if (eq pcode :ok)
-                                     ((:set (ngroups (+ 1 row-ngroups)) (gcur next))
+                                     ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                                      ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))
@@ -517,7 +542,13 @@
                  ((:full) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:stale)
                   (:do (rcode) (fn2-successor-release sslot))
-                  (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0))
+                  (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
+                  (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
+                 ;; the read dependency moved (a grant event of the principal
+                 ;; ordered before this member): decide again, nothing submitted
+                 ((:changed)
+                  (:do (rcode) (fn2-successor-release sslot))
+                  (:set (offered 0) (prepared 0) (filed 0) (gcur 0) (gskip 0) (ngroups 0) (xstep 0))
                   (:next :lookup) (:charge :bytes 24576 :steps *fn2-work-transition* :runnable t))
                  ((:refused :evidence)
                   (:do (rcode) (fn2-successor-release sslot))
@@ -600,15 +631,17 @@
                 (natp (mv-nth 2 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))
                 (natp (mv-nth 3 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))))
   :hints (("Goal" :in-theory (enable fn2-txn-next-name))))
-;; STUB of the authority seam (the authority lane's books/authority.lisp
-;; replaces it): whether PRINCIPAL holds RIGHT on TARGET (a group's stream)
-;; for the successor transaction TX: (mv code grant head fn2-core).
-(defun fn2-authority-allows (tx principal right target budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
-           (ignore tx principal right target budget))
-  (mv :ok 0 0 fn2-core))
-(fn2-core-preserves fn2-authority-allows (tx principal right target budget fn2-core) :position 3 :rows nil)
-(in-theory (disable fn2-authority-allows))
+;; The group at the Newsgroups scan's current name: while the append check
+;; for it is in progress (XSTEP > 0) the group it holds, else one source of
+;; the name's lookup (fn2-group-lookup).
+(defun fn2-txn-group-of (tx xstep xgroup slot gen off len okind oslot ogen budget fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (and (posp xstep) (unsigned-byte-p 60 xgroup))
+      (mv :ok xgroup fn2-core)
+    (fn2-group-lookup tx slot gen off len okind oslot ogen budget fn2-core)))
+(fn2-core-preserves fn2-txn-group-of (tx xstep xgroup slot gen off len okind oslot ogen budget fn2-core) :position 2 :rows nil
+  :hints (("Goal" :in-theory (enable fn2-txn-group-of))))
+(in-theory (disable fn2-txn-group-of))
 ;; Release C's claim; the FIFO's head W (a claim row = a transaction slot)
 ;; takes it in the same step and is woken.
 (defun fn2-claim-release-core (c fn2-core)

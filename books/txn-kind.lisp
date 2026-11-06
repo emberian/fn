@@ -78,6 +78,10 @@
           (batch :u60) (bevent :u60)
           (word :u8) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
           (gcur :u32) (gskip :bool) (ngroups :u8)
+          ;; the append check in progress for the group at GCUR (its group
+          ;; XGROUP; XSTEP 0 the name lookup, K > 0 fn2-authority-allows'
+          ;; step K - 1 with the head and grant it carries)
+          (xstep :u8) (xgroup :u60) (xhead :u60) (xgrant :u60)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
                  :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen mfill op)))
@@ -93,7 +97,8 @@
  :capacity (fn2-txn-capacity profile)
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
-         :clear (tmode ecommit batch bevent word offered prepared filed counted lines gcur gskip ngroups stopped))
+         :clear (tmode ecommit batch bevent word offered prepared filed counted lines gcur gskip ngroups
+                xstep xgroup xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:admit) (:reserve) (:lookup) (:prepare) (:ready) (:batched)

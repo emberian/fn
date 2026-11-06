@@ -883,6 +883,192 @@
   (:retired (:idle)))
  :observes ())
 
+;; ---------------------------------------------------------------------------
+;; The append check (section 4; step 3b): a transaction asks it once per
+;; destination group at :prepare, through its own exact lookup (fn2-xl-step
+;; on its successor stripe: the published grants), and its answer's head is
+;; the member's read dependency, which stage validates against the immediate
+;; predecessor before commit eligibility (machines-c-stage's :depend slot).
+
+;; One call of TX's exact lookup in SID of the integer key (K0..K3, the
+;; first NK of them) at its stripe's query rows: (mv code value txns cursors
+;; paths fields), :ok with integer field VFIELD of the entry found, :absent,
+;; :more (call again with the same key), else a refusal. The key rows are
+;; written on every call, so a continuation finds them.
+(defun fn2-auth-xl (sid nk k0 k1 k2 k3 vfield tx budget b0
+                    fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                    fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-xl-step fn2-fields-rows)))))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-id-decides-wfp fn2-id-decides) (fn2-overlays-wfp fn2-overlays)
+                    (fn2-overlay-index-wfp fn2-overlay-index) (fn2-run-installed-wfp fn2-run-installed)
+                    (fn2-run-cursors-wfp fn2-run-cursors) (fn2-run-paths-wfp fn2-run-paths) (fn2-run-cache-wfp fn2-run-cache)
+                    (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)))
+       (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))
+                    (natp b0) (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (natp budget) (<= budget 4096)
+                    (natp sid) (natp vfield) (< vfield *fn2-run-entry-rows*) (member nk '(1 4))
+                    (unsigned-byte-p 60 k0) (unsigned-byte-p 60 k1) (unsigned-byte-p 60 k2) (unsigned-byte-p 60 k3)))
+       (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      ((unless (and (member (fn2-id-decides-phase tx fn2-id-decides) (list *fn2-id-decide-phase-idle* *fn2-id-decide-phase-done*))
+                    (not (equal (fn2-succ-txns-rstate tx fn2-succ-txns) *fn2-succ-resolve-look*))))
+       (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (qb (+ b0 *fn2-idc-eb*)) (rb (+ b0 *fn2-idc-rb*))
+      (fn2-fields (fn2-fields-put qb (value k0) (ref-len 0)))
+      (fn2-fields (if (equal nk 4)
+                      (let* ((fn2-fields (fn2-fields-put (+ qb 1) (value k1) (ref-len 0)))
+                             (fn2-fields (fn2-fields-put (+ qb 2) (value k2) (ref-len 0))))
+                        (fn2-fields-put (+ qb 3) (value k3) (ref-len 0)))
+                    fn2-fields))
+      ((mv code erow fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+       (fn2-xl-step tx sid budget qb rb *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
+                    fn2-succ-txns fn2-overlays fn2-overlay-index
+                    fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool))
+      ((unless (eq code :ok)) (mv code 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (row (+ erow vfield))
+      ((unless (< row (fn2-fields-rows fn2-fields))) (mv :bounds 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+  (mv :ok (nfix (fn2-fields-value row fn2-fields)) fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+(fn2-idc-fn-shape fn2-auth-xl (sid nk k0 k1 k2 k3 vfield tx budget b0
+                               fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                               fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+ ((fn2-succ-txns 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
+ (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool) t
+ (fn2-xl-step fn2-id-decides-phase fn2-succ-txns-rstate))
+
+;; The transaction's slot for its read dependency (txn.lisp's
+;; *fn2-txn-slot-depend*, asserted equal where both are included).
+(defconst *fn2-auth-depend-slot* 20)
+
+;; The definitions over the served core (expanded in assembly-callbacks-d-txn
+;; before fn2-txn-events; txn.lisp holds their defcosts).
+(defmacro fn2-authority-allows-events ()
+ '(progn
+   (defun fn2-auth-xl-core (tx sid nk k0 k1 k2 k3 vfield budget fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+                (fn2-run-installed (fn2-core-run-installed fn2-core)) (fn2-run-cursors (fn2-core-run-cursors fn2-core))
+                (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code v fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+      (if (eq c :ok)
+          (fn2-auth-xl sid nk k0 k1 k2 k3 vfield tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
+                       fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+     (mv code (nfix v) fn2-core)))
+   (fn2-core-preserves fn2-auth-xl-core (tx sid nk k0 k1 k2 k3 vfield budget fn2-core)
+    :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+   (in-theory (disable fn2-auth-xl-core))
+   ;; Whether the core serves authority (the profile gives fn2-auth rows):
+   ;; a profile serving none has no principals directory and no grants, and
+   ;; its appends are not governed by them (as its genesis names none).
+   (defun fn2-auth-served (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (posp (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core)))
+   ;; The effective durable principal of a transaction (section 1): a
+   ;; consumer request's (CONN a fn2-cns row of generation CONN-GEN) is its
+   ;; control connection's, the owner's or the one it bound; a connection's
+   ;; is its account slot PSLOT's (D7's id; an NNTP reader's the anonymous
+   ;; principal). :state when the request or its connection has moved on.
+   (defun fn2-txn-principal (conn conn-gen pslot fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
+        (let ((ctl (fn2-cns-row-ctl conn fn2-core)))
+         (if (and (equal (fn2-machine-generation conn fn2-core) conn-gen)
+                  (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+                  (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen conn fn2-core))
+                  (posp (fn2-ctl-row-principal ctl fn2-core)))
+             (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
+           (mv :state 0)))
+      (fn2-principal-of-slot pslot fn2-core)))
+   (defthm fn2-txn-principal-natp (natp (mv-nth 1 (fn2-txn-principal conn conn-gen pslot fn2-core)))
+    :hints (("Goal" :in-theory (enable fn2-principal-of-slot))) :rule-classes :type-prescription)
+   (in-theory (disable fn2-txn-principal))
+   ;; (fn2-authority-allows tx pid right target step head grant budget):
+   ;; whether durable principal PID holds RIGHT on stream TARGET
+   ;; for transaction TX, in bounded steps: STEP 0 reads the principal's
+   ;; authority head, 1 its current grant of (RIGHT :stream TARGET), 2 that
+   ;; grant's immutable row; :more carries (step head grant) to the next
+   ;; call. :ok (step head grant): GRANT is enabled under HEAD, or GRANT 0
+   ;; when no grant governs (the owner's bootstrap authority, or a core
+   ;; serving no authority); :access when no current grant, or a disabled
+   ;; one, allows it. The head is read first, so a decision any later grant
+   ;; event changes fails the dependency on HEAD at stage.
+   (defun fn2-authority-allows (tx pid right target step head grant budget fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+         ((unless (and (posp pid) (unsigned-byte-p 60 pid) (unsigned-byte-p 60 target)
+                       (unsigned-byte-p 60 right) (unsigned-byte-p 60 grant) (unsigned-byte-p 60 head)))
+          (mv :state 0 0 0 fn2-core))
+         ((mv oc owner) (fn2-ctl-owner-principal fn2-core))
+         ((when (and (eq oc :ok) (equal pid owner))) (mv :ok 0 0 0 fn2-core)))
+     (cond
+      ((equal step 0)
+       (mv-let (c h fn2-core)
+         (fn2-auth-xl-core tx *fn2-authority-head-sid* 1 pid 0 0 0 *fn2-authority-head-entry-field-grant* budget fn2-core)
+        (case c
+         (:ok (if (and (posp h) (unsigned-byte-p 60 h)) (mv :more 1 h 0 fn2-core) (mv :access 0 0 0 fn2-core)))
+         (:absent (mv :access 0 0 0 fn2-core))
+         (:more (mv :more 0 0 0 fn2-core))
+         (otherwise (mv :state 0 0 0 fn2-core)))))
+      ((equal step 1)
+       (mv-let (c g fn2-core)
+         (fn2-auth-xl-core tx *fn2-grant-current-sid* 4 pid right *fn2-authority-scope-stream* target
+                           *fn2-grant-current-entry-field-grant* budget fn2-core)
+        (case c
+         (:ok (if (and (posp g) (unsigned-byte-p 60 g)) (mv :more 2 head g fn2-core) (mv :access 1 head 0 fn2-core)))
+         (:absent (mv :access 1 head 0 fn2-core))
+         (:more (mv :more 1 head 0 fn2-core))
+         (otherwise (mv :state 1 head 0 fn2-core)))))
+      (t
+       (mv-let (c en fn2-core)
+         (fn2-auth-xl-core tx *fn2-grants-sid* 1 grant 0 0 0 *fn2-grants-entry-field-enabled* budget fn2-core)
+        (case c
+         (:ok (if (equal en 1) (mv :ok 2 head grant fn2-core) (mv :access 2 head grant fn2-core)))
+         (:more (mv :more 2 head grant fn2-core))
+         (otherwise (mv :state 2 head grant fn2-core))))))))
+   (fn2-core-preserves fn2-authority-allows (tx pid right target step head grant budget fn2-core) :position 4 :rows nil)
+   (defthm fn2-authority-allows-types
+    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
+         (< (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)) 3)
+         (unsigned-byte-p 60 (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
+         (unsigned-byte-p 60 (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
+    :hints (("Goal" :in-theory (enable fn2-authority-allows))))
+   (defthm fn2-authority-allows-natps
+    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
+         (natp (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
+         (natp (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
+    :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
+                   (:type-prescription :corollary (natp (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
+                   (:type-prescription :corollary (natp (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))))
+    :hints (("Goal" :in-theory (disable fn2-authority-allows-types) :use fn2-authority-allows-types)))
+   (in-theory (disable fn2-authority-allows))
+   ;; The member's read dependency on the authority it decided under: when
+   ;; GRANT governed the decision (nonzero) and none is declared yet, TX's
+   ;; :depend slot on fn2-authority-head (PID -> HEAD). The first
+   ;; decision's head is kept: a later group read under a newer head makes
+   ;; the tip differ from it, so stage answers :changed.
+   (defun fn2-authority-depend (tx pid grant head fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (b* (((unless (and (posp grant) (posp head) (unsigned-byte-p 60 head))) (mv :ok fn2-core))
+         ((unless (and (posp pid) (unsigned-byte-p 60 pid))) (mv :state fn2-core))
+         (declared (stobj-let ((fn2-succ-slots (fn2-core-succ-slots fn2-core))) (d)
+                     (let ((s (+ (* (nfix tx) *fn2-succ-slots*) *fn2-auth-depend-slot*)))
+                      (and (fn2-succ-slots-wfp fn2-succ-slots) (< s (fn2-succ-slots-rows fn2-succ-slots))
+                           (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))))
+                     d))
+         ((when declared) (mv :ok fn2-core))
+         ((mv c fn2-core) (fn2-successor-put tx *fn2-auth-depend-slot* *fn2-authority-head-sid* :depend fn2-core))
+         ((unless (eq c :ok)) (mv :state fn2-core))
+         ((mv c fn2-core) (fn2-successor-arg tx *fn2-auth-depend-slot* *fn2-authority-head-entry-field-principal* :value pid fn2-core))
+         ((unless (eq c :ok)) (mv :state fn2-core))
+         ((mv c fn2-core) (fn2-successor-arg tx *fn2-auth-depend-slot* *fn2-authority-head-entry-field-grant* :value head fn2-core)))
+     (mv (if (eq c :ok) :ok :state) fn2-core)))
+   (fn2-core-preserves fn2-authority-depend (tx pid grant head fn2-core) :position 1 :rows nil)
+   (in-theory (disable fn2-authority-depend))))
+
 (defmacro fn2-auth-events ()
  '(progn
    (fn2-auth-op-events)
