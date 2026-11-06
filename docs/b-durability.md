@@ -1587,10 +1587,28 @@ POSTed on one connection, the core is dropped, and a fresh core recovers over th
 pass (dev at 48895c67f) recovery classified the run `:unknown` (assumption bits 2) or `:torn-tail`
 (bits 3) with no payload allocation; with it the class is `:intact` under both, the allocator holds
 exactly the live run's four payload allocations, both articles read back whole through
-`fn2-block-read`, and a handle whose allocation counter moved answers `:stale`. Owed (M7): recovery
-does not replay C's rows, so after recovery the article's row is absent and ARTICLE cannot find
-it, though its octets are allocated and readable; the next step is `fn2-member-replay` for every
-chained member in order (M7's replay), after the payload pass.
+`fn2-block-read`, and a handle whose allocation counter moved answers `:stale`.
+
+**S9c. M7's replay lands (C's rows after death).** After the install (classification, adoption,
+frontier and writer epoch), recovery reads each chained commit's records unit again (mode
+`:replay`) and walks its stream one record per step with `fn2-recovery-replay-record`
+(recovery-payload.lisp): each transaction record is rebuilt into the member workspace (a second
+window of the recovery bundle, reserved at `fn2-recovery-start`) as admission took it, the
+`fn2-format-txn-record` frame then the body verbatim; a record of another event closes the member
+(`:boundary`), which goes to `fn2-member-replay` (batch = the commit's ordinal, the member's event,
+the workspace); keyed mutations replay nothing. At the stream's end the last member goes, then
+`fn2-successor-publish` for the batch when it had one; after the last commit one call with batch 0
+ends the replay. C's attachment (`fn2-succ-core-replay`, machines-c-bind.lisp) releases the
+transaction rows of batches already published, decodes each schema record with the schema's
+decoder into a free transaction's slot (the row emit wrote: its `:event` fields already the
+member's position by `fn2-txn-prebind`, a fold slot's post-image), holds room as stage does
+(`fn2-succ-room`, `fn2-idc-scratch`, `fn2-idc-hold-spares`) and binds through `fn2-succ-bind`, the
+live installer; the acceptance record installs nothing in C. Any hook refusal, and a records unit
+that no longer reads or decodes, stops the core with the kind's own reason `:recovery-replay`
+(defmachine `:stops`) after the replayed prefix. Control, `tests/recovery-article-unit.lisp`: after
+the death and recovery above, a new connection's `GROUP local.test`, `ARTICLE 1` and `HEAD 2` answer
+`211 2 1 2`, the small article's stored octets dot-stuffed again, and the big one's posted headers,
+with the classifications unchanged.
 
 **S10. The block read, for D6 3/n (ARTICLE, HEAD, BODY).** There are two operations. Each has a
 defcost that names `fn2-core-extents`, `fn2-core-alloc-edges` and the issuing kind's lease, and

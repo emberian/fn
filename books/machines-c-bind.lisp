@@ -363,6 +363,127 @@
 (fn2-idc-fn-shape fn2-succ-drop (b fn2-succ-txns fn2-overlays fn2-pool) (fn2-succ-txns fn2-overlays fn2-pool)
  (fn2-succ-txns fn2-overlays fn2-pool) t (fn2-succ-drop-txns fn2-succ-drop-overlays fn2-succ-unstage))
 
+; ---------------------------------------------------------------------------
+; Replay (b-durability.md M7, C's attachment of B's fn2-member-replay): a
+; recovered transaction member's workspace, the records it was admitted
+; with (fn2-format-txn-record frames, each followed by its body), rebuilt
+; by recovery from the sealed record stream. Each schema record's body is
+; decoded with the schema's decoder into a free transaction's slot (the
+; row emit wrote: its :event fields already the member's commit position,
+; a fold slot's post-image), the slots take room as stage does, and the
+; transaction is bound through fn2-succ-bind, the installer the live path
+; uses; recovery then publishes the batch. The acceptance record is B's
+; and installs nothing here.
+
+; The workspace's records from OFF (at most K), slot I next, into TX's
+; slots: (mv code fn2-succ-slots fn2-fields).
+(defun fn2-succ-replay-records (k i off wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-slots fn2-fields fn2-pool) :measure (nfix k)
+  :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp k))
+  :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-decode fn2-run-layout-decode fn2-fields-rows
+                                            fn2-succ-slots-rows)))))
+ (b* (((unless (and (natp i) (natp off) (natp wlen) (natp tx) (natp b0)
+                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
+                    (<= (+ b0 *fn2-idc-ident* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+                    (unsigned-byte-p 32 wlen) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
+       (mv :bounds fn2-succ-slots fn2-fields))
+      ((when (<= wlen off)) (mv (if (equal off wlen) :ok :length) fn2-succ-slots fn2-fields))
+      ((when (zp k)) (mv :bounds fn2-succ-slots fn2-fields))
+      (fbase (+ b0 *fn2-idc-ident*))
+      ((mv code next fn2-fields) (fn2-format-txn-record-decode fbase wslot wgen off wlen okind oslot ogen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (natp next) (< off next))) (mv :format fn2-succ-slots fn2-fields))
+      (kind (fn2-fields-value (+ fbase *fn2-format-txn-record-field-record-kind*) fn2-fields))
+      (len (fn2-fields-value (+ fbase *fn2-format-txn-record-field-length*) fn2-fields))
+      ((unless (and (natp len) (<= (+ next len) wlen))) (mv :length fn2-succ-slots fn2-fields))
+      (end (+ next len))
+      ((when (equal kind *record-kind-article-acceptance*))
+       (fn2-succ-replay-records (- k 1) i end wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))
+      ((unless (and (natp kind) (< *fn2-commit-txn-schema-record-kind-base* kind)
+                    (<= kind *fn2-commit-txn-schema-record-kind-last*)))
+       (mv :kind fn2-succ-slots fn2-fields))
+      (s (+ (* tx *fn2-succ-slots*) i))
+      (entry (+ b0 (* *fn2-succ-block* i)))
+      ((unless (and (< i *fn2-succ-slots*) (< s (fn2-succ-slots-rows fn2-succ-slots))
+                    (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-succ-slots fn2-fields))
+      (sid (- kind *fn2-commit-txn-schema-record-kind-base*))
+      ((mv code dend fn2-fields) (fn2-run-layout-decode sid 0 entry wslot wgen next end okind oslot ogen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (equal dend end))) (mv :format fn2-succ-slots fn2-fields))
+      (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-resolved*) (sid sid) (kind *fn2-succ-kind-insert*)
+                                          (set 0) (events 0) (outs 0) (found 0) (vrun 0) (size len) (oset 1)
+                                          (sk okind) (ss oslot) (sg ogen) (late 0) (filled 0) (unchanged 0))))
+  (fn2-succ-replay-records (- k 1) (+ 1 i) end wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-replay-records (k i off wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
+ (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-fields fn2-pool) t
+ (fn2-format-txn-record-decode fn2-run-layout-decode))
+
+; The first :idle transaction row from TX (K of them); past the last, the row count.
+(defun fn2-succ-replay-free (k tx fn2-succ-txns)
+ (declare (xargs :stobjs fn2-succ-txns :measure (nfix k) :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (natp tx))))
+ (cond ((not (and (posp k) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))) (nfix (fn2-succ-txns-rows fn2-succ-txns)))
+       ((equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*) tx)
+       (t (fn2-succ-replay-free (- k 1) (+ 1 tx) fn2-succ-txns))))
+(defthm fn2-succ-replay-free-natp (natp (fn2-succ-replay-free k tx fn2-succ-txns)) :rule-classes :type-prescription)
+(in-theory (disable fn2-succ-replay-free))
+
+; Every :published transaction from TX released (K rows). During recovery
+; only replay publishes, and no transaction reads a replayed row after its
+; batch's publish (no outcome is owed for it), so the rows of the batches
+; already published are free again before the next member binds.
+(defun fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides) :measure (nfix k)
+  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (natp tx))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-release)))))
+ (b* (((unless (and (posp k) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))) (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides))
+      ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-published*))
+       (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides))
+      ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides)))
+  (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides)))
+(fn2-idc-fn-shape fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-txns fn2-succ-slots fn2-id-decides) t
+ (fn2-succ-txns-phase fn2-succ-release))
+
+; Replay one member of BATCH at commit position EVENT into TX (an :idle row,
+; its stripe at B0): its slots from the workspace, room held as stage holds
+; it, then bound. (mv code ...), CODE in fn2-succ-bind's answers, :format,
+; :length or :kind for a workspace its records do not decode, :state for a
+; row that is not idle.
+(defun fn2-succ-replay (tx batch event wslot wgen wlen okind oslot ogen b0 fn2-succ-txns fn2-succ-slots
+                        fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
+                                            fn2-succ-bind fn2-overlays-rows fn2-overlay-index-rows)))))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-engine-wfp fn2-id-engine)
+                    (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields)
+                    (fn2-pool-wfp fn2-pool) (< 0 (fn2-id-engine-rows fn2-id-engine))))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (natp b0)))
+       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code fn2-succ-slots fn2-fields)
+       (fn2-succ-replay-records (+ 1 *fn2-succ-slots*) 0 0 wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (orows (fn2-overlays-rows fn2-overlays))
+      ((unless (posp orows)) (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code need) (fn2-succ-room *fn2-succ-slots* 0 tx (fn2-id-engine-arena 0 fn2-id-engine)
+                                     (floor (fn2-overlay-index-rows fn2-overlay-index) orows) 0 fn2-succ-slots fn2-overlays))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-staged*) (batch 0) (event 0)))
+      ((mv code fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+       (fn2-succ-bind tx batch event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+  (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-replay (tx batch event wslot wgen wlen okind oslot ogen b0 fn2-succ-txns fn2-succ-slots
+                                   fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-succ-txns-phase fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares fn2-succ-bind fn2-id-engine-arena))
+
 ;; The stream members of published batch B (E's fn2-commit-stream-wake,
 ;; attached to B's hook right after fn2-successor-publish, before any
 ;; transaction of B is released): its fn2-addr writes, one per call. Cursor
@@ -894,10 +1015,39 @@
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (fn2-succ-txns fn2-overlays fn2-pool)
     (fn2-succ-drop batch fn2-succ-txns fn2-overlays fn2-pool))
+   ;; M7's replay (B's fn2-member-replay): the rows of batches replayed and
+   ;; published before are released, then the member binds into a free
+   ;; transaction row. BATCH 0 names no batch: the replay's end, which
+   ;; releases the last published batch's rows and binds nothing.
+   (fn2-succ-wrap fn2-succ-core-replay (batch event slot gen len okind oslot ogen)
+    ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+     (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-id-engine (fn2-core-id-engine fn2-core))
+     (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
+     (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+    (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+    (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides)))
+          (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides)
+          (fn2-succ-replay-sweep (fn2-succ-txns-rows fn2-succ-txns) 0 fn2-succ-txns fn2-succ-slots fn2-id-decides))
+         ((unless (and (eq code :ok) (posp batch)))
+          (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ;; a transaction row (one with write slots), never a read row's
+         (tx (fn2-succ-replay-free (floor (nfix (fn2-succ-slots-rows fn2-succ-slots)) *fn2-succ-slots*) 0 fn2-succ-txns))
+         ((unless (< tx (floor (nfix (fn2-succ-slots-rows fn2-succ-slots)) *fn2-succ-slots*)))
+          (mv :full fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((mv c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields))
+         ((unless (eq c :ok))
+          (mv c fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+         ((mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          (fn2-succ-replay tx batch event slot gen len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots
+                           fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
+     (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
    ; B5-4: publish and drop are B's constrained hooks; these are their attachments.
    (defattach (fn2-successor-publish fn2-succ-core-publish)
     :hints (("Goal" :in-theory (enable fn2-succ-core-publish))))
    (defattach (fn2-successor-drop fn2-succ-core-drop)
     :hints (("Goal" :in-theory (enable fn2-succ-core-drop))))
-   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop))
-   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop) (w state)))))
+   (defattach (fn2-member-replay fn2-succ-core-replay)
+    :hints (("Goal" :in-theory (enable fn2-succ-core-replay))))
+   (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop fn2-succ-core-replay))
+   (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop fn2-succ-core-replay) (w state)))))
