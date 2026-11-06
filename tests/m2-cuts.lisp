@@ -21,19 +21,28 @@
 (include-book "consumer-mini")
 (include-book "../books/owed-conn")
 (include-book "../books/owed-cursor")
-(include-book "fnct-client")
+(include-book "authority-client")
 (include-book "std/testing/assert-bang" :dir :system)
 
 ; The reading and posting profile (owed-cursor.lisp *fn2-cursor-profile*,
 ; its device sized as sealer-capacity-unit's) with Mini's two groups, two
 ; control connections (Mini's and origin's) and two consumer request rows.
 (defconst *m2-profile*
+  (put-assoc-equal :authority 1
+  (put-assoc-equal :owner-account 2
   (put-assoc-equal :cns 2
-    (put-assoc-equal :control-connections 2
+    (put-assoc-equal :control-connections 3
       (put-assoc-equal :extent-slots 128
-        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))
+        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))))
 (defconst *m2-mini-conn* 0)
 (defconst *m2-origin-conn* 1)
+; The administrator's connection (an owner connection never bound): it
+; creates mini and origin and sets Mini's world's grants (AUTHORITY-20261105
+; section 5); Mini's and origin's connections bind to their principals.
+(defconst *m2-admin-conn* 2)
+(defconst *m2-mini-id* (+ (* 1 4294967296) 1))     ; slot 1, incarnation 1
+(defconst *m2-origin-id* (+ (* 3 4294967296) 1))   ; slot 3 (the owner's slot 2 skipped)
+(defconst *m2-reader-id* 1)                        ; "reader": the persisted anonymous principal
 
 ;; The served wire --------------------------------------------------------------
 ; Frames are the L carrier's FNCT (tests/fnct-client.lisp, e-surface.md 4.2):
@@ -155,13 +164,16 @@
 ; (consumer-mini.lisp), the reasons the cut cannot pass (in order, no
 ; duplicates), the control's mutation of the replies Mini reads, and the
 ; adapter's storage device with the deferred Receives (m2-exchange's IO).
-(defun m2-s (clients db reasons mutate store) (declare (xargs :guard t)) (list clients db reasons mutate store))
+(defun m2-s (clients db reasons mutate store auth) (declare (xargs :guard t)) (list clients db reasons mutate store auth))
 (defun m2-why (reason s)
   (declare (xargs :verify-guards nil))
   (let ((rs (nth 2 s)))
-    (m2-s (nth 0 s) (nth 1 s) (if (member-equal reason rs) rs (append rs (list reason))) (nth 3 s) (nth 4 s))))
-(defun m2-db (db s) (declare (xargs :verify-guards nil)) (m2-s (nth 0 s) db (nth 2 s) (nth 3 s) (nth 4 s)))
-(defun m2-wired (clients io s) (declare (xargs :verify-guards nil)) (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s) io))
+    (m2-s (nth 0 s) (nth 1 s) (if (member-equal reason rs) rs (append rs (list reason))) (nth 3 s) (nth 4 s) (nth 5 s))))
+(defun m2-db (db s) (declare (xargs :verify-guards nil)) (m2-s (nth 0 s) db (nth 2 s) (nth 3 s) (nth 4 s) (nth 5 s)))
+(defun m2-wired (clients io s) (declare (xargs :verify-guards nil)) (m2-s clients (nth 1 s) (nth 2 s) (nth 3 s) io (nth 5 s)))
+(defun m2-auth-get (k s) (declare (xargs :verify-guards nil)) (cdr (assoc-eq k (nth 5 s))))
+(defun m2-auth-put (k v s) (declare (xargs :verify-guards nil))
+  (m2-s (nth 0 s) (nth 1 s) (nth 2 s) (nth 3 s) (nth 4 s) (put-assoc-eq k v (nth 5 s))))
 ; Replies and codes as text: a natural, a symbol, or a flat list of them.
 (defun m2-atom-text (x)
   (declare (xargs :verify-guards nil))
@@ -259,6 +271,50 @@
   (let ((r (cdr (assoc-equal *m2-mini-conn* new))))
     (if (and r (mini-get :parked (nth 1 s))) (m2-after-page (fnc-reply 'wait r) nil s fn2-core) (mv s fn2-core))))
 
+;; Mini's grants (AUTHORITY-20261105 section 5), served ------------------------------
+; CONN's one frame: (mv octets s fn2-core), OCTETS what arrived on CONN.
+(defun m2-send-on (conn frame s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv new clients store fn2-core) (m2-exchange conn frame (nth 0 s) (nth 4 s) fn2-core)))
+    (mv (cdr (assoc-equal conn new)) (m2-wired clients store s) fn2-core)))
+(defun m2-judge (what got want s)
+  (declare (xargs :verify-guards nil))
+  (if (equal got want) s (m2-why (concatenate 'string what " did not answer its accepted reply") s)))
+; Once: the administrator creates mini and origin; each binds its connection.
+(defun m2-auth-setup (s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((when (m2-auth-get :setup s)) (mv s fn2-core))
+       ((mv o s fn2-core) (m2-send-on *m2-admin-conn* (fnca-frame 'principal-create (list (fnca-octets "mini"))) s fn2-core))
+       (s (m2-judge "principal-create mini" o (fnca-reply 'principal-create :accepted nil (list *m2-mini-id*) nil) s))
+       ((mv o s fn2-core) (m2-send-on *m2-admin-conn* (fnca-frame 'principal-create (list (fnca-octets "origin"))) s fn2-core))
+       (s (m2-judge "principal-create origin" o (fnca-reply 'principal-create :accepted nil (list *m2-origin-id*) nil) s))
+       ((mv o s fn2-core) (m2-send-on *m2-mini-conn* (fnca-frame 'principal-bind (list (fnca-octets "mini"))) s fn2-core))
+       (s (m2-judge "Mini's principal-bind" o (fnca-reply 'principal-bind :accepted nil (list *m2-mini-id* 0) nil) s))
+       ((mv o s fn2-core) (m2-send-on *m2-origin-conn* (fnca-frame 'principal-bind (list (fnca-octets "origin"))) s fn2-core))
+       (s (m2-judge "origin's principal-bind" o (fnca-reply 'principal-bind :accepted nil (list *m2-origin-id* 0) nil) s)))
+    (mv (m2-auth-put :setup t s) fn2-core)))
+(defun m2-principal (name)
+  (declare (xargs :guard t))
+  (cond ((equal name "mini") *m2-mini-id*) ((equal name "origin") *m2-origin-id*) (t *m2-reader-id*)))
+(defun m2-right (r) (declare (xargs :guard t)) (case r (:consume 0) (:read 1) (otherwise 2)))
+(defun m2-stream (g) (declare (xargs :verify-guards nil)) (nfix (cdr (assoc-equal g (cdr (assoc-eq :groups *m2-profile*))))))
+; OP (:grant NAME RIGHT TARGET): a grant-set on the administrator's
+; connection at the grantee's head, judged by its reply (grant = head).
+(defun m2-grant (op s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* (((mv s fn2-core) (m2-auth-setup s fn2-core))
+       (ge (m2-principal (nth 1 op))) (rt (m2-right (nth 2 op)))
+       (any (eq (nth 3 op) :any))
+       (sc (if any 0 1)) (tg (if any 0 (m2-stream (nth 3 op))))
+       (heads (m2-auth-get :heads s)) (eh (nfix (cdr (assoc-equal ge heads))))
+       (opn (+ 1 (nfix (m2-auth-get :op s))))
+       ((mv o s fn2-core) (m2-send-on *m2-admin-conn* (fnca-frame 'grant-set (list ge rt sc tg 1 eh (list opn))) s fn2-core))
+       ((mv g h &) (fnca-set-reply o))
+       (s (m2-auth-put :op opn s))
+       ((unless (and (posp g) (equal g h)))
+        (mv (m2-why (concatenate 'string "grant-set for " (nth 1 op) " did not answer accepted") s) fn2-core)))
+    (mv (m2-auth-put :heads (put-assoc-equal ge g heads) s) fn2-core)))
+
 (defun m2-world (op s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (case (car op)
@@ -271,7 +327,7 @@
           (ro (fnc-reply 'append (cdr (assoc-equal *m2-origin-conn* new))))
           (s (if (m2-accepted-p ro) s (m2-why (m2-reason-text "origin's append of R" ro) s))))
        (m2-woken new s fn2-core)))
-    (:grant (mv (m2-why "grant: the served node has no authority verb (fn2-ctl admits the owner only; every frame is the owner's)" s) fn2-core))
+    (:grant (m2-grant op s fn2-core))
     (:withdraw (mv (m2-why "withdraw: no served cancel, and fn2-cns delivers no withdrawal report" s) fn2-core))
     (otherwise (mv (m2-why (concatenate 'string "world step " (m2-reply-text (car op)) " is not served") s) fn2-core))))
 
@@ -345,12 +401,13 @@
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
            ((mv a0 fn2-core) (m2-admit *m2-mini-conn* fn2-core))
            ((mv a1 fn2-core) (m2-admit *m2-origin-conn* fn2-core))
-           ((unless (and (eq a0 :ok) (eq a1 :ok)))
-            (mv nil (list (concatenate 'string "admitting the two fn2-ctl connections answered " (m2-reply-text (list a0 a1)))) fn2-core))
-           (clients (list (list nil nil nil nil nil) (list nil nil nil nil nil)))
+           ((mv a2 fn2-core) (m2-admit *m2-admin-conn* fn2-core))
+           ((unless (and (eq a0 :ok) (eq a1 :ok) (eq a2 :ok)))
+            (mv nil (list (concatenate 'string "admitting the three fn2-ctl connections answered " (m2-reply-text (list a0 a1 a2)))) fn2-core))
+           (clients (list (list nil nil nil nil nil) (list nil nil nil nil nil) (list nil nil nil nil nil)))
            (script (append (pairlis$ (make-list (len *mini-grants*) :initial-element :world) (pairlis$ *mini-grants* nil))
                            (cdr (assoc-eq cut *mini-cuts*))))
-           ((mv s fn2-core) (m2-drive script (m2-s clients (mini-db-init 0) nil mutate (cons nil nil)) fn2-core))
+           ((mv s fn2-core) (m2-drive script (m2-s clients (mini-db-init 0) nil mutate (cons nil nil) nil) fn2-core))
            (s (if (equal (fn2-core-stop-reason fn2-core) 0) s
                 (m2-why (concatenate 'string "the core stopped: " (m2-reply-text (fn2-core-stop-reason fn2-core))) s)))
            (ok (m2-accept cut (nth 1 s)))
