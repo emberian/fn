@@ -244,6 +244,57 @@
   fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign fn2-fold-apply
   fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh nfix))
 
+; Stage dependency slot S (slot I) of TX: its key and the value fields the
+; transaction decided on from its args, the key's row at the tip as a fold
+; reads it (every private, published and active overlay of its schema: the
+; immediate predecessor, an earlier prepared batch's members included; else
+; the installed runs' row resolve read, :stale if they moved; else zeros),
+; and :changed unless every value field equals the decided one. It binds
+; nothing (size 0, unchanged), so bind, emit and room pass it by.
+(defun fn2-succ-stage-depend (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+  :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed) (fn2-overlays-wfp fn2-overlays)
+              (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
+              (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (natp b0))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-eval-args fn2-succ-tip-scan fn2-fields-rows fn2-succ-key-rows fn2-ov-entry
+                                            fn2-succ-copy-rows fn2-succ-zero-rows fn2-succ-same-ints nfix)))))
+ (b* (((unless (and (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (< i *fn2-succ-slots*) (natp b0)
+                    (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-succ-slots fn2-fields))
+      (sid (fn2-succ-slots-sid s fn2-succ-slots)) (nf (nfix (fn2-run-layout-fields sid 0)))
+      ((unless (equal (logand (nfix (fn2-succ-slots-set s fn2-succ-slots)) (- (ash 1 nf) 1)) (- (ash 1 nf) 1)))
+       (mv :state fn2-succ-slots fn2-fields))
+      (entry (+ b0 (* *fn2-succ-block* i))) (args (+ entry *fn2-succ-eval*))
+      (nk (nfix (fn2-run-layout-keys sid))) (nv (nfix (- nf nk)))
+      (fn2-fields (fn2-succ-eval-args nf 0 (+ entry *fn2-succ-raw*) args b0 0 0 fn2-fields))
+      (fn2-fields (fn2-succ-key-rows nk 0 nk sid nil t args entry fn2-fields))
+      (rows (fn2-overlays-rows fn2-overlays))
+      ((mv code best pos fn2-fields)
+       (fn2-succ-tip-scan rows 0 sid entry (+ b0 *fn2-idc-eb*) *fn2-idc-owner-kind* *fn2-idc-owner-slot* *fn2-idc-owner-gen*
+                          rows 0 fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
+      ((mv code fn2-fields)
+       (cond ((and (natp best) (< best rows) (natp pos))
+              (mv-let (code end fn2-fields) (fn2-ov-entry best pos entry fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+               (declare (ignore end))
+               (mv code fn2-fields)))
+             ((not (equal (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed)
+                          (fn2-succ-slots-vrun s fn2-succ-slots)))
+              (mv :stale fn2-fields))
+             ((equal (fn2-succ-slots-found s fn2-succ-slots) 1)
+              (let ((fn2-fields (fn2-succ-copy-rows nv (+ entry *fn2-succ-res*) (+ entry nk) fn2-fields))) (mv :ok fn2-fields)))
+             (t (let ((fn2-fields (fn2-succ-zero-rows nv (+ entry nk) fn2-fields))) (mv :ok fn2-fields)))))
+      ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
+      ((unless (fn2-succ-same-ints nf nk entry args fn2-fields)) (mv :changed fn2-succ-slots fn2-fields))
+      (fn2-succ-slots (fn2-succ-slots-put s (size 0) (filled 0) (unchanged 1)))
+      (fn2-fields (fn2-succ-set-fresh entry 0 fn2-fields)))
+  (mv :ok fn2-succ-slots fn2-fields)))
+(fn2-idc-fn-shape fn2-succ-stage-depend (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+ (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
+ (fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-vrun fn2-succ-slots-found fn2-run-layout-keys fn2-run-layout-fields
+  fn2-succ-eval-args fn2-succ-key-rows fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows
+  fn2-succ-same-ints fn2-succ-set-fresh nfix))
+
 ;; Every slot of TX from I (K of them), in order: (mv code i slots fields).
 (defun fn2-succ-stage-slots (k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                              fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
@@ -253,7 +304,7 @@
               (fn2-run-installed-wfp fn2-run-installed) (fn2-id-engine-wfp fn2-id-engine) (fn2-overlays-wfp fn2-overlays)
               (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
               (natp i) (natp tx) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-insert fn2-succ-stage-fold fn2-succ-slots-rows)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage-insert fn2-succ-stage-depend fn2-succ-stage-fold fn2-succ-slots-rows)))))
  (b* (((unless (and (posp k) (natp i) (< i *fn2-succ-slots*))) (mv :ok 0 fn2-succ-slots fn2-fields))
       (s (+ (* (nfix tx) *fn2-succ-slots*) i))
       ((unless (< s (fn2-succ-slots-rows fn2-succ-slots))) (mv :bounds i fn2-succ-slots fn2-fields))
@@ -262,6 +313,8 @@
        (cond ((equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*) (mv :ok fn2-succ-slots fn2-fields))
              ((equal code *fn2-succ-kind-insert*)
               (fn2-succ-stage-insert i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+             ((equal code *fn2-succ-kind-depend*)
+              (fn2-succ-stage-depend i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
              (t (fn2-succ-stage-fold i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
       ((unless (eq c :ok)) (mv c i fn2-succ-slots fn2-fields)))
   (fn2-succ-stage-slots (- k 1) (+ 1 i) tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
@@ -270,7 +323,7 @@
                                         fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  ((fn2-succ-slots 2) (fn2-fields 3))
  (fn2-succ-slots fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-stage-insert fn2-succ-stage-fold))
+ (fn2-succ-slots-kind fn2-succ-slots-phase fn2-succ-stage-insert fn2-succ-stage-depend fn2-succ-stage-fold))
 (defthm fn2-succ-stage-slots-natp
  (natp (mv-nth 1 (fn2-succ-stage-slots k i tx b0 fn2-succ-slots fn2-run-installed fn2-id-engine
                                        fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
@@ -288,6 +341,7 @@
       (bytes (nfix bytes)) (count (nfix count))
       ((unless (and (< s (fn2-succ-slots-rows fn2-succ-slots))
                     (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                    (not (equal (fn2-succ-slots-kind s fn2-succ-slots) *fn2-succ-kind-depend*))
                     (equal (fn2-succ-slots-sid s fn2-succ-slots) sid)))
        (mv bytes count)))
   (mv (+ bytes (nfix (fn2-succ-slots-size s fn2-succ-slots))) (+ 1 count))))
@@ -302,6 +356,7 @@
       (let ((s (+ (* (nfix tx) *fn2-succ-slots*) j)))
        (or (and (< s (fn2-succ-slots-rows fn2-succ-slots))
                 (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                (not (equal (fn2-succ-slots-kind s fn2-succ-slots) *fn2-succ-kind-depend*))
                 (equal (fn2-succ-slots-sid s fn2-succ-slots) sid))
            (fn2-succ-seen (- k 1) (+ 1 j) i tx sid fn2-succ-slots)))))
 ; Overlays of SID a reader meets (active, frozen or private) among rows O.. (K).
@@ -314,7 +369,7 @@
          1 0)
      (fn2-succ-schema-overlays (- k 1) (+ 1 o) sid fn2-overlays))))
 (defthm fn2-succ-schema-overlays-natp (natp (fn2-succ-schema-overlays k o sid fn2-overlays)) :rule-classes :type-prescription)
-; Every schema TX writes takes one more overlay, so one that already holds
+; Every schema TX writes (a dependency writes none) takes one more overlay, so one that already holds
 ; *fn2-idc-overlay-budget* waits (:full: backpressure until the sealer seals
 ; one) rather than leave a reader more sources than it merges.
 (defun fn2-succ-room (k i tx arena icap need fn2-succ-slots fn2-overlays)
@@ -323,7 +378,8 @@
  (b* (((unless (and (posp k) (natp i) (< i *fn2-succ-slots*))) (mv :ok (nfix need)))
       (s (+ (* (nfix tx) *fn2-succ-slots*) i))
       ((unless (and (< s (fn2-succ-slots-rows fn2-succ-slots))
-                    (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))))
+                    (not (equal (fn2-succ-slots-phase s fn2-succ-slots) *fn2-succ-slot-phase-empty*))
+                    (not (equal (fn2-succ-slots-kind s fn2-succ-slots) *fn2-succ-kind-depend*))))
        (fn2-succ-room (- k 1) (+ 1 i) tx arena icap need fn2-succ-slots fn2-overlays))
       (sid (fn2-succ-slots-sid s fn2-succ-slots))
       ((when (fn2-succ-seen i 0 i tx sid fn2-succ-slots)) (fn2-succ-room (- k 1) (+ 1 i) tx arena icap need fn2-succ-slots fn2-overlays))
@@ -401,7 +457,7 @@
 
 ; Stage TX: every slot in order against the tip, then room. (mv code i ...):
 ; :ok (TX :staged: bind may follow in this transition); :stale (resolve
-; again); :refused (slot I's fold test failed); :range; :duplicate (a
+; again); :changed (slot I's read dependency moved: decide again); :refused (slot I's fold test failed); :range; :duplicate (a
 ; :unique key present); :inconsistent (a :union key with another payload);
 ; :full (no room now: backpressure); :capacity; :state (TX not resolved, or
 ; a slot's args incomplete). I names the slot.

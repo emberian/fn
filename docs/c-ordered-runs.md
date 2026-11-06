@@ -788,6 +788,21 @@ Departures from the statement above, each with its remedy:
   verdict)` reads `:applied` or `:unchanged` once staged (`:state` before, `:kind` for an insert or
   record slot). The cursor's `:ack` declares it, so an ack that lost its race to a later one answers
   `behind` instead of `accepted` (e-continuation.md E.P1) and the transaction still commits.
+- **C-DEPEND (the read dependency, EXCELLENCE-ASTRA §1B; authority step 3a, 2026-11-05).** A
+  slot of kind `:depend` reads a schema instead of writing it: a fold, `:unique` or `:latest`
+  schema's whole entry, every field an integer given `:value` (an `:event`, `:out` or `:new` arg,
+  or an octet field, is `:kind`), naming the key and the value fields the transaction decided
+  on. Resolve reads its key in the installed runs as a fold's; stage reads the key's row at the
+  tip as a fold's (every private, frozen and active overlay of the schema, so the immediate
+  predecessor, an earlier prepared batch's members included) and answers `:changed` unless
+  every value field equals the decided one; it binds nothing (size 0, `unchanged`), so emit,
+  bind and room pass it by. A bind of any other transaction returns a staged one to `:open`
+  (C-S4's tip invariant), so a dependency is validated in the same transition that binds its
+  member. `:changed` comes before any submission: the transaction releases its successor and
+  decides again. D's transaction declares one on `fn2-authority-head` (the principal -> the
+  head its append grants were read under) at slot 20 (`fn2-authority-depend`); a grant event
+  ordered before the member's commit eligibility changes the head and refuses it on the
+  re-decision, one ordered after leaves it bound (`fn2-authority-commit-race-positive`).
 - **C-UNION-STAGE (§4a vocabulary, 2026-10-31).** An insert into a `:union` schema reads its key at
   the tip, as a `:unique` one does. Found with the same payload, it is already present: stage answers
   `:ok`, the slot binds nothing, and `fn2-successor-applied` is unavailable for inserts (`:kind`).

@@ -105,7 +105,7 @@
 (make-event
  `(defcolumns fn2-succ-slots
    ((phase (:enum fn2-succ-slot-phase (:empty :put :resolved)))
-    (sid :u60) (kind (:enum fn2-succ-kind ,(cons :insert *fn2-run-fold-kinds*)))
+    (sid :u60) (kind (:enum fn2-succ-kind ,(append (cons :insert *fn2-run-fold-kinds*) '(:depend))))
     (set :u32) (events :u32) (outs :u32) (found :bool) (vrun :u60) (size :u32)
     (oset :bool) (sk :u8) (ss :u32) (sg :u60) (late :u32) (filled :u32) (unchanged :bool))))
 (fn2-idc-child fn2-core-succ-txns fn2-succ-txns
@@ -214,11 +214,11 @@
 (defun fn2-succ-kindkw (code)
  (declare (xargs :guard t))
  (if (unsigned-byte-p 8 code) (fn2-succ-kind-code->keyword code) nil))
-; The number of args slot kind CODE of schema SID takes: an insert's entry
-; fields, a fold event's args.
+; The number of args slot kind CODE of schema SID takes: an insert's or a
+; dependency's entry fields, a fold event's args.
 (defun fn2-succ-arity (sid code)
  (declare (xargs :guard t))
- (cond ((equal code *fn2-succ-kind-insert*) (nfix (fn2-run-layout-fields sid 0)))
+ (cond ((member code (list *fn2-succ-kind-insert* *fn2-succ-kind-depend*)) (nfix (fn2-run-layout-fields sid 0)))
        (t (nfix (fn2-fold-arity sid (fn2-succ-kindkw code))))))
 (defthm fn2-succ-arity-natp (natp (fn2-succ-arity sid code)) :rule-classes :type-prescription)
 (in-theory (disable fn2-succ-kindkw fn2-succ-arity))
@@ -240,6 +240,7 @@
 (defun fn2-succ-octet-field (sid kcode j)
  (declare (xargs :guard (natp j)))
  (let ((f (cond ((equal kcode *fn2-succ-kind-insert*) j)
+                ((equal kcode *fn2-succ-kind-depend*) nil)
                 (t (fn2-succ-key-field-of (nfix (fn2-run-layout-keys sid)) 0 sid (fn2-succ-kindkw kcode) j)))))
   (and (natp f) (fn2-run-layout-octets-max sid f) f)))
 (defthm fn2-succ-octet-field-type
@@ -254,7 +255,12 @@
 
 ; Slot I of transaction TX writes schema SID by KIND: a fold event kind of
 ; SID, or :insert (a whole entry of a :unique, :latest or :union schema that
-; is not a fold). Any change to a transaction's slots leaves it :open (stage
+; is not a fold); or reads it by :depend, the transaction's read dependency
+; (EXCELLENCE-ASTRA section 1B): a whole entry of a fold, :unique or :latest
+; schema, its key and the value fields the transaction decided on, all
+; integers given as values; stage answers :changed unless the key's row at
+; the tip (the immediate predecessor's, an earlier prepared batch's
+; included) holds exactly those values, and the slot binds nothing. Any change to a transaction's slots leaves it :open (stage
 ; again) and restarts resolve.
 (defun fn2-succ-put (tx i sid kind fn2-succ-txns fn2-succ-slots)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots) :guard t))
@@ -270,6 +276,8 @@
       ((unless (< 0 (fn2-run-layout-fields sid 0))) (mv :schema fn2-succ-txns fn2-succ-slots))
       ((unless (cond ((equal code *fn2-succ-kind-insert*)
                       (and (not (fn2-run-layout-fold-p sid)) (member-eq (fn2-run-layout-merge sid) '(:unique :latest :union))))
+                     ((equal code *fn2-succ-kind-depend*)
+                      (or (fn2-run-layout-fold-p sid) (member-eq (fn2-run-layout-merge sid) '(:unique :latest))))
                      (t (natp (fn2-fold-arity sid kind)))))
        (mv :kind fn2-succ-txns fn2-succ-slots))
       (s (+ (* tx *fn2-succ-slots*) i))
@@ -333,8 +341,9 @@
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields)) (unsigned-byte-p 60 value)))
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-fields))
       (kw (fn2-succ-kindkw kcode))
-      (insert (equal kcode *fn2-succ-kind-insert*)) (fold (not insert))
-      ((when (or (and insert (fn2-run-layout-octets-max sid j)) (and fold (fn2-fold-assigned-p sid kw j))
+      (insert (equal kcode *fn2-succ-kind-insert*)) (depend (equal kcode *fn2-succ-kind-depend*))
+      (fold (not (or insert depend)))
+      ((when (or (and (or insert depend) (fn2-run-layout-octets-max sid j)) (and depend (not (eq src :value))) (and fold (fn2-fold-assigned-p sid kw j))
                  (and fold (fn2-succ-octet-field sid kcode j))))
        (mv :kind fn2-succ-txns fn2-succ-slots fn2-fields))
       ;; :out VALUE is K*256+F; :new VALUE is the slot K.
@@ -481,8 +490,8 @@
      (fn2-succ-key-rows (- k 1) (+ 1 kf) nk sid kw insert src entry fn2-fields))))))
 (fn2-fields-preserves fn2-succ-key-rows (k kf nk sid kw insert src entry fn2-fields) :position nil :raw-rows t
  :hints (("Goal" :in-theory (disable fn2-fold-key-arg))))
-; Whether slot S reads its key's row: a fold's (its key args are :value by
-; arg's rule), or a :unique insert's whose key args are all given as values.
+; Whether slot S reads its key's row: a fold's or a dependency's (its key
+; args are :value by arg's rule), or a :unique insert's whose key args are all given as values.
 (defun fn2-succ-reads-key (s fn2-succ-slots)
  (declare (xargs :stobjs fn2-succ-slots :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)))))
  (let* ((sid (fn2-succ-slots-sid s fn2-succ-slots)) (code (fn2-succ-slots-kind s fn2-succ-slots))
@@ -579,7 +588,8 @@
           (mv-let (c fn2-succ-txns fn2-succ-slots) (fn2-succ-resolved tx s nil t fn2-succ-txns fn2-succ-slots)
            (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
          (nk (nfix (fn2-run-layout-keys sid)))
-         (fn2-fields (fn2-succ-key-rows nk 0 nk sid (fn2-succ-kindkw code) (equal code *fn2-succ-kind-insert*)
+         (fn2-fields (fn2-succ-key-rows nk 0 nk sid (fn2-succ-kindkw code)
+                                        (member code (list *fn2-succ-kind-insert* *fn2-succ-kind-depend*))
                                         (+ entry *fn2-succ-raw*) entry fn2-fields))
          (fn2-succ-txns (fn2-succ-txns-put tx (rstate *fn2-succ-resolve-next*) (rbound *fn2-u60-max*))))
      (mv :more fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
