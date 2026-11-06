@@ -471,8 +471,9 @@ def main(argv=None):
               'the fncu cursor\'s history and incarnation (one 0 octet each until B serves the store\'s) and a '
               'durable principal id (the principal\'s slot until then): e-surface.md 14 item 8'],
         verdict='pass' if started and error is None and held and code == 0 else 'fail')
+    text = json.dumps(result, indent=1, default=lambda o: o.hex() if isinstance(o, (bytes, bytearray)) else repr(o))
     with open(os.path.join(out, 'report.json'), 'w') as f:
-        json.dump(result, f, indent=1)
+        f.write(text)
     print(f"consumer-socket: {result['verdict']} ({result['held']}/{result['judged']} judgments hold; "
           f"node exit {code}; {os.path.join(out, 'report.json')})")
     if not started:
