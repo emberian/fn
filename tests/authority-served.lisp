@@ -495,6 +495,7 @@
               :before '(:ok :ok :ok :ok) :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-open* :state :changed 0
               :after '(:ok :ok :ok :ok) :ok :ok 0 '(:ok :ok :ok :ok) :ok :ok *fn2-succ-phase-bound*
               :controls :ok :kind :ok :kind)))
+(value-triple (cw "OBSERVED-RACE ~x0~%" (fn2-as-race-result)))
 (assert-event (fn2-authority-commit-race-positive))
 
 ;; ---------------------------------------------------------------------------
@@ -517,13 +518,14 @@
  (declare (xargs :verify-guards nil))
  (fnc-append op (fn2-as-article mid subject)))
 (defun fn2-as-bind (name) (declare (xargs :verify-guards nil)) (fn2-as-frame 'principal-bind (list (fn2-as-o name))))
-;; the append replies (CLASS WORD) after a bind's sealed reply (BOUND) or none
+;; (CLASS WORD) of each reply in RS (fnc-replies')
+(defun fn2-as-class-words (rs)
+ (declare (xargs :verify-guards nil))
+ (if (atom rs) nil (cons (list (nth 0 (car rs)) (nth 1 (car rs))) (fn2-as-class-words (cdr rs)))))
+;; the first N append replies (CLASS WORD) in XS
 (defun fn2-as-append-replies (xs n)
- (declare (xargs :verify-guards nil :measure (nfix n)))
- (if (or (zp n) (atom xs)) nil
-  (let ((r (fnc-reply 'append xs)))
-   (cons (list (nth 0 r) (nth 1 r))
-         (fn2-as-append-replies (nthcdr (fnc-frame-extent xs) xs) (- n 1))))))
+ (declare (xargs :verify-guards nil))
+ (fn2-as-class-words (fnc-replies (repeat (nfix n) 'append) xs)))
 (defun fn2-as-after-bind (xs n)
  (declare (xargs :verify-guards nil))
  (mv-let (pl rest) (fn2-as-unseal xs) (declare (ignore pl)) (fn2-as-append-replies rest n)))
@@ -567,4 +569,5 @@
        (equal (nth 7 r) '((:refused "refused")))
        (equal (nth 9 r) '((:accepted "")))
        (equal (nth 11 r) :quiet) (equal (nth 12 r) 0))))
+(value-triple (cw "OBSERVED-APPEND ~x0~%" (fn2-authority-append-run)))
 (assert-event (fn2-authority-append-retry-after-revoke-positive))
