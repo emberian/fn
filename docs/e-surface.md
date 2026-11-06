@@ -307,6 +307,20 @@ edges, never a maximal report allocation; an append under shared exhaustion keep
 continuation and rechecks authority when resumed; a disconnect before commit eligibility cancels, after
 a possibly durable write cannot roll it back.
 
+**Served authority, present state (lane authority, docs/design/AUTHORITY-20261105.md).** The control
+connection's FNCT kind 29 frames reach fn2-auth (`books/authority.lisp`), whose sealed kind 30 replies
+the connection sends: `principal-create` and `principal-bind` (step 1), `grant-set` and `grant-get` (step 2).
+`principal-create` and `grant-set` are real durable transactions (the row's own successor write
+transaction, records emitted into its workspace, admitted to B's batch, answered from the settled outcome).
+`grant-set` writes `fn2-grants` (17, immutable, its id its commit event), `fn2-grant-current` (18) and
+`fn2-authority-head` (19) as `:latest` entries (not folds yet: a fold event cannot take the member's own
+event), and `fn2-outcome`, whose request field is the 32-octet injective identity of the request; the retry
+lookup precedes the expected-head check. Its operation identity is 1 to 8 octets big-endian below 2^60 (as an
+append's), not the port's 64. `grant-get` reads current, head and row at one committed cut (the frontier
+before and after). Store genesis names `anonymous` and `owner` where the profile serves authority. Not yet:
+the checks of step 3 (`fn2-authority-allows` is still txn.lisp's stub, cns checks no grant), restart recovery
+of principals, incarnations and grants (no served restart), `unknown-stream` (no reverse stream index).
+
 ## 7. The inbox is a selection (INBOX-DELIVERY §4-5, ruled)
 A registration is durable, keyed (principal, consumer, epoch), and names its edges, each `(stream,
 start)`: a group, a DM lane (a two-member private group) or the principal's own `addr` stream; an edge
