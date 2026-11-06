@@ -78,7 +78,7 @@ def subset (a b : List String) : Bool := a.all (b.contains ·)
 
 /-- The refusal's children, closed under its own re-entry (a checked post-fixpoint). -/
 def refTables (subT : String → List String) (R : List Step) : Option (List String) :=
-  let r0 := "FN2-CONTROL" :: stepsT w k ["FN2-CONTROL"] subT R
+  let r0 := stepsT w k [] subT R
   if subset (stepsT w k r0 subT R) r0 then some r0 else none
 
 def subTablesN : Nat → String → List String
@@ -88,7 +88,7 @@ def subTablesN : Nat → String → List String
     | some sub => match sub.read with
       | .ok decl =>
         let r := (refTables w k (subTablesN d) decl.onRefusal).getD []
-        r ++ stepsT w k r (subTablesN d) decl.steps
+        stepsT w k r (subTablesN d) decl.steps
       | .error _ => []
     | none => []
 
@@ -98,7 +98,7 @@ def subOKT (subT : String → List String) : Bool :=
     match k.subarms.find? (·.tag == s.tag) with
     | some sub => match sub.read with
       | .ok decl => match refTables w k subT decl.onRefusal with
-        | some r => subset r (subT s.tag) && subset (stepsT w k r subT decl.steps) (subT s.tag)
+        | some r => subset (stepsT w k r subT decl.steps) (subT s.tag)
         | none => false
       | .error _ => true
     | none => true
@@ -110,7 +110,7 @@ def derivedTables (a : Arm) : Option (List String) :=
     let subT := subTablesN w k (k.subarms.length + 1)
     if subOKT w k subT then
       match refTables w k subT decl.onRefusal with
-      | some r => some (r ++ stepsT w k r subT decl.steps)
+      | some r => some (stepsT w k r subT decl.steps)
       | none => none
     else none
   | .error _ => none
@@ -276,19 +276,19 @@ theorem subset_spec {a b : List String} (h : subset a b = true) : ∀ t ∈ a, t
 
 theorem refTables_spec (k : Kind) (subT : String → List String) (R : List Step) (refT : List String)
     (h : refTables w k subT R = some refT) :
-    "FN2-CONTROL" ∈ refT ∧ ∀ t ∈ stepsT w k refT subT R, t ∈ refT := by
+    ∀ t ∈ stepsT w k refT subT R, t ∈ refT := by
   unfold refTables at h
   dsimp only at h
   split at h
   · rename_i hs
     simp only [Option.some.injEq] at h; subst h
-    exact ⟨List.mem_cons_self, subset_spec hs⟩
+    exact subset_spec hs
   · cases h
 
 theorem subOKT_spec (k : Kind) (subT : String → List String) (hsub : subOKT w k subT = true)
     (name : String) (sub : Arm) (d : ArmDecl)
     (hf : k.subarms.find? (·.tag == name) = some sub) (hd : sub.read = .ok d) :
-    ∃ r, refTables w k subT d.onRefusal = some r ∧ (∀ t ∈ r, t ∈ subT name) ∧
+    ∃ r, refTables w k subT d.onRefusal = some r ∧
       ∀ t ∈ stepsT w k r subT d.steps, t ∈ subT name := by
   have hmem := List.mem_of_find?_eq_some hf
   have htag : sub.tag = name := by simpa using List.find?_some hf
@@ -298,8 +298,7 @@ theorem subOKT_spec (k : Kind) (subT : String → List String) (hsub : subOKT w 
   simp only [hd] at this
   split at this
   · rename_i r hr
-    simp only [Bool.and_eq_true] at this
-    exact ⟨r, hr, subset_spec this.1, subset_spec this.2⟩
+    exact ⟨r, hr, subset_spec this⟩
   · cases this
 
 theorem run_stop_frame (k : Kind) (f : Frame) (hk : f.kind = k) (T : List String)
@@ -417,7 +416,7 @@ its sub-arms') lie in `T`, run with a continuation that keeps the frame, keeps e
 theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k subT = true)
     (T : List String) :
     ∀ (fuel : Nat) (f : Frame) (st : St) (xs X : List Step) (refT : List String) (r : Res),
-      f.kind = k → refTables w k subT f.refusal = some refT → (∀ t ∈ refT, t ∈ T) →
+      f.kind = k → refTables w k subT f.refusal = some refT →
       run w f fuel st (xs ++ X) = .ok r →
       (∀ t ∈ stepsT w k refT subT xs, t ∈ T) → Pinv k T st →
       (∀ fuel', fuel' ≤ fuel → ∀ st' r', run w f fuel' st' X = .ok r' → Pinv k T st' →
@@ -426,32 +425,31 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
   intro fuel
   induction fuel using Nat.strongRecOn with
   | ind fuel ih =>
-  intro f st xs X refT r hk hrefT hrefTT hrun hxs hP hX
+  intro f st xs X refT r hk hrefT hrun hxs hP hX
   cases fuel with
   | zero => cases xs <;> cases X <;> simp [run] at hrun
   | succ n =>
-  obtain ⟨hctl, hRclosed⟩ := refTables_spec w k subT f.refusal refT hrefT
-  have hctlT : "FN2-CONTROL" ∈ T := hrefTT _ hctl
+  have hRclosed := refTables_spec w k subT f.refusal refT hrefT
   have branch : ∀ (st' : St) (ss : List Step) (r' : Res), run w f n st' ss = .ok r' →
       (∀ t ∈ stepsT w k refT subT ss, t ∈ T) → Pinv k T st' → FrameRes f T st' r' := by
     intro st' ss r' h1 h2 h3
-    exact ih n (Nat.lt_succ_self n) f st' ss [] refT r' hk hrefT hrefTT (by simpa using h1) h2 h3
+    exact ih n (Nat.lt_succ_self n) f st' ss [] refT r' hk hrefT (by simpa using h1) h2 h3
       (fun _ _ _ _ h => absurd h (run_nil_ne w _ _ _ _))
-  have hR : ∀ m, m ≤ n → ∀ (st' : St) (r' : Res), run w f m st' f.refusal = .ok r' →
-      Pinv k T st' → FrameRes f T st' r' := by
-    intro m hm st' r' h1 h3
-    exact ih m (Nat.lt_succ_of_le hm) f st' f.refusal [] refT r' hk hrefT hrefTT (by simpa using h1)
+  have hR : (∀ t ∈ refT, t ∈ T) → ∀ m, m ≤ n → ∀ (st' : St) (r' : Res),
+      run w f m st' f.refusal = .ok r' → Pinv k T st' → FrameRes f T st' r' := by
+    intro hrefTT m hm st' r' h1 h3
+    exact ih m (Nat.lt_succ_of_le hm) f st' f.refusal [] refT r' hk hrefT (by simpa using h1)
       (fun t ht => hrefTT t (hRclosed t ht)) h3 (fun _ _ _ _ h => absurd h (run_nil_ne w _ _ _ _))
-  have hStop : ∀ (st' : St) (rs : String) (r' : Res), run w f n st' [.stop rs none] = .ok r' →
-      Pinv k T st' → FrameRes f T st' r' := by
-    intro st' rs r' h1 h3
+  have hStop : "FN2-CONTROL" ∈ T → ∀ (st' : St) (rs : String) (r' : Res),
+      run w f n st' [.stop rs none] = .ok r' → Pinv k T st' → FrameRes f T st' r' := by
+    intro hctlT st' rs r' h1 h3
     cases n with
     | zero => simp [run] at h1
     | succ m => exact run_stop_frame w k f hk T hctlT m st' rs none [] r' h3 h1
   have cont : ∀ (st' : St) (rest : List Step) (r' : Res), run w f n st' (rest ++ X) = .ok r' →
       (∀ t ∈ stepsT w k refT subT rest, t ∈ T) → Pinv k T st' → FrameRes f T st' r' := by
     intro st' rest r' h1 h2 h3
-    exact ih n (Nat.lt_succ_self n) f st' rest X refT r' hk hrefT hrefTT h1 h2 h3
+    exact ih n (Nat.lt_succ_self n) f st' rest X refT r' hk hrefT h1 h2 h3
       (fun m hm => hX m (Nat.le_succ_of_le hm))
   cases xs with
   | nil => exact hX (n + 1) (Nat.le_refl _) st r (by simpa using hrun) hP
@@ -496,6 +494,7 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
     obtain ⟨_, _, hrun⟩ := bind_ok hrun
     obtain ⟨rv, _, hrun⟩ := bind_ok hrun
     have hm : "FN2-MACHINES" ∈ T := hs _ (by simp [stepT])
+    have hctlT : "FN2-CONTROL" ∈ T := hs _ (by simp [stepT])
     have h1 := cont _ rest r hrun hrest (by exact hP)
     refine frameRes_trans f T st _ r h1 (fun nn hn => ?_)
     have hn1 : "FN2-CONTROL" ≠ nn := fun e => hn (e ▸ hctlT)
@@ -523,7 +522,7 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
       exact branch st ss r hrun (fun t ht => hs t (by
         simpa [stepT] using mem_casesT w f.kind refT subT arms cs ss (List.mem_of_find?_eq_some hfind) t ht)) hP
     · simp [throw, throwThe, MonadExceptOf.throw] at hrun
-  | stop reason se => exact run_stop_frame w f.kind f rfl T hctlT n st reason se _ r hP hrun
+  | stop reason se => exact run_stop_frame w f.kind f rfl T (hs _ (by simp [stepT])) n st reason se _ r hP hrun
   | charge b sE d rE =>
     simp only [run] at hrun
     obtain ⟨st1, h1, hrun⟩ := bind_ok hrun
@@ -603,10 +602,10 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
       obtain ⟨_, _, hrun⟩ := bind_ok hrun
       obtain ⟨reads, _, hrun⟩ := bind_ok hrun
       obtain ⟨d, hd, hrun⟩ := bind_ok hrun
-      obtain ⟨r', hr', hr'T, hstT⟩ := subOKT_spec w f.kind subT hsub name sub d hfind hd
+      obtain ⟨r', hr', hstT⟩ := subOKT_spec w f.kind subT hsub name sub d hfind hd
       have hsubT : ∀ t ∈ subT name, t ∈ T := fun t ht => hs t (by simpa [stepT] using ht)
       have := ih n (Nat.lt_succ_self n) { f with refusal := d.onRefusal } _ d.steps [] r' r rfl hr'
-        (fun t ht => hsubT t (hr'T t ht)) (by simpa using hrun) (fun t ht => hsubT t (hstT t ht))
+        (by simpa using hrun) (fun t ht => hsubT t (hstT t ht))
         (Or.inl ⟨rfl, rfl⟩) (fun _ _ _ _ h => absurd h (run_nil_ne w _ _ _ _))
       refine frameRes_trans _ T st _ r ?_ hf1
       cases r with
@@ -663,6 +662,7 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
         obtain ⟨rv, _, hrun⟩ := bind_ok hrun
         obtain ⟨_, _, hrun⟩ := bind_ok hrun
         have hm : "FN2-MACHINES" ∈ T := hpk _ (by simp [parkTables, writeTables])
+        have hctlT : "FN2-CONTROL" ∈ T := hpk _ (by simp [parkTables, writeTables])
         refine frameRes_trans f T st _ r (frameRes_nil f T _ r (outs_charge f _ _ _ _ _ r hrun)) ?_
         intro nn hn
         have hn1 : "FN2-CONTROL" ≠ nn := fun e => hn (e ▸ hctlT)
@@ -712,8 +712,9 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
         FrameRes f T st r := by
       intro st2 hP2 hf2 ss hss h
       rcases hss with rfl | ⟨rs, rfl⟩
-      · exact frameRes_trans f T st st2 r (hR n (Nat.le_refl _) st2 r h hP2) hf2
-      · exact frameRes_trans f T st st2 r (hStop st2 rs r h hP2) hf2
+      · exact frameRes_trans f T st st2 r
+          (hR (fun t ht => hs t (by simp [stepT, ht])) n (Nat.le_refl _) st2 r h hP2) hf2
+      · exact frameRes_trans f T st st2 r (hStop (hs _ (by simp [stepT])) st2 rs r h hP2) hf2
     rw [run] at hrun
     dsimp only at hrun
     obtain ⟨st1, h1, hrun⟩ := bind_ok hrun
@@ -769,13 +770,13 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
         ∀ m, m ≤ n → ∀ (st' : St) (r' : Res), run w f m st' [t] = .ok r' → Pinv f.kind T st' →
         FrameRes f T st' r' := by
       intro t ht m hm st' r' h hP'
-      exact ih m (Nat.lt_succ_of_le hm) f st' [t] [] refT r' rfl hrefT hrefTT (by simpa using h) ht hP'
+      exact ih m (Nat.lt_succ_of_le hm) f st' [t] [] refT r' rfl hrefT (by simpa using h) ht hP'
         (fun _ _ _ _ h => absurd h (run_nil_ne w _ _ _ _))
     split at hrun
     · exact frameRes_trans f T st st2 r (branch st2 ok r hrun (fun t ht => mem t (by simp [ht])) hP2) hf2
     split at hrun
     · have := ih n (Nat.lt_succ_self n) f st2 refused [.park "OPERATION" none none none] refT r rfl hrefT
-        hrefTT hrun hrefd hP2 (fun m hm st' r' h hP' => hOne _ (fun x hx => mem x (by
+        hrun hrefd hP2 (fun m hm st' r' h hP' => hOne _ (fun x hx => mem x (by
           simp [stepsT, stepT, parkTables] at hx; simp [hx])) m hm st' r' h hP')
       exact frameRes_trans f T st st2 r this hf2
     · have hXr : ∀ fuel', fuel' ≤ n → ∀ (st' : St) (r' : Res),
@@ -784,9 +785,9 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
         intro m hm st' r' h hP'
         split at h
         · exact hOne _ (fun x hx => mem x (by simp [stepsT, stepT] at hx; simp [hx])) m hm st' r' h hP'
-        · exact hR m hm st' r' h hP'
+        · exact hR (fun t ht => mem t (by simp [ht])) m hm st' r' h hP'
       exact frameRes_trans f T st st2 r
-        (ih n (Nat.lt_succ_self n) f st2 refused _ refT r rfl hrefT hrefTT hrun hrefd hP2 hXr) hf2
+        (ih n (Nat.lt_succ_self n) f st2 refused _ refT r rfl hrefT hrun hrefd hP2 hXr) hf2
   | repeat_ nE body until_ =>
     have hbody : ∀ t ∈ stepsT w f.kind refT subT body, t ∈ T := fun t ht => hs t (by simpa [stepT] using ht)
     have hloop : ∀ m, m ≤ n → ∀ (kk : Nat) (s0 : St) (out : St × Nat),
@@ -825,7 +826,7 @@ theorem run_frame (k : Kind) (subT : String → List String) (hsub : subOKT w k 
                   exact (flush_T w f.kind f rfl T st'' st4 hP'' h4).1
               have hpass := ih m' (by omega) f
                 ({ stobjs := s0.stobjs, vars := reads ++ f.base } : St) body [.repeatNext] refT
-                (.again st') rfl hrefT hrefTT hres hbody (Or.inl ⟨rfl, rfl⟩) hX1
+                (.again st') rfl hrefT hres hbody (Or.inl ⟨rfl, rfl⟩) hX1
               have hnext := ihm (by omega) kk' { s0 with stobjs := st'.stobjs } out h
               intro nn hn
               exact (hnext nn hn).trans (hpass nn hn)
@@ -905,14 +906,13 @@ theorem runArm_frame (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fu
             run w { kind := k, observe, refusal := decl.onRefusal, base } fuel
               { stobjs, vars := reads ++ base } decl.steps = .ok (.done v') →
             ∃ pre ts, v'.toList = pre ++ ts ∧ ts.length = k.tuple.length ∧
-              ∀ i (hi : i < k.tuple.length), k.tuple[i] ∉ refT ++ stepsT w k refT
+              ∀ i (hi : i < k.tuple.length), k.tuple[i] ∉ stepsT w k refT
                 (subTablesN w k (k.subarms.length + 1)) decl.steps →
                 ts[i]? = (args.drop (if observe then 10 else 5))[i]? := by
           intro names hnl stobjs base reads v' hlen hst hres
-          have hfr := run_frame w k _ hsub (refT ++ stepsT w k refT (subTablesN w k (k.subarms.length + 1))
+          have hfr := run_frame w k _ hsub (stepsT w k refT (subTablesN w k (k.subarms.length + 1))
             decl.steps) fuel _ _ decl.steps [] refT (.done v') rfl hrefT
-            (fun t ht => List.mem_append_left _ ht) (by simpa using hres)
-            (fun t ht => List.mem_append_right _ ht) (Or.inl ⟨rfl, rfl⟩)
+            (by simpa using hres) (fun t ht => ht) (Or.inl ⟨rfl, rfl⟩)
             (fun _ _ _ _ h => absurd h (run_nil_ne w _ _ _ _))
           obtain ⟨stF, ⟨pre, ts, hv, hts⟩, hf⟩ := hfr
           obtain ⟨htl, hti⟩ := mapM_spec _ _ _ hts
