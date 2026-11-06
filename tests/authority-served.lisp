@@ -578,3 +578,62 @@
        (equal (nth 9 r) '((:accepted "")))
        (equal (nth 11 r) :quiet) (equal (nth 12 r) 0))))
 (assert-event (fn2-authority-append-retry-after-revoke-positive))
+
+;; ---------------------------------------------------------------------------
+;; fn2-authority-current-positive (served; step 3c): the consumer surface is
+;; governed by the bound principal's CURRENT consume grant, read at :check on
+;; the request's own read row. The administrator creates "mini". Mini, bound,
+;; asks position: refused "access" (no grant). The administrator grants mini
+;; consume on its own consumers; mini, bound, registers consumer 1 and asks
+;; position: both accepted. The administrator revokes the grant (an enabled-0
+;; grant-set at mini's head); mini, bound, asks position: refused "access".
+;; Observed at c10 (bb2) as predicted. Control: the granting administrator connection, unbound (the owner's
+;; bootstrap authority), registers its own consumer 1 and asks position:
+;; accepted.
+;; (CLASS WORD) of each kind 28 reply in XS, read as VERBS
+(defun fn2-as-cns-replies (verbs xs)
+ (declare (xargs :verify-guards nil))
+ (fn2-as-class-words (fnc-replies verbs xs)))
+(defun fn2-as-after-bind-cns (verbs xs)
+ (declare (xargs :verify-guards nil))
+ (mv-let (pl rest) (fn2-as-unseal xs) (declare (ignore pl)) (fn2-as-cns-replies verbs rest)))
+(defun fn2-authority-current-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (r fn2-core)
+   (b* ((m *fn2-as-mini-id*)
+        (fn2-core (fn2-init-executor *fn2-as-append-profile* :echo nil fn2-core))
+        ((mv & fn2-core)
+         (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+          (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+        ((mv & w0 cl fn2-core)
+         (fn2-as-round 0 (list (fn2-as-frame 'principal-create (list (fn2-as-o "mini")))) nil fn2-core))
+        ((mv & w1 cl fn2-core) (fn2-as-round 1 (list (fn2-as-bind "mini") (fnc-position 1)) cl fn2-core))
+        ;; the granting (unbound administrator) connection then registers and
+        ;; asks position under the owner's bootstrap authority
+        ((mv & w2 cl fn2-core)
+         (fn2-as-round 2 (list (fn2-as-set m *fn2-as-c* *fn2-as-own* 0 1 0 1) (fnc-register 1 1) (fnc-position 1)) cl fn2-core))
+        (g1 (car (fn2-as-set-grants w2 1)))
+        ((unless (natp g1)) (mv (list :grant w0 w2) fn2-core))
+        ((mv & w3 cl fn2-core) (fn2-as-round 3 (list (fn2-as-bind "mini") (fnc-register 1 1) (fnc-position 1)) cl fn2-core))
+        ((mv & w4 cl fn2-core) (fn2-as-round 4 (list (fn2-as-set m *fn2-as-c* *fn2-as-own* 0 0 g1 2)) cl fn2-core))
+        (g2 (car (fn2-as-set-grants w4 1)))
+        ((mv s5 w5 & fn2-core) (fn2-as-round 5 (list (fn2-as-bind "mini") (fnc-position 1)) cl fn2-core)))
+    (mv (list :revoked (and (natp g2) (< g1 g2))
+              :ungranted (fn2-as-after-bind-cns '(position) w1)
+              :granted (fn2-as-after-bind-cns '(register position) w3)
+              :after-revoke (fn2-as-after-bind-cns '(position) w5)
+              :owner (mv-let (g h rest) (fn2-as-set-reply w2) (declare (ignore g h)) (fn2-as-cns-replies '(register position) rest))
+              :end s5 (fn2-core-stop-reason fn2-core))
+        fn2-core))
+   r)))
+(defun fn2-authority-current-positive ()
+ (declare (xargs :verify-guards nil))
+ (equal (fn2-authority-current-run)
+        (list :revoked t
+              :ungranted '((:refused "access"))
+              :granted '((:accepted "") (:accepted ""))
+              :after-revoke '((:refused "access"))
+              :owner '((:accepted "") (:accepted ""))
+              :end :quiet 0)))
+(assert-event (fn2-authority-current-positive))

@@ -113,6 +113,9 @@
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
           (name-off :u32) (name-len :u8)
+          ;; the consume check in progress at :check (AUTHORITY-20261105
+          ;; section 4; fn2-cns-authority-allows' step, head and grant)
+          (xstep :u8) (xhead :u60) (xgrant :u60)
           (stopped :bool) (next-free :link))
  :holds ((:decode :wait-row) (:check :wait-row) (:lookup :wait-row)
          (:read :wait-row) (:page :wait-row) (:park :wait-row)
@@ -122,7 +125,8 @@
  :taken (:phase :decode :rows :wait-row :ranges ()
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len stopped))
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
+                 xstep xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (next-free fn2-machine-initial-next-free))

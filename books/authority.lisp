@@ -266,6 +266,222 @@
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-run-cursors fn2-core-run-paths fn2-core-id-decides)
  :doc "Declare grant-set's four writes (grant row, current pointer, head, outcome) in the row's successor transaction and resolve them.")
 
+;; ---------------------------------------------------------------------------
+;; The exact reads of the published grants on a read row, and the consumer
+;; surface's check over them (step 3c), expanded in assembly-callbacks-e-cns
+;; before the consumer request's continuations (fn2-cns-events), which call
+;; fn2-cns-authority-allows at :check; the authority rows' continuations
+;; (fn2-auth-events, after) use the same reads.
+(assert-event (and (equal *fn2-cns-right-consume* *fn2-authority-right-consume*)
+                   (equal *fn2-cns-scope-own-consumers* *fn2-authority-scope-own-consumers*)))
+(defmacro fn2-auth-read-events ()
+ '(progn
+   ;; Whether the core serves authority (the profile gives fn2-auth rows):
+   ;; a profile serving none has no principals directory and no grants, and
+   ;; its appends are not governed by them (as its genesis names none).
+   (defun fn2-auth-served (fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (posp (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core)))
+   ;; The row's read row: the authority block is the last A read rows
+   ;; (machines-b's fn2-b-read-rows counts :authority), A the kind's capacity.
+   (defun fn2-auth-read-row (slot fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+     (let ((a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
+           (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
+       (if (and (natp slot) (natp a) (natp r) (< slot a) (<= a r))
+           (mv :ok (+ (- r a) slot))
+         (mv :bounds 0))))
+   (in-theory (disable fn2-auth-read-row))
+   ;; whether read row X holds a lookup of SID in progress: its keys are then
+   ;; written already, and writing a key would end it (fn2-rd-key)
+   (defun fn2-auth-lookup-live (x sid fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+     (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (live)
+       (and (fn2-reads-wfp fn2-reads) (natp x) (natp (fn2-reads-rows fn2-reads)) (< x (fn2-reads-rows fn2-reads))
+            (equal (fn2-reads-op x fn2-reads) *fn2-read-op-lookup*) (equal (fn2-reads-sid x fn2-reads) sid))
+       live))
+   (in-theory (disable fn2-auth-lookup-live))
+   ;; One step of an exact lookup on read row X whose keys are set: :more
+   ;; continues; a final answer releases the row. (mv code) with the entry
+   ;; still delivered on :ok (the caller reads it, then releases).
+   (defun fn2-auth-lookup-step (x sid budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (mv-let (lc fn2-core) (fn2-read-lookup x sid budget fn2-core)
+       (if (member-eq lc '(:more :ok))
+           (mv lc fn2-core)
+         (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
+           (declare (ignore rc))
+           (mv (if (eq lc :absent) :absent :state) fn2-core)))))
+   (fn2-core-preserves fn2-auth-lookup-step (x sid budget fn2-core) :position 1 :rows nil)
+   (in-theory (disable fn2-auth-lookup-step))
+   ;; The delivered entry's integer fields F1 F2 F3 (0 for a field index of
+   ;; 0 when fewer are wanted), then the row released: (mv code v1 v2 v3).
+   (defun fn2-auth-take-values (x f1 f2 f3 fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (mv-let (c1 v1) (fn2-read-value x f1 fn2-core)
+       (mv-let (c2 v2) (if (natp f2) (fn2-read-value x f2 fn2-core) (mv :ok 0))
+         (mv-let (c3 v3) (if (natp f3) (fn2-read-value x f3 fn2-core) (mv :ok 0))
+           (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
+             (declare (ignore rc))
+             (if (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))
+                 (mv :ok (nfix v1) (nfix v2) (nfix v3) fn2-core)
+               (mv :state 0 0 0 fn2-core)))))))
+   (fn2-core-preserves fn2-auth-take-values (x f1 f2 f3 fn2-core) :position 4 :rows nil)
+   (in-theory (disable fn2-auth-take-values))
+   ;; principal's authority head (0: none yet): (mv code head), :more to continue
+   (defun fn2-auth-find-head (x principal budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (mv-let (kc fn2-core) (if (fn2-auth-lookup-live x *fn2-authority-head-sid* fn2-core) (mv :ok fn2-core)
+                             (fn2-read-key x :lo *fn2-authority-head-entry-field-principal* (nfix principal) fn2-core))
+       (if (not (eq kc :ok)) (mv :state 0 fn2-core)
+         (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-authority-head-sid* budget fn2-core)
+           (cond ((eq lc :ok)
+                  (mv-let (c v a b fn2-core) (fn2-auth-take-values x *fn2-authority-head-entry-field-grant* nil nil fn2-core)
+                    (declare (ignore a b)) (mv c v fn2-core)))
+                 ((eq lc :absent) (mv :ok 0 fn2-core))
+                 (t (mv lc 0 fn2-core)))))))
+   (fn2-core-preserves fn2-auth-find-head (x principal budget fn2-core) :position 2 :rows nil)
+   (in-theory (disable fn2-auth-find-head))
+   ;; the current grant of (grantee right scope target), 0 when none: (mv code grant)
+   (defun fn2-auth-find-current (x grantee right scope target budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (mv-let (k0 k1 k2 k3 fn2-core)
+       (if (fn2-auth-lookup-live x *fn2-grant-current-sid* fn2-core) (mv :ok :ok :ok :ok fn2-core)
+         (mv-let (k0 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-grantee* (nfix grantee) fn2-core)
+           (mv-let (k1 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-right* (nfix right) fn2-core)
+             (mv-let (k2 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-scope* (nfix scope) fn2-core)
+               (mv-let (k3 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-target* (nfix target) fn2-core)
+                 (mv k0 k1 k2 k3 fn2-core))))))
+             (if (not (and (eq k0 :ok) (eq k1 :ok) (eq k2 :ok) (eq k3 :ok))) (mv :state 0 fn2-core)
+               (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-grant-current-sid* budget fn2-core)
+                 (cond ((eq lc :ok)
+                        (mv-let (c v a b fn2-core) (fn2-auth-take-values x *fn2-grant-current-entry-field-grant* nil nil fn2-core)
+                          (declare (ignore a b)) (mv c v fn2-core)))
+                       ((eq lc :absent) (mv :ok 0 fn2-core))
+                       (t (mv lc 0 fn2-core)))))))
+   (fn2-core-preserves fn2-auth-find-current (x grantee right scope target budget fn2-core) :position 2 :rows nil)
+   (in-theory (disable fn2-auth-find-current))
+   ;; the immutable grant row GRANT: (mv code grantor enabled previous)
+   (defun fn2-auth-find-grant (x grant budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (mv-let (kc fn2-core) (if (fn2-auth-lookup-live x *fn2-grants-sid* fn2-core) (mv :ok fn2-core)
+                             (fn2-read-key x :lo *fn2-grants-entry-field-grant* (nfix grant) fn2-core))
+       (if (not (eq kc :ok)) (mv :state 0 0 0 fn2-core)
+         (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-grants-sid* budget fn2-core)
+           (if (eq lc :ok)
+               (fn2-auth-take-values x *fn2-grants-entry-field-grantor* *fn2-grants-entry-field-enabled*
+                                     *fn2-grants-entry-field-previous* fn2-core)
+             (mv (if (eq lc :absent) :state lc) 0 0 0 fn2-core))))))
+   (fn2-core-preserves fn2-auth-find-grant (x grant budget fn2-core) :position 4 :rows nil)
+   (in-theory (disable fn2-auth-find-grant))
+   ;; ---- the consumer surface's check (step 3c; AUTHORITY-20261105 section 4) ----
+   ;; A consumer request's read row: the cns block, the C read rows below the
+   ;; authority block (machines-b's fn2-b-read-rows: 2X cursor rows, then C,
+   ;; then A), row R - A - C + S for request slot S.
+   (defun fn2-cns-read-row (cns fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+     (if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)) (mv :bounds 0)
+       (let ((s (fn2-machine-slot cns fn2-core))
+             (a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
+             (c (fn2-machine-connection-count *fn2-cns-admission-ordinal* fn2-core))
+             (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
+         (if (and (natp s) (natp a) (natp c) (natp r) (< s c) (<= (+ a c) r))
+             (mv :ok (+ (- r (+ a c)) s))
+           (mv :bounds 0)))))
+   (in-theory (disable fn2-cns-read-row))
+   ;; The effective durable principal of consumer request CNS of generation
+   ;; GEN (section 1): its control connection's, the owner's or the one it
+   ;; bound (0 when the profile has no owner principal); :state when the
+   ;; request or its connection has moved on.
+   (defun fn2-cns-principal (cns gen fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                   (equal (fn2-machine-generation cns fn2-core) gen)))
+         (mv :state 0)
+       (let ((ctl (fn2-cns-row-ctl cns fn2-core)))
+         (if (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+                  (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen cns fn2-core)))
+             (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
+           (mv :state 0)))))
+   (defthm fn2-cns-principal-natp (natp (mv-nth 1 (fn2-cns-principal cns gen fn2-core))) :rule-classes :type-prescription)
+   (in-theory (disable fn2-cns-principal))
+   ;; Whether CNS's control connection administers (an owner connection not
+   ;; yet bound acts under the owner's bootstrap authority, section 1).
+   (defun fn2-cns-admin-p (cns fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+          (let ((ctl (fn2-cns-row-ctl cns fn2-core)))
+            (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+                 (equal (fn2-ctl-row-admin ctl fn2-core) 1)))))
+   (in-theory (disable fn2-cns-admin-p))
+   ;; (fn2-cns-authority-allows cns gen right scope target xstep head grant budget):
+   ;; whether consumer request CNS's durable principal holds (RIGHT SCOPE
+   ;; TARGET) now, in bounded steps on the request's own read row, each a
+   ;; resumable exact lookup of the published grants. XSTEP 0 is a fresh
+   ;; decision (the row's lookup a previous request left is released first);
+   ;; XSTEP K > 0 runs step K - 1: 0 reads the principal's authority head, 1
+   ;; its current grant, 2 that grant's immutable row, 3 the head again.
+   ;; :more carries (xstep head grant) to the next call. :ok when the grant
+   ;; is enabled and the head did not move across the decision (a moved head
+   ;; decides again from step 0: the answer is linearized at the final read
+   ;; of the head), with GRANT 0 when no grant governs (an administering
+   ;; connection: the owner's bootstrap authority; or a core serving none); :access when no current
+   ;; grant, or a disabled one, allows it; :state when the request moved on.
+   (defun fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((mv pc pid) (fn2-cns-principal cns gen fn2-core))
+          ((unless (eq pc :ok)) (mv :state 0 0 0 fn2-core))
+          ((when (fn2-cns-admin-p cns fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((unless (posp pid)) (mv :access 0 0 0 fn2-core))
+          ((unless (and (unsigned-byte-p 60 pid) (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
+                        (unsigned-byte-p 60 target) (unsigned-byte-p 60 head) (unsigned-byte-p 60 grant)))
+           (mv :state 0 0 0 fn2-core))
+          ((mv xc x) (fn2-cns-read-row cns fn2-core))
+          ((unless (eq xc :ok)) (mv :state 0 0 0 fn2-core))
+          ((mv & fn2-core) (if (posp xstep) (mv :ok fn2-core) (fn2-read-release x fn2-core)))
+          (step (if (posp xstep) (- xstep 1) 0)))
+       (cond
+        ((equal step 0)
+         (mv-let (c h fn2-core) (fn2-auth-find-head x pid budget fn2-core)
+           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 1 0 0 fn2-core))
+                 ((and (posp h) (unsigned-byte-p 60 h)) (mv :more 2 h 0 fn2-core))
+                 (t (mv :access 1 0 0 fn2-core)))))
+        ((equal step 1)
+         (mv-let (c g fn2-core) (fn2-auth-find-current x pid right scope target budget fn2-core)
+           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 2 head 0 fn2-core))
+                 ((and (posp g) (unsigned-byte-p 60 g)) (mv :more 3 head g fn2-core))
+                 (t (mv :access 2 head 0 fn2-core)))))
+        ((equal step 2)
+         (mv-let (c grantor en prev fn2-core) (fn2-auth-find-grant x grant budget fn2-core)
+           (declare (ignore grantor prev))
+           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 3 head grant fn2-core))
+                 ((equal en 1) (mv :more 4 head grant fn2-core))
+                 (t (mv :access 3 head grant fn2-core)))))
+        (t
+         (mv-let (c h fn2-core) (fn2-auth-find-head x pid budget fn2-core)
+           (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 4 head grant fn2-core))
+                 ((equal h head) (mv :ok 4 head grant fn2-core))
+                 (t (mv :more 1 0 0 fn2-core))))))))
+   (fn2-core-preserves fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
+   (defthm fn2-cns-authority-allows-types
+     (and (natp (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))
+          (< (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)) 5)
+          (unsigned-byte-p 60 (mv-nth 2 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))
+          (unsigned-byte-p 60 (mv-nth 3 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))))
+     :hints (("Goal" :in-theory (enable fn2-cns-authority-allows))))
+   (defthm fn2-cns-authority-allows-natps
+     (and (natp (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))) (natp (mv-nth 2 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))) (natp (mv-nth 3 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))))
+     :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))))
+                    (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))))
+                    (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))))
+     :hints (("Goal" :in-theory (disable fn2-cns-authority-allows-types) :use fn2-cns-authority-allows-types)))
+   (in-theory (disable fn2-cns-authority-allows))
+   ))
+
 (defmacro fn2-auth-op-events ()
  '(progn
    (defun fn2-auth-release-ks (slot gen okind oslot ogen fn2-core)
@@ -351,17 +567,6 @@
    (fn2-core-preserves fn2-auth-unclaim (slot fn2-core) :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-unclaim))
    ;; ---- grants (step 2) ----
-   ;; The row's read row: the authority block is the last A read rows
-   ;; (machines-b's fn2-b-read-rows counts :authority), A the kind's capacity.
-   (defun fn2-auth-read-row (slot fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-     (let ((a (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core))
-           (r (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (r) (fn2-reads-rows fn2-reads) r)))
-       (if (and (natp slot) (natp a) (natp r) (< slot a) (<= a r))
-           (mv :ok (+ (- r a) slot))
-         (mv :bounds 0))))
-   (in-theory (disable fn2-auth-read-row))
    ;; grant-set's and grant-get's fields: (mv code grantee right scope target enabled ehead op);
    ;; OP is the operation identity, 1 to 8 octets big-endian below 2^60 (as an append's).
    (defun fn2-auth-decode-grant (op sx slot gen off end okind oslot ogen fn2-core)
@@ -399,89 +604,6 @@
    (fn2-core-preserves fn2-auth-decode-grant (op sx slot gen off end okind oslot ogen fn2-core)
      :position 8 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-decode-grant))
-   ;; whether read row X holds a lookup of SID in progress: its keys are then
-   ;; written already, and writing a key would end it (fn2-rd-key)
-   (defun fn2-auth-lookup-live (x sid fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-     (stobj-let ((fn2-reads (fn2-core-reads fn2-core))) (live)
-       (and (fn2-reads-wfp fn2-reads) (natp x) (natp (fn2-reads-rows fn2-reads)) (< x (fn2-reads-rows fn2-reads))
-            (equal (fn2-reads-op x fn2-reads) *fn2-read-op-lookup*) (equal (fn2-reads-sid x fn2-reads) sid))
-       live))
-   (in-theory (disable fn2-auth-lookup-live))
-   ;; One step of an exact lookup on read row X whose keys are set: :more
-   ;; continues; a final answer releases the row. (mv code) with the entry
-   ;; still delivered on :ok (the caller reads it, then releases).
-   (defun fn2-auth-lookup-step (x sid budget fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (mv-let (lc fn2-core) (fn2-read-lookup x sid budget fn2-core)
-       (if (member-eq lc '(:more :ok))
-           (mv lc fn2-core)
-         (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
-           (declare (ignore rc))
-           (mv (if (eq lc :absent) :absent :state) fn2-core)))))
-   (fn2-core-preserves fn2-auth-lookup-step (x sid budget fn2-core) :position 1 :rows nil)
-   (in-theory (disable fn2-auth-lookup-step))
-   ;; The delivered entry's integer fields F1 F2 F3 (0 for a field index of
-   ;; 0 when fewer are wanted), then the row released: (mv code v1 v2 v3).
-   (defun fn2-auth-take-values (x f1 f2 f3 fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (mv-let (c1 v1) (fn2-read-value x f1 fn2-core)
-       (mv-let (c2 v2) (if (natp f2) (fn2-read-value x f2 fn2-core) (mv :ok 0))
-         (mv-let (c3 v3) (if (natp f3) (fn2-read-value x f3 fn2-core) (mv :ok 0))
-           (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
-             (declare (ignore rc))
-             (if (and (eq c1 :ok) (eq c2 :ok) (eq c3 :ok))
-                 (mv :ok (nfix v1) (nfix v2) (nfix v3) fn2-core)
-               (mv :state 0 0 0 fn2-core)))))))
-   (fn2-core-preserves fn2-auth-take-values (x f1 f2 f3 fn2-core) :position 4 :rows nil)
-   (in-theory (disable fn2-auth-take-values))
-   ;; principal's authority head (0: none yet): (mv code head), :more to continue
-   (defun fn2-auth-find-head (x principal budget fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (mv-let (kc fn2-core) (if (fn2-auth-lookup-live x *fn2-authority-head-sid* fn2-core) (mv :ok fn2-core)
-                             (fn2-read-key x :lo *fn2-authority-head-entry-field-principal* (nfix principal) fn2-core))
-       (if (not (eq kc :ok)) (mv :state 0 fn2-core)
-         (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-authority-head-sid* budget fn2-core)
-           (cond ((eq lc :ok)
-                  (mv-let (c v a b fn2-core) (fn2-auth-take-values x *fn2-authority-head-entry-field-grant* nil nil fn2-core)
-                    (declare (ignore a b)) (mv c v fn2-core)))
-                 ((eq lc :absent) (mv :ok 0 fn2-core))
-                 (t (mv lc 0 fn2-core)))))))
-   (fn2-core-preserves fn2-auth-find-head (x principal budget fn2-core) :position 2 :rows nil)
-   (in-theory (disable fn2-auth-find-head))
-   ;; the current grant of (grantee right scope target), 0 when none: (mv code grant)
-   (defun fn2-auth-find-current (x grantee right scope target budget fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (mv-let (k0 k1 k2 k3 fn2-core)
-       (if (fn2-auth-lookup-live x *fn2-grant-current-sid* fn2-core) (mv :ok :ok :ok :ok fn2-core)
-         (mv-let (k0 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-grantee* (nfix grantee) fn2-core)
-           (mv-let (k1 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-right* (nfix right) fn2-core)
-             (mv-let (k2 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-scope* (nfix scope) fn2-core)
-               (mv-let (k3 fn2-core) (fn2-read-key x :lo *fn2-grant-current-entry-field-target* (nfix target) fn2-core)
-                 (mv k0 k1 k2 k3 fn2-core))))))
-             (if (not (and (eq k0 :ok) (eq k1 :ok) (eq k2 :ok) (eq k3 :ok))) (mv :state 0 fn2-core)
-               (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-grant-current-sid* budget fn2-core)
-                 (cond ((eq lc :ok)
-                        (mv-let (c v a b fn2-core) (fn2-auth-take-values x *fn2-grant-current-entry-field-grant* nil nil fn2-core)
-                          (declare (ignore a b)) (mv c v fn2-core)))
-                       ((eq lc :absent) (mv :ok 0 fn2-core))
-                       (t (mv lc 0 fn2-core)))))))
-   (fn2-core-preserves fn2-auth-find-current (x grantee right scope target budget fn2-core) :position 2 :rows nil)
-   (in-theory (disable fn2-auth-find-current))
-   ;; the immutable grant row GRANT: (mv code grantor enabled previous)
-   (defun fn2-auth-find-grant (x grant budget fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (mv-let (kc fn2-core) (if (fn2-auth-lookup-live x *fn2-grants-sid* fn2-core) (mv :ok fn2-core)
-                             (fn2-read-key x :lo *fn2-grants-entry-field-grant* (nfix grant) fn2-core))
-       (if (not (eq kc :ok)) (mv :state 0 0 0 fn2-core)
-         (mv-let (lc fn2-core) (fn2-auth-lookup-step x *fn2-grants-sid* budget fn2-core)
-           (if (eq lc :ok)
-               (fn2-auth-take-values x *fn2-grants-entry-field-grantor* *fn2-grants-entry-field-enabled*
-                                     *fn2-grants-entry-field-previous* fn2-core)
-             (mv (if (eq lc :absent) :state lc) 0 0 0 fn2-core))))))
-   (fn2-core-preserves fn2-auth-find-grant (x grant budget fn2-core) :position 4 :rows nil)
-   (in-theory (disable fn2-auth-find-grant))
    ;; operation OP's recorded outcome for PRINCIPAL: (mv code event same),
    ;; SAME whether its request identity equals the one at the key range's
    ;; [0, 32) (the recorded one is copied to [32, 64) and compared).
@@ -961,12 +1083,6 @@
    (fn2-core-preserves fn2-auth-xl-core (tx sid nk k0 k1 k2 k3 vfield budget fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-xl-core))
-   ;; Whether the core serves authority (the profile gives fn2-auth rows):
-   ;; a profile serving none has no principals directory and no grants, and
-   ;; its appends are not governed by them (as its genesis names none).
-   (defun fn2-auth-served (fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (posp (fn2-machine-connection-count *fn2-auth-admission-ordinal* fn2-core)))
    ;; The effective durable principal of a transaction (section 1): a
    ;; consumer request's (CONN a fn2-cns row of generation CONN-GEN) is its
    ;; control connection's, the owner's or the one it bound; a connection's
@@ -975,13 +1091,8 @@
    (defun fn2-txn-principal (conn conn-gen pslot fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
-        (let ((ctl (fn2-cns-row-ctl conn fn2-core)))
-         (if (and (equal (fn2-machine-generation conn fn2-core) conn-gen)
-                  (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
-                  (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen conn fn2-core))
-                  (posp (fn2-ctl-row-principal ctl fn2-core)))
-             (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
-           (mv :state 0)))
+        (mv-let (c pid) (fn2-cns-principal conn conn-gen fn2-core)
+          (if (and (eq c :ok) (posp pid)) (mv :ok pid) (mv :state 0)))
       (fn2-principal-of-slot pslot fn2-core)))
    (defthm fn2-txn-principal-natp (natp (mv-nth 1 (fn2-txn-principal conn conn-gen pslot fn2-core)))
     :hints (("Goal" :in-theory (enable fn2-principal-of-slot))) :rule-classes :type-prescription)

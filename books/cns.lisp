@@ -77,6 +77,14 @@
   :answers (:need-more :budget :bounds :fault) :faults (:bounds :fault) :tables (fn2-core-pool)
   :doc "Feed the append frame's article octets into the request's upload, as a connection feeds a POST (fn2-upload-feed-run, raw): (mv status start mode why copied).")
 
+(defcost fn2-cns-authority-allows :answers (:ok :access :more :state) :bytes 4096
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :doc "One bounded step of the consumer surface's check (books/authority.lisp, AUTHORITY-20261105 section 4) on the request's own read row: (fn2-cns-authority-allows cns gen right scope target xstep head grant budget) -> (mv code xstep head grant).")
+;; the consume right on the principal's own consumers (authority.lisp's
+;; *fn2-authority-right-consume* and -scope-own-consumers, asserted equal there)
+(defconst *fn2-cns-right-consume* 0)
+(defconst *fn2-cns-scope-own-consumers* 0)
+
 (defcost fn2-cns-lookup-cursor :answers (:ok) :bytes 2048
  :tables (fn2-core-id-engine fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "Read the consumer cursor (position, version) from fn2-consumer-cursor and the published commit frontier.")
@@ -781,9 +789,20 @@
                (equal row-verb *fn2-cns-verb-rebase*)
                (equal row-verb *fn2-cns-verb-unregister*))
            (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
-          ((equal row-verb *fn2-cns-verb-register*)
-           (:next :commit) (:charge :steps *fn2-work-transition* :runnable t))
-          (t (:next :lookup) (:charge :steps *fn2-work-transition* :runnable t))))
+          ;; the consume check (AUTHORITY-20261105 section 4): the bound
+          ;; principal's current consume grant on its own consumers, in
+          ;; bounded steps on the request's own read row
+          (t (:do (acode astep ahead agrant)
+                  (fn2-cns-authority-allows id row-generation *fn2-cns-right-consume* *fn2-cns-scope-own-consumers* 0
+                                            row-xstep row-xhead row-xgrant 4096)
+              :accept (:ok)
+              :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+                              (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                     ((:access) (:set (reason *fn2-cns-reason-access*)) (:goto refuse))
+                     ((:state) (:goto cancel))))
+             (:if (equal row-verb *fn2-cns-verb-register*)
+                  ((:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                  ((:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:do (fcode ncpos nver pfront)
         (fn2-cns-lookup-cursor row-consumer row-epoch row-cpos row-version row-pub-frontier))
