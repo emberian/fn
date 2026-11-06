@@ -610,7 +610,7 @@
 ;; accessor for row S).
 (defthm fn2-ctl-fc-row-at-the-floor
   (implies (and (equal fc-rows (fn2-b-format-floor profile)) (equal c (fn2-b-ctl-rows profile)))
-           (equal (+ (- fc-rows c 1) (nfix s)) (fn2-b-ctl-slot s profile)))
+           (equal (+ (- fc-rows c) -1 (nfix s)) (fn2-b-ctl-slot s profile)))
   :hints (("Goal" :in-theory (enable fn2-b-format-floor fn2-b-ctl-slot))))
 
 
@@ -1449,7 +1449,7 @@
                (fr (stobj-let ((fn2-fields (fn2-core-fields fn2-core))) (n) (fn2-fields-rows fn2-fields) n)))
            (if (and (natp s) (natp c) (natp f) (< s c) (< c f)
                     (<= (* 128 (+ (- f c) s)) (nfix fr)))
-               (mv :ok (+ (- f c 1) s))
+               (mv :ok (+ (- f c) -1 s))
              (mv :bounds 0)))))
      (defthm fn2-ctl-fc-row-natp
        (natp (mv-nth 1 (fn2-ctl-fc-row ctl fn2-core))) :rule-classes :type-prescription)
