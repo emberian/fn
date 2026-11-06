@@ -29,9 +29,9 @@
 (defconst *fn2-rec-witness-outcomes* '(:none :uncredited :consistent :rollback-detected :discontinuity))
 ; Discovery reads only seal frames; chain verification reads all three units;
 ; the payload pass reads each chained commit's records unit and the source
-; manifests its records name.
+; manifests its records name; the replay (M7) reads each records unit again.
 (make-event (value (cons 'progn (fn2-columns-enum-constants
- 'fn2-rec-mode '(:discover :chain :payload) 0))))
+ 'fn2-rec-mode '(:discover :chain :payload :replay) 0))))
 ; B-ASSUMPTIONS-AS-PARAMETERS: the profile's assumption bits are recovery
 ; inputs. :torn-tail needs crash-only AND A-PERSISTENCE-FENCE; a witness
 ; is credited only under A-INDEPENDENT-FRONTIER. A-INTEGRITY-EVIDENCE scopes

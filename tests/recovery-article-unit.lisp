@@ -10,7 +10,9 @@
 ; :intact under broad assumptions (no position beyond the chain is dirt),
 ; the allocator holds exactly the payload allocations the live path made,
 ; and each article's stored octets read back through B's block read (whose
-; handle check refuses a moved allocation as :stale).
+; handle check refuses a moved allocation as :stale). Then recovery's M7
+; replay (b-durability.md S9c) has rebuilt C's rows from the record stream:
+; a new connection's GROUP, ARTICLE and HEAD answer with the posted octets.
 ; Run: sh tools/certify.sh tests/recovery-article-unit.lisp
 (in-package "ACL2")
 (include-book "../books/owed-txn")
@@ -50,6 +52,41 @@
 (defconst *fn2-ra-wire*
   (fn2-ra-text (list "200 fn-nntp experimental server ready" "340 send article to be posted" "240 article received OK"
                      "340 send article to be posted" "240 article received OK" "205 closing connection")))
+
+;; After death and recovery, a new connection reads both articles through
+;; the served cursor (M7's replay rebuilt C's rows): the group's counts, the
+;; small article whole (its stored octets, dot-stuffed again) and the big
+;; one's headers.
+(defconst *fn2-ra-after-lines* '("GROUP local.test" "ARTICLE 1" "HEAD 2" "QUIT"))
+(defun fn2-ra-head (lines)
+  (declare (xargs :verify-guards nil))
+  (if (or (atom lines) (equal (car lines) "")) nil (cons (car lines) (fn2-ra-head (cdr lines)))))
+(defconst *fn2-ra-after-wire*
+  (fn2-ra-text (append (list "200 fn-nntp experimental server ready" "211 2 1 2 local.test"
+                             "220 1 <small@example.invalid> article follows" "Xref: fn2.invalid local.test:1")
+                       (fn2-ra-stuff *fn2-ra-small*)
+                       (list "." "221 2 <big@example.invalid> headers follow" "Xref: fn2.invalid local.test:2")
+                       (fn2-ra-head *fn2-ra-big*)
+                       (list "." "205 closing connection"))))
+
+;; The listener's Accept, issued at boot and taken by the recovery run's
+;; adapter (no client yet), stays submitted: the new connection completes it.
+(defun fn2-ra-pending-accept (left i fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix left)))
+  (cond ((or (zp left) (>= (nfix i) (fn2-ops-rows fn2-ops))) nil)
+        ((and (equal (fn2-ops-kind (nfix i) fn2-ops) *fn2-action-accept*)
+              (equal (fn2-ops-phase (nfix i) fn2-ops) *fn2-op-phase-submitted*))
+         (list (nfix i) (fn2-ops-gen (nfix i) fn2-ops)))
+        (t (fn2-ra-pending-accept (- left 1) (+ 1 (nfix i)) fn2-ops))))
+(defun fn2-ra-serve (lines store fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((octets (fn2-ra-text lines))
+       (clients (fn2-cw-clients (list (list octets (list (len octets))))))
+       (acc (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (acc) (fn2-ra-pending-accept (fn2-ops-rows fn2-ops) 0 fn2-ops) acc))
+       ((unless acc) (mv (list :no-accept) fn2-core))
+       (fn2-core (fn2-cw-post-accept (nth 0 acc) (nth 1 acc) 0 77 (nth 4 (car clients)) fn2-core))
+       ((mv status clients & fn2-core) (fn2-cw-loop 400000 0 1 clients store fn2-core)))
+    (mv (list status (car (car (fn2-cw-results clients))) (fn2-core-stop-reason fn2-core)) fn2-core)))
 
 ; The payload allocations: (extent epoch counter owner) of every extent
 ; allocated to the transaction kind (an article), in extent order.
@@ -217,6 +254,7 @@
            ((mv start fn2-core) (fn2-recovery-start id assume 0 fn2-core))
            ((mv status & & fn2-core) (fn2-cw-loop 400000 0 0 nil store fn2-core))
            (phase (fn2-machine-phase id fn2-core))
+           ((mv served fn2-core) (fn2-ra-serve *fn2-ra-after-lines* store fn2-core))
            (class (nth (fn2-machine-rc-class id fn2-core) *fn2-rec-classes*))
            (chain (fn2-machine-rc-chain id fn2-core))
            (allocs (fn2-ra-allocs fn2-core))
@@ -229,7 +267,8 @@
               (mv :no-allocation 0 0 fn2-core))))
         (mv (list start status (fn2-core-stop-reason fn2-core)
                   (equal phase *fn2-recovery-machine-state-done*) class chain allocs
-                  c1 (equal small (fn2-ra-text *fn2-ra-small*)) c2 (equal big (fn2-ra-text *fn2-ra-big*)) stale)
+                  c1 (equal small (fn2-ra-text *fn2-ra-small*)) c2 (equal big (fn2-ra-text *fn2-ra-big*)) stale
+                  (if (equal served (list :quiet *fn2-ra-after-wire* 0)) :served served))
             fn2-core))
       result)))
 (defun fn2-ra-owners (allocs acc)
@@ -255,7 +294,7 @@
              (equal (len owners) 2)
              (equal (len (fn2-ra-owned (car owners) allocs)) 1)
              (equal (len (fn2-ra-owned (cadr owners) allocs)) 3)
-             (equal post (list :ok :quiet 0 t :intact (nth 5 post) allocs :ok t :ok t :stale))
+             (equal post (list :ok :quiet 0 t :intact (nth 5 post) allocs :ok t :ok t :stale :served))
              (posp (nth 5 post)))
         (cw "recovery-article ~x0~%pre ~x1~%post ~x2~%" assume
             (list (nth 0 pre) (equal (nth 1 pre) *fn2-ra-wire*) (nth 4 pre) allocs owners)
