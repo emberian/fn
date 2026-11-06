@@ -1433,7 +1433,7 @@
                (mv (and (eq c0 :ok) (eq rc :ok) (eq scode :ok)) fn2-core))))))
      (fn2-core-preserves fn2-cns-stage-ack-slot (cid ep target fn2-core) :position 1 :rows nil)
      (in-theory (disable fn2-cns-stage-ack-slot))
-     (defun fn2-cns-commit-ack (cid ep target cpos60 ver60 pf batch fn2-core)
+     (defun fn2-cns-commit-ack (cid ep target cpos60 ver60 pf batch x fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (mv-let (sok fn2-core) (fn2-cns-stage-ack-slot cid ep target fn2-core)
          (mv-let (acode averdict) (fn2-successor-applied 0 0 fn2-core)
@@ -1461,26 +1461,26 @@
                               (nfix pf)
                               fn2-core)))))))))
      (defthm fn2-cns-commit-ack-natp-1
-       (natp (mv-nth 1 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch fn2-core)))
+       (natp (mv-nth 1 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-ack) (nfix)))))
      (defthm fn2-cns-commit-ack-natp-2
-       (natp (mv-nth 2 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch fn2-core)))
+       (natp (mv-nth 2 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-ack) (nfix)))))
      (defthm fn2-cns-commit-ack-natp-3
-       (natp (mv-nth 3 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch fn2-core)))
+       (natp (mv-nth 3 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-ack) (nfix)))))
      (defthm fn2-cns-commit-ack-natp-4
-       (natp (mv-nth 4 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch fn2-core)))
+       (natp (mv-nth 4 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-ack) (nfix)))))
      (defthm fn2-cns-commit-ack-natp-5
-       (natp (mv-nth 5 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch fn2-core)))
+       (natp (mv-nth 5 (fn2-cns-commit-ack cid ep target cpos60 ver60 pf batch x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
        :hints (("Goal" :in-theory (e/d (fn2-cns-commit-ack) (nfix)))))
-     (fn2-core-preserves fn2-cns-commit-ack (cid ep target cpos60 ver60 pf batch fn2-core)
+     (fn2-core-preserves fn2-cns-commit-ack (cid ep target cpos60 ver60 pf batch x fn2-core)
        :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix))))
      (in-theory (disable fn2-cns-commit-ack))
      (defun fn2-cns-commit-op (verb principal consumer epoch cstart to cpos0 ver0 pfront0
@@ -1494,7 +1494,7 @@
            (if (equal (nfix verb) *fn2-cns-verb-register*)
                (fn2-cns-commit-register (nfix principal) cid ep (nfix cstart) (nfix cpos0) (nfix ver0) pf batch
                                         noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)
-             (fn2-cns-commit-ack cid ep (nfix to) (nfix cpos0) (nfix ver0) pf batch fn2-core)))))
+             (fn2-cns-commit-ack cid ep (nfix to) (nfix cpos0) (nfix ver0) pf batch x fn2-core)))))
      (defthm fn2-cns-commit-op-natp-1
        (natp (mv-nth 1 (fn2-cns-commit-op verb principal consumer epoch cstart to cpos0 ver0 pfront0 noff nlen tx-slot tx-gen ctl ctl-gen x fn2-core)))
        :rule-classes (:rewrite :type-prescription)
