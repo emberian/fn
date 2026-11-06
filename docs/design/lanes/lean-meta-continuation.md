@@ -10,8 +10,10 @@ Mathlib `1c2b90b1`, `meta/lakefile.toml`). Emission: `meta/emit/` (printers `pri
   8,313 equations. `LayerAFacts`' pins follow the registry (12/54/54/521/262/4/213; 126 machine cases; Q1 134).
 - `lake build` 635 jobs green; `lake env lean AxiomCensus.lean`: 269 entries, 0 `sorryAx`, standard axioms only.
 - Measure: echo+scribe 963/963, cursor 596/596, probe 31/31 (interp, generated, guard, frame). No named difference.
-- Proved since 10-31 (in the census): F7 `Fn2.Arms.Derive` (derived cost/writes/next/holds/tables/fuel, the universal
-  `runArm` theorems with mutant teeth, `layerA_childForm_contracts_agree`); H6 per-machine contracts and PW3 wrapper
+- Proved since 10-31 (in the census): F7 over the interpreter, no hypothesis about the run (lane/lean-bridge):
+  `Fn2.Arms.Cost.runArm_charge_le_cost`, `Fn2.Arms.Frame.runArm_frame`, instantiated for FN2-CURSOR in
+  `Fn2.Arms.Served`; the earlier `runArm_*` theorems in `Fn2.Arms.Derive` assumed an execution relation and were
+  deleted. derivedWrites/Next/Holds stay computed and checked on concrete runs only; fuel has no theorem; H6 per-machine contracts and PW3 wrapper
   preservation (`Fn2.MachineProofs`); M1 natives and fuel (`Faithful`, `Fuel`); M2 packaged revision teeth, HM pasting,
   Mazurkiewicz completeness; M3 PW3 fuel monotonicity, seven `ArmCorrect` instances, PW4 BitVec refinement (`TypedModel`).
 
@@ -28,7 +30,8 @@ Mathlib `1c2b90b1`, `meta/lakefile.toml`). Emission: `meta/emit/` (printers `pri
 ## Owed, with the exact next step
 1. Genesis arms in the embedding: print `fn2-machine-declared K :genesis` beside the arms, read them, record
    `fn2-exec-genesis` calls.
-2. `Fn2.Arms.Derive`: add the fault route's stop to `derivedNext`/contracts; a tooth with a `:faults` op.
+2. `Fn2.Arms.Derive`: runtime theorems for writes/next/fuel (cost and frame are done, the fault stop included);
+   a tooth with a `:faults` op.
 3. The two uncovered constructs: `:park :taken K` and a declared wait with a parker need `:child` (the form seat's).
 4. Core-form kinds (listener, conn, upload, txn, cns, ctl) are outside the measure until they move to child form.
 5. `fn2-ports` prints empty: decide whether the registry's world should include `books/consumer-port`.
