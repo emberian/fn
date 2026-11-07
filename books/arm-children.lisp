@@ -270,6 +270,8 @@
 (fn2-machines-wait-queue fn2-machines-park fn2-machines-grant-op wait-head wait-tail *fn2-wait-operation*)
 (fn2-machines-wait-queue fn2-machines-park-admission fn2-machines-grant-admission
                          admission-head admission-tail *fn2-wait-connection-row* (ord))
+(fn2-machines-keeps-directory fn2-machines-park (id fn2-machines fn2-control))
+(fn2-machines-keeps-directory fn2-machines-park-admission (id ord fn2-machines fn2-control))
 
 ; The singleton pool waiter: the row parks on :storage-window (its class in
 ; its own cursor field, written by its kind's checked write).
@@ -289,6 +291,7 @@
   (equal (nth *fn2-machines-rows* (car (fn2-machines-park-pool id fn2-machines fn2-control)))
          (nth *fn2-machines-rows* fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-park-pool))))
+(fn2-machines-keeps-directory fn2-machines-park-pool (id fn2-machines fn2-control))
 
 ; An admitted kind's partition (D 4.5), by its ordinal ORD.
 (defun fn2-machines-free-head-of (ord fn2-machines)
