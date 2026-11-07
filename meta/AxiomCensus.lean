@@ -293,3 +293,9 @@ import Fn2
 #print axioms Fn2.Arms.Core.runCore_frame
 #print axioms Fn2.Arms.Core.runCore_writes_sub
 #print axioms Fn2.Arms.Core.runCore_next_mem
+#print axioms Fn2.Arms.CoreTeeth.runCore_charge_pos
+#print axioms Fn2.Arms.CoreTeeth.runCore_charge_needs_empty
+#print axioms Fn2.Arms.CoreTeeth.runCore_frame_pos
+#print axioms Fn2.Arms.CoreTeeth.runCore_frame_needs_control
+#print axioms Fn2.Arms.CoreTeeth.runCore_cols_pos
+#print axioms Fn2.Arms.CoreTeeth.runCore_cols_mutants
