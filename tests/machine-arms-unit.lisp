@@ -706,3 +706,28 @@
                nil nil (w state)))
         2))
 (value-triple (cw "MACHINE ARMS UNIT: DEV-LOOP 2 every problem at once by name (reserved, COMMON-LISP, undeclared and cyclic :goto, unrouted answers, failed sub-arm, wide shared field, declaration rules, run checks); forward :goto PASS~%"))
+
+;; Frame mutants (books/machines.lisp, "The frame proved by construction"): a
+;; callee whose contract changes more than the arm declares is refused before
+;; any proof, named, and the arm's FRAME stays owed with that reason (table
+;; fn2-arm-frame-owed). The callees' entries are synthetic rows of table
+;; fn2-arm-frame-fns (this book only, no core): MUT-PUT writes columns 3 and
+;; 4 of table child 6's row at its id, MUT-OP changes children 5 and 0,
+;; MUT-HOOK has no contract.
+(table fn2-arm-frame-fns 'fn2-arms-mut-put '(:row 6 (5) (3 4)))
+(table fn2-arm-frame-fns 'fn2-arms-mut-op '(:op (5 0)))
+(table fn2-arm-frame-fns 'fn2-arms-mut-hook '(:failed (:constrained)))
+(defmacro fn2-arms-mut-static (fns ch j)
+  `(fn2-arm-frame-static-problem ',fns ',ch ',j 6 (w state)))
+;; an undeclared column of the row; an undeclared child; a callee without contracts
+(assert-event (equal (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0) (0 3)) '(:columns fn2-arms-mut-put (4))))
+(assert-event (equal (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5) (0 3 4)) '(:children fn2-arms-mut-op (0))))
+(assert-event (equal (fn2-arms-mut-static (fn2-arms-mut-hook) (5) (0)) '(:callee fn2-arms-mut-hook (:failed (:constrained)))))
+;; positive controls: the declared sets cover both callees; the table as a
+;; declared child covers any of its columns
+(assert-event (null (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0) (0 3 4))))
+(assert-event (null (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0 6) (0))))
+;; a row-level callee of another table changes that table as a child
+(assert-event (equal (fn2-arm-frame-static-problem '(fn2-arms-mut-put) '(5) '(0 3 4) 7 (w state))
+                     '(:children fn2-arms-mut-put (6))))
+(value-triple (cw "MACHINE ARMS UNIT: frame mutants (undeclared column, child, contract-less callee, another table) named PASS~%"))
