@@ -107,33 +107,55 @@
        (image (if (and lie w) (fn2-cda-drop (fn2-dev-segment (nth w log)) honest) honest))
        (rec (fn2-env-recover profile image (fn2-cda-recovery-actions profile image 4000))))
     (list (fn2-env-acknowledged-batches run) (fn2-env-recovery-done-p rec)
-          (fn2-env-recovered-batches rec) (fn2-cda-admitted-p 0 log image) w (len log))))
+          (fn2-env-recovered-batches rec) (fn2-cda-admitted-p 0 log image) w (len log)
+          (fn2-env-image-holds-prefix-p 2 log image))))
 
-;; RESULT: (acknowledged done recovered admitted last-fenced log-length).
+;; RESULT: (acknowledged done recovered admitted last-fenced log-length
+;; holds-batches-1-2).
 ;; Positive: two admitted batches, the honest device (every write answered
 ;; done, applied in answer order); A-FENCE-PERSISTS admits its image;
 ;; acknowledged (1 2) and recovered (1 2).
-(defun fn2-cda-positive (mode)
+; Each scenario runs once (a make-event: the run calls attachments, which a
+; defconst may not); the teeth read its result.
+(make-event `(defconst *fn2-cda-honest* ',(fn2-cda-scenario 0 nil)))
+(make-event `(defconst *fn2-cda-honest-fua* ',(fn2-cda-scenario 1 nil)))
+(make-event `(defconst *fn2-cda-lying* ',(fn2-cda-scenario 0 t)))
+(defun fn2-cda-positive (r)
   (declare (xargs :verify-guards nil))
-  (let ((r (fn2-cda-scenario mode nil)))
+  (let ((r r))
     (and (subsetp-equal (nth 0 r) '(1 2)) (subsetp-equal '(1 2) (nth 0 r))
          (nth 1 r) (equal (nth 2 r) '(1 2)) (nth 3 r))))
 (defun fn2-commit-recoverable-positive ()
   (declare (xargs :verify-guards nil))
-  (fn2-cda-positive 0))
+  (fn2-cda-positive *fn2-cda-honest*))
 (defun fn2-commit-recoverable-positive-fua ()
   (declare (xargs :verify-guards nil))
-  (fn2-cda-positive 1))
+  (fn2-cda-positive *fn2-cda-honest-fua*))
 ;; Fence removal: the same run, a device that loses the last fenced write
 ;; (the lying flush). Its image is outside A-FENCE-PERSISTS, both batches
 ;; were acknowledged, and recovery reports only batch 1: without the
 ;; assumption the statement is false.
 (defun fn2-commit-recoverable-fence-removal ()
   (declare (xargs :verify-guards nil))
-  (let ((r (fn2-cda-scenario 0 t)))
+  (let ((r *fn2-cda-lying*))
     (and (subsetp-equal (nth 0 r) '(1 2)) (subsetp-equal '(1 2) (nth 0 r))
          (nth 1 r) (equal (nth 2 r) '(1)) (not (nth 3 r)))))
+
+;; FN2-RECOVERY-CHAIN-COMPLETE. Positive: the honest image holds batches 1
+;; and 2 of the run's log and recovery reports both. Hypothesis removal: the
+;; image without batch 2's seal does not hold batch 2, and recovery reports
+;; (1): the chain bound needs the held batches.
+(defun fn2-recovery-complete-positive ()
+  (declare (xargs :verify-guards nil))
+  (let ((r *fn2-cda-honest*))
+    (and (nth 6 r) (nth 1 r) (subsetp-equal '(1 2) (nth 2 r)))))
+(defun fn2-recovery-complete-held-removal ()
+  (declare (xargs :verify-guards nil))
+  (let ((r *fn2-cda-lying*))
+    (and (not (nth 6 r)) (nth 1 r) (equal (nth 2 r) '(1)))))
 
 (assert-event (fn2-commit-recoverable-positive))
 (assert-event (fn2-commit-recoverable-positive-fua))
 (assert-event (fn2-commit-recoverable-fence-removal))
+(assert-event (fn2-recovery-complete-positive))
+(assert-event (fn2-recovery-complete-held-removal))

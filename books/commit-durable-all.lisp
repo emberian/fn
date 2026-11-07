@@ -829,6 +829,115 @@
            :use (fn2-env-inv-admit-step fn2-env-inv-host-step))))
 
 ;; ---------------------------------------------------------------------------
+;; RECOVERY COMPLETENESS, the statement's recovery half: an image that holds
+;; batches 1..N of a run's log as the run wrote them (A-FENCE-PERSISTS keeps
+;; a fenced write's bytes unless a write that may land after it replaced
+;; them) makes recovery, once at :done, report a chain of at least N.
+(defun fn2-env-image-holds-write-p (e image)
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-dev-image-octets image (nfix (nth 4 e)) (len (nth 6 e))) (true-list-fix (nth 6 e))))
+; Some fenced write at OFFSET in LOG from W whose octets IMAGE holds.
+(defun fn2-env-held-offset-from (w offset log image)
+  (declare (xargs :verify-guards nil :measure (nfix (- (len log) (nfix w)))
+                  :hints (("Goal" :in-theory (disable fn2-dev-fenced-write-p fn2-env-image-holds-write-p)))))
+  (cond ((not (and (natp w) (true-listp log) (< w (len log)))) nil)
+        ((and (fn2-dev-fenced-write-p w log) (equal (nth 4 (nth w log)) offset)
+              (fn2-env-image-holds-write-p (nth w log) image))
+         t)
+        (t (fn2-env-held-offset-from (+ 1 w) offset log image))))
+; Entry W is batch B's durable seal write, and IMAGE holds it and a fenced
+; write of its extent's page and records units.
+(defun fn2-env-batch-held-at (w b log image)
+  (declare (xargs :verify-guards nil))
+  (let* ((e (nth w log)) (base (- (nfix (nth 4 e)) (* 2 *fn2-commit-unit-bytes*))))
+    (and (fn2-env-seal-durable-at w b log)
+         (fn2-env-image-holds-write-p e image)
+         (fn2-env-held-offset-from 0 base log image)
+         (fn2-env-held-offset-from 0 (+ base *fn2-commit-unit-bytes*) log image))))
+(defun fn2-env-batch-held-from (w b log image)
+  (declare (xargs :verify-guards nil :measure (nfix (- (len log) (nfix w)))
+                  :hints (("Goal" :in-theory (disable fn2-env-batch-held-at)))))
+  (cond ((not (and (natp w) (true-listp log) (< w (len log)))) nil)
+        ((fn2-env-batch-held-at w b log image) t)
+        (t (fn2-env-batch-held-from (+ 1 w) b log image))))
+(defun fn2-env-image-holds-prefix-p (n log image)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) t
+    (and (fn2-env-batch-held-from 0 n log image) (fn2-env-image-holds-prefix-p (- n 1) log image))))
+
+(defthm-owed fn2-recovery-chain-complete (profile actions image n recovery-actions)
+ (let* ((log (fn2-env-device-log (fn2-env-run profile actions)))
+        (rec (fn2-env-recover profile image recovery-actions)))
+  (implies (and (fn2-profile-supportedp profile)
+                (fn2-env-image-holds-prefix-p n log image)
+                (fn2-env-recovery-done-p rec))
+           (subsetp-equal (fn2-env-iota (nfix n)) (fn2-env-recovered-batches rec))))
+ :teeth (fn2-recovery-complete-positive fn2-recovery-complete-held-removal)
+ :schema :crash
+ :doc "Recovery completeness: when an image holds batches 1..N of a run's device log as the run wrote them (each batch's fenced seal write and fenced page and records writes of its extent, byte for byte), the real recovery row, run by fn2-turn over a fresh core reading that image under any recovery action list, reports at :done a chain containing 1..N. With FN2-ENV-INV (acknowledged implies durable in the log) and A-FENCE-PERSISTS it gives FN2-COMMIT-ACK-IMPLIES-RECOVERABLE.")
+
+; Per recovery step kind: every step but :turn leaves the recovery row's
+; phase and chain as they were, so the result is decided at :turn steps
+; (the recovery kind's arm FRAMEs); the host steps carry no obligation.
+(make-event
+ (let ((world (w state)))
+   `(defthm fn2-env-recovery-done-congruence
+      (implies (and ,@(fn2-arm-frame-nth-equalities (fn2-arm-frame-phase-indices world)))
+               (equal (fn2-env-recovery-done id a) (fn2-env-recovery-done id b)))
+      :rule-classes nil
+      :hints (("Goal" :in-theory (e/d (fn2-env-recovery-done fn2-machine-rc-chain fn2-machine-rc-chain-read-code
+                                       fn2-machine-phase-read-code fn2-machine-idp fn2-core-machines
+                                       ,@(fn2-machine-machine-tables world))
+                                      (fn2-machine-phase fn2-machine-slot fn2-machine-kind))
+               :use ((:instance fn2-arm-phase-congruence)
+                     (:instance fn2-arm-slot-congruence)
+                     (:instance fn2-arm-kind-congruence)))))))
+(defthm fn2-env-recovery-done-child-frame
+  (and (equal (fn2-env-recovery-done id (update-fn2-core-pool x fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (update-fn2-core-ops x fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (update-fn2-core-sched x fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (update-fn2-core-trace x fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (update-fn2-core-control x fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (update-fn2-core-extents x fn2-core)) (fn2-env-recovery-done id fn2-core)))
+  :hints (("Goal" :in-theory (union-theories '(update-fn2-core-pool update-fn2-core-ops update-fn2-core-sched
+                                               update-fn2-core-trace update-fn2-core-control update-fn2-core-extents
+                                               nth-update-nth)
+                                             (theory 'fn2-arm-frame-base))
+           :use ((:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-pool x fn2-core)))
+                 (:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-ops x fn2-core)))
+                 (:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-sched x fn2-core)))
+                 (:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-trace x fn2-core)))
+                 (:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-control x fn2-core)))
+                 (:instance fn2-env-recovery-done-congruence (a fn2-core) (b (update-fn2-core-extents x fn2-core)))))))
+(in-theory (disable fn2-env-recovery-done))
+(defthm fn2-env-recovery-done-host-frame
+  (and (equal (fn2-env-recovery-done id (fn2-host-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-core))
+              (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (fn2-host-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-core))
+              (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (fn2-host-post-clock mono real flags fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (fn2-host-post-signal bits fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (mv-nth 1 (fn2-host-outbox-ack n fn2-core))) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (mv-nth 1 (fn2-host-op-finish slot gen fn2-core))) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (fn2-env-fill rslot rgen slot gen idx octets fn2-core)) (fn2-env-recovery-done id fn2-core))
+       (equal (fn2-env-recovery-done id (fn2-env-begin-epoch epoch fn2-core)) (fn2-env-recovery-done id fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock
+                                     fn2-host-post-signal fn2-host-outbox-ack fn2-host-op-finish
+                                     fn2-env-fill fn2-env-begin-epoch))))
+(defthm fn2-env-recovery-done-take-frame
+  (equal (fn2-env-recovery-done id (mv-nth 1 (fn2-env-take recoveryp image fn2-core))) (fn2-env-recovery-done id fn2-core))
+  :hints (("Goal" :in-theory (enable fn2-env-take))))
+(defthm fn2-env-recovery-done-host-step-frame
+  (implies (not (equal (fn2-env-tag action) :turn))
+           (equal (fn2-env-recovery-done id (mv-nth 1 (fn2-env-step action t image rlog fn2-core)))
+                  (fn2-env-recovery-done id fn2-core)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-step fn2-env-loan-write fn2-env-post) (fn2-env-take fn2-env-admit)))))
+(defthm fn2-env-recovery-done-needs-turn
+  (implies (and (not (equal (fn2-env-tag action) :turn))
+                (not (fn2-env-recovery-done id fn2-core)))
+           (not (fn2-env-recovery-done id (mv-nth 1 (fn2-env-step action t image rlog fn2-core))))))
+
+;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
  (let* ((run (fn2-env-run profile actions))
