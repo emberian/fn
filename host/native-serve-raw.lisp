@@ -73,6 +73,8 @@ core reads a value that is not a u32 as uid 0."
       (unwind-protect
            (let ((reason (fn2-n-run host)))
              (format t "STOPPED ~d~%" reason)
+             (multiple-value-bind (kind detail) (fn2-host-stop-details (fn2-nhost-core host))
+               (format t "STOP-DETAIL ~d ~d~%" kind detail))
              (when (plusp capacity)
                (format t "ENVELOPE ~s~%"
                        (car (fn2-ss-replay (fn2-n-trace-list host) profile *fn2-ss-seeds* nil))))
