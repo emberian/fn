@@ -13,11 +13,11 @@ The contracts proved over the interpreter live beside this file:
 * `Fn2.Arms.Frame.runArm_frame`: children outside `Frame.derivedTables` come back unchanged.
 
 This file keeps three further derivations read off a declaration, `derivedWrites` (row
-columns), `derivedNext` (phases) and `derivedHolds` (D0 hold effects). They are computed
-contracts, checked against concrete runs below; no theorem yet relates them to every run
-(the columns a run writes and the phase it leaves are only visible through the world's table
-accessors). Section 6 holds positive witnesses and mutant teeth for the proved contracts, and
-the agreement check over the exported child-form kinds.
+columns), `derivedNext` (phases) and `derivedHolds` (D0 hold effects). The first two are proved
+over every run in `Fn2.Arms.Columns` (`runArm_writes_sub`, `runArm_next_mem`, through their
+checked forms `checkedWrites`, `checkedNext`); `derivedHolds` is checked on concrete runs only.
+Section 3 holds positive witnesses and mutant teeth for the cost and frame contracts, and the
+agreement check over the exported child-form kinds.
 -/
 
 namespace Fn2.Arms.Derive
@@ -25,15 +25,33 @@ open Fn2.ACL2 Fn2.Arms Fn2.Pathway
 
 /-! ## 1. Shared pieces of the remaining derivations -/
 
-/-- Row columns (excluding `"PHASE"`) written by a `:park` terminal. -/
-def parkWrites (w : World) (wait : String) : List String :=
+/-- The kind's columns held in its own table (all but the directory's row fields). -/
+def ownCols (k : Kind) : List String :=
+  (k.columns.map (·.1)).filter fun c => !directoryFields.contains c
+
+/-- The kind's columns held in the directory `fn2-machines` (P1). -/
+def dirCols (k : Kind) : List String :=
+  (k.columns.map (·.1)).filter fun c => directoryFields.contains c
+
+/-- The columns a call of operation `op` can change: every own column when its `stobjs-out`
+replace the kind's table, every directory column when they replace the directory. -/
+def opWrites (w : World) (k : Kind) (op : String) : List String :=
+  (if (Frame.opTables w op).contains k.name then ownCols k else []) ++
+  (if (Frame.opTables w op).contains "FN2-MACHINES" then dirCols k else [])
+
+/-- Row columns written by a `:park` terminal: the checked write's fields, and what its parking
+operation or the directory's pool parker can change. -/
+def parkWrites (w : World) (k : Kind) (wait : String) (pk : Option String) : List String :=
   match wait with
-  | "POOL" => ["CURSOR", "WAIT-REASON"]
-  | "OPERATION" | "ADMISSION" | "TAKEN" => []
+  | "OPERATION" => opWrites w k "FN2-MACHINE-PARK"
+  | "ADMISSION" => opWrites w k "FN2-MACHINE-PARK-ADMISSION"
+  | "TAKEN" => opWrites w k ("FN2-MACHINE-PARK-TAKEN-" ++ pk.getD "")
+  | "POOL" => ["CURSOR", "WAIT-REASON"] ++ dirCols k
   | other =>
     match w.waits.find? (·.kind == other) with
+    | some ⟨_, some parker⟩ => opWrites w k parker
     | some ⟨_, none⟩ => ["WAIT-REASON"]
-    | _ => []
+    | none => []
 
 /-- Phase names reachable from a `:next` expression `ph`. -/
 def nextExprPhasesF (k : Kind) (rec : Expr → List String) : Expr → List String
@@ -50,7 +68,7 @@ def nextExprPhasesF (k : Kind) (rec : Expr → List String) : Expr → List Stri
   | _ => []
 
 def nextExprPhases (k : Kind) : Expr → List String :=
-  fixN 32 (nextExprPhasesF k) (fun _ => [])
+  fixN readDepth (nextExprPhasesF k) (fun _ => [])
 
 /-- Resource/wait hold effects associated with a declared operation. -/
 def opHolds (op : String) : List String :=
@@ -66,38 +84,39 @@ def opHolds (op : String) : List String :=
 /-! ### 2.2 `stepWrites` / `stepsWrites` (by structural recursion on `Step` / `List Step`) -/
 
 mutual
-def stepWrites (w : World) (refW : List String) (subW : String → List String) :
+def stepWrites (w : World) (k : Kind) (refW : List String) (subW : String → List String) :
     Step → List String
-  | .let_ _ _ | .next _ | .repeatNext | .wakeRow _
+  | .let_ _ _ | .next _ | .repeatNext
   | .charge _ _ _ _ | .idle | .yield | .wake | .nowake | .stop _ _ => []
+  | .wakeRow _ => dirCols k
   | .set pairs => pairs.map (·.1)
-  | .do_ _ _ _ _ _ _ cases => refW ++ casesWrites w refW subW cases
-  | .issue _ ok refused =>
-    stepsWrites w refW subW ok ++ stepsWrites w refW subW refused ++
-      ["STOPPED", "WAIT-REASON"] ++ refW
-  | .repeat_ _ body _ => stepsWrites w refW subW body
-  | .if_ _ a b => stepsWrites w refW subW a ++ stepsWrites w refW subW b
-  | .cond clauses => clausesWrites w refW subW clauses
-  | .case_ _ arms => casesWrites w refW subW arms
+  | .do_ _ c _ _ _ _ cases => opWrites w k c.op ++ refW ++ casesWrites w k refW subW cases
+  | .issue c ok refused =>
+    opWrites w k c.op ++ stepsWrites w k refW subW ok ++ stepsWrites w k refW subW refused ++
+      ["STOPPED", "WAIT-REASON"] ++ opWrites w k "FN2-MACHINE-PARK" ++ refW
+  | .repeat_ _ body _ => stepsWrites w k refW subW body
+  | .if_ _ a b => stepsWrites w k refW subW a ++ stepsWrites w k refW subW b
+  | .cond clauses => clausesWrites w k refW subW clauses
+  | .case_ _ arms => casesWrites w k refW subW arms
   | .wait _ _ => ["PENDING", "WAIT-REASON"]
   | .halt => ["STOPPED", "WAIT-REASON"]
-  | .park wait _ _ _ _ => parkWrites w wait
+  | .park wait _ pk _ _ => parkWrites w k wait pk
   | .goto name => subW name
 
-def stepsWrites (w : World) (refW : List String) (subW : String → List String) :
+def stepsWrites (w : World) (k : Kind) (refW : List String) (subW : String → List String) :
     List Step → List String
   | [] => []
-  | s :: ss => stepWrites w refW subW s ++ stepsWrites w refW subW ss
+  | s :: ss => stepWrites w k refW subW s ++ stepsWrites w k refW subW ss
 
-def casesWrites (w : World) (refW : List String) (subW : String → List String) :
+def casesWrites (w : World) (k : Kind) (refW : List String) (subW : String → List String) :
     List (Option (List Val) × List Step) → List String
   | [] => []
-  | (_, ss) :: cs => stepsWrites w refW subW ss ++ casesWrites w refW subW cs
+  | (_, ss) :: cs => stepsWrites w k refW subW ss ++ casesWrites w k refW subW cs
 
-def clausesWrites (w : World) (refW : List String) (subW : String → List String) :
+def clausesWrites (w : World) (k : Kind) (refW : List String) (subW : String → List String) :
     List (Expr × List Step) → List String
   | [] => []
-  | (_, ss) :: cs => stepsWrites w refW subW ss ++ clausesWrites w refW subW cs
+  | (_, ss) :: cs => stepsWrites w k refW subW ss ++ clausesWrites w k refW subW cs
 end
 
 /-! ### 2.3 `stepHolds` / `stepsHolds` (by structural recursion on `Step` / `List Step`) -/
@@ -146,7 +165,8 @@ mutual
 def stepNext (k : Kind) (refN : Bool → List String × Bool)
     (subN : Bool → String → List String × Bool) (hasNext : Bool) :
     Step → List String × Bool
-  | .let_ _ _ | .set _ | .wakeRow _ => ([], false)
+  | .let_ _ _ | .wakeRow _ => ([], false)
+  | .set pairs => (if pairs.any (·.1 == "PHASE") then k.states else [], false)
   | .next ph => (nextExprPhases k ph, false)
   | .repeat_ _ body _ =>
     let (bp, _) := stepsNext k refN subN false body
@@ -199,8 +219,8 @@ def subWrites (w : World) (k : Kind) : Nat → String → List String
     | some sub =>
       match sub.read with
       | .ok decl =>
-        let refW := stepsWrites w [] (subWrites w k d) decl.onRefusal
-        stepsWrites w refW (subWrites w k d) decl.steps
+        let refW := stepsWrites w k [] (subWrites w k d) decl.onRefusal
+        stepsWrites w k refW (subWrites w k d) decl.steps
       | .error _ => []
     | none => []
 
@@ -209,8 +229,8 @@ def derivedWrites (w : World) (k : Kind) (a : Arm) : List String :=
   match a.read with
   | .ok decl =>
     let subW := subWrites w k (k.subarms.length + 1)
-    let refW := stepsWrites w [] subW decl.onRefusal
-    (stepsWrites w refW subW decl.steps).eraseDups
+    let refW := stepsWrites w k [] subW decl.onRefusal
+    (stepsWrites w k refW subW decl.steps).eraseDups
   | .error _ => []
 
 def subNext (k : Kind) : Nat → Bool → String → List String × Bool
@@ -463,7 +483,7 @@ theorem mutant_frame_touched_neg :
       v.toList.getD 6 Val.nil ≠ .sym "ORIG-POOL" :=
   ⟨by decide +kernel, runTooth mutantArmTables, by decide +kernel⟩
 
-/-! ### 3.3 Writes and next phase: checked on concrete runs (no general theorem yet) -/
+/-! ### 3.3 Writes and next phase on concrete runs (the theorems: `Fn2.Arms.Columns`) -/
 
 /-- `derivedWrites` of `toothArmStep` is `["OFF"]`, and its run leaves the unwritten `STOPPED`
 column as it was. -/
