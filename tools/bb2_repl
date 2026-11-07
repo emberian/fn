@@ -71,7 +71,7 @@ HOST = "bb2"
 ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
 SYSTEM_BOOKS = "/tank/fn/acl2-8.7/books"
 SSH_OPTS = ["-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3",
-            "-o", "ControlMaster=auto", "-o", "ControlPath=~/.ssh/cm-bb2repl-%C",
+            "-o", "ControlMaster=auto", "-o", "ControlPath=" + os.environ.get("BB2_REPL_CONTROL_PATH", "~/.ssh/cm-bb2repl-%C"),
             "-o", "ControlPersist=15m"]
 RSYNC_EXCLUDES = [".git", "build", "*.fasl", "*.cert", "*.cert.out", "meta/.lake"]
 SENTINEL = ";;BB2-REPL-DONE"
@@ -456,8 +456,9 @@ def sync(lane: str, force: bool) -> str:
     began = time.monotonic()
     got = ssh(lane, f"mkdir -p build && mkdir {CERT_LOCK}", 60)
     if got.returncode != 0:
-        raise SystemExit(f"bb2-repl: a certify holds bb2:~/fn2-{lane}/{CERT_LOCK}; "
-                         "sync after it ends, or pass --no-sync")
+        raise SystemExit(f"bb2-repl: cannot acquire bb2:~/fn2-{lane}/{CERT_LOCK}: "
+                         + (got.stderr.strip() or got.stdout.strip()) +
+                         "; if a certify holds it, sync after it ends")
     try:
         command = ["rsync", "-rlpgoDz", "--checksum", "-e", "ssh " + " ".join(SSH_OPTS)]
         for pattern in RSYNC_EXCLUDES:
