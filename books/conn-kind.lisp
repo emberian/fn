@@ -10,6 +10,10 @@
 (include-book "machine-arms") ; defmachine-registry (MACHINE-FORM 6.5 P4)
 (fn2-book-layer :d)
 
+; Shared by connection and upload continuations; declare once before either leaf.
+(defcost fn2-conn-wake :tables (fn2-core-machines)
+ :doc "Wake the upload or cursor this connection serves.")
+
 ;; The run quantum, split statically (section 4.2): the framer examines at
 ;; most *fn2-conn-frame-bytes*; a framed line costs at most
 ;; *fn2-conn-answer-bytes* (re-read 512, status 512, fixed body 1,024); a

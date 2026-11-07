@@ -43,7 +43,6 @@
   :faults (:bounds :fault)
   :tables (fn2-core-pool)
   :doc "Feed RX into the upload's chunk (upload-feed.lisp).")
-(defcost fn2-conn-wake :tables (fn2-core-machines) :doc "Wake the upload this connection feeds.")
 (defcost fn2-upload-gen-of :doc "An upload row's generation.")
 ;; Declared costs of the upload's outside calls (each a thin wrapper below).
 (defcost fn2-upload-hash-step :bytes *fn2-upload-hash-bytes* :tables (fn2-core-b3 fn2-core-digests)
