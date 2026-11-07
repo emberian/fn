@@ -111,7 +111,7 @@
 (defcost fn2-boot-recover :answers t :tables (fn2-recovery-machine-table fn2-core-pool fn2-core-sched fn2-core-digests fn2-core-control)
  :doc "Start the existing recovery machine, with persistence-fence assumption and no external witness.")
 (defcost fn2-boot-recovered :answers (:more :ok :failed) :doc "Observe completion and classification of the real recovery/replay machine.")
-(defcost fn2-boot-next-epoch :answers (:ok :bounds) :doc "Choose above both persisted epoch anchors and recovery's allocator epoch.")
+(defcost fn2-boot-select-epoch :answers (:ok :bounds) :doc "Choose above both persisted epoch anchors and recovery's allocator epoch.")
 (defcost fn2-boot-adopt-epoch :answers t :tables (fn2-core-extents)
  :doc "Begin allocation in the new epoch only after its successful image Fence.")
 (defcost fn2-boot-release-listener :answers (:more :ok :bounds) :tables (fn2-core-sched)
@@ -146,15 +146,16 @@
    (declare (ignore at))
    (cond ((not (eq code :ok)) :bounds) ((eq result :equal) :ok) (t :different))))
 
- (defun fn2-boot-pop-config (fn2-core)
+ (defun fn2-boot-pop-config (index fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (code fn2-boot-config)
    (let ((gs (fn2-boot-config-groups fn2-boot-config)))
-    (if (consp gs)
-        (let ((fn2-boot-config (update-fn2-boot-config-groups (cdr gs) fn2-boot-config))) (mv :ok fn2-boot-config))
-      (mv :bounds fn2-boot-config)))
+    (cond ((equal index 0) (mv :ok fn2-boot-config))
+          ((consp gs)
+        (let ((fn2-boot-config (update-fn2-boot-config-groups (cdr gs) fn2-boot-config))) (mv :ok fn2-boot-config)))
+          (t (mv :bounds fn2-boot-config))))
    (mv code fn2-core)))
- (fn2-core-preserves fn2-boot-pop-config (fn2-core) :position 1 :rows nil)
+ (fn2-core-preserves fn2-boot-pop-config (index fn2-core) :position 1 :rows nil)
 
  (defun fn2-boot-read-epoch (slot gen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -188,7 +189,7 @@
          ((not (equal (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-done*)) :more)
          ((member (fn2-machine-rc-class id fn2-core) (list *fn2-rec-class-intact* *fn2-rec-class-torn-tail*)) :ok)
          (t :failed))))
- (defun fn2-boot-next-epoch (e0 e1 fn2-core)
+ (defun fn2-boot-select-epoch (e0 e1 fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code epoch)
    (let ((next (+ 1 (max (nfix e0) (nfix e1)))))
@@ -220,7 +221,7 @@
     (mv code fn2-core))))
  (fn2-core-preserves fn2-boot-release-windows (slot gen rx rgen id ogen fn2-core) :position 1 :rows nil)
  (in-theory (disable fn2-boot-pack fn2-boot-match fn2-boot-pop-config fn2-boot-read-epoch fn2-boot-check-anchor
-                     fn2-boot-recover fn2-boot-recovered fn2-boot-next-epoch fn2-boot-adopt-epoch fn2-boot-release-listener
+                     fn2-boot-recover fn2-boot-recovered fn2-boot-select-epoch fn2-boot-adopt-epoch fn2-boot-release-listener
                      fn2-boot-release-windows))
  ))
 
@@ -268,7 +269,7 @@
        (:charge :bytes 24576 :steps *fn2-work-stage* :runnable t))
       ((:set (epoch1 epoch)) (:next :recover) (:charge :bytes 24576 :steps *fn2-work-stage* :runnable t))))))
   (:advance :on-refusal ((:stop :bounds))
-   (:if (< 0 row-index) ((:do (code) (fn2-boot-pop-config))) ())
+   (:do (code) (fn2-boot-pop-config row-index))
    (:if (< row-index row-total)
     ((:set (index (+ 1 row-index))) (:next :prepare) (:charge :steps *fn2-work-small* :runnable t))
     ((:set (stage 1) (anchor-slot 0)) (:next :anchor) (:charge :steps *fn2-work-small* :runnable t))))
@@ -289,7 +290,7 @@
            ((:ok) (:next :epoch) (:charge :steps *fn2-work-small* :runnable t))
            (:otherwise (:stop :recovery)))))
   (:epoch :on-refusal ((:stop :epoch))
-   (:do (code epoch) (fn2-boot-next-epoch row-epoch0 row-epoch1))
+   (:do (code epoch) (fn2-boot-select-epoch row-epoch0 row-epoch1))
    (:let anchor (if (<= row-epoch0 row-epoch1) 0 1))
    (:do (pcode) (fn2-boot-pack 2 anchor row-image-size epoch row-pool-slot row-pool-gen
                              row-rx-slot row-rx-gen id row-generation))
