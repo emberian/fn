@@ -81,10 +81,10 @@ def m2(out):
     """The primary number (REVIEW-ARGON-RESPONSE-20261031 §9.12): M2 spine cuts, Mini's twelve crash cuts
     through fn2-turn over the real core (tests/m2-cuts.lisp: fn2-ctl and fn2-cns served, the replies read off
     the wire). OUT/m2.json ({"passed": n, "total": 12, "source": ..., "cuts": {c: {verdict, reasons}}}) is
-    written by tests/m2_json.py; a run that wrote none is 0/12 and says so."""
+    written by tests/m2_json.py; a run that wrote none is NOT RUN, never 0/12."""
     data = m2_data(out)
     if data is None:
-        return 'M2 cuts 0/12 (tests/m2-cuts.lsp wrote no m2.json; see m2.log)'
+        return 'M2 cuts NOT RUN (tests/m2-cuts.lsp wrote no m2.json; see m2.log)'
     return f"M2 cuts {data['passed']}/{data.get('total', 12)} ({data.get('source', 'tests/m2-cuts.lsp')})"
 
 
