@@ -25,7 +25,9 @@ and stops itself after `--idle` minutes without a request (default 60).
 The warm-up sends the book's own top-level `include-book` forms (its certified
 closure, from the certificates in the remote tree; a dependency whose source no
 longer matches its certificate is included uncertified, and `status` names it),
-then `(deflabel bb2-repl-base)`.  `load` undoes the world back to that label
+then `(deflabel bb2-repl-base)`. Use `--source-deps` after changing generator
+inputs: stale certificates can replay obsolete MAKE-EVENT expansions despite
+uncertified warnings; this mode ignores dependency certificates without deleting them.  `load` undoes the world back to that label
 (`ubt!`), syncs, and sends every top-level form of the book (or the range) one at a
 time, continuing past refusals, and prints each refused form with its first error;
 a refusal whose error names an event refused earlier in the same load is marked
@@ -203,8 +205,9 @@ def first_error(output: str, keep: int = 24) -> str:
 
 
 class Server:
-    def __init__(self, name: str, book: str, idle: float, limit: float):
+    def __init__(self, name: str, book: str, idle: float, limit: float, source_deps: bool = False):
         self.name, self.book, self.idle, self.limit = name, book, idle, limit
+        self.source_deps = source_deps
         self.dir = server_dir(name)
         self.tree = Path.cwd()
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -225,13 +228,26 @@ class Server:
     def book_forms(self, book: str) -> list[str]:
         return pr.commands((self.tree / book).read_text(encoding="utf-8"))
 
+    def include_form(self, form: str) -> str:
+        # Stale certificates can replay old MAKE-EVENT expansions even when ACL2
+        # reports their dependency hashes as uncertified. This explicit mode
+        # expands the current dependency sources without deleting any artifacts.
+        if self.source_deps and pr.INCLUDE.match(form.strip()) and ':dir :system' not in form.lower():
+            return form.rstrip()[:-1] + ' :uncertified-okp :ignore-certs)'
+        return form
+
+    def source_book(self, book: str) -> None:
+        path = self.tree / book
+        self.acl2.send(f'(set-cbd "{path.parent}/")', 60)
+        self.acl2.send(f'(assign proof-repl-source-book "{path}")', 60)
+
     def warm(self) -> None:
         path = self.tree / self.book
         forms = self.book_forms(self.book)
         out, problem = self.acl2.send("(value-triple :bb2-repl-up)", 600)
         if problem:
             raise SystemExit(f"bb2-repl: ACL2 did not start: {problem}\n{out[-2000:]}")
-        self.acl2.send(f'(set-cbd "{path.parent}/")', 60)
+        self.source_book(self.book)
         self.acl2.send("(set-inhibit-output-lst '(proof-tree))", 60)
         self.state["phase"] = "including"
         self.save()
@@ -241,7 +257,7 @@ class Server:
             if not (text.lower().startswith("(in-package") or pr.INCLUDE.match(text)):
                 continue
             began = time.monotonic()
-            out, problem = self.acl2.send(text, 3600)
+            out, problem = self.acl2.send(self.include_form(text), 3600)
             row = {"form": " ".join(text.split())[:120], "seconds": round(time.monotonic() - began, 2)}
             if problem or pr.errored(out):
                 row["refused"] = problem or first_error(out)
@@ -342,9 +358,10 @@ class Server:
                 prelude.append("undone to " + BASE_LABEL)
             elif request.get("from"):
                 prelude.append(self.undo_from(forms[chosen.start]))
+            self.source_book(book)
             skip = request.get("skip_proofs", False)
             self.acl2.send(f"(set-ld-skip-proofsp {'t' if skip else 'nil'} state)", 60)
-            items = [(pr.form_label(i + 1, forms[i]), forms[i]) for i in chosen]
+            items = [(pr.form_label(i + 1, forms[i]), self.include_form(forms[i])) for i in chosen]
             result = self.send_items(items, None if skip else limit, timeout, True, "load")
             if skip:
                 self.acl2.send("(set-ld-skip-proofsp nil state)", 60)
@@ -587,7 +604,7 @@ def cmd_start(args) -> int:
     launch = (f"test -f {shlex.quote(book)} && mkdir -p {directory} && rm -f {directory}/state.json "
               f"|| exit 1; SWARM_BUILD_TAG=bb2repl-{lane}-{name} SWARM_MEM_MAX={mem} nohup setsid swarm-build "
               f"python3 ~/{REMOTE_HOME}/tools/bb2_repl serve {shlex.quote(name)} {shlex.quote(book)} "
-              f"--idle {args.idle} --limit {args.limit} > {directory}/server.log 2>&1 < /dev/null &")
+              f"--idle {args.idle} --limit {args.limit} {'--source-deps' if args.source_deps else ''} > {directory}/server.log 2>&1 < /dev/null &")
     got = ssh(lane, launch, 60)
     if got.returncode != 0:
         raise SystemExit("bb2-repl: launch failed: " + got.stderr[-800:])
@@ -687,6 +704,7 @@ def main(argv=None) -> int:
     p.add_argument("--wait", type=float, default=900)
     p.add_argument("--no-sync", action="store_true")
     p.add_argument("--sync", action="store_true", help="sync even into another lane's tree")
+    p.add_argument("--source-deps", action="store_true", help="ignore dependency certificates and regenerate MAKE-EVENT expansions from source")
     p.set_defaults(func=cmd_start)
     p = sub.add_parser("send")
     p.add_argument("name")
@@ -726,7 +744,8 @@ def main(argv=None) -> int:
     p.add_argument("book")
     p.add_argument("--idle", type=float, default=60)
     p.add_argument("--limit", type=float, default=120)
-    p.set_defaults(func=lambda a: Server(a.name, a.book, a.idle, a.limit).serve() or 0)
+    p.add_argument("--source-deps", action="store_true")
+    p.set_defaults(func=lambda a: Server(a.name, a.book, a.idle, a.limit, a.source_deps).serve() or 0)
     p = sub.add_parser("ask")
     p.add_argument("name")
     p.set_defaults(func=lambda a: print(json.dumps(ask_local(a.name, json.loads(sys.stdin.read()))))
