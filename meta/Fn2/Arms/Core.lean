@@ -425,9 +425,10 @@ theorem runCore_writes_sub (w : World) (tuple : List String) (k : Kind) (a : Arm
 face (the world's setters keep the columns' frame, and every phase value is a state's), every
 successful run returns a core in which each row's `PHASE` reads back as passed in or as the
 value of one of `D`. -/
-theorem runCore_next_mem (w : World) (tuple : List String) (k : Kind) (a : Arm) (observe : Bool)
+theorem runCore_next_mem (w : World) (tuple : List String) (k : Kind) (PK : List String)
+    (hPK : ∀ op ∈ PK, KeepsPhase (coreWorld w tuple) (coreKind k tuple) op) (a : Arm) (observe : Bool)
     (args : List Val) (fuel : Nat) (v : Val) (D : List String)
-    (hD : checkedNext (coreWorld w tuple) (coreKind k tuple) a = some D)
+    (hD : checkedNextP (coreWorld w tuple) (coreKind k tuple) PK a = some D)
     (TF : TableFacts (coreWorld w tuple) (coreKind k tuple))
     (hshape : kindShape (coreKind k tuple) = true) (hpc : phasesCover (coreKind k tuple) = true)
     (hrun : runCore w tuple k a observe args fuel = .ok v) :
@@ -447,7 +448,7 @@ theorem runCore_next_mem (w : World) (tuple : List String) (k : Kind) (a : Arm) 
     simp only [coreKind] at *
     rw [coreSt_set_control tuple _ c k.name hk]
   · obtain ⟨pre0, ts, hvs, hts, hph⟩ :=
-      runArm_next_mem (coreWorld w tuple) (coreKind k tuple) a observe _ fuel v0 D hD TF hshape hpc hv0
+      runArm_next_memP (coreWorld w tuple) (coreKind k tuple) PK hPK a observe _ fuel v0 D hD TF hshape hpc hv0
     obtain ⟨e1, e2, e3⟩ := runCore_main tuple k observe args pre ts pre0 v0 hpre hvs
       (by simpa [coreKind] using hts) hlen
     refine ⟨pre0, Val.ofList ts, by rw [hv, e1, toList_ofList'], fun s => ?_⟩

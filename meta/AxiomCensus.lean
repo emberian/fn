@@ -318,3 +318,14 @@ import Fn2
 #print axioms Fn2.Arms.ServedCore.layout
 #print axioms Fn2.Arms.ServedCore.cns_shape
 #print axioms Fn2.Arms.ServedCore.conn_shape
+#print axioms Fn2.Arms.CorePhase.keepsPhase_of_pres
+#print axioms Fn2.Arms.CorePhase.keepsPhase_found
+#print axioms Fn2.Instances.LayerAPhase.cns_keeps
+#print axioms Fn2.Instances.LayerAPhase.conn_keeps
+#print axioms Fn2.Arms.ServedPhase.cns_next_checked
+#print axioms Fn2.Arms.ServedPhase.conn_next_checked
+#print axioms Fn2.Arms.ServedPhase.cns_core_next_all
+#print axioms Fn2.Arms.ServedPhase.conn_core_next_all
+#print axioms Fn2.Instances.LayerAWorld.«FN2-SUCCESSOR-PUBLISH».constraint0_frame_FN2_CORE_MACHINES
+#print axioms Fn2.Instances.LayerAWorld.«FN2-SUCCESSOR-PUBLISH».constraint1_consp
+#print axioms Fn2.Instances.LayerAWorld.«FN2-CNS-LOOKUP-LOOP».pres_1_17_0

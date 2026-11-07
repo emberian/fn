@@ -77,18 +77,23 @@ def checkedWrites (a : Arm) : Option (List String) :=
   let W := derivedWrites w k a
   if admArm w (primsW w k W (armReach k a)) k a then some W else none
 
-def primsN (D R : List String) : Prims where
+/-- The phase contract. An operation whose `stobjs-out` replace the kind's table is admitted when
+it is in `PK`, the operations with a proved `KeepsPhase` (a core-only operation returns the whole
+core; `Fn2.Arms.CorePhase.keepsPhase_of_pres` proves it from the operation's translation). -/
+def primsN (D R : List String) (PK : List String := []) : Prims where
   pairOK n := n != "PHASE" || k.states.all D.contains
   nextOK ph := (nextExprPhases k ph).all D.contains
-  opOK op := !(opTables w op).contains k.name
+  opOK op := !(opTables w op).contains k.name || PK.contains op
   dirOK := true
   gotoOK := R.contains
 
 /-- **The phases an arm can move a row to**: `derivedNext`, checked against every step, refusal
 and sub-arm (`none` where the check fails). -/
-def checkedNext (a : Arm) : Option (List String) :=
+def checkedNextP (PK : List String) (a : Arm) : Option (List String) :=
   let D := derivedNext w k a
-  if admArm w (primsN w k D (armReach k a)) k a then some D else none
+  if admArm w (primsN w k D (armReach k a) PK) k a then some D else none
+
+def checkedNext (a : Arm) : Option (List String) := checkedNextP w k [] a
 
 end
 
@@ -361,7 +366,9 @@ theorem semW (k : Kind) (W R : List String) (TF : TableFacts w k) (hshape : kind
         simp only [primsW] at this
         rw [okW c hph hW] at this; cases this
       · exact absurd hph' hph
-  · intro op hop st st' hkeep hG c hc hph hW s
+  · intro op hop
+    refine call_of_keeps w k _ op ?_
+    intro st st' hkeep hG c hc hph hW s
     simp only [primsW, List.all_eq_true] at hop
     refine Eq.trans ?_ (hG c hc hph hW s)
     cases hdc : directoryFields.contains c
@@ -548,6 +555,13 @@ theorem nextPhases_sound (k : Kind) (hpc : phasesCover k = true)
       exact ⟨a, ha, hp⟩
     · simp [throw, throwThe, MonadExceptOf.throw] at h
 
+/-- A call of operation `op` leaves the `PHASE` column of the kind's table, at every slot, as it
+was. -/
+def KeepsPhase (k : Kind) (op : String) : Prop :=
+  ∀ (st st2 : St) (c : Call) (o : Op × Val) (vars : List String), c.op = op →
+    callOp w k st c = .ok o → bindOuts st o.1.stobjsOut vars o.2 = .ok st2 →
+    ∀ s, colGet w k (stobj st2) "PHASE" s = colGet w k (stobj st) "PHASE" s
+
 /-- The `PHASE` column at every slot reads as in `S0` or as the value of a phase in `D`. -/
 def GoodN (k : Kind) (D : List String) (S0 S : String → Except String Val) : Prop :=
   ∀ s, colGet w k S "PHASE" s = colGet w k S0 "PHASE" s ∨
@@ -561,9 +575,9 @@ theorem phase_col (k : Kind) (hpc : phasesCover k = true) : "PHASE" ∈ k.column
     exact List.mem_map.mpr ⟨_, List.mem_of_find?_eq_some hq, he⟩
   · cases hpc
 
-theorem semN (k : Kind) (D R : List String) (TF : TableFacts w k) (hshape : kindShape k = true)
-    (hpc : phasesCover k = true) (S0 : String → Except String Val) :
-    Sem w (primsN w k D R) k (GoodN w k D S0) := by
+theorem semN (k : Kind) (D R PK : List String) (TF : TableFacts w k) (hshape : kindShape k = true)
+    (hpc : phasesCover k = true) (hPK : ∀ op ∈ PK, KeepsPhase w k op) (S0 : String → Except String Val) :
+    Sem w (primsN w k D R PK) k (GoodN w k D S0) := by
   obtain ⟨_, _, _, hnM, hnC⟩ := kindShape_spec k hshape
   have hdc : directoryFields.contains "PHASE" = false := by decide
   have hcol := phase_col k hpc
@@ -583,10 +597,16 @@ theorem semN (k : Kind) (D R : List String) (TF : TableFacts w k) (hshape : kind
         obtain ⟨p, hp, i, hi, hvi⟩ := nextPhases_sound w k hpc _ (fun _ => ⟨_, rfl⟩) readDepth ph t
           _ v ht hev hfit
         exact ⟨p, this p hp, i, hi, hvi ▸ he⟩
-  · intro op hop st st' hkeep hG s
-    simp only [primsN, Bool.not_eq_true'] at hop
-    rw [colGet_congr_own w k _ _ _ hdc (hkeep _ (fun hm => by simp [hm] at hop)) s]
-    exact hG s
+  · intro op hop
+    simp only [primsN, Bool.or_eq_true, Bool.not_eq_true'] at hop
+    rcases hop with hop | hop
+    · refine call_of_keeps w k _ op ?_
+      intro st st' hkeep hG s
+      rw [colGet_congr_own w k _ _ _ hdc (hkeep _ (fun hm => by simp [hm] at hop)) s]
+      exact hG s
+    · intro st st2 c o vars hc h1 h2 hG s
+      rw [hPK op (by simpa using hop) st st2 c o vars hc h1 h2 s]
+      exact hG s
   · intro st st' hkeep hG s
     rw [colGet_congr_own w k _ _ _ hdc (hkeep _ (by simp [hnC])) s]
     exact hG s
@@ -599,6 +619,30 @@ world's table accessors keep other columns (`TableFacts`), the kind has the cont
 every value its `PHASE` type admits is a state's (`phasesCover`), every successful run returns the
 tuple's children as its last results, and the `PHASE` column at every slot reads back either as
 it was passed in or as the value of a phase in `D`. -/
+theorem runArm_next_memP (k : Kind) (PK : List String) (hPK : ∀ op ∈ PK, KeepsPhase w k op)
+    (a : Arm) (observe : Bool) (args : List Val) (fuel : Nat)
+    (v : Val) (D : List String) (hD : checkedNextP w k PK a = some D) (TF : TableFacts w k)
+    (hshape : kindShape k = true) (hpc : phasesCover k = true)
+    (hrun : runArm w k a observe args fuel = .ok v) :
+    ∃ pre ts, v = Val.ofList (pre ++ ts) ∧ ts.length = k.tuple.length ∧
+      ∀ s, colGet w k (stobj (tupleSt k ts)) "PHASE" s =
+          colGet w k (stobj (Inv.startSt k observe args)) "PHASE" s ∨
+        ∃ p ∈ D, ∃ i, (p, i) ∈ k.phases ∧ colGet w k (stobj (tupleSt k ts)) "PHASE" s = .ok (.int i) := by
+  unfold checkedNextP at hD
+  dsimp only at hD
+  split at hD
+  · rename_i hadm
+    simp only [Option.some.injEq] at hD; subst hD
+    obtain ⟨hnd, hmk, _, _, _⟩ := kindShape_spec k hshape
+    obtain ⟨stF, pre, ts, hv, hts, hg⟩ := runArm_inv w _ k a observe args fuel v _
+      (semN w k _ _ PK TF hshape hpc hPK (stobj (Inv.startSt k observe args))) hadm
+      (fun _ => Or.inl rfl) hrun
+    refine ⟨pre, ts, hv, (mapM_spec _ _ _ hts).1, fun s => ?_⟩
+    have hdc : directoryFields.contains "PHASE" = false := by decide
+    rw [colGet_congr_own w k _ _ _ hdc (tuple_transfer k hnd stF ts hts _ hmk) s]
+    exact hg s
+  · cases hD
+
 theorem runArm_next_mem (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fuel : Nat)
     (v : Val) (D : List String) (hD : checkedNext w k a = some D) (TF : TableFacts w k)
     (hshape : kindShape k = true) (hpc : phasesCover k = true)
@@ -606,21 +650,8 @@ theorem runArm_next_mem (k : Kind) (a : Arm) (observe : Bool) (args : List Val) 
     ∃ pre ts, v = Val.ofList (pre ++ ts) ∧ ts.length = k.tuple.length ∧
       ∀ s, colGet w k (stobj (tupleSt k ts)) "PHASE" s =
           colGet w k (stobj (Inv.startSt k observe args)) "PHASE" s ∨
-        ∃ p ∈ D, ∃ i, (p, i) ∈ k.phases ∧ colGet w k (stobj (tupleSt k ts)) "PHASE" s = .ok (.int i) := by
-  unfold checkedNext at hD
-  dsimp only at hD
-  split at hD
-  · rename_i hadm
-    simp only [Option.some.injEq] at hD; subst hD
-    obtain ⟨hnd, hmk, _, _, _⟩ := kindShape_spec k hshape
-    obtain ⟨stF, pre, ts, hv, hts, hg⟩ := runArm_inv w _ k a observe args fuel v _
-      (semN w k _ _ TF hshape hpc (stobj (Inv.startSt k observe args))) hadm
-      (fun _ => Or.inl rfl) hrun
-    refine ⟨pre, ts, hv, (mapM_spec _ _ _ hts).1, fun s => ?_⟩
-    have hdc : directoryFields.contains "PHASE" = false := by decide
-    rw [colGet_congr_own w k _ _ _ hdc (tuple_transfer k hnd stF ts hts _ hmk) s]
-    exact hg s
-  · cases hD
+        ∃ p ∈ D, ∃ i, (p, i) ∈ k.phases ∧ colGet w k (stobj (tupleSt k ts)) "PHASE" s = .ok (.int i) :=
+  runArm_next_memP w k [] (fun _ h => by simp at h) a observe args fuel v D hD TF hshape hpc hrun
 
 end
 

@@ -202,13 +202,33 @@
   (and (getpropc f 'recursivep nil *meta-w*)
        (access justification (getpropc f 'justification nil *meta-w*) :measure)))
 
+; A constrained function with an attachment (defattach) runs as its attachment: ACL2's evaluator
+; calls the attached function, so the executable world does. Its body is printed as the call of
+; the attachment on its formals, and its encapsulate's constraint (constraint-info, translated
+; terms) beside it, so the Lean side may state the constraint of the function, not of the
+; particular attachment. The constraint's functions do not join the closure: a conjunct that calls
+; one outside it is named by the emitter, not translated.
+(defun meta-attachment (f)
+  (let ((pair (attachment-pair f *meta-w*))) (and pair (symbolp (cdr pair)) (cdr pair))))
+
+(defun meta-constraint (f)
+  (multiple-value-bind (flg x) (constraint-info f *meta-w*)
+    (cond ((null flg) nil)
+          ((unknown-constraints-p x) (meta-err "~s's constraints are unknown" f))
+          (t x))))
+
+(defun meta-body (f)
+  (or (getpropc f 'unnormalized-body nil *meta-w*)
+      (let ((g (meta-attachment f)))
+        (and g (cons g (getpropc f 'formals nil *meta-w*))))))
+
 (defun meta-closure (roots)
   ; (mv translated refused) in dependency order, callees first
   (let ((seen nil) (order nil) (refused nil))
     (labels ((visit (f)
                (unless (or (member f seen) (member f *meta-natives*))
                  (push f seen)
-                 (let ((body (getpropc f 'unnormalized-body nil *meta-w*)))
+                 (let ((body (meta-body f)))
                    (if (null body) (push f refused)
                      (progn
                        (dolist (g (meta-fns-of body nil)) (visit g))
@@ -227,7 +247,9 @@
 
 (defun meta-fn (f)
   (list f :formals (getpropc f 'formals nil *meta-w*)
-        :body (getpropc f 'unnormalized-body nil *meta-w*)
+        :body (meta-body f)
+        :attachment (and (not (getpropc f 'unnormalized-body nil *meta-w*)) (meta-attachment f))
+        :constraint (and (not (getpropc f 'unnormalized-body nil *meta-w*)) (meta-constraint f))
         :guard (getpropc f 'guard nil *meta-w*)
         :measure (meta-measure f)
         :recursive (getpropc f 'recursivep nil *meta-w*)

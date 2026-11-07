@@ -4,6 +4,8 @@
 #   Fn2/Instances/LayerAWorld.lean  the closed subset's functions, translated (emit_embed.py)
 #   Fn2/Instances/LayerAKinds.lean  the kinds in the step language, translated (emit_embed.py)
 #   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations, by rfl (emit_embed.py)
+#   Fn2/Instances/LayerAPres.lean   the projection facts the core contracts read (emit_pres.py)
+#   Fn2/Instances/LayerAPhase.lean  the served kinds' operations that keep PHASE (emit_pres.py)
 # The registry is printed from reference (print-registry.lsp, world.sexp); the embedding from
 # reference plus the measure's probe book (print-probe.lsp, world-probe.sexp), so the probe kinds
 # are translated and measured beside the served ones.
@@ -32,3 +34,5 @@ python3 -I "$here/emit_embed.py" "$here/world-probe.sexp" "$root/meta/Fn2/Instan
   "$root/meta/Fn2/Instances/LayerAKinds.lean" Fn2.Instances.LayerA \
   "$root/meta/Fn2/Instances/LayerAEqns1.lean" "$root/meta/Fn2/Instances/LayerAEqns2.lean" \
   "$root/meta/Fn2/Instances/LayerAEqns3.lean" "$root/meta/Fn2/Instances/LayerAEqns4.lean"
+python3 -I "$here/emit_pres.py" "$here/world-probe.sexp" "$root/meta/Fn2/Instances/LayerAPres.lean" \
+  Fn2.Instances.LayerAWorld "$root/meta/Fn2/Instances/LayerAPhase.lean" | tail -1

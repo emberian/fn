@@ -142,6 +142,11 @@ theorem nfix_val_eq (x : Val) : «NFIX» x = Val.int (x.nfix : Int) := by
   | int i => by_cases h : 0 ≤ i <;> simp [h] <;> omega
   | _ => simp
 
+/-- `ZP` of a natural number read through `NFIX` is its `NOT (< 0 _)` test (the countdown loops'
+guard, Fn2.Instances.LayerAPres). -/
+theorem zp_nfix (x : Val) : «ZP» («NFIX» x) = «NOT» (Prim.lt (Val.int 0) («NFIX» x)) := by
+  rw [nfix_val_eq]; rfl
+
 theorem nfix_diff_eq (n i : Val) :
     («NFIX» (Prim.plus («NFIX» n) (Prim.neg («NFIX» i)))).nfix = n.nfix - i.nfix := by
   rw [nfix_nfix, nfix_val_eq n, nfix_val_eq i]
