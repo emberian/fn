@@ -5,17 +5,44 @@
 
 (defvar *fn2-ns-trace* nil)
 
+(defun fn2-ns-install-fixture-image (host path)
+  "Put the measurement's declared initial snapshot on its physical device.
+This is test setup, before boundary recording and before any client. The
+restart fixture separately exercises persisted genesis and the boot machine."
+  (multiple-value-bind (fd size backend) (fn2-device-open path :create-size 33554432)
+    (let ((device (%make-fn2-device :fd fd :size size :backend backend)) (transferred nil))
+      (unwind-protect
+          (progn
+            (dolist (write (reverse *fn2-n-seed-store*))
+              (let* ((bytes (make-array (length (cdr write)) :element-type '(unsigned-byte 8)
+                                        :initial-contents (cdr write)))
+                     (job (make-fn2-device-job :kind :write :bytes bytes :address 0
+                                               :length (length bytes) :offset (car write))))
+                (fn2-device-perform device job)
+                (assert (= (fn2-device-job-result job) (length bytes)))))
+            (assert (zerop (fn2-device-fence fd)))
+            (setf (fn2-nhost-storage host)
+                  (fn2-device-start fd size backend (length (fn2-nhost-ops host))
+                    (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
+                    (lambda (label) (fn2-n-boundary host label))))
+            (setf transferred t))
+        (unless transferred (fn2-native-close fd))))))
+
 (defun fn2-ns-serve (&optional (trace-capacity 4000000))
   "Bind 127.0.0.1:0, announce the port, serve until the stop control line."
   (let ((host (fn2-n-make-host *fn2-ss-profile* :control-fd 0 :trace-capacity trace-capacity
                                    :seeds *fn2-ss-seeds*)))
-    (format t "@@FN2SS ready ~d 0 0@@~%" (fn2-nhost-listen-port host))
-    (finish-output)
     (unwind-protect
-         (let ((reason (fn2-n-run host)))
+         (progn
+          (fn2-ns-install-fixture-image host
+            (or (sb-ext:posix-getenv "FN2_SURFACE_IMAGE")
+                (error "FN2_SURFACE_IMAGE must name a new measurement fixture image")))
+          (format t "@@FN2SS ready ~d 0 0@@~%" (fn2-nhost-listen-port host))
+          (finish-output)
+          (let ((reason (fn2-n-run host)))
            (setf *fn2-ns-trace* (fn2-n-trace-list host))
            (format t "@@FN2SS served - 0 ~d@@~%" reason)
-           (finish-output))
+           (finish-output)))
       (fn2-n-destroy host))))
 
 (defun fn2-ns-verdicts (clients)

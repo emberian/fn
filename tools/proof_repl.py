@@ -819,12 +819,16 @@ def errored(output: str) -> bool:
     if (any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output
             or RAW_DEBUGGER_PROMPT.search(output) or PROTOCOL_ERROR in output):
         return True
-    if FAILED_BANNER in output:
+    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
+    # A make-event whose (:or A B) recovered: A's FAILED banner, then B's and
+    # the make-event's own summaries (arm-frames, 2026-11-07: an owed
+    # fallback was marked refused although the event was admitted).
+    failed = output.rfind(FAILED_BANNER)
+    if failed >= 0 and (not summaries or failed > summaries[-1]):
         return True
     last_error = max((output.rfind(mark) for mark in ERROR_MARKS), default=-1)
     if last_error < 0:
         return False
-    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
     return not summaries or last_error > summaries[-1]
 
 
@@ -1318,6 +1322,14 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
     output, timed_out = acl2.send(f'(set-cbd "{source.parent}/")', load_timeout)
     if timed_out or errored(output):
         state["stopped_at"] = where + "set-cbd"
+        state["error"] = "load timed out" if timed_out else brief(output)
+        return False
+    # Source-loaded declarations need their file identity just as an include
+    # or certify does. The connected directory cannot distinguish siblings.
+    output, timed_out = acl2.send(
+        f'(assign proof-repl-source-book "{source}")', load_timeout)
+    if timed_out or errored(output):
+        state["stopped_at"] = where + "source-book"
         state["error"] = "load timed out" if timed_out else brief(output)
         return False
     if encapsulate:
@@ -2841,6 +2853,7 @@ def send_range(args) -> int:
                                      set(), None)
         items = ([(form_label(0, form).split(" ", 1)[1], form) for form in hoisted]
                  + ([(f"#{chosen.start + 1}-#{chosen.stop} (encapsulate)", body)] if body else []))
+    items.insert(0, ("source-book", f'(assign proof-repl-source-book "{path}")'))
     return send_many(args.name, items, args.limit, args.full, args.keep_going)
 
 

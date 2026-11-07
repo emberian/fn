@@ -885,3 +885,171 @@
   (and (not (fn2-arm-framep 1 1 '(0) nil '(a ((0 0) (5 5)) c) '(a ((0 0) (5 6)) c)))   ; undeclared column
        (not (fn2-arm-framep 1 1 '(0) nil '(a ((0 0) (5 5)) c) '(a ((9 0) (5 5)) c)))   ; another row
        (not (fn2-arm-framep 1 1 '(0) nil '(a ((0 0) (5 5)) c) '(b ((0 0) (5 5)) c))))) ; undeclared child
+
+; ----------------------------------------------------------------------
+; Proving the frame by construction (lane arm-frames). The generated
+; writers, operations and arms carry chained contracts over two
+; length-free twins of the frame's relations: FN2-ARM-KIDS (children
+; outside FREE equal) and FN2-ARM-COLS (columns outside COLUMNS equal, the
+; others equal but at ROW), positions compared up to the longer list, so a
+; write never needs its list's length. FN2-ARM-ROW-FRAME is the frame
+; predicate over them; FN2-ARM-ROW-FRAME-FRAMEP gives FN2-ARM-FRAMEP once
+; the lengths agree (the cores' and the table's well-formedness).
+(defthm fn2-arm-member-of-subsetp
+  (implies (and (member-equal x a) (subsetp-equal a b)) (member-equal x b)))
+(defthm fn2-arm-subsetp-cons
+  (implies (subsetp-equal a b) (subsetp-equal a (cons x b))))
+(defthm fn2-arm-subsetp-cons-cons
+  (implies (subsetp-equal a b) (subsetp-equal (cons x a) (cons x b))))
+(defthm fn2-arm-update-nth-update-nth-same
+  (equal (update-nth i x (update-nth i v l)) (update-nth i x l)))
+;; length-free twins of the frame's children and columns relations: positions
+;; compared up to the longer list (an absent element is nil), so a write never
+;; needs its list's length; fn2-arm-framep follows once the lengths agree.
+(defun fn2-arm-kids (i free a b)
+  (declare (xargs :verify-guards nil :measure (+ (acl2-count a) (acl2-count b))))
+  (if (and (atom a) (atom b)) t
+    (and (or (member-equal i free) (equal (car a) (car b)))
+         (fn2-arm-kids (+ 1 i) free (cdr a) (cdr b)))))
+(defun fn2-arm-cols (k row columns a b)
+  (declare (xargs :verify-guards nil :measure (+ (acl2-count a) (acl2-count b))))
+  (if (and (atom a) (atom b)) t
+    (and (if (member-equal k columns)
+             (equal (update-nth row nil (car a)) (update-nth row nil (car b)))
+           (equal (car a) (car b)))
+         (fn2-arm-cols (+ 1 k) row columns (cdr a) (cdr b)))))
+(defun fn2-arm-row-frame (table row columns children a b)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-arm-kids 0 (cons table children) a b)
+       (or (member-equal table children)
+           (fn2-arm-cols 0 row columns (nth table a) (nth table b)))))
+(defthm fn2-arm-kids-equal (implies (equal a b) (fn2-arm-kids i free a b)) :rule-classes nil :hints (("Goal" :induct (fn2-arm-kids i free a b))))
+(defthm fn2-arm-kids-refl (fn2-arm-kids i free a a) :hints (("Goal" :use ((:instance fn2-arm-kids-equal (b a))))))
+(defthm fn2-arm-cols-equal (implies (equal a b) (fn2-arm-cols k row columns a b)) :rule-classes nil :hints (("Goal" :induct (fn2-arm-cols k row columns a b))))
+(defthm fn2-arm-cols-refl (fn2-arm-cols k row columns a a) :hints (("Goal" :use ((:instance fn2-arm-cols-equal (b a))))))
+(defthm fn2-arm-row-frame-refl (fn2-arm-row-frame table row columns children a a))
+(defthm fn2-arm-kids-trans
+  (implies (and (fn2-arm-kids i free a b) (fn2-arm-kids i free b c)) (fn2-arm-kids i free a c)))
+(defthm fn2-arm-kids-mono
+  (implies (and (fn2-arm-kids i f1 a b) (subsetp-equal f1 free)) (fn2-arm-kids i free a b)))
+(defthm fn2-arm-cols-trans
+  (implies (and (fn2-arm-cols k row columns a b) (fn2-arm-cols k row columns b c)) (fn2-arm-cols k row columns a c)))
+(defthm fn2-arm-cols-mono
+  (implies (and (fn2-arm-cols k row c1 a b) (subsetp-equal c1 columns)) (fn2-arm-cols k row columns a b)))
+(defun fn2-arm-kids-nth-induct (i k a b)
+  (declare (xargs :verify-guards nil :measure (nfix k)))
+  (if (zp k) (list i a b) (fn2-arm-kids-nth-induct (+ 1 i) (+ -1 k) (cdr a) (cdr b))))
+(defthm fn2-arm-kids-nth
+  (implies (and (fn2-arm-kids i free a b) (natp i) (natp k) (not (member-equal (+ i k) free)))
+           (equal (nth k b) (nth k a)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct i k a b) :in-theory (enable nth))))
+(defthm fn2-arm-kids-update
+  (implies (and (fn2-arm-kids i free a b) (natp i) (natp k) (member-equal (+ i k) free))
+           (fn2-arm-kids i free a (update-nth k v b)))
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct i k a b))))
+(defthm fn2-arm-kids-update-same
+  ; a write-back of what was read
+  (implies (and (fn2-arm-kids i free a b) (natp k))
+           (fn2-arm-kids i free a (update-nth k (nth k b) b)))
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct i k a b) :in-theory (enable nth update-nth))))
+(defthm fn2-arm-cols-update
+  (implies (and (fn2-arm-cols k row columns a b) (natp k) (natp j) (member-equal (+ k j) columns))
+           (fn2-arm-cols k row columns a (update-nth j (update-nth row v (nth j b)) b)))
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct k j a b) :in-theory (enable nth))))
+(defthm fn2-arm-row-frame-child
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp k) (natp table) (member-equal k children))
+           (fn2-arm-row-frame table row columns children a (update-nth k v b)))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal))
+                  :use ((:instance fn2-arm-kids-update (i 0) (free (cons table children)))))))
+(defthm fn2-arm-row-frame-table
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp table)
+                (or (member-equal table children) (fn2-arm-cols 0 row columns (nth table a) v)))
+           (fn2-arm-row-frame table row columns children a (update-nth table v b)))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal))
+                  :use ((:instance fn2-arm-kids-update (i 0) (k table) (free (cons table children)))))))
+(defthm fn2-arm-row-frame-cols
+  (implies (and (fn2-arm-row-frame table row columns children a b) (not (member-equal table children)))
+           (fn2-arm-cols 0 row columns (nth table a) (nth table b)))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal)))))
+(defthm fn2-arm-row-frame-kids
+  (implies (and (fn2-arm-row-frame table row columns children a b) (fn2-arm-kids 0 free b c)
+                (subsetp-equal free children) (natp table))
+           (fn2-arm-row-frame table row columns children a c))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal))
+                  :use ((:instance fn2-arm-kids-nth (i 0) (k table) (a b) (b c))
+                        (:instance fn2-arm-kids-mono (i 0) (f1 free) (free (cons table children)) (a b) (b c))
+                        (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))))))
+(defthm fn2-arm-row-frame-trans
+  (implies (and (fn2-arm-row-frame table row columns children a b)
+                (fn2-arm-row-frame table row c2 ch2 b c)
+                (subsetp-equal c2 columns) (subsetp-equal ch2 children))
+           (fn2-arm-row-frame table row columns children a c))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal))
+                  :use ((:instance fn2-arm-kids-mono (i 0) (f1 (cons table ch2)) (free (cons table children)) (a b) (b c))
+                        (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                        (:instance fn2-arm-cols-mono (k 0) (c1 c2) (a (nth table b)) (b (nth table c)))
+                        (:instance fn2-arm-cols-trans (k 0) (a (nth table a)) (b (nth table b)) (c (nth table c)))))))
+;; to the frame predicate, once the lengths agree
+(defun fn2-arm-col-lens (k columns a b)
+  (declare (xargs :verify-guards nil :measure (acl2-count a)))
+  (if (atom a) t
+    (and (or (not (member-equal k columns)) (equal (len (car a)) (len (car b))))
+         (fn2-arm-col-lens (+ 1 k) columns (cdr a) (cdr b)))))
+(defthm fn2-arm-kids-frame-children
+  (implies (and (fn2-arm-kids i free a b) (equal (len a) (len b)))
+           (fn2-arm-frame-children i a b free)))
+(defthm fn2-arm-equal-except-of-update-nth-nil
+  (implies (and (equal (update-nth row nil a) (update-nth row nil b)) (equal (len a) (len b)))
+           (fn2-arm-equal-except row a b)))
+(defthm fn2-arm-cols-frame-columns
+  (implies (and (fn2-arm-cols k row columns a b) (equal (len a) (len b)) (fn2-arm-col-lens k columns a b))
+           (fn2-arm-frame-columns k a b row columns)))
+(defthm fn2-arm-row-frame-framep
+  (implies (and (fn2-arm-row-frame table row columns children a b) (equal (len a) (len b))
+                (or (member-equal table children)
+                    (and (equal (len (nth table a)) (len (nth table b)))
+                         (fn2-arm-col-lens 0 columns (nth table a) (nth table b)))))
+           (fn2-arm-framep table row columns children a b)))
+(defthm fn2-arm-cols-nth
+  (implies (and (fn2-arm-cols k row columns a b) (natp k) (natp j) (not (member-equal (+ k j) columns)))
+           (equal (nth j b) (nth j a)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct k j a b) :in-theory (enable nth fn2-arm-cols))))
+(defthm fn2-arm-update-nth-commute
+  (implies (and (natp i) (natp j) (not (equal i j)))
+           (equal (update-nth i a (update-nth j b l)) (update-nth j b (update-nth i a l))))
+  :rule-classes nil :hints (("Goal" :in-theory (enable update-nth))))
+(defthm fn2-arm-nth-0 (equal (nth 0 x) (car x)))
+(in-theory (disable fn2-arm-nth-0))
+;; the declared columns' lengths agree, by column index
+(defun fn2-arm-col-lens-at (k columns a b)
+  (declare (xargs :verify-guards nil))
+  (if (atom columns) t
+    (and (or (not (natp (car columns))) (< (car columns) k)
+             (equal (len (nth (- (car columns) k) a)) (len (nth (- (car columns) k) b))))
+         (fn2-arm-col-lens-at k (cdr columns) a b))))
+(defthm fn2-arm-col-lens-at-cdr
+  (implies (and (fn2-arm-col-lens-at k columns a b) (natp k))
+           (fn2-arm-col-lens-at (+ 1 k) columns (cdr a) (cdr b))))
+(defthm fn2-arm-col-lens-at-car
+  (implies (and (fn2-arm-col-lens-at k columns a b) (natp k) (member-equal k columns))
+           (equal (len (car b)) (len (car a)))))
+(defthm fn2-arm-col-lens-of-at
+  (implies (and (fn2-arm-col-lens-at k columns a b) (natp k)) (fn2-arm-col-lens k columns a b))
+  :hints (("Goal" :in-theory (enable fn2-arm-col-lens) :induct (fn2-arm-col-lens k columns a b))))
+(defthm fn2-arm-col-lens-at-member
+  (implies (and (fn2-arm-col-lens-at k big a b) (member-equal x big) (natp x) (<= k x))
+           (equal (len (nth (- x k) a)) (len (nth (- x k) b)))))
+(defthm fn2-arm-col-lens-at-mono
+  (implies (and (fn2-arm-col-lens-at k big a b) (subsetp-equal columns big))
+           (fn2-arm-col-lens-at k columns a b))
+  :hints (("Goal" :induct (len columns) :in-theory (enable subsetp-equal))))
+(defthm fn2-arm-not-member-of-subsetp
+  (implies (and (subsetp-equal a b) (not (member-equal x b))) (not (member-equal x a))))
+(defthm fn2-arm-member-of-subsetp-free
+  ; the subset bound first, so a declared successor list in the hypotheses binds A
+  (implies (and (subsetp-equal a b) (member-equal x a)) (member-equal x b)))
+(in-theory (disable fn2-arm-kids fn2-arm-cols fn2-arm-row-frame fn2-arm-col-lens
+                    fn2-arm-member-of-subsetp fn2-arm-member-of-subsetp-free fn2-arm-not-member-of-subsetp fn2-arm-subsetp-cons
+                    fn2-arm-subsetp-cons-cons fn2-arm-update-nth-update-nth-same))

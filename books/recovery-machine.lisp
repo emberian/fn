@@ -592,9 +592,9 @@
 
 ; Start over a freshly initialized core: assumption bits and the presented
 ; witness commit (0: none). The genesis predecessor seal is the zero digest.
-; Start is the host's call, outside the arms (as fn2-scribe-start): it takes
-; the recovery bundle (ROUND2 §B.3: one window, held to :done).
-(defun fn2-recovery-start (id assume witness fn2-core)
+; Preparation is shared by host startup and the boot arm. It takes the
+; recovery bundle without touching either scheduler; the caller owns wakeup.
+(defun fn2-recovery-prepare (id assume witness fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((unless (fn2-recovery-idp id fn2-core)) (mv :admission fn2-core))
       ((mv arena base fits) (fn2-recovery-geometry fn2-core))
@@ -622,7 +622,16 @@
         (rc-witness-outcome *fn2-rec-witness-none*) (rc-assume assume) (rc-epoch 0)
         (rc-found *fn2-alloc-none*) (rc-commit 0) (rc-roff 0) (rc-rend 0) (rc-mpos 0) (rc-munit 0)
         (rc-munits 0) (rc-mtotal 0) (rc-mevent 0) (principal-slot 0)
-        (rc-wslot wslot) (rc-wgen wgen) (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-replayed 0)))
+        (rc-wslot wslot) (rc-wgen wgen) (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-replayed 0))))
+  (mv :ok fn2-core)))
+(fn2-core-preserves fn2-recovery-prepare (id assume witness fn2-core) :position 1 :rows nil)
+
+; Host startup is outside the transition, so it queues the prepared row
+; directly. An arm instead uses :wake-row, interpreted by each scheduler.
+(defun fn2-recovery-start (id assume witness fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((mv code fn2-core) (fn2-recovery-prepare id assume witness fn2-core))
+      ((unless (eq code :ok)) (mv code fn2-core))
       ((mv rcode fn2-core) (fn2-recovery-ready id fn2-core))
       ((unless (member-eq rcode '(:ok :already)))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-recovery-bounds* fn2-core))) (mv :bounds fn2-core))))

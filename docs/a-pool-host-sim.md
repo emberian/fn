@@ -282,7 +282,7 @@ core: outbox peek/ack, a descriptor's fields, the validated physical span of its
 deadline, and the result normalization `fn2-host-result` (physical kind, syscall return, errno
 class, length -> the cell's words, by the simulator's `fn2-sim-terminal-values`). The loop
 implements physical scheduling and reports observations; ACL2 owns their interpretation.
-One thread; per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
+One semantic executor; file devices additionally use one FIFO worker. Per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
 closed under it: its loan is retained until the core cancels it, and no syscall result is
 invented), `completed`; per capability index an fd, nonce, the physical peer (captured from
 `accept(2)`'s sockaddr) and test counters. One iteration:
@@ -297,11 +297,12 @@ invented), `completed`; per capability index an fd, nonce, the physical peer (ca
 4. interests to the mux: a waiting Accept/Receive wants readable, a Send writable, a Close and
    every non-socket kind is started now (Close: unregister, `close(2)`, then retire every other
    waiting op on that capability *without* inventing a syscall result: the core cancels and
-   harvests them; storage kinds stop the host by name until the storage backend lands with
-   B's durable POST, because the served core issues none yet; Connect and TlsStart complete
+   harvests them; storage kinds submit to the file worker when attached, otherwise use the
+   seeded session's memory device; Connect and TlsStart complete
    `failed`/`refused` and `failed`/`handshake`: no facility, explicit, never simulated; Cancel
    checks its target's generation and state: a waiting or closed-waiting target gets its
-   terminal `cancelled` result, then the Cancel `done`; else the Cancel `not-found`);
+   terminal `cancelled` result, then the Cancel `done`; a file-device operation keeps its loan
+   until the physical result and Cancel reports `not-found`, as does an already completed target);
 5. wait: timeout 0 if the turn said `:more` or completions are queued, else until the core's
    idle deadline (ArmWake) or a control/signal wake;
 6. for each ready descriptor, one syscall for one of its waiting ops (one readiness report is
@@ -316,6 +317,56 @@ compost's `fn2-native-boundary`), so a kill at every boundary is a test row, not
 This loop is the simulator's adapter with the physical world choosing the schedule: posting
 order is the completion order (E1), a byte enters the core only at harvest, and nothing else is
 observable.
+
+File-device primitives (`host/device.lisp`, disk-boot lane): exclusive file creation,
+physical preallocation, an exclusive writer lock, observed size and backend; `pread` and
+`pwrite` at the action's offset; `fdatasync` on Linux and `F_FULLFSYNC` on Darwin for Fence.
+Creation fences both the image and its parent directory. The worker performs one call and
+reports its actual count and errno; `books/device-boundary.lisp` classifies those observations
+before the ordinary terminal normalizer. `fn2-device-request` refuses FUA before I/O:
+these file primitives implement baseline writes plus Fence, not the stronger FUA mode.
+No retries complete a short read or write implicitly.
+Its two bounded rings have one entry per operation slot. The executor alone posts results;
+the worker wakes its mux. A stalled call holds its borrowed bytes and does not block turns.
+Shutdown leaves a stalled fd with the worker until return, so it cannot act on a reused fd.
+The harness's quiet marker also requires no outstanding storage call. Worker syscall entry
+and return join the death-cut counter under a short mutex, held outside the physical call.
+
+`tests/native-device-unit.lsp` controls FIFO fence ordering, a deliberately stalled worker,
+short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
+primitive test. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
+the launcher refuses an uncertified book closure.
+`init` exclusively creates a preallocated image (default 32 MiB), and serve opens it without
+truncation. `books/node-profile.lisp` names the small native profile, including its 128-extent
+arena and `local.test` genesis group. Image size is checked by ACL2 before creation and again
+from the open observation. A larger file does not change that profile's arena geometry.
+
+`books/boot-kind.lisp` and `books/boot.lisp` declare the image startup machine. The immutable
+genesis units follow the arena: one header, then one unit per group. The image's last two
+units hold alternating epoch anchors. Each 4096-byte unit uses the generated boot-record
+codec, zero padding and a 32-byte BLAKE3 trailer. Opening compares every genesis unit to the
+supplied profile's canonical record; both anchors must validate and name adjacent epochs.
+An empty, mismatched or damaged image stops boot. It is never silently initialized.
+
+The volatile genesis rows cannot serve until boot has verified those records, run B's
+recovery and C's replay, written the next epoch and received a successful Fence. The executor
+suppresses listener genesis for image profiles; the boot machine releases listeners only
+after that fence. `tests/boot-unit.lisp` holds the startup fence as the no-Accept control and
+checks successive epochs and invalid-image refusals. `tests/native-image-restart.py` creates
+an image, POSTs two articles (one over an extent), kills the recorded SBCL PID after `240`,
+and compares GROUP/ARTICLE/HEAD octets after two fresh opens. These boot and restart fixtures
+passed on bb2 with the 32 MiB native profile, including the held-fence control and
+the two byte-identical fresh reopens. The device primitive tests passed on Linux
+and Darwin. The tests do not qualify a physical device's power-loss behavior.
+
+The socket measurement fixture writes and fences its declared seed snapshot to a private
+file before serving, then uses the same storage worker. Its setup remains outside the
+measured boundary trace so WIRE/ENVELOPE replay starts at the declared seeded state. The
+fresh-process fixture, separately, exercises persisted genesis and image boot.
+`tests/native-image-carrier.py` passed on bb2 against the file-backed socket session
+with WIRE and ENVELOPE. `tests/native-device-policy-unit.lsp` passed on bb2: an ordinary write enters
+the worker while unsupported FUA queues a failed completion without submitting I/O,
+for both declared file backends. This policy control performs no physical I/O.
 
 #### 4.1.4 The socket and the session H speaks
 `tests/native-session.lsp` (LD script: includes the served books and check-wire/check-envelope,

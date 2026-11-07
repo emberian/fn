@@ -43,7 +43,6 @@
   :faults (:bounds :fault)
   :tables (fn2-core-pool)
   :doc "Feed RX into the upload's chunk (upload-feed.lisp).")
-(defcost fn2-conn-wake :tables (fn2-core-machines) :doc "Wake the upload this connection feeds.")
 (defcost fn2-upload-gen-of :doc "An upload row's generation.")
 ;; Declared costs of the upload's outside calls (each a thin wrapper below).
 (defcost fn2-upload-hash-step :bytes *fn2-upload-hash-bytes* :tables (fn2-core-b3 fn2-core-digests)
@@ -54,7 +53,10 @@
 (defcost fn2-upload-verdict-step :bytes 512 :doc "The definite verdict over the scanned header.")
 (defcost fn2-upload-chunk-cap :doc "A chunk's capacity.")
 (defcost fn2-upload-bound :doc "The article bound (the input configuration, at most two chunks).")
-(defcost fn2-conn-post-word :tables (fn2-conn-table fn2-core-machines)
+; Its writes go through the kind-dispatching fn2-machine-write-word and
+; -write-outcome-ready, which write the word columns of the connection, upload
+; and transaction tables by the id's kind: those are its children.
+(defcost fn2-conn-post-word :tables (fn2-conn-table fn2-upload-table fn2-txn-table fn2-core-machines)
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
   :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
@@ -418,6 +420,9 @@
          (room (if in0 (- cap0 src) (nfix (- (fn2-upload-chunk-cap c1 fn2-core) off)))))
       (mv (if in0 c0 c1) (if in0 g0 g1) off
           (min *fn2-commit-unit-bytes* (min room (nfix (- hashed src))))))))
+;; State preservation does not depend on the read-only span calculation.
+;; Keep its branches out of the recursive stage-loop preservation induction.
+(in-theory (disable fn2-upload-store-span))
 (defun fn2-upload-lease-class (total fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for (fn2-upload-page-bytes total) fn2-pool) class))
