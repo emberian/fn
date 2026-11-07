@@ -73,7 +73,8 @@
 (defthm fn2-txn-capacity-share-bound
   (<= (+ (fn2-txn-capacity profile) (fn2-txn-authority-share profile) (fn2-txn-consumer-share profile))
       (nfix (fn2-profile-t profile)))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn2-profile-t fn2-profile-get))))
 (in-theory (disable fn2-txn-authority-share fn2-txn-consumer-share fn2-txn-capacity))
 
 (defmachine fn2-txn
