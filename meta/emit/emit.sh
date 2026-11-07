@@ -36,3 +36,13 @@ python3 -I "$here/emit_embed.py" "$here/world-probe.sexp" "$root/meta/Fn2/Instan
   "$root/meta/Fn2/Instances/LayerAEqns3.lean" "$root/meta/Fn2/Instances/LayerAEqns4.lean"
 python3 -I "$here/emit_pres.py" "$here/world-probe.sexp" "$root/meta/Fn2/Instances/LayerAPres.lean" \
   Fn2.Instances.LayerAWorld "$root/meta/Fn2/Instances/LayerAPhase.lean" | tail -1
+
+# Canonical companion and checked-certificate proposals. Admission/build of these
+# proposals is a separate kernel gate; printing them never marks them validated.
+"$ACL2" --timeout 900 < meta/emit/print-certificate.lsp > "$log.certificate" 2>&1 || :
+if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.certificate" >/dev/null; then
+  tail -20 "$log.certificate"; echo "canonical export refused (log $log.certificate)"; exit 1
+fi
+python3 -I "$here/emit_embed.py" --certificate "$here/bridge-certificate.sexp" \
+  "$root/meta/Fn2/Instances" "$here/bridge-body.lisp" > "$log.certificates"
+tail -1 "$log.certificates"

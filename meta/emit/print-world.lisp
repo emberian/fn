@@ -385,3 +385,34 @@
               (*print-base* 10) (*print-radix* nil))
           (prin1 world out) (terpri out))
         (format t "~&FN2-META-PRINT-WORLD PASS ~a~%" path)))))
+
+; Canonical companion package. The legacy presentation remains available for
+; existing consumers; certificates consume only this lossless representation.
+; FN2-TV-* comes from books/translation-validation, admitted before leaving ACL2.
+(defun meta-print-certificate (path roots kind)
+  (let* ((kd (meta-kind kind))
+         (readers (append (meta-column-fns kind (meta-kw :table (cdr kd)))
+                          (meta-column-fns 'fn2-machines *fn2-machine-directory-fields*)))
+         (roots (append roots readers
+                        '(fn2-machine-slot fn2-control-record-stop fn2-machines-rows)
+                        (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")))))
+    (multiple-value-bind (order refused) (meta-closure roots)
+      (let ((package
+             (list :fn2-certificate :version 1
+                   :toolchain (fn2-tv-object
+                                (list (acl2-version+) (lisp-implementation-type)
+                                      (lisp-implementation-version)))
+                   :roots (mapcar #'fn2-tv-object roots)
+                   :manifest (fn2-tv-manifest *meta-w*)
+                   :kind (fn2-tv-object kd)
+                   :constants (fn2-tv-object (meta-constants
+                      '("*FN2-WORK-" "*FN2-STOP-REASON-" "*FN2-NONE*" "*FN2-ECHO-")))
+                   :functions (mapcar (lambda (f) (fn2-tv-function f *meta-w*)) order)
+                   :natives (mapcar #'fn2-tv-object *meta-natives*)
+                   :refused (mapcar #'fn2-tv-object refused))))
+        (with-open-file (out path :direction :output :if-exists :supersede)
+          (let ((*package* (find-package "ACL2")) (*print-case* :upcase)
+                (*print-pretty* nil) (*print-length* nil) (*print-level* nil)
+                (*print-base* 10) (*print-radix* nil) (*print-escape* t))
+            (prin1 package out) (terpri out)))
+        (format t "~&FN2-META-CERTIFICATE PASS ~a~%" path)))))

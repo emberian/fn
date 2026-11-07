@@ -579,6 +579,10 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--certificate":
+        from emit_certificate import main as certificate_main
+        certificate_main(*sys.argv[2:])
+        return
     src, world_out, kinds_out, ns = sys.argv[1:5]
     eqn_outs = sys.argv[5:]
     # newline='': a CR inside a string literal is data (universal newlines turned CR LF into LF)
