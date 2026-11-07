@@ -33,9 +33,38 @@
       (equal (fn2-lm-state-acknowledged s) (nth 3 s)))
  :rule-classes nil)
 
-(defthm fn2-cpt-lm-step-ordered
- (implies (fn2-cpt-lm-orderedp s) (fn2-cpt-lm-orderedp (fn2-lm-step event s)))
- :hints (("Goal" :in-theory (enable fn2-lm-step fn2-lm-event-allowedp fn2-lm-knownp))))
+;; lm-step changes the three sets only by the event's own cons; the event's
+;; preconditions place that element in the next set down.
+(defthmd fn2-cpt-lm-fields-nth
+ (and (equal (fn2-lm-state-completed s) (nth 1 s)) (equal (fn2-lm-state-fenced s) (nth 2 s))
+      (equal (fn2-lm-state-acknowledged s) (nth 3 s))))
+(defthm fn2-cpt-lm-step-fields
+ (let ((tag (fn2-lm-event-tag event)) (arg (fn2-lm-event-argument event))
+       (ok (and (fn2-lm-state-valid s) (fn2-lm-event-allowedp event s))))
+  (and (equal (fn2-lm-state-completed (fn2-lm-step event s))
+              (if (and ok (eq tag :batch-writes-complete)) (cons arg (fn2-lm-state-completed s))
+                (fn2-lm-state-completed s)))
+       (equal (fn2-lm-state-fenced (fn2-lm-step event s))
+              (if (and ok (eq tag :fence-ok)) (cons arg (fn2-lm-state-fenced s)) (fn2-lm-state-fenced s)))
+       (equal (fn2-lm-state-acknowledged (fn2-lm-step event s))
+              (if (and ok (eq tag :acknowledge)) (cons arg (fn2-lm-state-acknowledged s))
+                (fn2-lm-state-acknowledged s)))))
+ :hints (("Goal" :in-theory (e/d (fn2-lm-step fn2-cpt-lm-fields-nth)
+                                 (fn2-lm-event-allowedp fn2-lm-state-completed fn2-lm-state-fenced
+                                  fn2-lm-state-acknowledged fn2-lm-state-valid fn2-lm-event-tag
+                                  fn2-lm-event-argument fn2-lm-event-extra)))))
+(defthm fn2-cpt-lm-allowed-fence-ok
+ (implies (and (fn2-lm-event-allowedp event s) (equal (fn2-lm-event-tag event) :fence-ok))
+          (member-equal (fn2-lm-event-argument event) (fn2-lm-state-completed s)))
+ :hints (("Goal" :in-theory (enable fn2-lm-event-allowedp))))
+(defthm fn2-cpt-lm-allowed-acknowledge
+ (implies (and (fn2-lm-event-allowedp event s) (equal (fn2-lm-event-tag event) :acknowledge))
+          (member-equal (fn2-lm-event-argument event) (fn2-lm-state-fenced s)))
+ :hints (("Goal" :in-theory (enable fn2-lm-event-allowedp fn2-lm-knownp))))
+(defthm fn2-cpt-lm-step-ordered (implies (fn2-cpt-lm-orderedp s) (fn2-cpt-lm-orderedp (fn2-lm-step event s)))
+ :hints (("Goal" :in-theory (disable fn2-lm-step fn2-lm-event-allowedp fn2-lm-state-completed
+                                     fn2-lm-state-fenced fn2-lm-state-acknowledged fn2-lm-state-valid
+                                     fn2-lm-event-tag fn2-lm-event-argument))))
 
 (defthm fn2-cpt-lm-ordered-update-valid
  (implies (fn2-cpt-lm-orderedp s) (fn2-cpt-lm-orderedp (update-nth 10 v s)))
@@ -45,7 +74,7 @@
 
 (defthm fn2-cpt-lm-run-ordered
  (implies (fn2-cpt-lm-orderedp s) (fn2-cpt-lm-orderedp (fn2-lm-run trace s)))
- :hints (("Goal" :in-theory (disable fn2-cpt-lm-orderedp))))
+ :hints (("Goal" :in-theory (disable fn2-cpt-lm-orderedp fn2-lm-step))))
 (in-theory (disable fn2-cpt-lm-orderedp))
 
 (defthm fn2-cpt-lm-trace-state-ordered
@@ -94,21 +123,35 @@
  :hints (("Goal" :induct (fn2-b-visible-for batch rows)
                  :in-theory (disable fn2-b-visible-acks fn2-b-visible-batch))))
 
-(defthm fn2-cpt-project-visible-grows
- (subsetp-equal events (fn2-b-project-visible old new events))
- :hints (("Goal" :in-theory (fn2-cpt-only fn2-b-project-visible))))
 (defthm fn2-cpt-member-project-visible
  (implies (member-equal x events) (member-equal x (fn2-b-project-visible old new events)))
  :hints (("Goal" :in-theory (fn2-cpt-only fn2-b-project-visible))))
+;; The projection row by row: the head row's (:ack batch) and the rest.
+(defthm fn2-cpt-project-visible-cons
+ (implies (syntaxp (not (equal rest ''nil)))
+ (equal (fn2-b-project-visible old (cons b rest) events)
+        (fn2-b-project-visible old rest (fn2-b-project-visible old (list b) events))))
+ :hints (("Goal" :expand ((fn2-b-project-visible old (cons b rest) events)
+                          (fn2-b-project-visible old (list b) events)
+                          (fn2-b-project-visible old nil events))
+                 :in-theory (fn2-cpt-only fn2-b-project-visible))))
+(defthm fn2-cpt-project-visible-head
+ (implies (and (fn2-cpt-acked-rows-p old events) (posp (fn2-b-visible-acks b)))
+          (member-equal (list :ack (fn2-b-visible-batch b)) (fn2-b-project-visible old (list b) events)))
+ :hints (("Goal" :expand ((fn2-b-project-visible old (list b) events) (fn2-b-project-visible old nil events))
+                 :in-theory (fn2-cpt-only fn2-b-project-visible))))
+(defthm fn2-cpt-acked-rows-visible
+ (implies (fn2-cpt-acked-rows-p rows events)
+          (fn2-cpt-acked-rows-p rows (fn2-b-project-visible old new events)))
+ :hints (("Goal" :in-theory (disable fn2-b-project-visible fn2-b-visible-acks fn2-b-visible-batch))))
+(defun fn2-cpt-pv-ind (old new events)
+ (declare (xargs :verify-guards nil))
+ (if (consp new) (fn2-cpt-pv-ind old (cdr new) (fn2-b-project-visible old (list (car new)) events)) events))
 (defthm fn2-cpt-project-visible-acked
  (implies (fn2-cpt-acked-rows-p old events)
           (fn2-cpt-acked-rows-p new (fn2-b-project-visible old new events)))
- :hints (("Goal" :induct (fn2-b-project-visible old new events)
-                 :in-theory (fn2-cpt-only fn2-b-project-visible))))
-
-(defthm fn2-cpt-project-issues-grows
- (subsetp-equal events (mv-nth 3 (fn2-b-project-issues descriptors seen manifests events bytes fn2-core)))
- :hints (("Goal" :in-theory (fn2-cpt-only fn2-b-project-issues))))
+ :hints (("Goal" :induct (fn2-cpt-pv-ind old new events)
+                 :in-theory (disable fn2-b-project-visible fn2-b-visible-acks fn2-b-visible-batch))))
 
 (defthm fn2-cpt-acked-keys-put-assoc
  (implies (and (fn2-cpt-acked-keys-p (strip-cars replies) events) (member-equal (list :ack k) events))
@@ -140,10 +183,40 @@
 (defthm fn2-cpt-subsetp-reverse (subsetp-equal x (reverse x))
  :hints (("Goal" :in-theory (disable fn2-cpt-subsetp-revappend-x)
                  :use ((:instance fn2-cpt-subsetp-revappend-x (c x) (y nil))))))
+;; The issue projection descriptor by descriptor.
+(defthm fn2-cpt-project-issues-cons
+ (implies (and (consp descriptors)
+               (syntaxp (not (and (consp descriptors) (eq (car descriptors) 'cons)
+                                  (equal (caddr descriptors) ''nil)))))
+          (equal (fn2-b-project-issues descriptors seen manifests events bytes fn2-core)
+                 (let ((r (fn2-b-project-issues (list (car descriptors)) seen manifests events bytes fn2-core)))
+                  (if (eq (mv-nth 0 r) :ok)
+                      (fn2-b-project-issues (cdr descriptors) (mv-nth 1 r) (mv-nth 2 r) (mv-nth 3 r) (mv-nth 4 r)
+                                            fn2-core)
+                    r))))
+ :hints (("Goal" :expand ((fn2-b-project-issues descriptors seen manifests events bytes fn2-core)
+                          (:free (s m e b) (fn2-b-project-issues (list (car descriptors)) s m e b fn2-core))
+                          (:free (s m e b) (fn2-b-project-issues nil s m e b fn2-core)))
+                 :in-theory (fn2-cpt-only fn2-b-project-issues))))
+(defthm fn2-cpt-member-project-issues-one
+ (implies (member-equal x events)
+          (member-equal x (mv-nth 3 (fn2-b-project-issues (list d) seen manifests events bytes fn2-core))))
+ :hints (("Goal" :expand ((fn2-b-project-issues (list d) seen manifests events bytes fn2-core)
+                          (:free (s m e b) (fn2-b-project-issues nil s m e b fn2-core)))
+                 :in-theory (fn2-cpt-only fn2-b-project-issues))))
+(defun fn2-cpt-pi-ind (descriptors seen manifests events bytes fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (if (atom descriptors) nil
+  (mv-let (code seen manifests events bytes)
+   (fn2-b-project-issues (list (car descriptors)) seen manifests events bytes fn2-core)
+   (if (eq code :ok) (fn2-cpt-pi-ind (cdr descriptors) seen manifests events bytes fn2-core) nil))))
 (defthm fn2-cpt-member-project-issues
  (implies (member-equal x events)
           (member-equal x (mv-nth 3 (fn2-b-project-issues descriptors seen manifests events bytes fn2-core))))
- :hints (("Goal" :in-theory (fn2-cpt-only fn2-b-project-issues))))
+ :hints (("Goal" :induct (fn2-cpt-pi-ind descriptors seen manifests events bytes fn2-core)
+                 :in-theory (disable fn2-b-project-issues))
+         ("Subgoal *1/1" :expand ((fn2-b-project-issues descriptors seen manifests events bytes fn2-core)))))
+(in-theory (disable fn2-cpt-project-issues-cons))
 (in-theory (disable fn2-b-project-issues fn2-b-project-visible fn2-commit-proof-observe-replies))
 (defthm fn2-cpt-subsetp-cons-right
  (implies (subsetp-equal a b) (subsetp-equal a (cons x b))))
@@ -277,11 +350,11 @@
  (implies (true-listp a) (equal (fn2-lm-run (append a b) s) (fn2-lm-run b (fn2-lm-run a s))))
  :hints (("Goal" :in-theory (disable fn2-lm-step))))
 (defthm fn2-cpt-true-listp-revappend
- (equal (true-listp (revappend x y)) (true-listp y)))
-(defthmd fn2-cpt-lm-ack-nth (equal (fn2-lm-state-acknowledged s) (nth 3 s)))
+ (equal (true-listp (revappend x y)) (true-listp y))
+ :hints (("Goal" :induct (revappend x y) :in-theory (disable fn2-cpt-revappend-as-append))))
 (defthm fn2-cpt-lm-step-acked
  (subsetp-equal (fn2-lm-state-acknowledged s) (fn2-lm-state-acknowledged (fn2-lm-step event s)))
- :hints (("Goal" :in-theory (e/d (fn2-lm-step fn2-cpt-lm-ack-nth) (fn2-lm-state-acknowledged)))))
+ :hints (("Goal" :in-theory (disable fn2-lm-step fn2-lm-event-allowedp fn2-lm-state-acknowledged))))
 (defthm fn2-cpt-lm-step-acknowledge-shape
  (implies (and (fn2-lm-state-valid s) (fn2-lm-event-allowedp event s)
                (equal (fn2-lm-event-tag event) :acknowledge))
@@ -299,4 +372,4 @@
                  :do-not '(generalize eliminate-destructors))))
 (defthm fn2-cpt-lm-acknowledged-update
  (equal (fn2-lm-state-acknowledged (update-fn2-lm-state-acknowledged v s)) v)
- :hints (("Goal" :in-theory (enable fn2-cpt-lm-ack-nth))))
+ :hints (("Goal" :in-theory (enable fn2-cpt-lm-fields-nth))))
