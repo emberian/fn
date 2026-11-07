@@ -16,14 +16,19 @@
                (true-listp (nth 7 (mv-nth 1 (fn2-history-emit event s))))))
  :hints (("Goal" :in-theory (e/d (fn2-history-emit) (fn2-lm-event-allowedp fn2-lm-step)))))
 (defthm fn2-cpt-emit-acked
- (subsetp-equal (fn2-cpt-hs-acked s) (fn2-cpt-hs-acked (mv-nth 1 (fn2-history-emit event s))))
+ (implies (subsetp-equal a (fn2-cpt-hs-acked s))
+          (subsetp-equal a (fn2-cpt-hs-acked (mv-nth 1 (fn2-history-emit event s)))))
  :hints (("Goal" :in-theory (e/d (fn2-history-emit fn2-cpt-hs-acked)
                                  (fn2-lm-event-allowedp fn2-lm-step fn2-lm-state-acknowledged)))))
+(defthm fn2-cpt-emit-consp
+ (implies (consp s) (consp (mv-nth 1 (fn2-history-emit event s))))
+ :hints (("Goal" :in-theory (e/d (fn2-history-emit) (fn2-lm-event-allowedp fn2-lm-step)))))
 (in-theory (disable fn2-history-emit))
 
 (defthm fn2-cpt-hs-okp-update-nth
  (implies (and (natp i) (not (equal i 6)) (not (equal i 7)))
-          (equal (fn2-cpt-hs-okp (update-nth i v s)) (fn2-cpt-hs-okp s))))
+          (equal (fn2-cpt-hs-okp (update-nth i v s)) (fn2-cpt-hs-okp s)))
+ :hints (("Goal" :in-theory (disable fn2-lm-run reverse))))
 (defthm fn2-cpt-hs-acked-update-nth
  (implies (and (natp i) (not (equal i 6)))
           (equal (fn2-cpt-hs-acked (update-nth i v s)) (fn2-cpt-hs-acked s))))
@@ -32,9 +37,12 @@
 (defthm fn2-cpt-nth-cdr-const
  (implies (and (syntaxp (quotep n)) (natp n)) (equal (nth n (cdr s)) (nth (+ 1 n) s))))
 (defthm fn2-cpt-hs-okp-cons-cdr
- (equal (fn2-cpt-hs-okp (cons v (cdr s))) (fn2-cpt-hs-okp s)))
+ (equal (fn2-cpt-hs-okp (cons v (cdr s))) (fn2-cpt-hs-okp s))
+ :hints (("Goal" :in-theory (disable fn2-lm-run reverse))))
 (defthm fn2-cpt-hs-acked-cons-cdr
  (equal (fn2-cpt-hs-acked (cons v (cdr s))) (fn2-cpt-hs-acked s)))
+(defthm fn2-cpt-hs-acked-atom
+ (implies (not (consp s)) (equal (fn2-cpt-hs-acked s) nil)))
 (defthm fn2-cpt-hs-okp-consp
  (implies (fn2-cpt-hs-okp s) (consp s))
  :rule-classes :forward-chaining)
@@ -69,10 +77,11 @@
      (implies (and (fn2-cpt-hs-okp s) (true-listp (nth 7 s)))
               (and (fn2-cpt-hs-okp (mv-nth 1 (,fn ,@formals)))
                    (true-listp (nth 7 (mv-nth 1 (,fn ,@formals))))))
-     :hints (("Goal" :in-theory (enable ,fn))))
+     :hints (("Goal" :in-theory (fn2-cpt-only ,fn fn2-history-save update-fn2-history-state-batches update-fn2-history-state-operations update-fn2-history-state-fence update-fn2-history-state-refused update-fn2-history-state-members update-fn2-history-state-identities update-fn2-history-state-requests update-nth))))
    (defthm ,(packn (list fn '-cpt-acked))
-     (subsetp-equal (fn2-cpt-hs-acked s) (fn2-cpt-hs-acked (mv-nth 1 (,fn ,@formals))))
-     :hints (("Goal" :in-theory (enable ,fn))))
+     (implies (subsetp-equal a (fn2-cpt-hs-acked s))
+              (subsetp-equal a (fn2-cpt-hs-acked (mv-nth 1 (,fn ,@formals)))))
+     :hints (("Goal" :in-theory (fn2-cpt-only ,fn fn2-history-save update-fn2-history-state-batches update-fn2-history-state-operations update-fn2-history-state-fence update-fn2-history-state-refused update-fn2-history-state-members update-fn2-history-state-identities update-fn2-history-state-requests update-nth))))
    (in-theory (disable ,fn))))
 
 (fn2-cpt-history-preserves fn2-history-request event s)
@@ -100,6 +109,13 @@
      (mv-let (code next) (fn2-history-step (car events) s)
       (if (eq code :ok) (fn2-cpt-translate-state (cdr events) next) s))
    s))
+;; Translation is incremental: a successful prefix hands its state to the rest.
+(defthm fn2-cpt-translate-loop-append
+ (implies (and (true-listp a) (equal (mv-nth 0 (fn2-history-translate-loop a s)) :ok))
+          (equal (fn2-history-translate-loop (append a b) s)
+                 (fn2-history-translate-loop b (fn2-cpt-translate-state a s))))
+ :hints (("Goal" :induct (fn2-history-translate-loop a s)
+                 :in-theory (e/d (fn2-history-translate-loop) (fn2-history-step)))))
 (defthm fn2-cpt-translate-loop-state
  (implies (equal (mv-nth 0 (fn2-history-translate-loop events s)) :ok)
           (equal (mv-nth 1 (fn2-history-translate-loop events s))
