@@ -63,6 +63,31 @@ class Fn:
         self.guard = d[":GUARD"]
         self.measure = d[":MEASURE"]
         self.recursive = [str(v) for v in as_list(d[":RECURSIVE"])]
+        # a constrained function translated as its attachment (print-world.lisp meta-body): the
+        # attached function, and its encapsulate's constraint as translated terms
+        a = d.get(":ATTACHMENT")
+        self.attachment = None if a is None or is_nil(a) else str(a)
+        self.constraint = [] if self.attachment is None else list(as_list(d.get(":CONSTRAINT", List([]))))
+
+
+def free_vars(t, acc):
+    """The variables of a translated term, in first-occurrence order (a lambda's body is closed)."""
+    if isinstance(t, List):
+        if len(t) == 0 or t[0] == "QUOTE":
+            return acc
+        if is_lambda(t[0]):
+            for a in t[1:]:
+                free_vars(a, acc)
+            return acc
+        for a in t[1:]:
+            free_vars(a, acc)
+        return acc
+    a = str(t)
+    if isinstance(t, Str) or re.fullmatch(r"[+-]?\d+", a) or a in ("NIL", "T") or a.startswith(":"):
+        return acc
+    if a not in acc:
+        acc.append(a)
+    return acc
 
 
 def calls_of(t, acc):
@@ -115,6 +140,10 @@ def shallow(t, defined, self_name=None):
 def emit_fn(fn, defined, out):
     binders = " ".join(f"({ident(v)} : Val)" for v in fn.formals)
     sig = f"{binders} : Val" if binders else ": Val"
+    if fn.attachment:
+        out.append(f"/-- {fn.name}, constrained (an encapsulate), runs as its attachment {fn.attachment}")
+        out.append(f"(`defattach`): ACL2's evaluator calls the attached function. Its constraint is")
+        out.append(f"`{fn.name}.constraint`, stated over this function. -/")
     if fn.recursive:
         if fn.recursive != [fn.name]:
             die(f"{fn.name} is mutually recursive with {fn.recursive}: outside the subset")
@@ -204,6 +233,31 @@ def emit_world(emb, path, ns):
         L.append(f"  {shallow(f.guard, defined)}")
         L.append("")
         guards.append(f)
+    # an attached function's constraint, each term a `Val` over its free variables: the Lean side
+    # proves of the function (through its attachment) the conjuncts it can (Fn2.Arms.Attach)
+    L.append("/-! ## Attached functions: each runs as its attachment; its encapsulate's constraint, translated -/")
+    L.append("")
+    attached = []
+    for f in kept:
+        if not f.attachment:
+            continue
+        parts = []
+        for i, c in enumerate(f.constraint):
+            missing = sorted(g for g in calls_of(c, set()) if g not in defined and g not in NATIVE and g not in SPECIAL)
+            if missing:
+                L.append(f"-- {f.name}'s constraint, term {i}: calls {missing}, outside the translated closure")
+                L.append("")
+                continue
+            vs = free_vars(c, [])
+            binders = " ".join(f"({ident(v)} : Val)" for v in vs)
+            L.append(f"/-- {f.name}'s constraint, term {i}: `{show(c)[:300]}` -/")
+            L.append(f"def {ident(f.name)}.constraint{i} {binders}{' ' if binders else ''}: Val :=")
+            L.append(f"  {shallow(c, defined)}")
+            L.append("")
+            parts.append((i, vs))
+        attached.append((f, parts))
+    L.append(f"def attached : List (String × String) := [{', '.join(f'({lean_str(f.name)}, {lean_str(f.attachment)})' for f, _ in attached)}]")
+    L.append("")
     # ACL2's definitions of the natives, where they stay inside the subset: `«F».acl2`, with every
     # call of another native going to its Lean implementation (the statement is per native)
     L.append("/-! ## ACL2's definitions of the natives, translated (`F.acl2`): Fn2.ACL2.Faithful states")
@@ -499,6 +553,7 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
     L.append(f"import {world_ns}")
     L.append("")
     L.append("set_option maxRecDepth 100000")
+    L.append("set_option maxHeartbeats 0")
     L.append("")
     L.append(f"namespace {ns}")
     L.append("open Fn2.ACL2 Fn2.Arms")

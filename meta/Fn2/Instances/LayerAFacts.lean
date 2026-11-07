@@ -47,10 +47,10 @@ theorem ids_qualified : registry.ids.Nodup ∧ ¬ (registry.ids.map DeclId.name)
   simp at this
 
 theorem declaration_counts :
-    registry.machines.length = 13 ∧ registry.columns.length = 55 ∧
-    registry.coreChildren.length = 55 ∧ registry.squares.length = 716 ∧
-    registry.costs.length = 374 ∧ registry.waits.length = 4 ∧
-    registry.rows.length = 302 := by
+    registry.machines.length = 14 ∧ registry.columns.length = 57 ∧
+    registry.coreChildren.length = 57 ∧ registry.squares.length = 695 ∧
+    registry.costs.length = 385 ∧ registry.waits.length = 4 ∧
+    registry.rows.length = 306 := by
   decide +kernel
 
 /-- The labels the registry does not hold today: the executor's seven (DSL-METATHEORY §3.2, §3.5),
@@ -77,14 +77,14 @@ def caseKey : CaseLabel Sym → Nat
   | .executor .emptyPrincipal => 27
 
 theorem q1_case_counts :
-    registry.machineCases.length = 151 ∧ q1Cases.length = 159 ∧ q1Cases.Nodup :=
+    registry.machineCases.length = 171 ∧ q1Cases.length = 179 ∧ q1Cases.Nodup :=
   ⟨by decide +kernel, by decide +kernel,
    Fn2.Distinct.nodup_of_bitsDistinct caseKey _ (by decide +kernel)⟩
 
 /-- What `defsquare fn2-q1 :template :q1-loop-iteration` binds: one G1 row per case. -/
 def q1Squares : List (SquareDecl Sym) := bindG1 "fn2-q1" q1Cases
 
-theorem q1_square_count : q1Squares.length = 159 := by decide +kernel
+theorem q1_square_count : q1Squares.length = 179 := by decide +kernel
 
 /-- **The licence.** The ACL2 side owes one G1 square per case of the catalogue; this is the
 implication the Lean side supplies: those squares are squares for every word over the catalogue,
