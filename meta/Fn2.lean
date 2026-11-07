@@ -10,7 +10,14 @@ import Fn2.ACL2.Faithful
 import Fn2.ACL2.Fuel
 import Fn2.Arms
 import Fn2.ArmsLemmas
+import Fn2.Arms.Bound
+import Fn2.Arms.Cost
+import Fn2.Arms.Frame
+import Fn2.Arms.Served
 import Fn2.Arms.Derive
+import Fn2.Arms.Inv
+import Fn2.Arms.Columns
+import Fn2.Arms.ServedColumns
 import Fn2.Pathway
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts

@@ -34,12 +34,30 @@
                        fn2-machines fn2-pool fn2-ops fn2-control))
       (and (symbolp v) (<= 4 (length (symbol-name v)))
            (equal (subseq (symbol-name v) 0 4) "ROW-"))))
+;; Why V cannot name an arm's variable, by name (nil: it can). The reserved
+;; names are the generated functions' formals; a COMMON-LISP symbol (FILL,
+;; LENGTH ...) is no ACL2 variable and would fail only in the generated defun.
+(defun fn2-arms-var-problem (v)
+  (declare (xargs :verify-guards nil))
+  (cond ((not (and (symbolp v) v (not (keywordp v)) (not (eq v t))))
+         (msg "~x0 is not a variable name" v))
+        ((member-eq v '(id budget slot kind ordinal))
+         (msg "~x0 is reserved: a formal of every generated arm; rename it" v))
+        ((member-eq v '(event outcome reason count aux0 aux1))
+         (msg "~x0 is reserved: a handler's payload argument (EVENT OUTCOME REASON COUNT AUX0 AUX1); rename it" v))
+        ((member-eq v '(fn2-core fn2-machines fn2-pool fn2-ops fn2-control))
+         (msg "~x0 is reserved: a stobj of the arm's tuple; rename it" v))
+        ((fn2-arms-reserved-p v) (msg "~x0 is reserved: ROW-F names the row's field F; rename it" v))
+        ((not (legal-variablep v))
+         (msg "~x0 is no ACL2 variable (a COMMON-LISP symbol or a *constant*); rename it" v))
+        (t nil)))
+(defun fn2-arms-vars-problem (vars)
+  (declare (xargs :verify-guards nil))
+  (if (atom vars) (and vars (msg "~x0 ends a list of variables" vars))
+    (or (fn2-arms-var-problem (car vars)) (fn2-arms-vars-problem (cdr vars)))))
 (defun fn2-arms-vars-ok (vars)
   (declare (xargs :verify-guards nil))
-  (if (atom vars) (null vars)
-    (and (symbolp (car vars)) (car vars) (not (keywordp (car vars))) (not (eq (car vars) t))
-         (not (fn2-arms-reserved-p (car vars)))
-         (fn2-arms-vars-ok (cdr vars)))))
+  (null (fn2-arms-vars-problem vars)))
 ; An operation the arm language may call: a defcost row; the per-octet
 ; exports are not in the vocabulary (the range primitives by handle are).
 (defconst *fn2-arms-octet-exports* '(fn2-core-read fn2-core-write fn2-pool-read fn2-pool-write))
@@ -508,6 +526,13 @@
      ((and (eq (fn2-decl-get :effects row) :per-use) (not effects))
       (mv (msg "calls ~x0, a per-use operation, without :effects." op) nil acc))
      ((not fn) (mv (msg "calls ~x0, whose defcost names no :child (the arm cannot be in child form)." op) nil acc))
+     ((not (function-symbolp fn world))
+      (mv (if (eq fn op)
+              (msg "calls ~x0, whose core function ~x0 is not defined: defcost-faces makes it from the defcost's :child ~
+                    only in a kind's callbacks section for a defcost of that kind's book (~x1), so define it or move the defcost."
+                   op (fn2-decl-get :book row))
+            (msg "calls ~x0, whose :child ~x1 is not defined yet." op fn))
+          nil acc))
      (t
       (mv-let (oerr overrides) (fn2-arms-owner-overrides (cdr (fn2-arms-split-call (cdr call))) env)
       (let ((split (cons (car (fn2-arms-split-call (cdr call))) overrides)))
@@ -983,7 +1008,9 @@
                            (fn2-decl-set :stay t acc)))))))))
      ((eq (car step) :goto)
       (let ((sub (assoc-eq (car args) (fn2-arm-get :subs env))))
-        (cond ((not sub) (mv (msg "~x0: no sub-arm ~x1." step (car args)) nil acc))
+        (cond ((not sub) (mv (msg "~x0: the kind declares no sub-arm ~x1." step (car args)) nil acc))
+              ((fn2-arm-get :failed (cdr sub))
+               (mv (msg "~x0: sub-arm ~x1 has its own problem (listed with it)." step (car args)) nil acc))
               ((fn2-arm-get :next env) (mv (msg "~x0 follows a :next; the sub-arm decides the phase." step) nil acc))
               ((fn2-arm-get :loops env)
                (mv (msg "~x0 follows a :repeat; the path ends in its own terminal, which charges the loop's passes." step) nil acc))
@@ -1617,7 +1644,11 @@
          (:let
           (if (not (and (equal (len step) 3) (fn2-arms-vars-ok (list (cadr step)))
                         (not (member-eq (cadr step) (fn2-arm-get :bound env)))))
-              (mv (msg "~x0 is (:let VAR E) with VAR new on its path, not a row, payload or reserved name." step) nil acc)
+              (mv (cond ((not (equal (len step) 3)) (msg "~x0 is (:let VAR E)." step))
+                        ((fn2-arms-var-problem (cadr step))
+                         (msg "~x0: ~@1." step (fn2-arms-var-problem (cadr step))))
+                        (t (msg "~x0 rebinds ~x1, already bound on its path." step (cadr step))))
+                  nil acc)
             (mv-let (err e acc) (fn2-arms-expr (caddr step) env acc fuel)
               (mv-let (err2 body acc)
                 (fn2-arms-steps rest (fn2-decl-set :sym-vars (if (fn2-arms-bool-expr-p (caddr step))
@@ -1658,6 +1689,8 @@
                  (outs (getpropc (or (and row (fn2-arms-callee op env world)) op) 'stobjs-out nil world))
                  (cond-form (fn2-arms-kw :when opts nil)))
             (cond
+             ((and (true-listp vars) (true-listp opts) (fn2-arms-vars-problem vars))
+              (mv (msg "~x0 binds ~@1." step (fn2-arms-vars-problem vars)) nil acc))
              ((not (and (true-listp vars) (fn2-arms-vars-ok vars) (true-listp opts)))
               (mv (msg "~x0 is (:do (VAR ...) (OP ARG ...) [:accept ..] [:case ..] [:effects ..] [:when E :else (V ...)])." step) nil acc))
              ((and row (not (equal (len vars) (fn2-arms-value-count outs))))
@@ -1923,13 +1956,14 @@
       ((and (null accept) (consp rest)) (mv (msg "steps follow a :do whose answers all branch.") nil acc))
       ((and (consp answers)
             (not (or other refusal (subsetp-eq answers routed))))
-       (mv (msg "answers ~x0 are not routed and the arm has no :on-refusal."
-                (set-difference-eq answers routed)) nil acc))
+       (mv (msg "~x0's answers ~x1 are routed by no :accept or :case, and the arm has no :on-refusal ~
+                 (add (:on-refusal (STEP ...)) to the arm, or route them)."
+                op (set-difference-eq answers routed)) nil acc))
       ((and non-fault-unrouted refusal-stops-p)
        (mv (msg "~x0 leaves non-fault answers ~x1 unrouted to a :stop :on-refusal (route them or use (:refuse WORD))."
                 op non-fault-unrouted) nil acc))
       ((and (not (consp answers)) (not (or other refusal)))
-       (mv (msg "an operation with an open answer set needs a :case :otherwise or the arm's :on-refusal.") nil acc))
+       (mv (msg "~x0 has an open answer set: it needs a :case :otherwise or the arm's :on-refusal." op) nil acc))
       (t
        (mv-let (err1 cont acc) (if accept (fn2-arms-cont-steps rest (if (or always (member-eq pos-ans accept)) (fn2-arms-with-use use env) env)
                                                                 acc (1- fuel))
@@ -2141,18 +2175,23 @@
     (:core (fn2-arms-fn-events name kind observe acc code contract world))
     (:children (fn2-arms-child-fn-events name kind observe acc code world))
     (otherwise (fn2-arms-wrapper-events name kind observe contract world))))
-; Sub-arms in declaration order; each sees the ones before it.
-(defun fn2-arms-subs (kind entries subs events mode world)
-  ; (mv err subs events)
+; Sub-arms callee first (fn2-arms-sub-order): each sees the ones it may :goto.
+; A sub-arm with a problem is recorded :failed (its callers then say so instead
+; of reporting it missing) and the walk goes on, so every problem is reported.
+(defun fn2-arms-subs (kind entries subs events errs mode world)
+  ; (mv errs subs events)
   (declare (xargs :verify-guards nil))
-  (if (atom entries) (mv nil subs events)
+  (if (atom entries) (mv errs subs events)
     (let ((name (caar entries)))
       (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
       (declare (ignore from))
       (mv-let (err code acc)
         (fn2-arms-steps steps (fn2-decl-set :site (concatenate 'string "SUB-" (symbol-name name))
                                 (fn2-arms-env kind nil nil refusal subs (not (eq mode :core)) world)) nil 100000)
-        (if err (mv (msg "~x0 sub-arm ~x1: ~@2" kind name err) nil nil)
+        (if err
+            (fn2-arms-subs kind (cdr entries)
+                           (append subs (list (cons name (fn2-decl-set :failed t (fn2-decl-set :src (list steps refusal subs) acc)))))
+                           events (append errs (list (msg "sub-arm ~x0: ~@1" name err))) mode world)
           (fn2-arms-subs kind (cdr entries) (append subs (list (cons name (fn2-decl-set :src (list steps refusal subs) acc))))
             (append events
                     (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
@@ -2161,13 +2200,62 @@
                                                  (fn2-arms-contract kind nil nil nil acc world) world))
                       (:children (fn2-arms-child-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code world))
                       (otherwise nil)))
-            mode world)))))))
+            errs mode world)))))))
+; The sub-arms a step tree names in (:goto NAME ...).
+(defun fn2-arms-goto-targets (x fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((or (zp fuel) (atom x)) nil)
+        ((and (eq (car x) :goto) (consp (cdr x)) (symbolp (cadr x))) (list (cadr x)))
+        (t (union-eq (fn2-arms-goto-targets (car x) (1- fuel)) (fn2-arms-goto-targets (cdr x) (1- fuel))))))
+(defun fn2-arms-sub-edges (entries)
+  ; ((NAME TARGET ...) ...) in declaration order
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (cons (cons (caar entries) (fn2-arms-goto-targets (cdar entries) 100000))
+          (fn2-arms-sub-edges (cdr entries)))))
+(defun fn2-arms-sub-ready (edges names done)
+  ; the first sub-arm whose declared targets are all DONE
+  (declare (xargs :verify-guards nil))
+  (cond ((atom edges) nil)
+        ((subsetp-eq (intersection-eq (cdar edges) names) done) (caar edges))
+        (t (fn2-arms-sub-ready (cdr edges) names done))))
+(defun fn2-arms-sub-order-1 (edges names done fuel)
+  ; (mv order stuck): callee first, otherwise declaration order (an acyclic
+  ; declaration already in that order keeps it); STUCK the sub-arms on a cycle
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (if (or (zp fuel) (atom edges)) (mv nil (strip-cars edges))
+    (let ((next (fn2-arms-sub-ready edges names done)))
+      (if (not next) (mv nil (strip-cars edges))
+        (mv-let (order stuck)
+          (fn2-arms-sub-order-1 (remove1-assoc-eq next edges) names (cons next done) (1- fuel))
+          (mv (cons next order) stuck))))))
+(defun fn2-arms-cycle-edges (edges stuck)
+  (declare (xargs :verify-guards nil))
+  (if (atom edges) nil
+    (append (and (member-eq (caar edges) stuck)
+                 (list (cons (caar edges) (intersection-eq (cdar edges) stuck))))
+            (fn2-arms-cycle-edges (cdr edges) stuck))))
+(defun fn2-arms-entries-in (order entries)
+  (declare (xargs :verify-guards nil))
+  (if (atom order) nil
+    (cons (assoc-eq (car order) entries) (fn2-arms-entries-in (cdr order) entries))))
+(defun fn2-arms-sub-order (entries)
+  ; (mv err entries): ENTRIES callee first; err names a :goto cycle
+  (declare (xargs :verify-guards nil))
+  (let ((edges (fn2-arms-sub-edges entries)))
+    (mv-let (order stuck) (fn2-arms-sub-order-1 edges (strip-cars entries) nil (+ 1 (len entries)))
+      (if stuck
+          (mv (msg "sub-arms ~x0 :goto one another in a cycle (each NAME with the sub-arms it goes to: ~x1); ~
+                    a bounded repetition is (:repeat N ...)."
+                   stuck (fn2-arms-cycle-edges edges stuck))
+              entries)
+        (mv nil (fn2-arms-entries-in order entries))))))
 ; GENESIS: ENTRIES is the kind's one genesis arm, entered in the row's
 ; initial phase TAG and named K-GENESIS (G3, C gap 5).
-(defun fn2-arms-arms (kind entries observe subs entries-out events mode world genesis)
-  ; (mv err contract-entries events)
+(defun fn2-arms-arms (kind entries observe subs entries-out events errs mode world genesis)
+  ; (mv errs contract-entries events): an arm with a problem adds it to ERRS and the walk goes on
   (declare (xargs :verify-guards nil))
-  (if (atom entries) (mv nil entries-out events)
+  (if (atom entries) (mv errs entries-out events)
     (let ((tag (caar entries)))
       (mv-let (from refusal steps) (fn2-arms-options (cdar entries))
         (mv-let (err code acc)
@@ -2177,14 +2265,17 @@
                                         (from (fn2-arms-arm-knowledge kind from env))
                                         (t env)))
                           nil 100000)
-          (if err (mv (msg "~x0 ~s1 ~x2: ~@3" kind (cond (genesis "genesis from") (observe "handler") (t "arm")) tag err) nil nil)
+          (if err
+              (fn2-arms-arms kind (cdr entries) observe subs entries-out events
+                             (append errs (list (msg "~s0 ~x1: ~@2" (cond (genesis "genesis from") (observe "handler") (t "arm")) tag err)))
+                             mode world genesis)
             (let* ((name (if genesis (fn2-arms-sym kind "-GENESIS") (fn2-arms-fn-name kind (if observe "-ON-" "-RUN-") tag)))
                    (contract (fn2-arms-contract kind tag observe from acc world)))
               (fn2-arms-arms kind (cdr entries) observe subs
                              (append entries-out (list (list* tag name contract)))
                              (append events (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
                                      (fn2-arms-mode-events mode name kind observe acc code contract world))
-                             mode world genesis))))))))
+                             errs mode world genesis))))))))
 ; Reachability (D F12): the phases no arm or handler's :next names, other
 ; than the entry phases (the first, :free, the admission's and the take's,
 ; and an :initial phase), reported when the contracts are registered.
@@ -2213,27 +2304,25 @@
                         (fn2-arms-initial-phase kind states (fn2-machine-property kind :initial world)))))
     (set-difference-eq states (union-eq entry (union-eq (fn2-arms-nexts conts) (fn2-arms-nexts obs))))))
 (defun fn2-arms-events (kind mode world)
-  ; (mv err form)
+  ; (mv err form): err lists every problem of every sub-arm, arm, handler and the genesis arm
   (declare (xargs :verify-guards nil))
   (mv-let (err extras) (if (eq mode :core) (mv nil nil) (fn2-arms-extra-children kind world))
   (declare (ignore extras))
   (if err (mv err nil)
-  (mv-let (err subs sub-events)
-    (fn2-arms-subs kind (fn2-machine-declared kind :subarms world) nil nil mode world)
-    (if err (mv err nil)
-      (mv-let (err conts run-events)
-        (fn2-arms-arms kind (fn2-machine-declared kind :arms world) nil subs nil nil mode world nil)
-        (if err (mv err nil)
-          (mv-let (err obs obs-events)
-            (fn2-arms-arms kind (fn2-machine-declared kind :observe-arms world) t subs nil nil mode world nil)
-            (if err (mv err nil)
-              (mv-let (err gen gen-events)
+  (mv-let (oerr sub-entries) (fn2-arms-sub-order (fn2-machine-declared kind :subarms world))
+  (mv-let (errs subs sub-events)
+    (fn2-arms-subs kind sub-entries nil nil (and oerr (list oerr)) mode world)
+      (mv-let (errs conts run-events)
+        (fn2-arms-arms kind (fn2-machine-declared kind :arms world) nil subs nil nil errs mode world nil)
+          (mv-let (errs obs obs-events)
+            (fn2-arms-arms kind (fn2-machine-declared kind :observe-arms world) t subs nil nil errs mode world nil)
+              (mv-let (errs gen gen-events)
                 (let ((steps (fn2-machine-declared kind :genesis world)))
                   (if steps
                       (fn2-arms-arms kind (list (cons (fn2-arms-genesis-phase kind world) steps))
-                                     nil subs nil nil mode world t)
-                    (mv nil nil nil)))
-                (if err (mv err nil)
+                                     nil subs nil nil errs mode world t)
+                    (mv errs nil nil)))
+                (if errs (mv (fn2-arm-problems (msg "~x0 " kind) errs) nil)
               (mv nil `(progn ,@(and (not (eq mode :children))
                                      (let ((unreached (fn2-arms-unreached kind (append conts gen) obs world)))
                                        `((table fn2-machine-arm-contracts ',kind
@@ -2241,7 +2330,7 @@
                                                   :unreached ,unreached))
                                          ,@(and unreached
                                                 `((value-triple (cw "~x0: no arm reaches the phases ~x1.~%" ',kind ',unreached)))))))
-                              ,@sub-events ,@run-events ,@obs-events ,@gen-events)))))))))))))
+                              ,@sub-events ,@run-events ,@obs-events ,@gen-events)))))))))))
 ; ----------------------------------------------------------------------
 ; P2 / Fable A1: a defcost with :child auto-emits its :core stobj-let face
 ; (and fn2-core-preserves when it returns a stobj).

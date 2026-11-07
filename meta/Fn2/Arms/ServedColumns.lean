@@ -1,0 +1,132 @@
+import Fn2.Arms.Served
+import Fn2.Arms.Columns
+import Fn2.Instances.LayerAEqns1
+import Fn2.Instances.LayerAEqns2
+import Fn2.Instances.LayerAEqns3
+import Fn2.Instances.LayerAEqns4
+
+/-!
+# Fn2.Arms.ServedColumns: the column and phase contracts for `FN2-CURSOR`
+
+The registry's world discharges `TableFacts` for `FN2-CURSOR`: each column's getter and setter is
+the generated `NTH`/`UPDATE-NTH-ARRAY` pair at the column's index in the kind's table (the
+directory's at its index in `fn2-machines`), by the dispatch equations. Then every arm, handler
+and sub-arm of the kind has checked written columns and checked reachable phases, and both
+contracts hold on every run of the interpreter.
+-/
+
+namespace Fn2.Arms.ServedColumns
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Columns Fn2.Arms.Derive Fn2.Arms.Served Fn2.Instances.LayerAKinds
+
+/-- The directory's row fields in `fn2-machines` (P1): `READY-PREV` 2, `READY-NEXT` 3,
+`WAIT-REASON` 4. -/
+def dirIdx (c : String) : Nat := directoryFields.idxOf c + 2
+
+theorem idxOf_inj (l : List String) (a b : String) (ha : a ∈ l) (hb : b ∈ l)
+    (h : l.idxOf a = l.idxOf b) : a = b := by
+  induction l with
+  | nil => simp at ha
+  | cons x l ih =>
+    simp only [List.idxOf_cons] at h
+    by_cases hxa : x = a
+    · subst hxa
+      by_cases hxb : x = b
+      · exact hxb
+      · have e : (x == b) = false := by simp [hxb]
+        simp [e] at h
+    · have e1 : (x == a) = false := by simp [hxa]
+      by_cases hxb : x = b
+      · subst hxb; simp [e1] at h
+      · have e2 : (x == b) = false := by simp [hxb]
+        simp only [e1, e2, cond_false, Nat.add_right_cancel_iff] at h
+        exact ih (by simpa [Ne.symm hxa] using ha) (by simpa [Ne.symm hxb] using hb) h
+
+/-- `FN2-CURSOR`'s table as the registry prints it (its fields in stobj order). -/
+def cursorTable : List String :=
+  ["PHASE", "GENERATION", "PRINCIPAL-SLOT", "ACCOUNT-REF",
+    "DEADLINE", "CONN", "CONN-GEN", "CONN-KIND", "MASK", "RX-SLOT", "RX-GEN", "LINE-S",
+    "LINE-E", "TX-SLOT", "TX-GEN", "GROUP", "CURRENT", "PIN", "TAG", "K0", "A0", "B0", "K1",
+    "A1", "B1", "STEP", "LO", "HI", "NEXT", "FOUND", "COUNT", "LOW", "HIGH", "SEL",
+    "NCURRENT", "SPIN", "UPDATE", "REPLY", "ROFF", "LPOS", "SEEN", "HAVE", "TURN", "DONE",
+    "CANCEL", "POSTING", "LGROUP", "KLEN", "STOPPED", "NEXT-FREE"]
+
+set_option maxHeartbeats 0 in
+/-- The registry's `FN2-CURSOR` accessors keep the columns' frame: each own column is the
+`(NTH s (NTH i st))` / `UPDATE-NTH-ARRAY i` pair at its index `i` in the table, each directory
+field the same in `fn2-machines`, by the generated dispatch (checked by the kernel's evaluation of
+the dispatch tree, as the dispatch equations are). -/
+theorem cursor_tableFacts : TableFacts world cursorK := by
+  have hn : cursorK.name = "FN2-CURSOR" := by decide +kernel
+  have ht : cursorK.table = cursorTable := by decide +kernel
+  have hown : ownCols cursorK = cursorTable := by decide +kernel
+  have hdir : dirCols cursorK = ["READY-PREV", "READY-NEXT", "WAIT-REASON"] := by decide +kernel
+  refine ⟨?_, ?_⟩
+  · rw [hn, hown]
+    refine facts_of world cursorTable (fun c => "FN2-CURSOR" ++ "-" ++ c)
+      (fun c => "FN2-CURSOR" ++ "-SET-" ++ c) (fun c => cursorTable.idxOf c) arrGet arrSet ?_ ?_
+      (fun a ha b hb h => idxOf_inj _ a b ha hb h)
+      (fun i j s s' v t h => arr_ne i j s s' v t h) (fun i s s' v t => arr_same i s s' v t)
+    · simp only [cursorTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
+        and_true]
+      and_intros
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) rfl
+    · simp only [cursorTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
+        and_true]
+      and_intros
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) rfl
+  · rw [hdir]
+    refine facts_of world _ (fun c => "FN2-MACHINES-" ++ c) (fun c => "FN2-MACHINES-SET-" ++ c)
+      dirIdx arrGet arrSet ?_ ?_
+      (fun a ha b hb h => idxOf_inj directoryFields a b (by simpa [directoryFields] using ha)
+        (by simpa [directoryFields] using hb) (by simpa [dirIdx] using h))
+      (fun i j s s' v t h => arr_ne i j s s' v t h) (fun i s s' v t => arr_same i s s' v t)
+    · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
+      and_intros
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) rfl
+    · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
+      and_intros
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) rfl
+
+theorem cursor_shape : kindShape cursorK = true ∧ phasesCover cursorK = true := by
+  decide +kernel
+
+/-- **Every `FN2-CURSOR` arm, handler and sub-arm writes only its checked columns on every
+run**: a column outside them (other than `PHASE`) reads back at every slot as passed in. -/
+theorem cursor_arm_writes (a : Arm) (ha : a ∈ cursorK.subarms ++ cursorK.arms ++ cursorK.observes) :
+    ∃ W, checkedWrites world cursorK a = some W ∧
+      ∀ observe args fuel v, runArm world cursorK a observe args fuel = .ok v →
+        ∃ pre ts, v = Val.ofList (pre ++ ts) ∧ ts.length = cursorK.tuple.length ∧
+          ∀ c ∈ cursorK.columns.map Prod.fst, c ≠ "PHASE" → c ∉ W → ∀ s,
+            colGet world cursorK (stobj (tupleSt cursorK ts)) c s =
+              colGet world cursorK (stobj (Inv.startSt cursorK observe args)) c s := by
+  have hall : (cursorK.subarms ++ cursorK.arms ++ cursorK.observes).all
+      (fun a => (checkedWrites world cursorK a).isSome) = true := by decide +kernel
+  obtain ⟨W, hW⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  exact ⟨W, hW, fun observe args fuel v hrun =>
+    runArm_writes_sub world cursorK a observe args fuel v W hW cursor_tableFacts cursor_shape.1 hrun⟩
+
+/-- **Every `FN2-CURSOR` arm, handler and sub-arm moves a row only to its checked phases on every
+run**: `PHASE` at every slot reads back as passed in or as the value of one of them. -/
+theorem cursor_arm_next (a : Arm) (ha : a ∈ cursorK.subarms ++ cursorK.arms ++ cursorK.observes) :
+    ∃ D, checkedNext world cursorK a = some D ∧
+      ∀ observe args fuel v, runArm world cursorK a observe args fuel = .ok v →
+        ∃ pre ts, v = Val.ofList (pre ++ ts) ∧ ts.length = cursorK.tuple.length ∧
+          ∀ s, colGet world cursorK (stobj (tupleSt cursorK ts)) "PHASE" s =
+              colGet world cursorK (stobj (Inv.startSt cursorK observe args)) "PHASE" s ∨
+            ∃ p ∈ D, ∃ i, (p, i) ∈ cursorK.phases ∧
+              colGet world cursorK (stobj (tupleSt cursorK ts)) "PHASE" s = .ok (.int i) := by
+  have hall : (cursorK.subarms ++ cursorK.arms ++ cursorK.observes).all
+      (fun a => (checkedNext world cursorK a).isSome) = true := by decide +kernel
+  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  exact ⟨D, hD, fun observe args fuel v hrun =>
+    runArm_next_mem world cursorK a observe args fuel v D hD cursor_tableFacts cursor_shape.1
+      cursor_shape.2 hrun⟩
+
+/-- What the checks give for the `SEEK-NAME` sub-arm: it writes only `STEP` and moves no row to
+another phase (every run leaves `PHASE` as it was). -/
+theorem cursor_seek_name_contracts :
+    (cursorK.subarms.find? (·.tag == "SEEK-NAME")).bind (checkedWrites world cursorK) = some ["STEP"] ∧
+    (cursorK.subarms.find? (·.tag == "SEEK-NAME")).bind (checkedNext world cursorK) = some [] := by
+  decide +kernel
+
+end Fn2.Arms.ServedColumns

@@ -7,6 +7,10 @@
 # SWARM_MEM_MAX (default 20G) caps the job's memory on the box; keep the sum
 # of running lanes' caps under the box's budget (MACHINES.md). The run is
 # foreground: wrap it in nohup/setsid with a PID file for anything long.
+# The remote certify keeps going past a red book (cert.pl --keep-going), streams
+# each Built line as it happens, ends with "certify summary: N built, M failed"
+# naming each red book and each target not built behind one, and while it runs
+# its PID is in bb2:~/fn2-<name>/build/fn2-certify.pid (beside its lock).
 set -eu
 name=${1:?lane name}; shift
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
