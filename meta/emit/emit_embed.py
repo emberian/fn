@@ -39,12 +39,16 @@ NATIVE = {
     "BINARY-LOGAND": "Native.logand", "BINARY-LOGIOR": "Native.logior",
     "BINARY-LOGXOR": "Native.logxor", "BINARY-LOGEQV": "Native.logeqv", "LOGNOT": "Native.lognot",
     "LOGORC1": "Native.logorc1", "FLOOR": "Native.floor", "MOD": "Native.mod",
-    "EVENP": "Native.evenp", "NONNEGATIVE-INTEGER-QUOTIENT": "Native.niq", "EXPT": "Native.expt",
+    "EVENP": "Native.evenp", "NONNEGATIVE-INTEGER-QUOTIENT": "Native.niq", "EXPT": "Native.expt", "ASH": "Native.ash",
     "LEN": "Native.len", "NTH": "Native.nth", "MV-NTH": "Native.nth",
     "UPDATE-NTH": "Native.updateNth", "MEMBER-EQUAL": "Native.memberEqual",
     "ACL2-COUNT": "(fun x => Val.int (Val.acl2Count x))",
 }
 SPECIAL = {"IF", "RETURN-LAST"}
+# natives computed only where ACL2's value is an integer (EXPT at a negative exponent is a
+# rational): a native whose definition calls one may pass through a rational, so its definition
+# is outside the subset, recorded with the rational primitive it reaches (ASH: (expt 2 c), c < 0)
+INTEGER_DOMAIN = {"EXPT": "UNARY-/"}
 # ---------------------------------------------------------------- shallow functions
 
 class Fn:
@@ -212,6 +216,8 @@ def emit_world(emb, path, ns):
         calls = calls_of(nf.body, set()) | calls_of(nf.measure, set())
         outside_calls = sorted(c for c in calls if c not in defined and c not in NATIVE and c not in SPECIAL
                                and c != nf.name)
+        outside_calls = sorted(set(outside_calls) | {INTEGER_DOMAIN[c] for c in calls if c in INTEGER_DOMAIN
+                                                       and nf.name not in INTEGER_DOMAIN})
         if outside_calls or (nf.recursive and nf.recursive != [nf.name]) or nf.name in SPECIAL:
             nd_out.append((nf.name, outside_calls))
             continue
@@ -520,7 +526,8 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
 def main():
     src, world_out, kinds_out, ns = sys.argv[1:5]
     eqn_outs = sys.argv[5:]
-    forms = read_all(open(src).read())
+    # newline='': a CR inside a string literal is data (universal newlines turned CR LF into LF)
+    forms = read_all(open(src, newline='').read())
     top = as_list(forms[0])
     if str(top[0]) != ":FN2-WORLD":
         die("expected (:FN2-WORLD ...)")

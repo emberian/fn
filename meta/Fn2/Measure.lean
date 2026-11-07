@@ -55,6 +55,20 @@ def listOf (v : Val) : Array Val := Id.run do
     cur := cur.cdr
   return out
 
+/-- Two values that differ: for lists of the same length, the first differing index and eight
+entries either side of it in both; otherwise both values, cut. -/
+def window (g w : Val) : String :=
+  let a := listOf g
+  let b := listOf w
+  if g.isCons && w.isCons && a.size == b.size then
+    match (List.range a.size).find? (fun i => !same a[i]! b[i]!) with
+    | some i =>
+      let lo := i - min i 8
+      let cut (x : Array Val) := toString ((x.extract lo (i + 9)).toList)
+      s!"at {i} (of {a.size}): {cut a} (recorded {cut b})"
+    | none => "equal"
+  else s!"{(toString g).take 160} (recorded {(toString w).take 160})"
+
 /-- The first difference between two results, named by position, field and element. -/
 def diff (names : List String) (got want : Val) : String := Id.run do
   let g := listOf got
@@ -71,9 +85,13 @@ def diff (names : List String) (got want : Val) : String := Id.run do
             let ge := listOf gf[j]!
             let we := listOf wf[j]!
             if gf[j]!.isCons && wf[j]!.isCons && ge.size == we.size then
+              -- every differing element of the field (up to four), each at its first differing
+              -- position with a window around it
+              let mut out : List String := []
               for k in [0:ge.size] do
-                if !same ge[k]! we[k]! then
-                  return s!"{pos} field {j} element {k}: {ge[k]!} (recorded {we[k]!})"
+                if !same ge[k]! we[k]! && out.length < 4 then
+                  out := out ++ [s!"element {k}: {window ge[k]! we[k]!}"]
+              return s!"{pos} field {j} " ++ ", ".intercalate out
             return s!"{pos} field {j}: {(toString gf[j]!).take 120} (recorded {(toString wf[j]!).take 120})"
       return s!"{pos}: {(toString g[i]!).take 160} (recorded {(toString w[i]!).take 160})"
   return "equal"

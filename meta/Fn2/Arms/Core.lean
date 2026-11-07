@@ -74,14 +74,20 @@ def spread (sout : List (Option String)) (res : Val) : Val :=
   | _ => Val.ofList ((sout.zip res.toList).flatMap fun (s, r) =>
       if s == some "FN2-CORE" then r.toList else [r])
 
-/-- The translated functions, and each operation without a `:child` through its adapter. -/
+/-- The translated functions, each operation without a `:child` through its adapter, and each
+other function over `fn2-core` (a link's core-mode live test and readers, `(… fn2-core)`, which
+return no stobj) with its trailing children assembled into the core. -/
 def coreFns (w : World) (tuple : List String) : Fns := fun f args =>
   if f.endsWith "@CORE" then
     match w.ops.find? (fun o => adapterName o.name == f) with
     | some o => match collapse tuple.length o.coreIn args with
       | some actuals => (w.fns o.name actuals).map (spread o.coreOut)
       | none => none
-    | none => none
+    | none =>
+      if args.length < tuple.length then none
+      else
+        let n := args.length - tuple.length
+        w.fns (String.ofList (f.toList.take (f.length - 5))) (args.take n ++ [Val.ofList (args.drop n)])
   else w.fns f args
 
 /-- An operation as the core face calls it: through its `:child` when it has one (the
@@ -103,7 +109,7 @@ def coreWorld (w : World) (tuple : List String) : World :=
 
 /-- A core-form kind over the core's children. -/
 def coreKind (k : Kind) (tuple : List String) : Kind :=
-  { k with tuple := tuple, childForm := true }
+  { k with tuple := tuple, childForm := true, core := true }
 
 /-! ## The arm function's entry -/
 

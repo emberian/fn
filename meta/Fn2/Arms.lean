@@ -318,6 +318,9 @@ structure Kind where
   table : List String
   stops : List String
   links : List Link := []
+  /-- Run through the core face (`Fn2.Arms.Core.coreKind`): the tuple is the core's children, and
+  a link's live test and readers are the generator's core-mode ones, over `fn2-core`. -/
+  core : Bool := false
   subarms : List Arm
   arms : List Arm
   observes : List Arm
@@ -448,6 +451,14 @@ def termFreeVars : Term → List String
 termination_by t => sizeOf t
 decreasing_by all_goals (simp_wf; have := List.sizeOf_lt_of_mem ‹_›; omega)
 
+/-- A call of a link's live test or reader: in child form it takes the linked kind's table and
+`fn2-machines` (`fn2-arms-link-events-1`); in core form, `(… fn2-core)`
+(`fn2-arms-link-core-events-1`), which the core face calls through its adapter `F@CORE` over the
+core's children. -/
+def linkCall (k : Kind) (fn : String) (args : List Term) (link : Link) : Term :=
+  if k.core then .app (fn ++ "@CORE") (args ++ k.tuple.map Term.var)
+  else .app fn (args ++ [.var link.kind, .var "FN2-MACHINES"])
+
 def readExprF (k : Kind) (readExpr : Expr → Except String Term) (x : Expr) :
     Except String Term := do
   let rd := readExpr
@@ -560,9 +571,8 @@ def readExprF (k : Kind) (readExpr : Expr → Except String Term) (x : Expr) :
           [.var ("ROW-" ++ link.slot), .var ("ROW-" ++ link.gen)] ++
           (link.kindField.toList.map fun kf => .var ("ROW-" ++ kf)) ++
           (if link.back.length ≥ 1 then [.var "ID"] else []) ++
-          (if link.back.length ≥ 2 then [.var "ROW-GENERATION"] else []) ++
-          [.var link.kind, .var "FN2-MACHINES"]
-        pure (.app fn rArgs)
+          (if link.back.length ≥ 2 then [.var "ROW-GENERATION"] else [])
+        pure (linkCall k fn rArgs link)
       | _ => throw s!"(:live L): {x.render}"
     | ":READ" => match args with
       | [.sym l, .sym fld] =>
@@ -571,7 +581,7 @@ def readExprF (k : Kind) (readExpr : Expr → Except String Term) (x : Expr) :
         if !link.reads.contains fld then
           throw s!"{x.render} reads outside link {l}'s read set"
         let fn := k.name ++ "-LINK-" ++ l ++ "-" ++ fld
-        pure (.app fn [.var ("ROW-" ++ link.slot), .var link.kind, .var "FN2-MACHINES"])
+        pure (linkCall k fn [.var ("ROW-" ++ link.slot)] link)
       | _ => throw s!"(:read L F): {x.render}"
     | _ =>
       match vocabularyFns.find? (·.1 == f) with
@@ -810,11 +820,15 @@ def expandOwner (k : Kind) (keys : List (String × Expr)) : Except String (List 
   | some (_, .sym l) =>
     let some link := k.links.find? (·.name == l)
       | throw s!":owner {l} names no link of {k.name}"
-    let some kf := link.kindField
+    -- the row's kind field, else (core form only) the linked kind's index constant
+    -- (`fn2-arms-owner-overrides`)
+    let kc := "*" ++ link.kind ++ "-KIND*"
+    let some okind := (link.kindField.map fun kf => (Val.sym ("ROW-" ++ kf) : Expr)) <|>
+        (if k.core && (w.consts.find? (·.1 == kc)).isSome then some (Val.sym kc) else none)
       | throw s!":owner {l} names no link of {k.name} with a :kind-field"
     if hand then throw s!":owner {l} is the whole owner triple; no :okind, :oslot or :ogen beside it"
     pure (keys.filter (·.1 != ":OWNER") ++
-      [(":OKIND", .sym ("ROW-" ++ kf)),
+      [(":OKIND", okind),
        (":OSLOT", .sym ("ROW-" ++ link.slot)),
        (":OGEN", .sym ("ROW-" ++ link.gen))])
   | some (_, v) => throw s!":owner expects a link name, got {v.render}"
@@ -829,7 +843,7 @@ def callOp (k : Kind) (st : St) (c : Call) : Except String (Op × Val) := do
   let callee ← match op.callee with
     | some f => pure f
     | none => throw s!"{c.op} names no :child (not in child form)"
-  let keys ← expandOwner k c.keys
+  let keys ← expandOwner w k c.keys
   let args ← actuals w k st op.formals op.stobjsIn c.args keys
   let r ← callFn w callee args
   pure (op, r)

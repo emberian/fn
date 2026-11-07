@@ -208,6 +208,13 @@ def niq (i j : Val) : Val :=
   match i, j with
   | .int a, .int b => if b ≤ 0 ∨ a < 0 then .int 0 else .int (a / b)
   | _, _ => .int 0
+/-- `ASH`: `(floor (* (ifix i) (expt 2 c)) 1)`. For `c < 0` ACL2's `(expt 2 c)` is the rational
+`2^-c`'s reciprocal, outside the integer domain `expt` below computes, so `ASH` is a native and not
+translated through its definition: the product's floor is `i` shifted, floored toward −∞. -/
+def ash (i c : Val) : Val :=
+  let x := i.toInt
+  let e := c.toInt
+  if 0 ≤ e then .int (x * 2 ^ e.toNat) else .int (Int.fdiv x (2 ^ (-e).toNat))
 /-- `EXPT` on the integer domain (see the module note). -/
 def expt (r i : Val) : Val :=
   let e := i.toInt
@@ -291,6 +298,7 @@ def nativeImpl (f : String) (args : List Val) : Option Val :=
   | "EVENP", [a] => some (evenp a)
   | "NONNEGATIVE-INTEGER-QUOTIENT", [a, b] => some (niq a b)
   | "EXPT", [a, b] => some (expt a b)
+  | "ASH", [a, b] => some (ash a b)
   | "LEN", [a] => some (len a)
   | "NTH", [a, b] => some (nth a b)
   | "MV-NTH", [a, b] => some (nth a b)
@@ -305,7 +313,7 @@ def nativeCallNames : List String :=
   ["EQUAL", "CONS", "CAR", "CDR", "CONSP", "INTEGERP", "ACL2-NUMBERP", "RATIONALP", "COERCE",
    "SYMBOLP", "STRINGP", "CHARACTERP", "<", "BINARY-+", "BINARY-*", "UNARY--", "BINARY-LOGAND",
    "BINARY-LOGIOR", "BINARY-LOGXOR", "BINARY-LOGEQV", "LOGNOT", "LOGORC1", "FLOOR", "CEILING",
-   "CHAR-CODE", "CODE-CHAR", "MOD", "EVENP", "NONNEGATIVE-INTEGER-QUOTIENT", "EXPT", "LEN", "NTH",
+   "CHAR-CODE", "CODE-CHAR", "MOD", "EVENP", "NONNEGATIVE-INTEGER-QUOTIENT", "EXPT", "ASH", "LEN", "NTH",
    "MV-NTH", "UPDATE-NTH", "MEMBER-EQUAL", "ACL2-COUNT"]
 
 /-- The native built-ins by ACL2 name (arity checked), for the term evaluator. -/

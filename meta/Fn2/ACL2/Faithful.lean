@@ -15,7 +15,8 @@ Proved here: `NTH`, `MV-NTH`, `UPDATE-NTH`, `LEN`, `MEMBER-EQUAL`, `LOGNOT`, `MO
 `NONNEGATIVE-INTEGER-QUOTIENT`, `BINARY-LOGIOR`, `BINARY-LOGXOR`, `BINARY-LOGEQV` and `LOGORC1`
 (`nativeOwed = []`). `BINARY-LOGAND` is outside the subset (`nativeOutside`: its definition calls
 `ZIP` and recurses through `FLOOR`); `FLOOR`, `EVENP`, `EXPT` and `ACL2-COUNT` are defined through
-ACL2's rationals and are trusted as written.
+ACL2's rationals and are trusted as written, and so is `ASH`, whose definition
+`(floor (* (ifix i) (expt 2 c)) 1)` passes through the rational `(expt 2 c)` for `c < 0`.
 -/
 
 namespace Fn2.ACL2.Faithful
