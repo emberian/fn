@@ -50,18 +50,25 @@
     (if (member-eq fn '(fn2-exec-set-turn-bytes fn2-exec-set-turn-steps))
         (subst 0 'value args) args)))
 
+(defun fn2-executor-contract-domain (fn)
+  (declare (xargs :verify-guards nil))
+  ; CORE-STOP writes a typed reason directly.  Its actual callers supply
+  ; a declared reason; preservation outside that domain would be false.
+  (if (eq fn 'fn2-core-stop) '(unsigned-byte-p 8 reason) t))
+
 (defun fn2-executor-contract-events (fns world relationsp)
   (declare (xargs :verify-guards nil))
   (if (atom fns) nil
     (let* ((fn (car fns)) (args (fn2-executor-contract-args fn world))
+           (domain (fn2-executor-contract-domain fn))
            (out (fn2-arm-frame-out-term fn (cons fn args) world))
            (rel `(fn2-executor-rel ',fn (list ,@(remove-eq 'fn2-core args)) g fn2-core ,out)))
       (cons
        (if relationsp
            `(defthm ,(fn2-executor-contract-name fn "-EXECUTOR-REL")
-              (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) ,rel))
+              (implies (and ,domain (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) ,rel))
          `(defthm ,(fn2-executor-contract-name fn "-EXECUTOR-INV")
-            (implies (and (fn2-executor-inv g fn2-core)
+            (implies (and ,domain (fn2-executor-inv g fn2-core)
                           (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                      (fn2-executor-inv g ,out))
             :hints (("Goal" :use ((:instance fn2-executor-rel-preserves
@@ -85,6 +92,16 @@
       :rule-classes nil)
     ,@(fn2-executor-contract-events *fn2-executor-contract-cuts* (w state) t))))
 
+(defun fn2-executor-reader-cuts (fns world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fns) nil
+    (let ((fn (car fns)))
+      (if (and (member-eq 'fn2-core (formals fn world))
+               (not (fn2-arm-frame-corep-fn fn world))
+               (getpropc fn 'unnormalized-body nil world))
+          (cons fn (fn2-executor-reader-cuts (cdr fns) world))
+        (fn2-executor-reader-cuts (cdr fns) world)))))
+
 (defun fn2-executor-compose-events (fns)
   (declare (xargs :verify-guards nil))
   (if (atom fns) nil
@@ -97,7 +114,11 @@
              (implies (and (fn2-executor-inv g fn2-core)
                            (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                       (fn2-executor-inv g ,out))
-             :hints (("Goal" :in-theory (enable ,fn) :do-not-induct t))))))
+             :hints (("Goal" :in-theory
+                       (e/d (,fn)
+                            ,(fn2-executor-reader-cuts
+                              (all-fnnames (getpropc fn 'unnormalized-body nil world)) world))
+                      :do-not-induct t))))))
      (fn2-executor-compose-events (cdr fns)))))
 
 ; These two proofs are the finite dispatch coverage, generated from the
@@ -137,7 +158,7 @@
 (defun-nx fn2-executor-representation-rel (tag args g before after)
   (declare (xargs :verify-guards nil) (ignorable tag args g before))
   (and (fn2-corep after) (fn2-core-wfp after)))
-(defmacro fn2-executor-instantiate (name predicate relation)
+(defmacro fn2-executor-instantiate (name predicate relation &key disable)
   `(defthm ,name
      (implies (and (,predicate g fn2-core)
                    (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
@@ -146,7 +167,8 @@
               :use ((:functional-instance fn2-executor-inv-turn
                       (fn2-executor-inv ,predicate)
                       (fn2-executor-rel ,relation)))
-              :in-theory (disable fn2-corep fn2-core-wfp fn2-turn)))))
+              :in-theory (disable fn2-corep fn2-core-wfp fn2-turn ,@disable)
+              :do-not-induct t))))
 (fn2-executor-instantiate fn2-executor-representation-turn
                          fn2-executor-representation-inv
                          fn2-executor-representation-rel)

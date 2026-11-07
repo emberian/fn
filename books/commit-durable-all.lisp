@@ -867,8 +867,18 @@
   (declare (ignorable tag args))
   (implies (fn2-env-turn-inv g before) (fn2-env-turn-inv g after)))
 (defmacro fn2-env-turn-instance ()
-  '(fn2-executor-instantiate fn2-env-turn-preserves
-                            fn2-env-turn-inv fn2-env-turn-rel))
+  '(defthm fn2-env-turn-preserves
+     (implies (and (fn2-env-turn-inv g fn2-core)
+                   (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+              (fn2-env-turn-inv g (mv-nth 4 (fn2-turn fn2-core))))
+     :hints (("Goal"
+              :use ((:functional-instance fn2-executor-inv-turn
+                      (fn2-executor-inv fn2-env-turn-inv)
+                      (fn2-executor-rel fn2-env-turn-rel)))
+              :in-theory (disable fn2-corep fn2-core-wfp fn2-turn
+                           fn2-env-inv fn2-env-observe fn2-env-observe-is-rows fn2-env-rows
+                           fn2-env-observed-p fn2-env-acked-durable-p)
+              :do-not-induct t))))
 (defthm fn2-env-turn-inv-entry
   (implies (fn2-env-inv ids acked log fn2-core)
            (fn2-env-turn-inv (list ids acked log) fn2-core))
