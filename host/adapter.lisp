@@ -517,6 +517,8 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
                    :control-window (fn2-native-window 4096))))
         (assert (typep (fn2-nhost-bytes host) '(simple-array (unsigned-byte 8) (*))))
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
+        (handler-case
+          (progn
         (unless device-path (fn2-n-device-put host *fn2-n-seed-store*))
         (when device-path
           (multiple-value-bind (fd size backend) (fn2-device-open device-path :create-size create-size)
@@ -537,8 +539,6 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
         (sb-sys:enable-interrupt sb-unix:sigterm #'fn2-n-signal-handler)
         (sb-sys:enable-interrupt sb-unix:sigint #'fn2-n-signal-handler)
         (when device-path
-          (handler-case
-              (progn
                 (multiple-value-bind (code c)
                     (fn2-boot-start (not (null create-size)) (fn2-device-size (fn2-nhost-storage host)) core)
                   (declare (ignore c))
@@ -548,8 +548,8 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
                       do (when (eq status :failed)
                            (error "fn2 image boot stopped: ~d" (fn2-host-stop-reason core)))
                          (fn2-n-iteration host)))
-            (error (condition) (fn2-n-destroy host) (error condition))))
-        host)))))
+        host)
+          (error (condition) (fn2-n-destroy host) (error condition))))))))
 
 (defun fn2-n-run (host)
   "Iterate until the core stops (a signal or a stop control posts the sticky signal)."
