@@ -616,3 +616,117 @@
        :schema :invariant :from (:machine fn2-commit)
        :teeth (fn2-ctf-teeth-positive fn2-ctf-teeth-negative)
        :doc "Every transition of fn2-turn is a commit row's principal visit (the table changes only in its arm's declared columns at the row's slot), a commit row's harvest (its handlers' and the terminal's columns), or leaves the commit table unchanged; the directory keeps every id's kind and slot. Proved: the commit visit, the commit harvest and the mailbox step (fn2-transition-commit-principal-frame, -harvest-frame, fn2-transition-mailbox-keeps-commit). Owed: other kinds' visits and harvests and the grant service, whose callees include the constrained functions *fn2-commit-turn-frame-blockers*."))))
+
+;; ---------------------------------------------------------------------------
+;; THE NOTIFY ARM'S WRITES: the reply count it leaves, as a term of the
+;; pre-state. A table change outside a column and the rows field, with the
+;; directory kept, keeps that column's row read (and the row's readability).
+(make-event
+ (let* ((world (w state)) (tk (fn2-arm-frame-child-index 'fn2-commit-table world))
+        (tcols (strip-cars (fn2-machine-property 'fn2-commit :table world)))
+        (ri (len tcols)) (acks (position-eq 'cb-acks tcols)))
+   (value
+    `(progn
+       (defthm fn2-ctf-commit-reads-of-row-frame
+         (implies (and (fn2-arm-row-frame ,tk row cs ch a b) (not (member-equal ,tk ch))
+                       (not (member-equal ,ri cs)) (not (member-equal ,acks cs))
+                       (fn2-ctf-dir b a))
+                  (and (equal (equal (fn2-commit-snapshot-read-code id b) :ok) (equal (fn2-commit-snapshot-read-code id a) :ok))
+                       (equal (fn2-commit-row-cb-acks id b) (fn2-commit-row-cb-acks id a))))
+         :rule-classes nil
+         :hints (("Goal" :cases ((equal (fn2-machine-kind id a) *fn2-commit-kind*))
+                  :in-theory (e/d (fn2-commit-snapshot-read-code fn2-machine-phase-read-code fn2-commit-row-cb-acks
+                                   fn2-commit-table fn2-commit-rows fn2-commit-cb-acks fn2-commit-cb-acks$ai)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp nth update-nth fn2-arm-row-frame fn2-ctf-dir))
+                  :use ((:instance fn2-ctf-dir-readers)
+                        (:instance fn2-arm-row-frame-cols (table ,tk) (columns cs) (children ch))
+                        (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns cs) (a (nth ,tk a)) (b (nth ,tk b)))
+                        (:instance fn2-arm-cols-nth (k 0) (j ,acks) (columns cs) (a (nth ,tk a)) (b (nth ,tk b)))))))))))
+(defun fn2-ctf-acks-event (fn kind world)
+  (declare (xargs :mode :program))
+  (let* ((e (fn2-arm-frame-known fn kind world))
+         (tk (fn2-arm-frame-child-index 'fn2-commit-table world))
+         (tcols (strip-cars (fn2-machine-property 'fn2-commit :table world)))
+         (ri (len tcols)) (acks (position-eq 'cb-acks tcols))
+         (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world))
+         (rowp (and (member-eq (car e) '(:row :write)) (equal (fn2-arm-frame-entry-tk e world) tk)))
+         (s (fn2-arm-frame-entry-s e))
+         (j (and rowp (fn2-arm-frame-entry-j e)))
+         (row (if rowp '(fn2-machine-slot id fn2-core) 0)))
+    (if (or (not (member-eq (car e) '(:op :row :write))) (member tk s) (member ri j) (member acks j)
+            (and (not rowp) (fn2-arm-frame-entry-tk e world)))
+        (er hard 'fn2-ctf-acks-event "~x0's contract ~x1 may write the reply count." fn e)
+      `(defthm ,(fn2-columns-sym fn "-CTF-ACKS")
+         (and (equal (equal (fn2-commit-snapshot-read-code fn2-arm-id ,out) :ok)
+                     (equal (fn2-commit-snapshot-read-code fn2-arm-id fn2-core) :ok))
+              (equal (fn2-commit-row-cb-acks fn2-arm-id ,out) (fn2-commit-row-cb-acks fn2-arm-id fn2-core)))
+         :hints (("Goal" :in-theory (union-theories '(fn2-arm-row-frame-refl fn2-ctf-dir-refl (:type-prescription fn2-machine-slot-natp)) (theory 'fn2-arm-frame-base))
+                  :use ((:instance ,(fn2-arm-frame-lemma fn e "-ARM-ROW-FRAME" kind world)
+                                   (fn2-arm-tb ,tk) (fn2-arm-row ,row) (fn2-arm-cs ',j) (fn2-arm-ch ',s) (fn2-arm-c0 fn2-core))
+                        (:instance ,(fn2-ctf-dir-name fn) (fn2-ctf-c0 fn2-core))
+                        (:instance fn2-ctf-commit-reads-of-row-frame (id fn2-arm-id) (row ,row) (cs ',j) (ch ',s)
+                                   (a fn2-core) (b ,out)))))))))
+(defun fn2-ctf-acks-events (fns kind world)
+  (declare (xargs :mode :program))
+  (if (atom fns) nil
+    (cons (fn2-ctf-acks-event (car fns) kind world) (fn2-ctf-acks-events (cdr fns) kind world))))
+(make-event
+ (value (cons 'progn (fn2-ctf-acks-events '(fn2-core-stop fn2-machine-refuse-write fn2-commit-settle-member
+                                            fn2-commit-write+phase+cb-stage fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason)
+                                          'fn2-commit (w state)))))
+(defthm fn2-ctf-update-nth-nth-same
+  (implies (< (nfix i) (len l)) (equal (update-nth i (nth i l) l) l))
+  :hints (("Goal" :in-theory (enable update-nth nth))))
+(defthm fn2-ctf-update-commit-table-same
+  (implies (fn2-corep c) (equal (update-fn2-commit-table (fn2-commit-table c) c) c))
+  :hints (("Goal" :in-theory (enable update-fn2-commit-table fn2-commit-table fn2-arm-core-len))))
+(in-theory (disable fn2-ctf-update-nth-nth-same))
+(defthm fn2-ctf-write-cb-acks-value
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (or (equal (fn2-commit-row-cb-acks id (fn2-commit-write+cb-acks id v fn2-core)) (fn2-commit-row-cb-acks id fn2-core))
+               (equal (fn2-commit-row-cb-acks id (fn2-commit-write+cb-acks id v fn2-core)) v)))
+  :rule-classes nil
+  :hints (("Goal" :cases ((and (fn2-machine-idp id fn2-core) (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*)
+                               (natp (fn2-machine-slot id fn2-core))
+                               (< (fn2-machine-slot id fn2-core) (fn2-commit-rows (fn2-commit-table fn2-core)))
+                               (unsigned-byte-p 32 v)))
+           :use ((:instance fn2-commit-write+cb-acks-reads (fn2-arms-w-cb-acks v)))
+           :in-theory (e/d (fn2-commit-write+cb-acks fn2-machine-refuse-write-ctf-acks fn2-ctf-update-commit-table-same)
+                           (fn2-commit-write+cb-acks-reads fn2-machine-refuse-write)))))
+(defthm fn2-commit-run-notify-writes
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (let ((after (mv-nth 4 (fn2-commit-run-notify id budget fn2-core)))
+                 (acks (fn2-commit-row-cb-acks id fn2-core)))
+             (or (equal (fn2-commit-row-cb-acks id after) acks)
+                 (and (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)
+                      (equal (fn2-commit-partner-state (fn2-commit-row-batch-no id fn2-core) (fn2-commit-row-partner id fn2-core)
+                                                       fn2-core)
+                             :ok)
+                      (< acks (fn2-commit-row-member-count id fn2-core))
+                      (equal (fn2-commit-row-cb-acks id after) (+ 1 acks))))))
+  :hints (("Goal" :in-theory (enable fn2-commit-run-notify fn2-core-stop-ctf-acks fn2-commit-settle-member-ctf-acks
+                                     fn2-commit-write+phase+cb-stage-ctf-acks
+                                     fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-ctf-acks)
+           :do-not-induct t
+           :use ((:instance fn2-ctf-write-cb-acks-value
+                            (fn2-core (fn2-commit-settle-member id (fn2-commit-row-cb-acks id fn2-core) 1
+                                                                (fn2-commit-row-batch-no id fn2-core) fn2-core))
+                            (v (+ 1 (fn2-commit-row-cb-acks id fn2-core))))))))
+(make-event (value (cons 'progn (fn2-ctf-acks-events '(fn2-machine-contract-check fn2-machine-refuse-phase) 'fn2-commit (w state)))))
+(defthm fn2-commit-run-notify-phase-writes
+  ; the visit of a commit row at :notify, through the kind's run
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*))
+           (let ((after (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                 (acks (fn2-commit-row-cb-acks id fn2-core)))
+             (or (equal (fn2-commit-row-cb-acks id after) acks)
+                 (and (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)
+                      (equal (fn2-commit-partner-state (fn2-commit-row-batch-no id fn2-core) (fn2-commit-row-partner id fn2-core)
+                                                       fn2-core)
+                             :ok)
+                      (< acks (fn2-commit-row-member-count id fn2-core))
+                      (equal (fn2-commit-row-cb-acks id after) (+ 1 acks))))))
+  :hints (("Goal" :in-theory (e/d (fn2-commit-run fn2-machine-contract-check-ctf-acks fn2-machine-refuse-phase-ctf-acks)
+                                  (fn2-commit-run-notify))
+           :do-not-induct t
+           :use ((:instance fn2-commit-run-notify-writes)))))
