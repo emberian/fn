@@ -469,6 +469,33 @@
                                    (list (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))) nil))))
            :in-theory (disable fn2-env-inv fn2-env-inv-frame-step fn2-env-observe fn2-env-step))))
 
+;; :ADMIT, begun. The admission contract wanted: no commit row gains a reply
+;; it did not show before (fn2-env-no-new-acks-p of the rows after against
+;; the rows before); OBSERVED then carries over. Proved so far: the relation's
+;; algebra and the frames of the admission's sub-operations that touch no
+;; commit row.
+(defun fn2-env-no-new-acks-p (post pre)
+  (declare (xargs :verify-guards nil))
+  (if (atom post) t
+    (and (or (equal (car post) (car pre)) (not (posp (nth 2 (car post)))))
+         (fn2-env-no-new-acks-p (cdr post) (cdr pre)))))
+(defthm fn2-env-observed-no-new-acks
+  (implies (and (fn2-env-observed-p pre acked) (fn2-env-no-new-acks-p post pre))
+           (fn2-env-observed-p post acked)))
+(defthm fn2-env-no-new-acks-refl (fn2-env-no-new-acks-p x x))
+(defthm fn2-env-no-new-acks-trans
+  (implies (and (fn2-env-no-new-acks-p c b) (fn2-env-no-new-acks-p b a) (equal (len c) (len b)))
+           (fn2-env-no-new-acks-p c a)))
+(defthm fn2-env-rows-core-stop-frame
+  (equal (fn2-env-rows ids (fn2-core-stop reason fn2-core)) (fn2-env-rows ids fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-core-stop fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
+(defthm fn2-env-rows-commit-ready-frame
+  (equal (fn2-env-rows ids (fn2-commit-ready id fn2-core)) (fn2-env-rows ids fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-commit-ready fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
+(defthm fn2-env-rows-core-reserve-frame
+  (equal (fn2-env-rows ids (mv-nth 3 (fn2-core-reserve class kind id gen fn2-core))) (fn2-env-rows ids fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-core-reserve fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
+
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
