@@ -28,12 +28,14 @@
 ; its device sized as sealer-capacity-unit's) with Mini's two groups, two
 ; control connections (Mini's and origin's) and two consumer request rows.
 (defconst *m2-profile*
+  ;; T 4: fn2-txn's row, fn2-auth's and the two consumer rows' successors (fn2-txn-consumer-share)
+  (put-assoc-equal :t 4
   (put-assoc-equal :authority 1
   (put-assoc-equal :owner-account 2
   (put-assoc-equal :cns 2
     (put-assoc-equal :control-connections 3
       (put-assoc-equal :extent-slots 128
-        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))))
+        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*))))))))
 (defconst *m2-mini-conn* 0)
 (defconst *m2-origin-conn* 1)
 ; The administrator's connection (an owner connection never bound): it

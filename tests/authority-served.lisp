@@ -114,10 +114,12 @@
 ;; ---------------------------------------------------------------------------
 ;; fn2-authority-local-binding-positive
 (defconst *fn2-as-served-profile*
+ ;; T 4: fn2-txn's row, fn2-auth's and up to two consumer rows' successors (fn2-txn-consumer-share)
+ (put-assoc-equal :t 4
  (put-assoc-equal :authority 1
   (put-assoc-equal :owner-account 2
    (put-assoc-equal :control-connections 3
-    (put-assoc-equal :cns 1 *fn2-txn-posting-profile*)))))
+    (put-assoc-equal :cns 1 *fn2-txn-posting-profile*))))))
 (defun fn2-as-o (s) (declare (xargs :verify-guards nil)) (fn2-as-chars (coerce s 'list)))
 ;; a client's kind-29 frame: FNCT (consumer-codec.lisp fn2-fnct-seal) whose payload is the request
 (defun fn2-as-frame (verb values)

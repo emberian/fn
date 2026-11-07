@@ -30,13 +30,15 @@
 ; :recover/:release/:ready witnesses must compare cross-row wakeups through
 ; each scheduler; prequeueing their targets would conceal a broken handoff.
 (defconst *fn2-q1-teeth-profile*
+  ;; T 4: fn2-txn's row, fn2-auth's and the two consumer rows' successors (fn2-txn-consumer-share)
+  (put-assoc-equal :t 4
   (put-assoc-equal :image-boot t
   (put-assoc-equal :authority 1
   (put-assoc-equal :cns 2
    (put-assoc-equal :reading t (put-assoc-equal :x 2
    (put-assoc-equal :posting-interim t
      (put-assoc-equal :large-upload-windows 2
-       (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*)))))))))
+       (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))))))))))
 
 (assert-event (fn2-core-profilep *fn2-q1-teeth-profile*))
 (assert-event
