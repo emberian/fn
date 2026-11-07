@@ -40,7 +40,7 @@
     `(progn
        (defthm ,name
          (fn2-machines-directory-keeps ,(if (eq result :self) `(,fn ,@formals) `(car (,fn ,@formals))) fn2-machines)
-         :hints (("Goal" :in-theory (e/d (,@(and (eq result :car) (list fn)) fn2-machines-stop-write fn2-machines-directory-keeps) (nth)))))
+         :hints (("Goal" :in-theory (e/d (,@(and (eq result :car) (list fn 'fn2-machines-stop-write)) fn2-machines-directory-keeps) (nth)))))
        (in-theory (disable ,name))
        (table fn2-arm-frame-directory-keeps ',fn ',name))))
 ;; The directory-wide fields' updaters (every field but the kind and slot
