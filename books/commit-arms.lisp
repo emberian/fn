@@ -66,8 +66,12 @@
  :doc "Commit the batch's dependency extent to the batch in the allocator.")
 (defcost fn2-commit-root-swap :tables (fn2-core-commit-root fn2-core-control)
  :doc "Install (or publish) the batch's root in the commit directory once it is next; (mv ok core).")
-(defcost fn2-commit-stream-wake :answers t :tables ((:layers :b :c :d :e) fn2-core-machines fn2-core-sched)
+;; Its attachment (cns.lisp fn2-cns-core-stream-wake) records the woken members'
+;; edges in fn2-core-cns-edges: a declared child (the hook's frame is checked
+;; against these tables, commit.lisp fn2-commit-hook-attach-events).
+(defcost fn2-commit-stream-wake :answers t :tables ((:layers :b :c :d :e) fn2-core-machines fn2-core-sched fn2-core-cns-edges)
  :doc "Wake the stream members of a published batch (E's hook).")
+(assert-event (fn2-commit-hook-declared-p 'fn2-commit-stream-wake (w state)))
 (defcost fn2-commit-settle-member :tables (fn2-core-commit-settled fn2-core-commit-members fn2-core-machines fn2-core-sched fn2-core-control)
  :doc "Settle one member's outcome and wake its owner.")
 (defcost fn2-commit-unprepare :answers t :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-commit-root fn2-core-control)

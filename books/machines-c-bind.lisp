@@ -1061,10 +1061,16 @@
                            fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
      (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
    ; B5-4: publish and drop are B's constrained hooks; these are their attachments.
+   ; Each proves the hook's frame (commit.lisp *fn2-commit-hook-children*) by its
+   ; own contract at those children, which its defcost's :tables cover.
+   (make-event (value (cons 'progn (fn2-commit-hook-attach-events 'fn2-successor-publish 'fn2-succ-core-publish (w state)))))
+   (make-event (value (cons 'progn (fn2-commit-hook-attach-events 'fn2-successor-drop 'fn2-succ-core-drop (w state)))))
    (defattach (fn2-successor-publish fn2-succ-core-publish)
-    :hints (("Goal" :in-theory (enable fn2-succ-core-publish))))
+    :hints (("Goal" :in-theory (enable fn2-succ-core-publish)
+                    :use ((:instance fn2-succ-core-publish-arm-kids)))))
    (defattach (fn2-successor-drop fn2-succ-core-drop)
-    :hints (("Goal" :in-theory (enable fn2-succ-core-drop))))
+    :hints (("Goal" :in-theory (enable fn2-succ-core-drop)
+                    :use ((:instance fn2-succ-core-drop-arm-kids)))))
    (defattach (fn2-member-replay fn2-succ-core-replay)
     :hints (("Goal" :in-theory (enable fn2-succ-core-replay))))
    (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop fn2-succ-core-replay))
