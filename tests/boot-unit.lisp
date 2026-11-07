@@ -39,22 +39,28 @@
         ((mv quiet & store fn2-core) (fn2-cw-loop 100000 0 0 nil store fn2-core))
         (epoch (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (e)
                  (fn2-alloc-current-epoch fn2-extents) e)))
-    (mv (list pre quiet (fn2-boot-status fn2-core) epoch store (fn2-core-stop-reason fn2-core)) fn2-core))
+    (mv (list pre quiet (fn2-boot-status fn2-core) epoch store (fn2-core-stop-reason fn2-core) (fn2-bu-accept-count 32 0 fn2-core)) fn2-core))
    result)))
 
 (assert-event (eq (fn2-image-create-request 1 *fn2-node-profile*) :geometry))
 (assert-event (eq (fn2-image-create-request 33554432 *fn2-node-profile*) :ok))
-(defconst *fn2-bu-created* (fn2-bu-start t nil))
-(assert-event (equal (take 4 *fn2-bu-created*) '((:ok :held :booting 0) :quiet :ready 1)))
-(defconst *fn2-bu-opened* (fn2-bu-start nil (nth 4 *fn2-bu-created*)))
-(assert-event (equal (take 4 *fn2-bu-opened*) '((:ok :held :booting 0) :quiet :ready 2)))
-(defconst *fn2-bu-reopened* (fn2-bu-start nil (nth 4 *fn2-bu-opened*)))
-(assert-event (equal (take 4 *fn2-bu-reopened*) '((:ok :held :booting 0) :quiet :ready 3)))
-; An empty existing image and a corrupted epoch anchor never reach ready.
-(defconst *fn2-bu-empty* (fn2-bu-start nil nil))
-(assert-event (and (equal (nth 2 *fn2-bu-empty*) :failed)
-                   (equal (nth 3 (car *fn2-bu-empty*)) 0)))
-(defconst *fn2-bu-bad-anchor*
- (fn2-bu-start nil (cons (cons (- 33554432 8192) :corrupt) (nth 4 *fn2-bu-created*))))
-(assert-event (and (equal (nth 2 *fn2-bu-bad-anchor*) :failed)
-                   (equal (nth 3 (car *fn2-bu-bad-anchor*)) 0)))
+
+; Attachments are executable observations, not logical DEFCONST values.
+(assert-event
+ (let* ((created (fn2-bu-start t nil))
+        (opened (fn2-bu-start nil (nth 4 created)))
+        (reopened (fn2-bu-start nil (nth 4 opened)))
+        (empty (fn2-bu-start nil nil))
+        (bad-anchor (fn2-bu-start nil (cons (cons (- 33554432 8192) :corrupt) (nth 4 created)))))
+  (or (and (equal (take 4 created) '((:ok :held :booting 0) :quiet :ready 1))
+           (equal (take 4 opened) '((:ok :held :booting 0) :quiet :ready 2))
+           (equal (take 4 reopened) '((:ok :held :booting 0) :quiet :ready 3))
+           (posp (nth 6 created)) (posp (nth 6 opened)) (posp (nth 6 reopened))
+           (equal (nth 2 empty) :failed) (equal (nth 3 (car empty)) 0)
+           (equal (nth 2 bad-anchor) :failed) (equal (nth 3 (car bad-anchor)) 0))
+      (cw "boot-unit created/opened/reopened/empty/bad-anchor ~x0~%"
+          (list (append (take 4 created) (nthcdr 5 created))
+                (append (take 4 opened) (nthcdr 5 opened))
+                (append (take 4 reopened) (nthcdr 5 reopened))
+                (append (take 4 empty) (nthcdr 5 empty))
+                (append (take 4 bad-anchor) (nthcdr 5 bad-anchor)))))))
