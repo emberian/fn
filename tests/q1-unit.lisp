@@ -5,6 +5,7 @@
 ; edb0f5dd8/9860d85a5, re-pinned 2026-11-05 with the 23 added rows named in the commit;
 ; the upload's :store phases and observes and the cursor's :fetch (lane article-octets, 10 rows),
 ; served authority's fn2-auth (twelve phases, lane authority step 2's kind, 12 rows, 2026-11-06),
+; image boot (17 phases and 3 observes, lane disk-boot),
 ; control, DSL-METATHEORY 5.8), every label is bound, the composition row is
 ; the unchanged fn2-turn-refinement, and a declared role that does not occur in
 ; the generated statement is refused (E2's role-divergence control).
@@ -72,9 +73,10 @@
     (:run fn2-boot :recover) (:run fn2-boot :recover-wait) (:run fn2-boot :epoch)
     (:run fn2-boot :epoch-fence) (:run fn2-boot :epoch-result) (:run fn2-boot :release)
     (:run fn2-boot :ready) (:run fn2-boot :failed) (:observe fn2-boot :read-result)
-    (:observe fn2-boot :write-result) (:observe fn2-boot :fence-result) (:router :fallback)
-    (:executor :clock) (:executor :signal) (:executor :service 0) (:executor :service 1)
-    (:executor :service 2) (:executor :service 3) (:executor :empty-principal)))
+    (:observe fn2-boot :write-result) (:observe fn2-boot :fence-result)
+    (:router :fallback) (:executor :clock) (:executor :signal) (:executor :service 0)
+    (:executor :service 1) (:executor :service 2) (:executor :service 3)
+    (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
 (assert-event (equal (len *fn2-q1-pinned-catalogue*) 179))
 (assert-event
@@ -84,7 +86,7 @@
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 179 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth (151 machine, 1 router, 7 executor); 159 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 179 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth + 20 boot (171 machine, 1 router, 7 executor); 179 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.

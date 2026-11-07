@@ -23,14 +23,29 @@
 ; Authority is served (:authority 1, AUTHORITY-20261105 section 1) so the
 ; fn2-auth kind has its row: one read row and one row slot, the last read row
 ; (machines-b fn2-b-auth-rows); without it the kind's id is none and its
-; cases (:run fn2-auth :free ...) have no generation to label.
+; cases (:run fn2-auth :free ...) have no generation to label. The node boots
+; from an image (:image-boot t, fn2-image-profile) so the fn2-boot kind has its
+; one row and its cases a generation. Listener genesis is withheld until
+; boot releases it, matching the served image profile. In particular the
+; :recover/:release/:ready witnesses must compare cross-row wakeups through
+; each scheduler; prequeueing their targets would conceal a broken handoff.
 (defconst *fn2-q1-teeth-profile*
+  (put-assoc-equal :image-boot t
   (put-assoc-equal :authority 1
   (put-assoc-equal :cns 2
    (put-assoc-equal :reading t (put-assoc-equal :x 2
    (put-assoc-equal :posting-interim t
      (put-assoc-equal :large-upload-windows 2
-       (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*))))))))
+       (put-assoc-equal :pool-classes '((8 . 4096) (4 . 65536)) *fn2-profile-tiny*)))))))))
+
+(assert-event (fn2-core-profilep *fn2-q1-teeth-profile*))
+(assert-event
+ (not (equal (fn2-machine-global-id *fn2-boot-kind* 0 *fn2-q1-teeth-profile*) *fn2-none*)))
+; Removing image boot is the row-admission control: no generation may be
+; read at the absent kind's sentinel ID.
+(assert-event
+ (equal (fn2-machine-global-id *fn2-boot-kind* 0
+          (put-assoc-equal :image-boot nil *fn2-q1-teeth-profile*)) *fn2-none*))
 
 (defun fn2-q1-teeth-position (x xs)
   (declare (xargs :guard t))
@@ -196,3 +211,7 @@
   (declare (xargs :verify-guards nil))
   (if (zp n) nil (append (fn2-q1-teeth-names (- n 1)) (list (fn2-q1-id (- n 1))))))
 (make-event (value `(fn2-assert-owed-teeth ,@(fn2-q1-teeth-names (len *fn2-q1-catalogue*)))))
+
+(value-triple
+ (cw "Q1 TEETH: ~x0 labels; each positive and generation-perturbation control passed~%"
+     (len *fn2-q1-catalogue*)))
