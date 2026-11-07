@@ -417,6 +417,9 @@
          (room (if in0 (- cap0 src) (nfix (- (fn2-upload-chunk-cap c1 fn2-core) off)))))
       (mv (if in0 c0 c1) (if in0 g0 g1) off
           (min *fn2-commit-unit-bytes* (min room (nfix (- hashed src))))))))
+;; State preservation does not depend on the read-only span calculation.
+;; Keep its branches out of the recursive stage-loop preservation induction.
+(in-theory (disable fn2-upload-store-span))
 (defun fn2-upload-lease-class (total fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for (fn2-upload-page-bytes total) fn2-pool) class))
