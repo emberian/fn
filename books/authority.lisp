@@ -166,7 +166,7 @@
 ;; tail at HB + 24), then fn2-fnct-seal-pool's header (fields at HB + 40)
 ;; and BLAKE3 trailer in hasher ROW (the control connection's format row).
 ;; (mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool).
-(fn2-fnct-shape fn2-auth-encode-result-shape
+(fn2-pool-block-shape fn2-auth-encode-result-shape
   (fn2-auth-encode-result op p head grant grantor enabled previous found rb slot gen hend okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 2) (fn2-pool 3))
@@ -181,13 +181,13 @@
                      (unsigned-byte-p 8 op) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)))
         (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        (rb (+ hb 16))
-       (roff (fn2-fnct-fill slot fn2-pool))
+       (roff (fn2-pool-fill-value slot fn2-pool))
        ((unless (unsigned-byte-p 32 roff)) (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        (word (fn2-auth-word reason))
        ((mv wc fn2-pool) (fn2-auth-write-word word roff slot gen okind oslot ogen fn2-pool))
        ((unless (eq wc :ok)) (mv :size 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        (w (len word))
-       (k (fn2-fnct-fill slot fn2-pool))
+       (k (fn2-pool-fill-value slot fn2-pool))
        ((unless (unsigned-byte-p 32 (+ k *fn2-fnct-header-octets*))) (mv :bounds 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv hc fn2-pool) (fn2-fnct-put-be 0 0 *fn2-fnct-header-octets* slot gen okind oslot ogen fn2-pool))
        ((unless (eq hc :ok)) (mv :size 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
@@ -206,7 +206,7 @@
         (fn2-fnct-seal-pool (+ hb 40) row k *fn2-authority-reply-kind* slot gen okind oslot ogen
                             fn2-fields fn2-digests fn2-b3 fn2-pool)))
     (mv code k (nfix total) fn2-fields fn2-digests fn2-b3 fn2-pool)))
-(fn2-fnct-shape fn2-auth-seal-reply-pool-shape
+(fn2-pool-block-shape fn2-auth-seal-reply-pool-shape
   (fn2-auth-seal-reply-pool op outcome reason p head grant grantor enabled previous found hb row slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5) (fn2-pool 6))

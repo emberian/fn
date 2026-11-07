@@ -105,10 +105,44 @@
  (if (atom children) nil
   (cons `(equal (,(car children) (mv-nth 1 ,call)) (,(car children) fn2-core))
         (fn2-commit-hook-frame-claims (cdr children) call))))
-(defun fn2-commit-hook-form (name formals)
+;; A hook with declared children (its attachments' defcost :tables) also
+;; carries the arm frame: every other child unchanged (NAME-ARM-KIDS, a
+;; constraint each attachment proves), so the arms that call it prove their
+;; FRAMEs; its derived contracts follow (machines.lisp fn2-arm-frame-op-events).
+(defconst *fn2-commit-hook-children*
+ '((fn2-successor-publish fn2-core-succ-txns fn2-core-overlays fn2-core-id-engine)
+   (fn2-successor-drop fn2-core-succ-txns fn2-core-overlays fn2-core-pool)
+   (fn2-commit-stream-wake fn2-core-cns-edges)))
+(defun fn2-commit-hook-kids-claim (name formals world)
+ (declare (xargs :verify-guards nil))
+ `((defthm ,(fn2-columns-sym name "-ARM-KIDS")
+    (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core)
+                  (subsetp-equal ',(fn2-arm-frame-indices (cdr (assoc-eq name *fn2-commit-hook-children*)) world) fn2-arm-free))
+             (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 (mv-nth 1 (,name ,@formals)))))))
+(defun fn2-commit-hook-frame-events (name world)
+ (declare (xargs :verify-guards nil))
+ (append (and (not (fn2-arm-frame-known 'fn2-core-stop nil world)) (fn2-arm-frame-basis-events world))
+         (fn2-arm-frame-op-events name (fn2-arm-frame-indices (cdr (assoc-eq name *fn2-commit-hook-children*)) world) nil world)))
+;; A hook's frame children are within its defcost's :tables (where the defcost
+;; is in the world: commit-arms.lisp checks stream-wake's at its declaration).
+(defun fn2-commit-hook-declared-p (hook world)
+ (declare (xargs :verify-guards nil))
+ (or (not (fn2-decl-row (list :cost hook) world))
+     (subsetp-equal (fn2-arm-frame-indices (cdr (assoc-eq hook *fn2-commit-hook-children*)) world)
+                    (fn2-arm-frame-op-set hook nil world))))
+;; An attachment's events before its defattach: its contracts at the hook's
+;; children (the defattach proves the hook's KIDS by them), and the check
+;; that the hook's defcost declares those children.
+(defun fn2-commit-hook-attach-events (hook fn world)
+ (declare (xargs :verify-guards nil))
+ (let ((s (fn2-arm-frame-indices (cdr (assoc-eq hook *fn2-commit-hook-children*)) world)))
+  (append (fn2-arm-frame-op-events fn s nil world)
+          `((assert-event (fn2-commit-hook-declared-p ',hook (w state)))))))
+(defun fn2-commit-hook-form (name formals world)
  (declare (xargs :verify-guards nil))
  (let* ((call (cons name formals)) (args (remove1-eq 'fn2-core formals))
-        (default (fn2-columns-sym name "-UNREGISTERED")))
+        (default (fn2-columns-sym name "-UNREGISTERED"))
+        (children (cdr (assoc-eq name *fn2-commit-hook-children*))))
   `(progn
     (encapsulate
      (((,name ,@(subst '* 'x (make-list (len args) :initial-element 'x)) fn2-core) => (mv * fn2-core)
@@ -120,20 +154,22 @@
       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
        (and (fn2-corep (mv-nth 1 ,call)) (fn2-core-wfp (mv-nth 1 ,call))
             ,@(fn2-commit-hook-frame-claims *fn2-commit-hook-frame* call))))
-     (defthm ,(fn2-columns-sym name "-RESULT-CONSP") (consp ,call) :rule-classes :type-prescription))
+     (defthm ,(fn2-columns-sym name "-RESULT-CONSP") (consp ,call) :rule-classes :type-prescription)
+     ,@(and children (fn2-commit-hook-kids-claim name formals world)))
+    ,@(and children `((make-event (value (cons 'progn (fn2-commit-hook-frame-events ',name (w state)))))))
     (defun ,default ,formals
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore ,@args))
      (mv :unregistered fn2-core))
     (defattach ,name ,default))))
 (defmacro fn2-commit-hook-events ()
  `(progn
-   ,(fn2-commit-hook-form 'fn2-runs-install '(schema batch slot gen okind oslot ogen fn2-core))
-   ,(fn2-commit-hook-form 'fn2-successor-publish '(batch fn2-core))
-   ,(fn2-commit-hook-form 'fn2-successor-drop '(batch fn2-core))
+   (make-event (value (fn2-commit-hook-form 'fn2-runs-install '(schema batch slot gen okind oslot ogen fn2-core) (w state))))
+   (make-event (value (fn2-commit-hook-form 'fn2-successor-publish '(batch fn2-core) (w state))))
+   (make-event (value (fn2-commit-hook-form 'fn2-successor-drop '(batch fn2-core) (w state))))
    ; E's served consumer (K4b): wake the consumer waits whose streams the
    ; published batch touched; unattached, nothing parks on a stream.
-   ,(fn2-commit-hook-form 'fn2-commit-stream-wake '(batch fn2-core))
-   ,(fn2-commit-hook-form 'fn2-member-replay '(batch event slot gen len okind oslot ogen fn2-core))))
+   (make-event (value (fn2-commit-hook-form 'fn2-commit-stream-wake '(batch fn2-core) (w state))))
+   (make-event (value (fn2-commit-hook-form 'fn2-member-replay '(batch event slot gen len okind oslot ogen fn2-core) (w state))))))
 (defun fn2-commit-event-forms ()
  (list* 'progn (fn2-commit-local-theory) '(
 (make-event
@@ -202,8 +238,8 @@
   (if (equal (fn2-machine-cb-fence-live id fn2-core) 1)
       (fn2-commit-uncertain id *fn2-commit-reason-timeout* fn2-core) fn2-core)))
 (fn2-core-preserves fn2-commit-timeout (id fn2-core) :rows nil :prefix "")
-; This fixture's barrier deadline is 1024 monotonic clock ticks. Waiting rows
-; remain runnable, so a harvested clock observation is sufficient to expire it.
+; The arm-language barrier uses *fn2-commit-fence-timeout-us* (commit-arms).
+; Waiting rows remain runnable; a harvested clock observation can expire it.
 ; A's fn2-exec-now is defined after assembly (executor-access includes it), so
 ; continuations read the scalar control field directly (seam note to A).
 (defun fn2-commit-now (fn2-core)

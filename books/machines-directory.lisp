@@ -33,7 +33,12 @@
            (fn2-machines (update-fn2-machines-kind-basesi kind
                           (if (unsigned-byte-p 32 id) id *fn2-none*) fn2-machines)))
       (fn2-machines-init-bases kind profile fn2-machines))))
-(fn2-machines-preserves fn2-machines-init-bases (left profile fn2-machines) :prefix "" :wfp-type nil :raw-rows t)
+; The directory checks the width before storing an offset. Its shape proof
+; depends on that check, not on expanding every registered kind's capacity.
+(in-theory (disable fn2-machine-global-id))
+(fn2-machines-preserves fn2-machines-init-bases (left profile fn2-machines)
+ :prefix "" :wfp-type nil :raw-rows t)
+(in-theory (enable fn2-machine-global-id))
 
 (defun fn2-machines-init-rows (left profile fn2-machines)
   (declare (xargs :stobjs fn2-machines :measure (nfix left)

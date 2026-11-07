@@ -7,6 +7,8 @@
 ; Other layers' continuation event macros go HERE, before final dispatch.
 ; B5 recovery's arms (recovery-machine.lisp, in the arm language).
 (fn2-recovery-events-3)
+(include-book "boot")
+(fn2-boot-events)
 
 (table fn2-costs 'fn2-conn-run-greeting nil)
 (fn2-resolve :callbacks)

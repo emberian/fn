@@ -14,6 +14,12 @@
 (include-book "assembly-callbacks-r")
 (fn2-book-layer :b)
 
+; Clock observations are microseconds. The simulator's former 1024-tick
+; fixture deadline expired during ordinary fdatasync calls. This shared
+; native/simulator policy enters uncertainty after thirty seconds. Expiry
+; retains the loan until physical completion; late success is not acceptance.
+(defconst *fn2-commit-fence-timeout-us* 30000000)
+
 ; The arms' reads of the partner row: total over ids (a non-commit id reads as
 ; a free row with no batch and no fence; every arm reaches them only once the
 ; partner is known to be a commit row).
@@ -60,8 +66,12 @@
  :doc "Commit the batch's dependency extent to the batch in the allocator.")
 (defcost fn2-commit-root-swap :tables (fn2-core-commit-root fn2-core-control)
  :doc "Install (or publish) the batch's root in the commit directory once it is next; (mv ok core).")
-(defcost fn2-commit-stream-wake :answers t :tables ((:layers :b :c :d :e) fn2-core-machines fn2-core-sched)
+;; Its attachment (cns.lisp fn2-cns-core-stream-wake) records the woken members'
+;; edges in fn2-core-cns-edges: a declared child (the hook's frame is checked
+;; against these tables, commit.lisp fn2-commit-hook-attach-events).
+(defcost fn2-commit-stream-wake :answers t :tables ((:layers :b :c :d :e) fn2-core-machines fn2-core-sched fn2-core-cns-edges)
  :doc "Wake the stream members of a published batch (E's hook).")
+(assert-event (fn2-commit-hook-declared-p 'fn2-commit-stream-wake (w state)))
 (defcost fn2-commit-settle-member :tables (fn2-core-commit-settled fn2-core-commit-members fn2-core-machines fn2-core-sched fn2-core-control)
  :doc "Settle one member's outcome and wake its owner.")
 (defcost fn2-commit-unprepare :answers t :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-commit-root fn2-core-control)
@@ -260,11 +270,11 @@
            ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-predecessor* nil *fn2-commit-arm-mailbox*))
           ((or (equal row-cb-fence-live 1) (equal (fn2-commit-peer-fence-live row-partner) 1)) ,*fn2-commit-arm-mailbox-run*)
           ((not (and (natp budget) (< 0 budget))) (:yield))
-          ((not (and (natp now) (unsigned-byte-p 60 (+ now 1024))))
+          ((not (and (natp now) (unsigned-byte-p 60 (+ now *fn2-commit-fence-timeout-us*))))
            ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-timeout* nil *fn2-commit-arm-mailbox*))
           (t (:do (code opslot opgen) (fn2-issue-fence :principal 0)
               :accept ()
-              :case (((:ok) (:set (cb-fence-live 1) (deadline (+ now 1024)) (pending (+ 1 row-pending)))
+              :case (((:ok) (:set (cb-fence-live 1) (deadline (+ now *fn2-commit-fence-timeout-us*)) (pending (+ 1 row-pending)))
                             (:charge :steps *fn2-work-transition* :descriptors 1 :runnable t))
                      ((:exhausted) (:yield))
                      (:otherwise ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-issue* nil *fn2-commit-arm-mailbox*)))))))))

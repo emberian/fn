@@ -25,20 +25,22 @@ and stops itself after `--idle` minutes without a request (default 60).
 The warm-up sends the book's own top-level `include-book` forms (its certified
 closure, from the certificates in the remote tree; a dependency whose source no
 longer matches its certificate is included uncertified, and `status` names it),
-then `(deflabel bb2-repl-base)`.  `load` undoes the world back to that label
+then `(deflabel bb2-repl-base)`. Use `--source-deps` after changing generator
+inputs: stale certificates can replay obsolete MAKE-EVENT expansions despite
+uncertified warnings; this mode ignores dependency certificates without deleting them.  `load` undoes the world back to that label
 (`ubt!`), syncs, and sends every top-level form of the book (or the range) one at a
 time, continuing past refusals, and prints each refused form with its first error;
 a refusal whose error names an event refused earlier in the same load is marked
 "follow-on".  The whole output of the load is kept on bb2 and its path printed.
 
 After an edit to a book the session INCLUDES (a dependency, not the book it loads),
-stop and start it: the warm-up re-includes, and a dependency whose source no longer
-matches its certificate is loaded from source with its proofs skipped (measured: a
-changed books/machines.lisp under tests/machine-arms-unit.lisp, warm-up 3.5 s), so
-the edited generator runs at once; `load` then checks the book above it with proofs.
+restart with `--source-deps` so current generator inputs are expanded instead of
+replaying certificate expansions. Dependency proofs are skipped during this warm-up;
+`load` then checks the target book with proofs.
 
 A green here means ACL2 admitted the forms in a session over the remote tree's
-certificates (with `--skip-proofs`, only that they translate and expand).  It is
+certificates or unchecked dependency sources (with `--skip-proofs`, only that
+they translate and expand).  It is
 not a certificate: certify with tools/box_certify_bb2.sh.
 
 Never kill by pattern: `stop` asks the server; if it does not answer, the client
@@ -71,7 +73,7 @@ HOST = "bb2"
 ACL2 = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
 SYSTEM_BOOKS = "/tank/fn/acl2-8.7/books"
 SSH_OPTS = ["-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3",
-            "-o", "ControlMaster=auto", "-o", "ControlPath=~/.ssh/cm-bb2repl-%C",
+            "-o", "ControlMaster=auto", "-o", "ControlPath=" + os.environ.get("BB2_REPL_CONTROL_PATH", "~/.ssh/cm-bb2repl-%C"),
             "-o", "ControlPersist=15m"]
 RSYNC_EXCLUDES = [".git", "build", "*.fasl", "*.cert", "*.cert.out", "meta/.lake"]
 SENTINEL = ";;BB2-REPL-DONE"
@@ -203,14 +205,15 @@ def first_error(output: str, keep: int = 24) -> str:
 
 
 class Server:
-    def __init__(self, name: str, book: str, idle: float, limit: float):
+    def __init__(self, name: str, book: str, idle: float, limit: float, source_deps: bool = False):
         self.name, self.book, self.idle, self.limit = name, book, idle, limit
+        self.source_deps = source_deps
         self.dir = server_dir(name)
         self.tree = Path.cwd()
         self.dir.mkdir(parents=True, exist_ok=True)
         self.state: dict = {"name": name, "book": book, "pid": os.getpid(), "phase": "starting",
                             "started": time.time(), "includes": [], "uncertified": [],
-                            "loads": 0, "base": False}
+                            "loads": 0, "base": False, "source_deps": source_deps}
         (self.dir / "server.pid").write_text(f"{os.getpid()}\n")
         self.save()
         self.acl2 = Acl2(self.dir / "acl2.log")
@@ -225,13 +228,26 @@ class Server:
     def book_forms(self, book: str) -> list[str]:
         return pr.commands((self.tree / book).read_text(encoding="utf-8"))
 
+    def include_form(self, form: str) -> str:
+        # Stale certificates can replay old MAKE-EVENT expansions even when ACL2
+        # reports their dependency hashes as uncertified. This explicit mode
+        # expands the current dependency sources without deleting any artifacts.
+        if self.source_deps and pr.INCLUDE.match(form.strip()) and ':dir :system' not in form.lower():
+            return form.rstrip()[:-1] + ' :uncertified-okp :ignore-certs)'
+        return form
+
+    def source_book(self, book: str) -> None:
+        path = self.tree / book
+        self.acl2.send(f'(set-cbd "{path.parent}/")', 60)
+        self.acl2.send(f'(assign proof-repl-source-book "{path}")', 60)
+
     def warm(self) -> None:
         path = self.tree / self.book
         forms = self.book_forms(self.book)
         out, problem = self.acl2.send("(value-triple :bb2-repl-up)", 600)
         if problem:
             raise SystemExit(f"bb2-repl: ACL2 did not start: {problem}\n{out[-2000:]}")
-        self.acl2.send(f'(set-cbd "{path.parent}/")', 60)
+        self.source_book(self.book)
         self.acl2.send("(set-inhibit-output-lst '(proof-tree))", 60)
         self.state["phase"] = "including"
         self.save()
@@ -241,7 +257,7 @@ class Server:
             if not (text.lower().startswith("(in-package") or pr.INCLUDE.match(text)):
                 continue
             began = time.monotonic()
-            out, problem = self.acl2.send(text, 3600)
+            out, problem = self.acl2.send(self.include_form(text), 3600)
             row = {"form": " ".join(text.split())[:120], "seconds": round(time.monotonic() - began, 2)}
             if problem or pr.errored(out):
                 row["refused"] = problem or first_error(out)
@@ -342,13 +358,15 @@ class Server:
                 prelude.append("undone to " + BASE_LABEL)
             elif request.get("from"):
                 prelude.append(self.undo_from(forms[chosen.start]))
+            self.source_book(book)
             skip = request.get("skip_proofs", False)
             self.acl2.send(f"(set-ld-skip-proofsp {'t' if skip else 'nil'} state)", 60)
-            items = [(pr.form_label(i + 1, forms[i]), forms[i]) for i in chosen]
+            items = [(pr.form_label(i + 1, forms[i]), self.include_form(forms[i])) for i in chosen]
             result = self.send_items(items, None if skip else limit, timeout, True, "load")
             if skip:
                 self.acl2.send("(set-ld-skip-proofsp nil state)", 60)
             self.state["loads"] += 1
+            self.save()
             result["prelude"] = prelude
             result["book"] = book
             return result
@@ -432,7 +450,10 @@ def ask_local(name: str, request: dict) -> dict:
         phase = json.loads(state.read_text()).get("phase") if state.exists() else "never started"
         return {"error": f"no live session {name} ({phase})"}
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.connect(str(path))
+        try:
+            connection.connect(str(path))
+        except (ConnectionRefusedError, FileNotFoundError):
+            return {"error": f"no live session {name} (a stale socket: its server is gone; start it again)"}
         connection.sendall(json.dumps(request).encode())
         connection.shutdown(socket.SHUT_WR)
         return json.loads(read_all(connection) or b"{}")
@@ -456,8 +477,9 @@ def sync(lane: str, force: bool) -> str:
     began = time.monotonic()
     got = ssh(lane, f"mkdir -p build && mkdir {CERT_LOCK}", 60)
     if got.returncode != 0:
-        raise SystemExit(f"bb2-repl: a certify holds bb2:~/fn2-{lane}/{CERT_LOCK}; "
-                         "sync after it ends, or pass --no-sync")
+        raise SystemExit(f"bb2-repl: cannot acquire bb2:~/fn2-{lane}/{CERT_LOCK}: "
+                         + (got.stderr.strip() or got.stdout.strip()) +
+                         "; if a certify holds it, sync after it ends")
     try:
         command = ["rsync", "-rlpgoDz", "--checksum", "-e", "ssh " + " ".join(SSH_OPTS)]
         for pattern in RSYNC_EXCLUDES:
@@ -531,9 +553,11 @@ def print_state(state: dict) -> None:
     for row in state.get("includes", []):
         if "refused" in row:
             print(f"  REFUSED {row['form']}\n    " + row["refused"].replace("\n", "\n    "))
+    if state.get("source_deps"):
+        print("  dependency source mode: certificates ignored; dependency proofs not checked")
     for row in state.get("uncertified", []):
-        print(f"  uncertified (loaded from source, proofs skipped): {row['form']}: {row['notes']}")
-    if not state.get("base", True):
+        print(f"  uncertified (cached expansions may remain; use --source-deps): {row['form']}: {row['notes']}")
+    if state.get("phase") == "ready" and not state.get("base", True):
         print(f"  warning: (deflabel {BASE_LABEL}) refused: `load` cannot undo")
 
 
@@ -574,11 +598,17 @@ def cmd_start(args) -> int:
         print(sync(lane, args.sync))
     state = remote_state(lane, name)
     if state and not state["phase"].startswith(("dead", "stopped")):
-        got = ask(lane, name, {"op": "status"}, 60)
-        if "state" in got:
-            print(f"bb2-repl: session {name} is already live; `stop {name}` first")
-            print_state(got["state"])
-            return 1
+        if server_alive(lane, name):
+            got = ask(lane, name, {"op": "status"}, 60)
+            if "state" in got:
+                print(f"bb2-repl: session {name} is already live; `stop {name}` first")
+                print_state(got["state"])
+                return 1
+        else:
+            # A killed server leaves its socket, PID file and a live-looking
+            # state behind; they are this session's own files.
+            print(f"bb2-repl: session {name}: no live server (was {state['phase']}); clearing its stale files")
+            ssh(lane, f"rm -f {remote_dir(lane, name)}/sock {remote_dir(lane, name)}/server.pid", 60)
     record(name, lane)
     ship_tools()
     mem = args.mem
@@ -586,7 +616,7 @@ def cmd_start(args) -> int:
     launch = (f"test -f {shlex.quote(book)} && mkdir -p {directory} && rm -f {directory}/state.json "
               f"|| exit 1; SWARM_BUILD_TAG=bb2repl-{lane}-{name} SWARM_MEM_MAX={mem} nohup setsid swarm-build "
               f"python3 ~/{REMOTE_HOME}/tools/bb2_repl serve {shlex.quote(name)} {shlex.quote(book)} "
-              f"--idle {args.idle} --limit {args.limit} > {directory}/server.log 2>&1 < /dev/null &")
+              f"--idle {args.idle} --limit {args.limit} {'--source-deps' if args.source_deps else ''} > {directory}/server.log 2>&1 < /dev/null &")
     got = ssh(lane, launch, 60)
     if got.returncode != 0:
         raise SystemExit("bb2-repl: launch failed: " + got.stderr[-800:])
@@ -656,6 +686,14 @@ def cmd_list(args) -> int:
     return 0
 
 
+def server_alive(lane: str, name: str) -> bool:
+    # the PID in the session's own file is a live `bb2_repl serve NAME`
+    directory = remote_dir(lane, name)
+    check = (f"p=$(cat {directory}/server.pid 2>/dev/null) && [ -n \"$p\" ] && "
+             f"tr '\\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -q 'bb2_repl serve {name} ' && echo alive")
+    return ssh(lane, check, 60).stdout.strip() == "alive"
+
+
 def cmd_stop(args) -> int:
     lane = lane_of(args)
     with contextlib.suppress(SystemExit):
@@ -682,10 +720,11 @@ def main(argv=None) -> int:
     p.add_argument("--lane")
     p.add_argument("--mem", default=os.environ.get("SWARM_MEM_MAX", "12G"))
     p.add_argument("--idle", type=float, default=60, help="minutes; 0 = never")
-    p.add_argument("--limit", type=float, default=120, help="prover seconds per event")
+    p.add_argument("--limit", type=float, default=120, help="prover seconds per submitted form (including its generated events)")
     p.add_argument("--wait", type=float, default=900)
     p.add_argument("--no-sync", action="store_true")
     p.add_argument("--sync", action="store_true", help="sync even into another lane's tree")
+    p.add_argument("--source-deps", action="store_true", help="ignore dependency certificates and regenerate MAKE-EVENT expansions from source")
     p.set_defaults(func=cmd_start)
     p = sub.add_parser("send")
     p.add_argument("name")
@@ -725,7 +764,8 @@ def main(argv=None) -> int:
     p.add_argument("book")
     p.add_argument("--idle", type=float, default=60)
     p.add_argument("--limit", type=float, default=120)
-    p.set_defaults(func=lambda a: Server(a.name, a.book, a.idle, a.limit).serve() or 0)
+    p.add_argument("--source-deps", action="store_true")
+    p.set_defaults(func=lambda a: Server(a.name, a.book, a.idle, a.limit, a.source_deps).serve() or 0)
     p = sub.add_parser("ask")
     p.add_argument("name")
     p.set_defaults(func=lambda a: print(json.dumps(ask_local(a.name, json.loads(sys.stdin.read()))))

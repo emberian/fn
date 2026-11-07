@@ -184,6 +184,8 @@
   '(or (car (global-val 'include-book-path (w state)))
        (and (@ certify-book-info)
             (access certify-book-info (@ certify-book-info) :full-book-name))
+       (and (boundp-global 'proof-repl-source-book state)
+            (f-get-global 'proof-repl-source-book state))
        (cbd)))
 (defmacro fn2-book-layer (layer)
   `(make-event

@@ -1,11 +1,12 @@
 ;;; A5r: the native event loop over the served core (layer doc 4.1.3).
 ;;; Raw SBCL, loaded by a session script after the certified books
 ;;; (books/host-boundary.lisp, which gives the scalar entry points) and
-;;; host/ffi.lisp. One thread. The loop implements physical scheduling
+;;; host/ffi.lisp. One executor and a bounded file-device worker. The loop implements physical scheduling
 ;;; and reports observations through the core's own posting entries; every
 ;;; cell's words come from the logical normalizer fn2-host-result. A byte
 ;;; enters the core only when fn2-turn harvests its result.
 (in-package "ACL2")
+(load "host/device.lisp")
 
 ;; Op record states.
 (defconstant +fn2-n-free+ 0)
@@ -17,7 +18,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
-  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0))
+  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
 ;; Unix-domain socket beside it when the profile names :listener-path: one
@@ -28,10 +29,10 @@
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
-  ;; the storage device Read, Write and Fence act on: the process's memory,
-  ;; by unit (offset / 4096 -> its octets). No durability across processes is
-  ;; claimed for it; E's device backend replaces it.
+  ;; Memory device for existing seeded sessions. An image session uses
+  ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
   (device (make-hash-table))
+  storage (storage-pending 0)
   ;; the Unix-domain listener socket (-1: none), its path, and which of the
   ;; two sockets an Accept tries first when both are ready (alternating)
   (local-fd -1 :type fixnum) (local-path nil) (local-first nil)
@@ -39,6 +40,7 @@
   (harvest-limit 1) (action-limit 1)
   ;; test instruments: the boundary trace (ENVELOPE), death cuts, the session
   trace (trace-count 0 :type fixnum) (boundaries 0 :type fixnum) (kill-at 0 :type fixnum)
+  (boundary-lock (sb-thread:make-mutex :name "fn2 death boundary"))
   (control-fd -1 :type fixnum) control-window (control-text "")
   sync (stop nil) (signal 0) (iterations 0) (accepts 0)
   ;; port -> the incarnation (index . nonce) an "open PORT" bound it to: client
@@ -67,11 +69,12 @@
 
 (defun fn2-n-boundary (host label)
   "Death cuts at every take, ack, syscall and post: FN2_KILL_AT=N exits at the Nth."
-  (incf (fn2-nhost-boundaries host))
-  (when (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))
-    (format t "FN2 KILL boundary=~d label=~a~%" (fn2-nhost-boundaries host) label)
-    (finish-output)
-    (sb-ext:exit :code 86 :abort t)))
+  (sb-thread:with-mutex ((fn2-nhost-boundary-lock host))
+    (incf (fn2-nhost-boundaries host))
+    (when (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))
+      (format t "FN2 KILL boundary=~d label=~a~%" (fn2-nhost-boundaries host) label)
+      (finish-output)
+      (sb-ext:exit :code 86 :abort t))))
 
 (defun fn2-n-octets (host address count)
   "The octets a syscall moved, copied out of the pool for the trace only."
@@ -175,13 +178,50 @@
   (setf (aref (fn2-n-device-unit host (floor offset 4096)) (mod offset 4096)) byte))
 (defun fn2-n-device-put (host store)
   "STORE's writes ((OFFSET . OCTETS) ...) on the device (the seeded store's sources)."
-  (dolist (w store)
+  (dolist (w (reverse store))
     (loop for b in (cdr w) for i from (car w) do (fn2-n-device-set host i b))))
+
+(defun fn2-n-storage-kind (kind)
+  (cond ((= kind *fn2-action-read*) :read)
+        ((= kind *fn2-action-write*) :write)
+        ((= kind *fn2-action-fence*) :fence)))
+
+(defun fn2-n-storage-submit (host slot)
+  (let ((op (aref (fn2-nhost-ops host) slot)))
+    (unless (eq (fn2-device-request (fn2-n-storage-kind (fn2-nop-kind op)) (fn2-nop-fua op)
+                                    (fn2-device-backend (fn2-nhost-storage host))) :perform)
+      (fn2-n-complete host slot :unsupported 0)
+      (return-from fn2-n-storage-submit nil))
+    (fn2-n-boundary host "device-submit")
+    (fn2-device-submit
+     (fn2-nhost-storage host)
+     (make-fn2-device-job :slot slot :gen (fn2-nop-gen op)
+       :kind (fn2-n-storage-kind (fn2-nop-kind op)) :bytes (fn2-nhost-bytes host)
+       :address (fn2-nop-address op) :length (fn2-nop-len op) :offset (fn2-nop-offset op)))
+    (incf (fn2-nhost-storage-pending host))))
+
+(defun fn2-n-storage-completions (host)
+  (when (fn2-nhost-storage host)
+    (dotimes (i (fn2-nhost-harvest-limit host))
+      (declare (ignore i))
+      (let ((job (fn2-device-take-completion (fn2-nhost-storage host))))
+        (unless job (return))
+        (let ((op (aref (fn2-nhost-ops host) (fn2-device-job-slot job))))
+          (assert (= (fn2-nop-gen op) (fn2-device-job-gen job)))
+          (fn2-n-boundary host "device-return")
+          (multiple-value-bind (code count)
+              (fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))
+            (fn2-n-complete host (fn2-device-job-slot job) code count 0 nil
+              (and (eq (fn2-device-job-kind job) :read)
+                   (fn2-n-octets host (fn2-device-job-address job) count))))
+          (decf (fn2-nhost-storage-pending host)))))))
 
 ;;; Ops started at take: Close, Cancel, Read, Write, Fence, and the kinds with no facility.
 (defun fn2-n-start-now (host slot)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)))
     (cond
+      ((and (fn2-nhost-storage host) (fn2-n-storage-kind kind))
+       (fn2-n-storage-submit host slot))
       ((= kind *fn2-action-close*)
        (let ((cap (fn2-n-cap host op)))
          (fn2-n-boundary host "syscall")
@@ -200,7 +240,11 @@
       ((= kind *fn2-action-cancel*)
        (let* ((target (fn2-nop-target op)) (ops (fn2-nhost-ops host))
               (other (and (< target (length ops)) (/= target slot) (aref ops target))))
-         (if (and other (eql (fn2-nop-gen other) (fn2-nop-target-gen op))
+         (if (and other
+                  ;; A submitted blocking storage call cannot be cancelled.
+                  ;; Its real result retains the loan; Cancel reports too late.
+                  (not (and (fn2-nhost-storage host) (fn2-n-storage-kind (fn2-nop-kind other))))
+                  (eql (fn2-nop-gen other) (fn2-nop-target-gen op))
                   (or (= (fn2-nop-state other) +fn2-n-waiting+) (= (fn2-nop-state other) +fn2-n-closed-waiting+)))
              (progn (fn2-n-complete host target :cancelled 0)
                     (fn2-n-complete host slot :ok 0 0 t))
@@ -246,7 +290,7 @@
               (unless (eq span :ok) (error "fn2 native: descriptor ~d has no valid span (~s)" slot span))
               (setf op (make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce
                                      :address address :len span-len :target cslot :target-gen cgen
-                                     :offset storage-offset))
+                                     :offset storage-offset :fua fua))
               (setf (aref (fn2-nhost-ops host) slot) op))
             (fn2-n-record host (list :take slot gen kind cap nonce rslot rgen off len storage-offset fua
                                      may-release cslot cgen deadline observation-gen))
@@ -383,6 +427,7 @@ otherwise the bound one. Values: (index . cap) or nil."
 (defun fn2-n-quiet-check (host status ready)
   (let ((sync (fn2-nhost-sync host)) (core (fn2-nhost-core host)))
     (when (and sync (eq status :idle) (not ready) (zerop (fn2-nhost-pending host))
+               (zerop (fn2-nhost-storage-pending host))
                (zerop (fn2-host-outbox-queued core)))
       (destructuring-bind (port sent eof openp) sync
         (let ((found (fn2-n-cap-by-port host port openp)))
@@ -404,6 +449,7 @@ otherwise the bound one. Values: (index . cap) or nil."
     (let ((mono (fn2-native-clock t)) (real (fn2-native-clock nil)))
       (fn2-host-post-clock mono real 1 core)
       (fn2-n-record host (list :clock mono real 1)))
+    (fn2-n-storage-completions host)
     (fn2-n-post-completions host)
     (when (or (plusp *fn2-n-signal*) (fn2-nhost-stop host))
       (unless (plusp (fn2-nhost-signal host))
@@ -440,11 +486,16 @@ otherwise the bound one. Values: (index . cap) or nil."
   (or (cdr (assoc 'fn2-core (user-stobj-alist *the-live-state*)))
       (error "fn2 native: the certified core stobj is absent")))
 
-(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0) (seeds nil))
+(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0) (seeds nil)
+                                  device-path create-size)
   "Initialize the live core with PROFILE, bind its configured listener (:listener-address,
 :listener-port; default 127.0.0.1 and an ephemeral port; and :listener-path, the owner-only
 Unix socket, when named), and return the host. SEEDS, when given, are published into the
 store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session seeds it)."
+  (when (and device-path seeds) (error "fn2 native: image startup cannot use a seeded memory store"))
+  (when device-path (setf profile (fn2-image-profile profile)))
+  (when (and create-size (not (eq (fn2-image-create-request create-size profile) :ok)))
+    (error "fn2 image create: geometry"))
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
   (let* ((core (fn2-n-live-core))
@@ -470,7 +521,20 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
                    :control-window (fn2-native-window 4096))))
         (assert (typep (fn2-nhost-bytes host) '(simple-array (unsigned-byte 8) (*))))
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
-        (fn2-n-device-put host *fn2-n-seed-store*)
+        (handler-case
+          (progn
+        (unless device-path (fn2-n-device-put host *fn2-n-seed-store*))
+        (when device-path
+          (multiple-value-bind (fd size backend) (fn2-device-open device-path :create-size create-size)
+            (multiple-value-bind (code cap observed-size observed-backend)
+                (fn2-device-open-observation fd size backend)
+              (unless (eq code :ok)
+                (fn2-native-close fd)
+                (error "fn2 native: invalid device observation"))
+              (setf (fn2-nhost-storage host)
+                    (fn2-device-start cap observed-size observed-backend n
+                      (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
+                      (lambda (label) (fn2-n-boundary host label)))))))
         (when path
           (setf (fn2-nhost-local-fd host) (fn2-native-listen-local path)
                 (fn2-nhost-local-path host) path))
@@ -478,7 +542,18 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
         (setf *fn2-n-signal* 0 *fn2-n-signal-mux* (fn2-nhost-mux host))
         (sb-sys:enable-interrupt sb-unix:sigterm #'fn2-n-signal-handler)
         (sb-sys:enable-interrupt sb-unix:sigint #'fn2-n-signal-handler)
-        host)))))
+        (when device-path
+                (multiple-value-bind (code c)
+                    (fn2-boot-start (not (null create-size)) (fn2-device-size (fn2-nhost-storage host)) core)
+                  (declare (ignore c))
+                  (unless (eq code :ok) (error "fn2 image boot: ~s" code)))
+                (loop for status = (fn2-boot-status core)
+                      until (eq status :ready)
+                      do (when (eq status :failed)
+                           (error "fn2 image boot stopped: ~d" (fn2-host-stop-reason core)))
+                         (fn2-n-iteration host)))
+        host)
+          (error (condition) (fn2-n-destroy host) (error condition))))))))
 
 (defun fn2-n-run (host)
   "Iterate until the core stops (a signal or a stop control posts the sticky signal)."
@@ -488,6 +563,7 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
 (defun fn2-n-destroy (host)
   ;; No completion claims at teardown; socket operations die with the descriptors.
   (setf *fn2-n-signal-mux* nil)
+  (when (fn2-nhost-storage host) (fn2-device-stop (fn2-nhost-storage host)))
   (loop for cap across (fn2-nhost-caps host) when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
   (when (>= (fn2-nhost-local-fd host) 0)
     (fn2-native-close (fn2-nhost-local-fd host))
