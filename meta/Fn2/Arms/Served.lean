@@ -31,8 +31,8 @@ theorem cursor_derived_costs :
     cursorK.childForm = true ∧
     cursorK.arms.map (fun a => (a.tag, Cost.derivedCost world cursorK a)) =
       [(":FREE", some (0, 1, 0)), (":SELECT", some (512, 24, 0)), (":SEEK", some (4096, 24, 0)),
-       (":RENDER", some (6144, 24, 0)), (":SEND", some (0, 24, 0)), (":FINISH", some (0, 24, 0)),
-       (":DRAINING", some (0, 20, 0)), (":RETIRED", some (0, 1, 0))] := by
+       (":RENDER", some (8192, 24, 1)), (":SEND", some (0, 24, 0)), (":FETCH", some (8192, 24, 0)),
+       (":FINISH", some (0, 24, 0)), (":DRAINING", some (0, 20, 0)), (":RETIRED", some (0, 1, 0))] := by
   decide +kernel
 
 /-- **Every `FN2-CURSOR` arm's charge is bounded on every run** by its derived bound. -/
@@ -46,10 +46,10 @@ theorem cursor_arm_charge (a : Arm) (ha : a ∈ cursorK.arms) :
   obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp this
   exact ⟨C, hC, fun args fuel v hrun => Cost.runArm_charge_le_cost world cursorK a args fuel v C hC hrun⟩
 
-/-- The `:RENDER` arm, for instance: at most 6144 bytes, 24 steps and no descriptor per turn. -/
+/-- The `:RENDER` arm, for instance: at most 8192 bytes, 24 steps and one descriptor per turn. -/
 theorem cursor_render_charge (args : List Val) (fuel : Nat) (v : Val)
     (hrun : runArm world cursorK (cursorK.arms.getD 3 default) false args fuel = .ok v) :
-    Cost.CostLe (Cost.extractCharge v) (6144, 24, 0) :=
+    Cost.CostLe (Cost.extractCharge v) (8192, 24, 1) :=
   Cost.runArm_charge_le_cost world cursorK _ args fuel v _ (by decide +kernel) hrun
 
 /-- **Every `FN2-CURSOR` arm, handler and sub-arm keeps its frame on every run**: the children
@@ -91,10 +91,10 @@ theorem conn_core_form_refused (a : Arm) (observe : Bool) (args : List Val) (fue
 /-- The charge bounds derived from `FN2-CNS`'s declarations (not yet linked to a run: core form). -/
 theorem cns_derived_costs :
     cnsK.arms.map (fun a => (a.tag, Cost.derivedCost world cnsK a)) =
-      [(":FREE", some (0, 1, 0)), (":DECODE", some (4096, 24, 0)), (":CHECK", some (512, 24, 0)),
-       (":LOOKUP", some (4096, 24, 0)), (":READ", some (4096, 24, 0)), (":PAGE", some (4096, 24, 0)),
-       (":PARK", some (512, 24, 0)), (":COMMIT", some (512, 24, 0)), (":DRAINING", some (0, 20, 0)),
-       (":RETIRED", some (0, 1, 0))] := by
+      [(":FREE", some (0, 1, 0)), (":DECODE", some (4096, 24, 0)), (":CHECK", some (4096, 24, 0)),
+       (":LOOKUP", some (4096, 24, 0)), (":READ", some (4096, 24, 0)), (":PAGE", some (4096, 24, 1)),
+       (":FETCH", some (4096, 24, 0)), (":PARK", some (512, 24, 0)), (":COMMIT", some (512, 24, 0)),
+       (":APPEND", some (2048, 24, 0)), (":DRAINING", some (0, 24, 0)), (":RETIRED", some (0, 1, 0))] := by
   decide +kernel
 
 /-- `FN2-CONN`'s declarations admit no derived charge bound for any arm (see the module doc). -/

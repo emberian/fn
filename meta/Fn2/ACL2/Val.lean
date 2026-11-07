@@ -325,7 +325,7 @@ key is its UTF-8 bytes read as a base-256 numeral (injective on names without a 
 lookup is a dozen `Nat` comparisons, and each translated function's dispatch equation
 (`fns "F" [a0 ...] = some («F» a0 ...)`) holds by `rfl` (PW3, LEAN-METATHEORY §9.3). -/
 
-def nameKey (s : String) : Nat := s.toByteArray.data.foldl (fun n b => n * 256 + b.toNat) 0
+def nameKey (s : String) : Nat := s.toByteArray.data.toList.foldl (fun n b => n * 256 + b.toNat) 0
 
 inductive Dispatch where
   | leaf

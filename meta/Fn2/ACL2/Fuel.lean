@@ -219,15 +219,15 @@ theorem pool_compare_loop_fuel (fuel k : Nat) (a b i n p : Val)
         by_cases hi0 : 0 ≤ iv <;> simp [hi0]
     | _ => simp
 
-theorem rd_key_least_fuel (fuel k : Nat) (j nk sid b0 wslot wgen fields : Val)
+theorem range_key_least_fuel (fuel k : Nat) (j nk sid qb wslot wgen fields : Val)
     (hf : (nk.nfix - j.nfix) < fuel) :
-    «FN2-RD-KEY-LEAST».go (fuel + k) j nk sid b0 wslot wgen fields =
-    «FN2-RD-KEY-LEAST».go fuel j nk sid b0 wslot wgen fields := by
-  induction fuel generalizing j nk sid b0 wslot wgen fields with
+    «FN2-RANGE-KEY-LEAST».go (fuel + k) j nk sid qb wslot wgen fields =
+    «FN2-RANGE-KEY-LEAST».go fuel j nk sid qb wslot wgen fields := by
+  induction fuel generalizing j nk sid qb wslot wgen fields with
   | zero => omega
   | succ m ih =>
     rw [show m + 1 + k = (m + k) + 1 by omega]
-    simp only [«FN2-RD-KEY-LEAST».go]
+    simp only [«FN2-RANGE-KEY-LEAST».go]
     cases j with
     | int jv =>
       cases nk with
@@ -295,11 +295,11 @@ theorem range_add_overlays_fuel (fuel k : Nat) (n i g sid ranges sources overlay
         omega
       rw [ih _ _ _ _ _ _ _ hlt, ih _ _ _ _ _ _ _ hlt]
 
-theorem range_add_runs_fuel (fuel k : Nat) (n i g sid ranges sources inst : Val)
+theorem range_add_runs_fuel (fuel k : Nat) (n i g sid rlo ranges sources inst : Val)
     (hf : n.nfix < fuel) :
-    «FN2-RANGE-ADD-RUNS».go (fuel + k) n i g sid ranges sources inst =
-    «FN2-RANGE-ADD-RUNS».go fuel n i g sid ranges sources inst := by
-  induction fuel generalizing n i g sid ranges sources inst with
+    «FN2-RANGE-ADD-RUNS».go (fuel + k) n i g sid rlo ranges sources inst =
+    «FN2-RANGE-ADD-RUNS».go fuel n i g sid rlo ranges sources inst := by
+  induction fuel generalizing n i g sid rlo ranges sources inst with
   | zero => omega
   | succ m ih =>
     rw [show m + 1 + k = (m + k) + 1 by omega]
@@ -310,7 +310,7 @@ theorem range_add_runs_fuel (fuel k : Nat) (n i g sid ranges sources inst : Val)
       have hlt : (Prim.plus (Val.int (-1)) n).nfix < m := by
         have := nfix_pred_lt hc
         omega
-      rw [ih _ _ _ _ _ _ _ hlt, ih _ _ _ _ _ _ _ hlt]
+      rw [ih _ _ _ _ _ _ _ _ hlt, ih _ _ _ _ _ _ _ _ hlt]
 
 theorem succ_newest_run_fuel (fuel k : Nat) (cnt r sid bound best inst : Val)
     (hf : cnt.nfix < fuel) :
@@ -443,9 +443,9 @@ theorem cursor_pool_scan_adequate :
     (∀ k a b i n p,
       «FN2-POOL-COMPARE-LOOP».go ((n.nfix - i.nfix) + 1 + k) a b i n p =
         «FN2-POOL-COMPARE-LOOP» a b i n p) ∧
-    (∀ k j nk sid b0 wslot wgen fields,
-      «FN2-RD-KEY-LEAST».go ((nk.nfix - j.nfix) + 1 + k) j nk sid b0 wslot wgen fields =
-        «FN2-RD-KEY-LEAST» j nk sid b0 wslot wgen fields) ∧
+    (∀ k j nk sid qb wslot wgen fields,
+      «FN2-RANGE-KEY-LEAST».go ((nk.nfix - j.nfix) + 1 + k) j nk sid qb wslot wgen fields =
+        «FN2-RANGE-KEY-LEAST» j nk sid qb wslot wgen fields) ∧
     (∀ k sid lv m off slot gen rb ok os og fields pool,
       «FN2-RUN-SKIP».go (m.nfix + 1 + k) sid lv m off slot gen rb ok os og fields pool =
         «FN2-RUN-SKIP» sid lv m off slot gen rb ok os og fields pool) ∧
@@ -455,9 +455,9 @@ theorem cursor_pool_scan_adequate :
     (∀ k n i g sid ranges sources overlays,
       «FN2-RANGE-ADD-OVERLAYS».go (n.nfix + 1 + k) n i g sid ranges sources overlays =
         «FN2-RANGE-ADD-OVERLAYS» n i g sid ranges sources overlays) ∧
-    (∀ k n i g sid ranges sources inst,
-      «FN2-RANGE-ADD-RUNS».go (n.nfix + 1 + k) n i g sid ranges sources inst =
-        «FN2-RANGE-ADD-RUNS» n i g sid ranges sources inst) ∧
+    (∀ k n i g sid rlo ranges sources inst,
+      «FN2-RANGE-ADD-RUNS».go (n.nfix + 1 + k) n i g sid rlo ranges sources inst =
+        «FN2-RANGE-ADD-RUNS» n i g sid rlo ranges sources inst) ∧
     (∀ k cnt r sid bound best inst,
       «FN2-SUCC-NEWEST-RUN».go (cnt.nfix + 1 + k) cnt r sid bound best inst =
         «FN2-SUCC-NEWEST-RUN» cnt r sid bound best inst) ∧
@@ -486,9 +486,9 @@ theorem cursor_pool_scan_adequate :
   · intro k a b i n p
     rw [pool_compare_loop_fuel _ _ _ _ _ _ _ (by omega)]
     simp only [«FN2-POOL-COMPARE-LOOP», nfix_diff_eq]
-  · intro k j nk sid b0 wslot wgen fields
-    rw [rd_key_least_fuel _ _ _ _ _ _ _ _ _ (by omega)]
-    simp only [«FN2-RD-KEY-LEAST», nfix_diff_eq]
+  · intro k j nk sid qb wslot wgen fields
+    rw [range_key_least_fuel _ _ _ _ _ _ _ _ _ (by omega)]
+    simp only [«FN2-RANGE-KEY-LEAST», nfix_diff_eq]
   · intro k sid lv m off slot gen rb ok os og fields pool
     rw [run_skip_fuel _ _ _ _ _ _ _ _ _ _ _ _ _ _ (by omega)]
     simp only [«FN2-RUN-SKIP», nfix_nfix]
@@ -498,8 +498,8 @@ theorem cursor_pool_scan_adequate :
   · intro k n i g sid ranges sources overlays
     rw [range_add_overlays_fuel _ _ _ _ _ _ _ _ _ (by omega)]
     simp only [«FN2-RANGE-ADD-OVERLAYS», nfix_nfix]
-  · intro k n i g sid ranges sources inst
-    rw [range_add_runs_fuel _ _ _ _ _ _ _ _ _ (by omega)]
+  · intro k n i g sid rlo ranges sources inst
+    rw [range_add_runs_fuel _ _ _ _ _ _ _ _ _ _ (by omega)]
     simp only [«FN2-RANGE-ADD-RUNS», nfix_nfix]
   · intro k cnt r sid bound best inst
     rw [succ_newest_run_fuel _ _ _ _ _ _ _ _ (by omega)]

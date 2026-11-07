@@ -1,5 +1,6 @@
 import Fn2.Instances.LayerA
 import Fn2.Square
+import Fn2.Distinct
 
 /-!
 # Fn2.Instances.LayerAFacts: what the emitted registry satisfies
@@ -24,19 +25,32 @@ open Fn2.Decl Fn2.Square
 /-- The directory's three row fields (P1), which no kind's own table holds. -/
 def directory : List Sym := [.s_ready_prev, .s_ready_next, .s_wait_reason]
 
+/-- An identity's key: its table's index above its name's (`Sym` has fewer than 4096 symbols). -/
+def declKey (d : DeclId Sym) : Nat := d.table.ctorIdx * 4096 + d.name.ctorIdx
+
+/-- The registry's qualified identities are unique, checked over their keys by a bit set
+(`Fn2.Distinct`: deciding `Nodup` pairwise on 1519 identities exhausts the kernel's memory). -/
+theorem ids_nodup : registry.ids.Nodup :=
+  Fn2.Distinct.nodup_of_bitsDistinct declKey _ (by decide +kernel)
+
 /-- The emitted rows satisfy the recorded-row and cross-row consistency conditions of `Registry.WF`. -/
-theorem registry_wf : registry.WF .k_run .k_observe directory := by decide +kernel
+theorem registry_wf : registry.WF .k_run .k_observe directory :=
+  ⟨ids_nodup, by decide +kernel, by decide +kernel, by decide +kernel⟩
 
 /-- Qualified identities are unique, bare names are not: `defmachine fn2-echo` also emits
 `defcolumns fn2-echo` (DSL-METATHEORY §1.1, Astra's correction A1). -/
 theorem ids_qualified : registry.ids.Nodup ∧ ¬ (registry.ids.map DeclId.name).Nodup := by
-  decide +kernel
+  refine ⟨ids_nodup, fun h => ?_⟩
+  have hs : [Sym.s_fn2_echo, .s_fn2_echo].isSublist (registry.ids.map DeclId.name) = true := by
+    decide +kernel
+  have := h.sublist (List.isSublist_iff_sublist.mp hs)
+  simp at this
 
 theorem declaration_counts :
-    registry.machines.length = 12 ∧ registry.columns.length = 54 ∧
-    registry.coreChildren.length = 54 ∧ registry.squares.length = 521 ∧
-    registry.costs.length = 262 ∧ registry.waits.length = 4 ∧
-    registry.rows.length = 213 := by
+    registry.machines.length = 13 ∧ registry.columns.length = 55 ∧
+    registry.coreChildren.length = 55 ∧ registry.squares.length = 716 ∧
+    registry.costs.length = 374 ∧ registry.waits.length = 4 ∧
+    registry.rows.length = 302 := by
   decide +kernel
 
 /-- The labels the registry does not hold today: the executor's seven (DSL-METATHEORY §3.2, §3.5),
@@ -52,14 +66,25 @@ def nonRegistryCases : List (CaseLabel Sym) :=
 operation-set row, then the executor's seven. -/
 def q1Cases : List (CaseLabel Sym) := registry.machineCases ++ [.routerFallback] ++ nonRegistryCases
 
+/-- A case label's key, distinct across the four sources. -/
+def caseKey : CaseLabel Sym → Nat
+  | .phase m p => 4 * (m.ctorIdx * 4096 + p.ctorIdx)
+  | .event m e => 4 * (m.ctorIdx * 4096 + e.ctorIdx) + 1
+  | .routerFallback => 2
+  | .executor .clock => 3
+  | .executor .signal => 7
+  | .executor (.service i) => 4 * (2 + i.val) + 3
+  | .executor .emptyPrincipal => 27
+
 theorem q1_case_counts :
-    registry.machineCases.length = 126 ∧ q1Cases.length = 134 ∧ q1Cases.Nodup := by
-  decide +kernel
+    registry.machineCases.length = 151 ∧ q1Cases.length = 159 ∧ q1Cases.Nodup :=
+  ⟨by decide +kernel, by decide +kernel,
+   Fn2.Distinct.nodup_of_bitsDistinct caseKey _ (by decide +kernel)⟩
 
 /-- What `defsquare fn2-q1 :template :q1-loop-iteration` binds: one G1 row per case. -/
 def q1Squares : List (SquareDecl Sym) := bindG1 "fn2-q1" q1Cases
 
-theorem q1_square_count : q1Squares.length = 134 := by decide +kernel
+theorem q1_square_count : q1Squares.length = 159 := by decide +kernel
 
 /-- **The licence.** The ACL2 side owes one G1 square per case of the catalogue; this is the
 implication the Lean side supplies: those squares are squares for every word over the catalogue,

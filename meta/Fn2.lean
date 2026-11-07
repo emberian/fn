@@ -1,4 +1,5 @@
 import Fn2.Decl
+import Fn2.Distinct
 import Fn2.Square
 import Fn2.Coherence
 import Fn2.Conservative
@@ -20,7 +21,6 @@ import Fn2.Arms.Columns
 import Fn2.Arms.ServedColumns
 import Fn2.Arms.Core
 import Fn2.Arms.CoreTeeth
-import Fn2.Arms.ServedCore
 import Fn2.Pathway
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts

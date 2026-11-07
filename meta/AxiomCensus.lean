@@ -57,6 +57,9 @@ import Fn2
 #print axioms Fn2.Param.counter_doubled_clients
 #print axioms Fn2.Param.drop_exec_breaks
 #print axioms Fn2.Param.peek_breaks_abstraction
+#print axioms Fn2.Distinct.bitsDistinct_sound
+#print axioms Fn2.Distinct.nodup_of_bitsDistinct
+#print axioms Fn2.Instances.LayerA.ids_nodup
 #print axioms Fn2.Instances.LayerA.registry_wf
 #print axioms Fn2.Instances.LayerA.ids_qualified
 #print axioms Fn2.Instances.LayerA.declaration_counts
@@ -159,7 +162,7 @@ import Fn2
 #print axioms Fn2.ACL2.Fuel.acl2Count_cdr_lt
 #print axioms Fn2.ACL2.Fuel.cursor_pad_loop_fuel
 #print axioms Fn2.ACL2.Fuel.pool_compare_loop_fuel
-#print axioms Fn2.ACL2.Fuel.rd_key_least_fuel
+#print axioms Fn2.ACL2.Fuel.range_key_least_fuel
 #print axioms Fn2.ACL2.Fuel.run_skip_fuel
 #print axioms Fn2.ACL2.Fuel.run_version_fuel
 #print axioms Fn2.ACL2.Fuel.range_add_overlays_fuel
@@ -299,14 +302,3 @@ import Fn2
 #print axioms Fn2.Arms.CoreTeeth.runCore_frame_needs_control
 #print axioms Fn2.Arms.CoreTeeth.runCore_cols_pos
 #print axioms Fn2.Arms.CoreTeeth.runCore_cols_mutants
-#print axioms Fn2.Arms.ServedCore.cns_core_derived_costs
-#print axioms Fn2.Arms.ServedCore.cns_core_charge
-#print axioms Fn2.Arms.ServedCore.cns_commit_charge
-#print axioms Fn2.Arms.ServedCore.cns_core_frame
-#print axioms Fn2.Arms.ServedCore.conn_core_frame
-#print axioms Fn2.Arms.ServedCore.cns_tableFacts
-#print axioms Fn2.Arms.ServedCore.cns_core_writes
-#print axioms Fn2.Arms.ServedCore.cns_core_next
-#print axioms Fn2.Arms.ServedCore.conn_tableFacts
-#print axioms Fn2.Arms.ServedCore.conn_core_writes
-#print axioms Fn2.Arms.ServedCore.conn_core_next
