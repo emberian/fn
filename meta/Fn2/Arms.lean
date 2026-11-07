@@ -343,6 +343,11 @@ structure Op where
   /-- the declared cost's static bound `(bytes, steps, descriptors)`, as the generator bounds it
   (`fn2-arms-bound`); `none` where a dimension has none -/
   bound : Option (Int × Int × Int) := none
+  /-- an operation with no `:child` is a function over `fn2-core` (a core-form arm calls it so):
+  its own formals and stobj signature, for the core face's adapter (`Fn2.Arms.Core`) -/
+  coreFormals : List String := []
+  coreIn : List (Option String) := []
+  coreOut : List (Option String) := []
   deriving Inhabited, Repr
 
 structure Wait where

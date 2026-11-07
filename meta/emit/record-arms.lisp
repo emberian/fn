@@ -19,23 +19,29 @@
 (defvar *meta-every* 41)
 (defvar *meta-max* 48)
 (defvar *meta-stobj-fields* (make-hash-table :test 'eq))
+; Record core-form arm functions too (record-core.lsp sets it; the child-form records do not).
+(defvar *meta-record-core* nil)
 
 (defun meta-sym (&rest parts)
   (intern (apply #'concatenate 'string (mapcar (lambda (p) (if (symbolp p) (symbol-name p) p)) parts))
           "ACL2"))
 
 (defun meta-fields (stobj)
-  ; ((accessor length-fn) ...) per field in order; length-fn nil for a scalar field
+  ; ((accessor length-fn child) ...) per field in order; length-fn nil for a scalar field; child
+  ; the field's stobj when the field is a child stobj (fn2-core's), whose logical value is the
+  ; child's own
   (or (gethash stobj *meta-stobj-fields*)
       (setf (gethash stobj *meta-stobj-fields*)
-            (let ((ev (get-event stobj (w *the-live-state*))))
+            (let* ((w (w *the-live-state*)) (ev (get-event stobj w)))
               (loop for f in (cddr ev)
                     until (keywordp f)
                     collect (let* ((name (if (consp f) (car f) f))
                                    (type (and (consp f) (cadr (member :type f)))))
-                              (if (and (consp type) (eq (car type) 'array))
-                                  (list (meta-sym name "I") (meta-sym name "-LENGTH"))
-                                (list name nil))))))))
+                              (cond ((and (consp type) (eq (car type) 'array))
+                                     (list (meta-sym name "I") (meta-sym name "-LENGTH") nil))
+                                    ((and type (symbolp type) (getpropc type 'stobj nil w))
+                                     (list name nil type))
+                                    (t (list name nil nil)))))))))
 
 ; A long array field prints run-length encoded, (FN2-META-RLE N1 V1 N2 V2 ...), which the Lean
 ; reader expands back to the field's list (Fn2.ACL2.Read.expandRle).
@@ -55,21 +61,28 @@
       (setf (gethash stobj *meta-converters*)
             (compile nil
                      `(lambda (st)
-                        (list ,@(loop for (acc len) in (meta-fields stobj)
-                                      collect (if len
-                                                  `(let ((xs (loop for i below (,len st) collect (,acc i st))))
-                                                     (if (> (length xs) 64) (meta-rle xs) xs))
-                                                `(,acc st)))))))))
+                        (list ,@(loop for (acc len child) in (meta-fields stobj)
+                                      collect (cond (len
+                                                     `(let ((xs (loop for i below (,len st) collect (,acc i st))))
+                                                        (if (> (length xs) 64) (meta-rle xs) xs)))
+                                                    (child `(meta-logical ',child (,acc st)))
+                                                    (t `(,acc st))))))))))
 
 (defun meta-logical (stobj live) (funcall (meta-converter stobj) live))
 
 (defun meta-convert (vals stobjs)
   (loop for v in vals for s in stobjs collect (if s (meta-logical s v) v)))
 
+; A core-form arm function carries the whole fn2-core in and out: sampled more sparsely.
+(defvar *meta-core-fns* (make-hash-table :test 'eq))
+(defvar *meta-core-first* 8)
+(defvar *meta-core-max* 8)
 (defun meta-sample-p (fn)
-  (let ((n (incf (gethash fn *meta-record-counts* 0))))
-    (and (<= n (+ *meta-first* (* *meta-every* *meta-max*)))
-         (or (<= n *meta-first*) (zerop (mod n *meta-every*))))))
+  (let ((n (incf (gethash fn *meta-record-counts* 0)))
+        (first (if (gethash fn *meta-core-fns*) *meta-core-first* *meta-first*))
+        (most (if (gethash fn *meta-core-fns*) *meta-core-max* *meta-max*)))
+    (and (<= n (+ first (* *meta-every* most)))
+         (or (<= n first) (zerop (mod n *meta-every*))))))
 
 (defun meta-wrap (fn)
   (let* ((w (w *the-live-state*))
@@ -94,8 +107,13 @@
     (loop for (k) in (table-alist 'fn2-machine-kinds w)
           do (dolist (spec '((:arms "-RUN-") (:observe-arms "-ON-") (:subarms "-SUB-")))
                (dolist (e (fn2-machine-declared k (car spec) w))
-                 (let ((f (fn2-arms-child-name (fn2-arms-fn-name k (cadr spec) (car e)))))
-                   (when (function-symbolp f w) (push f out))))))
+                 (let* ((core (fn2-arms-fn-name k (cadr spec) (car e)))
+                        (f (fn2-arms-child-name core)))
+                   (cond ((function-symbolp f w) (push f out))
+                         ;; a core-form kind (no child form): its arm functions over fn2-core
+                         ((and *meta-record-core* (function-symbolp core w))
+                          (setf (gethash core *meta-core-fns*) t)
+                          (push core out)))))))
     out))
 
 (defun meta-record-install (path)

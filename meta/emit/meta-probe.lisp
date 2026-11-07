@@ -17,13 +17,13 @@
 
 (defmachine fn2-meta-probe
  :phases (:free :pool :seal :admit :skip :casing :halting :done)
- :fields ((count :u32) (class :u32) (target :link) (cursor :u32) (stopped :bool))
+ :fields ((count :u32) (class :u32) (waiter :link) (cursor :u32) (stopped :bool))
  :budget (:bytes 4096 :steps 32 :descriptors 0)
- :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (target *fn2-none*))
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*) (waiter *fn2-none*))
  :arms ((:free (:idle))
         (:pool (:set (count 1)) (:park :pool row-class :steps *fn2-work-small*))
         (:seal (:next :done) (:park :sealable))
-        (:admit (:park :admission row-target))
+        (:admit (:park :admission row-waiter))
         (:skip (:do (code) (fn2-arms-t-peek row-count) :accept (:found) :when (equal row-class 0) :else (:found)
                 :case (((:end) (:next :done) (:charge :steps *fn2-work-small*))))
                (:set (count 0)) (:charge :steps *fn2-work-small*))

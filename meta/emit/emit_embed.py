@@ -409,7 +409,11 @@ def op(e):
             f"formals := [{', '.join(lean_str(str(x)) for x in as_list(d[':FORMALS']))}], "
             f"stobjsIn := {so(d[':STOBJS-IN'])}, stobjsOut := {so(d[':STOBJS-OUT'])}, answers := {answers}, "
             f"faults := [{', '.join(val(c) for c in as_list(d[':FAULTS']))}], "
-            f"bound := {bound(d.get(':BOUND'))} }}")
+            f"bound := {bound(d.get(':BOUND'))}"
+            + (f", coreFormals := [{', '.join(lean_str(str(x)) for x in as_list(d[':CORE-FORMALS']))}], "
+               f"coreIn := {so(d[':CORE-STOBJS-IN'])}, coreOut := {so(d[':CORE-STOBJS-OUT'])}"
+               if not is_nil(d.get(':CORE-FORMALS', List([]))) else "")
+            + " }")
 
 
 def bound(b):
@@ -456,6 +460,10 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
     L.append("def waits : List Wait := [" + ", ".join(waits) + "]")
     L.append("")
     L.append("def consts : List (String × Val) := [" + ", ".join(cs) + "]")
+    L.append("")
+    tup = ", ".join(lean_str(str(x)) for x in as_list(emb.get(":CORE-TUPLE", List([]))))
+    L.append("/-- `fn2-core`'s children in field order (its logical value is their list). -/")
+    L.append(f"def coreTuple : List String := [{tup}]")
     L.append("")
     L.append(f"def world : World := {{ kinds, ops, waits, consts, fns := {world_ns}.fns }}")
     L.append("")

@@ -289,3 +289,7 @@ import Fn2
 #print axioms Fn2.Arms.ServedColumns.cursor_arm_next
 #print axioms Fn2.Arms.ServedColumns.cursor_seek_name_contracts
 #print axioms Fn2.MachineProofs.txn_ctl_cns_core_form
+#print axioms Fn2.Arms.Core.runCore_charge_le_cost
+#print axioms Fn2.Arms.Core.runCore_frame
+#print axioms Fn2.Arms.Core.runCore_writes_sub
+#print axioms Fn2.Arms.Core.runCore_next_mem

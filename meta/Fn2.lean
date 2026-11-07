@@ -18,6 +18,7 @@ import Fn2.Arms.Derive
 import Fn2.Arms.Inv
 import Fn2.Arms.Columns
 import Fn2.Arms.ServedColumns
+import Fn2.Arms.Core
 import Fn2.Pathway
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts

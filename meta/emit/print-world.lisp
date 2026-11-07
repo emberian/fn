@@ -178,6 +178,11 @@
           :answers (fn2-decl-get :answers row) :faults (fn2-decl-get :faults row)
           :descriptors (fn2-decl-get :descriptors row)
           :effects (fn2-decl-get :effects row) :own-writes (fn2-decl-get :own-writes row)
+          ;; an operation with no :child is a function over fn2-core (core form calls it so):
+          ;; its own formals and stobj signature, for the core face's adapter (Fn2.Arms.Core)
+          :core-formals (and (not callee) (getpropc op 'formals nil *meta-w*))
+          :core-stobjs-in (and (not callee) (getpropc op 'stobjs-in nil *meta-w*))
+          :core-stobjs-out (and (not callee) (getpropc op 'stobjs-out nil *meta-w*))
           ;; the declared cost's static bound per dimension (G3: a :repeat's pass bound is its calls'
           ;; declared costs and one step); nil where the cost has no static bound
           :bound (list (fn2-arms-bound (fn2-decl-get :bytes row) nil *meta-w* 8)
@@ -293,6 +298,21 @@
                                       (meta-column-fns (car kd) (meta-kw :table (cdr kd)))))
                  (meta-column-fns 'fn2-machines *fn2-machine-directory-fields*)
                  (loop for o in op-rows when (meta-kw :callee (cdr o)) collect (meta-kw :callee (cdr o)))
+                 ;; core form (Fn2.Arms.Core): a core-form kind's generated arm functions (the measure's
+                 ;; generated column), its table's columns, its entry's snapshot read code, the
+                 ;; directory's slot, and every operation without a :child, called over fn2-core
+                 (loop for kd in kds
+                       when (eq (meta-kw :form (cdr kd)) :core)
+                       append (append (meta-arm-functions (meta-kw :subarms (cdr kd)))
+                                      (meta-arm-functions (meta-kw :arms (cdr kd)))
+                                      (meta-arm-functions (meta-kw :observes (cdr kd)))
+                                      (meta-column-fns (car kd) (meta-kw :table (cdr kd)))
+                                      (list (fn2-columns-sym (car kd) "-ROWS")
+                                            (fn2-columns-sym (car kd) "-SNAPSHOT-READ-CODE"))))
+                 (and (some (lambda (kd) (eq (meta-kw :form (cdr kd)) :core)) kds) '(fn2-machine-slot))
+                 (loop for o in op-rows
+                       when (and (not (meta-kw :callee (cdr o))) (meta-kw :core-formals (cdr o)))
+                       collect (car o))
                  '(fn2-control-record-stop fn2-control-record-kind-stop fn2-machines-park-pool
                    fn2-machines-wake-row fn2-machines-rows)
                  ;; the functions of the arm vocabulary (Fn2.Arms.vocabularyFns), so every name the
@@ -303,10 +323,20 @@
       (list :embed
             (list :kinds kds)
             (list :operations op-rows)
+            ;; fn2-core's children in field order: its logical value is their list
+            (list :core-tuple (mapcar #'cadr (cadr (getpropc '*fn2-core-children* 'const nil *meta-w*))))
             (list :natives *meta-natives*)
             (list :refused refused)
             (list :constants
                   (let ((cs (meta-constants '("*FN2-STOP-REASON-" "*FN2-WAIT-" "*FN2-WORK-" "*FN2-NONE*"))))
+                    ;; a core-form kind's index constants (its arms read them as constants)
+                    (dolist (kd kds)
+                      (when (eq (meta-kw :form (cdr kd)) :core)
+                        (dolist (suffix '("-KIND*" "-ADMISSION-ORDINAL*"))
+                          (let* ((c (fn2-columns-pre "*" (fn2-columns-sym (car kd) suffix)))
+                                 (v (getpropc c 'const nil *meta-w*)))
+                            (when (and (consp v) (eq (car v) 'quote) (integerp (cadr v)) (not (assoc c cs)))
+                              (push (cons c (cadr v)) cs))))))
                     (dolist (k stepped)
                       (dolist (c (meta-arm-constants (list (fn2-machine-declared k :subarms *meta-w*)
                                                            (fn2-machine-declared k :arms *meta-w*)
