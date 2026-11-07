@@ -178,7 +178,7 @@
   (setf (aref (fn2-n-device-unit host (floor offset 4096)) (mod offset 4096)) byte))
 (defun fn2-n-device-put (host store)
   "STORE's writes ((OFFSET . OCTETS) ...) on the device (the seeded store's sources)."
-  (dolist (w store)
+  (dolist (w (reverse store))
     (loop for b in (cdr w) for i from (car w) do (fn2-n-device-set host i b))))
 
 (defun fn2-n-storage-kind (kind)

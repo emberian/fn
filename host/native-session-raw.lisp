@@ -13,7 +13,7 @@ restart fixture separately exercises persisted genesis and the boot machine."
     (let ((device (%make-fn2-device :fd fd :size size :backend backend)) (transferred nil))
       (unwind-protect
           (progn
-            (dolist (write *fn2-n-seed-store*)
+            (dolist (write (reverse *fn2-n-seed-store*))
               (let* ((bytes (make-array (length (cdr write)) :element-type '(unsigned-byte 8)
                                         :initial-contents (cdr write)))
                      (job (make-fn2-device-job :kind :write :bytes bytes :address 0
