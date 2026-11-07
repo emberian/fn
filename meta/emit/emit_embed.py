@@ -39,12 +39,16 @@ NATIVE = {
     "BINARY-LOGAND": "Native.logand", "BINARY-LOGIOR": "Native.logior",
     "BINARY-LOGXOR": "Native.logxor", "BINARY-LOGEQV": "Native.logeqv", "LOGNOT": "Native.lognot",
     "LOGORC1": "Native.logorc1", "FLOOR": "Native.floor", "MOD": "Native.mod",
-    "EVENP": "Native.evenp", "NONNEGATIVE-INTEGER-QUOTIENT": "Native.niq", "EXPT": "Native.expt",
+    "EVENP": "Native.evenp", "NONNEGATIVE-INTEGER-QUOTIENT": "Native.niq", "EXPT": "Native.expt", "ASH": "Native.ash",
     "LEN": "Native.len", "NTH": "Native.nth", "MV-NTH": "Native.nth",
     "UPDATE-NTH": "Native.updateNth", "MEMBER-EQUAL": "Native.memberEqual",
     "ACL2-COUNT": "(fun x => Val.int (Val.acl2Count x))",
 }
 SPECIAL = {"IF", "RETURN-LAST"}
+# natives computed only where ACL2's value is an integer (EXPT at a negative exponent is a
+# rational): a native whose definition calls one may pass through a rational, so its definition
+# is outside the subset, recorded with the rational primitive it reaches (ASH: (expt 2 c), c < 0)
+INTEGER_DOMAIN = {"EXPT": "UNARY-/"}
 # ---------------------------------------------------------------- shallow functions
 
 class Fn:
@@ -212,6 +216,8 @@ def emit_world(emb, path, ns):
         calls = calls_of(nf.body, set()) | calls_of(nf.measure, set())
         outside_calls = sorted(c for c in calls if c not in defined and c not in NATIVE and c not in SPECIAL
                                and c != nf.name)
+        outside_calls = sorted(set(outside_calls) | {INTEGER_DOMAIN[c] for c in calls if c in INTEGER_DOMAIN
+                                                       and nf.name not in INTEGER_DOMAIN})
         if outside_calls or (nf.recursive and nf.recursive != [nf.name]) or nf.name in SPECIAL:
             nd_out.append((nf.name, outside_calls))
             continue
@@ -232,13 +238,20 @@ def emit_world(emb, path, ns):
         vs = [f"a{i}" for i in range(len(f.formals))]
         call = f"{ident(f.name)}.guard{' ' if vs else ''}{' '.join(vs)}"
         guard_rows.append((f.name, vs, call))
-    L.append("set_option maxHeartbeats 0 in")
-    L.append("/-- The translated functions by ACL2 name, for the term evaluator and the interpreter. -/")
-    L.append(f"def fnTree : Dispatch :=\n  {dispatch_tree(fn_rows)}")
+    # each row's arity match is its own small definition (`F.dispatch`, `F.guardDispatch`) and the
+    # tree is cut into named subtrees of at most DISPATCH_CHUNK rows: one term of 12,769 lambdas
+    # and matches cost the elaborator and compiler about 2,700 s per tree; this shape about 170 s
+    L.append("/-! ## The dispatch: each row's arity match, then the trees -/")
     L.append("")
-    L.append("set_option maxHeartbeats 0 in")
+    fn_defs, fn_root = dispatch_tree(fn_rows, "dispatch", "fnTree")
+    gd_defs, gd_root = dispatch_tree(guard_rows, "guardDispatch", "guardTree")
+    L.extend(fn_defs)
+    L.append("/-- The translated functions by ACL2 name, for the term evaluator and the interpreter. -/")
+    L.append(f"def fnTree : Dispatch :=\n  {fn_root}")
+    L.append("")
+    L.extend(gd_defs)
     L.append("/-- The stated guards by ACL2 name. -/")
-    L.append(f"def guardTree : Dispatch :=\n  {dispatch_tree(guard_rows)}")
+    L.append(f"def guardTree : Dispatch :=\n  {gd_root}")
     L.append("")
     L.append("def fns : Fns := fun f args => match fnTree.find (nameKey f) with")
     L.append("  | some g => g args")
@@ -250,6 +263,23 @@ def emit_world(emb, path, ns):
     L.append("def guardOf (f : String) (args : List Val) : Option Val := match guardTree.find (nameKey f) with")
     L.append("  | some g => g args")
     L.append("  | none => if (fnTree.find (nameKey f)).isSome && !guardOutside.contains f then some Val.t else none")
+    L.append("")
+    # the dispatch equations go through these: the name's key is computed once (`rfl` on
+    # `nameKey`), then the tree is searched with the key a literal. Stated whole by `rfl`, the
+    # elaborator's lazy unfolding opened the called function's body instead (a 25-argument
+    # FN2-CONN-WRITE+... ran past 200000 heartbeats); `decide +kernel` on the key held ~8 MB per
+    # equation (24 GB for one Eqns file)
+    L.append("/-- `fns` at a name whose key is `k` searches the tree for `k`. -/")
+    L.append("theorem fns_key {f : String} {k : Nat} (args : List Val) (h : nameKey f = k) :")
+    L.append("    fns f args = (match fnTree.find k with | some g => g args | none => none) := by")
+    L.append("  subst h; rfl")
+    L.append("")
+    L.append("/-- `guardOf` at a name whose key is `k` searches the trees for `k`. -/")
+    L.append("theorem guardOf_key {f : String} {k : Nat} (args : List Val) (h : nameKey f = k) :")
+    L.append("    guardOf f args = (match guardTree.find k with")
+    L.append("      | some g => g args")
+    L.append("      | none => if (fnTree.find k).isSome && !guardOutside.contains f then some Val.t else none) := by")
+    L.append("  subst h; rfl")
     L.append("")
     L.append(f"def refused : List String := [{', '.join(lean_str(r) for r in refused)}]")
     L.append(f"def dropped : List String := [{', '.join(lean_str(r) for r in dropped)}]")
@@ -271,37 +301,57 @@ def name_key(n):
     return k
 
 
-def dispatch_tree(rows):
-    """A balanced `Fn2.ACL2.Dispatch` over the rows `(name, formals, call)`."""
+DISPATCH_CHUNK = 256
+
+
+def dispatch_tree(rows, suffix, tree):
+    """A balanced `Fn2.ACL2.Dispatch` over the rows `(name, formals, call)`: (definitions, root).
+    Each row's match on its arity is the definition `«F».SUFFIX`; every subtree of at most
+    DISPATCH_CHUNK rows is a definition `TREE.cN`, so no definition is one giant term."""
     rows = sorted(rows, key=lambda r: name_key(r[0]))
     for a, b in zip(rows, rows[1:]):
         if name_key(a[0]) == name_key(b[0]):
             die(f"two dispatch rows for {a[0]}")
+    defs = []
+    for name, vs, call in rows:
+        defs.append(f"def {ident(name)}.{suffix} : List Val → Option Val\n"
+                    f"  | [{', '.join(vs)}] => some ({call})\n  | _ => none")
+    defs.append("")
+    nchunks = [0]
 
-    def go(lo, hi, ind):
-        if lo >= hi:
-            return ".leaf"
+    def node(lo, hi, sub):
         mid = (lo + hi) // 2
-        name, vs, call = rows[mid]
-        pat = "[" + ", ".join(vs) + "]"
-        fn = f"fun (xs : List Val) => match xs with | {pat} => some ({call}) | _ => none"
-        return (f"(.node {name_key(name)} ({fn})\n{ind}{go(lo, mid, ind + ' ')}\n"
-                f"{ind}{go(mid + 1, hi, ind + ' ')})")
-    return go(0, len(rows), "    ")
+        name = rows[mid][0]
+        return f"(.node {name_key(name)} {ident(name)}.{suffix} {sub(lo, mid)} {sub(mid + 1, hi)})"
+
+    def inner(lo, hi):
+        return ".leaf" if lo >= hi else node(lo, hi, inner)
+
+    def outer(lo, hi):
+        if hi - lo > DISPATCH_CHUNK:
+            return node(lo, hi, outer)
+        n = f"{tree}.c{nchunks[0]}"
+        nchunks[0] += 1
+        defs.append(f"def {n} : Dispatch :=\n  {inner(lo, hi)}\n")
+        return n
+    return defs, outer(0, len(rows))
 
 
 def emit_eqns(fn_rows, guard_rows, paths, world_mod, world_ns):
-    """The dispatch equations, one per translated function and one per stated guard, each by
-    `rfl` (the kernel searches the tree), split over `paths` so they elaborate in parallel."""
+    """The dispatch equations, one per translated function and one per stated guard, split over
+    `paths` so they elaborate in parallel. Each is `fns_key` (`guardOf_key`) at the name's key,
+    then `rfl` (the tree searched for the literal key)."""
     eqs = []
     for name, vs, call in fn_rows:
         bs = " ".join(f"({v} : Val)" for v in vs)
         eqs.append(f"@[fn2_dispatch] theorem {ident(name)}.fns_eq {bs}{' ' if bs else ''}:\n"
-                   f"    fns {lean_str(name)} [{', '.join(vs)}] = some ({call}) := rfl")
+                   f"    fns {lean_str(name)} [{', '.join(vs)}] = some ({call}) :=\n"
+                   f"  (fns_key (k := {name_key(name)}) _ rfl).trans rfl")
     for name, vs, call in guard_rows:
         bs = " ".join(f"({v} : Val)" for v in vs)
         eqs.append(f"@[fn2_dispatch] theorem {ident(name)}.guard_eq {bs}{' ' if bs else ''}:\n"
-                   f"    guardOf {lean_str(name)} [{', '.join(vs)}] = some ({call}) := rfl")
+                   f"    guardOf {lean_str(name)} [{', '.join(vs)}] = some ({call}) :=\n"
+                   f"  (guardOf_key (k := {name_key(name)}) _ rfl).trans rfl")
     n = len(paths)
     for i, path in enumerate(paths):
         part = eqs[i::n]
@@ -409,7 +459,11 @@ def op(e):
             f"formals := [{', '.join(lean_str(str(x)) for x in as_list(d[':FORMALS']))}], "
             f"stobjsIn := {so(d[':STOBJS-IN'])}, stobjsOut := {so(d[':STOBJS-OUT'])}, answers := {answers}, "
             f"faults := [{', '.join(val(c) for c in as_list(d[':FAULTS']))}], "
-            f"bound := {bound(d.get(':BOUND'))} }}")
+            f"bound := {bound(d.get(':BOUND'))}"
+            + (f", coreFormals := [{', '.join(lean_str(str(x)) for x in as_list(d[':CORE-FORMALS']))}], "
+               f"coreIn := {so(d[':CORE-STOBJS-IN'])}, coreOut := {so(d[':CORE-STOBJS-OUT'])}"
+               if not is_nil(d.get(':CORE-FORMALS', List([]))) else "")
+            + " }")
 
 
 def bound(b):
@@ -457,6 +511,10 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
     L.append("")
     L.append("def consts : List (String × Val) := [" + ", ".join(cs) + "]")
     L.append("")
+    tup = ", ".join(lean_str(str(x)) for x in as_list(emb.get(":CORE-TUPLE", List([]))))
+    L.append("/-- `fn2-core`'s children in field order (its logical value is their list). -/")
+    L.append(f"def coreTuple : List String := [{tup}]")
+    L.append("")
     L.append(f"def world : World := {{ kinds, ops, waits, consts, fns := {world_ns}.fns }}")
     L.append("")
     L.append(f"end {ns}")
@@ -468,7 +526,8 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
 def main():
     src, world_out, kinds_out, ns = sys.argv[1:5]
     eqn_outs = sys.argv[5:]
-    forms = read_all(open(src).read())
+    # newline='': a CR inside a string literal is data (universal newlines turned CR LF into LF)
+    forms = read_all(open(src, newline='').read())
     top = as_list(forms[0])
     if str(top[0]) != ":FN2-WORLD":
         die("expected (:FN2-WORLD ...)")

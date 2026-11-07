@@ -145,7 +145,17 @@ def ident(name):
 
 
 def lean_str(s):
-    return '"' + s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
+    # every control character escaped, so the literal holds exactly the string's characters
+    out = []
+    for c in s:
+        if c == "\\": out.append("\\\\")
+        elif c == '"': out.append('\\"')
+        elif c == "\n": out.append("\\n")
+        elif c == "\r": out.append("\\r")
+        elif c == "\t": out.append("\\t")
+        elif ord(c) < 0x20 or ord(c) == 0x7f: out.append("\\x%02x" % ord(c))
+        else: out.append(c)
+    return '"' + "".join(out) + '"'
 
 
 def val(x):
@@ -323,7 +333,8 @@ MACHINE_OPTIONAL = [":PHASE-FIELDS"]
 # :genesis (G3 3/n, the arm the executor's init runs once per kind) is omitted by name: the embedding
 # does not translate it and the measure records no genesis call (owed, LEAN-METATHEORY section 6).
 MACHINE_OMITTED = [":LAYOUT", ":PACKED", ":CALLING-CONVENTION", ":ARMS", ":SUBARMS", ":OBSERVE-ARMS",
-                   ":STOPS", ":GENESIS", ":LINKS"]
+                   ":STOPS", ":GENESIS", ":LINKS", ":HOLDS-WHILE"]
+# :holds-while (a kind's holds conditioned on its phase) is not yet read by the Lean registry.
 # :links (F8, typed links) is consumed translated from the embedding as well (LayerAKinds' `links`).
 
 
@@ -526,7 +537,8 @@ def table(reg, key):
 def main():
     src, out = sys.argv[1], sys.argv[2]
     label = sys.argv[3] if len(sys.argv) > 3 else "unlabelled"
-    forms = read_all(open(src).read())
+    # newline='': a CR inside a string literal is data (universal newlines turned CR LF into LF)
+    forms = read_all(open(src, newline='').read())
     top = as_list(forms[0])
     if str(top[0]) != ":FN2-WORLD":
         die("expected one (:FN2-WORLD (:REGISTRY ...) (:EMBED ...)) form")

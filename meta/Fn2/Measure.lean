@@ -2,6 +2,7 @@ import Std.Data.HashMap
 import Fn2.ACL2.Read
 import Fn2.Arms
 import Fn2.Pathway
+import Fn2.Arms.Core
 import Fn2.Instances.LayerAKinds
 
 /-!
@@ -54,6 +55,20 @@ def listOf (v : Val) : Array Val := Id.run do
     cur := cur.cdr
   return out
 
+/-- Two values that differ: for lists of the same length, the first differing index and eight
+entries either side of it in both; otherwise both values, cut. -/
+def window (g w : Val) : String :=
+  let a := listOf g
+  let b := listOf w
+  if g.isCons && w.isCons && a.size == b.size then
+    match (List.range a.size).find? (fun i => !same a[i]! b[i]!) with
+    | some i =>
+      let lo := i - min i 8
+      let cut (x : Array Val) := toString ((x.extract lo (i + 9)).toList)
+      s!"at {i} (of {a.size}): {cut a} (recorded {cut b})"
+    | none => "equal"
+  else s!"{(toString g).take 160} (recorded {(toString w).take 160})"
+
 /-- The first difference between two results, named by position, field and element. -/
 def diff (names : List String) (got want : Val) : String := Id.run do
   let g := listOf got
@@ -70,9 +85,13 @@ def diff (names : List String) (got want : Val) : String := Id.run do
             let ge := listOf gf[j]!
             let we := listOf wf[j]!
             if gf[j]!.isCons && wf[j]!.isCons && ge.size == we.size then
+              -- every differing element of the field (up to four), each at its first differing
+              -- position with a window around it
+              let mut out : List String := []
               for k in [0:ge.size] do
-                if !same ge[k]! we[k]! then
-                  return s!"{pos} field {j} element {k}: {ge[k]!} (recorded {we[k]!})"
+                if !same ge[k]! we[k]! && out.length < 4 then
+                  out := out ++ [s!"element {k}: {window ge[k]! we[k]!}"]
+              return s!"{pos} field {j} " ++ ", ".intercalate out
             return s!"{pos} field {j}: {(toString gf[j]!).take 120} (recorded {(toString wf[j]!).take 120})"
       return s!"{pos}: {(toString g[i]!).take 160} (recorded {(toString w[i]!).take 160})"
   return "equal"
@@ -152,12 +171,14 @@ def main (args : List String) : IO UInt32 := do
   -- the reader over every expression of every child-form kind, exercised or not
   let mut exprs := 0
   let mut refusals : Array String := #[]
+  let tuple := Fn2.Instances.LayerAKinds.coreTuple
   for k in w.kinds do
-    if !k.childForm then continue
     for a in k.subarms ++ k.arms ++ k.observes do
       if let .ok d := a.read then
         exprs := exprs + ((d.onRefusal ++ d.steps).flatMap Step.exprs).length
-    refusals := refusals ++ (readKind w k).toArray
+    -- a core-form kind is read as its core face reads it (its core-only operations' adapters)
+    refusals := refusals ++ (if k.childForm then readKind w k
+      else readKind (Fn2.Arms.Core.coreWorld w tuple) (Fn2.Arms.Core.coreKind k tuple)).toArray
   for k in w.kinds do
     if !k.childForm then continue
     for (a, obs) in k.subarms.map (·, false) ++ k.arms.map (·, false) ++ k.observes.map (·, true) do
@@ -167,7 +188,7 @@ def main (args : List String) : IO UInt32 := do
     let dummy := List.replicate n (Val.int 0)
     if (nativeCall f dummy).isNone && (w.fns f dummy).isNone then
       refusals := refusals.push s!"the vocabulary function {f} is neither native nor translated"
-  IO.println s!"READ {exprs} expressions of the child-form kinds, {refusals.size} refused"
+  IO.println s!"READ {exprs} expressions of the kinds (core form through its face), {refusals.size} refused"
   for r in refusals do IO.println s!"  refused: {r}"
   let t0 ← IO.monoMsNow
   for line in text.splitOn "\n" do
@@ -182,6 +203,48 @@ def main (args : List String) : IO UInt32 := do
     let want := rec_.cdr.cdr.car
     let some (k, a, observe) := findArm w fn
       | do IO.eprintln s!"{fn}: no arm in the translated kinds"; return 2
+    if !k.childForm then
+      -- core form (Fn2.Arms.Core): the arm function takes and returns the whole core
+      let names := (if observe then ["wake"] else ["bytes", "steps", "descriptors", "runnable"]) ++ ["fn2-core"]
+      let ran := Fn2.Arms.Core.runCore w tuple k a observe argv
+      let interp := match ran with
+        | .ok v => if same v want then none else some (diff names v want)
+        | .error e => some s!"error: {e}"
+      -- the frame (runCore_frame's conclusion on this call): every child of the core outside the
+      -- derived children and the control leaves as it entered
+      let frame : Option String := match ran with
+        | .ok v =>
+          match Frame.derivedTables (Fn2.Arms.Core.coreWorld w tuple) (Fn2.Arms.Core.coreKind k tuple) a with
+          | some D =>
+            let outs := (listOf ((listOf v).back?.getD Val.nil)).toList
+            let ins := (listOf (argv.getLastD Val.nil)).toList
+            let bad := (tuple.zip (ins.zip outs)).filter fun (c, i, o) =>
+              !(D.contains c) && c != "FN2-CONTROL" && !(same i o)
+            match bad.head? with
+            | none => none
+            | some (c, i, o) => some s!"{c} (outside the derived children) changed: {(toString o).take 120} (entered {(toString i).take 60})"
+          | none => some "no derived children"
+        | .error e => some s!"error: {e}"
+      let gen := match w.fns fn argv with
+        | some v => if same v want then none else some (diff names v want)
+        | none => some "no translated function"
+      let guard := match Fn2.Instances.LayerAWorld.guardOf fn argv with
+        | some v => v.truthy
+        | none => false
+      for tag in armTags w k a do
+        cover := cover.insert tag ((cover.get? tag).getD 0 + 1)
+      let t := (tallies.get? fn).getD {}
+      if !(tallies.contains fn) then order := order.push fn
+      tallies := tallies.insert fn
+        { calls := t.calls + 1,
+          interpEq := t.interpEq + (if interp.isNone then 1 else 0),
+          genEq := t.genEq + (if gen.isNone then 1 else 0),
+          guardT := t.guardT + (if guard then 1 else 0),
+          frameOk := t.frameOk + (if frame.isNone then 1 else 0),
+          firstFrame := t.firstFrame <|> frame,
+          firstInterp := t.firstInterp <|> interp,
+          firstGen := t.firstGen <|> gen }
+      continue
     let nOuts := Fn2.Pathway.nOuts observe
     let nPre := Fn2.Pathway.nPre observe
     -- a narrowed function takes and returns a subset of the kind's tuple (Fn2.Arms.Sig)

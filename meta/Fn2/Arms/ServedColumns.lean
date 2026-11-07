@@ -43,12 +43,7 @@ theorem idxOf_inj (l : List String) (a b : String) (ha : a ∈ l) (hb : b ∈ l)
 
 /-- `FN2-CURSOR`'s table as the registry prints it (its fields in stobj order). -/
 def cursorTable : List String :=
-  ["PHASE", "GENERATION", "PRINCIPAL-SLOT", "ACCOUNT-REF",
-    "DEADLINE", "CONN", "CONN-GEN", "CONN-KIND", "MASK", "RX-SLOT", "RX-GEN", "LINE-S",
-    "LINE-E", "TX-SLOT", "TX-GEN", "GROUP", "CURRENT", "PIN", "TAG", "K0", "A0", "B0", "K1",
-    "A1", "B1", "STEP", "LO", "HI", "NEXT", "FOUND", "COUNT", "LOW", "HIGH", "SEL",
-    "NCURRENT", "SPIN", "UPDATE", "REPLY", "ROFF", "LPOS", "SEEN", "HAVE", "TURN", "DONE",
-    "CANCEL", "POSTING", "LGROUP", "KLEN", "STOPPED", "NEXT-FREE"]
+  ["PHASE", "GENERATION", "PRINCIPAL-SLOT", "ACCOUNT-REF", "DEADLINE", "CONN", "CONN-GEN", "CONN-KIND", "MASK", "RX-SLOT", "RX-GEN", "LINE-S", "LINE-E", "TX-SLOT", "TX-GEN", "GROUP", "CURRENT", "PIN", "TAG", "K0", "A0", "B0", "K1", "A1", "B1", "STEP", "LO", "HI", "NEXT", "FOUND", "COUNT", "LOW", "HIGH", "SEL", "NCURRENT", "SPIN", "UPDATE", "REPLY", "ROFF", "LPOS", "SEEN", "HAVE", "TURN", "DONE", "CANCEL", "POSTING", "LGROUP", "KLEN", "STOPPED", "NEXT-FREE", "ART", "LUNIT", "LEPOCH", "LALLOC", "ALEN", "APOS", "PLEN", "LOFF", "AST", "LSLOT", "LGEN", "LEASE", "OAT", "MSO", "MLN", "SAID", "REVENT", "ROUTCOME", "RCOUNT", "RREADY", "MKIND", "MPOS", "BUNIT", "BEPOCH", "BALLOC", "BLEN", "BREADY", "MREAD", "BHASH", "BCV", "HMODE", "HK", "HSTEP", "PENDING", "CURSOR"]
 
 set_option maxHeartbeats 0 in
 /-- The registry's `FN2-CURSOR` accessors keep the columns' frame: each own column is the
