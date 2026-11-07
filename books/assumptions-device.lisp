@@ -199,3 +199,57 @@
    :hints (("Goal" :use fn2-dev-taken-image-keeps-every-write
             :in-theory (disable fn2-dev-taken-image-keeps-every-write fn2-dev-image-keeps-p
                                 fn2-dev-taken-image fn2-dev-take-writep)))))
+
+;; LOG EXTENSION. A fenced write stays fenced as the log grows: the
+;; invariant toward FN2-COMMIT-ACK-IMPLIES-RECOVERABLE carries durability
+;; facts across every step through this one lemma.
+(local (defthm fn2-dev-nthcdr-append
+  (implies (<= (nfix n) (len x))
+           (equal (nthcdr n (append x y)) (append (nthcdr n x) y)))))
+(local (defthm fn2-dev-nth-append-low
+  (implies (< (nfix n) (len x)) (equal (nth n (append x y)) (nth n x)))))
+(local (defthm fn2-dev-cdr-append
+  (implies (consp x) (equal (cdr (append x y)) (append (cdr x) y)))))
+(local (defthm fn2-dev-len-append (equal (len (append x y)) (+ (len x) (len y)))))
+(local (defthm fn2-dev-done-answer-nil (not (fn2-dev-done-answer-p nil evkind count))))
+(local (defthm fn2-dev-done-answer-append
+  (implies (consp tail)
+           (equal (fn2-dev-done-answer-p (append tail y) evkind count)
+                  (fn2-dev-done-answer-p tail evkind count)))))
+(defthm fn2-dev-answer-append
+  (equal (fn2-dev-answer slot gen (append x y))
+         (if (fn2-dev-answer slot gen x)
+             (append (fn2-dev-answer slot gen x) y)
+           (fn2-dev-answer slot gen y))))
+(defthm fn2-dev-fence-after-append
+  (implies (fn2-dev-fence-after-p x) (fn2-dev-fence-after-p (append x y))))
+(defthm fn2-dev-fenced-write-extends
+  (implies (and (fn2-dev-fenced-write-p w log) (true-listp more))
+           (fn2-dev-fenced-write-p w (append log more)))
+  :hints (("Goal" :in-theory (disable fn2-dev-take-writep fn2-dev-done-answer-p fn2-dev-answer
+                                      fn2-dev-fence-after-p binary-append nthcdr nth len))))
+
+; A fenced write at storage OFFSET carrying OCTETS, from entry W on.
+(defun fn2-dev-fenced-at-from (w offset octets log)
+  (declare (xargs :guard (natp w) :measure (nfix (- (len log) (nfix w)))))
+  (cond ((not (and (natp w) (true-listp log) (< w (len log)))) nil)
+        ((and (fn2-dev-fenced-write-p w log)
+              (equal (nth 4 (nth w log)) offset) (equal (nth 6 (nth w log)) octets))
+         t)
+        (t (fn2-dev-fenced-at-from (+ 1 w) offset octets log))))
+(defthm fn2-dev-fenced-at-extends
+  (implies (and (fn2-dev-fenced-at-from w offset octets log) (true-listp more))
+           (fn2-dev-fenced-at-from w offset octets (append log more)))
+  :hints (("Goal" :induct (fn2-dev-fenced-at-from w offset octets log)
+           :in-theory (disable fn2-dev-fenced-write-p nth len binary-append))))
+; Some fenced write at storage OFFSET (any octets), from entry W on.
+(defun fn2-dev-fenced-offset-from (w offset log)
+  (declare (xargs :guard (natp w) :measure (nfix (- (len log) (nfix w)))))
+  (cond ((not (and (natp w) (true-listp log) (< w (len log)))) nil)
+        ((and (fn2-dev-fenced-write-p w log) (equal (nth 4 (nth w log)) offset)) t)
+        (t (fn2-dev-fenced-offset-from (+ 1 w) offset log))))
+(defthm fn2-dev-fenced-offset-extends
+  (implies (and (fn2-dev-fenced-offset-from w offset log) (true-listp more))
+           (fn2-dev-fenced-offset-from w offset (append log more)))
+  :hints (("Goal" :induct (fn2-dev-fenced-offset-from w offset log)
+           :in-theory (disable fn2-dev-fenced-write-p nth len binary-append))))
