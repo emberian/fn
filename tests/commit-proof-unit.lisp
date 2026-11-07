@@ -92,6 +92,26 @@
        (equal (len (fn2-commit-proof-replies r)) 2)
        (equal (len (fn2-commit-proof-recovered r)) 2))))
 
+;; A start naming the wrong row, or a key past the frontier, is still an
+;; admission: the core admits batch 3 on the row it picks at its own frontier
+;; and acknowledges it. HISTORY requests exactly that admission, so the batch
+;; is accepted with evidence (before the request followed the fixture's
+;; expectation and the accepted batch had none: a counterexample to the
+;; keystone, 2026-11-06).
+(defun fn2-commit-proof-harness-row-start-run (mid)
+ (declare (xargs :verify-guards nil))
+ (let* ((p (fn2-cm-profile :crash-only t t nil 0 0))
+        (r (fn2-commit-proof-run
+             (append (make-list 600 :initial-element '(:auto 26)) mid
+                     (make-list 600 :initial-element '(:auto 26))) p 0 2 1)))
+  (and (fn2-commit-ack-hyps p r) (fn2-commit-ack-evidencep r)
+       (equal (cdr (assoc-equal 3 (fn2-commit-proof-replies r))) 2)
+       (equal (len (fn2-commit-proof-recovered r)) 3))))
+(defun fn2-commit-proof-harness-row-start ()
+ (declare (xargs :verify-guards nil))
+ (and (fn2-commit-proof-harness-row-start-run '((:start 1 2 5 0)))
+      (fn2-commit-proof-harness-row-start-run '((:start 0 2 9 0)))))
+
 ; This contract counterexample retains all three durable batches. It exposes
 ; client refusal consistency, not a physical durability hypothesis removal.
 (defun fn2-commit-proof-refused-retry-contract ()
@@ -147,5 +167,6 @@
        (fn2-commit-proof-timeout-baseline) (fn2-commit-proof-timeout-fua)
        (fn2-commit-proof-dispatch-removal) (fn2-commit-proof-follower-first)
        (fn2-commit-proof-reuse-baseline) (fn2-commit-proof-reuse-fua)
-       (fn2-commit-proof-uncertain-rearm) (fn2-commit-proof-duplicate-start) (fn2-commit-proof-refused-retry-contract)))
+       (fn2-commit-proof-uncertain-rearm) (fn2-commit-proof-duplicate-start) (fn2-commit-proof-refused-retry-contract)
+       (fn2-commit-proof-harness-row-start)))
 (fn2-assert-owed-teeth fn2-commit-ack-implies-durable fn2-commit-uncertain-persists)

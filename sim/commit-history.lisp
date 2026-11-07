@@ -271,6 +271,11 @@
       ((mv code got & event fn2-core)
        (if (or (not (natp frontier)) (< (nfix first-key) frontier)) (mv :admission 0 0 0 fn2-core)
          (fn2-commit-admit-keyed members mode 0 0 0 fn2-core)))
+      ; Whatever the fixture expected, the core admitted a batch on GOT at
+      ; EVENT: HISTORY requests exactly that admission (its row's batch and
+      ; the identities it assigned). A :harness-row answer only reports the
+      ; fixture's mismatch; it never hides an admitted batch from HISTORY.
+      (admitted (eq code :ok))
       (code (cond ((not (eq code :ok)) code)
                   ((and (equal got id) (equal event first-key)
                         (equal (fn2-machine-partner id fn2-core) partner)) :ok)
@@ -280,7 +285,10 @@
       (identities (and bounded (fn2-b-member-identities members first-key)))
       (batch (fn2-machine-batch-no id fn2-core))
       (tag (cond ((equal mode 0) :baseline) ((equal mode 1) :preflush-fua) (t :invalid-mode)))
-      (events (cond ((eq code :ok) (list (list :request batch identities tag)))
+      (assigned (and (posp members) (<= members 16) (unsigned-byte-p 60 event)
+                     (unsigned-byte-p 60 (+ event members))
+                     (fn2-b-member-identities members event)))
+      (events (cond (admitted (list (list :request (fn2-machine-batch-no got fn2-core) assigned tag)))
                     ; A stale/replayed identity is not a newly refused operation.
                     ((and (or (eq code :admission) (and (eq code :exhausted) (eq pick :exhausted)))
                           bounded (natp frontier) (<= frontier first-key))
