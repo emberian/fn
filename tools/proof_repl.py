@@ -819,12 +819,16 @@ def errored(output: str) -> bool:
     if (any(mark in output for mark in CRASH_MARKS) or "ACL2 Halted" in output
             or RAW_DEBUGGER_PROMPT.search(output) or PROTOCOL_ERROR in output):
         return True
-    if FAILED_BANNER in output:
+    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
+    # A make-event whose (:or A B) recovered: A's FAILED banner, then B's and
+    # the make-event's own summaries (arm-frames, 2026-11-07: an owed
+    # fallback was marked refused although the event was admitted).
+    failed = output.rfind(FAILED_BANNER)
+    if failed >= 0 and (not summaries or failed > summaries[-1]):
         return True
     last_error = max((output.rfind(mark) for mark in ERROR_MARKS), default=-1)
     if last_error < 0:
         return False
-    summaries = [match.start() for match in SUMMARY_LINE.finditer(output)]
     return not summaries or last_error > summaries[-1]
 
 

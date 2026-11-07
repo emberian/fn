@@ -432,7 +432,10 @@ def ask_local(name: str, request: dict) -> dict:
         phase = json.loads(state.read_text()).get("phase") if state.exists() else "never started"
         return {"error": f"no live session {name} ({phase})"}
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.connect(str(path))
+        try:
+            connection.connect(str(path))
+        except (ConnectionRefusedError, FileNotFoundError):
+            return {"error": f"no live session {name} (a stale socket: its server is gone; start it again)"}
         connection.sendall(json.dumps(request).encode())
         connection.shutdown(socket.SHUT_WR)
         return json.loads(read_all(connection) or b"{}")
@@ -574,11 +577,17 @@ def cmd_start(args) -> int:
         print(sync(lane, args.sync))
     state = remote_state(lane, name)
     if state and not state["phase"].startswith(("dead", "stopped")):
-        got = ask(lane, name, {"op": "status"}, 60)
-        if "state" in got:
-            print(f"bb2-repl: session {name} is already live; `stop {name}` first")
-            print_state(got["state"])
-            return 1
+        if server_alive(lane, name):
+            got = ask(lane, name, {"op": "status"}, 60)
+            if "state" in got:
+                print(f"bb2-repl: session {name} is already live; `stop {name}` first")
+                print_state(got["state"])
+                return 1
+        else:
+            # A killed server leaves its socket, PID file and a live-looking
+            # state behind; they are this session's own files.
+            print(f"bb2-repl: session {name}: no live server (was {state['phase']}); clearing its stale files")
+            ssh(lane, f"rm -f {remote_dir(lane, name)}/sock {remote_dir(lane, name)}/server.pid", 60)
     record(name, lane)
     ship_tools()
     mem = args.mem
@@ -654,6 +663,14 @@ def cmd_list(args) -> int:
             with contextlib.suppress(json.JSONDecodeError):
                 print_state(json.loads(chunk if chunk.endswith("}") else chunk + "\n}"))
     return 0
+
+
+def server_alive(lane: str, name: str) -> bool:
+    # the PID in the session's own file is a live `bb2_repl serve NAME`
+    directory = remote_dir(lane, name)
+    check = (f"p=$(cat {directory}/server.pid 2>/dev/null) && [ -n \"$p\" ] && "
+             f"tr '\\0' ' ' < /proc/$p/cmdline 2>/dev/null | grep -q 'bb2_repl serve {name} ' && echo alive")
+    return ssh(lane, check, 60).stdout.strip() == "alive"
 
 
 def cmd_stop(args) -> int:
