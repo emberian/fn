@@ -323,7 +323,8 @@ MACHINE_OPTIONAL = [":PHASE-FIELDS"]
 # :genesis (G3 3/n, the arm the executor's init runs once per kind) is omitted by name: the embedding
 # does not translate it and the measure records no genesis call (owed, LEAN-METATHEORY section 6).
 MACHINE_OMITTED = [":LAYOUT", ":PACKED", ":CALLING-CONVENTION", ":ARMS", ":SUBARMS", ":OBSERVE-ARMS",
-                   ":STOPS", ":GENESIS", ":LINKS"]
+                   ":STOPS", ":GENESIS", ":LINKS", ":HOLDS-WHILE"]
+# :holds-while (a kind's holds conditioned on its phase) is not yet read by the Lean registry.
 # :links (F8, typed links) is consumed translated from the embedding as well (LayerAKinds' `links`).
 
 

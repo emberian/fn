@@ -45,16 +45,16 @@
   (let ((none (eval '*fn2-none*)))
     ;; fn2-arms-probe: a kind's own stop, the plain path, :wake-row + :goto close with its :issue
     (mp-arm 'fn2-arms-probe :work '((count . 100)))
-    (mp-arm 'fn2-arms-probe :work `((count . 5) (target . ,none)))
-    (mp-arm 'fn2-arms-probe :work '((count . 5) (target . 1)))
-    (mp-arm 'fn2-arms-probe :work '((count . 5) (target . 1) (cap-index . 0) (cap-nonce . 0)) :id 2 :slot 1)
+    (mp-arm 'fn2-arms-probe :work `((count . 5) (tgt . ,none)))
+    (mp-arm 'fn2-arms-probe :work '((count . 5) (tgt . 1)))
+    (mp-arm 'fn2-arms-probe :work '((count . 5) (tgt . 1) (cap-index . 0) (cap-nonce . 0)) :id 2 :slot 1)
     ;; :repeat: four passes, then the :until stopping early
     (mp-arm 'fn2-arms-probe :loop '((count . 0)))
     (mp-arm 'fn2-arms-probe :loop '((count . 8)))
     (mp-arm 'fn2-arms-probe :loop '((count . 10)))
     ;; accept-hand: no hand to take, and a target row
-    (mp-arm 'fn2-arms-probe :take `((target . ,none)))
-    (mp-arm 'fn2-arms-probe :take '((target . 1)))
+    (mp-arm 'fn2-arms-probe :take `((tgt . ,none)))
+    (mp-arm 'fn2-arms-probe :take '((tgt . 1)))
     (mp-arm 'fn2-arms-probe :wait nil)
     (mp-arm 'fn2-arms-probe :free nil)
     (mp-arm 'fn2-arms-probe :done nil)
