@@ -469,11 +469,15 @@
                                    (list (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))) nil))))
            :in-theory (disable fn2-env-inv fn2-env-inv-frame-step fn2-env-observe fn2-env-step))))
 
-;; :ADMIT, begun. The admission contract wanted: no commit row gains a reply
-;; it did not show before (fn2-env-no-new-acks-p of the rows after against
-;; the rows before); OBSERVED then carries over. Proved so far: the relation's
-;; algebra and the frames of the admission's sub-operations that touch no
-;; commit row.
+;; :ADMIT. The admission adds no reply a commit row did not show before:
+;; fn2-env-no-new-acks-p of the rows after against the rows before, so
+;; OBSERVED carries over and DURABLE is untouched (the admission logs
+;; nothing). Each sub-operation's arm-frames contract (books/machines.lisp,
+;; derived under the commit kind) bounds what it changes; one bridge lemma
+;; turns a contract that leaves the directory, the commit table's rows and
+;; its cb-acks and batch-no columns alone into the relation, and the row
+;; write of fn2-commit-start, which writes both columns, leaves cb-acks 0
+;; by its write contract's read-back.
 (defun fn2-env-no-new-acks-p (post pre)
   (declare (xargs :verify-guards nil))
   (if (atom post) t
@@ -486,15 +490,343 @@
 (defthm fn2-env-no-new-acks-trans
   (implies (and (fn2-env-no-new-acks-p c b) (fn2-env-no-new-acks-p b a) (equal (len c) (len b)))
            (fn2-env-no-new-acks-p c a)))
-(defthm fn2-env-rows-core-stop-frame
-  (equal (fn2-env-rows ids (fn2-core-stop reason fn2-core)) (fn2-env-rows ids fn2-core))
-  :hints (("Goal" :in-theory (e/d (fn2-core-stop fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
-(defthm fn2-env-rows-commit-ready-frame
-  (equal (fn2-env-rows ids (fn2-commit-ready id fn2-core)) (fn2-env-rows ids fn2-core))
-  :hints (("Goal" :in-theory (e/d (fn2-commit-ready fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
-(defthm fn2-env-rows-core-reserve-frame
-  (equal (fn2-env-rows ids (mv-nth 3 (fn2-core-reserve class kind id gen fn2-core))) (fn2-env-rows ids fn2-core))
-  :hints (("Goal" :in-theory (e/d (fn2-core-reserve fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp fn2-machine-kind fn2-machine-slot) ()))))
+(defthm fn2-env-rows-len
+  (equal (len (fn2-env-rows ids fn2-core)) (len ids)))
+
+; Where the observer reads: the directory, the commit table's rows field and
+; its cb-acks and batch-no columns.
+(make-event
+ (let* ((world (w state)) (tcols (strip-cars (fn2-machine-property 'fn2-commit :table world))))
+   (value `(progn (defconst *fn2-env-tk* ,(fn2-arm-frame-child-index 'fn2-commit-table world))
+                  (defconst *fn2-env-m* ,(fn2-arm-frame-m world))
+                  (defconst *fn2-env-ri* ,(len tcols))
+                  (defconst *fn2-env-acks* ,(position-eq 'cb-acks tcols))
+                  (defconst *fn2-env-batch* ,(position-eq 'batch-no tcols))))))
+; The two columns of tables TA and TB agree but at ROW, where the reply
+; count is 0 or both cells agree.
+(defun fn2-env-cells-ok (row ta tb)
+  (declare (xargs :verify-guards nil))
+  (and (equal (update-nth row nil (nth *fn2-env-acks* ta)) (update-nth row nil (nth *fn2-env-acks* tb)))
+       (equal (update-nth row nil (nth *fn2-env-batch* ta)) (update-nth row nil (nth *fn2-env-batch* tb)))
+       (or (equal (nth row (nth *fn2-env-acks* tb)) 0)
+           (and (equal (nth row (nth *fn2-env-acks* tb)) (nth row (nth *fn2-env-acks* ta)))
+                (equal (nth row (nth *fn2-env-batch* tb)) (nth row (nth *fn2-env-batch* ta)))))))
+(defthm fn2-env-cells-ok-refl (fn2-env-cells-ok row ta ta))
+(defthm fn2-env-nth-off-update-nth
+  (implies (and (equal (update-nth r nil x) (update-nth r nil y)) (not (equal (nfix s) (nfix r))))
+           (equal (nth s x) (nth s y)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance nth-update-nth (m s) (n r) (val nil) (l x))
+                        (:instance nth-update-nth (m s) (n r) (val nil) (l y)))
+           :in-theory (disable nth-update-nth))))
+(defthm fn2-env-cells-ok-cell
+  (implies (and (fn2-env-cells-ok row ta tb) (natp row) (natp s))
+           (or (equal (nth s (nth *fn2-env-acks* tb)) 0)
+               (and (equal (nth s (nth *fn2-env-acks* tb)) (nth s (nth *fn2-env-acks* ta)))
+                    (equal (nth s (nth *fn2-env-batch* tb)) (nth s (nth *fn2-env-batch* ta))))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((equal s row))
+           :in-theory (disable nth update-nth)
+           :use ((:instance fn2-env-nth-off-update-nth (r row) (x (nth *fn2-env-acks* ta)) (y (nth *fn2-env-acks* tb)))
+                 (:instance fn2-env-nth-off-update-nth (r row) (x (nth *fn2-env-batch* ta)) (y (nth *fn2-env-batch* tb)))))))
+; A commit row's cell is readable: the directory has the id and the slot is
+; under the table's rows.
+(defun-nx fn2-env-cell-code (id fn2-core)
+  (declare (xargs :verify-guards nil))
+  (let ((slot (fn2-machine-slot id fn2-core)))
+    (if (and (fn2-machine-idp id fn2-core) (natp slot) (< slot (nth *fn2-env-ri* (nth *fn2-env-tk* fn2-core))))
+        :ok :bounds)))
+(defthm fn2-env-cell-code-slot
+  (implies (equal (fn2-env-cell-code id fn2-core) :ok) (natp (fn2-machine-slot id fn2-core)))
+  :rule-classes :forward-chaining)
+(defthm fn2-env-acks-off-kind
+  (implies (not (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*))
+           (equal (fn2-machine-cb-acks id fn2-core) 0))
+  :hints (("Goal" :in-theory (enable fn2-machine-cb-acks))))
+(defthm fn2-env-commit-row-unfolds
+  (implies (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*)
+           (and (equal (fn2-machine-cb-acks-read-code id fn2-core) (fn2-env-cell-code id fn2-core))
+                (equal (fn2-machine-batch-no-read-code id fn2-core) (fn2-env-cell-code id fn2-core))
+                (equal (fn2-machine-cb-acks id fn2-core)
+                       (if (eq (fn2-env-cell-code id fn2-core) :ok)
+                           (nth (fn2-machine-slot id fn2-core) (nth *fn2-env-acks* (nth *fn2-env-tk* fn2-core))) 0))
+                (equal (fn2-machine-batch-no id fn2-core)
+                       (if (eq (fn2-env-cell-code id fn2-core) :ok)
+                           (nth (fn2-machine-slot id fn2-core) (nth *fn2-env-batch* (nth *fn2-env-tk* fn2-core))) 0))))
+  :hints (("Goal" :in-theory (e/d (fn2-machine-cb-acks fn2-machine-cb-acks-read-code fn2-machine-batch-no
+                                   fn2-machine-batch-no-read-code fn2-commit-table fn2-commit-rows
+                                   fn2-commit-cb-acks fn2-commit-cb-acks$ai fn2-commit-batch-no fn2-commit-batch-no$ai)
+                                  (fn2-machine-slot fn2-machine-idp fn2-machine-kind)))))
+(in-theory (disable fn2-env-commit-row-unfolds))
+(defthm fn2-env-cell-code-congruence
+  (implies (and (equal (nth *fn2-env-m* b) (nth *fn2-env-m* a))
+                (equal (nth *fn2-env-ri* (nth *fn2-env-tk* b)) (nth *fn2-env-ri* (nth *fn2-env-tk* a))))
+           (equal (fn2-env-cell-code id b) (fn2-env-cell-code id a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-machine-idp fn2-core-machines) (fn2-machine-slot))
+           :use ((:instance fn2-arm-slot-congruence (a b) (b a))))))
+; One id: after B, a positive reply count is one A showed, with its batch.
+(defthm fn2-env-row-no-new-ack
+  (implies (and (equal (nth *fn2-env-m* b) (nth *fn2-env-m* a))
+                (equal (nth *fn2-env-ri* (nth *fn2-env-tk* b)) (nth *fn2-env-ri* (nth *fn2-env-tk* a)))
+                (fn2-env-cells-ok row (nth *fn2-env-tk* a) (nth *fn2-env-tk* b)) (natp row))
+           (or (not (posp (fn2-machine-cb-acks id b)))
+               (and (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a))
+                    (equal (fn2-machine-batch-no-read-code id b) (fn2-machine-batch-no-read-code id a))
+                    (equal (fn2-machine-cb-acks id b) (fn2-machine-cb-acks id a))
+                    (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a)))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((equal (fn2-machine-kind id a) *fn2-commit-kind*))
+           :in-theory (e/d (fn2-env-commit-row-unfolds) (fn2-env-cells-ok fn2-env-cell-code fn2-machine-slot fn2-machine-kind nth))
+           :use ((:instance fn2-arm-slot-congruence (a b) (b a))
+                 (:instance fn2-arm-kind-congruence (a b) (b a))
+                 (:instance fn2-env-cell-code-congruence)
+                 (:instance fn2-env-cells-ok-cell (ta (nth *fn2-env-tk* a)) (tb (nth *fn2-env-tk* b)) (s (fn2-machine-slot id a)))))))
+(defthm fn2-env-no-new-acks-of-cells
+  (implies (and (equal (nth *fn2-env-m* b) (nth *fn2-env-m* a))
+                (equal (nth *fn2-env-ri* (nth *fn2-env-tk* b)) (nth *fn2-env-ri* (nth *fn2-env-tk* a)))
+                (fn2-env-cells-ok row (nth *fn2-env-tk* a) (nth *fn2-env-tk* b)) (natp row))
+           (fn2-env-no-new-acks-p (fn2-env-rows ids b) (fn2-env-rows ids a)))
+  :rule-classes nil
+  :hints (("Goal" :induct (len ids)
+           :in-theory (disable fn2-env-cells-ok nth fn2-machine-cb-acks fn2-machine-batch-no
+                               fn2-machine-cb-acks-read-code fn2-machine-batch-no-read-code))
+          ("Subgoal *1/1" :use ((:instance fn2-env-row-no-new-ack (id (car ids)))))))
+; THE BRIDGE: an arm-frames row frame over the commit table that leaves the
+; directory and the commit table's rows, cb-acks and batch-no alone.
+(defthm fn2-env-no-new-acks-of-row-frame
+  (implies (and (fn2-arm-row-frame *fn2-env-tk* row cs ch a b)
+                (not (member-equal *fn2-env-tk* ch)) (not (member-equal *fn2-env-m* ch))
+                (not (member-equal *fn2-env-ri* cs)) (not (member-equal *fn2-env-acks* cs))
+                (not (member-equal *fn2-env-batch* cs)))
+           (fn2-env-no-new-acks-p (fn2-env-rows ids b) (fn2-env-rows ids a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols fn2-env-rows fn2-env-no-new-acks-p nth update-nth))
+           :use ((:instance fn2-env-no-new-acks-of-cells (row 0))
+                 (:instance fn2-arm-kids-nth (i 0) (k *fn2-env-m*) (free (cons *fn2-env-tk* ch)))
+                 (:instance fn2-arm-row-frame-cols (table *fn2-env-tk*) (columns cs) (children ch))
+                 (:instance fn2-arm-cols-nth (k 0) (j *fn2-env-ri*) (columns cs) (a (nth *fn2-env-tk* a)) (b (nth *fn2-env-tk* b)))
+                 (:instance fn2-arm-cols-nth (k 0) (j *fn2-env-acks*) (columns cs) (a (nth *fn2-env-tk* a)) (b (nth *fn2-env-tk* b)))
+                 (:instance fn2-arm-cols-nth (k 0) (j *fn2-env-batch*) (columns cs) (a (nth *fn2-env-tk* a)) (b (nth *fn2-env-tk* b)))))))
+
+;; The admission's sub-operations' contracts, derived under the commit kind
+;; by the arm-frames generator (callees first).
+(make-event
+ (value (cons 'progn (fn2-arm-frame-fns-forms
+                      '(fn2-commit-save-pool fn2-commit-keep-pool fn2-commit-unwind-pool fn2-core-reserve
+                        fn2-commit-reserve-pools fn2-commit-reserve-extent fn2-commit-release-pools
+                        fn2-commit-prepare-root fn2-commit-ready fn2-commit-put-members fn2-exec-wake)
+                      'fn2-commit))))
+; FN's no-new-acks step from its contract through the bridge: the rows after
+; FN show no reply the rows before PRE did not. Refused when the contract
+; may change what the observer reads.
+(defun fn2-env-acks-step-event (fn world)
+  (declare (xargs :mode :program))
+  (let* ((kind 'fn2-commit)
+         (e (fn2-arm-frame-known fn kind world))
+         (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world))
+         (tk (fn2-arm-frame-entry-tk e world))
+         (ch (fn2-arm-frame-entry-s e))
+         (cs (fn2-arm-frame-entry-j e))
+         (row (if tk '(fn2-machine-slot id fn2-core) 0))
+         (name (packn (list 'fn2-env- fn '-no-new-acks))))
+    (if (or (not (member-eq (car e) '(:row :op)))
+            (and tk (not (equal tk *fn2-env-tk*)))
+            (member *fn2-env-tk* ch) (member *fn2-env-m* ch)
+            (intersectp-equal cs (list *fn2-env-ri* *fn2-env-acks* *fn2-env-batch*)))
+        (er hard 'fn2-env-acks-step-event "~x0's contract ~x1 may change what the observer reads." fn e)
+      `(defthm ,name
+         (implies (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids fn2-core) fn2-env-pre)
+                  (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids ,out) fn2-env-pre))
+         :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
+                  :use ((:instance ,(fn2-arm-frame-lemma fn e "-ARM-ROW-FRAME" kind world)
+                                   (fn2-arm-tb ,*fn2-env-tk*) (fn2-arm-row ,row) (fn2-arm-cs ',cs) (fn2-arm-ch ',ch)
+                                   (fn2-arm-c0 fn2-core))
+                        (:instance fn2-env-no-new-acks-of-row-frame (row ,row) (cs ',cs) (ch ',ch) (a fn2-core) (b ,out)
+                                   (ids fn2-env-ids))
+                        (:instance fn2-env-no-new-acks-trans (c (fn2-env-rows fn2-env-ids ,out))
+                                   (b (fn2-env-rows fn2-env-ids fn2-core)) (a fn2-env-pre))
+                        (:instance fn2-env-rows-len (ids fn2-env-ids) (fn2-core ,out))
+                        (:instance fn2-env-rows-len (ids fn2-env-ids)))))))))
+(defun fn2-env-acks-step-events (fns world)
+  (declare (xargs :mode :program))
+  (if (atom fns) nil
+    (cons (fn2-env-acks-step-event (car fns) world) (fn2-env-acks-step-events (cdr fns) world))))
+(make-event
+ (value (cons 'progn (fn2-env-acks-step-events
+                      '(fn2-core-stop fn2-core-reserve fn2-commit-keep-pool fn2-commit-unwind-pool
+                        fn2-commit-reserve-extent fn2-commit-release-pools fn2-commit-prepare-root fn2-commit-ready
+                        fn2-commit-put-members fn2-exec-wake)
+                      (w state)))))
+; The reserve loop's contract stays at the children level (its table write is
+; the row's pool columns, but the loop's row frame is not derived): its step
+; by induction over the loop, each pass through its two steps' contracts.
+(defthm fn2-env-fn2-commit-reserve-pools-no-new-acks
+  (implies (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids fn2-core) fn2-env-pre)
+           (fn2-env-no-new-acks-p
+            (fn2-env-rows fn2-env-ids (mv-nth 1 (fn2-commit-reserve-pools left id owner-gen fn2-core))) fn2-env-pre))
+  :hints (("Goal" :induct (fn2-commit-reserve-pools left id owner-gen fn2-core)
+           :in-theory (union-theories '(fn2-commit-reserve-pools fn2-env-fn2-core-reserve-no-new-acks
+                                        fn2-env-fn2-commit-keep-pool-no-new-acks fn2-env-fn2-commit-unwind-pool-no-new-acks)
+                                      (theory 'minimal-theory)))))
+
+; The row write of fn2-commit-start writes cb-acks and batch-no at its row.
+; Accepted, its contract's read-back leaves cb-acks 0 there; refused, it
+; changes neither the directory nor the commit table.
+(defthm fn2-env-cols-nth-in
+  (implies (and (fn2-arm-cols k row columns a b) (natp k) (natp j) (member-equal (+ k j) columns))
+           (equal (update-nth row nil (nth j a)) (update-nth row nil (nth j b))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct k j a b) :in-theory (enable nth fn2-arm-cols))))
+(defthm fn2-env-commit-row-acks-unfolds
+  (implies (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*)
+           (equal (fn2-commit-row-cb-acks id fn2-core)
+                  (if (eq (fn2-env-cell-code id fn2-core) :ok)
+                      (nth (fn2-machine-slot id fn2-core) (nth *fn2-env-acks* (nth *fn2-env-tk* fn2-core))) 0)))
+  :hints (("Goal" :in-theory (e/d (fn2-commit-row-cb-acks fn2-commit-snapshot-read-code fn2-machine-phase-read-code
+                                   fn2-commit-table fn2-commit-rows fn2-commit-cb-acks fn2-commit-cb-acks$ai)
+                                  (fn2-machine-slot fn2-machine-idp fn2-machine-kind)))))
+(in-theory (disable fn2-env-commit-row-acks-unfolds))
+(defun fn2-env-start-write-events (world)
+  (declare (xargs :mode :program))
+  (let* ((kind 'fn2-commit)
+         (fields '(phase member-count first-key cb-mode batch-no partner principal-slot stopped generation
+                   cb-stage cb-cursor cb-issued cb-done cb-bytes cb-failed outcome cb-reason cb-fence-live
+                   cb-fence-ok cb-deps-ok cb-log-ok cb-published cb-acks cb-seal-len deadline cb-wrote cb-open
+                   dep-bytes rec-bytes))
+         (ord (fn2-arms-cols-order fields (fn2-machine-property kind :columns world)))
+         (w (fn2-arms-write-name kind ord))
+         (formals (formals w world))
+         (wformals (butlast (cdr formals) 1))
+         (call (cons w formals))
+         (acks (nth (position-eq 'cb-acks ord) wformals))
+         (g (fn2-arm-frame-write-guards kind ord wformals world))
+         (e (fn2-arm-frame-known w kind world))
+         (cs (fn2-arm-frame-entry-j e))
+         (ch (fn2-arm-frame-entry-s e))
+         (row '(fn2-machine-slot id fn2-core))
+         (ta `(nth ,*fn2-env-tk* fn2-core))
+         (tb `(nth ,*fn2-env-tk* ,call))
+         ; the phase argument's own fit (the write maps any argument to a
+         ; phase constant, so refusal is the other conjuncts')
+         (pfit (if (eq (car ord) 'phase) (nth 5 g) (er hard 'fn2-env-start-write-events "~x0 writes no phase." w))))
+    `((defun-nx fn2-env-start-write-accepted ,formals
+        (declare (xargs :verify-guards nil) (ignorable ,@formals))
+        ,g)
+      (defthm fn2-env-start-write-accepted-suff
+        (implies ,g (fn2-env-start-write-accepted ,@formals)))
+      (in-theory (disable fn2-env-start-write-accepted))
+      ; refused: neither the directory nor the commit table changes
+      (defthm fn2-env-start-write-refused
+        (implies (and (not (fn2-env-start-write-accepted ,@formals)) ,pfit)
+                 (and (equal (nth ,*fn2-env-tk* ,call) (nth ,*fn2-env-tk* fn2-core))
+                      (equal (nth ,*fn2-env-m* ,call) (nth ,*fn2-env-m* fn2-core))))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (e/d (fn2-env-start-write-accepted-suff ,w fn2-machine-refuse-write fn2-core-stop
+                                         update-fn2-core-control update-fn2-commit-table fn2-commit-table)
+                                        (fn2-machine-idp fn2-machine-kind fn2-machine-slot)))))
+      ; its frame: the directory and the rows field kept, the two columns but at its row
+      (defthm fn2-env-start-write-frame
+        (and (equal (nth ,*fn2-env-m* ,call) (nth ,*fn2-env-m* fn2-core))
+             (equal (nth ,*fn2-env-ri* ,tb) (nth ,*fn2-env-ri* ,ta))
+             (equal (update-nth ,row nil (nth ,*fn2-env-acks* ,ta)) (update-nth ,row nil (nth ,*fn2-env-acks* ,tb)))
+             (equal (update-nth ,row nil (nth ,*fn2-env-batch* ,ta)) (update-nth ,row nil (nth ,*fn2-env-batch* ,tb))))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (union-theories '(fn2-arm-row-frame) (theory 'fn2-arm-frame-base))
+                 :use ((:instance ,(fn2-columns-sym w "-ARM-ROW-FRAME") (fn2-arm-tb ,*fn2-env-tk*)
+                                  (fn2-arm-row ,row) (fn2-arm-cs ',cs) (fn2-arm-ch ',ch) (fn2-arm-c0 fn2-core))
+                       (:instance fn2-arm-kids-nth (i 0) (k ,*fn2-env-m*) (free (cons ,*fn2-env-tk* ',ch)) (a fn2-core) (b ,call))
+                       (:instance fn2-arm-cols-nth (k 0) (j ,*fn2-env-ri*) (columns ',cs) (row ,row) (a ,ta) (b ,tb))
+                       (:instance fn2-env-cols-nth-in (k 0) (j ,*fn2-env-acks*) (columns ',cs) (row ,row) (a ,ta) (b ,tb))
+                       (:instance fn2-env-cols-nth-in (k 0) (j ,*fn2-env-batch*) (columns ',cs) (row ,row) (a ,ta) (b ,tb))))))
+      ; accepted with cb-acks 0: its row's reply count is 0
+      (defthm fn2-env-start-write-acks
+        (implies (and (fn2-env-start-write-accepted ,@formals) (equal ,acks 0))
+                 (and (natp ,row) (equal (nth ,row (nth ,*fn2-env-acks* ,tb)) 0)))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (e/d (fn2-env-start-write-accepted fn2-commit-rows fn2-commit-table fn2-env-cell-code)
+                                        (,w fn2-machine-idp fn2-machine-kind fn2-machine-slot))
+                 :use ((:instance ,(fn2-columns-sym w "-READS"))
+                       (:instance fn2-env-commit-row-acks-unfolds (fn2-core ,call))
+                       (:instance fn2-env-start-write-frame)
+                       (:instance fn2-env-cell-code-congruence (a fn2-core) (b ,call))
+                       (:instance fn2-arm-slot-congruence (a ,call) (b fn2-core))
+                       (:instance fn2-arm-kind-congruence (a ,call) (b fn2-core))))))
+      (defthm fn2-env-start-write-cells
+        (implies (and (equal ,acks 0) ,pfit)
+                 (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids ,call) (fn2-env-rows fn2-env-ids fn2-core)))
+        :rule-classes nil
+        :hints (("Goal" :cases ((fn2-env-start-write-accepted ,@formals))
+                 :in-theory (union-theories '(fn2-env-cells-ok-refl) (theory 'fn2-arm-frame-base)))
+                ("Subgoal 2" :use (fn2-env-start-write-refused
+                                   (:instance fn2-env-no-new-acks-of-cells (row 0) (a fn2-core) (b ,call) (ids fn2-env-ids))))
+                ("Subgoal 1"
+                 :in-theory (union-theories '(fn2-env-cells-ok) (theory 'fn2-arm-frame-base))
+                 :use (fn2-env-start-write-frame fn2-env-start-write-acks
+                       (:instance fn2-env-no-new-acks-of-cells (row ,row) (a fn2-core) (b ,call) (ids fn2-env-ids))))))
+      (defthm fn2-env-start-write-no-new-acks
+        (implies (and (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids fn2-core) fn2-env-pre) (equal ,acks 0) ,pfit)
+                 (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids ,call) fn2-env-pre))
+        :hints (("Goal" :in-theory (theory 'minimal-theory)
+                 :use (fn2-env-start-write-cells
+                       (:instance fn2-env-no-new-acks-trans (c (fn2-env-rows fn2-env-ids ,call))
+                                  (b (fn2-env-rows fn2-env-ids fn2-core)) (a fn2-env-pre))
+                       (:instance fn2-env-rows-len (ids fn2-env-ids) (fn2-core ,call))
+                       (:instance fn2-env-rows-len (ids fn2-env-ids)))))))))
+(make-event (value (cons 'progn (fn2-env-start-write-events (w state)))))
+
+; The admission: fn2-commit-start, then its members, then the row's wake.
+; Each opening sees its callees only through their steps above.
+(defthm fn2-env-commit-start-no-new-acks
+  (implies (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids fn2-core) fn2-env-pre)
+           (fn2-env-no-new-acks-p
+            (fn2-env-rows fn2-env-ids (mv-nth 1 (fn2-commit-start id members first-key mode partner fn2-core)))
+            fn2-env-pre))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-start fn2-env-start-write-no-new-acks
+                                              fn2-env-fn2-core-stop-no-new-acks fn2-env-fn2-commit-reserve-pools-no-new-acks
+                                              fn2-env-fn2-commit-reserve-extent-no-new-acks
+                                              fn2-env-fn2-commit-release-pools-no-new-acks
+                                              fn2-env-fn2-commit-prepare-root-no-new-acks
+                                              fn2-env-fn2-commit-ready-no-new-acks)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-commit-admit-keyed-no-new-acks
+  (implies (fn2-env-no-new-acks-p (fn2-env-rows fn2-env-ids fn2-core) fn2-env-pre)
+           (fn2-env-no-new-acks-p
+            (fn2-env-rows fn2-env-ids (mv-nth 4 (fn2-commit-admit-keyed n mode okind oslot ogen fn2-core)))
+            fn2-env-pre))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-admit-keyed fn2-env-commit-start-no-new-acks
+                                              fn2-env-fn2-commit-put-members-no-new-acks
+                                              fn2-env-fn2-core-stop-no-new-acks)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-admit-no-new-acks
+  (fn2-env-no-new-acks-p (fn2-env-rows ids (fn2-env-admit members mode fn2-core)) (fn2-env-rows ids fn2-core))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-admit fn2-env-commit-admit-keyed-no-new-acks
+                                              fn2-env-fn2-exec-wake-no-new-acks fn2-env-no-new-acks-refl)
+                                             (theory 'fn2-arm-frame-base)))))
+; THE ADMISSION STEP preserves the invariant.
+(defthm fn2-env-inv-admit-step
+  (implies (and (fn2-env-inv ids acked log fn2-core)
+                (equal (fn2-env-tag action) :admit))
+           (mv-let (entry after) (fn2-env-step action nil image rlog fn2-core)
+             (fn2-env-inv ids (fn2-env-observe ids acked after)
+                          (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-step fn2-env-inv)
+                                  (fn2-env-admit fn2-env-rows fn2-env-observed-p fn2-env-acked-durable-p
+                                   fn2-env-no-new-acks-p fn2-env-observe-rows))
+           :use ((:instance fn2-env-admit-no-new-acks (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
+                 (:instance fn2-env-observed-no-new-acks
+                            (pre (fn2-env-rows ids fn2-core))
+                            (post (fn2-env-rows ids (fn2-env-admit (fn2-env-arg 1 action) (fn2-env-arg 2 action) fn2-core))))
+                 (:instance fn2-env-acked-durable-extends (more nil))))))
+; Every step kind but :turn preserves the invariant.
+(defthm fn2-env-inv-step-but-turn
+  (implies (and (fn2-env-inv ids acked log fn2-core)
+                (not (equal (fn2-env-tag action) :turn)))
+           (mv-let (entry after) (fn2-env-step action nil image rlog fn2-core)
+             (fn2-env-inv ids (fn2-env-observe ids acked after)
+                          (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
+           :use (fn2-env-inv-admit-step fn2-env-inv-host-step))))
 
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
