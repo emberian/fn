@@ -718,7 +718,7 @@
 (table fn2-arm-frame-fns 'fn2-arms-mut-op '(:op (5 0)))
 (table fn2-arm-frame-fns 'fn2-arms-mut-hook '(:failed (:constrained)))
 (defmacro fn2-arms-mut-static (fns ch j)
-  `(fn2-arm-frame-static-problem ',fns ',ch ',j 6 (w state)))
+  `(fn2-arm-frame-static-problem ',fns ',ch ',j 6 nil (w state)))
 ;; an undeclared column of the row; an undeclared child; a callee without contracts
 (assert-event (equal (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0) (0 3)) '(:columns fn2-arms-mut-put (4))))
 (assert-event (equal (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5) (0 3 4)) '(:children fn2-arms-mut-op (0))))
@@ -728,6 +728,6 @@
 (assert-event (null (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0) (0 3 4))))
 (assert-event (null (fn2-arms-mut-static (fn2-arms-mut-put fn2-arms-mut-op) (5 0 6) (0))))
 ;; a row-level callee of another table changes that table as a child
-(assert-event (equal (fn2-arm-frame-static-problem '(fn2-arms-mut-put) '(5) '(0 3 4) 7 (w state))
+(assert-event (equal (fn2-arm-frame-static-problem '(fn2-arms-mut-put) '(5) '(0 3 4) 7 nil (w state))
                      '(:children fn2-arms-mut-put (6))))
 (value-triple (cw "MACHINE ARMS UNIT: frame mutants (undeclared column, child, contract-less callee, another table) named PASS~%"))
