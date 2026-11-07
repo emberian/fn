@@ -399,6 +399,9 @@
     (multiple-value-bind (order refused) (meta-closure roots)
       (let ((package
              (list :fn2-certificate :version 1
+                   :toolchain (fn2-tv-object
+                                (list (acl2-version+) (lisp-implementation-type)
+                                      (lisp-implementation-version)))
                    :roots (mapcar #'fn2-tv-object roots)
                    :manifest (fn2-tv-manifest *meta-w*)
                    :kind (fn2-tv-object kd)

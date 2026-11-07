@@ -58,6 +58,21 @@ def fields(xs):
     return dict(zip(map(str, xs[::2]), xs[1::2]))
 
 
+def object_list(x):
+    """Project an exact canonical list without decoding its elements."""
+    result = []
+    while x[0] == ':CONS':
+        if len(x) != 3: raise ValueError('malformed canonical cons')
+        result.append(x[1]); x = x[2]
+    if decode(x) != Atom('NIL'): raise ValueError('improper canonical list')
+    return result
+
+
+def object_fields(xs):
+    if len(xs) % 2: raise ValueError('odd canonical property list')
+    return fields(sum(([decode(k), v] for k,v in zip(xs[::2], xs[1::2])), []))
+
+
 def codes(x):
     ns = [int(n) for n in as_list(x)]
     if any(n < 0 or n > 255 for n in ns):
@@ -158,9 +173,8 @@ def fn_of(row):
     return Fn(f), d
 
 
-def body_certificate(fn, d, allf):
-    name = fn.name
-    callees = sorted(calls_of(fn.body, set()) - {'IF', 'RETURN-LAST'})
+def evaluator_certificate(fs, allf):
+    callees = sorted(set().union(*(calls_of(f.body, set()) for f,d in fs)) - {'IF', 'RETURN-LAST'})
     sigs = ['(if a b c)', '(return-last a b c)']
     for c in callees:
         if c in allf: args = allf[c][0].formals
@@ -171,11 +185,19 @@ def body_certificate(fn, d, allf):
             if c not in arities: raise ValueError('no evaluator signature: ' + c)
             args = ['A'+str(i) for i in range(arities[c])]
         sigs.append('(' + c + ' ' + ' '.join(args) + ')')
-    ev = name + '-EXPORT-EVAL'
+    return f"(defevaluator FN2-EXPORT-EVAL FN2-EXPORT-EVAL-LIST ({' '.join(sigs)}))"
+
+
+def body_certificate(fn, d, allf):
+    name = fn.name
+    ev = 'FN2-EXPORT-EVAL'
     env = '(list ' + ' '.join("(cons '" + a + ' ' + a + ')' for a in fn.formals) + ')'
-    return [f"(fn2-tv-check-function '{canonical_text(List(sum(([Atom(k),v] for k,v in d.items()), [])))} '{name})",
-            f"(defevaluator {ev} {ev}-LIST ({' '.join(sigs)}))",
-            f"(defthm {name}-EXPORT-BODY\n  (equal ({ev} '{show(fn.body)} {env})\n         ({name} {' '.join(fn.formals)}))\n  :rule-classes nil\n  :hints ((\"Goal\" :in-theory (enable {name}))))"]
+    forms = [f"(fn2-tv-check-function '{canonical_text(List(sum(([Atom(k),v] for k,v in d.items()), [])))} '{name})"]
+    body = "'" + show(fn.body)
+    if name == 'FN2-ECHO-RUN-FREE':
+        forms.append(f'(defconst *FN2-ECHO-RUN-FREE-EXPORTED-BODY* {body})')
+        body = '*FN2-ECHO-RUN-FREE-EXPORTED-BODY*'
+    return forms + [f"(defthm {name}-EXPORT-BODY\n  (equal ({ev} {body} {env})\n         ({name} {' '.join(fn.formals)}))\n  :rule-classes nil\n  :hints ((\"Goal\" :in-theory (enable {name}))))"]
 
 
 def emit_echo_validation(kd, tuple_, out):
@@ -257,7 +279,9 @@ def main(src, outdir, bookpath=None):
         binders = ' '.join(f'({ident(a)} : Val)' for a in f.formals)
         args = ' '.join(ident(a) for a in f.formals)
         env = '[' + ', '.join(f'({lean_str(a)}, {ident(a)})' for a in f.formals) + ']'
-        T += [f'def {ident(f.name)}.canonicalBody : Translation.Object := {lean_object(d[":LOGICAL-BODY"])}',
+        T += [f'def {ident(f.name)}.canonicalAttachment : Translation.Object := {lean_object(d[":ATTACHMENT"])}',
+              f'theorem {ident(f.name)}.attachment_free : {ident(f.name)}.canonicalAttachment.value? = some Val.nil := by rfl',
+              f'def {ident(f.name)}.canonicalBody : Translation.Object := {lean_object(d[":LOGICAL-BODY"])}',
               f'def {ident(f.name)}.body : Term := {term(f.body)}',
               f'theorem {ident(f.name)}.decoded : Translation.readTerm 512 {ident(f.name)}.canonicalBody = some {ident(f.name)}.body := by rfl',
               f'theorem {ident(f.name)}.export_body {binders} :',
@@ -278,16 +302,37 @@ def main(src, outdir, bookpath=None):
     tuple_ = List([r[1] for r in layout])
     emb = {':KINDS': List([kd]), ':OPERATIONS':List([]), ':CONSTANTS':constants, ':CORE-TUPLE':tuple_}
     emit_kinds(emb, [], out/'BridgeKinds.lean', 'Fn2.Instances.BridgeKinds', 'Fn2.Instances.BridgeWorld', {})
+    canonical_kind = object_fields(object_list(p[':KIND'])[1:])
+    first_arm = object_list(canonical_kind[':ARMS'])[0]
+    arm_fields = object_fields(object_list(first_arm)[1:])
+    declaration = arm_fields[':DECL']
+    # These equations bind the independently read arm and complete layout to
+    # canonical objects. The same declaration is checked against the live world.
+    path = out/'BridgeKinds.lean'
+    extra = '\n'.join([
+        f'def canonicalLayout : Translation.Object := {lean_object(manifest[":CORE-LAYOUT"])}',
+        'theorem canonical_layout : Translation.readCoreLayout canonicalLayout = some coreTuple := by rfl',
+        f'def canonicalFreeDeclaration : Translation.Object := {lean_object(declaration)}',
+        'theorem canonical_free_declaration : canonicalFreeDeclaration.value? = some kinds.head!.arms.head!.decl := by rfl', ''])
+    path.write_text(path.read_text().replace('end Fn2.Instances.BridgeKinds', extra+'end Fn2.Instances.BridgeKinds'))
     emit_echo_validation(kd, tuple_, out)
     C = ['(in-package "ACL2")', '(include-book "../../books/assembly-callbacks-a")',
          '(include-book "../../books/translation-validation")',
-         f"(fn2-tv-check-manifest '{canonical_text(p[':MANIFEST'])})"]
+         f"(fn2-tv-check-manifest '{canonical_text(p[':MANIFEST'])})",
+         f'''(make-event
+ (if (equal '{show(decode(declaration))}
+            (cdr (assoc-eq :free (fn2-machine-declared 'fn2-echo :arms (w state)))))
+     '(value-triple :export-matches-live-declaration)
+   (er soft 'fn2-tv-check-declaration "Export differs from the live FREE declaration.")))''']
+    C.append(evaluator_certificate(fs, allf))
     for f,d in fs:
         C += body_certificate(f,d,allf)
     Path(bookpath or out/'bridge-body.lisp').write_text('\n\n'.join(C)+'\n')
     root = Path(__file__).resolve().parents[2]
     tracked = sorted(root.glob('books/*.lisp')) + sorted((root/'meta').rglob('*.lean'))
-    tracked += sorted((root/'meta/emit').glob('*.py')) + [root/'meta/emit/print-world.lisp']
+    tracked += sorted((root/'meta/emit').glob('*.py')) + sorted((root/'meta/emit').glob('*.in'))
+    tracked += [root/'meta/emit/print-world.lisp', root/'meta/emit/print-certificate.lsp',
+                root/'meta/emit/bridge-body.lisp', root/'meta/emit/emit.sh']
     digest = lambda b: hashlib.sha256(b).hexdigest()
     try:
         revision = subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
@@ -298,11 +343,17 @@ def main(src, outdir, bookpath=None):
         package_sha256=digest(Path(src).read_bytes()),
         lean_toolchain=(root/'meta/lean-toolchain').read_text().strip(),
         mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
+        acl2_toolchain=json.loads(os.environ.get('FN2_ACL2_IDENTITY', '"UNRECORDED"')),
+        exporting_runtime=[str(x) for x in decode(p[':TOOLCHAIN'])] if ':TOOLCHAIN' in p else 'UNRECORDED',
         validated_body_candidates=sorted(want),
         unvalidated_functions=sorted(set(allf)-want),
         absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
         guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
         primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
+        primitive_domain_obligations={
+            'representation': 'Integer Val, ACL2/COMMON-LISP imported names and KEYWORD names; no rational or complex lowering',
+            'trusted_correspondence': 'CONS EQUAL INTEGERP < NTH MV-NTH UPDATE-NTH retain the existing ACL2/Val primitive correspondence',
+            'scope': 'No recursive body, ASH, division, string conversion or attached executable is certified by this instance'},
         status='PROPOSED: certify bridge-body.lisp and build BridgeTranslation/Arms.Validation')
     (out/'bridge-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
     print('CERTIFICATE PROPOSAL', len(fs), 'body equations;', len(functions)-len(fs), 'exported functions unvalidated')

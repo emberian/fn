@@ -236,5 +236,8 @@ theorem echo_free_positive :
 #print axioms altered_child_layout_rejected
 #print axioms wrong_attachment_rejected
 #print axioms echo_free_positive
+#print axioms «FN2-ECHO-RUN-FREE».canonical_body
+#print axioms canonical_layout
+#print axioms canonical_free_declaration
 
 end Fn2.Arms.Validation

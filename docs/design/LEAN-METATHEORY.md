@@ -1,5 +1,10 @@
 # The metatheory in Lean, the instances in ACL2, and the Lean model of the machine (Opus designer and Lean author with Astra as co-author; present state, rewritten 2026-10-31)
 
+The canonical export and the first live-world whole-core arm certificate are
+described in [BRIDGE-CERTIFICATE.md](BRIDGE-CERTIFICATE.md) (2026-11-07). That
+certificate covers echo `:FREE`, including refused entry and every core child;
+it does not enlarge the earlier claims to other arms.
+
 Brief: `build/coordinator/briefs/LEAN-METATHEORY-20261028.md`, then ember's work order of 2026-10-31 (§-1). Read against: `DSL-METATHEORY.md` §1-5, `MACHINE-FORM-20261030.md` §6, `BRICKS-20261031.md`, `WORKFLOW-20261031.md`, `COHERENCE.md` §2-4, `EXECUTION-MODEL.md` §4-5; the books on dev at 24fce1ecd (the books; the Lean on dev at cc3750e91): `machine-arms.lisp`, `arm-children.lisp`, `machines.lisp`, `columns.lisp`, `declare.lisp`, `machines-a.lisp`, `machines-a-run.lisp`; the A4 smoke `tests/sim-layer-a-a4-smoke.lsp`.
 
 The project: `meta/` on dev (lane branch `fn2/lean`, worktree `/Users/ember/dev/fn/build/lanes/fn2/lean`). Astra's sessions: `fn2/lean-meta-astra-1..3.md` (2026-10-28, the metatheory, §11) and `fn2/lean-meta-astra-4.md` (2026-10-31, the embedding and the pathway, §11).

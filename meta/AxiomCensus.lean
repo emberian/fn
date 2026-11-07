@@ -329,3 +329,11 @@ import Fn2
 #print axioms Fn2.Instances.LayerAWorld.«FN2-SUCCESSOR-PUBLISH».constraint0_frame_FN2_CORE_MACHINES
 #print axioms Fn2.Instances.LayerAWorld.«FN2-SUCCESSOR-PUBLISH».constraint1_consp
 #print axioms Fn2.Instances.LayerAWorld.«FN2-CNS-LOOKUP-LOOP».pres_1_17_0
+#print axioms Fn2.Instances.BridgeWorld.«FN2-ECHO-RUN-FREE».canonical_body
+#print axioms Fn2.Instances.BridgeKinds.canonical_layout
+#print axioms Fn2.Instances.BridgeKinds.canonical_free_declaration
+#print axioms Fn2.Arms.Validation.echo_free_certificate
+#print axioms Fn2.Arms.Validation.echo_free_positive
+#print axioms Fn2.Arms.Validation.altered_body_rejected
+#print axioms Fn2.Arms.Validation.altered_child_layout_rejected
+#print axioms Fn2.Arms.Validation.wrong_attachment_rejected

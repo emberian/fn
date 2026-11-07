@@ -75,6 +75,20 @@ def Object.list? : Object → Option (List Object)
       then some [] else none
   | _ => none
 
+/-- Read the complete quoted ACL2 core layout, preserving field order. -/
+def readCoreLayout (x : Object) : Option (List String) := do
+  let xs ← x.list?
+  match xs with
+  | [q, rows] =>
+    if q.name? != some "QUOTE" then none else do
+      let rows ← rows.list?
+      rows.mapM fun row => do
+        let fields ← row.list?
+        match fields with
+        | [_, child] => child.name?
+        | _ => none
+  | _ => none
+
 /-- Independent reader of ACL2's translated term grammar. The finite syntax
 budget is checked by the generated decoding theorem, never inferred from runs. -/
 def readTerm : Nat → Object → Option Term
