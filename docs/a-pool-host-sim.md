@@ -336,7 +336,7 @@ and return join the death-cut counter under a short mutex, held outside the phys
 short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
 primitive test. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
 the launcher refuses an uncertified book closure.
-init exclusively creates a preallocated image (default 32 MiB), and serve opens it without
+`init` exclusively creates a preallocated image (default 32 MiB), and serve opens it without
 truncation. `books/node-profile.lisp` names the small native profile, including its 128-extent
 arena and `local.test` genesis group. Image size is checked by ACL2 before creation and again
 from the open observation. A larger file does not change that profile's arena geometry.
@@ -355,13 +355,18 @@ after that fence. `tests/boot-unit.lisp` holds the startup fence as the no-Accep
 checks successive epochs and invalid-image refusals. `tests/native-image-restart.py` creates
 an image, POSTs two articles (one over an extent), kills the recorded SBCL PID after `240`,
 and compares GROUP/ARTICLE/HEAD octets after two fresh opens. These boot and restart fixtures
-are pending execution at this lane checkpoint; the device primitive tests passed on Linux
+passed on bb2 with the 32 MiB native profile, including the held-fence control and
+the two byte-identical fresh reopens. The device primitive tests passed on Linux
 and Darwin. The tests do not qualify a physical device's power-loss behavior.
 
 The socket measurement fixture writes and fences its declared seed snapshot to a private
 file before serving, then uses the same storage worker. Its setup remains outside the
 measured boundary trace so WIRE/ENVELOPE replay starts at the declared seeded state. The
 fresh-process fixture, separately, exercises persisted genesis and image boot.
+`tests/native-image-carrier.py` passed on bb2 against the file-backed socket session
+with WIRE and ENVELOPE. `tests/native-device-policy-unit.lsp` passed on bb2: an ordinary write enters
+the worker while unsupported FUA queues a failed completion without submitting I/O,
+for both declared file backends. This policy control performs no physical I/O.
 
 #### 4.1.4 The socket and the session H speaks
 `tests/native-session.lsp` (LD script: includes the served books and check-wire/check-envelope,
