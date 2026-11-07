@@ -27,7 +27,7 @@
 ;; and its rows as read keeps every id's kind, slot, idp and phase: the frame
 ;; contracts (machines.lisp) read a child function's keep, never its body.
 (defun fn2-machines-directory-keeps (x m)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (true-listp x) (true-listp m))))
   (and (equal (nth 0 x) (nth 0 m)) (equal (nth 1 x) (nth 1 m))
        (equal (nth *fn2-machines-rows* x) (nth *fn2-machines-rows* m))))
 (in-theory (disable fn2-machines-directory-keeps))
