@@ -18,7 +18,7 @@
   (state 0 :type fixnum) (gen 0) (kind 0 :type fixnum) (cap 0) (nonce 0)
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
-  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0))
+  (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
 ;; Unix-domain socket beside it when the profile names :listener-path: one
@@ -188,6 +188,10 @@
 
 (defun fn2-n-storage-submit (host slot)
   (let ((op (aref (fn2-nhost-ops host) slot)))
+    (unless (eq (fn2-device-request (fn2-n-storage-kind (fn2-nop-kind op)) (fn2-nop-fua op)
+                                    (fn2-device-backend (fn2-nhost-storage host))) :perform)
+      (fn2-n-complete host slot :unsupported 0)
+      (return-from fn2-n-storage-submit nil))
     (fn2-n-boundary host "device-submit")
     (fn2-device-submit
      (fn2-nhost-storage host)
@@ -286,7 +290,7 @@
               (unless (eq span :ok) (error "fn2 native: descriptor ~d has no valid span (~s)" slot span))
               (setf op (make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce
                                      :address address :len span-len :target cslot :target-gen cgen
-                                     :offset storage-offset))
+                                     :offset storage-offset :fua fua))
               (setf (aref (fn2-nhost-ops host) slot) op))
             (fn2-n-record host (list :take slot gen kind cap nonce rslot rgen off len storage-offset fua
                                      may-release cslot cgen deadline observation-gen))

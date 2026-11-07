@@ -323,7 +323,9 @@ physical preallocation, an exclusive writer lock, observed size and backend; `pr
 `pwrite` at the action's offset; `fdatasync` on Linux and `F_FULLFSYNC` on Darwin for Fence.
 Creation fences both the image and its parent directory. The worker performs one call and
 reports its actual count and errno; `books/device-boundary.lisp` classifies those observations
-before the ordinary terminal normalizer. No retries complete a short read or write implicitly.
+before the ordinary terminal normalizer. `fn2-device-request` refuses FUA before I/O:
+these file primitives implement baseline writes plus Fence, not the stronger FUA mode.
+No retries complete a short read or write implicitly.
 Its two bounded rings have one entry per operation slot. The executor alone posts results;
 the worker wakes its mux. A stalled call holds its borrowed bytes and does not block turns.
 Shutdown leaves a stalled fd with the worker until return, so it cannot act on a reused fd.

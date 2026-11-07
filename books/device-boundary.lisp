@@ -2,6 +2,19 @@
 ; geometry, or whether a failed operation could have modified the image.
 (in-package "ACL2")
 
+; These file primitives support ordinary writes followed by Fence, not FUA.
+; Refuse an unsupported request before physical I/O; never acknowledge an
+; ordinary pwrite as a force-unit-access write.
+(defun fn2-device-request (kind fua backend)
+  (declare (xargs :guard t))
+  (if (and (member-eq kind '(:read :write :fence)) (equal fua 0)
+           (member-eq backend '(:fullfsync :fdatasync))) :perform :unsupported))
+(assert-event (eq (fn2-device-request :write 0 :fdatasync) :perform))
+(assert-event (eq (fn2-device-request :fence 0 :fullfsync) :perform))
+(assert-event (eq (fn2-device-request :write 1 :fdatasync) :unsupported))
+(assert-event (eq (fn2-device-request :write 1 :fullfsync) :unsupported))
+(assert-event (eq (fn2-device-request :write 0 :memory) :unsupported))
+
 (defun fn2-device-io-observation (result errno)
   (declare (xargs :guard t))
   (cond ((and (integerp result) (<= 0 result)) (mv :ok result))
