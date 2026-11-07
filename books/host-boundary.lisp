@@ -6,7 +6,7 @@
 (include-book "executor")
 (include-book "device-boundary")
 (include-book "assembly-attach")
-(include-book "../sim/sim")
+(include-book "terminal-values")
 
 (local (in-theory (enable fn2-core-wfp)))
 
