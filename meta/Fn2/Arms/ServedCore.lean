@@ -5,7 +5,7 @@ import Fn2.Arms.ServedColumns
 # Fn2.Arms.ServedCore: the contracts for the served core-form kinds `FN2-CNS` and `FN2-CONN`
 
 Both kinds are in core form (`cns_core_form_refused`, `conn_core_form_refused`: `runArm` refuses
-them); `Fn2.Arms.Core.runCore` runs them through their core face over the 55 children of
+them); `Fn2.Arms.Core.runCore` runs them through their core face over the 57 children of
 `fn2-core` (`coreTuple`, printed from `*fn2-core-children*`). Over that face:
 
 * every `FN2-CNS` arm's charge is bounded by its derived bound on every run (`cns_core_charge`);
@@ -32,7 +32,7 @@ def cw : World := coreWorld world coreTuple
 def cnsC : Kind := coreKind cnsK coreTuple
 def connC : Kind := coreKind connK coreTuple
 
-theorem layout : coreTuple.length = 55 ∧ coreTuple.Nodup ∧
+theorem layout : coreTuple.length = 57 ∧ coreTuple.Nodup ∧
     cnsK.childForm = false ∧ connK.childForm = false := by
   decide +kernel
 
@@ -177,7 +177,7 @@ theorem cns_core_next (a : Arm) (D : List String) (hD : checkedNext cw cnsC a = 
           ∃ p ∈ D, ∃ i, (p, i) ∈ cnsK.phases ∧
             colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
   intro observe args fuel v hrun
-  exact runCore_next_mem world coreTuple _ a observe args fuel v D hD cns_tableFacts cns_shape.1
+  exact runCore_next_mem world coreTuple _ [] (fun _ h => by simp at h) a observe args fuel v D hD cns_tableFacts cns_shape.1
       cns_shape.2 hrun
 
 /-- The arms `cns_core_next` does not cover: each reaches an operation whose outputs hold `FN2-CNS`'s
@@ -259,7 +259,7 @@ theorem conn_core_next (a : Arm) (D : List String) (hD : checkedNext cw connC a 
           ∃ p ∈ D, ∃ i, (p, i) ∈ connK.phases ∧
             colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
   intro observe args fuel v hrun
-  exact runCore_next_mem world coreTuple _ a observe args fuel v D hD conn_tableFacts conn_shape.1
+  exact runCore_next_mem world coreTuple _ [] (fun _ h => by simp at h) a observe args fuel v D hD conn_tableFacts conn_shape.1
       conn_shape.2 hrun
 
 /-- The arms `conn_core_next` does not cover: each reaches an operation whose outputs hold `FN2-CONN`'s

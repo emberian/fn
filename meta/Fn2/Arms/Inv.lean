@@ -193,9 +193,24 @@ def Keeps (Good : (String → Except String Val) → Prop) (T : List String) : P
 structure Sem (k : Kind) (Good : (String → Except String Val) → Prop) : Prop where
   flush : ∀ (f : Frame) (st st' : St), f.kind = k → Arms.flush w f st = .ok st' → PendOK P st →
     Good (stobj st) → Good (stobj st')
-  call : ∀ op, P.opOK op = true → Keeps Good (opTables w op)
+  /-- a call of an operation the contract admits, bound, keeps `Good` (`call_of_keeps`: when
+  `Good` survives any change to the call's `stobjs-out`) -/
+  call : ∀ op, P.opOK op = true → ∀ (st st2 : St) (c : Call) (o : Op × Val) (vars : List String),
+    c.op = op → callOp w k st c = .ok o → bindOuts st o.1.stobjsOut vars o.2 = .ok st2 →
+    Good (stobj st) → Good (stobj st2)
   ctl : Keeps Good ["FN2-CONTROL"]
   dir : P.dirOK = true → Keeps Good ["FN2-MACHINES", "FN2-CONTROL"]
+
+/-- A call keeps `Good` when `Good` survives any change confined to the call's `stobjs-out`. -/
+theorem call_of_keeps (k : Kind) (Good : (String → Except String Val) → Prop) (op : String)
+    (hk : Keeps Good (opTables w op)) :
+    ∀ (st st2 : St) (c : Call) (o : Op × Val) (vars : List String),
+      c.op = op → callOp w k st c = .ok o → bindOuts st o.1.stobjsOut vars o.2 = .ok st2 →
+      Good (stobj st) → Good (stobj st2) := by
+  intro st st2 c o vars hc h1 h2 hg
+  obtain ⟨_, _, hf⟩ := call_frame w k st st2 c o vars h1 h2
+  subst hc
+  exact hk st st2 hf hg
 
 /-- A result whose children satisfy `Good`. -/
 def InvRes (Good : (String → Except String Val) → Prop) (f : Frame) : Res → Prop
@@ -244,6 +259,17 @@ local macro "do_tail_inv" : tactic => `(tactic| (
            · exact viaRef _ hP2 hG2 _ (Or.inr ⟨_, rfl⟩) hrun)
     · obtain ⟨_, hth, _⟩ := bind_ok hrun
       simp [throw, throwThe, MonadExceptOf.throw] at hth))
+
+/-- A `:do`'s call: the operation `findOp` named, its results bound by its `stobjs-out`. -/
+theorem callDo (k : Kind) (Good : (String → Except String Val) → Prop) (hS : Sem w P k Good)
+    (cl : Call) (op : Op) (st1 st2 : St) (o : Op × Val) (vars : List String) {f : Frame}
+    (hop : P.opOK cl.op = true) (hfo : w.ops.find? (·.name == cl.op) = some op) (hk : f.kind = k)
+    (ho : callOp w f.kind st1 cl = .ok o) (h2 : bindOuts st1 op.stobjsOut vars o.2 = .ok st2)
+    (hg1 : Good (stobj st1)) : Good (stobj st2) := by
+  have he : o.1 = op := by
+    have := callOp_op w f.kind st1 cl o ho
+    rw [hfo] at this; cases this; rfl
+  exact hS.call cl.op hop st1 st2 cl o vars rfl (hk ▸ ho) (he ▸ h2) hg1
 
 /-- **The invariant over the interpreter (`run_inv`)**: a run of admissible steps, under an
 admissible refusal and admissible sub-arms, from children satisfying `Good` and pending writes
@@ -466,9 +492,8 @@ theorem run_inv (k : Kind) (Good : (String → Except String Val) → Prop) (hS 
         bindOuts st1 o.1.stobjsOut [] o.2 = .ok st2 →
         chargeResult f st2 (.int 0) sv (.int 0) Val.nil = .ok r → InvRes Good f r := by
       intro c o st1 st2 sv hok h1 h2 h3 h4
-      obtain ⟨_, _, hf2⟩ := call_frame w f.kind st1 st2 c o [] h2 h3
       exact invRes_of_frame Good f _ r (outs_charge f _ _ _ _ _ r h4)
-        (hS.call c.op hok st1 st2 hf2 (hfl st1 h1).1)
+        (hS.call c.op hok st1 st2 c o [] rfl h2 h3 (hfl st1 h1).1)
     split at hrun
     · obtain ⟨st1, h1, hrun⟩ := bind_ok hrun
       obtain ⟨o, ho, hrun⟩ := bind_ok hrun
@@ -560,11 +585,11 @@ theorem run_inv (k : Kind) (Good : (String → Except String Val) → Prop) (hS 
       obtain ⟨skip, hskip, hrun⟩ := bind_ok hrun
       simp only [pure, Except.pure, Except.ok.injEq] at hskip; subst hskip
       rw [if_neg (by decide)] at hrun
-      obtain ⟨o, _, hrun⟩ := bind_ok hrun
+      obtain ⟨o, ho, hrun⟩ := bind_ok hrun
       obtain ⟨st2, h2, hrun⟩ := bind_ok hrun
-      obtain ⟨hp2, hn2, hs2⟩ := bind_frame w cl.op op st1 st2 vars _ hfo h2
+      obtain ⟨hp2, hn2, _⟩ := bind_frame w cl.op op st1 st2 vars _ hfo h2
       have hP2 : PendOK P st2 := by unfold PendOK; rw [hp2, hn2]; exact hp1
-      have hG2 : Good (stobj st2) := hS.call cl.op hop st1 st2 hs2 hg1
+      have hG2 : Good (stobj st2) := callDo w P f.kind Good hS cl op st1 st2 o vars hop hfo rfl ho h2 hg1
       do_tail_inv
     · dsimp only at hrun
       obtain ⟨wv, _, hrun⟩ := bind_ok hrun
@@ -577,11 +602,11 @@ theorem run_inv (k : Kind) (Good : (String → Except String Val) → Prop) (hS 
         have hP2 : PendOK P ({ st1 with vars := vars.zip vs ++ st1.vars } : St) := hp1
         have hG2 : Good (stobj ({ st1 with vars := vars.zip vs ++ st1.vars } : St)) := hg1
         do_tail_inv
-      · obtain ⟨o, _, hrun⟩ := bind_ok hrun
+      · obtain ⟨o, ho, hrun⟩ := bind_ok hrun
         obtain ⟨st2, h2, hrun⟩ := bind_ok hrun
-        obtain ⟨hp2, hn2, hs2⟩ := bind_frame w cl.op op st1 st2 vars _ hfo h2
+        obtain ⟨hp2, hn2, _⟩ := bind_frame w cl.op op st1 st2 vars _ hfo h2
         have hP2 : PendOK P st2 := by unfold PendOK; rw [hp2, hn2]; exact hp1
-        have hG2 : Good (stobj st2) := hS.call cl.op hop st1 st2 hs2 hg1
+        have hG2 : Good (stobj st2) := callDo w P f.kind Good hS cl op st1 st2 o vars hop hfo rfl ho h2 hg1
         do_tail_inv
   | issue cl ok refused =>
     simp only [admStep, Bool.and_eq_true] at hs
@@ -591,9 +616,9 @@ theorem run_inv (k : Kind) (Good : (String → Except String Val) → Prop) (hS 
     obtain ⟨hg1, hp1⟩ := hfl st1 h1
     obtain ⟨o, ho, hrun⟩ := bind_ok hrun
     obtain ⟨st2, h2, hrun⟩ := bind_ok hrun
-    obtain ⟨hp2, hn2, hs2⟩ := call_frame w f.kind st1 st2 cl o _ ho h2
+    obtain ⟨hp2, hn2, _⟩ := call_frame w f.kind st1 st2 cl o _ ho h2
     have hP2 : PendOK P st2 := by unfold PendOK; rw [hp2, hn2]; exact hp1
-    have hG2 : Good (stobj st2) := hS.call cl.op hop st1 st2 hs2 hg1
+    have hG2 : Good (stobj st2) := hS.call cl.op hop st1 st2 cl o _ rfl ho h2 hg1
     obtain ⟨code, _, hrun⟩ := bind_ok hrun
     split at hrun
     · exact go st2 ok r hok hrun hP2 hG2

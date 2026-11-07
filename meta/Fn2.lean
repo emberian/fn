@@ -9,6 +9,7 @@ import Fn2.ACL2.SimpAttr
 import Fn2.ACL2.Read
 import Fn2.ACL2.Faithful
 import Fn2.ACL2.Fuel
+import Fn2.ACL2.Pres
 import Fn2.Arms
 import Fn2.ArmsLemmas
 import Fn2.Arms.Bound
@@ -22,6 +23,8 @@ import Fn2.Arms.ServedColumns
 import Fn2.Arms.Core
 import Fn2.Arms.CoreTeeth
 import Fn2.Arms.ServedCore
+import Fn2.Arms.CorePhase
+import Fn2.Arms.ServedPhase
 import Fn2.Pathway
 import Fn2.Instances.LayerA
 import Fn2.Instances.LayerAFacts
@@ -31,5 +34,7 @@ import Fn2.Instances.LayerAEqns1
 import Fn2.Instances.LayerAEqns2
 import Fn2.Instances.LayerAEqns3
 import Fn2.Instances.LayerAEqns4
+import Fn2.Instances.LayerAPres
+import Fn2.Instances.LayerAPhase
 import Fn2.MachineProofs
 import Fn2.TypedModel
