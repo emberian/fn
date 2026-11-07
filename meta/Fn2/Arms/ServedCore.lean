@@ -5,7 +5,7 @@ import Fn2.Arms.ServedColumns
 # Fn2.Arms.ServedCore: the contracts for the served core-form kinds `FN2-CNS` and `FN2-CONN`
 
 Both kinds are in core form (`cns_core_form_refused`, `conn_core_form_refused`: `runArm` refuses
-them); `Fn2.Arms.Core.runCore` runs them through their core face over the 54 children of
+them); `Fn2.Arms.Core.runCore` runs them through their core face over the 55 children of
 `fn2-core` (`coreTuple`, printed from `*fn2-core-children*`). Over that face:
 
 * every `FN2-CNS` arm's charge is bounded by its derived bound on every run (`cns_core_charge`);
@@ -17,12 +17,14 @@ them); `Fn2.Arms.Core.runCore` runs them through their core face over the 54 chi
   in (`cns_core_frame`, `conn_core_frame`);
 * the world's `FN2-CNS` and `FN2-CONN` accessors keep the columns' frame (`cns_tableFacts`,
   `conn_tableFacts`, from the generated layout by the dispatch), so every arm writes only its
-  checked columns (`cns_core_writes`, `conn_core_writes`) and moves a row only to its checked
-  phases (`cns_core_next`, `conn_core_next`).
+  checked columns (`cns_core_writes`, `conn_core_writes`), and every arm whose phases check moves
+  a row only to them (`cns_core_next`, `conn_core_next`; the arms the check refuses, those
+  reaching an operation that returns the kind's table, are `cns_next_unchecked` and
+  `conn_next_unchecked`).
 -/
 
 namespace Fn2.Arms.ServedCore
-open Fn2.ACL2 Fn2.Arms Fn2.Arms.Cost Fn2.Arms.Frame Fn2.Arms.Columns Fn2.Arms.Core
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Cost Fn2.Arms.Frame Fn2.Arms.Columns Fn2.Arms.Core Fn2.Arms.Derive
 open Fn2.Arms.Served Fn2.Arms.ServedColumns Fn2.Instances.LayerAKinds
 
 /-- The core face's world and kinds. -/
@@ -30,7 +32,7 @@ def cw : World := coreWorld world coreTuple
 def cnsC : Kind := coreKind cnsK coreTuple
 def connC : Kind := coreKind connK coreTuple
 
-theorem layout : coreTuple.length = 54 ∧ coreTuple.Nodup ∧
+theorem layout : coreTuple.length = 55 ∧ coreTuple.Nodup ∧
     cnsK.childForm = false ∧ connK.childForm = false := by
   decide +kernel
 
@@ -38,10 +40,10 @@ theorem layout : coreTuple.length = 54 ∧ coreTuple.Nodup ∧
 (`cns_derived_costs`), every arm bounded. -/
 theorem cns_core_derived_costs :
     cnsK.arms.map (fun a => (a.tag, derivedCost cw cnsC a)) =
-      [(":FREE", some (0, 1, 0)), (":DECODE", some (4096, 24, 0)), (":CHECK", some (512, 24, 0)),
-       (":LOOKUP", some (4096, 24, 0)), (":READ", some (4096, 24, 0)), (":PAGE", some (4096, 24, 0)),
-       (":PARK", some (512, 24, 0)), (":COMMIT", some (512, 24, 0)), (":DRAINING", some (0, 20, 0)),
-       (":RETIRED", some (0, 1, 0))] := by
+      [(":FREE", some (0, 1, 0)), (":DECODE", some (4096, 24, 0)), (":CHECK", some (4096, 24, 0)),
+       (":LOOKUP", some (4096, 24, 0)), (":READ", some (4096, 24, 0)), (":PAGE", some (4096, 24, 1)),
+       (":FETCH", some (4096, 24, 0)), (":PARK", some (512, 24, 0)), (":COMMIT", some (512, 24, 0)),
+       (":APPEND", some (2048, 24, 0)), (":DRAINING", some (0, 24, 0)), (":RETIRED", some (0, 1, 0))] := by
   decide +kernel
 
 theorem work_empty : const world "*FN2-WORK-EMPTY*" = .ok (.int 1) := by decide +kernel
@@ -68,7 +70,7 @@ theorem cns_core_charge (a : Arm) (ha : a ∈ cnsK.arms) :
 /-- The `:COMMIT` arm (it calls `fn2-cns-commit-op`, an operation with no child form): at most
 512 bytes, 24 steps and no descriptor per turn. -/
 theorem cns_commit_charge (args : List Val) (fuel : Nat) (v : Val)
-    (hrun : runCore world coreTuple cnsK (cnsK.arms.getD 7 default) false args fuel = .ok v) :
+    (hrun : runCore world coreTuple cnsK (cnsK.arms.getD 8 default) false args fuel = .ok v) :
     CostLe (extractCharge v) (512, 24, 0) :=
   runCore_charge_le_cost world coreTuple cnsK _ args fuel v _ (by decide +kernel)
     (fun e he => by rw [work_empty] at he; cases he; decide) hrun
@@ -107,7 +109,7 @@ theorem cw_fns (f : String) (args : List Val) (h : f.endsWith "@CORE" = false) :
 
 /-- `FN2-CNS`'s table as the registry prints it (its fields in stobj order). -/
 def cnsTable : List String :=
-  ["PHASE", "GENERATION", "PRINCIPAL-SLOT", "ACCOUNT-REF", "DEADLINE", "CTL", "CTL-GEN", "REQUEST", "FPOS", "FLEN", "FKIND", "VERB", "CONSUMER", "EPOCH", "OP", "TO", "CSTART", "PAGE-LIMIT", "WAIT-MS", "CPOS", "VERSION", "PUB-FRONTIER", "COUNT", "MORE", "OUTCOME", "REASON", "POSTED", "POSTED-WORD", "EDGE", "TXN", "TXN-GEN", "TX-SLOT", "TX-GEN", "TX-LEN", "STOPPED", "NEXT-FREE"]
+  ["PHASE", "GENERATION", "PRINCIPAL-SLOT", "ACCOUNT-REF", "DEADLINE", "CTL", "CTL-GEN", "REQUEST", "FPOS", "FLEN", "FKIND", "VERB", "CONSUMER", "EPOCH", "OP", "TO", "CSTART", "PAGE-LIMIT", "WAIT-MS", "CPOS", "VERSION", "PUB-FRONTIER", "COUNT", "MORE", "OUTCOME", "REASON", "POSTED", "POSTED-WORD", "EDGE", "TXN", "TXN-GEN", "TX-SLOT", "TX-GEN", "UPLOAD", "UPLOAD-GEN", "FSTART", "FED", "FEED-MODE", "FEED-DISCARD", "NAME-OFF", "NAME-LEN", "XSTEP", "XHEAD", "XGRANT", "IPOS", "IOFF", "ILEN", "NPOS", "ART", "ISTREAM", "ITYPE", "ALEN", "LUNIT", "LEPOCH", "LALLOC", "LSLOT", "LGEN", "LEASE", "REVENT", "ROUTCOME", "RCOUNT", "RREADY", "PENDING", "CURSOR", "XROW", "STOPPED", "NEXT-FREE"]
 
 set_option maxHeartbeats 0 in
 /-- The registry's `FN2-CNS` accessors keep the columns' frame through the core face's world:
@@ -126,13 +128,11 @@ theorem cns_tableFacts : TableFacts cw cnsC := by
     · simp only [cnsTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
         and_true]
       and_intros
-      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
     · simp only [cnsTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
         and_true]
       and_intros
-      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
   · rw [hdir]
     refine facts_of cw _ (fun c => "FN2-MACHINES-" ++ c) (fun c => "FN2-MACHINES-SET-" ++ c)
       dirIdx arrGet arrSet ?_ ?_
@@ -141,12 +141,10 @@ theorem cns_tableFacts : TableFacts cw cnsC := by
       (fun i j s s' v t h => arr_ne i j s s' v t h) (fun i s s' v t => arr_same i s s' v t)
     · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
       and_intros
-      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
     · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
       and_intros
-      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
 
 theorem cns_shape : kindShape cnsC = true ∧ phasesCover cnsC = true := by
   decide +kernel
@@ -167,22 +165,29 @@ theorem cns_core_writes (a : Arm) (ha : a ∈ cnsC.subarms ++ cnsC.arms ++ cnsC.
   exact ⟨W, hW, fun observe args fuel v hrun =>
     runCore_writes_sub world coreTuple _ a observe args fuel v W hW cns_tableFacts cns_shape.1 hrun⟩
 
-/-- **Every `FN2-CNS` arm, handler and sub-arm moves a row only to its checked phases on every
-run of its function.** -/
-theorem cns_core_next (a : Arm) (ha : a ∈ cnsC.subarms ++ cnsC.arms ++ cnsC.observes) :
-    ∃ D, checkedNext cw cnsC a = some D ∧
-      ∀ observe args fuel v, runCore world coreTuple cnsK a observe args fuel = .ok v →
-        ∃ pre core', v.toList = pre ++ [core'] ∧
-          ∀ s, colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s =
-              colGet cw cnsC (stobj (coreSt coreTuple (args.getLastD Val.nil))) "PHASE" s ∨
-            ∃ p ∈ D, ∃ i, (p, i) ∈ cnsK.phases ∧
-              colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
-  have hall : (cnsC.subarms ++ cnsC.arms ++ cnsC.observes).all
-      (fun a => (checkedNext cw cnsC a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
-  exact ⟨D, hD, fun observe args fuel v hrun =>
-    runCore_next_mem world coreTuple _ a observe args fuel v D hD cns_tableFacts cns_shape.1
-      cns_shape.2 hrun⟩
+/-- **A `FN2-CNS` arm, handler or sub-arm whose phases check moves a row only to those phases on
+every run of its function.** The check refuses an arm that calls an operation whose outputs hold
+the kind's table: over the core face every core-only operation (no `:child`) returns the whole
+core, so its arms are listed by `cns_next_unchecked`. -/
+theorem cns_core_next (a : Arm) (D : List String) (hD : checkedNext cw cnsC a = some D) :
+    ∀ observe args fuel v, runCore world coreTuple cnsK a observe args fuel = .ok v →
+      ∃ pre core', v.toList = pre ++ [core'] ∧
+        ∀ s, colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s =
+          colGet cw cnsC (stobj (coreSt coreTuple (args.getLastD Val.nil))) "PHASE" s ∨
+          ∃ p ∈ D, ∃ i, (p, i) ∈ cnsK.phases ∧
+            colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
+  intro observe args fuel v hrun
+  exact runCore_next_mem world coreTuple _ a observe args fuel v D hD cns_tableFacts cns_shape.1
+      cns_shape.2 hrun
+
+/-- The arms `cns_core_next` does not cover: each reaches an operation whose outputs hold `FN2-CNS`'s
+table (a core-only operation's adapter returns every child of the core), so the check cannot bound
+the phases it writes. -/
+theorem cns_next_unchecked :
+    (cnsC.subarms ++ cnsC.arms ++ cnsC.observes).filterMap
+      (fun a => if (checkedNext cw cnsC a).isSome then none else some a.tag) =
+      ["HAND", "ANSWER", "REFUSE", "PUT-ARTICLE", "PUT", "ITEM", "PAGE-END", "PAGE-FAIL", ":DECODE", ":CHECK", ":LOOKUP", ":READ", ":PAGE", ":FETCH", ":PARK", ":COMMIT", ":APPEND"] := by
+  decide +kernel
 
 /-- `FN2-CONN`'s table as the registry prints it (its fields in stobj order). -/
 def connTable : List String :=
@@ -205,13 +210,11 @@ theorem conn_tableFacts : TableFacts cw connC := by
     · simp only [connTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
         and_true]
       and_intros
-      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
     · simp only [connTable, List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true,
         and_true]
       and_intros
-      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
   · rw [hdir]
     refine facts_of cw _ (fun c => "FN2-MACHINES-" ++ c) (fun c => "FN2-MACHINES-SET-" ++ c)
       dirIdx arrGet arrSet ?_ ?_
@@ -220,12 +223,10 @@ theorem conn_tableFacts : TableFacts cw connC := by
       (fun i j s s' v t h => arr_ne i j s s' v t h) (fun i s s' v t => arr_same i s s' v t)
     · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
       and_intros
-      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
     · simp only [List.forall_mem_cons, List.not_mem_nil, false_imp_iff, implies_true, and_true]
       and_intros
-      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide)
-        ((cw_fns _ _ (by decide +kernel)).trans rfl)
+      all_goals intro s v t; exact callFn_of_fns _ _ _ _ (by decide) ((cw_fns _ _ (by decide +kernel)).trans rfl)
 
 theorem conn_shape : kindShape connC = true ∧ phasesCover connC = true := by
   decide +kernel
@@ -246,21 +247,28 @@ theorem conn_core_writes (a : Arm) (ha : a ∈ connC.subarms ++ connC.arms ++ co
   exact ⟨W, hW, fun observe args fuel v hrun =>
     runCore_writes_sub world coreTuple _ a observe args fuel v W hW conn_tableFacts conn_shape.1 hrun⟩
 
-/-- **Every `FN2-CONN` arm, handler and sub-arm moves a row only to its checked phases on every
-run of its function.** -/
-theorem conn_core_next (a : Arm) (ha : a ∈ connC.subarms ++ connC.arms ++ connC.observes) :
-    ∃ D, checkedNext cw connC a = some D ∧
-      ∀ observe args fuel v, runCore world coreTuple connK a observe args fuel = .ok v →
-        ∃ pre core', v.toList = pre ++ [core'] ∧
-          ∀ s, colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s =
-              colGet cw connC (stobj (coreSt coreTuple (args.getLastD Val.nil))) "PHASE" s ∨
-            ∃ p ∈ D, ∃ i, (p, i) ∈ connK.phases ∧
-              colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
-  have hall : (connC.subarms ++ connC.arms ++ connC.observes).all
-      (fun a => (checkedNext cw connC a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
-  exact ⟨D, hD, fun observe args fuel v hrun =>
-    runCore_next_mem world coreTuple _ a observe args fuel v D hD conn_tableFacts conn_shape.1
-      conn_shape.2 hrun⟩
+/-- **A `FN2-CONN` arm, handler or sub-arm whose phases check moves a row only to those phases on
+every run of its function.** The check refuses an arm that calls an operation whose outputs hold
+the kind's table: over the core face every core-only operation (no `:child`) returns the whole
+core, so its arms are listed by `conn_next_unchecked`. -/
+theorem conn_core_next (a : Arm) (D : List String) (hD : checkedNext cw connC a = some D) :
+    ∀ observe args fuel v, runCore world coreTuple connK a observe args fuel = .ok v →
+      ∃ pre core', v.toList = pre ++ [core'] ∧
+        ∀ s, colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s =
+          colGet cw connC (stobj (coreSt coreTuple (args.getLastD Val.nil))) "PHASE" s ∨
+          ∃ p ∈ D, ∃ i, (p, i) ∈ connK.phases ∧
+            colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
+  intro observe args fuel v hrun
+  exact runCore_next_mem world coreTuple _ a observe args fuel v D hD conn_tableFacts conn_shape.1
+      conn_shape.2 hrun
+
+/-- The arms `conn_core_next` does not cover: each reaches an operation whose outputs hold `FN2-CONN`'s
+table (a core-only operation's adapter returns every child of the core), so the check cannot bound
+the phases it writes. -/
+theorem conn_next_unchecked :
+    (connC.subarms ++ connC.arms ++ connC.observes).filterMap
+      (fun a => if (checkedNext cw connC a).isSome then none else some a.tag) =
+      ["INPUT", "FRAME", ":GREETING", ":COMMAND", ":ARTICLE-INPUT", ":DRAINING", ":QUERY", ":RECEIVE-RESULT", ":SEND-RESULT"] := by
+  decide +kernel
 
 end Fn2.Arms.ServedCore
