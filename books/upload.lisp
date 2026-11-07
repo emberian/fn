@@ -53,7 +53,10 @@
 (defcost fn2-upload-verdict-step :bytes 512 :doc "The definite verdict over the scanned header.")
 (defcost fn2-upload-chunk-cap :doc "A chunk's capacity.")
 (defcost fn2-upload-bound :doc "The article bound (the input configuration, at most two chunks).")
-(defcost fn2-conn-post-word :tables (fn2-conn-table fn2-core-machines)
+; Its writes go through the kind-dispatching fn2-machine-write-word and
+; -write-outcome-ready, which write the word columns of the connection, upload
+; and transaction tables by the id's kind: those are its children.
+(defcost fn2-conn-post-word :tables (fn2-conn-table fn2-upload-table fn2-txn-table fn2-core-machines)
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
   :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
