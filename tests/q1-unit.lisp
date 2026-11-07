@@ -66,19 +66,25 @@
     (:run fn2-auth :lookup) (:run fn2-auth :allocate) (:run fn2-auth :bhead)
     (:run fn2-auth :outcome) (:run fn2-auth :head) (:run fn2-auth :get) (:run fn2-auth :ready)
     (:run fn2-auth :batched) (:run fn2-auth :draining) (:run fn2-auth :retired)
-    (:router :fallback) (:executor :clock) (:executor :signal) (:executor :service 0)
-    (:executor :service 1) (:executor :service 2) (:executor :service 3)
-    (:executor :empty-principal)))
+    (:run fn2-boot :free) (:run fn2-boot :prepare) (:run fn2-boot :write)
+    (:run fn2-boot :write-result) (:run fn2-boot :read) (:run fn2-boot :read-result)
+    (:run fn2-boot :verify) (:run fn2-boot :advance) (:run fn2-boot :anchor)
+    (:run fn2-boot :recover) (:run fn2-boot :recover-wait) (:run fn2-boot :epoch)
+    (:run fn2-boot :epoch-fence) (:run fn2-boot :epoch-result) (:run fn2-boot :release)
+    (:run fn2-boot :ready) (:run fn2-boot :failed) (:observe fn2-boot :read-result)
+    (:observe fn2-boot :write-result) (:observe fn2-boot :fence-result) (:router :fallback)
+    (:executor :clock) (:executor :signal) (:executor :service 0) (:executor :service 1)
+    (:executor :service 2) (:executor :service 3) (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 159))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 179))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 159 :bound 159 :unmatched nil
+        '(:required 179 :bound 179 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 159 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth (151 machine, 1 router, 7 executor); 159 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 179 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth (151 machine, 1 router, 7 executor); 159 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.
