@@ -1479,7 +1479,19 @@
                         ,@(and closed `(:guard-hints (("Goal" :in-theory (disable ,@closed)))))))
         (,(fn2-arms-sym kind "-PUT-CORE") id ,@(fn2-arms-write-put-pairs kind fields formals states)))
       (fn2-core-preserves ,name (id ,@formals fn2-core) :position nil :rows nil
-        ,@(and closed `(:hints (("Goal" :in-theory (disable ,@closed)))))))))
+        ,@(and closed `(:hints (("Goal" :in-theory (disable ,@closed))))))
+      ;; its contracts (machines.lisp fn2-arm-frame-write-events), after the
+      ;; core's and the kind's frame basis
+      (make-event
+       (value (cons 'progn
+                    (append (and (not (assoc-eq 'fn2-core-stop (table-alist 'fn2-arm-frame-fns (w state))))
+                                 (fn2-arm-frame-basis-events (w state)))
+                            (and (not (assoc-eq ',kind (table-alist 'fn2-arm-frame-kinds (w state))))
+                                 (fn2-arm-frame-kind-events ',kind (w state)))))))
+      ;; a contract that fails leaves the writer without one, named
+      (make-event
+       (value (list :or (cons 'progn (fn2-arm-frame-write-events ',kind ',fields ',name (w state)))
+                    '(table fn2-arm-frame-owed ',name :write)))))))
 (mutual-recursion
  (defun fn2-arms-lift-writes (x put kind cols sigs)
    ; (mv x' sigs): every (PUT ID (F E) ...) in the term X a write function call
