@@ -318,6 +318,7 @@
                 (fn2-env-recovery-done-p rec))
            (subsetp-equal (fn2-env-acknowledged-batches run)
                           (fn2-env-recovered-batches rec))))
- :teeth (fn2-commit-recoverable-positive fn2-commit-recoverable-fence-removal)
+ :teeth (fn2-commit-recoverable-positive fn2-commit-recoverable-positive-fua
+         fn2-commit-recoverable-fence-removal)
  :schema :crash
  :doc "Every acknowledged commit batch (a member reply on a commit row after any action of any host-boundary action list interleaved with fn2-turn, from the native host's genesis) is in the chain the real recovery row reports, run by fn2-turn over a fresh core whose storage reads see a crash image of the device log: any image A-FENCE-PERSISTS admits, CHOICE picking it. Recovery's own actions are any list; its reads are answered with the image's octets. Only A-FENCE-PERSISTS is assumed.")
