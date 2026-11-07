@@ -1,7 +1,7 @@
 ; Native launcher loading certified node books; no seeded fixture state.
 (in-package "ACL2")
 (set-ld-error-action '(:exit 2) state)
-(include-book "books/node-profile")
+(include-book "books/node-profile" :uncertified-okp nil)
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
 (load "host/ffi.lisp")

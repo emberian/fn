@@ -333,6 +333,7 @@ and return join the death-cut counter under a short mutex, held outside the phys
 `tests/native-device-unit.lsp` controls FIFO fence ordering, a deliberately stalled worker,
 short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
 primitive test. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
+the launcher refuses an uncertified book closure.
 init exclusively creates a preallocated image (default 32 MiB), and serve opens it without
 truncation. `books/node-profile.lisp` names the small native profile, including its 128-extent
 arena and `local.test` genesis group. Image size is checked by ACL2 before creation and again
