@@ -8,6 +8,7 @@
 ; declarations (table fn2-arm-frame-fns), so the statement is the declaration.
 (in-package "ACL2")
 (include-book "assembly-attach")
+(include-book "executor-contracts")
 
 ;; The executor's glue between a visit and the arm, with contracts derived
 ;; under the commit kind (callees first).
@@ -277,33 +278,9 @@
                 :do-not-induct t))))))
 
 ;; ---------------------------------------------------------------------------
-;; THE TURN from its transitions: any property of the core that every
-;; transition and the turn's work accounting keep, fn2-turn keeps (by
-;; induction over fn2-concrete-loop). FN2-CTF-P is a placeholder: a caller
-;; functionally instantiates it (with free variables, e.g. a log and the ids
-;; observed) and discharges the constraint per transition.
-(encapsulate
-  (((fn2-ctf-p *) => *))
-  (local (defun fn2-ctf-p (c) (declare (ignore c)) t))
-  (defthm fn2-ctf-p-transition
-    (implies (and (fn2-ctf-p fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-             (fn2-ctf-p (mv-nth 5 (fn2-transition allow-observation action-budget fn2-core)))))
-  (defthm fn2-ctf-p-account-work
-    (implies (and (fn2-ctf-p fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-             (fn2-ctf-p (fn2-exec-account-work bytes steps fn2-core))))
-  (defthm fn2-ctf-p-turn-start
-    (implies (and (fn2-ctf-p fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-             (and (fn2-ctf-p (fn2-exec-set-turn-bytes v fn2-core))
-                  (fn2-ctf-p (fn2-exec-set-turn-steps v fn2-core))))))
-(defthm fn2-ctf-p-concrete-loop
-  (implies (and (fn2-ctf-p fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-ctf-p (mv-nth 4 (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core))))
-  :hints (("Goal" :induct (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core)
-                  :in-theory (e/d (fn2-concrete-loop) (fn2-concrete-loop-stop-p fn2-transition fn2-exec-account-work)))))
-(defthm fn2-ctf-p-turn
-  (implies (and (fn2-ctf-p fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-ctf-p (mv-nth 4 (fn2-turn fn2-core))))
-  :hints (("Goal" :in-theory (e/d (fn2-turn fn2-concrete-turn) (fn2-concrete-loop fn2-exec-set-turn-bytes fn2-exec-set-turn-steps)))))
+;; The kind-independent turn induction is in executor-contracts.lisp.
+;; Commit semantics instantiate FN2-EXECUTOR-INV-TURN after discharging
+;; the registry's run/observe contracts and the executor's glue contracts.
 
 ;; ---------------------------------------------------------------------------
 ;; THE COMMIT HANDLERS (the dispatch states their FRAMEs owed): each
@@ -559,7 +536,7 @@
 ;; functions in *FN2-COMMIT-TURN-FRAME-BLOCKERS* (dispatch stubs, wait-source
 ;; grants and a hook whose constraints carry no frame contract) and the arms and
 ;; handlers of the kinds with run bodies whose FRAMEs are owed (table
-;; fn2-arm-frame-owed). With it, FN2-CTF-P-TURN lifts any property the
+;; fn2-arm-frame-owed). With it, FN2-EXECUTOR-INV-TURN lifts any property the
 ;; per-transition frames preserve to fn2-turn.
 (defun fn2-ctf-constrained-under (fns seen acc world fuel)
   (declare (xargs :mode :program))

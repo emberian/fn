@@ -7,6 +7,7 @@
 ; tested instance of the statement here.
 (in-package "ACL2")
 (include-book "host-boundary")
+(include-book "executor-contracts")
 (include-book "assumptions-device")
 (include-book "owed")
 
@@ -848,6 +849,64 @@
                           (append log (if entry (list entry) nil)) after)))
   :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
            :use (fn2-env-inv-admit-step fn2-env-inv-host-step))))
+
+;; ---------------------------------------------------------------------------
+;; Executor instance interface.  A turn logs nothing, but may expose new
+;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
+;; core in the lifted predicate; holding ACKED fixed in FN2-ENV-INV itself
+;; would incorrectly forbid a legitimate notify step.
+;; This is the evidence projection of the required phase/history invariant.
+;; It is NOT inductive by itself: executor-contracts-unit's companion
+;; commit test exhibits an unfenced :notify row satisfying the old invariant.
+;; The notify-invariant lane supplies J1-J4; the run/observe/grant frame
+;; obligations also remain necessary.  Do not admit FN2-ENV-TURN-INSTANCE
+;; until those semantic obligations are discharged.
+(defun-nx fn2-env-turn-inv (g c)
+  (fn2-env-inv (nth 0 g) (fn2-env-observe (nth 0 g) (nth 1 g) c) (nth 2 g) c))
+(defun-nx fn2-env-turn-rel (tag args g before after)
+  (declare (ignorable tag args))
+  (implies (fn2-env-turn-inv g before) (fn2-env-turn-inv g after)))
+(defmacro fn2-env-turn-instance ()
+  '(fn2-executor-instantiate fn2-env-turn-preserves
+                            fn2-env-turn-inv fn2-env-turn-rel))
+(defthm fn2-env-turn-inv-entry
+  (implies (fn2-env-inv ids acked log fn2-core)
+           (fn2-env-turn-inv (list ids acked log) fn2-core))
+  :hints (("Goal" :in-theory (disable fn2-env-rows fn2-env-observed-p
+                                      fn2-env-observe-rows fn2-env-acked-durable-p))))
+(defthm fn2-env-turn-inv-exit-by-definition
+  (implies (and (fn2-env-turn-inv (list ids acked log) (mv-nth 4 (fn2-turn fn2-core)))
+                (equal (fn2-env-tag action) :turn))
+           (mv-let (entry after) (fn2-env-step action nil image rlog fn2-core)
+             (declare (ignore entry))
+             (fn2-env-inv ids (fn2-env-observe ids acked after) log after)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-step fn2-env-turn-inv)
+                      (fn2-env-inv fn2-env-observe fn2-env-observe-is-rows fn2-turn)))))
+
+; The turn's accounting, reset and service-bit changes really do preserve
+; the full evidence projection.  These are discharged obligations, not
+; extra premises added to the final durability claim.
+(defthm fn2-env-rows-executor-children
+  (and (equal (fn2-env-rows ids (update-fn2-core-control x fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (update-fn2-core-sched x fn2-core)) (fn2-env-rows ids fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp
+                                     fn2-machine-kind fn2-machine-slot))))
+(defthm fn2-env-rows-executor-accounting
+  (and (equal (fn2-env-rows ids (fn2-exec-account-work bytes steps fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-set-turn-bytes value fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-set-turn-steps value fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-clear-service service fn2-core)) (fn2-env-rows ids fn2-core)))
+  :hints (("Goal" :in-theory (e/d (fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
+                                   fn2-core-stop fn2-exec-clear-service) (fn2-env-rows)))))
+(defthm fn2-env-turn-inv-accounting
+  (implies (fn2-env-turn-inv g fn2-core)
+           (and (fn2-env-turn-inv g (fn2-exec-account-work bytes steps fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-set-turn-bytes value fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-set-turn-steps value fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-clear-service service fn2-core))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-turn-inv fn2-env-inv)
+                     (fn2-env-rows fn2-env-observed-p fn2-env-observe-rows fn2-env-acked-durable-p
+                      fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps fn2-exec-clear-service)))))
 
 ;; ---------------------------------------------------------------------------
 ;; RECOVERY COMPLETENESS, the statement's recovery half: an image that holds
