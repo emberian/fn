@@ -68,6 +68,10 @@ class Node:
             except ProcessLookupError:
                 pass
             self.proc.wait(timeout=30)
+        # Preserve runtime diagnostics emitted after the ready marker.
+        # The child is reaped above, so draining this pipe cannot await it.
+        self.log.write(self.proc.stdout.read())
+        self.log.flush()
         self.selector.close()
         self.proc.stdout.close()
         self.log.close()
@@ -153,12 +157,12 @@ def main():
         port = int(node.marker(b"LISTENING ").split()[1])
         sock, stream = connect(port)
         try:
-            for _, _, whole in articles:
+            for mid, _, whole in articles:
                 sock.sendall(b"POST\r\n")
                 assert stream.readline() == b"340 send article to be posted\r\n"
                 sock.sendall(wire(stuffed(whole) + [b"."]))
                 reply = stream.readline()
-                assert reply == b"240 article received OK\r\n", reply
+                assert reply == b"240 article received OK\r\n", (mid, reply)
             node.kill()  # no QUIT, drain, or cooperative shutdown after 240
         finally:
             stream.close()
