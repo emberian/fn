@@ -26,6 +26,7 @@
 (include-book "tests/format-check-unit")
 (include-book "tests/layout-teeth-unit")
 (include-book "tests/commit-proof-unit")
+(include-book "tests/commit-durable-all-unit")
 (include-book "tests/recovery-proof-unit")
 (include-book "tests/grammar-unit")
 (include-book "tests/owed-d-unit")

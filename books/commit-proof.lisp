@@ -167,7 +167,8 @@
  :teeth (fn2-commit-proof-ack-baseline fn2-commit-proof-ack-fua
          fn2-commit-proof-fence-removal fn2-commit-proof-follower-first
          fn2-commit-proof-reuse-baseline fn2-commit-proof-reuse-fua
-         fn2-commit-proof-duplicate-start fn2-commit-proof-refused-retry-contract)
+         fn2-commit-proof-duplicate-start fn2-commit-proof-refused-retry-contract
+         fn2-commit-proof-harness-row-start)
  :schema :crash :doc "Actual B3 replay on the B-owned tiny profile, including explicit starts and reused rows under supported adapter faults and fixed test transactions; exact write identities/completions, baseline or preflush/FUA boundary, and required durable-image prefix. Only terminal :refuse events are removed for this physical claim; full HISTORY retains them. No flag premises; a persistent client refusal/idempotency ledger is a proposed layer-C integration need, and B5 discovery and arbitrary host adapters remain outside scope.")
 (defthm-owed fn2-commit-uncertain-persists (commands profile mode members seed)
  (let ((result (fn2-commit-proof-run commands profile mode members seed)))
