@@ -45,9 +45,9 @@
   (equal (mv-nth 3 (fn2-issue-fence-children okind oslot ogen principal fn2-pool fn2-ops fn2-control)) fn2-pool)
   :hints (("Goal" :in-theory (enable fn2-issue-fence-children fn2-issue-children fn2-core-lease))))
 (in-theory (disable fn2-issue-accept-children-keeps-pool fn2-issue-close-children-keeps-pool fn2-issue-fence-children-keeps-pool))
-(table fn2-arm-frame-keeps 'fn2-issue-accept-children-keeps-pool t)
-(table fn2-arm-frame-keeps 'fn2-issue-close-children-keeps-pool t)
-(table fn2-arm-frame-keeps 'fn2-issue-fence-children-keeps-pool t)
+(table fn2-arm-frame-keeps 'fn2-issue-accept-children-keeps-pool '(fn2-issue-accept-children fn2-core-pool))
+(table fn2-arm-frame-keeps 'fn2-issue-close-children-keeps-pool '(fn2-issue-close-children fn2-core-pool))
+(table fn2-arm-frame-keeps 'fn2-issue-fence-children-keeps-pool '(fn2-issue-fence-children fn2-core-pool))
 (defcost fn2-issue-read :child fn2-issue-read-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Read into the scribe's window.")
 

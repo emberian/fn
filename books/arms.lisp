@@ -1016,6 +1016,12 @@
            (equal (nth j b) (nth j a)))
   :rule-classes nil
   :hints (("Goal" :induct (fn2-arm-kids-nth-induct k j a b) :in-theory (enable nth fn2-arm-cols))))
+(defthm fn2-arm-update-nth-commute
+  (implies (and (natp i) (natp j) (not (equal i j)))
+           (equal (update-nth i a (update-nth j b l)) (update-nth j b (update-nth i a l))))
+  :rule-classes nil :hints (("Goal" :in-theory (enable update-nth))))
+(defthm fn2-arm-nth-0 (equal (nth 0 x) (car x)))
+(in-theory (disable fn2-arm-nth-0))
 ;; the declared columns' lengths agree, by column index
 (defun fn2-arm-col-lens-at (k columns a b)
   (declare (xargs :verify-guards nil))

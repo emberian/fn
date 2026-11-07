@@ -1333,29 +1333,31 @@
          (slot (fn2-arm-frame-name fn "-ARM-SLOT"))
          (phase (fn2-arm-frame-name fn "-ARM-PHASE")))
     (append
-     `((defthm ,kids
-         (implies (and (fn2-arm-kids 0 free c0 fn2-core) (subsetp-equal ',s free))
-                  (fn2-arm-kids 0 free c0 ,out))
-         :hints ,(fn2-arm-frame-hints (append (list fn) enable (fn2-arm-frame-kids-runes (fn2-arm-frame-children-of world)))))
-       (defthm ,frame
-         (implies (and (fn2-arm-row-frame tb row cols ch c0 fn2-core) (natp tb) (subsetp-equal ',s ch))
-                  (fn2-arm-row-frame tb row cols ch c0 ,out))
+     ; a constrained FN's KIDS is its constraint (commit.lisp's hooks)
+     (and (not (getpropc kids 'theorem nil world))
+          `((defthm ,kids
+              (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core) (subsetp-equal ',s fn2-arm-free))
+                       (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 ,out))
+              :hints ,(fn2-arm-frame-hints (append (list fn) enable (fn2-arm-frame-kids-runes (fn2-arm-frame-children-of world)))))))
+     `((defthm ,frame
+         (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core) (natp fn2-arm-tb) (subsetp-equal ',s fn2-arm-ch))
+                  (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 ,out))
          :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                  :use ((:instance fn2-arm-row-frame-kids (table tb) (columns cols) (children ch) (a c0) (b fn2-core)
-                                   (c ,out) (free ',s))
-                        (:instance ,kids (free ',s) (c0 fn2-core)))))))
+                  :use ((:instance fn2-arm-row-frame-kids (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b fn2-core)
+                                   (c ,out) (free ',s) (row fn2-arm-row))
+                        (:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core)))))))
      (and (not (member m s))
           `((defthm ,slot
               (equal (fn2-machine-slot fn2-arm-id ,out) (fn2-machine-slot fn2-arm-id fn2-core))
               :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                       :use ((:instance ,kids (free ',s) (c0 fn2-core))
+                       :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                              (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',s) (a fn2-core) (b ,out))
                              (:instance fn2-arm-slot-congruence (id fn2-arm-id) (a fn2-core) (b ,out))))))))
      (and phasep
           `((defthm ,phase
               (equal (fn2-machine-phase fn2-arm-id ,out) (fn2-machine-phase fn2-arm-id fn2-core))
               :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                       :use ((:instance ,kids (free ',s) (c0 fn2-core))
+                       :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                              ,@(fn2-arm-frame-nth-uses (fn2-arm-frame-phase-indices world) s out)
                              (:instance fn2-arm-phase-congruence (id fn2-arm-id) (a fn2-core) (b ,out))))))))
      `((in-theory (disable ,kids ,frame ,@(and (not (member m s)) (list slot)) ,@(and phasep (list phase))))
@@ -1364,11 +1366,11 @@
 (defun fn2-arm-frame-range (i n)
   (declare (xargs :verify-guards nil :measure (nfix (- (nfix n) (nfix i)))))
   (if (or (not (natp i)) (not (natp n)) (>= i n)) nil (cons i (fn2-arm-frame-range (+ 1 i) n))))
-(defun fn2-arm-frame-length-fns (kind fields)
+(defun fn2-arm-frame-length-facts (kind fields)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
-    (cons (fn2-columns-sym (fn2-columns-col-name kind (car fields)) "$A-LENGTH")
-          (fn2-arm-frame-length-fns kind (cdr fields)))))
+    (cons (fn2-columns-sym (fn2-columns-col-name kind (car fields)) "-LENGTH-WHEN-WFP")
+          (fn2-arm-frame-length-facts kind (cdr fields)))))
 ;; Each own column's row reader after the kind's table is replaced.
 (defun fn2-arm-frame-own-fields (fields)
   (declare (xargs :verify-guards nil))
@@ -1415,17 +1417,17 @@
 (defun fn2-arm-frame-setter (kind field)
   (declare (xargs :verify-guards nil))
   (fn2-columns-col-name kind (fn2-columns-pre "SET-" field)))
-(defun fn2-arm-frame-setter-events (kind cols j)
+(defun fn2-arm-frame-setter-events (kind fn2-arm-cs j)
   (declare (xargs :verify-guards nil))
-  (if (atom cols) nil
-    (let* ((set (fn2-arm-frame-setter kind (caar cols)))
-           (raw (fn2-columns-pre "UPDATE-" (fn2-columns-sym (fn2-columns-col-name kind (caar cols)) "$AI"))))
+  (if (atom fn2-arm-cs) nil
+    (let* ((set (fn2-arm-frame-setter kind (caar fn2-arm-cs)))
+           (raw (fn2-columns-pre "UPDATE-" (fn2-columns-sym (fn2-columns-col-name kind (caar fn2-arm-cs)) "$AI"))))
       (cons `(defthm ,(fn2-columns-pre "FN2-ARM-COLS-OF-" set)
-               (implies (and (fn2-arm-cols 0 row cols t0 tbl) (member-equal ,j cols) (equal i row))
-                        (fn2-arm-cols 0 row cols t0 (,set i v tbl)))
+               (implies (and (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs t0 tbl) (member-equal ,j fn2-arm-cs) (equal i fn2-arm-row))
+                        (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs t0 (,set i v tbl)))
                :hints (("Goal" :in-theory (union-theories '(,set ,raw update-nth-array) (theory 'fn2-arm-frame-base))
-                        :use ((:instance fn2-arm-cols-update (k 0) (columns cols) (a t0) (b tbl) (j ,j) (row i))))))
-            (fn2-arm-frame-setter-events kind (cdr cols) (+ 1 j))))))
+                        :use ((:instance fn2-arm-cols-update (k 0) (columns fn2-arm-cs) (a t0) (b tbl) (j ,j) (row i))))))
+            (fn2-arm-frame-setter-events kind (cdr fn2-arm-cs) (+ 1 j))))))
 (defun fn2-arm-frame-setter-runes (kind fields)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
@@ -1444,8 +1446,11 @@
 (defun fn2-arm-frame-kids-nth-uses (indices tk)
   (declare (xargs :verify-guards nil))
   (if (atom indices) nil
-    (cons `(:instance fn2-arm-kids-nth (i 0) (k ,(car indices)) (free (cons ,tk ch)))
+    (cons `(:instance fn2-arm-kids-nth (i 0) (k ,(car indices)) (free (cons ,tk fn2-arm-ch)))
           (fn2-arm-frame-kids-nth-uses (cdr indices) tk))))
+(defun fn2-arm-frame-machines-over (kind)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-pre "FN2-ARM-MACHINES-OVER-UPDATE-" (fn2-columns-sym kind "-TABLE")))
 (defun fn2-arm-frame-kind-events (kind world)
   (declare (xargs :verify-guards nil))
   (let* ((tcols (fn2-machine-property kind :table world))
@@ -1483,6 +1488,15 @@
                                            fn2-machine-kind-read-code fn2-machine-slot fn2-machine-slot-read-code
                                            fn2-machine-idp))))
       (in-theory (disable ,view ,upd))
+      ;; a batch's directory write lands over its table write: moved inside, the
+      ;; row readers' FN2-ARM-AFTER- facts read the table through it
+      (defthm ,(fn2-arm-frame-machines-over kind)
+        (equal (update-fn2-core-machines x (,(fn2-columns-pre "UPDATE-" table) y c))
+               (,(fn2-columns-pre "UPDATE-" table) y (update-fn2-core-machines x c)))
+        :hints (("Goal" :in-theory (union-theories '(update-fn2-core-machines ,(fn2-columns-pre "UPDATE-" table))
+                                                   (theory 'fn2-arm-frame-base))
+                 :use ((:instance fn2-arm-update-nth-commute (i ,(fn2-arm-frame-m world)) (j ,tk) (a x) (b y) (l c))))))
+      (in-theory (disable ,(fn2-arm-frame-machines-over kind)))
       ,@(fn2-arm-frame-row-after-events kind (fn2-arm-frame-own-fields (strip-cars tcols)) world)
       ;; the rows field follows the columns in the table's layout; each column
       ;; of a well-formed table is as long as its rows
@@ -1490,9 +1504,9 @@
         (implies (and (fn2-corep a) (fn2-core-wfp a) (fn2-corep b) (fn2-core-wfp b)
                       (equal (,rows (,table b)) (,rows (,table a))))
                  (fn2-arm-col-lens-at 0 ',(fn2-arm-frame-range 0 ri) (,table a) (,table b)))
-        :hints (("Goal" :in-theory (e/d (,(fn2-columns-sym kind "-WFP") ,@(fn2-arm-frame-length-fns kind (strip-cars tcols)))
-                                        (nth fn2-machine-core-child-shapes
-                                             ,(fn2-columns-sym (fn2-columns-sym kind "-WFP") (concatenate 'string "-OF-" (symbol-name table)))))
+        ; each column's length by its LENGTH-WHEN-WFP fact, the well-formedness closed
+        :hints (("Goal" :in-theory (union-theories '(fn2-arm-col-lens-at fn2-arm-nth-0 ,@(fn2-arm-frame-length-facts kind (strip-cars tcols)))
+                                                   (theory 'fn2-arm-frame-base))
                  :use ((:instance ,(fn2-columns-sym (fn2-columns-sym kind "-WFP") (concatenate 'string "-OF-" (symbol-name table)))
                                   (fn2-core a))
                        (:instance ,(fn2-columns-sym (fn2-columns-sym kind "-WFP") (concatenate 'string "-OF-" (symbol-name table)))
@@ -1501,19 +1515,19 @@
         (implies (,(fn2-columns-sym kind "P") x) (equal (len x) ,(+ 1 ri)))
         :hints (("Goal" :in-theory (enable ,(fn2-columns-sym kind "P")))))
       (defthm ,framep
-        (implies (and (fn2-arm-row-frame ,tk row cols ch a b) (subsetp-equal cols ',(fn2-arm-frame-range 0 ri))
+        (implies (and (fn2-arm-row-frame ,tk fn2-arm-row fn2-arm-cs fn2-arm-ch a b) (subsetp-equal fn2-arm-cs ',(fn2-arm-frame-range 0 ri))
                       (fn2-corep a) (fn2-core-wfp a) (fn2-corep b) (fn2-core-wfp b))
-                 (fn2-arm-framep ,tk row cols ch a b))
+                 (fn2-arm-framep ,tk fn2-arm-row fn2-arm-cs fn2-arm-ch a b))
         :hints (("Goal" :in-theory (union-theories '(,table ,rows ,klen fn2-arm-core-len fn2-arm-row-frame)
                                                    (theory 'fn2-arm-frame-base))
-                 :use ((:instance fn2-arm-row-frame-framep (table ,tk) (columns cols) (children ch))
+                 :use ((:instance fn2-arm-row-frame-framep (table ,tk) (columns fn2-arm-cs) (children fn2-arm-ch) (row fn2-arm-row))
                        (:instance ,(fn2-columns-sym table "-TYPE") (fn2-core a))
                        (:instance ,(fn2-columns-sym table "-TYPE") (fn2-core b))
-                       (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns cols) (a (nth ,tk a)) (b (nth ,tk b)))
+                       (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)) (row fn2-arm-row))
                        (:instance ,lens)
-                       (:instance fn2-arm-col-lens-at-mono (k 0) (columns cols) (big ',(fn2-arm-frame-range 0 ri))
+                       (:instance fn2-arm-col-lens-at-mono (k 0) (columns fn2-arm-cs) (big ',(fn2-arm-frame-range 0 ri))
                                   (a (nth ,tk a)) (b (nth ,tk b)))
-                       (:instance fn2-arm-col-lens-of-at (k 0) (columns cols) (a (nth ,tk a)) (b (nth ,tk b)))))))
+                       (:instance fn2-arm-col-lens-of-at (k 0) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)))))))
       (in-theory (disable ,lens ,klen ,framep))
       ;; the phase reads the directory, the other kinds' tables, and of this
       ;; kind's table only its phase column and rows: a row-level change
@@ -1528,16 +1542,16 @@
                                            ,@(fn2-machine-machine-tables world) ,read ,(fn2-columns-sym read "$AI") ,rows)
                  :use ((:instance fn2-arm-slot-congruence) (:instance fn2-arm-kind-congruence)))))
       (defthm ,(fn2-columns-sym kind "-ARM-PHASE-OF-ROW-FRAME")
-        (implies (and (fn2-arm-row-frame ,tk row cols ch a b) (not (member-equal ,pc cols)) (not (member-equal ,ri cols))
-                      (not (member-equal ,tk ch))
-                      ,@(fn2-arm-frame-not-members (remove-equal tk (fn2-arm-frame-phase-indices world)) 'ch))
+        (implies (and (fn2-arm-row-frame ,tk fn2-arm-row fn2-arm-cs fn2-arm-ch a b) (not (member-equal ,pc fn2-arm-cs)) (not (member-equal ,ri fn2-arm-cs))
+                      (not (member-equal ,tk fn2-arm-ch))
+                      ,@(fn2-arm-frame-not-members (remove-equal tk (fn2-arm-frame-phase-indices world)) 'fn2-arm-ch))
                  (equal (fn2-machine-phase id b) (fn2-machine-phase id a)))
         :rule-classes nil
         :hints (("Goal" :in-theory (union-theories '(fn2-arm-row-frame) (theory 'fn2-arm-frame-base))
                  :use ((:instance ,(fn2-columns-sym kind "-ARM-PHASE-CONGRUENCE"))
-                       (:instance fn2-arm-row-frame-cols (table ,tk) (columns cols) (children ch))
-                       (:instance fn2-arm-cols-nth (k 0) (j ,pc) (columns cols) (a (nth ,tk a)) (b (nth ,tk b)))
-                       (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns cols) (a (nth ,tk a)) (b (nth ,tk b)))
+                       (:instance fn2-arm-row-frame-cols (table ,tk) (columns fn2-arm-cs) (children fn2-arm-ch) (row fn2-arm-row))
+                       (:instance fn2-arm-cols-nth (k 0) (j ,pc) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)) (row fn2-arm-row))
+                       (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)) (row fn2-arm-row))
                        ,@(fn2-arm-frame-kids-nth-uses (remove-equal tk (fn2-arm-frame-phase-indices world)) tk)))))
       (defthm ,(fn2-columns-sym kind "-ARM-ROW-PHASE")
         (implies (equal (,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
@@ -1568,27 +1582,27 @@
       (list*
        ; a declared child, or a write-back of the child as read
        `(defthm ,(fn2-columns-pre "FN2-ARM-KIDS-OF-" update)
-          (implies (and (fn2-arm-kids 0 free c0 c) (or (member-equal ,k free) (equal v (,field c))))
-                   (fn2-arm-kids 0 free c0 (,update v c)))
+          (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 c) (or (member-equal ,k fn2-arm-free) (equal v (,field c))))
+                   (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 (,update v c)))
           :hints (("Goal" :in-theory (union-theories '(,update ,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-kids-update (i 0) (a c0) (b c) (k ,k))
-                         (:instance fn2-arm-kids-update-same (i 0) (a c0) (b c) (k ,k))))))
+                   :use ((:instance fn2-arm-kids-update (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))
+                         (:instance fn2-arm-kids-update-same (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))))))
        ; the written child against its current value (an inline put of the
        ; row builds V from it by setters; a write-back of it is V = it)
        `(defthm ,(fn2-columns-pre "FN2-ARM-ROW-FRAME-OF-" update)
-          (implies (and (fn2-arm-row-frame tb row cols ch c0 c) (natp tb)
-                        (or (member-equal ,k ch) (and (equal tb ,k) (fn2-arm-cols 0 row cols (,field c) v))))
-                   (fn2-arm-row-frame tb row cols ch c0 (,update v c)))
+          (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 c) (natp fn2-arm-tb)
+                        (or (member-equal ,k fn2-arm-ch) (and (equal fn2-arm-tb ,k) (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs (,field c) v))))
+                   (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 (,update v c)))
           :hints (("Goal" :in-theory (union-theories '(,update ,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-row-frame-child (table tb) (columns cols) (children ch) (a c0) (b c) (k ,k))
-                         (:instance fn2-arm-row-frame-table (table tb) (columns cols) (children ch) (a c0) (b c))
-                         (:instance fn2-arm-row-frame-cols (table tb) (columns cols) (children ch) (a c0) (b c))
-                         (:instance fn2-arm-cols-trans (k 0) (row row) (columns cols) (a (nth tb c0)) (b (nth tb c)) (c v))))))
+                   :use ((:instance fn2-arm-row-frame-child (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (k ,k) (row fn2-arm-row))
+                         (:instance fn2-arm-row-frame-table (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
+                         (:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
+                         (:instance fn2-arm-cols-trans (k 0) (row fn2-arm-row) (columns fn2-arm-cs) (a (nth fn2-arm-tb fn2-arm-c0)) (b (nth fn2-arm-tb c)) (c v))))))
        `(defthm ,(fn2-columns-pre "FN2-ARM-COLS-OF-" field)
-          (implies (and (fn2-arm-row-frame tb row cols ch c0 c) (equal tb ,k) (not (member-equal ,k ch)))
-                   (fn2-arm-cols 0 row cols (nth tb c0) (,field c)))
+          (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 c) (equal fn2-arm-tb ,k) (not (member-equal ,k fn2-arm-ch)))
+                   (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs (nth fn2-arm-tb fn2-arm-c0) (,field c)))
           :hints (("Goal" :in-theory (union-theories '(,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-row-frame-cols (table tb) (columns cols) (children ch) (a c0) (b c))))))
+                   :use ((:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))))))
        (fn2-arm-frame-child-events (cdr children) (+ 1 k) m pidx))))))
 (defun fn2-arm-frame-child-runes (children k m pidx)
   (declare (xargs :verify-guards nil))
@@ -1599,6 +1613,47 @@
              (append (and (not (equal k m)) (list (fn2-columns-pre "FN2-ARM-SLOT-OF-" update)))
                      (and (not (member k pidx)) (list (fn2-columns-pre "FN2-ARM-PHASE-OF-" update)))
                      (fn2-arm-frame-child-runes (cdr children) (+ 1 k) m pidx))))))
+;; A directory field's write at any id keeps every id's slot, kind, idp and phase
+;; (the directory's slot and kind columns and its rows are not written):
+;; the writers' SLOT and PHASE contracts by these, never by opening the
+;; directory. MM is the directory as read from the same core.
+(defun fn2-arm-frame-directory-name (reader field)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-pre (concatenate 'string "FN2-ARM-" (symbol-name reader) "-OF-")
+                   (fn2-arm-frame-setter 'fn2-machines field)))
+(defun fn2-arm-frame-directory-events (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let ((set (fn2-arm-frame-setter 'fn2-machines (car fields))))
+      (append
+       `((defthm ,(fn2-arm-frame-directory-name 'kind (car fields))
+           (implies (equal mm (fn2-core-machines c))
+                    (equal (fn2-machine-kind i (update-fn2-core-machines (,set j v mm) c)) (fn2-machine-kind i c)))
+           :hints (("Goal" :in-theory (enable fn2-machine-kind fn2-machine-kind-read-code fn2-machine-idp fn2-machines-kind))))
+         (defthm ,(fn2-arm-frame-directory-name 'slot (car fields))
+           (implies (equal mm (fn2-core-machines c))
+                    (equal (fn2-machine-slot i (update-fn2-core-machines (,set j v mm) c)) (fn2-machine-slot i c)))
+           :hints (("Goal" :in-theory (enable fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp fn2-machines-slot))))
+         (defthm ,(fn2-arm-frame-directory-name 'idp (car fields))
+           (implies (equal mm (fn2-core-machines c))
+                    (equal (fn2-machine-idp i (update-fn2-core-machines (,set j v mm) c)) (fn2-machine-idp i c)))
+           :hints (("Goal" :in-theory (enable fn2-machine-idp))))
+         (defthm ,(fn2-arm-frame-directory-name 'phase (car fields))
+           (implies (equal mm (fn2-core-machines c))
+                    (equal (fn2-machine-phase i (update-fn2-core-machines (,set j v mm) c)) (fn2-machine-phase i c)))
+           :hints (("Goal" :in-theory (enable fn2-machine-phase fn2-machine-phase-read-code fn2-machine-idp
+                                              fn2-machines-slot fn2-machines-kind)))))
+       (fn2-arm-frame-directory-events (cdr fields))))))
+(defun fn2-arm-frame-directory-runes (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (list* (fn2-arm-frame-directory-name 'kind (car fields)) (fn2-arm-frame-directory-name 'slot (car fields))
+           (fn2-arm-frame-directory-name 'idp (car fields)) (fn2-arm-frame-directory-name 'phase (car fields))
+           (fn2-arm-frame-directory-runes (cdr fields)))))
+(defun fn2-arm-frame-directory-reader-runes (reader fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (fn2-arm-frame-directory-name reader (car fields)) (fn2-arm-frame-directory-reader-runes reader (cdr fields)))))
 (defun fn2-arm-frame-basis-events (world)
   (declare (xargs :verify-guards nil))
   (let* ((children (fn2-arm-frame-children-of world)) (m (fn2-arm-frame-m world)) (ctl (fn2-arm-frame-ctl world)))
@@ -1627,6 +1682,8 @@
                  :use ((:instance fn2-arm-slot-congruence) (:instance fn2-arm-kind-congruence)))))
       ,@(fn2-arm-frame-child-events children 0 m (fn2-arm-frame-phase-indices world))
       (in-theory (disable ,@(fn2-arm-frame-child-runes children 0 m (fn2-arm-frame-phase-indices world))))
+      ,@(fn2-arm-frame-directory-events (strip-cars *fn2-machine-directory-fields*))
+      (in-theory (disable ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*))))
       ,@(fn2-arm-frame-op-events 'fn2-core-stop (list ctl) nil world)
       ,@(fn2-arm-frame-op-events 'fn2-machine-refuse-write (list ctl) '(fn2-core-stop-arm-kids) world))))
 ;; A batched write function's contracts (machine-arms.lisp emits it): the
@@ -1637,9 +1694,9 @@
 ;; given.
 (defun fn2-arm-frame-row-frame-hyps (tk s j id)
   (declare (xargs :verify-guards nil))
-  `((natp tb) (subsetp-equal ',s ch)
-    (or (member-equal ,tk ch)
-        (and (equal tb ,tk) (subsetp-equal ',j cols) (equal (fn2-machine-slot ,id fn2-core) row)))))
+  `((natp fn2-arm-tb) (subsetp-equal ',s fn2-arm-ch)
+    (or (member-equal ,tk fn2-arm-ch)
+        (and (equal fn2-arm-tb ,tk) (subsetp-equal ',j fn2-arm-cs) (equal (fn2-machine-slot ,id fn2-core) fn2-arm-row)))))
 (defun fn2-arm-frame-read-backs (kind fields formals)
   ; the own fields' and the phase's values; a directory field is read through
   ; the directory, outside this contract
@@ -1691,15 +1748,16 @@
          (phase (fn2-arm-frame-name w "-ARM-PHASE"))
          (contract (fn2-arm-frame-name w "-CONTRACT"))
          (update-table (fn2-columns-pre "UPDATE-" table))
+         (machines-of (fn2-columns-pre "FN2-CORE-MACHINES-OF-" update-table))
          (open (list* w 'fn2-machine-refuse-write (fn2-arm-frame-setter-facts kind (fn2-arm-frame-table-fields fields)))))
     `((defthm ,kids
-        (implies (and (fn2-arm-kids 0 free c0 fn2-core) (subsetp-equal ',s free))
-                 (fn2-arm-kids 0 free c0 ,call))
+        (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core) (subsetp-equal ',s fn2-arm-free))
+                 (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 ,call))
         :hints ,(fn2-arm-frame-hints (list* w 'fn2-machine-refuse-write 'fn2-core-stop-arm-kids
                                             (fn2-arm-frame-kids-runes (fn2-arm-frame-children-of world)))))
       (defthm ,frame
-        (implies (and (fn2-arm-row-frame tb row cols ch c0 fn2-core) ,@(fn2-arm-frame-row-frame-hyps tk s1 j 'id))
-                 (fn2-arm-row-frame tb row cols ch c0 ,call))
+        (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core) ,@(fn2-arm-frame-row-frame-hyps tk s1 j 'id))
+                 (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 ,call))
         :hints ,(fn2-arm-frame-hints
                  (list* w 'fn2-machine-refuse-write-arm-row-frame
                         (fn2-columns-pre "FN2-ARM-ROW-FRAME-OF-" update-table)
@@ -1707,46 +1765,56 @@
                         (append (and dirp '(fn2-arm-row-frame-of-update-fn2-core-machines))
                                 (fn2-arm-frame-setter-runes kind (fn2-arm-frame-table-fields fields))))))
       ,(if dirp
+           ; the table's write keeps every slot (FN2-ARM-SLOT-OF-UPDATE-<table>), the
+           ; directory fields' too: one opening of W, no setter opened
            `(defthm ,slot
               (equal (fn2-machine-slot fn2-arm-id ,call) (fn2-machine-slot fn2-arm-id fn2-core))
-              :hints (("Goal" :in-theory (enable ,w fn2-machine-refuse-write fn2-core-stop-arm-slot fn2-machine-slot
-                                                 fn2-machine-slot-read-code fn2-machine-idp fn2-machines-slot fn2-machines-slot$ai
-                                                 ,@(fn2-arm-frame-setter-facts 'fn2-machines (fn2-arm-frame-directory-fields fields))))))
+              :hints ,(fn2-arm-frame-hints
+                       (list* w 'fn2-machine-refuse-write 'fn2-core-stop-arm-slot 'fn2-machine-idp-bounds
+                              (fn2-columns-pre "FN2-ARM-SLOT-OF-" update-table) machines-of
+                              (fn2-arm-frame-directory-reader-runes 'slot (fn2-arm-frame-directory-fields fields)))))
          `(defthm ,slot
             (equal (fn2-machine-slot fn2-arm-id ,call) (fn2-machine-slot fn2-arm-id fn2-core))
             :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                     :use ((:instance ,kids (free ',s) (c0 fn2-core))
+                     :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                            (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',s) (a fn2-core) (b ,call))
                            (:instance fn2-arm-slot-congruence (id fn2-arm-id) (a fn2-core) (b ,call)))))))
       (defthm ,phase
         ,(if pf
-             `(implies (and (member-equal (fn2-machine-phase id fn2-core) pset) (member-equal ,pf pset)
+             `(implies (and (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) (member-equal ,pf fn2-arm-pset)
                             (natp ,pf) (< ,pf ,(len states)))
-                       (member-equal (fn2-machine-phase id ,call) pset))
-           `(implies (member-equal (fn2-machine-phase id fn2-core) pset)
-                     (member-equal (fn2-machine-phase id ,call) pset)))
+                       (member-equal (fn2-machine-phase id ,call) fn2-arm-pset))
+           `(implies (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset)
+                     (member-equal (fn2-machine-phase id ,call) fn2-arm-pset)))
         :hints ,(fn2-arm-frame-hints
                  (list* 'fn2-core-stop-arm-phase (fn2-columns-pre "FN2-ARM-PHASE-OF-UPDATE-" table)
                         (fn2-columns-pre "FN2-ARM-PHASE-VIEW-" kind) (fn2-columns-col-name kind 'phase)
                         (fn2-columns-sym (fn2-columns-col-name kind 'phase) "$AI")
                         (fn2-columns-sym table (concatenate 'string "-OF-" (symbol-name update-table)))
                         'natp 'nfix 'zp 'fix
-                        (append open (fn2-arm-frame-setter-facts kind (list 'phase))))))
+                        (append open (fn2-arm-frame-setter-facts kind (list 'phase))
+                                (and dirp (list* 'fn2-machine-idp-bounds machines-of
+                                                 (fn2-arm-frame-directory-reader-runes
+                                                  'phase (fn2-arm-frame-directory-fields fields))))))))
       (in-theory (disable ,kids ,frame ,slot ,phase))
       (defthm ,(fn2-arm-frame-name w "-FRAME")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (fn2-arm-framep ,tk (fn2-machine-slot id fn2-core) ',j ',s1 fn2-core ,call))
         :hints (("Goal" :in-theory (union-theories '(,(fn2-columns-sym w "-PRESERVES-TYPE") ,(fn2-columns-sym w "-PRESERVES-WFP"))
                                                    (theory 'fn2-arm-frame-base))
-                 :use ((:instance ,frame (tb ,tk) (row (fn2-machine-slot id fn2-core)) (cols ',j) (ch ',s1) (c0 fn2-core))
-                       (:instance ,(fn2-columns-sym kind "-ARM-FRAMEP") (row (fn2-machine-slot id fn2-core)) (cols ',j)
-                                  (ch ',s1) (a fn2-core) (b ,call))))))
+                 :use ((:instance ,frame (fn2-arm-tb ,tk) (fn2-arm-row (fn2-machine-slot id fn2-core)) (fn2-arm-cs ',j) (fn2-arm-ch ',s1) (fn2-arm-c0 fn2-core))
+                       (:instance ,(fn2-columns-sym kind "-ARM-FRAMEP") (fn2-arm-row (fn2-machine-slot id fn2-core)) (fn2-arm-cs ',j)
+                                  (fn2-arm-ch ',s1) (a fn2-core) (b ,call))))))
       (defthm ,(fn2-arm-frame-name w "-READS")
         (implies ,(fn2-arm-frame-write-guards kind fields wformals world)
                  (let ((after ,call)) (and ,@(fn2-arm-frame-read-backs kind fields wformals))))
         :hints ,(fn2-arm-frame-hints (append (list w 'natp 'nfix 'fix 'unsigned-byte-p 'integer-range-p)
                                              (fn2-arm-frame-setter-facts kind (fn2-arm-frame-table-fields fields))
-                                             (fn2-arm-frame-read-back-runes kind (fn2-arm-frame-table-fields fields)))))
+                                             (fn2-arm-frame-read-back-runes kind (fn2-arm-frame-table-fields fields))
+                                             (and dirp (list* (fn2-arm-frame-machines-over kind) machines-of 'fn2-machine-idp-bounds
+                                                              (append (fn2-arm-frame-directory-reader-runes 'slot (fn2-arm-frame-directory-fields fields))
+                                                                      (fn2-arm-frame-directory-reader-runes 'kind (fn2-arm-frame-directory-fields fields))
+                                                                      (fn2-arm-frame-directory-reader-runes 'idp (fn2-arm-frame-directory-fields fields))))))))
       (defthm ,contract
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (let ((after ,call))
@@ -1881,19 +1949,19 @@
  (defun fn2-arm-frame-fnsyms-list (l acc)
    (declare (xargs :verify-guards nil :measure (acl2-count l)))
    (if (atom l) acc (fn2-arm-frame-fnsyms-list (cdr l) (fn2-arm-frame-fnsyms (car l) acc)))))
-(defun fn2-arm-frame-setter-columns (kind cols fns j)
+(defun fn2-arm-frame-setter-columns (kind fn2-arm-cs fns j)
   (declare (xargs :verify-guards nil))
-  (cond ((atom cols) nil)
-        ((member-eq (fn2-arm-frame-setter kind (caar cols)) fns)
-         (cons j (fn2-arm-frame-setter-columns kind (cdr cols) fns (+ 1 j))))
-        (t (fn2-arm-frame-setter-columns kind (cdr cols) fns (+ 1 j)))))
+  (cond ((atom fn2-arm-cs) nil)
+        ((member-eq (fn2-arm-frame-setter kind (caar fn2-arm-cs)) fns)
+         (cons j (fn2-arm-frame-setter-columns kind (cdr fn2-arm-cs) fns (+ 1 j))))
+        (t (fn2-arm-frame-setter-columns kind (cdr fn2-arm-cs) fns (+ 1 j)))))
 (defun fn2-arm-frame-body-setters (fn kind world)
   (declare (xargs :verify-guards nil))
   (fn2-arm-frame-setter-columns kind (fn2-machine-property kind :table world)
                                 (fn2-arm-frame-fnsyms (getpropc fn 'unnormalized-body nil world) nil) 0))
-(defun fn2-arm-frame-column-fields (j cols)
+(defun fn2-arm-frame-column-fields (j fn2-arm-cs)
   (declare (xargs :verify-guards nil))
-  (if (atom j) nil (cons (car (nth (car j) cols)) (fn2-arm-frame-column-fields (cdr j) cols))))
+  (if (atom j) nil (cons (car (nth (car j) fn2-arm-cs)) (fn2-arm-frame-column-fields (cdr j) fn2-arm-cs))))
 ;; A function's entry from its callees' entries: (mv entry problem). An
 ;; operation's sets are its defcost's (its :own-writes the columns of its
 ;; row); a helper's are its callees'. PROBLEM names a callee without
@@ -1911,9 +1979,19 @@
              (fn2-arm-frame-infer (cdr fns) tk inline (union-equal (fn2-arm-frame-entry-s e) c)
                                   (union-equal (fn2-arm-frame-entry-j e) r) kind world))
             (t (fn2-arm-frame-infer (cdr fns) tk inline (union-equal (fn2-arm-frame-entry-kids e world) c) r kind world))))))
+(defun fn2-arm-frame-kept (keeps fns world)
+  ; the children a keeps lemma (table fn2-arm-frame-keeps: (FN CHILD)) shows
+  ; written back unchanged, for the child functions in FNS
+  (declare (xargs :verify-guards nil))
+  (cond ((atom keeps) nil)
+        ((and (consp (cdar keeps)) (member-eq (cadar keeps) fns))
+         (add-to-set-eql (fn2-arm-frame-child-index (caddar keeps) world) (fn2-arm-frame-kept (cdr keeps) fns world)))
+        (t (fn2-arm-frame-kept (cdr keeps) fns world))))
 (defun fn2-arm-frame-fn-entry (fn kind world)
   (declare (xargs :verify-guards nil))
   (let* ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
+         (kept (fn2-arm-frame-kept (table-alist 'fn2-arm-frame-keeps world)
+                                   (fn2-arm-frame-fnsyms (getpropc fn 'unnormalized-body nil world) nil) world))
          (row (fn2-decl-row (list :cost fn) world))
          (idp (member-eq 'id (formals fn world))))
     (mv-let (c r bad) (fn2-arm-frame-infer (fn2-arm-frame-body-callees fn world) tk
@@ -1930,8 +2008,9 @@
               (t (let* ((s (fn2-arm-frame-op-set fn kind world))
                         (sd (remove-equal tk s))
                         (jd (fn2-machine-column-indices (fn2-decl-get :own-writes row) (fn2-machine-property kind :table world)))
-                        (why (cond ((not (subsetp-equal (if rowp c inferred) (if rowp sd s)))
-                                    (list :children (set-difference-equal (if rowp c inferred) (if rowp sd s))))
+                        (why (cond ((not (subsetp-equal (set-difference-equal (if rowp c inferred) kept) (if rowp sd s)))
+                                    (list :children (set-difference-equal (set-difference-equal (if rowp c inferred) kept)
+                                                                          (if rowp sd s))))
                                    ((and rowp (not (subsetp-equal r jd)))
                                     (list :columns (set-difference-equal r jd)))
                                    (t '(:kids)))))
@@ -2003,31 +2082,31 @@
          (phase (fn2-arm-frame-kname kind fn "-ARM-PHASE"))
          (all '("-ARM-ROW-FRAME" "-ARM-SLOT" "-ARM-PHASE")))
     `((defthm ,kids
-        (implies (and (fn2-arm-kids 0 free c0 fn2-core) (subsetp-equal ',s free))
-                 (fn2-arm-kids 0 free c0 ,out))
+        (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core) (subsetp-equal ',s fn2-arm-free))
+                 (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 ,out))
         :hints ,(fn2-arm-frame-hints (cons fn (append (strip-cars (table-alist 'fn2-arm-frame-keeps world))
                                                       (fn2-arm-frame-lemmas callees '("-ARM-KIDS") kind world)))))
       ,(if (eq (car e) :row)
            `(defthm ,frame
-              (implies (and (fn2-arm-row-frame tb row cols ch c0 fn2-core)
+              (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
                             ,@(fn2-arm-frame-row-frame-hyps tk (fn2-arm-frame-entry-s e) (fn2-arm-frame-entry-j e) 'id))
-                       (fn2-arm-row-frame tb row cols ch c0 ,out))
+                       (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 ,out))
               :hints ,(fn2-arm-frame-hints
                        (cons fn (append (fn2-arm-frame-inline-runes fn kind world)
                                         (fn2-arm-frame-lemmas callees all kind world)))))
          `(defthm ,frame
-            (implies (and (fn2-arm-row-frame tb row cols ch c0 fn2-core) (natp tb) (subsetp-equal ',s ch))
-                     (fn2-arm-row-frame tb row cols ch c0 ,out))
+            (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core) (natp fn2-arm-tb) (subsetp-equal ',s fn2-arm-ch))
+                     (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 ,out))
             :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                     :use ((:instance fn2-arm-row-frame-kids (table tb) (columns cols) (children ch) (a c0) (b fn2-core)
-                                      (c ,out) (free ',s))
-                           (:instance ,kids (free ',s) (c0 fn2-core)))))))
+                     :use ((:instance fn2-arm-row-frame-kids (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b fn2-core)
+                                      (c ,out) (free ',s) (row fn2-arm-row))
+                           (:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core)))))))
       ,(fn2-arm-frame-maybe
         (if (not (member m s))
             `(defthm ,slot
                (equal (fn2-machine-slot fn2-arm-id ,out) (fn2-machine-slot fn2-arm-id fn2-core))
                :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                        :use ((:instance ,kids (free ',s) (c0 fn2-core))
+                        :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                               (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',s) (a fn2-core) (b ,out))
                               (:instance fn2-arm-slot-congruence (id fn2-arm-id) (a fn2-core) (b ,out))))))
           (if (fn2-arm-frame-all-have callees "-ARM-SLOT" kind world)
@@ -2044,16 +2123,16 @@
           `(defthm ,phase
              (equal (fn2-machine-phase fn2-arm-id ,out) (fn2-machine-phase fn2-arm-id fn2-core))
              :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                      :use ((:instance ,frame (tb ,tk) (row (fn2-machine-slot id fn2-core)) (cols ',(fn2-arm-frame-entry-j e))
-                                       (ch ',(fn2-arm-frame-entry-s e)) (c0 fn2-core))
+                      :use ((:instance ,frame (fn2-arm-tb ,tk) (fn2-arm-row (fn2-machine-slot id fn2-core)) (fn2-arm-cs ',(fn2-arm-frame-entry-j e))
+                                       (fn2-arm-ch ',(fn2-arm-frame-entry-s e)) (fn2-arm-c0 fn2-core))
                             (:instance ,(fn2-columns-sym kind "-ARM-PHASE-OF-ROW-FRAME") (id fn2-arm-id)
-                                       (row (fn2-machine-slot id fn2-core)) (cols ',(fn2-arm-frame-entry-j e))
-                                       (ch ',(fn2-arm-frame-entry-s e)) (a fn2-core) (b ,out)))))))
+                                       (fn2-arm-row (fn2-machine-slot id fn2-core)) (fn2-arm-cs ',(fn2-arm-frame-entry-j e))
+                                       (fn2-arm-ch ',(fn2-arm-frame-entry-s e)) (a fn2-core) (b ,out)))))))
          ((not (intersectp-equal (fn2-arm-frame-phase-indices world) s))
             `(defthm ,phase
                (equal (fn2-machine-phase fn2-arm-id ,out) (fn2-machine-phase fn2-arm-id fn2-core))
                :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                        :use ((:instance ,kids (free ',s) (c0 fn2-core))
+                        :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                               ,@(fn2-arm-frame-nth-uses (fn2-arm-frame-phase-indices world) s out)
                               (:instance fn2-arm-phase-congruence (id fn2-arm-id) (a fn2-core) (b ,out)))))))
          ((and (member-eq 'id formals) (fn2-arm-frame-all-have callees "-ARM-PHASE" kind world)
@@ -2062,8 +2141,8 @@
           (let ((pv (fn2-arm-frame-phase-args (getpropc fn 'unnormalized-body nil world) kind world nil)))
             `(progn
                (defthm ,phase
-                 (implies (and (member-equal (fn2-machine-phase id fn2-core) pset) ,@(and pv `((subsetp-equal ',pv pset))))
-                          (member-equal (fn2-machine-phase id ,out) pset))
+                 (implies (and (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) ,@(and pv `((subsetp-equal ',pv fn2-arm-pset))))
+                          (member-equal (fn2-machine-phase id ,out) fn2-arm-pset))
                  :hints ,(fn2-arm-frame-hints (list* fn 'fn2-arm-member-of-subsetp-free
                                                      (fn2-arm-frame-lemmas callees '("-ARM-PHASE") kind world))))
                (table fn2-arm-frame-phases '(,kind . ,fn) ',pv))))
@@ -2076,11 +2155,18 @@
   (declare (xargs :verify-guards nil))
   (if (fn2-arm-frame-known fn kind world) '(value-triple :known)
     (mv-let (e problem why) (fn2-arm-frame-fn-entry fn kind world)
-      (if problem `(table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,problem))
-        (let ((fallback (list :op (fn2-arm-frame-entry-kids e world))))
-          `(:or (progn ,@(fn2-arm-frame-fn-events fn e kind world))
-                ,@(and (eq (car e) :row) `((progn ,@(fn2-arm-frame-fn-events fn fallback kind world))))
-                (table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,why))))))))
+      ; a body that changes children beyond its declaration cannot meet it:
+      ; owed with them, no attempt; columns beyond it leave the row level
+      ; for the operation level, the only attempt
+      (let ((fallback (and e (list :op (fn2-arm-frame-entry-kids e world)))))
+        (cond (problem `(table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,problem)))
+              ((eq (car why) :children) `(table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,why)))
+              ((and (eq (car why) :columns) (eq (car e) :row))
+               `(:or (progn ,@(fn2-arm-frame-fn-events fn fallback kind world))
+                     (table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,why))))
+              (t `(:or (progn ,@(fn2-arm-frame-fn-events fn e kind world))
+                       ,@(and (eq (car e) :row) `((progn ,@(fn2-arm-frame-fn-events fn fallback kind world))))
+                       (table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,why)))))))))
 (defun fn2-arm-frame-disable-form (fns kind world)
   ; after the contracts: each disabled (the chained rules stay off by default)
   (declare (xargs :verify-guards nil))
@@ -2104,7 +2190,7 @@
               (fn2-arm-frame-phase-openings (cdr fns) next kind world)))))
 ;; An arm's (or handler's) chained contracts and its FRAME, at its declared
 ;; sets: CH children, J columns (the phase among them), NEXT successor codes.
-(defun fn2-arm-frame-arm-events (kind fn ch j next pre frame-form observep world)
+(defun fn2-arm-frame-arm-events (kind fn fn2-arm-ch j next pre frame-form observep world)
   (declare (xargs :verify-guards nil))
   (let* ((formals (formals fn world))
          (call (cons fn formals))
@@ -2114,26 +2200,26 @@
          (frame (fn2-arm-frame-name fn "-ARM-ROW-FRAME"))
          (phase (fn2-arm-frame-name fn "-ARM-PHASE")))
     `((defthm ,frame
-        (implies (and (fn2-arm-row-frame tb row cols ch c0 fn2-core) ,@(fn2-arm-frame-row-frame-hyps tk ch j 'id))
-                 (fn2-arm-row-frame tb row cols ch c0 ,out))
+        (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core) ,@(fn2-arm-frame-row-frame-hyps tk fn2-arm-ch j 'id))
+                 (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 ,out))
         :hints ,(fn2-arm-frame-hints (cons fn (append (fn2-arm-frame-inline-runes fn kind world)
                                                       (fn2-arm-frame-lemmas callees '("-ARM-ROW-FRAME" "-ARM-SLOT") kind world)))))
       (defthm ,phase
         ; under the arm's precondition PRE: its entry phase decides its paths
-        (implies (and ,pre (member-equal (fn2-machine-phase id fn2-core) pset) (subsetp-equal ',next pset))
-                 (member-equal (fn2-machine-phase id ,out) pset))
+        (implies (and ,pre (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) (subsetp-equal ',next fn2-arm-pset))
+                 (member-equal (fn2-machine-phase id ,out) fn2-arm-pset))
         :hints ,(fn2-arm-frame-hints (list* fn 'fn2-arm-member-of-subsetp-free (fn2-columns-sym kind "-ARM-ROW-PHASE")
                                             (append (fn2-arm-frame-inline-phase-runes fn kind world)
                                                     (fn2-arm-frame-lemmas callees '("-ARM-PHASE") kind world)
                                                     (fn2-arm-frame-phase-openings callees next kind world)))))
       (in-theory (disable ,frame ,phase))
-      (table fn2-arm-frame-fns ',fn '(:arm ,ch ,j ,next))
+      (table fn2-arm-frame-fns ',fn '(:arm ,fn2-arm-ch ,j ,next))
       ,(append frame-form
                `(:rule-classes nil :hints ,(fn2-arm-frame-hints
                           (list frame phase (fn2-columns-sym kind "-ARM-FRAMEP") 'fn2-arm-row-frame-refl
                                 (fn2-columns-sym kind (if observep "-OBSERVE-NEXT-OK-P" "-ARM-NEXT-OK-P"))
                                 (fn2-columns-sym fn "-PRESERVES-TYPE") (fn2-columns-sym fn "-PRESERVES-WFP"))))))))
-(defun fn2-arm-frame-static-problem (fns ch j tk kind world)
+(defun fn2-arm-frame-static-problem (fns fn2-arm-ch j tk kind world)
   ; a callee without contracts, or one that changes beyond the arm's
   ; declared sets, named; an arm's own inline put of its row is the callee
   ; (:row TK () COLUMNS) (its setters' columns)
@@ -2141,14 +2227,14 @@
   (if (atom fns) nil
     (let* ((e (fn2-arm-frame-known (car fns) kind world))
            (etk (fn2-arm-frame-entry-tk e world))
-           (rowp (and etk (equal etk tk) (not (member tk ch))))
+           (rowp (and etk (equal etk tk) (not (member tk fn2-arm-ch))))
            (s (if rowp (fn2-arm-frame-entry-s e) (fn2-arm-frame-entry-kids e world))))
       (cond ((or (null e) (member-eq (car e) '(:failed :arm))) (list :callee (car fns) e))
             ((and rowp (not (subsetp-equal (fn2-arm-frame-entry-j e) j)))
              (list :columns (car fns) (set-difference-equal (fn2-arm-frame-entry-j e) j)))
-            ((not (subsetp-equal s ch))
-             (list :children (car fns) (set-difference-equal s ch)))
-            (t (fn2-arm-frame-static-problem (cdr fns) ch j tk kind world))))))
+            ((not (subsetp-equal s fn2-arm-ch))
+             (list :children (car fns) (set-difference-equal s fn2-arm-ch)))
+            (t (fn2-arm-frame-static-problem (cdr fns) fn2-arm-ch j tk kind world))))))
 (defun fn2-arm-frame-phase-problem (fns kind world)
   ; a callee without a phase contract (and not a subarm opened in the arm's
   ; phase proof whose own callees have theirs): the arm's phase proof is not
@@ -2168,7 +2254,7 @@
   (cond ((atom fns) nil)
         ((fn2-arm-frame-all-have (list (car fns)) "-ARM-SLOT" kind world) (fn2-arm-frame-slot-problem (cdr fns) kind world))
         (t (list :slot (car fns)))))
-(defun fn2-arm-frame-arm-final (kind fn ch j next pre frame-form owed-form observep world)
+(defun fn2-arm-frame-arm-final (kind fn fn2-arm-ch j next pre frame-form owed-form observep world)
   ; the FRAME proved; else the row stays owed, named in table
   ; fn2-arm-frame-owed with its reason: a callee without contracts or
   ; beyond the arm's declared sets (checked first), or :proof
@@ -2176,20 +2262,20 @@
   (let* ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
          (inline (fn2-arm-frame-body-setters fn kind world))
          (callees (fn2-arm-frame-body-callees fn world))
-         (problem (cond ((and inline (not (member tk ch)) (not (subsetp-equal inline j)))
+         (problem (cond ((and inline (not (member tk fn2-arm-ch)) (not (subsetp-equal inline j)))
                          (list :columns (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))
                                (set-difference-equal inline j)))
                         (t (or (fn2-arm-frame-static-problem (if (and inline (member-eq 'id (formals fn world)))
                                                                  (remove-eq (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE")) callees)
                                                                callees)
-                                                             ch j tk kind world)
+                                                             fn2-arm-ch j tk kind world)
                                (fn2-arm-frame-phase-problem callees kind world)
                                (fn2-arm-frame-slot-problem callees kind world))))))
     (if problem
         `(progn ,owed-form (table fn2-arm-frame-owed ',(cadr frame-form) ',problem))
-      `(:or (progn ,@(fn2-arm-frame-arm-events kind fn ch j next pre frame-form observep world))
+      `(:or (progn ,@(fn2-arm-frame-arm-events kind fn fn2-arm-ch j next pre frame-form observep world))
             (progn ,owed-form (table fn2-arm-frame-owed ',(cadr frame-form) '(:proof ,fn)))))))
-(defun fn2-arm-frame-arm-form (kind fn ch j next pre frame-form owed-form observep world)
+(defun fn2-arm-frame-arm-form (kind fn fn2-arm-ch j next pre frame-form owed-form observep world)
   ; the basis and kind facts once, each callee's contracts (callees first),
   ; then the arm's FRAME
   (declare (xargs :verify-guards nil))
@@ -2197,7 +2283,7 @@
      ,@(and (not (fn2-arm-frame-known 'fn2-core-stop nil world)) (fn2-arm-frame-basis-events world))
      ,@(and (not (assoc-eq kind (table-alist 'fn2-arm-frame-kinds world))) (fn2-arm-frame-kind-events kind world))
      ,@(fn2-arm-frame-fns-forms (fn2-arm-frame-todo (fn2-arm-frame-body-callees fn world) kind world nil 64) kind)
-     (make-event (fn2-arm-frame-arm-final ',kind ',fn ',ch ',j ',next ',pre ',frame-form ',owed-form ',observep (w state)))))
+     (make-event (fn2-arm-frame-arm-final ',kind ',fn ',fn2-arm-ch ',j ',next ',pre ',frame-form ',owed-form ',observep (w state)))))
 (defun fn2-machine-arm-rows (name arms world)
   (declare (xargs :verify-guards nil))
   (if (atom arms) nil
