@@ -1399,7 +1399,7 @@
     (let* ((table (fn2-columns-sym kind "-TABLE"))
            (reader (fn2-machine-row-reader kind (car fields)))
            (name (fn2-arm-frame-row-after-name kind (car fields))))
-      (list* `(defthm ,name
+      (cons `(defthm ,name
                 (implies (equal (fn2-machine-kind id fn2-core) ,(fn2-columns-pre "*" (fn2-columns-sym kind "-KIND*")))
                          (equal (,reader id (,(fn2-columns-pre "UPDATE-" table) tbl fn2-core))
                                 (if (and (fn2-machine-idp id fn2-core) (natp (fn2-machine-slot id fn2-core))
@@ -1410,8 +1410,11 @@
                                                    fn2-machine-phase-read-code fn2-machine-kind
                                                    fn2-machine-kind-read-code fn2-machine-slot fn2-machine-slot-read-code
                                                    fn2-machine-idp))))
-             `(in-theory (disable ,name))
              (fn2-arm-frame-row-after-events kind (cdr fields) world)))))
+(defun fn2-arm-frame-row-after-names (kind fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (cons (fn2-arm-frame-row-after-name kind (car fields)) (fn2-arm-frame-row-after-names kind (cdr fields)))))
 ;; Once per kind: its columns' setters, the phase through its table, and the
 ;; conversion to the frame predicate.
 (defun fn2-arm-frame-setter (kind field)
@@ -1473,7 +1476,6 @@
          (ri (len tcols))
          (pc (position-eq 'phase (strip-cars tcols))))
     `(,@(fn2-arm-frame-setter-events kind tcols 0)
-      (in-theory (disable ,@(fn2-arm-frame-setter-runes kind (strip-cars tcols))))
       (defthm ,view
         (implies (equal (fn2-machine-kind id fn2-core) ,code)
                  (equal (fn2-machine-phase id fn2-core)
@@ -1493,7 +1495,6 @@
         :hints (("Goal" :in-theory (enable fn2-machine-phase fn2-machine-phase-read-code fn2-machine-kind
                                            fn2-machine-kind-read-code fn2-machine-slot fn2-machine-slot-read-code
                                            fn2-machine-idp))))
-      (in-theory (disable ,view ,upd))
       ;; a batch's directory write lands over its table write: moved inside, the
       ;; row readers' FN2-ARM-AFTER- facts read the table through it
       (defthm ,(fn2-arm-frame-machines-over kind)
@@ -1502,7 +1503,6 @@
         :hints (("Goal" :in-theory (union-theories '(update-fn2-core-machines ,(fn2-columns-pre "UPDATE-" table))
                                                    (theory 'fn2-arm-frame-base))
                  :use ((:instance fn2-arm-update-nth-commute (i ,(fn2-arm-frame-m world)) (j ,tk) (a x) (b y) (l c))))))
-      (in-theory (disable ,(fn2-arm-frame-machines-over kind)))
       ,@(fn2-arm-frame-row-after-events kind (fn2-arm-frame-own-fields (strip-cars tcols)) world)
       ;; the rows field follows the columns in the table's layout; each column
       ;; of a well-formed table is as long as its rows
@@ -1534,7 +1534,6 @@
                        (:instance fn2-arm-col-lens-at-mono (k 0) (columns fn2-arm-cs) (big ',(fn2-arm-frame-range 0 ri))
                                   (a (nth ,tk a)) (b (nth ,tk b)))
                        (:instance fn2-arm-col-lens-of-at (k 0) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)))))))
-      (in-theory (disable ,lens ,klen ,framep))
       ;; the phase reads the directory, the other kinds' tables, and of this
       ;; kind's table only its phase column and rows: a row-level change
       ;; outside them keeps every id's phase
@@ -1565,13 +1564,16 @@
         :hints (("Goal" :in-theory (union-theories '(,(fn2-columns-pre "UPDATE-" table) ,table) (theory 'fn2-arm-frame-base))
                  :use ((:instance ,(fn2-columns-sym kind "-ARM-PHASE-CONGRUENCE") (id fn2-arm-id)
                                   (a (,(fn2-columns-pre "UPDATE-" table) x c)) (b c))))))
-      (in-theory (disable ,(fn2-arm-frame-table-keep-name kind)))
       (defthm ,(fn2-columns-sym kind "-ARM-ROW-PHASE")
         (implies (equal (,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
                  (equal (,(fn2-columns-sym kind "-ROW-PHASE") id fn2-core) (fn2-machine-phase id fn2-core)))
         :hints (("Goal" :in-theory (enable ,(fn2-columns-sym kind "-ROW-PHASE") ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
                                            fn2-machine-phase))))
-      (in-theory (disable ,(fn2-columns-sym kind "-ARM-ROW-PHASE")))
+      ; the kind's facts, disabled by one theory event (each costs a theory
+      ; computation over the whole world)
+      (in-theory (disable ,@(fn2-arm-frame-setter-runes kind (strip-cars tcols)) ,view ,upd ,(fn2-arm-frame-machines-over kind)
+                          ,@(fn2-arm-frame-row-after-names kind (fn2-arm-frame-own-fields (strip-cars tcols)))
+                          ,lens ,klen ,framep ,(fn2-arm-frame-table-keep-name kind) ,(fn2-columns-sym kind "-ARM-ROW-PHASE")))
       (table fn2-arm-frame-kinds ',kind t))))
 
 ;; Once per world: the base theory, each child's update facts, the readers'
@@ -1828,7 +1830,6 @@
                                 (and dirp (list* 'fn2-machine-idp-bounds machines-of
                                                  (fn2-arm-frame-directory-reader-runes
                                                   'phase (fn2-arm-frame-directory-fields fields))))))))
-      (in-theory (disable ,kids ,frame ,slot ,phase))
       (defthm ,(fn2-arm-frame-name w "-FRAME")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                  (fn2-arm-framep ,tk (fn2-machine-slot id fn2-core) ',j ',s1 fn2-core ,call))
@@ -1855,8 +1856,8 @@
                                  (and ,@(fn2-arm-frame-read-backs kind fields wformals))))))
         :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
                  :use (,(fn2-arm-frame-name w "-FRAME") ,(fn2-arm-frame-name w "-READS")))))
-      (in-theory (disable ,(fn2-arm-frame-name w "-FRAME") ,(fn2-arm-frame-name w "-READS")))
-      (in-theory (disable ,contract))
+      ; one theory event for the seven (each proof above names its own theory)
+      (in-theory (disable ,kids ,frame ,slot ,phase ,(fn2-arm-frame-name w "-FRAME") ,(fn2-arm-frame-name w "-READS") ,contract))
       (table fn2-arm-frame-fns ',w '(:write ,kind ,j ,s1)))))
 ;; The core-changing functions a body calls.
 (mutual-recursion
@@ -2275,16 +2276,15 @@
                        ,@(and (eq (car e) :row) `((progn ,@(fn2-arm-frame-fn-events fn fallback kind world))))
                        (table fn2-arm-frame-fns '(,kind . ,fn) '(:failed ,why)))))))))
 (defun fn2-arm-frame-disable-form (fns kind world)
-  ; after the contracts: each disabled (the chained rules stay off by default)
+  ; after an arm's contracts: all disabled at once (the chained rules stay off by default)
   (declare (xargs :verify-guards nil))
   (let ((names (fn2-arm-frame-lemmas fns '("-ARM-KIDS" "-ARM-ROW-FRAME" "-ARM-SLOT" "-ARM-PHASE") kind world)))
     (if names `(in-theory (disable ,@names)) '(value-triple :none))))
 (defun fn2-arm-frame-fns-forms (fns kind)
   (declare (xargs :verify-guards nil))
   (if (atom fns) nil
-    (list* `(make-event (fn2-arm-frame-fn-form ',(car fns) ',kind (w state)))
-           `(make-event (fn2-arm-frame-disable-form '(,(car fns)) ',kind (w state)))
-           (fn2-arm-frame-fns-forms (cdr fns) kind))))
+    (cons `(make-event (fn2-arm-frame-fn-form ',(car fns) ',kind (w state)))
+          (fn2-arm-frame-fns-forms (cdr fns) kind))))
 (defun fn2-arm-frame-phase-openings (fns next kind world)
   ; a callee whose phase values reach beyond NEXT out of context (a subarm
   ; entered from several phases) is opened in the arm's phase proof, with
@@ -2319,7 +2319,6 @@
                                             (append (fn2-arm-frame-inline-phase-runes fn kind world)
                                                     (fn2-arm-frame-lemmas callees '("-ARM-PHASE") kind world)
                                                     (fn2-arm-frame-phase-openings callees next kind world)))))
-      (in-theory (disable ,frame ,phase))
       (table fn2-arm-frame-fns ',fn '(:arm ,fn2-arm-ch ,j ,next))
       ,(append frame-form
                `(:rule-classes nil :hints ,(fn2-arm-frame-hints
@@ -2390,7 +2389,12 @@
      ,@(and (not (fn2-arm-frame-known 'fn2-core-stop nil world)) (fn2-arm-frame-basis-events world))
      ,@(and (not (assoc-eq kind (table-alist 'fn2-arm-frame-kinds world))) (fn2-arm-frame-kind-events kind world))
      ,@(fn2-arm-frame-fns-forms (fn2-arm-frame-todo (fn2-arm-frame-body-callees fn world) kind world nil 64) kind)
-     (make-event (fn2-arm-frame-arm-final ',kind ',fn ',fn2-arm-ch ',j ',next ',pre ',frame-form ',owed-form ',observep (w state)))))
+     (make-event (fn2-arm-frame-arm-final ',kind ',fn ',fn2-arm-ch ',j ',next ',pre ',frame-form ',owed-form ',observep (w state)))
+     ; the contracts proved here, disabled by one theory event (each proof
+     ; above names its own theory; an in-theory event per contract cost a
+     ; theory computation each: 470 of them took 29 s in assembly-callbacks)
+     (make-event (fn2-arm-frame-disable-form
+                  ',(cons fn (fn2-arm-frame-todo (fn2-arm-frame-body-callees fn world) kind world nil 64)) ',kind (w state)))))
 (defun fn2-machine-arm-rows (name arms world)
   (declare (xargs :verify-guards nil))
   (if (atom arms) nil
