@@ -13,7 +13,7 @@
 (defun fn2-tv-replace (key value row)
   (declare (xargs :guard t))
   (if (and (consp row) (consp (cdr row)))
-      (cons (car row) (cons (if (eq key (car row)) value (cadr row))
+      (cons (car row) (cons (if (equal key (car row)) value (cadr row))
                             (fn2-tv-replace key value (cddr row))))
     nil))
 
@@ -45,6 +45,8 @@
   'fn2-echo-run-free))
 
 ; Whole-antecedent positive witness for the changed body control.
-(assert-event
+(defthm fn2-tv-body-positive-and-mutation
  (and (equal (fn2-echo-run-free-children 0 0 1 0 1 nil nil) '(0 1 0 nil))
-      (not (equal nil (fn2-echo-run-free-children 0 0 1 0 1 nil nil)))))
+      (not (equal nil (fn2-echo-run-free-children 0 0 1 0 1 nil nil))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn2-echo-run-free-children))))

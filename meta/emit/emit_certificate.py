@@ -178,6 +178,35 @@ def body_certificate(fn, d, allf):
             f"(defthm {name}-EXPORT-BODY\n  (equal ({ev} '{show(fn.body)} {env})\n         ({name} {' '.join(fn.formals)}))\n  :rule-classes nil\n  :hints ((\"Goal\" :in-theory (enable {name}))))"]
 
 
+def emit_echo_validation(kd, tuple_, out):
+    """The instance schema is layout-parametric. Every child gets a variable;
+    names and narrowing facts come from the canonical original declaration.
+    """
+    k = plist(kd[1:]); names = [str(x) for x in tuple_]
+    n = len(names); own = names.index('FN2-ECHO'); directory = names.index('FN2-MACHINES')
+    xs = ['c'+str(i) for i in range(n)]
+    rows=[]; cols=[]; cases=[]
+    for col in k[':COLUMNS']:
+        c = str(col[0]); cols.append(c)
+        d = c in ['READY-PREV','READY-NEXT','WAIT-REASON']
+        f = ('FN2-MACHINES-' if d else 'FN2-ECHO-') + c
+        rows.append(f'("ROW-{c}", {ident(f)} ' + (f'id c{directory}' if d else f'slot c{own}') + ')')
+        cases.append(f'  | "{c}" => {ident(f)} ' + ('id dir' if d else 'slot own'))
+    values = dict(CORE_SIZE=str(n), CORE_BINDERS=' '.join('('+x+' : Val)' for x in xs),
+        CORE_VALUES='['+', '.join(xs)+']',
+        IMAGE_ARGUMENTS=' '.join('(kids ⟨'+str(i)+', by decide⟩)' for i in range(n)),
+        READ_DEFINITION='def echoRead (id slot own dir : Val) : String → Val\n'+'\n'.join(cases)+'\n  | _ => Val.nil\n',
+        ROW_VALUES='['+', '.join(rows)+']', COLUMN_NAMES='['+', '.join(lean_str(c) for c in cols)+']',
+        COLUMN_CASES=' | '.join(['rfl']*len(cols)),
+        DIRECTORY_VALUE=f'c{directory}', OWN_VALUE=f'c{own}', DIRECTORY_INDEX=str(directory), OWN_INDEX=str(own))
+    template = Path(__file__).with_name('echo_validation.lean.in').read_text()
+    for key,value in values.items(): template=template.replace('@'+key+'@',value)
+    if re.search(r'@[A-Z_]+@',template): raise ValueError('unexpanded certificate template')
+    target = out.parent/'Arms'/'Validation.lean' if out.name == 'Instances' else out/'Validation.lean'
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_text(template)
+
+
 def main(src, outdir, bookpath=None):
     top = as_list(read_canonical(open(src, newline='').read()))
     if top[0] != ':FN2-CERTIFICATE': raise ValueError('wrong package tag')
@@ -195,8 +224,8 @@ def main(src, outdir, bookpath=None):
         if n in NATIVE or n in SPECIAL or n in want: return
         want.add(n)
         f,d = allf[n]
-        if str(f.body) in (':MISSING', 'NIL') or str(f.guard) == ':MISSING':
-            raise ValueError('no admitted logical body/guard certificate: ' + n)
+        if str(f.body) in (':MISSING', 'NIL'):
+            raise ValueError('no admitted logical body certificate: ' + n)
         if decode(d[':ATTACHMENT']) != Atom('NIL'):
             raise ValueError('attachment contract certificate required: ' + n)
         if n in calls_of(f.body, set()): raise ValueError('recursive body needs loop certificate: ' + n)
@@ -249,6 +278,7 @@ def main(src, outdir, bookpath=None):
     tuple_ = List([r[1] for r in layout])
     emb = {':KINDS': List([kd]), ':OPERATIONS':List([]), ':CONSTANTS':constants, ':CORE-TUPLE':tuple_}
     emit_kinds(emb, [], out/'BridgeKinds.lean', 'Fn2.Instances.BridgeKinds', 'Fn2.Instances.BridgeWorld', {})
+    emit_echo_validation(kd, tuple_, out)
     C = ['(in-package "ACL2")', '(include-book "../../books/assembly-callbacks-a")',
          '(include-book "../../books/translation-validation")',
          f"(fn2-tv-check-manifest '{canonical_text(p[':MANIFEST'])})"]
@@ -270,6 +300,8 @@ def main(src, outdir, bookpath=None):
         mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
         validated_body_candidates=sorted(want),
         unvalidated_functions=sorted(set(allf)-want),
+        absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
+        guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
         primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
         status='PROPOSED: certify bridge-body.lisp and build BridgeTranslation/Arms.Validation')
     (out/'bridge-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
