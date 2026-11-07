@@ -948,6 +948,11 @@
   (implies (and (fn2-arm-kids i free a b) (natp i) (natp k) (member-equal (+ i k) free))
            (fn2-arm-kids i free a (update-nth k v b)))
   :hints (("Goal" :induct (fn2-arm-kids-nth-induct i k a b))))
+(defthm fn2-arm-kids-update-same
+  ; a write-back of what was read
+  (implies (and (fn2-arm-kids i free a b) (natp k))
+           (fn2-arm-kids i free a (update-nth k (nth k b) b)))
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct i k a b) :in-theory (enable nth update-nth))))
 (defthm fn2-arm-cols-update
   (implies (and (fn2-arm-cols k row columns a b) (natp k) (natp j) (member-equal (+ k j) columns))
            (fn2-arm-cols k row columns a (update-nth j (update-nth row v (nth j b)) b)))
