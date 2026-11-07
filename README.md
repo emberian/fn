@@ -11,7 +11,25 @@ The bottom-up, semantics-first rebuild of fn: the persistent event log between s
 - `experiments/`: the squares experiment.
 - `tools/certify.sh`: certify books with the fn toolchain's ACL2.
 
-Not yet here: a durable served POST, reading an article back, the consumer port, peering, BP, the web reader, TLS (`docs/design/FN2-ORIENTATION.md` §3).
+## Native image node
+
+After certifying `books/node-profile.lisp` with the project toolchain:
+
+```sh
+./fn init build/node.img
+./fn serve build/node.img --port 1119
+```
+
+`init` exclusively creates a preallocated image (32 MiB by default). `serve` opens
+that image, recovers its committed articles, and fences the new epoch before
+accepting connections. The supplied small profile serves `local.test`. An existing
+image is never truncated or silently initialized.
+
+`python3 tests/native-image-restart.py` checks POST, SIGKILL immediately after
+`240`, and exact GROUP/ARTICLE/HEAD replies through two fresh reopens. Images and
+logs remain under `build/`. The file-device contract and startup layout are in
+[`docs/a-pool-host-sim.md`](docs/a-pool-host-sim.md). Wider surfaces and remaining
+obligations are tracked in the layer documents and [`docs/OWED.md`](docs/OWED.md).
 
 ## How changes are checked
 The changed books certify, the scenarios for what changed pass in the REPL on the tiny profile, the author reads what was written; one unattended nightly runs the whole closure, every scenario, the drivers and the surface harness (`docs/design/WORKFLOW-20261031.md`). Performance is reported beside the profile, never a gate. Proofs come when assurance is wanted.

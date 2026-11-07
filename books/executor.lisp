@@ -216,9 +216,12 @@
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (if (not (eq (fn2-machine-kind-read-code id fn2-core) :ok))
         (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)
-      (case (fn2-machine-kind id fn2-core)
+      (if (and (equal (fn2-machine-kind id fn2-core) *fn2-listener-kind*)
+               (eq (fn2-boot-snapshot-read-code (fn2-machine-kind-base *fn2-boot-kind* fn2-core) fn2-core) :ok))
+          fn2-core
+       (case (fn2-machine-kind id fn2-core)
         ,@(fn2-exec-genesis-clauses (fn2-machine-names (w state)) 0 (w state))
-        (otherwise fn2-core)))))
+        (otherwise fn2-core))))))
 (fn2-core-preserves fn2-exec-genesis-row (id fn2-core) :rows nil :prefix "")
 (defun fn2-exec-genesis (left id fn2-core)
   (declare (xargs :stobjs fn2-core :measure (nfix left)
@@ -285,6 +288,63 @@
        (fn2-core (if scribe-p (fn2-scribe-start fn2-core) fn2-core))
        ((mv wake fn2-core) (fn2-machine-take-wake fn2-core)))
     (fn2-exec-wake wake fn2-core)))
+
+; The supplied genesis configuration is staged only in volatile C rows.
+; On an image boot it cannot serve until the boot machine has matched every
+; persisted genesis unit, recovered/replayed the journal and fenced its epoch.
+(defun fn2-image-profile (profile)
+ (declare (xargs :guard t))
+ (put-assoc-equal :image-boot t (if (alistp profile) profile nil)))
+
+(defun fn2-image-sizep (size extents groups)
+ (declare (xargs :guard t))
+ (and (unsigned-byte-p 60 size) (equal (mod size 4096) 0)
+      (unsigned-byte-p 32 extents) (posp extents) (unsigned-byte-p 32 groups)
+      (<= (+ (* 12288 extents) (* 4096 (+ groups 3))) size)))
+
+(defun fn2-image-create-request (size profile)
+ (declare (xargs :guard t))
+ (if (fn2-image-sizep size (fn2-b-capacity :extent-slots 16 profile)
+                      (len (fn2-profile-get :groups profile))) :ok :geometry))
+
+(defun fn2-boot-start (create size fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* ((id (fn2-machine-kind-base *fn2-boot-kind* fn2-core))
+      ((unless (and (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)
+                    (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-free*)
+                    (unsigned-byte-p 60 size) (equal (mod size 4096) 0)))
+       (mv :geometry fn2-core))
+      ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
+                        (mv (* 12288 (nfix (fn2-boot-config-extents fn2-boot-config)))
+                            (fn2-boot-config-count fn2-boot-config)) (mv base total)))
+      ((unless (fn2-image-sizep size (/ base 12288) total)) (mv :geometry fn2-core))
+      (gen (fn2-machine-generation id fn2-core))
+      (class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for 4096 fn2-pool) class))
+      ((unless class) (mv :window fn2-core))
+      ((mv code slot sgen fn2-core) (fn2-core-reserve class *fn2-boot-kind* id gen fn2-core))
+      ((unless (and (eq code :ok) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 sgen))) (mv :window fn2-core))
+      ((mv code rx rgen fn2-core) (fn2-core-reserve class *fn2-boot-kind* id gen fn2-core))
+      ((unless (and (eq code :ok) (unsigned-byte-p 32 rx) (unsigned-byte-p 60 rgen))) (mv :window fn2-core))
+      (fn2-core (fn2-boot-put-core id (phase *fn2-boot-state-prepare*)
+                  (pool-slot slot) (pool-gen sgen) (rx-slot rx) (rx-gen rgen)
+                  (create (if create 1 0)) (image-size size) (base base) (total total)
+                  (index 0) (stage 0) (epoch0 0) (epoch1 0) (principal-slot 0)))
+      ((mv code fn2-core) (fn2-recovery-ready id fn2-core)))
+  (mv (if (member-eq code '(:ok :already)) :ok :bounds) fn2-core)))
+(fn2-core-preserves fn2-boot-start (create size fn2-core) :position 1 :rows nil)
+
+(defun fn2-boot-status (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (let ((id (fn2-machine-kind-base *fn2-boot-kind* fn2-core)))
+  (cond ((not (eq (fn2-boot-snapshot-read-code id fn2-core) :ok)) :disabled)
+        ((not (equal (fn2-core-stop-reason fn2-core) 0)) :failed)
+        ((equal (fn2-machine-phase id fn2-core) *fn2-boot-state-ready*) :ready)
+        (t :booting))))
+
+(assert-event
+ (fn2-assert-compliant-p
+  '(fn2-image-profile fn2-image-sizep fn2-image-create-request fn2-boot-start fn2-boot-status)
+  (w state)))
 
 (defthm-owed fn2-turn-bounds (core)
   (implies (and (fn2-corep core) (fn2-core-wfp core))

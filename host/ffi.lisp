@@ -34,6 +34,7 @@
 (sb-alien:define-alien-routine ("shutdown" %fn2-native-shutdown) sb-alien:int
   (fd sb-alien:int) (how sb-alien:int))
 (sb-alien:define-alien-routine ("close" %fn2-native-close) sb-alien:int (fd sb-alien:int))
+(sb-alien:define-alien-routine ("getpid" %fn2-native-getpid) sb-alien:int)
 (sb-alien:define-alien-routine ("chmod" %fn2-native-chmod) sb-alien:int
   (path sb-sys:system-area-pointer) (mode sb-alien:unsigned-int))
 (sb-alien:define-alien-routine ("unlink" %fn2-native-unlink) sb-alien:int

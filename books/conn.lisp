@@ -42,7 +42,6 @@
   :faults (:bounds :fault)
   :tables (fn2-core-pool)
   :doc "Feed RX into the upload's chunk (upload-feed.lisp).")
-(defcost fn2-conn-wake :tables (fn2-core-machines) :doc "Wake the upload or cursor this connection serves.")
 
 ;; ------------------------------------------------------------------------
 ;; The operations, materialized after the core instance

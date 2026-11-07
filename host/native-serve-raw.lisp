@@ -41,13 +41,31 @@ core reads a value that is not a u32 as uid 0."
 ; `LISTENING <port>` at a line's start; the raw REPL's prompt precedes this call).
 (defun fn2-nserve-main ()
   (let* ((profile (fn2-nserve-profile))
+         (image (sb-ext:posix-getenv "FN2_IMAGE"))
+         (initialize (equal (sb-ext:posix-getenv "FN2_IMAGE_MODE") "init"))
+         (image-bytes (and initialize (ignore-errors (parse-integer (or (sb-ext:posix-getenv "FN2_IMAGE_BYTES") "")))))
          (capacity (or (ignore-errors (parse-integer (or (sb-ext:posix-getenv "FN2_ENVELOPE_TRACE") "0"))) 0)))
+    (format t "~%NODE-PID ~d~%" (%fn2-native-getpid))
+    (finish-output)
+    (when (and initialize (not image-bytes))
+      (format t "REFUSED image-size~%") (finish-output)
+      (return-from fn2-nserve-main 2))
     (multiple-value-bind (bind address port) (fn2-host-listener-bind profile)
       (declare (ignore address port))
       (unless (eq bind :ok)
         (format t "~%REFUSED ~(~a~)~%" bind) (finish-output)
         (return-from fn2-nserve-main 2)))
-    (let ((host (fn2-n-make-host profile :trace-capacity capacity :seeds *fn2-ss-seeds*)))
+    (let ((host (handler-case
+                 (if image
+                   (fn2-n-make-host profile :trace-capacity capacity :device-path image :create-size image-bytes)
+                   (fn2-n-make-host profile :trace-capacity capacity :seeds *fn2-ss-seeds*))
+                 (error (condition)
+                   (format t "~%REFUSED ~a~%" condition) (finish-output)
+                   (return-from fn2-nserve-main 2)))))
+      (when initialize
+        (fn2-n-destroy host)
+        (format t "~%INITIALIZED~%") (finish-output)
+        (return-from fn2-nserve-main 0))
       (format t "~%LISTENING ~d~%" (fn2-nhost-listen-port host))
       (when (fn2-nhost-local-path host)
         (format t "LISTENING-LOCAL ~a~%" (fn2-nhost-local-path host)))
@@ -55,6 +73,8 @@ core reads a value that is not a u32 as uid 0."
       (unwind-protect
            (let ((reason (fn2-n-run host)))
              (format t "STOPPED ~d~%" reason)
+             (multiple-value-bind (kind detail) (fn2-host-stop-details (fn2-nhost-core host))
+               (format t "STOP-DETAIL ~d ~d~%" kind detail))
              (when (plusp capacity)
                (format t "ENVELOPE ~s~%"
                        (car (fn2-ss-replay (fn2-n-trace-list host) profile *fn2-ss-seeds* nil))))

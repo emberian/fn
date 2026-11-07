@@ -202,8 +202,8 @@
   (if (equal (fn2-machine-cb-fence-live id fn2-core) 1)
       (fn2-commit-uncertain id *fn2-commit-reason-timeout* fn2-core) fn2-core)))
 (fn2-core-preserves fn2-commit-timeout (id fn2-core) :rows nil :prefix "")
-; This fixture's barrier deadline is 1024 monotonic clock ticks. Waiting rows
-; remain runnable, so a harvested clock observation is sufficient to expire it.
+; The arm-language barrier uses *fn2-commit-fence-timeout-us* (commit-arms).
+; Waiting rows remain runnable; a harvested clock observation can expire it.
 ; A's fn2-exec-now is defined after assembly (executor-access includes it), so
 ; continuations read the scalar control field directly (seam note to A).
 (defun fn2-commit-now (fn2-core)

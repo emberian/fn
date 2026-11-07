@@ -913,7 +913,9 @@ matched harvested completion, including after timeout. The fence continuation
 checks both batch rows before issuing. The simulator independently counts
 queued, submitted and posted-but-unharvested fence operations and rejects a
 count above one; a deliberate double-issue control tests that counter. A fence
-issue installs a deadline 1024 monotonic ticks after the core's current clock.
+issue installs a deadline `*fn2-commit-fence-timeout-us*` (30,000,000 microseconds,
+30 seconds) after the core's current clock. This replaces the simulator fixture's
+1,024-microsecond deadline, which expired during ordinary file-device fences.
 While waiting, the row remains runnable and checks clock observations harvested
 through A's mailbox. Expiry enters uncertainty without clearing the flag; the
 late success scenario uses that actual clock/dispatch path. A deadline that

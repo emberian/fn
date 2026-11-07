@@ -14,6 +14,12 @@
 (include-book "assembly-callbacks-r")
 (fn2-book-layer :b)
 
+; Clock observations are microseconds. The simulator's former 1024-tick
+; fixture deadline expired during ordinary fdatasync calls. This shared
+; native/simulator policy enters uncertainty after thirty seconds. Expiry
+; retains the loan until physical completion; late success is not acceptance.
+(defconst *fn2-commit-fence-timeout-us* 30000000)
+
 ; The arms' reads of the partner row: total over ids (a non-commit id reads as
 ; a free row with no batch and no fence; every arm reaches them only once the
 ; partner is known to be a commit row).
@@ -260,11 +266,11 @@
            ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-predecessor* nil *fn2-commit-arm-mailbox*))
           ((or (equal row-cb-fence-live 1) (equal (fn2-commit-peer-fence-live row-partner) 1)) ,*fn2-commit-arm-mailbox-run*)
           ((not (and (natp budget) (< 0 budget))) (:yield))
-          ((not (and (natp now) (unsigned-byte-p 60 (+ now 1024))))
+          ((not (and (natp now) (unsigned-byte-p 60 (+ now *fn2-commit-fence-timeout-us*))))
            ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-timeout* nil *fn2-commit-arm-mailbox*))
           (t (:do (code opslot opgen) (fn2-issue-fence :principal 0)
               :accept ()
-              :case (((:ok) (:set (cb-fence-live 1) (deadline (+ now 1024)) (pending (+ 1 row-pending)))
+              :case (((:ok) (:set (cb-fence-live 1) (deadline (+ now *fn2-commit-fence-timeout-us*)) (pending (+ 1 row-pending)))
                             (:charge :steps *fn2-work-transition* :descriptors 1 :runnable t))
                      ((:exhausted) (:yield))
                      (:otherwise ,@(fn2-commit-arm-uncertain '*fn2-commit-reason-issue* nil *fn2-commit-arm-mailbox*)))))))))
