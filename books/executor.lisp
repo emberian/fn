@@ -315,7 +315,7 @@
                     (unsigned-byte-p 60 size) (equal (mod size 4096) 0)))
        (mv :geometry fn2-core))
       ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
-                        (mv (* 12288 (fn2-boot-config-extents fn2-boot-config))
+                        (mv (* 12288 (nfix (fn2-boot-config-extents fn2-boot-config)))
                             (fn2-boot-config-count fn2-boot-config)) (mv base total)))
       ((unless (fn2-image-sizep size (/ base 12288) total)) (mv :geometry fn2-core))
       (gen (fn2-machine-generation id fn2-core))
