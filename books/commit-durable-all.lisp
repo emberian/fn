@@ -234,10 +234,29 @@
   :hints (("Goal" :in-theory (enable fn2-init-executor))))
 (in-theory (disable fn2-init-executor))
 
+; The fresh core a wrapper's with-local-stobj makes satisfies fn2-corep:
+; each child's creator meets its recognizer (a column table's CREATE-<T>-TYPE,
+; else the creator and recognizer opened).
+(defun fn2-env-create-runes (children world)
+  (declare (xargs :mode :program))
+  (if (atom children) nil
+    (let* ((type (cadar children)) (create (fn2-columns-pre "CREATE-" type))
+           (lemma (fn2-columns-sym create "-TYPE")))
+      (if (getpropc lemma 'theorem nil world)
+          (cons lemma (fn2-env-create-runes (cdr children) world))
+        (list* create (fn2-columns-sym type "P") (fn2-env-create-runes (cdr children) world))))))
+(make-event
+ `(defthm fn2-corep-of-fresh-core
+    (fn2-corep (create-fn2-core))
+    :hints (("Goal" :in-theory (enable fn2-corep create-fn2-core
+                                       ,@(fn2-env-create-runes *fn2-core-children* (w state)))))))
+(in-theory (disable create-fn2-core))
+(defthm fn2-env-steps-rlog-true-listp
+  (implies (true-listp rlog) (true-listp (mv-nth 0 (fn2-env-steps actions ids rlog acked fn2-core))))
+  :hints (("Goal" :induct (fn2-env-steps actions ids rlog acked fn2-core)
+           :in-theory (e/d (fn2-env-steps) (fn2-env-step fn2-env-observe)))))
+
 ; The run: (LOG ACKED). Genesis as the native host's (fn2-n-make-host).
-; The wrappers' guards are not verified: their obligation is that the fresh
-; core satisfies fn2-corep, which no rule of the core's defstobj states; the
-; function each calls on the core is guard-verified.
 (defun fn2-env-run (profile actions)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (fn2-core-profilep profile)) (list nil nil)
@@ -248,6 +267,7 @@
               (fn2-env-steps actions (fn2-env-commit-ids profile) nil nil fn2-core)))
           (mv (list (reverse rlog) acked) fn2-core))
         run))))
+(verify-guards fn2-env-run)
 (defun fn2-env-device-log (run)
   (declare (xargs :guard t))
   (fn2-env-arg 0 run))
@@ -292,6 +312,7 @@
              ((mv done fn2-core) (fn2-env-recover-steps actions id image nil nil fn2-core)))
           (mv (or done (list nil 0)) fn2-core))
         rec))))
+(verify-guards fn2-env-recover)
 (defun fn2-env-recovery-done-p (rec)
   (declare (xargs :guard t))
   (and (fn2-env-arg 0 rec) t))
