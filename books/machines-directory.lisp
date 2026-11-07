@@ -23,6 +23,42 @@
    (fn2-machines-admission-credits :type (array (unsigned-byte 32) (16)) :initially 0 :why "Unassigned connection credits per admitted kind.")
    (fn2-machines-active-count :type (array (unsigned-byte 32) (16)) :initially 0 :why "Active connections per admitted kind, compared with its credits."))))
 
+;; A directory written back with its kind and slot columns (the first two)
+;; and its rows as read keeps every id's kind, slot, idp and phase: the frame
+;; contracts (machines.lisp) read a child function's keep, never its body.
+(defun fn2-machines-directory-keeps (x m)
+  (declare (xargs :guard t))
+  (and (equal (nth 0 x) (nth 0 m)) (equal (nth 1 x) (nth 1 m))
+       (equal (nth *fn2-machines-rows* x) (nth *fn2-machines-rows* m))))
+(in-theory (disable fn2-machines-directory-keeps))
+;; FN's directory result (its first value, or with RESULT :self its value)
+;; keeps the directory, by one opening of FN over the columns' -NTH facts;
+;; recorded in table fn2-arm-frame-directory-keeps for the frame contracts
+;; of the core faces that call it.
+(defmacro fn2-machines-keeps-directory (fn formals &optional (result ':car))
+  (let ((name (fn2-columns-sym fn "-KEEPS-DIRECTORY")))
+    `(progn
+       (defthm ,name
+         (fn2-machines-directory-keeps ,(if (eq result :self) `(,fn ,@formals) `(car (,fn ,@formals))) fn2-machines)
+         :hints (("Goal" :in-theory (e/d (,@(and (eq result :car) (list fn)) fn2-machines-stop-write fn2-machines-directory-keeps) (nth)))))
+       (in-theory (disable ,name))
+       (table fn2-arm-frame-directory-keeps ',fn ',name))))
+;; The directory-wide fields' updaters (every field but the kind and slot
+;; columns and the rows).
+(fn2-machines-keeps-directory update-fn2-machines-accept-count (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-gen-limit (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-wake-id (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-pool-wait-id (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-wait-head (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-wait-tail (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-refusals (v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-connection-counti (i v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-free-headi (i v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-active-counti (i v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-admission-headi (i v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-admission-taili (i v fn2-machines) :self)
+(fn2-machines-keeps-directory update-fn2-machines-admission-creditsi (i v fn2-machines) :self)
+
 (defmacro fn2-machine-directory-events ()
  '(progn
 (defun fn2-machines-init-bases (left profile fn2-machines)

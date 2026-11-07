@@ -1451,6 +1451,12 @@
 (defun fn2-arm-frame-machines-over (kind)
   (declare (xargs :verify-guards nil))
   (fn2-columns-pre "FN2-ARM-MACHINES-OVER-UPDATE-" (fn2-columns-sym kind "-TABLE")))
+;; A kind's table written back keeping its phase column and rows keeps every
+;; id's phase (a column setter off the phase writes neither): the
+;; dispatchers that reach several kinds' tables read it (kind events).
+(defun fn2-arm-frame-table-keep-name (kind)
+  (declare (xargs :verify-guards nil))
+  (fn2-columns-pre "FN2-ARM-PHASE-OF-UPDATE-" (fn2-columns-sym kind "-TABLE-KEEPING-PHASE")))
 (defun fn2-arm-frame-kind-events (kind world)
   (declare (xargs :verify-guards nil))
   (let* ((tcols (fn2-machine-property kind :table world))
@@ -1553,6 +1559,13 @@
                        (:instance fn2-arm-cols-nth (k 0) (j ,pc) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)) (row fn2-arm-row))
                        (:instance fn2-arm-cols-nth (k 0) (j ,ri) (columns fn2-arm-cs) (a (nth ,tk a)) (b (nth ,tk b)) (row fn2-arm-row))
                        ,@(fn2-arm-frame-kids-nth-uses (remove-equal tk (fn2-arm-frame-phase-indices world)) tk)))))
+      (defthm ,(fn2-arm-frame-table-keep-name kind)
+        (implies (and (equal (nth ,pc x) (nth ,pc (,table c))) (equal (nth ,ri x) (nth ,ri (,table c))))
+                 (equal (fn2-machine-phase fn2-arm-id (,(fn2-columns-pre "UPDATE-" table) x c)) (fn2-machine-phase fn2-arm-id c)))
+        :hints (("Goal" :in-theory (union-theories '(,(fn2-columns-pre "UPDATE-" table) ,table) (theory 'fn2-arm-frame-base))
+                 :use ((:instance ,(fn2-columns-sym kind "-ARM-PHASE-CONGRUENCE") (id fn2-arm-id)
+                                  (a (,(fn2-columns-pre "UPDATE-" table) x c)) (b c))))))
+      (in-theory (disable ,(fn2-arm-frame-table-keep-name kind)))
       (defthm ,(fn2-columns-sym kind "-ARM-ROW-PHASE")
         (implies (equal (,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
                  (equal (,(fn2-columns-sym kind "-ROW-PHASE") id fn2-core) (fn2-machine-phase id fn2-core)))
@@ -1684,6 +1697,25 @@
       (in-theory (disable ,@(fn2-arm-frame-child-runes children 0 m (fn2-arm-frame-phase-indices world))))
       ,@(fn2-arm-frame-directory-events (strip-cars *fn2-machine-directory-fields*))
       (in-theory (disable ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*))))
+      ;; a directory written back keeping its kind and slot columns and rows
+      ;; (a child function's -KEEPS-DIRECTORY, table fn2-arm-frame-directory-keeps)
+      (defthm fn2-arm-kind-of-directory-keeps
+        (implies (fn2-machines-directory-keeps x (fn2-core-machines c))
+                 (equal (fn2-machine-kind fn2-arm-id (update-fn2-core-machines x c)) (fn2-machine-kind fn2-arm-id c)))
+        :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-kind fn2-machine-kind-read-code
+                                           fn2-machine-idp fn2-machines-kind fn2-machines-rows))))
+      (defthm fn2-arm-slot-of-directory-keeps
+        (implies (fn2-machines-directory-keeps x (fn2-core-machines c))
+                 (equal (fn2-machine-slot fn2-arm-id (update-fn2-core-machines x c)) (fn2-machine-slot fn2-arm-id c)))
+        :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-slot fn2-machine-slot-read-code
+                                           fn2-machine-idp fn2-machines-slot fn2-machines-rows))))
+      (defthm fn2-arm-phase-of-directory-keeps
+        (implies (fn2-machines-directory-keeps x (fn2-core-machines c))
+                 (equal (fn2-machine-phase fn2-arm-id (update-fn2-core-machines x c)) (fn2-machine-phase fn2-arm-id c)))
+        :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-phase fn2-machine-phase-read-code
+                                           fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code fn2-machine-slot
+                                           fn2-machine-slot-read-code fn2-machines-slot fn2-machines-kind fn2-machines-rows))))
+      (in-theory (disable fn2-arm-kind-of-directory-keeps fn2-arm-slot-of-directory-keeps fn2-arm-phase-of-directory-keeps))
       ,@(fn2-arm-frame-op-events 'fn2-core-stop (list ctl) nil world)
       ,@(fn2-arm-frame-op-events 'fn2-machine-refuse-write (list ctl) '(fn2-core-stop-arm-kids) world))))
 ;; A batched write function's contracts (machine-arms.lisp emits it): the
@@ -2065,6 +2097,66 @@
   ; an optional contract: proved, or absent (callers look it up)
   (declare (xargs :verify-guards nil))
   `(make-event '(:or ,event (value-triple :absent))))
+(defun fn2-arm-frame-directory-keeps-of (fns keeps)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom keeps) nil)
+        ((member-eq (caar keeps) fns) (cons (cdar keeps) (fn2-arm-frame-directory-keeps-of fns (cdr keeps))))
+        (t (fn2-arm-frame-directory-keeps-of fns (cdr keeps)))))
+;; A core face that writes the directory back through child functions that
+;; keep it (their -KEEPS-DIRECTORY): those lemmas, the directory-keep facts
+;; of the reader SUFFIX names, and the machines read across the control
+;; write. Nil when the body calls no such child.
+(defun fn2-arm-frame-directory-keep-runes (fn reader world)
+  (declare (xargs :verify-guards nil))
+  (let* ((fns (fn2-arm-frame-fnsyms (getpropc fn 'unnormalized-body nil world) nil))
+         (keeps (fn2-arm-frame-directory-keeps-of fns (table-alist 'fn2-arm-frame-directory-keeps world))))
+    (and keeps (list* (if (eq reader 'slot) 'fn2-arm-slot-of-directory-keeps 'fn2-arm-phase-of-directory-keeps)
+                      'fn2-core-machines-of-update-fn2-core-control keeps))))
+;; The kind a table child belongs to, else nil.
+(defun fn2-arm-frame-table-kind (k names world)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom names) nil)
+        ((equal (fn2-arm-frame-child-index (fn2-columns-sym (car names) "-TABLE") world) k) (car names))
+        (t (fn2-arm-frame-table-kind k (cdr names) world))))
+(defun fn2-arm-frame-equality-phase-p (fn kind world)
+  ; FN's phase contract keeps every id's phase (not a write function's or a
+  ; recorded subarm's membership form)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-arm-frame-all-have (list fn) "-ARM-PHASE" kind world)
+       (not (eq (car (fn2-arm-frame-known fn kind world)) :write))
+       (not (fn2-arm-frame-phase-record fn kind world))))
+;; (t . RUNES) when every callee of FN keeps every phase: equality contracts;
+;; the directory's update through child functions that keep it; a kind
+;; table's update through its setters off the phase column (its
+;; -TABLE-KEEPING-PHASE fact and the setters' -NTH facts). Else nil.
+(defun fn2-arm-frame-phase-keep-runes-1 (callees fn fnsyms kind world acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom callees) (cons t acc)
+    (let* ((c (car callees)) (e (fn2-arm-frame-known c kind world))
+           (k (and (eq (car e) :child) (cadr e)))
+           (tkind (and k (fn2-arm-frame-table-kind k (fn2-machine-names world) world))))
+      (cond ((fn2-arm-frame-equality-phase-p c kind world)
+             (fn2-arm-frame-phase-keep-runes-1 (cdr callees) fn fnsyms kind world
+                                               (append (fn2-arm-frame-lemmas (list c) '("-ARM-PHASE") kind world) acc)))
+            ((and k (equal k (fn2-arm-frame-m world)) (fn2-arm-frame-directory-keep-runes fn 'phase world))
+             (fn2-arm-frame-phase-keep-runes-1 (cdr callees) fn fnsyms kind world
+                                               (append (fn2-arm-frame-directory-keep-runes fn 'phase world) acc)))
+            ((and tkind
+                  (getpropc (fn2-arm-frame-table-keep-name tkind) 'theorem nil world)
+                  (not (member-eq (fn2-arm-frame-setter tkind 'phase) fnsyms)))
+             (fn2-arm-frame-phase-keep-runes-1
+              (cdr callees) fn fnsyms kind world
+              (cons (fn2-arm-frame-table-keep-name tkind)
+                    (append (fn2-arm-frame-setter-facts
+                             tkind (fn2-arm-frame-column-fields (fn2-arm-frame-body-setters fn tkind world)
+                                                                (fn2-machine-property tkind :table world)))
+                            acc))))
+            (t nil)))))
+(defun fn2-arm-frame-phase-keep-runes (fn callees kind world)
+  (declare (xargs :verify-guards nil))
+  (and (not (fn2-arm-frame-phase-args (getpropc fn 'unnormalized-body nil world) kind world nil))
+       (fn2-arm-frame-phase-keep-runes-1 callees fn (fn2-arm-frame-fnsyms (getpropc fn 'unnormalized-body nil world) nil)
+                                         kind world nil)))
 ;; FN's contracts at ENTRY, each by one opening of FN with its callees'
 ;; contracts: KIDS (required), ROW-FRAME (row level: within a caller's
 ;; frame at its row; else from KIDS), SLOT and PHASE (optional).
@@ -2109,11 +2201,19 @@
                         :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                               (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',s) (a fn2-core) (b ,out))
                               (:instance fn2-arm-slot-congruence (id fn2-arm-id) (a fn2-core) (b ,out))))))
-          (if (fn2-arm-frame-all-have callees "-ARM-SLOT" kind world)
-              `(defthm ,slot
-                 (equal (fn2-machine-slot fn2-arm-id ,out) (fn2-machine-slot fn2-arm-id fn2-core))
-                 :hints ,(fn2-arm-frame-hints (cons fn (fn2-arm-frame-lemmas callees '("-ARM-SLOT") kind world))))
-            '(value-triple :absent))))
+          (cond ((fn2-arm-frame-all-have callees "-ARM-SLOT" kind world)
+                 `(defthm ,slot
+                    (equal (fn2-machine-slot fn2-arm-id ,out) (fn2-machine-slot fn2-arm-id fn2-core))
+                    :hints ,(fn2-arm-frame-hints (cons fn (fn2-arm-frame-lemmas callees '("-ARM-SLOT") kind world)))))
+                ; the directory written back through child functions that keep it
+                ((and (fn2-arm-frame-directory-keep-runes fn 'slot world)
+                      (fn2-arm-frame-all-have (remove-eq 'update-fn2-core-machines callees) "-ARM-SLOT" kind world))
+                 `(defthm ,slot
+                    (equal (fn2-machine-slot fn2-arm-id ,out) (fn2-machine-slot fn2-arm-id fn2-core))
+                    :hints ,(fn2-arm-frame-hints
+                             (cons fn (append (fn2-arm-frame-directory-keep-runes fn 'slot world)
+                                              (fn2-arm-frame-lemmas callees '("-ARM-SLOT") kind world))))))
+                (t '(value-triple :absent)))))
       ,(fn2-arm-frame-maybe
         (cond
          ((and (eq (car e) :row)
@@ -2135,6 +2235,13 @@
                         :use ((:instance ,kids (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
                               ,@(fn2-arm-frame-nth-uses (fn2-arm-frame-phase-indices world) s out)
                               (:instance fn2-arm-phase-congruence (id fn2-arm-id) (a fn2-core) (b ,out)))))))
+         ((fn2-arm-frame-phase-keep-runes fn callees kind world)
+          ; every callee keeps every phase: the directory and kinds' tables
+          ; written back through what keeps it, the other callees by their
+          ; equality contracts
+          `(defthm ,phase
+             (equal (fn2-machine-phase fn2-arm-id ,out) (fn2-machine-phase fn2-arm-id fn2-core))
+             :hints ,(fn2-arm-frame-hints (cons fn (cdr (fn2-arm-frame-phase-keep-runes fn callees kind world))))))
          ((and (member-eq 'id formals) (fn2-arm-frame-all-have callees "-ARM-PHASE" kind world)
                (not (member-eq :any (fn2-arm-frame-phase-args (getpropc fn 'unnormalized-body nil world) kind world nil))))
           ; the phase stays or moves to a value it writes
