@@ -1394,6 +1394,95 @@
                  (:instance fn2-machine-cb-acks-of-row-frame)
                  (:instance fn2-env-j-row-transfer)))))
 
+;; :NOTIFY. The visit of a commit row at :notify (fn2-commit-run at phase
+;; notify) keeps J at every id and the frontier: its FRAME is the arm's
+;; declaration (table 9 at the row's slot, columns phase/cb-acks/...,
+;; children without 9, 30, 31), its directory is kept, and the only row whose
+;; phase or reply count moves is one at the visited slot, whose batch J1
+;; already bounds by the installed root (it is at :notify).  An id that is not
+;; a readable commit row is trivially J (FN2-ENV-J-ROW-NOT-IDP).
+(defthm fn2-env-j-row-not-idp
+  (implies (not (fn2-commit-idp id fn2-core)) (fn2-env-j-row id log fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-commit-idp fn2-commit-snapshot-read-code
+                                   fn2-machine-phase-read-code fn2-machine-cb-acks-read-code)
+                                  (fn2-env-written-from fn2-env-batch-durable-p fn2-env-installed fn2-machine-kind
+                                   fn2-machine-slot fn2-machine-idp)))))
+(defthm fn2-env-notify-same-slot
+  (implies (and (fn2-commit-idp i fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*)
+                (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core)))
+           (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-notify*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-row-phase fn2-commit-snapshot-read-code
+                                   fn2-machine-phase-read-code fn2-machine-phase)
+                                  (fn2-machine-kind fn2-machine-slot)))))
+(defthm fn2-env-j1-row-notify-bound
+  (implies (and (fn2-env-j-row id log fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-notify*))
+           (and (posp (fn2-machine-batch-no id fn2-core))
+                (<= (fn2-machine-batch-no id fn2-core) (fn2-env-installed fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row member-equal (:e member-equal)))))
+(defthm fn2-env-j-row-notify-arm
+  (implies (and (fn2-env-j-row i log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (fn2-env-j-row i log b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e fn2-commit-arm-children)
+                               (:e fn2-commit-arm-columns) (:e subsetp-equal) (:e member-equal)
+                               fn2-env-j-row-not-idp (:e tau-system))
+           :do-not-induct t
+           :cases ((not (fn2-commit-idp i fn2-core))
+                   (not (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core))))
+           :use ((:instance fn2-commit-run-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id fn2-core))
+                            (fn2-arm-cs '(0 14 27 15 19 21 6)) (fn2-arm-ch '(29 28 3 2 5)) (fn2-arm-c0 fn2-core))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id fn2-core))
+                            (columns '(0 14 27 15 19 21 6)) (children '(29 28 3 2 5)) (a fn2-core))
+                 (:instance fn2-commit-run-ctf-dir (fn2-ctf-c0 fn2-core))
+                 (:instance fn2-ctf-dir-refl (a fn2-core))
+                 (:instance fn2-env-j-row-of-row-frame (id i) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core))
+                            (cs '(0 14 27 15 19 21 6)) (ch '(29 28 3 2 5)))
+                 (:instance fn2-env-read-codes-of-row-frame (id i) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core))
+                            (cs '(0 14 27 15 19 21 6)) (ch '(29 28 3 2 5)))
+                 (:instance fn2-env-notify-same-slot)
+                 (:instance fn2-env-j1-row-notify-bound (id i))
+                 ))))
+(defthm fn2-env-j-frontier-notify-arm
+  (implies (and (fn2-env-j-frontier log fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (and (fn2-env-j-frontier log b)
+                  (equal (fn2-env-installed b) (fn2-env-installed fn2-core)))))
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e fn2-commit-arm-children)
+                               (:e fn2-commit-arm-columns) (:e subsetp-equal) (:e member-equal)
+                               fn2-env-j-frontier fn2-env-installed)
+           :do-not-induct t
+           :use ((:instance fn2-commit-run-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id fn2-core))
+                            (fn2-arm-cs '(0 14 27 15 19 21 6)) (fn2-arm-ch '(29 28 3 2 5)) (fn2-arm-c0 fn2-core))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id fn2-core))
+                            (columns '(0 14 27 15 19 21 6)) (children '(29 28 3 2 5)) (a fn2-core))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 31) (row (fn2-machine-slot id fn2-core))
+                            (cs '(0 14 27 15 19 21 6)) (ch '(29 28 3 2 5))
+                            (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-root-congruence (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
+(defthm fn2-env-j-row-notify-arm-rewrite
+  (implies (and (fn2-env-j-row i log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*))
+           (fn2-env-j-row i log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :in-theory nil :use ((:instance fn2-env-j-row-notify-arm)))))
+(defthm fn2-env-j-rows-notify-arm
+  (implies (and (fn2-env-j-rows ids log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-notify*))
+           (fn2-env-j-rows ids log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :induct (fn2-env-j-rows ids log fn2-core)
+           :in-theory '(fn2-env-j-rows fn2-env-j-row-notify-arm-rewrite))))
+(in-theory (disable fn2-env-j-row-notify-arm-rewrite))
 ;; ---------------------------------------------------------------------------
 ;; Executor instance interface.  A turn logs nothing, but may expose new
 ;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
