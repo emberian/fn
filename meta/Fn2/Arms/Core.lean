@@ -1,4 +1,13 @@
-import Fn2.Arms.Columns
+module
+
+public import Fn2.Arms.Columns
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Core: core-form kinds, run through their core face
@@ -456,3 +465,5 @@ theorem runCore_next_mem (w : World) (tuple : List String) (k : Kind) (PK : List
     simpa [coreKind] using hph s
 
 end Fn2.Arms.Core
+
+end

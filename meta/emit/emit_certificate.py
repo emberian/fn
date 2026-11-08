@@ -10,7 +10,7 @@ import json
 import os
 import subprocess
 sys.path.insert(0, str(Path(__file__).parent))
-from emit_lean import Atom, Str, List, read_all, show, as_list, val, term, lean_str, ident
+from emit_lean import Atom, Str, List, read_all, show, as_list, val, term, lean_str, ident, as_module, CORE_STRING_BODIES
 from emit_embed import Fn, emit_fn, emit_kinds, calls_of, NATIVE, SPECIAL, plist, shallow, is_lambda
 
 sys.setrecursionlimit(30000)
@@ -226,7 +226,7 @@ def emit_echo_validation(kd, tuple_, out):
     if re.search(r'@[A-Z_]+@',template): raise ValueError('unexpanded certificate template')
     target = out.parent/'Arms'/'Validation.lean' if out.name == 'Instances' else out/'Validation.lean'
     target.parent.mkdir(parents=True,exist_ok=True)
-    target.write_text(template)
+    target.write_text(as_module(template, import_all=CORE_STRING_BODIES))
 
 
 def main(src, outdir, bookpath=None):
@@ -270,7 +270,7 @@ def main(src, outdir, bookpath=None):
         emit_fn(f, defined, L); defined.add(f.name)
     L += ['def fns : Fns', *[f'  | {lean_str(f.name)}, [{", ".join(ident(a) for a in f.formals)}] => some ({ident(f.name)} {" ".join(ident(a) for a in f.formals)})' for f,d in fs],
           '  | _, _ => none', 'end Fn2.Instances.BridgeWorld', '']
-    (out/'BridgeWorld.lean').write_text('\n'.join(L))
+    (out/'BridgeWorld.lean').write_text(as_module('\n'.join(L)))
     T = ['-- Generated body equations; the kernel checks every equation.',
          'import Fn2.Instances.BridgeWorld', 'set_option maxRecDepth 100000',
          'set_option maxHeartbeats 4000000', 'set_option linter.unusedVariables false',
@@ -293,7 +293,7 @@ def main(src, outdir, bookpath=None):
               f'  simp only [Translation.evalExport, {ident(f.name)}.decoded]',
               f'  exact {ident(f.name)}.export_body {args}', '']
     T += ['end Fn2.Instances.BridgeWorld', '']
-    (out/'BridgeTranslation.lean').write_text('\n'.join(T))
+    (out/'BridgeTranslation.lean').write_text(as_module('\n'.join(T)))
     constants = decode(p[':CONSTANTS'])
     # Reuse the old presentation only after lossless decoding of the canonical
     # objects. The original decl remains data and Arms.read reads it itself.

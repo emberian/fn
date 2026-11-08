@@ -1,7 +1,16 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
-import Fn2.Arms.Cost
-import Fn2.Pathway
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+public import Fn2.Arms.Cost
+public import Fn2.Pathway
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Frame: the children an arm can change, and its frame theorem
@@ -952,3 +961,5 @@ theorem runArm_frame (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fu
   · cases hD
 
 end Fn2.Arms.Frame
+
+end

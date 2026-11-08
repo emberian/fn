@@ -1,4 +1,13 @@
-import Fn2.Arms.Core
+module
+
+public import Fn2.Arms.Core
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.CorePhase: a core-only operation's call, child by child
@@ -397,3 +406,5 @@ theorem keepsPhase_found (w : World) (tuple : List String) (k : Kind) (n : Strin
 end
 
 end Fn2.Arms.CorePhase
+
+end

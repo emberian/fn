@@ -1,3 +1,6 @@
+module
+
+@[expose] public section
 /-!
 # Fn2.ACL2.Val: ACL2's universe and the primitives of fn2's closed subset
 
@@ -434,3 +437,5 @@ termination_by t => sizeOf t
 decreasing_by all_goals (simp_wf; first | omega | (have := List.sizeOf_lt_of_mem ‹_›; omega))
 
 end Fn2.ACL2
+
+end

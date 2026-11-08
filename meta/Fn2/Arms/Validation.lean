@@ -1,7 +1,16 @@
 -- Template for the canonical echo/free certificate; emit_certificate.py instantiates its layout.
-import Fn2.Arms.Core
-import Fn2.Instances.BridgeKinds
-import Fn2.Instances.BridgeTranslation
+module
+
+public import Fn2.Arms.Core
+public import Fn2.Instances.BridgeKinds
+public import Fn2.Instances.BridgeTranslation
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 namespace Fn2.Arms.Validation
 open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
 open Fn2.Instances.BridgeWorld Fn2.Instances.BridgeKinds
@@ -241,3 +250,5 @@ theorem echo_free_positive :
 #print axioms canonical_free_declaration
 
 end Fn2.Arms.Validation
+
+end

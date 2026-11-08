@@ -1,4 +1,13 @@
-import Fn2.Pathway
+module
+
+public import Fn2.Pathway
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-! Per-emission translation validation. The dispatch is a parameter, not an
 axiom: each generated body equation is checked by Lean. ACL2 independently
@@ -183,3 +192,5 @@ theorem eval_lam {fns : Fns} {env : Env} {fuel : Nat}
   exact hb
 
 end Fn2.ACL2.Translation
+
+end

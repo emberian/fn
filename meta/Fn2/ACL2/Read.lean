@@ -1,4 +1,8 @@
-import Fn2.ACL2.Val
+module
+
+public import Fn2.ACL2.Val
+
+@[expose] public section
 
 /-!
 # Fn2.ACL2.Read: ACL2's printed objects as `Val`
@@ -137,3 +141,5 @@ def parse (s : String) : Except String Val := do
   pure v
 
 end Fn2.ACL2.Read
+
+end

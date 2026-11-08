@@ -1,4 +1,13 @@
-import Fn2.Arms
+module
+
+public import Fn2.Arms
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.ArmsLemmas: the generic lemmas PW3 rewrites by (LEAN-METATHEORY §9.3)
@@ -321,3 +330,5 @@ theorem rowReads_eq (w : World) (k : Kind) (stobjs : List (String × Val)) (id s
   exact rowReads_mapM w k id slot table dir read k.columns hread
 
 end Fn2.Arms
+
+end

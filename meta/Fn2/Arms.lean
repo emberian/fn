@@ -1,4 +1,8 @@
-import Fn2.ACL2.Val
+module
+
+public import Fn2.ACL2.Val
+
+@[expose] public section
 
 /-!
 # Fn2.Arms: the step language of `defmachine`, and its definitional interpreter
@@ -439,8 +443,8 @@ def vocabularyFns : List (String × Nat) :=
    ("UNSIGNED-BYTE-P", 2), ("FLOOR", 2), ("MOD", 2), ("ASH", 2), ("MIN", 2), ("MAX", 2),
    ("BINARY-+", 2), ("BINARY-*", 2), ("UNARY--", 1)]
 
-private def tIf (c a b : Term) : Term := .app "IF" [c, a, b]
-private def tNot (a : Term) : Term := tIf a (.quote Val.nil) (.quote Val.t)
+def tIf (c a b : Term) : Term := .app "IF" [c, a, b]
+def tNot (a : Term) : Term := tIf a (.quote Val.nil) (.quote Val.t)
 
 /-- The free variables of a term (a closed `LAMBDA`'s are its actuals'). -/
 def termFreeVars : Term → List String
@@ -1089,3 +1093,5 @@ def runArm (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fuel : Nat :
 end
 
 end Fn2.Arms
+
+end

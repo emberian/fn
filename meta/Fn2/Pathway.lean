@@ -1,5 +1,14 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Pathway: PW3, the generator's correctness per arm, stated (LEAN-METATHEORY §9)
@@ -1452,3 +1461,4 @@ theorem scribe_stop_project_preserve
 
 end Fn2.Pathway
 
+end

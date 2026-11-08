@@ -3,8 +3,12 @@
 -- 47 kinds in the step language (23 in child form), 264 declared operations,
 -- 4 wait kinds,
 -- 314 constants.
-import Fn2.Arms
-import Fn2.Instances.LayerAWorld
+module
+
+public import Fn2.Arms
+public import Fn2.Instances.LayerAWorld
+
+@[expose] public section
 
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0
@@ -2058,3 +2062,5 @@ def coreTuple : List String := ["FN2-POOL", "FN2-OPS", "FN2-SCHED", "FN2-MACHINE
 def world : World := { kinds, ops, waits, consts, fns := Fn2.Instances.LayerAWorld.fns }
 
 end Fn2.Instances.LayerAKinds
+
+end

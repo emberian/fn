@@ -1,5 +1,9 @@
 -- Generated body equations; the kernel checks every equation.
-import Fn2.Instances.BridgeWorld
+module
+
+public import Fn2.Instances.BridgeWorld
+
+@[expose] public section
 set_option maxRecDepth 100000
 set_option maxHeartbeats 4000000
 set_option linter.unusedVariables false
@@ -4659,3 +4663,5 @@ theorem «FN2-MACHINES-WAIT-REASON».canonical_body («I» : Val) («FN2-MACHINE
   exact «FN2-MACHINES-WAIT-REASON».export_body «I» «FN2-MACHINES»
 
 end Fn2.Instances.BridgeWorld
+
+end

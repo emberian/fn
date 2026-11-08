@@ -1,4 +1,24 @@
-import Fn2.Instances.LayerAWorld.Natives
+module
+
+public import Fn2.Instances.LayerAWorld.Natives
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+-- BEGIN world bodies (emit_embed.py): natives; scan
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S17_d1
+import all Fn2.Instances.LayerAWorld.S25_d2to3
+import all Fn2.Instances.LayerAWorld.S15xc66772_d1to9
+import all Fn2.Instances.LayerAWorld.S14_d0to1
+import all Fn2.Instances.LayerAWorld.S11_d0to10
+import all Fn2.Instances.LayerAWorld.KBoot_d0to29
+import all Fn2.Instances.LayerAWorld.Rest_d1to5
+import all Fn2.Instances.LayerAWorld.Natives
+-- END world bodies
+
+@[expose] public section
 
 /-!
 # Fn2.ACL2.Faithful: the natives satisfy ACL2's definitions
@@ -420,3 +440,5 @@ theorem faithfulCerts :
    logior_faithful, logxor_faithful, logeqv_faithful, logorc1_faithful⟩
 
 end Fn2.ACL2.Faithful
+
+end

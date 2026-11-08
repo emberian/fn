@@ -4,7 +4,11 @@
 -- Counts: 14 machines, 57 columns tables, 57 core children,
 -- 695 squares, 385 costs, 4 waits, 72 operation-sets, 49 commands, 2 ports, 19 schemas, 0 correspondences, 145 layouts, 14 arm-contracts, 1 resources, 1 services, 2 actions, 1 app-manifests; 2894 symbols;
 -- catalogue 143 continuation phases + 28 observed events = 171 machine cases.
-import Fn2.Decl
+module
+
+public import Fn2.Decl
+
+@[expose] public section
 
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0
@@ -30684,3 +30688,5 @@ def registry : Registry Sym where
   rows := otherRows
 
 end Fn2.Instances.LayerA
+
+end

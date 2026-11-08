@@ -1,3 +1,5 @@
+module
+
 /-
   Fn2.TypedModel — PW4 Typed `BitVec w` Column & Operation Refinement
 
@@ -24,8 +26,15 @@
     value `2^40` truncates `mod 2^32 = 0` and falsifies refinement.
 -/
 
-import Fn2.Decl
-import Fn2.ACL2.Val
+public import Fn2.Decl
+public import Fn2.ACL2.Val
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 namespace Fn2.TypedModel
 
@@ -765,3 +774,5 @@ theorem pw4_deadline_u32_breaks_refinement :
   decide
 
 end Fn2.TypedModel
+
+end
