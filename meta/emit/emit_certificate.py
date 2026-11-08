@@ -156,6 +156,8 @@ def expression_proof(t, defined, env, indent='  ', dispatch=None, lambdas=None):
         for a in t[1:]: lines += [indent+'·']+sub(a)
         return lines
     if t[0] == 'RETURN-LAST':
+        if dispatch is not None:
+            return [indent+'refine Translation.eval_return_last ?_']+expression_proof(t[3],defined,env,indent,dispatch,lambdas)
         return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent,dispatch,lambdas)
     vals=[expression_value(a,defined,env,lambdas) for a in t[1:]]
     proof = ('by exact '+ident(str(t[0]))+'.dispatched (err := '+lean_str('no function '+str(t[0])+' of arity '+str(len(vals)))+') '+ ' '.join(vals)) if dispatch and str(t[0]) in dispatch else 'by rfl'

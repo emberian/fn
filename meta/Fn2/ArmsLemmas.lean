@@ -352,4 +352,25 @@ theorem rowReads_eq (w : World) (k : Kind) (stobjs : List (String × Val)) (id s
   simp only [rowReads, ht, hd]
   exact rowReads_mapM w k id slot table dir read k.columns hread
 
+
+/-- Appending the child bindings cannot shadow an already-bound local variable. -/
+theorem env_get_append_of_some (front back : Env) (name : String) (value : Val)
+    (h : front.get? name = some value) : (front ++ back).get? name = some value := by
+  cases hf : front.find? (·.1 == name) <;> simp_all [Env.get?, List.find?_append]
+
+theorem var_env_bound (st : St) (name : String) (value : Val)
+    (h : var st name = .ok value) : (st.vars ++ st.stobjs).get? name = some value := by
+  apply env_get_append_of_some
+  cases hv : st.vars.get? name <;> simp_all [var]
+
+theorem var_setStobj (st : St) (child name : String) (value : Val) :
+    var (setStobj st child value) name = var st name := by rfl
+
+/-- A flush with no pending fields or phase is the identity in every world. -/
+theorem flush_empty (w : World) (f : Frame) (st : St)
+    (hp : st.pending = []) (hn : st.next = none) : flush w f st = .ok st := by
+  cases st
+  simp_all [flush]
+  rfl
+
 end Fn2.Arms

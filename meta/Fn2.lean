@@ -25,6 +25,8 @@ import Fn2.Arms.Columns
 import Fn2.Arms.ServedColumns
 import Fn2.Arms.Core
 import Fn2.Arms.Wrapper
+import Fn2.Instances.CoreTranslation
+import Fn2.Arms.CoreValidation
 import Fn2.Arms.Validation
 import Fn2.Arms.CoreTeeth
 import Fn2.Arms.ServedCore

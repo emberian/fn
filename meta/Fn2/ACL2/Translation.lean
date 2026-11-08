@@ -181,6 +181,12 @@ theorem eval_if {fns : Fns} {env : Env} {fuel : Nat}
   change (if vc.truthy then eval fns env a fuel else eval fns env b fuel) = _
   split <;> simp_all
 
+/-- RETURN-LAST evaluates only its logical final argument, with one syntax step. -/
+theorem eval_return_last {fns : Fns} {env : Env} {fuel : Nat}
+    {a b c : Term} {v : Val} (hc : eval fns env c fuel = .ok v) :
+    eval fns env (.app "RETURN-LAST" [a,b,c]) (fuel + 1) = .ok v := by
+  exact hc
+
 theorem eval_lam {fns : Fns} {env : Env} {fuel : Nat}
     {formals : List String} {body : Term} {actuals : List Term} {vs : List Val} {v : Val}
     (ha : actuals.mapM (fun t => eval fns env t fuel) = .ok vs)

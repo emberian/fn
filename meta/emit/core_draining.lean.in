@@ -1,0 +1,391 @@
+namespace Fn2.Arms.CoreValidation
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
+open Fn2.Instances.LayerAWorld Fn2.Instances.CoreKinds
+
+/-- Logical column writes retain their independence even for malformed arrays. -/
+def fieldWrite (field : Nat) (slot value own : Val) : Val :=
+  Native.updateNth (.int field) (Native.updateNth slot value (Native.nth (.int field) own)) own
+
+theorem fieldWrite_order (i j : Nat) (slot v w own : Val) (h : i < j) :
+    fieldWrite i slot v (fieldWrite j slot w own) =
+      fieldWrite j slot w (fieldWrite i slot v own) := by
+  exact updateNth_array_commute i j slot v w own (by omega)
+
+
+theorem «FN2-CNS-SET-PHASE».field_write (slot value own : Val) :
+    «FN2-CNS-SET-PHASE» slot value own = fieldWrite 0 slot value own := by rfl
+
+theorem «FN2-CNS-SET-GENERATION».field_write (slot value own : Val) :
+    «FN2-CNS-SET-GENERATION» slot value own = fieldWrite 1 slot value own := by rfl
+
+theorem «FN2-CNS-SET-CTL».field_write (slot value own : Val) :
+    «FN2-CNS-SET-CTL» slot value own = fieldWrite 5 slot value own := by rfl
+
+theorem «FN2-CNS-SET-CTL-GEN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-CTL-GEN» slot value own = fieldWrite 6 slot value own := by rfl
+
+theorem «FN2-CNS-SET-EDGE».field_write (slot value own : Val) :
+    «FN2-CNS-SET-EDGE» slot value own = fieldWrite 28 slot value own := by rfl
+
+theorem «FN2-CNS-SET-TXN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-TXN» slot value own = fieldWrite 29 slot value own := by rfl
+
+theorem «FN2-CNS-SET-TXN-GEN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-TXN-GEN» slot value own = fieldWrite 30 slot value own := by rfl
+
+theorem «FN2-CNS-SET-TX-SLOT».field_write (slot value own : Val) :
+    «FN2-CNS-SET-TX-SLOT» slot value own = fieldWrite 31 slot value own := by rfl
+
+theorem «FN2-CNS-SET-TX-GEN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-TX-GEN» slot value own = fieldWrite 32 slot value own := by rfl
+
+theorem «FN2-CNS-SET-UPLOAD».field_write (slot value own : Val) :
+    «FN2-CNS-SET-UPLOAD» slot value own = fieldWrite 33 slot value own := by rfl
+
+theorem «FN2-CNS-SET-UPLOAD-GEN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-UPLOAD-GEN» slot value own = fieldWrite 34 slot value own := by rfl
+
+theorem «FN2-CNS-SET-NEXT-FREE».field_write (slot value own : Val) :
+    «FN2-CNS-SET-NEXT-FREE» slot value own = fieldWrite 66 slot value own := by rfl
+
+theorem «FN2-CNS-SET-LEASE».field_write (slot value own : Val) :
+    «FN2-CNS-SET-LEASE» slot value own = fieldWrite 57 slot value own := by rfl
+
+theorem «FN2-CNS-SET-LSLOT».field_write (slot value own : Val) :
+    «FN2-CNS-SET-LSLOT» slot value own = fieldWrite 55 slot value own := by rfl
+
+theorem «FN2-CNS-SET-LGEN».field_write (slot value own : Val) :
+    «FN2-CNS-SET-LGEN» slot value own = fieldWrite 56 slot value own := by rfl
+
+def cleanupOwn (slot : Val) (phase : Val) (gen : Val) (next : Val) (own : Val) : Val := («FN2-CNS-SET-PHASE» slot (phase) («FN2-CNS-SET-NEXT-FREE» slot (next) («FN2-CNS-SET-TX-GEN» slot (.int 0) («FN2-CNS-SET-TX-SLOT» slot (.int 4294967295) («FN2-CNS-SET-UPLOAD-GEN» slot (.int 0) («FN2-CNS-SET-UPLOAD» slot (.int 4294967295) («FN2-CNS-SET-TXN-GEN» slot (.int 0) («FN2-CNS-SET-TXN» slot (.int 4294967295) («FN2-CNS-SET-EDGE» slot (.int 4294967295) («FN2-CNS-SET-CTL-GEN» slot (.int 0) («FN2-CNS-SET-CTL» slot (.int 4294967295) («FN2-CNS-SET-GENERATION» slot (gen) own))))))))))))
+
+theorem cleanup_write_order (slot : Val) (phase : Val) (gen : Val) (next : Val) (own : Val) :
+    («FN2-CNS-SET-NEXT-FREE» slot (next) («FN2-CNS-SET-UPLOAD-GEN» slot (.int 0) («FN2-CNS-SET-UPLOAD» slot (.int 4294967295) («FN2-CNS-SET-TX-GEN» slot (.int 0) («FN2-CNS-SET-TX-SLOT» slot (.int 4294967295) («FN2-CNS-SET-TXN-GEN» slot (.int 0) («FN2-CNS-SET-TXN» slot (.int 4294967295) («FN2-CNS-SET-EDGE» slot (.int 4294967295) («FN2-CNS-SET-CTL-GEN» slot (.int 0) («FN2-CNS-SET-CTL» slot (.int 4294967295) («FN2-CNS-SET-GENERATION» slot (gen) («FN2-CNS-SET-PHASE» slot (phase) own)))))))))))) = cleanupOwn slot phase gen next own := by
+
+  simp (disch := decide) only [cleanupOwn, «FN2-CNS-SET-GENERATION».field_write, «FN2-CNS-SET-CTL».field_write, «FN2-CNS-SET-CTL-GEN».field_write, «FN2-CNS-SET-EDGE».field_write, «FN2-CNS-SET-TXN».field_write, «FN2-CNS-SET-TXN-GEN».field_write, «FN2-CNS-SET-UPLOAD».field_write, «FN2-CNS-SET-UPLOAD-GEN».field_write, «FN2-CNS-SET-TX-SLOT».field_write, «FN2-CNS-SET-TX-GEN».field_write, «FN2-CNS-SET-NEXT-FREE».field_write, «FN2-CNS-SET-PHASE».field_write, fieldWrite_order 0 66, fieldWrite_order 0 32, fieldWrite_order 0 31, fieldWrite_order 0 34, fieldWrite_order 0 33, fieldWrite_order 0 30, fieldWrite_order 0 29, fieldWrite_order 0 28, fieldWrite_order 0 6, fieldWrite_order 0 5, fieldWrite_order 0 1, fieldWrite_order 32 34, fieldWrite_order 32 33, fieldWrite_order 31 34, fieldWrite_order 31 33]
+
+def leaseOwn (slot : Val) (own : Val) : Val := («FN2-CNS-SET-LGEN» slot (.int 0) («FN2-CNS-SET-LSLOT» slot (.int 4294967295) («FN2-CNS-SET-LEASE» slot (.int 0) own)))
+
+theorem lease_write_order (slot : Val) (own : Val) :
+    («FN2-CNS-SET-LEASE» slot (.int 0) («FN2-CNS-SET-LGEN» slot (.int 0) («FN2-CNS-SET-LSLOT» slot (.int 4294967295) own))) = leaseOwn slot  own := by
+
+  simp (disch := decide) only [leaseOwn, «FN2-CNS-SET-LEASE».field_write, «FN2-CNS-SET-LSLOT».field_write, «FN2-CNS-SET-LGEN».field_write, fieldWrite_order 55 57, fieldWrite_order 56 57]
+
+theorem lease_write (id core : Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    «FN2-CNS-WRITE+LSLOT+LGEN+LEASE» id (.int 4294967295) (.int 0) (.int 0) core =
+      «UPDATE-FN2-CNS-TABLE» (leaseOwn («FN2-MACHINE-SLOT» id core) («FN2-CNS-TABLE» core)) core := by
+  obtain ⟨hi, hr, hs, hb⟩ := snapshot_bounds id core h
+  obtain ⟨_, hk⟩ := snapshot_parts id core h
+  have hid : («FN2-MACHINE-IDP» id core).truthy = true := by
+    simp [«FN2-MACHINE-IDP», hi, hr]
+  have hslot : «FN2-MACHINE-SLOT» id core = «FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core) := by
+    simp [«FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hid, «EQ», Prim.equal]
+  have hn0 : («UNSIGNED-BYTE-P» (.int 32) (.int 4294967295)).truthy = true := by rfl
+  have hz60 : («UNSIGNED-BYTE-P» (.int 60) (.int 0)).truthy = true := by rfl
+  have hz1 : («UNSIGNED-BYTE-P» (.int 1) (.int 0)).truthy = true := by rfl
+  have hconst0 : («NATP» (.int 0)).truthy = true := by rfl
+  have hconst1 : (Prim.lt (.int 0) (.int 2)).truthy = true := by rfl
+  have hconst2 : (Prim.lt (.int 0) (.int 26)).truthy = true := by rfl
+  have hconst3 : («NATP» (.int 11)).truthy = true := by rfl
+  have hconst4 : (Prim.lt (.int 11) (.int 12)).truthy = true := by rfl
+  have hconst5 : (Prim.lt (.int 0) (.int 12)).truthy = true := by rfl
+  simp [«FN2-CNS-WRITE+LSLOT+LGEN+LEASE», «NOT», Prim.equal,
+    hid, hk, hslot, hs, hb, hn0, hz60, hz1, hconst0, hconst1, hconst2, hconst3, hconst4, hconst5,
+    Native.nth, Native.nthN, Val.nfix, Val.toInt, lease_write_order]
+
+def cleanupFits (gen next : Val) : Bool := ColType.fits (.uw 60) gen && ColType.fits (.uw 32) next
+
+theorem cleanup_write (id gen next retire core : Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id core = .sym ":OK")
+    (hself : «UPDATE-FN2-CNS-TABLE» («FN2-CNS-TABLE» core) core = core) :
+    «FN2-CNS-WRITE+PHASE+GENERATION+WAIT-REASON+CTL+CTL-GEN+EDGE+TXN+TXN-GEN+TX-SLOT+TX-GEN+UPLOAD+UPLOAD-GEN+NEXT-FREE»
+      id (if retire.truthy then .int 11 else .int 0) gen (.int 0) (.int 4294967295) (.int 0)
+      (.int 4294967295) (.int 4294967295) (.int 0) (.int 4294967295) (.int 0)
+      (.int 4294967295) (.int 0) next core =
+    if cleanupFits gen next then
+      «UPDATE-FN2-CORE-MACHINES»
+        («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) («FN2-CORE-MACHINES» core))
+        («UPDATE-FN2-CNS-TABLE»
+          (cleanupOwn («FN2-MACHINE-SLOT» id core) (if retire.truthy then .int 11 else .int 0) gen next («FN2-CNS-TABLE» core)) core)
+    else «FN2-CORE-STOP» (.int 13) core := by
+  obtain ⟨hi, hr, hs, hb⟩ := snapshot_bounds id core h
+  obtain ⟨_, hk⟩ := snapshot_parts id core h
+  have hid : («FN2-MACHINE-IDP» id core).truthy = true := by
+    simp [«FN2-MACHINE-IDP», hi, hr]
+  have hslot : «FN2-MACHINE-SLOT» id core = «FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core) := by
+    simp [«FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hid, «EQ», Prim.equal]
+  have hn0 : («UNSIGNED-BYTE-P» (.int 32) (.int 4294967295)).truthy = true := by rfl
+  have hz60 : («UNSIGNED-BYTE-P» (.int 60) (.int 0)).truthy = true := by rfl
+  have hz1 : («UNSIGNED-BYTE-P» (.int 1) (.int 0)).truthy = true := by rfl
+  have hconst0 : («NATP» (.int 0)).truthy = true := by rfl
+  have hconst1 : (Prim.lt (.int 0) (.int 2)).truthy = true := by rfl
+  have hconst2 : (Prim.lt (.int 0) (.int 26)).truthy = true := by rfl
+  have hconst3 : («NATP» (.int 11)).truthy = true := by rfl
+  have hconst4 : (Prim.lt (.int 11) (.int 12)).truthy = true := by rfl
+  have hconst5 : (Prim.lt (.int 0) (.int 12)).truthy = true := by rfl
+  have hm (v : Val) : «FN2-CORE-MACHINES» («UPDATE-FN2-CNS-TABLE» v core) = «FN2-CORE-MACHINES» core := by
+    exact nth_updateNth_ne 3 17 v core (by decide)
+  generalize hg : ColType.fits (.uw 60) gen = g
+  generalize hn : ColType.fits (.uw 32) next = n
+  have hg' : («UNSIGNED-BYTE-P» (.int 60) gen).truthy = g := (unsigned_fits 60 gen).trans hg
+  have hn' : («UNSIGNED-BYTE-P» (.int 32) next).truthy = n := (unsigned_fits 32 next).trans hn
+  cases hh : retire.truthy <;> cases g <;> cases n <;>
+    simp [«FN2-CNS-WRITE+PHASE+GENERATION+WAIT-REASON+CTL+CTL-GEN+EDGE+TXN+TXN-GEN+TX-SLOT+TX-GEN+UPLOAD+UPLOAD-GEN+NEXT-FREE»,
+      «NOT», «EQL», Prim.equal,
+      hid, hk, hslot, hs, hb, hi, hr, hm, hconst0, hconst1, hconst2, hconst3, hconst4, hconst5, hn0, hz60, hg', hn', hg, hn, hh, cleanupFits,
+      Native.nth, Native.nthN, Val.nfix, Val.toInt, cleanup_write_order,
+      «FN2-MACHINE-REFUSE-WRITE», hself]
+
+def drainBase (id slot budget : Val) : Env :=
+  [("ID",id),("SLOT",slot),("KIND",.int 11),("ORDINAL",.int 6),("BUDGET",budget)]
+def drainFrame (id slot budget : Val) : Frame :=
+  { kind := coreKind cns coreTuple, observe := false, refusal := [.stop "MACHINE-PHASE" none],
+    base := drainBase id slot budget }
+
+def leasePairs  : List (String × Val) := [("LEASE",.int 0), ("LSLOT",.int 4294967295), ("LGEN",.int 0)]
+
+theorem lease_put (id slot budget own dir control : Val)  (st : St)
+    (hi : var st "ID" = .ok id) (hs : var st "SLOT" = .ok slot)
+    (ho : stobj st "FN2-CNS" = .ok own) (hd : stobj st "FN2-MACHINES" = .ok dir)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hb : natLt slot («FN2-CNS-ROWS» own) = true)
+    : put (coreWorld world coreTuple) (drainFrame id slot budget) st (leasePairs ) =
+      .ok (setStobj (setStobj st "FN2-CNS" (leaseOwn slot  own)) "FN2-MACHINES" dir) := by
+  let f := drainFrame id slot budget
+  let pairs := leasePairs 
+  have hp : (natLt slot («FN2-CNS-ROWS» own) &&
+      ((pairs.filter fun p => directoryFields.contains p.1).isEmpty || natLt id («FN2-MACHINES-ROWS» dir)) &&
+      pairs.all (fun (n,v) => match f.kind.columns.find? (·.1 == n) with
+        | some (_,ty) => ty.fits v | none => false)) = true := by
+    change ((natLt slot («FN2-CNS-ROWS» own) && (true || natLt id («FN2-MACHINES-ROWS» dir))) && (true && (true && (true && true)))) = _
+    simp only [hb, Bool.and_true, Bool.true_and, Bool.or_true, Bool.true_or, Bool.false_or]
+  rw [put_pass (coreWorld world coreTuple) f st pairs slot id own dir control
+    («FN2-CNS-ROWS» own) («FN2-MACHINES-ROWS» dir)
+    hs hi ho hd hc («FN2-CNS-ROWS».core_call _) («FN2-MACHINES-ROWS».core_call _) hp]
+  have hf : f.kind.name = "FN2-CNS" := by rfl
+  have hop : pairs.filter (fun p => !directoryFields.contains p.1) = [("LEASE",.int 0), ("LSLOT",.int 4294967295), ("LGEN",.int 0)] := by rfl
+  have hdp : pairs.filter (fun p => directoryFields.contains p.1) = [] := by rfl
+  rw [hop, hdp, hf]
+  simp only [List.foldlM_cons, List.foldlM_nil, except_ok_bind, «FN2-CNS-SET-LEASE».core_call, «FN2-CNS-SET-LSLOT».core_call, «FN2-CNS-SET-LGEN».core_call]
+  rfl
+
+def cleanupPairs (phase : Val) (gen : Val) (next : Val) : List (String × Val) := [("GENERATION",gen), ("CTL",.int 4294967295), ("CTL-GEN",.int 0), ("EDGE",.int 4294967295), ("TXN",.int 4294967295), ("TXN-GEN",.int 0), ("UPLOAD",.int 4294967295), ("UPLOAD-GEN",.int 0), ("TX-SLOT",.int 4294967295), ("TX-GEN",.int 0), ("NEXT-FREE",next), ("WAIT-REASON",.int 0), ("PHASE",phase)]
+
+theorem cleanup_put (id slot budget own dir control : Val) (phase : Val) (gen : Val) (next : Val) (st : St)
+    (hi : var st "ID" = .ok id) (hs : var st "SLOT" = .ok slot)
+    (ho : stobj st "FN2-CNS" = .ok own) (hd : stobj st "FN2-MACHINES" = .ok dir)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hb : natLt slot («FN2-CNS-ROWS» own) = true)
+    (hdb : natLt id («FN2-MACHINES-ROWS» dir) = true)
+    (hphase : ColType.fits (.enum 12) phase = true)
+    : put (coreWorld world coreTuple) (drainFrame id slot budget) st (cleanupPairs phase gen next) =
+      if cleanupFits gen next then .ok (setStobj (setStobj st "FN2-CNS" (cleanupOwn slot phase gen next own)) "FN2-MACHINES" («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) dir))
+      else .ok (setStobj st "FN2-CONTROL" («FN2-CONTROL-RECORD-STOP» (.int 13) control)) := by
+  let f := drainFrame id slot budget
+  let pairs := cleanupPairs phase gen next
+  have hp : (natLt slot («FN2-CNS-ROWS» own) &&
+      ((pairs.filter fun p => directoryFields.contains p.1).isEmpty || natLt id («FN2-MACHINES-ROWS» dir)) &&
+      pairs.all (fun (n,v) => match f.kind.columns.find? (·.1 == n) with
+        | some (_,ty) => ty.fits v | none => false)) = cleanupFits gen next := by
+    change ((natLt slot («FN2-CNS-ROWS» own) && (false || natLt id («FN2-MACHINES-ROWS» dir))) && (ColType.fits (.uw 60) gen && (true && (true && (true && (true && (true && (true && (true && (true && (true && (ColType.fits (.uw 32) next && (true && (ColType.fits (.enum 12) phase && true)))))))))))))) = _
+    simp only [hb, hdb, hphase, cleanupFits, Bool.and_true, Bool.true_and, Bool.or_true, Bool.true_or, Bool.false_or]
+  by_cases hfit : cleanupFits gen next = true
+  · rw [if_pos hfit]
+    rw [put_pass (coreWorld world coreTuple) f st pairs slot id own dir control
+      («FN2-CNS-ROWS» own) («FN2-MACHINES-ROWS» dir)
+      hs hi ho hd hc («FN2-CNS-ROWS».core_call _) («FN2-MACHINES-ROWS».core_call _) (hp.trans hfit)]
+    have hf : f.kind.name = "FN2-CNS" := by rfl
+    have hop : pairs.filter (fun p => !directoryFields.contains p.1) = [("GENERATION",gen), ("CTL",.int 4294967295), ("CTL-GEN",.int 0), ("EDGE",.int 4294967295), ("TXN",.int 4294967295), ("TXN-GEN",.int 0), ("UPLOAD",.int 4294967295), ("UPLOAD-GEN",.int 0), ("TX-SLOT",.int 4294967295), ("TX-GEN",.int 0), ("NEXT-FREE",next), ("PHASE",phase)] := by rfl
+    have hdp : pairs.filter (fun p => directoryFields.contains p.1) = [("WAIT-REASON",.int 0)] := by rfl
+    rw [hop, hdp, hf]
+    simp only [List.foldlM_cons, List.foldlM_nil, except_ok_bind, «FN2-CNS-SET-GENERATION».core_call, «FN2-CNS-SET-CTL».core_call, «FN2-CNS-SET-CTL-GEN».core_call, «FN2-CNS-SET-EDGE».core_call, «FN2-CNS-SET-TXN».core_call, «FN2-CNS-SET-TXN-GEN».core_call, «FN2-CNS-SET-UPLOAD».core_call, «FN2-CNS-SET-UPLOAD-GEN».core_call, «FN2-CNS-SET-TX-SLOT».core_call, «FN2-CNS-SET-TX-GEN».core_call, «FN2-CNS-SET-NEXT-FREE».core_call, «FN2-MACHINES-SET-WAIT-REASON».core_call, «FN2-CNS-SET-PHASE».core_call]
+    rfl
+  · rw [if_neg hfit]
+    have hn : cleanupFits gen next = false := Bool.eq_false_iff.mpr hfit
+    rw [put_fail (coreWorld world coreTuple) f st pairs slot id own dir control
+      («FN2-CNS-ROWS» own) («FN2-MACHINES-ROWS» dir)
+      hs hi ho hd hc («FN2-CNS-ROWS».core_call _) («FN2-MACHINES-ROWS».core_call _) (hp.trans hn)]
+    have hr : const (coreWorld world coreTuple) "*FN2-STOP-REASON-MACHINE-WRITE*" = .ok (.int 13) := by rfl
+    simp only [hr, except_ok_bind, «FN2-CONTROL-RECORD-STOP».core_call]
+    rfl
+
+def form (name : String) (args : List Expr) : Expr := Val.ofList (.sym name :: args)
+def leasePending : List (String × Expr) :=
+  [("LEASE",.sym "*FN2-CNS-LEASE-NONE*"),("LSLOT",.sym "*FN2-NONE*"),("LGEN",.int 0)]
+def cleanupPending : List (String × Expr) :=
+  [("GENERATION",form "IF" [.sym "RETIRE",.sym "ROW-GENERATION",form "+" [.int 1,.sym "ROW-GENERATION"]]),
+   ("CTL",.sym "*FN2-NONE*"),("CTL-GEN",.int 0),("EDGE",.sym "*FN2-NONE*"),
+   ("TXN",.sym "*FN2-NONE*"),("TXN-GEN",.int 0),("UPLOAD",.sym "*FN2-NONE*"),("UPLOAD-GEN",.int 0),
+   ("TX-SLOT",.sym "*FN2-NONE*"),("TX-GEN",.int 0),("NEXT-FREE",.sym "NEXT"),("WAIT-REASON",.sym "*FN2-WAIT-NONE*")]
+def cleanupNext : Expr := form ":IF" [.sym "RETIRE",.sym ":RETIRED",.sym ":FREE"]
+def releaseCall : Call := ⟨"FN2-CNS-LEASE-RELEASE",[.sym "ROW-LSLOT",.sym "ROW-LGEN"],[]⟩
+def reclaimCall : Call := ⟨"FN2-CNS-RECLAIM",[.sym "ID",.sym "*FN2-CNS-ADMISSION-ORDINAL*",.sym "RETIRE"],[]⟩
+def leaseSteps : List Step :=
+  [.do_ ["LC"] releaseCall true [.sym ":OK",.sym ":RETIRED"] none [] [],
+   .set leasePending,.charge none (some (.sym "*FN2-WORK-TRANSITION*")) none (some Val.t)]
+def cleanupSteps : List Step :=
+  [.let_ "NEXT" (form "FN2-MACHINE-FREE-HEAD" [.sym "*FN2-CNS-ADMISSION-ORDINAL*"]),
+   .let_ "RETIRE" (form ">=" [.sym "ROW-GENERATION",form "FN2-MACHINE-GEN-LIMIT" []]),
+   .set cleanupPending,.next cleanupNext,
+   .do_ [] reclaimCall false [] none [] [],
+   .charge none (some (.sym "*FN2-WORK-RELEASE*")) none none]
+def drainingSteps : List Step :=
+  [.cond [(form "EQUAL" [.sym "ROW-LEASE",.sym "*FN2-CNS-LEASE-HELD*"],leaseSteps),(Val.t,cleanupSteps)]]
+
+theorem draining_read_by_definition :
+    draining.read = .ok ⟨[],[.stop "MACHINE-PHASE" none],drainingSteps⟩ := by
+  with_unfolding_all rfl
+
+def drainState (id slot budget : Val) (kids : Fin @CORE_SIZE@ → Val) : St :=
+  { stobjs := coreTuple.zip @IMAGE_VALUES@,
+    vars := @IMAGE_ROWS@ ++ drainBase id slot budget }
+
+theorem drain_entry (fuel : Nat) (id slot budget : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    runArm (coreWorld world coreTuple) (coreKind cns coreTuple) draining false
+      ([id,slot,.int 11,.int 6,budget] ++ @IMAGE_VALUES@) fuel =
+    (do match ← run (coreWorld world coreTuple) (drainFrame id slot budget) fuel
+          (drainState id slot budget kids) drainingSteps with
+        | .done v => pure v
+        | .again _ => throw ":repeat-next outside a :repeat") := by
+  unfold runArm
+  simp only [coreKind, Bool.not_true, Bool.false_eq_true, ↓reduceIte, List.length_append,
+    List.length_cons, List.length_nil]
+  have hl : coreTuple.length = @CORE_SIZE@ := by rfl
+  simp only [hl]
+  change (do
+    let reads ← rowReads (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (coreTuple.zip @IMAGE_VALUES@) id slot
+    let d ← draining.read
+    let f : Frame := { kind := coreKind cns coreTuple, observe := false, refusal := d.onRefusal, base := drainBase id slot budget }
+    match ← run (coreWorld world coreTuple) f fuel
+      { stobjs := coreTuple.zip @IMAGE_VALUES@, vars := reads ++ f.base } d.steps with
+    | .done v => pure v
+    | .again _ => throw ":repeat-next outside a :repeat") = _
+  rw [cns_row_reads, draining_read_by_definition]
+  rfl
+
+theorem ev_var_of_read (st : St) (name : String) (value : Val)
+    (hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple) (.sym name) = .ok (.var name))
+    (hv : (st.vars ++ st.stobjs).get? name = some value) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym name) = .ok value := by
+  simp only [ev, hr, except_ok_bind, Term.eval, hv]
+
+theorem ev_quote_of_read (st : St) (e : Expr) (value : Val)
+    (hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple) e = .ok (.quote value)) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st e = .ok value := by
+  simp only [ev, hr, except_ok_bind, Term.eval]
+
+theorem ev_lease_test (st : St) (lease : Val)
+    (hv : (st.vars ++ st.stobjs).get? "ROW-LEASE" = some lease) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (form "EQUAL" [.sym "ROW-LEASE",.sym "*FN2-CNS-LEASE-HELD*"]) =
+      .ok (Prim.equal lease (.int 1)) := by
+  have hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (form "EQUAL" [.sym "ROW-LEASE",.sym "*FN2-CNS-LEASE-HELD*"]) =
+      .ok (.app "EQUAL" [.var "ROW-LEASE",.quote (.int 1)]) := by with_unfolding_all rfl
+  simp only [ev, hr, except_ok_bind]
+  rw [Term.eval.eq_5 _ _ "EQUAL" _ (by simp) (by simp)]
+  simp only [Term.eval, List.attach_cons, List.attach_nil, List.map_cons, List.map_nil, List.mapM_cons, List.mapM_nil, hv, except_ok_bind]
+  rfl
+
+theorem eval_gen_limit (env : Env) (dir : Val) (hd : env.get? "FN2-MACHINES" = some dir) :
+    Term.eval (coreWorld world coreTuple).fns env (.app "FN2-MACHINES-GEN-LIMIT" [.var "FN2-MACHINES"]) =
+      .ok («FN2-MACHINES-GEN-LIMIT» dir) := by
+  rw [Term.eval.eq_5 _ _ "FN2-MACHINES-GEN-LIMIT" _ (by simp) (by simp)]
+  simp only [Term.eval, List.attach_cons, List.attach_nil, List.map_cons, List.map_nil, List.mapM_cons, List.mapM_nil,
+    hd, except_ok_bind]
+  have hf : "FN2-MACHINES-GEN-LIMIT".endsWith "@CORE" = false := by decide +kernel
+  simpa only [coreWorld, coreFns, hf, Bool.false_eq_true, if_false] using
+    (Fn2.Instances.CoreWorld.«FN2-MACHINES-GEN-LIMIT».dispatched
+      (err := "no function FN2-MACHINES-GEN-LIMIT of arity 1") dir)
+
+theorem ev_free_head (st : St) (dir : Val)
+    (ho : (st.vars ++ st.stobjs).get? "ORDINAL" = some (.int 6))
+    (hd : (st.vars ++ st.stobjs).get? "FN2-MACHINES" = some dir) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (form "FN2-MACHINE-FREE-HEAD" [.sym "*FN2-CNS-ADMISSION-ORDINAL*"]) =
+      .ok («FN2-MACHINES-FREE-HEAD-OF» (.int 6) dir) := by
+  have hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (form "FN2-MACHINE-FREE-HEAD" [.sym "*FN2-CNS-ADMISSION-ORDINAL*"]) =
+      .ok (.app "FN2-MACHINES-FREE-HEAD-OF" [.var "ORDINAL",.var "FN2-MACHINES"]) := by with_unfolding_all rfl
+  simp only [ev, hr, except_ok_bind]
+  rw [Term.eval.eq_5 _ _ "FN2-MACHINES-FREE-HEAD-OF" _ (by simp) (by simp)]
+  simp only [Term.eval, List.attach_cons, List.attach_nil, List.map_cons, List.map_nil, List.mapM_cons, List.mapM_nil, ho, hd, except_ok_bind]
+  have hf : "FN2-MACHINES-FREE-HEAD-OF".endsWith "@CORE" = false := by decide +kernel
+  simpa only [coreWorld, coreFns, hf, Bool.false_eq_true, if_false] using
+    (Fn2.Instances.CoreWorld.«FN2-MACHINES-FREE-HEAD-OF».dispatched
+      (err := "no function FN2-MACHINES-FREE-HEAD-OF of arity 2") (.int 6) dir)
+
+/-- Reconstruct the full parent while replacing exactly the operation's children. -/
+def patchKids (kids : Fin @CORE_SIZE@ → Val) (pool dir control own : Val) : Fin @CORE_SIZE@ → Val := fun i =>
+  if i.val = 0 then pool else if i.val = 3 then dir else if i.val = 5 then control
+  else if i.val = 17 then own else kids i
+
+theorem release_result_shape (slot gen kind id generation pool control : Val) :
+    let r := «FN2-CORE-RELEASE-CHILDREN» slot gen kind id generation pool control
+    r = Val.ofList [r.car,r.cdr.car,r.cdr.cdr.car] := by rfl
+
+theorem reclaim_result_shape (id ord retire dir control : Val) :
+    let r := «FN2-MACHINES-RECLAIM» id ord retire dir control
+    r = Val.ofList [r.car,r.cdr.car] := by
+  dsimp only
+  unfold «FN2-MACHINES-RECLAIM»
+  simp only [«FN2-MACHINES-STOP-WRITE»]
+  repeat' first | rfl | split
+
+theorem release_adapter (slot gen id generation : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    let r := «FN2-CORE-RELEASE-CHILDREN» slot gen (.int 11) id generation (kids ⟨0,by decide⟩) (kids ⟨5,by decide⟩)
+    «FN2-CNS-LEASE-RELEASE» slot gen (.int 11) id generation (coreImage kids) =
+      Val.ofList [r.car, coreImage (patchKids kids r.cdr.car (kids ⟨3,by decide⟩) r.cdr.cdr.car (kids ⟨17,by decide⟩))] := by rfl
+
+theorem reclaim_adapter (id retire : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    let r := «FN2-MACHINES-RECLAIM» id (.int 6) retire (kids ⟨3,by decide⟩) (kids ⟨5,by decide⟩)
+    «FN2-CNS-RECLAIM» id (.int 6) retire (coreImage kids) =
+      coreImage (patchKids kids (kids ⟨0,by decide⟩) r.car r.cdr.car (kids ⟨17,by decide⟩)) := by
+  have h0 (r : Val) : Native.nth (.int 0) r = r.car := by cases r <;> rfl
+  have h1 (r : Val) : Native.nth (.int 1) r = r.cdr.car := by
+    cases r <;> first | rfl | exact h0 _
+  dsimp only
+  unfold «FN2-CNS-RECLAIM»
+  simp only [h0, h1]
+  rfl
+
+theorem snapshot_pool_control_frame (id pool control : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    «FN2-CNS-SNAPSHOT-READ-CODE» id
+      (coreImage (patchKids kids pool (kids ⟨3,by decide⟩) control (kids ⟨17,by decide⟩))) =
+    «FN2-CNS-SNAPSHOT-READ-CODE» id (coreImage kids) := by rfl
+
+theorem slot_pool_control_frame (id pool control : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    «FN2-MACHINE-SLOT» id
+      (coreImage (patchKids kids pool (kids ⟨3,by decide⟩) control (kids ⟨17,by decide⟩))) =
+    «FN2-MACHINE-SLOT» id (coreImage kids) := by rfl
+
+theorem flush_lease (id slot budget own dir control : Val) (st : St)
+    (hp : st.pending = leasePending) (hn : st.next = none)
+    (hi : var st "ID" = .ok id) (hs : var st "SLOT" = .ok slot)
+    (ho : stobj st "FN2-CNS" = .ok own) (hd : stobj st "FN2-MACHINES" = .ok dir)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hb : natLt slot («FN2-CNS-ROWS» own) = true) :
+    flush (coreWorld world coreTuple) (drainFrame id slot budget) st =
+    .ok { (setStobj (setStobj st "FN2-CNS" (leaseOwn slot own)) "FN2-MACHINES" dir)
+      with pending := [], next := none, nextDone := st.nextDone } := by
+  have e0 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (.sym "*FN2-CNS-LEASE-NONE*") = .ok (.int 0) :=
+    ev_quote_of_read st _ _ (by with_unfolding_all rfl)
+  have en : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (.sym "*FN2-NONE*") = .ok (.int 4294967295) :=
+    ev_quote_of_read st _ _ (by with_unfolding_all rfl)
+  have ez : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.int 0) = .ok (.int 0) :=
+    ev_quote_of_read st _ _ (by rfl)
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  simp only [flush, hp, hn, hk, leasePending, List.mapM_cons, List.mapM_nil,
+    e0, en, ez, except_ok_bind]
+  change (do
+    let st' ← put (coreWorld world coreTuple) (drainFrame id slot budget) st leasePairs
+    pure { st' with pending := [], next := none, nextDone := st.nextDone || false }) = _
+  rw [lease_put id slot budget own dir control st hi hs ho hd hc hb]
+  simp only [except_ok_bind, Bool.or_false]
+  rfl
+
+end Fn2.Arms.CoreValidation
