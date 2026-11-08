@@ -62,7 +62,7 @@
     (:observe fn2-ctl :borrow-released) (:observe fn2-ctl :close-result) (:run fn2-cns :free)
     (:run fn2-cns :decode) (:run fn2-cns :check) (:run fn2-cns :lookup) (:run fn2-cns :read)
     (:run fn2-cns :page) (:run fn2-cns :fetch) (:run fn2-cns :park) (:run fn2-cns :commit)
-    (:run fn2-cns :append) (:run fn2-cns :draining) (:run fn2-cns :retired)
+    (:run fn2-cns :committed) (:run fn2-cns :append) (:run fn2-cns :draining) (:run fn2-cns :retired)
     (:observe fn2-cns :read-result) (:run fn2-auth :free) (:run fn2-auth :decode)
     (:run fn2-auth :lookup) (:run fn2-auth :allocate) (:run fn2-auth :bhead)
     (:run fn2-auth :outcome) (:run fn2-auth :head) (:run fn2-auth :get) (:run fn2-auth :ready)

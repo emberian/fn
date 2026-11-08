@@ -140,6 +140,10 @@
      (with-local-stobj fn2-core
        (mv-let (ok fn2-core)
          (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              ;; register and the advancing ack are B members: B's writer epoch begun
+              ((mv & fn2-core)
+               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
               (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
               ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
               ((unless (eq acode :ok)) (mv nil fn2-core))

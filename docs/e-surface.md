@@ -675,8 +675,10 @@ pending work) land with the served verb each exercises.
    13) answers the occurrence's stored octets when its Message-ID is the request's and they fit one reply,
    `withdrawn`, else `unavailable` (never another selection). Owed: an item's streams and reasons (the one
    served query is the inbox), fetch of an article larger than one reply (frames past the receive window),
-   max-octets, append's Message-ID in its result, fncu v2 issuance past u32 counters, the cns callbacks' transaction slot (successor slot 0 in
-   commit-register, commit-ack and stage-ack-slot). Interim rulings (deputy, 2026-11-05), each owed its full form:
+   max-octets, append's Message-ID in its result, fncu v2 issuance past u32 counters. Register and an advancing ack
+   are B members (`:commit`, `:committed`; the `:commit` word, machine-arms.lisp): each request row owns its
+   successor write transaction (`fn2-cns-successor`, the profile's `fn2-txn-consumer-share`) and a class-0
+   workspace, and answers the cursor the published ledger records after B settled it. Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
    `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
    and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
