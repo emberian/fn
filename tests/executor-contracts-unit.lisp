@@ -75,3 +75,46 @@
                            (fn2-executor-rel fn2-ect-no-service-rel)))
             :in-theory (disable fn2-corep fn2-core-wfp fn2-turn fn2-ect-service-ready)
             :do-not-induct t))))
+
+;; THE DISPATCH FRAME's controls (assembly-dispatch.lisp). A connection kind
+;; holds no batch membership, so its stub's frame excludes the commit table:
+;; an attachment writing a commit row's reply count is refused by name, and
+;; its defattach fails the stub's -ARM-KIDS constraint, while a refusing
+;; attachment outside the commit children is accepted by both.
+(set-prover-step-limit nil)
+(defun fn2-ect-refuser (id budget fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-machine-idp id fn2-core)
+                              (equal (fn2-machine-kind id fn2-core) *fn2-conn-kind*)))
+           (ignore budget))
+  (fn2-machine-refuse-phase id fn2-core))
+(fn2-core-preserves fn2-ect-refuser (id budget fn2-core) :position 4 :rows nil)
+(defun fn2-ect-commit-writer (id budget fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-machine-idp id fn2-core)
+                              (equal (fn2-machine-kind id fn2-core) *fn2-conn-kind*)))
+           (ignore budget))
+  (let ((fn2-core (fn2-commit-write+cb-acks id 1 fn2-core)))
+    (fn2-machine-refuse-phase id fn2-core)))
+(fn2-core-preserves fn2-ect-commit-writer (id budget fn2-core) :position 4 :rows nil)
+(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-refuser fn2-ect-commit-writer) 'fn2-conn (w state) nil 64)
+                                              'fn2-conn))))
+(assert-event (let ((e (fn2-dispatch-frame-children 'fn2-conn (w state))))
+                (and (not (member 9 e)) (member 9 (fn2-dispatch-frame-children 'fn2-txn (w state)))
+                     (member 9 (cdr (assoc-equal '(fn2-conn . fn2-ect-commit-writer) (table-alist 'fn2-dc-kids (w state))))))))
+(make-event (fn2-dispatch-attach-check 'fn2-conn 'fn2-ect-refuser (fn2-dispatch-frame-children 'fn2-conn (w state)) state))
+(must-fail
+ (make-event (fn2-dispatch-attach-check 'fn2-conn 'fn2-ect-commit-writer (fn2-dispatch-frame-children 'fn2-conn (w state)) state)))
+(make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-refuser fn2-ect-commit-writer) 'fn2-conn))))
+(make-event (value (fn2-dispatch-attach-kids 'fn2-ect-refuser 4 '(id budget fn2-core)
+                                             (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn (w state))))
+(in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir))
+(defattach (fn2-conn-run-stub fn2-ect-refuser)
+           (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
+           (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
+           (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default))
+(must-fail
+ (defattach (fn2-conn-run-stub fn2-ect-commit-writer)
+            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
+            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
+            (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
