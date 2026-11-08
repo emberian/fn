@@ -6426,7 +6426,17 @@
                   (and (equal (fn2-pool-state r q) (fn2-pool-state r p))
                        (equal (fn2-pool-owner-slot r q) (fn2-pool-owner-slot r p))
                        (equal (fn2-pool-cap r q) (fn2-pool-cap r p))))))
-  :hints (("Goal" :in-theory (enable fn2-pool-reserve fn2-pool-set-gen update-fn2-pool-gen$ai fn2-pool-gen fn2-pool-gen$ai fn2-pool-set-base update-fn2-pool-base$ai fn2-pool-base fn2-pool-base$ai fn2-pool-set-cap update-fn2-pool-cap$ai fn2-pool-cap fn2-pool-cap$ai fn2-pool-set-state update-fn2-pool-state$ai fn2-pool-state fn2-pool-state$ai fn2-pool-set-owner-kind update-fn2-pool-owner-kind$ai fn2-pool-owner-kind fn2-pool-owner-kind$ai fn2-pool-set-owner-slot update-fn2-pool-owner-slot$ai fn2-pool-owner-slot fn2-pool-owner-slot$ai fn2-pool-set-owner-gen update-fn2-pool-owner-gen$ai fn2-pool-owner-gen fn2-pool-owner-gen$ai fn2-pool-set-lease-op-slot update-fn2-pool-lease-op-slot$ai fn2-pool-lease-op-slot fn2-pool-lease-op-slot$ai fn2-pool-set-lease-op-gen update-fn2-pool-lease-op-gen$ai fn2-pool-lease-op-gen fn2-pool-lease-op-gen$ai fn2-pool-set-lease-off update-fn2-pool-lease-off$ai fn2-pool-lease-off fn2-pool-lease-off$ai fn2-pool-set-lease-len update-fn2-pool-lease-len$ai fn2-pool-lease-len fn2-pool-lease-len$ai fn2-pool-set-out-count update-fn2-pool-out-count$ai fn2-pool-out-count fn2-pool-out-count$ai fn2-pool-set-fill update-fn2-pool-fill$ai fn2-pool-fill fn2-pool-fill$ai fn2-pool-set-hand-to-kind update-fn2-pool-hand-to-kind$ai fn2-pool-hand-to-kind fn2-pool-hand-to-kind$ai fn2-pool-set-hand-to-slot update-fn2-pool-hand-to-slot$ai fn2-pool-hand-to-slot fn2-pool-hand-to-slot$ai fn2-pool-set-hand-to-gen update-fn2-pool-hand-to-gen$ai fn2-pool-hand-to-gen fn2-pool-hand-to-gen$ai fn2-pool-set-next-free update-fn2-pool-next-free$ai fn2-pool-next-free fn2-pool-next-free$ai fn2-pool-set-class update-fn2-pool-class$ai fn2-pool-class fn2-pool-class$ai update-nth-array))))
+  ; D26: open only the setters fn2-pool-reserve's put writes and the readers
+  ; the statement names; the class lists and the row's other readers stay
+  ; closed (8.4 s -> 1.0 s)
+  :hints (("Goal" :in-theory (e/d (fn2-pool-reserve fn2-pool-set-state update-fn2-pool-state$ai fn2-pool-state fn2-pool-state$ai
+                                   fn2-pool-set-owner-kind update-fn2-pool-owner-kind$ai fn2-pool-set-owner-slot
+                                   update-fn2-pool-owner-slot$ai fn2-pool-owner-slot fn2-pool-owner-slot$ai
+                                   fn2-pool-set-owner-gen update-fn2-pool-owner-gen$ai fn2-pool-set-out-count
+                                   update-fn2-pool-out-count$ai fn2-pool-set-fill update-fn2-pool-fill$ai
+                                   fn2-pool-base fn2-pool-base$ai fn2-pool-cap fn2-pool-cap$ai update-nth-array)
+                                  (fn2-pool-gen fn2-pool-next-free fn2-pool-class fn2-pool-out-count fn2-pool-mrefp
+                                   fn2-pool-class-headsi fn2-pool-class-countsi fn2-pool-nclasses)))))
 (defthm fn2-env-pool-release-keeps
   ; a release writes no octet, moves no row, and leaves every row but a
   ; workspace the releaser owns
