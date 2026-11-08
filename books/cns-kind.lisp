@@ -24,7 +24,7 @@
  :profilep (fn2-cns-edges-profilep profile)
  :why "A parked consumer wait's subscription edges and the streams' wake buckets (D8's rows, e-surface 7): survive the waiter's park until its wake or cancel.")
 
-(defwait :wait-row :ready fn2-cns-wait-ready-p :grant fn2-cns-wait-grant-one
+(defwait :wait-row :ready fn2-cns-wait-ready-p :grant fn2-cns-wait-grant-one :tables (fn2-core-machines fn2-core-cns-edges)
  :doc "A consumer wait parked on its stream's edge, woken once the publish hook pushed its bucket.")
 
 (defmacro fn2-cns-wait-events ()
@@ -52,7 +52,9 @@
                                       (fn2-machines (fn2-core-machines fn2-core))
                                       (fn2-control (fn2-core-control fn2-core)))))))
    (in-theory (disable fn2-cns-core-ready fn2-cns-core-grant))
-   (defattach (fn2-cns-wait-ready-p fn2-cns-core-ready) (fn2-cns-wait-grant-one fn2-cns-core-grant))))
+   (fn2-wait-attach :wait-row fn2-cns-core-grant)
+   (defattach (fn2-cns-wait-ready-p fn2-cns-core-ready) (fn2-cns-wait-grant-one fn2-cns-core-grant)
+    :hints (("Goal" :use ((:instance fn2-cns-core-grant-live) (:instance fn2-cns-core-grant-wait-kids) (:instance fn2-cns-core-grant-wait-directory)))))))
 
 ;; A control connection's one range holds its frames (at most this many
 ;; octets a receive or send) and, after a request, the reply the request row

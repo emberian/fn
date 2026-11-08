@@ -209,6 +209,9 @@
         (mv w fn2-cns-edges fn2-machines fn2-control)))))
 (fn2-cns-edges-preserves fn2-cns-grant-one-gen (row-gen fn2-cns-edges fn2-machines fn2-control)
   :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL")))
+;; the grant clears a wait reason: the directory's kinds, slots and rows stay
+(make-event `(fn2-machines-keeps-directory fn2-cns-grant-one-gen (row-gen fn2-cns-edges fn2-machines fn2-control) 2 nil
+                                           ,(fn2-machines-keeps-directory-hints 'fn2-cns-grant-one-gen (w state))))
 
 (defun fn2-cns-grant-one (fn2-cns-edges fn2-machines fn2-control)
   ; the :wait-row grant source: the next waiter, its :wait-row wait cleared
@@ -219,6 +222,8 @@
     (fn2-cns-grant-one-gen g fn2-cns-edges fn2-machines fn2-control)))
 (fn2-cns-edges-preserves fn2-cns-grant-one (fn2-cns-edges fn2-machines fn2-control)
   :carriers ((fn2-cns-edges 1) (fn2-machines 2 :prefix "-MACHINES") (fn2-control 3 :prefix "-CONTROL")))
+(make-event `(fn2-machines-keeps-directory fn2-cns-grant-one (fn2-cns-edges fn2-machines fn2-control) 2 nil
+                                           ,(fn2-machines-keeps-directory-hints 'fn2-cns-grant-one (w state))))
 ;; The defwait pair's G-LIVE at the child level: a ready source grants a row.
 (defthm fn2-cns-grant-one-live
   (implies (fn2-cns-ready-p fn2-cns-edges)

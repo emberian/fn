@@ -909,7 +909,10 @@
  :rule-classes :type-prescription
  :hints (("Goal" :in-theory (e/d (fn2-commit-batchable-grant) (fn2-commit-batchable-ready fn2-machine-write-wait-reason)))))
 (in-theory (disable fn2-commit-batch-waiter fn2-commit-batchable-ready fn2-commit-batchable-grant))
-(defattach (fn2-batchable-ready-p fn2-commit-batchable-ready) (fn2-batchable-grant-one fn2-commit-batchable-grant))
+; the grant's frame within the defwait's :tables (machines.lisp fn2-wait-attach)
+(fn2-wait-attach :batch-membership fn2-commit-batchable-grant)
+(defattach (fn2-batchable-ready-p fn2-commit-batchable-ready) (fn2-batchable-grant-one fn2-commit-batchable-grant)
+ :hints (("Goal" :use ((:instance fn2-commit-batchable-grant-live) (:instance fn2-commit-batchable-grant-wait-kids) (:instance fn2-commit-batchable-grant-wait-directory)))))
 (defun fn2-commit-root-edge (id install fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
