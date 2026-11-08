@@ -93,3 +93,49 @@
     (if (equal ,manifest (fn2-tv-manifest (w state)))
         '(value-triple :export-matches-live-assembly)
       (er soft 'fn2-tv-check-manifest "Export differs from the live assembly."))))
+
+; The arm denominator is reconstructed from the live declarations. A proposal
+; cannot obtain a larger coverage fraction by omitting a difficult arm.
+(defun fn2-tv-declared (kind key world)
+  (declare (xargs :verify-guards nil))
+  (let ((late (cdr (assoc-eq kind (table-alist 'fn2-machine-arm-bodies world)))))
+    (cadr (member-eq key (if (member-eq key late) late
+                          (cdr (assoc-eq kind (table-alist 'fn2-machine-kinds world))))))))
+
+(defun fn2-tv-arm-name (kind infix tag)
+  (declare (xargs :verify-guards nil))
+  (intern-in-package-of-symbol
+   (concatenate 'string (symbol-name kind) infix (symbol-name tag)) 'fn2-core))
+
+(defun fn2-tv-arm-entries (kind area infix entries children world)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) nil
+    (let* ((entry (car entries))
+           (core (fn2-tv-arm-name kind infix (car entry)))
+           (fn (if children (fn2-tv-arm-name core "-" 'children) core)))
+      (cons (list kind area (car entry) (if children :children :core) fn core
+                  (cdr entry) (cdr (assoc-eq fn (table-alist 'fn2-arms-child-sigs world))))
+            (fn2-tv-arm-entries kind area infix (cdr entries) children world)))))
+
+(defun fn2-tv-arm-inventory-aux (kinds world)
+  (declare (xargs :verify-guards nil))
+  (if (atom kinds) nil
+    (let* ((kind (caar kinds)) (arms (fn2-tv-declared kind :arms world))
+           (children (and (consp arms)
+                          (function-symbolp
+                           (fn2-tv-arm-name (fn2-tv-arm-name kind "-RUN-" (caar arms))
+                                            "-" 'children) world))))
+      (append (fn2-tv-arm-entries kind :subarms "-SUB-" (fn2-tv-declared kind :subarms world) children world)
+              (fn2-tv-arm-entries kind :arms "-RUN-" arms children world)
+              (fn2-tv-arm-entries kind :observe-arms "-ON-" (fn2-tv-declared kind :observe-arms world) children world)
+              (fn2-tv-arm-inventory-aux (cdr kinds) world)))))
+
+(defun fn2-tv-arm-inventory (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-tv-arm-inventory-aux (reverse (table-alist 'fn2-machine-kinds world)) world))
+
+(defmacro fn2-tv-check-arm-inventory (inventory)
+  `(make-event
+    (if (equal ,inventory (fn2-tv-arm-inventory (w state)))
+        '(value-triple :export-matches-complete-arm-inventory)
+      (er soft 'fn2-tv-check-arm-inventory "Arm inventory is incomplete or differs from the live world."))))

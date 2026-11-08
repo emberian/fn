@@ -427,3 +427,47 @@
                 (*print-base* 10) (*print-radix* nil) (*print-escape* t))
             (prin1 package out) (terpri out)))
         (format t "~&FN2-META-CERTIFICATE PASS ~a~%" path)))))
+
+; Registry-wide package: no selected-kind or selected-arm allowlist. The
+; ordinary world printer and canonical printer share the same declared closure.
+(defun meta-print-served-certificate (path)
+  (let* ((embed (meta-embed))
+         (get (lambda (key) (cadr (assoc key (cdr embed)))))
+         (inventory (fn2-tv-arm-inventory *meta-w*))
+         (boundary
+          (sort (loop for s being the symbols of (find-package "ACL2")
+                      when (and (eq (symbol-package s) (find-package "ACL2"))
+                                (function-symbolp s *meta-w*)
+                                (let ((n (symbol-name s)))
+                                  (and (>= (length n) 9) (string= "FN2-HOST-" n :end2 9))))
+                      collect s) #'string< :key #'symbol-name))
+         (roots (remove-duplicates
+                 (append (loop for row in inventory append (list (fifth row) (sixth row)))
+                         boundary '(fn2-turn)
+                         (mapcar #'car (funcall get :functions))))))
+    (multiple-value-bind (order refused) (meta-closure roots)
+      (let ((package
+             (list :fn2-served-certificate :version 1
+                   :toolchain (fn2-tv-object (list (acl2-version+) (lisp-implementation-type)
+                                                  (lisp-implementation-version)))
+                   :manifest (fn2-tv-manifest *meta-w*)
+                   :arm-inventory (fn2-tv-object inventory)
+                   :boundary-roots (fn2-tv-object (append boundary '(fn2-turn)))
+                   :roots (mapcar #'fn2-tv-object roots)
+                   :kinds (fn2-tv-object (funcall get :kinds))
+                   :operations (fn2-tv-object (funcall get :operations))
+                   :operation-declarations (fn2-tv-object
+                     (mapcar (lambda (op) (cons (car op) (fn2-arms-op-row (car op) *meta-w*)))
+                             (funcall get :operations)))
+                   :waits (fn2-tv-object (table-alist 'fn2-waits *meta-w*))
+                   :constants (fn2-tv-object (funcall get :constants))
+                   :functions (mapcar (lambda (f) (fn2-tv-function f *meta-w*)) order)
+                   :natives (mapcar #'fn2-tv-object *meta-natives*)
+                   :refused (mapcar #'fn2-tv-object refused))))
+        (with-open-file (out path :direction :output :if-exists :supersede)
+          (let ((*package* (find-package "ACL2")) (*print-case* :upcase)
+                (*print-pretty* nil) (*print-length* nil) (*print-level* nil)
+                (*print-base* 10) (*print-radix* nil) (*print-escape* t))
+            (prin1 package out) (terpri out)))
+        (format t "~&FN2-META-SERVED-CERTIFICATE PASS ~a ~d arms ~d functions ~d refused~%"
+                path (length inventory) (length order) (length refused))))))
