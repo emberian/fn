@@ -254,6 +254,29 @@
 (assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest*))
 (assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest-fua*))
 
+;; J6L ON LIVE RUNS: after every action of both honest runs each row's
+;; roles hold three pool rows at their units' generations, and a live
+;; role's row is leased out (expected nil: no action breaks it).
+(defun fn2-cda-j6l-trace (actions i ids rlog fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let ((rlog (if entry (cons entry rlog) rlog)) (ok (fn2-env-j6l-rows ids fn2-core)))
+        (mv-let (bad fn2-core) (fn2-cda-j6l-trace (cdr actions) (+ 1 i) ids rlog fn2-core)
+          (mv (if ok bad (cons i bad)) fn2-core))))))
+(defun fn2-cda-j6l-scenario (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             ((mv bad fn2-core) (fn2-cda-j6l-trace actions 0 (fn2-env-commit-ids profile) nil fn2-core)))
+          (mv (list (len actions) bad) fn2-core))
+        result))))
+(assert-event (let ((r (fn2-cda-j6l-scenario 0))) (and (< 100 (car r)) (null (cadr r)))))
+(assert-event (let ((r (fn2-cda-j6l-scenario 1))) (and (< 100 (car r)) (null (cadr r)))))
+
 ;; THE J5 CONTROL: what J5 carries that FN2-ENV-DUR-INV does not. Stop the
 ;; mode-0 run when the first row's role-0 write is posted and unharvested,
 ;; and cut one octet from that write's take in the log (a device log whose
