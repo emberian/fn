@@ -6028,6 +6028,184 @@
            :in-theory (union-theories '(fn2-env-step fn2-env-loan-write fn2-env-fill fn2-env-j5-row-of-update-fn2-core-pool
                                         (:e equal) (:e zp) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
                                       (theory 'minimal-theory)))))
+;; J6 ACROSS POOL WRITES. J6 reads a role's 4096 octets at its pool row's
+;; base (fn2-env-pool-octets); inside a carved extent of a semantic pool that
+;; is the prefix of the extent's logical octets (FN2-ENV-POOL-OCTETS-IN-EXTENT),
+;; the octets FN2-CORE-POOL-WRITE-FRAME and FN2-POOL-CONSERVATION speak of.
+;; J6P: through the write phases each role's pool row is a workspace or
+;; lent row owned by the commit row and at least a unit long. A loan's fill
+;; writes only a leased-in row (fn2-pool-adapter-write's input check), so it
+;; keeps every role's row and octets (FN2-ENV-FILL-KEEPS-ROLE) and the pool
+;; semantic, and :loan-write keeps J5, J6 and J6P (FN2-ENV-J5-ROWS-LOAN-WRITE-STEP).
+(defthm fn2-env-pool-octets-is-logical
+  (implies (and (natp addr) (<= (+ addr (nfix n)) (fn2-pool-data-length fn2-pool)))
+           (equal (fn2-env-pool-octets n addr fn2-pool) (fn2-pool-logical-octets n addr fn2-pool)))
+  :hints (("Goal" :induct (fn2-env-pool-octets n addr fn2-pool))))
+(defun fn2-env-two-down (k n b)
+  (declare (xargs :verify-guards nil :measure (nfix k)))
+  (if (zp k) (list n b) (fn2-env-two-down (- k 1) (- n 1) (+ 1 b))))
+(defthm fn2-env-logical-octets-prefix
+  (implies (and (natp k) (natp n) (<= k n))
+           (equal (fn2-pool-logical-octets k b fn2-pool) (take k (fn2-pool-logical-octets n b fn2-pool))))
+  :hints (("Goal" :induct (fn2-env-two-down k n b))))
+(defthm fn2-env-pool-octets-in-extent
+  ; inside a carved extent, J6's reader is a prefix of the extent's logical octets
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp s) (< s (fn2-pool-rows fn2-pool))
+                (natp k) (<= k (fn2-pool-cap s fn2-pool)))
+           (equal (fn2-env-pool-octets k (fn2-pool-base s fn2-pool) fn2-pool)
+                  (take k (fn2-pool-logical-octets (fn2-pool-cap s fn2-pool) (fn2-pool-base s fn2-pool) fn2-pool))))
+  :hints (("Goal" :in-theory '(natp nfix (:type-prescription fn2-pool-base))
+           :do-not-induct t
+           :use ((:instance fn2-pool-semanticp-row-bounds (i s))
+                 (:instance fn2-env-pool-octets-is-logical (n k) (addr (fn2-pool-base s fn2-pool)))
+                 (:instance fn2-env-logical-octets-prefix (n (fn2-pool-cap s fn2-pool)) (b (fn2-pool-base s fn2-pool)))))))
+(defun fn2-env-pool-row (s fn2-core)
+  ; (VALID STATE OWNER-SLOT CAP) of pool row S
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (r)
+    (if (and (natp s) (< s (fn2-pool-rows fn2-pool)))
+        (list t (fn2-pool-state s fn2-pool) (fn2-pool-owner-slot s fn2-pool) (fn2-pool-cap s fn2-pool))
+      (list nil))
+    r))
+(defun fn2-env-role-pool-ok (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((r (fn2-env-pool-row (nth 4 (fn2-env-role-io id role fn2-core)) fn2-core)))
+    (and (nth 0 r)
+         (member-equal (nth 1 r) (list *fn2-pool-state-workspace* *fn2-pool-state-leased-out*))
+         (equal (nth 2 r) id) (natp (nth 3 r)) (<= *fn2-commit-unit-bytes* (nth 3 r)))))
+(defun fn2-env-j6p-row (id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (and (fn2-commit-idp id fn2-core)
+                (member-equal (fn2-machine-phase id fn2-core)
+                              (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*
+                                    *fn2-commit-state-fence*)))
+           (and (fn2-env-role-pool-ok id 0 fn2-core) (fn2-env-role-pool-ok id 1 fn2-core)
+                (fn2-env-role-pool-ok id 2 fn2-core))))
+(defthm fn2-env-role-octets-of-extent
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-role-pool-ok id role c))
+           (equal (fn2-env-role-octets id role c)
+                  (take *fn2-commit-unit-bytes* (fn2-core-pool-extent (nth 4 (fn2-env-role-io id role c)) c))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-role-octets fn2-env-role-pool-ok fn2-env-pool-row fn2-core-pool-semanticp
+                                   fn2-core-pool-extent)
+                                  (fn2-env-role-io fn2-env-pool-octets fn2-pool-logical-octets fn2-pool-semanticp))
+           :use ((:instance fn2-env-pool-octets-in-extent (fn2-pool (fn2-core-pool c))
+                            (s (nth 4 (fn2-env-role-io id role c))) (k *fn2-commit-unit-bytes*))))))
+(defthm fn2-env-adapter-write-row-extent
+  (implies (and (fn2-pool-semanticp p) (natp r) (< r (fn2-pool-rows p))
+                (not (equal (fn2-pool-state r p) *fn2-pool-state-leased-in*)))
+           (equal (fn2-pool-logical-octets (fn2-pool-cap r p) (fn2-pool-base r p)
+                                           (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte p)))
+                  (fn2-pool-logical-octets (fn2-pool-cap r p) (fn2-pool-base r p) p)))
+  :hints (("Goal" :cases ((equal slot r)) :in-theory (disable fn2-pool-semanticp fn2-pool-logical-octets fn2-pool-adapter-write))
+          ("Subgoal 2" :use ((:instance fn2-pool-adapter-write-other-extent (other r) (fn2-pool p))))
+          ("Subgoal 1" :in-theory (e/d (fn2-pool-adapter-write fn2-pool-input-code) (fn2-pool-semanticp fn2-pool-logical-octets)))))
+(defthm fn2-env-adapter-write-row-meta
+  (let ((q (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte p))))
+    (and (equal (fn2-pool-state i q) (fn2-pool-state i p))
+         (equal (fn2-pool-owner-slot i q) (fn2-pool-owner-slot i p))))
+  :hints (("Goal" :in-theory (enable fn2-pool-adapter-write))))
+(defthm fn2-env-pool-fill-keeps-row
+  ; a loan's fill never touches a row that is not leased in: its extent, state,
+  ; owner, place and size stay, and the pool stays semantic
+  (implies (and (fn2-pool-semanticp p) (natp r) (< r (fn2-pool-rows p))
+                (not (equal (fn2-pool-state r p) *fn2-pool-state-leased-in*)))
+           (let ((q (fn2-env-pool-fill rslot rgen slot gen idx octets p)))
+             (and (fn2-pool-semanticp q)
+                  (equal (fn2-pool-rows q) (fn2-pool-rows p))
+                  (equal (fn2-pool-cap r q) (fn2-pool-cap r p))
+                  (equal (fn2-pool-base r q) (fn2-pool-base r p))
+                  (equal (fn2-pool-state r q) (fn2-pool-state r p))
+                  (equal (fn2-pool-owner-slot r q) (fn2-pool-owner-slot r p))
+                  (equal (fn2-pool-logical-octets (fn2-pool-cap r p) (fn2-pool-base r p) q)
+                         (fn2-pool-logical-octets (fn2-pool-cap r p) (fn2-pool-base r p) p)))))
+  :hints (("Goal" :induct (fn2-env-pool-fill rslot rgen slot gen idx octets p)
+           :in-theory (disable fn2-pool-semanticp fn2-pool-logical-octets fn2-pool-adapter-write
+                               fn2-pool-base fn2-pool-cap fn2-pool-state fn2-pool-owner-slot fn2-pool-rows))))
+(defthm fn2-env-pool-fill-semanticp
+  (implies (fn2-pool-semanticp p)
+           (fn2-pool-semanticp (fn2-env-pool-fill rslot rgen slot gen idx octets p)))
+  :hints (("Goal" :induct (fn2-env-pool-fill rslot rgen slot gen idx octets p)
+           :in-theory (disable fn2-pool-semanticp fn2-pool-adapter-write))))
+(defthm fn2-env-fill-semanticp
+  (implies (fn2-core-pool-semanticp c)
+           (fn2-core-pool-semanticp (fn2-env-fill rslot rgen slot gen idx octets c)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-fill fn2-core-pool-semanticp) (fn2-pool-semanticp fn2-env-pool-fill)))))
+(defthm fn2-env-fill-is-pool-update
+  (equal (fn2-env-fill rslot rgen slot gen idx octets c)
+         (update-fn2-core-pool (fn2-env-pool-fill rslot rgen slot gen idx octets (fn2-core-pool c)) c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-fill))))
+(defthm fn2-env-core-pool-of-update-pool
+  (equal (fn2-core-pool (update-fn2-core-pool x c)) x)
+  :hints (("Goal" :in-theory (enable fn2-core-pool update-fn2-core-pool))))
+(defthm fn2-env-fill-keeps-role
+  ; a loan's fill keeps a role's pool row and its octets
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-role-pool-ok id role c))
+           (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
+             (and (fn2-env-role-pool-ok id role c2)
+                  (equal (fn2-env-role-octets id role c2) (fn2-env-role-octets id role c)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-core-pool-extent fn2-env-role-pool-ok fn2-env-pool-row fn2-core-pool-semanticp
+                                        fn2-env-core-pool-of-update-pool fn2-env-j5-readers-of-update-fn2-core-pool
+                                        (:e member-equal) member-equal car-cons cdr-cons (:e nth) nth-0-cons nth-add1)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-fill-is-pool-update)
+                 (:instance fn2-env-role-octets-of-extent)
+                 (:instance fn2-env-role-octets-of-extent (c (fn2-env-fill rslot rgen slot gen idx octets c)))
+                 (:instance fn2-env-fill-semanticp)
+                 (:instance fn2-env-pool-fill-keeps-row (p (fn2-core-pool c))
+                            (r (nth 4 (fn2-env-role-io id role c))))))))
+(defthm fn2-env-fill-machine-frame
+  (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
+    (and (equal (fn2-commit-idp id c2) (fn2-commit-idp id c))
+         (equal (fn2-machine-phase id c2) (fn2-machine-phase id c))
+         (equal (fn2-machine-cb-issued id c2) (fn2-machine-cb-issued id c))
+         (equal (fn2-machine-cb-mode id c2) (fn2-machine-cb-mode id c))
+         (equal (fn2-machine-batch-no id c2) (fn2-machine-batch-no id c))
+         (equal (fn2-env-role-io id role c2) (fn2-env-role-io id role c))
+         (equal (fn2-env-op s c2) (fn2-env-op s c))
+         (equal (fn2-env-role-live id role c2) (fn2-env-role-live id role c))))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-role-live fn2-commit-idp-of-update-fn2-core-pool
+                                               fn2-machine-phase-of-update-fn2-core-pool fn2-machine-cb-issued-of-update-fn2-core-pool
+                                               fn2-machine-cb-mode-of-update-fn2-core-pool fn2-machine-batch-no-of-update-fn2-core-pool
+                                               fn2-env-j5-readers-of-update-fn2-core-pool)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn2-env-fill-is-pool-update)))))
+(defthm fn2-env-j6-fill
+  ; J6 and its pool rows survive a loan's fill
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-j6-row id c) (fn2-env-j6p-row id c))
+           (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
+             (and (fn2-env-j6-row id c2) (fn2-env-j6p-row id c2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j6-row fn2-env-j6p-row fn2-env-fill-machine-frame fn2-env-fill-keeps-role)
+                                      (theory 'minimal-theory)))))
+(defun fn2-env-j6p-rows (ids fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom ids) t
+    (and (fn2-env-j6p-row (car ids) fn2-core) (fn2-env-j6p-rows (cdr ids) fn2-core))))
+(defthm fn2-env-j5-rows-loan-write-fill
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
+           (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
+             (and (fn2-env-j5-rows ids log c2) (fn2-env-j6p-rows ids c2))))
+  :hints (("Goal" :induct (fn2-env-j6p-rows ids c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j6p-rows fn2-env-j6-fill)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-fill-is-pool-update)
+                                (:instance fn2-env-j5-row-of-update-fn2-core-pool (id (car ids))
+                                           (x (fn2-env-pool-fill rslot rgen slot gen idx octets (fn2-core-pool c))))
+                                (:instance fn2-env-j6-fill (id (car ids)))))))
+(defthm fn2-env-j5-rows-loan-write-step
+  ; :loan-write keeps J5, J6 and their pool rows, and the pool stays semantic
+  (implies (and (equal (fn2-env-tag action) :loan-write)
+                (fn2-core-pool-semanticp c) (true-listp log) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (and (fn2-env-j5-rows ids (append log (if entry (list entry) nil)) after)
+                  (fn2-env-j6p-rows ids after)
+                  (fn2-core-pool-semanticp after))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-rows-loan-write-fill fn2-env-fill-semanticp append-to-nil
+                                        fn2-env-step fn2-env-loan-write (:e equal) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                      (theory 'minimal-theory)))))
 ;; J5 ACROSS :ADMIT, the ops table. Admission's callees write the pool,
 ;; sched, control, commit table, extents, members, settled, commit-io and
 ;; root children, never the ops table (FN2-ENV-OK carried by each callee):
