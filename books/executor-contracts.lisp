@@ -13,14 +13,15 @@
 ; Read the functions the LOGICAL dispatcher actually calls.  A kind whose
 ; implementation is attached still dispatches through its constrained stub.
 ; Recomputing RUN-ARMS after attachment would silently select a different fn.
+; A kind's observe route is not a cut: only fn2-exec-harvest reaches it, on
+; the completion that step harvested, and the harvest is one cut.
 (defun fn2-executor-kind-cuts (names run-callees)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (let* ((name (car names)) (run (fn2-columns-sym name "-RUN"))
-           (stub (fn2-columns-sym name "-RUN-STUB"))
-           (route (fn2-columns-col-name 'fn2-machine-observe-route name)))
-      (append (list (if (member-eq run run-callees) run stub) route)
-              (fn2-executor-kind-cuts (cdr names) run-callees)))))
+           (stub (fn2-columns-sym name "-RUN-STUB")))
+      (cons (if (member-eq run run-callees) run stub)
+            (fn2-executor-kind-cuts (cdr names) run-callees)))))
 
 (defun fn2-executor-boundary-cuts (fns world)
   (declare (xargs :verify-guards nil))
@@ -37,8 +38,11 @@
    (value
     `(defconst *fn2-executor-contract-cuts*
        ',(remove-duplicates-eq (append kind-cuts boundaries
-          '(fn2-machine-refuse-phase fn2-machine-idle fn2-machine-refuse-observation
-            fn2-harvest-one fn2-exec-mailbox fn2-exec-pop fn2-exec-charge-run
+          ; fn2-exec-harvest is one cut: delivering a harvested completion
+          ; to its owner's handler is one executor step, and no invariant is
+          ; owed between the harvest and the delivery
+          '(fn2-machine-refuse-phase fn2-machine-idle
+            fn2-exec-harvest fn2-exec-mailbox fn2-exec-pop fn2-exec-charge-run
             fn2-machine-take-wake fn2-exec-wake fn2-exec-record fn2-exec-visit
             fn2-exec-clear-service fn2-exec-arm
             fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
@@ -129,8 +133,8 @@
 (make-event
  (value (cons 'progn
    (fn2-executor-compose-events
-    '(fn2-machine-run fn2-machine-observe fn2-machine-admit
-      fn2-machine-grant-one fn2-exec-genesis-row fn2-exec-harvest
+    '(fn2-machine-run fn2-machine-admit
+      fn2-machine-grant-one fn2-exec-genesis-row
       fn2-exec-principal fn2-exec-service fn2-transition)))))
 
 (defthm fn2-executor-inv-concrete-loop
