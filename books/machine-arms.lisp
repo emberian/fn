@@ -2077,6 +2077,7 @@
           (op (fn2-arm-use-name use))
           (row (fn2-arms-op-row op (fn2-arm-get :world env)))
           (faults (fn2-decl-get :faults row))
+          (must (fn2-decl-get :must-route row))
           (routed (append accept case-codes))
           (unrouted (and (consp answers) (not other) (set-difference-eq answers routed)))
           (non-fault-unrouted (and faults (set-difference-eq unrouted faults)))
@@ -2095,6 +2096,12 @@
             (not (stringp (fn2-arms-kw :why opts nil))))
        (mv (msg "accepting ~x0 (not only :ok) needs :why \"...\" in the step." accept) nil acc))
       ((and accept (atom rest)) (mv (msg "accepted answers ~x0 have no continuation." accept) nil acc))
+      ;; an answer the operation's defcost names :must-route (a take of a kind
+      ;; with no rows: :none) is routed by its own :case clause, never by an
+      ;; :otherwise (which parks a taker) or the arm's :on-refusal
+      ((not (subsetp-eq must case-codes))
+       (mv (msg "~x0's answers ~x1 must each be routed by its own :case clause (not :accept, :otherwise or :on-refusal)."
+                op (set-difference-eq must case-codes)) nil acc))
       ((and (null accept) (consp rest)) (mv (msg "steps follow a :do whose answers all branch.") nil acc))
       ((and (consp answers)
             (not (or other refusal (subsetp-eq answers routed))))
@@ -2634,6 +2641,12 @@
          (body
           `(let* ((target (fn2-machines-free-head-of ordinal fn2-machines))
                   (slot (if (fn2-machines-row-ok target) (fn2-machines-slot target fn2-machines) *fn2-none*)))
+             (if ,(if tk
+                      ;; a taken kind with no rows in the profile: :none, never a park
+                      '(and (natp ordinal) (< ordinal *fn2-machine-admitted-max*)
+                            (zp (fn2-machines-connection-counti ordinal fn2-machines)))
+                    nil)
+                 ,(if tk `(mv :none *fn2-none* 0 ,@tuple) `(mv :no-row ,@tuple))
              (if (or (equal target *fn2-none*)
                      (not (fn2-machines-row-ok target))
                      (not (equal (fn2-machines-kind target fn2-machines) kind))
@@ -2646,7 +2659,7 @@
                (let ((gen (,(fn2-columns-col-name kind 'generation) slot ,kind))
                      (next (,(fn2-columns-col-name kind 'next-free) slot ,kind)))
                  (declare (ignorable gen))
-                 ,(fn2-arms-registry-reserves specs 0 install fail))))))
+                 ,(fn2-arms-registry-reserves specs 0 install fail)))))))
     (if (not spec) (er hard 'defmachine-registry "~x0 is neither admitted nor taken." kind)
       `((defun ,name ,formals
           (declare (xargs :stobjs ,tuple
