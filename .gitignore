@@ -17,3 +17,4 @@ workxxx.*
 /LANEDUMP.md
 /meta/emit/bridge-certificate.sexp
 /meta/emit/loop-certificate.sexp
+/meta/emit/core-certificate.sexp

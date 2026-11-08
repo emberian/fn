@@ -132,15 +132,15 @@ def expression_value(t, defined, env):
     return env.get(str(t), val(t)) if str(t) not in env else env[str(t)]
 
 
-def expression_proof(t, defined, env, indent='  '):
+def expression_proof(t, defined, env, indent='  ', dispatch=None):
     """A structural proof proposal: calls use the concrete dispatch equation;
     the kernel's generic evaluation lemmas supply the composition."""
-    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ')
+    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ', dispatch)
     def args_proof(args, pad=None):
         pad = pad or indent+'  '
         if not args: return [pad+'rfl']
         return ([pad+'refine Translation.eval_args_cons ?_ ?_',pad+'·']
-                + expression_proof(args[0],defined,env,pad+'  ')
+                + expression_proof(args[0],defined,env,pad+'  ',dispatch)
                 + [pad+'·'] + args_proof(args[1:],pad+'  '))
     if not isinstance(t,List) or not t or t[0] == 'QUOTE': return [indent+'rfl']
     if is_lambda(t[0]):
@@ -154,9 +154,10 @@ def expression_proof(t, defined, env, indent='  '):
         for a in t[1:]: lines += [indent+'·']+sub(a)
         return lines
     if t[0] == 'RETURN-LAST':
-        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent)
+        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent,dispatch)
     vals=[expression_value(a,defined,env) for a in t[1:]]
-    return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ (by rfl)', indent+'·']+args_proof(t[1:])
+    proof = ('by exact '+ident(str(t[0]))+'.dispatched '+ ' '.join(vals)) if dispatch and str(t[0]) in dispatch else 'by rfl'
+    return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ ('+proof+')', indent+'·']+args_proof(t[1:])
 
 
 def fn_of(row):
@@ -181,7 +182,7 @@ def evaluator_certificate(fs, allf):
         else:
             arities = {'CONS':2, 'EQUAL':2, 'CAR':1, 'CDR':1, 'NTH':2, 'MV-NTH':2,
                        'UPDATE-NTH':3, '<':2, 'INTEGERP':1, 'BINARY-+':2, 'LEN':1,
-                       'CONSP':1}
+                       'CONSP':1, 'EXPT':2, 'MEMBER-EQUAL':2}
             if c not in arities: raise ValueError('no evaluator signature: ' + c)
             args = ['A'+str(i) for i in range(arities[c])]
         sigs.append('(' + c + ' ' + ' '.join(args) + ')')
