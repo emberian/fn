@@ -63,7 +63,7 @@
                                                      (nth))))))
        (defthm ,any
          (equal (fn2-machines-directory-keeps ,r fn2-machines-m2) (fn2-machines-directory-keeps fn2-machines fn2-machines-m2))
-         :hints (("Goal" :use ,name :in-theory (e/d (fn2-machines-directory-keeps) (,fn)))))
+         :hints (("Goal" :use ,name :in-theory (union-theories '(fn2-machines-directory-keeps) (theory 'minimal-theory)))))
        (in-theory (disable ,name ,any))
        (table fn2-arm-frame-directory-keeps ',fn ',name)
        (table fn2-machines-directory-any ',fn ',any))))
