@@ -5468,24 +5468,39 @@
   ; the device log after a step whose entry is E (nil: none)
   (declare (xargs :verify-guards nil))
   (append log (if e (list e) nil)))
-(defthm fn2-env-j5-op-take
-  (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)))
-    (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
-                  (fn2-env-j5-op s id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c))
-             (fn2-env-j5-op s id (fn2-env-log+ log e) (mv-nth 1 tk))))
+(defmacro fn2-env-tk-e () '(mv-nth 0 (fn2-env-take nil image c)))
+(defmacro fn2-env-tk-c () '(mv-nth 1 (fn2-env-take nil image c)))
+(defthm fn2-env-j5-op-take-same
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log) (fn2-env-j5-op s id log c)
+                (not (and (fn2-env-tk-e) (equal s (nth 1 (fn2-env-tk-e))))))
+           (fn2-env-j5-op s id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
   :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
-           :cases ((not (mv-nth 0 (fn2-env-take nil image c)))
-                   (and (mv-nth 0 (fn2-env-take nil image c)) (not (equal s (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
-                   (and (mv-nth 0 (fn2-env-take nil image c)) (equal s (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
            :in-theory (union-theories
-                       '(fn2-env-j5-op fn2-env-log+ fn2-env-take-frames fn2-env-j5-fence-other-take fn2-env-j5-fence-take
-                         fn2-env-j5-fence-taken
-                         append-to-nil fn2-action-completionp (:e fn2-action-completionp)
+                       '(fn2-env-j5-op fn2-env-log+ fn2-env-take-frames fn2-env-j5-fence-other-take append-to-nil)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op)
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))))))
+(defthm fn2-env-j5-op-take-slot
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-op s id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c)
+                (fn2-env-tk-e) (equal s (nth 1 (fn2-env-tk-e))))
+           (fn2-env-j5-op s id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (union-theories
+                       '(fn2-env-j5-op fn2-env-log+ fn2-env-take-frames fn2-env-j5-fence-take fn2-env-j5-fence-taken
+                         fn2-action-completionp (:e fn2-action-completionp)
                          nth-update-nth (:e nfix) (:e equal) (:e member-equal) member-equal (:e natp) (:e <) natp)
                        (theory 'minimal-theory))
            :use ((:instance fn2-env-take-op)
                  (:instance fn2-env-take-entry-shape (recoveryp nil))
                  (:instance fn2-env-fence-prefix-of-j2)))))
+(defthm fn2-env-j5-op-take
+  (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)))
+    (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                  (fn2-env-j5-op s id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c))
+             (fn2-env-j5-op s id (fn2-env-log+ log e) (mv-nth 1 tk))))
+  :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)
+           :use (fn2-env-j5-op-take-same fn2-env-j5-op-take-slot))))
 (in-theory (disable fn2-env-log+))
 (defthm fn2-env-j5-ops-take
   (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)))
@@ -5551,8 +5566,6 @@
   (implies (natp role) (natp (fn2-env-role-offset id role c)))
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn2-env-role-offset))))
-(defmacro fn2-env-tk-e () '(mv-nth 0 (fn2-env-take nil image c)))
-(defmacro fn2-env-tk-c () '(mv-nth 1 (fn2-env-take nil image c)))
 (defthm fn2-env-take-ok-of-role
   (let ((o (fn2-env-op (nth 1 (fn2-env-tk-e)) c)))
     (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-tk-e)
