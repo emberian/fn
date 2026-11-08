@@ -475,25 +475,29 @@
   (mv-let (e epoch counter slot gen) (fn2-commit-resource id role fn2-core)
     (declare (ignore epoch counter slot gen))
     e))
-(defun fn2-env-j-row (id log fn2-core)
+(defun fn2-env-j1-row (id log fn2-core)
+  ; J1
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (let* ((batch (fn2-machine-batch-no id fn2-core))
-         (installed (fn2-env-installed fn2-core))
-         (ackedp (and (eq (fn2-machine-cb-acks-read-code id fn2-core) :ok)
-                      (eq (fn2-machine-batch-no-read-code id fn2-core) :ok)
-                      (posp (fn2-machine-cb-acks id fn2-core))))
-         (rowp (fn2-commit-idp id fn2-core))
-         (phase (fn2-machine-phase id fn2-core))
-         (fenced (or (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
-                     (equal (fn2-machine-cb-mode id fn2-core) 1))))
+  (let ((batch (fn2-machine-batch-no id fn2-core))
+        (installed (fn2-env-installed fn2-core))
+        (ackedp (and (eq (fn2-machine-cb-acks-read-code id fn2-core) :ok)
+                     (eq (fn2-machine-batch-no-read-code id fn2-core) :ok)
+                     (posp (fn2-machine-cb-acks id fn2-core))))
+        (rowp (fn2-commit-idp id fn2-core))
+        (phase (fn2-machine-phase id fn2-core)))
+    (and (implies (or ackedp (and rowp (member-equal phase (list *fn2-commit-state-publish*
+                                                                 *fn2-commit-state-notify*))))
+                  (and (posp batch) (<= batch installed)))
+         (implies (and rowp (equal phase *fn2-commit-state-install*))
+                  (and (posp batch) (fn2-env-batch-durable-p batch log))))))
+(defun fn2-env-j2-row (id log fn2-core)
+  ; J2
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((batch (fn2-machine-batch-no id fn2-core))
+        (rowp (fn2-commit-idp id fn2-core))
+        (fenced (or (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
+                    (equal (fn2-machine-cb-mode id fn2-core) 1))))
     (and
-     ;; J1
-     (implies (or ackedp (and rowp (member-equal phase (list *fn2-commit-state-publish*
-                                                             *fn2-commit-state-notify*))))
-              (and (posp batch) (<= batch installed)))
-     (implies (and rowp (equal phase *fn2-commit-state-install*))
-              (and (posp batch) (fn2-env-batch-durable-p batch log)))
-     ;; J2
      (implies (and rowp (or (equal (fn2-machine-cb-deps-ok id fn2-core) 1)
                             (equal (fn2-machine-cb-log-ok id fn2-core) 1)))
               (and (natp (fn2-env-role-extent id 0 fn2-core))
@@ -505,6 +509,9 @@
      (implies (and rowp (equal (fn2-machine-cb-log-ok id fn2-core) 1))
               (and (fn2-env-written-from 0 (fn2-env-role-offset id 1 fn2-core) nil fenced log)
                    (fn2-env-written-from 0 (fn2-env-role-offset id 2 fn2-core) batch fenced log))))))
+(defun fn2-env-j-row (id log fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (and (fn2-env-j1-row id log fn2-core) (fn2-env-j2-row id log fn2-core)))
 (defun fn2-env-j-rows (ids log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (atom ids) t
@@ -701,7 +708,7 @@
   (implies (and (fn2-env-j-rows ids log fn2-core) (true-listp more))
            (fn2-env-j-rows ids (append log more) fn2-core))
   :hints (("Goal" :induct (fn2-env-j-rows ids log fn2-core)
-           :in-theory '(fn2-env-j-rows fn2-env-j-row fn2-env-written-extends fn2-env-batch-durable-extends))))
+           :in-theory '(fn2-env-j-rows fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-env-written-extends fn2-env-batch-durable-extends))))
 (defthm fn2-env-j-frontier-extends
   (implies (and (fn2-env-j-frontier log fn2-core) (true-listp more))
            (fn2-env-j-frontier (append log more) fn2-core))
@@ -734,7 +741,7 @@
        (equal (fn2-env-root (update-fn2-core-ops x fn2-core)) (fn2-env-root fn2-core))
        (equal (fn2-env-root (update-fn2-core-pool x fn2-core)) (fn2-env-root fn2-core))
        (equal (fn2-env-root (update-fn2-core-extents x fn2-core)) (fn2-env-root fn2-core)))
-  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-role-offset fn2-env-role-extent fn2-env-installed
+  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-env-role-offset fn2-env-role-extent fn2-env-installed
                                 fn2-machine-phase-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-pool fn2-machine-phase-of-update-fn2-core-extents fn2-machine-batch-no-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-pool fn2-machine-batch-no-of-update-fn2-core-extents fn2-machine-cb-acks-of-update-fn2-core-ops fn2-machine-cb-acks-of-update-fn2-core-pool fn2-machine-cb-acks-of-update-fn2-core-extents fn2-machine-cb-acks-read-code-of-update-fn2-core-ops fn2-machine-cb-acks-read-code-of-update-fn2-core-pool fn2-machine-cb-acks-read-code-of-update-fn2-core-extents fn2-machine-batch-no-read-code-of-update-fn2-core-ops fn2-machine-batch-no-read-code-of-update-fn2-core-pool fn2-machine-batch-no-read-code-of-update-fn2-core-extents fn2-machine-cb-fence-ok-of-update-fn2-core-ops fn2-machine-cb-fence-ok-of-update-fn2-core-pool fn2-machine-cb-fence-ok-of-update-fn2-core-extents fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-cb-mode-of-update-fn2-core-pool fn2-machine-cb-mode-of-update-fn2-core-extents fn2-machine-cb-deps-ok-of-update-fn2-core-ops fn2-machine-cb-deps-ok-of-update-fn2-core-pool fn2-machine-cb-deps-ok-of-update-fn2-core-extents fn2-machine-cb-log-ok-of-update-fn2-core-ops fn2-machine-cb-log-ok-of-update-fn2-core-pool fn2-machine-cb-log-ok-of-update-fn2-core-extents fn2-commit-idp-of-update-fn2-core-ops fn2-commit-idp-of-update-fn2-core-pool fn2-commit-idp-of-update-fn2-core-extents fn2-commit-resource-of-update-fn2-core-ops fn2-commit-resource-of-update-fn2-core-pool fn2-commit-resource-of-update-fn2-core-extents fn2-env-root-of-update-fn2-core-ops fn2-env-root-of-update-fn2-core-pool fn2-env-root-of-update-fn2-core-extents))))
 (defthm fn2-env-j-child-frame
   (and (equal (fn2-env-j-rows ids log (update-fn2-core-ops x fn2-core)) (fn2-env-j-rows ids log fn2-core))
@@ -838,6 +845,71 @@
                  (:instance fn2-env-written-fenced-offset (w 0) (b nil) (offset (fn2-env-role-offset id 0 fn2-core)))
                  (:instance fn2-env-written-fenced-offset (w 0) (b nil) (offset (fn2-env-role-offset id 1 fn2-core)))
                  (:instance fn2-env-extent-offset-mod (e (fn2-env-role-extent id 0 fn2-core)))))))
+
+(defthm fn2-env-prefix-durable-batch
+  (implies (and (fn2-env-prefix-durable-p n log) (posp m) (<= m (nfix n)))
+           (fn2-env-batch-durable-p m log))
+  :hints (("Goal" :in-theory (disable fn2-env-batch-durable-p fn2-env-prefix-durable-p)
+           :use ((:instance fn2-env-prefix-durable-down)
+                 (:instance fn2-env-prefix-durable-p (n m))))))
+(defun-nx fn2-env-j-same-evidence (id a b)
+  ; the columns and children J2 reads of row ID agree in cores A and B
+  (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+       (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a))
+       (equal (fn2-machine-batch-no-read-code id b) (fn2-machine-batch-no-read-code id a))
+       (equal (fn2-machine-cb-deps-ok id b) (fn2-machine-cb-deps-ok id a))
+       (equal (fn2-machine-cb-log-ok id b) (fn2-machine-cb-log-ok id a))
+       (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+       (equal (fn2-machine-cb-mode id b) (fn2-machine-cb-mode id a))
+       (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))
+       (equal (fn2-env-role-extent id 1 b) (fn2-env-role-extent id 1 a))
+       (equal (fn2-env-role-extent id 2 b) (fn2-env-role-extent id 2 a))))
+(defthm fn2-env-role-offset-of-extent
+  (equal (fn2-env-role-offset id role c)
+         (+ (* (nfix (fn2-env-role-extent id role c)) *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*)))
+  :hints (("Goal" :in-theory (enable fn2-env-role-offset fn2-env-role-extent))))
+;; THE ROW TRANSFER: a step that keeps J2's evidence of row ID, keeps the
+;; frontier and does not lower the installed root keeps J at ID, provided it
+;; changes neither the row's phase nor its acknowledgement, or the row's
+;; batch was already at or below the installed root (then every phase and
+;; reply count is consistent with J1, the batch being durable by J4). Each
+;; commit arm's lift instantiates it with the arm's FRAME and WRITES.
+(defthm fn2-env-j2-row-congruence
+  (implies (fn2-env-j-same-evidence id a b)
+           (equal (fn2-env-j2-row id log b) (fn2-env-j2-row id log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j2-row fn2-env-j-same-evidence fn2-env-role-offset-of-extent))))
+(defthm fn2-env-j1-row-transfer
+  (implies (and (fn2-env-j1-row id log a)
+                (fn2-env-j-frontier log b)
+                (fn2-env-j-same-evidence id a b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
+                (or (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                         (equal (fn2-machine-cb-acks id b) (fn2-machine-cb-acks id a))
+                         (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (fn2-env-j1-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j1-row fn2-env-j-same-evidence posp natp nfix
+                               (:type-prescription fn2-env-installed-natp) member-equal)
+           :use ((:instance fn2-env-j-frontier-installed (fn2-core b))
+                 (:instance fn2-env-prefix-durable-batch (n (fn2-env-installed b))
+                            (m (fn2-machine-batch-no id a)))))))
+(defthm fn2-env-j-row-transfer
+  (implies (and (fn2-env-j-row id log a)
+                (fn2-env-j-frontier log b)
+                (fn2-env-j-same-evidence id a b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
+                (or (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                         (equal (fn2-machine-cb-acks id b) (fn2-machine-cb-acks id a))
+                         (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (fn2-env-j-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-row)
+           :use ((:instance fn2-env-j1-row-transfer) (:instance fn2-env-j2-row-congruence)))))
 
 ;; :ADMIT. The admission adds no reply a commit row did not show before:
 ;; fn2-env-no-new-acks-p of the rows after against the rows before, so
