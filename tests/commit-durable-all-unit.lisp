@@ -254,14 +254,15 @@
 (assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest*))
 (assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest-fua*))
 
-;; J6L ON LIVE RUNS: after every action of both honest runs each row's
-;; roles hold three pool rows at their units' generations, and a live
-;; role's row is leased out (expected nil: no action breaks it).
+;; J6L AND J6S ON LIVE RUNS: after every action of both honest runs each
+;; row's roles hold three pool rows at their units' generations, and a live
+;; role's row is leased out, in a write phase or settling (expected nil: no
+;; action breaks it).
 (defun fn2-cda-j6l-trace (actions i ids rlog fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (atom actions) (mv nil fn2-core)
     (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
-      (let ((rlog (if entry (cons entry rlog) rlog)) (ok (fn2-env-j6l-rows ids fn2-core)))
+      (let ((rlog (if entry (cons entry rlog) rlog)) (ok (and (fn2-env-j6l-rows ids fn2-core) (fn2-env-j6s-rows ids fn2-core))))
         (mv-let (bad fn2-core) (fn2-cda-j6l-trace (cdr actions) (+ 1 i) ids rlog fn2-core)
           (mv (if ok bad (cons i bad)) fn2-core))))))
 (defun fn2-cda-j6l-scenario (mode)
