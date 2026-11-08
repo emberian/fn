@@ -3783,15 +3783,25 @@
   :hints (("Goal" :in-theory (union-theories '(fn2-ctf-dir fn2-machines-directory-keeps) '(fn2-env-tk fn2-env-sk)))))
 (in-theory (disable fn2-env-sk))
 (table fn2-env-rel-cols 'fn2-env-sk '(33))
+(defthm fn2-env-sk-projections
+  (implies (fn2-env-sk b a)
+           (and (fn2-ctf-dir b a)
+                (equal (fn2-commit-rows (fn2-commit-table b))
+                       (fn2-commit-rows (fn2-commit-table a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-rows fn2-commit-table)
+           :use fn2-env-sk-view-equivalence)))
+
 (defthm fn2-env-commit-slots-p-of-sk
   (implies (fn2-env-sk b a)
            (equal (fn2-env-commit-slots-p profile b) (fn2-env-commit-slots-p profile a)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn2-ctf-dir fn2-machines-directory-keeps) (e/d (fn2-env-sk fn2-env-commit-slots-p fn2-commit-idp fn2-commit-snapshot-read-code
+  :hints (("Goal" :in-theory (e/d (fn2-env-commit-slots-p fn2-commit-idp fn2-commit-snapshot-read-code
                                    fn2-machine-phase-read-code fn2-commit-table fn2-commit-rows)
-                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp fn2-ctf-dir)))
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp fn2-ctf-dir))
            :do-not-induct t
-           :use ((:instance fn2-ctf-dir-readers (id (fn2-machine-global-id *fn2-commit-kind* 0 profile)))
+           :use ((:instance fn2-env-sk-projections)
+                 (:instance fn2-ctf-dir-readers (id (fn2-machine-global-id *fn2-commit-kind* 0 profile)))
                  (:instance fn2-ctf-dir-readers (id (fn2-machine-global-id *fn2-commit-kind* 1 profile)))))))
 ;; the host steps: neither child
 (defthm fn2-env-commit-rows-child-frame
@@ -4654,13 +4664,14 @@
                         (equal (fn2-commit-row-phase id fn2-core) ,const))
                    (and (fn2-env-j3-row i log ,b) (fn2-env-j3e-row i ,b)))
           :rule-classes nil
-          :hints (("Goal" :in-theory (union-theories '(fn2-ctf-dir fn2-machines-directory-keeps) '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal (:e tau-system)
-                                       fn2-commit-idp fn2-commit-arm-row-phase fn2-env-j3-move-ok fn2-env-sk
-                                       (:e equal) (:e fn2-commit-arm-children) (:e fn2-commit-arm-columns)))
+          :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal (:e tau-system)
+                                       fn2-commit-idp fn2-commit-arm-row-phase fn2-env-j3-move-ok fn2-commit-rows fn2-commit-table
+                                       (:e equal) (:e fn2-commit-arm-children) (:e fn2-commit-arm-columns))
                    :do-not-induct t
                    :cases ((and (fn2-commit-idp i fn2-core) (equal (fn2-machine-slot i fn2-core) ,row)))
                    :use ((:instance ,frame) (:instance ,next) (:instance fn2-env-row-phase-snapshot)
                          (:instance ,facts) (:instance ,done) (:instance fn2-env-commit-run-sk)
+                         (:instance fn2-env-sk-projections (a fn2-core) (b ,b))
                          (:instance fn2-env-done-of-dk (a fn2-core) (b ,b))
                          (:instance fn2-env-j3-of-row-frame-off-row (a fn2-core) (b ,b) (row ,row) (cs ',cs) (ch ',ch))
                          (:instance fn2-env-j3-same-slot (i i) (j id) (fn2-core fn2-core))

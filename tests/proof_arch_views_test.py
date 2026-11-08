@@ -54,3 +54,9 @@ def test_lift_refuses_a_changed_statement():
         assert 'unexpected statement' in str(error)
     else:
         raise AssertionError('migration accepted an unrecognized statement')
+
+
+def test_explicit_directory_boundary_stays_closed():
+    source = """(defthm boundary (equal x x)
+  :hints (("Goal" :in-theory (e/d (fn2-env-sk) (fn2-ctf-dir)))))"""
+    assert migrate(source) == source

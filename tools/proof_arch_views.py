@@ -67,7 +67,14 @@ def migrate(source):
                 if not isinstance(left, lr.Atom) or left.low != ':in-theory':
                     continue
                 theory = result[right.start:right.end]
-                if ('fn2-env-tk' in theory or 'fn2-env-sk' in theory) and 'fn2-machines-directory-keeps' not in theory:
+                disabled_directory = any(
+                    isinstance(item, lr.Atom) and item.low in ('fn2-ctf-dir', 'fn2-machines-directory-keeps')
+                    for match in lr.match('(e/d ?enabled ?disabled)', [right])
+                    for item in walk(match.captures['disabled']))
+                # An explicit abstraction boundary must remain closed. Such
+                # consumers need a view projection, not broader unfolding.
+                if (('fn2-env-tk' in theory or 'fn2-env-sk' in theory)
+                        and 'fn2-machines-directory-keeps' not in theory and not disabled_directory):
                     edits.append((right.start, right.end,
                                   "(union-theories '(fn2-ctf-dir fn2-machines-directory-keeps) " + theory + ')'))
     return lr.write(result, edits)
