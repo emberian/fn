@@ -701,15 +701,18 @@
                                          (and (equal phase *fn2-commit-state-log-write*) (equal mode 1)))
                             log fn2-core))))
 (defun fn2-env-b2n (x) (declare (xargs :guard t)) (if x 1 0))
-; At :log-write a live role 2 is issued (cb-issued 2), and a live role 1
-; is another operation: one harvested result answers one role.
+; At :log-write a live role is issued (role 1: cb-issued at least 1; role 2:
+; cb-issued 2), and a live role 1 is another operation than role 2: one
+; harvested result answers one issued role, whose J5-ROLE J5-ROLES carries.
 (defun fn2-env-j5-apart (id fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (implies (fn2-env-role-live id 2 fn2-core)
-           (and (equal (fn2-machine-cb-issued id fn2-core) 2)
-                (implies (fn2-env-role-live id 1 fn2-core)
-                         (not (equal (nth 1 (fn2-env-role-io id 1 fn2-core))
-                                     (nth 1 (fn2-env-role-io id 2 fn2-core))))))))
+  (and (implies (fn2-env-role-live id 1 fn2-core)
+                (<= 1 (nfix (fn2-machine-cb-issued id fn2-core))))
+       (implies (fn2-env-role-live id 2 fn2-core)
+                (and (equal (fn2-machine-cb-issued id fn2-core) 2)
+                     (implies (fn2-env-role-live id 1 fn2-core)
+                              (not (equal (nth 1 (fn2-env-role-io id 1 fn2-core))
+                                          (nth 1 (fn2-env-role-io id 2 fn2-core)))))))))
 ; The issued roles of a write phase: (FIRST . COUNT).
 (defun fn2-env-j5-roles (id log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -717,6 +720,8 @@
         (done (fn2-machine-cb-done id fn2-core)))
     (cond ((equal phase *fn2-commit-state-dependencies*)
            (and (natp issued) (<= issued 1) (natp done)
+                ;; a live role 0 is issued
+                (implies (fn2-env-role-live id 0 fn2-core) (equal issued 1))
                 (implies (equal issued 1) (fn2-env-j5-role id 0 log fn2-core))
                 (equal (+ done (if (equal issued 1) (fn2-env-b2n (fn2-env-role-live id 0 fn2-core)) 0)) issued)))
           ((equal phase *fn2-commit-state-log-write*)
@@ -6155,7 +6160,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn2-env-j5-roles fn2-env-take-frames fn2-env-role-live-take-of-j5-role
                                         fn2-env-j5-role-take (:e natp) (:e equal) fn2-env-j5-apart-take)
-                                      (theory 'minimal-theory)))))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-role-live-take (role 0))))))
 (defthm fn2-env-j6-row-take
   (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j6-row id c))
            (fn2-env-j6-row id (fn2-env-tk-c)))
@@ -6787,6 +6793,81 @@
 ;; (FN2-ENV-POOL-LEASED-OUT-COUNT), so the release is accepted
 ;; (FN2-ENV-ROLE-RELEASE-ACCEPTED). The harvest-one delivery theorem built on
 ;; it is the next statement (lanedumps/proof-floor-continue.md).
+;; J6S, THE SETTLING ROLES. In :draining, :uncertain and :dropping a role
+;; write may still be live (the row waits for pending writes before it
+;; releases its pool rows); while it is, its pool row is J6P's and its lease
+;; J6L's, so its harvest's release is accepted (FN2-ENV-ROLE-RELEASE-ACCEPTED).
+(defun fn2-env-role-settle-ok (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (fn2-env-role-live id role fn2-core)
+           (and (fn2-env-role-pool-ok id role fn2-core) (fn2-env-role-lease-ok id role fn2-core))))
+(defun fn2-env-j6s-row (id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (and (fn2-commit-idp id fn2-core)
+                (member-equal (fn2-machine-phase id fn2-core)
+                              (list *fn2-commit-state-draining* *fn2-commit-state-uncertain*
+                                    *fn2-commit-state-dropping*)))
+           (and (fn2-env-role-settle-ok id 0 fn2-core) (fn2-env-role-settle-ok id 1 fn2-core)
+                (fn2-env-role-settle-ok id 2 fn2-core))))
+(defun fn2-env-j6s-rows (ids fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom ids) t
+    (and (fn2-env-j6s-row (car ids) fn2-core) (fn2-env-j6s-rows (cdr ids) fn2-core))))
+(defthm fn2-env-j6s-row-post
+  (equal (fn2-env-j6s-row id (update-fn2-core-ops (fn2-env-pr-ops) c)) (fn2-env-j6s-row id c))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-role-pool-ok fn2-env-role-lease-ok
+                                               fn2-env-pool-readers-of-update-ops fn2-env-ops-frame fn2-env-role-live-post
+                                               fn2-commit-idp-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops)
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j6s-row-kept
+  (implies (fn2-env-ops-kept x c)
+           (equal (fn2-env-j6s-row id (update-fn2-core-ops x c)) (fn2-env-j6s-row id c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-role-pool-ok fn2-env-role-lease-ok
+                                               fn2-env-pool-readers-of-update-ops fn2-env-ops-frame fn2-env-role-live-kept
+                                               fn2-commit-idp-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops)
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j6s-row-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j6s-row id c))
+           (fn2-env-j6s-row id (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-role-pool-ok fn2-env-role-lease-ok
+                                        fn2-env-take-pool-frame fn2-env-take-frames)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-role-live-take (role 0)) (:instance fn2-env-role-live-take (role 1))
+                 (:instance fn2-env-role-live-take (role 2))))))
+(defthm fn2-env-j6s-row-of-update-extents
+  (equal (fn2-env-j6s-row id (update-fn2-core-extents x c)) (fn2-env-j6s-row id c))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-role-pool-ok fn2-env-role-lease-ok
+                                               fn2-env-pool-readers-of-update-extents fn2-env-j5-readers-of-update-fn2-core-extents
+                                               fn2-env-j6-readers-of-update-fn2-core-extents
+                                               fn2-commit-idp-of-update-fn2-core-extents fn2-machine-phase-of-update-fn2-core-extents)
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j6s-fill
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-j6s-row id c))
+           (fn2-env-j6s-row id (fn2-env-fill rslot rgen slot gen idx octets c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-role-lease-ok fn2-env-fill-machine-frame
+                                        fn2-env-fill-keeps-role fn2-env-fill-keeps-lease)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j6s-row-host-step
+  ; every step but :turn and :admit keeps J6S at a commit row
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-core-pool-semanticp c) (fn2-env-j6s-row id c)
+                (not (member-eq (fn2-env-tag action) '(:turn :admit))))
+           (fn2-env-j6s-row id (mv-nth 1 (fn2-env-step action nil image rlog c))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-step fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
+                                        fn2-env-begin-epoch fn2-env-loan-write fn2-env-post-step
+                                        fn2-env-post-accept-kept fn2-env-post-clock-kept fn2-env-post-signal-kept
+                                        fn2-env-j6s-row-kept fn2-env-j6s-row-post fn2-env-j6s-row-of-update-extents
+                                        fn2-env-j6s-row-take fn2-env-j6s-fill
+                                        member-eq (:e member-eq) (:e equal) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j6s-rows-host-step
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-core-pool-semanticp c) (fn2-env-j6s-rows ids c)
+                (not (member-eq (fn2-env-tag action) '(:turn :admit))))
+           (fn2-env-j6s-rows ids (mv-nth 1 (fn2-env-step action nil image rlog c))))
+  :hints (("Goal" :induct (fn2-env-j6s-rows ids c)
+           :in-theory (union-theories '(fn2-env-j6s-rows fn2-env-j6s-row-host-step) (theory 'minimal-theory)))))
 (defthm fn2-env-row-invariant-leased-out-count
   (implies (and (fn2-pool-row-invariantp n p) (natp i) (< i (nfix n))
                 (equal (fn2-pool-state i p) *fn2-pool-state-leased-out*))
