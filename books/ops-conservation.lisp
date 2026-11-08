@@ -2034,6 +2034,38 @@
                                       (fn2-ops (update-fn2-ops-retired-count 0 fn2-ops)))
                                  fn2-ops)))))))
 
+;; Post-accept-result: fn2-post-result's terminal post, then the peer record
+;; into the row's peer columns, which the invariant does not read.
+(local
+(defthm fn2-ops-semanticp-of-peer-put
+  (let ((r (update-nth-array 32 slot w3 (update-nth-array 31 slot w2 (update-nth-array 30 slot w1
+            (update-nth-array 29 slot w0 (update-nth-array 28 slot port
+             (update-nth-array 27 slot family fn2-ops))))))))
+    (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (fn2-opsp r) (fn2-ops-wfp r))
+             (fn2-ops-semanticp r)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use ((:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-semanticp-intro (s slot)
+                            (fn2-ops (update-nth-array 32 slot w3 (update-nth-array 31 slot w2 (update-nth-array 30 slot w1
+                                      (update-nth-array 29 slot w0 (update-nth-array 28 slot port
+                                       (update-nth-array 27 slot family fn2-ops)))))))))))))
+(defthm fn2-post-accept-result-conservation
+  (implies (fn2-ops-semanticp fn2-ops)
+           (fn2-ops-semanticp (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce
+                                                      family port w0 w1 w2 w3 fn2-ops)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-post-accept-result)
+                           (fn2-post-result fn2-ops-semanticp fn2-count-stray
+                            fn2-post-accept-result-preserves-type fn2-post-accept-result-preserves-wfp))
+           :use (fn2-ops-semanticp-elim
+                 fn2-post-accept-result-preserves-type fn2-post-accept-result-preserves-wfp
+                 (:instance fn2-post-result-conservation (cell 0) (evkind *fn2-event-accept-result*) (count 0)
+                            (aux0 cap-index) (aux1 cap-nonce))
+                 (:instance fn2-ops-semanticp-of-peer-put
+                            (fn2-ops (fn2-post-result 0 slot gen *fn2-event-accept-result* outcome reason 0
+                                                      cap-index cap-nonce fn2-ops)))))))
+
 ;; FN2-OPS-CREDIT-CONSERVATION: the dispatcher's every operation.
 (defthm fn2-ops-credit-conservation-proved
   (implies (fn2-ops-conservation-hyps op a p)
@@ -2044,7 +2076,7 @@
                                    fn2-op-set-wake fn2-op-unreserve fn2-op-enqueue fn2-outbox-ack
                                    fn2-post-result fn2-harvest-next fn2-op-finish fn2-op-request-cancel
                                    fn2-post-clock fn2-take-clock fn2-post-signal fn2-take-signal
-                                   fn2-outbox-peek)))))
+                                   fn2-outbox-peek fn2-post-accept-result)))))
 (defthm fn2-ops-credit-conservation-statement
   (fn2-ops-credit-conservation$owed op a p)
   :hints (("Goal" :in-theory '(fn2-ops-credit-conservation$owed) :use fn2-ops-credit-conservation-proved)))
