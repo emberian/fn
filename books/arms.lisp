@@ -1319,9 +1319,11 @@
                    (equal (,reader ,at ,cb) (,reader ,at ,ca)))
           :rule-classes nil
           :hints (("Goal" :in-theory
-                   (e/d (,name ,reader ,(fn2-columns-sym reader "$AI") fn2-view-at
-                         fn2-view-nth-nfix fn2-view-member-append)
-                        (nth (:d nfix) fn2-view-equal fn2-view-project fn2-view-range-paths))
+                   (union-theories
+                     '(,name ,reader ,(fn2-columns-sym reader "$AI") fn2-view-at
+                       fn2-view-nth-nfix fn2-view-member-append member-equal binary-append
+                       car-cons cdr-cons (:e nfix) (:e binary-append) (:e member-equal))
+                     (theory 'minimal-theory))
                    :do-not-induct t
                    :use ((:instance fn2-view-reader (paths ,paths) (path ,selected) (a b) (b a))
                          ,@(and bounds `((:instance fn2-view-range-member
@@ -1337,7 +1339,9 @@
     `(defthm ,(fn2-columns-sym name (concatenate 'string "-" (symbol-name reader)))
        (implies (,name ,@parameters b a) (equal (,reader ,cb) (,reader ,ca)))
        :rule-classes nil
-       :hints (("Goal" :in-theory (e/d (,name ,reader fn2-view-at) (nth fn2-view-equal))
+       :hints (("Goal" :in-theory (union-theories
+                   '(,name ,reader fn2-view-at car-cons cdr-cons (:e nfix) (:e binary-append) (:e member-equal))
+                   (theory 'minimal-theory))
                 :use ((:instance fn2-view-reader (paths ,paths) (path ',path) (a b) (b a))))))))
 (defun fn2-view-reader-events (name select carrier parameters paths world)
   (declare (xargs :verify-guards nil))
@@ -1375,17 +1379,20 @@
        (,(if observe 'defun-nx 'defun) ,name (,@parameters b a)
          (declare (xargs :verify-guards nil) (ignorable ,@parameters)) ,body)
        (defthm ,(fn2-columns-sym name "-REFLEXIVE") (,name ,@parameters a a)
-         :hints (("Goal" :in-theory (enable ,name fn2-view-equal))))
+         :hints (("Goal" :in-theory (union-theories '(,name fn2-view-equal) (theory 'minimal-theory)))))
        (defthm ,(fn2-columns-sym name "-TRANSITIVE")
          (implies (and (,name ,@parameters c b) (,name ,@parameters b a))
                   (,name ,@parameters c a))
          :rule-classes nil
-         :hints (("Goal" :in-theory (enable ,name fn2-view-equal))))
+         :hints (("Goal" :in-theory (union-theories '(,name fn2-view-equal) (theory 'minimal-theory)))))
        (defthm ,projection
          ,(if observe `(implies (fn2-view-equal ,paths b a) (,name ,@parameters b a))
             `(equal (,name ,@parameters b a) (fn2-view-equal ,paths b a)))
          :rule-classes nil
-         :hints (("Goal" :in-theory (enable ,name fn2-view-equal fn2-view-project fn2-view-at ,@open))))
+         :hints (("Goal" :in-theory (union-theories
+                    '(,name fn2-view-equal fn2-view-project fn2-view-at ,@open
+                      car-cons cdr-cons cons-equal (:e nfix) (:e binary-append))
+                    (theory 'minimal-theory)))))
        (defthm ,(fn2-columns-sym name "-OF-FOOTPRINT")
          (implies (and (fn2-footprint footprint a b) (fn2-view-protected ,paths footprint))
                   (,name ,@parameters b a))
@@ -1395,7 +1402,7 @@
                         (:instance ,projection)
                         (:instance fn2-footprint (paths footprint) (a a) (b b))
                         (:instance fn2-footprint (paths footprint) (a b) (b a))))))
-       (defthm ,(fn2-columns-sym name "-OF-ROW-FRAME")
+       (defthm ,(fn2-columns-sym name "-ROW-FRAME-PROJECTION")
          (implies (and (fn2-arm-row-frame table row columns children a b) (natp table)
                        (fn2-view-rows-protected ,paths table row columns children))
                   (,name ,@parameters b a))
