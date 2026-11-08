@@ -373,4 +373,20 @@ theorem flush_empty (w : World) (f : Frame) (st : St)
   simp_all [flush]
   rfl
 
+/-- A global stop flushes first, records its reason, and charges the declared empty work. -/
+theorem run_stop_global (w : World) (f : Frame) (st : St) (fuel : Nat)
+    (reason : String) (control reasonCode empty stopped : Val)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hi : f.kind.stops.idxOf? reason = none)
+    (hr : const w ("*FN2-STOP-REASON-" ++ reason ++ "*") = .ok reasonCode)
+    (he : const w "*FN2-WORK-EMPTY*" = .ok empty)
+    (ho : f.observe = false)
+    (hs : callFn w "FN2-CONTROL-RECORD-STOP" [reasonCode,control] = .ok stopped) :
+    run w f (fuel+1) st [.stop reason none] =
+    chargeResult f (setStobj st "FN2-CONTROL" stopped) (.int 0) empty (.int 0) Val.nil := by
+  simp only [run, hn, Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
+    flush_empty w f st hp hn, hc, hi, hr, he, hs, except_ok_bind, stopEnd, ho, evOpt]
+  rfl
+
 end Fn2.Arms
