@@ -16,11 +16,14 @@
 (defun fn2-resident-bytes (bits) (declare (xargs :verify-guards nil)) (ceiling (max 1 bits) 8))
 
 ; One defstobj field spec (NAME :type T ...) of child STOBJ as a measure term
-; over the bound child, or (:refuse NAME) when unmeasurable.
-(defun fn2-resident-field-term (spec)
+; over the bound child, or (:refuse NAME) when unmeasurable. RESIDENT is the
+; child's declared measures ((NAME . TERM) ...) from defcolumns' :resident: a
+; declared measure is the field's term, whatever its type.
+(defun fn2-resident-field-term (spec resident)
   (declare (xargs :verify-guards nil))
   (let* ((name (car spec)) (type (cadr (member-eq :type (cdr spec)))))
-    (cond ((and (consp type) (eq (car type) 'array) (fn2-resident-type-bits (cadr type)))
+    (cond ((assoc-eq name resident) (cdr (assoc-eq name resident)))
+          ((and (consp type) (eq (car type) 'array) (fn2-resident-type-bits (cadr type)))
            `(* ,(fn2-resident-bytes (fn2-resident-type-bits (cadr type))) (,(fn2-columns-sym name "-LENGTH") stobj)))
           ((fn2-resident-type-bits type) (fn2-resident-bytes (fn2-resident-type-bits type)))
           (t (list :refuse name)))))
@@ -31,10 +34,10 @@
     (cons `(* ,(fn2-resident-bytes (fn2-columns-width (cadar cols)))
               (,(fn2-columns-sym (fn2-columns-sym (fn2-columns-col-name stobj (caar cols)) "$A") "-LENGTH") stobj))
           (fn2-resident-column-terms stobj (cdr cols)))))
-(defun fn2-resident-extra-terms (extras)
+(defun fn2-resident-extra-terms (extras resident)
   (declare (xargs :verify-guards nil))
   (if (atom extras) nil
-    (cons (fn2-resident-field-term (car extras)) (fn2-resident-extra-terms (cdr extras)))))
+    (cons (fn2-resident-field-term (car extras) resident) (fn2-resident-extra-terms (cdr extras) resident))))
 (defun fn2-resident-refusals (terms)
   (declare (xargs :verify-guards nil))
   (if (atom terms) nil
@@ -56,7 +59,7 @@
            (row (fn2-decl-row (list :columns stobj) world))
            (terms (append (list (fn2-resident-bytes (integer-length (max 1 (- (nfix (fn2-decl-get :rows-bound row)) 1)))))
                           (fn2-resident-column-terms stobj (fn2-decl-get :columns row))
-                          (fn2-resident-extra-terms (fn2-decl-get :extra-fields row))))
+                          (fn2-resident-extra-terms (fn2-decl-get :extra-fields row) (fn2-decl-get :extra-field-resident row))))
            (refused (fn2-resident-refusals terms)))
       (if (and refused (not (search "bound" why)))
           (er hard 'fn2-resident-measure-events
@@ -74,7 +77,7 @@
   (if (atom entries) nil
     (let* ((stobj (fn2-core-child-property (car entries) :stobj))
            (row (fn2-decl-row (list :columns stobj) world))
-           (refused (fn2-resident-refusals (fn2-resident-extra-terms (fn2-decl-get :extra-fields row)))))
+           (refused (fn2-resident-refusals (fn2-resident-extra-terms (fn2-decl-get :extra-fields row) (fn2-decl-get :extra-field-resident row)))))
       (append (and refused (list (cons (caar entries) refused)))
               (fn2-resident-refused-all (cdr entries) world)))))
 (defun fn2-resident-sum (entries)
