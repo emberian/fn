@@ -14,9 +14,6 @@ open Fn2.ACL2
 def «THROW-NONEXEC-ERROR» («FN» : Val) («ACTUALS» : Val) : Val :=
   Val.nil
 
-def «FN2-BOOT-ROWSP» («X» : Val) : Val :=
-  (if ((Prim.integerp «X»)).truthy then (if ((«NOT» (Prim.lt «X» (Val.int 0)))).truthy then («NOT» (Prim.lt (Val.int 4294967295) «X»)) else Val.nil) else Val.nil)
-
 def «FN2-BOOT-CONFIG-PATHP» («X» : Val) : Val :=
   Val.t
 
@@ -75,6 +72,9 @@ def «FN2-FC-CONTEXT-ROWSP» («X» : Val) : Val :=
   (if ((Prim.integerp «X»)).truthy then (if ((«NOT» (Prim.lt «X» (Val.int 0)))).truthy then («NOT» (Prim.lt (Val.int 4294967295) «X»)) else Val.nil) else Val.nil)
 
 def «FN2-ALLOC-EDGES-ROWSP» («X» : Val) : Val :=
+  (if ((Prim.integerp «X»)).truthy then (if ((«NOT» (Prim.lt «X» (Val.int 0)))).truthy then («NOT» (Prim.lt (Val.int 4294967295) «X»)) else Val.nil) else Val.nil)
+
+def «FN2-BOOT-ROWSP» («X» : Val) : Val :=
   (if ((Prim.integerp «X»)).truthy then (if ((«NOT» (Prim.lt «X» (Val.int 0)))).truthy then («NOT» (Prim.lt (Val.int 4294967295) «X»)) else Val.nil) else Val.nil)
 
 def «FN2-AUTH-ROWSP» («X» : Val) : Val :=

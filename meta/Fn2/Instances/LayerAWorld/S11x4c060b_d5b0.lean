@@ -254,45 +254,6 @@ def «FN2-INPUT-CONFIG-ARTICLE-MAX$A-LENGTH» («FN2-INPUT-CONFIG» : Val) : Val
 def «FN2-INPUT-CONFIG-POSTING$A-LENGTH» («FN2-INPUT-CONFIG» : Val) : Val :=
   (Native.len (Native.nth (Val.int 0) «FN2-INPUT-CONFIG»))
 
-def «FN2-BOOT-COUNT$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 24) «FN2-BOOT»))
-
-def «FN2-BOOT-EVENT-READY$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 22) «FN2-BOOT»))
-
-def «FN2-BOOT-NEXT-EPOCH$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 20) «FN2-BOOT»))
-
-def «FN2-BOOT-EPOCH0$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 18) «FN2-BOOT»))
-
-def «FN2-BOOT-STAGE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 16) «FN2-BOOT»))
-
-def «FN2-BOOT-TOTAL$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 14) «FN2-BOOT»))
-
-def «FN2-BOOT-IMAGE-SIZE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 12) «FN2-BOOT»))
-
-def «FN2-BOOT-RX-GEN$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 10) «FN2-BOOT»))
-
-def «FN2-BOOT-POOL-GEN$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 8) «FN2-BOOT»))
-
-def «FN2-BOOT-STOPPED$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 6) «FN2-BOOT»))
-
-def «FN2-BOOT-DEADLINE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 4) «FN2-BOOT»))
-
-def «FN2-BOOT-PRINCIPAL-SLOT$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 2) «FN2-BOOT»))
-
-def «FN2-BOOT-PHASE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
-  (Native.len (Native.nth (Val.int 0) «FN2-BOOT»))
-
 def «FN2-CNS-EDGES-BPPREV$A-LENGTH» («FN2-CNS-EDGES» : Val) : Val :=
   (Native.len (Native.nth (Val.int 13) «FN2-CNS-EDGES»))
 
@@ -427,6 +388,45 @@ def «FN2-ALLOC-EDGES-HOLDER$A-LENGTH» («FN2-ALLOC-EDGES» : Val) : Val :=
 
 def «FN2-ALLOC-EDGES-STATE$A-LENGTH» («FN2-ALLOC-EDGES» : Val) : Val :=
   (Native.len (Native.nth (Val.int 0) «FN2-ALLOC-EDGES»))
+
+def «FN2-BOOT-COUNT$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 24) «FN2-BOOT»))
+
+def «FN2-BOOT-EVENT-READY$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 22) «FN2-BOOT»))
+
+def «FN2-BOOT-NEXT-EPOCH$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 20) «FN2-BOOT»))
+
+def «FN2-BOOT-EPOCH0$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 18) «FN2-BOOT»))
+
+def «FN2-BOOT-STAGE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 16) «FN2-BOOT»))
+
+def «FN2-BOOT-TOTAL$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 14) «FN2-BOOT»))
+
+def «FN2-BOOT-IMAGE-SIZE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 12) «FN2-BOOT»))
+
+def «FN2-BOOT-RX-GEN$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 10) «FN2-BOOT»))
+
+def «FN2-BOOT-POOL-GEN$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 8) «FN2-BOOT»))
+
+def «FN2-BOOT-STOPPED$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 6) «FN2-BOOT»))
+
+def «FN2-BOOT-DEADLINE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 4) «FN2-BOOT»))
+
+def «FN2-BOOT-PRINCIPAL-SLOT$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 2) «FN2-BOOT»))
+
+def «FN2-BOOT-PHASE$A-LENGTH» («FN2-BOOT» : Val) : Val :=
+  (Native.len (Native.nth (Val.int 0) «FN2-BOOT»))
 
 def «FN2-AUTH-STOPPED$A-LENGTH» («FN2-AUTH» : Val) : Val :=
   (Native.len (Native.nth (Val.int 44) «FN2-AUTH»))
@@ -1364,45 +1364,6 @@ def «FN2-INPUT-CONFIG-ARTICLE-MAX$A-LENGTH».guard («FN2-INPUT-CONFIG» : Val)
 def «FN2-INPUT-CONFIG-POSTING$A-LENGTH».guard («FN2-INPUT-CONFIG» : Val) : Val :=
   («FN2-INPUT-CONFIGP» «FN2-INPUT-CONFIG»)
 
-def «FN2-BOOT-COUNT$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-EVENT-READY$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-NEXT-EPOCH$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-EPOCH0$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-STAGE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-TOTAL$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-IMAGE-SIZE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-RX-GEN$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-POOL-GEN$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-STOPPED$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-DEADLINE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-PRINCIPAL-SLOT$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
-def «FN2-BOOT-PHASE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
-  («FN2-BOOTP» «FN2-BOOT»)
-
 def «FN2-CNS-EDGES-BPPREV$A-LENGTH».guard («FN2-CNS-EDGES» : Val) : Val :=
   («FN2-CNS-EDGESP» «FN2-CNS-EDGES»)
 
@@ -1537,6 +1498,45 @@ def «FN2-ALLOC-EDGES-HOLDER$A-LENGTH».guard («FN2-ALLOC-EDGES» : Val) : Val 
 
 def «FN2-ALLOC-EDGES-STATE$A-LENGTH».guard («FN2-ALLOC-EDGES» : Val) : Val :=
   («FN2-ALLOC-EDGESP» «FN2-ALLOC-EDGES»)
+
+def «FN2-BOOT-COUNT$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-EVENT-READY$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-NEXT-EPOCH$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-EPOCH0$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-STAGE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-TOTAL$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-IMAGE-SIZE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-RX-GEN$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-POOL-GEN$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-STOPPED$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-DEADLINE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-PRINCIPAL-SLOT$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
+
+def «FN2-BOOT-PHASE$A-LENGTH».guard («FN2-BOOT» : Val) : Val :=
+  («FN2-BOOTP» «FN2-BOOT»)
 
 def «FN2-AUTH-STOPPED$A-LENGTH».guard («FN2-AUTH» : Val) : Val :=
   («FN2-AUTHP» «FN2-AUTH»)

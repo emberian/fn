@@ -28,8 +28,12 @@ theorem wrong_phase_rejected : Commit.expand {submitting with phases := []} subm
     .error ":wait must be a phase" := by decide +kernel
 theorem submitting_paths_cannot_settle : Commit.expand waiting submit =
     .error "invalid :commit options" := by decide +kernel
+theorem subarm_uses_generator_context : ∃ declaration,
+    Arm.read {tag := ":COMMITTED", sig := none, fn := "subarm-fixture", decl := Val.ofList [submit],
+      commit := {submitting with tag := "NIL"}} = .ok declaration := ok_exists _ (by decide +kernel)
 #print axioms settling_expansion
 #print axioms submit_independently_read
 #print axioms settle_independently_read
 #print axioms wrong_ticket_rejected
+#print axioms subarm_uses_generator_context
 end Fn2.Arms.CommitControls

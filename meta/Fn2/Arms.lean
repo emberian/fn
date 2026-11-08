@@ -283,7 +283,7 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
   let r := match r with
     | .cons (.sym h) _ => if h.startsWith ":" then Val.ofList [r] else r
     | _ => r
-  let cc := { a.commit with tag := a.tag }
+  let cc := { a.commit with tag := if a.commit.tag == "" then a.tag else a.commit.tag }
   pure ⟨fr, ← readSteps a.refuse cc r, ← readSteps a.refuse cc ss⟩
 
 /-- A column's carrier, for the checked write: an unsigned width, or an enum's tag count. -/

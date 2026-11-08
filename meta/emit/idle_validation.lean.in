@@ -1,0 +1,178 @@
+-- Generated instance of the idle-arm proof shape. No kind or arm allowlist.
+import Fn2.Arms.Core
+import Fn2.Instances.ServedKinds
+import Fn2.Instances.LayerAEqns1
+import Fn2.Instances.LayerAEqns2
+import Fn2.Instances.LayerAEqns3
+import Fn2.Instances.LayerAEqns4
+namespace Fn2.Arms.Served.@NAMESPACE@
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
+open Fn2.Instances.LayerAWorld Fn2.Instances.ServedKinds
+set_option maxRecDepth 100000
+set_option autoImplicit false
+set_option maxHeartbeats 4000000
+set_option linter.unusedVariables false
+theorem snapshot_parts (id core : Val)
+    (h : «@KIND@-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    «FN2-MACHINE-PHASE-READ-CODE» id core = .sym ":OK" ∧
+    «FN2-MACHINE-KIND» id core = .int @KIND_NUMBER@ := by
+  unfold «@KIND@-SNAPSHOT-READ-CODE» at h
+  dsimp only at h
+  by_cases hp : «FN2-MACHINE-PHASE-READ-CODE» id core = .sym ":OK"
+  · simp [«NOT», «EQ», Prim.equal, hp] at h
+    exact ⟨hp, h⟩
+  · simp [«NOT», «EQ», Prim.equal, hp] at h
+
+ theorem snapshot_bounds (id core : Val)
+    (h : «@KIND@-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    («NATP» id).truthy = true ∧
+    (Prim.lt id («FN2-MACHINES-ROWS» («FN2-CORE-MACHINES» core))).truthy = true ∧
+    («NATP» («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core))).truthy = true ∧
+    (Prim.lt («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core))
+      («@KIND@-ROWS» («@KIND@-TABLE» core))).truthy = true := by
+  obtain ⟨hp, hk⟩ := snapshot_parts id core h
+  have hi : («FN2-MACHINE-IDP» id core).truthy = true := by
+    by_cases hi : («FN2-MACHINE-IDP» id core).truthy = true
+    · exact hi
+    · simp [«FN2-MACHINE-PHASE-READ-CODE», «NOT», hi] at hp
+  have hid : («NATP» id).truthy = true ∧
+      (Prim.lt id («FN2-MACHINES-ROWS» («FN2-CORE-MACHINES» core))).truthy = true := by
+    simpa [«FN2-MACHINE-IDP», Fn2.Arms.Val.truthy_ite] using hi
+  have hs : «FN2-MACHINE-SLOT» id core = «FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core) := by
+    simp [«FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hi, «EQ», Prim.equal]
+  simp [«FN2-MACHINE-PHASE-READ-CODE», «NOT», hi, hk, «EQL», Prim.equal,
+    Val.ofBool, hs] at hp
+  exact ⟨hid.1, hid.2, hp⟩
+
+theorem runCore_shape (w : World) (tuple : List String) (k : Kind) (a : Arm)
+    (id budget : Val) (kids : List Val) (fuel : Nat) (hlen : kids.length = tuple.length) :
+    runCore w tuple k a false [id, budget, Val.ofList kids] fuel =
+    (do
+      let code ← callFn w (k.name ++ "-SNAPSHOT-READ-CODE") [id, Val.ofList kids]
+      if code == Val.sym ":OK" then do
+        let slot ← callFn w "FN2-MACHINE-SLOT" [id, Val.ofList kids]
+        let kind ← const w ("*" ++ k.name ++ "-KIND*")
+        let v ← runArm (coreWorld w tuple) (coreKind k tuple) a false
+          ([id, slot, kind, ordOf w k, budget] ++ kids) fuel
+        finish false tuple v
+      else refusedEntry w tuple false kids) := by
+  simp [runCore, nCore, toList_ofList', hlen]
+
+def echoKind : Kind := kinds[@KIND_INDEX@]!
+def echoFree : Arm := echoKind.arms[@ARM_INDEX@]!
+theorem callFn_core_plain (w : World) (tuple : List String) (f : String) (args : List Val)
+    (h : f.endsWith "@CORE" = false) :
+    callFn (coreWorld w tuple) f args = callFn w f args := by
+  simp [callFn, coreWorld, coreFns, h]
+
+@READ_DEFINITION@
+
+theorem echo_row_reads (id slot : Val) @CORE_BINDERS@ :
+  rowReads (coreWorld world coreTuple) (coreKind echoKind coreTuple)
+    (coreTuple.zip @CORE_VALUES@) id slot = .ok @ROW_VALUES@ := by
+  apply rowReads_eq (coreWorld world coreTuple) (coreKind echoKind coreTuple) _ id slot @OWN_VALUE@ @DIRECTORY_VALUE@
+    (by rfl) (by rfl) (echoRead id slot @OWN_VALUE@ @DIRECTORY_VALUE@)
+  intro c hc
+  change c ∈ @COLUMN_NAMES@ at hc
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+  rcases hc with @COLUMN_CASES@
+@ROW_CALL_PROOFS@
+
+
+theorem echo_idle_run (id slot kind ordinal budget : Val) @CORE_BINDERS@ :
+  runArm (coreWorld world coreTuple) (coreKind echoKind coreTuple) echoFree false
+    ([id, slot, kind, ordinal, budget] ++ @CORE_VALUES@) 1 =
+    .ok (Val.ofList ([.int 0, .int 1, .int 0, Val.nil] ++ @CORE_VALUES@)) := by
+  have hr : echoFree.read = .ok ⟨[], [], [.idle]⟩ := by rfl
+  unfold runArm
+  simp only [coreKind, Bool.not_true, Bool.false_eq_true, ↓reduceIte, List.length_append,
+    List.length_cons, List.length_nil]
+  have hl : coreTuple.length = @CORE_SIZE@ := by rfl
+  simp only [hl]
+  simp only [show (5 + @CORE_SIZE@ != 5 + @CORE_SIZE@) = false from rfl, Bool.false_eq_true, ↓reduceIte]
+  change (do
+    let reads ← rowReads (coreWorld world coreTuple) (coreKind echoKind coreTuple)
+      (coreTuple.zip @CORE_VALUES@) id slot
+    let d ← echoFree.read
+    let f : Frame := { kind := coreKind echoKind coreTuple, observe := false, refusal := d.onRefusal, base := [("ID",id),("SLOT",slot),("KIND",kind),("ORDINAL",ordinal),("BUDGET",budget)] }
+    match ← run (coreWorld world coreTuple) f 1
+      { stobjs := coreTuple.zip @CORE_VALUES@, vars := reads ++ f.base } d.steps with
+    | .done v => pure v
+    | .again _ => throw ":repeat-next outside a :repeat") = _
+  rw [echo_row_reads]
+  simp only [except_ok_bind, hr]
+  rfl
+
+
+theorem echo_free_interpreter (id budget : Val) @CORE_BINDERS@ :
+  runCore world coreTuple echoKind echoFree false [id, budget, Val.ofList @CORE_VALUES@] 1 =
+    (if «@KIND@-SNAPSHOT-READ-CODE» id (Val.ofList @CORE_VALUES@) == .sym ":OK" then
+       .ok (Val.ofList [.int 0, .int 1, .int 0, Val.nil, Val.ofList @CORE_VALUES@])
+     else .ok (Val.ofList [.int 0, .int 1, .int 0, Val.nil, «FN2-CORE-STOP» (.int 15) (Val.ofList @CORE_VALUES@)])) := by
+  rw [runCore_shape _ _ _ _ _ _ _ _ (by rfl)]
+  have hcall (i c : Val) : callFn world (echoKind.name ++ "-SNAPSHOT-READ-CODE") [i,c] =
+      .ok («@KIND@-SNAPSHOT-READ-CODE» i c) := by
+    @SNAPSHOT_CALL@
+  rw [hcall]
+  simp only [except_ok_bind]
+  split
+  · have hslot (i c : Val) : callFn world "FN2-MACHINE-SLOT" [i,c] =
+        .ok («FN2-MACHINE-SLOT» i c) := by
+      @SLOT_CALL@
+    rw [hslot]
+    simp only [except_ok_bind]
+    have hk : const world ("*" ++ echoKind.name ++ "-KIND*") = .ok (.int @KIND_NUMBER@) := by rfl
+    rw [hk]
+    simp only [except_ok_bind]
+    rw [echo_idle_run]
+    rfl
+  · @REFUSED_PROOF@
+theorem echo_emitted_success (id budget core : Val)
+    (hself : «UPDATE-FN2-CORE-CONTROL» («FN2-CORE-CONTROL» core) core = core)
+    (h : «@KIND@-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    «@CORE_FUNCTION@» id budget core = Val.ofList [.int 0, .int 1, .int 0, Val.nil, core] := by
+  obtain ⟨hi, hr, hs, hb⟩ := snapshot_bounds id core h
+  simp [«@CORE_FUNCTION@», «EQ», Prim.equal, h, hi, hr, hs, hb,
+    @CHILD_UNFOLD@ Native.nth, Native.nthN, Val.nfix,
+    Val.toInt, hself, Val.ofList]
+
+theorem echo_emitted_refused (id budget core : Val)
+    (h : «@KIND@-SNAPSHOT-READ-CODE» id core ≠ .sym ":OK") :
+    «@CORE_FUNCTION@» id budget core =
+      Val.ofList [.int 0, .int 1, .int 0, Val.nil, «FN2-CORE-STOP» (.int 15) core] := by
+  simp [«@CORE_FUNCTION@», «EQ», Prim.equal, h, Val.ofList]
+
+theorem echo_free_core_eq (id budget : Val) @CORE_BINDERS@ :
+    runCore world coreTuple echoKind echoFree false [id, budget, Val.ofList @CORE_VALUES@] 1 =
+      .ok («@CORE_FUNCTION@» id budget (Val.ofList @CORE_VALUES@)) := by
+  rw [echo_free_interpreter]
+  by_cases h : «@KIND@-SNAPSHOT-READ-CODE» id (Val.ofList @CORE_VALUES@) = .sym ":OK"
+  · rw [echo_emitted_success id budget _ (by rfl) h]
+    simp only [h, beq_self_eq_true, ↓reduceIte]
+  · rw [echo_emitted_refused id budget _ h]
+    simp only [beq_eq_false_iff_ne.mpr h, Bool.false_eq_true, ↓reduceIte]
+
+/-- Every child is quantified. No core child is omitted by the narrowed arm
+signature, including the children the arm never reads. -/
+def CoreImage := Fin @CORE_SIZE@ → Val
+
+def image (kids : CoreImage) : Val := Val.ofList (List.ofFn kids)
+
+theorem echo_free_whole_core (id budget : Val) (kids : CoreImage) :
+    runCore world coreTuple echoKind echoFree false [id, budget, image kids] 1 =
+      .ok («@CORE_FUNCTION@» id budget (image kids)) := by
+  simpa only [image, List.ofFn_succ, List.ofFn_zero] using
+    (echo_free_core_eq id budget @IMAGE_ARGUMENTS@)
+
+/-- Successful interpretation exists; this is not a success implication.
+The equality includes all four result values and the entire returned core,
+for every input and every represented environment, including refused entry. -/
+theorem echo_free_certificate (id budget : Val) (kids : CoreImage) :
+    ∃ fuel result,
+      runCore world coreTuple echoKind echoFree false [id, budget, image kids] fuel = .ok result ∧
+      result = «@CORE_FUNCTION@» id budget (image kids) :=
+  ⟨1, _, echo_free_whole_core id budget kids, rfl⟩
+
+
+#print axioms echo_free_certificate
+end Fn2.Arms.Served.@NAMESPACE@
