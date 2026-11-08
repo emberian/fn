@@ -2722,6 +2722,89 @@
 ;; columns J, after its callees' contracts; a callee without contracts or
 ;; beyond the declaration, or a failed proof, leaves it owed in table
 ;; fn2-arm-frame-owed under the ROW-FRAME's name.
+;;
+;; A child-form handler's face (machine-arms fn2-arms-wrapper-events) binds
+;; its children, calls FN-CHILDREN and writes back what it returns, its own
+;; table whole: the ROW-FRAME then follows from FN-CHILDREN's two child
+;; contracts, each its body opened once in the minimal theory: -ARM-CHILD-COLS
+;; (its table changes at row SLOT only, in the declared columns J: the row
+;; setters' FN2-ARM-COLS-OF- rules, every column's setter enabled, so a write
+;; beyond J fails the proof) and -ARM-CHILD-KEEPS (each returned child outside
+;; CH is the one it was given). A write-back of an equal child keeps the frame.
+(defthm fn2-arm-row-frame-update-equal
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp k) (natp table) (equal (nth k b) v))
+           (fn2-arm-row-frame table row columns children a (update-nth k v b)))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal nth update-nth))
+           :cases ((equal k table)))
+          ("Subgoal 1" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal)))))
+(in-theory (disable fn2-arm-row-frame-update-equal))
+(defun fn2-arm-frame-child-stobj-index (s children k)
+  ; the core child index of the child stobj S
+  (declare (xargs :verify-guards nil))
+  (cond ((atom children) nil) ((eq (cadar children) s) k)
+        (t (fn2-arm-frame-child-stobj-index s (cdr children) (+ 1 k)))))
+(defun fn2-arm-frame-child-keeps-terms (outs pos call kind ch children)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom outs) nil)
+        ((or (eq (car outs) kind) (member (fn2-arm-frame-child-stobj-index (car outs) children 0) ch))
+         (fn2-arm-frame-child-keeps-terms (cdr outs) (+ 1 pos) call kind ch children))
+        (t (cons `(equal (mv-nth ,pos ,call) ,(car outs))
+                 (fn2-arm-frame-child-keeps-terms (cdr outs) (+ 1 pos) call kind ch children)))))
+(defun fn2-arm-frame-child-face-runes (stobjs children)
+  ; the face's core readers and updaters of the children it binds
+  (declare (xargs :verify-guards nil))
+  (cond ((atom children) nil)
+        ((member-eq (cadar children) stobjs)
+         (list* (caar children) (fn2-columns-pre "UPDATE-" (caar children))
+                (fn2-arm-frame-child-face-runes stobjs (cdr children))))
+        (t (fn2-arm-frame-child-face-runes stobjs (cdr children)))))
+(defun fn2-arm-frame-member-hyps (j)
+  (declare (xargs :verify-guards nil))
+  (if (atom j) nil (cons `(member-equal ,(car j) fn2-arm-cs) (fn2-arm-frame-member-hyps (cdr j)))))
+(defun fn2-arm-frame-child-handler-events (kind fn ch j world)
+  ; nil when FN is not a child-form face
+  (declare (xargs :verify-guards nil))
+  (let* ((child (fn2-columns-sym fn "-CHILDREN"))
+         (sig (and (function-symbolp child world) (cdr (assoc-eq child (table-alist 'fn2-arms-child-sigs world)))))
+         (ins (car sig)) (outs (cadr sig)) (k (caddr sig))
+         (children (fn2-arm-frame-children-of world))
+         (tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
+         (call (and sig (cons child (formals child world))))
+         (minimal '(union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))
+         (cols-name (fn2-columns-sym child "-ARM-CHILD-COLS"))
+         (keeps-name (fn2-columns-sym child "-ARM-CHILD-KEEPS"))
+         (keeps (fn2-arm-frame-child-keeps-terms outs k call kind ch children))
+         (colsp (and (member-eq kind outs) (not (member tk ch))))
+         (frame (fn2-arm-frame-name fn "-ARM-ROW-FRAME")))
+    (and sig
+      (append
+       (and colsp
+            `((defthm ,cols-name
+                (implies (and (fn2-arm-cols 0 slot fn2-arm-cs fn2-arm-t0 ,kind) ,@(fn2-arm-frame-member-hyps j))
+                         (fn2-arm-cols 0 slot fn2-arm-cs fn2-arm-t0 (mv-nth ,(+ k (position-eq kind outs)) ,call)))
+                :hints (("Goal" :in-theory (union-theories '(,child mv-nth car-cons cdr-cons
+                                                             ,@(fn2-arm-frame-setter-runes kind (strip-cars (fn2-machine-property kind :table world))))
+                                                           ,minimal))))))
+       (and keeps
+            `((defthm ,keeps-name (and ,@keeps)
+                :hints (("Goal" :in-theory (union-theories '(,child mv-nth car-cons cdr-cons) ,minimal))))))
+       `((defthm ,frame
+           (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
+                         ,@(fn2-arm-frame-row-frame-hyps tk ch j 'id))
+                    (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0
+                                       ,(fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
+           :hints (("Goal" :in-theory (union-theories
+                                       '(,fn ,@(and colsp (list cols-name)) ,@(and keeps (list keeps-name))
+                                         ,@(fn2-arm-frame-lemmas (fn2-arm-frame-body-callees fn world)
+                                                                 '("-ARM-ROW-FRAME" "-ARM-SLOT") kind world)
+                                         ,@(fn2-arm-frame-child-face-runes (union-eq ins outs) children)
+                                         nth-update-nth fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp
+                                         fn2-arm-row-frame-table fn2-arm-row-frame-child fn2-arm-row-frame-update-equal
+                                         fn2-arm-row-frame-cols)
+                                       (theory 'fn2-arm-frame-base))
+                    :do-not-induct t)))
+         (in-theory (disable ,frame ,@(and colsp (list cols-name)) ,@(and keeps (list keeps-name))))
+         (table fn2-arm-frame-fns ',fn '(:arm ,ch ,j nil)))))))
 (defun fn2-arm-frame-handler-final (kind fn ch j world)
   (declare (xargs :verify-guards nil))
   (let* ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
@@ -2735,8 +2818,13 @@
                                                                  (remove-eq (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE")) callees)
                                                                callees)
                                                              ch j tk kind world)
-                               (fn2-arm-frame-slot-problem callees kind world))))))
+                               (fn2-arm-frame-slot-problem callees kind world)))))
+         (face (fn2-arm-frame-child-handler-events kind fn ch j world)))
     (cond ((getpropc frame 'theorem nil world) '(value-triple :known))
+          ;; a child-form face writes its table whole: its frame is its child's
+          ((and face (eq (car problem) :children)
+                (eq (cadr problem) (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
+           `(:or (progn ,@face) (table fn2-arm-frame-owed ',frame '(:proof ,fn))))
           (problem `(table fn2-arm-frame-owed ',frame ',problem))
           (t `(:or (progn
                      (defthm ,frame
@@ -3484,6 +3572,43 @@
       (defthm ,(fn2-ctf-dir-name g)
         (implies (fn2-ctf-dir fn2-core fn2-ctf-c0) (fn2-ctf-dir ,out fn2-ctf-c0))
         :hints (("Goal" :in-theory (union-theories '(,g ,(fn2-ctf-dir-name body-fn)) (theory 'fn2-arm-frame-base))))))))
+;; THE OBSERVE STUBS keep the operation table and the pool whole
+;; (FN2-DISPATCH-OPS-POOL, a view of those two children): no kind's handler
+;; writes either (the harvest that dispatches it already did), so every op
+;; and pool row -- the commit layer's among them -- is the one it observed.
+;; The claim is proved from a KIDS contract at children S without them.
+(defun fn2-dispatch-ops-pool-children (world)
+  (declare (xargs :verify-guards nil))
+  (fn2-arm-frame-indices '(fn2-core-ops fn2-core-pool) world))
+(defun fn2-dispatch-ops-pool-view-form (world)
+  (declare (xargs :verify-guards nil))
+  (if (function-symbolp 'fn2-dispatch-ops-pool world) '(value-triple :known)
+    '(fn2-defview fn2-dispatch-ops-pool :carrier fn2-core :select ((fn2-ops :whole t) (fn2-pool :whole t)))))
+(defun fn2-dispatch-ops-pool-uses (ks s out)
+  (declare (xargs :verify-guards nil))
+  (if (atom ks) nil
+    (cons `(:instance fn2-arm-kids-nth (i 0) (k ,(car ks)) (free ',s) (a fn2-core) (b ,out))
+          (fn2-dispatch-ops-pool-uses (cdr ks) s out))))
+;; NAME: (fn2-dispatch-ops-pool OUT fn2-core), where OUT's function has the
+;; KIDS contract LEMMA at S (ENABLE opens a stub's local body to it).
+(defun fn2-dispatch-ops-pool-claim (name out body-out lemma s enable world)
+  (declare (xargs :verify-guards nil))
+  `(defthm ,name (fn2-dispatch-ops-pool ,out fn2-core)
+     :hints (("Goal" :in-theory (union-theories '(fn2-dispatch-ops-pool ,@enable) (theory 'fn2-arm-frame-base))
+              :do-not-induct t
+              :use ((:instance ,lemma (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
+                    (:instance fn2-arm-kids-refl (i 0) (free ',s) (a fn2-core))
+                    ,@(fn2-dispatch-ops-pool-uses (fn2-dispatch-ops-pool-children world) s body-out))))))
+;; An observe attachment FN (kind KIND): its footprint off the ops and the
+;; pool, else refused naming the contracts that write them; then its claim.
+(defun fn2-dispatch-ops-pool-form (who fn kind e world)
+  (declare (xargs :verify-guards nil))
+  (let ((d (fn2-dc-entry fn kind world))
+        (out `(mv-nth 1 (,fn ,@(formals fn world)))))
+    (if (and d (intersectp-equal (car d) (fn2-dispatch-ops-pool-children world)))
+        (fn2-dc-frame-check who fn kind (set-difference-equal e (fn2-dispatch-ops-pool-children world)) world)
+      (if (null d) (fn2-dc-frame-check who fn kind e world)
+        (fn2-dispatch-ops-pool-claim (fn2-columns-sym fn "-DISPATCH-OPS-POOL") out out (cdr d) (car d) nil world)))))
 (defun fn2-machine-stub-events (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -3503,6 +3628,8 @@
                (observes (fn2-machine-property name :observes world))
                (er (fn2-dispatch-frame-children name world))
                (eo er)
+               (refuse (fn2-dc-entry 'fn2-machine-refuse-observation nil world))
+               (refuse-lemma (cdr refuse)) (refuse-kids (car refuse))
                (run-formals '(id budget fn2-core))
                (obs-formals '(id event outcome reason count aux0 aux1 fn2-core))
                (run-guard `(and (fn2-core-wfp fn2-core)
@@ -3546,7 +3673,11 @@
               ;; the dispatch frame: only the kind's frame children change,
               ;; and the directory keeps every id's kind, slot and membership
               ,@(fn2-dispatch-claims run-stub run-formals 4 er 'fn2-machine-refuse-phase)
-              ,@(fn2-dispatch-claims obs-stub obs-formals 1 eo 'fn2-machine-refuse-observation))
+              ,@(fn2-dispatch-claims obs-stub obs-formals 1 eo 'fn2-machine-refuse-observation)
+              ;; the observe stub keeps the operation table and the pool
+              ,(fn2-dispatch-ops-pool-claim (fn2-columns-sym obs-stub "-OPS-POOL") `(mv-nth 1 (,obs-stub ,@obs-formals))
+                                            '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
+                                            (list obs-stub) world))
              ;; the stubs' derived contracts (row frame, slot, phase), as a
              ;; constrained hook's (machines.lisp fn2-arm-frame-op-events)
               (make-event (value (cons 'progn (fn2-arm-frame-op-events ',run-stub ',er nil (w state)))))
@@ -3565,6 +3696,9 @@
              (fn2-core-preserves ,obs-def (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)
              ,@(fn2-dispatch-claims run-def run-formals 4 er 'fn2-machine-refuse-phase)
              ,@(fn2-dispatch-claims obs-def obs-formals 1 eo 'fn2-machine-refuse-observation)
+             ,(fn2-dispatch-ops-pool-claim (fn2-columns-sym obs-def "-OPS-POOL") `(mv-nth 1 (,obs-def ,@obs-formals))
+                                           '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
+                                           (list obs-def) world)
              (defun ,charge-def (phase bytes steps descriptors)
                (declare (xargs :guard t) (ignore phase bytes steps descriptors))
                nil)
@@ -3576,7 +3710,8 @@
                         (,charge-stub ,charge-def)
                         (,bound-stub ,bound-def))
              (in-theory (disable ,(fn2-columns-sym run-def "-ARM-KIDS") ,(fn2-ctf-dir-name run-def)
-                                 ,(fn2-columns-sym obs-def "-ARM-KIDS") ,(fn2-ctf-dir-name obs-def))))
+                                 ,(fn2-columns-sym obs-def "-ARM-KIDS") ,(fn2-ctf-dir-name obs-def)
+                                 ,(fn2-columns-sym obs-def "-OPS-POOL"))))
            (fn2-machine-stub-events (cdr names) world)))))))
 
 ;; The stubs and their frames, after the default bodies' contracts and the
@@ -3593,6 +3728,7 @@
     (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-refuse-phase nil (w state))))
     (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-refuse-observation nil (w state))))
     (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-idle nil (w state))))
+    (make-event (value (fn2-dispatch-ops-pool-view-form (w state))))
     (make-event (value (cons 'progn (fn2-machine-stub-events (fn2-machine-names (w state)) (w state)))))))
 (defmacro fn2-machine-stub-all-events ()
   (cons 'progn (fn2-machine-stub-all-forms)))
