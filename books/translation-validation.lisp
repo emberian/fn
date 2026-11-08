@@ -51,7 +51,8 @@
 
 (defun fn2-tv-matches-function (entry fn world)
   (declare (xargs :verify-guards nil))
-  (equal entry (fn2-tv-function fn world)))
+  (and (function-symbolp fn world)
+       (equal entry (fn2-tv-function fn world))))
 
 (defthm fn2-tv-matches-function-exact
   (implies (fn2-tv-matches-function entry fn world)
@@ -113,7 +114,8 @@
     (let* ((entry (car entries))
            (core (fn2-tv-arm-name kind infix (car entry)))
            (fn (if children (fn2-tv-arm-name core "-" 'children) core)))
-      (cons (list kind area (car entry) (if children :children :core) fn core
+      (cons (list kind area (car entry) (if children :children :core) fn
+                  (if (and children (eq area :subarms)) nil core)
                   (cdr entry) (cdr (assoc-eq fn (table-alist 'fn2-arms-child-sigs world))))
             (fn2-tv-arm-entries kind area infix (cdr entries) children world)))))
 
@@ -139,3 +141,86 @@
     (if (equal ,inventory (fn2-tv-arm-inventory (w state)))
         '(value-triple :export-matches-complete-arm-inventory)
       (er soft 'fn2-tv-check-arm-inventory "Arm inventory is incomplete or differs from the live world."))))
+
+(defun fn2-tv-matches-functions (entries world)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) (null entries)
+    (and (fn2-tv-matches-function (cdar entries) (caar entries) world)
+         (fn2-tv-matches-functions (cdr entries) world))))
+
+(defmacro fn2-tv-check-functions (entries)
+  `(make-event
+    (if (fn2-tv-matches-functions ,entries (w state))
+        '(value-triple :all-exports-match-live-functions)
+      (er soft 'fn2-tv-check-functions "At least one export differs from its live function."))))
+
+; Closure is checked in the live world, not inferred from an emitter's count.
+(defconst *fn2-tv-native-boundary*
+  '(if return-last equal cons car cdr consp integerp acl2-numberp rationalp symbolp stringp characterp coerce
+    < binary-+ binary-* unary-- binary-logand binary-logior binary-logxor binary-logeqv lognot
+    logorc1 floor mod evenp nonnegative-integer-quotient expt len nth mv-nth update-nth
+    member-equal acl2-count char-code code-char ceiling ash))
+
+(mutual-recursion
+ (defun fn2-tv-calls (term)
+   (declare (xargs :verify-guards nil))
+   (cond ((or (atom term) (eq (car term) 'quote)) nil)
+         ((consp (car term)) (append (fn2-tv-calls (caddar term)) (fn2-tv-calls-list (cdr term))))
+         (t (cons (car term) (fn2-tv-calls-list (cdr term))))))
+ (defun fn2-tv-calls-list (terms)
+   (declare (xargs :verify-guards nil))
+   (if (atom terms) nil
+     (append (fn2-tv-calls (car terms)) (fn2-tv-calls-list (cdr terms))))))
+
+(defun fn2-tv-closed-functions (names available world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) t
+    (let* ((fn (car names))
+           (body (getpropc fn 'unnormalized-body nil world))
+           (guard (getpropc fn 'guard nil world))
+           (measure (and (getpropc fn 'recursivep nil world)
+                         (access justification (getpropc fn 'justification nil world) :measure)))
+           (attachment (fn2-tv-attachment fn world)))
+      (and (subsetp-eq (append (fn2-tv-calls body) (fn2-tv-calls guard) (fn2-tv-calls measure)
+                              (and attachment (list (cdr attachment)))) available)
+           (fn2-tv-closed-functions (cdr names) available world)))))
+
+(defun fn2-tv-refused-functions (names world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) t
+    (and (not (getpropc (car names) 'unnormalized-body nil world))
+         (not (fn2-tv-attachment (car names) world))
+         (fn2-tv-refused-functions (cdr names) world))))
+
+(defun fn2-tv-arm-roots (inventory)
+  (declare (xargs :verify-guards nil))
+  (if (atom inventory) nil
+    (append (list (fifth (car inventory)))
+            (and (sixth (car inventory)) (list (sixth (car inventory))))
+            (fn2-tv-arm-roots (cdr inventory)))))
+
+(defun fn2-tv-host-roots (world acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom world) acc
+    (let ((fn (caar world)))
+      (fn2-tv-host-roots
+       (cdr world)
+       (if (and (symbolp fn) (eq (cadar world) 'formals)
+                (<= 9 (length (symbol-name fn)))
+                (equal (subseq (symbol-name fn) 0 9) "FN2-HOST-"))
+           (add-to-set-eq fn acc) acc)))))
+
+(defun fn2-tv-served-closure-p (names refused world)
+  (declare (xargs :verify-guards nil))
+  (let ((available (append names refused *fn2-tv-native-boundary*)))
+    (and (no-duplicatesp-eq names)
+         (subsetp-eq (append '(fn2-turn) (fn2-tv-host-roots world nil)
+                             (fn2-tv-arm-roots (fn2-tv-arm-inventory world))) available)
+         (fn2-tv-refused-functions refused world)
+         (fn2-tv-closed-functions names available world))))
+
+(defmacro fn2-tv-check-served-closure (names refused)
+  `(make-event
+    (if (fn2-tv-served-closure-p ,names ,refused (w state))
+        '(value-triple :complete-served-export-closure)
+      (er soft 'fn2-tv-check-served-closure "Missing served root/callee, duplicate function, or false refusal."))))

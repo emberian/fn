@@ -27,3 +27,26 @@
 (fn2-tv-check-arm-inventory
  '((fn2-tv-kind :arms :ready :core fn2-tv-kind-run-ready fn2-tv-kind-run-ready ((:yield)) nil)
    (fn2-tv-kind :observe-arms :result :core fn2-tv-kind-on-result fn2-tv-kind-on-result ((:nowake)) nil)))
+
+(defun fn2-tv-outer (x) (fn2-tv-kind-run-idle-children x))
+(make-event
+ (if (not (fn2-tv-matches-function (fn2-tv-function 'fn2-tv-missing (w state))
+                                  'fn2-tv-missing (w state)))
+     '(value-triple :nonfunction-export-rejected)
+   (er soft 'closure-control "A nonexistent function was counted as an export.")))
+(make-event
+ `(fn2-tv-check-functions
+   ',(list (cons 'fn2-tv-outer (fn2-tv-function 'fn2-tv-outer (w state))))))
+(make-event
+ `(must-fail
+   (fn2-tv-check-functions
+    ',(list (cons 'fn2-tv-outer
+                  (update-nth 7 (fn2-tv-object nil)
+                              (fn2-tv-function 'fn2-tv-outer (w state))))))))
+(make-event
+ (if (and (fn2-tv-closed-functions '(fn2-tv-outer fn2-tv-kind-run-idle-children)
+                                  '(fn2-tv-outer fn2-tv-kind-run-idle-children) (w state))
+          (not (fn2-tv-closed-functions '(fn2-tv-outer) '(fn2-tv-outer) (w state)))
+          (not (fn2-tv-refused-functions '(fn2-tv-outer) (w state))))
+     '(value-triple :missing-callee-and-false-refusal-rejected)
+   (er soft 'closure-control "Closure omitted a live callee or accepted a false refusal.")))
