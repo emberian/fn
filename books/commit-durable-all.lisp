@@ -430,9 +430,10 @@
 ;;     in full, its log flag the role-1 unit and the role-2 seal of its batch;
 ;;     each fenced once the fence flag is set (or FUA in barrier mode 1); the
 ;;     three roles share one extent;
-;;  J4 the published root is at or below the installed one, and batches
-;;     1..installed are durable in the log (publication follows predecessor
-;;     publication: the root installs batch B only as published + 1).
+;;  J4 the published root is at or below the installed one and at most one
+;;     below it, and batches 1..installed are durable in the log (publication
+;;     follows predecessor publication: the root installs batch B only as
+;;     published + 1, and publishes only the installed batch).
 ;; J3 (submitted bytes stay bound to their loans) is the link the flags'
 ;; rises need from the operations table; see FN2-ENV-DUR-INV's owed list.
 (defun fn2-env-root (fn2-core)
@@ -524,6 +525,7 @@
   (let ((root (fn2-env-root fn2-core)))
     ; a core without a root row reads (nil 0 0): nothing installed
     (and (<= (nth 2 root) (nth 1 root))
+         (<= (nth 1 root) (+ 1 (nth 2 root)))
          (fn2-env-prefix-durable-p (nth 1 root) log))))
 (defun fn2-env-dur-inv (ids acked log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -1396,10 +1398,15 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-j-frontier fn2-env-installed) :use ((:instance fn2-env-root-congruence)))))
 (defthm fn2-env-j-row-of-row-frame
-  (implies (and (fn2-env-j-row id log a) (fn2-env-j-frontier log a)
+  ; the frame lift: J at ID survives a commit-table frame that keeps J2's
+  ; evidence, when the frontier holds after and the installed root does not
+  ; drop, and either ID is at another slot, the frame leaves phase and
+  ; reply count, or ID's batch is already installed
+  (implies (and (fn2-env-j-row id log a) (fn2-env-j-frontier log b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
                 (fn2-corep b) (fn2-core-wfp b)
                 (fn2-arm-row-frame 9 row cs ch a b) (natp row)
-                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a)) (equal (nth 31 b) (nth 31 a))
+                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a))
                 (not (member-equal 33 cs)) (not (member-equal 9 cs)) (not (member-equal 13 cs))
                 (not (member-equal 23 cs)) (not (member-equal 24 cs)) (not (member-equal 25 cs))
                 (fn2-ctf-dir b a)
@@ -1407,8 +1414,7 @@
                     (and (not (member-equal 0 cs)) (not (member-equal 27 cs)))
                     (and (posp (fn2-machine-batch-no id a))
                          (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
-           (and (fn2-env-j-row id log b) (fn2-env-j-frontier log b)
-                (equal (fn2-env-installed b) (fn2-env-installed a))))
+           (fn2-env-j-row id log b))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(natp) (theory 'minimal-theory))
            :cases ((equal (fn2-machine-kind id a) *fn2-commit-kind*))
@@ -1416,9 +1422,7 @@
            :use ((:instance fn2-ctf-dir-readers)
                  (:instance fn2-env-j-row-off-kind (fn2-core b))
                  (:instance fn2-env-j-evidence-of-row-frame)
-                 (:instance fn2-env-j-frontier-of-root)
                  (:instance fn2-env-j-row-transfer)))))
-
 ;; ---------------------------------------------------------------------------
 ;; THE COMMIT ARMS' J LIFTS. Each visit of a commit row (fn2-commit-run at a
 ;; phase) keeps J at every id: its FRAME is the arm's declaration (the
@@ -1453,6 +1457,16 @@
                                    fn2-machine-cb-deps-ok-read-code fn2-machine-cb-log-ok fn2-machine-cb-log-ok-read-code
                                    fn2-machine-cb-fence-ok fn2-machine-cb-fence-ok-read-code)
                                   (fn2-machine-kind fn2-machine-slot)))))
+(defthm fn2-env-j1-row-phase-facts
+  ; what J1 promises of a readable row by its phase
+  (implies (and (fn2-env-j-row id log fn2-core) (fn2-commit-idp id fn2-core))
+           (let ((phase (fn2-machine-phase id fn2-core)) (batch (fn2-machine-batch-no id fn2-core)))
+             (and (implies (not (equal phase *fn2-commit-state-free*)) (posp batch))
+                  (implies (member-equal phase (list *fn2-commit-state-publish* *fn2-commit-state-notify*))
+                           (<= batch (fn2-env-installed fn2-core)))
+                  (implies (equal phase *fn2-commit-state-install*) (fn2-env-batch-durable-p batch log)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row member-equal (:e member-equal)))))
 (defthm fn2-env-j1-row-phase-transfer
   ; a step that keeps J2's evidence and the reply count of row ID, does not
   ; lower the installed root, and moves a row past :free only to phases whose
@@ -1474,10 +1488,11 @@
                                (:type-prescription fn2-env-installed-natp) member-equal (:e member-equal)))))
 (defthm fn2-env-j-row-of-row-frame-off-row
   ; every commit arm's frame keeps J at an id that is not a readable row at the frame's slot
-  (implies (and (fn2-env-j-row i log a) (fn2-env-j-frontier log a)
+  (implies (and (fn2-env-j-row i log a) (fn2-env-j-frontier log b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
                 (fn2-corep b) (fn2-core-wfp b)
                 (fn2-arm-row-frame 9 row cs ch a b) (natp row)
-                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a)) (equal (nth 31 b) (nth 31 a))
+                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a))
                 (not (member-equal 33 cs)) (not (member-equal 9 cs)) (not (member-equal 13 cs))
                 (not (member-equal 23 cs)) (not (member-equal 24 cs)) (not (member-equal 25 cs))
                 (fn2-ctf-dir b a)
@@ -1493,12 +1508,13 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-commit-idp fn2-commit-snapshot-read-code))))
 (defthm fn2-env-j-row-of-row-frame-same-row
-  ; at the frame's slot: a step that leaves the reply count, moves the row
-  ; past neither :publish nor :notify, and reaches :install only with its
-  ; three durability flags set keeps J
-  (implies (and (fn2-env-j-row i log a) (fn2-env-j-frontier log a)
+  ; at the frame's slot: a step that leaves the reply count keeps J when it
+  ; reaches :publish or :notify only from them or with the batch installed,
+  ; and :install only from it or with the three durability flags set
+  (implies (and (fn2-env-j-row i log a) (fn2-env-j-frontier log b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
                 (fn2-arm-row-frame 9 row cs ch a b) (natp row)
-                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a)) (equal (nth 31 b) (nth 31 a))
+                (not (member-equal 9 ch)) (equal (nth 30 b) (nth 30 a))
                 (not (member-equal 33 cs)) (not (member-equal 9 cs)) (not (member-equal 13 cs))
                 (not (member-equal 23 cs)) (not (member-equal 24 cs)) (not (member-equal 25 cs))
                 (not (member-equal 27 cs))
@@ -1506,8 +1522,11 @@
                 (fn2-commit-idp i a) (fn2-commit-idp id a)
                 (equal (fn2-machine-slot i a) row) (equal (fn2-machine-slot id a) row)
                 (not (equal (fn2-machine-phase id a) *fn2-commit-state-free*))
-                (not (member-equal (fn2-machine-phase id b) (list *fn2-commit-state-publish* *fn2-commit-state-notify*)))
-                (implies (equal (fn2-machine-phase id b) *fn2-commit-state-install*)
+                (implies (and (member-equal (fn2-machine-phase id b) (list *fn2-commit-state-publish* *fn2-commit-state-notify*))
+                              (not (member-equal (fn2-machine-phase id a) (list *fn2-commit-state-publish* *fn2-commit-state-notify*))))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed b)))
+                (implies (and (equal (fn2-machine-phase id b) *fn2-commit-state-install*)
+                              (not (equal (fn2-machine-phase id a) *fn2-commit-state-install*)))
                          (and (fn2-machine-batch-no id a)
                               (equal (fn2-machine-cb-deps-ok id a) 1)
                               (equal (fn2-machine-cb-log-ok id a) 1)
@@ -1522,7 +1541,7 @@
                  (:instance fn2-env-read-codes-of-row-frame (id id))
                  (:instance fn2-ctf-dir-readers (id i))
                  (:instance fn2-ctf-dir-readers (id id))
-                 (:instance fn2-env-j-frontier-of-root)
+                 (:instance fn2-env-j1-row-phase-facts (id i) (fn2-core a))
                  (:instance fn2-env-same-slot-reads (fn2-core a))
                  (:instance fn2-env-same-slot-reads (fn2-core b))
                  (:instance fn2-env-j-row-durable-flags (id i) (fn2-core a))
@@ -1571,12 +1590,12 @@
               :hints (("Goal" :in-theory nil
                        :use ((:instance ,frame) (:instance fn2-env-j-frontier-of-root (a fn2-core) (b ,b)))))))))))
 ;; Each per-id lift FN2-ENV-J-ROW-<PHASE>-ARM, lifted over the id list.
-(defun fn2-env-arm-rows-events (state-name)
+(defun fn2-env-arm-rows-events (state-name extra)
   (declare (xargs :mode :program))
   (let* ((const (fn2-env-arm-state-const state-name))
          (row (fn2-columns-sym (fn2-columns-col-name 'fn2-env-j-row state-name) "-ARM"))
          (rw (fn2-columns-sym row "-REWRITE"))
-         (hyps `((fn2-env-j-frontier log fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+         (hyps `(,@extra (fn2-env-j-frontier log fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
                  (equal (fn2-commit-row-phase id fn2-core) ,const))))
     `((defthm ,rw
         (implies (and (fn2-env-j-row i log fn2-core) ,@hyps)
@@ -1591,15 +1610,8 @@
 (make-event (value (cons 'progn (fn2-env-arm-frame-events :durable 6))))
 
 ;; :NOTIFY. The row at the visited slot is at :notify, so J1 already bounds
-;; its batch by the installed root and the frame lift applies even though the
-;; arm writes the phase and the reply count.
-(defthm fn2-env-j1-row-notify-bound
-  (implies (and (fn2-env-j-row id log fn2-core) (fn2-commit-idp id fn2-core)
-                (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-notify*))
-           (and (posp (fn2-machine-batch-no id fn2-core))
-                (<= (fn2-machine-batch-no id fn2-core) (fn2-env-installed fn2-core))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row member-equal (:e member-equal)))))
+;; its batch by the installed root (FN2-ENV-J1-ROW-PHASE-FACTS) and the frame
+;; lift applies even though the arm writes the phase and the reply count.
 (defthm fn2-env-j-row-notify-arm
   (implies (and (fn2-env-j-row i log fn2-core) (fn2-env-j-frontier log fn2-core)
                 (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
@@ -1613,12 +1625,13 @@
            :use ((:instance fn2-env-notify-arm-frame)
                  (:instance fn2-env-row-phase-snapshot)
                  (:instance fn2-env-same-slot-reads)
-                 (:instance fn2-env-j1-row-notify-bound (id i))
+                 (:instance fn2-env-j1-row-phase-facts (id i))
+                 (:instance fn2-env-j-frontier-notify-arm)
                  (:instance fn2-env-j-row-of-row-frame-off-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
                             (row (fn2-machine-slot id fn2-core)) (cs '(0 14 27 15 19 21 6)) (ch '(29 28 3 2 5)))
                  (:instance fn2-env-j-row-of-row-frame (id i) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
                             (row (fn2-machine-slot id fn2-core)) (cs '(0 14 27 15 19 21 6)) (ch '(29 28 3 2 5)))))))
-(make-event (value (cons 'progn (fn2-env-arm-rows-events :notify))))
+(make-event (value (cons 'progn (fn2-env-arm-rows-events :notify nil))))
 
 ;; :DURABLE. The arm reaches :install only through its guard (batch number
 ;; and the three flags set: FN2-ENV-COMMIT-RUN-DURABLE-PHASE), and then J2's
@@ -1753,13 +1766,295 @@
                             (cs '(0 15 19 21 6)) (ch '(20 30 5))
                             (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
                  (:instance fn2-env-commit-run-durable-keeps-commit-io)
+                 (:instance fn2-env-j-frontier-durable-arm)
                  (:instance fn2-env-row-phase-snapshot)
                  (:instance fn2-env-commit-run-durable-phase)
                  (:instance fn2-env-j-row-of-row-frame-off-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
                             (row (fn2-machine-slot id fn2-core)) (cs '(0 15 19 21 6)) (ch '(20 30 5)))
                  (:instance fn2-env-j-row-of-row-frame-same-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
                             (row (fn2-machine-slot id fn2-core)) (cs '(0 15 19 21 6)) (ch '(20 30 5)))))))
-(make-event (value (cons 'progn (fn2-env-arm-rows-events :durable))))
+(make-event (value (cons 'progn (fn2-env-arm-rows-events :durable nil))))
+;; :INSTALL and :PUBLISH. The root swap (FN2-ENV-ROOT-SWAP-FACTS) installs
+;; the row's batch only as published + 1 and publishes only the installed
+;; batch; every other callee of the two arms keeps the root (generator
+;; FN2-ENV-KEEP-FORMS at child 31).  So the visit at :install keeps J4 (the
+;; batch is durable by J1 at :install) and does not lower the installed root,
+;; and reaches :publish only by its install (FN2-ENV-COMMIT-RUN-INSTALL-FACTS);
+;; the visit at :publish keeps the installed root.  Both read J at the
+;; visited id itself (its batch's durability, its positive batch number).
+(make-event
+ (value (cons 'progn (fn2-env-keep-forms (fn2-ctf-postorder-new '(fn2-commit-root-edge fn2-core-stop fn2-commit-write+phase fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason fn2-machine-contract-check fn2-machine-refuse-phase) (w state))
+                                         31 "-KEEPS-COMMIT-ROOT" 'fn2-commit))))
+(defthm fn2-env-root-swap-facts
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (posp (fn2-machine-batch-no id fn2-core)))
+           (let ((r (fn2-env-root fn2-core)) (batch (fn2-machine-batch-no id fn2-core)))
+             (mv-let (ok after) (fn2-commit-root-swap id publish fn2-core)
+               (if ok
+                   (and (nth 0 r)
+                        (if publish
+                            (and (equal batch (nth 1 r))
+                                 (equal (fn2-env-root after) (list t (nth 1 r) batch)))
+                          (and (equal batch (+ 1 (nth 2 r)))
+                               (equal (fn2-env-root after) (list t batch (nth 2 r))))))
+                 (equal (nth 31 after) (nth 31 fn2-core))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-root-swap fn2-env-root fn2-core-stop-keeps-commit-root update-fn2-core-commit-root fn2-core-commit-root) (fn2-machine-batch-no fn2-commit-frontier fn2-core-stop)))))
+(make-event
+ (value (cons 'progn (fn2-env-keep-forms (fn2-ctf-postorder-new '(fn2-successor-publish fn2-commit-stream-wake fn2-commit-write+phase+cb-published
+                                                                  fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason) (w state))
+                                         31 "-KEEPS-COMMIT-ROOT" 'fn2-commit))))
+(defthm fn2-env-install-arm-phase
+  (implies (and (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset)
+                (subsetp-equal '(11 7) fn2-arm-pset)
+                (or (member-equal 8 fn2-arm-pset)
+                    (not (and (mv-nth 0 (fn2-commit-root-swap id nil fn2-core))
+                              (equal (nth 31 (mv-nth 4 (fn2-commit-run-install id budget fn2-core)))
+                                     (nth 31 (mv-nth 1 (fn2-commit-root-swap id nil fn2-core))))))))
+           (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-install id budget fn2-core))) fn2-arm-pset))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run-install fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase
+                                               fn2-commit-root-edge-keeps-commit-root fn2-commit-write+phase-keeps-commit-root
+                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-keeps-commit-root
+                                               fn2-core-stop-keeps-commit-root
+                                               fn2-commit~fn2-commit-root-swap-arm-phase fn2-commit~fn2-commit-root-edge-arm-phase
+                                               fn2-commit-write+phase-arm-phase
+                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-arm-phase
+                                               fn2-core-stop-arm-phase)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-publish-arm-phase
+  (implies (and (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset)
+                (subsetp-equal '(9 11 8) fn2-arm-pset))
+           (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-publish id budget fn2-core))) fn2-arm-pset))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run-publish fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase
+                                               fn2-commit~fn2-commit-root-swap-arm-phase fn2-successor-publish-arm-phase
+                                               fn2-commit-stream-wake-arm-phase fn2-commit-write+phase+cb-published-arm-phase
+                                               fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-arm-phase
+                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-arm-phase
+                                               fn2-core-stop-arm-phase)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-install-arm-root
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (posp (fn2-machine-batch-no id fn2-core)))
+           (let ((b (mv-nth 4 (fn2-commit-run-install id budget fn2-core))))
+             (mv-let (ok s) (fn2-commit-root-swap id nil fn2-core)
+               (or (equal (nth 31 b) (nth 31 fn2-core))
+                   (and ok (equal (nth 31 b) (nth 31 s)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run-install fn2-commit-root-edge-keeps-commit-root
+                                               fn2-commit-write+phase-keeps-commit-root
+                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-keeps-commit-root
+                                               fn2-core-stop-keeps-commit-root)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-root-swap-facts (publish nil))))))
+(defthm fn2-env-publish-arm-root
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (posp (fn2-machine-batch-no id fn2-core)))
+           (let ((b (mv-nth 4 (fn2-commit-run-publish id budget fn2-core))))
+             (mv-let (ok s) (fn2-commit-root-swap id t fn2-core)
+               (or (equal (nth 31 b) (nth 31 fn2-core))
+                   (and ok (equal (nth 31 b) (nth 31 s)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run-publish fn2-successor-publish-keeps-commit-root
+                                               fn2-commit-stream-wake-keeps-commit-root fn2-commit-write+phase+cb-published-keeps-commit-root
+                                               fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-keeps-commit-root
+                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-keeps-commit-root
+                                               fn2-core-stop-keeps-commit-root)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-root-swap-facts (publish t))))))
+(defthm fn2-env-commit-run-install-facts
+  ; the visit at :install leaves the root, or installs the row's batch as
+  ; published + 1; it reaches :publish only by that install
+  (implies (and (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (posp (fn2-machine-batch-no id fn2-core)))
+           (let* ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))) (r (fn2-env-root fn2-core))
+                  (batch (fn2-machine-batch-no id fn2-core))
+                  (swap (and (nth 0 r) (equal batch (+ 1 (nth 2 r)))
+                             (equal (fn2-env-root b) (list t batch (nth 2 r))))))
+             (and (member-equal (fn2-machine-phase id b) '(8 11 7))
+                  (or (equal (nth 31 b) (nth 31 fn2-core)) swap)
+                  (implies (equal (fn2-machine-phase id b) *fn2-commit-state-publish*) swap))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit~fn2-machine-contract-check-arm-phase
+                                               fn2-machine-contract-check-keeps-commit-root
+                                               fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-install-arm-phase (fn2-arm-pset '(8 11 7)))
+                 (:instance fn2-env-install-arm-phase (fn2-arm-pset '(11 7)))
+                 (:instance fn2-env-install-arm-root)
+                 (:instance fn2-env-root-swap-facts (publish nil))
+                 (:instance fn2-env-root-congruence (a (mv-nth 1 (fn2-commit-root-swap id nil fn2-core)))
+                            (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-row-phase-snapshot)))))
+(defthm fn2-env-commit-run-publish-facts
+  ; the visit at :publish leaves the root, or publishes the row's batch,
+  ; which is the installed one
+  (implies (and (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (posp (fn2-machine-batch-no id fn2-core)))
+           (let* ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))) (r (fn2-env-root fn2-core))
+                  (batch (fn2-machine-batch-no id fn2-core)))
+             (and (member-equal (fn2-machine-phase id b) '(9 11 8))
+                  (or (equal (nth 31 b) (nth 31 fn2-core))
+                      (and (nth 0 r) (equal batch (nth 1 r))
+                           (equal (fn2-env-root b) (list t (nth 1 r) batch)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit~fn2-machine-contract-check-arm-phase
+                                               fn2-machine-contract-check-keeps-commit-root
+                                               fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-publish-arm-phase (fn2-arm-pset '(9 11 8)))
+                 (:instance fn2-env-publish-arm-root)
+                 (:instance fn2-env-root-swap-facts (publish t))
+                 (:instance fn2-env-root-congruence (a (mv-nth 1 (fn2-commit-root-swap id t fn2-core)))
+                            (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-row-phase-snapshot)))))
+(defthm fn2-env-root-shape
+  (and (natp (nth 1 (fn2-env-root fn2-core))) (natp (nth 2 (fn2-env-root fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-root))))
+(defthm fn2-env-root-fields
+  (implies (equal r (list t x y)) (and (nth 0 r) (equal (nth 1 r) x) (equal (nth 2 r) y)))
+  :rule-classes nil)
+(defthm fn2-env-frontier-of-install
+  ; installing published + 1, durable, keeps J4 and does not lower the installed root
+  (let ((r (fn2-env-root a)))
+    (implies (and (fn2-env-j-frontier log a) (nth 0 r)
+                  (equal batch (+ 1 (nth 2 r)))
+                  (equal (fn2-env-root b) (list t batch (nth 2 r)))
+                  (fn2-env-batch-durable-p batch log))
+             (and (fn2-env-j-frontier log b) (<= (fn2-env-installed a) (fn2-env-installed b)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-frontier fn2-env-installed fn2-env-prefix-durable-p natp zp nfix (:e nth) car-cons cdr-cons nth
+                               (:e zp) (:e natp) fix)
+           :use ((:instance fn2-env-root-shape (fn2-core a))
+                 (:instance fn2-env-root-fields (r (fn2-env-root b)) (x batch) (y (nth 2 (fn2-env-root a))))
+                 (:instance fn2-env-prefix-durable-down (n (nth 1 (fn2-env-root a))) (m (nth 2 (fn2-env-root a))))))))
+(defthm fn2-env-frontier-of-publish
+  ; publishing the installed batch keeps J4 and the installed root
+  (let ((r (fn2-env-root a)))
+    (implies (and (fn2-env-j-frontier log a) (nth 0 r)
+                  (equal batch (nth 1 r))
+                  (equal (fn2-env-root b) (list t (nth 1 r) batch)))
+             (and (fn2-env-j-frontier log b) (equal (fn2-env-installed b) (fn2-env-installed a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-frontier fn2-env-installed natp nfix car-cons cdr-cons nth (:e nth) fix)
+           :use ((:instance fn2-env-root-shape (fn2-core a))
+                 (:instance fn2-env-root-fields (r (fn2-env-root b)) (x (nth 1 (fn2-env-root a))) (y batch))))))
+(make-event (value (cons 'progn (fn2-env-arm-frame-events :install 7))))
+(make-event (value (cons 'progn (fn2-env-arm-frame-events :publish 8))))
+(defthm fn2-env-j-frontier-install-arm
+  (implies (and (fn2-env-j-frontier log fn2-core) (fn2-env-j-row id log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (and (fn2-env-j-frontier log b) (<= (fn2-env-installed fn2-core) (fn2-env-installed b)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-commit-arm-row-phase posp (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-j1-row-phase-facts)
+                 (:instance fn2-env-commit-run-install-facts)
+                 (:instance fn2-env-frontier-of-install (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (batch (fn2-machine-batch-no id fn2-core)))
+                 (:instance fn2-env-j-frontier-of-root (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
+(defthm fn2-env-install-arm-publish-bound
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-j-row id log fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (implies (member-equal (fn2-machine-phase id b) (list *fn2-commit-state-publish* *fn2-commit-state-notify*))
+                      (<= (fn2-machine-batch-no id fn2-core) (fn2-env-installed b)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-commit-arm-row-phase posp (:e member-equal) member-equal fn2-env-installed)
+           :do-not-induct t
+           :use ((:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-j1-row-phase-facts)
+                 (:instance fn2-env-commit-run-install-facts)
+                 (:instance fn2-env-root-fields (r (fn2-env-root (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                            (x (fn2-machine-batch-no id fn2-core)) (y (nth 2 (fn2-env-root fn2-core))))))))
+(defthm fn2-env-j-row-install-arm
+  (implies (and (fn2-env-j-row i log fn2-core) (fn2-env-j-row id log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*))
+           (fn2-env-j-row i log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal (:e tau-system)
+                               fn2-commit-idp fn2-commit-arm-row-phase)
+           :do-not-induct t
+           :cases ((and (fn2-commit-idp i fn2-core) (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core))))
+           :use ((:instance fn2-env-install-arm-frame)
+                 (:instance fn2-env-j-frontier-install-arm)
+                 (:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-install-arm-publish-bound)
+                 (:instance fn2-env-j-row-of-row-frame-off-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 15 19 21 6)) (ch '(20 21 31 5)))
+                 (:instance fn2-env-j-row-of-row-frame-same-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 15 19 21 6)) (ch '(20 21 31 5)))))))
+(make-event
+ (value (cons 'progn (fn2-env-keep-forms (fn2-ctf-postorder-new '(fn2-commit-run-publish) (w state))
+                                         30 "-KEEPS-COMMIT-IO" 'fn2-commit))))
+(defthm fn2-env-commit-run-publish-keeps-commit-io
+  (implies (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*)
+           (equal (nth 30 (mv-nth 4 (fn2-commit-run id budget fn2-core))) (nth 30 fn2-core)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit-run-publish-keeps-commit-io
+                                               fn2-machine-contract-check-keeps-commit-io fn2-core-stop-keeps-commit-io)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-j-frontier-publish-arm
+  (implies (and (fn2-env-j-frontier log fn2-core) (fn2-env-j-row id log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (and (fn2-env-j-frontier log b) (equal (fn2-env-installed b) (fn2-env-installed fn2-core)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-commit-arm-row-phase posp (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-j1-row-phase-facts)
+                 (:instance fn2-env-commit-run-publish-facts)
+                 (:instance fn2-env-frontier-of-publish (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (batch (fn2-machine-batch-no id fn2-core)))
+                 (:instance fn2-env-j-frontier-of-root (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
+(defthm fn2-env-publish-arm-phase-bound
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-j-row id log fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*))
+           (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) '(9 11 8)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-commit-arm-row-phase posp (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-j1-row-phase-facts)
+                 (:instance fn2-env-commit-run-publish-facts)))))
+(defthm fn2-env-j-row-publish-arm
+  (implies (and (fn2-env-j-row i log fn2-core) (fn2-env-j-row id log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*))
+           (fn2-env-j-row i log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal (:e tau-system)
+                               fn2-commit-idp fn2-commit-arm-row-phase (:e fn2-commit-arm-children))
+           :do-not-induct t
+           :cases ((and (fn2-commit-idp i fn2-core) (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core))))
+           :use ((:instance fn2-env-publish-arm-frame)
+                 (:instance fn2-env-commit-run-publish-keeps-commit-io)
+                 (:instance fn2-env-j-frontier-publish-arm)
+                 (:instance fn2-env-row-phase-snapshot)
+                 (:instance fn2-env-publish-arm-phase-bound)
+                 (:instance fn2-env-j-row-of-row-frame-off-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 26 15 19 21 6)) (ch (fn2-commit-arm-children 8)))
+                 (:instance fn2-env-j-row-of-row-frame-same-row (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 26 15 19 21 6)) (ch (fn2-commit-arm-children 8)))))))
+(defthm fn2-env-j-rows-member
+  (implies (and (fn2-env-j-rows ids log fn2-core) (member-equal id ids))
+           (fn2-env-j-row id log fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-rows member-equal) :induct (member-equal id ids))))
+(make-event (value (cons 'progn (fn2-env-arm-rows-events :install '((fn2-env-j-row id log fn2-core))))))
+(make-event (value (cons 'progn (fn2-env-arm-rows-events :publish '((fn2-env-j-row id log fn2-core))))))
 ;; ---------------------------------------------------------------------------
 ;; Executor instance interface.  A turn logs nothing, but may expose new
 ;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
