@@ -701,15 +701,18 @@
                                          (and (equal phase *fn2-commit-state-log-write*) (equal mode 1)))
                             log fn2-core))))
 (defun fn2-env-b2n (x) (declare (xargs :guard t)) (if x 1 0))
-; At :log-write a live role 2 is issued (cb-issued 2), and a live role 1
-; is another operation: one harvested result answers one role.
+; At :log-write a live role is issued (role 1: cb-issued at least 1; role 2:
+; cb-issued 2), and a live role 1 is another operation than role 2: one
+; harvested result answers one issued role, whose J5-ROLE J5-ROLES carries.
 (defun fn2-env-j5-apart (id fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (implies (fn2-env-role-live id 2 fn2-core)
-           (and (equal (fn2-machine-cb-issued id fn2-core) 2)
-                (implies (fn2-env-role-live id 1 fn2-core)
-                         (not (equal (nth 1 (fn2-env-role-io id 1 fn2-core))
-                                     (nth 1 (fn2-env-role-io id 2 fn2-core))))))))
+  (and (implies (fn2-env-role-live id 1 fn2-core)
+                (<= 1 (nfix (fn2-machine-cb-issued id fn2-core))))
+       (implies (fn2-env-role-live id 2 fn2-core)
+                (and (equal (fn2-machine-cb-issued id fn2-core) 2)
+                     (implies (fn2-env-role-live id 1 fn2-core)
+                              (not (equal (nth 1 (fn2-env-role-io id 1 fn2-core))
+                                          (nth 1 (fn2-env-role-io id 2 fn2-core)))))))))
 ; The issued roles of a write phase: (FIRST . COUNT).
 (defun fn2-env-j5-roles (id log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -717,6 +720,8 @@
         (done (fn2-machine-cb-done id fn2-core)))
     (cond ((equal phase *fn2-commit-state-dependencies*)
            (and (natp issued) (<= issued 1) (natp done)
+                ;; a live role 0 is issued
+                (implies (fn2-env-role-live id 0 fn2-core) (equal issued 1))
                 (implies (equal issued 1) (fn2-env-j5-role id 0 log fn2-core))
                 (equal (+ done (if (equal issued 1) (fn2-env-b2n (fn2-env-role-live id 0 fn2-core)) 0)) issued)))
           ((equal phase *fn2-commit-state-log-write*)
@@ -6155,7 +6160,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn2-env-j5-roles fn2-env-take-frames fn2-env-role-live-take-of-j5-role
                                         fn2-env-j5-role-take (:e natp) (:e equal) fn2-env-j5-apart-take)
-                                      (theory 'minimal-theory)))))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-role-live-take (role 0))))))
 (defthm fn2-env-j6-row-take
   (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j6-row id c))
            (fn2-env-j6-row id (fn2-env-tk-c)))
