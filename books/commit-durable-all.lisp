@@ -829,6 +829,7 @@
                 (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
                 (fn2-machine-batch-no id fn2-core))
            (fn2-env-batch-durable-p (fn2-machine-batch-no id fn2-core) log))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn2-env-role-offset fn2-env-role-extent)
                                   (fn2-env-written-from fn2-dev-fenced-offset-from fn2-env-seal-durable-from
                                    fn2-env-installed fn2-commit-idp fn2-commit-resource))
@@ -1239,6 +1240,7 @@
        (fn2-env-acked-durable-p (nth 1 g) (nth 2 g))))
 (defthm fn2-env-dur-turn-inv-projection
   (implies (fn2-env-dur-turn-inv g c) (fn2-env-turn-inv g c))
+  :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn2-env-turn-inv fn2-env-inv)
                                   (fn2-env-j-rows fn2-env-j-frontier fn2-env-installed fn2-env-rows
                                    fn2-env-observe-rows fn2-env-acked-durable-p fn2-env-prefix-durable-p
@@ -1251,6 +1253,7 @@
 (defthm fn2-env-dur-inv-entry
   (implies (fn2-env-dur-inv ids acked log fn2-core)
            (fn2-env-dur-turn-inv (list ids acked log) fn2-core))
+  :rule-classes nil
   :hints (("Goal" :in-theory (disable fn2-env-j-rows fn2-env-j-frontier fn2-env-rows fn2-env-observed-p
                                       fn2-env-acked-durable-p))))
 ; The turn's half, to be proved by FN2-EXECUTOR-INSTANTIATE with predicate
