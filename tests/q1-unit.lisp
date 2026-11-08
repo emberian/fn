@@ -78,15 +78,15 @@
     (:executor :service 1) (:executor :service 2) (:executor :service 3)
     (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 179))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 180))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 179 :bound 179 :unmatched nil
+        '(:required 180 :bound 180 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 179 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth + 20 boot (171 machine, 1 router, 7 executor); 179 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 180 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 12 E fn2-cns + 12 E fn2-auth + 20 boot (172 machine, 1 router, 7 executor); 180 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.

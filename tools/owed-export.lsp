@@ -49,6 +49,7 @@
 (include-book "tests/consumer-mini")
 (include-book "tests/consumer-helm")
 (include-book "tests/sim-layer-e")
+(include-book "tests/consumer-commit-unit")
 (include-book "books/owed-peer")
 (include-book "tests/peer-witnesses")
 ; Other layers' unit and checker books are included above this line.

@@ -94,7 +94,7 @@
 (defcost fn2-cns-put-mutation :answers (:ok :state) :bytes 512
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine
           fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
- :doc "Declare a register's writes (its name and the cursor's rebase) or an advancing ack's (the cursor's ack fold) on the row's successor.")
+ :doc "Declare a register's writes (its name, copied into the row's name range, and the cursor's rebase) or an advancing ack's (the cursor's ack fold) on the row's successor.")
 
 (defcost fn2-cns-read-row :answers (:ok :bounds)
  :doc "The row's read row, in the cns block (the N read rows before the authority block's; machines-b's fn2-b-read-rows).")
@@ -117,6 +117,10 @@
 (defcost fn2-cns-lease-class :child fn2-cns-lease-class-of :doc "The pool class of a page's read lease (one storage unit; nil: none).")
 (defcost fn2-cns-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
  :doc "Reserve the page's read lease under the request row: (mv code slot gen).")
+;; the name range's release (the workspace's is fn2-core-release with its
+;; :tx-range effect; one effect per release site, as fn2-auth's key range)
+(defcost fn2-cns-release-ns :answers t :tables (fn2-core-pool)
+  :doc "Release a draining request row's name range.")
 (defcost fn2-cns-lease-release :child fn2-core-release-children :answers t :tables (fn2-core-pool fn2-core-control)
  :doc "Return the page's read lease.")
 (defcost fn2-cns-lease-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
@@ -1148,7 +1152,7 @@
         :case (((:bounds) (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
        (:do (wcode) (fn2-cns-put-mutation row-verb nsx row-principal-slot (fn2-cns-cid-default row-consumer)
                                           (fn2-cns-ep-default row-epoch) row-cstart row-to row-name-off row-name-len
-                                          row-tx-slot row-tx-gen row-ctl row-ctl-gen)
+                                          row-tx-slot row-tx-gen row-ctl row-ctl-gen row-ns-slot row-ns-gen id row-generation)
         :case (((:state) (:do (rcode) (fn2-successor-release nsx))
                          (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))))
        (:set (sx nsx) (wstep 1))
@@ -1259,11 +1263,15 @@
    (:do (wrcode) (fn2-core-release row-ws-slot row-ws-gen) :effects ((:release (:tx-range)))
     :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
     :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+   (:do (nrcode) (fn2-cns-release-ns row-ns-slot row-ns-gen)
+    :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+    :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
    (:let next (fn2-machine-free-head *fn2-cns-admission-ordinal*))
    (:let retire (>= row-generation (fn2-machine-gen-limit)))
    (:set (generation (if retire row-generation (+ 1 row-generation)))
          (ctl *fn2-none*) (ctl-gen 0) (edge *fn2-none*) (txn *fn2-none*) (txn-gen 0) (upload *fn2-none*) (upload-gen 0)
-         (tx-slot *fn2-none*) (tx-gen 0) (ws-slot *fn2-none*) (ws-gen 0) (next-free next) (wait-reason *fn2-wait-none*))
+         (tx-slot *fn2-none*) (tx-gen 0) (ws-slot *fn2-none*) (ws-gen 0) (ns-slot *fn2-none*) (ns-gen 0)
+         (next-free next) (wait-reason *fn2-wait-none*))
    (:next (:if retire :retired :free))
    (:do () (fn2-cns-reclaim id *fn2-cns-admission-ordinal* retire))
    (:charge :steps *fn2-work-release*))))
@@ -1415,28 +1423,6 @@
                (mv :ok (+ c a s))
              (mv :bounds 0)))))
      (in-theory (disable fn2-cns-successor))
-     ;; A register's writes (its name, when it has one, and the cursor's
-     ;; rebase) or an advancing ack's (the cursor's ack fold), declared on
-     ;; the row's successor SX: (mv code fn2-core), :ok when every write is.
-     (defun fn2-cns-put-mutation (verb sx p cid ep start target noff nlen tx-slot tx-gen ctl ctl-gen fn2-core)
-       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-       (if (equal (nfix verb) *fn2-cns-verb-register*)
-           (let ((has-name (< 0 (nfix nlen))))
-             (mv-let (c0 fn2-core)
-               (if has-name
-                   (fn2-consumer-names-put sx 0 (principal p)
-                                           (name tx-slot tx-gen noff nlen)
-                                           (consumer cid)
-                                           :owner (*fn2-ctl-kind* ctl ctl-gen) fn2-core)
-                 (mv :ok fn2-core))
-               (mv-let (c1 fn2-core)
-                 (fn2-consumer-cursor-rebase sx (if has-name 1 0) (consumer cid) (epoch ep) (query 1) (start start) fn2-core)
-                 (mv (if (and (eq c0 :ok) (eq c1 :ok)) :ok :state) fn2-core))))
-         (mv-let (c0 fn2-core) (fn2-consumer-cursor-ack sx 0 (consumer cid) (epoch ep) (to target) fn2-core)
-           (mv (if (eq c0 :ok) :ok :state) fn2-core))))
-     (fn2-core-preserves fn2-cns-put-mutation
-       (verb sx p cid ep start target noff nlen tx-slot tx-gen ctl ctl-gen fn2-core) :position 1 :rows nil)
-     (in-theory (disable fn2-cns-put-mutation))
      (defun fn2-cns-seek-loop (k r fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
@@ -1516,6 +1502,44 @@
      (fn2-core-preserves fn2-cns-core-copy (n sslot sgen soff sk ss sg dslot dgen doff dk ds dg fn2-core)
        :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (in-theory (disable fn2-cns-core-copy))
+     ;; A register's writes (its name, when it has one, and the cursor's
+     ;; rebase) or an advancing ack's (the cursor's ack fold), declared on
+     ;; the row's successor SX: (mv code fn2-core), :ok when every write is.
+     ;; The name is copied first from the request in the connection's range
+     ;; (TX-SLOT, the connection's) into the row's own name range NS at 0 and
+     ;; declared from there: the emission into the workspace reads every
+     ;; octet field under the row's owner (ID GEN).
+     (defun fn2-cns-put-mutation (verb sx p cid ep start target noff nlen tx-slot tx-gen ctl ctl-gen
+                                       ns-slot ns-gen id gen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (if (equal (nfix verb) *fn2-cns-verb-register*)
+           (let ((has-name (< 0 (nfix nlen))))
+             (mv-let (cc fn2-core)
+               (if has-name
+                   (fn2-cns-core-copy (nfix nlen) tx-slot tx-gen (nfix noff) *fn2-ctl-kind* ctl ctl-gen
+                                      ns-slot ns-gen 0 *fn2-cns-kind* id gen fn2-core)
+                 (mv :ok fn2-core))
+               (if (not (eq cc :ok)) (mv :state fn2-core)
+                 (mv-let (c0 fn2-core)
+                   (if has-name
+                       (fn2-consumer-names-put sx 0 (principal p)
+                                               (name ns-slot ns-gen 0 nlen)
+                                               (consumer cid)
+                                               :owner (*fn2-cns-kind* id gen) fn2-core)
+                     (mv :ok fn2-core))
+                   (mv-let (c1 fn2-core)
+                     (fn2-consumer-cursor-rebase sx (if has-name 1 0) (consumer cid) (epoch ep) (query 1) (start start) fn2-core)
+                     (mv (if (and (eq c0 :ok) (eq c1 :ok)) :ok :state) fn2-core))))))
+         (mv-let (c0 fn2-core) (fn2-consumer-cursor-ack sx 0 (consumer cid) (epoch ep) (to target) fn2-core)
+           (mv (if (eq c0 :ok) :ok :state) fn2-core))))
+     (fn2-core-preserves fn2-cns-put-mutation
+       (verb sx p cid ep start target noff nlen tx-slot tx-gen ctl ctl-gen ns-slot ns-gen id gen fn2-core) :position 1 :rows nil)
+     (in-theory (disable fn2-cns-put-mutation))
+     (defun fn2-cns-release-ns (slot gen okind oslot ogen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (fn2-core-release slot gen okind oslot ogen fn2-core))
+     (fn2-core-preserves fn2-cns-release-ns (slot gen okind oslot ogen fn2-core) :position 1 :rows nil)
+     (in-theory (disable fn2-cns-release-ns))
      (defun fn2-cns-core-put-reference (base octets coff slot gen okind oslot ogen fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))

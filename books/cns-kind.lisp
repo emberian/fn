@@ -146,9 +146,12 @@
           ;; and WS the row's workspace (its records emitted there and
           ;; admitted from there; a range of its own so the frame and the
           ;; reply in the connection's range stay intact), taken with the row from
-          ;; the pool's class 0 (an emission that does not fit refuses :room)
+          ;; the pool's class 0 (an emission that does not fit refuses :room);
+          ;; NS the row's name range, also class 0: a register's name copied
+          ;; there from the connection's range, so the emission reads every
+          ;; octet under the row's owner (as fn2-auth's key range)
           (sx :u32) (wstep :u8) (ticket :u60)
-          (ws-slot :link) (ws-gen :u60)
+          (ws-slot :link) (ws-gen :u60) (ns-slot :link) (ns-gen :u60)
           (stopped :bool) (next-free :link))
  :holds ((:decode :tx-range :wait-row (:storage-window :while (lease :held))) (:check :tx-range :wait-row (:storage-window :while (lease :held))) (:lookup :tx-range :wait-row (:storage-window :while (lease :held)))
          (:read :tx-range :wait-row (:storage-window :while (lease :held))) (:page :tx-range :wait-row (:storage-window :while (lease :held)))
@@ -158,7 +161,7 @@
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
  :budget (:bytes 32768 :steps 32 :descriptors 4)
  :capacity (fn2-cns-capacity profile)
- :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0))
+ :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
          :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
@@ -166,7 +169,7 @@
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
-           (lslot *fn2-none*) (ws-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
+           (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
  :observes ((:read-result)))
 
