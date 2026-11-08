@@ -1,4 +1,13 @@
-import Fn2.Square
+module
+
+public import Fn2.Square
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Coherence: the coherence theorem for a toy frame
@@ -932,3 +941,4 @@ theorem acceptClose_not_traceEq :
 
 end Fn2.Coherence
 
+end

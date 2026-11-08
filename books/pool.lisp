@@ -696,6 +696,727 @@
   :teeth (fn2-pool-conservation-teeth)
   :doc "Preserve exactly one of six slot states, disjoint carved extents, loan/borrow consistency, exact acyclic class free lists/counts, and retired count.")
 
+;; An owed row becomes proved by naming the admitted theorem of its exact
+;; statement; the fn2-squares table guard refuses a theorem whose formula is
+;; not the row's translated statement or its statement function on its vars.
+;; (Generic: it belongs in owed.lisp, whose change recertifies every book.)
+(defmacro fn2-owed-discharge (name thm)
+  `(make-event
+    (let ((row (fn2-decl-row '(:square ,name) (w state))))
+      (if (not (and row (equal (fn2-decl-get :proof row) '(:owed))))
+          (er soft 'fn2-owed-discharge "~x0 is not an owed obligation." ',name)
+        (value (list 'table 'fn2-squares '',name
+                     (list 'quote (fn2-decl-set :proof '(:proved ,thm) row))))))))
+
+;; ---------------------------------------------------------------------------
+;; FN2-POOL-CONSERVATION, proved. The invariant splits into one clause per row
+;; (fn2-pool-row-okp, read through its key so frames never open it), one per
+;; size class (fn2-pool-class-okp), the retired count and the extent of the
+;; last row. Every writer of a row S leaves the other rows' clauses, the free
+;; sets, the chains and the counts as frame rules state; each operation then
+;; owes its own row's clause and, for :reserve and :release, the one class
+;; whose chain and free set move together.
+(encapsulate ()
+(local
+ (progn
+  (defconst *fn2-pool-frame-readers*
+    '((fn2-pool-gen . fn2-pool-set-gen) (fn2-pool-base) (fn2-pool-cap)
+      (fn2-pool-state . fn2-pool-set-state) (fn2-pool-fill . fn2-pool-set-fill)
+      (fn2-pool-out-count . fn2-pool-set-out-count) (fn2-pool-lease-off . fn2-pool-set-lease-off)
+      (fn2-pool-lease-len . fn2-pool-set-lease-len) (fn2-pool-next-free . fn2-pool-set-next-free)
+      (fn2-pool-class)
+      (fn2-pool-class-headsi . update-fn2-pool-class-headsi)
+      (fn2-pool-class-countsi . update-fn2-pool-class-countsi)
+      (fn2-pool-class-sizesi) (fn2-pool-datai . update-fn2-pool-datai)))
+  (defconst *fn2-pool-frame-scalars*
+    '((fn2-pool-rows) (fn2-pool-nclasses) (fn2-pool-gen-limit)
+      (fn2-pool-retired-count . update-fn2-pool-retired-count) (fn2-pool-data-length)))
+  (defconst *fn2-pool-frame-writers*
+    '(fn2-pool-set-gen fn2-pool-set-state fn2-pool-set-fill fn2-pool-set-out-count
+      fn2-pool-set-lease-off fn2-pool-set-lease-len fn2-pool-set-next-free
+      fn2-pool-set-owner-kind fn2-pool-set-owner-slot fn2-pool-set-owner-gen
+      fn2-pool-set-lease-op-slot fn2-pool-set-lease-op-gen
+      fn2-pool-set-hand-to-kind fn2-pool-set-hand-to-slot fn2-pool-set-hand-to-gen
+      update-fn2-pool-class-headsi update-fn2-pool-class-countsi update-fn2-pool-datai))
+  (deftheory fn2-pool-frame-raw-theory '(fn2-pool-gen$ai update-fn2-pool-gen$ai fn2-pool-base$ai update-fn2-pool-base$ai fn2-pool-cap$ai update-fn2-pool-cap$ai fn2-pool-state$ai update-fn2-pool-state$ai fn2-pool-owner-kind$ai update-fn2-pool-owner-kind$ai fn2-pool-owner-slot$ai update-fn2-pool-owner-slot$ai fn2-pool-owner-gen$ai update-fn2-pool-owner-gen$ai fn2-pool-lease-op-slot$ai update-fn2-pool-lease-op-slot$ai fn2-pool-lease-op-gen$ai update-fn2-pool-lease-op-gen$ai fn2-pool-lease-off$ai update-fn2-pool-lease-off$ai fn2-pool-lease-len$ai update-fn2-pool-lease-len$ai fn2-pool-out-count$ai update-fn2-pool-out-count$ai fn2-pool-fill$ai update-fn2-pool-fill$ai fn2-pool-hand-to-kind$ai update-fn2-pool-hand-to-kind$ai fn2-pool-hand-to-slot$ai update-fn2-pool-hand-to-slot$ai fn2-pool-hand-to-gen$ai update-fn2-pool-hand-to-gen$ai fn2-pool-next-free$ai update-fn2-pool-next-free$ai fn2-pool-class$ai update-fn2-pool-class$ai fn2-pool-class-headsi update-fn2-pool-class-headsi fn2-pool-class-countsi update-fn2-pool-class-countsi fn2-pool-class-sizesi fn2-pool-datai update-fn2-pool-datai fn2-pool-data-length fn2-pool-rows fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-retired-count update-fn2-pool-retired-count))
+  (defun fn2-pool-frame-name (r w)
+    (declare (xargs :guard (and (symbolp r) (symbolp w))))
+    (intern-in-package-of-symbol
+     (concatenate 'string (symbol-name r) "-OF-" (symbol-name w)) 'fn2-pool))
+  (defun fn2-pool-frame-row-events (r same writers)
+    (declare (xargs :guard (and (symbolp r) (symbol-listp writers))))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (cons `(defthm ,(fn2-pool-frame-name r w)
+                 ,(if (eq w same)
+                      `(implies (and (natp i) (natp j))
+                                (equal (,r i (,w j v fn2-pool))
+                                       (if (equal i j) v (,r i fn2-pool))))
+                    `(equal (,r i (,w j v fn2-pool)) (,r i fn2-pool)))
+                 :hints (("Goal" :in-theory (union-theories (theory (quote fn2-pool-frame-raw-theory)) (union-theories (quote (,r ,w nth-update-nth len-update-nth update-nth-array nfix natp max (:type-prescription len) (:e nfix) (:e natp) (:e equal) (:e <))) (theory (quote minimal-theory)))))))
+              (fn2-pool-frame-row-events r same (cdr writers))))))
+  (defun fn2-pool-frame-scalar-events (r writers)
+    (declare (xargs :guard (and (symbolp r) (symbol-listp writers))))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (cons `(defthm ,(fn2-pool-frame-name r w)
+                 ,(if (and (eq r 'fn2-pool-data-length) (eq w 'update-fn2-pool-datai))
+                      `(implies (and (natp j) (< j (fn2-pool-data-length fn2-pool)))
+                                (equal (,r (,w j v fn2-pool)) (,r fn2-pool)))
+                    `(equal (,r (,w j v fn2-pool)) (,r fn2-pool)))
+                 :hints (("Goal" :in-theory (union-theories (theory (quote fn2-pool-frame-raw-theory)) (union-theories (quote (,r ,w nth-update-nth len-update-nth update-nth-array nfix natp max (:type-prescription len) (:e nfix) (:e natp) (:e equal) (:e <))) (theory (quote minimal-theory)))))))
+              (fn2-pool-frame-scalar-events r (cdr writers))))))
+  (defun fn2-pool-frame-rows-events (readers writers)
+    (declare (xargs :guard (and (symbol-alistp readers) (symbol-listp writers))))
+    (if (atom readers) nil
+      (append (fn2-pool-frame-row-events (caar readers) (cdar readers) writers)
+              (fn2-pool-frame-rows-events (cdr readers) writers))))
+  (defun fn2-pool-frame-scalars-events (scalars writers)
+    (declare (xargs :guard (and (symbol-alistp scalars) (symbol-listp writers))))
+    (if (atom scalars) nil
+      (append (fn2-pool-frame-scalar-events (caar scalars) writers)
+              (fn2-pool-frame-scalars-events (cdr scalars) writers))))
+  (defun fn2-pool-frame-events (readers scalars writers)
+    (declare (xargs :guard (and (symbol-alistp readers) (symbol-alistp scalars) (symbol-listp writers))))
+    (append (fn2-pool-frame-rows-events readers writers)
+            (fn2-pool-frame-scalars-events scalars writers)))
+  (make-event (cons 'progn (fn2-pool-frame-events *fn2-pool-frame-readers* *fn2-pool-frame-scalars*
+                                                  *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-retired-count-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-retired-count (update-fn2-pool-retired-count v fn2-pool)) v))
+  ;; the scalar writer
+  (defun fn2-pool-frame-retired-events (readers rowp)
+    (declare (xargs :guard (symbol-alistp readers)))
+    (if (atom readers) nil
+      (let ((r (caar readers)) (w 'update-fn2-pool-retired-count))
+        (if (eq r 'fn2-pool-retired-count)
+            (fn2-pool-frame-retired-events (cdr readers) rowp)
+          (cons `(defthm ,(fn2-pool-frame-name r w)
+                   ,(if rowp `(equal (,r i (,w v fn2-pool)) (,r i fn2-pool))
+                      `(equal (,r (,w v fn2-pool)) (,r fn2-pool)))
+                   :hints (("Goal" :in-theory (union-theories (theory (quote fn2-pool-frame-raw-theory)) (union-theories (quote (,r ,w nth-update-nth len-update-nth update-nth-array nfix natp max (:type-prescription len) (:e nfix) (:e natp) (:e equal) (:e <))) (theory (quote minimal-theory)))))))
+                (fn2-pool-frame-retired-events (cdr readers) rowp))))))
+  (make-event (cons 'progn (append (fn2-pool-frame-retired-events *fn2-pool-frame-readers* t)
+                                   (fn2-pool-frame-retired-events *fn2-pool-frame-scalars* nil))))
+
+  (in-theory (disable fn2-pool-gen fn2-pool-base fn2-pool-cap fn2-pool-state fn2-pool-fill
+                      fn2-pool-out-count fn2-pool-lease-off fn2-pool-lease-len fn2-pool-next-free
+                      fn2-pool-class fn2-pool-owner-kind fn2-pool-owner-slot fn2-pool-owner-gen
+                      fn2-pool-lease-op-slot fn2-pool-lease-op-gen fn2-pool-hand-to-kind
+                      fn2-pool-hand-to-slot fn2-pool-hand-to-gen))
+  (in-theory (set-difference-theories (current-theory :here) (theory 'fn2-pool-frame-raw-theory)))
+
+  ;; Row invariant: one row's clause, and all rows but one.
+  (defun fn2-pool-row-okp (i fn2-pool)
+    (declare (xargs :stobjs fn2-pool :verify-guards nil))
+    (let* ((phase (fn2-pool-state i fn2-pool))
+           (base (fn2-pool-base i fn2-pool)) (cap (fn2-pool-cap i fn2-pool))
+           (class (fn2-pool-class i fn2-pool)) (prefix-count (fn2-pool-fill i fn2-pool)))
+      (and (member-equal phase
+                         (list *fn2-pool-state-free* *fn2-pool-state-workspace*
+                               *fn2-pool-state-leased-in* *fn2-pool-state-leased-out*
+                               *fn2-pool-state-handed* *fn2-pool-state-retired*))
+           (< class (fn2-pool-nclasses fn2-pool))
+           (equal cap (fn2-pool-class-sizesi class fn2-pool))
+           (equal base (if (zp i) 0
+                         (+ (fn2-pool-base (- i 1) fn2-pool) (fn2-pool-cap (- i 1) fn2-pool))))
+           (<= (+ base cap) (fn2-pool-capacity-bytes fn2-pool))
+           (<= (fn2-pool-gen i fn2-pool) (fn2-pool-gen-limit fn2-pool))
+           (<= prefix-count cap)
+           (iff (< 0 (fn2-pool-out-count i fn2-pool))
+                (equal phase *fn2-pool-state-leased-out*))
+           (implies (equal phase *fn2-pool-state-leased-in*)
+                    (and (equal prefix-count (fn2-pool-lease-off i fn2-pool))
+                         (<= (+ prefix-count (fn2-pool-lease-len i fn2-pool)) cap))))))
+  (defthm fn2-pool-row-invariantp-step
+    (equal (fn2-pool-row-invariantp n fn2-pool)
+           (if (zp n) t
+             (and (fn2-pool-row-okp (- n 1) fn2-pool)
+                  (fn2-pool-row-invariantp (- n 1) fn2-pool))))
+    :rule-classes ((:definition :controller-alist ((fn2-pool-row-invariantp t nil))))
+    :hints (("Goal" :in-theory (enable fn2-pool-row-invariantp fn2-pool-row-okp))))
+  (in-theory (disable fn2-pool-row-invariantp fn2-pool-row-okp fn2-pool-row-invariantp-step))
+
+  (defun fn2-pool-rows-ok-except (n s fn2-pool)
+    (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix n)))
+    (if (zp n) t
+      (and (or (equal (- n 1) s) (fn2-pool-row-okp (- n 1) fn2-pool))
+           (fn2-pool-rows-ok-except (- n 1) s fn2-pool))))
+  (defthm fn2-pool-rows-ok-except-of-invariant
+    (implies (fn2-pool-row-invariantp n fn2-pool)
+             (fn2-pool-rows-ok-except n s fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-rows-ok-except n s fn2-pool) :in-theory (enable fn2-pool-row-invariantp-step))))
+  (defthm fn2-pool-invariant-of-rows-ok-except
+    (implies (and (fn2-pool-rows-ok-except n s fn2-pool)
+                  (implies (and (natp s) (< s n)) (fn2-pool-row-okp s fn2-pool)))
+             (fn2-pool-row-invariantp n fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-rows-ok-except n s fn2-pool) :in-theory (enable fn2-pool-row-invariantp-step))))
+  (defthm fn2-pool-row-okp-of-invariant
+    (implies (and (fn2-pool-row-invariantp n fn2-pool) (natp n) (natp i) (< i n))
+             (fn2-pool-row-okp i fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-rows-ok-except n i fn2-pool) :in-theory (enable fn2-pool-row-invariantp-step))))
+
+
+  ;; A row's clause reads only its key: the frame lemmas never open the clause.
+  (defun fn2-pool-row-key (i fn2-pool)
+    (declare (xargs :stobjs fn2-pool :verify-guards nil))
+    (list (fn2-pool-state i fn2-pool) (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)
+          (fn2-pool-class i fn2-pool) (fn2-pool-fill i fn2-pool) (fn2-pool-gen i fn2-pool)
+          (fn2-pool-out-count i fn2-pool) (fn2-pool-lease-off i fn2-pool) (fn2-pool-lease-len i fn2-pool)
+          (zp i) (fn2-pool-base (- i 1) fn2-pool) (fn2-pool-cap (- i 1) fn2-pool)
+          (fn2-pool-nclasses fn2-pool) (fn2-pool-class-sizesi (fn2-pool-class i fn2-pool) fn2-pool)
+          (fn2-pool-data-length fn2-pool) (fn2-pool-gen-limit fn2-pool)))
+  (defun fn2-pool-row-key-okp (k)
+    (declare (xargs :verify-guards nil))
+    (let ((phase (nth 0 k)) (base (nth 1 k)) (cap (nth 2 k)) (class (nth 3 k))
+          (prefix-count (nth 4 k)))
+      (and (member-equal phase (list *fn2-pool-state-free* *fn2-pool-state-workspace*
+                                     *fn2-pool-state-leased-in* *fn2-pool-state-leased-out*
+                                     *fn2-pool-state-handed* *fn2-pool-state-retired*))
+           (< class (nth 12 k)) (equal cap (nth 13 k))
+           (equal base (if (nth 9 k) 0 (+ (nth 10 k) (nth 11 k))))
+           (<= (+ base cap) (nth 14 k)) (<= (nth 5 k) (nth 15 k)) (<= prefix-count cap)
+           (iff (< 0 (nth 6 k)) (equal phase *fn2-pool-state-leased-out*))
+           (implies (equal phase *fn2-pool-state-leased-in*)
+                    (and (equal prefix-count (nth 7 k)) (<= (+ prefix-count (nth 8 k)) cap))))))
+  (defthm fn2-pool-row-okp-by-key
+    (equal (fn2-pool-row-okp i fn2-pool) (fn2-pool-row-key-okp (fn2-pool-row-key i fn2-pool)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn2-pool-row-okp))))
+  (in-theory (disable fn2-pool-row-key-okp))
+  (defun fn2-pool-key-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-row-okp w)
+                 ,(cond ((eq w 'update-fn2-pool-datai)
+                         `(implies (and (natp j) (< j (fn2-pool-data-length fn2-pool)))
+                                   (equal (fn2-pool-row-okp i (,w j v fn2-pool))
+                                          (fn2-pool-row-okp i fn2-pool))))
+                        ((member-eq w '(update-fn2-pool-class-headsi update-fn2-pool-class-countsi))
+                         `(equal (fn2-pool-row-okp i (,w j v fn2-pool)) (fn2-pool-row-okp i fn2-pool)))
+                        (t `(implies (and (natp i) (natp j) (not (equal i j)))
+                                     (equal (fn2-pool-row-okp i (,w j v fn2-pool))
+                                            (fn2-pool-row-okp i fn2-pool)))))
+                 :hints (("Goal" :in-theory (disable fn2-pool-row-okp)
+                          :use ((:instance fn2-pool-row-okp-by-key)
+                                (:instance fn2-pool-row-okp-by-key (fn2-pool (,w j v fn2-pool)))))))
+              (fn2-pool-key-frame-events (cdr writers))))))
+  (make-event (cons 'progn (fn2-pool-key-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-row-okp-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-row-okp i (update-fn2-pool-retired-count v fn2-pool)) (fn2-pool-row-okp i fn2-pool))
+    :hints (("Goal" :use ((:instance fn2-pool-row-okp-by-key)
+                          (:instance fn2-pool-row-okp-by-key (fn2-pool (update-fn2-pool-retired-count v fn2-pool)))))))
+  ;; Every writer at row S leaves the other rows' clauses alone.
+  (defun fn2-pool-except-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-rows-ok-except w)
+                 ,(if (eq w 'update-fn2-pool-datai)
+                      `(implies (and (natp j) (< j (fn2-pool-data-length fn2-pool)))
+                                (equal (fn2-pool-rows-ok-except n s (,w j v fn2-pool))
+                                       (fn2-pool-rows-ok-except n s fn2-pool)))
+                    (if (member-eq w '(update-fn2-pool-class-headsi update-fn2-pool-class-countsi))
+                        `(equal (fn2-pool-rows-ok-except n s (,w j v fn2-pool))
+                                (fn2-pool-rows-ok-except n s fn2-pool))
+                      `(implies (natp s)
+                                (equal (fn2-pool-rows-ok-except n s (,w s v fn2-pool))
+                                       (fn2-pool-rows-ok-except n s fn2-pool)))))
+                 :hints (("Goal" :induct (fn2-pool-rows-ok-except n s fn2-pool))))
+              (fn2-pool-except-frame-events (cdr writers))))))
+  (make-event (cons 'progn (fn2-pool-except-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-rows-ok-except-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-rows-ok-except n s (update-fn2-pool-retired-count v fn2-pool))
+           (fn2-pool-rows-ok-except n s fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-rows-ok-except n s fn2-pool))))
+
+  ;; Lists.
+  (defthm fn2-pool-subsetp-trans
+    (implies (and (subsetp-equal x y) (subsetp-equal y z)) (subsetp-equal x z)))
+  (defthm fn2-pool-subsetp-cons-right
+    (implies (subsetp-equal x y) (subsetp-equal x (cons a y))))
+  (defthm fn2-pool-subsetp-refl (subsetp-equal x x))
+  (defthm fn2-pool-subsetp-remove
+    (implies (and (subsetp-equal x y) (not (member-equal a x)))
+             (subsetp-equal x (remove-equal a y))))
+  (defthm fn2-pool-remove-subsetp
+    (implies (subsetp-equal y (cons a x)) (subsetp-equal (remove-equal a y) x)))
+  (defthm fn2-pool-not-member-of-subsetp
+    (implies (and (subsetp-equal x y) (not (member-equal a y))) (not (member-equal a x))))
+  (defthm fn2-pool-remove-equal-non-member
+    (implies (and (true-listp l) (not (member-equal a l))) (equal (remove-equal a l) l)))
+
+  ;; Free slots of a class: membership, and the writers.
+  (defthm fn2-pool-member-free-slots
+    (iff (member-equal x (fn2-pool-free-slots n c fn2-pool))
+         (and (natp x) (< x (nfix n)) (equal (fn2-pool-state x fn2-pool) *fn2-pool-state-free*)
+              (equal (fn2-pool-class x fn2-pool) c))))
+  (defun fn2-pool-free-slots-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (eq w 'fn2-pool-set-state) (fn2-pool-free-slots-frame-events (cdr writers))
+          (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-free-slots w)
+                   (equal (fn2-pool-free-slots n c (,w j v fn2-pool)) (fn2-pool-free-slots n c fn2-pool)))
+                (fn2-pool-free-slots-frame-events (cdr writers)))))))
+  (make-event (cons 'progn (fn2-pool-free-slots-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-free-slots-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-free-slots n c (update-fn2-pool-retired-count v fn2-pool))
+           (fn2-pool-free-slots n c fn2-pool)))
+  (defthm fn2-pool-free-slots-of-set-state-busy
+    (implies (and (natp s) (not (equal v *fn2-pool-state-free*)))
+             (equal (fn2-pool-free-slots n c (fn2-pool-set-state s v fn2-pool))
+                    (remove-equal s (fn2-pool-free-slots n c fn2-pool)))))
+  (defthm fn2-pool-free-slots-of-set-state-free-subset
+    (implies (natp s)
+             (subsetp-equal (fn2-pool-free-slots n c (fn2-pool-set-state s v fn2-pool))
+                            (cons s (fn2-pool-free-slots n c fn2-pool)))))
+  (defthm fn2-pool-subsetp-free-slots-of-set-state-free
+    (implies (and (subsetp-equal x (fn2-pool-free-slots n c fn2-pool)) (natp s))
+             (subsetp-equal x (fn2-pool-free-slots n c (fn2-pool-set-state s *fn2-pool-state-free* fn2-pool))))
+    :hints (("Goal" :induct (len x))))
+
+  ;; Retired count.
+  (defun fn2-pool-retired-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (eq w 'fn2-pool-set-state) (fn2-pool-retired-frame-events (cdr writers))
+          (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-retired-slots w)
+                   (equal (fn2-pool-retired-slots n (,w j v fn2-pool)) (fn2-pool-retired-slots n fn2-pool)))
+                (fn2-pool-retired-frame-events (cdr writers)))))))
+  (make-event (cons 'progn (fn2-pool-retired-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-retired-slots-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-retired-slots n (update-fn2-pool-retired-count v fn2-pool))
+           (fn2-pool-retired-slots n fn2-pool)))
+  (defthm fn2-pool-retired-slots-of-set-state
+    (implies (natp s)
+             (equal (fn2-pool-retired-slots n (fn2-pool-set-state s v fn2-pool))
+                    (if (< s (nfix n))
+                        (+ (fn2-pool-retired-slots n fn2-pool)
+                           (if (equal v *fn2-pool-state-retired*) 1 0)
+                           (- (if (equal (fn2-pool-state s fn2-pool) *fn2-pool-state-retired*) 1 0)))
+                      (fn2-pool-retired-slots n fn2-pool)))))
+
+  ;; Free chains.
+  (defun fn2-pool-chain-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (eq w 'fn2-pool-set-next-free) (fn2-pool-chain-frame-events (cdr writers))
+          (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-free-chain w)
+                   (equal (fn2-pool-free-chain f x (,w j v fn2-pool)) (fn2-pool-free-chain f x fn2-pool)))
+                (fn2-pool-chain-frame-events (cdr writers)))))))
+  (make-event (cons 'progn (fn2-pool-chain-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-free-chain-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-free-chain f x (update-fn2-pool-retired-count v fn2-pool))
+           (fn2-pool-free-chain f x fn2-pool)))
+  (defthm fn2-pool-free-chain-of-set-next-free
+    (implies (and (natp s) (not (member-equal s (fn2-pool-free-chain f x fn2-pool))))
+             (equal (fn2-pool-free-chain f x (fn2-pool-set-next-free s v fn2-pool))
+                    (fn2-pool-free-chain f x fn2-pool))))
+  (defthm fn2-pool-free-chain-consp
+    (implies (not (equal x *fn2-none*)) (consp (fn2-pool-free-chain f x fn2-pool))))
+  (defthm fn2-pool-free-chain-len-pos
+    (implies (not (equal x *fn2-none*)) (< 0 (len (fn2-pool-free-chain f x fn2-pool))))
+    :rule-classes :linear)
+  (defun fn2-pool-chain-fuel-ind (f g x fn2-pool)
+    (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix f)))
+    (cond ((equal x *fn2-none*) nil)
+          ((or (zp f) (zp g) (not (fn2-pool-logical-slotp x fn2-pool))) nil)
+          (t (fn2-pool-chain-fuel-ind (- f 1) (- g 1) (fn2-pool-next-free x fn2-pool) fn2-pool))))
+  (defthm fn2-pool-free-chain-fuel
+    (implies (and (not (member-equal :bad-chain (fn2-pool-free-chain f x fn2-pool)))
+                  (natp g) (<= (len (fn2-pool-free-chain f x fn2-pool)) g))
+             (equal (fn2-pool-free-chain g x fn2-pool) (fn2-pool-free-chain f x fn2-pool)))
+    :rule-classes nil
+    :hints (("Goal" :induct (fn2-pool-chain-fuel-ind f g x fn2-pool))))
+  (defthm fn2-pool-free-chain-open
+    (implies (and (fn2-pool-logical-slotp x fn2-pool) (not (zp f)) (not (equal x *fn2-none*)))
+             (equal (fn2-pool-free-chain f x fn2-pool)
+                    (cons x (fn2-pool-free-chain (- f 1) (fn2-pool-next-free x fn2-pool) fn2-pool))))
+    :rule-classes nil)
+
+  ;; Class accounts: one class's clause.
+  (defun fn2-pool-class-okp (class fn2-pool)
+    (declare (xargs :stobjs fn2-pool :verify-guards nil))
+    (let* ((free (fn2-pool-free-slots (fn2-pool-nslots fn2-pool) class fn2-pool))
+           (chain (fn2-pool-free-chain (fn2-pool-nslots fn2-pool)
+                                      (fn2-pool-class-headsi class fn2-pool) fn2-pool)))
+      (and (not (member-equal :bad-chain chain))
+           (no-duplicatesp-equal chain)
+           (equal (len chain) (fn2-pool-class-countsi class fn2-pool))
+           (subsetp-equal chain free) (subsetp-equal free chain))))
+  (defthm fn2-pool-class-accountsp-step
+    (equal (fn2-pool-class-accountsp n fn2-pool)
+           (if (zp n) t
+             (and (fn2-pool-class-okp (- n 1) fn2-pool)
+                  (fn2-pool-class-accountsp (- n 1) fn2-pool))))
+    :rule-classes ((:definition :controller-alist ((fn2-pool-class-accountsp t nil))))
+    :hints (("Goal" :in-theory (enable fn2-pool-class-accountsp fn2-pool-class-okp))))
+  (in-theory (disable (:definition fn2-pool-class-accountsp) fn2-pool-class-accountsp-step))
+  (defthm fn2-pool-class-okp-of-accounts
+    (implies (and (fn2-pool-class-accountsp n fn2-pool) (natp n) (natp c) (< c n))
+             (fn2-pool-class-okp c fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-class-accountsp n fn2-pool) :in-theory (enable fn2-pool-class-accountsp-step))))
+  (defun fn2-pool-accounts-frame-events (writers)
+    (declare (xargs :guard (symbol-listp writers)))
+    (if (atom writers) nil
+      (let ((w (car writers)))
+        (if (member-eq w '(fn2-pool-set-state fn2-pool-set-next-free
+                           update-fn2-pool-class-headsi update-fn2-pool-class-countsi))
+            (fn2-pool-accounts-frame-events (cdr writers))
+          (cons `(defthm ,(fn2-pool-frame-name 'fn2-pool-class-accountsp w)
+                   (equal (fn2-pool-class-accountsp n (,w j v fn2-pool)) (fn2-pool-class-accountsp n fn2-pool))
+                   :hints (("Goal" :induct (fn2-pool-class-accountsp n fn2-pool)
+                            :in-theory (enable fn2-pool-class-okp fn2-pool-class-accountsp-step))))
+                (fn2-pool-accounts-frame-events (cdr writers)))))))
+  (make-event (cons 'progn (fn2-pool-accounts-frame-events *fn2-pool-frame-writers*)))
+  (defthm fn2-pool-class-accountsp-of-update-fn2-pool-retired-count
+    (equal (fn2-pool-class-accountsp n (update-fn2-pool-retired-count v fn2-pool))
+           (fn2-pool-class-accountsp n fn2-pool))
+    :hints (("Goal" :induct (fn2-pool-class-accountsp n fn2-pool)
+             :in-theory (enable fn2-pool-class-okp fn2-pool-class-accountsp-step))))
+  ; A busy row stays busy: no class's free slots move.
+  (defthm fn2-pool-class-accountsp-of-set-state-busy
+    (implies (and (natp s) (not (equal v *fn2-pool-state-free*))
+                  (not (equal (fn2-pool-state s fn2-pool) *fn2-pool-state-free*)))
+             (equal (fn2-pool-class-accountsp n (fn2-pool-set-state s v fn2-pool))
+                    (fn2-pool-class-accountsp n fn2-pool)))
+    :hints (("Goal" :induct (fn2-pool-class-accountsp n fn2-pool)
+             :in-theory (enable fn2-pool-class-okp fn2-pool-class-accountsp-step))))
+
+  (defthm fn2-pool-semanticp-intro
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-rows-ok-except (fn2-pool-rows fn2-pool) s fn2-pool)
+                  (implies (and (natp s) (< s (fn2-pool-rows fn2-pool))) (fn2-pool-row-okp s fn2-pool))
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (equal (fn2-pool-retired-count fn2-pool)
+                         (fn2-pool-retired-slots (fn2-pool-rows fn2-pool) fn2-pool))
+                  (equal (fn2-pool-data-length fn2-pool)
+                         (if (zp (fn2-pool-rows fn2-pool)) 0
+                           (+ (fn2-pool-base (- (fn2-pool-rows fn2-pool) 1) fn2-pool)
+                              (fn2-pool-cap (- (fn2-pool-rows fn2-pool) 1) fn2-pool)))))
+             (fn2-pool-semanticp fn2-pool))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn2-pool-semanticp)
+             :use ((:instance fn2-pool-invariant-of-rows-ok-except (n (fn2-pool-rows fn2-pool)))))))
+  (defthm fn2-pool-slot-types
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp i) (< i (fn2-pool-rows fn2-pool)))
+             (and (natp (fn2-pool-cap i fn2-pool)) (natp (fn2-pool-fill i fn2-pool))
+                  (natp (fn2-pool-base i fn2-pool)) (natp (fn2-pool-out-count i fn2-pool))
+                  (natp (fn2-pool-lease-off i fn2-pool)) (natp (fn2-pool-lease-len i fn2-pool))
+                  (natp (fn2-pool-gen i fn2-pool)) (natp (fn2-pool-state i fn2-pool))
+                  (natp (fn2-pool-class i fn2-pool)) (natp (fn2-pool-next-free i fn2-pool))
+                  (< (fn2-pool-out-count i fn2-pool) 4294967296)
+                  (< (fn2-pool-gen i fn2-pool) 1152921504606846976)))
+    :rule-classes nil)
+  (defthm fn2-pool-semanticp-elim
+    (implies (fn2-pool-semanticp fn2-pool)
+             (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (equal (fn2-pool-retired-count fn2-pool)
+                         (fn2-pool-retired-slots (fn2-pool-rows fn2-pool) fn2-pool))
+                  (equal (fn2-pool-data-length fn2-pool)
+                         (if (zp (fn2-pool-rows fn2-pool)) 0
+                           (+ (fn2-pool-base (- (fn2-pool-rows fn2-pool) 1) fn2-pool)
+                              (fn2-pool-cap (- (fn2-pool-rows fn2-pool) 1) fn2-pool))))))
+    :rule-classes :forward-chaining
+    :hints (("Goal" :in-theory (enable fn2-pool-semanticp))))
+  (in-theory (disable fn2-pool-semanticp))
+
+
+  (defthm fn2-pool-nclasses-type
+    (implies (fn2-poolp fn2-pool) (natp (fn2-pool-nclasses fn2-pool)))
+    :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-pool-nclasses))))
+  (defthm fn2-pool-nclasses-at-most-16
+    (implies (fn2-poolp fn2-pool) (<= (fn2-pool-nclasses fn2-pool) 16))
+    :rule-classes :linear :hints (("Goal" :in-theory (enable fn2-pool-nclasses))))
+  (defthm fn2-pool-class-headsi-type
+    (implies (and (fn2-poolp fn2-pool) (natp c) (< c 16)) (natp (fn2-pool-class-headsi c fn2-pool)))
+    :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-pool-class-headsi))))
+  (defthm fn2-pool-class-countsi-type
+    (implies (and (fn2-poolp fn2-pool) (natp c) (< c 16)) (natp (fn2-pool-class-countsi c fn2-pool)))
+    :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-pool-class-countsi))))
+  (defthm fn2-pool-free-slots-of-set-state-other-class
+    (implies (and (natp s) (not (equal (fn2-pool-class s fn2-pool) c)))
+             (equal (fn2-pool-free-slots n c (fn2-pool-set-state s v fn2-pool))
+                    (fn2-pool-free-slots n c fn2-pool))))
+  (defthm fn2-pool-true-listp-free-slots (true-listp (fn2-pool-free-slots n c fn2-pool))
+    :rule-classes :type-prescription)
+  (in-theory (disable fn2-pool-free-slots fn2-pool-free-chain fn2-pool-retired-slots))
+  ;; Chain shapes at a head.
+  (defthm fn2-pool-free-chain-car
+    (implies (and (not (equal x *fn2-none*))
+                  (not (member-equal :bad-chain (fn2-pool-free-chain f x fn2-pool))))
+             (equal (car (fn2-pool-free-chain f x fn2-pool)) x))
+    :hints (("Goal" :in-theory (enable fn2-pool-free-chain))))
+  (defthm fn2-pool-free-chain-len-bound
+    (implies (and (natp f) (not (member-equal :bad-chain (fn2-pool-free-chain f x fn2-pool))))
+             (<= (len (fn2-pool-free-chain f x fn2-pool)) f))
+    :rule-classes :linear
+    :hints (("Goal" :in-theory (enable fn2-pool-free-chain))))
+  (defthm fn2-pool-free-chain-tail
+    (implies (and (natp n) (not (equal s *fn2-none*))
+                  (not (member-equal :bad-chain (fn2-pool-free-chain n s fn2-pool))))
+             (equal (fn2-pool-free-chain n (fn2-pool-next-free s fn2-pool) fn2-pool)
+                    (cdr (fn2-pool-free-chain n s fn2-pool))))
+    :hints (("Goal" :expand ((fn2-pool-free-chain n s fn2-pool))
+             :use ((:instance fn2-pool-free-chain-len-bound (f (- n 1)) (x (fn2-pool-next-free s fn2-pool)))
+                   (:instance fn2-pool-free-chain-fuel (f (- n 1)) (g n) (x (fn2-pool-next-free s fn2-pool)))))))
+  (defthm fn2-pool-free-chain-fuel-down
+    (implies (and (natp n) (not (member-equal :bad-chain (fn2-pool-free-chain n x fn2-pool)))
+                  (< (len (fn2-pool-free-chain n x fn2-pool)) n))
+             (equal (fn2-pool-free-chain (+ -1 n) x fn2-pool) (fn2-pool-free-chain n x fn2-pool)))
+    :hints (("Goal" :use ((:instance fn2-pool-free-chain-fuel (f n) (g (- n 1)))))))
+  (defthm fn2-pool-free-chain-push
+    (implies (and (natp s) (fn2-pool-logical-slotp s fn2-pool) (not (zp n)) (not (equal s *fn2-none*))
+                  (not (member-equal s (fn2-pool-free-chain (+ -1 n) h fn2-pool))))
+             (equal (fn2-pool-free-chain n s (fn2-pool-set-next-free s h fn2-pool))
+                    (cons s (fn2-pool-free-chain (+ -1 n) h fn2-pool))))
+    :hints (("Goal" :use ((:instance fn2-pool-free-chain-open (x s) (f n)
+                                     (fn2-pool (fn2-pool-set-next-free s h fn2-pool))))
+             :in-theory (enable fn2-pool-logical-slotp))))
+  (defthm fn2-pool-no-dup-cdr
+    (implies (no-duplicatesp-equal l) (no-duplicatesp-equal (cdr l))))
+  (defthm fn2-pool-not-member-cdr
+    (implies (not (member-equal a l)) (not (member-equal a (cdr l)))))
+  (defthm fn2-pool-len-cdr
+    (implies (consp l) (equal (len (cdr l)) (- (len l) 1))))
+  (defthm fn2-pool-subsetp-cdr-remove
+    (implies (and (consp l) (subsetp-equal l f) (no-duplicatesp-equal l))
+             (subsetp-equal (cdr l) (remove-equal (car l) f))))
+  (defthm fn2-pool-remove-subsetp-cdr
+    (implies (and (consp l) (subsetp-equal f l))
+             (subsetp-equal (remove-equal (car l) f) (cdr l)))
+    :hints (("Goal" :use ((:instance fn2-pool-remove-subsetp (y f) (a (car l)) (x (cdr l)))))))
+  ; RESERVE: the head leaves its class's chain and free set together.
+  (defthm fn2-pool-reserve-class-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-okp c2 (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+    :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+             :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
+             :use (                 (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
+                   (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c class))
+                   (:instance fn2-pool-free-chain-open (f (fn2-pool-rows fn2-pool))
+                              (x (fn2-pool-class-headsi class fn2-pool)))
+                   (:instance fn2-pool-free-chain-fuel (f (- (fn2-pool-rows fn2-pool) 1))
+                              (g (fn2-pool-rows fn2-pool))
+                              (x (fn2-pool-next-free (fn2-pool-class-headsi class fn2-pool) fn2-pool)))))))
+
+  (defthm fn2-pool-reserve-class-accounts
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp k) (<= k (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-accountsp k (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+    :hints (("Goal" :induct (fn2-pool-retired-slots k fn2-pool)
+             :in-theory (e/d (fn2-pool-class-accountsp-step fn2-pool-retired-slots) (fn2-pool-reserve)))))
+  (defthm fn2-pool-reserve-row-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                  (natp (fn2-pool-class-headsi class fn2-pool))
+                  (< (fn2-pool-class-headsi class fn2-pool) (fn2-pool-rows fn2-pool)))
+             (fn2-pool-row-okp (fn2-pool-class-headsi class fn2-pool)
+                               (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+    :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+             :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
+             :use ((:instance fn2-pool-slot-types (i (fn2-pool-class-headsi class fn2-pool)))
+                   (:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool))
+                              (i (fn2-pool-class-headsi class fn2-pool)))))))
+  (defthm fn2-pool-subsetp-cons-cons
+    (implies (subsetp-equal x y) (subsetp-equal (cons a x) (cons a y))))
+  (defthm fn2-pool-free-slots-of-set-state-into
+    (implies (and (natp s) (subsetp-equal (fn2-pool-free-slots n c fn2-pool) l))
+             (subsetp-equal (fn2-pool-free-slots n c (fn2-pool-set-state s v fn2-pool)) (cons s l)))
+    :hints (("Goal" :in-theory (disable fn2-pool-subsetp-trans)
+             :use ((:instance fn2-pool-subsetp-trans
+                              (x (fn2-pool-free-slots n c (fn2-pool-set-state s v fn2-pool)))
+                              (y (cons s (fn2-pool-free-slots n c fn2-pool))) (z (cons s l)))))))
+  ; RELEASE: the row goes to the head of its class's chain and into its free set.
+  (defthm fn2-pool-release-class-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp c2) (< c2 (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-okp c2 (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))
+    :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+             :in-theory (e/d (fn2-pool-class-okp) (fn2-pool-class-okp-of-accounts))
+             :use ((:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool)) (c c2))
+                   (:instance fn2-pool-class-okp-of-accounts (n (fn2-pool-nclasses fn2-pool))
+                              (c (fn2-pool-class slot fn2-pool)))))))
+  (defthm fn2-pool-release-class-accounts
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-class-accountsp (fn2-pool-nclasses fn2-pool) fn2-pool)
+                  (natp k) (<= k (fn2-pool-nclasses fn2-pool)))
+             (fn2-pool-class-accountsp k (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))
+    :hints (("Goal" :induct (fn2-pool-retired-slots k fn2-pool)
+             :in-theory (e/d (fn2-pool-class-accountsp-step fn2-pool-retired-slots) (fn2-pool-release)))))
+  (defthm fn2-pool-release-row-okp
+    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                  (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                  (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+             (fn2-pool-row-okp slot (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))
+    :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+             :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
+             :use ((:instance fn2-pool-slot-types (i slot))
+                   (:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool)) (i slot))))))))
+
+(defun fn2-pool-op-sym (op suffix)
+  (declare (xargs :guard (and (symbolp op) (stringp suffix))))
+  (intern-in-package-of-symbol (concatenate 'string (symbol-name op) suffix) op))
+; Per operation: its row's clause after the step, then the whole invariant.
+(defun fn2-pool-op-conservation-events (op formals position slot)
+  (declare (xargs :guard (and (symbolp op) (symbol-listp formals) (natp position))))
+  (let* ((call `(,op ,@formals)) (q `(mv-nth ,position ,call)))
+    `((local (defthm ,(fn2-pool-op-sym op "-ROW-OKP")
+        (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                      (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                      (natp ,slot) (< ,slot (fn2-pool-rows fn2-pool)))
+                 (fn2-pool-row-okp ,slot ,q))
+        :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+                 :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
+                 :use ((:instance fn2-pool-slot-types (i ,slot))
+                       (:instance fn2-pool-row-okp-of-invariant
+                                  (n (fn2-pool-rows fn2-pool)) (i ,slot)))))))
+      (defthm ,(fn2-pool-op-sym op "-CONSERVATION")
+        (implies (fn2-pool-semanticp fn2-pool) (fn2-pool-semanticp ,q))
+        :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+                 :use (fn2-pool-semanticp-elim ,(fn2-pool-op-sym op "-ROW-OKP") ,(fn2-pool-op-sym op "-PRESERVES-TYPE")
+                       ,(fn2-pool-op-sym op "-PRESERVES-WFP")
+                       (:instance fn2-pool-semanticp-intro (s ,slot) (fn2-pool ,q)))))))))
+(defmacro fn2-pool-op-conservation (op formals position &optional (slot 'slot))
+  (cons 'progn (fn2-pool-op-conservation-events op formals position slot)))
+(fn2-pool-op-conservation fn2-pool-write (slot gen idx byte okind oslot ogen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-reset (slot gen okind oslot ogen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool) 2)
+(fn2-pool-op-conservation fn2-pool-adapter-write (slot gen opslot opgen idx byte fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-complete-in (slot gen opslot opgen n fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-lease-out (slot gen off len okind oslot ogen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-release-out (slot gen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen fn2-pool) 1)
+(fn2-pool-op-conservation fn2-pool-accept-hand (slot gen tkind tslot tgen fn2-pool) 1)
+
+(defthm fn2-pool-reserve-conservation
+  (implies (fn2-pool-semanticp fn2-pool)
+           (fn2-pool-semanticp (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+           :use (fn2-pool-semanticp-elim fn2-pool-reserve-row-okp
+                 fn2-pool-reserve-preserves-type fn2-pool-reserve-preserves-wfp
+                 (:instance fn2-pool-reserve-class-accounts (k (fn2-pool-nclasses fn2-pool)))
+                 (:instance fn2-pool-semanticp-intro (s (fn2-pool-class-headsi class fn2-pool))
+                            (fn2-pool (mv-nth 3 (fn2-pool-reserve class okind oslot ogen fn2-pool))))))))
+
+(defthm fn2-pool-release-conservation
+  (implies (fn2-pool-semanticp fn2-pool)
+           (fn2-pool-semanticp (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize)
+           :use (fn2-pool-semanticp-elim fn2-pool-release-row-okp
+                 fn2-pool-release-preserves-type fn2-pool-release-preserves-wfp
+                 (:instance fn2-pool-release-class-accounts (k (fn2-pool-nclasses fn2-pool)))
+                 (:instance fn2-pool-semanticp-intro (s slot)
+                            (fn2-pool (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))))))
+
+;; Carved extents are disjoint: row J starts at or after row I's end.
+(local
+ (defthm fn2-pool-row-nonneg
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp i) (< i (fn2-pool-rows fn2-pool)))
+            (and (<= 0 (fn2-pool-cap i fn2-pool)) (<= 0 (fn2-pool-base i fn2-pool))
+                 (<= 0 (fn2-pool-fill i fn2-pool))))
+   :rule-classes :linear
+   :hints (("Goal" :use fn2-pool-slot-types))))
+(local
+ (defthm fn2-pool-extent-below
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                 (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                 (natp i) (natp j) (< i j) (< j (fn2-pool-rows fn2-pool)))
+            (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool)))
+   :hints (("Goal" :induct (fn2-pool-retired-slots j fn2-pool)
+            :in-theory (e/d (fn2-pool-retired-slots fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant)))
+           ("Subgoal *1/2" :use ((:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool)) (i j)))))))
+(defthm fn2-pool-extents-disjoint
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (natp j) (< i j) (< j (fn2-pool-rows fn2-pool)))
+           (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool)))
+  :rule-classes nil
+  :hints (("Goal" :use (fn2-pool-semanticp-elim fn2-pool-extent-below))))
+(defthm fn2-pool-extents-apart
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (natp j) (not (equal i j))
+                (< i (fn2-pool-rows fn2-pool)) (< j (fn2-pool-rows fn2-pool)))
+           (or (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool))
+               (<= (+ (fn2-pool-base j fn2-pool) (fn2-pool-cap j fn2-pool)) (fn2-pool-base i fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((< i j) (< j i)))
+          ("Subgoal 2" :use ((:instance fn2-pool-extents-disjoint (i j) (j i))))
+          ("Subgoal 1" :use ((:instance fn2-pool-extents-disjoint)))))
+(defthm fn2-pool-semanticp-row-bounds
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (< i (fn2-pool-rows fn2-pool)))
+           (and (natp (fn2-pool-base i fn2-pool)) (natp (fn2-pool-cap i fn2-pool))
+                (natp (fn2-pool-fill i fn2-pool))
+                (<= (fn2-pool-fill i fn2-pool) (fn2-pool-cap i fn2-pool))
+                (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool))
+                    (fn2-pool-data-length fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
+           :use (fn2-pool-semanticp-elim (:instance fn2-pool-slot-types)
+                 (:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool)))))))
+;; Octets of an interval: a byte written outside it, and a fill change, leave them.
+(defthm fn2-pool-logical-octets-of-update-datai
+  (implies (and (natp k) (natp b) (or (< k b) (<= (+ b (nfix n)) k)))
+           (equal (fn2-pool-logical-octets n b (update-fn2-pool-datai k v fn2-pool))
+                  (fn2-pool-logical-octets n b fn2-pool)))
+  :hints (("Goal" :induct (fn2-pool-logical-octets n b fn2-pool))))
+(defthm fn2-pool-logical-octets-of-set-fill
+  (equal (fn2-pool-logical-octets n b (fn2-pool-set-fill j v fn2-pool))
+         (fn2-pool-logical-octets n b fn2-pool)))
+;; A write through one row never changes another row's extent.
+(defthm fn2-pool-write-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other slot)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 1 (fn2-pool-write slot gen idx byte okind oslot ogen fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
+                        (:instance fn2-pool-semanticp-row-bounds (i other))
+                        (:instance fn2-pool-extents-apart (i slot) (j other))))))
+(defthm fn2-pool-adapter-write-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other slot)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
+                        (:instance fn2-pool-semanticp-row-bounds (i other))
+                        (:instance fn2-pool-extents-apart (i slot) (j other))))))
+;; Neither write moves a row's extent.
+(defthm fn2-pool-write-keeps-extents
+  (let ((q (mv-nth 1 (fn2-pool-write slot gen idx byte okind oslot ogen fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool)))))
+(defthm fn2-pool-adapter-write-keeps-extents
+  (let ((q (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool)))))
+(defthm fn2-pool-conservation-proved
+  (implies (fn2-pool-conservation-hyps op a p)
+           (fn2-pool-conservation-conclusion op a p))
+  :hints (("Goal" :in-theory (disable fn2-pool-reserve fn2-pool-release fn2-pool-lease-in
+                                      fn2-pool-adapter-write fn2-pool-complete-in fn2-pool-lease-out
+                                      fn2-pool-release-out fn2-pool-hand fn2-pool-accept-hand
+                                      fn2-pool-read fn2-pool-write fn2-pool-reset))))
+(defthm fn2-pool-conservation-statement
+  (fn2-pool-conservation$owed op a p)
+  :hints (("Goal" :in-theory '(fn2-pool-conservation$owed) :use fn2-pool-conservation-proved))))
+(fn2-owed-discharge fn2-pool-conservation fn2-pool-conservation-statement)
+
+
 (defun fn2-pool-generation-hyps (slot op a fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil))
   (declare (ignore a))

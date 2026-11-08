@@ -748,7 +748,9 @@ transcripts in seeded chunks; each negative tooth refuses a wrong runner or resu
 generator, `fn2-resident-measure-events`, emits one measure per registered child: the rows scalar
 (sized by `:rows-bound`), every column array's actual length times its declared width in bytes
 (`fn2-columns-width`, rounded up to whole bytes), and every extra field, whether an array (actual
-length × element bytes) or a scalar. It also emits their sum, `fn2-core-resident-measure`, and a
+length × element bytes) or a scalar, or the measure its declaration states (`defcolumns`'
+`:resident` term, recorded as the row's `:extra-field-resident`; the boot configuration's group
+cursor and path identity are declared at the boot record's widths). It also emits their sum, `fn2-core-resident-measure`, and a
 per-child breakdown. A field it cannot measure (a hash table, a nested stobj, an untyped array) is
 refused at expansion by name unless the child's `:why` states its bound. Today no field is refused
 (`*fn2-resident-refused*` is nil). `books/owed-d.lisp` expands the generator once over the served

@@ -1,6 +1,15 @@
-import Fn2.Arms.Cost
-import Fn2.Arms.Frame
-import Fn2.Instances.LayerAKinds
+module
+
+public import Fn2.Arms.Cost
+public import Fn2.Arms.Frame
+public import Fn2.Instances.LayerAKinds
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Served: the proved contracts instantiated for served kinds of the registry
@@ -103,3 +112,5 @@ theorem conn_derived_costs :
   decide +kernel
 
 end Fn2.Arms.Served
+
+end

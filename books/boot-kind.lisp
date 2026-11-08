@@ -16,10 +16,18 @@
 
 ; Only startup configuration has a list cursor. It advances one group per
 ; visit, is cleared before ready, and never contains parsed device data.
+; Its resident measure (T10) is declared at the boot record's widths: each of
+; the COUNT genesis groups as a name at the identity field's 250 octets (the
+; most fn2-boot-pack-pool writes) and a u60 value in 8 bytes; the path at
+; *fn2-profile-path-identity-max* octets. COUNT is fixed at init, so the
+; measure is too while the cursor advances.
+(defconst *fn2-boot-group-entry-bytes* (+ 250 8))
 (defcolumns fn2-boot-config nil :init-name fn2-boot-config-empty
  :extra-fields
- ((fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit.")
-  (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record.")
+ ((fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
+   :resident (* *fn2-boot-group-entry-bytes* (fn2-boot-config-count fn2-boot-config)))
+  (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record."
+   :resident *fn2-profile-path-identity-max*)
   (fn2-boot-config-count :type (unsigned-byte 32) :initially 0 :why "Number of immutable genesis group records.")
   (fn2-boot-config-extents :type (unsigned-byte 32) :initially 0 :why "The image's arena geometry, checked before recovery.")
   (fn2-boot-config-owner :type (unsigned-byte 32) :initially 0 :why "Persisted initial owner account binding.")

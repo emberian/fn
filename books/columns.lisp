@@ -269,10 +269,14 @@
   (declare (xargs :verify-guards nil))
   (not (fn2-columns-unjustified-extra fields)))
 
+; An extra field's declaration notes, kept in the declared row and never
+; passed to defstobj: :why (the representation escape's reason) and :resident
+; (its resident-byte measure, a term over the stobj, for a field whose type
+; states no width; the resident generator of T10 sums it).
 (defun fn2-columns-without-why (options)
   (declare (xargs :guard t :verify-guards nil))
   (if (atom options) nil
-    (if (eq (car options) :why) (cddr options)
+    (if (member-eq (car options) '(:why :resident)) (fn2-columns-without-why (cddr options))
       (cons (car options) (cons (cadr options) (fn2-columns-without-why (cddr options)))))))
 
 (defun fn2-columns-extra-specs (fields)
@@ -287,6 +291,12 @@
     (let ((why (cadr (member-eq :why (cdar fields)))))
       (append (and why (list (cons (caar fields) why)))
               (fn2-columns-extra-reasons (cdr fields))))))
+(defun fn2-columns-extra-resident (fields)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom fields) nil
+    (let ((m (member-eq :resident (cdar fields))))
+      (append (and (consp m) (consp (cdr m)) (list (cons (caar fields) (cadr m))))
+              (fn2-columns-extra-resident (cdr fields))))))
 
 (defun fn2-columns-array-facts (field)
   (declare (xargs :guard t :verify-guards nil))
@@ -834,7 +844,8 @@
       (list :columns (fn2-columns-specs cols)
             :column-reasons (fn2-columns-extra-reasons cols) :rows-bound bound
             :extra-fields (fn2-columns-extra-specs extras)
-            :extra-field-reasons (fn2-columns-extra-reasons extras) :init-name init :put-policy put-policy)
+            :extra-field-reasons (fn2-columns-extra-reasons extras)
+            :extra-field-resident (fn2-columns-extra-resident extras) :init-name init :put-policy put-policy)
       nil
       `(; Plain numeric columns need only this DSL's proof theory. Raw extras
        ; retain incoming rules for their external nested-stobj constructors.

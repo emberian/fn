@@ -1,6 +1,15 @@
-import Fn2.Instances.LayerA
-import Fn2.Square
-import Fn2.Distinct
+module
+
+public import Fn2.Instances.LayerA
+public import Fn2.Square
+public import Fn2.Distinct
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Instances.LayerAFacts: what the emitted registry satisfies
@@ -97,3 +106,5 @@ theorem q1_licensed {A B M : Type} {stepA : CaseLabel Sym → Loose A A} {stepB 
   Sq.paste_cover h R q1Cases cases
 
 end Fn2.Instances.LayerA
+
+end

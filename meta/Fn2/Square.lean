@@ -1,4 +1,13 @@
-import Mathlib.CategoryTheory.Category.RelCat
+module
+
+public import Mathlib.CategoryTheory.Category.RelCat
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Square: the double category of fn2 squares
@@ -205,3 +214,5 @@ theorem Sq.paste_cover {S T L M : Type u} {stepA : L â†’ Loose S S} {stepB : M â
     exact Sq.seq (hstep t (hw t (by simp))) (ih fun x hx => hw x (by simp [hx]))
 
 end Fn2.Square
+
+end

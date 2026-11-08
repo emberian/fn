@@ -1,5 +1,14 @@
-import Fn2.Arms.Inv
-import Fn2.Arms.Derive
+module
+
+public import Fn2.Arms.Inv
+public import Fn2.Arms.Derive
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Columns: the columns an arm writes and the phases it reaches, over the interpreter
@@ -812,3 +821,5 @@ theorem runArm_next_mem_mutant :
 end
 
 end Fn2.Arms.Columns
+
+end

@@ -1,4 +1,13 @@
-import Fn2.Coherence
+module
+
+public import Fn2.Coherence
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Conservative: an `ext`-grade revision is conservative over its base
@@ -403,3 +412,4 @@ theorem extensionWithoutLift_not_conservative :
 
 end Fn2.Conservative
 
+end

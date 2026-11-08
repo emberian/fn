@@ -1,10 +1,19 @@
-import Fn2.Decl
-import Fn2.Arms
-import Fn2.Arms.Derive
-import Fn2.Pathway
-import Fn2.Instances.LayerA
-import Fn2.Instances.LayerAFacts
-import Fn2.Instances.LayerAKinds
+module
+
+public import Fn2.Decl
+public import Fn2.Arms
+public import Fn2.Arms.Derive
+public import Fn2.Pathway
+public import Fn2.Instances.LayerA
+public import Fn2.Instances.LayerAFacts
+public import Fn2.Instances.LayerAKinds
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.MachineProofs: Per-Machine Contract Proofs & PW3 Wrapper Instantiation (Brick H6)
@@ -159,3 +168,5 @@ theorem pw3_mutant_dup_returns_neg :
   decide +kernel
 
 end Fn2.MachineProofs
+
+end

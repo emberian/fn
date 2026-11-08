@@ -159,3 +159,155 @@
 (assert-event (fn2-commit-recoverable-fence-removal))
 (assert-event (fn2-recovery-complete-positive))
 (assert-event (fn2-recovery-complete-held-removal))
+
+;; THE STRENGTHENED INVARIANT ON LIVE RUNS. FN2-ENV-DUR-INV (J1-J4 and the
+;; evidence projection) holds after every action of the honest runs above,
+;; in both barrier modes, from genesis: the positions of the actions after
+;; which it fails (expected none), the run's length, and its acknowledged
+;; batches (expected 1 and 2, so the acknowledging steps were checked).
+(defun fn2-cda-j-trace (actions i ids rlog acked fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil acked fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let* ((rlog (if entry (cons entry rlog) rlog))
+             (acked (fn2-env-observe ids acked fn2-core))
+             (ok (fn2-env-dur-inv ids acked (reverse rlog) fn2-core)))
+        (mv-let (bad acked fn2-core) (fn2-cda-j-trace (cdr actions) (+ 1 i) ids rlog acked fn2-core)
+          (mv (if ok bad (cons i bad)) acked fn2-core))))))
+(defun fn2-cda-j-scenario (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             (ids (fn2-env-commit-ids profile))
+             (pre (fn2-env-dur-inv ids nil nil fn2-core))
+             ((mv bad acked fn2-core) (fn2-cda-j-trace actions 0 ids nil nil fn2-core)))
+          (mv (list pre bad (len actions) acked) fn2-core))
+        result))))
+(make-event `(defconst *fn2-cda-j-honest* ',(fn2-cda-j-scenario 0)))
+(make-event `(defconst *fn2-cda-j-honest-fua* ',(fn2-cda-j-scenario 1)))
+(defun fn2-cda-j-positive (r)
+  (declare (xargs :verify-guards nil))
+  (and (nth 0 r) (null (nth 1 r)) (< 100 (nth 2 r))
+       (subsetp-equal '(1 2) (nth 3 r))))
+(assert-event (fn2-cda-j-positive *fn2-cda-j-honest*))
+(assert-event (fn2-cda-j-positive *fn2-cda-j-honest-fua*))
+;; Positive witness of FN2-ENV-DUR-TURN-PRESERVES: both honest runs keep the
+;; strengthened invariant through every fn2-turn and acknowledge 1 and 2.
+(defun fn2-dur-turn-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-cda-j-positive *fn2-cda-j-honest*) (fn2-cda-j-positive *fn2-cda-j-honest-fua*)))
+(assert-event (fn2-dur-turn-positive))
+
+;; J5 AND J6 ON LIVE RUNS (FN2-ENV-J5-ROWS), checked before they are proved:
+;; after every action of both honest runs no row breaks them (expected nil),
+;; and the runs reach every state the clauses read: each role's write queued,
+;; taken, and posted unharvested, and the fence live.
+(defun fn2-cda-role-state (id role fn2-core)
+  ; (ROLE OP-PHASE C0-POSTED) of the role's live write, else nil
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (fn2-env-role-live id role fn2-core)
+      (let ((op (fn2-env-op (nth 1 (fn2-env-role-io id role fn2-core)) fn2-core)))
+        (list role (nth 2 op) (nth 13 op)))
+    nil))
+(defun fn2-cda-j5-trace (actions i ids rlog fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil nil fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let* ((rlog (if entry (cons entry rlog) rlog))
+             (ok (fn2-env-j5-rows ids (reverse rlog) fn2-core))
+             (id (car ids))
+             (seen (list (fn2-machine-phase id fn2-core)
+                         (fn2-machine-cb-fence-live id fn2-core)
+                         (fn2-cda-role-state id 0 fn2-core) (fn2-cda-role-state id 1 fn2-core)
+                         (fn2-cda-role-state id 2 fn2-core))))
+        (mv-let (bad seens fn2-core) (fn2-cda-j5-trace (cdr actions) (+ 1 i) ids rlog fn2-core)
+          (mv (if ok bad (cons i bad)) (add-to-set-equal seen seens) fn2-core))))))
+(defun fn2-cda-j5-scenario (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             (ids (fn2-env-commit-ids profile))
+             (pre (fn2-env-j5-rows ids nil fn2-core))
+             ((mv bad seen fn2-core) (fn2-cda-j5-trace actions 0 ids nil fn2-core)))
+          (mv (list pre bad (len actions) seen) fn2-core))
+        result))))
+(make-event `(defconst *fn2-cda-j5-honest* ',(fn2-cda-j5-scenario 0)))
+(make-event `(defconst *fn2-cda-j5-honest-fua* ',(fn2-cda-j5-scenario 1)))
+(defun fn2-cda-j5-reached (seen)
+  ; queued (2), taken (3), and posted (3 1) for role 0 at :dependencies and
+  ; roles 1 and 2 at :log-write, and the live fence at :fence
+  (declare (xargs :verify-guards nil))
+  (and (member-equal '(3 0 (0 2 0) nil nil) seen) (member-equal '(3 0 (0 3 0) nil nil) seen)
+       (member-equal '(3 0 (0 3 1) nil nil) seen)
+       (member-equal (list 4 0 nil '(1 2 0) nil) seen) (member-equal (list 4 0 nil '(1 3 1) nil) seen)
+       (member-equal (list 4 0 nil nil '(2 2 0)) seen) (member-equal (list 4 0 nil nil '(2 3 1)) seen)
+       (member-equal '(5 1 nil nil nil) seen)))
+(defun fn2-cda-j5-positive (r)
+  (declare (xargs :verify-guards nil))
+  (and (nth 0 r) (null (nth 1 r)) (< 100 (nth 2 r)) (fn2-cda-j5-reached (nth 3 r))))
+(assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest*))
+(assert-event (fn2-cda-j5-positive *fn2-cda-j5-honest-fua*))
+
+;; THE J5 CONTROL: what J5 carries that FN2-ENV-DUR-INV does not. Stop the
+;; mode-0 run when the first row's role-0 write is posted and unharvested,
+;; and cut one octet from that write's take in the log (a device log whose
+;; take is not the 4096 octets the core submitted). Both logs satisfy
+;; FN2-ENV-DUR-INV (nothing is counted yet); only the honest one satisfies
+;; J5. One fn2-turn harvests and counts the write: the honest log still
+;; satisfies FN2-ENV-DUR-INV, the cut one breaks J3 (the counted write is no
+;; done write in full). Result: (dur-honest j5-honest dur-cut j5-cut done
+;; dur-honest-after dur-cut-after), expected (t t t nil 1 t nil).
+(defun fn2-cda-cut-take (slot gen log)
+  (declare (xargs :verify-guards nil))
+  (if (atom log) nil
+    (cons (let ((e (car log)))
+            (if (and (fn2-dev-takep e) (equal (nth 1 e) slot) (equal (nth 2 e) gen))
+                (update-nth 6 (cdr (nth 6 e)) e)
+              e))
+          (fn2-cda-cut-take slot gen (cdr log)))))
+(defun fn2-cda-role-posted (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (and (fn2-env-role-live id role fn2-core)
+       (let ((op (fn2-env-op (nth 1 (fn2-env-role-io id role fn2-core)) fn2-core)))
+         (and (equal (nth 2 op) *fn2-op-phase-submitted*) (equal (nth 13 op) 1)))))
+(defun fn2-cda-j5-control-trace (actions ids rlog acked fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let* ((rlog (if entry (cons entry rlog) rlog))
+             (acked (fn2-env-observe ids acked fn2-core))
+             (id (car ids)))
+        (if (and (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-dependencies*)
+                 (fn2-cda-role-posted id 0 fn2-core))
+            (b* ((log (reverse rlog))
+                 (io (fn2-env-role-io id 0 fn2-core))
+                 (cut (fn2-cda-cut-take (nth 1 io) (nth 2 io) log))
+                 (pre (list (fn2-env-dur-inv ids acked log fn2-core) (fn2-env-j5-rows ids log fn2-core)
+                            (fn2-env-dur-inv ids acked cut fn2-core) (fn2-env-j5-rows ids cut fn2-core)))
+                 ((mv & fn2-core) (fn2-env-step '(:turn) nil nil rlog fn2-core))
+                 (acked (fn2-env-observe ids acked fn2-core)))
+              (mv (append pre (list (fn2-machine-cb-done id fn2-core)
+                                    (fn2-env-dur-inv ids acked log fn2-core) (fn2-env-dur-inv ids acked cut fn2-core)))
+                  fn2-core))
+          (fn2-cda-j5-control-trace (cdr actions) ids rlog acked fn2-core))))))
+(defun fn2-cda-j5-control (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             ((mv r fn2-core) (fn2-cda-j5-control-trace actions (fn2-env-commit-ids profile) nil nil fn2-core)))
+          (mv r fn2-core))
+        result))))
+(make-event `(defconst *fn2-cda-j5-control* ',(fn2-cda-j5-control 0)))
+(defun fn2-cda-j5-removal ()
+  (declare (xargs :verify-guards nil))
+  (equal *fn2-cda-j5-control* '(t t t nil 1 t nil)))
+(assert-event (fn2-cda-j5-removal))

@@ -70,6 +70,11 @@
            (state (prin1$ name channel state))
            (state (princ$ "` | " channel state))
            (state (prin1$ (car (fn2-decl-get :proof row)) channel state))
+           (state (if (consp (cdr (fn2-decl-get :proof row)))
+                      (let* ((state (princ$ " `" channel state))
+                             (state (prin1$ (cadr (fn2-decl-get :proof row)) channel state)))
+                        (princ$ "`" channel state))
+                    state))
            (state (princ$ " | " channel state))
            (state (prin1$ (fn2-decl-get :schema row) channel state))
            (state (princ$ " | `" channel state))
@@ -107,6 +112,13 @@
     (princ$ " rows with a passing, exercised check.
 
 " channel state)))
+; Rows an admitted theorem discharges, listed after the owed rows with the theorem's name.
+(defun fn2-owed-proved-rows (rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) nil
+    (if (eq (car (fn2-decl-get :proof (cdar rows))) :proved)
+        (cons (car rows) (fn2-owed-proved-rows (cdr rows)))
+      (fn2-owed-proved-rows (cdr rows)))))
 (defun fn2-owed-write-groups (groups rows channel state)
   (declare (xargs :stobjs state :verify-guards nil))
   (if (atom groups) state
@@ -120,7 +132,8 @@
            (state (princ$ "| Name | Status | Schema | Exact statement | Evaluating functions | Description | Check scope | Shared declarations | Claim | Contract | Shared-handler mutation control |
 |---|---|---|---|---|---|---|---|---|---|---|
 " channel state))
-           (state (fn2-owed-write-entries (fn2-square-owed-rows members) channel state))
+           (state (fn2-owed-write-entries (append (fn2-square-owed-rows members) (fn2-owed-proved-rows members))
+                                          channel state))
            (state (if (consp (cdr groups)) (princ$ "
 " channel state) state)))
       (fn2-owed-write-groups (cdr groups) rows channel state))))
@@ -194,6 +207,8 @@ Counts are grouped by owner (correspondence when present), case source, and sche
 Cases are proof obligations, not independent semantic guarantees. Turn composition
 is listed under the same correspondence as its cases; no case catalogue is bound
 until its contract exists. NIL case source means a hand-stated requirement.
+A row with an admitted proof is listed after its group's owed rows, with status
+:PROVED and the name of the theorem that discharges its statement.
 
 " channel state))
              (state (fn2-owed-write-counts rows channel state))

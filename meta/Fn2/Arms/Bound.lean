@@ -1,5 +1,14 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Bound: a sound static interval for a step-language expression
@@ -414,3 +423,5 @@ theorem evOpt_sound (w : World) (k : Kind) (senv : SEnv) (st : St) (e : Option E
   | some x => exact ev_sound w k senv st x v b hok hev hb
 
 end Fn2.Arms.Bound
+
+end

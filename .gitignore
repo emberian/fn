@@ -15,3 +15,12 @@ Makefile-tmp
 workxxx.*
 # Lane scratch (BRIEF-COMMON: never committed)
 /LANEDUMP.md
+/meta/emit/bridge-certificate.sexp
+/meta/emit/loop-certificate.sexp
+/meta/emit/core-certificate.sexp
+/meta/emit/served-certificate.sexp
+/meta/emit/served-export.lisp
+/meta/Fn2/Instances/ServedKinds.lean
+/meta/Fn2/Instances/ServedMetadata.lean
+/meta/Fn2/Instances/ServedCommit.lean
+/meta/Fn2/Instances/ServedCertificates/

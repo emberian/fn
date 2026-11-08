@@ -1,0 +1,76 @@
+; Generated from core_controls.lisp.in and the canonical CNS closure.
+; Whole-core export controls against the live CNS declaration and executed handler.
+(in-package "ACL2")
+(include-book "../books/assembly-callbacks-e-cns")
+(include-book "../books/translation-validation")
+(include-book "std/testing/must-fail" :dir :system)
+
+; A missing child is a different assembly, even if the remaining children agree.
+(must-fail
+ (fn2-tv-check-manifest
+  (update-nth 1 (fn2-tv-object (list 'quote (cdr *fn2-core-children*)))
+              (fn2-tv-manifest (w state)))))
+
+(defmacro fn2-tv-cns-handler-declaration (decl)
+ `(make-event
+   (if (equal ,decl (cdr (assoc-eq :read-result
+                        (fn2-machine-declared 'fn2-cns :observe-arms (w state)))))
+       '(value-triple :live-cns-declaration)
+     (er soft 'fn2-tv-cns-handler-declaration "Pending-write ordering differs."))))
+
+(fn2-tv-cns-handler-declaration
+ '((:set (revent event) (routcome outcome) (rcount count) (rready 1)) (:wake)))
+
+; Moving the terminal ahead of the pending write must not validate.
+(must-fail
+ (fn2-tv-cns-handler-declaration
+  '((:wake) (:set (revent event) (routcome outcome) (rcount count) (rready 1)))))
+
+(defconst *fn2-tv-cns-core*
+  (update-nth @OWN_INDEX@ (append (make-list @ROWS_INDEX@ :initial-element nil) '(1))
+    (update-nth @DIRECTORY_INDEX@ '((11) (0) nil nil nil 1) (make-list @CORE_SIZE@ :initial-element nil))))
+
+; The ordering control has an observable consequence: a wake before the write
+; returns the old core. The real handler returns the wake AND the updated row.
+(defthm fn2-tv-cns-pending-write-before-wake
+ (let ((result (fn2-cns-on-read-result 0 13 0 0 7 0 0 *fn2-tv-cns-core*)))
+  (and (equal (fn2-cns-snapshot-read-code 0 *fn2-tv-cns-core*) :ok)
+       (equal (car result) 0)
+       (equal (fn2-cns-revent 0 (nth @OWN_INDEX@ (cadr result))) 13)
+       (equal (fn2-cns-routcome 0 (nth @OWN_INDEX@ (cadr result))) 0)
+       (equal (fn2-cns-rcount 0 (nth @OWN_INDEX@ (cadr result))) 7)
+       (equal (fn2-cns-rready 0 (nth @OWN_INDEX@ (cadr result))) 1)
+       (not (equal result (list 0 *fn2-tv-cns-core*)))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+           (e/d (@BODY_DEFINITIONS@) (@BODY_EXECUTABLES@)))))
+
+
+; A real DRAINING-to-FREE mutation with one active CNS row and one free-list head.
+(defconst *fn2-tv-cns-drain-core*
+ (let* ((core *fn2-tv-cns-core*)
+        (own (update-nth 57 '(0) (update-nth 1 '(0) (update-nth 0 '(10) (nth @OWN_INDEX@ core)))))
+        (dir (update-nth 19 (make-list 7 :initial-element 1)
+              (update-nth 18 (make-list 7 :initial-element 0)
+               (update-nth 9 4 (update-nth 8 (make-list 7 :initial-element 4294967295)
+                                 (nth @DIRECTORY_INDEX@ core)))))))
+  (update-nth @OWN_INDEX@ own (update-nth @DIRECTORY_INDEX@ dir core))))
+
+(defthm fn2-tv-cns-draining-mutation-positive
+ (let* ((result (fn2-cns-run-draining 0 0 *fn2-tv-cns-drain-core*))
+        (core (nth 4 result)) (own (nth @OWN_INDEX@ core)) (dir (nth @DIRECTORY_INDEX@ core)))
+  (and (equal (len *fn2-tv-cns-drain-core*) @CORE_SIZE@)
+       (equal (fn2-cns-snapshot-read-code 0 *fn2-tv-cns-drain-core*) :ok)
+       (equal (fn2-cns-phase 0 (nth @OWN_INDEX@ *fn2-tv-cns-drain-core*)) 10)
+       (equal (take 4 result) '(0 20 0 nil))
+       (equal (fn2-cns-phase 0 own) 0)
+       (equal (fn2-cns-generation 0 own) 1)
+       (equal (fn2-cns-ctl 0 own) 4294967295)
+       (equal (fn2-cns-next-free 0 own) 4294967295)
+       (equal (fn2-machines-free-headi 6 dir) 0)
+       (equal (fn2-machines-active-counti 6 dir) 0)
+       (equal (fn2-machines-admission-creditsi 6 dir) 1)
+       (equal (nth 5 core) (nth 5 *fn2-tv-cns-drain-core*))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+           (e/d (@BODY_DEFINITIONS@) (@BODY_EXECUTABLES@)))))

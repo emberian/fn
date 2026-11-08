@@ -1,4 +1,13 @@
-import Fn2.Arms.Core
+module
+
+public import Fn2.Arms.Core
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.CoreTeeth: witnesses and mutants for the core-form contracts
@@ -153,3 +162,5 @@ theorem runCore_cols_mutants :
   refine ⟨by decide +kernel, by decide +kernel, by decide +kernel, by decide +kernel⟩
 
 end Fn2.Arms.CoreTeeth
+
+end

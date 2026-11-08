@@ -1,9 +1,13 @@
-import Std.Data.HashMap
-import Fn2.ACL2.Read
-import Fn2.Arms
-import Fn2.Pathway
-import Fn2.Arms.Core
-import Fn2.Instances.LayerAKinds
+module
+
+public import Std.Data.HashMap
+public import Fn2.ACL2.Read
+public import Fn2.Arms
+public import Fn2.Pathway
+public import Fn2.Arms.Core
+public import Fn2.Instances.LayerAKinds
+
+@[expose] public section
 
 /-!
 # Fn2.Measure: the translated kinds against the simulator's recorded calls
@@ -327,3 +331,5 @@ def main (args : List String) : IO UInt32 := do
 end Fn2.Measure
 
 def main (args : List String) : IO UInt32 := Fn2.Measure.main args
+
+end

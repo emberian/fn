@@ -1,0 +1,420 @@
+Validated whole-arm statements — 2026-11-08
+Canonical packet SHA256: b3d424b2d85578b2529e317a161f3c0917a7379a65a389374902b2e9be460493
+
+Verbatim generated contracts and theorem signatures; proofs are emitted by the shared templates.
+
+=== FN2-ECHO-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root7
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[1]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-ECHO-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root7
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root7.contract id budget kids
+
+=== FN2-ECHO-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root12
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[1]!
+def arm : Arm := kind.arms[5]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-ECHO-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root12
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root12.contract id budget kids
+
+=== FN2-SCRIBE-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root19
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[2]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-SCRIBE-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root19
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root19.contract id budget kids
+
+=== FN2-SCRIBE-RUN-STOPPED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root32
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[2]!
+def arm : Arm := kind.arms[13]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-SCRIBE-RUN-STOPPED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root32
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root32.contract id budget kids
+
+=== FN2-SCRIBE-RUN-REFUSED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root33
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[2]!
+def arm : Arm := kind.arms[14]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-SCRIBE-RUN-REFUSED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root33
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root33.contract id budget kids
+
+=== FN2-COMMIT-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root38
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[3]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-COMMIT-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root38
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root38.contract id budget kids
+
+=== FN2-RECOVERY-MACHINE-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root68
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[4]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-RECOVERY-MACHINE-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root68
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root68.contract id budget kids
+
+=== FN2-RECOVERY-MACHINE-RUN-DONE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root74
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[4]!
+def arm : Arm := kind.arms[6]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-RECOVERY-MACHINE-RUN-DONE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root74
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root74.contract id budget kids
+
+=== FN2-SEALER-RUN-STOPPED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root77
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[5]!
+def arm : Arm := kind.arms[1]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-SEALER-RUN-STOPPED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root77
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root77.contract id budget kids
+
+=== FN2-CONN-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root81
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[6]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CONN-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root81
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root81.contract id budget kids
+
+=== FN2-CONN-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root89
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[6]!
+def arm : Arm := kind.arms[8]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CONN-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root89
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root89.contract id budget kids
+
+=== FN2-UPLOAD-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root96
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[7]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-UPLOAD-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root96
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root96.contract id budget kids
+
+=== FN2-UPLOAD-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root110
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[7]!
+def arm : Arm := kind.arms[14]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-UPLOAD-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root110
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root110.contract id budget kids
+
+=== FN2-UPLOAD-ON-BORROW-RELEASED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root113
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[7]!
+def arm : Arm := kind.observes[2]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (event : Val) (outcome : Val) (reason : Val) (count : Val) (aux0 : Val) (aux1 : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm true [id, event, outcome, reason, count, aux0, aux1, image kids] fuel = .ok result ∧
+    world.fns "FN2-UPLOAD-ON-BORROW-RELEASED" [id, event, outcome, reason, count, aux0, aux1, image kids] = some result
+end Fn2.Arms.Served.Root113
+
+theorem validated (id event outcome reason count aux0 aux1 : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root113.contract id event outcome reason count aux0 aux1 kids
+
+=== FN2-TXN-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root116
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[8]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-TXN-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root116
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root116.contract id budget kids
+
+=== FN2-TXN-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root128
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[8]!
+def arm : Arm := kind.arms[12]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-TXN-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root128
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root128.contract id budget kids
+
+=== FN2-CURSOR-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root180
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[9]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CURSOR-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root180
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root180.contract id budget kids
+
+=== FN2-CURSOR-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root188
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[9]!
+def arm : Arm := kind.arms[8]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CURSOR-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root188
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root188.contract id budget kids
+
+=== FN2-CTL-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root190
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[10]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CTL-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root190
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root190.contract id budget kids
+
+=== FN2-CTL-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root198
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[10]!
+def arm : Arm := kind.arms[8]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CTL-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root198
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root198.contract id budget kids
+
+=== FN2-CNS-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root213
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[11]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CNS-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root213
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root213.contract id budget kids
+
+=== FN2-CNS-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root224
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[11]!
+def arm : Arm := kind.arms[11]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-CNS-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root224
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root224.contract id budget kids
+
+=== FN2-AUTH-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root231
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[12]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-AUTH-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root231
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root231.contract id budget kids
+
+=== FN2-AUTH-RUN-RETIRED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root242
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[12]!
+def arm : Arm := kind.arms[11]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-AUTH-RUN-RETIRED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root242
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root242.contract id budget kids
+
+=== FN2-BOOT-RUN-FREE ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root243
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[13]!
+def arm : Arm := kind.arms[0]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-BOOT-RUN-FREE" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root243
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root243.contract id budget kids
+
+=== FN2-BOOT-RUN-FAILED ===
+import Fn2.Arms.Core
+import Fn2.Instances.ServedMetadata
+namespace Fn2.Arms.Served.Root259
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds
+def kind : Kind := kinds[13]!
+def arm : Arm := kind.arms[16]!
+def image (kids : Fin 57 → Val) : Val := Val.ofList (List.ofFn kids)
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-BOOT-RUN-FAILED" [id, budget, image kids] = some result
+end Fn2.Arms.Served.Root259
+
+theorem validated (id budget : Val) (kids : Fin 57 → Val) :
+    Fn2.Arms.Served.Root259.contract id budget kids

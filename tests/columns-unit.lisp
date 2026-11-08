@@ -25,6 +25,17 @@
                '((fn2-justified-metadata . "Unit-only metadata: never served."))))))
 (value-triple (cw "COLUMNS UNIT: unbounded t/hash/empty-reason refused; reason recorded, raw specs preserved PASS~%"))
 
+; A declared resident measure is recorded beside the reason and kept out of defstobj.
+(defcolumns fn2-measured ((value :u8)) :rows-bound 8
+ :extra-fields ((fn2-measured-cursor :type t :why "Unit-only cursor: never served."
+                 :resident (* 3 (fn2-measured-rows fn2-measured)))))
+(assert-event
+ (let ((schema (fn2-decl-row (list :columns 'fn2-measured) (w state))))
+   (and (equal (cadr (member-eq :extra-fields schema)) '((fn2-measured-cursor :type t)))
+        (equal (cadr (member-eq :extra-field-resident schema))
+               '((fn2-measured-cursor * 3 (fn2-measured-rows fn2-measured)))))))
+(value-triple (cw "COLUMNS UNIT: resident measure recorded, stripped from the stobj spec PASS~%"))
+
 (must-fail (defcolumns fn2-unjustified-u64 ((value :u64)))
  :expected :hard :with-output-off nil :check-expansion t)
 (must-fail

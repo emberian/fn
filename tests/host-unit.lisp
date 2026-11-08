@@ -71,6 +71,8 @@
       result)))
 (assert-event (fn2-host-latch-control))
 (include-book "../books/host-boundary")
+; The simulator drives the boundary below; host-boundary does not include it.
+(include-book "../sim/sim")
 ;; The first sim row holding an active Accept, scanning from INDEX.
 (defun fn2-host-sim-find-accept (left index fn2-sim)
   (declare (xargs :stobjs fn2-sim :verify-guards nil :measure (nfix left)))

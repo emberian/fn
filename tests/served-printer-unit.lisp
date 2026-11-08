@@ -1,0 +1,23 @@
+; Raw printer controls: evaluate only the two standalone traversal helpers.
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(with-open-file (in "meta/emit/print-world.lisp")
+  (loop for form = (read in nil :eof) until (eq form :eof)
+        when (and (consp form) (eq (car form) 'defun)
+                  (member (cadr form) '(meta-kw meta-commit-steps)))
+        do (eval form)))
+(assert (equal (meta-kw :case '(:wait :case :case branches)) 'branches))
+(assert (null (meta-commit-steps
+  '(:from (:commit) :on-refusal (:stop :commit)
+    (:case row-phase (:commit (:idle)))
+    (:let x '(:commit data)) (:next :commit)))))
+(let* ((word '(:commit successor :workspace (slot gen) :ticket ticket :wait :committed
+               :dependencies ((:idle)) :unchanged ((:idle)) :refused ((:idle))))
+       (decl `(:on-refusal (,word)
+                (:if test (,word) ((:cond (test ,word))))
+                (:case phase (:commit ,word))
+                (:do () (op) :case (((:ok) ,word)))
+                (:issue (op) :ok (,word) :refused (,word))
+                (:repeat 1 (,word) :until done))))
+  (assert (equal (meta-commit-steps decl) (make-list 8 :initial-element word))))
+(format t "served printer controls PASS~%")
