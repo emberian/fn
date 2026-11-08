@@ -106,14 +106,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-CORE-STOP-FN2-ENV-TK
+(defthm FN2-CORE-STOP-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (FN2-CORE-STOP REASON FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-CORE-STOP-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-STOP-FN2-ENV-TK)))
 
 (defthm FN2-CORE-STOP-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -124,14 +123,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-CORE-STOP-FN2-ENV-OK
+(defthm FN2-CORE-STOP-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (FN2-CORE-STOP REASON FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-CORE-STOP-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-STOP-FN2-ENV-OK)))
 
 (defthm FN2-CORE-STOP-FN2-ENV-FK
   (IMPLIES (FN2-ENV-FK FN2-CORE FN2-REL-C0)
@@ -932,16 +930,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-DK) clause world))))
 
-(defthm FN2-CORE-RELEASE-FN2-ENV-EK
+(defthm FN2-CORE-RELEASE-FN2-ENV-EK-FROZEN
   (IMPLIES
    (FN2-ENV-EK FN2-CORE FN2-REL-C0)
    (FN2-ENV-EK (MV-NTH '1
                        (FN2-CORE-RELEASE SLOT GEN OKIND OSLOT OGEN FN2-CORE))
                FN2-REL-C0))
+  ; production now proves FN2-CORE-RELEASE-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RELEASE-FN2-ENV-EK)))
 
 (defthm FN2-CORE-RELEASE-FN2-ENV-RK
   (IMPLIES
@@ -954,16 +951,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-CORE-RELEASE-FN2-ENV-TK
+(defthm FN2-CORE-RELEASE-FN2-ENV-TK-FROZEN
   (IMPLIES
    (FN2-ENV-TK FN2-CORE FN2-REL-C0)
    (FN2-ENV-TK (MV-NTH '1
                        (FN2-CORE-RELEASE SLOT GEN OKIND OSLOT OGEN FN2-CORE))
                FN2-REL-C0))
+  ; production now proves FN2-CORE-RELEASE-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RELEASE-FN2-ENV-TK)))
 
 (defthm FN2-CORE-RELEASE-FN2-ENV-SK
   (IMPLIES
@@ -976,16 +972,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-CORE-RELEASE-FN2-ENV-OK
+(defthm FN2-CORE-RELEASE-FN2-ENV-OK-FROZEN
   (IMPLIES
    (FN2-ENV-OK FN2-CORE FN2-REL-C0)
    (FN2-ENV-OK (MV-NTH '1
                        (FN2-CORE-RELEASE SLOT GEN OKIND OSLOT OGEN FN2-CORE))
                FN2-REL-C0))
+  ; production now proves FN2-CORE-RELEASE-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RELEASE-FN2-ENV-OK)))
 
 (defthm UPDATE-FN2-CORE-COMMIT-IO-FN2-ENV-RK
   (IMPLIES (FN2-ENV-RK FN2-CORE FN2-REL-C0)
@@ -1041,16 +1036,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-DK) clause world))))
 
-(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-EK
+(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-EK-FROZEN
   (IMPLIES
     (FN2-ENV-EK FN2-CORE FN2-REL-C0)
     (FN2-ENV-EK (MV-NTH '1
                         (FN2-COMMIT-RELEASE-POOL ID ROLE OWNER-GEN FN2-CORE))
                 FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RELEASE-POOL-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RELEASE-POOL-FN2-ENV-EK)))
 
 (defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-RK
   (IMPLIES
@@ -1063,16 +1057,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-TK
+(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-TK-FROZEN
   (IMPLIES
     (FN2-ENV-TK FN2-CORE FN2-REL-C0)
     (FN2-ENV-TK (MV-NTH '1
                         (FN2-COMMIT-RELEASE-POOL ID ROLE OWNER-GEN FN2-CORE))
                 FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RELEASE-POOL-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RELEASE-POOL-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-SK
   (IMPLIES
@@ -1085,16 +1078,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-OK
+(defthm FN2-COMMIT-RELEASE-POOL-FN2-ENV-OK-FROZEN
   (IMPLIES
     (FN2-ENV-OK FN2-CORE FN2-REL-C0)
     (FN2-ENV-OK (MV-NTH '1
                         (FN2-COMMIT-RELEASE-POOL ID ROLE OWNER-GEN FN2-CORE))
                 FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RELEASE-POOL-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RELEASE-POOL-FN2-ENV-OK)))
 
 (defthm FN2-COMMIT-WRITE+PHASE+STOPPED+CB-STAGE-FN2-ENV-EK
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
@@ -2452,16 +2444,15 @@
            :in-theory (union-theories '(fn2-env-directory-view) (theory 'fn2-column-projection-base)))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-DIRECTORY-VIEW) clause world))))
 
-(defthm FN2-CORE-RESERVE-FN2-ENV-EK
+(defthm FN2-CORE-RESERVE-FN2-ENV-EK-FROZEN
   (IMPLIES
       (FN2-ENV-EK FN2-CORE FN2-REL-C0)
       (FN2-ENV-EK (MV-NTH '3
                           (FN2-CORE-RESERVE CLASS OKIND OSLOT OGEN FN2-CORE))
                   FN2-REL-C0))
+  ; production now proves FN2-CORE-RESERVE-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RESERVE-FN2-ENV-EK)))
 
 (defthm FN2-CORE-RESERVE-FN2-ENV-RK
   (IMPLIES
@@ -2474,16 +2465,15 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-CORE-RESERVE-FN2-ENV-TK
+(defthm FN2-CORE-RESERVE-FN2-ENV-TK-FROZEN
   (IMPLIES
       (FN2-ENV-TK FN2-CORE FN2-REL-C0)
       (FN2-ENV-TK (MV-NTH '3
                           (FN2-CORE-RESERVE CLASS OKIND OSLOT OGEN FN2-CORE))
                   FN2-REL-C0))
+  ; production now proves FN2-CORE-RESERVE-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RESERVE-FN2-ENV-TK)))
 
 (defthm FN2-CORE-RESERVE-FN2-ENV-SK
   (IMPLIES
@@ -2496,25 +2486,23 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-CORE-RESERVE-FN2-ENV-OK
+(defthm FN2-CORE-RESERVE-FN2-ENV-OK-FROZEN
   (IMPLIES
       (FN2-ENV-OK FN2-CORE FN2-REL-C0)
       (FN2-ENV-OK (MV-NTH '3
                           (FN2-CORE-RESERVE CLASS OKIND OSLOT OGEN FN2-CORE))
                   FN2-REL-C0))
+  ; production now proves FN2-CORE-RESERVE-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-CORE-RESERVE-FN2-ENV-OK)))
 
-(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-EK
+(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-EK-FROZEN
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
                (FN2-ENV-EK (FN2-COMMIT-SAVE-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-SAVE-POOL-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-SAVE-POOL-FN2-ENV-EK)))
 
 (defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-RK
   (IMPLIES (FN2-ENV-RK FN2-CORE FN2-REL-C0)
@@ -2525,14 +2513,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-TK
+(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (FN2-COMMIT-SAVE-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-SAVE-POOL-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-SAVE-POOL-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2543,23 +2530,21 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-OK
+(defthm FN2-COMMIT-SAVE-POOL-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (FN2-COMMIT-SAVE-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-SAVE-POOL-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-SAVE-POOL-FN2-ENV-OK)))
 
-(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-EK
+(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-EK-FROZEN
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
                (FN2-ENV-EK (FN2-COMMIT-KEEP-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-KEEP-POOL-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-KEEP-POOL-FN2-ENV-EK)))
 
 (defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-RK
   (IMPLIES (FN2-ENV-RK FN2-CORE FN2-REL-C0)
@@ -2570,14 +2555,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-TK
+(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (FN2-COMMIT-KEEP-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-KEEP-POOL-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-KEEP-POOL-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2588,23 +2572,21 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-OK
+(defthm FN2-COMMIT-KEEP-POOL-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (FN2-COMMIT-KEEP-POOL ID ROLE SLOT GEN FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-KEEP-POOL-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-KEEP-POOL-FN2-ENV-OK)))
 
-(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-EK
+(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-EK-FROZEN
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
               (FN2-ENV-EK (FN2-COMMIT-UNWIND-POOL ID ROLE OWNER-GEN FN2-CORE)
                           FN2-REL-C0))
+  ; production now proves FN2-COMMIT-UNWIND-POOL-FN2-ENV-EK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-EK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-UNWIND-POOL-FN2-ENV-EK)))
 
 (defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-RK
   (IMPLIES (FN2-ENV-RK FN2-CORE FN2-REL-C0)
@@ -2615,14 +2597,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-TK
+(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
               (FN2-ENV-TK (FN2-COMMIT-UNWIND-POOL ID ROLE OWNER-GEN FN2-CORE)
                           FN2-REL-C0))
+  ; production now proves FN2-COMMIT-UNWIND-POOL-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-UNWIND-POOL-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2633,14 +2614,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-OK
+(defthm FN2-COMMIT-UNWIND-POOL-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
               (FN2-ENV-OK (FN2-COMMIT-UNWIND-POOL ID ROLE OWNER-GEN FN2-CORE)
                           FN2-REL-C0))
+  ; production now proves FN2-COMMIT-UNWIND-POOL-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-UNWIND-POOL-FN2-ENV-OK)))
 
 (defthm FN2-COMMIT-RESERVE-POOLS-FN2-ENV-RK
   (IMPLIES
@@ -2663,15 +2643,14 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-TK
+(defthm FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (MV-NTH '1
                                    (FN2-COMMIT-RESERVE-EXTENT ID FN2-CORE))
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2683,15 +2662,14 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-OK
+(defthm FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (MV-NTH '1
                                    (FN2-COMMIT-RESERVE-EXTENT ID FN2-CORE))
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RESERVE-EXTENT-FN2-ENV-OK)))
 
 (defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-RK
   (IMPLIES (FN2-ENV-RK FN2-CORE FN2-REL-C0)
@@ -2702,14 +2680,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-TK
+(defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
             (FN2-ENV-TK (FN2-COMMIT-RELEASE-POOLS LEFT ID OWNER-GEN FN2-CORE)
                         FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RELEASE-POOLS-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RELEASE-POOLS-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2720,14 +2697,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-OK
+(defthm FN2-COMMIT-RELEASE-POOLS-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
             (FN2-ENV-OK (FN2-COMMIT-RELEASE-POOLS LEFT ID OWNER-GEN FN2-CORE)
                         FN2-REL-C0))
+  ; production now proves FN2-COMMIT-RELEASE-POOLS-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-RELEASE-POOLS-FN2-ENV-OK)))
 
 (defthm FN2-COMMIT-WRITE+PHASE+GENERATION+PRINCIPAL-SLOT+DEADLINE+STOPPED+BATCH-NO+MEMBER-COUNT+FIRST-KEY+PARTNER+CB-MODE+CB-STAGE+CB-CURSOR+CB-ISSUED+CB-DONE+CB-BYTES+CB-FAILED+OUTCOME+CB-REASON+CB-FENCE-LIVE+CB-FENCE-OK+CB-DEPS-OK+CB-LOG-OK+CB-PUBLISHED+CB-ACKS+CB-SEAL-LEN+CB-WROTE+CB-OPEN+DEP-BYTES+REC-BYTES-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2809,14 +2785,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-PREPARE-ROOT-FN2-ENV-TK
+(defthm FN2-COMMIT-PREPARE-ROOT-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (FN2-COMMIT-PREPARE-ROOT ID FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-PREPARE-ROOT-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-PREPARE-ROOT-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-PREPARE-ROOT-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2827,14 +2802,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-PREPARE-ROOT-FN2-ENV-OK
+(defthm FN2-COMMIT-PREPARE-ROOT-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (FN2-COMMIT-PREPARE-ROOT ID FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-PREPARE-ROOT-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-PREPARE-ROOT-FN2-ENV-OK)))
 
 (defthm FN2-COMMIT-READY-FN2-ENV-EK
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
@@ -2854,14 +2828,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-READY-FN2-ENV-TK
+(defthm FN2-COMMIT-READY-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                (FN2-ENV-TK (FN2-COMMIT-READY ID FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-READY-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-READY-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-READY-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -2872,14 +2845,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-READY-FN2-ENV-OK
+(defthm FN2-COMMIT-READY-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                (FN2-ENV-OK (FN2-COMMIT-READY ID FN2-CORE)
                            FN2-REL-C0))
+  ; production now proves FN2-COMMIT-READY-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-READY-FN2-ENV-OK)))
 
 (defthm UPDATE-FN2-CORE-COMMIT-MEMBERS-FN2-ENV-EK
   (IMPLIES
@@ -2957,7 +2929,7 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-COMMIT-PUT-MEMBERS-FN2-ENV-TK
+(defthm FN2-COMMIT-PUT-MEMBERS-FN2-ENV-TK-FROZEN
   (IMPLIES
    (FN2-ENV-TK FN2-CORE FN2-REL-C0)
    (FN2-ENV-TK
@@ -2965,10 +2937,9 @@
                (FN2-COMMIT-PUT-MEMBERS LEFT M ROW
                                        KIND OKIND OSLOT OGEN EVENT FN2-CORE))
        FN2-REL-C0))
+  ; production now proves FN2-COMMIT-PUT-MEMBERS-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-PUT-MEMBERS-FN2-ENV-TK)))
 
 (defthm FN2-COMMIT-PUT-MEMBERS-FN2-ENV-SK
   (IMPLIES
@@ -2983,7 +2954,7 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-COMMIT-PUT-MEMBERS-FN2-ENV-OK
+(defthm FN2-COMMIT-PUT-MEMBERS-FN2-ENV-OK-FROZEN
   (IMPLIES
    (FN2-ENV-OK FN2-CORE FN2-REL-C0)
    (FN2-ENV-OK
@@ -2991,10 +2962,9 @@
                (FN2-COMMIT-PUT-MEMBERS LEFT M ROW
                                        KIND OKIND OSLOT OGEN EVENT FN2-CORE))
        FN2-REL-C0))
+  ; production now proves FN2-COMMIT-PUT-MEMBERS-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-COMMIT-PUT-MEMBERS-FN2-ENV-OK)))
 
 (defthm FN2-EXEC-WAKE-FN2-ENV-EK
   (IMPLIES (FN2-ENV-EK FN2-CORE FN2-REL-C0)
@@ -3014,14 +2984,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-RK) clause world))))
 
-(defthm FN2-EXEC-WAKE-FN2-ENV-TK
+(defthm FN2-EXEC-WAKE-FN2-ENV-TK-FROZEN
   (IMPLIES (FN2-ENV-TK FN2-CORE FN2-REL-C0)
                                     (FN2-ENV-TK (FN2-EXEC-WAKE ID FN2-CORE)
                                                 FN2-REL-C0))
+  ; production now proves FN2-EXEC-WAKE-FN2-ENV-TK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-TK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-EXEC-WAKE-FN2-ENV-TK)))
 
 (defthm FN2-EXEC-WAKE-FN2-ENV-SK
   (IMPLIES (FN2-ENV-SK FN2-CORE FN2-REL-C0)
@@ -3032,14 +3001,13 @@
            :in-theory (theory 'fn2-column-projection-base))
           (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-SK) clause world))))
 
-(defthm FN2-EXEC-WAKE-FN2-ENV-OK
+(defthm FN2-EXEC-WAKE-FN2-ENV-OK-FROZEN
   (IMPLIES (FN2-ENV-OK FN2-CORE FN2-REL-C0)
                                     (FN2-ENV-OK (FN2-EXEC-WAKE ID FN2-CORE)
                                                 FN2-REL-C0))
+  ; production now proves FN2-EXEC-WAKE-FN2-ENV-OK itself: the frozen statement follows from it
   :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (theory 'fn2-column-projection-base))
-          (and stable-under-simplificationp (fn2-column-view-hint '(FN2-ENV-OK) clause world))))
+  :hints (("Goal" :in-theory nil :use FN2-EXEC-WAKE-FN2-ENV-OK)))
 
 ; An explicit counterexample accompanies the weak-claim rejection.
 (assert-event
