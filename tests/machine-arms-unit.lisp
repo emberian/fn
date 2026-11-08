@@ -438,6 +438,52 @@
         (:work (:do (code) (fn2-arms-t-peek row-count) :accept (:found)) (:idle)))
  :observes ())
 (must-fail (defmachine-arms fn2-arms-probe7 :children))
+;; :must-route (a take of a kind with no rows in the profile answers :none,
+;; machines.lisp's fn2-machine-take-K): every call routes the answer by its
+;; own :case clause. Routed so, the arm expands; routed only by :otherwise
+;; (which a take site uses to park the taker on the kind's FIFO), by the
+;; arm's :on-refusal or by :accept, it is refused at expansion.
+(defun fn2-arms-t-take (v) (declare (xargs :guard t)) (if (equal v 0) :none (if (equal v 1) :no-row :ok)))
+(defcost fn2-arms-t-take :answers (:ok :no-row :none) :must-route (:none) :child fn2-arms-t-take
+  :doc "Test: a take whose :none must be routed by its own clause.")
+(defmachine fn2-arms-probe-take
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :stops (:probe-none)
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-arms-t-take row-count)
+                :case (((:ok) (:next :done) (:charge :steps *fn2-work-small*))
+                       ((:none) (:stop :probe-none))
+                       (:otherwise (:charge :steps *fn2-work-empty*)))))
+        (:done (:idle)))
+ :observes ())
+(defmachine-arms fn2-arms-probe-take :children)
+(defmachine fn2-arms-probe-take-otherwise
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work (:do (code) (fn2-arms-t-take row-count)
+                :case (((:ok) (:next :done) (:charge :steps *fn2-work-small*))
+                       (:otherwise (:charge :steps *fn2-work-empty*)))))
+        (:done (:idle)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-probe-take-otherwise :children))
+(defmachine fn2-arms-probe-take-refusal
+ :phases (:free :work :done)
+ :fields ((count :u32))
+ :budget (:bytes 4096 :steps 32 :descriptors 0)
+ :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
+ :arms ((:free (:idle))
+        (:work :on-refusal ((:charge :steps *fn2-work-empty*))
+         (:do (code) (fn2-arms-t-take row-count)
+          :case (((:ok) (:next :done) (:charge :steps *fn2-work-small*)))))
+        (:done (:idle)))
+ :observes ())
+(must-fail (defmachine-arms fn2-arms-probe-take-refusal :children))
 
 ;; G3 (C gap 5): a genesis arm, run once on each row by the executor's init
 ;; (fn2-exec-genesis), is walked as an arm from the row's initial phase

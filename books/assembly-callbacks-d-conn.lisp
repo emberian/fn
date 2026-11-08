@@ -156,6 +156,9 @@
                                     (feed-mode 0) (feed-discard 0) (fed 0) (word 0) (outcome-ready 0))
                               (:next :reply)
                               (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
+                       ;; no fn2-upload row: unreachable in composition (posting,
+                       ;; read before an article line gets here, needs upload windows)
+                       ((:none) (:stop :machine-phase))
                        (:otherwise
                         (:if (equal row-rule *fn2-conn-rule-takethis*)
                              ((:set (upload *fn2-none*) (upload-gen 0) (feed-mode 0) (feed-discard 0)
@@ -286,6 +289,9 @@
                                            row-rx-slot row-rx-gen row-line-s row-line-e
                                            row-tx-slot row-tx-gen row-group row-current row-pin row-posting)
               :case (((:ok) (:set (query x) (query-gen xgen)) (:charge :steps *fn2-work-transition*))
+                     ;; no fn2-cursor row: unreachable in composition (a query is
+                     ;; answered only where reading is served, fn2-conn-reading-p)
+                     ((:none) (:stop :machine-phase))
                      (:otherwise (:park :taken fn2-cursor :steps *fn2-work-transition*)))))
         ((:cond ((not (:live child-cursor)) (:stop :machine-phase))
                 ((equal (:read child-cursor turn) 1) (:charge :steps *fn2-work-transition*))

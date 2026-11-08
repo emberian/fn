@@ -3616,6 +3616,9 @@
               (fn2-machine-registry-face kind (fn2-machine-registry-child kind world)
                                          `(waiter ,@copies) o kconst '(code target gen))
           `(let ((target (fn2-machine-free-head ,o fn2-core)))
+           ;; a kind with no rows in the profile: no credit ever returns, so
+           ;; the taker is never parked; :none, routed by the taker's own arm
+           (if (zp (fn2-machine-connection-count ,o fn2-core)) (mv :none *fn2-none* 0 fn2-core)
            (if (or (equal target *fn2-none*)
                    (not (eq (fn2-machine-generation-read-code target fn2-core) :ok))
                    (not (eq (fn2-machine-next-free-read-code target fn2-core) :ok))
@@ -3626,7 +3629,7 @@
                    (next (fn2-machine-next-free target fn2-core)))
                ;; a kind taken with no ranges (fn2-txn) reserves nothing
                (declare (ignorable gen))
-               ,(fn2-machine-taken-reserves specs 0 kconst install park)))))))
+               ,(fn2-machine-taken-reserves specs 0 kconst install park))))))))
       (fn2-core-preserves ,take (waiter ,@copies fn2-core) :position 3 :rows nil :prefix "")
       ;; the taker's park as its own operation, for the arm language's
       ;; (:park :taken K) (D F2): a take whose waiter is *fn2-none* parks nothing
@@ -3668,8 +3671,10 @@
          ;; The partition's reclaim (fn2-machines-reclaim, arm-children.lisp).
          (fn2-machine-reclaim id ,o retire fn2-core)))
       (fn2-core-preserves ,reclaim (id retire fn2-core) :rows nil :prefix "")
-      ;; (mv code target target-generation fn2-core): :ok, :no-row or :pool
-      (defcost ,take :answers (:ok :no-row :pool)
+      ;; (mv code target target-generation fn2-core): :ok, :no-row, :pool, or
+      ;; :none when the profile gives the kind no rows (never a park: every
+      ;; take site routes :none in its own :case, checked at expansion)
+      (defcost ,take :answers (:ok :no-row :pool :none) :must-route (:none)
         :tables (fn2-core-machines fn2-core-pool ,(fn2-columns-sym kind "-TABLE") fn2-core-machine-tables)
         :effects ((:acquire (,rowkind) :for ,kind)
                   ,@(and specs `((:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))))
