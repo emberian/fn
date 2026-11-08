@@ -41,13 +41,6 @@
        (fn2-id-engine-set-published 0 pos fn2-id-engine)
        fn2-core)))
   (local
-   (defun fn2-sle-wake-stream (stream pos fn2-core)
-     (declare (xargs :stobjs fn2-core :verify-guards nil))
-     (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core)))
-       (fn2-cns-edges)
-       (fn2-cns-wake-stream stream pos fn2-cns-edges)
-       fn2-core)))
-  (local
    (defun fn2-sle-seed-article (principal stream art pos fn2-core)
      (declare (xargs :stobjs fn2-core :verify-guards nil))
      (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
@@ -88,8 +81,9 @@
               ;; pause and resume (kind 1, each answered by its posture in
               ;; kind 2), a read of consumer 1's cursor at 0 arriving in two
               ;; receives (the first a prefix: the frame waits for the rest;
-              ;; nothing recorded, so the page walks from 0 to the published 3 and,
-              ;; no addr entry of the principal's there, holds no item),
+              ;; nothing recorded; B has published 3 but no addr entry of the
+              ;; principal's is there, so its stream frontier is 0 and the page
+              ;; holds no item and proposes 0, e-surface.md 3.2),
               ;; then stop (closed, no reply)
               (pause (fnc-control 2)) (resume (fnc-control 3))
               (read (fnc-read (fnc-issued 1 0 0 1 0) 8))
@@ -103,7 +97,7 @@
            (mv (and (eq status :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
                     (equal (fnc-replies '(control control read) wire)
-                           '((:posture 1) (:posture 0) (:accepted "" (0 3 0 nil))))
+                           '((:posture 1) (:posture 0) (:accepted "" (0 0 0 nil))))
                     (equal (len (fnc-replies '(control control read read) wire)) 3)
                     (eq closed t))
                fn2-core))
@@ -125,13 +119,14 @@
               (wire1 (car (car (fn2-cw-results clients))))
               ((unless (and (eq status1 :quiet) (null wire1) (equal (fn2-core-stop-reason fn2-core) 0)))
                (mv nil fn2-core))
-              (fn2-core (fn2-sle-set-published 1 fn2-core))
-              (fn2-core (fn2-sle-wake-stream 0 1 fn2-core))
+              ;; an addr entry of the principal's published at 1 (stream 0,
+              ;; no article row: a gap) wakes the wait and moves its frontier
+              (fn2-core (fn2-sle-seed-article 0 0 1 1 fn2-core))
               ((mv status2 clients & fn2-core) (fn2-cw-loop 100 0 1 clients nil fn2-core))
               (wire2 (car (car (fn2-cw-results clients)))))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 0 nil)))))
+                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 1 ((:gap 1 "" nil)))))))
                fn2-core))
          ok))))
   (local
@@ -140,6 +135,10 @@
      (with-local-stobj fn2-core
        (mv-let (ok fn2-core)
          (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              ;; register and the advancing ack are B members: B's writer epoch begun
+              ((mv & fn2-core)
+               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
               (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
               ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
               ((unless (eq acode :ok)) (mv nil fn2-core))

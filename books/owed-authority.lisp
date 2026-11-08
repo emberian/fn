@@ -33,11 +33,13 @@
 ;; tests/authority-served's append profile: authority served, the owner at
 ;; account slot 2, eight control connections, two consumer request rows
 (defconst *fn2-oa-profile*
+  ;; T 4: fn2-txn's row, fn2-auth's and the two consumer rows' successors (fn2-txn-consumer-share)
+  (put-assoc-equal :t 4
   (put-assoc-equal :cns 2
    (put-assoc-equal :groups *fn2-oa-groups*
     (put-assoc-equal :control-connections 8
      (put-assoc-equal :authority 1
-      (put-assoc-equal :owner-account 2 *fn2-txn-posting-profile*))))))
+      (put-assoc-equal :owner-account 2 *fn2-txn-posting-profile*)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; The script. A round is (AUTH-STEPS CNS-STEPS) on one new connection: its

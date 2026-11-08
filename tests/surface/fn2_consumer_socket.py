@@ -399,11 +399,14 @@ def scenario(port, path, report, mid):
       [first, final])
     poster.quit()
 
-    # a second owner connection sees the post's commit in the frontier while the first waits
+    # a second owner connection sees the post's commit in the frontier while the first waits.
+    # The frontier is the principal's stream frontier (e-surface.md 3.2): it moves to the
+    # post's commit position, past the commits between (the ack's own among them).
     second = Consumer(path, report)
     seen = second.call('status')
     j('status on a second connection answers the frontier past the waiter\'s position', seen['outcome'] == 'accepted'
-      and seen['position'] == frontier and seen['frontier'] == frontier + 1, seen)
+      and seen['position'] == frontier and seen['frontier'] > frontier
+      and seen['gap'] == seen['frontier'] - frontier, seen)
     second.stop()
 
     # the waiter wakes with the post's position (K4: woken by the publish, never a scan).
@@ -420,7 +423,7 @@ def scenario(port, path, report, mid):
     else:
         j('the woken wait is accepted', woke['outcome'] == 'accepted', woke)
         j('the woken page holds exactly the one new commit, its next the post\'s position', woke['count'] == 1
-          and woke['next'] == frontier + 1 and woke['more'] == 0, woke)
+          and woke['next'] == seen['frontier'] and woke['more'] == 0, woke)
         new = woke['next']
         item = woke['items'][0] if woke['items'] else {}
         j('the woken page\'s item is the post\'s record: its position, its Message-ID',

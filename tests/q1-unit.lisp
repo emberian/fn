@@ -62,7 +62,7 @@
     (:observe fn2-ctl :borrow-released) (:observe fn2-ctl :close-result) (:run fn2-cns :free)
     (:run fn2-cns :decode) (:run fn2-cns :check) (:run fn2-cns :lookup) (:run fn2-cns :read)
     (:run fn2-cns :page) (:run fn2-cns :fetch) (:run fn2-cns :park) (:run fn2-cns :commit)
-    (:run fn2-cns :append) (:run fn2-cns :draining) (:run fn2-cns :retired)
+    (:run fn2-cns :committed) (:run fn2-cns :append) (:run fn2-cns :draining) (:run fn2-cns :retired)
     (:observe fn2-cns :read-result) (:run fn2-auth :free) (:run fn2-auth :decode)
     (:run fn2-auth :lookup) (:run fn2-auth :allocate) (:run fn2-auth :bhead)
     (:run fn2-auth :outcome) (:run fn2-auth :head) (:run fn2-auth :get) (:run fn2-auth :ready)
@@ -78,15 +78,15 @@
     (:executor :service 1) (:executor :service 2) (:executor :service 3)
     (:executor :empty-principal)))
 (assert-event (equal (fn2-case-catalogue (w state)) *fn2-q1-pinned-catalogue*))
-(assert-event (equal (len *fn2-q1-pinned-catalogue*) 179))
+(assert-event (equal (len *fn2-q1-pinned-catalogue*) 180))
 (assert-event
  (equal (fn2-square-coverage 'fn2-q1 (w state))
-        '(:required 179 :bound 179 :unmatched nil
+        '(:required 180 :bound 180 :unmatched nil
           :unresolved-depends (fn2-q1-entry fn2-q1-exit fn2-q1-partition))))
 (assert-event
  (equal (fn2-decl-get :owner (fn2-decl-row '(:square fn2-turn-refinement) (w state)))
         '(:correspondence fn2-q1)))
-(value-triple (cw "Q1 CATALOGUE: 179 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 11 E fn2-cns + 12 E fn2-auth + 20 boot (171 machine, 1 router, 7 executor); 179 bound, 0 unmatched PASS~%"))
+(value-triple (cw "Q1 CATALOGUE: 180 labels = E1's 39 + listener :admitting + 15 B commit + 8 B recovery + 2 C fn2-sealer + 13 D fn2-conn + 18 D fn2-upload + 13 D fn2-txn + 10 D fn2-cursor + 13 E fn2-ctl + 12 E fn2-cns + 12 E fn2-auth + 20 boot (172 machine, 1 router, 7 executor); 180 bound, 0 unmatched PASS~%"))
 
 ; E2's divergence control: the generated statement kept, the relation role
 ; declared as the nested pure relation instead of the full invariant.

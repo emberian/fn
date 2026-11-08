@@ -12,10 +12,12 @@
 (in-package "ACL2")
 (ld "tests/seeded-store.lsp")
 (defconst *fn2-nc-profile*
+  ;; T 6: two fn2-txn rows and the four consumer rows' successors (fn2-txn-consumer-share)
+  (put-assoc-equal :t 6
   (put-assoc-equal :listener-local-target 'fn2-ctl
    (put-assoc-equal :control-connections 2
     (put-assoc-equal :cns 4
-     (put-assoc-equal :posting-interim t *fn2-ss-profile*)))))
+     (put-assoc-equal :posting-interim t *fn2-ss-profile*))))))
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
 (load "host/ffi.lisp")

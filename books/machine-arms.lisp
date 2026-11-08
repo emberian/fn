@@ -1661,6 +1661,112 @@
   (or (booleanp e)
       (and (consp e) (eq (car e) 'quote))
       (and (consp e) (member-eq (car e) '(equal = eql eq < <= > >= not null and or member-eq member-equal)))))
+;; (:commit SUCC :workspace (SLOT GEN) :ticket TICKET :wait PHASE [:why VAR] [:bytes N]
+;;          submitting: :dependencies (STEP ...) :unchanged (STEP ...) :refused (STEP ...)
+;;          in PHASE:   :accepted (STEP ...) :refused (STEP ...) :uncertain (STEP ...)):
+;; the shared durable mutation continuation (NEXT-ASTRA "A shared durable
+;; mutation continuation comes first") over B's and C's protocol, as
+;; fn2-txn's :ready and :batched run it. SUCC is the row's own successor
+;; write transaction, its writes declared and resolved; (SLOT GEN) a pool
+;; range the row holds, its workspace. In any arm but PHASE's the word
+;; submits: it stages SUCC against the tip (C validates every slot and every
+;; read dependency against the immediate predecessor, an earlier prepared
+;; batch's members included), emits its records into the workspace, has B
+;; admit them (B allocates the batch and the member's event, the ticket; the
+;; member is the row's at its generation, so no later generation takes its
+;; outcome) and binds SUCC to them; TICKET (a u60 field) takes the event and
+;; the row moves to PHASE, which holds :batch-membership. In PHASE's arm the
+;; word takes the row's settled outcome each run until B settles it (B
+;; publishes the batch before it settles its members, and recovery replays
+;; the same records): SUCC is released before ACCEPTED or REFUSED; an
+;; uncertain batch keeps it (only recovery replaces an uncertain batch).
+;; Submitting, nothing to write (every slot unchanged: the empty emission)
+;; runs UNCHANGED and a moved dependency or stale read DEPENDENCIES (decide
+;; again), each after the release. VAR, when given, is bound before REFUSED
+;; to why: :draining :room :admission :duplicate :refused (submitting) or
+;; :outcome (B refused the batch).
+(defun fn2-arms-commit-refuse (release why w refused)
+  (declare (xargs :verify-guards nil))
+  (append (list release) (and why (list (list :let why w))) refused))
+(defun fn2-arms-commit-paths-p (opts keys)
+  (declare (xargs :verify-guards nil))
+  (or (atom keys)
+      (and (consp (fn2-arms-kw (car keys) opts nil)) (true-listp (fn2-arms-kw (car keys) opts nil))
+           (fn2-arms-commit-paths-p opts (cdr keys)))))
+(defun fn2-arms-commit-expand (step env)
+  (declare (xargs :verify-guards nil))
+  (let* ((succ (cadr step)) (opts (cddr step))
+         (ws (fn2-arms-kw :workspace opts nil)) (ticket (fn2-arms-kw :ticket opts nil))
+         (wait (fn2-arms-kw :wait opts nil)) (why (fn2-arms-kw :why opts nil))
+         (bytes (fn2-arms-kw :bytes opts 24576))
+         (waiting (and wait (eq wait (fn2-arm-get :tag env))))
+         (keys (if waiting '(:accepted :refused :uncertain) '(:dependencies :unchanged :refused)))
+         (deps (fn2-arms-kw :dependencies opts nil)) (unchanged (fn2-arms-kw :unchanged opts nil))
+         (accepted (fn2-arms-kw :accepted opts nil)) (refused (fn2-arms-kw :refused opts nil))
+         (uncertain (fn2-arms-kw :uncertain opts nil))
+         (cols (fn2-arm-get :columns env))
+         (release `(:do (commit-rcode) (fn2-successor-release ,succ))))
+    (cond
+     ((not (and (true-listp opts) (fn2-arms-kw-plistp opts)
+                (subsetp-eq (evens opts) (append '(:workspace :ticket :wait :why :bytes) keys))))
+      (mv (msg "~x0 is (:commit SUCC :workspace (SLOT GEN) :ticket F :wait PHASE [:why V] [:bytes N] ~
+                then, submitting, :dependencies :unchanged :refused paths, or in PHASE's arm ~
+                :accepted :refused :uncertain paths (STEP ...)." step) nil))
+     ((not (and (true-listp ws) (equal (len ws) 2))) (mv (msg "~x0: :workspace is (SLOT GEN)." step) nil))
+     ((not (equal (cadr (assoc-eq ticket cols)) :u60)) (mv (msg "~x0: :ticket ~x1 is a :u60 field of the kind." step ticket) nil))
+     ((not (and (keywordp wait) (member-eq wait (fn2-machine-property (fn2-arm-get :kind env) :states (fn2-arm-get :world env)))))
+      (mv (msg "~x0: :wait ~x1 is a phase of the kind, its arm the word's settling half." step wait) nil))
+     ((not (fn2-arms-commit-paths-p opts keys)) (mv (msg "~x0 needs the paths ~x1, each (STEP ...)." step keys) nil))
+     ((and why (not (fn2-arms-vars-ok (list why)))) (mv (msg "~x0: :why ~x1 cannot name a variable." step why) nil))
+     ((not (posp bytes)) (mv (msg "~x0: :bytes is a positive charge." step) nil))
+     (waiting
+      (mv nil
+          `((:do (commit-tcode commit-batch commit-event commit-outcome) (fn2-commit-take)
+             :effects ((:release (:batch-membership)))
+             :accept ()
+             :case (((:pending) (:charge :steps *fn2-work-empty*))
+                    ((:ok)
+                     (:cond ((equal commit-outcome *fn2-commit-outcome-accepted*) ,release ,@accepted)
+                            ((equal commit-outcome *fn2-commit-outcome-uncertain*) ,@uncertain)
+                            (t ,@(fn2-arms-commit-refuse release why :outcome refused)))))))))
+     (t
+      (mv nil
+          `((:if (eq (fn2-commit-posture) :draining)
+                 ,(fn2-arms-commit-refuse release why :draining refused)
+                 ((:if (not (eq (fn2-machine-pool-capacity-read-code ,(car ws)) :ok))
+                       ((:stop :machine-phase))
+                       ((:let commit-cap (fn2-machine-pool-capacity ,(car ws)))
+                        (:do (commit-scode commit-slot) (fn2-successor-stage ,succ)
+                         :accept ()
+                         :case
+                         (((:ok)
+                           (:do (commit-ecode commit-elen)
+                                (fn2-successor-emit ,succ ,(car ws) ,(cadr ws) 0 commit-cap)
+                            :accept ()
+                            :case
+                            (((:ok)
+                              (:if (equal commit-elen 0)
+                                   (,release ,@unchanged)
+                                   ((:do (commit-acode commit-b commit-ev) (fn2-commit-admit-txn ,(car ws) ,(cadr ws) commit-elen)
+                                     :effects ((:acquire (:batch-membership)))
+                                     :accept ()
+                                     :case
+                                     (((:ok)
+                                       (:if (and (posp commit-b) (unsigned-byte-p 60 commit-b)
+                                                 (posp commit-ev) (unsigned-byte-p 60 commit-ev))
+                                            ((:do (commit-bcode) (fn2-successor-bind ,succ commit-b commit-ev))
+                                             (:set (,ticket commit-ev))
+                                             (:next ,wait)
+                                             (:charge :bytes ,bytes :steps *fn2-work-transition*))
+                                            ((:stop :machine-phase))))
+                                      ((:exhausted) (:park :batch-membership :steps *fn2-work-transition*))
+                                      ((:admission) ,@(fn2-arms-commit-refuse release why :admission refused)))))))
+                             ((:room) ,@(fn2-arms-commit-refuse release why :room refused)))))
+                          ((:full) (:charge :bytes ,bytes :steps *fn2-work-transition* :runnable t))
+                          ((:stale :changed) ,release ,@deps)
+                          ((:duplicate) ,@(fn2-arms-commit-refuse release why :duplicate refused))
+                          ((:refused :evidence :capacity :inconsistent :range)
+                           ,@(fn2-arms-commit-refuse release why :refused refused))))))))))))))
 (mutual-recursion
  (defun fn2-arms-steps (steps env acc fuel)
    (declare (xargs :verify-guards nil :measure (nfix fuel)))
@@ -1887,6 +1993,11 @@
                    (fn2-arms-steps `((:set (,wfield ,(cadr step))) (:next :refused)
                                      (:charge :steps *fn2-work-transition* :runnable t))
                                    env acc (1- fuel))))))
+         ;; the shared durable mutation continuation (fn2-arms-commit-expand)
+         (:commit
+          (if rest (mv (msg "~x0 ends its path." step) nil acc)
+            (mv-let (err csteps) (fn2-arms-commit-expand step env)
+              (if err (mv err nil acc) (fn2-arms-steps csteps env acc (1- fuel))))))
          (otherwise
           (if (member-eq (car step) *fn2-arms-terminals*)
               (if rest (mv (msg "steps follow the terminal ~x0." step) nil acc)
