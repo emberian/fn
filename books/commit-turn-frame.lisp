@@ -107,6 +107,43 @@
                   :do-not-induct t)))))))
 
 ;; ---------------------------------------------------------------------------
+;; THE OTHER KINDS' DISPATCH: fn2-machine-run of an id of an attached kind
+;; that holds no batch membership leaves the commit layer's durability
+;; children and keeps the directory (the stubs' frames, assembly-dispatch).
+(defun fn2-ctf-attached-kinds (names k world)
+  (declare (xargs :mode :program))
+  (cond ((atom names) nil)
+        ((and (function-symbolp (fn2-columns-sym (car names) "-RUN-STUB") world)
+              (not (fn2-dispatch-holds-p :batch-membership (fn2-machine-property (car names) :holds world))))
+         (cons (cons k (car names)) (fn2-ctf-attached-kinds (cdr names) (+ 1 k) world)))
+        (t (fn2-ctf-attached-kinds (cdr names) (+ 1 k) world))))
+(defun fn2-ctf-suffix-all (names suffix)
+  (declare (xargs :mode :program))
+  (if (atom names) nil (cons (fn2-columns-sym (car names) suffix) (fn2-ctf-suffix-all (cdr names) suffix))))
+(defun fn2-ctf-nth-keeps (ks after)
+  (declare (xargs :mode :program))
+  (if (atom ks) nil (cons `(equal (nth ,(car ks) ,after) (nth ,(car ks) fn2-core)) (fn2-ctf-nth-keeps (cdr ks) after))))
+(make-event
+ (let* ((world (w state))
+        (kinds (fn2-ctf-attached-kinds (fn2-machine-names world) 0 world))
+        (stubs (fn2-ctf-suffix-all (strip-cdrs kinds) "-RUN-STUB"))
+        (ks (fn2-arm-frame-indices *fn2-dispatch-commit-children* world)))
+   (value
+    `(defthm fn2-machine-run-attached-keeps-commit
+       (implies (member-equal (fn2-machine-kind id fn2-core) ',(strip-cars kinds))
+                (let ((after (mv-nth 4 (fn2-machine-run id budget fn2-core))))
+                  (and ,@(fn2-ctf-nth-keeps ks 'after)
+                       (fn2-ctf-dir after fn2-core))))
+       :hints (("Goal" :in-theory (union-theories
+                                   '(fn2-machine-run fn2-ctf-dir-refl
+                                     fn2-machine-refuse-phase-keeps-commit fn2-machine-idle-keeps-commit
+                                     fn2-machine-refuse-phase-ctf-dir fn2-machine-idle-ctf-dir
+                                     ,@(fn2-ctf-suffix-all stubs "-KEEPS-COMMIT")
+                                     ,@(fn2-ctf-suffix-all stubs "-CTF-DIR"))
+                                   (theory 'fn2-arm-frame-base))
+                :do-not-induct t))))))
+
+;; ---------------------------------------------------------------------------
 ;; THE PRINCIPAL VISIT of a commit row (fn2-exec-principal): the commit
 ;; table changes only in the arm's declared columns at the row's slot; the
 ;; children that change are the arm's and the executor's glue around it

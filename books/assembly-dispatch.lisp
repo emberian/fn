@@ -238,6 +238,32 @@
        (strip-cars (fn2-arm-frame-children-of world))
      (set-difference-eq (strip-cars (fn2-arm-frame-children-of world)) *fn2-dispatch-commit-children*))
    world))
+(defun fn2-dc-nth-keeps (ks out)
+  (declare (xargs :mode :program))
+  (if (atom ks) nil (cons `(equal (nth ,(car ks) ,out) (nth ,(car ks) fn2-core)) (fn2-dc-nth-keeps (cdr ks) out))))
+;; The commit layer's durability children a function's KIDS contract (S,
+;; LEMMA) leaves: FN-KEEPS-COMMIT, their values unchanged.
+(defun fn2-dc-keeps-commit-uses (ks s lemma out)
+  (declare (xargs :mode :program))
+  (if (atom ks) nil
+    (cons `(:instance fn2-arm-kids-nth (i 0) (k ,(car ks)) (free ',s) (a fn2-core) (b ,out))
+          (fn2-dc-keeps-commit-uses (cdr ks) s lemma out))))
+(defun fn2-dc-keeps-commit-event (fn s lemma world)
+  (declare (xargs :mode :program))
+  (let* ((out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world))
+         (ks (set-difference-equal (fn2-arm-frame-indices *fn2-dispatch-commit-children* world) s)))
+    (if (atom ks) '(value-triple :none)
+      `(defthm ,(fn2-columns-sym fn "-KEEPS-COMMIT")
+         (and ,@(fn2-dc-nth-keeps ks out))
+         :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
+                  :use ((:instance ,lemma (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
+                        ,@(fn2-dc-keeps-commit-uses ks s lemma out))))))))
+(defun fn2-dc-keeps-commit-form (fn kind world)
+  (declare (xargs :mode :program))
+  (let ((d (fn2-dc-entry fn kind world)))
+    (if d (fn2-dc-keeps-commit-event fn (car d) (cdr d) world)
+      (er hard 'fn2-dispatch-frame "~x0 has no KIDS contract." fn))))
+
 ;; A stub's frame claims for G (the stub in its constraint, or its default):
 ;; KIDS at the kind's frame children E, and CTF-DIR; G's body is BODY-FN's
 ;; call, whose -DC-KIDS (under no kind) and -CTF-DIR contracts prove them.
@@ -318,6 +344,8 @@
              ;; constrained hook's (machines.lisp fn2-arm-frame-op-events)
               (make-event (value (cons 'progn (fn2-arm-frame-op-events ',run-stub ',er nil (w state)))))
              (make-event (value (cons 'progn (fn2-arm-frame-op-events ',obs-stub ',eo nil (w state)))))
+             (make-event (value (fn2-dc-keeps-commit-form ',run-stub nil (w state))))
+             (make-event (value (fn2-dc-keeps-commit-form ',obs-stub nil (w state))))
              (in-theory (disable ,(fn2-ctf-dir-name run-stub) ,(fn2-ctf-dir-name obs-stub)))
              (defun ,run-def (id budget fn2-core)
                (declare (xargs :stobjs fn2-core :guard ,run-guard) (ignore budget))
@@ -400,8 +428,11 @@
 (fn2-resolve :callbacks)
 ;; the stubs' default bodies' contracts, then the stubs
 (make-event
- (value (cons 'progn (append (fn2-dc-forms (fn2-dc-todo '(fn2-machine-refuse-phase fn2-machine-refuse-observation) nil (w state) nil 64) nil)
-                             (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(fn2-machine-refuse-phase fn2-machine-refuse-observation) (w state)) nil)))))
+ (value (cons 'progn (append (fn2-dc-forms (fn2-dc-todo '(fn2-machine-refuse-phase fn2-machine-refuse-observation fn2-machine-idle) nil (w state) nil 64) nil)
+                             (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(fn2-machine-refuse-phase fn2-machine-refuse-observation fn2-machine-idle) (w state)) nil)
+                             '((make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-refuse-phase nil (w state))))
+                               (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-refuse-observation nil (w state))))
+                               (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-idle nil (w state)))))))))
 (make-event
  (value (cons 'progn (fn2-dispatch-stub-events (fn2-machine-names (w state)) (w state)))))
 (make-event
