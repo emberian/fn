@@ -2902,6 +2902,91 @@
   :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
            :use (fn2-env-dur-inv-admit-step fn2-env-dur-inv-host-step))))
 ;; ---------------------------------------------------------------------------
+;; THE VISITED ID. A visit of a commit id that is not a readable row only
+;; stops the core, which keeps J; a readable one reads the row at its slot,
+;; so J at it is J at the ghost id at that slot: the ghost ids
+;; (FN2-ENV-COMMIT-IDS) cover every readable commit row once the directory
+;; holds them at slots 0 and 1 and the commit table has two rows
+;; (FN2-ENV-COMMIT-SLOTS-P).
+(defthm fn2-env-commit-run-non-row-jr
+  (implies (and (fn2-env-jr ids log fn2-core) (not (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)))
+           (fn2-env-jr ids log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-core-stop-fn2-env-jr) (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-j-rows-non-row-visit
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (fn2-env-j-rows ids log fn2-core) (fn2-env-j-frontier log fn2-core)
+                (not (fn2-commit-idp id fn2-core)))
+           (and (fn2-env-j-rows ids log (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                (fn2-env-j-frontier log (mv-nth 4 (fn2-commit-run id budget fn2-core)))))
+  :hints (("Goal" :in-theory '(fn2-env-jr fn2-commit-idp) :use fn2-env-commit-run-non-row-jr)))
+(defthm fn2-env-same-slot-mode
+  (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core)))
+           (equal (fn2-machine-cb-mode i fn2-core) (fn2-machine-cb-mode id fn2-core)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code
+                                   fn2-machine-cb-mode fn2-machine-cb-mode-read-code)
+                                  (fn2-machine-kind fn2-machine-slot)))))
+(defthm fn2-env-same-slot-evidence
+  (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp j fn2-core)
+                (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot j fn2-core)))
+           (and (equal (fn2-machine-cb-acks i fn2-core) (fn2-machine-cb-acks j fn2-core))
+                (equal (fn2-machine-cb-acks-read-code i fn2-core) (fn2-machine-cb-acks-read-code j fn2-core))
+                (equal (fn2-machine-batch-no-read-code i fn2-core) (fn2-machine-batch-no-read-code j fn2-core))
+                (equal (fn2-env-role-extent i role fn2-core) (fn2-env-role-extent j role fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-role-extent fn2-commit-resource fn2-commit-row fn2-env-cell-code)
+                                  (fn2-commit-idp fn2-machine-slot fn2-machine-idp fn2-machine-kind))
+           :do-not-induct t
+           :use ((:instance fn2-env-commit-idp-kind (id i))
+                 (:instance fn2-env-commit-idp-kind (id j))
+                 (:instance fn2-env-commit-idp-cell (id i))
+                 (:instance fn2-env-commit-idp-cell (id j))
+                 (:instance fn2-env-commit-row-unfolds (id i))
+                 (:instance fn2-env-commit-row-unfolds (id j))))))
+(defthm fn2-env-j-row-same-slot
+  ; two readable commit ids at one slot carry the same J
+  (implies (and (fn2-env-j-row j log fn2-core) (fn2-commit-idp i fn2-core) (fn2-commit-idp j fn2-core)
+                (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot j fn2-core)))
+           (fn2-env-j-row i log fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-env-role-offset-of-extent)
+           :do-not-induct t
+           :use ((:instance fn2-env-same-slot-reads (i i) (id j))
+                 (:instance fn2-env-same-slot-mode (i i) (id j))
+                 (:instance fn2-env-same-slot-evidence (role 0))
+                 (:instance fn2-env-same-slot-evidence (role 1))
+                 (:instance fn2-env-same-slot-evidence (role 2))))))
+(defun-nx fn2-env-commit-slots-p (profile fn2-core)
+  ; the directory holds the ghost ids at slots 0 and 1 of a two-row commit table
+  (let ((a (fn2-machine-global-id *fn2-commit-kind* 0 profile)) (b (fn2-machine-global-id *fn2-commit-kind* 1 profile)))
+    (and (<= (fn2-commit-rows (fn2-commit-table fn2-core)) 2)
+         (fn2-commit-idp a fn2-core) (equal (fn2-machine-slot a fn2-core) 0)
+         (fn2-commit-idp b fn2-core) (equal (fn2-machine-slot b fn2-core) 1))))
+(defthm fn2-env-commit-ids-cover
+  ; every readable commit row is at the slot of a ghost id
+  (implies (and (fn2-commit-idp id fn2-core) (fn2-env-commit-slots-p profile fn2-core))
+           (let ((j (fn2-machine-global-id *fn2-commit-kind* (fn2-machine-slot id fn2-core) profile)))
+             (and (member-equal j (fn2-env-commit-ids profile))
+                  (fn2-commit-idp j fn2-core)
+                  (equal (fn2-machine-slot j fn2-core) (fn2-machine-slot id fn2-core)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-commit-slots-p fn2-env-commit-ids natp member-equal car-cons cdr-cons) (theory 'minimal-theory))
+           :cases ((equal (fn2-machine-slot id fn2-core) 0) (equal (fn2-machine-slot id fn2-core) 1))
+           :use ((:instance fn2-env-commit-idp-cell)))))
+(defthm fn2-env-j-row-of-commit-ids
+  ; J at every readable commit row from J at the ghost ids
+  (implies (and (fn2-commit-idp id fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                (fn2-env-j-rows (fn2-env-commit-ids profile) log fn2-core))
+           (fn2-env-j-row id log fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory nil
+           :use ((:instance fn2-env-commit-ids-cover)
+                 (:instance fn2-env-j-rows-member (ids (fn2-env-commit-ids profile))
+                            (id (fn2-machine-global-id *fn2-commit-kind* (fn2-machine-slot id fn2-core) profile)))
+                 (:instance fn2-env-j-row-same-slot (i id)
+                            (j (fn2-machine-global-id *fn2-commit-kind* (fn2-machine-slot id fn2-core) profile)))))))
+;; ---------------------------------------------------------------------------
 ;; Executor instance interface.  A turn logs nothing, but may expose new
 ;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
 ;; core in the lifted predicate; holding ACKED fixed in FN2-ENV-INV itself
@@ -2969,7 +3054,7 @@
            (fn2-env-dur-turn-inv g (mv-nth 4 (fn2-turn fn2-core))))
   :schema :invariant :from (:machine fn2-commit)
   :teeth (fn2-dur-turn-positive fn2-dur-turn-j-removal)
-  :doc "fn2-turn preserves J1-J4 (FN2-ENV-J-ROWS, FN2-ENV-J-FRONTIER) at a fixed device log, so that every batch a commit row shows acknowledged stays durable (FN2-ENV-DUR-TURN-INV-PROJECTION). The executor-level lift FN2-EXECUTOR-INV-TURN reduces it to one obligation per cut in *FN2-EXECUTOR-CONTRACT-CUTS*. Proved for the commit visit fn2-commit-run, per phase: :notify, :durable, :fence, :collect, :seal, :draining, :uncertain, :dropping (FN2-ENV-J-ROWS-<PHASE>-ARM), :free (with the visited id a readable row), :install and :publish (with J at the visited id), each with its frontier lemma FN2-ENV-J-FRONTIER-<PHASE>-ARM. Owed, by owner: (1) cross-kind: every non-commit cut (the other kinds' -RUN / -RUN-STUB and observe routes, the wait-source grants, fn2-member-replay; *FN2-COMMIT-TURN-FRAME-BLOCKERS*) must leave the directory's kinds and slots, the commit table, the commit root and the commit-io table, which needs their KIDS/DIR constraints (dispatch-contracts, handler-frames); (2) commit-internal: :dependencies/:log-write (deps-ok/log-ok from the counted write results) and the write/fence handler (cb-done, fence-ok) need J3 (each counted completion is the first done answer in the log to a take of the row's role write at its offset carrying its loan's bytes, the seal of its batch for role 2); a visit of a commit id that is not a readable row (only a stop); (3) the visited commit id carries J: the ghost ids must cover every commit row (FN2-ENV-COMMIT-IDS lists the two global ids; the turn must show the visited id is one of them or at the slot of one, FN2-ENV-J-ROWS-MEMBER).")
+  :doc "fn2-turn preserves J1-J4 (FN2-ENV-J-ROWS, FN2-ENV-J-FRONTIER) at a fixed device log, so that every batch a commit row shows acknowledged stays durable (FN2-ENV-DUR-TURN-INV-PROJECTION). The executor-level lift FN2-EXECUTOR-INV-TURN reduces it to one obligation per cut in *FN2-EXECUTOR-CONTRACT-CUTS*. Proved for the commit visit fn2-commit-run, per phase: :notify, :durable, :fence, :collect, :seal, :draining, :uncertain, :dropping (FN2-ENV-J-ROWS-<PHASE>-ARM), :free (with the visited id a readable row), :install and :publish (with J at the visited id), each with its frontier lemma FN2-ENV-J-FRONTIER-<PHASE>-ARM. Owed, by owner: (1) cross-kind: every non-commit cut (the other kinds' -RUN / -RUN-STUB and observe routes, the wait-source grants, fn2-member-replay; *FN2-COMMIT-TURN-FRAME-BLOCKERS*) must leave the directory's kinds and slots, the commit table, the commit root and the commit-io table, which needs their KIDS/DIR constraints (dispatch-contracts, handler-frames); (2) commit-internal: :dependencies/:log-write (deps-ok/log-ok from the counted write results) and the write/fence handler (cb-done, fence-ok) need J3 (each counted completion is the first done answer in the log to a take of the row's role write at its offset carrying its loan's bytes, the seal of its batch for role 2); (3) the visited commit id carries J: a visit of an id that is not a readable row only stops the core (FN2-ENV-J-ROWS-NON-ROW-VISIT), and a readable one is at the slot of a ghost id once FN2-ENV-COMMIT-SLOTS-P holds (FN2-ENV-COMMIT-IDS-COVER, FN2-ENV-J-ROW-OF-COMMIT-IDS); owed: that every step keeps FN2-ENV-COMMIT-SLOTS-P (the directory's kinds and slots, the commit table's rows) from the initial core.")
 (defthm fn2-env-turn-inv-exit-by-definition
   (implies (and (fn2-env-turn-inv (list ids acked log) (mv-nth 4 (fn2-turn fn2-core)))
                 (equal (fn2-env-tag action) :turn))
