@@ -1375,6 +1375,15 @@
   ; each child's row count, closed in a guard proof (the readers' facts are stated over it)
   (declare (xargs :verify-guards nil))
   (if (atom tuple) nil (cons (fn2-columns-sym (car tuple) "-ROWS") (fn2-arms-rows-fns (cdr tuple)))))
+;; A child function's directory keep: its body opened once in the minimal
+;; theory with the directory writers' -ANY rules (each writer and sub-child
+;; kept shut, every reader and table write opaque); the default theory opened
+;; the readers too and did not finish (cursor's sub-seek-selected).
+(defun fn2-arms-child-keeps-hints (name world)
+  (declare (xargs :verify-guards nil))
+  `(("Goal" :in-theory (union-theories '(,name fn2-machines-directory-keeps-refl mv-nth car-cons cdr-cons
+                                         ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world)))
+                                       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))))))
 (defun fn2-arms-child-emit-events (name prefix k kind tuple body guard measure callees readers rowsp world)
   (declare (xargs :verify-guards nil))
   (mv-let (reads writes) (fn2-arms-scan body tuple name world 1000000)
@@ -1420,7 +1429,7 @@
                `((make-event
                   '(:or (fn2-machines-keeps-directory ,name ,formals
                                                       ,(if (< total 2) :self (+ k (position-eq 'fn2-machines outs)))
-                                                      nil ,(fn2-machines-keeps-directory-hints name world))
+                                                      nil ,(fn2-arms-child-keeps-hints name world))
                         (value-triple :keeps-directory-not-proved)))))))))
 (defmacro fn2-arms-child-emit (name prefix k kind tuple body guard measure callees readers rowsp)
   `(make-event (value (cons 'progn (fn2-arms-child-emit-events ',name ',prefix ',k ',kind ',tuple ',body ',guard
