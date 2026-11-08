@@ -1411,7 +1411,17 @@
                           :do-not '(generalize fertilize eliminate-destructors)))
                 0)
             (fn2-arms-ok-shape-events name call k outs ins readers callees nil world))
-        ,@(and rowsp (fn2-arms-narrow-rows-facts name call outs k total kind))))))
+        ,@(and rowsp (fn2-arms-narrow-rows-facts name call outs k total kind))
+        ;; the directory it threads keeps every id's kind, slot and rows (the
+        ;; core face's FN-CTF-DIR reads this keep, never the body); a
+        ;; recursive child or a failed opening leaves it out, and the face's
+        ;; directory contract then fails naming the face
+        ,@(and (member-eq 'fn2-machines outs) (not measure)
+               `((make-event
+                  '(:or (fn2-machines-keeps-directory ,name ,formals
+                                                      ,(if (< total 2) :self (+ k (position-eq 'fn2-machines outs)))
+                                                      nil ,(fn2-machines-keeps-directory-hints name world))
+                        (value-triple :keeps-directory-not-proved)))))))))
 (defmacro fn2-arms-child-emit (name prefix k kind tuple body guard measure callees readers rowsp)
   `(make-event (value (cons 'progn (fn2-arms-child-emit-events ',name ',prefix ',k ',kind ',tuple ',body ',guard
                                                                ',measure ',callees ',readers ',rowsp (w state))))))
