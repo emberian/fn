@@ -118,6 +118,10 @@
  :tables (fn2-ctl-table fn2-core-machines fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-seeks
           fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "Fetch's article: the occurrence's Message-ID checked against the request's, its octets (read into the lease) appended to the control range: (mv code at len).")
+;; An append's reply carries D's word as its reason (e-surface.md 3.3): an
+;; append where posting is not served is D's refused (NNTP's 440).
+(defconst *fn2-cns-append-word-refused* (fn2-upload-word-code :refused))
+(defcost fn2-cns-posting-p :doc "Whether posting is served (fn2-conn-posting-p, the input configuration): an append is a POST.")
 (defcost fn2-cns-lease-class :child fn2-cns-lease-class-of :doc "The pool class of a page's read lease (one storage unit; nil: none).")
 (defcost fn2-cns-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
  :doc "Reserve the page's read lease under the request row: (mv code slot gen).")
@@ -1228,12 +1232,18 @@
   ;; its transaction (or its refusal) posts here (fn2-cns-post-outcome):
   ;; the reply's reason is then the D word, its cpos the commit position.
   (:append :on-refusal ((:stop :machine-phase))
+   (:let posting (fn2-cns-posting-p))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
            (:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
             :why ":retired: the lease's slot reached its generation limit and leaves the pool")
            (:set (lease *fn2-cns-lease-none*) (lslot *fn2-none*) (lgen 0))
            (:charge :steps *fn2-work-transition* :runnable t))
           ((equal row-ctl *fn2-none*) (:goto cancel))
+          ;; no POST can succeed (posting not served: no fn2-txn row in the
+          ;; profile's share): refused, never parked on an upload or a
+          ;; transaction that never comes; the reason is D's word
+          ((and (equal row-upload *fn2-none*) (equal posting 0))
+           (:set (reason *fn2-cns-append-word-refused*)) (:goto refuse))
           ((equal row-upload *fn2-none*)
            (:do (tcode u ugen)
                 (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
@@ -1347,6 +1357,14 @@
      (fn2-core-preserves fn2-ctl-dispatch-auth (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal fn2-core)
        :position 3 :rows nil)
      (in-theory (disable fn2-ctl-dispatch-auth))
+     (defun fn2-cns-posting-p (fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (fn2-conn-posting-p fn2-core))
+     (defthm fn2-cns-posting-p-bit
+       (bitp (fn2-cns-posting-p fn2-core))
+       :rule-classes ((:type-prescription :typed-term (fn2-cns-posting-p fn2-core))
+                      (:rewrite :corollary (unsigned-byte-p 1 (fn2-cns-posting-p fn2-core)))))
+     (in-theory (disable fn2-cns-posting-p))
      (defun fn2-ctl-owner-principal (fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
        (let ((o (stobj-let ((fn2-control (fn2-core-control fn2-core))) (o) (fn2-control-owner-account fn2-control) o)))

@@ -46,36 +46,8 @@
  :init (fn2-claims-init-for profile fn2-claims) :profilep (fn2-txn-claims-profilep profile)
  :why "The identity reservation: a transaction's claim on its Message-ID's exact octets and the FIFO of its waiters survive the transaction's yields (section 14.4.2).")
 
-;; The profile's T write transactions (C's successor rows with write slots,
-;; B's transaction field stripes, the claim rows) are shared: the profile's
-;; :authority rows (A, at most T) go to E's control transactions (fn2-auth,
-;; authority-kind.lisp), its :cns rows (K, at most T - A) to the consumer
-;; requests' durable mutations (fn2-cns, cns-kind.lisp), and fn2-txn's C rows
-;; (T - A - K under :posting-interim, else none) take successor indices
-;; 0 .. C - 1; fn2-auth's row S takes C + S, fn2-cns's row S takes C + A + S,
-;; each below T. No kind's row ever names another's successor transaction; a
-;; consumer request row past the share (S >= K) refuses a mutation unavailable.
-(defun fn2-txn-authority-share (profile)
-  (declare (xargs :guard t))
-  (min (nfix (fn2-profile-get :authority profile)) (nfix (fn2-profile-t profile))))
-(defun fn2-txn-consumer-share (profile)
-  (declare (xargs :guard t))
-  (min (nfix (fn2-profile-get :cns profile))
-       (nfix (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)))))
-(defun fn2-txn-capacity (profile)
-  (declare (xargs :guard t))
-  (if (fn2-profile-get :posting-interim profile)
-      (nfix (- (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)) (fn2-txn-consumer-share profile)))
-    0))
-(defthm fn2-txn-authority-share-natp (natp (fn2-txn-authority-share profile)) :rule-classes :type-prescription)
-(defthm fn2-txn-consumer-share-natp (natp (fn2-txn-consumer-share profile)) :rule-classes :type-prescription)
-(defthm fn2-txn-capacity-natp (natp (fn2-txn-capacity profile)) :rule-classes :type-prescription)
-(defthm fn2-txn-capacity-share-bound
-  (<= (+ (fn2-txn-capacity profile) (fn2-txn-authority-share profile) (fn2-txn-consumer-share profile))
-      (nfix (fn2-profile-t profile)))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn2-profile-t fn2-profile-get))))
-(in-theory (disable fn2-txn-authority-share fn2-txn-consumer-share fn2-txn-capacity))
+;; The T-row shares (fn2-txn-authority-share, -consumer-share, -capacity)
+;; are in upload-kind.lisp: posting is served only when fn2-txn has a row.
 
 (defmachine fn2-txn
  :phases (:free :admit :reserve :lookup :prepare :ready :batched :accepted :refused :uncertain :releasing :draining :retired)
