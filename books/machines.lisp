@@ -1732,17 +1732,26 @@
     (or (member-equal ,tk fn2-arm-ch)
         (and (equal fn2-arm-tb ,tk) (subsetp-equal ',j fn2-arm-cs) (equal (fn2-machine-slot ,id fn2-core) fn2-arm-row)))))
 (defun fn2-arm-frame-read-backs (kind fields formals)
-  ; the own fields' and the phase's values; a directory field is read through
-  ; the directory, outside this contract
+  ; every written field's value: the phase's, the own fields' through the
+  ; kind's row reader, a directory field's through the directory's reader at
+  ; the id (fn2-machine-<field>)
   (declare (xargs :verify-guards nil))
-  (cond ((atom fields) nil)
-        ((assoc-eq (car fields) *fn2-machine-directory-fields*)
-         (fn2-arm-frame-read-backs kind (cdr fields) (cdr formals)))
-        (t
-    (cons (if (eq (car fields) 'phase)
-              `(equal (fn2-machine-phase id after) ,(car formals))
-            `(equal (,(fn2-machine-row-reader kind (car fields)) id after) ,(car formals)))
-          (fn2-arm-frame-read-backs kind (cdr fields) (cdr formals))))))
+  (if (atom fields) nil
+    (cons (cond ((eq (car fields) 'phase) `(equal (fn2-machine-phase id after) ,(car formals)))
+                ((assoc-eq (car fields) *fn2-machine-directory-fields*)
+                 `(equal (,(fn2-columns-col-name 'fn2-machine (car fields)) id after) ,(car formals)))
+                (t `(equal (,(fn2-machine-row-reader kind (car fields)) id after) ,(car formals))))
+          (fn2-arm-frame-read-backs kind (cdr fields) (cdr formals)))))
+;; A directory field's read back: its dispatcher over the directory written
+;; at the id, the directory's column setter's facts.
+(defun fn2-arm-frame-directory-read-back-runes (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) '(fn2-machine-idp fn2-core-machines-of-update-fn2-core-machines)
+    (let ((get (fn2-columns-col-name 'fn2-machine (car fields)))
+          (column (fn2-columns-col-name 'fn2-machines (car fields))))
+      (list* get (fn2-columns-sym get "-READ-CODE") column (fn2-columns-sym column "$AI")
+             (append (fn2-arm-frame-setter-facts 'fn2-machines (list (car fields)))
+                     (fn2-arm-frame-directory-read-back-runes (cdr fields)))))))
 (defun fn2-arm-frame-write-guards (kind fields formals world)
   ; the batch's acceptance, as the put expansion tests it
   (declare (xargs :verify-guards nil))
@@ -1845,7 +1854,8 @@
                                              (fn2-arm-frame-setter-facts kind (fn2-arm-frame-table-fields fields))
                                              (fn2-arm-frame-read-back-runes kind (fn2-arm-frame-table-fields fields))
                                              (and dirp (list* (fn2-arm-frame-machines-over kind) machines-of 'fn2-machine-idp-bounds
-                                                              (append (fn2-arm-frame-directory-reader-runes 'slot (fn2-arm-frame-directory-fields fields))
+                                                              (append (fn2-arm-frame-directory-read-back-runes (fn2-arm-frame-directory-fields fields))
+                                                                      (fn2-arm-frame-directory-reader-runes 'slot (fn2-arm-frame-directory-fields fields))
                                                                       (fn2-arm-frame-directory-reader-runes 'kind (fn2-arm-frame-directory-fields fields))
                                                                       (fn2-arm-frame-directory-reader-runes 'idp (fn2-arm-frame-directory-fields fields))))))))
       (defthm ,contract
