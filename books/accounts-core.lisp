@@ -70,7 +70,7 @@
 ;; The :principal-reservation wait kind is D's (MACHINE-FORM 6.10): a refused
 ;; request parks on its principal's FIFO; the ledger's pair grants it.
 (defwait :principal-reservation :ready fn2-account-grant-ready-p :grant fn2-account-grant-one
-  :park fn2-account-request-park
+  :park fn2-account-request-park :tables (fn2-core-machines fn2-core-accounts)
   :doc "A request parked on its principal's FIFO, granted (acquired, dequeued) once its reservation fits.")
 (defcost fn2-account-charge-core :tables (fn2-core-accounts)
   :doc "Add a completion count to a principal's charge dimension (monotone).")
@@ -326,7 +326,9 @@
   (implies (fn2-account-grant-ready fn2-core)
            (not (equal (mv-nth 0 (fn2-account-grant-take fn2-core)) *fn2-none*)))
   :hints (("Goal" :in-theory (enable fn2-account-grant-take fn2-account-grant-head fn2-account-grant-ready))))
+(fn2-wait-attach :principal-reservation fn2-account-grant-take)
 (defattach (fn2-account-grant-ready-p fn2-account-grant-ready) (fn2-account-grant-one fn2-account-grant-take)
-  :hints (("Goal" :use ((:instance fn2-account-grant-take-live)))))
+  :hints (("Goal" :use ((:instance fn2-account-grant-take-live) (:instance fn2-account-grant-take-wait-kids)
+                        (:instance fn2-account-grant-take-wait-directory)))))
 (in-theory (disable fn2-account-request-park-on fn2-account-request-park fn2-account-grant-head fn2-account-grant-ready fn2-account-grant-take))
 ))

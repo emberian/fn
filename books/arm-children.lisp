@@ -346,6 +346,8 @@
          (nth *fn2-machines-rows* fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-wake-row))))
 
+(fn2-machines-keeps-directory fn2-machines-reclaim (id ord retire fn2-machines fn2-control))
+(fn2-machines-keeps-directory fn2-machines-wake-row (id fn2-machines fn2-control))
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-machines-free-head-of fn2-machines-reclaim fn2-machines-wake-row) (w state)))
@@ -390,6 +392,7 @@
          (nth *fn2-machines-rows* fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-partition-install))))
 
+(fn2-machines-keeps-directory fn2-machines-partition-install (ord target next creditp fn2-machines fn2-control))
 ; A taker's park (A-S7, D F2): WAITER *fn2-none* parks nothing; any other
 ; waiter must be a row not queued on a resource (else the caller is wrong:
 ; the core stops). A running row may still carry :completion from the I/O
@@ -417,3 +420,5 @@
   (equal (nth *fn2-machines-rows* (car (fn2-machines-park-taken waiter ord reason fn2-machines fn2-control)))
          (nth *fn2-machines-rows* fn2-machines))
   :hints (("Goal" :in-theory (enable fn2-machines-park-taken))))
+(fn2-machines-keeps-directory fn2-machines-park-taken (waiter ord reason fn2-machines fn2-control) :car
+                              (fn2-machines-park-admission))

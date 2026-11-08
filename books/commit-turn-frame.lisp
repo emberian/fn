@@ -65,125 +65,8 @@
                 :do-not-induct t
                 :cases ,(loop$ for i from 0 to (- n 1) collect `(equal (fn2-commit-row-phase id fn2-core) ,i))))))))
 
-;; ---------------------------------------------------------------------------
-;; THE DIRECTORY: every id's kind and slot, and the directory's rows, stay
-;; (FN2-MACHINES-DIRECTORY-KEEPS of the directory child), chained like the
-;; frame contracts: FN-CTF-DIR for each function a commit visit reaches, by
-;; its KIDS (or arm ROW-FRAME) contract when its children exclude the
-;; directory, else by one opening with its callees' and the directory
-;; writers' -KEEPS-DIRECTORY facts.
-(make-event
- (let ((m (fn2-arm-frame-m (w state))))
-   (value
-    `(progn
-       (defun fn2-ctf-dir (b a)
-         (declare (xargs :verify-guards nil))
-         (fn2-machines-directory-keeps (nth ,m b) (nth ,m a)))
-       (defthm fn2-ctf-dir-refl (fn2-ctf-dir a a)
-         :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps))))
-       (defthm fn2-ctf-dir-of-nth
-         (implies (and (equal (nth ,m b) (nth ,m x)) (fn2-ctf-dir x a)) (fn2-ctf-dir b a))
-         :rule-classes nil)
-       (defthm fn2-ctf-dir-trans
-         (implies (and (fn2-ctf-dir c b) (fn2-ctf-dir b a)) (fn2-ctf-dir c a))
-         :rule-classes nil
-         :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps))))
-       (defthm fn2-ctf-dir-of-update-fn2-core-machines
-         (implies (and (fn2-machines-directory-keeps x (fn2-core-machines c)) (fn2-ctf-dir c c0))
-                  (fn2-ctf-dir (update-fn2-core-machines x c) c0))
-         :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-core-machines update-fn2-core-machines))))
-       (defthm fn2-ctf-dir-readers
-         ; what the directory keeps: every id's kind, slot and membership
-         (implies (fn2-ctf-dir b a)
-                  (and (equal (fn2-machine-kind id b) (fn2-machine-kind id a))
-                       (equal (fn2-machine-slot id b) (fn2-machine-slot id a))
-                       (equal (fn2-machine-idp id b) (fn2-machine-idp id a))))
-         :rule-classes nil
-         :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-kind fn2-machine-kind-read-code
-                                            fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp
-                                            fn2-machines-kind fn2-machines-slot fn2-machines-rows fn2-core-machines))))
-       (in-theory (disable fn2-ctf-dir))))))
-(defun fn2-ctf-dir-update-events (children k m)
-  (declare (xargs :mode :program))
-  (cond ((atom children) nil)
-        ((equal k m) (fn2-ctf-dir-update-events (cdr children) (+ 1 k) m))
-        (t (let ((update (fn2-columns-pre "UPDATE-" (caar children))))
-             (cons `(defthm ,(fn2-columns-pre "FN2-CTF-DIR-OF-" update)
-                      (equal (fn2-ctf-dir (,update v c) c0) (fn2-ctf-dir c c0))
-                      :hints (("Goal" :in-theory (enable fn2-ctf-dir ,update))))
-                   (fn2-ctf-dir-update-events (cdr children) (+ 1 k) m))))))
-(defun fn2-ctf-dir-update-runes (children k m)
-  (declare (xargs :mode :program))
-  (cond ((atom children) nil)
-        ((equal k m) (fn2-ctf-dir-update-runes (cdr children) (+ 1 k) m))
-        (t (cons (fn2-columns-pre "FN2-CTF-DIR-OF-" (fn2-columns-pre "UPDATE-" (caar children)))
-                 (fn2-ctf-dir-update-runes (cdr children) (+ 1 k) m)))))
-(make-event
- (let ((world (w state)))
-   (value (cons 'progn (fn2-ctf-dir-update-events (fn2-arm-frame-children-of world) 0 (fn2-arm-frame-m world))))))
-(make-event
- (let ((world (w state)))
-   (value `(deftheory fn2-ctf-dir-base
-             (union-theories '(fn2-ctf-dir-refl fn2-ctf-dir-of-update-fn2-core-machines
-                               ,@(fn2-ctf-dir-update-runes (fn2-arm-frame-children-of world) 0 (fn2-arm-frame-m world)))
-                             (theory 'fn2-arm-frame-base))))))
-(defun fn2-ctf-dir-name (fn) (declare (xargs :mode :program)) (fn2-columns-sym fn "-CTF-DIR"))
-;; The functions under FNS that return the core, callees first.
-(defun fn2-ctf-postorder (fns world seen fuel)
-  (declare (xargs :mode :program))
-  (cond ((or (zp fuel) (atom fns)) seen)
-        ((or (member-eq (car fns) seen) (not (fn2-arm-frame-corep-fn (car fns) world)))
-         (fn2-ctf-postorder (cdr fns) world seen fuel))
-        (t (fn2-ctf-postorder (cdr fns) world
-             (append (fn2-ctf-postorder (fn2-arm-frame-body-callees (car fns) world) world seen (1- fuel))
-                     (list (car fns)))
-             fuel))))
-(defun fn2-ctf-postorder-new (fns world)
-  (declare (xargs :mode :program))
-  (let ((all (fn2-ctf-postorder fns world nil 64)))
-    (remove-duplicates-eq (reverse (remove-duplicates-eq (reverse all))))))
-(defun fn2-ctf-dir-callee-runes (callees world)
-  (declare (xargs :mode :program))
-  (cond ((atom callees) nil)
-        ((getpropc (fn2-ctf-dir-name (car callees)) 'theorem nil world)
-         (cons (fn2-ctf-dir-name (car callees)) (fn2-ctf-dir-callee-runes (cdr callees) world)))
-        (t (fn2-ctf-dir-callee-runes (cdr callees) world))))
-(defun fn2-ctf-dir-event (fn kind world)
-  (declare (xargs :mode :program))
-  (let* ((e (fn2-arm-frame-known fn kind world))
-         (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world))
-         (m (fn2-arm-frame-m world))
-         (name (fn2-ctf-dir-name fn))
-         (stmt `(implies (fn2-ctf-dir fn2-core fn2-ctf-c0) (fn2-ctf-dir ,out fn2-ctf-c0))))
-    (cond
-     ((or (eq (car e) :child) (getpropc name 'theorem nil world)) nil)
-     ((and (eq (car e) :arm) (not (member m (cadr e))))
-      (let ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world)))
-        `((defthm ,name ,stmt
-            :hints (("Goal" :in-theory (union-theories '(fn2-arm-row-frame) (theory 'fn2-arm-frame-base))
-                     :use ((:instance ,(fn2-arm-frame-name fn "-ARM-ROW-FRAME") (fn2-arm-tb ,tk) (fn2-arm-row (fn2-machine-slot id fn2-core))
-                                      (fn2-arm-cs ',(caddr e)) (fn2-arm-ch ',(cadr e)) (fn2-arm-c0 fn2-core))
-                           (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',(cons tk (cadr e))) (a fn2-core) (b ,out))
-                           (:instance fn2-ctf-dir-of-nth (b ,out) (x fn2-core) (a fn2-ctf-c0)))))))))
-     ((and (member-eq (car e) '(:op :row :write)) (not (member m (fn2-arm-frame-entry-kids e world))))
-      (let ((s (fn2-arm-frame-entry-kids e world)))
-        `((defthm ,name ,stmt
-            :hints (("Goal" :in-theory (theory 'fn2-arm-frame-base)
-                     :use ((:instance ,(fn2-arm-frame-lemma fn e "-ARM-KIDS" kind world) (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
-                           (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',s) (a fn2-core) (b ,out))
-                           (:instance fn2-ctf-dir-of-nth (b ,out) (x fn2-core) (a fn2-ctf-c0)))))))))
-     (t
-      `((defthm ,name ,stmt
-          :hints (("Goal" :in-theory (union-theories
-                                      '(,fn ,@(strip-cdrs (table-alist 'fn2-arm-frame-directory-keeps world))
-                                        ,@(fn2-ctf-dir-callee-runes (fn2-arm-frame-body-callees fn world) world))
-                                      (theory 'fn2-ctf-dir-base))
-                   :do-not-induct t))))))))
-(defun fn2-ctf-dir-forms (fns kind)
-  (declare (xargs :mode :program))
-  (if (atom fns) nil
-    (cons `(make-event (value (cons 'progn (fn2-ctf-dir-event ',(car fns) ',kind (w state)))))
-          (fn2-ctf-dir-forms (cdr fns) kind))))
+;; The directory relation FN2-CTF-DIR and its chained contracts (FN-CTF-DIR)
+;; are in assembly-dispatch.lisp, beside the dispatch frame that uses them.
 (make-event
  (value (cons 'progn (fn2-ctf-dir-forms
                       (fn2-ctf-postorder-new '(fn2-commit-run fn2-exec-pop fn2-exec-charge-run fn2-machine-take-wake fn2-exec-wake
@@ -223,6 +106,43 @@
                                                       fn2-machine-idle-ctf-dir)
                                                     (theory 'fn2-arm-frame-base))
                   :do-not-induct t)))))))
+
+;; ---------------------------------------------------------------------------
+;; THE OTHER KINDS' DISPATCH: fn2-machine-run of an id of an attached kind
+;; that holds no batch membership leaves the commit layer's durability
+;; children and keeps the directory (the stubs' frames, assembly-dispatch).
+(defun fn2-ctf-attached-kinds (names k world)
+  (declare (xargs :mode :program))
+  (cond ((atom names) nil)
+        ((and (function-symbolp (fn2-columns-sym (car names) "-RUN-STUB") world)
+              (not (fn2-dispatch-holds-p :batch-membership (fn2-machine-property (car names) :holds world))))
+         (cons (cons k (car names)) (fn2-ctf-attached-kinds (cdr names) (+ 1 k) world)))
+        (t (fn2-ctf-attached-kinds (cdr names) (+ 1 k) world))))
+(defun fn2-ctf-suffix-all (names suffix)
+  (declare (xargs :mode :program))
+  (if (atom names) nil (cons (fn2-columns-sym (car names) suffix) (fn2-ctf-suffix-all (cdr names) suffix))))
+(defun fn2-ctf-nth-keeps (ks after)
+  (declare (xargs :mode :program))
+  (if (atom ks) nil (cons `(equal (nth ,(car ks) ,after) (nth ,(car ks) fn2-core)) (fn2-ctf-nth-keeps (cdr ks) after))))
+(make-event
+ (let* ((world (w state))
+        (kinds (fn2-ctf-attached-kinds (fn2-machine-names world) 0 world))
+        (stubs (fn2-ctf-suffix-all (strip-cdrs kinds) "-RUN-STUB"))
+        (ks (fn2-arm-frame-indices *fn2-dispatch-commit-children* world)))
+   (value
+    `(defthm fn2-machine-run-attached-keeps-commit
+       (implies (member-equal (fn2-machine-kind id fn2-core) ',(strip-cars kinds))
+                (let ((after (mv-nth 4 (fn2-machine-run id budget fn2-core))))
+                  (and ,@(fn2-ctf-nth-keeps ks 'after)
+                       (fn2-ctf-dir after fn2-core))))
+       :hints (("Goal" :in-theory (union-theories
+                                   '(fn2-machine-run fn2-ctf-dir-refl
+                                     fn2-machine-refuse-phase-keeps-commit fn2-machine-idle-keeps-commit
+                                     fn2-machine-refuse-phase-ctf-dir fn2-machine-idle-ctf-dir
+                                     ,@(fn2-ctf-suffix-all stubs "-KEEPS-COMMIT")
+                                     ,@(fn2-ctf-suffix-all stubs "-CTF-DIR"))
+                                   (theory 'fn2-arm-frame-base))
+                :do-not-induct t))))))
 
 ;; ---------------------------------------------------------------------------
 ;; THE PRINCIPAL VISIT of a commit row (fn2-exec-principal): the commit
@@ -284,39 +204,9 @@
 ;; the registry's run/observe contracts and the executor's glue contracts.
 
 ;; ---------------------------------------------------------------------------
-;; THE COMMIT HANDLERS (the dispatch states their FRAMEs owed): each
-;; handler's chained row-frame contract at its declared columns and
-;; children, as an arm's (machines.lisp fn2-arm-frame-arm-events), after its
-;; callees' contracts.
-(defun fn2-ctf-handler-forms (name observes world)
-  (declare (xargs :mode :program))
-  (if (atom observes) nil
-    (let* ((fn (cadar observes)) (c (cddar observes))
-           (cols (fn2-machine-property name :table world))
-           (tk (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
-           (j (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
-           (ch (fn2-machine-child-indices (append (fn2-arm-get :tables c) (fn2-machine-directory-child (fn2-arm-get :writes c))
-                                                  *fn2-arm-implicit-tables*) world)))
-      (list*
-       `(make-event
-         (value (cons 'progn (fn2-arm-frame-fns-forms
-                              (fn2-arm-frame-todo (fn2-arm-frame-body-callees ',fn (w state)) ',name (w state) nil 64) ',name))))
-       `(make-event
-         (let* ((world (w state)) (callees (fn2-arm-frame-body-callees ',fn world)))
-           (value
-            `(progn
-               (defthm ,',(fn2-arm-frame-name fn "-ARM-ROW-FRAME")
-                 (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
-                               ,@',(fn2-arm-frame-row-frame-hyps tk ch j 'id))
-                          (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0
-                                             (mv-nth 1 (,',fn ,@',(formals fn world)))))
-                 :hints ,(fn2-arm-frame-hints (cons ',fn (append (fn2-arm-frame-inline-runes ',fn ',name world)
-                                                                (fn2-arm-frame-lemmas callees '("-ARM-ROW-FRAME" "-ARM-SLOT") ',name world)))))
-               (in-theory (disable ,',(fn2-arm-frame-name fn "-ARM-ROW-FRAME")))
-               (table fn2-arm-frame-fns ',',fn '(:arm ,',ch ,',j nil))))))
-       (fn2-ctf-handler-forms name (cdr observes) world)))))
-(make-event
- (value (cons 'progn (fn2-ctf-handler-forms 'fn2-commit (fn2-machine-property 'fn2-commit :observes (w state)) (w state)))))
+;; THE COMMIT HANDLERS: each handler's row frame (FN-ARM-ROW-FRAME, entry
+;; (:arm CH J NIL)) is the dispatch's (machines.lisp fn2-machine-observe-rows,
+;; at assembly-dispatch); its callees' contracts, then the route's below.
 (make-event
  (value (cons 'progn (fn2-arm-frame-fns-forms
                       (fn2-arm-frame-todo '(fn2-machine-observe-terminal fn2-machine-refuse-observation fn2-machine-observe-contract-check
@@ -328,7 +218,9 @@
   (if (atom observes) (mv nil nil)
     (mv-let (ch j) (fn2-ctf-handler-decls (cdr observes) world)
       (let ((e (cdr (assoc-eq (cadar observes) (table-alist 'fn2-arm-frame-fns world)))))
-        (mv (union-equal (remove-duplicates-equal (cadr e)) ch) (union-equal (caddr e) j))))))
+        (if (not (eq (car e) :arm))
+            (mv (er hard 'fn2-ctf-handler-decls "The commit handler ~x0 has no proved row frame: ~x1." (cadar observes) e) nil)
+        (mv (union-equal (remove-duplicates-equal (cadr e)) ch) (union-equal (caddr e) j)))))))
 (make-event
  (mv-let (ch j) (fn2-ctf-handler-decls (fn2-machine-property 'fn2-commit :observes (w state)) (w state))
    (let ((term (fn2-arm-frame-known 'fn2-machine-observe-terminal 'fn2-commit (w state))))

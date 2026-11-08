@@ -229,7 +229,7 @@
    (:notify :draining :uncertain) (:draining :free :uncertain) (:uncertain) (:dropping :draining :uncertain)))
 ;; The :batch-membership wait kind is B's (B-S2, b-durability 11b): a
 ;; transaction parked for room in a commit batch; B attaches the pair in -b2.
-(defwait :batch-membership :ready fn2-batchable-ready-p :grant fn2-batchable-grant-one
+(defwait :batch-membership :ready fn2-batchable-ready-p :grant fn2-batchable-grant-one :tables (fn2-core-machines)
   :doc "A transaction parked until a commit batch has room for it.")
 (defmachine fn2-commit
  :states (:free :collect :seal :dependencies :log-write :fence :durable
@@ -317,7 +317,7 @@
 ; tables are named by layer group, never by an upper layer's child names.
 (defcost fn2-runs-install :bytes 4096 :tables (fn2-core-pool (:layers :c))
  :doc "C installs a durable batch's run-replacement member: decode its workspace, swap the schema's runs.")
-(defcost fn2-member-replay :answers t :bytes 4096 :tables (fn2-core-pool (:layers :c :d))
+(defcost fn2-member-replay :answers t :bytes 4096 :tables (fn2-core-pool fn2-core-fields (:layers :c :d))
  :doc "Rebuild a recovered transaction member's rows from its record stream.")
 ; Declared costs of recovery's outside calls. Each is a table-level operation
 ; of recovery-machine.lisp over the row's owner triple; none writes the row.

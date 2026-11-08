@@ -112,7 +112,11 @@
 (defconst *fn2-commit-hook-children*
  '((fn2-successor-publish fn2-core-succ-txns fn2-core-overlays fn2-core-id-engine)
    (fn2-successor-drop fn2-core-succ-txns fn2-core-overlays fn2-core-pool)
-   (fn2-commit-stream-wake fn2-core-cns-edges)))
+   (fn2-commit-stream-wake fn2-core-cns-edges)
+   ; C's replay decodes the member's records in the fields scratch and binds
+   ; its rows (machines-c-bind.lisp fn2-succ-core-replay)
+   (fn2-member-replay fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine
+                      fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)))
 (defun fn2-commit-hook-kids-claim (name formals world)
  (declare (xargs :verify-guards nil))
  `((defthm ,(fn2-columns-sym name "-ARM-KIDS")
@@ -905,7 +909,10 @@
  :rule-classes :type-prescription
  :hints (("Goal" :in-theory (e/d (fn2-commit-batchable-grant) (fn2-commit-batchable-ready fn2-machine-write-wait-reason)))))
 (in-theory (disable fn2-commit-batch-waiter fn2-commit-batchable-ready fn2-commit-batchable-grant))
-(defattach (fn2-batchable-ready-p fn2-commit-batchable-ready) (fn2-batchable-grant-one fn2-commit-batchable-grant))
+; the grant's frame within the defwait's :tables (machines.lisp fn2-wait-attach)
+(fn2-wait-attach :batch-membership fn2-commit-batchable-grant)
+(defattach (fn2-batchable-ready-p fn2-commit-batchable-ready) (fn2-batchable-grant-one fn2-commit-batchable-grant)
+ :hints (("Goal" :use ((:instance fn2-commit-batchable-grant-live) (:instance fn2-commit-batchable-grant-wait-kids) (:instance fn2-commit-batchable-grant-wait-directory)))))
 (defun fn2-commit-root-edge (id install fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)

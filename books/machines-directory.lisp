@@ -31,18 +31,42 @@
   (and (equal (nth 0 x) (nth 0 m)) (equal (nth 1 x) (nth 1 m))
        (equal (nth *fn2-machines-rows* x) (nth *fn2-machines-rows* m))))
 (in-theory (disable fn2-machines-directory-keeps))
-;; FN's directory result (its first value, or with RESULT :self its value)
-;; keeps the directory, by one opening of FN over the columns' -NTH facts;
+;; FN's directory result (its first value, or with RESULT :self its value,
+;; or with RESULT a natural its MV-NTH value) keeps the directory, by one
+;; opening of FN over the columns' -NTH facts (ENABLE: runes opened with it);
 ;; recorded in table fn2-arm-frame-directory-keeps for the frame contracts
-;; of the core faces that call it.
-(defmacro fn2-machines-keeps-directory (fn formals &optional (result ':car))
-  (let ((name (fn2-columns-sym fn "-KEEPS-DIRECTORY")))
+;; of the core faces that call it. Its -ANY form (the result is invisible to
+;; a keep against any directory) composes: a body threading the directory
+;; through several writers keeps it by these rules and the reflexive keep
+;; (table fn2-machines-directory-any; HINTS: such a proof, see
+;; fn2-machines-keeps-directory-hints).
+;; A body over directory writers with -ANY forms: opened alone, they kept shut.
+(defun fn2-machines-keeps-directory-hints (fn world)
+  (declare (xargs :verify-guards nil))
+  (let ((any (table-alist 'fn2-machines-directory-any world)))
+    `(("Goal" :in-theory (e/d (,fn fn2-machines-directory-keeps-refl ,@(strip-cdrs any))
+                              (fn2-machines-directory-keeps ,@(strip-cars any)))))))
+(defthm fn2-machines-directory-keeps-refl (fn2-machines-directory-keeps x x)
+  :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps))))
+(in-theory (disable fn2-machines-directory-keeps-refl))
+(defmacro fn2-machines-keeps-directory (fn formals &optional (result ':car) enable hints)
+  (let* ((name (fn2-columns-sym fn "-KEEPS-DIRECTORY"))
+         (any (fn2-columns-sym fn "-KEEPS-DIRECTORY-ANY"))
+         (r (cond ((eq result :self) `(,fn ,@formals))
+                  ((eq result :car) `(car (,fn ,@formals)))
+                  (t `(mv-nth ,result (,fn ,@formals))))))
     `(progn
        (defthm ,name
-         (fn2-machines-directory-keeps ,(if (eq result :self) `(,fn ,@formals) `(car (,fn ,@formals))) fn2-machines)
-         :hints (("Goal" :in-theory (e/d (,@(and (eq result :car) (list fn 'fn2-machines-stop-write)) fn2-machines-directory-keeps) (nth)))))
-       (in-theory (disable ,name))
-       (table fn2-arm-frame-directory-keeps ',fn ',name))))
+         (fn2-machines-directory-keeps ,r fn2-machines)
+         :hints ,(or hints `(("Goal" :in-theory (e/d (,@(and (not (eq result :self)) (list fn 'fn2-machines-stop-write)) ,@enable
+                                                      fn2-machines-directory-keeps)
+                                                     (nth))))))
+       (defthm ,any
+         (equal (fn2-machines-directory-keeps ,r fn2-machines-m2) (fn2-machines-directory-keeps fn2-machines fn2-machines-m2))
+         :hints (("Goal" :use ,name :in-theory (union-theories '(fn2-machines-directory-keeps) (theory 'minimal-theory)))))
+       (in-theory (disable ,name ,any))
+       (table fn2-arm-frame-directory-keeps ',fn ',name)
+       (table fn2-machines-directory-any ',fn ',any))))
 ;; The directory-wide fields' updaters (every field but the kind and slot
 ;; columns and the rows).
 (fn2-machines-keeps-directory update-fn2-machines-accept-count (v fn2-machines) :self)
@@ -58,6 +82,10 @@
 (fn2-machines-keeps-directory update-fn2-machines-admission-headi (i v fn2-machines) :self)
 (fn2-machines-keeps-directory update-fn2-machines-admission-taili (i v fn2-machines) :self)
 (fn2-machines-keeps-directory update-fn2-machines-admission-creditsi (i v fn2-machines) :self)
+;; the row fields' setters (every row field but the kind and slot columns)
+(fn2-machines-keeps-directory fn2-machines-set-wait-reason (i v fn2-machines) :self (fn2-machines-set-wait-reason update-fn2-machines-wait-reason$ai))
+(fn2-machines-keeps-directory fn2-machines-set-ready-prev (i v fn2-machines) :self (fn2-machines-set-ready-prev update-fn2-machines-ready-prev$ai))
+(fn2-machines-keeps-directory fn2-machines-set-ready-next (i v fn2-machines) :self (fn2-machines-set-ready-next update-fn2-machines-ready-next$ai))
 
 (defmacro fn2-machine-directory-events ()
  '(progn

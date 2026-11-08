@@ -1375,6 +1375,15 @@
   ; each child's row count, closed in a guard proof (the readers' facts are stated over it)
   (declare (xargs :verify-guards nil))
   (if (atom tuple) nil (cons (fn2-columns-sym (car tuple) "-ROWS") (fn2-arms-rows-fns (cdr tuple)))))
+;; A child function's directory keep: its body opened once in the minimal
+;; theory with the directory writers' -ANY rules (each writer and sub-child
+;; kept shut, every reader and table write opaque); the default theory opened
+;; the readers too and did not finish (cursor's sub-seek-selected).
+(defun fn2-arms-child-keeps-hints (name world)
+  (declare (xargs :verify-guards nil))
+  `(("Goal" :in-theory (union-theories '(,name fn2-machines-directory-keeps-refl mv-nth car-cons cdr-cons
+                                         ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world)))
+                                       (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))))))
 (defun fn2-arms-child-emit-events (name prefix k kind tuple body guard measure callees readers rowsp world)
   (declare (xargs :verify-guards nil))
   (mv-let (reads writes) (fn2-arms-scan body tuple name world 1000000)
@@ -1411,7 +1420,17 @@
                           :do-not '(generalize fertilize eliminate-destructors)))
                 0)
             (fn2-arms-ok-shape-events name call k outs ins readers callees nil world))
-        ,@(and rowsp (fn2-arms-narrow-rows-facts name call outs k total kind))))))
+        ,@(and rowsp (fn2-arms-narrow-rows-facts name call outs k total kind))
+        ;; the directory it threads keeps every id's kind, slot and rows (the
+        ;; core face's FN-CTF-DIR reads this keep, never the body); a
+        ;; recursive child or a failed opening leaves it out, and the face's
+        ;; directory contract then fails naming the face
+        ,@(and (member-eq 'fn2-machines outs) (not measure)
+               `((make-event
+                  '(:or (fn2-machines-keeps-directory ,name ,formals
+                                                      ,(if (< total 2) :self (+ k (position-eq 'fn2-machines outs)))
+                                                      nil ,(fn2-arms-child-keeps-hints name world))
+                        (value-triple :keeps-directory-not-proved)))))))))
 (defmacro fn2-arms-child-emit (name prefix k kind tuple body guard measure callees readers rowsp)
   `(make-event (value (cons 'progn (fn2-arms-child-emit-events ',name ',prefix ',k ',kind ',tuple ',body ',guard
                                                                ',measure ',callees ',readers ',rowsp (w state))))))
@@ -2534,6 +2553,8 @@
         ;; one shape theorem, as an arm's, but with unsigned-byte-p open: an
         ;; enum copy's guard is (< v COUNT) and the setter's rule wants its width
         (in-theory (disable ,name))
+        ;; the directory it threads keeps every id's kind, slot and rows
+        (fn2-machines-keeps-directory ,name ,formals ,(if adm 2 4) nil ,(fn2-machines-keeps-directory-hints name world))
         ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple tuple
             (append (list 'fn2-machines-slot 'fn2-machines-kind (fn2-arms-sym kind "-ROWS"))
                     (fn2-arms-column-readers kind (fn2-machine-property kind :table world))

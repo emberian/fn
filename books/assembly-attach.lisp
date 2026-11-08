@@ -9,4 +9,4 @@
 (include-book "assembly-callbacks-d-cursor")
 (include-book "assembly-callbacks-e-cns")
 (include-book "assembly-callbacks-e-auth")
-(fn2-machine-attach-all-events)
+(fn2-dispatch-attach-all-events)

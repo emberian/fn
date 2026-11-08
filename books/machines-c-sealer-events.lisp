@@ -104,8 +104,11 @@
     :hints (("Goal" :in-theory (e/d (fn2-sealer-grant) (fn2-sealer-ready fn2-machine-write-wait-reason)))))
    (in-theory (disable fn2-sealer-step fn2-sealer-genesis fn2-sealer-pending-p fn2-sealer-ready fn2-sealer-grant))
    ;; The attachment proves the pair's constraints (type, shape, liveness)
-   ;; from the three lemmas above and the grant's preserves lemmas.
-   (defattach (fn2-sealable-ready-p fn2-sealer-ready) (fn2-sealable-grant-one fn2-sealer-grant))
+   ;; from the three lemmas above, the grant's preserves lemmas and its frame
+   ;; within the defwait's :tables.
+   (fn2-wait-attach :sealable fn2-sealer-grant)
+   (defattach (fn2-sealable-ready-p fn2-sealer-ready) (fn2-sealable-grant-one fn2-sealer-grant)
+    :hints (("Goal" :use ((:instance fn2-sealer-grant-live) (:instance fn2-sealer-grant-wait-kids) (:instance fn2-sealer-grant-wait-directory)))))
    ;; CODE names the stop: a pool exhausted (:full) or a cache row held by
    ;; another page (:cache) is :sealer-full / :sealer-cache, any other
    ;; refusal :sealer.

@@ -39,7 +39,7 @@
 
 ;; The :sealable wait kind is C's: the sealer parks on it and C's pair
 ;; (machines-c-sealer-events) wakes it (MACHINE-FORM 6.10, defwait).
-(defwait :sealable :ready fn2-sealable-ready-p :grant fn2-sealable-grant-one
+(defwait :sealable :ready fn2-sealable-ready-p :grant fn2-sealable-grant-one :tables (fn2-core-machines)
   :doc "The parked sealer, woken once a published overlay is sealable.")
 (defmachine fn2-sealer
  :states (:sealing :stopped)
