@@ -1,0 +1,80 @@
+-- Generated from the canonical admitted loop; proof schema lives in pool_compare.lean.in.
+import Fn2.ACL2.Countdown
+import Fn2.ACL2.Translation
+import Mathlib.Tactic
+
+namespace Fn2.ACL2.PoolCompare
+open Fn2.ACL2 Fn2.Instances.LayerAWorld
+set_option maxRecDepth 100000
+set_option maxHeartbeats 4000000
+set_option linter.unusedVariables false
+
+abbrev State := Val × Val × Val × Val × Val
+
+def step : State → Sum Val State
+  | («A», «B», «I», «N», «FN2-POOL») => @STEP@
+
+def measure : State → Nat
+  | (_, _, i, n, _) => n.nfix - i.nfix
+
+def bodyValue («A» «B» «I» «N» «FN2-POOL» : Val) : Val := @BODY@
+
+theorem decreases (x y : State) (h : step x = .inr y) : measure y < measure x := by
+  rcases x with ⟨a,b,i,n,p⟩
+  simp only [step] at h
+  split_ifs at h <;> cases h
+  all_goals
+    simp only [measure]
+    cases i <;> cases n <;>
+      simp_all [«NATP», «NOT», Prim.integerp, Prim.lt, Val.ofBool,
+        Val.truthy, Val.isInt, Val.toInt, Val.nil, Val.t, Val.nfix, Prim.plus]
+    all_goals split_ifs at * <;> simp_all [Val.nfix, Val.toInt, Prim.plus] <;> omega
+
+theorem go_value (fuel : Nat) (a b i n p : Val) :
+    «FN2-POOL-COMPARE-LOOP».go fuel a b i n p =
+      Countdown.value Val.nil step fuel (a,b,i,n,p) := by
+  induction fuel generalizing a b i n p with
+  | zero => rfl
+  | succ fuel ih =>
+    rw [«FN2-POOL-COMPARE-LOOP».go, Countdown.value_succ]
+    simp only [step]
+    split_ifs <;> simp_all only [ih]
+
+theorem as_value (a b i n p : Val) :
+    «FN2-POOL-COMPARE-LOOP» a b i n p =
+      Countdown.value Val.nil step (measure (a,b,i,n,p) + 1) (a,b,i,n,p) := by
+  simp only [«FN2-POOL-COMPARE-LOOP», Fn2.ACL2.Fuel.nfix_diff_eq, measure, go_value]
+
+theorem body_equation (a b i n p : Val) :
+    bodyValue a b i n p = «FN2-POOL-COMPARE-LOOP» a b i n p := by
+  have h := Countdown.value_fixedpoint Val.nil measure step decreases (a,b,i,n,p)
+  rw [← as_value] at h
+  simp only [step] at h
+  unfold bodyValue
+  split_ifs at h ⊢ <;> simp_all [← as_value]
+
+/-- Actual emitted function, all arguments and arbitrary pool environment.
+There is a result at every sufficient fuel, not merely a stable exhausted NIL. -/
+theorem certificate (a b i n p : Val) :
+    ∃ result, (∀ fuel, measure (a,b,i,n,p) < fuel →
+      Countdown.run step fuel (a,b,i,n,p) = .ok result) ∧
+      result = «FN2-POOL-COMPARE-LOOP» a b i n p := by
+  obtain ⟨result, hr⟩ := Countdown.certificate measure step decreases (a,b,i,n,p)
+  refine ⟨result, hr, ?_⟩
+  rw [as_value]
+  simp [Countdown.value, hr (measure (a,b,i,n,p) + 1) (by omega)]
+
+theorem positive (p : Val) :
+    measure (.int 0,.int 0,.int 0,.int 1,p) < 2 ∧
+    Countdown.run step 2 (.int 0,.int 0,.int 0,.int 1,p) =
+      .ok (Val.ofList [.sym ":EQUAL",.int 1]) := by
+  simp [measure, Countdown.run, step, «NATP», «NOT», «NFIX», Prim.lt, Prim.integerp,
+    Prim.plus, Val.isInt, Val.toInt, Val.ofBool, Val.truthy, Val.nfix, Val.ofList, Val.nil, Val.t]
+
+theorem underestimated_fuel_rejected (p : Val) :
+    Countdown.run step 1 (.int 0,.int 0,.int 0,.int 1,p) ≠
+      .ok («FN2-POOL-COMPARE-LOOP» (.int 0) (.int 0) (.int 0) (.int 1) p) := by
+  simp [Countdown.run, step, «NATP», «NOT», Prim.lt, Prim.integerp,
+    Prim.plus, Val.isInt, Val.toInt, Val.ofBool, Val.truthy, Val.nil, Val.t]
+
+end Fn2.ACL2.PoolCompare

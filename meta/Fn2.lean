@@ -11,6 +11,9 @@ public import Fn2.ACL2.SimpAttr
 public import Fn2.ACL2.Read
 public import Fn2.ACL2.Faithful
 public import Fn2.ACL2.Fuel
+public import Fn2.ACL2.Countdown
+public import Fn2.ACL2.PrimitiveContracts
+public import Fn2.ACL2.PoolCompare
 public import Fn2.ACL2.Pres
 public import Fn2.Arms
 public import Fn2.ArmsLemmas
@@ -23,6 +26,9 @@ public import Fn2.Arms.Inv
 public import Fn2.Arms.Columns
 public import Fn2.Arms.ServedColumns
 public import Fn2.Arms.Core
+public import Fn2.Arms.Wrapper
+public import Fn2.Instances.CoreTranslation
+public import Fn2.Arms.CoreValidation
 public import Fn2.Arms.Validation
 public import Fn2.Arms.CoreTeeth
 public import Fn2.Arms.ServedCore

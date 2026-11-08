@@ -137,6 +137,15 @@ open Fn2.ACL2
 abbrev eval (fns : Fns) (env : Env) (e : Term) (fuel : Nat) :=
   Fn2.Pathway.eval ⟨[], [], [], [], fns⟩ env e fuel
 
+/-- Compose a checked canonical decode with a body-evaluation certificate without
+normalizing the concrete interpreter during proof search. -/
+theorem evalExport_of_decoded_by_definition {fuel : Nat} {body : Object} {term : Term}
+    {fns : Fns} {env : Env} {v : Val}
+    (decoded : readTerm fuel body = some term)
+    (evaluated : eval fns env term fuel = .ok v) :
+    evalExport fuel body fns env = .ok v := by
+  simpa only [evalExport, decoded] using evaluated
+
 theorem eval_args_nil (fns : Fns) (env : Env) (fuel : Nat) :
     ([] : List Term).mapM (fun t => eval fns env t fuel) = .ok [] := rfl
 
@@ -180,6 +189,12 @@ theorem eval_if {fns : Fns} {env : Env} {fuel : Nat}
   rw [hc]
   change (if vc.truthy then eval fns env a fuel else eval fns env b fuel) = _
   split <;> simp_all
+
+/-- RETURN-LAST evaluates only its logical final argument, with one syntax step. -/
+theorem eval_return_last {fns : Fns} {env : Env} {fuel : Nat}
+    {a b c : Term} {v : Val} (hc : eval fns env c fuel = .ok v) :
+    eval fns env (.app "RETURN-LAST" [a,b,c]) (fuel + 1) = .ok v := by
+  exact hc
 
 theorem eval_lam {fns : Fns} {env : Env} {fuel : Nat}
     {formals : List String} {body : Term} {actuals : List Term} {vs : List Val} {v : Val}

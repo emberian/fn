@@ -943,6 +943,13 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--world-bodies":
+        # after every emitter: fill the world-bodies blocks of the Lean files under FN2_DIR
+        src, fn2_dir = sys.argv[2:4]
+        top = as_list(read_all(open(src, newline='').read())[0])
+        emb = {str(as_list(e)[0]): as_list(e)[1] for e in as_list(top[2])[1:]}
+        refresh_world_bodies(fn2_dir, world_layout(emb), "Fn2.Instances.LayerAWorld")
+        return
     if len(sys.argv) > 1 and sys.argv[1] == "--certificate":
         from emit_certificate import main as certificate_main
         certificate_main(*sys.argv[2:])

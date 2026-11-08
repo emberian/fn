@@ -117,46 +117,51 @@ def lean_object(x):
     raise ValueError('unknown canonical object ' + str(tag))
 
 
-def expression_value(t, defined, env):
+def expression_value(t, defined, env, lambdas=None):
     if isinstance(t, List):
         if not t: return 'Val.nil'
         if t[0] == 'QUOTE': return val(t[1])
         if is_lambda(t[0]):
             names = [str(v) for v in as_list(t[0][1])]
-            vals = [expression_value(a, defined, env) for a in t[1:]]
-            return expression_value(t[0][2], defined, dict(zip(names, vals)))
-        f = str(t[0]); args = [expression_value(a, defined, env) for a in t[1:]]
+            vals = [expression_value(a, defined, env, lambdas) for a in t[1:]]
+            if lambdas and id(t) in lambdas:
+                return "(" + lambdas[id(t)] + " " + " ".join(vals) + ")"
+            return expression_value(t[0][2], defined, dict(zip(names, vals)), lambdas)
+        f = str(t[0]); args = [expression_value(a, defined, env, lambdas) for a in t[1:]]
         if f == 'IF': return f'(if ({args[0]}).truthy then {args[1]} else {args[2]})'
         if f == 'RETURN-LAST': return args[2]
         return '(' + (NATIVE.get(f) or ident(f)) + ' ' + ' '.join(args) + ')'
     return env.get(str(t), val(t)) if str(t) not in env else env[str(t)]
 
 
-def expression_proof(t, defined, env, indent='  '):
+def expression_proof(t, defined, env, indent='  ', dispatch=None, lambdas=None):
     """A structural proof proposal: calls use the concrete dispatch equation;
     the kernel's generic evaluation lemmas supply the composition."""
-    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ')
+    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ', dispatch, lambdas)
     def args_proof(args, pad=None):
         pad = pad or indent+'  '
         if not args: return [pad+'rfl']
         return ([pad+'refine Translation.eval_args_cons ?_ ?_',pad+'·']
-                + expression_proof(args[0],defined,env,pad+'  ')
+                + expression_proof(args[0],defined,env,pad+'  ',dispatch,lambdas)
                 + [pad+'·'] + args_proof(args[1:],pad+'  '))
     if not isinstance(t,List) or not t or t[0] == 'QUOTE': return [indent+'rfl']
     if is_lambda(t[0]):
         names=[str(v) for v in as_list(t[0][1])]
-        vals=[expression_value(a,defined,env) for a in t[1:]]
+        vals=[expression_value(a,defined,env,lambdas) for a in t[1:]]
         return [indent+'refine Translation.eval_lam (vs := ['+', '.join(vals)+']) ?_ ?_',
-                indent+'·']+args_proof(t[1:])+[indent+'·']+sub(t[0][2],dict(zip(names,vals)))
+                indent+'·']+args_proof(t[1:])+[indent+'·']+([indent+'  exact '+lambdas[id(t)]+'.eval '+ ' '.join(vals)] if lambdas and id(t) in lambdas else sub(t[0][2],dict(zip(names,vals))))
     if t[0] == 'IF':
-        vs=[expression_value(a,defined,env) for a in t[1:]]
+        vs=[expression_value(a,defined,env,lambdas) for a in t[1:]]
         lines=[indent+f'refine Translation.eval_if (vc := {vs[0]}) (va := {vs[1]}) (vb := {vs[2]}) ?_ ?_ ?_']
         for a in t[1:]: lines += [indent+'·']+sub(a)
         return lines
     if t[0] == 'RETURN-LAST':
-        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent)
-    vals=[expression_value(a,defined,env) for a in t[1:]]
-    return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ (by rfl)', indent+'·']+args_proof(t[1:])
+        if dispatch is not None:
+            return [indent+'refine Translation.eval_return_last ?_']+expression_proof(t[3],defined,env,indent,dispatch,lambdas)
+        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent,dispatch,lambdas)
+    vals=[expression_value(a,defined,env,lambdas) for a in t[1:]]
+    proof = ('by exact '+ident(str(t[0]))+'.dispatched (err := '+lean_str('no function '+str(t[0])+' of arity '+str(len(vals)))+') '+ ' '.join(vals)) if dispatch and str(t[0]) in dispatch else 'by rfl'
+    return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ ('+proof+')', indent+'·']+args_proof(t[1:])
 
 
 def fn_of(row):
@@ -181,7 +186,7 @@ def evaluator_certificate(fs, allf):
         else:
             arities = {'CONS':2, 'EQUAL':2, 'CAR':1, 'CDR':1, 'NTH':2, 'MV-NTH':2,
                        'UPDATE-NTH':3, '<':2, 'INTEGERP':1, 'BINARY-+':2, 'LEN':1,
-                       'CONSP':1}
+                       'CONSP':1, 'EXPT':2, 'MEMBER-EQUAL':2}
             if c not in arities: raise ValueError('no evaluator signature: ' + c)
             args = ['A'+str(i) for i in range(arities[c])]
         sigs.append('(' + c + ' ' + ' '.join(args) + ')')
@@ -227,6 +232,37 @@ def emit_echo_validation(kd, tuple_, out):
     target = out.parent/'Arms'/'Validation.lean' if out.name == 'Instances' else out/'Validation.lean'
     target.parent.mkdir(parents=True,exist_ok=True)
     target.write_text(as_module(template, import_all=CORE_STRING_BODIES))
+
+
+def write_identity(src, destination, p, fs, allf, want, scope):
+    root = Path(__file__).resolve().parents[2]
+    tracked = sorted(root.glob('books/*.lisp')) + sorted((root/'meta').rglob('*.lean'))
+    tracked += sorted((root/'meta/emit').glob('*.py')) + sorted((root/'meta/emit').glob('*.in'))
+    tracked += sorted((root/'meta/emit').glob('*.lisp')) + sorted((root/'meta/emit').glob('*.lsp'))
+    tracked += [root/'meta/emit/emit.sh']
+    digest = lambda b: hashlib.sha256(b).hexdigest()
+    try:
+        revision = subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
+    except subprocess.CalledProcessError:
+        revision = os.environ.get('FN2_EMIT_SRC', 'unrecorded')
+    identity = dict(format=1, source=revision,
+        source_files={str(p.relative_to(root)):digest(p.read_bytes()) for p in tracked},
+        package_sha256=digest(Path(src).read_bytes()),
+        lean_toolchain=(root/'meta/lean-toolchain').read_text().strip(),
+        mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
+        acl2_toolchain=json.loads(os.environ.get('FN2_ACL2_IDENTITY', '"UNRECORDED"')),
+        exporting_runtime=[str(x) for x in decode(p[':TOOLCHAIN'])] if ':TOOLCHAIN' in p else 'UNRECORDED',
+        validated_body_candidates=sorted(want),
+        unvalidated_functions=sorted(set(allf)-want),
+        absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
+        guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
+        primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
+        primitive_domain_obligations={
+            'representation': 'Integer Val, ACL2/COMMON-LISP imported names and KEYWORD names; no rational or complex lowering',
+            'trusted_correspondence': 'Cross-kernel object correspondence; mathematical native contracts are in PrimitiveContracts and Faithful',
+            'scope': scope},
+        status='PROPOSED: kernel gates required; see the scoped check record')
+    Path(destination).write_text(json.dumps(identity,indent=2)+'\n')
 
 
 def main(src, outdir, bookpath=None):
@@ -328,34 +364,8 @@ def main(src, outdir, bookpath=None):
     for f,d in fs:
         C += body_certificate(f,d,allf)
     Path(bookpath or out/'bridge-body.lisp').write_text('\n\n'.join(C)+'\n')
-    root = Path(__file__).resolve().parents[2]
-    tracked = sorted(root.glob('books/*.lisp')) + sorted((root/'meta').rglob('*.lean'))
-    tracked += sorted((root/'meta/emit').glob('*.py')) + sorted((root/'meta/emit').glob('*.in'))
-    tracked += [root/'meta/emit/print-world.lisp', root/'meta/emit/print-certificate.lsp',
-                root/'meta/emit/bridge-body.lisp', root/'meta/emit/emit.sh']
-    digest = lambda b: hashlib.sha256(b).hexdigest()
-    try:
-        revision = subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
-    except subprocess.CalledProcessError:
-        revision = os.environ.get('FN2_EMIT_SRC', 'unrecorded')
-    identity = dict(format=1, source=revision,
-        source_files={str(p.relative_to(root)):digest(p.read_bytes()) for p in tracked},
-        package_sha256=digest(Path(src).read_bytes()),
-        lean_toolchain=(root/'meta/lean-toolchain').read_text().strip(),
-        mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
-        acl2_toolchain=json.loads(os.environ.get('FN2_ACL2_IDENTITY', '"UNRECORDED"')),
-        exporting_runtime=[str(x) for x in decode(p[':TOOLCHAIN'])] if ':TOOLCHAIN' in p else 'UNRECORDED',
-        validated_body_candidates=sorted(want),
-        unvalidated_functions=sorted(set(allf)-want),
-        absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
-        guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
-        primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
-        primitive_domain_obligations={
-            'representation': 'Integer Val, ACL2/COMMON-LISP imported names and KEYWORD names; no rational or complex lowering',
-            'trusted_correspondence': 'CONS EQUAL INTEGERP < NTH MV-NTH UPDATE-NTH retain the existing ACL2/Val primitive correspondence',
-            'scope': 'No recursive body, ASH, division, string conversion or attached executable is certified by this instance'},
-        status='PROPOSED: certify bridge-body.lisp and build BridgeTranslation/Arms.Validation')
-    (out/'bridge-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
+    write_identity(src, out/'bridge-identity.json', p, fs, allf, want,
+        'Nonrecursive echo FREE body closure and whole-core arm; no attached executable')
     print('CERTIFICATE PROPOSAL', len(fs), 'body equations;', len(functions)-len(fs), 'exported functions unvalidated')
     for f,d in fs:
         print(f.name, show(f.body)[:120])

@@ -48,3 +48,18 @@ fi
 python3 -I "$here/emit_embed.py" --certificate "$here/bridge-certificate.sexp" \
   "$root/meta/Fn2/Instances" "$here/bridge-body.lisp" > "$log.certificates"
 tail -1 "$log.certificates"
+
+"$ACL2" --timeout 900 < meta/emit/print-loop-certificate.lsp > "$log.loop" 2>&1 || :
+if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.loop" >/dev/null; then
+  tail -20 "$log.loop"; echo "canonical loop export refused (log $log.loop)"; exit 1
+fi
+python3 -I "$here/emit_loop_certificate.py" "$here/loop-certificate.sexp"
+
+"$ACL2" --timeout 900 < meta/emit/print-core-certificate.lsp > "$log.core" 2>&1 || :
+if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.core" >/dev/null; then
+  tail -20 "$log.core"; echo "canonical core export refused (log $log.core)"; exit 1
+fi
+python3 -I "$here/emit_core_certificate.py" "$here/core-certificate.sexp"
+
+# the world-bodies blocks of every module that unfolds world bodies (the certificates' among them)
+python3 -I "$here/emit_embed.py" --world-bodies "$here/world-probe.sexp" "$root/meta/Fn2"
