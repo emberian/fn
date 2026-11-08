@@ -360,6 +360,50 @@ inductive Term where
 /-- The functions a term may call: natives first, then the translated operations. -/
 abbrev Fns := String → List Val → Option Val
 
+/-! The translated world is emitted as modules (by kind closure, then call depth), each with its
+own `Dispatch` tree; `KeyIx` maps a name's key to its module's number, so `fns` searches the
+index, then that module's tree. A function's dispatch equation is assembled from three facts
+that each live where they are cheap: its key (`nameKey`, a module of names only), its index
+entry (the index module) and its row in its module's tree (beside the module). -/
+
+inductive KeyIx where
+  | leaf
+  | node (key val : Nat) (l r : KeyIx)
+  deriving Inhabited
+
+def KeyIx.find (k : Nat) : KeyIx → Option Nat
+  | .leaf => none
+  | .node k' v l r => if k < k' then l.find k else if k == k' then some v else r.find k
+
+/-- The functions of modules `T i`, found through the index `ix`. -/
+def Dispatch.via (ix : KeyIx) (T : Nat → Dispatch) : Fns := fun f args =>
+  match ix.find (nameKey f) with
+  | some i => match (T i).find (nameKey f) with
+    | some g => g args
+    | none => none
+  | none => none
+
+/-- The stated guards of modules `G i`; a translated function with no stated guard (and none
+outside the subset) has guard `T`. -/
+def Dispatch.guardVia (ix : KeyIx) (G T : Nat → Dispatch) (outside : List String) (f : String)
+    (args : List Val) : Option Val :=
+  match ix.find (nameKey f) with
+  | some i => match (G i).find (nameKey f) with
+    | some g => g args
+    | none => if ((T i).find (nameKey f)).isSome && !outside.contains f then some Val.t else none
+  | none => none
+
+theorem Dispatch.via_eq {ix : KeyIx} {T : Nat → Dispatch} {f : String} {k i : Nat}
+    {g : List Val → Option Val} (args : List Val) (hk : nameKey f = k) (hi : ix.find k = some i)
+    (hg : (T i).find k = some g) : Dispatch.via ix T f args = g args := by
+  subst hk; simp only [Dispatch.via, hi, hg]
+
+theorem Dispatch.guardVia_eq {ix : KeyIx} {G T : Nat → Dispatch} {outside : List String}
+    {f : String} {k i : Nat} {g : List Val → Option Val} (args : List Val) (hk : nameKey f = k)
+    (hi : ix.find k = some i) (hg : (G i).find k = some g) :
+    Dispatch.guardVia ix G T outside f args = g args := by
+  subst hk; simp only [Dispatch.guardVia, hi, hg]
+
 abbrev Env := List (String × Val)
 
 def Env.get? (env : Env) (x : String) : Option Val := (env.find? (·.1 == x)).map (·.2)

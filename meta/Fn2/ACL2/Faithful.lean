@@ -1,4 +1,4 @@
-import Fn2.Instances.LayerAWorld
+import Fn2.Instances.LayerAWorld.Natives
 
 /-!
 # Fn2.ACL2.Faithful: the natives satisfy ACL2's definitions

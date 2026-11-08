@@ -21,11 +21,13 @@ one fails, and the operation is listed as uncovered.
 
 Usage: emit_pres.py WORLD-PROBE.sexp PRES.lean WORLD-NAMESPACE [PHASE.lean]
 """
+import os
+import re
 import sys
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
 from emit_lean import read_all, Atom, Str, List, as_list, is_nil, lean_str, is_lambda, ident, show  # noqa: E402
-from emit_embed import Fn, name_key  # noqa: E402
+from emit_embed import Fn, name_key, subset, partition  # noqa: E402
 
 sys.setrecursionlimit(100000)
 
@@ -380,6 +382,9 @@ def main():
     L.append("/-! ## The core-only operations' facts through the dispatch (`Fn2.Arms.CorePhase.keepsPhase_of_pres`) -/")
     L.append("")
     keeps = []
+    # each such fact goes through its function's key, index entry and module row (emit_embed.py)
+    mod_of = partition(subset(d)[0], d)[0]
+    through = set()
     for o, kn, r, iK, path in opq:
         sm = A.summ.get((o, path))
         if not sm:
@@ -396,7 +401,9 @@ def main():
         L.append(f"theorem {nm} (acts : List Val) (v : Val) (h : fns {lean_str(o)} acts = some v) :")
         L.append(f"    Native.nth (Val.int 0) (Native.nth (Val.int {iK}) (if {r} = 0 then v else Native.nth (Val.int {r}) v)) =")
         L.append(f"      Native.nth (Val.int 0) (Native.nth (Val.int {iK}) (acts.getD {j} Val.nil)) := by")
-        L.append(f"  have h2 : fns {lean_str(o)} acts = {ident(o)}.dispatch acts := (fns_key (k := {name_key(o)}) acts rfl).trans rfl")
+        L.append(f"  have h2 : fns {lean_str(o)} acts = {ident(o)}.dispatch acts :=")
+        L.append(f"    Dispatch.via_eq (T := fnTrees) acts {ident(o)}.key {ident(o)}.ix {ident(o)}.find")
+        through.add(mod_of[o])
         L.append(f"  rw [h2] at h")
         L.append(f"  unfold {ident(o)}.dispatch at h")
         L.append(f"  split at h")
@@ -416,6 +423,11 @@ def main():
     L.append("")
     L.append(f"end {ns}")
     L.append("")
+    at = L.index(f"import {ns}") + 1
+    nix = len([f for f in os.listdir(os.path.join(os.path.dirname(out), ns.split(".")[-1]))
+               if re.fullmatch(r"IndexEqns\d+\.lean", f)])
+    L[at:at] = ([f"import {ns}.{m}Keys" for m in sorted(through)] + [f"import {ns}.{m}Eqns" for m in sorted(through)]
+                + [f"import {ns}.IndexEqns{j + 1}" for j in range(nix)])
     open(out, "w").write("\n".join(L))
     if len(sys.argv) > 4:
         emit_phase(sys.argv[4], ns, keeps)

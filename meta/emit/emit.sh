@@ -1,9 +1,11 @@
 #!/bin/sh
 # Print fn2's world with ACL2 (registry and embedding), then emit the Lean presentation from it:
 #   Fn2/Instances/LayerA.lean       the declaration registry (emit_lean.py)
-#   Fn2/Instances/LayerAWorld.lean  the closed subset's functions, translated (emit_embed.py)
+#   Fn2/Instances/LayerAWorld/*.lean  the closed subset's functions, translated, in modules by
+#                                   reaching kinds and call depth, with their keys, rows and index
+#   Fn2/Instances/LayerAWorld.lean  the aggregate: the dispatch over the modules (emit_embed.py)
 #   Fn2/Instances/LayerAKinds.lean  the kinds in the step language, translated (emit_embed.py)
-#   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations, by rfl (emit_embed.py)
+#   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations (emit_embed.py)
 #   Fn2/Instances/LayerAPres.lean   the projection facts the core contracts read (emit_pres.py)
 #   Fn2/Instances/LayerAPhase.lean  the served kinds' operations that keep PHASE (emit_pres.py)
 # The registry is printed from reference (print-registry.lsp, world.sexp); the embedding from
