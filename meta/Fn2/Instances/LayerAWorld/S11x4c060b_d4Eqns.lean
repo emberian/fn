@@ -13,8 +13,6 @@ set_option maxRecDepth 100000
 namespace Fn2.Instances.LayerAWorld
 open Fn2.ACL2
 
-theorem «FN2-BOOTP».find : S11x4c060b_d4.fnTree.find 1296906701006284215376 = some «FN2-BOOTP».dispatch := by rfl
-theorem «FN2-BOOTP».row (a0 : Val) : «FN2-BOOTP».dispatch [a0] = some («FN2-BOOTP» a0) := by rfl
 theorem «FN2-BOOT-CONFIGP».find : S11x4c060b_d4.fnTree.find 93451976566179213791406778892308531024 = some «FN2-BOOT-CONFIGP».dispatch := by rfl
 theorem «FN2-BOOT-CONFIGP».row (a0 : Val) : «FN2-BOOT-CONFIGP».dispatch [a0] = some («FN2-BOOT-CONFIGP» a0) := by rfl
 theorem «FN2-CNS-EDGESP».find : S11x4c060b_d4.fnTree.find 1425963997901725891833207349138256 = some «FN2-CNS-EDGESP».dispatch := by rfl
@@ -51,6 +49,8 @@ theorem «FN2-FC-CONTEXTP».find : S11x4c060b_d4.fnTree.find 3650467834664159603
 theorem «FN2-FC-CONTEXTP».row (a0 : Val) : «FN2-FC-CONTEXTP».dispatch [a0] = some («FN2-FC-CONTEXTP» a0) := by rfl
 theorem «FN2-ALLOC-EDGESP».find : S11x4c060b_d4.fnTree.find 93451976565866087746372484539873579856 = some «FN2-ALLOC-EDGESP».dispatch := by rfl
 theorem «FN2-ALLOC-EDGESP».row (a0 : Val) : «FN2-ALLOC-EDGESP».dispatch [a0] = some («FN2-ALLOC-EDGESP» a0) := by rfl
+theorem «FN2-BOOTP».find : S11x4c060b_d4.fnTree.find 1296906701006284215376 = some «FN2-BOOTP».dispatch := by rfl
+theorem «FN2-BOOTP».row (a0 : Val) : «FN2-BOOTP».dispatch [a0] = some («FN2-BOOTP» a0) := by rfl
 theorem «FN2-AUTHP».find : S11x4c060b_d4.fnTree.find 1296906701002090235984 = some «FN2-AUTHP».dispatch := by rfl
 theorem «FN2-AUTHP».row (a0 : Val) : «FN2-AUTHP».dispatch [a0] = some («FN2-AUTHP» a0) := by rfl
 theorem «FN2-CNSP».find : S11x4c060b_d4.fnTree.find 5066041800822510416 = some «FN2-CNSP».dispatch := by rfl

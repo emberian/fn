@@ -163,8 +163,6 @@ theorem «FN2-CORE-READS».find : S11x4c060b_d6to12.fnTree.find 1425963997901744
 theorem «FN2-CORE-READS».row (a0 : Val) : «FN2-CORE-READS».dispatch [a0] = some («FN2-CORE-READS» a0) := by rfl
 theorem «FN2-CORE-BOOT-CONFIG».find : S11x4c060b_d6to12.fnTree.find 401373183099627390563674361382746311749446027591 = some «FN2-CORE-BOOT-CONFIG».dispatch := by rfl
 theorem «FN2-CORE-BOOT-CONFIG».row (a0 : Val) : «FN2-CORE-BOOT-CONFIG».dispatch [a0] = some («FN2-CORE-BOOT-CONFIG» a0) := by rfl
-theorem «FN2-BOOT-WFP».find : S11x4c060b_d6to12.fnTree.find 21758483854629847638172190288 = some «FN2-BOOT-WFP».dispatch := by rfl
-theorem «FN2-BOOT-WFP».row (a0 : Val) : «FN2-BOOT-WFP».dispatch [a0] = some («FN2-BOOT-WFP» a0) := by rfl
 theorem «FN2-CORE-TRACE».find : S11x4c060b_d6to12.fnTree.find 1425963997901744273248767086510917 = some «FN2-CORE-TRACE».dispatch := by rfl
 theorem «FN2-CORE-TRACE».row (a0 : Val) : «FN2-CORE-TRACE».dispatch [a0] = some («FN2-CORE-TRACE» a0) := by rfl
 theorem «FN2-BOOT-CONFIG-WFP».find : S11x4c060b_d6to12.fnTree.find 1567863996477726964488610473340500963050866256 = some «FN2-BOOT-CONFIG-WFP».dispatch := by rfl
@@ -185,6 +183,8 @@ theorem «FN2-REC-CAND-WFP».find : S11x4c060b_d6to12.fnTree.find 93451976571118
 theorem «FN2-REC-CAND-WFP».row (a0 : Val) : «FN2-REC-CAND-WFP».dispatch [a0] = some («FN2-REC-CAND-WFP» a0) := by rfl
 theorem «FN2-ALLOC-EDGES-WFP».find : S11x4c060b_d6to12.fnTree.find 1567863996472473581195844389582119661355877968 = some «FN2-ALLOC-EDGES-WFP».dispatch := by rfl
 theorem «FN2-ALLOC-EDGES-WFP».row (a0 : Val) : «FN2-ALLOC-EDGES-WFP».dispatch [a0] = some («FN2-ALLOC-EDGES-WFP» a0) := by rfl
+theorem «FN2-BOOT-WFP».find : S11x4c060b_d6to12.fnTree.find 21758483854629847638172190288 = some «FN2-BOOT-WFP».dispatch := by rfl
+theorem «FN2-BOOT-WFP».row (a0 : Val) : «FN2-BOOT-WFP».dispatch [a0] = some («FN2-BOOT-WFP» a0) := by rfl
 theorem «FN2-AUTH-WFP».find : S11x4c060b_d6to12.fnTree.find 21758483854559484340013057616 = some «FN2-AUTH-WFP».dispatch := by rfl
 theorem «FN2-AUTH-WFP».row (a0 : Val) : «FN2-AUTH-WFP».dispatch [a0] = some («FN2-AUTH-WFP» a0) := by rfl
 theorem «FN2-CNS-WFP».find : S11x4c060b_d6to12.fnTree.find 84994077557428234329998928 = some «FN2-CNS-WFP».dispatch := by rfl
@@ -363,8 +363,6 @@ theorem «FN2-CORE-READS».gfind : S11x4c060b_d6to12.guardTree.find 142596399790
 theorem «FN2-CORE-READS».grow (a0 : Val) : «FN2-CORE-READS».guardDispatch [a0] = some («FN2-CORE-READS».guard a0) := by rfl
 theorem «FN2-CORE-BOOT-CONFIG».gfind : S11x4c060b_d6to12.guardTree.find 401373183099627390563674361382746311749446027591 = some «FN2-CORE-BOOT-CONFIG».guardDispatch := by rfl
 theorem «FN2-CORE-BOOT-CONFIG».grow (a0 : Val) : «FN2-CORE-BOOT-CONFIG».guardDispatch [a0] = some («FN2-CORE-BOOT-CONFIG».guard a0) := by rfl
-theorem «FN2-BOOT-WFP».gfind : S11x4c060b_d6to12.guardTree.find 21758483854629847638172190288 = some «FN2-BOOT-WFP».guardDispatch := by rfl
-theorem «FN2-BOOT-WFP».grow (a0 : Val) : «FN2-BOOT-WFP».guardDispatch [a0] = some («FN2-BOOT-WFP».guard a0) := by rfl
 theorem «FN2-CORE-TRACE».gfind : S11x4c060b_d6to12.guardTree.find 1425963997901744273248767086510917 = some «FN2-CORE-TRACE».guardDispatch := by rfl
 theorem «FN2-CORE-TRACE».grow (a0 : Val) : «FN2-CORE-TRACE».guardDispatch [a0] = some («FN2-CORE-TRACE».guard a0) := by rfl
 theorem «FN2-BOOT-CONFIG-WFP».gfind : S11x4c060b_d6to12.guardTree.find 1567863996477726964488610473340500963050866256 = some «FN2-BOOT-CONFIG-WFP».guardDispatch := by rfl
@@ -385,6 +383,8 @@ theorem «FN2-REC-CAND-WFP».gfind : S11x4c060b_d6to12.guardTree.find 9345197657
 theorem «FN2-REC-CAND-WFP».grow (a0 : Val) : «FN2-REC-CAND-WFP».guardDispatch [a0] = some («FN2-REC-CAND-WFP».guard a0) := by rfl
 theorem «FN2-ALLOC-EDGES-WFP».gfind : S11x4c060b_d6to12.guardTree.find 1567863996472473581195844389582119661355877968 = some «FN2-ALLOC-EDGES-WFP».guardDispatch := by rfl
 theorem «FN2-ALLOC-EDGES-WFP».grow (a0 : Val) : «FN2-ALLOC-EDGES-WFP».guardDispatch [a0] = some («FN2-ALLOC-EDGES-WFP».guard a0) := by rfl
+theorem «FN2-BOOT-WFP».gfind : S11x4c060b_d6to12.guardTree.find 21758483854629847638172190288 = some «FN2-BOOT-WFP».guardDispatch := by rfl
+theorem «FN2-BOOT-WFP».grow (a0 : Val) : «FN2-BOOT-WFP».guardDispatch [a0] = some («FN2-BOOT-WFP».guard a0) := by rfl
 theorem «FN2-AUTH-WFP».gfind : S11x4c060b_d6to12.guardTree.find 21758483854559484340013057616 = some «FN2-AUTH-WFP».guardDispatch := by rfl
 theorem «FN2-AUTH-WFP».grow (a0 : Val) : «FN2-AUTH-WFP».guardDispatch [a0] = some («FN2-AUTH-WFP».guard a0) := by rfl
 theorem «FN2-CNS-WFP».gfind : S11x4c060b_d6to12.guardTree.find 84994077557428234329998928 = some «FN2-CNS-WFP».guardDispatch := by rfl

@@ -12,8 +12,6 @@ set_option maxRecDepth 100000
 namespace Fn2.Instances.LayerAWorld
 open Fn2.ACL2
 
-theorem «FN2-BOOTP».key : nameKey "FN2-BOOTP" = 1296906701006284215376 :=
-  Nat.eq_of_beq_eq_true rfl
 theorem «FN2-BOOT-CONFIGP».key : nameKey "FN2-BOOT-CONFIGP" = 93451976566179213791406778892308531024 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-CNS-EDGESP».key : nameKey "FN2-CNS-EDGESP" = 1425963997901725891833207349138256 :=
@@ -49,6 +47,8 @@ theorem «FN2-REC-CANDP».key : nameKey "FN2-REC-CANDP" = 5570171867079664904124
 theorem «FN2-FC-CONTEXTP».key : nameKey "FN2-FC-CONTEXTP" = 365046783466415960348651471395902544 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-ALLOC-EDGESP».key : nameKey "FN2-ALLOC-EDGESP" = 93451976565866087746372484539873579856 :=
+  Nat.eq_of_beq_eq_true rfl
+theorem «FN2-BOOTP».key : nameKey "FN2-BOOTP" = 1296906701006284215376 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-AUTHP».key : nameKey "FN2-AUTHP" = 1296906701002090235984 :=
   Nat.eq_of_beq_eq_true rfl

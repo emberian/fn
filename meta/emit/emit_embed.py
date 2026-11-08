@@ -792,7 +792,7 @@ def plist(xs):
     return {str(k): v for k, v in zip(xs[::2], xs[1::2])}
 
 
-def arm(e, rc="{}"):
+def arm(e, rc="{}", cc=""):
     # an arm as the declaration writes it; Fn2.Arms.readSteps reads its steps. RC is the kind's
     # refusal context (the facts `(:refuse WORD)` desugars by: machine-arms.lisp fn2-arms-steps :refuse)
     e = as_list(e)
@@ -806,7 +806,7 @@ def arm(e, rc="{}"):
         sigl = "none"
     return (f"{{ tag := {lean_str(str(e[0]))}, sig := {sigl},\n"
             f"      decl := {val(d[':DECL'])},\n"
-            f"      fn := {lean_str(str(d[':FUNCTION']))}, refuse := {rc} }}")
+            f"      fn := {lean_str(str(d[':FUNCTION']))}, refuse := {rc}{cc} }}")
 
 
 def refuse_ctx(cols, subarms):
@@ -816,6 +816,10 @@ def refuse_ctx(cols, subarms):
     sub = any(str(as_list(a)[0]) == "REFUSE" for a in subarms)
     fl = "none" if field is None else f"(some {lean_str(field)})"
     return f"{{ field := {fl}, sub := {'true' if sub else 'false'} }}"
+
+
+def contains_atom(tree, atom):
+    return any(contains_atom(x, atom) for x in tree) if isinstance(tree, List) else str(tree) == atom
 
 
 def coltype(k):
@@ -849,6 +853,15 @@ def kind(e, reg_links=None):
         raw_links = reg_links.get(str(e[0]), List([]))
     links = [link_entry(l) for l in as_list(raw_links or List([]))]
     rc = refuse_ctx(cols, as_list(d[":SUBARMS"]))
+    # The independent reader expands :commit. Export declaration facts only;
+    # never feed it the generator's already-expanded body.
+    cc = ""
+    if contains_atom(e, ":COMMIT"):
+        cc = (", commit := { phases := [" + ", ".join(lean_str(str(p)) for p in as_list(d[":STATES"]))
+              + "], tickets := [" + ", ".join(lean_str(str(c[0])) for c in cols if str(c[1]) == ":U60") + "] }")
+    # The generator expands subarms with a NIL tag, even when their name
+    # happens to equal a phase. Run arms/handlers use their declared tag.
+    subcc = cc.replace("commit := {", 'commit := { tag := "NIL",')
     return (f"{{ name := {lean_str(str(e[0]))},\n"
             f"    childForm := {'true' if str(d[':FORM']) == ':CHILDREN' else 'false'},\n"
             f"    tuple := [{', '.join(lean_str(str(x)) for x in as_list(d[':TUPLE']))}],\n"
@@ -858,9 +871,9 @@ def kind(e, reg_links=None):
             f"    table := [{', '.join(lean_str(str(as_list(c)[0])) for c in as_list(d[':TABLE']))}],\n"
             f"    stops := [{', '.join(lean_str(str(x).lstrip(':')) for x in as_list(d[':STOPS']))}],\n"
             f"    links := [{', '.join(links)}],\n"
-            f"    subarms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':SUBARMS']))}],\n"
-            f"    arms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':ARMS']))}],\n"
-            f"    observes := [\n    {(',' + chr(10) + '    ').join(arm(a, rc) for a in as_list(d[':OBSERVES']))}] }}")
+            f"    subarms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc, subcc) for a in as_list(d[':SUBARMS']))}],\n"
+            f"    arms := [\n    {(',' + chr(10) + '    ').join(arm(a, rc, cc) for a in as_list(d[':ARMS']))}],\n"
+            f"    observes := [\n    {(',' + chr(10) + '    ').join(arm(a, rc, cc) for a in as_list(d[':OBSERVES']))}] }}")
 
 
 def op(e):
@@ -899,7 +912,7 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
     cs = []
     for c in as_list(emb[":CONSTANTS"]):
         c = list(c)
-        v = c[2] if len(c) == 3 else c[1]
+        v = alist_value(c)
         cs.append(f"({lean_str(str(c[0]))}, {val(v)})")
     waits = []
     for name, row in registry_waits:
@@ -942,6 +955,13 @@ def emit_kinds(emb, registry_waits, path, ns, world_ns, reg_links=None):
     return len(kinds), len(ops)
 
 
+def alist_value(row):
+    """CDR of a printed association, including list-valued constants."""
+    if len(row) == 3 and str(row[1]) == ".":
+        return row[2]
+    return List(row[1:])
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--world-bodies":
         # after every emitter: fill the world-bodies blocks of the Lean files under FN2_DIR
@@ -949,6 +969,10 @@ def main():
         top = as_list(read_all(open(src, newline='').read())[0])
         emb = {str(as_list(e)[0]): as_list(e)[1] for e in as_list(top[2])[1:]}
         refresh_world_bodies(fn2_dir, world_layout(emb), "Fn2.Instances.LayerAWorld")
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "--served-certificate":
+        from emit_served_certificate import generate
+        generate(sys.argv[2])
         return
     if len(sys.argv) > 1 and sys.argv[1] == "--certificate":
         from emit_certificate import main as certificate_main

@@ -1,0 +1,84 @@
+-- Shared proof for a handler whose complete declaration is (:wake).
+theorem handler_run (id slot kind ordinal event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  runArm (coreWorld world coreTuple) (coreKind echoKind coreTuple) echoFree true
+    ([id,slot,kind,ordinal,event,outcome,reason,count,aux0,aux1] ++ @CORE_VALUES@) 1 =
+    .ok (Val.ofList (id :: @CORE_VALUES@)) := by
+  unfold runArm
+  simp only [coreKind, Bool.not_true, Bool.true_eq_false, ↓reduceIte, List.length_append,
+    List.length_cons, List.length_nil]
+  have hl : coreTuple.length = @CORE_SIZE@ := by rfl
+  simp only [hl]
+  change (do
+    let reads ← rowReads (coreWorld world coreTuple) (coreKind echoKind coreTuple)
+      (coreTuple.zip @CORE_VALUES@) id slot
+    let d ← echoFree.read
+    let f : Frame := { kind := coreKind echoKind coreTuple, observe := true, refusal := d.onRefusal, base := [("ID",id),("SLOT",slot),("KIND",kind),("ORDINAL",ordinal),("EVENT",event),("OUTCOME",outcome),("REASON",reason),("COUNT",count),("AUX0",aux0),("AUX1",aux1)] }
+    match ← run (coreWorld world coreTuple) f 1
+      {stobjs := coreTuple.zip @CORE_VALUES@, vars := reads ++ f.base} d.steps with
+    | .done v => pure v
+    | .again _ => throw ":repeat-next outside a :repeat") = _
+  rw [echo_row_reads]
+  rfl
+
+theorem handler_whole (id event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  runCore world coreTuple echoKind echoFree true
+    [id,event,outcome,reason,count,aux0,aux1,Val.ofList @CORE_VALUES@] 1 =
+    .ok («@CORE_FUNCTION@» id event outcome reason count aux0 aux1 (Val.ofList @CORE_VALUES@)) := by
+  have shape : runCore world coreTuple echoKind echoFree true
+      [id,event,outcome,reason,count,aux0,aux1,Val.ofList @CORE_VALUES@] 1 =
+      (do
+        let code ← callFn world "@KIND@-SNAPSHOT-READ-CODE" [id,Val.ofList @CORE_VALUES@]
+        if code == Val.sym ":OK" then do
+          let slot ← callFn world "FN2-MACHINE-SLOT" [id,Val.ofList @CORE_VALUES@]
+          let kind ← const world "*@KIND@-KIND*"
+          let v ← runArm (coreWorld world coreTuple) (coreKind echoKind coreTuple) echoFree true
+            ([id,slot,kind,ordOf world echoKind,event,outcome,reason,count,aux0,aux1] ++ @CORE_VALUES@) 1
+          finish true coreTuple v
+        else refusedEntry world coreTuple true @CORE_VALUES@) := by
+    simp [runCore, nCore, toList_ofList']
+    rfl
+  rw [shape]
+  have snapshot (i c : Val) : callFn world "@KIND@-SNAPSHOT-READ-CODE" [i,c] =
+      .ok («@KIND@-SNAPSHOT-READ-CODE» i c) := by
+    @SNAPSHOT_CALL@
+  rw [snapshot]
+  simp only [except_ok_bind]
+  by_cases h : «@KIND@-SNAPSHOT-READ-CODE» id (Val.ofList @CORE_VALUES@) = .sym ":OK"
+  · simp only [h, beq_self_eq_true, ↓reduceIte]
+    have slot (i c : Val) : callFn world "FN2-MACHINE-SLOT" [i,c] =
+        .ok («FN2-MACHINE-SLOT» i c) := by
+      @SLOT_CALL@
+    rw [slot]
+    simp only [except_ok_bind]
+    have kind : const world "*@KIND@-KIND*" = .ok (.int @KIND_NUMBER@) := by rfl
+    rw [kind]
+    simp only [except_ok_bind]
+    rw [handler_run]
+    have he : «@CORE_FUNCTION@» id event outcome reason count aux0 aux1 (Val.ofList @CORE_VALUES@) =
+        Val.ofList [id,Val.ofList @CORE_VALUES@] := by
+      simp only [«@CORE_FUNCTION@», «EQ», Prim.equal, h, beq_self_eq_true,
+        Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+      rfl
+    rw [he]
+    rfl
+  · simp only [beq_eq_false_iff_ne.mpr h, Bool.false_eq_true, ↓reduceIte]
+    simp only [«@CORE_FUNCTION@», «EQ», Prim.equal, beq_eq_false_iff_ne.mpr h,
+      Val.ofBool, Bool.false_eq_true, ↓reduceIte]
+    simp only [refusedEntry, coreStop, const, world, consts, coreTuple, callFn,
+      nativeCall_none "FN2-CONTROL-RECORD-STOP" _ (by decide +kernel),
+      Fn2.Instances.LayerAWorld.«FN2-CONTROL-RECORD-STOP».fns_eq]
+    rfl
+
+def image (kids : Fin @CORE_SIZE@ → Val) : Val := Val.ofList (List.ofFn kids)
+
+theorem handler_certificate (id event outcome reason count aux0 aux1 : Val) (kids : Fin @CORE_SIZE@ → Val) :
+    ∃ fuel result,
+      runCore world coreTuple echoKind echoFree true
+        [id,event,outcome,reason,count,aux0,aux1,image kids] fuel = .ok result ∧
+      result = «@CORE_FUNCTION@» id event outcome reason count aux0 aux1 (image kids) := by
+  refine ⟨1, _, ?_, rfl⟩
+  simpa only [image, List.ofFn_succ, List.ofFn_zero] using
+    handler_whole id event outcome reason count aux0 aux1 @IMAGE_ARGUMENTS@
+
+#print axioms handler_certificate
+end Fn2.Arms.Served.@NAMESPACE@

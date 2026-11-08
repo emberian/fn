@@ -162,8 +162,6 @@ theorem «FN2-CORE-READS».key : nameKey "FN2-CORE-READS" = 14259639979017442732
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-CORE-BOOT-CONFIG».key : nameKey "FN2-CORE-BOOT-CONFIG" = 401373183099627390563674361382746311749446027591 :=
   Nat.eq_of_beq_eq_true rfl
-theorem «FN2-BOOT-WFP».key : nameKey "FN2-BOOT-WFP" = 21758483854629847638172190288 :=
-  Nat.eq_of_beq_eq_true rfl
 theorem «FN2-CORE-TRACE».key : nameKey "FN2-CORE-TRACE" = 1425963997901744273248767086510917 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-BOOT-CONFIG-WFP».key : nameKey "FN2-BOOT-CONFIG-WFP" = 1567863996477726964488610473340500963050866256 :=
@@ -183,6 +181,8 @@ theorem «FN2-COMMIT-MEMBER-WFP».key : nameKey "FN2-COMMIT-MEMBER-WFP" = 102751
 theorem «FN2-REC-CAND-WFP».key : nameKey "FN2-REC-CAND-WFP" = 93451976571118827304116043365744068176 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-ALLOC-EDGES-WFP».key : nameKey "FN2-ALLOC-EDGES-WFP" = 1567863996472473581195844389582119661355877968 :=
+  Nat.eq_of_beq_eq_true rfl
+theorem «FN2-BOOT-WFP».key : nameKey "FN2-BOOT-WFP" = 21758483854629847638172190288 :=
   Nat.eq_of_beq_eq_true rfl
 theorem «FN2-AUTH-WFP».key : nameKey "FN2-AUTH-WFP" = 21758483854559484340013057616 :=
   Nat.eq_of_beq_eq_true rfl

@@ -30,6 +30,7 @@ public import Fn2.Arms.Wrapper
 public import Fn2.Instances.CoreTranslation
 public import Fn2.Arms.CoreValidation
 public import Fn2.Arms.Validation
+public import Fn2.Arms.CommitControls
 public import Fn2.Arms.CoreTeeth
 public import Fn2.Arms.ServedCore
 public import Fn2.Arms.CorePhase

@@ -15,8 +15,6 @@ open Fn2.ACL2
 
 theorem «THROW-NONEXEC-ERROR».find : S11x4c060b_d0to1.fnTree.find 1879562689879407005075225114662655573353451346 = some «THROW-NONEXEC-ERROR».dispatch := by rfl
 theorem «THROW-NONEXEC-ERROR».row (a0 : Val) (a1 : Val) : «THROW-NONEXEC-ERROR».dispatch [a0, a1] = some («THROW-NONEXEC-ERROR» a0 a1) := by rfl
-theorem «FN2-BOOT-ROWSP».find : S11x4c060b_d0to1.fnTree.find 1425963997897021694815231339352912 = some «FN2-BOOT-ROWSP».dispatch := by rfl
-theorem «FN2-BOOT-ROWSP».row (a0 : Val) : «FN2-BOOT-ROWSP».dispatch [a0] = some («FN2-BOOT-ROWSP» a0) := by rfl
 theorem «FN2-BOOT-CONFIG-PATHP».find : S11x4c060b_d0to1.fnTree.find 102751534873164314344725575980843071114471422576720 = some «FN2-BOOT-CONFIG-PATHP».dispatch := by rfl
 theorem «FN2-BOOT-CONFIG-PATHP».row (a0 : Val) : «FN2-BOOT-CONFIG-PATHP».dispatch [a0] = some («FN2-BOOT-CONFIG-PATHP» a0) := by rfl
 theorem «FN2-BOOT-CONFIG-GROUPSP».find : S11x4c060b_d0to1.fnTree.find 6733924589447696504895935347480531508555484545638486864 = some «FN2-BOOT-CONFIG-GROUPSP».dispatch := by rfl
@@ -57,6 +55,8 @@ theorem «FN2-FC-CONTEXT-ROWSP».find : S11x4c060b_d0to1.fnTree.find 40137318310
 theorem «FN2-FC-CONTEXT-ROWSP».row (a0 : Val) : «FN2-FC-CONTEXT-ROWSP».dispatch [a0] = some («FN2-FC-CONTEXT-ROWSP» a0) := by rfl
 theorem «FN2-ALLOC-EDGES-ROWSP».find : S11x4c060b_d0to1.fnTree.find 102751534872820028617250857915653794126597495149392 = some «FN2-ALLOC-EDGES-ROWSP».dispatch := by rfl
 theorem «FN2-ALLOC-EDGES-ROWSP».row (a0 : Val) : «FN2-ALLOC-EDGES-ROWSP».dispatch [a0] = some («FN2-ALLOC-EDGES-ROWSP» a0) := by rfl
+theorem «FN2-BOOT-ROWSP».find : S11x4c060b_d0to1.fnTree.find 1425963997897021694815231339352912 = some «FN2-BOOT-ROWSP».dispatch := by rfl
+theorem «FN2-BOOT-ROWSP».row (a0 : Val) : «FN2-BOOT-ROWSP».dispatch [a0] = some («FN2-BOOT-ROWSP» a0) := by rfl
 theorem «FN2-AUTH-ROWSP».find : S11x4c060b_d0to1.fnTree.find 1425963997892410365707074420560720 = some «FN2-AUTH-ROWSP».dispatch := by rfl
 theorem «FN2-AUTH-ROWSP».row (a0 : Val) : «FN2-AUTH-ROWSP».dispatch [a0] = some («FN2-AUTH-ROWSP» a0) := by rfl
 theorem «FN2-CNS-ROWSP».find : S11x4c060b_d0to1.fnTree.find 5570171866803616765029486383952 = some «FN2-CNS-ROWSP».dispatch := by rfl
