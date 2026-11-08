@@ -28,13 +28,20 @@
 (include-book "fnct-client")
 (include-book "std/util/bstar" :dir :system)
 
-; The posting profile (owed-cursor.lisp's, local.test is group 1), two
-; control connections and one consumer request. (With :cns 2 an append is
-; never answered here: owed, consumer-commit's continuation.)
+; The posting profile (owed-cursor.lisp's, local.test is group 1, T 2) with
+; two control connections: one consumer request (fn2-txn's share 1), and two
+; consumer requests with T 3 (fn2-txn's share 1 again). Two consumer requests
+; under T 2 leave fn2-txn no row: posting is not served and an append is
+; refused with D's word refused (fn2-ccu-unposting-answered), where it used to park
+; on a transaction row that never exists, its request never answered.
 (defconst *fn2-ccu-profile*
   (put-assoc-equal :cns 1
     (put-assoc-equal :control-connections 2
       (put-assoc-equal :extent-slots 128 *fn2-cursor-profile*))))
+(defconst *fn2-ccu-profile-2*
+  (put-assoc-equal :cns 2 (put-assoc-equal :t 3 *fn2-ccu-profile*)))
+(defconst *fn2-ccu-profile-2-unposting*
+  (put-assoc-equal :cns 2 *fn2-ccu-profile*))
 
 (defun fn2-ccu-cat (frames)
   (declare (xargs :verify-guards nil))
@@ -107,11 +114,11 @@
 ; Live: the mutations MS on one connection, then (BYPASS) the bypass ack to
 ; the published frontier, then consumer 1's position on a second one:
 ; (mutation-replies position-reply store stop-reason).
-(defun fn2-ccu-live (ms bypass)
+(defun fn2-ccu-live (prof ms bypass)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (r fn2-core)
-      (b* ((fn2-core (fn2-init-executor *fn2-ccu-profile* :echo nil fn2-core))
+      (b* ((fn2-core (fn2-init-executor prof :echo nil fn2-core))
            ((mv & fn2-core)
             (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
@@ -132,12 +139,12 @@
 ; After death: a fresh core over STORE runs recovery (A-PERSISTENCE-FENCE,
 ; assume 2), then consumer 1's position on a new connection:
 ; (recovered-done position-reply stop-reason).
-(defun fn2-ccu-recover (store)
+(defun fn2-ccu-recover (prof store)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (r fn2-core)
-      (b* ((fn2-core (fn2-init-executor *fn2-ccu-profile* :echo nil fn2-core))
-           (id (fn2-machine-global-id *fn2-recovery-machine-kind* 0 *fn2-ccu-profile*))
+      (b* ((fn2-core (fn2-init-executor prof :echo nil fn2-core))
+           (id (fn2-machine-global-id *fn2-recovery-machine-kind* 0 prof))
            ((mv & fn2-core) (fn2-recovery-start id 2 0 fn2-core))
            ((mv & & & fn2-core) (fn2-cw-loop 400000 0 0 nil store fn2-core))
            (done (equal (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-done*))
@@ -158,23 +165,23 @@
          (equal (nth 1 post) (nth 1 live))
          (equal (car (nth 1 post)) (list :accepted "" last)))))
 
-(defun fn2-ccu-crash-after (k)
+(defun fn2-ccu-crash-after (prof k)
   ; the first K mutations, then death
   (declare (xargs :verify-guards nil))
   (let* ((ms (take k *fn2-ccu-mutations*))
-         (live (fn2-ccu-live ms nil))
-         (post (fn2-ccu-recover (nth 2 live))))
+         (live (fn2-ccu-live prof ms nil))
+         (post (fn2-ccu-recover prof (nth 2 live))))
     (or (fn2-ccu-judge ms live post)
-        (cw "consumer-commit crash after ~x0~%live ~x1~%post ~x2~%" k
-            (list (nth 0 live) (nth 1 live) (nth 3 live) (nth 4 live)) post))))
+        (cw "consumer-commit ~x3 crash after ~x0~%live ~x1~%post ~x2~%" k
+            (list (nth 0 live) (nth 1 live) (nth 3 live) (nth 4 live)) post (fn2-profile-get :cns prof)))))
 
 ; The bypass mutant: the register through B, then an ack published around
 ; it. Live, the position moves; after death it is the register's: caught.
 (defun fn2-ccu-bypass-caught ()
   (declare (xargs :verify-guards nil))
   (let* ((ms (take 1 *fn2-ccu-mutations*))
-         (live (fn2-ccu-live ms t))
-         (post (fn2-ccu-recover (nth 2 live))))
+         (live (fn2-ccu-live *fn2-ccu-profile* ms t))
+         (post (fn2-ccu-recover *fn2-ccu-profile* (nth 2 live))))
     (or (and (equal (nth 4 live) (list :quiet :quiet :ok))
              (not (equal (car (nth 1 live)) (list :accepted "" 0)))
              (equal (car (nth 1 post)) (list :accepted "" 0))
@@ -207,11 +214,11 @@
 ;; status and an ack to 3 on the same connection; then principal 1's addr
 ;; entry at 4 and status on a second connection, and the frontiers the
 ;; host's fn2-cns-stream-frontier answers for both principals over read row 0.
-(defun fn2-ccu-frontier-run ()
+(defun fn2-ccu-frontier-run (prof)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (r fn2-core)
-      (b* ((fn2-core (fn2-init-executor *fn2-ccu-profile* :echo nil fn2-core))
+      (b* ((fn2-core (fn2-init-executor prof :echo nil fn2-core))
            ((mv & fn2-core)
             (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
               (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
@@ -231,9 +238,9 @@
                   (list s1 sd s2 (fn2-core-stop-reason fn2-core)))
             fn2-core))
       r)))
-(defun fn2-ccu-frontier-ok ()
+(defun fn2-ccu-frontier-ok (prof)
   (declare (xargs :verify-guards nil))
-  (let ((r (fn2-ccu-frontier-run)))
+  (let ((r (fn2-ccu-frontier-run prof)))
     (or (and (equal (nth 0 r)
                     (append (fn2-ccu-expected *fn2-ccu-mutations*)
                             ;; nothing unread after the reader's own ack (B's
@@ -249,9 +256,31 @@
              (equal (nth 4 r) '(:quiet :ok :quiet 0)))
         (cw "consumer-commit frontier: ~x0~%" r))))
 
+;; Two consumer requests under T 2: fn2-txn has no row, posting is not
+;; served, and the append is answered refused, D's word refused (no publish).
+(defun fn2-ccu-unposting-answered ()
+  (declare (xargs :verify-guards nil))
+  (let ((r (with-local-stobj fn2-core
+             (mv-let (r fn2-core)
+               (b* ((fn2-core (fn2-init-executor *fn2-ccu-profile-2-unposting* :echo nil fn2-core))
+                    ((mv & fn2-core)
+                     (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                       (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+                    ((mv s1 w1 & fn2-core)
+                     (fn2-ccu-session 0 (list (fnc-register 1 1) (nth 1 (nth 1 *fn2-ccu-mutations*)) (fnc-control 5))
+                                      fn2-core))
+                    ((mv & pub) (fn2-successor-published fn2-core)))
+                 (mv (list s1 (fnc-replies '(register append) w1) pub (fn2-core-stop-reason fn2-core)) fn2-core))
+               r))))
+    (or (equal r '(:quiet ((:accepted "" 0) (:refused "refused" nil)) 1 0))
+        (cw "consumer-commit unposting: ~x0~%" r))))
+
 (defun fn2-ccu-teeth-positive ()
   (declare (xargs :verify-guards nil))
-  (and (fn2-ccu-crash-after 1) (fn2-ccu-crash-after 2) (fn2-ccu-crash-after 3) (fn2-ccu-frontier-ok)))
+  (and (fn2-ccu-crash-after *fn2-ccu-profile* 1) (fn2-ccu-crash-after *fn2-ccu-profile* 2)
+       (fn2-ccu-crash-after *fn2-ccu-profile* 3) (fn2-ccu-frontier-ok *fn2-ccu-profile*)
+       (fn2-ccu-crash-after *fn2-ccu-profile-2* 3) (fn2-ccu-frontier-ok *fn2-ccu-profile-2*)
+       (fn2-ccu-unposting-answered)))
 (defun fn2-ccu-teeth-negative ()
   (declare (xargs :verify-guards nil))
   (fn2-ccu-bypass-caught))
@@ -264,8 +293,8 @@
 ; recovery replayed are the same delta.
 (defun fn2-ccu-replays-p (ms)
   (declare (xargs :verify-guards nil))
-  (let* ((live (fn2-ccu-live ms nil))
-         (post (fn2-ccu-recover (nth 2 live))))
+  (let* ((live (fn2-ccu-live *fn2-ccu-profile* ms nil))
+         (post (fn2-ccu-recover *fn2-ccu-profile* (nth 2 live))))
     (implies (equal (nth 3 live) 0)
              (and (equal (nth 0 post) t) (equal (nth 1 post) (nth 1 live))))))
 (defthm-owed fn2-cns-commit-replays-published (ms)

@@ -118,9 +118,41 @@
   (declare (xargs :guard (natp code)))
   (if (< code (len *fn2-upload-words*)) (nth code *fn2-upload-words*) :none))
 
+;; The profile's T write transactions (C's successor rows with write slots,
+;; B's transaction field stripes, the claim rows) are shared: the profile's
+;; :authority rows (A, at most T) go to E's control transactions (fn2-auth,
+;; authority-kind.lisp), its :cns rows (K, at most T - A) to the consumer
+;; requests' durable mutations (fn2-cns, cns-kind.lisp), and fn2-txn's C rows
+;; (T - A - K under :posting-interim, else none) take successor indices
+;; 0 .. C - 1; fn2-auth's row S takes C + S, fn2-cns's row S takes C + A + S,
+;; each below T. No kind's row ever names another's successor transaction; a
+;; consumer request row past the share (S >= K) refuses a mutation unavailable.
+(defun fn2-txn-authority-share (profile)
+  (declare (xargs :guard t))
+  (min (nfix (fn2-profile-get :authority profile)) (nfix (fn2-profile-t profile))))
+(defun fn2-txn-consumer-share (profile)
+  (declare (xargs :guard t))
+  (min (nfix (fn2-profile-get :cns profile))
+       (nfix (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)))))
+(defun fn2-txn-capacity (profile)
+  (declare (xargs :guard t))
+  (if (fn2-profile-get :posting-interim profile)
+      (nfix (- (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)) (fn2-txn-consumer-share profile)))
+    0))
+(defthm fn2-txn-authority-share-natp (natp (fn2-txn-authority-share profile)) :rule-classes :type-prescription)
+(defthm fn2-txn-consumer-share-natp (natp (fn2-txn-consumer-share profile)) :rule-classes :type-prescription)
+(defthm fn2-txn-capacity-natp (natp (fn2-txn-capacity profile)) :rule-classes :type-prescription)
+(defthm fn2-txn-capacity-share-bound
+  (<= (+ (fn2-txn-capacity profile) (fn2-txn-authority-share profile) (fn2-txn-consumer-share profile))
+      (nfix (fn2-profile-t profile)))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn2-profile-t fn2-profile-get))))
+(in-theory (disable fn2-txn-authority-share fn2-txn-consumer-share fn2-txn-capacity))
+
 ;; The input configuration (a D core child, one row): whether posting is
 ;; served under the interim (section 14.5: the public capability stays off
-;; until a POST can succeed; tests set :posting-interim), whether peers are
+;; until a POST can succeed; tests set :posting-interim) with a row of fn2-txn
+;; in the profile's T share, whether peers are
 ;; admitted (the peer bit on a connection whose AcceptResult carries an
 ;; address family; tests set :peering-interim; E4's grant replaces it) and
 ;; the article bound.
@@ -141,7 +173,12 @@
   (declare (xargs :stobjs fn2-input-config :guard (fn2-input-config-profilep profile)))
   (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config))
          (max (fn2-profile-get :article-max profile)))
-    (fn2-input-config-put 0 (posting (if (fn2-profile-get :posting-interim profile) 1 0))
+    ;; posting is served only when a POST can succeed: under the interim and
+    ;; with a row of fn2-txn in the profile's T share (else an upload would
+    ;; park on a transaction row that never exists, its request unanswered)
+    (fn2-input-config-put 0 (posting (if (and (fn2-profile-get :posting-interim profile)
+                                              (< 0 (fn2-txn-capacity profile)))
+                                         1 0))
                           (peering (if (fn2-profile-get :peering-interim profile) 1 0))
                           (article-max (if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)))))
 (defthm fn2-input-config-from-type
