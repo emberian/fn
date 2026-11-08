@@ -106,6 +106,30 @@ def clean_layout(source):
     return lr.write(source,edits)
 
 
+def seed_consumers(source):
+    """Give each consumer its visible producer facts before reader splitting."""
+    edits = []
+    def visit(node):
+        if head(node) == 'fn2-with-column-projections':
+            return
+        if head(node) == 'defthm':
+            views = set()
+            for hint in walk(node):
+                if head(hint) == 'fn2-column-view-hint':
+                    views.update(n.low for n in walk(hint.items[1])
+                                 if isinstance(n, lr.Atom) and n.low.startswith('fn2-env-'))
+            if views:
+                text = source[node.start:node.end]
+                edits.append((node.start, node.end,
+                              '(fn2-with-column-projections (' + ' '.join(sorted(views)) + ')\n' + text + ')'))
+            return
+        for child in node.items if isinstance(node, lr.Lst) else [node.node] if isinstance(node, lr.Pre) else []:
+            visit(child)
+    for form in lr.parse(source).forms:
+        visit(form)
+    return lr.write(source, edits)
+
+
 def migrate(source):
     # First remove producer/view traversal itself, including nested generated events.
     parsed = lr.parse(source)
@@ -148,12 +172,13 @@ def migrate(source):
     for top in lr.parse(source).forms:
         if head(top) != 'defun':
             continue
-        atoms = [n for n in walk(top) if isinstance(n, lr.Atom) and n.low == 'glue']
-        if len(atoms) == 1:
-            binding = next((n for n in walk(top) if head(n) == 'glue'), None)
-            if binding is not None:
-                edits.append((binding.start, binding.end, ''))
-    return clean_layout(lr.write(source, edits))
+        for name in ('glue', 'arm'):
+            atoms = [n for n in walk(top) if isinstance(n, lr.Atom) and n.low == name]
+            if len(atoms) == 1:
+                binding = next((n for n in walk(top) if head(n) == name), None)
+                if binding is not None:
+                    edits.append((binding.start, binding.end, ''))
+    return seed_consumers(clean_layout(lr.write(source, edits)))
 
 
 if __name__ == '__main__':

@@ -282,6 +282,8 @@
  (if (atom formals) nil
   (cons (list (car formals) (car actuals)) (fn2-column-bindings (cdr formals) (cdr actuals)))))
 
+; Consumer hint support below is for unparameterized carrier views. Row
+; and bounded-range view projections remain available directly from DEFVIEW.
 (defun fn2-column-projection-uses (view call world)
  (declare (xargs :verify-guards nil))
  (let* ((fn (car call)) (spec (cdr (assoc-eq fn (table-alist 'fn2-column-contracts world))))
@@ -373,3 +375,38 @@
  (union-theories '(fn2-column-footprint-allows fn2-view-columns-protected fn2-view-column-protected
     (:e natp) (:e binary-append) (:e member-equal) (:e subsetp-equal) (:e nfix))
     (theory 'minimal-theory)))
+
+; Seed facts for calls visible in the statement before simplification splits
+; reader equalities. The stable hint remains useful for calls exposed later.
+(defun fn2-column-hint-without-use (options)
+ (declare (xargs :verify-guards nil))
+ (if (atom options) nil
+  (if (eq (car options) :use) (cddr options)
+   (list* (car options) (cadr options) (fn2-column-hint-without-use (cddr options))))))
+(defun fn2-column-use-list (uses)
+ (declare (xargs :verify-guards nil))
+ (cond ((atom uses) (and uses (list uses)))
+       ((member-eq (car uses) '(:instance :functional-instance)) (list uses))
+       (t uses)))
+(defun fn2-column-seed-hints (hints uses)
+ (declare (xargs :verify-guards nil))
+ (if (atom hints) nil
+  (cons (if (and (consp (car hints)) (equal (caar hints) "Goal"))
+            (append (list "Goal") (fn2-column-hint-without-use (cdar hints))
+             (list :use (append (fn2-column-use-list (fn2-arm-get :use (cdar hints))) uses)))
+          (car hints))
+        (fn2-column-seed-hints (cdr hints) uses))))
+(defun fn2-column-seed-options (options uses)
+ (declare (xargs :verify-guards nil))
+ (if (atom options) nil
+  (list* (car options)
+         (if (eq (car options) :hints) (fn2-column-seed-hints (cadr options) uses) (cadr options))
+         (fn2-column-seed-options (cddr options) uses))))
+(defun fn2-column-consumer-event (views event world)
+ (declare (xargs :verify-guards nil))
+ (let ((hint (fn2-column-view-hint views (list (caddr event)) world)))
+  (if (not hint) event
+   (list* (car event) (cadr event) (caddr event)
+          (fn2-column-seed-options (cdddr event) (cadr hint))))))
+(defmacro fn2-with-column-projections (views event)
+ `(make-event (value (fn2-column-consumer-event ',views ',event (w state)))))

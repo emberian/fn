@@ -74,11 +74,12 @@ def test_layout_cleanup_preserves_string_contents_and_single_use():
 
 def test_views_stay_closed_and_dead_callee_binding_disappears():
     src = """(defun events (x)
- (let ((glue '(f g)))
+ (let ((glue '(f g)) (arm (arm-name x)))
   `(defthm use (fn2-env-tk (f x) x)
     :hints (("Goal" :in-theory '(,@(fn2-env-rel-callee-runes glue 'fn2-env-tk world)))))))"""
     out = migrate(src)
     assert 'glue' not in out
+    assert '(arm (arm-name x))' not in out
     assert "(union-theories '(fn2-env-tk)" not in out
     assert "(theory 'fn2-column-projection-base)" in out
     assert statements(src) == statements(out)
