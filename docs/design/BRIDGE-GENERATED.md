@@ -1,0 +1,132 @@
+# Generated served certificates
+
+`emit.sh` now exports the complete served closure and emits a contract for every
+live arm, subarm and handler. The denominator comes from ACL2's declaration
+registry, including late declarations and narrowed child signatures. It is not
+an emitter allowlist. A child subarm has its actual child function and complete
+child tuple; the generator does not invent a core wrapper for it.
+
+`build/served-certificate-coverage.json` is the machine-readable result.
+Its `.txt` companion lists every unvalidated root by function name and concrete
+remaining proof obligation. Printing a contract does not count as validation.
+The generated files are reproducible artifacts, excluded from version control.
+
+The checked 2026-11-08 snapshot has **12,039/12,039 canonical exports** and
+**26/263 whole-arm interpretation roots** validated across 14 served kinds.
+All 263 contracts compile. [The coverage snapshot](BRIDGE-GENERATED-COVERAGE.txt)
+lists the other 237 roots by name and reason; [the statement snapshot](BRIDGE-GENERATED-STATEMENTS.txt)
+quotes all 26 validated contracts and theorem signatures verbatim. Both are bound
+to the canonical packet hash, rather than promising coverage for later declarations.
+
+The final bb2 gate reported `certify summary: 3 built, 0 failed` in
+`build/bridge-final-certify.log`. The record runner also passed all three books in
+`build/acl2/certify-20261108T102032Z-1763634`; the coverage join completed with
+`DONE 0`. All 26 proofs passed their three theorem censuses, and the full `Fn2`
+root and 362-declaration axiom census passed. Fifteen focused Python controls and
+the raw Lisp printer controls passed. ACL2 iteration admitted the final 38 helper,
+22 isolated control and 1,658 export forms without refusal.
+
+Remaining red: the generated export book takes 103.137 seconds in the mandated
+gate (about 105 seconds in the record runner), exceeding D26. The 237 remaining
+interpretation proofs and closure-wide body-evaluation/primitive-domain proofs
+are not certified by this snapshot. No live durable word is present in this
+assembly, so the incoming consumer `:commit` instance still needs its live gates.
+
+## Gates and scope
+
+The canonical gate compares every exported record against the live ACL2 world:
+function name, formals, logical body, guard, justification, stobj inputs and
+outputs, and attachment. It also checks the complete call closure through bodies,
+guards, measures and attachments, rooted at `fn2-turn`, every `FN2-HOST-*` function,
+and every declared arm/handler. Missing callees, false refusals and duplicate
+names are errors. Metadata checks bind original declarations, layout, signatures,
+operation declarations, constants and waits to that same world.
+
+The canonical transport is version 2: one header followed by one exact function
+record per line. The single generated `meta/emit/served-export.lisp` book packs
+symbol package/name strings to reduce certification memory. ACL2 expands one
+record at a time before comparing the original canonical objects. The admitted
+statement is:
+
+```lisp
+(defthm fn2-tv-matches-packed-function-exact
+  (implies (fn2-tv-matches-packed-function entry fn world)
+           (equal (fn2-tv-unpack entry) (fn2-tv-function fn world)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-tv-matches-function-exact
+                                  (entry (fn2-tv-unpack entry)))))))
+```
+
+The Lean gate checks original declarations and layout against the emitted kind
+presentation, then checks each generated proof and its named axiom census. Only
+`propext`, `Classical.choice` and `Quot.sound` are allowed. Successful interpretation
+must exist for every input and every represented core: all children are quantified,
+without a core well-formedness hypothesis. Refused entry is included. Every counted
+proof also has an accepted-entry witness and an omitted-child control quantified
+over every fuel and result; all three named theorem censuses must pass. For example,
+the echo root's contract is emitted verbatim as:
+
+```lean
+def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
+  ∃ fuel result, runCore world coreTuple kind arm false [id, budget, image kids] fuel = .ok result ∧
+    world.fns "FN2-ECHO-RUN-FREE" [id, budget, image kids] = some result
+```
+
+The shared schemas currently discharge complete `(:idle)` arm declarations and
+complete `(:wake)` handler declarations. Other roots retain their full contracts
+and explicit missing proof obligations. This interpretation count is the third
+bridge equality; canonical identity is **not** a substitute for the first two
+exported-body evaluation equalities or reachable primitive-domain obligations.
+The earlier body/loop certificates remain documented in `BRIDGE-CORE.md` and
+`BRIDGE-LOOPS.md`; this report does not inflate their scope to the entire closure.
+
+The checker rebuilds the whole local Lean import graph. Its reusable cache binds
+source, local dependencies, compiler, toolchain/manifest and actual olean hash.
+Copied warm artifacts alone are not evidence. Coverage is invalidated by a change
+to the canonical packet or any recorded input. A whole root is counted only after
+both its Lean proof/census and the current ACL2 record-cache gate pass.
+
+## Durable word
+
+The independent Lean reader understands `:commit` in both submitting and settling
+contexts, retaining the original declaration. The printer emits each live word's
+ACL2 expansion; generated checks compare that expansion in ACL2 and Lean. An
+independent ACL2 traversal of the live declarations checks the complete word
+inventory, so omitting a word cannot improve its coverage count. Subarms
+use the generator's NIL tag rather than their name as the settling context.
+Only statement positions are traversed: a phase named `:commit`, a case label,
+or quoted data is not a durable word. The incoming consumer declarations must
+still pass these live-word gates once merged into the served assembly.
+
+## Reproduction
+
+Run print/emission on bb2 using the lane's certified reference/probe books and
+record launcher. The normal `meta/emit/emit.sh` includes the served package and
+certificate generation. To regenerate only proposals from an existing packet:
+
+```sh
+python3 meta/emit/emit_embed.py --served-certificate meta/emit/served-certificate.sexp
+```
+
+Iterate ACL2 through `tools/bb2_repl`, then use the mandated gate:
+
+```sh
+tools/box_certify_bb2.sh bridge-certificate -j 8 books/translation-validation.lisp tests/translation-inventory-unit.lisp meta/emit/served-export.lisp > build/bridge-packed-certify.log 2>&1
+```
+
+The legacy box script produces certificates but no record-cache manifest. On bb2,
+under `swarm-build`, produce that evidence with the narrow record runner:
+
+```sh
+FN_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k python3 tools/certify_books.py --jobs 8 --timeout-seconds 240 --images off books/translation-validation tests/translation-inventory-unit meta/emit/served-export
+```
+
+Under bb2 `swarm-build` and the pinned Lake environment, with this lane's
+`build/lean-lib` first in `LEAN_PATH`, run:
+
+```sh
+python3 meta/emit/check_served_certificate.py --lean --acl2 /tank/fn/toolchains/w28/acl2-literal-4g-tls64k --lib build/lean-lib -j 4 --timeout 120
+```
+
+Use a timeout and recorded PID/DONE wrapper for detached jobs. Keep the generated
+packet and source book synchronized before the box helper's full rsync.

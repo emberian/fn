@@ -259,3 +259,61 @@
     (if (fn2-tv-served-closure-p ,names ,refused (w state))
         '(value-triple :complete-served-export-closure)
       (er soft 'fn2-tv-check-served-closure "Missing served root/callee, duplicate function, or false refusal."))))
+
+; Every durable word in the original declarations has a certificate row.
+; Statement positions are explicit: phase/case labels and expressions are data.
+(mutual-recursion
+ (defun fn2-tv-commit-steps (xs)
+   (declare (xargs :verify-guards nil))
+   (if (atom xs) nil
+     (append (fn2-tv-commit-step (car xs)) (fn2-tv-commit-steps (cdr xs)))))
+ (defun fn2-tv-commit-branches (xs)
+   (declare (xargs :verify-guards nil))
+   (if (atom xs) nil
+     (append (fn2-tv-commit-steps (cdar xs)) (fn2-tv-commit-branches (cdr xs)))))
+ (defun fn2-tv-commit-options (xs)
+   (declare (xargs :verify-guards nil))
+   (if (atom xs) nil
+     (append
+      (cond ((eq (car xs) :case) (fn2-tv-commit-branches (cadr xs)))
+            ((member-eq (car xs) '(:ok :dependencies :unchanged :accepted :refused :uncertain))
+             (fn2-tv-commit-steps (cadr xs)))
+            (t nil))
+      (fn2-tv-commit-options (cddr xs)))))
+ (defun fn2-tv-commit-step (x)
+   (declare (xargs :verify-guards nil))
+   (case (car x)
+     (:commit (cons x (fn2-tv-commit-options (cddr x))))
+     (:if (append (fn2-tv-commit-steps (caddr x)) (fn2-tv-commit-steps (cadddr x))))
+     (:cond (fn2-tv-commit-branches (cdr x)))
+     (:case (fn2-tv-commit-branches (cddr x)))
+     (:do (fn2-tv-commit-options (cdddr x)))
+     (:issue (fn2-tv-commit-options (cddr x)))
+     (:repeat (fn2-tv-commit-steps (caddr x)))
+     (otherwise nil))))
+
+(defun fn2-tv-commit-declaration (xs)
+  (declare (xargs :verify-guards nil))
+  (case (car xs)
+    (:from (fn2-tv-commit-declaration (cddr xs)))
+    (:on-refusal
+     (append (if (keywordp (caadr xs)) (fn2-tv-commit-step (cadr xs))
+               (fn2-tv-commit-steps (cadr xs)))
+             (fn2-tv-commit-declaration (cddr xs))))
+    (otherwise (fn2-tv-commit-steps xs))))
+
+(defun fn2-tv-commit-word-rows (words kind area tag)
+  (declare (xargs :verify-guards nil))
+  (if (atom words) nil
+    (cons (list kind area tag (car words))
+          (fn2-tv-commit-word-rows (cdr words) kind area tag))))
+
+(defun fn2-tv-commit-word-inventory (inventory)
+  (declare (xargs :verify-guards nil))
+  (if (atom inventory) nil
+    (let ((row (car inventory)))
+      (append
+       (fn2-tv-commit-word-rows (fn2-tv-commit-declaration (seventh row))
+                              (car row) (if (eq (cadr row) :observe-arms) :observes (cadr row))
+                              (caddr row))
+       (fn2-tv-commit-word-inventory (cdr inventory))))))

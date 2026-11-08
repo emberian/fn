@@ -59,7 +59,7 @@ theorem runCore_shape (w : World) (tuple : List String) (k : Kind) (a : Arm)
   simp [runCore, nCore, toList_ofList', hlen]
 
 def echoKind : Kind := kinds[@KIND_INDEX@]!
-def echoFree : Arm := echoKind.arms[@ARM_INDEX@]!
+def echoFree : Arm := echoKind.@ARM_FIELD@[@ARM_INDEX@]!
 theorem callFn_core_plain (w : World) (tuple : List String) (f : String) (args : List Val)
     (h : f.endsWith "@CORE" = false) :
     callFn (coreWorld w tuple) f args = callFn w f args := by

@@ -70,3 +70,23 @@
     ',(list (cons 'fn2-tv-outer
                   (update-nth 1 '(:packed-symbol "ACL2" "FN2-TV-OTHER")
                               (fn2-tv-function 'fn2-tv-outer (w state))))))))
+
+(assert-event
+ (equal (fn2-tv-commit-declaration
+         '(:from (:commit) :on-refusal (:stop :commit)
+           (:case phase (:commit (:idle))) (:let x '(:commit data)) (:next :commit)))
+        nil))
+(assert-event
+ (equal (fn2-tv-commit-declaration
+         '(:on-refusal ((:commit a))
+           (:if test ((:commit b)) ((:cond (test (:commit c)))))
+           (:case phase (:commit (:commit d)))
+           (:do () (op) :case (((:ok) (:commit e))))
+           (:issue (op) :ok ((:commit f)) :refused ((:commit g)))
+           (:repeat 1 ((:commit h)) :until done)))
+        '((:commit a) (:commit b) (:commit c) (:commit d)
+          (:commit e) (:commit f) (:commit g) (:commit h))))
+(assert-event
+ (equal (fn2-tv-commit-word-inventory
+         '((kind :observe-arms :result :core on-result on-result ((:commit x)) nil)))
+        '((kind :observes :result (:commit x)))))

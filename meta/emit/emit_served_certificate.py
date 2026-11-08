@@ -110,6 +110,8 @@ def metadata_checks(p):
     for row in decode(p[':CONSTANTS']):
         checks.append(live_check(List([Atom('QUOTE'),alist_value(row)]),f"(getpropc '{row[0]} 'const :missing (w state))"))
     checks.append(live_check(p[':WAITS'],"(fn2-tv-object (table-alist 'fn2-waits (w state)))"))
+    checks.append(live_check(List([List(row[:4]) for row in commit_words(p)]),
+      '(fn2-tv-commit-word-inventory (fn2-tv-arm-inventory (w state)))'))
     for kn,area,tag,step,expanded in commit_words(p):
         actualtag='NIL' if str(area)==':SUBARMS' else str(tag)
         checks.append(f'''(make-event
@@ -166,11 +168,10 @@ def call_proof(name, args, extra=''):
     return (f'simp only [{extra}callFn, world, nativeCall_none {lean_str(name)} {av} '
             f'(by decide +kernel), Fn2.Instances.LayerAWorld.{ident(name)}.fns_eq]')
 
-def idle_certificate(kd, ki, ai, layout, consts, namespace):
-    k = plist(kd[1:]); kn = str(kd[0]); a = plist(k[':ARMS'][ai][1:])
-    if show(a[':DECL']) != '((:IDLE))': raise ValueError('not the idle proof shape')
-    tag = str(k[':ARMS'][ai][0]).lstrip(':')
-    core = kn+'-RUN-'+tag
+def terminal_parameters(kd, ki, ai, layout, consts, namespace, area=':ARMS'):
+    k = plist(kd[1:]); kn = str(kd[0])
+    tag = str(k[area][ai][0]).lstrip(':')
+    core = kn+('-RUN-' if area==':ARMS' else '-ON-')+tag
     names = list(map(str, layout)); n = len(names)
     own, directory = names.index(kn), names.index('FN2-MACHINES')
     xs = ['c'+str(i) for i in range(n)]
@@ -189,6 +190,9 @@ def idle_certificate(kd, ki, ai, layout, consts, namespace):
     child = str(k[':FORM']) == ':CHILDREN'
     values = dict(NAMESPACE=namespace,KIND=kn,CORE_FUNCTION=core,
       KIND_INDEX=str(ki),ARM_INDEX=str(ai),KIND_NUMBER=kind_number,
+      ARM_FIELD='arms' if area==':ARMS' else 'observes',
+      NONE_VALUE=val(consts['*FN2-NONE*']),
+      OBSERVATION_REASON=val(consts['*FN2-STOP-REASON-MACHINE-OBSERVATION*']),
       CHILD_UNFOLD=(ident(core+'-CHILDREN')+',') if child else '',
       CORE_SIZE=str(n),CORE_BINDERS=' '.join('('+x+' : Val)' for x in xs),
       CORE_VALUES='['+', '.join(xs)+']',
@@ -202,10 +206,22 @@ def idle_certificate(kd, ki, ai, layout, consts, namespace):
       REFUSED_PROOF='simp only [refusedEntry, coreStop, const, world, consts, coreTuple, callFn, '+
         'nativeCall_none "FN2-CONTROL-RECORD-STOP" _ (by decide +kernel), '+
         'Fn2.Instances.LayerAWorld.«FN2-CONTROL-RECORD-STOP».fns_eq]; rfl')
-    t=Path(__file__).with_name('idle_validation.lean.in').read_text()
+    return values
+
+def render_template(t, values):
     for key,v in values.items(): t=t.replace('@'+key+'@',v)
     if re.search(r'@[A-Z_]+@',t): raise ValueError('unexpanded proof parameter')
     return t
+
+def idle_certificate(kd, ki, ai, layout, consts, namespace):
+    values=terminal_parameters(kd,ki,ai,layout,consts,namespace)
+    return render_template(Path(__file__).with_name('idle_validation.lean.in').read_text(),values)
+
+def wake_certificate(kd, ki, ai, layout, consts, namespace):
+    values=terminal_parameters(kd,ki,ai,layout,consts,namespace,':OBSERVES')
+    prefix=Path(__file__).with_name('idle_validation.lean.in').read_text().split('theorem echo_idle_run')[0]
+    body=Path(__file__).with_name('wake_validation.lean.in').read_text()
+    return render_template(prefix+body,values)
 
 def whole_contract(kd, ki, area, ai, layout, name, namespace):
     """Universal, successful interpretation, including every core child.
@@ -243,14 +259,81 @@ def whole_contract(kd, ki, area, ai, layout, name, namespace):
           f'    world.fns {lean_str(name)} {args} = some result']
     return '\n'.join(lines+['end Fn2.Arms.Served.'+namespace,''])
 
-def proof_obligations(decl):
+def certificate_source(kd,ki,ai,layout,consts,ns,name,area):
+    observe=str(area)==':OBSERVE-ARMS'
+    maker=wake_certificate if observe else idle_certificate
+    args='id event outcome reason count aux0 aux1' if observe else 'id budget'
+    actuals=args.replace(' ', ',')
+    certificate='handler_certificate' if observe else 'echo_free_certificate'
+    source=maker(kd,ki,ai,layout,consts,ns+'Proof')
+    link=f'''theorem validated ({args} : Val) (kids : Fin {len(layout)} → Val) :
+    Fn2.Arms.Served.{ns}.contract {args} kids := by
+  obtain ⟨fuel, result, hr, he⟩ := {certificate} {args} kids
+  refine ⟨fuel, result, hr, ?_⟩
+  change Fn2.Instances.LayerAWorld.fns {lean_str(name)} [{actuals},image kids] = some result
+  rw [Fn2.Instances.LayerAWorld.{ident(name)}.fns_eq, he]
+#print axioms validated
+'''
+    kn=str(kd[0]);k=plist(kd[1:]);names=list(map(str,layout))
+    own=names.index(kn);directory=names.index('FN2-MACHINES')
+    own_columns=sum(str(c[0]) not in ['READY-PREV','READY-NEXT','WAIT-REASON'] for c in k[':COLUMNS'])
+    number=val(consts['*'+kn+'-KIND*'])
+    zero_args=' '.join(['(.int 0)']*len(args.split()))
+    zero_actuals=','.join(['.int 0']*len(args.split()))
+    link+=f'''def acceptedKids : Fin {len(layout)} → Val := fun i =>
+  if i.val = {directory} then Val.ofList [Val.ofList [{number}],Val.ofList [.int 0],Val.nil,Val.nil,Val.nil,.int 1]
+  else if i.val = {own} then Val.ofList (List.replicate {own_columns} Val.nil ++ [.int 1])
+  else .int i.val
+
+theorem accepted_entry_positive :
+    {ident(kn+'-SNAPSHOT-READ-CODE')} (.int 0) (image acceptedKids) = .sym ":OK" ∧
+    Fn2.Arms.Served.{ns}.contract {zero_args} acceptedKids := by
+  exact ⟨by decide +kernel, validated {zero_args} acceptedKids⟩
+
+theorem omitted_child_rejected (fuel : Nat) (result : Val) :
+    runCore world coreTuple echoKind echoFree {str(observe).lower()}
+      [{zero_actuals},Val.ofList (List.ofFn acceptedKids).tail] fuel ≠ .ok result := by
+  apply Wrapper.omitted_child_rejected
+  decide +kernel
+#print axioms accepted_entry_positive
+#print axioms omitted_child_rejected
+'''
+    source='import Fn2.Arms.Wrapper\nimport Fn2.Instances.ServedCertificates.'+ns+'\n'+source
+    source=source.replace('end Fn2.Arms.Served.'+ns+'Proof',link+'end Fn2.Arms.Served.'+ns+'Proof')
+    return source
+
+def statement_words(decl):
+    """Inspect statements, not expression data, phase names or case labels."""
     found=set()
-    def walk(x):
-        if not isinstance(x,List) or not x:return
-        if str(x[0])=='QUOTE':return
-        if isinstance(x[0],Atom) and str(x[0]).startswith(':'):found.add(str(x[0]))
-        for y in x:walk(y)
-    walk(decl)
+    def steps(xs):
+        for s in as_list(xs):
+            if not isinstance(s,List) or not s:continue
+            h=str(s[0]);found.add(h)
+            if h==':IF':
+                for branch in s[2:4]:steps(branch)
+            elif h in [':COND',':CASE']:
+                for branch in s[1 if h==':COND' else 2:]:steps(List(branch[1:]))
+            elif h==':DO':
+                opts=plist(s[3:])
+                for branch in as_list(opts.get(':CASE',List([]))):steps(List(branch[1:]))
+            elif h==':ISSUE':
+                opts=plist(s[2:])
+                for key in [':OK',':REFUSED']:steps(opts.get(key,List([])))
+            elif h==':REPEAT':steps(s[2])
+            elif h==':COMMIT':
+                opts=plist(s[2:])
+                for key in [':DEPENDENCIES',':UNCHANGED',':ACCEPTED',':REFUSED',':UNCERTAIN']:
+                    steps(opts.get(key,List([])))
+    xs=list(decl)
+    while xs and str(xs[0]) in [':FROM',':ON-REFUSAL']:
+        if str(xs[0])==':ON-REFUSAL':
+            r=as_list(xs[1]);steps(List([List(r)] if r and isinstance(r[0],Atom) else r))
+        xs=xs[2:]
+    steps(List(xs))
+    return found
+
+def proof_obligations(decl):
+    found=statement_words(decl)
     groups=[({':SET',':NEXT'},'pending-write/phase-update certificate'),
       ({':DO',':ISSUE'},'operation-result and child-writeback certificate'),
       ({':REPEAT'},'symbolic iteration/fuel-adequacy instance'),
@@ -303,23 +386,13 @@ def generate(src):
         rec={'name':name,'kind':str(kn),'area':str(area),'tag':str(tag),'form':str(form),
           'contract':str(contract.relative_to(BASE)),'status':'unvalidated','reason':proof_obligations(decl)}
         if name not in names: rec['reason']='function absent from canonical served closure'
-        elif str(area)==':ARMS' and show(decl)=='((:IDLE))':
+        elif (str(area)==':ARMS' and show(decl)=='((:IDLE))') or (str(area)==':OBSERVE-ARMS' and show(decl)=='((:WAKE))'):
             try:
                 proof=out/(ns+'Proof.lean')
-                source=idle_certificate(kd,ki,ai,layout,consts,ns+'Proof')
-                link=f'''theorem validated (id budget : Val) (kids : Fin {len(layout)} → Val) :
-    Fn2.Arms.Served.{ns}.contract id budget kids := by
-  obtain ⟨fuel, result, hr, he⟩ := echo_free_certificate id budget kids
-  refine ⟨fuel, result, hr, ?_⟩
-  change Fn2.Instances.LayerAWorld.fns {lean_str(name)} [id,budget,image kids] = some result
-  rw [Fn2.Instances.LayerAWorld.{ident(name)}.fns_eq, he]
-#print axioms validated
-'''
-                source='import Fn2.Instances.ServedCertificates.'+ns+'\n'+source
-                source=source.replace('end Fn2.Arms.Served.'+ns+'Proof',link+'end Fn2.Arms.Served.'+ns+'Proof')
+                source=certificate_source(kd,ki,ai,layout,consts,ns,name,area)
                 proof.write_text(source)
                 rec.update(proof=str(proof.relative_to(BASE)),reason='generated proof has not passed Lean')
-            except (ValueError,KeyError) as e: rec['reason']='idle certificate: '+str(e)
+            except (ValueError,KeyError) as e: rec['reason']='terminal certificate: '+str(e)
         roots.append(rec)
     if len(set(r['name'] for r in roots))!=len(roots): raise ValueError('duplicate arm root')
     report={'schema':1,'package':str(src.relative_to(BASE)) if src.is_relative_to(BASE) else str(src),

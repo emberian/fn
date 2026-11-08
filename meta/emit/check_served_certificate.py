@@ -97,7 +97,7 @@ def compile_closure(roots, lib, seconds, jobs):
 def lean_gates(report, lib, seconds, jobs):
     # The caller starts this process under swarm-build/lake env. Install each
     # changed dependency into this lane's own library, never another lane's.
-    compile_closure(['Fn2.Arms.Core','Fn2.Instances.ServedCommit',
+    compile_closure(['Fn2.Arms.Wrapper','Fn2.Instances.ServedCommit',
       *['Fn2.Instances.LayerAEqns'+str(i) for i in range(1,5)]],lib,seconds,jobs)
     if report.get('commit_words',0):
         rc,out,log=compile_one('meta/Fn2/Instances/ServedCommit.lean',lib,seconds,'commit-words.log')
@@ -115,7 +115,8 @@ def lean_gates(report, lib, seconds, jobs):
         elif 'proof' in row:
             rc,out,log=compile_one(row['proof'],lib,seconds,f'{i}-proof.log')
             theorem='Fn2.Arms.Served.Root'+str(i)+'Proof.validated'
-            if rc==0 and census(out,theorem):
+            if rc==0 and all(census(out,'Fn2.Arms.Served.Root'+str(i)+'Proof.'+n)
+                            for n in ['validated','accepted_entry_positive','omitted_child_rejected']):
                 row.update(status='validated',reason='',lean_gate={'log':log,'theorem':theorem,
                   'log_sha256':digest(BASE/log)})
             else:

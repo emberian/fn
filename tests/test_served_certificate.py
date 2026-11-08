@@ -48,6 +48,12 @@ class CoverageControls(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'function count'):
             list(e.function_records([],1))
 
+    def test_commit_phase_is_not_a_durable_statement(self):
+        decl=e.List([e.List([e.Atom(':CASE'),e.Atom('PHASE'),
+          e.List([e.Atom(':COMMIT'),e.List([e.Atom(':IDLE')])])])])
+        self.assertEqual(e.statement_words(decl),{':CASE',':IDLE'})
+        self.assertNotIn('durable-word',e.proof_obligations(decl))
+
     def test_packed_symbol_keeps_package_and_name(self):
         obj=e.read_canonical('(:SYMBOL (65 67 76 50) (70 79 79))')
         self.assertEqual(e.packed_text(obj),'(:PACKED-SYMBOL "ACL2" "FOO")')
