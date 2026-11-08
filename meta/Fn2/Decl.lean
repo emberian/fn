@@ -1,4 +1,13 @@
-import Fn2.ACL2.Val
+module
+
+public import Fn2.ACL2.Val
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Decl: the declaration kinds and the registry
@@ -345,3 +354,5 @@ def bindG1 (owner : String) (cases : List (CaseLabel S)) : List (SquareDecl S) :
   cases.map fun c => ⟨.g1, owner, c⟩
 
 end Fn2.Decl
+
+end

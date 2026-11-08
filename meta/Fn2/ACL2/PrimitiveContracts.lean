@@ -1,6 +1,15 @@
-import Fn2.ACL2.Val
-import Mathlib.Data.Rat.Floor
-import Mathlib.Tactic
+module
+
+public import Fn2.ACL2.Val
+public import Mathlib.Data.Rat.Floor
+public import Mathlib.Tactic
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 namespace Fn2.ACL2.PrimitiveContracts
 
@@ -97,3 +106,5 @@ theorem rational_intermediate_not_integer_lowering :
   norm_num [Native.expt, Val.toInt]
 
 end Fn2.ACL2.PrimitiveContracts
+
+end

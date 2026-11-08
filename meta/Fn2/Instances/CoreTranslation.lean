@@ -1,5 +1,55 @@
 -- Generated canonical body certificates; every equation is kernel checked.
-import Fn2.Instances.CoreWorld
+module
+
+public import Fn2.Instances.CoreWorld
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+import all Init.Data.List.Control
+-- BEGIN world bodies (emit_embed.py): scan
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S33_d1to7
+import all Fn2.Instances.LayerAWorld.S25_d2to3
+import all Fn2.Instances.LayerAWorld.S13_d0to8
+import all Fn2.Instances.LayerAWorld.S22_d1to7
+import all Fn2.Instances.LayerAWorld.S19_d6to9
+import all Fn2.Instances.LayerAWorld.S15xc66772_d1to9
+import all Fn2.Instances.LayerAWorld.S20_d5to7
+import all Fn2.Instances.LayerAWorld.S21_d6to7
+import all Fn2.Instances.LayerAWorld.S16_d5to10
+import all Fn2.Instances.LayerAWorld.S12_d0to10
+import all Fn2.Instances.LayerAWorld.S12xff6259_d0to4
+import all Fn2.Instances.LayerAWorld.S12xff6259_d5to6
+import all Fn2.Instances.LayerAWorld.S14_d0to1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d0to1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d3b0
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d3b1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d4
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d5b0
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d5b1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d6to12
+import all Fn2.Instances.LayerAWorld.S15_d6to11
+import all Fn2.Instances.LayerAWorld.S9_d3to11
+import all Fn2.Instances.LayerAWorld.S8_d2to12
+import all Fn2.Instances.LayerAWorld.S5_d5to13
+import all Fn2.Instances.LayerAWorld.S7_d0to13
+import all Fn2.Instances.LayerAWorld.S6_d5to10
+import all Fn2.Instances.LayerAWorld.S4_d0to24
+import all Fn2.Instances.LayerAWorld.S3_d0to23
+import all Fn2.Instances.LayerAWorld.S2_d0to29
+import all Fn2.Instances.LayerAWorld.SCnsCtl_d6to14
+import all Fn2.Instances.LayerAWorld.KCns_d0to12
+import all Fn2.Instances.LayerAWorld.KCns_d13to40
+import all Fn2.Instances.LayerAWorld.KCtl_d0to26
+import all Fn2.Instances.LayerAWorld.Rest_d6b0
+import all Fn2.Instances.LayerAWorld.Rest_d6b1
+import all Fn2.Instances.LayerAWorld.Rest_d7b0
+import all Fn2.Instances.LayerAWorld.Rest_d7b1
+-- END world bodies
+
+@[expose] public section
 set_option maxRecDepth 100000
 set_option maxHeartbeats 8000000
 set_option linter.unusedVariables false
@@ -20582,3 +20632,5 @@ theorem «FN2-MACHINES-FREE-HEAD-OF».canonical_body («ORD» : Val) («FN2-MACH
 #print axioms «FN2-CNS-RUN-DRAINING».canonical_body
 #print axioms «FN2-CNS-ON-READ-RESULT».canonical_body
 end Fn2.Instances.CoreWorld
+
+end

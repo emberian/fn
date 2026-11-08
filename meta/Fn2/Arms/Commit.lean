@@ -1,4 +1,8 @@
-import Fn2.ACL2.Val
+module
+
+public import Fn2.ACL2.Val
+
+@[expose] public section
 
 namespace Fn2.Arms
 open Fn2.ACL2
@@ -12,30 +16,30 @@ structure CommitCtx where
   deriving Inhabited, Repr
 
 namespace Commit
-private def s := Val.sym
-private def l := Val.ofList
-private def form (head : String) (args : List Val := []) := l (s head :: args)
-private def proper : Val → Bool
+def s := Val.sym
+def l := Val.ofList
+def form (head : String) (args : List Val := []) := l (s head :: args)
+def proper : Val → Bool
   | .cons _ d => proper d
   | v => v == Val.nil
-private def get (key : String) : List Val → Val
+def get (key : String) : List Val → Val
   | .sym k :: v :: rest => if k == key then v else get key rest
   | _ => Val.nil
-private def has (key : String) : List Val → Bool
+def has (key : String) : List Val → Bool
   | .sym k :: _ :: rest => k == key || has key rest
   | _ => false
-private def keys : List Val → List String → Bool
+def keys : List Val → List String → Bool
   | [], _ => true
   | .sym k :: _ :: rest, allowed => allowed.contains k && keys rest allowed
   | _, _ => false
-private def validVariable : Val → Bool
+def validVariable : Val → Bool
   | .sym n => !["NIL", "T", "ID", "BUDGET", "SLOT", "KIND", "ORDINAL", "EVENT",
       "OUTCOME", "REASON", "COUNT", "AUX0", "AUX1", "FN2-CORE", "FN2-MACHINES",
       "FN2-POOL", "FN2-OPS", "FN2-CONTROL"].contains n &&
       !n.startsWith ":" && !n.startsWith "*" && !n.startsWith "ROW-"
   | _ => false
-private def branch (codes : List String) (steps : List Val) := l (l (codes.map s) :: steps)
-private def doCase (vars : List String) (call : Val) (cases : List Val)
+def branch (codes : List String) (steps : List Val) := l (l (codes.map s) :: steps)
+def doCase (vars : List String) (call : Val) (cases : List Val)
     (effects : List Val := []) :=
   form ":DO" ([l (vars.map s), call] ++ effects ++ [s ":ACCEPT", Val.nil, s ":CASE", l cases])
 
@@ -110,3 +114,5 @@ def expand (ctx : CommitCtx) (step : Val) : Except String (List Val) := do
 
 end Commit
 end Fn2.Arms
+
+end

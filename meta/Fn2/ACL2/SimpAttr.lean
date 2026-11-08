@@ -1,4 +1,9 @@
-import Lean.Meta.Tactic.Simp.RegisterCommand
+module
+
+public import Lean.Meta.Tactic.Simp.RegisterCommand
+public meta import Lean.Meta.Tactic.Simp.Attr
+
+public meta section
 
 /-!
 # Fn2.ACL2.SimpAttr: the dispatch simp set
@@ -9,3 +14,5 @@ translated function to the function itself without unfolding the dispatch.
 -/
 
 register_simp_attr fn2_dispatch
+
+end

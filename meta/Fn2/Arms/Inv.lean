@@ -1,7 +1,16 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
-import Fn2.Arms.Cost
-import Fn2.Arms.Frame
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+public import Fn2.Arms.Cost
+public import Fn2.Arms.Frame
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Inv: an invariant of the children, carried over the interpreter
@@ -714,3 +723,5 @@ theorem runArm_inv (k : Kind) (a : Arm) (observe : Bool) (args : List Val) (fuel
 end
 
 end Fn2.Arms.Inv
+
+end

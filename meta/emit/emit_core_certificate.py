@@ -104,7 +104,7 @@ def main(src):
             (f'(fn2_not_native {lean_str(f.name)} (by decide +kernel))' if f.name.startswith('FN2-') else '(by decide +kernel)')+
             f', fns, Fn2.Instances.LayerAWorld.{ident(f.name)}.fns_eq]']
     L += ['end Fn2.Instances.CoreWorld','']
-    (out/'CoreWorld.lean').write_text('\n'.join(L))
+    (out/'CoreWorld.lean').write_text(as_module('\n'.join(L), import_all=CORE_STRING_BODIES, bodies='scan'))
     f,d=allf['MEMBER-EQ-EXEC']
     T=['-- Generated canonical body certificates; every equation is kernel checked.',
        'import Fn2.Instances.CoreWorld','set_option maxRecDepth 100000','set_option maxHeartbeats 8000000',
@@ -150,7 +150,7 @@ def main(src):
           f'  exact (Translation.evalExport_of_decoded_by_definition {ident(f.name)}.decoded evaluated).trans (congrArg Except.ok hv.symm)',
           f'#print axioms {ident(f.name)}.canonical_body']
     T += ['#print axioms «FN2-CNS-RUN-DRAINING».canonical_body','#print axioms «FN2-CNS-ON-READ-RESULT».canonical_body','end Fn2.Instances.CoreWorld','']
-    (out/'CoreTranslation.lean').write_text('\n'.join(T))
+    (out/'CoreTranslation.lean').write_text(as_module('\n'.join(T), import_all=CORE_STRING_BODIES, bodies='scan'))
     manifest=fields(p[':MANIFEST']);layout=decode(manifest[':CORE-LAYOUT'])[1];tuple_=List([r[1] for r in layout])
     emb={':KINDS':List([kd]),':OPERATIONS':decode(p[':OPERATIONS']),':CONSTANTS':decode(p[':CONSTANTS']),':CORE-TUPLE':tuple_}
     emit_kinds(emb,[],out/'CoreKinds.lean','Fn2.Instances.CoreKinds','Fn2.Instances.CoreWorld',{})

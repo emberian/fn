@@ -1,5 +1,9 @@
 -- Generated from the canonical ACL2 export. Checked by the Lean kernel.
-import Fn2.ACL2.Translation
+module
+
+public import Fn2.ACL2.Translation
+
+@[expose] public section
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0
 set_option linter.unusedVariables false
@@ -388,3 +392,5 @@ def fns : Fns
   | "FN2-MACHINES-WAIT-REASON", [«I», «FN2-MACHINES»] => some («FN2-MACHINES-WAIT-REASON» «I» «FN2-MACHINES»)
   | _, _ => none
 end Fn2.Instances.BridgeWorld
+
+end

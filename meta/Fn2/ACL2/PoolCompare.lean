@@ -1,7 +1,24 @@
 -- Generated from the canonical admitted loop; proof schema lives in pool_compare.lean.in.
-import Fn2.ACL2.Countdown
-import Fn2.ACL2.Translation
-import Mathlib.Tactic
+module
+
+public import Fn2.ACL2.Countdown
+public import Fn2.ACL2.Translation
+public import Mathlib.Tactic
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+import all Init.Data.List.Control
+-- BEGIN world bodies (emit_embed.py): scan
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S17_d1
+import all Fn2.Instances.LayerAWorld.S22_d1to7
+import all Fn2.Instances.LayerAWorld.S12_d0to10
+import all Fn2.Instances.LayerAWorld.S8_d2to12
+-- END world bodies
+
+@[expose] public section
 
 namespace Fn2.ACL2.PoolCompare
 open Fn2.ACL2 Fn2.Instances.LayerAWorld
@@ -506,3 +523,5 @@ theorem «FN2-POOL-COMPARE-LOOP».canonical_body («A» : Val) («B» : Val) («
 #print axioms certificate
 #print axioms «FN2-POOL-COMPARE-LOOP».canonical_body
 end Fn2.ACL2.PoolCompare
+
+end

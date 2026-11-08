@@ -3,8 +3,12 @@
 -- 1 kinds in the step language (0 in child form), 4 declared operations,
 -- 0 wait kinds,
 -- 217 constants.
-import Fn2.Arms
-import Fn2.Instances.CoreWorld
+module
+
+public import Fn2.Arms
+public import Fn2.Instances.CoreWorld
+
+@[expose] public section
 
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0
@@ -120,3 +124,5 @@ def readResult : Arm := cns.observes[0]!
 def canonical_readResult : Translation.Object := (.cons (.cons (.symbol [75, 69, 89, 87, 79, 82, 68] [83, 69, 84]) (.cons (.cons (.symbol [65, 67, 76, 50] [82, 69, 86, 69, 78, 84]) (.cons (.symbol [65, 67, 76, 50] [69, 86, 69, 78, 84]) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76]))) (.cons (.cons (.symbol [65, 67, 76, 50] [82, 79, 85, 84, 67, 79, 77, 69]) (.cons (.symbol [65, 67, 76, 50] [79, 85, 84, 67, 79, 77, 69]) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76]))) (.cons (.cons (.symbol [65, 67, 76, 50] [82, 67, 79, 85, 78, 84]) (.cons (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [67, 79, 85, 78, 84]) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76]))) (.cons (.cons (.symbol [65, 67, 76, 50] [82, 82, 69, 65, 68, 89]) (.cons (.integer (1)) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76]))) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76])))))) (.cons (.cons (.symbol [75, 69, 89, 87, 79, 82, 68] [87, 65, 75, 69]) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76])) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76])))
 theorem canonical_readResult_decoded : canonical_readResult.value? = some readResult.decl := by rfl
 end Fn2.Instances.CoreKinds
+
+end

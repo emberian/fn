@@ -3,8 +3,12 @@
 -- 1 kinds in the step language (1 in child form), 0 declared operations,
 -- 0 wait kinds,
 -- 83 constants.
-import Fn2.Arms
-import Fn2.Instances.BridgeWorld
+module
+
+public import Fn2.Arms
+public import Fn2.Instances.BridgeWorld
+
+@[expose] public section
 
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0
@@ -74,3 +78,5 @@ theorem canonical_layout : Translation.readCoreLayout canonicalLayout = some cor
 def canonicalFreeDeclaration : Translation.Object := (.cons (.cons (.symbol [75, 69, 89, 87, 79, 82, 68] [73, 68, 76, 69]) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76])) (.symbol [67, 79, 77, 77, 79, 78, 45, 76, 73, 83, 80] [78, 73, 76]))
 theorem canonical_free_declaration : canonicalFreeDeclaration.value? = some kinds.head!.arms.head!.decl := by rfl
 end Fn2.Instances.BridgeKinds
+
+end

@@ -1,4 +1,13 @@
-import Fn2.Arms
+module
+
+public import Fn2.Arms
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.ArmsLemmas: the generic lemmas PW3 rewrites by (LEAN-METATHEORY §9.3)
@@ -408,3 +417,5 @@ theorem run_do_accept_stop (w : World) (f : Frame) (st sf : St) (fuel : Nat)
   rfl
 
 end Fn2.Arms
+
+end

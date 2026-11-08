@@ -1,4 +1,13 @@
-import Fn2.Arms.Core
+module
+
+public import Fn2.Arms.Core
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 namespace Fn2.Arms.Wrapper
 open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
@@ -40,3 +49,5 @@ theorem omitted_child_rejected (w : World) (layout : List String) (k : Kind) (a 
   exact omitted (runCore_cases w layout k a observe args fuel result h).2.1
 
 end Fn2.Arms.Wrapper
+
+end

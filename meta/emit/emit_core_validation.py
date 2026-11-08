@@ -42,7 +42,7 @@ def emit_validation(kd,tuple_,functions):
     t=Path(__file__).with_name('core_validation.lean.in').read_text()+Path(__file__).with_name('core_draining.lean.in').read_text()
     for key,value in values.items():t=t.replace('@'+key+'@',value)
     if re.search(r'@[A-Z_]+@',t):raise ValueError('unexpanded template')
-    Path('meta/Fn2/Arms/CoreValidation.lean').write_text(t)
+    Path('meta/Fn2/Arms/CoreValidation.lean').write_text(as_module(t, import_all=CORE_STRING_BODIES, bodies='scan'))
 if __name__=='__main__':
     p=fields(read_canonical(open(sys.argv[1]).read())[1:])
     layout=decode(fields(p[':MANIFEST'])[':CORE-LAYOUT'])[1]

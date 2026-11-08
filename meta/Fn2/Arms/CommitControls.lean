@@ -1,4 +1,14 @@
-import Fn2.Arms
+module
+
+public import Fn2.Arms
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+import all Init.Data.List.Control
+
+@[expose] public section
 namespace Fn2.Arms.CommitControls
 open Fn2.ACL2
 deriving instance DecidableEq for Except
@@ -36,3 +46,5 @@ theorem subarm_uses_generator_context : ∃ declaration,
 #print axioms wrong_ticket_rejected
 #print axioms subarm_uses_generator_context
 end Fn2.Arms.CommitControls
+
+end

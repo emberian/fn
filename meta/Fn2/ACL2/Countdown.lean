@@ -1,4 +1,13 @@
-import Fn2.ACL2.Fuel
+module
+
+public import Fn2.ACL2.Fuel
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-! A decreasing loop produces a result at adequate fuel. Exhaustion is a
 distinct error, so stability of an exhausted computation cannot certify it. -/
@@ -107,3 +116,5 @@ theorem missing_decrease_rejected :
   | succ fuel ih => exact ih
 
 end Fn2.ACL2.Countdown
+
+end

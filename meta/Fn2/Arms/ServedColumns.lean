@@ -1,9 +1,36 @@
-import Fn2.Arms.Served
-import Fn2.Arms.Columns
-import Fn2.Instances.LayerAEqns1
-import Fn2.Instances.LayerAEqns2
-import Fn2.Instances.LayerAEqns3
-import Fn2.Instances.LayerAEqns4
+module
+
+public import Fn2.Arms.Served
+public import Fn2.Arms.Columns
+public import Fn2.Instances.LayerAEqns1
+public import Fn2.Instances.LayerAEqns2
+public import Fn2.Instances.LayerAEqns3
+public import Fn2.Instances.LayerAEqns4
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+-- BEGIN world bodies (emit_embed.py): accessors FN2-CURSOR
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S12_d0to10
+import all Fn2.Instances.LayerAWorld.S12xff6259_d0to4
+import all Fn2.Instances.LayerAWorld.S12xff6259_d5to6
+import all Fn2.Instances.LayerAWorld.S15_d6to11
+import all Fn2.Instances.LayerAWorld.S8_d2to12
+import all Fn2.Instances.LayerAWorld.S4_d0to24
+import all Fn2.Instances.LayerAWorld.S3_d0to23
+import all Fn2.Instances.LayerAWorld.S2_d0to29
+import all Fn2.Instances.LayerAWorld.SConnCursor_d0to20
+import all Fn2.Instances.LayerAWorld.KConn_d0to24
+import all Fn2.Instances.LayerAWorld.KCursor_d0to32
+import all Fn2.Instances.LayerAWorld.Rest_d6b0
+import all Fn2.Instances.LayerAWorld.Rest_d6b1
+import all Fn2.Instances.LayerAWorld.Rest_d7b0
+import all Fn2.Instances.LayerAWorld.Rest_d7b1
+-- END world bodies
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.ServedColumns: the column and phase contracts for `FN2-CURSOR`
@@ -125,3 +152,5 @@ theorem cursor_seek_name_contracts :
   decide +kernel
 
 end Fn2.Arms.ServedColumns
+
+end

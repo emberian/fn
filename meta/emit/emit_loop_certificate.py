@@ -61,7 +61,7 @@ def main(src):
         if x.name == ROOT: L += ['  rw [← body_equation '+args+']']
         L += [f'  change Translation.eval fns {env} {term(x.body)} 512 = _',*expression_proof(x.body,want,{a:ident(a) for a in x.formals})]
     L += ['#print axioms certificate','#print axioms «FN2-POOL-COMPARE-LOOP».canonical_body','end Fn2.ACL2.PoolCompare','']
-    Path('meta/Fn2/ACL2/PoolCompare.lean').write_text('\n'.join(L))
+    Path('meta/Fn2/ACL2/PoolCompare.lean').write_text(as_module('\n'.join(L), import_all=CORE_STRING_BODIES, bodies='scan'))
     C=['(in-package "ACL2")','(include-book "../../books/assembly-callbacks-a")',
        '(include-book "../../books/translation-validation")',
        evaluator_certificate(fs,allf).replace('FN2-EXPORT-EVAL','FN2-LOOP-EXPORT-EVAL')]

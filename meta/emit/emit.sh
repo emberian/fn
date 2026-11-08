@@ -68,3 +68,6 @@ if ! grep -F 'FN2-META-SERVED-CERTIFICATE PASS' "$log.served" >/dev/null; then
   tail -20 "$log.served"; echo "canonical served export refused (log $log.served)"; exit 1
 fi
 python3 -I "$here/emit_embed.py" --served-certificate "$here/served-certificate.sexp"
+
+# the world-bodies blocks of every module that unfolds world bodies (the certificates' among them)
+python3 -I "$here/emit_embed.py" --world-bodies "$here/world-probe.sexp" "$root/meta/Fn2"
