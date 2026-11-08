@@ -161,6 +161,38 @@ theorem nth_updateNth_nest_ne_slot (f s t : Nat) (v st : Val) (h : t ≠ s) :
       Native.nth (.int t) (Native.nth (.int f) st) := by
   rw [nth_updateNth_same, nth_updateNth_ne t s _ _ h]
 
+/-- Writes to distinct logical fields commute, including on incomplete lists. -/
+theorem updateNthN_commute (i j : Nat) (v w st : Val) (h : i ≠ j) :
+    Native.updateNthN i v (Native.updateNthN j w st) =
+      Native.updateNthN j w (Native.updateNthN i v st) := by
+  induction i generalizing j st with
+  | zero => cases j with
+    | zero => exact (h rfl).elim
+    | succ j => rfl
+  | succ i ih => cases j with
+    | zero => rfl
+    | succ j =>
+      exact congrArg (Val.cons st.car) (ih j st.cdr (by omega))
+
+theorem updateNth_commute (i j : Nat) (v w st : Val) (h : i ≠ j) :
+    Native.updateNth (.int i) v (Native.updateNth (.int j) w st) =
+      Native.updateNth (.int j) w (Native.updateNth (.int i) v st) := by
+  simpa [Native.updateNth, Val.nfix, Val.toInt] using updateNthN_commute i j v w st h
+
+/-- A simultaneous batch of column writes has no dependency between distinct
+array fields; the slot and values may be arbitrary ACL2 values. -/
+theorem updateNth_array_commute (i j : Nat) (slot v w st : Val) (h : i ≠ j) :
+    Native.updateNth (.int i)
+      (Native.updateNth slot v (Native.nth (.int i)
+        (Native.updateNth (.int j) (Native.updateNth slot w (Native.nth (.int j) st)) st)))
+      (Native.updateNth (.int j) (Native.updateNth slot w (Native.nth (.int j) st)) st) =
+    Native.updateNth (.int j)
+      (Native.updateNth slot w (Native.nth (.int j)
+        (Native.updateNth (.int i) (Native.updateNth slot v (Native.nth (.int i) st)) st)))
+      (Native.updateNth (.int i) (Native.updateNth slot v (Native.nth (.int i) st)) st) := by
+  rw [nth_updateNth_ne i j _ _ h, nth_updateNth_ne j i _ _ (Ne.symm h)]
+  exact updateNth_commute i j _ _ st h
+
 /-! ### The frame of the interpreter's state -/
 
 theorem find_set_ne (l : List (String × Val)) (n n' : String) (v : Val) (h : n ≠ n') :

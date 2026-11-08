@@ -128,6 +128,15 @@ open Fn2.ACL2
 abbrev eval (fns : Fns) (env : Env) (e : Term) (fuel : Nat) :=
   Fn2.Pathway.eval ⟨[], [], [], [], fns⟩ env e fuel
 
+/-- Compose a checked canonical decode with a body-evaluation certificate without
+normalizing the concrete interpreter during proof search. -/
+theorem evalExport_of_decoded_by_definition {fuel : Nat} {body : Object} {term : Term}
+    {fns : Fns} {env : Env} {v : Val}
+    (decoded : readTerm fuel body = some term)
+    (evaluated : eval fns env term fuel = .ok v) :
+    evalExport fuel body fns env = .ok v := by
+  simpa only [evalExport, decoded] using evaluated
+
 theorem eval_args_nil (fns : Fns) (env : Env) (fuel : Nat) :
     ([] : List Term).mapM (fun t => eval fns env t fuel) = .ok [] := rfl
 
