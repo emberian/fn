@@ -1,9 +1,18 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
-import Fn2.Pathway
-import Fn2.Arms.Cost
-import Fn2.Arms.Frame
-import Fn2.Instances.LayerAKinds
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+public import Fn2.Pathway
+public import Fn2.Arms.Cost
+public import Fn2.Arms.Frame
+public import Fn2.Instances.LayerAKinds
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Derive: declaration-derived contracts, their teeth, and agreement over LayerA
@@ -533,3 +542,5 @@ theorem layerA_childForm_contracts_agree :
   decide +kernel
 
 end Fn2.Arms.Derive
+
+end

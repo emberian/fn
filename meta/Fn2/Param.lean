@@ -1,3 +1,6 @@
+module
+
+@[expose] public section
 /-!
 # Fn2.Param: parametricity for a declaration client that never inspects the representation
 
@@ -138,3 +141,5 @@ theorem peek_breaks_abstraction :
   decide
 
 end Fn2.Param
+
+end

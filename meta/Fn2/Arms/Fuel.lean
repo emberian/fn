@@ -1,8 +1,17 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
-import Fn2.Arms.Bound
-import Fn2.Arms.Cost
-import Fn2.Arms.Frame
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+public import Fn2.Arms.Bound
+public import Fn2.Arms.Cost
+public import Fn2.Arms.Frame
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Fuel: a fuel bound read off a declaration, and fuel adequacy over the interpreter
@@ -481,3 +490,5 @@ theorem run_adq (subF : String → Option Nat) (hsub : SubOK w k subF) :
 end
 
 end Fn2.Arms.Fuel
+
+end

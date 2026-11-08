@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "assembly-attach")
 (include-book "executor-contracts")
+(include-book "column-contracts")
 
 ;; The executor's glue between a visit and the arm, with contracts derived
 ;; under the commit kind (callees first).
@@ -599,3 +600,46 @@
                                   (fn2-commit-run-notify))
            :do-not-induct t
            :use ((:instance fn2-commit-run-notify-writes)))))
+
+(make-event
+ (value (cons 'progn (fn2-arm-frame-fns-forms
+                      '(fn2-commit-save-pool fn2-commit-keep-pool fn2-commit-unwind-pool fn2-core-reserve
+                        fn2-commit-reserve-pools fn2-commit-reserve-extent fn2-commit-release-pools
+                        fn2-commit-prepare-root fn2-commit-ready fn2-commit-put-members fn2-exec-wake)
+                      'fn2-commit))))
+
+; Materialize each producer's column footprint once, after the concrete
+; operations and arm contracts exist. View consumers instantiate these
+; contracts; no view names appear in this producer registry.
+(make-event (value (fn2-column-base-event 'fn2-core-stop 'fn2-commit (w state))))
+(make-event (value (fn2-column-base-event 'fn2-core-release 'fn2-commit (w state))))
+(make-event (value (fn2-column-base-event 'fn2-machine-refuse-write 'fn2-commit (w state))))
+(make-event (value (cons 'progn (fn2-column-setter-events 'fn2-commit-root (fn2-view-layout 'fn2-commit-root (w state)) 0))))
+(make-event (value (cons 'progn (fn2-column-setter-events 'fn2-commit-io (fn2-view-layout 'fn2-commit-io (w state)) 0))))
+(fn2-defcolumn-footprint fn2-commit-mark-abort :kind fn2-commit
+ :layout fn2-commit-root :columns (aborting abort-event))
+(fn2-defcolumn-footprint fn2-commit-prepare-root :kind fn2-commit
+ :layout fn2-commit-root :columns (parent extent first-key members proposed))
+(fn2-defcolumn-footprint fn2-commit-end-abort :kind fn2-commit
+ :layout fn2-commit-root :columns (proposed first-key aborting abort-event))
+(fn2-defcolumn-footprint fn2-commit-save-pool :kind fn2-commit
+ :layout fn2-commit-io :columns (pool-slot pool-gen ready))
+(fn2-defcolumn-footprint fn2-commit-io-edge :kind fn2-commit
+ :layout fn2-commit-io :columns (op-slot op-gen lent))
+(fn2-defcolumn-footprint fn2-commit-unprepare :kind fn2-commit
+ :layout fn2-commit-root :columns (seal-ready))
+(fn2-defcolumn-footprint fn2-commit-seal-context :kind fn2-commit
+ :layout fn2-commit-root :columns (seal-ready))
+(fn2-defcolumn-footprint fn2-commit-release-pool :kind fn2-commit
+ :layout fn2-commit-io :columns (pool-slot pool-gen ready))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-run-collect fn2-commit-run-dependencies fn2-commit-run-log-write) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-run-seal fn2-commit-run-dropping) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-run-free fn2-commit-run-fence fn2-commit-run-draining fn2-commit-run-uncertain) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-run-install fn2-commit-run-publish fn2-commit-run-durable fn2-commit-run-notify) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-keep-pool fn2-commit-unwind-pool fn2-commit-reserve-pools fn2-commit-release-pools) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-reserve-extent fn2-commit-prepare-root fn2-commit-ready fn2-commit-put-members fn2-exec-wake) (w state)) 'fn2-commit))))
+(make-event (value (cons 'progn (fn2-column-events
+ (fn2-ctf-postorder-new
+  '(fn2-machine-contract-check fn2-machine-refuse-phase fn2-commit-start
+    fn2-commit-write+phase+generation+principal-slot+deadline+stopped+batch-no+member-count+first-key+partner+cb-mode+cb-stage+cb-cursor+cb-issued+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live+cb-fence-ok+cb-deps-ok+cb-log-ok+cb-published+cb-acks+cb-seal-len+cb-wrote+cb-open+dep-bytes+rec-bytes)
+  (w state)) 'fn2-commit))))

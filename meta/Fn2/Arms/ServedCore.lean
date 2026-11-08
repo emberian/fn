@@ -1,5 +1,41 @@
-import Fn2.Arms.Core
-import Fn2.Arms.ServedColumns
+module
+
+public import Fn2.Arms.Core
+public import Fn2.Arms.ServedColumns
+-- BEGIN world bodies (emit_embed.py): accessors FN2-CNS FN2-CONN
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S12_d0to10
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d0to1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d3b0
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d3b1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d4
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d5b0
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d5b1
+import all Fn2.Instances.LayerAWorld.S11x4c060b_d6to12
+import all Fn2.Instances.LayerAWorld.S15_d6to11
+import all Fn2.Instances.LayerAWorld.S8_d2to12
+import all Fn2.Instances.LayerAWorld.S5_d5to13
+import all Fn2.Instances.LayerAWorld.S4_d0to24
+import all Fn2.Instances.LayerAWorld.S3_d0to23
+import all Fn2.Instances.LayerAWorld.S2_d0to29
+import all Fn2.Instances.LayerAWorld.SCnsCtl_d6to14
+import all Fn2.Instances.LayerAWorld.KCns_d0to12
+import all Fn2.Instances.LayerAWorld.SConnListener_d6to10
+import all Fn2.Instances.LayerAWorld.KConn_d0to24
+import all Fn2.Instances.LayerAWorld.KCtl_d0to26
+import all Fn2.Instances.LayerAWorld.KListener_d0to16
+import all Fn2.Instances.LayerAWorld.Rest_d6b0
+import all Fn2.Instances.LayerAWorld.Rest_d6b1
+import all Fn2.Instances.LayerAWorld.Rest_d7b0
+import all Fn2.Instances.LayerAWorld.Rest_d7b1
+-- END world bodies
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.ServedCore: the contracts for the served core-form kinds `FN2-CNS` and `FN2-CONN`
@@ -272,3 +308,5 @@ theorem conn_next_unchecked :
   decide +kernel
 
 end Fn2.Arms.ServedCore
+
+end

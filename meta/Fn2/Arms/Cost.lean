@@ -1,6 +1,16 @@
-import Fn2.Arms
-import Fn2.ArmsLemmas
-import Fn2.Arms.Bound
+module
+
+public import Fn2.Arms
+public import Fn2.ArmsLemmas
+public import Fn2.Arms.Bound
+import all Init.Data.List.Control
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.Cost: the derived charge of an arm, and its soundness for the interpreter
@@ -1155,3 +1165,5 @@ theorem runArm_charge_le_cost (k : Kind) (a : Arm) (args : List Val) (fuel : Nat
   · cases hC
 
 end Fn2.Arms.Cost
+
+end

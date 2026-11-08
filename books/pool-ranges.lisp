@@ -201,3 +201,67 @@
   '(fn2-pool-copy-up fn2-pool-copy-down fn2-pool-compare-loop fn2-pool-fold-loop fn2-pool-scan-loop
     fn2-pool-copy-range fn2-pool-compare fn2-pool-fold fn2-pool-scan fn2-pool-drop-prefix fn2-pool-truncate)
   (w state)))
+
+;; A range copy writes only its destination interval: another row's extent
+;; keeps its octets (with fn2-pool-write-other-extent and
+;; fn2-pool-adapter-write-other-extent, every pool export that writes octets).
+(defthm fn2-pool-logical-octets-of-copy-up
+  (implies (and (natp dst) (natp b) (or (<= (+ dst (nfix m)) b) (<= (+ b (nfix n)) dst)))
+           (equal (fn2-pool-logical-octets n b (fn2-pool-copy-up src dst m fn2-pool))
+                  (fn2-pool-logical-octets n b fn2-pool)))
+  :hints (("Goal" :induct (fn2-pool-copy-up src dst m fn2-pool)
+           :in-theory (enable fn2-pool-copy-up))))
+(defthm fn2-pool-logical-octets-of-copy-down
+  (implies (and (natp dst) (natp b) (or (<= (+ dst (nfix m)) b) (<= (+ b (nfix n)) dst)))
+           (equal (fn2-pool-logical-octets n b (fn2-pool-copy-down src dst m fn2-pool))
+                  (fn2-pool-logical-octets n b fn2-pool)))
+  :hints (("Goal" :induct (fn2-pool-copy-down src dst m fn2-pool)
+           :in-theory (enable fn2-pool-copy-down))))
+(defthm fn2-pool-copy-range-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other dst)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 1 (fn2-pool-copy-range src sgen soff dst dgen doff len okind oslot ogen fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :in-theory (e/d (fn2-pool-copy-range) (fn2-pool-semanticp))
+           :use ((:instance fn2-pool-semanticp-row-bounds (i dst))
+                 (:instance fn2-pool-semanticp-row-bounds (i other))
+                 (:instance fn2-pool-extents-apart (i dst) (j other))))))
+(defthm fn2-pool-drop-prefix-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other slot)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 2 (fn2-pool-drop-prefix slot gen k cursor limit okind oslot ogen fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :in-theory (e/d (fn2-pool-drop-prefix) (fn2-pool-semanticp))
+           :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
+                 (:instance fn2-pool-semanticp-row-bounds (i other))
+                 (:instance fn2-pool-extents-apart (i slot) (j other))))))
+(defthm fn2-pool-copy-up-keeps-extents
+  (let ((q (fn2-pool-copy-up src dst m fn2-pool)))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
+  :hints (("Goal" :induct (fn2-pool-copy-up src dst m fn2-pool) :in-theory (enable fn2-pool-copy-up))))
+(defthm fn2-pool-copy-down-keeps-extents
+  (let ((q (fn2-pool-copy-down src dst m fn2-pool)))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
+  :hints (("Goal" :induct (fn2-pool-copy-down src dst m fn2-pool) :in-theory (enable fn2-pool-copy-down))))
+(defthm fn2-pool-copy-range-keeps-extents
+  (let ((q (mv-nth 1 (fn2-pool-copy-range src sgen soff dst dgen doff len okind oslot ogen fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
+  :hints (("Goal" :in-theory (enable fn2-pool-copy-range))))
+(defthm fn2-pool-drop-prefix-keeps-extents
+  (let ((q (mv-nth 2 (fn2-pool-drop-prefix slot gen k cursor limit okind oslot ogen fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool))))
+  :hints (("Goal" :in-theory (enable fn2-pool-drop-prefix))))

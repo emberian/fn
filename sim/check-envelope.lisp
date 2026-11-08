@@ -50,21 +50,21 @@
 ; to (gen kind cap nonce rslot rgen off len may-release acked posted0);
 ; CAPS maps a capability incarnation (index . nonce) to (nonce port rx tx eof closed cuts) with
 ; rx and tx newest first and cuts the Receive counts, newest first.
-(defun fn2-env-get (k alist) (declare (xargs :verify-guards nil)) (cdr (assoc-equal k alist)))
+(defun fn2-envelope-get (k alist) (declare (xargs :verify-guards nil)) (cdr (assoc-equal k alist)))
 
-(defun fn2-env-write-loan (k octets slot gen op opgen fn2-pool)
+(defun fn2-envelope-write-loan (k octets slot gen op opgen fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (len octets)))
   (if (atom octets) (mv :ok fn2-pool)
     (mv-let (code fn2-pool) (fn2-pool-adapter-write slot gen op opgen k (car octets) fn2-pool)
       (if (not (eq code :ok)) (mv code fn2-pool)
-        (fn2-env-write-loan (+ 1 (nfix k)) (cdr octets) slot gen op opgen fn2-pool)))))
-(defun fn2-env-read-range (k n slot fn2-pool)
+        (fn2-envelope-write-loan (+ 1 (nfix k)) (cdr octets) slot gen op opgen fn2-pool)))))
+(defun fn2-envelope-read-range (k n slot fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix (- (nfix n) (nfix k)))))
   (if (>= (nfix k) (nfix n)) nil
     (cons (fn2-pool-datai (+ (fn2-pool-slot-base slot fn2-pool) (nfix k)) fn2-pool)
-          (fn2-env-read-range (+ 1 (nfix k)) n slot fn2-pool))))
+          (fn2-envelope-read-range (+ 1 (nfix k)) n slot fn2-pool))))
 
-(defun fn2-env-descriptor (slot fn2-core)
+(defun fn2-envelope-descriptor (slot fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (mv-let (code kind cap nonce rslot rgen off len soff fua may-release cslot cgen deadline ogen)
     (fn2-host-action slot fn2-core)
@@ -73,26 +73,26 @@
 
 ; CAPS is keyed by the incarnation (index . nonce), so a reused index keeps
 ; every earlier connection's bytes for the client check.
-(defun fn2-env-cap-issued-p (index nonce caps)
+(defun fn2-envelope-cap-issued-p (index nonce caps)
   ; A pair is fresh only if its index was issued before only with smaller nonces.
   (declare (xargs :verify-guards nil))
   (cond ((atom caps) nil)
         ((and (consp (car caps)) (consp (caar caps)) (equal (car (caar caps)) index)
               (natp nonce) (natp (cdr (caar caps))) (<= nonce (cdr (caar caps)))) t)
-        (t (fn2-env-cap-issued-p index nonce (cdr caps)))))
-(defun fn2-env-cap-live-p (index nonce caps)
+        (t (fn2-envelope-cap-issued-p index nonce (cdr caps)))))
+(defun fn2-envelope-cap-live-p (index nonce caps)
   (declare (xargs :verify-guards nil))
-  (let ((c (fn2-env-get (cons index nonce) caps)))
+  (let ((c (fn2-envelope-get (cons index nonce) caps)))
     (and c (not (nth 5 c)))))
 
 ; One post. Result (mv failure taken caps fn2-core); FAILURE nil when legal.
 ; BYTES-P also compares a Send's recorded octets with the replay's range.
-(defun fn2-env-post (e bytes-p taken caps fn2-core)
+(defun fn2-envelope-post (e bytes-p taken caps fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* ((cell (nth 1 e)) (slot (nth 2 e)) (gen (nth 3 e)) (event (nth 4 e)) (outcome (nth 5 e))
        (reason (nth 6 e)) (count (nth 7 e)) (aux0 (nth 8 e)) (aux1 (nth 9 e)) (family (nth 10 e))
        (peer (nth 11 e)) (octets (nth 12 e))
-       (tk (fn2-env-get slot taken))
+       (tk (fn2-envelope-get slot taken))
        (stray0 (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n))
        ((unless (and tk (equal (nth 0 tk) gen) (nth 9 tk))) (mv :post-unacknowledged taken caps fn2-core))
        ((when (and (equal cell 1)
@@ -114,7 +114,7 @@
        ((unless (fn2-host-result-allowedp kind outcome reason count aux0 aux1 len may-release))
         (mv :post-not-allowed taken caps fn2-core))
        ((when (and (or (equal kind *fn2-action-receive*) (equal kind *fn2-action-send*))
-                   (not (fn2-env-cap-live-p cap nonce caps))
+                   (not (fn2-envelope-cap-live-p cap nonce caps))
                    (not (equal outcome *fn2-outcome-cancelled*))))
         (mv :post-after-close taken caps fn2-core))
        (stray (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n))
@@ -126,18 +126,18 @@
                  (equal outcome *fn2-outcome-done*))
             (if (not (equal (len octets) count)) (mv :receive-count fn2-core)
               (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
-                (fn2-env-write-loan off octets rslot rgen slot gen fn2-pool) (mv code fn2-core)))
+                (fn2-envelope-write-loan off octets rslot rgen slot gen fn2-pool) (mv code fn2-core)))
           (mv :ok fn2-core)))
        ((unless (eq wcode :ok)) (mv :receive-loan taken caps fn2-core))
        ; Send: what the replay's borrowed range holds, before the post releases it.
        (sent (if (and (equal kind *fn2-action-send*) (not (equal outcome *fn2-outcome-cancelled*)))
                  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (bytes)
-                   (fn2-env-read-range off (+ off count) rslot fn2-pool) bytes)
+                   (fn2-envelope-read-range off (+ off count) rslot fn2-pool) bytes)
                nil))
        ((when (and bytes-p (equal kind *fn2-action-send*) (not (equal sent octets))))
         (mv :send-bytes taken caps fn2-core))
        ((when (and (equal kind *fn2-action-accept*) (equal outcome *fn2-outcome-done*)
-                   (fn2-env-cap-issued-p aux0 aux1 caps)))
+                   (fn2-envelope-cap-issued-p aux0 aux1 caps)))
         (mv :accept-capability-reused taken caps fn2-core))
        (fn2-core (if (equal kind *fn2-action-accept*)
                      (fn2-host-post-accept-result slot gen outcome reason aux0 aux1 family
@@ -148,7 +148,7 @@
         (mv :post-refused taken caps fn2-core))
        (taken (put-assoc-equal slot (update-nth 11 aux0 (update-nth 10 t tk)) taken))
        (key (cons cap nonce))
-       (c (fn2-env-get key caps))
+       (c (fn2-envelope-get key caps))
        (caps (cond
               ((and (equal kind *fn2-action-accept*) (equal outcome *fn2-outcome-done*))
                (put-assoc-equal (cons aux0 aux1) (list aux1 (nth 0 peer) nil nil nil nil nil) caps))
@@ -166,7 +166,7 @@
     (mv nil taken caps fn2-core)))
 
 ; The whole trace. Result (mv verdict caps fn2-core): :pass, or (FAILURE STEP).
-(defun fn2-env-steps (trace i bytes-p taken caps fn2-core)
+(defun fn2-envelope-steps (trace i bytes-p taken caps fn2-core)
   ;; the measure's goal is proved before clausify splits the rulers' case tests (D26: 56 s -> 1.7 s)
   (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len trace)
                   :hints (("Goal" :do-not '(preprocess)))))
@@ -182,7 +182,7 @@
             (:take (mv-let (code slot gen) (fn2-host-outbox-peek 0 fn2-core)
                      (cond ((not (and (eq code :ok) (equal slot (nth 1 e)) (equal gen (nth 2 e))))
                             (mv :take-not-head taken caps fn2-core))
-                           ((not (equal (fn2-env-descriptor slot fn2-core) (nthcdr 3 e)))
+                           ((not (equal (fn2-envelope-descriptor slot fn2-core) (nthcdr 3 e)))
                             (mv :take-descriptor taken caps fn2-core))
                            (t (mv nil (put-assoc-equal slot (list gen (nth 3 e) (nth 4 e) (nth 5 e) (nth 6 e)
                                                                   (nth 7 e) (nth 8 e) (nth 9 e) (nth 12 e) nil nil 0 nil)
@@ -190,7 +190,7 @@
                                   caps fn2-core)))))
             (:ack (mv-let (code slot gen) (fn2-host-outbox-peek 0 fn2-core)
                     (declare (ignore gen))
-                    (let ((tk (fn2-env-get slot taken)))
+                    (let ((tk (fn2-envelope-get slot taken)))
                       (if (not (and (eq code :ok) tk (not (nth 9 tk)) (equal (nth 1 e) 1)))
                           (mv :ack-untaken taken caps fn2-core)
                         (mv-let (acode fn2-core) (fn2-host-outbox-ack 1 fn2-core)
@@ -198,17 +198,17 @@
                               (put-assoc-equal slot (update-nth 9 t tk) taken) caps fn2-core))))))
             (:finish (mv-let (code fn2-core) (fn2-host-op-finish (nth 1 e) (nth 2 e) fn2-core)
                        (mv (if (eq code :ok) nil :finish-refused) taken caps fn2-core)))
-            (:post (fn2-env-post e bytes-p taken caps fn2-core))
+            (:post (fn2-envelope-post e bytes-p taken caps fn2-core))
             (otherwise (mv :unknown-entry taken caps fn2-core)))))
       (if failure (mv (list failure i) caps fn2-core)
-        (fn2-env-steps (cdr trace) (+ 1 i) bytes-p taken caps fn2-core)))))
+        (fn2-envelope-steps (cdr trace) (+ 1 i) bytes-p taken caps fn2-core)))))
 
 (defun fn2-envelope-replay (trace profile bytes-p)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
     (mv-let (verdict caps fn2-core)
       (let ((fn2-core (fn2-init-executor profile :echo nil fn2-core)))
-        (fn2-env-steps trace 0 bytes-p nil nil fn2-core))
+        (fn2-envelope-steps trace 0 bytes-p nil nil fn2-core))
       ; put-assoc-equal appends a new incarnation: CAPS is in Accept order.
       (list verdict caps))))
 
@@ -219,35 +219,35 @@
 ; is the client's local port, the Receive octets are the client's sent octets
 ; (all of them when the node read EOF, else a prefix), and the Send octets
 ; are exactly what the client received.
-(defun fn2-env-prefixp (a b)
+(defun fn2-envelope-prefixp (a b)
   (declare (xargs :guard t))
-  (if (atom a) t (and (consp b) (equal (car a) (car b)) (fn2-env-prefixp (cdr a) (cdr b)))))
-(defun fn2-env-client (port clients)
+  (if (atom a) t (and (consp b) (equal (car a) (car b)) (fn2-envelope-prefixp (cdr a) (cdr b)))))
+(defun fn2-envelope-client (port clients)
   (declare (xargs :guard t))
   (cond ((atom clients) nil)
         ((and (consp (car clients)) (equal (car (car clients)) port)) (car clients))
-        (t (fn2-env-client port (cdr clients)))))
-(defun fn2-env-bytes (caps clients)
+        (t (fn2-envelope-client port (cdr clients)))))
+(defun fn2-envelope-bytes (caps clients)
   (declare (xargs :verify-guards nil))
   (if (atom caps) :pass
-    (b* ((c (cdr (car caps))) (cl (fn2-env-client (car (car caps)) clients))
+    (b* ((c (cdr (car caps))) (cl (fn2-envelope-client (car (car caps)) clients))
          (rx (reverse (nth 2 c))) (tx (reverse (nth 3 c))))
       (cond ((null cl) (list :no-client (nth 1 c)))
             ((not (equal (nth 4 cl) (nth 1 c))) (list :peer-port-not-client (nth 1 c)))
-            ((not (if (nth 4 c) (equal rx (nth 1 cl)) (fn2-env-prefixp rx (nth 1 cl))))
+            ((not (if (nth 4 c) (equal rx (nth 1 cl)) (fn2-envelope-prefixp rx (nth 1 cl))))
              (list :receive-not-client (nth 1 c)))
             ((not (equal tx (nth 2 cl))) (list :send-not-client (nth 1 c)))
-            (t (fn2-env-bytes (cdr caps) clients))))))
+            (t (fn2-envelope-bytes (cdr caps) clients))))))
 
 ; The input half alone: a legal replay (no Send byte comparison), then the
 ; clients' bytes; a changed Receive octet is refused as :receive-not-client.
 (defun fn2-envelope-check-inputs (trace clients profile)
   (declare (xargs :verify-guards nil))
   (let* ((r (fn2-envelope-replay trace profile nil)))
-    (if (not (eq (car r) :pass)) (car r) (fn2-env-bytes (cadr r) clients))))
+    (if (not (eq (car r) :pass)) (car r) (fn2-envelope-bytes (cadr r) clients))))
 
 (defun fn2-envelope-check (trace clients profile)
   (declare (xargs :verify-guards nil))
   (let* ((r (fn2-envelope-replay trace profile t)))
     (if (not (eq (car r) :pass)) (car r)
-      (fn2-env-bytes (cadr r) clients))))
+      (fn2-envelope-bytes (cadr r) clients))))

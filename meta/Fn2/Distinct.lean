@@ -1,3 +1,6 @@
+module
+
+@[expose] public section
 /-!
 # Fn2.Distinct: distinctness of a long list by a bit set, for the kernel
 
@@ -40,3 +43,5 @@ example : bitsDistinct [3, 70000, 5, 3] 0 = false ∧ bitsDistinct [3, 70000, 5]
   decide +kernel
 
 end Fn2.Distinct
+
+end

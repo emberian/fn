@@ -1,4 +1,13 @@
-import Fn2.Instances.LayerAPhase
+module
+
+public import Fn2.Instances.LayerAPhase
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.Arms.ServedPhase: every served core-form arm's phases, checked
@@ -66,3 +75,5 @@ theorem conn_core_next_all (a : Arm) (ha : a ∈ connC.subarms ++ connC.arms ++ 
       conn_shape.1 conn_shape.2 hrun⟩
 
 end Fn2.Arms.ServedPhase
+
+end

@@ -1,4 +1,44 @@
-import Fn2.ACL2.Faithful
+module
+
+public import Fn2.ACL2.Faithful
+public import Fn2.Instances.LayerAWorld
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+-- BEGIN world bodies (emit_embed.py): scan
+import all Fn2.Instances.LayerAWorld.S34_d0to6
+import all Fn2.Instances.LayerAWorld.S17_d1
+import all Fn2.Instances.LayerAWorld.S25_d2to3
+import all Fn2.Instances.LayerAWorld.S13_d0to8
+import all Fn2.Instances.LayerAWorld.S22_d1to7
+import all Fn2.Instances.LayerAWorld.S19_d6to9
+import all Fn2.Instances.LayerAWorld.S15xc66772_d1to9
+import all Fn2.Instances.LayerAWorld.S20_d5to7
+import all Fn2.Instances.LayerAWorld.S21_d6to7
+import all Fn2.Instances.LayerAWorld.S16_d5to10
+import all Fn2.Instances.LayerAWorld.S12_d0to10
+import all Fn2.Instances.LayerAWorld.S12xff6259_d0to4
+import all Fn2.Instances.LayerAWorld.S12xff6259_d5to6
+import all Fn2.Instances.LayerAWorld.S10x95dbb5_d6to10
+import all Fn2.Instances.LayerAWorld.S14_d0to1
+import all Fn2.Instances.LayerAWorld.S11_d0to10
+import all Fn2.Instances.LayerAWorld.S10_d1to9
+import all Fn2.Instances.LayerAWorld.S8_d2to12
+import all Fn2.Instances.LayerAWorld.S5_d5to13
+import all Fn2.Instances.LayerAWorld.S7_d0to13
+import all Fn2.Instances.LayerAWorld.S6x90aa46_d0to21
+import all Fn2.Instances.LayerAWorld.S5xf0eee3_d0to22
+import all Fn2.Instances.LayerAWorld.S4_d0to24
+import all Fn2.Instances.LayerAWorld.S3_d0to23
+import all Fn2.Instances.LayerAWorld.SCnsCursorSealer_d6to25
+import all Fn2.Instances.LayerAWorld.S2_d0to29
+import all Fn2.Instances.LayerAWorld.KCursor_d0to32
+import all Fn2.Instances.LayerAWorld.KScribe_d2to14
+-- END world bodies
+
+@[expose] public section
 
 /-!
 # Fn2.ACL2.Fuel: fuel adequacy for the recursive translations (PW1)
@@ -529,3 +569,5 @@ theorem cursor_pool_scan_adequate :
     rfl
 
 end Fn2.ACL2.Fuel
+
+end

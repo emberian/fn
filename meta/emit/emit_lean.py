@@ -134,6 +134,45 @@ CHAR_NAMES = {"Space": " ", "Newline": "\n", "Tab": "\t", "Page": "\f", "Rubout"
               "Return": "\r", "Linefeed": "\n", "Null": "\x00"}
 
 
+# Lean core's string search (`String.startsWith`, `endsWith`, `drop`) and `List.findM?` are not
+# exposed: a module that decides through the step-language reader, the interval analysis or the
+# interpreter's `:cond` opens these bodies itself.
+CORE_STRING_BODIES = ["Init.Data.String.Basic", "Init.Data.String.Slice", "Init.Data.String.TakeDrop",
+                      "Init.Data.String.Pattern.Basic", "Init.Data.String.Pattern.String",
+                      "Init.Data.List.Control"]
+
+
+def as_module(text, expose=True, import_all=(), opener=None, bodies=None):
+    """TEXT, a Lean file, as a module of Lean's module system: `module` before its first command,
+    each `import` public, then `import all` of IMPORT_ALL, and the declarations in one public
+    section, `@[expose]` when EXPOSE (an importer then unfolds the definitions' bodies; without
+    it an importer sees each definition's type only, so a change to a body rebuilds only the
+    importers that `import all` its module). Lake retraces a module's importers only when its
+    public part changes. BODIES: the spec of an (empty) world-bodies block to put after the imports,
+    which `emit_embed.py --world-bodies` fills."""
+    lines = text.split("\n")
+    while lines and lines[-1] == "":
+        lines.pop()
+    first = 0
+    while first < len(lines) and lines[first].startswith("--"):
+        first += 1
+    imps = [i for i, x in enumerate(lines) if x.startswith("import ")]
+    head = lines[:first] + ["module"]
+    if imps:
+        head += [""] + lines[first:imps[0]]
+        for i in range(imps[0], imps[-1] + 1):
+            x = lines[i]
+            head.append("public " + x if x.startswith("import ") and not x.startswith("import all ") else x)
+        head += [f"import all {m}" for m in import_all]
+        if bodies:
+            head += [f"-- BEGIN world bodies (emit_embed.py): {bodies}", "-- END world bodies"]
+        rest = lines[imps[-1] + 1:]
+    else:
+        rest = lines[first:]
+    sec = opener or ("@[expose] public section" if expose else "public section")
+    return "\n".join(head + ["", sec] + rest + ["", "end", ""])
+
+
 def die(msg):
     raise SystemExit(f"emit: {msg}")
 
@@ -400,8 +439,10 @@ def columns_decl(name, row, sym):
     # reasons are prose: the model records which fields exist, not why
     # :callbacks is the generated callback map (defmachine-callback's signatures, a manifest of
     # emitted functions like :generated): omitted by name, with the prose reasons
+    # :extra-field-resident is T10's declared byte measure of a field (books/resident.lisp sums
+    # it); the model records which fields exist, not their resident bytes: omitted by name
     d = row_dict(name, row, [":COLUMNS", ":ROWS-BOUND", ":EXTRA-FIELDS", ":INIT-NAME", ":PUT-POLICY"],
-                 [":COLUMN-REASONS", ":EXTRA-FIELD-REASONS"]
+                 [":COLUMN-REASONS", ":EXTRA-FIELD-REASONS", ":EXTRA-FIELD-RESIDENT"]
                  + ([":CALLBACKS"] if ":CALLBACKS" in plist(row, name) else []), f"columns {name}")
     fields = [
         f"name := {sym(name)}",
@@ -629,7 +670,7 @@ def main():
     L.append("")
     L.append("end Fn2.Instances.LayerA")
     L.append("")
-    open(out, "w").write("\n".join(L))
+    open(out, "w").write(as_module("\n".join(L)))
     print(f"EMIT machines={len(machines)} columns={len(cols)} children={len(children)} squares={len(squares)} "
           f"costs={len(costs)} waits={len(waits)} "
           + " ".join(f"{k.lower().strip(':')}={counts[k]}" for k in GENERIC)

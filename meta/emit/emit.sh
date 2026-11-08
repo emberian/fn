@@ -1,9 +1,11 @@
 #!/bin/sh
 # Print fn2's world with ACL2 (registry and embedding), then emit the Lean presentation from it:
 #   Fn2/Instances/LayerA.lean       the declaration registry (emit_lean.py)
-#   Fn2/Instances/LayerAWorld.lean  the closed subset's functions, translated (emit_embed.py)
+#   Fn2/Instances/LayerAWorld/*.lean  the closed subset's functions, translated, in modules by
+#                                   reaching kinds and call depth, with their keys, rows and index
+#   Fn2/Instances/LayerAWorld.lean  the aggregate: the dispatch over the modules (emit_embed.py)
 #   Fn2/Instances/LayerAKinds.lean  the kinds in the step language, translated (emit_embed.py)
-#   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations, by rfl (emit_embed.py)
+#   Fn2/Instances/LayerAEqns{1..4}.lean  the dispatch equations (emit_embed.py)
 #   Fn2/Instances/LayerAPres.lean   the projection facts the core contracts read (emit_pres.py)
 #   Fn2/Instances/LayerAPhase.lean  the served kinds' operations that keep PHASE (emit_pres.py)
 # The registry is printed from reference (print-registry.lsp, world.sexp); the embedding from
@@ -46,3 +48,26 @@ fi
 python3 -I "$here/emit_embed.py" --certificate "$here/bridge-certificate.sexp" \
   "$root/meta/Fn2/Instances" "$here/bridge-body.lisp" > "$log.certificates"
 tail -1 "$log.certificates"
+
+"$ACL2" --timeout 900 < meta/emit/print-loop-certificate.lsp > "$log.loop" 2>&1 || :
+if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.loop" >/dev/null; then
+  tail -20 "$log.loop"; echo "canonical loop export refused (log $log.loop)"; exit 1
+fi
+python3 -I "$here/emit_loop_certificate.py" "$here/loop-certificate.sexp"
+
+"$ACL2" --timeout 900 < meta/emit/print-core-certificate.lsp > "$log.core" 2>&1 || :
+if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.core" >/dev/null; then
+  tail -20 "$log.core"; echo "canonical core export refused (log $log.core)"; exit 1
+fi
+python3 -I "$here/emit_core_certificate.py" "$here/core-certificate.sexp"
+
+# Every declared root receives a contract and a coverage row. This is a
+# proposal: check_served_certificate.py counts only current kernel evidence.
+"$ACL2" --timeout 900 < meta/emit/print-served-certificate.lsp > "$log.served" 2>&1 || :
+if ! grep -F 'FN2-META-SERVED-CERTIFICATE PASS' "$log.served" >/dev/null; then
+  tail -20 "$log.served"; echo "canonical served export refused (log $log.served)"; exit 1
+fi
+python3 -I "$here/emit_embed.py" --served-certificate "$here/served-certificate.sexp"
+
+# the world-bodies blocks of every module that unfolds world bodies (the certificates' among them)
+python3 -I "$here/emit_embed.py" --world-bodies "$here/world-probe.sexp" "$root/meta/Fn2"

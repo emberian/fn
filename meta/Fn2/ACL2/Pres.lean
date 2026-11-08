@@ -1,4 +1,13 @@
-import Fn2.ACL2.Val
+module
+
+public import Fn2.ACL2.Val
+import all Init.Data.String.Basic
+import all Init.Data.String.Slice
+import all Init.Data.String.TakeDrop
+import all Init.Data.String.Pattern.Basic
+import all Init.Data.String.Pattern.String
+
+@[expose] public section
 
 /-!
 # Fn2.ACL2.Pres: the list facts the projection lemmas rewrite by
@@ -71,3 +80,5 @@ theorem consp_ite (c : Prop) [Decidable c] (a b : Val) :
 theorem consp_cons (a l : Val) : Prim.consp (Val.cons a l) = Val.t := rfl
 
 end Fn2.ACL2.Pres
+
+end
