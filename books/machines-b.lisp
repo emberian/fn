@@ -317,7 +317,7 @@
 ; tables are named by layer group, never by an upper layer's child names.
 (defcost fn2-runs-install :bytes 4096 :tables (fn2-core-pool (:layers :c))
  :doc "C installs a durable batch's run-replacement member: decode its workspace, swap the schema's runs.")
-(defcost fn2-member-replay :answers t :bytes 4096 :tables (fn2-core-pool (:layers :c :d))
+(defcost fn2-member-replay :answers t :bytes 4096 :tables (fn2-core-pool fn2-core-fields (:layers :c :d))
  :doc "Rebuild a recovered transaction member's rows from its record stream.")
 ; Declared costs of recovery's outside calls. Each is a table-level operation
 ; of recovery-machine.lisp over the row's owner triple; none writes the row.
