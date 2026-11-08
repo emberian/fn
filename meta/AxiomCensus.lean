@@ -355,3 +355,5 @@ import Fn2
 #print axioms Fn2.ACL2.PoolCompare.«FN2-POOL-COMPARE-LOOP».canonical_body
 #print axioms Fn2.ACL2.PoolCompare.positive
 #print axioms Fn2.ACL2.PoolCompare.underestimated_fuel_rejected
+#print axioms Fn2.Arms.Wrapper.certificate
+#print axioms Fn2.Arms.Wrapper.omitted_child_rejected
