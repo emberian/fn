@@ -43,6 +43,12 @@
 (defthm fn2-ops-nth-of-update-nth-array
   (equal (nth j (update-nth-array k i v l))
          (if (equal (nfix j) (nfix k)) (update-nth i v (nth k l)) (nth j l))))
+(defthm fn2-ops-car-of-update-nth-array
+  (equal (car (update-nth-array k i v l))
+         (if (zp k) (update-nth i v (car l)) (car l)))
+  :hints (("Goal" :in-theory (enable update-nth-array))))
+(defthm fn2-ops-car-of-update-nth
+  (equal (car (update-nth k v l)) (if (zp k) v (car l))))
 (defthm fn2-ops-len-of-update-nth-array
   (equal (len (update-nth-array k i v l))
          (if (< (nfix k) (len l)) (len l) (+ 1 (nfix k)))))
@@ -111,6 +117,13 @@
                                   (fn2-ops-kind slot fn2-ops) (fn2-ops-may-release slot fn2-ops)
                                   (fn2-ops-range-len slot fn2-ops)))
            :in-theory (theory 'minimal-theory))))
+(defthm fn2-ops-payload-key-okp-fields
+  (implies (fn2-ops-payload-key-okp cell evkind outcome reason count aux0 aux1 kind may rlen)
+           (and (or (equal cell 0) (equal cell 1))
+                (natp evkind) (< evkind *fn2-event-count*) (natp outcome) (< outcome *fn2-outcome-count*)
+                (natp reason) (< reason *fn2-reason-count*)
+                (unsigned-byte-p 32 count) (unsigned-byte-p 32 aux0) (unsigned-byte-p 32 aux1)))
+  :rule-classes :forward-chaining)
 (in-theory (disable fn2-ops-payload-key-okp))
 
 (defun fn2-ops-row-key-okp (phase p0 h0 p1 h1 may kind aux0 gen limit
@@ -415,6 +428,15 @@
                          (if (equal vv ph) 1 0)
                          (- (if (equal (nth s (nth 1 fn2-ops)) ph) 1 0)))
                     (len (fn2-ops-phase-slots n ph fn2-ops))))))
+;; A phase write reads through writes to other fields beneath it.
+(defthm fn2-ops-phase-slots-of-set-phase-over-scalar
+  (implies (and (natp kk) (not (equal kk 1)))
+           (equal (fn2-ops-phase-slots n ph (update-nth-array 1 s vv (update-nth kk w fn2-ops)))
+                  (fn2-ops-phase-slots n ph (update-nth-array 1 s vv fn2-ops)))))
+(defthm fn2-ops-phase-slots-of-set-phase-over-column
+  (implies (and (natp kk) (not (equal kk 1)))
+           (equal (fn2-ops-phase-slots n ph (update-nth-array 1 s vv (update-nth-array kk ii w fn2-ops)))
+                  (fn2-ops-phase-slots n ph (update-nth-array 1 s vv fn2-ops)))))
 (in-theory (disable fn2-ops-phase-slots))
 
 (defthm fn2-ops-row-okp-phase-bound
@@ -435,6 +457,20 @@
            (or (equal x 0) (equal x 1) (equal x 2) (equal x 3) (equal x 4) (equal x 5) (equal x 6)))
   :rule-classes nil
   :hints (("Goal" :cases ((< x 1) (< x 2) (< x 3) (< x 4) (< x 5) (< x 6)))))
+(defthm fn2-ops-row-okp-cell-order
+  (implies (fn2-ops-row-okp i fn2-ops)
+           (and (<= (nth i (nth 20 fn2-ops)) (nth i (nth 19 fn2-ops)))
+                (<= (nth i (nth 34 fn2-ops)) (nth i (nth 33 fn2-ops)))
+                (<= (nth i (nth 33 fn2-ops)) (nth i (nth 15 fn2-ops)))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn2-ops-row-okp fn2-ops-row-key-okp))))
+(defthm fn2-ops-row-okp-unposted
+  (implies (and (fn2-ops-row-okp i fn2-ops)
+                (natp (nth i (nth 20 fn2-ops))) (natp (nth i (nth 34 fn2-ops))))
+           (and (implies (equal (nth i (nth 19 fn2-ops)) 0) (equal (nth i (nth 20 fn2-ops)) 0))
+                (implies (equal (nth i (nth 33 fn2-ops)) 0) (equal (nth i (nth 34 fn2-ops)) 0))))
+  :rule-classes nil
+  :hints (("Goal" :use fn2-ops-row-okp-cell-order :in-theory (disable fn2-ops-row-okp-cell-order))))
 (defthm fn2-ops-phase-partition
   (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (natp n) (<= n (fn2-ops-rows fn2-ops))
                 (fn2-ops-row-semanticp n fn2-ops))
@@ -943,7 +979,121 @@
                         ,(fn2-ops-frame-sym op "-PRESERVES-TYPE") ,(fn2-ops-frame-sym op "-PRESERVES-WFP")
                         (:instance fn2-ops-semanticp-intro (s ,slot) (fn2-ops ,q)))))))))
 
-(fn2-ops-op-conservation fn2-op-reserve (kind okind oslot ogen principal may-release fn2-ops) 3 (nth 70 fn2-ops))
+(defthm fn2-ops-semanticp-rows-u32
+  (implies (fn2-ops-semanticp fn2-ops)
+           (and (natp (nth 44 fn2-ops)) (< (nth 44 fn2-ops) 4294967296)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :use (fn2-ops-semanticp-elim (:instance fn2-ops-wfp-forward)))))
+(defthm fn2-ops-free-chain-pop
+  (implies (and (natp n) (natp h) (not (equal h 4294967295))
+                (not (member-equal :bad-chain (fn2-ops-free-chain n h fn2-ops)))
+                (no-duplicatesp-equal (fn2-ops-free-chain n h fn2-ops)))
+           (equal (fn2-ops-free-chain n (nth h (nth 41 fn2-ops)) (update-nth-array 41 h v fn2-ops))
+                  (cdr (fn2-ops-free-chain n h fn2-ops))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn2-ops-free-chain-tail (s h))
+                 (:instance fn2-ops-free-chain-car (f n) (x h))
+                 (:instance fn2-ops-car-not-member-cdr (l (fn2-ops-free-chain n h fn2-ops)))
+                 (:instance fn2-ops-free-chain-of-set-next-free (s h) (vv v) (f n) (x (nth h (nth 41 fn2-ops)))))
+           :in-theory (disable fn2-ops-free-chain-tail fn2-ops-free-chain-car fn2-ops-car-not-member-cdr
+                               fn2-ops-free-chain-of-set-next-free))))
+;; Reserve pops the free chain's head into the reserved class.
+(defthm fn2-ops-reserve-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops)
+                (equal h (nth 70 fn2-ops)) (natp h) (< h (nth 44 fn2-ops))
+                (equal (nth h (nth 1 fn2-ops)) 0)
+                (< (+ (nth 51 fn2-ops) (nth 50 fn2-ops)) (len (nth 45 fn2-ops))))
+           (fn2-ops-sem-rest h
+             (update-nth 51 (+ 1 (nth 51 fn2-ops))
+              (update-nth 71 (+ -1 (nth 71 fn2-ops))
+               (update-nth 70 (nth h (nth 41 fn2-ops))
+                (update-nth-array 15 h may-release
+                 (update-nth-array 6 h principal
+                  (update-nth-array 5 h ogen
+                   (update-nth-array 4 h oslot
+                    (update-nth-array 3 h okind
+                     (update-nth-array 2 h kind
+                      (update-nth-array 1 h 1
+                       (fn2-ops-clear-row h (nth h (nth 0 fn2-ops)) 4294967295 fn2-ops)))))))))))))
+  :hints (("Goal" :do-not-induct t :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s h))
+                 (:instance fn2-ops-free-chain-car (f (nth 44 fn2-ops)) (x h))
+                 (:instance fn2-ops-free-chain-tail (n (nth 44 fn2-ops)) (s h))
+                 (:instance fn2-ops-car-not-member-cdr (l (fn2-ops-free-chain (nth 44 fn2-ops) h fn2-ops)))
+                 (:instance fn2-ops-same-members-pop (c (fn2-ops-free-chain (nth 44 fn2-ops) h fn2-ops))
+                            (f (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)) (a h))))))
+(defthm fn2-ops-reserve-step-row
+  (implies (and (fn2-ops-row-okp h fn2-ops) (natp h) (natp kind) (< kind 14) (natp may-release))
+           (fn2-ops-row-okp h
+             (update-nth-array 15 h may-release
+              (update-nth-array 6 h principal
+               (update-nth-array 5 h ogen
+                (update-nth-array 4 h oslot
+                 (update-nth-array 3 h okind
+                  (update-nth-array 2 h kind
+                   (update-nth-array 1 h 1
+                    (fn2-ops-clear-row h (nth h (nth 0 fn2-ops)) 4294967295 fn2-ops))))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp fn2-ops-clear-val) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-gen-bound (i h))
+                 (:instance fn2-ops-row-okp-by-key (slot h)
+                            (fn2-ops (update-nth-array 15 h may-release
+              (update-nth-array 6 h principal
+               (update-nth-array 5 h ogen
+                (update-nth-array 4 h oslot
+                 (update-nth-array 3 h okind
+                  (update-nth-array 2 h kind
+                   (update-nth-array 1 h 1
+                    (fn2-ops-clear-row h (nth h (nth 0 fn2-ops)) 4294967295 fn2-ops))))))))))))))
+;; An operation's result is the table unchanged unless its code is :ok; on :ok
+;; it is one explicit write term, under the facts its checks established.
+(defmacro fn2-ops-op-branches (op formals position term facts &key (code '0) (unchanged 't) enables ok-cond (else 'fn2-ops))
+  (let* ((call (cons op formals)) (q (fn2-ops-op-result call position))
+         (ok (or ok-cond `(equal (mv-nth ,code ,call) :ok))))
+    `(progn
+       ,@(and unchanged
+              `((defthm ,(fn2-ops-frame-sym op "-NOT-OK")
+                  (implies (not ,ok) (equal ,q ,else))
+                  :hints (("Goal" :do-not-induct t :in-theory (enable ,op ,@enables))))))
+       (defthm ,(fn2-ops-frame-sym op "-OK-RESULT")
+         (implies ,ok (equal ,q ,term))
+         :hints (("Goal" :do-not-induct t :in-theory (enable ,op ,@enables))))
+       (defthm ,(fn2-ops-frame-sym op "-OK-FACTS")
+         (implies ,ok (and ,@facts))
+         :rule-classes nil
+         :hints (("Goal" :do-not-induct t :in-theory (enable ,op ,@enables)))))))
+
+(fn2-ops-op-branches fn2-op-reserve (kind okind oslot ogen principal may-release fn2-ops) 3
+  (update-nth 51 (+ 1 (nth 51 fn2-ops))
+              (update-nth 71 (+ -1 (nth 71 fn2-ops))
+               (update-nth 70 (nth (nth 70 fn2-ops) (nth 41 fn2-ops))
+                (update-nth-array 15 (nth 70 fn2-ops) may-release
+                 (update-nth-array 6 (nth 70 fn2-ops) principal
+                  (update-nth-array 5 (nth 70 fn2-ops) ogen
+                   (update-nth-array 4 (nth 70 fn2-ops) oslot
+                    (update-nth-array 3 (nth 70 fn2-ops) okind
+                     (update-nth-array 2 (nth 70 fn2-ops) kind
+                      (update-nth-array 1 (nth 70 fn2-ops) 1
+                       (fn2-ops-clear-row (nth 70 fn2-ops) (nth (nth 70 fn2-ops) (nth 0 fn2-ops)) 4294967295 fn2-ops)))))))))))
+  ((natp (nth 70 fn2-ops)) (< (nth 70 fn2-ops) (nth 44 fn2-ops))
+   (equal (nth (nth 70 fn2-ops) (nth 1 fn2-ops)) 0)
+   (natp kind) (< kind 14) (natp may-release)
+   (< (+ (nth 51 fn2-ops) (nth 50 fn2-ops)) (len (nth 45 fn2-ops))))
+  :enables (fn2-op-slotp))
+(fn2-ops-op-conservation fn2-op-reserve (kind okind oslot ogen principal may-release fn2-ops) 3 (nth 70 fn2-ops)
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((equal (mv-nth 0 (fn2-op-reserve kind okind oslot ogen principal may-release fn2-ops)) :ok))
+               :in-theory (disable fn2-op-reserve fn2-ops-row-okp fn2-ops-reserve-step-row)
+               :use (fn2-op-reserve-ok-facts (:instance fn2-ops-reserve-step-row (h (nth 70 fn2-ops))))))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((equal (mv-nth 0 (fn2-op-reserve kind okind oslot ogen principal may-release fn2-ops)) :ok))
+                 :in-theory (e/d (fn2-ops-sem-facts)
+                                 (fn2-op-reserve fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-reserve-step-rest fn2-ops-row-okp))
+                 :use (fn2-op-reserve-row fn2-ops-semanticp-elim fn2-op-reserve-ok-facts
+                       (:instance fn2-ops-sem-facts-of-semanticp (s (nth 70 fn2-ops)))
+                       (:instance fn2-ops-reserve-step-rest (h (nth 70 fn2-ops)))))))
 (fn2-ops-op-conservation fn2-op-set-range (slot gen rslot rgen off len fn2-ops) 1 slot)
 (fn2-ops-op-conservation fn2-op-set-capability (slot gen index nonce fn2-ops) 1 slot :row nil)
 (fn2-ops-op-conservation fn2-op-set-storage (slot gen offset fua fn2-ops) 1 slot :row nil)
@@ -955,42 +1105,417 @@
 (fn2-ops-op-conservation fn2-post-signal (bits fn2-ops) nil nil :row nil)
 (fn2-ops-op-conservation fn2-take-signal (fn2-ops) 1 nil :row nil)
 (fn2-ops-op-conservation fn2-count-stray (fn2-ops) nil nil :row nil)
-(fn2-ops-op-conservation fn2-op-unreserve (slot gen fn2-ops) 1 slot)
-(fn2-ops-op-conservation fn2-op-enqueue (slot gen fn2-ops) 1 slot)
+;; fn2-op-unreserve.
+(defthm fn2-ops-unreserve-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot) )
+           (fn2-ops-row-okp slot (update-nth 51 (+ -1 (nth 51 fn2-ops))
+              (update-nth 71 (+ 1 (nth 71 fn2-ops))
+               (update-nth 70 slot
+                (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) (nth 70 fn2-ops) fn2-ops))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp fn2-ops-clear-val) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-gen-bound (i slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth 51 (+ -1 (nth 51 fn2-ops))
+              (update-nth 71 (+ 1 (nth 71 fn2-ops))
+               (update-nth 70 slot
+                (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) (nth 70 fn2-ops) fn2-ops))))))))))
+(defthm fn2-ops-unreserve-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 1) (< 0 (nth 51 fn2-ops)))
+           (fn2-ops-sem-rest slot (update-nth 51 (+ -1 (nth 51 fn2-ops))
+              (update-nth 71 (+ 1 (nth 71 fn2-ops))
+               (update-nth 70 slot
+                (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) (nth 70 fn2-ops) fn2-ops))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-phase-partition (n (nth 44 fn2-ops)))
+                 (:instance fn2-ops-subset-len
+                            (a (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
+                            (b (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)))
+                 (:instance fn2-ops-same-members-push
+                            (c (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
+                            (f (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops))
+                            (f2 (fn2-ops-phase-slots (nth 44 fn2-ops) 0 (update-nth-array 1 slot 0 fn2-ops)))
+                            (s slot))))))
+(fn2-ops-op-branches fn2-op-unreserve (slot gen fn2-ops) 1
+  (update-nth 51 (+ -1 (nth 51 fn2-ops))
+              (update-nth 71 (+ 1 (nth 71 fn2-ops))
+               (update-nth 70 slot
+                (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) (nth 70 fn2-ops) fn2-ops))))
+  ((natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 1) (< 0 (nth 51 fn2-ops)) (not (equal (nth 71 fn2-ops) 4294967295)))
+  :enables (fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))
+(fn2-ops-op-conservation fn2-op-unreserve (slot gen fn2-ops) 1 slot
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((equal (mv-nth 0 (fn2-op-unreserve slot gen fn2-ops)) :ok))
+               :in-theory (disable fn2-op-unreserve fn2-ops-row-okp fn2-ops-unreserve-step-row)
+               :use (fn2-op-unreserve-ok-facts fn2-ops-unreserve-step-row)))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((equal (mv-nth 0 (fn2-op-unreserve slot gen fn2-ops)) :ok))
+                 :in-theory (e/d (fn2-ops-sem-facts)
+                                 (fn2-op-unreserve fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-unreserve-step-rest fn2-ops-row-okp))
+                 :use (fn2-op-unreserve-row fn2-ops-semanticp-elim fn2-op-unreserve-ok-facts
+                       (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                       fn2-ops-unreserve-step-rest))))
+;; fn2-op-enqueue.
+(defthm fn2-ops-enqueue-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot) (equal (nth slot (nth 1 fn2-ops)) 1))
+           (fn2-ops-row-okp slot (update-nth-array 1 slot 2
+              (update-nth 51 (+ -1 (nth 51 fn2-ops))
+               (update-nth 50 (+ 1 (nth 50 fn2-ops))
+                (update-nth 49 (fn2-ring-next (nth 49 fn2-ops) (len (nth 45 fn2-ops)))
+                 (update-nth-array 46 (nth 49 fn2-ops) (nth slot (nth 0 fn2-ops))
+                  (update-nth-array 45 (nth 49 fn2-ops) slot fn2-ops))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp fn2-ops-clear-val) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-idle-cells (i slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth-array 1 slot 2
+              (update-nth 51 (+ -1 (nth 51 fn2-ops))
+               (update-nth 50 (+ 1 (nth 50 fn2-ops))
+                (update-nth 49 (fn2-ring-next (nth 49 fn2-ops) (len (nth 45 fn2-ops)))
+                 (update-nth-array 46 (nth 49 fn2-ops) (nth slot (nth 0 fn2-ops))
+                  (update-nth-array 45 (nth 49 fn2-ops) slot fn2-ops))))))))))))
+(defthm fn2-ops-enqueue-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 1) (< 0 (nth 51 fn2-ops)) (< (nth 50 fn2-ops) (len (nth 45 fn2-ops))))
+           (fn2-ops-sem-rest slot (update-nth-array 1 slot 2
+              (update-nth 51 (+ -1 (nth 51 fn2-ops))
+               (update-nth 50 (+ 1 (nth 50 fn2-ops))
+                (update-nth 49 (fn2-ring-next (nth 49 fn2-ops) (len (nth 45 fn2-ops)))
+                 (update-nth-array 46 (nth 49 fn2-ops) (nth slot (nth 0 fn2-ops))
+                  (update-nth-array 45 (nth 49 fn2-ops) slot fn2-ops))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp fn2-ops-ring-next-is-mod fn2-ops-outbox-list-aux-snoc))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-outbox-list-push (cap (len (nth 45 fn2-ops))) (h (nth 48 fn2-ops)) (tl (nth 49 fn2-ops))
+                            (c (nth 50 fn2-ops)) (s slot) (g (nth slot (nth 0 fn2-ops))))
+                 (:instance fn2-ops-ring-shape-push (cap (len (nth 45 fn2-ops))) (h (nth 48 fn2-ops)) (tl (nth 49 fn2-ops))
+                            (c (nth 50 fn2-ops)))
+                 (:instance fn2-ops-ring-shape-elim (cap (len (nth 45 fn2-ops))) (h (nth 48 fn2-ops)) (tl (nth 49 fn2-ops))
+                            (c (nth 50 fn2-ops)))
+                 (:instance fn2-ops-same-members-push
+                            (c (fn2-ops-ref-slots (fn2-ops-outbox-list-aux (nth 50 fn2-ops) (nth 48 fn2-ops) fn2-ops)))
+                            (f (fn2-ops-phase-slots (nth 44 fn2-ops) 2 fn2-ops))
+                            (f2 (fn2-ops-phase-slots (nth 44 fn2-ops) 2 (update-nth-array 1 slot 2 fn2-ops)))
+                            (s slot))))))
+(fn2-ops-op-branches fn2-op-enqueue (slot gen fn2-ops) 1
+  (update-nth-array 1 slot 2
+              (update-nth 51 (+ -1 (nth 51 fn2-ops))
+               (update-nth 50 (+ 1 (nth 50 fn2-ops))
+                (update-nth 49 (fn2-ring-next (nth 49 fn2-ops) (len (nth 45 fn2-ops)))
+                 (update-nth-array 46 (nth 49 fn2-ops) (nth slot (nth 0 fn2-ops))
+                  (update-nth-array 45 (nth 49 fn2-ops) slot fn2-ops))))))
+  ((natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 1) (< 0 (nth 51 fn2-ops)) (< (nth 49 fn2-ops) (len (nth 45 fn2-ops))) (< (nth 50 fn2-ops) (len (nth 45 fn2-ops))))
+  :enables (fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))
+(fn2-ops-op-conservation fn2-op-enqueue (slot gen fn2-ops) 1 slot
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((equal (mv-nth 0 (fn2-op-enqueue slot gen fn2-ops)) :ok))
+               :in-theory (disable fn2-op-enqueue fn2-ops-row-okp fn2-ops-enqueue-step-row)
+               :use (fn2-op-enqueue-ok-facts fn2-ops-enqueue-step-row)))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((equal (mv-nth 0 (fn2-op-enqueue slot gen fn2-ops)) :ok))
+                 :in-theory (e/d (fn2-ops-sem-facts)
+                                 (fn2-op-enqueue fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-enqueue-step-rest fn2-ops-row-okp))
+                 :use (fn2-op-enqueue-row fn2-ops-semanticp-elim fn2-op-enqueue-ok-facts
+                       (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                       fn2-ops-enqueue-step-rest))))
 
 
+;; Post-result: one cell of a submitted (or release-pending) row is posted and
+;; its index pushed on the posted ring; a refused post only counts a stray.
+(defthm fn2-ops-post-payload-key-facts
+  (implies (fn2-ops-payload-key-okp cell evkind outcome reason count aux0 aux1 kind may rlen)
+           (and (< evkind *fn2-event-count*) (< outcome *fn2-outcome-count*) (< reason *fn2-reason-count*)
+                (implies (equal cell 0) (fn2-action-completionp kind))
+                (implies (and (equal cell 0) (equal kind *fn2-action-send*) (equal aux0 1)) (equal may 1))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-ops-payload-key-okp))))
+(defthm fn2-ops-post-result-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot)
+                (or (equal cell 0) (equal cell 1))
+                (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+                (if (equal cell 0)
+                    (and (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 19 fn2-ops)) 0))
+                  (and (equal (nth slot (nth 15 fn2-ops)) 1) (equal (nth slot (nth 33 fn2-ops)) 0)
+                       (or (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 1 fn2-ops)) 4)))))
+           (fn2-ops-row-okp slot (update-nth 54 (+ 1 (nth 54 fn2-ops))
+     (update-nth 53 (fn2-ring-next (nth 53 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 47 (nth 53 fn2-ops) (+ (* 2 slot) cell)
+       (if (equal cell 0) (update-nth-array 26 slot aux1 (update-nth-array 25 slot aux0 (update-nth-array 24 slot count (update-nth-array 23 slot reason (update-nth-array 22 slot outcome (update-nth-array 21 slot evkind (update-nth-array 20 slot 0 (update-nth-array 19 slot 1 fn2-ops)))))))) (update-nth-array 40 slot aux1 (update-nth-array 39 slot aux0 (update-nth-array 38 slot count (update-nth-array 37 slot reason (update-nth-array 36 slot outcome (update-nth-array 35 slot evkind (update-nth-array 34 slot 0 (update-nth-array 33 slot 1 fn2-ops))))))))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-by-key (slot slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth 54 (+ 1 (nth 54 fn2-ops))
+     (update-nth 53 (fn2-ring-next (nth 53 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 47 (nth 53 fn2-ops) (+ (* 2 slot) cell)
+       (if (equal cell 0) (update-nth-array 26 slot aux1 (update-nth-array 25 slot aux0 (update-nth-array 24 slot count (update-nth-array 23 slot reason (update-nth-array 22 slot outcome (update-nth-array 21 slot evkind (update-nth-array 20 slot 0 (update-nth-array 19 slot 1 fn2-ops)))))))) (update-nth-array 40 slot aux1 (update-nth-array 39 slot aux0 (update-nth-array 38 slot count (update-nth-array 37 slot reason (update-nth-array 36 slot outcome (update-nth-array 35 slot evkind (update-nth-array 34 slot 0 (update-nth-array 33 slot 1 fn2-ops))))))))))))))
+                 (:instance fn2-post-payloadp-by-key)))))
+(defthm fn2-ops-post-result-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops))
+                (or (equal cell 0) (equal cell 1))
+                (fn2-ops-row-okp slot fn2-ops)
+                (if (equal cell 0)
+                    (and (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 19 fn2-ops)) 0))
+                  (and (equal (nth slot (nth 33 fn2-ops)) 0)
+                       (or (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 1 fn2-ops)) 4))))
+                (< (nth 54 fn2-ops) (len (nth 47 fn2-ops))))
+           (fn2-ops-sem-rest slot (update-nth 54 (+ 1 (nth 54 fn2-ops))
+     (update-nth 53 (fn2-ring-next (nth 53 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 47 (nth 53 fn2-ops) (+ (* 2 slot) cell)
+       (if (equal cell 0) (update-nth-array 26 slot aux1 (update-nth-array 25 slot aux0 (update-nth-array 24 slot count (update-nth-array 23 slot reason (update-nth-array 22 slot outcome (update-nth-array 21 slot evkind (update-nth-array 20 slot 0 (update-nth-array 19 slot 1 fn2-ops)))))))) (update-nth-array 40 slot aux1 (update-nth-array 39 slot aux0 (update-nth-array 38 slot count (update-nth-array 37 slot reason (update-nth-array 36 slot outcome (update-nth-array 35 slot evkind (update-nth-array 34 slot 0 (update-nth-array 33 slot 1 fn2-ops))))))))))))))
+  :hints (("Goal" :do-not-induct t :cases ((equal cell 0))
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts)
+                           (member-equal fn2-ops-free-chain-consp fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp fn2-ops-ring-next-is-mod
+                            fn2-ops-posted-list-aux-snoc))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-row-okp-unposted (i slot))
+                 (:instance fn2-ops-row-okp-submitted-h0 (i slot))
+                 (:instance fn2-ops-ring-shape-elim (cap (len (nth 47 fn2-ops))) (h (nth 52 fn2-ops))
+                            (tl (nth 53 fn2-ops)) (c (nth 54 fn2-ops)))
+                 (:instance fn2-ops-ring-shape-push (cap (len (nth 47 fn2-ops))) (h (nth 52 fn2-ops))
+                            (tl (nth 53 fn2-ops)) (c (nth 54 fn2-ops)))
+                 (:instance fn2-ops-same-members-push
+                            (c (fn2-ops-posted-list-aux (nth 54 fn2-ops) (nth 52 fn2-ops) fn2-ops))
+                            (f (fn2-ops-pending-cells (nth 44 fn2-ops) fn2-ops))
+                            (f2 (fn2-ops-pending-cells (nth 44 fn2-ops)
+                                  (update-nth-array (if (equal cell 0) 19 33) slot 1 fn2-ops)))
+                            (s (+ (* 2 slot) cell)))))))
+(fn2-ops-op-branches fn2-post-result (cell slot gen evkind outcome reason count aux0 aux1 fn2-ops) nil
+  (update-nth 54 (+ 1 (nth 54 fn2-ops))
+     (update-nth 53 (fn2-ring-next (nth 53 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 47 (nth 53 fn2-ops) (+ (* 2 slot) cell)
+       (if (equal cell 0) (update-nth-array 26 slot aux1 (update-nth-array 25 slot aux0 (update-nth-array 24 slot count (update-nth-array 23 slot reason (update-nth-array 22 slot outcome (update-nth-array 21 slot evkind (update-nth-array 20 slot 0 (update-nth-array 19 slot 1 fn2-ops)))))))) (update-nth-array 40 slot aux1 (update-nth-array 39 slot aux0 (update-nth-array 38 slot count (update-nth-array 37 slot reason (update-nth-array 36 slot outcome (update-nth-array 35 slot evkind (update-nth-array 34 slot 0 (update-nth-array 33 slot 1 fn2-ops))))))))))))
+  ((natp slot) (< slot (nth 44 fn2-ops)) (or (equal cell 0) (equal cell 1))
+   (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+   (if (equal cell 0)
+       (and (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 19 fn2-ops)) 0))
+     (and (equal (nth slot (nth 15 fn2-ops)) 1) (equal (nth slot (nth 33 fn2-ops)) 0)
+          (or (equal (nth slot (nth 1 fn2-ops)) 3) (equal (nth slot (nth 1 fn2-ops)) 4))))
+   (< (nth 54 fn2-ops) (len (nth 47 fn2-ops))))
+  :ok-cond (and (fn2-post-eligiblep cell slot gen fn2-ops)
+                (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+                (< (nth 53 fn2-ops) (len (nth 47 fn2-ops))) (< (nth 54 fn2-ops) (len (nth 47 fn2-ops)))
+                (< (nth 54 fn2-ops) 1152921504606846975) (< (len (nth 47 fn2-ops)) 1152921504606846976))
+  :else (fn2-count-stray fn2-ops)
+  :enables (fn2-post-eligiblep fn2-op-slotp fn2-op-handle-code))
 (fn2-ops-op-conservation fn2-post-result (cell slot gen evkind outcome reason count aux0 aux1 fn2-ops) nil slot
-  :facts-hints (("Goal" :in-theory (e/d (fn2-post-result fn2-ops-semanticp fn2-ops-sem-facts fn2-post-eligiblep)
-                                        (fn2-ops-row-semanticp))
-                 :use (fn2-post-result-row
-                       (:instance fn2-ops-row-okp-of-row-semanticp (i slot) (n (nth 44 fn2-ops)))
-                       (:instance fn2-ops-same-members-push
-                                  (c (fn2-ops-posted-list fn2-ops))
-                                  (f (fn2-ops-pending-cells (nth 44 fn2-ops) fn2-ops))
-                                  (f2 (fn2-ops-pending-cells (nth 44 fn2-ops)
-                                        (update-nth-array (if (equal cell 0) 19 33) slot 1 fn2-ops)))
-                                  (s (+ (* 2 slot) cell)))))))
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((and (fn2-post-eligiblep cell slot gen fn2-ops)
+                (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+                (< (nth 53 fn2-ops) (len (nth 47 fn2-ops))) (< (nth 54 fn2-ops) (len (nth 47 fn2-ops)))
+                (< (nth 54 fn2-ops) 1152921504606846975) (< (len (nth 47 fn2-ops)) 1152921504606846976)))
+               :in-theory (e/d (fn2-count-stray) (fn2-post-result fn2-ops-row-okp fn2-ops-post-result-step-row))
+               :use (fn2-post-result-ok-facts fn2-ops-post-result-step-row)))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((and (fn2-post-eligiblep cell slot gen fn2-ops)
+                (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+                (< (nth 53 fn2-ops) (len (nth 47 fn2-ops))) (< (nth 54 fn2-ops) (len (nth 47 fn2-ops)))
+                (< (nth 54 fn2-ops) 1152921504606846975) (< (len (nth 47 fn2-ops)) 1152921504606846976)))
+                 :in-theory (e/d (fn2-ops-sem-facts fn2-count-stray)
+                                 (fn2-post-result fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-post-result-step-rest fn2-ops-row-okp))
+                 :use (fn2-post-result-row fn2-ops-semanticp-elim fn2-post-result-ok-facts
+                       (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                       fn2-ops-post-result-step-rest))))
 
+;; Harvest: the posted ring's head cell is marked harvested, the row moves to
+;; the phase fn2-op-harvest-phase names, and the head is popped.
+(defthm fn2-ops-harvest-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot) (natp (nth slot (nth 1 fn2-ops)))
+                (natp (nth slot (nth 19 fn2-ops))) (natp (nth slot (nth 20 fn2-ops)))
+                (natp (nth slot (nth 33 fn2-ops))) (natp (nth slot (nth 34 fn2-ops)))
+                (< (nth slot (nth 19 fn2-ops)) 2) (< (nth slot (nth 33 fn2-ops)) 2) (< (nth slot (nth 15 fn2-ops)) 2) (natp (nth slot (nth 15 fn2-ops)))
+                (or (equal cell 0) (equal cell 1))
+                (if (equal cell 0)
+                    (and (equal (nth slot (nth 19 fn2-ops)) 1) (equal (nth slot (nth 20 fn2-ops)) 0))
+                  (and (equal (nth slot (nth 33 fn2-ops)) 1) (equal (nth slot (nth 34 fn2-ops)) 0))))
+           (fn2-ops-row-okp slot (update-nth 54 (+ -1 (nth 54 fn2-ops))
+     (update-nth 52 (fn2-ring-next (nth 52 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 1 slot (fn2-op-harvest-phase slot (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops))) (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-by-key (slot slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth 54 (+ -1 (nth 54 fn2-ops))
+     (update-nth 52 (fn2-ring-next (nth 52 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 1 slot (fn2-op-harvest-phase slot (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops))) (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops)))))))
+                 (:instance fn2-ops-row-okp-pend0-phase (i slot))
+                 (:instance fn2-ops-row-okp-pend1-phase (i slot))
+                 (:instance fn2-ops-post-payload-key-facts (cell 0)
+                            (evkind (nth slot (nth 21 fn2-ops))) (outcome (nth slot (nth 22 fn2-ops)))
+                            (reason (nth slot (nth 23 fn2-ops))) (count (nth slot (nth 24 fn2-ops)))
+                            (aux0 (nth slot (nth 25 fn2-ops))) (aux1 (nth slot (nth 26 fn2-ops)))
+                            (kind (nth slot (nth 2 fn2-ops))) (may (nth slot (nth 15 fn2-ops)))
+                            (rlen (nth slot (nth 10 fn2-ops))))))))
+(defthm fn2-ops-harvest-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops))
+                (or (equal cell 0) (equal cell 1))
+                (equal (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) (+ (* 2 slot) cell))
+                (natp (nth slot (nth 1 fn2-ops)))
+                (if (equal cell 0)
+                    (and (equal (nth slot (nth 19 fn2-ops)) 1) (equal (nth slot (nth 20 fn2-ops)) 0))
+                  (and (equal (nth slot (nth 33 fn2-ops)) 1) (equal (nth slot (nth 34 fn2-ops)) 0)))
+                (< 0 (nth 54 fn2-ops)))
+           (fn2-ops-sem-rest slot (update-nth 54 (+ -1 (nth 54 fn2-ops))
+     (update-nth 52 (fn2-ring-next (nth 52 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 1 slot (fn2-op-harvest-phase slot (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops))) (fn2-ops-latch-peer cell slot (update-nth-array (if (equal cell 0) 20 34) slot 1 fn2-ops)))))))
+  :hints (("Goal" :do-not-induct t :cases ((equal cell 0))
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts)
+                           (member-equal fn2-ops-free-chain-consp fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp fn2-ops-ring-next-is-mod))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-row-okp-pend0-phase (i slot))
+                 (:instance fn2-ops-row-okp-pend1-phase (i slot))
+                 (:instance fn2-ops-ring-shape-pop (cap (len (nth 47 fn2-ops))) (h (nth 52 fn2-ops))
+                            (tl (nth 53 fn2-ops)) (c (nth 54 fn2-ops)))
+                 (:instance fn2-ops-posted-list-pop (cap (len (nth 47 fn2-ops))) (h (nth 52 fn2-ops))
+                            (tl (nth 53 fn2-ops)) (c (nth 54 fn2-ops)))
+                 (:instance fn2-ops-same-members-pop
+                            (c (fn2-ops-posted-list-aux (nth 54 fn2-ops) (nth 52 fn2-ops) fn2-ops))
+                            (f (fn2-ops-pending-cells (nth 44 fn2-ops) fn2-ops))
+                            (a (+ (* 2 slot) cell)))))))
+(fn2-ops-op-branches fn2-harvest-next (fn2-ops) 4
+  (update-nth 54 (+ -1 (nth 54 fn2-ops))
+     (update-nth 52 (fn2-ring-next (nth 52 fn2-ops) (len (nth 47 fn2-ops)))
+      (update-nth-array 1 (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (fn2-op-harvest-phase (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (fn2-ops-latch-peer (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (update-nth-array (if (equal (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 0) 20 34) (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 1 fn2-ops))) (fn2-ops-latch-peer (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (update-nth-array (if (equal (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 0) 20 34) (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 1 fn2-ops)))))
+  ((natp (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)) (< (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (nth 44 fn2-ops)) (or (equal (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 0) (equal (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 1))
+   (if (equal (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) 0)
+                    (and (equal (nth (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (nth 19 fn2-ops)) 1) (equal (nth (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (nth 20 fn2-ops)) 0))
+                  (and (equal (nth (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (nth 33 fn2-ops)) 1) (equal (nth (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2) (nth 34 fn2-ops)) 0)))
+   (< 0 (nth 54 fn2-ops)))
+  :ok-cond (equal (mv-nth 0 (fn2-harvest-next fn2-ops)) t)
+  :enables (fn2-ops-peek-posted fn2-op-slotp))
+(defthm fn2-ops-posted-head-natp
+  (implies (and (fn2-ops-semanticp fn2-ops) (< 0 (nth 54 fn2-ops)))
+           (natp (nth (nth 52 fn2-ops) (nth 47 fn2-ops))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts fn2-ops-same-membersp)
+                           (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use ((:instance fn2-ops-sem-facts-of-semanticp (s 0))
+                 (:instance fn2-ops-posted-list-pop (cap (len (nth 47 fn2-ops))) (h (nth 52 fn2-ops))
+                            (tl (nth 53 fn2-ops)) (c (nth 54 fn2-ops)))
+                 (:instance fn2-ops-member-of-subsetp
+                            (x (fn2-ops-posted-list-aux (nth 54 fn2-ops) (nth 52 fn2-ops) fn2-ops))
+                            (y (fn2-ops-pending-cells (nth 44 fn2-ops) fn2-ops))
+                            (a (nth (nth 52 fn2-ops) (nth 47 fn2-ops))))
+                 (:instance fn2-ops-pending-cells-bound (x (nth (nth 52 fn2-ops) (nth 47 fn2-ops))) (n (nth 44 fn2-ops)))))))
 (fn2-ops-op-conservation fn2-harvest-next (fn2-ops) 4 (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)
-  :facts-hints (("Goal" :in-theory (e/d (fn2-harvest-next fn2-ops-peek-posted fn2-ops-semanticp fn2-ops-sem-facts)
-                                        (fn2-ops-row-semanticp))
-                 :use (fn2-harvest-next-row
-                       (:instance fn2-ops-row-okp-of-row-semanticp
-                                  (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)) (n (nth 44 fn2-ops)))
-                       (:instance fn2-ops-cell-split (e (nth (nth 52 fn2-ops) (nth 47 fn2-ops))))))))
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((equal (mv-nth 0 (fn2-harvest-next fn2-ops)) t))
+               :in-theory (disable fn2-harvest-next fn2-ops-row-okp fn2-ops-harvest-step-row)
+               :use (fn2-harvest-next-ok-facts
+                     (:instance fn2-ops-phase-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c0-posted-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c0-harvested-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c1-posted-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c1-harvested-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c0-posted-raw-nth-bound (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-c1-posted-raw-nth-bound (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-may-release-raw-nth-bound (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-may-release-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                     (:instance fn2-ops-harvest-step-row (slot (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)) (cell (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2))))))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((equal (mv-nth 0 (fn2-harvest-next fn2-ops)) t))
+                 :in-theory (e/d (fn2-ops-sem-facts)
+                                 (fn2-harvest-next fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-harvest-step-rest fn2-ops-row-okp))
+                 :use (fn2-harvest-next-row fn2-ops-semanticp-elim fn2-harvest-next-ok-facts
+                       fn2-ops-posted-head-natp
+                       (:instance fn2-ops-cell-split (e (nth (nth 52 fn2-ops) (nth 47 fn2-ops))))
+                       (:instance fn2-ops-phase-raw-nth-natp (i (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                       (:instance fn2-ops-sem-facts-of-semanticp (s (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))
+                       (:instance fn2-ops-harvest-step-rest (slot (floor (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)) (cell (mod (nth (nth 52 fn2-ops) (nth 47 fn2-ops)) 2)))))))
 
+;; Finish: a done row is recycled into the free chain with its generation
+;; advanced, or retired at the generation limit.
+(defthm fn2-ops-remove-phase-slots-of-set-phase
+  (implies (natp s)
+           (equal (remove-equal s (fn2-ops-phase-slots n ph (update-nth-array 1 s vv fn2-ops)))
+                  (remove-equal s (fn2-ops-phase-slots n ph fn2-ops))))
+  :hints (("Goal" :in-theory (enable fn2-ops-phase-slots))))
+(defthm fn2-op-finish-other
+  (implies (not (member-equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) '(:ok :retired))) (equal (mv-nth 1 (fn2-op-finish slot gen fn2-ops)) fn2-ops))
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn2-op-finish fn2-op-recycle fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))))
+(defthm fn2-op-finish-retired-result
+  (implies (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :retired) (equal (mv-nth 1 (fn2-op-finish slot gen fn2-ops)) (update-nth 73 (+ 1 (nth 73 fn2-ops))
+     (update-nth-array 1 slot 6 (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) 4294967295 fn2-ops)))))
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn2-op-finish fn2-op-recycle fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))))
+(defthm fn2-op-finish-ok-result
+  (implies (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :ok) (equal (mv-nth 1 (fn2-op-finish slot gen fn2-ops)) (update-nth 71 (+ 1 (nth 71 fn2-ops))
+     (update-nth 70 slot (fn2-ops-clear-row slot (+ 1 (nth slot (nth 0 fn2-ops))) (nth 70 fn2-ops) fn2-ops)))))
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn2-op-finish fn2-op-recycle fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))))
+(defthm fn2-op-finish-branch-facts
+  (and (implies (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :retired) (and (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 5) (<= (nth 72 fn2-ops) (nth slot (nth 0 fn2-ops)))))
+       (implies (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :ok) (and (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 5) (< (nth slot (nth 0 fn2-ops)) (nth 72 fn2-ops))
+                                     (not (equal (nth 71 fn2-ops) 4294967295)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :in-theory (enable fn2-op-finish fn2-op-recycle fn2-op-slotp fn2-op-phase-code fn2-op-handle-code))))
+(defthm fn2-ops-finish-retired-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot) (<= (nth 72 fn2-ops) (nth slot (nth 0 fn2-ops)))
+                (natp (nth slot (nth 0 fn2-ops))) (natp (nth 72 fn2-ops)))
+           (fn2-ops-row-okp slot (update-nth 73 (+ 1 (nth 73 fn2-ops))
+     (update-nth-array 1 slot 6 (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) 4294967295 fn2-ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp fn2-ops-clear-val) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-gen-bound (i slot))
+                 (:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth 73 (+ 1 (nth 73 fn2-ops))
+     (update-nth-array 1 slot 6 (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) 4294967295 fn2-ops)))))))))
+(defthm fn2-ops-finish-ok-step-row
+  (implies (and (fn2-ops-row-okp slot fn2-ops) (natp slot) (< (nth slot (nth 0 fn2-ops)) (nth 72 fn2-ops))
+                (natp (nth slot (nth 0 fn2-ops))) (natp (nth 72 fn2-ops)))
+           (fn2-ops-row-okp slot (update-nth 71 (+ 1 (nth 71 fn2-ops))
+     (update-nth 70 slot (fn2-ops-clear-row slot (+ 1 (nth slot (nth 0 fn2-ops))) (nth 70 fn2-ops) fn2-ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-row-key-okp fn2-ops-clear-val) (fn2-ops-row-okp))
+           :use ((:instance fn2-ops-row-okp-by-key (slot slot) (fn2-ops (update-nth 71 (+ 1 (nth 71 fn2-ops))
+     (update-nth 70 slot (fn2-ops-clear-row slot (+ 1 (nth slot (nth 0 fn2-ops))) (nth 70 fn2-ops) fn2-ops)))))))))
+(defthm fn2-ops-finish-retired-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 5))
+           (fn2-ops-sem-rest slot (update-nth 73 (+ 1 (nth 73 fn2-ops))
+     (update-nth-array 1 slot 6 (fn2-ops-clear-row slot (nth slot (nth 0 fn2-ops)) 4294967295 fn2-ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-row-okp-cells-idle (i slot))
+                 (:instance fn2-ops-not-member-of-subsetp (a slot)
+                            (x (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
+                            (y (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)))))))
+(defthm fn2-ops-finish-ok-step-rest
+  (implies (and (fn2-ops-semanticp fn2-ops) (natp slot) (< slot (nth 44 fn2-ops)) (equal (nth slot (nth 1 fn2-ops)) 5) (not (equal (nth 71 fn2-ops) 4294967295)))
+           (fn2-ops-sem-rest slot (update-nth 71 (+ 1 (nth 71 fn2-ops))
+     (update-nth 70 slot (fn2-ops-clear-row slot (+ 1 (nth slot (nth 0 fn2-ops))) (nth 70 fn2-ops) fn2-ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts) (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp))
+           :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                 (:instance fn2-ops-row-okp-cells-idle (i slot))
+                 (:instance fn2-ops-phase-partition (n (nth 44 fn2-ops)))
+                 (:instance fn2-ops-member-consp-len (x slot) (l (fn2-ops-phase-slots (nth 44 fn2-ops) 5 fn2-ops)))
+                 (:instance fn2-ops-subset-len
+                            (a (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
+                            (b (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)))
+                 (:instance fn2-ops-same-members-push
+                            (c (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
+                            (f (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops))
+                            (f2 (fn2-ops-phase-slots (nth 44 fn2-ops) 0 (update-nth-array 1 slot 0 fn2-ops)))
+                            (s slot))))))
 (fn2-ops-op-conservation fn2-op-finish (slot gen fn2-ops) 1 slot
-  :row-hints (("Goal" :in-theory (enable fn2-op-finish fn2-op-recycle fn2-ops-row-okp fn2-ops-row-key-okp)))
-  :facts-hints (("Goal" :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-semanticp fn2-ops-sem-facts)
-                                        (fn2-ops-row-semanticp))
-                 :use (fn2-op-finish-row
-                       (:instance fn2-ops-row-okp-of-row-semanticp (i slot) (n (nth 44 fn2-ops)))
-                       (:instance fn2-ops-phase-partition (n (nth 44 fn2-ops)))
-                       (:instance fn2-ops-subset-len
-                                  (a (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
-                                  (b (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)))
-                       (:instance fn2-ops-same-members-push
-                                  (c (fn2-ops-free-chain (nth 44 fn2-ops) (nth 70 fn2-ops) fn2-ops))
-                                  (f (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops))
-                                  (f2 (fn2-ops-phase-slots (nth 44 fn2-ops) 0 (update-nth-array 1 slot 0 fn2-ops)))
-                                  (s slot))))))
+  :row-hints (("Goal" :do-not-induct t
+               :cases ((equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :ok) (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :retired))
+               :in-theory (disable fn2-op-finish fn2-ops-row-okp fn2-ops-finish-ok-step-row fn2-ops-finish-retired-step-row)
+               :use (fn2-op-finish-branch-facts fn2-ops-finish-ok-step-row fn2-ops-finish-retired-step-row
+                     (:instance fn2-ops-gen-raw-nth-natp (i slot)))))
+  :facts-hints (("Goal" :do-not-induct t
+                 :cases ((equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :ok) (equal (mv-nth 0 (fn2-op-finish slot gen fn2-ops)) :retired))
+                 :in-theory (e/d (fn2-ops-sem-facts)
+                                 (fn2-op-finish fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp
+                                  fn2-ops-finish-ok-step-rest fn2-ops-finish-retired-step-rest fn2-ops-row-okp))
+                 :use (fn2-op-finish-row fn2-ops-semanticp-elim fn2-op-finish-branch-facts
+                       (:instance fn2-ops-sem-facts-of-semanticp (s slot))
+                       fn2-ops-finish-ok-step-rest fn2-ops-finish-retired-step-rest))))
