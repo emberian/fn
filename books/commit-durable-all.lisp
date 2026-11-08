@@ -6426,7 +6426,17 @@
                   (and (equal (fn2-pool-state r q) (fn2-pool-state r p))
                        (equal (fn2-pool-owner-slot r q) (fn2-pool-owner-slot r p))
                        (equal (fn2-pool-cap r q) (fn2-pool-cap r p))))))
-  :hints (("Goal" :in-theory (enable fn2-pool-reserve fn2-pool-set-gen update-fn2-pool-gen$ai fn2-pool-gen fn2-pool-gen$ai fn2-pool-set-base update-fn2-pool-base$ai fn2-pool-base fn2-pool-base$ai fn2-pool-set-cap update-fn2-pool-cap$ai fn2-pool-cap fn2-pool-cap$ai fn2-pool-set-state update-fn2-pool-state$ai fn2-pool-state fn2-pool-state$ai fn2-pool-set-owner-kind update-fn2-pool-owner-kind$ai fn2-pool-owner-kind fn2-pool-owner-kind$ai fn2-pool-set-owner-slot update-fn2-pool-owner-slot$ai fn2-pool-owner-slot fn2-pool-owner-slot$ai fn2-pool-set-owner-gen update-fn2-pool-owner-gen$ai fn2-pool-owner-gen fn2-pool-owner-gen$ai fn2-pool-set-lease-op-slot update-fn2-pool-lease-op-slot$ai fn2-pool-lease-op-slot fn2-pool-lease-op-slot$ai fn2-pool-set-lease-op-gen update-fn2-pool-lease-op-gen$ai fn2-pool-lease-op-gen fn2-pool-lease-op-gen$ai fn2-pool-set-lease-off update-fn2-pool-lease-off$ai fn2-pool-lease-off fn2-pool-lease-off$ai fn2-pool-set-lease-len update-fn2-pool-lease-len$ai fn2-pool-lease-len fn2-pool-lease-len$ai fn2-pool-set-out-count update-fn2-pool-out-count$ai fn2-pool-out-count fn2-pool-out-count$ai fn2-pool-set-fill update-fn2-pool-fill$ai fn2-pool-fill fn2-pool-fill$ai fn2-pool-set-hand-to-kind update-fn2-pool-hand-to-kind$ai fn2-pool-hand-to-kind fn2-pool-hand-to-kind$ai fn2-pool-set-hand-to-slot update-fn2-pool-hand-to-slot$ai fn2-pool-hand-to-slot fn2-pool-hand-to-slot$ai fn2-pool-set-hand-to-gen update-fn2-pool-hand-to-gen$ai fn2-pool-hand-to-gen fn2-pool-hand-to-gen$ai fn2-pool-set-next-free update-fn2-pool-next-free$ai fn2-pool-next-free fn2-pool-next-free$ai fn2-pool-set-class update-fn2-pool-class$ai fn2-pool-class fn2-pool-class$ai update-nth-array))))
+  ; D26: open only the setters fn2-pool-reserve's put writes and the readers
+  ; the statement names; the class lists and the row's other readers stay
+  ; closed (8.4 s -> 1.0 s)
+  :hints (("Goal" :in-theory (e/d (fn2-pool-reserve fn2-pool-set-state update-fn2-pool-state$ai fn2-pool-state fn2-pool-state$ai
+                                   fn2-pool-set-owner-kind update-fn2-pool-owner-kind$ai fn2-pool-set-owner-slot
+                                   update-fn2-pool-owner-slot$ai fn2-pool-owner-slot fn2-pool-owner-slot$ai
+                                   fn2-pool-set-owner-gen update-fn2-pool-owner-gen$ai fn2-pool-set-out-count
+                                   update-fn2-pool-out-count$ai fn2-pool-set-fill update-fn2-pool-fill$ai
+                                   fn2-pool-base fn2-pool-base$ai fn2-pool-cap fn2-pool-cap$ai update-nth-array)
+                                  (fn2-pool-gen fn2-pool-next-free fn2-pool-class fn2-pool-out-count fn2-pool-mrefp
+                                   fn2-pool-class-headsi fn2-pool-class-countsi fn2-pool-nclasses)))))
 (defthm fn2-env-pool-release-keeps
   ; a release writes no octet, moves no row, and leaves every row but a
   ; workspace the releaser owns
@@ -7157,6 +7167,350 @@
            :use ((:instance fn2-env-op-of-ok (s 0))
                  (:instance fn2-env-j5-ops-free-kept (s 0) (k (fn2-env-ops-rows a)))
                  (:instance fn2-env-owned-fences-free-kept (s 0) (k (fn2-env-ops-rows a)))))))
+;; THE ADMITTED ROW THROUGH ADMISSION. Its own row is left free (refused)
+;; or opened at :collect (accepted); every other row keeps its evidence.
+(defmacro fn2-env-row-chain (rel name call hyps)
+  ; NAME: CALL keeps REL (FN2-ENV-FREE-KEPT or -FREE-TO-COLLECT) of row ID
+  ; since A, by its TK, MK and OK footprints
+  (let ((fn (fn2-env-call-fn call)))
+    `(defthm ,name
+       (implies (and (,rel id a c) (fn2-commit-idp id a) ,@hyps) (,rel id a ,call))
+       :hints (("Goal" :in-theory '(,rel fn2-env-tk-reflexive fn2-env-mk-reflexive)
+                :use ((:instance ,(fn2-env-rel-name fn 'fn2-env-tk) (fn2-core c) (fn2-rel-c0 c))
+                      (:instance ,(fn2-env-rel-name fn 'fn2-env-mk) (fn2-core c) (fn2-rel-c0 c))
+                      (:instance ,(fn2-env-rel-name fn 'fn2-env-ok) (fn2-core c) (fn2-rel-c0 a))
+                      (:instance fn2-env-commit-idp-kind (fn2-core c))
+                      (:instance fn2-env-read-codes-of-tk (b ,call) (a c))
+                      (:instance fn2-machine-phase-of-tk (b ,call) (a c))
+                      (:instance fn2-machine-generation-of-mk (b ,call) (a c))
+                      (:instance fn2-machine-cb-fence-live-of-mk (b ,call) (a c))))))))
+(defthm fn2-env-free-kept-base
+  (implies (equal (fn2-machine-phase id c) *fn2-commit-state-free*) (fn2-env-free-kept id c c))
+  :hints (("Goal" :in-theory '(fn2-env-free-kept fn2-env-ok-refl))))
+(fn2-env-row-chain fn2-env-free-kept fn2-env-reserve-pools-free-kept (mv-nth 1 (fn2-commit-reserve-pools left id owner-gen c)) nil)
+(fn2-env-row-chain fn2-env-free-kept fn2-env-reserve-extent-free-kept (mv-nth 1 (fn2-commit-reserve-extent id c)) nil)
+(fn2-env-row-chain fn2-env-free-kept fn2-env-release-pools-free-kept (fn2-commit-release-pools left id owner-gen c) nil)
+(fn2-env-row-chain fn2-env-free-to-collect fn2-env-prepare-root-free-to-collect (fn2-commit-prepare-root id c) nil)
+(fn2-env-row-chain fn2-env-free-to-collect fn2-env-ready-free-to-collect (fn2-commit-ready id c) nil)
+(defthm fn2-env-commit-row-gen-reads
+  (implies (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)
+           (and (equal (fn2-commit-row-generation id fn2-core) (fn2-machine-generation id fn2-core))
+                (equal (fn2-commit-row-cb-fence-live id fn2-core) (fn2-machine-cb-fence-live id fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-row-generation fn2-commit-row-cb-fence-live fn2-machine-generation
+                                   fn2-machine-cb-fence-live fn2-machine-generation-read-code fn2-machine-cb-fence-live-read-code
+                                   fn2-commit-snapshot-read-code fn2-machine-phase-read-code)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp)))))
+(defthm fn2-env-same-slot-gen
+  (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-machine-slot i fn2-core) (fn2-machine-slot id fn2-core)))
+           (and (equal (fn2-machine-generation i fn2-core) (fn2-machine-generation id fn2-core))
+                (equal (fn2-machine-cb-fence-live i fn2-core) (fn2-machine-cb-fence-live id fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code
+                                   fn2-machine-generation fn2-machine-generation-read-code
+                                   fn2-machine-cb-fence-live fn2-machine-cb-fence-live-read-code)
+                                  (fn2-machine-kind fn2-machine-slot)))))
+(defun fn2-env-start-self-args (ord wformals owner)
+  ; the admission's write arguments, by column
+  (declare (xargs :mode :program))
+  (if (atom ord) nil
+    (cons (list (car wformals)
+                (case (car ord)
+                  (phase *fn2-commit-state-collect*) (generation owner) (batch-no '(mv-nth 0 (fn2-commit-frontier c)))
+                  (member-count 'members) (first-key 'first-key) (partner 'partner) (cb-mode 'mode)
+                  (cb-stage *fn2-commit-seal-stage-zero-dependency*) (cb-reason *fn2-commit-reason-none*) (otherwise 0)))
+          (fn2-env-start-self-args (cdr ord) (cdr wformals) owner))))
+(defun fn2-env-start-self-events (world)
+  ; the admitted row through the accepted write: free before, :collect after
+  (declare (xargs :mode :program))
+  (let* ((kind 'fn2-commit)
+         (fields '(phase member-count first-key cb-mode batch-no partner principal-slot stopped generation
+                   cb-stage cb-cursor cb-issued cb-done cb-bytes cb-failed outcome cb-reason cb-fence-live
+                   cb-fence-ok cb-deps-ok cb-log-ok cb-published cb-acks cb-seal-len deadline cb-wrote cb-open
+                   dep-bytes rec-bytes))
+         (ord (fn2-arms-cols-order fields (fn2-machine-property kind :columns world)))
+         (w (fn2-arms-write-name kind ord))
+         (formals (formals w world))
+         (wformals (butlast (cdr formals) 1))
+         (call (cons w formals))
+         (gen (nth (position-eq 'generation ord) wformals))
+         (fl (nth (position-eq 'cb-fence-live ord) wformals))
+         (e (fn2-arm-frame-known w kind world))
+         (ch (fn2-arm-frame-entry-s e))
+         (c2 '(mv-nth 1 (fn2-commit-reserve-extent id fn2-core)))
+         (call2 (cons w (append (butlast formals 1) (list c2))))
+         (fits (nthcdr 5 (fn2-arm-frame-write-guards kind ord wformals world)))
+         (written `((equal ,(nth (position-eq 'phase ord) wformals) ,*fn2-commit-state-collect*)
+                    (equal ,(nth (position-eq 'cb-deps-ok ord) wformals) 0)
+                    (equal ,(nth (position-eq 'cb-log-ok ord) wformals) 0)
+                    (equal ,(nth (position-eq 'cb-acks ord) wformals) 0)
+                    (posp ,(nth (position-eq 'batch-no ord) wformals))
+                    (equal ,(nth (position-eq 'cb-done ord) wformals) 0)
+                    (equal ,(nth (position-eq 'cb-fence-ok ord) wformals) 0)))
+         (ok-ext '(eq (mv-nth 0 (fn2-commit-reserve-extent id fn2-core)) :ok)))
+    `((defthm fn2-env-start-write-gen
+        ; what the accepted write leaves in the row's generation and fence flag
+        (implies (and (fn2-env-start-write-accepted ,@formals) (fn2-commit-idp id fn2-core))
+                 (and (equal (fn2-machine-generation id ,call) ,gen)
+                      (equal (fn2-machine-cb-fence-live id ,call) ,fl)))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (union-theories '(fn2-env-start-write-accepted) (theory 'minimal-theory))
+                 :do-not-induct t
+                 :use ((:instance ,(fn2-columns-sym w "-READS"))
+                       (:instance fn2-env-start-write-keeps-ids (x id))
+                       (:instance fn2-commit-idp (fn2-core ,call))
+                       (:instance fn2-env-commit-row-gen-reads (fn2-core ,call))))))
+      (defthm fn2-env-start-write-ops-pool
+        ; the write leaves the ops table and the pool
+        (and (equal (nth 1 ,call) (nth 1 fn2-core)) (equal (nth 0 ,call) (nth 0 fn2-core)))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (union-theories '(fn2-ctf-dir-refl) (theory 'fn2-arm-frame-base))
+                 :do-not-induct t
+                 :use ((:instance ,(fn2-columns-sym w "-ARM-KIDS") (fn2-arm-free ',(cons 9 ch)) (fn2-arm-c0 fn2-core))
+                       (:instance fn2-arm-kids-nth (i 0) (k 1) (free ',(cons 9 ch)) (a fn2-core) (b ,call))
+                       (:instance fn2-arm-kids-nth (i 0) (k 0) (free ',(cons 9 ch)) (a fn2-core) (b ,call))))))
+      (defthm fn2-env-start-tail-free-to-collect
+        ; the extent reservation and the accepted write open a free row at
+        ; :collect, at a generation no lower and with no fence
+        (implies (and (fn2-env-free-kept id a fn2-core) (fn2-commit-idp id a) (fn2-corep a) (fn2-core-wfp a)
+                      ,ok-ext ,@fits ,@written (equal ,fl 0) (natp ,gen) (<= (fn2-machine-generation id a) ,gen))
+                 (fn2-env-free-to-collect id a ,call2))
+        :hints (("Goal" :in-theory (union-theories '(fn2-env-free-to-collect fn2-env-free-kept fn2-env-start-write-accepted-suff)
+                                                   (theory 'minimal-theory))
+                 :do-not-induct t
+                 :use ((:instance fn2-env-reserve-extent-free-kept (c fn2-core))
+                       (:instance fn2-env-commit-idp-cell (fn2-core ,c2))
+                       (:instance fn2-env-start-write-row (fn2-core ,c2))
+                       (:instance fn2-env-start-write-gen (fn2-core ,c2))
+                       (:instance fn2-env-start-write-keeps-ids (x id) (fn2-core ,c2))
+                       (:instance fn2-env-start-write-ops-pool (fn2-core ,c2))
+                       (:instance fn2-env-ok-of-nth (b ,call2) (x ,c2) (a a))
+                       (:instance fn2-env-generation-natp (c a)))))))))
+(make-event (value (cons 'progn (fn2-env-start-self-events (w state)))))
+(defun fn2-env-start-cases-events (world)
+  ; the three outcomes of admission for its own row
+  (declare (xargs :mode :program))
+  (let* ((kind 'fn2-commit)
+         (fields '(phase member-count first-key cb-mode batch-no partner principal-slot stopped generation
+                   cb-stage cb-cursor cb-issued cb-done cb-bytes cb-failed outcome cb-reason cb-fence-live
+                   cb-fence-ok cb-deps-ok cb-log-ok cb-published cb-acks cb-seal-len deadline cb-wrote cb-open
+                   dep-bytes rec-bytes))
+         (ord (fn2-arms-cols-order fields (fn2-machine-property kind :columns world)))
+         (w (fn2-arms-write-name kind ord))
+         (wformals (butlast (cdr (formals w world)) 1))
+         (owner '(if (< 0 (fn2-machine-batch-no id c)) (+ 1 (fn2-machine-generation id c)) (fn2-machine-generation id c))))
+    `((defthm fn2-env-commit-start-row-cases
+        ; admission leaves every row's J5 evidence, or leaves its row ID free
+        ; with one generation, or opens it at :collect
+        (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp i c))
+                 (let ((b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                   (or (fn2-env-j5-kept i c b)
+                       (and (fn2-commit-idp id c) (fn2-env-free-kept id c b))
+                       (and (fn2-commit-idp id c) (fn2-env-free-to-collect id c b)))))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (union-theories '(fn2-commit-start fn2-env-j5-kept-refl fn2-env-core-stop-kept-chain
+                                                     fn2-env-free-kept-base fn2-env-reserve-pools-free-kept fn2-env-reserve-extent-free-kept
+                                                     fn2-env-release-pools-free-kept
+                                                     fn2-env-prepare-root-free-to-collect fn2-env-ready-free-to-collect
+                                                     fn2-commit-reserve-pools-shape fn2-commit-reserve-extent-preserves-type
+                                                     fn2-commit-reserve-extent-preserves-wfp
+                                                     fn2-env-commit-idp-u32 fn2-env-generation-u60 fn2-env-generation-natp
+                                                     fn2-env-gen-limit-natp fn2-env-gen-limit-bound unsigned-byte-p integer-range-p posp natp)
+                                                   (theory 'fn2-arm-frame-base))
+                 :use ((:instance fn2-env-commit-idp-u32 (x partner)) (:instance fn2-env-generation-u60)
+                       (:instance fn2-env-start-tail-free-to-collect (a c)
+                                  (fn2-core (mv-nth 1 (fn2-commit-reserve-pools 4 id ,owner c)))
+                                  ,@(fn2-env-start-self-args ord wformals owner)))))))))
+(make-event (value (cons 'progn (fn2-env-start-cases-events (w state)))))
+(defthm fn2-env-commit-start-keeps-ids
+  (and (equal (fn2-commit-idp x (mv-nth 1 (fn2-commit-start id members first-key mode partner c))) (fn2-commit-idp x c))
+       (equal (fn2-machine-slot x (mv-nth 1 (fn2-commit-start id members first-key mode partner c))) (fn2-machine-slot x c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-start fn2-env-reserve-pools-keeps-ids fn2-env-reserve-extent-keeps-ids
+                                               fn2-env-start-write-keeps-ids-rewrite fn2-env-prepare-root-keeps-ids
+                                               fn2-env-ready-keeps-ids fn2-env-release-pools-keeps-ids fn2-env-core-stop-keeps-ids)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-free-kept-same-slot
+  ; every readable id at the row's slot reads its phase, generation and fence flag
+  (implies (and (fn2-env-free-kept id a b) (fn2-commit-idp id a) (fn2-commit-idp i a)
+                (equal (fn2-machine-slot i a) (fn2-machine-slot id a))
+                (equal (fn2-commit-idp i b) (fn2-commit-idp i a)) (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-machine-slot i b) (fn2-machine-slot i a)) (equal (fn2-machine-slot id b) (fn2-machine-slot id a)))
+           (fn2-env-free-kept i a b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-free-kept)
+           :use ((:instance fn2-env-same-slot-reads (fn2-core a)) (:instance fn2-env-same-slot-reads (fn2-core b))
+                 (:instance fn2-env-same-slot-gen (fn2-core a)) (:instance fn2-env-same-slot-gen (fn2-core b))))))
+(defthm fn2-env-free-to-collect-same-slot
+  (implies (and (fn2-env-free-to-collect id a b) (fn2-commit-idp i a)
+                (equal (fn2-machine-slot i a) (fn2-machine-slot id a))
+                (equal (fn2-commit-idp i b) (fn2-commit-idp i a))
+                (equal (fn2-machine-slot i b) (fn2-machine-slot i a)) (equal (fn2-machine-slot id b) (fn2-machine-slot id a)))
+           (fn2-env-free-to-collect i a b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-free-to-collect)
+           :use ((:instance fn2-env-same-slot-reads (fn2-core a)) (:instance fn2-env-same-slot-reads (fn2-core b))
+                 (:instance fn2-env-same-slot-gen (fn2-core a)) (:instance fn2-env-same-slot-gen (fn2-core b))))))
+(defthm fn2-env-j56-not-idp
+  (implies (not (fn2-commit-idp i c))
+           (and (fn2-env-j5-row i log c) (fn2-env-j6-row i c) (fn2-env-j6p-row i c)))
+  :hints (("Goal" :in-theory '(fn2-env-j5-row fn2-env-j6-row fn2-env-j6p-row))))
+(defthm fn2-env-commit-start-j5-row
+  ; admission keeps J5, J6 and J6P of every commit row: the admitted row by
+  ; the phase-free argument, every other by its kept evidence
+  (implies (and (fn2-corep c) (fn2-core-wfp c)
+                (fn2-env-j5-row i log c) (fn2-env-j6-row i c) (fn2-env-j6p-row i c))
+           (let ((b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+             (and (fn2-env-j5-row i log b) (fn2-env-j6-row i b) (fn2-env-j6p-row i b))))
+  :hints (("Goal" :in-theory nil :do-not-induct t
+           :use ((:instance fn2-env-commit-start-keeps-ids (x i))
+                 (:instance fn2-env-commit-start-keeps-ids (x id))
+                 (:instance fn2-env-j56-not-idp (c (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                 (:instance fn2-env-commit-start-row-cases)
+                 (:instance fn2-env-commit-start-j5-other (fn2-core c))
+                 (:instance fn2-env-j5-kept-transfer (id i) (a c) (b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                 (:instance fn2-env-free-kept-same-slot (a c) (b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                 (:instance fn2-env-free-to-collect-same-slot (a c) (b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                 (:instance fn2-env-j5-free-kept (id i) (a c) (b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+                 (:instance fn2-env-j5-free-to-collect (id i) (a c) (b (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))))))
+(make-event (value (cons 'progn (fn2-env-keeps-ids-events
+  '((fn2-env-put-members-keeps-ids (mv-nth 1 (fn2-commit-put-members left m row kind okind oslot ogen event c)) fn2-commit-put-members-fn2-env-tk)
+    (fn2-env-exec-wake-keeps-ids (fn2-exec-wake id c) fn2-exec-wake-fn2-env-tk))))))
+(defun-nx fn2-env-j56-row (id log c)
+  (and (fn2-env-j5-row id log c) (fn2-env-j6-row id c) (fn2-env-j6p-row id c)))
+(defthm fn2-env-commit-start-j56
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j56-row i log c))
+           (fn2-env-j56-row i log (mv-nth 1 (fn2-commit-start id members first-key mode partner c))))
+  :hints (("Goal" :in-theory '(fn2-env-j56-row) :use fn2-env-commit-start-j5-row)))
+(defmacro fn2-env-j56-step (name call chain keeps)
+  ; NAME: CALL keeps J5, J6 and J6P of every commit row (its kept CHAIN)
+  `(defthm ,name
+     (implies (fn2-env-j56-row i log c) (fn2-env-j56-row i log ,call))
+     :hints (("Goal" :in-theory '(fn2-env-j56-row fn2-env-j5-kept-refl) :do-not-induct t
+              :use ((:instance ,chain (a c))
+                    (:instance fn2-env-j5-kept-transfer (id i) (a c) (b ,call))
+                    (:instance ,keeps (x i))
+                    (:instance fn2-env-j56-not-idp (c ,call)))))))
+(fn2-env-j56-step fn2-env-j56-put-members (mv-nth 1 (fn2-commit-put-members left m row kind okind oslot ogen event c))
+  fn2-env-put-members-kept-chain fn2-env-put-members-keeps-ids)
+(fn2-env-j56-step fn2-env-j56-core-stop (fn2-core-stop reason c) fn2-env-core-stop-kept-chain fn2-env-core-stop-keeps-ids)
+(fn2-env-j56-step fn2-env-j56-exec-wake (fn2-exec-wake id c) fn2-env-exec-wake-kept-chain fn2-env-exec-wake-keeps-ids)
+(defthm fn2-env-admit-j56
+  ; :admit keeps J5, J6 and J6P of every commit row
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j56-row i log c))
+           (fn2-env-j56-row i log (fn2-env-admit members mode c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-admit fn2-commit-admit-keyed fn2-env-commit-start-j56
+                                               fn2-env-j56-put-members fn2-env-j56-core-stop fn2-env-j56-exec-wake)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-j5-rows-admit
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
+           (and (fn2-env-j5-rows ids log (fn2-env-admit members mode c)) (fn2-env-j6p-rows ids (fn2-env-admit members mode c))))
+  :hints (("Goal" :induct (fn2-env-j6p-rows ids c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j6p-rows)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-admit-j56 (i (car ids))))
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j6p-rows fn2-env-j56-row) (theory 'minimal-theory)))))
+;; THE POOL STAYS SEMANTIC ACROSS ADMISSION: its reservations and releases
+;; conserve it (FN2-POOL-RESERVE-/RELEASE-CONSERVATION); every other callee
+;; leaves the pool child (PK, or its own frame).
+(defthm fn2-env-semanticp-of-pool-child
+  (implies (and (equal (nth 0 b) (nth 0 a)) (fn2-core-pool-semanticp a)) (fn2-core-pool-semanticp b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-core-pool-semanticp fn2-core-pool))))
+(defmacro fn2-env-sem-by-pk (name call)
+  `(defthm ,name
+     (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp ,call))
+     :hints (("Goal" :in-theory '(fn2-env-pk fn2-env-pk-reflexive)
+              :use ((:instance ,(fn2-env-rel-name (fn2-env-call-fn call) 'fn2-env-pk) (fn2-core c) (fn2-rel-c0 c))
+                    (:instance fn2-env-semanticp-of-pool-child (a c) (b ,call)))))))
+(fn2-env-sem-by-pk fn2-env-reserve-extent-semanticp (mv-nth 1 (fn2-commit-reserve-extent id c)))
+(fn2-env-sem-by-pk fn2-env-prepare-root-semanticp (fn2-commit-prepare-root id c))
+(fn2-env-sem-by-pk fn2-env-ready-semanticp (fn2-commit-ready id c))
+(fn2-env-sem-by-pk fn2-env-put-members-semanticp (mv-nth 1 (fn2-commit-put-members left m row kind okind oslot ogen event c)))
+(fn2-env-sem-by-pk fn2-env-exec-wake-semanticp (fn2-exec-wake id c))
+(defthm fn2-env-core-stop-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (fn2-core-stop reason c)))
+  :hints (("Goal" :in-theory '(fn2-env-core-stop-keeps-io-pool (:e nfix))
+           :use ((:instance fn2-env-semanticp-of-pool-child (a c) (b (fn2-core-stop reason c)))))))
+(defthm fn2-env-core-reserve-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (mv-nth 3 (fn2-core-reserve class okind oslot ogen c))))
+  :hints (("Goal" :in-theory (e/d (fn2-core-reserve fn2-core-pool-semanticp) (fn2-pool-semanticp fn2-pool-reserve))
+           :use ((:instance fn2-pool-reserve-conservation (fn2-pool (fn2-core-pool c)))))))
+(defthm fn2-env-core-release-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (mv-nth 1 (fn2-core-release slot gen okind oslot ogen c))))
+  :hints (("Goal" :in-theory (e/d (fn2-core-pool-semanticp) (fn2-pool-semanticp fn2-pool-release fn2-core-release-children fn2-core-release))
+           :use ((:instance fn2-env-core-release-is)
+                 (:instance fn2-env-release-children-pool (p (fn2-core-pool c)) (ctl (fn2-core-control c)))
+                 (:instance fn2-pool-release-conservation (fn2-pool (fn2-core-pool c)))))))
+(defthm fn2-env-keep-pool-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (fn2-commit-keep-pool id role slot gen c)))
+  :hints (("Goal" :in-theory '(fn2-commit-keep-pool (:e nfix)) :cases ((and (natp role) (< role 3)))
+           :use ((:instance fn2-env-save-pool-keeps-pool)
+                 (:instance fn2-env-keep-pool-scratch-children)
+                 (:instance fn2-env-semanticp-of-pool-child (a c) (b (fn2-commit-keep-pool id role slot gen c)))))))
+(defthm fn2-env-release-pool-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (mv-nth 1 (fn2-commit-release-pool id role owner-gen c))))
+  :hints (("Goal" :in-theory '(fn2-env-release-pool-unchecked fn2-env-core-stop-semanticp fn2-env-core-release-semanticp (:e nfix))
+           :cases ((fn2-commit-idp id c))
+           :use ((:instance fn2-env-release-pool-pool)
+                 (:instance fn2-env-semanticp-of-pool-child (a (mv-nth 1 (fn2-core-release
+                                  (if (equal role 3) (fn2-machine-pool-slot id c) (mv-nth 3 (fn2-commit-resource id (if (equal role 3) 0 role) c)))
+                                  (if (equal role 3) (fn2-machine-pool-gen id c) (mv-nth 4 (fn2-commit-resource id (if (equal role 3) 0 role) c)))
+                                  *fn2-commit-kind* id owner-gen c)))
+                            (b (mv-nth 1 (fn2-commit-release-pool id role owner-gen c))))))))
+(defthm fn2-env-unwind-pool-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (fn2-commit-unwind-pool id role owner-gen c)))
+  :hints (("Goal" :in-theory '(fn2-commit-unwind-pool fn2-env-release-pool-semanticp fn2-env-core-stop-semanticp))))
+(defthm fn2-env-reserve-pools-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (mv-nth 1 (fn2-commit-reserve-pools left id owner-gen c))))
+  :hints (("Goal" :induct (fn2-commit-reserve-pools left id owner-gen c)
+           :in-theory (union-theories '(fn2-commit-reserve-pools fn2-env-core-reserve-semanticp fn2-env-keep-pool-semanticp
+                                        fn2-env-unwind-pool-semanticp)
+                                      (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-release-pools-semanticp
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (fn2-commit-release-pools left id owner-gen c)))
+  :hints (("Goal" :induct (fn2-commit-release-pools left id owner-gen c)
+           :in-theory (union-theories '(fn2-commit-release-pools fn2-env-release-pool-semanticp fn2-env-core-stop-semanticp)
+                                      (theory 'fn2-arm-frame-base)))))
+(defun fn2-env-start-write-sem-events (world)
+  (declare (xargs :mode :program))
+  (let* ((kind 'fn2-commit)
+         (fields '(phase member-count first-key cb-mode batch-no partner principal-slot stopped generation
+                   cb-stage cb-cursor cb-issued cb-done cb-bytes cb-failed outcome cb-reason cb-fence-live
+                   cb-fence-ok cb-deps-ok cb-log-ok cb-published cb-acks cb-seal-len deadline cb-wrote cb-open
+                   dep-bytes rec-bytes))
+         (ord (fn2-arms-cols-order fields (fn2-machine-property kind :columns world)))
+         (w (fn2-arms-write-name kind ord))
+         (call (cons w (formals w world))))
+    `((defthm fn2-env-start-write-semanticp
+        (implies (fn2-core-pool-semanticp fn2-core) (fn2-core-pool-semanticp ,call))
+        :hints (("Goal" :in-theory nil
+                 :use ((:instance fn2-env-start-write-ops-pool)
+                       (:instance fn2-env-semanticp-of-pool-child (a fn2-core) (b ,call)))))))))
+(make-event (value (cons 'progn (fn2-env-start-write-sem-events (w state)))))
+(defthm fn2-env-admit-semanticp
+  ; admission keeps the pool semantic
+  (implies (fn2-core-pool-semanticp c) (fn2-core-pool-semanticp (fn2-env-admit members mode c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-admit fn2-commit-admit-keyed fn2-commit-start
+                                               fn2-env-reserve-pools-semanticp fn2-env-reserve-extent-semanticp
+                                               fn2-env-release-pools-semanticp fn2-env-start-write-semanticp
+                                               fn2-env-prepare-root-semanticp fn2-env-ready-semanticp fn2-env-core-stop-semanticp
+                                               fn2-env-put-members-semanticp fn2-env-exec-wake-semanticp)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-j5-rows-admit-step
+  ; :admit keeps J5, J6 and their pool rows, and the pool stays semantic
+  (implies (and (equal (fn2-env-tag action) :admit) (fn2-corep c) (fn2-core-wfp c)
+                (fn2-core-pool-semanticp c) (true-listp log) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (and (fn2-env-j5-rows ids (append log (if entry (list entry) nil)) after)
+                  (fn2-env-j6p-rows ids after)
+                  (fn2-core-pool-semanticp after))))
+  :hints (("Goal" :in-theory (union-theories '(append-to-nil (:e equal) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                             (theory 'minimal-theory))
+           :do-not-induct t
+           :use ((:instance fn2-env-step-admit-unfolds (fn2-core c))
+                 (:instance fn2-env-j5-rows-admit (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
+                 (:instance fn2-env-admit-semanticp (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
