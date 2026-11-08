@@ -2722,6 +2722,89 @@
 ;; columns J, after its callees' contracts; a callee without contracts or
 ;; beyond the declaration, or a failed proof, leaves it owed in table
 ;; fn2-arm-frame-owed under the ROW-FRAME's name.
+;;
+;; A child-form handler's face (machine-arms fn2-arms-wrapper-events) binds
+;; its children, calls FN-CHILDREN and writes back what it returns, its own
+;; table whole: the ROW-FRAME then follows from FN-CHILDREN's two child
+;; contracts, each its body opened once in the minimal theory: -ARM-CHILD-COLS
+;; (its table changes at row SLOT only, in the declared columns J: the row
+;; setters' FN2-ARM-COLS-OF- rules, every column's setter enabled, so a write
+;; beyond J fails the proof) and -ARM-CHILD-KEEPS (each returned child outside
+;; CH is the one it was given). A write-back of an equal child keeps the frame.
+(defthm fn2-arm-row-frame-update-equal
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp k) (natp table) (equal (nth k b) v))
+           (fn2-arm-row-frame table row columns children a (update-nth k v b)))
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal nth update-nth))
+           :cases ((equal k table)))
+          ("Subgoal 1" :in-theory (e/d (fn2-arm-row-frame) (fn2-arm-kids fn2-arm-cols subsetp-equal)))))
+(in-theory (disable fn2-arm-row-frame-update-equal))
+(defun fn2-arm-frame-child-stobj-index (s children k)
+  ; the core child index of the child stobj S
+  (declare (xargs :verify-guards nil))
+  (cond ((atom children) nil) ((eq (cadar children) s) k)
+        (t (fn2-arm-frame-child-stobj-index s (cdr children) (+ 1 k)))))
+(defun fn2-arm-frame-child-keeps-terms (outs pos call kind ch children)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom outs) nil)
+        ((or (eq (car outs) kind) (member (fn2-arm-frame-child-stobj-index (car outs) children 0) ch))
+         (fn2-arm-frame-child-keeps-terms (cdr outs) (+ 1 pos) call kind ch children))
+        (t (cons `(equal (mv-nth ,pos ,call) ,(car outs))
+                 (fn2-arm-frame-child-keeps-terms (cdr outs) (+ 1 pos) call kind ch children)))))
+(defun fn2-arm-frame-child-face-runes (stobjs children)
+  ; the face's core readers and updaters of the children it binds
+  (declare (xargs :verify-guards nil))
+  (cond ((atom children) nil)
+        ((member-eq (cadar children) stobjs)
+         (list* (caar children) (fn2-columns-pre "UPDATE-" (caar children))
+                (fn2-arm-frame-child-face-runes stobjs (cdr children))))
+        (t (fn2-arm-frame-child-face-runes stobjs (cdr children)))))
+(defun fn2-arm-frame-member-hyps (j)
+  (declare (xargs :verify-guards nil))
+  (if (atom j) nil (cons `(member-equal ,(car j) fn2-arm-cs) (fn2-arm-frame-member-hyps (cdr j)))))
+(defun fn2-arm-frame-child-handler-events (kind fn ch j world)
+  ; nil when FN is not a child-form face
+  (declare (xargs :verify-guards nil))
+  (let* ((child (fn2-columns-sym fn "-CHILDREN"))
+         (sig (cdr (assoc-eq child (table-alist 'fn2-arms-child-sigs world))))
+         (ins (car sig)) (outs (cadr sig)) (k (caddr sig))
+         (children (fn2-arm-frame-children-of world))
+         (tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
+         (call (cons child (formals child world)))
+         (minimal '(union-theories (theory 'minimal-theory) (executable-counterpart-theory :here)))
+         (cols-name (fn2-columns-sym child "-ARM-CHILD-COLS"))
+         (keeps-name (fn2-columns-sym child "-ARM-CHILD-KEEPS"))
+         (keeps (fn2-arm-frame-child-keeps-terms outs k call kind ch children))
+         (colsp (and (member-eq kind outs) (not (member tk ch))))
+         (frame (fn2-arm-frame-name fn "-ARM-ROW-FRAME")))
+    (and sig
+      (append
+       (and colsp
+            `((defthm ,cols-name
+                (implies (and (fn2-arm-cols 0 slot fn2-arm-cs fn2-arm-t0 ,kind) ,@(fn2-arm-frame-member-hyps j))
+                         (fn2-arm-cols 0 slot fn2-arm-cs fn2-arm-t0 (mv-nth ,(+ k (position-eq kind outs)) ,call)))
+                :hints (("Goal" :in-theory (union-theories '(,child mv-nth car-cons cdr-cons
+                                                             ,@(fn2-arm-frame-setter-runes kind (strip-cars (fn2-machine-property kind :table world))))
+                                                           ,minimal))))))
+       (and keeps
+            `((defthm ,keeps-name (and ,@keeps)
+                :hints (("Goal" :in-theory (union-theories '(,child mv-nth car-cons cdr-cons) ,minimal))))))
+       `((defthm ,frame
+           (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
+                         ,@(fn2-arm-frame-row-frame-hyps tk ch j 'id))
+                    (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0
+                                       ,(fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
+           :hints (("Goal" :in-theory (union-theories
+                                       '(,fn ,@(and colsp (list cols-name)) ,@(and keeps (list keeps-name))
+                                         ,@(fn2-arm-frame-lemmas (fn2-arm-frame-body-callees fn world)
+                                                                 '("-ARM-ROW-FRAME" "-ARM-SLOT") kind world)
+                                         ,@(fn2-arm-frame-child-face-runes (union-eq ins outs) children)
+                                         nth-update-nth fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp
+                                         fn2-arm-row-frame-table fn2-arm-row-frame-child fn2-arm-row-frame-update-equal
+                                         fn2-arm-row-frame-cols)
+                                       (theory 'fn2-arm-frame-base))
+                    :do-not-induct t)))
+         (in-theory (disable ,frame ,@(and colsp (list cols-name)) ,@(and keeps (list keeps-name))))
+         (table fn2-arm-frame-fns ',fn '(:arm ,ch ,j nil)))))))
 (defun fn2-arm-frame-handler-final (kind fn ch j world)
   (declare (xargs :verify-guards nil))
   (let* ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
@@ -2735,8 +2818,14 @@
                                                                  (remove-eq (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE")) callees)
                                                                callees)
                                                              ch j tk kind world)
-                               (fn2-arm-frame-slot-problem callees kind world))))))
+                               (fn2-arm-frame-slot-problem callees kind world)))))
+         (face (fn2-arm-frame-child-handler-events kind fn ch j world)))
     (cond ((getpropc frame 'theorem nil world) '(value-triple :known))
+          ;; a child-form face writes its table whole: its frame is its child's
+          ((and face (or (null problem)
+                         (and (eq (car problem) :children)
+                              (eq (cadr problem) (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))))
+           `(:or (progn ,@face) (table fn2-arm-frame-owed ',frame '(:proof ,fn))))
           (problem `(table fn2-arm-frame-owed ',frame ',problem))
           (t `(:or (progn
                      (defthm ,frame
