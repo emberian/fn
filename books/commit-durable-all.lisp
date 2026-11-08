@@ -5962,6 +5962,56 @@
            :in-theory (union-theories '(fn2-env-step fn2-env-loan-write fn2-env-fill fn2-env-j5-row-of-update-fn2-core-pool
                                         (:e equal) (:e zp) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
                                       (theory 'minimal-theory)))))
+;; J5 ACROSS :ADMIT, the ops table. Admission's callees write the pool,
+;; sched, control, commit table, extents, members, settled, commit-io and
+;; root children, never the ops table (FN2-ENV-OK carried by each callee):
+;; every op and the ops rows are unchanged (FN2-ENV-OP-OF-ADMIT,
+;; FN2-ENV-OPS-ROWS-OF-ADMIT).
+(defun-nx fn2-env-ok (b a) (equal (nth 1 b) (nth 1 a)))
+(defthm fn2-env-ok-refl (fn2-env-ok a a))
+(defthm fn2-env-ok-of-nth
+  (implies (and (equal (nth 1 b) (nth 1 x)) (fn2-env-ok x a)) (fn2-env-ok b a))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-ok))))
+(in-theory (disable fn2-env-ok))
+(make-event (value (cons 'progn (fn2-env-rel-forms
+  (fn2-ctf-postorder-new '(fn2-core-stop fn2-core-reserve fn2-commit-keep-pool fn2-commit-unwind-pool fn2-commit-release-pools
+                           fn2-commit-reserve-extent fn2-commit-prepare-root fn2-commit-ready fn2-commit-put-members fn2-exec-wake
+                           fn2-commit-write+phase+generation+principal-slot+deadline+stopped+batch-no+member-count+first-key+partner+cb-mode+cb-stage+cb-cursor+cb-issued+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live+cb-fence-ok+cb-deps-ok+cb-log-ok+cb-published+cb-acks+cb-seal-len+cb-wrote+cb-open+dep-bytes+rec-bytes)
+                         (w state))
+  'fn2-env-ok 1 nil 'fn2-commit))))
+(defthm fn2-commit-reserve-pools-fn2-env-ok
+  (implies (fn2-env-ok fn2-core fn2-rel-c0)
+           (fn2-env-ok (mv-nth 1 (fn2-commit-reserve-pools left id owner-gen fn2-core)) fn2-rel-c0))
+  :hints (("Goal" :induct (fn2-commit-reserve-pools left id owner-gen fn2-core)
+           :in-theory (union-theories '(fn2-commit-reserve-pools fn2-core-reserve-fn2-env-ok
+                                        fn2-commit-keep-pool-fn2-env-ok fn2-commit-unwind-pool-fn2-env-ok)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-commit-start-ok
+  (implies (fn2-env-ok fn2-core c0)
+           (fn2-env-ok (mv-nth 1 (fn2-commit-start id members first-key mode partner fn2-core)) c0))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn2-commit-start fn2-commit-reserve-extent-fn2-env-ok fn2-commit-reserve-pools-fn2-env-ok
+                                fn2-commit-release-pools-fn2-env-ok fn2-commit-prepare-root-fn2-env-ok fn2-commit-ready-fn2-env-ok
+                                fn2-core-stop-fn2-env-ok
+                                fn2-commit-write+phase+generation+principal-slot+deadline+stopped+batch-no+member-count+first-key+partner+cb-mode+cb-stage+cb-cursor+cb-issued+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live+cb-fence-ok+cb-deps-ok+cb-log-ok+cb-published+cb-acks+cb-seal-len+cb-wrote+cb-open+dep-bytes+rec-bytes-fn2-env-ok)
+                              (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-admit-ok
+  ; admission never writes the ops table
+  (implies (fn2-env-ok fn2-core c0)
+           (fn2-env-ok (fn2-env-admit members mode fn2-core) c0))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-admit fn2-commit-admit-keyed fn2-env-commit-start-ok
+                                               fn2-commit-put-members-fn2-env-ok fn2-core-stop-fn2-env-ok fn2-exec-wake-fn2-env-ok)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-op-of-admit
+  (equal (fn2-env-op s (fn2-env-admit members mode c)) (fn2-env-op s c))
+  :hints (("Goal" :in-theory (e/d (fn2-env-ok fn2-env-op fn2-core-ops) (fn2-env-admit))
+           :use ((:instance fn2-env-admit-ok (fn2-core c) (c0 c))))))
+(defthm fn2-env-ops-rows-of-admit
+  (equal (fn2-env-ops-rows (fn2-env-admit members mode c)) (fn2-env-ops-rows c))
+  :hints (("Goal" :in-theory (e/d (fn2-env-ok fn2-env-ops-rows fn2-core-ops) (fn2-env-admit))
+           :use ((:instance fn2-env-admit-ok (fn2-core c) (c0 c))))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
