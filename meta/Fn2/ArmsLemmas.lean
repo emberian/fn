@@ -161,6 +161,38 @@ theorem nth_updateNth_nest_ne_slot (f s t : Nat) (v st : Val) (h : t ≠ s) :
       Native.nth (.int t) (Native.nth (.int f) st) := by
   rw [nth_updateNth_same, nth_updateNth_ne t s _ _ h]
 
+/-- Writes to distinct logical fields commute, including on incomplete lists. -/
+theorem updateNthN_commute (i j : Nat) (v w st : Val) (h : i ≠ j) :
+    Native.updateNthN i v (Native.updateNthN j w st) =
+      Native.updateNthN j w (Native.updateNthN i v st) := by
+  induction i generalizing j st with
+  | zero => cases j with
+    | zero => exact (h rfl).elim
+    | succ j => rfl
+  | succ i ih => cases j with
+    | zero => rfl
+    | succ j =>
+      exact congrArg (Val.cons st.car) (ih j st.cdr (by omega))
+
+theorem updateNth_commute (i j : Nat) (v w st : Val) (h : i ≠ j) :
+    Native.updateNth (.int i) v (Native.updateNth (.int j) w st) =
+      Native.updateNth (.int j) w (Native.updateNth (.int i) v st) := by
+  simpa [Native.updateNth, Val.nfix, Val.toInt] using updateNthN_commute i j v w st h
+
+/-- A simultaneous batch of column writes has no dependency between distinct
+array fields; the slot and values may be arbitrary ACL2 values. -/
+theorem updateNth_array_commute (i j : Nat) (slot v w st : Val) (h : i ≠ j) :
+    Native.updateNth (.int i)
+      (Native.updateNth slot v (Native.nth (.int i)
+        (Native.updateNth (.int j) (Native.updateNth slot w (Native.nth (.int j) st)) st)))
+      (Native.updateNth (.int j) (Native.updateNth slot w (Native.nth (.int j) st)) st) =
+    Native.updateNth (.int j)
+      (Native.updateNth slot w (Native.nth (.int j)
+        (Native.updateNth (.int i) (Native.updateNth slot v (Native.nth (.int i) st)) st)))
+      (Native.updateNth (.int i) (Native.updateNth slot v (Native.nth (.int i) st)) st) := by
+  rw [nth_updateNth_ne i j _ _ h, nth_updateNth_ne j i _ _ (Ne.symm h)]
+  exact updateNth_commute i j _ _ st h
+
 /-! ### The frame of the interpreter's state -/
 
 theorem find_set_ne (l : List (String × Val)) (n n' : String) (v : Val) (h : n ≠ n') :
@@ -319,5 +351,60 @@ theorem rowReads_eq (w : World) (k : Kind) (stobjs : List (String × Val)) (id s
     rowReads w k stobjs id slot = .ok (k.columns.map fun (c, _) => ("ROW-" ++ c, read c)) := by
   simp only [rowReads, ht, hd]
   exact rowReads_mapM w k id slot table dir read k.columns hread
+
+
+/-- Appending the child bindings cannot shadow an already-bound local variable. -/
+theorem env_get_append_of_some (front back : Env) (name : String) (value : Val)
+    (h : front.get? name = some value) : (front ++ back).get? name = some value := by
+  cases hf : front.find? (·.1 == name) <;> simp_all [Env.get?, List.find?_append]
+
+theorem var_env_bound (st : St) (name : String) (value : Val)
+    (h : var st name = .ok value) : (st.vars ++ st.stobjs).get? name = some value := by
+  apply env_get_append_of_some
+  cases hv : st.vars.get? name <;> simp_all [var]
+
+theorem var_setStobj (st : St) (child name : String) (value : Val) :
+    var (setStobj st child value) name = var st name := by rfl
+
+/-- A flush with no pending fields or phase is the identity in every world. -/
+theorem flush_empty (w : World) (f : Frame) (st : St)
+    (hp : st.pending = []) (hn : st.next = none) : flush w f st = .ok st := by
+  cases st
+  simp_all [flush]
+  rfl
+
+/-- A global stop flushes first, records its reason, and charges the declared empty work. -/
+theorem run_stop_global (w : World) (f : Frame) (st : St) (fuel : Nat)
+    (reason : String) (control reasonCode empty stopped : Val)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hi : f.kind.stops.idxOf? reason = none)
+    (hr : const w ("*FN2-STOP-REASON-" ++ reason ++ "*") = .ok reasonCode)
+    (he : const w "*FN2-WORK-EMPTY*" = .ok empty)
+    (ho : f.observe = false)
+    (hs : callFn w "FN2-CONTROL-RECORD-STOP" [reasonCode,control] = .ok stopped) :
+    run w f (fuel+1) st [.stop reason none] =
+    chargeResult f (setStobj st "FN2-CONTROL" stopped) (.int 0) empty (.int 0) Val.nil := by
+  simp only [run, hn, Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
+    flush_empty w f st hp hn, hc, hi, hr, he, hs, except_ok_bind, stopEnd, ho, evOpt]
+  rfl
+
+/-- An open-answer operation follows its accepted continuation or the declared stop. -/
+theorem run_do_accept_stop (w : World) (f : Frame) (st sf : St) (fuel : Nat)
+    (v reason : String) (c : Call) (accept : List Val) (rest : List Step) (op : Op) (r code : Val)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hfind : findOp w c.op = .ok op)
+    (hcall : callOp w f.kind st c = .ok (op,r))
+    (hbind : bindOuts st op.stobjsOut [v] r = .ok sf)
+    (hanswers : op.answers = .open_)
+    (hcode : var sf v = .ok code)
+    (href : f.refusal = [.stop reason none]) :
+    run w f (fuel+1) st (.do_ [v] c true accept none [] [] :: rest) =
+      if codeIn code accept then run w f fuel sf rest
+      else run w f fuel sf [.stop reason none] := by
+  simp only [run, flush_empty w f st hp hn, hfind, hcall, hbind, hanswers, hcode,
+    href, except_ok_bind, Bool.false_eq_true, ↓reduceIte, List.find?_nil,
+    List.isEmpty_cons, Bool.not_false, faultRoute, Bool.false_and]
+  rfl
 
 end Fn2.Arms

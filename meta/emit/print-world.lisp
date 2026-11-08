@@ -389,11 +389,14 @@
 ; Canonical companion package. The legacy presentation remains available for
 ; existing consumers; certificates consume only this lossless representation.
 ; FN2-TV-* comes from books/translation-validation, admitted before leaving ACL2.
-(defun meta-print-certificate (path roots kind)
+(defun meta-print-certificate (path roots kind &optional operations)
   (let* ((kd (meta-kind kind))
          (readers (append (meta-column-fns kind (meta-kw :table (cdr kd)))
                           (meta-column-fns 'fn2-machines *fn2-machine-directory-fields*)))
          (roots (append roots readers
+                        (mapcar (lambda (op)
+                                  (or (fn2-decl-get :child (fn2-arms-op-row op *meta-w*)) op))
+                                operations)
                         '(fn2-machine-slot fn2-control-record-stop fn2-machines-rows)
                         (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")))))
     (multiple-value-bind (order refused) (meta-closure roots)
@@ -405,8 +408,16 @@
                    :roots (mapcar #'fn2-tv-object roots)
                    :manifest (fn2-tv-manifest *meta-w*)
                    :kind (fn2-tv-object kd)
-                   :constants (fn2-tv-object (meta-constants
-                      '("*FN2-WORK-" "*FN2-STOP-REASON-" "*FN2-NONE*" "*FN2-ECHO-")))
+                   :operations (fn2-tv-object (mapcar #'meta-op operations))
+                   :operation-declarations (fn2-tv-object
+                     (mapcar (lambda (op) (cons op (fn2-arms-op-row op *meta-w*))) operations))
+                   :constants (fn2-tv-object
+                     (remove-duplicates
+                      (append (meta-constants
+                               (list "*FN2-WORK-" "*FN2-STOP-REASON-" "*FN2-NONE*"
+                                     (concatenate 'string "*" (symbol-name kind) "-")))
+                              (meta-arm-constants kd nil))
+                      :key #'car))
                    :functions (mapcar (lambda (f) (fn2-tv-function f *meta-w*)) order)
                    :natives (mapcar #'fn2-tv-object *meta-natives*)
                    :refused (mapcar #'fn2-tv-object refused))))

@@ -1,0 +1,338 @@
+-- Generated from core_validation.lean.in and the canonical full child layout.
+import Fn2.Arms.Wrapper
+import Fn2.Arms.Validation
+import Fn2.Instances.CoreKinds
+namespace Fn2.Arms.CoreValidation
+open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
+open Fn2.Instances.LayerAWorld Fn2.Instances.CoreKinds
+set_option maxRecDepth 100000
+set_option maxHeartbeats 400000
+set_option linter.unusedVariables false
+theorem snapshot_parts (id core : Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    «FN2-MACHINE-PHASE-READ-CODE» id core = .sym ":OK" ∧
+    «FN2-MACHINE-KIND» id core = .int 11 := by
+  unfold «FN2-CNS-SNAPSHOT-READ-CODE» at h
+  dsimp only at h
+  by_cases hp : «FN2-MACHINE-PHASE-READ-CODE» id core = .sym ":OK"
+  · simp [«NOT», «EQ», Prim.equal, hp] at h
+    exact ⟨hp, h⟩
+  · simp [«NOT», «EQ», Prim.equal, hp] at h
+
+ theorem snapshot_bounds (id core : Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id core = .sym ":OK") :
+    («NATP» id).truthy = true ∧
+    (Prim.lt id («FN2-MACHINES-ROWS» («FN2-CORE-MACHINES» core))).truthy = true ∧
+    («NATP» («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core))).truthy = true ∧
+    (Prim.lt («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core))
+      («FN2-CNS-ROWS» («FN2-CNS-TABLE» core))).truthy = true := by
+  obtain ⟨hp, hk⟩ := snapshot_parts id core h
+  have hi : («FN2-MACHINE-IDP» id core).truthy = true := by
+    by_cases hi : («FN2-MACHINE-IDP» id core).truthy = true
+    · exact hi
+    · simp [«FN2-MACHINE-PHASE-READ-CODE», «NOT», hi] at hp
+  have hid : («NATP» id).truthy = true ∧
+      (Prim.lt id («FN2-MACHINES-ROWS» («FN2-CORE-MACHINES» core))).truthy = true := by
+    simpa [«FN2-MACHINE-IDP», Fn2.Arms.Val.truthy_ite] using hi
+  have hs : «FN2-MACHINE-SLOT» id core = «FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core) := by
+    simp [«FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hi, «EQ», Prim.equal]
+  simp [«FN2-MACHINE-PHASE-READ-CODE», «NOT», hi, hk, «EQL», Prim.equal,
+    Val.ofBool, hs] at hp
+  exact ⟨hid.1, hid.2, hp⟩
+
+@READ_DEFINITION@
+
+theorem cns_row_reads (id slot : Val) @CORE_BINDERS@ :
+  rowReads (coreWorld world coreTuple) (coreKind cns coreTuple)
+    (coreTuple.zip @CORE_VALUES@) id slot = .ok @ROW_VALUES@ := by
+  apply rowReads_eq (coreWorld world coreTuple) (coreKind cns coreTuple) _ id slot @OWN_VALUE@ @DIRECTORY_VALUE@
+    (by rfl) (by rfl) (cnsRead id slot @OWN_VALUE@ @DIRECTORY_VALUE@)
+  intro c hc
+  change c ∈ @COLUMN_NAMES@ at hc
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
+  rcases hc with @COLUMN_CASES@
+@ROW_CALL_CASES@
+
+
+
+def handlerBase (id slot event outcome reason count aux0 aux1 : Val) : Env :=
+  [("ID",id),("SLOT",slot),("KIND",.int 11),("ORDINAL",.int 6),
+   ("EVENT",event),("OUTCOME",outcome),("REASON",reason),("COUNT",count),("AUX0",aux0),("AUX1",aux1)]
+def handlerFrame (id slot event outcome reason count aux0 aux1 : Val) : Frame :=
+  { kind := coreKind cns coreTuple, observe := true, refusal := [],
+    base := handlerBase id slot event outcome reason count aux0 aux1 }
+def handlerState (id slot event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ : St :=
+  { stobjs := coreTuple.zip @CORE_VALUES@,
+    vars := @ROW_VALUES@ ++ handlerBase id slot event outcome reason count aux0 aux1 }
+
+theorem unsigned_fits (n : Nat) (v : Val) :
+    («UNSIGNED-BYTE-P» (.int n) v).truthy = ColType.fits (.uw n) v := by
+  rw [fits_uw_eq_acl2]
+  simp [«UNSIGNED-BYTE-P», «INTEGER-RANGE-P», «NOT», Prim.integerp, Prim.lt,
+    Val.toInt, Val.isInt, Val.ofBool, Val.truthy_ite, Bool.and_assoc, not_decide_lt_zero]
+
+theorem natp_lt (i rows : Val) :
+    ((«NATP» i).truthy && (Prim.lt i rows).truthy) = natLt i rows := by
+  rw [natLt_eq_acl2]
+  simp [«NATP», «NOT», Val.truthy_ite, Bool.and_assoc]
+
+def handlerPending : List (String × Expr) :=
+  [("REVENT",.sym "EVENT"),("ROUTCOME",.sym "OUTCOME"),("RCOUNT",.sym "COUNT"),("RREADY",.int 1)]
+
+def handlerPairs (event outcome count : Val) : List (String × Val) :=
+  [("REVENT",event),("ROUTCOME",outcome),("RCOUNT",count),("RREADY",.int 1)]
+def handlerFits (slot event outcome count own : Val) : Bool :=
+  natLt slot («FN2-CNS-ROWS» own) &&
+    (ColType.fits (.uw 8) event && (ColType.fits (.uw 8) outcome && ColType.fits (.uw 32) count))
+def handlerOwn (slot event outcome count own : Val) : Val :=
+  «FN2-CNS-SET-RREADY» slot (.int 1)
+    («FN2-CNS-SET-RCOUNT» slot count
+      («FN2-CNS-SET-ROUTCOME» slot outcome («FN2-CNS-SET-REVENT» slot event own)))
+
+@HANDLER_CALLS@
+
+theorem handler_put (id slot event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  let st : St := { (handlerState id slot event outcome reason count aux0 aux1 @CORE_ARGUMENTS@)
+    with pending := handlerPending }
+  put (coreWorld world coreTuple) (handlerFrame id slot event outcome reason count aux0 aux1)
+    st (handlerPairs event outcome count) =
+  if handlerFits slot event outcome count @OWN_VALUE@ then
+    .ok (setStobj (setStobj st "FN2-CNS" (handlerOwn slot event outcome count @OWN_VALUE@)) "FN2-MACHINES" @DIRECTORY_VALUE@)
+  else .ok (setStobj st "FN2-CONTROL" («FN2-CONTROL-RECORD-STOP» (.int 13) c5)) := by
+  dsimp only
+  let f := handlerFrame id slot event outcome reason count aux0 aux1
+  let st : St := { (handlerState id slot event outcome reason count aux0 aux1 @CORE_ARGUMENTS@)
+    with pending := handlerPending }
+  let pairs := handlerPairs event outcome count
+  change put (coreWorld world coreTuple) f st pairs = _
+  have hp : (natLt slot («FN2-CNS-ROWS» @OWN_VALUE@) &&
+      ((pairs.filter fun p => directoryFields.contains p.1).isEmpty || natLt id («FN2-MACHINES-ROWS» @DIRECTORY_VALUE@)) &&
+      pairs.all (fun (n,v) => match f.kind.columns.find? (·.1 == n) with
+        | some (_,ty) => ty.fits v | none => false)) = handlerFits slot event outcome count @OWN_VALUE@ := by
+    change ((natLt slot («FN2-CNS-ROWS» @OWN_VALUE@) && true) &&
+      (ColType.fits (.uw 8) event && (ColType.fits (.uw 8) outcome &&
+        (ColType.fits (.uw 32) count && true)))) = _
+    simp only [Bool.and_true, handlerFits]
+  by_cases h : handlerFits slot event outcome count @OWN_VALUE@ = true
+  · rw [if_pos h]
+    rw [put_pass (coreWorld world coreTuple) f st pairs slot id @OWN_VALUE@ @DIRECTORY_VALUE@ c5
+      («FN2-CNS-ROWS» @OWN_VALUE@) («FN2-MACHINES-ROWS» @DIRECTORY_VALUE@)
+      (by rfl) (by rfl) (by rfl) (by rfl) (by rfl)
+      («FN2-CNS-ROWS».core_call _) («FN2-MACHINES-ROWS».core_call _) (hp.trans h)]
+    have hf : f.kind.name = "FN2-CNS" := by rfl
+    have ho : pairs.filter (fun p => !directoryFields.contains p.1) = pairs := by rfl
+    have hd : pairs.filter (fun p => directoryFields.contains p.1) = [] := by rfl
+    rw [ho, hd, hf]
+    simp only [pairs, handlerPairs, List.foldlM_cons, List.foldlM_nil,
+      «FN2-CNS-SET-REVENT».core_call, «FN2-CNS-SET-ROUTCOME».core_call,
+      «FN2-CNS-SET-RCOUNT».core_call, «FN2-CNS-SET-RREADY».core_call, except_ok_bind]
+    rfl
+  · rw [if_neg h]
+    have hn : handlerFits slot event outcome count @OWN_VALUE@ = false := Bool.eq_false_iff.mpr h
+    rw [put_fail (coreWorld world coreTuple) f st pairs slot id @OWN_VALUE@ @DIRECTORY_VALUE@ c5
+      («FN2-CNS-ROWS» @OWN_VALUE@) («FN2-MACHINES-ROWS» @DIRECTORY_VALUE@)
+      (by rfl) (by rfl) (by rfl) (by rfl) (by rfl)
+      («FN2-CNS-ROWS».core_call _) («FN2-MACHINES-ROWS».core_call _) (hp.trans hn)]
+    have hc : const (coreWorld world coreTuple) "*FN2-STOP-REASON-MACHINE-WRITE*" = .ok (.int 13) := by rfl
+    simp only [hc, except_ok_bind, «FN2-CONTROL-RECORD-STOP».core_call]
+    rfl
+
+theorem handler_run (id slot event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  runArm (coreWorld world coreTuple) (coreKind cns coreTuple) readResult true
+    ([id,slot,.int 11,.int 6,event,outcome,reason,count,aux0,aux1] ++ @CORE_VALUES@) 2 =
+  (do
+    let st ← flush (coreWorld world coreTuple) (handlerFrame id slot event outcome reason count aux0 aux1)
+      { (handlerState id slot event outcome reason count aux0 aux1 @CORE_ARGUMENTS@) with pending := handlerPending }
+    let result ← wakeResult (handlerFrame id slot event outcome reason count aux0 aux1) st (← var st "ID")
+    match result with
+    | .done v => pure v
+    | .again _ => throw ":repeat-next outside a :repeat") := by
+  unfold runArm
+  simp only [coreKind, Bool.not_true, Bool.true_eq_false, ↓reduceIte, List.length_append,
+    List.length_cons, List.length_nil]
+  have hl : coreTuple.length = @CORE_SIZE@ := by rfl
+  simp only [hl]
+  change (do
+    let reads ← rowReads (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (coreTuple.zip @CORE_VALUES@) id slot
+    let d ← readResult.read
+    let f : Frame := { kind := coreKind cns coreTuple, observe := true, refusal := d.onRefusal, base := handlerBase id slot event outcome reason count aux0 aux1 }
+    match ← run (coreWorld world coreTuple) f 2
+      { stobjs := coreTuple.zip @CORE_VALUES@, vars := reads ++ f.base } d.steps with
+    | .done v => pure v
+    | .again _ => throw ":repeat-next outside a :repeat") = _
+  rw [cns_row_reads]
+  have hr : readResult.read = .ok ⟨[], [], [.set handlerPending, .wake]⟩ := by rfl
+  simp only [hr, except_ok_bind]
+  dsimp only [run, pend, handlerPending]
+  simp only [List.any_cons, List.any_nil, Bool.or_false, Bool.false_or, Bool.false_eq_true, ↓reduceIte, except_ok_bind, bind_assoc]
+  rfl
+
+theorem handler_flush (id slot event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  let f := handlerFrame id slot event outcome reason count aux0 aux1
+  let st : St := { (handlerState id slot event outcome reason count aux0 aux1 @CORE_ARGUMENTS@) with pending := handlerPending }
+  flush (coreWorld world coreTuple) f st =
+    (do let st' ← put (coreWorld world coreTuple) f st (handlerPairs event outcome count)
+        pure { st' with pending := [], next := none, nextDone := false }) := by
+  dsimp only
+  let f := handlerFrame id slot event outcome reason count aux0 aux1
+  let st : St := { (handlerState id slot event outcome reason count aux0 aux1 @CORE_ARGUMENTS@) with pending := handlerPending }
+  change flush (coreWorld world coreTuple) f st = _
+  have e1 : ev (coreWorld world coreTuple) f.kind st (.sym "EVENT") = .ok event := by
+    have hr : readExpr (coreWorld world coreTuple) f.kind (.sym "EVENT") = .ok (.var "EVENT") := by
+      change readExprF (coreWorld world coreTuple) f.kind (fun _ => .error "unused") (.sym "EVENT") = _
+      simp [readExprF, show f.kind.name = "FN2-CNS" from rfl]
+      rfl
+    simp only [ev, hr, except_ok_bind, Term.eval]
+    try rfl
+  have e2 : ev (coreWorld world coreTuple) f.kind st (.sym "OUTCOME") = .ok outcome := by
+    have hr : readExpr (coreWorld world coreTuple) f.kind (.sym "OUTCOME") = .ok (.var "OUTCOME") := by
+      change readExprF (coreWorld world coreTuple) f.kind (fun _ => .error "unused") (.sym "OUTCOME") = _
+      simp [readExprF, show f.kind.name = "FN2-CNS" from rfl]
+      rfl
+    simp only [ev, hr, except_ok_bind, Term.eval]
+    try rfl
+  have e3 : ev (coreWorld world coreTuple) f.kind st (.sym "COUNT") = .ok count := by
+    have hr : readExpr (coreWorld world coreTuple) f.kind (.sym "COUNT") = .ok (.var "COUNT") := by
+      change readExprF (coreWorld world coreTuple) f.kind (fun _ => .error "unused") (.sym "COUNT") = _
+      simp [readExprF, show f.kind.name = "FN2-CNS" from rfl]
+      rfl
+    simp only [ev, hr, except_ok_bind, Term.eval]
+    try rfl
+  have e4 : ev (coreWorld world coreTuple) f.kind st (.int 1) = .ok (.int 1) := by
+    have hr : readExpr (coreWorld world coreTuple) f.kind (.int 1) = .ok (.quote (.int 1)) := by rfl
+    simp only [ev, hr, except_ok_bind, Term.eval]
+    try rfl
+  have he : st.pending.mapM (fun (n,e) => do pure (n, ← ev (coreWorld world coreTuple) f.kind st e)) = .ok (handlerPairs event outcome count) := by
+    change handlerPending.mapM _ = _
+    simp only [handlerPending, List.mapM_cons, List.mapM_nil, e1, e2, e3, e4, except_ok_bind]
+    try rfl
+  simp only [flush, he, except_ok_bind]
+  rfl
+
+theorem handler_reduced (id slot event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+  runArm (coreWorld world coreTuple) (coreKind cns coreTuple) readResult true
+    ([id,slot,.int 11,.int 6,event,outcome,reason,count,aux0,aux1] ++ @CORE_VALUES@) 2 =
+  if handlerFits slot event outcome count @OWN_VALUE@ then
+    .ok (Val.ofList (id :: @HANDLER_SUCCESS_KIDS@))
+  else .ok (Val.ofList (id :: @HANDLER_FAILURE_KIDS@)) := by
+  rw [handler_run, handler_flush, handler_put]
+  split <;> rfl
+
+theorem handler_write (id event outcome count core : Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id core = .sym ":OK")
+    (hself : «UPDATE-FN2-CNS-TABLE» («FN2-CNS-TABLE» core) core = core) :
+    «FN2-CNS-WRITE+REVENT+ROUTCOME+RCOUNT+RREADY» id event outcome count (.int 1) core =
+    if handlerFits («FN2-MACHINE-SLOT» id core) event outcome count («FN2-CNS-TABLE» core) then
+      «UPDATE-FN2-CNS-TABLE»
+        (handlerOwn («FN2-MACHINE-SLOT» id core) event outcome count («FN2-CNS-TABLE» core)) core
+    else «FN2-CORE-STOP» (.int 13) core := by
+  obtain ⟨hi, hr, hs, hb⟩ := snapshot_bounds id core h
+  obtain ⟨_, hk⟩ := snapshot_parts id core h
+  have hid : («FN2-MACHINE-IDP» id core).truthy = true := by
+    simp [«FN2-MACHINE-IDP», hi, hr]
+  have hslot : «FN2-MACHINE-SLOT» id core = «FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» core) := by
+    simp [«FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hid, «EQ», Prim.equal]
+  have hn : natLt («FN2-MACHINE-SLOT» id core) («FN2-CNS-ROWS» («FN2-CNS-TABLE» core)) = true := by
+    rw [← natp_lt, hslot, hs, hb]
+    rfl
+  generalize he : ColType.fits (.uw 8) event = e
+  generalize ho : ColType.fits (.uw 8) outcome = o
+  generalize hc : ColType.fits (.uw 32) count = c
+  have he' : («UNSIGNED-BYTE-P» (.int 8) event).truthy = e := (unsigned_fits 8 event).trans he
+  have ho' : («UNSIGNED-BYTE-P» (.int 8) outcome).truthy = o := (unsigned_fits 8 outcome).trans ho
+  have hc' : («UNSIGNED-BYTE-P» (.int 32) count).truthy = c := (unsigned_fits 32 count).trans hc
+  have h1 : («UNSIGNED-BYTE-P» (.int 1) (.int 1)).truthy = true := by rfl
+  rw [hslot] at hn
+  cases e <;> cases o <;> cases c <;>
+    simp [«FN2-CNS-WRITE+REVENT+ROUTCOME+RCOUNT+RREADY», «NOT», Prim.equal,
+      hid, hk, hslot, hs, hb, he', ho', hc', h1, he, ho, hc, handlerFits, hn,
+      handlerOwn, Native.nth, Native.nthN, Val.nfix, Val.toInt, hself,
+      «FN2-MACHINE-REFUSE-WRITE»]
+
+theorem handler_certificate (id event outcome reason count aux0 aux1 : Val) @CORE_BINDERS@ :
+    ∃ fuel result,
+      runCore world coreTuple cns readResult true
+        [id,event,outcome,reason,count,aux0,aux1,Val.ofList @CORE_VALUES@] fuel = .ok result ∧
+      result = «FN2-CNS-ON-READ-RESULT» id event outcome reason count aux0 aux1 (Val.ofList @CORE_VALUES@) := by
+  apply Wrapper.certificate world coreTuple cns readResult true
+    [id,event,outcome,reason,count,aux0,aux1,Val.ofList @CORE_VALUES@]
+    («FN2-CNS-ON-READ-RESULT» id event outcome reason count aux0 aux1 (Val.ofList @CORE_VALUES@))
+    («FN2-CNS-SNAPSHOT-READ-CODE» id (Val.ofList @CORE_VALUES@)) (by rfl) (by rfl)
+  · exact Fn2.Instances.CoreWorld.«FN2-CNS-SNAPSHOT-READ-CODE».dispatched (err := "no function FN2-CNS-SNAPSHOT-READ-CODE/2") _ _
+  · intro h
+    let slot := «FN2-MACHINE-SLOT» id (Val.ofList @CORE_VALUES@)
+    let afterKids := if handlerFits slot event outcome count @OWN_VALUE@
+      then @HANDLER_SUCCESS_KIDS@ else @HANDLER_FAILURE_KIDS@
+    refine ⟨slot, .int 11, 2, Val.ofList (id :: afterKids), ?_, ?_, ?_, ?_⟩
+    · exact Fn2.Instances.CoreWorld.«FN2-MACHINE-SLOT».dispatched (err := "no function FN2-MACHINE-SLOT/2") _ _
+    · rfl
+    · change runArm (coreWorld world coreTuple) (coreKind cns coreTuple) readResult true
+        ([id,slot,.int 11,.int 6,event,outcome,reason,count,aux0,aux1] ++ @CORE_VALUES@) 2 = _
+      rw [handler_reduced]
+      unfold afterKids
+      split <;> rfl
+    · have hw := handler_write id event outcome count (Val.ofList @CORE_VALUES@) h (by rfl)
+      unfold «FN2-CNS-ON-READ-RESULT»
+      simp only [«EQ», Prim.equal, h, beq_self_eq_true, Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+      rw [hw]
+      change finish true coreTuple (Val.ofList (id :: afterKids)) =
+        .ok (Val.ofList [id, if handlerFits slot event outcome count @OWN_VALUE@ then
+          Val.ofList @HANDLER_SUCCESS_KIDS@ else Val.ofList @HANDLER_FAILURE_KIDS@])
+      unfold afterKids
+      by_cases hf : handlerFits slot event outcome count @OWN_VALUE@ = true
+      · simp only [hf, ↓reduceIte]
+        change finish true coreTuple (Val.ofList (id :: @HANDLER_SUCCESS_KIDS@)) = _
+        rfl
+      · simp only [hf, ↓reduceIte]
+        change finish true coreTuple (Val.ofList (id :: @HANDLER_FAILURE_KIDS@)) = _
+        rfl
+  · intro h
+    unfold «FN2-CNS-ON-READ-RESULT»
+    simp only [«EQ», Prim.equal, beq_eq_false_iff_ne.mpr h, Val.ofBool, Bool.false_eq_true, ↓reduceIte]
+    rfl
+
+/-- Every child of the canonical core layout, with arbitrary ACL2 values. -/
+def coreImage (kids : Fin @CORE_SIZE@ → Val) : Val := Val.ofList @IMAGE_VALUES@
+
+theorem cns_read_result_certificate (id event outcome reason count aux0 aux1 : Val)
+    (kids : Fin @CORE_SIZE@ → Val) :
+    ∃ fuel result,
+      runCore world coreTuple cns readResult true
+        [id,event,outcome,reason,count,aux0,aux1,coreImage kids] fuel = .ok result ∧
+      result = «FN2-CNS-ON-READ-RESULT» id event outcome reason count aux0 aux1 (coreImage kids) := by
+  exact handler_certificate id event outcome reason count aux0 aux1 @IMAGE_ARGUMENTS@
+
+def witnessKids : Fin @CORE_SIZE@ → Val := fun i =>
+  if i.val = @DIRECTORY_INDEX@ then Val.ofList [Val.ofList [.int 11],Val.ofList [.int 0],Val.nil,Val.nil,Val.nil,.int 1]
+  else if i.val = @OWN_INDEX@ then Val.ofList (List.replicate 67 Val.nil ++ [.int 1])
+  else .int i.val
+
+def witnessCore : Val := Val.ofList (List.ofFn witnessKids)
+def witnessResult : Val := «FN2-CNS-ON-READ-RESULT» (.int 0) (.int 13) (.int 0) (.int 0) (.int 7) (.int 0) (.int 0) witnessCore
+
+theorem handler_write_positive :
+    witnessCore.toList.length = coreTuple.length ∧
+    «FN2-CNS-SNAPSHOT-READ-CODE» (.int 0) witnessCore = .sym ":OK" ∧
+    witnessResult.car = .int 0 ∧
+    «FN2-CNS-REVENT» (.int 0) («FN2-CNS-TABLE» witnessResult.cdr.car) = .int 13 ∧
+    «FN2-CNS-ROUTCOME» (.int 0) («FN2-CNS-TABLE» witnessResult.cdr.car) = .int 0 ∧
+    «FN2-CNS-RCOUNT» (.int 0) («FN2-CNS-TABLE» witnessResult.cdr.car) = .int 7 ∧
+    «FN2-CNS-RREADY» (.int 0) («FN2-CNS-TABLE» witnessResult.cdr.car) = .int 1 ∧
+    witnessResult ≠ Val.ofList [.int 0,witnessCore] := by decide +kernel
+
+def wakeBeforeWrite : Arm := { readResult with
+  decl := Val.ofList [Val.ofList [.sym ":WAKE"], readResult.decl.car] }
+
+theorem pending_write_order_rejected :
+    runCore world coreTuple cns wakeBeforeWrite true
+      [.int 0,.int 13,.int 0,.int 0,.int 7,.int 0,.int 0,witnessCore] 1 ≠ .ok witnessResult := by
+  decide +kernel
+
+theorem omitted_child_rejected (fuel : Nat) (result : Val) :
+    runCore world coreTuple cns readResult true
+      [.int 0,.int 13,.int 0,.int 0,.int 7,.int 0,.int 0,Val.ofList witnessCore.toList.tail] fuel ≠ .ok result := by
+  apply Wrapper.omitted_child_rejected
+  decide +kernel
+
+end Fn2.Arms.CoreValidation
