@@ -1270,6 +1270,130 @@
   :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
            :use (fn2-env-inv-admit-step fn2-env-inv-host-step))))
 
+;; THE COLUMN BRIDGE: a commit-table row frame (table child 9) that keeps
+;; the rows field (column 33) and the directory's kinds and slots
+;; (fn2-ctf-dir) keeps every J reader of a commit id outside the frame's
+;; columns, and every column at a slot other than the frame's row; J is
+;; trivially true of a non-commit id. FN2-ENV-J-ROW-OF-ROW-FRAME is the lift
+;; each commit arm instantiates with its FRAME (fn2-commit-run-arm-row-frame).
+;; Column and child indices are the commit table's (cross-checked below).
+(make-event
+ (let* ((world (w state)) (tcols (strip-cars (fn2-machine-property 'fn2-commit :table world))))
+   (value `(assert-event
+            (and (equal *fn2-env-tk* 9) (equal *fn2-env-ri* 33) (equal *fn2-env-m* 3)
+                 (equal ',(list (position-eq 'phase tcols) (position-eq 'batch-no tcols) (position-eq 'cb-mode tcols)
+                                (position-eq 'cb-fence-ok tcols) (position-eq 'cb-deps-ok tcols)
+                                (position-eq 'cb-log-ok tcols) (position-eq 'cb-acks tcols)
+                                (fn2-arm-frame-child-index 'fn2-core-commit-io world)
+                                (fn2-arm-frame-child-index 'fn2-core-commit-root world))
+                        '(0 9 13 23 24 25 27 30 31)))))))
+(defthm fn2-env-j-row-off-kind
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (not (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*)))
+           (fn2-env-j-row id log fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-machine-cb-acks-read-code)
+                                  (fn2-env-written-from fn2-env-batch-durable-p fn2-env-installed))
+           :use ((:instance fn2-commit-idp-kind-value)))))
+(defun fn2-env-row-read-events (fields)
+  (declare (xargs :mode :program))
+  (if (atom fields) nil
+    (let* ((f (caar fields)) (j (cdar fields))
+           (r (fn2-columns-col-name 'fn2-machine f))
+           (tr (fn2-columns-col-name 'fn2-commit f)) (ai (fn2-columns-sym tr "$AI")))
+      (cons
+       `(defthm ,(fn2-columns-sym r "-OF-ROW-FRAME")
+          (implies (and (fn2-arm-row-frame 9 row cs ch a b) (not (member-equal 9 ch)) (natp row)
+                        (not (member-equal 33 cs)) (fn2-ctf-dir b a)
+                        (equal (fn2-machine-kind id a) *fn2-commit-kind*)
+                        (or (not (member-equal ,j cs)) (not (equal (fn2-machine-slot id a) row))))
+                   (equal (,r id b) (,r id a)))
+          :rule-classes nil
+          :hints (("Goal" :in-theory (e/d (,r fn2-commit-table fn2-commit-rows ,tr ,ai)
+                                          (fn2-machine-kind fn2-machine-slot fn2-machine-idp nth update-nth
+                                           fn2-arm-row-frame fn2-ctf-dir))
+                   :cases ((member-equal ,j cs))
+                   :do-not-induct t
+                   :use ((:instance fn2-ctf-dir-readers)
+                         (:instance fn2-arm-row-frame-cols (table 9) (columns cs) (children ch))
+                         (:instance fn2-arm-cols-nth (k 0) (j 33) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-arm-cols-nth (k 0) (j ,j) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-env-cols-nth-in (k 0) (j ,j) (row row) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-env-nth-off-update-nth (r row) (s (fn2-machine-slot id a))
+                                    (x (nth ,j (nth 9 a))) (y (nth ,j (nth 9 b))))))))
+       (fn2-env-row-read-events (cdr fields))))))
+(make-event (value (cons 'progn (fn2-env-row-read-events
+  '((phase . 0) (batch-no . 9) (cb-mode . 13) (cb-fence-ok . 23) (cb-deps-ok . 24) (cb-log-ok . 25) (cb-acks . 27))))))
+(defthm fn2-env-read-codes-of-row-frame
+  (implies (and (fn2-arm-row-frame 9 row cs ch a b) (not (member-equal 9 ch))
+                (not (member-equal 33 cs)) (fn2-ctf-dir b a))
+           (and (equal (fn2-machine-batch-no-read-code id b) (fn2-machine-batch-no-read-code id a))
+                (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a))
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-machine-batch-no-read-code fn2-machine-cb-acks-read-code fn2-commit-idp
+                                   fn2-commit-snapshot-read-code fn2-machine-phase-read-code fn2-commit-row
+                                   fn2-commit-table fn2-commit-rows)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp nth update-nth
+                                   fn2-arm-row-frame fn2-ctf-dir))
+           :do-not-induct t
+           :use ((:instance fn2-ctf-dir-readers)
+                 (:instance fn2-arm-row-frame-cols (table 9) (columns cs) (children ch))
+                 (:instance fn2-arm-cols-nth (k 0) (j 33) (columns cs) (a (nth 9 a)) (b (nth 9 b)))))))
+(defthm fn2-env-child-congruences
+  (implies (and (equal (nth 30 b) (nth 30 a)) (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a)))
+           (equal (fn2-commit-resource id role b) (fn2-commit-resource id role a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-resource fn2-core-commit-io))))
+(defthm fn2-env-root-congruence
+  (implies (equal (nth 31 b) (nth 31 a)) (equal (fn2-env-root b) (fn2-env-root a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-root fn2-core-commit-root))))
+(defthm fn2-env-row-frame-child
+  (implies (and (fn2-arm-row-frame tb row cs ch a b) (natp k) (not (equal k tb)) (not (member-equal k ch)))
+           (equal (nth k b) (nth k a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (nth))
+           :use ((:instance fn2-arm-kids-nth (i 0) (free (cons tb ch)))))))
+(defthm fn2-env-j-row-of-row-frame
+  (implies (and (fn2-env-j-row id log a) (fn2-env-j-frontier log a)
+                (fn2-corep b) (fn2-core-wfp b)
+                (fn2-arm-row-frame 9 row cs ch a b) (natp row)
+                (not (member-equal 9 ch)) (not (member-equal 30 ch)) (not (member-equal 31 ch))
+                (not (member-equal 33 cs)) (not (member-equal 9 cs)) (not (member-equal 13 cs))
+                (not (member-equal 23 cs)) (not (member-equal 24 cs)) (not (member-equal 25 cs))
+                (fn2-ctf-dir b a)
+                (or (not (equal (fn2-machine-slot id a) row))
+                    (and (not (member-equal 0 cs)) (not (member-equal 27 cs)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (and (fn2-env-j-row id log b) (fn2-env-j-frontier log b)
+                (equal (fn2-env-installed b) (fn2-env-installed a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j-same-evidence fn2-env-role-extent fn2-env-installed fn2-env-j-frontier
+                                               fn2-arm-row-frame natp member-equal)
+                                             (theory 'minimal-theory))
+           :cases ((equal (fn2-machine-kind id a) *fn2-commit-kind*))
+           :do-not-induct t
+           :use ((:instance fn2-ctf-dir-readers)
+                 (:instance fn2-env-j-row-off-kind (fn2-core b))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 30))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 31))
+                 (:instance fn2-env-root-congruence)
+                 (:instance fn2-env-read-codes-of-row-frame)
+                 (:instance fn2-env-child-congruences (role 0))
+                 (:instance fn2-env-child-congruences (role 1))
+                 (:instance fn2-env-child-congruences (role 2))
+                 (:instance fn2-machine-phase-of-row-frame)
+                 (:instance fn2-machine-batch-no-of-row-frame)
+                 (:instance fn2-machine-cb-mode-of-row-frame)
+                 (:instance fn2-machine-cb-fence-ok-of-row-frame)
+                 (:instance fn2-machine-cb-deps-ok-of-row-frame)
+                 (:instance fn2-machine-cb-log-ok-of-row-frame)
+                 (:instance fn2-machine-cb-acks-of-row-frame)
+                 (:instance fn2-env-j-row-transfer)))))
+
 ;; ---------------------------------------------------------------------------
 ;; Executor instance interface.  A turn logs nothing, but may expose new
 ;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
