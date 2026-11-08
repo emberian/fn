@@ -4754,7 +4754,8 @@
 ;; set, hence written. The fence flag's rise keeps J2 by J5's fence clause
 ;; (FN2-ENV-J2-RISE-OF-J5-FENCE): the row's flagged writes were answered before
 ;; its fence was taken, and the fence's first answer is the successful result
-;; the handler counts.
+;; the handler counts. A take reads its loan range in full
+;; (FN2-ENV-TAKE-OUTPUT-ENTRY, fact 1: with J5's range, 4096 octets).
 (defthm fn2-env-role-live-booleanp
   (booleanp (fn2-env-role-live id role fn2-core))
   :rule-classes :type-prescription)
@@ -4867,6 +4868,88 @@
                  (:instance fn2-env-written-fenced-by-fence-take (wf (fn2-env-take-index slot (nth 1 op) log))
                             (offset (fn2-env-role-offset id 2 fn2-core)) (b (fn2-machine-batch-no id fn2-core)))))))
 
+;; FACT 1.
+(defun fn2-env-pool-base (slot fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (b)
+    (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))) (fn2-pool-base slot fn2-pool) 0) b))
+(defun fn2-env-pool-length (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-pool-data-length fn2-pool) n))
+(defthm fn2-env-pool-octets-len
+  (implies (and (natp n) (natp addr) (<= (+ addr n) (fn2-pool-data-length fn2-pool)))
+           (equal (len (fn2-env-pool-octets n addr fn2-pool)) n))
+  :hints (("Goal" :induct (fn2-env-pool-octets n addr fn2-pool) :in-theory (enable fn2-env-pool-octets))))
+(defthm fn2-env-op-span-output
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (eq (mv-nth 0 (fn2-host-op-span op gen fn2-core)) :ok)
+                (fn2-op-output-kindp (nth 3 (fn2-env-op op fn2-core))))
+           (let ((o (fn2-env-op op fn2-core)))
+             (and (nth 0 o) (equal (nth 1 o) gen) (natp (nth 9 o)) (natp (nth 10 o))
+                  (equal (mv-nth 1 (fn2-host-op-span op gen fn2-core))
+                         (+ (fn2-env-pool-base (nth 7 o) fn2-core) (nth 9 o)))
+                  (equal (mv-nth 2 (fn2-host-op-span op gen fn2-core)) (nth 10 o))
+                  (natp (fn2-env-pool-base (nth 7 o) fn2-core))
+                  (<= (+ (fn2-env-pool-base (nth 7 o) fn2-core) (nth 9 o) (nth 10 o)) (fn2-env-pool-length fn2-core)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize) :do-not-induct t
+           :in-theory (e/d (fn2-host-op-span fn2-env-op fn2-env-pool-base fn2-env-pool-length fn2-op-output-kindp)
+                           (fn2-ops-rows fn2-ops-gen fn2-ops-phase fn2-ops-kind
+                            fn2-ops-range-slot fn2-ops-range-gen fn2-ops-range-off fn2-ops-range-len
+                            fn2-ops-owner-kind fn2-ops-owner-slot fn2-ops-owner-gen
+                            fn2-ops-storage-offset fn2-ops-fua fn2-ops-c0-posted fn2-ops-c0-harvested
+                            fn2-ops-c0-event fn2-ops-c0-outcome fn2-ops-c0-count
+                            fn2-pool-rows fn2-pool-gen fn2-pool-cap fn2-pool-base
+                            fn2-pool-data-length fn2-pool-lease-off fn2-pool-lease-len
+                            fn2-pool-state fn2-pool-out-count fn2-pool-fill
+                            fn2-pool-ownerp fn2-pool-input-code))
+           :use ((:instance fn2-core-pool-type) (:instance fn2-core-ops-type)
+                 (:instance fn2-ops-range-off-natp (i op) (fn2-ops (fn2-core-ops fn2-core)))
+                 (:instance fn2-ops-range-len-natp (i op) (fn2-ops (fn2-core-ops fn2-core)))
+                 (:instance fn2-pool-base-natp (i (fn2-ops-range-slot op (fn2-core-ops fn2-core))) (fn2-pool (fn2-core-pool fn2-core)))))))
+(defun fn2-env-pool-span (slot off len fn2-core)
+  ; the octets of pool slot SLOT's range (OFF, LEN)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (fn2-env-octets (+ (fn2-env-pool-base slot fn2-core) (nfix off)) (nfix len) fn2-core))
+(defthm fn2-env-octets-len
+  (implies (and (natp addr) (natp n) (<= (+ addr n) (fn2-env-pool-length fn2-core)))
+           (equal (len (fn2-env-octets addr n fn2-core)) n))
+  :hints (("Goal" :in-theory '(fn2-env-octets fn2-env-pool-length fn2-env-pool-octets-len))))
+(defthm fn2-env-host-action-fields
+  (implies (eq (mv-nth 0 (fn2-host-action slot fn2-core)) :ok)
+           (let ((o (fn2-env-op slot fn2-core)))
+             (and (nth 0 o) (equal (mv-nth 1 (fn2-host-action slot fn2-core)) (nth 3 o))
+                  (equal (mv-nth 8 (fn2-host-action slot fn2-core)) (nth 11 o))
+                  (equal (mv-nth 9 (fn2-host-action slot fn2-core)) (nth 12 o)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-host-action fn2-env-op fn2-op-slotp fn2-op-kind fn2-op-storage fn2-op-range
+                                   fn2-op-capability fn2-op-cancel-target fn2-op-wake fn2-op-may-release)
+                                  (fn2-ops-rows fn2-ops-gen fn2-ops-phase fn2-ops-kind
+                                   fn2-ops-range-slot fn2-ops-range-gen fn2-ops-range-off fn2-ops-range-len
+                                   fn2-ops-owner-kind fn2-ops-owner-slot fn2-ops-owner-gen
+                                   fn2-ops-storage-offset fn2-ops-fua fn2-ops-c0-posted fn2-ops-c0-harvested
+                                   fn2-ops-c0-event fn2-ops-c0-outcome fn2-ops-c0-count)))))
+; FACT 1. A taken output's octets are its loan range's octets, as many as the
+; range's length: the span check the take passes bounds the range in the
+; pool. (J5 puts a role write's range at the role's pool slot, offset 0,
+; 4096 octets.)
+(defthm fn2-env-take-output-entry
+  (let ((e (mv-nth 0 (fn2-env-take recoveryp image fn2-core))))
+    (implies (and e (fn2-op-output-kindp (nth 3 e)) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+             (let ((o (fn2-env-op (nth 1 e) fn2-core)))
+               (and (nth 0 o) (equal (nth 1 o) (nth 2 e)) (equal (nth 3 o) (nth 3 e))
+                    (equal (nth 11 o) (nth 4 e)) (equal (nth 12 o) (nth 5 e))
+                    (equal (nth 6 e) (fn2-env-pool-span (nth 7 o) (nth 9 o) (nth 10 o) fn2-core))
+                    (equal (len (nth 6 e)) (nth 10 o))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :do-not (quote (generalize eliminate-destructors fertilize))
+           :in-theory (e/d (fn2-env-take fn2-env-pool-span)
+                           (fn2-host-outbox-peek fn2-host-action fn2-host-op-span fn2-host-outbox-ack fn2-host-op-finish
+                            fn2-env-fill fn2-env-octets fn2-env-op fn2-env-pool-base fn2-env-pool-length
+                            fn2-action-completionp fn2-op-output-kindp fn2-dev-image-octets))
+           :use ((:instance fn2-env-host-action-fields (slot (mv-nth 1 (fn2-host-outbox-peek 0 fn2-core))))
+                 (:instance fn2-env-op-span-output (op (mv-nth 1 (fn2-host-outbox-peek 0 fn2-core)))
+                            (gen (mv-nth 2 (fn2-host-outbox-peek 0 fn2-core))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
