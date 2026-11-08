@@ -288,3 +288,31 @@
              (fn2-core (fn2-core-stop *fn2-stop-reason-machine-observation* fn2-core)))
         (mv (= (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*) fn2-core)) answer)))
 (assert-event (fn2-core-first-stop-control))
+
+; FN2-CORE-POOL-WRITE-FRAME teeth. Positive: a machine's write through row
+; SLOT leaves row 1's extent (hypothesis and conclusion both hold). Removal:
+; the same write seen from the written row (OTHER = SLOT) falsifies the
+; hypothesis and the conclusion (its first octet becomes 99).
+(defun fn2-core-pool-frame-teeth-run (other-written-p fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+       ((mv code slot gen fn2-core) (fn2-core-reserve 0 1 0 1 fn2-core))
+       (other (if other-written-p slot (+ 1 slot)))
+       (a (list slot gen 0 99 1 0 1))
+       (hyp (fn2-core-pool-frame-hyps other :write a fn2-core))
+       (before (fn2-core-pool-extent other fn2-core))
+       (fn2-core (fn2-core-pool-write-step :write a fn2-core))
+       (conclusion (fn2-core-pool-frame-resultp before (fn2-core-pool-extent other fn2-core))))
+    (mv (and (eq code :ok) (consp before)
+             (equal (if hyp t nil) (not other-written-p))
+             (equal (if conclusion t nil) (not other-written-p)))
+        fn2-core)))
+(defun fn2-core-pool-frame-teeth-1 (other-written-p)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core) (fn2-core-pool-frame-teeth-run other-written-p fn2-core) result)))
+(defun fn2-core-pool-frame-teeth ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-core-pool-frame-teeth-1 nil) (fn2-core-pool-frame-teeth-1 t)))
+(assert-event (fn2-core-pool-frame-teeth))
+(fn2-assert-owed-teeth fn2-core-pool-write-frame)

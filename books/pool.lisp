@@ -1319,6 +1319,91 @@
                  (:instance fn2-pool-semanticp-intro (s slot)
                             (fn2-pool (mv-nth 1 (fn2-pool-release slot gen okind oslot ogen fn2-pool))))))))
 
+;; Carved extents are disjoint: row J starts at or after row I's end.
+(local
+ (defthm fn2-pool-row-nonneg
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (natp i) (< i (fn2-pool-rows fn2-pool)))
+            (and (<= 0 (fn2-pool-cap i fn2-pool)) (<= 0 (fn2-pool-base i fn2-pool))
+                 (<= 0 (fn2-pool-fill i fn2-pool))))
+   :rule-classes :linear
+   :hints (("Goal" :use fn2-pool-slot-types))))
+(local
+ (defthm fn2-pool-extent-below
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                 (fn2-pool-row-invariantp (fn2-pool-rows fn2-pool) fn2-pool)
+                 (natp i) (natp j) (< i j) (< j (fn2-pool-rows fn2-pool)))
+            (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool)))
+   :hints (("Goal" :induct (fn2-pool-retired-slots j fn2-pool)
+            :in-theory (e/d (fn2-pool-retired-slots fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant)))
+           ("Subgoal *1/2" :use ((:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool)) (i j)))))))
+(defthm fn2-pool-extents-disjoint
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (natp j) (< i j) (< j (fn2-pool-rows fn2-pool)))
+           (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool)))
+  :rule-classes nil
+  :hints (("Goal" :use (fn2-pool-semanticp-elim fn2-pool-extent-below))))
+(defthm fn2-pool-extents-apart
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (natp j) (not (equal i j))
+                (< i (fn2-pool-rows fn2-pool)) (< j (fn2-pool-rows fn2-pool)))
+           (or (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool)) (fn2-pool-base j fn2-pool))
+               (<= (+ (fn2-pool-base j fn2-pool) (fn2-pool-cap j fn2-pool)) (fn2-pool-base i fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((< i j) (< j i)))
+          ("Subgoal 2" :use ((:instance fn2-pool-extents-disjoint (i j) (j i))))
+          ("Subgoal 1" :use ((:instance fn2-pool-extents-disjoint)))))
+(defthm fn2-pool-semanticp-row-bounds
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp i) (< i (fn2-pool-rows fn2-pool)))
+           (and (natp (fn2-pool-base i fn2-pool)) (natp (fn2-pool-cap i fn2-pool))
+                (natp (fn2-pool-fill i fn2-pool))
+                (<= (fn2-pool-fill i fn2-pool) (fn2-pool-cap i fn2-pool))
+                (<= (+ (fn2-pool-base i fn2-pool) (fn2-pool-cap i fn2-pool))
+                    (fn2-pool-data-length fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-pool-row-okp) (fn2-pool-row-okp-of-invariant))
+           :use (fn2-pool-semanticp-elim (:instance fn2-pool-slot-types)
+                 (:instance fn2-pool-row-okp-of-invariant (n (fn2-pool-rows fn2-pool)))))))
+;; Octets of an interval: a byte written outside it, and a fill change, leave them.
+(defthm fn2-pool-logical-octets-of-update-datai
+  (implies (and (natp k) (natp b) (or (< k b) (<= (+ b (nfix n)) k)))
+           (equal (fn2-pool-logical-octets n b (update-fn2-pool-datai k v fn2-pool))
+                  (fn2-pool-logical-octets n b fn2-pool)))
+  :hints (("Goal" :induct (fn2-pool-logical-octets n b fn2-pool))))
+(defthm fn2-pool-logical-octets-of-set-fill
+  (equal (fn2-pool-logical-octets n b (fn2-pool-set-fill j v fn2-pool))
+         (fn2-pool-logical-octets n b fn2-pool)))
+;; A write through one row never changes another row's extent.
+(defthm fn2-pool-write-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other slot)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 1 (fn2-pool-write slot gen idx byte okind oslot ogen fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
+                        (:instance fn2-pool-semanticp-row-bounds (i other))
+                        (:instance fn2-pool-extents-apart (i slot) (j other))))))
+(defthm fn2-pool-adapter-write-other-extent
+  (implies (and (fn2-pool-semanticp fn2-pool) (natp other) (< other (fn2-pool-rows fn2-pool))
+                (not (equal other slot)))
+           (equal (fn2-pool-logical-octets
+                   (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                   (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte fn2-pool)))
+                  (fn2-pool-logical-octets (fn2-pool-cap other fn2-pool) (fn2-pool-base other fn2-pool)
+                                           fn2-pool)))
+  :hints (("Goal" :use ((:instance fn2-pool-semanticp-row-bounds (i slot))
+                        (:instance fn2-pool-semanticp-row-bounds (i other))
+                        (:instance fn2-pool-extents-apart (i slot) (j other))))))
+;; Neither write moves a row's extent.
+(defthm fn2-pool-write-keeps-extents
+  (let ((q (mv-nth 1 (fn2-pool-write slot gen idx byte okind oslot ogen fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool)))))
+(defthm fn2-pool-adapter-write-keeps-extents
+  (let ((q (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte fn2-pool))))
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows fn2-pool))
+         (equal (fn2-pool-base i q) (fn2-pool-base i fn2-pool))
+         (equal (fn2-pool-cap i q) (fn2-pool-cap i fn2-pool)))))
 (defthm fn2-pool-conservation-proved
   (implies (fn2-pool-conservation-hyps op a p)
            (fn2-pool-conservation-conclusion op a p))
