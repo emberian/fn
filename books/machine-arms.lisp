@@ -2534,6 +2534,8 @@
         ;; one shape theorem, as an arm's, but with unsigned-byte-p open: an
         ;; enum copy's guard is (< v COUNT) and the setter's rule wants its width
         (in-theory (disable ,name))
+        ;; the directory it threads keeps every id's kind, slot and rows
+        (fn2-machines-keeps-directory ,name ,formals ,(if adm 2 4) nil ,(fn2-machines-keeps-directory-hints name world))
         ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple tuple
             (append (list 'fn2-machines-slot 'fn2-machines-kind (fn2-arms-sym kind "-ROWS"))
                     (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
