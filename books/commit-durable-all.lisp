@@ -7082,6 +7082,81 @@
                                                fn2-env-commit-idp-u32 fn2-env-generation-u60 fn2-env-generation-natp
                                                fn2-env-gen-limit-natp fn2-env-gen-limit-bound unsigned-byte-p integer-range-p posp)
                                              (theory 'fn2-arm-frame-base)))))
+;; THE ADMITTED ROW. J5 at :free says no live operation of the row is at its
+;; generation; a refused admission leaves the row free with its generation,
+;; fence flag and the ops table (FN2-ENV-J5-FREE-KEPT), and an accepted one
+;; opens it at :collect with a generation no lower and no fence
+;; (FN2-ENV-J5-FREE-TO-COLLECT); J6 and J6P ask nothing of either phase.
+(defun-nx fn2-env-free-to-collect (id a b)
+  ; B opens row ID, free in A, at :collect with a generation no lower and no
+  ; fence, over the same ops table
+  (and (fn2-env-ok b a) (fn2-commit-idp id a) (fn2-commit-idp id b)
+       (equal (fn2-machine-phase id a) *fn2-commit-state-free*)
+       (equal (fn2-machine-phase id b) *fn2-commit-state-collect*)
+       (natp (fn2-machine-generation id a)) (natp (fn2-machine-generation id b))
+       (<= (fn2-machine-generation id a) (fn2-machine-generation id b))
+       (equal (fn2-machine-cb-fence-live id b) 0)))
+(defthm fn2-env-j5-op-free-to-collect
+  (implies (and (fn2-env-free-to-collect id a b) (fn2-env-j5-op s id log a))
+           (and (fn2-env-j5-op s id log b) (equal (fn2-env-owned-fence-at s id b) 0)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-free-to-collect fn2-env-j5-op fn2-env-owned-fence-at)
+                                  (fn2-env-op fn2-env-io fn2-env-j5-fence fn2-commit-row fn2-env-ok))
+           :use ((:instance fn2-env-op-of-ok)))))
+(defthm fn2-env-j5-ops-free-to-collect
+  (implies (and (fn2-env-free-to-collect id a b) (fn2-env-j5-ops s k id log a))
+           (and (fn2-env-j5-ops s k id log b) (equal (fn2-env-owned-fences s k id b) 0)))
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log a)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-owned-fences fn2-env-j5-op-free-to-collect (:e zp) (:e binary-+) fix)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j5-free-to-collect
+  ; the phase-free argument: J5 at :free says no live operation of the row is
+  ; at its generation, so a row opened at :collect with a generation no lower
+  ; owns none at its new one; J6 and J6P ask nothing at :collect
+  (implies (and (fn2-env-free-to-collect id a b) (fn2-env-j5-row id log a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j6-row id b) (fn2-env-j6p-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-row fn2-env-j6-row fn2-env-j6p-row fn2-env-j5-roles
+                                               fn2-env-j5-ops-free-to-collect fn2-env-free-to-collect
+                                               (:e member-equal) (:e equal))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn2-env-op-of-ok (s 0))
+                 (:instance fn2-env-j5-ops-free-to-collect (s 0) (k (fn2-env-ops-rows a)))))))
+(defun-nx fn2-env-free-kept (id a b)
+  ; row ID is free in A and B with one generation, no fence and one ops table
+  (and (fn2-env-ok b a) (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+       (equal (fn2-machine-phase id a) *fn2-commit-state-free*)
+       (equal (fn2-machine-phase id b) *fn2-commit-state-free*)
+       (equal (fn2-machine-generation id b) (fn2-machine-generation id a))
+       (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))))
+(defthm fn2-env-j5-op-free-kept
+  (implies (fn2-env-free-kept id a b)
+           (and (equal (fn2-env-j5-op s id log b) (fn2-env-j5-op s id log a))
+                (equal (fn2-env-owned-fence-at s id b) (fn2-env-owned-fence-at s id a))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-free-kept fn2-env-j5-op fn2-env-owned-fence-at)
+                                  (fn2-env-op fn2-env-io fn2-env-j5-fence fn2-commit-row fn2-env-ok))
+           :use ((:instance fn2-env-op-of-ok)))))
+(defthm fn2-env-j5-ops-free-kept
+  (implies (fn2-env-free-kept id a b)
+           (equal (fn2-env-j5-ops s k id log b) (fn2-env-j5-ops s k id log a)))
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log a)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-j5-op-free-kept) (theory 'minimal-theory)))))
+(defthm fn2-env-owned-fences-free-kept
+  (implies (fn2-env-free-kept id a b)
+           (equal (fn2-env-owned-fences s k id b) (fn2-env-owned-fences s k id a)))
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id a)
+           :in-theory (union-theories '(fn2-env-owned-fences fn2-env-j5-op-free-kept) (theory 'minimal-theory)))))
+(defthm fn2-env-j5-free-kept
+  ; a free row's J5 reads its generation, fence flag and the ops table; J6
+  ; and J6P ask nothing of it
+  (implies (and (fn2-env-free-kept id a b) (fn2-env-j5-row id log a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j6-row id b) (fn2-env-j6p-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-row fn2-env-j6-row fn2-env-j6p-row fn2-env-j5-roles
+                                               fn2-env-free-kept (:e member-equal) (:e equal))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn2-env-op-of-ok (s 0))
+                 (:instance fn2-env-j5-ops-free-kept (s 0) (k (fn2-env-ops-rows a)))
+                 (:instance fn2-env-owned-fences-free-kept (s 0) (k (fn2-env-ops-rows a)))))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
