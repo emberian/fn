@@ -394,6 +394,9 @@
          (readers (append (meta-column-fns kind (meta-kw :table (cdr kd)))
                           (meta-column-fns 'fn2-machines *fn2-machine-directory-fields*)))
          (roots (append roots readers
+                        (mapcar (lambda (op)
+                                  (or (fn2-decl-get :child (fn2-arms-op-row op *meta-w*)) op))
+                                operations)
                         '(fn2-machine-slot fn2-control-record-stop fn2-machines-rows)
                         (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")))))
     (multiple-value-bind (order refused) (meta-closure roots)

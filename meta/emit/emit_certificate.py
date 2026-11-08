@@ -117,45 +117,47 @@ def lean_object(x):
     raise ValueError('unknown canonical object ' + str(tag))
 
 
-def expression_value(t, defined, env):
+def expression_value(t, defined, env, lambdas=None):
     if isinstance(t, List):
         if not t: return 'Val.nil'
         if t[0] == 'QUOTE': return val(t[1])
         if is_lambda(t[0]):
             names = [str(v) for v in as_list(t[0][1])]
-            vals = [expression_value(a, defined, env) for a in t[1:]]
-            return expression_value(t[0][2], defined, dict(zip(names, vals)))
-        f = str(t[0]); args = [expression_value(a, defined, env) for a in t[1:]]
+            vals = [expression_value(a, defined, env, lambdas) for a in t[1:]]
+            if lambdas and id(t) in lambdas:
+                return "(" + lambdas[id(t)] + " " + " ".join(vals) + ")"
+            return expression_value(t[0][2], defined, dict(zip(names, vals)), lambdas)
+        f = str(t[0]); args = [expression_value(a, defined, env, lambdas) for a in t[1:]]
         if f == 'IF': return f'(if ({args[0]}).truthy then {args[1]} else {args[2]})'
         if f == 'RETURN-LAST': return args[2]
         return '(' + (NATIVE.get(f) or ident(f)) + ' ' + ' '.join(args) + ')'
     return env.get(str(t), val(t)) if str(t) not in env else env[str(t)]
 
 
-def expression_proof(t, defined, env, indent='  ', dispatch=None):
+def expression_proof(t, defined, env, indent='  ', dispatch=None, lambdas=None):
     """A structural proof proposal: calls use the concrete dispatch equation;
     the kernel's generic evaluation lemmas supply the composition."""
-    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ', dispatch)
+    def sub(x, e=env): return expression_proof(x, defined, e, indent+'  ', dispatch, lambdas)
     def args_proof(args, pad=None):
         pad = pad or indent+'  '
         if not args: return [pad+'rfl']
         return ([pad+'refine Translation.eval_args_cons ?_ ?_',pad+'·']
-                + expression_proof(args[0],defined,env,pad+'  ',dispatch)
+                + expression_proof(args[0],defined,env,pad+'  ',dispatch,lambdas)
                 + [pad+'·'] + args_proof(args[1:],pad+'  '))
     if not isinstance(t,List) or not t or t[0] == 'QUOTE': return [indent+'rfl']
     if is_lambda(t[0]):
         names=[str(v) for v in as_list(t[0][1])]
-        vals=[expression_value(a,defined,env) for a in t[1:]]
+        vals=[expression_value(a,defined,env,lambdas) for a in t[1:]]
         return [indent+'refine Translation.eval_lam (vs := ['+', '.join(vals)+']) ?_ ?_',
-                indent+'·']+args_proof(t[1:])+[indent+'·']+sub(t[0][2],dict(zip(names,vals)))
+                indent+'·']+args_proof(t[1:])+[indent+'·']+([indent+'  exact '+lambdas[id(t)]+'.eval '+ ' '.join(vals)] if lambdas and id(t) in lambdas else sub(t[0][2],dict(zip(names,vals))))
     if t[0] == 'IF':
-        vs=[expression_value(a,defined,env) for a in t[1:]]
+        vs=[expression_value(a,defined,env,lambdas) for a in t[1:]]
         lines=[indent+f'refine Translation.eval_if (vc := {vs[0]}) (va := {vs[1]}) (vb := {vs[2]}) ?_ ?_ ?_']
         for a in t[1:]: lines += [indent+'·']+sub(a)
         return lines
     if t[0] == 'RETURN-LAST':
-        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent,dispatch)
-    vals=[expression_value(a,defined,env) for a in t[1:]]
+        return [indent+'change Translation.eval _ _ '+term(t[3])+' _ = _']+expression_proof(t[3],defined,env,indent,dispatch,lambdas)
+    vals=[expression_value(a,defined,env,lambdas) for a in t[1:]]
     proof = ('by exact '+ident(str(t[0]))+'.dispatched (err := '+lean_str('no function '+str(t[0])+' of arity '+str(len(vals)))+') '+ ' '.join(vals)) if dispatch and str(t[0]) in dispatch else 'by rfl'
     return [indent+'refine Translation.eval_app (vs := ['+', '.join(vals)+']) (by decide) (by decide) ?_ ('+proof+')', indent+'·']+args_proof(t[1:])
 

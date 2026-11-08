@@ -6,4 +6,4 @@
 (in-package "ACL2")
 (meta-print-certificate "meta/emit/core-certificate.sexp"
  '(fn2-cns-run-draining fn2-cns-on-read-result)
- 'fn2-cns '(fn2-cns-reclaim fn2-cns-lease-release))
+ 'fn2-cns '(fn2-cns-reclaim fn2-cns-lease-release fn2-machine-free-head fn2-machine-gen-limit))
