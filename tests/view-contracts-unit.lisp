@@ -45,3 +45,36 @@
        (not (fn2-test-row-view 0 '((bad) (-1) 1) '((0) (0) 2))))
   :hints (("Goal" :in-theory (enable fn2-test-root-view fn2-test-row-view fn2-view-equal
                                      fn2-view-project fn2-view-at))))
+
+; A column footprint permits several rows, while retaining cardinality.
+(assert-event
+ (let ((a '(ctl ((1 2) (3 4) 2) old))
+       (b '(ctl ((1 2) (8 9) 2) new)))
+  (and (fn2-column-frame 1 '(1) '(2) a b)
+       (fn2-view-columns-protected '((1 0) (1 2) (0)) 1 '(1) '(2))
+       (equal (fn2-view-project '((1 0) (1 2) (0)) a)
+              (fn2-view-project '((1 0) (1 2) (0)) b)))))
+; Whole-child permission cannot preserve the table's row count.
+(assert-event
+ (let ((a '(ctl ((1 2) (3 4) 2) old))
+       (b '(ctl ((1 2) (8 9) 3) new)))
+  (and (fn2-column-frame 1 '(1) '(1 2) a b)
+       (not (fn2-column-frame 1 '(1) '(2) a b))
+       (not (fn2-view-columns-protected '((1 2)) 1 '(1) '(1 2))))))
+; Intersect independent bounds: the row frame may permit extra children;
+; the composed footprint proves those children did not change.
+(assert-event
+ (let ((a '(ctl ((1 2) (3 4) 2) old))
+       (b '(ctl ((1 2) (8 4) 2) new)))
+  (and (fn2-column-frame 1 '(1) '(1 2) a b)
+       (fn2-arm-row-frame 1 0 '(1) '(2 55) a b)
+       (not (member-equal 1 '(2 55))) (subsetp-equal '(1) '(1))
+       (fn2-column-frame 1 '(1) '(2) a b))))
+; Remove the row premise: the composed footprint alone permits an
+; observed column to change, so the refined conclusion is false.
+(assert-event
+ (let ((a '(ctl ((1 2) (3 4) 2) old))
+       (b '(ctl ((9 2) (3 4) 2) new)))
+  (and (fn2-column-frame 1 '(1) '(1 2) a b)
+       (not (fn2-arm-row-frame 1 0 '(1) '(2 55) a b))
+       (not (fn2-column-frame 1 '(1) '(2) a b)))))

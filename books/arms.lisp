@@ -1410,8 +1410,195 @@
          :hints (("Goal" :in-theory nil
                   :use ((:instance fn2-row-frame-to-view (paths ,paths))
                         (:instance ,projection)))))
+       (defthm ,(fn2-columns-sym name "-COLUMN-FRAME-PROJECTION")
+         (implies (and (fn2-column-frame table columns children a b) (natp table)
+                       (fn2-view-columns-protected ,paths table columns children))
+                  (,name ,@parameters b a))
+         :rule-classes nil
+         :hints (("Goal" :in-theory '(fn2-view-equal)
+                  :use ((:instance fn2-column-frame-to-view (paths ,paths))
+                        (:instance ,projection)))))
        ,@(and (not observe) (fn2-view-reader-events name select carrier parameters paths world))
        (table fn2-views ',name '(:carrier ,carrier :select ,select :parameters ,parameters :paths ,paths :observe ,observe))
        (in-theory (disable ,name)))))
 (defmacro fn2-defview (name &key carrier select parameters observe open)
   `(make-event (value (fn2-view-events ',name ',carrier ',select ',parameters ',observe ',open (w state)))))
+
+; Column footprints compose operations that touch several rows. Their
+; length-free representation matches the existing row-frame algebra.
+; Reconcile a composed footprint with an independently proved row frame:
+; the former bounds other children, the latter refines this table's columns.
+(defun fn2-column-frame (table columns children a b)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-arm-kids 0 (cons table children) a b)
+       (or (member-equal table children)
+           (fn2-arm-kids 0 columns (nth table a) (nth table b)))))
+(defun fn2-view-column-protected (path table columns children)
+  (declare (xargs :verify-guards nil))
+  (and (consp path)
+       (not (member-equal (nfix (car path)) children))
+       (or (not (equal (nfix (car path)) table))
+           (and (consp (cdr path))
+                (not (member-equal (nfix (cadr path)) columns))))))
+(defun fn2-view-columns-protected (paths table columns children)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) t
+    (and (fn2-view-column-protected (car paths) table columns children)
+         (fn2-view-columns-protected (cdr paths) table columns children))))
+(defthm fn2-arm-cols-to-kids
+  (implies (fn2-arm-cols k row columns a b) (fn2-arm-kids k columns a b))
+  :hints (("Goal" :induct (fn2-arm-cols k row columns a b)
+           :in-theory (enable fn2-arm-cols fn2-arm-kids))))
+(defthm fn2-row-frame-to-column-frame
+  (implies (fn2-arm-row-frame table row columns children a b)
+           (fn2-column-frame table columns children a b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-arm-row-frame fn2-column-frame fn2-arm-cols-to-kids))))
+(defthm fn2-column-frame-to-reader
+  (implies (and (fn2-column-frame table columns children a b) (natp table)
+                (fn2-view-column-protected path table columns children))
+           (equal (fn2-view-at path b) (fn2-view-at path a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-view-column-protected fn2-view-at)
+                                  (nth update-nth fn2-arm-kids (:d nfix) fn2-view-nth-nfix))
+           :expand ((:free (c) (fn2-view-at path c))
+                    (:free (c) (fn2-view-at (cdr path) c)))
+           :do-not-induct t
+           :use ((:instance fn2-column-frame)
+                 (:instance fn2-arm-kids-nth (i 0) (k (nfix (car path))) (free (cons table children)))
+                 (:instance fn2-arm-kids-nth (i 0) (k (nfix (cadr path))) (free columns)
+                            (a (nth table a)) (b (nth table b)))))))
+(defthm fn2-column-frame-to-view
+  (implies (and (fn2-column-frame table columns children a b) (natp table)
+                (fn2-view-columns-protected paths table columns children))
+           (equal (fn2-view-project paths b) (fn2-view-project paths a)))
+  :rule-classes nil
+  :hints (("Goal" :induct (len paths)
+           :in-theory '(fn2-view-project fn2-view-columns-protected len atom))
+          ("Subgoal *1/1" :use ((:instance fn2-column-frame-to-reader (path (car paths)))))))
+(defun fn2-view-children-protected (paths children)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) t
+    (and (consp (car paths)) (not (member-equal (nfix (caar paths)) children))
+         (fn2-view-children-protected (cdr paths) children))))
+(defthm fn2-kids-to-reader
+  (implies (and (fn2-arm-kids 0 children a b) (consp path)
+                (not (member-equal (nfix (car path)) children)))
+           (equal (fn2-view-at path b) (fn2-view-at path a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-view-at natp) (nth update-nth (:d nfix)))
+           :use ((:instance fn2-arm-kids-nth (i 0) (k (nfix (car path))) (free children))))))
+(defthm fn2-kids-to-view
+  (implies (and (fn2-arm-kids 0 children a b) (fn2-view-children-protected paths children))
+           (equal (fn2-view-project paths b) (fn2-view-project paths a)))
+  :rule-classes nil
+  :hints (("Goal" :induct (len paths)
+           :in-theory '(fn2-view-project fn2-view-children-protected len atom))
+          ("Subgoal *1/1" :use ((:instance fn2-kids-to-reader (path (car paths)))))))
+(in-theory (disable fn2-column-frame fn2-view-column-protected
+                    fn2-view-columns-protected fn2-view-children-protected))
+(defthm fn2-column-frame-table
+ (implies (and (fn2-column-frame table columns children a b) (natp table)
+               (fn2-arm-kids 0 columns (nth table b) v))
+          (fn2-column-frame table columns children a (update-nth table v b)))
+ :hints (("Goal" :in-theory (e/d (fn2-column-frame) (fn2-arm-kids subsetp-equal nth update-nth))
+          :use ((:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c v))))))
+(defthm fn2-column-frame-refl (fn2-column-frame table columns children a a)
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-kids-refl))))
+(defthm fn2-column-frame-child
+ (implies (and (fn2-column-frame table columns children a b) (natp k) (natp table) (member-equal k children))
+          (fn2-column-frame table columns children a (update-nth k v b)))
+ :hints (("Goal" :in-theory (e/d (fn2-column-frame) (fn2-arm-kids subsetp-equal nth update-nth)))))
+(defthm fn2-column-member-cons
+ (equal (member-equal x (cons y ys)) (if (equal x y) (cons y ys) (member-equal x ys))))
+(defthm fn2-column-subset-head
+ (implies (and (subsetp-equal a b) (member-equal x b)) (subsetp-equal (cons x a) b)))
+(defthm fn2-column-frame-trans
+ (implies (and (fn2-column-frame table columns children a b)
+               (fn2-column-frame table columns children b c))
+          (fn2-column-frame table columns children a c))
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-kids-trans))))
+(defthm fn2-column-frame-after-kids
+ (implies (and (fn2-column-frame table columns children a b)
+               (fn2-arm-kids 0 free b c) (subsetp-equal free children) (natp table))
+          (fn2-column-frame table columns children a c))
+ :rule-classes nil
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-kids-refl natp (:e cons) unicity-of-0 fix fn2-arm-subsetp-cons)
+          :use ((:instance fn2-arm-member-of-subsetp (x table) (a free) (b children))
+                (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                (:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c (nth table c)))
+                (:instance fn2-arm-kids-nth (i 0) (k table) (a b) (b c))
+                (:instance fn2-arm-kids-mono (i 0) (f1 free) (free (cons table children)) (a b) (b c))))))
+(defthm fn2-column-frame-after-row
+ (implies (and (fn2-column-frame table columns children a b)
+               (fn2-arm-row-frame tb row cs ch b c) (natp table) (natp tb)
+               (subsetp-equal ch children)
+               (or (member-equal tb children)
+                   (and (equal table tb) (subsetp-equal cs columns))))
+          (fn2-column-frame table columns children a c))
+ :rule-classes nil
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-row-frame fn2-arm-kids-refl natp (:e cons) unicity-of-0 fix fn2-arm-subsetp-cons fn2-column-subset-head fn2-column-member-cons)
+          :use ((:instance fn2-arm-member-of-subsetp (x tb) (a ch) (b children))
+                (:instance fn2-arm-member-of-subsetp (x table) (a ch) (b children))
+                (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                (:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c (nth table c)))
+                (:instance fn2-arm-kids-mono (i 0) (f1 (cons tb ch)) (free (cons table children)) (a b) (b c))
+                (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                (:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c (nth table c)))
+                (:instance fn2-arm-kids-nth (i 0) (k table) (free (cons tb ch)) (a b) (b c))
+                (:instance fn2-arm-cols-to-kids (k 0) (columns cs) (a (nth tb b)) (b (nth tb c)))
+                (:instance fn2-arm-kids-mono (i 0) (f1 cs) (free columns) (a (nth tb b)) (b (nth tb c)))))))
+(defun fn2-column-footprint-allows (spec table columns children)
+ (declare (xargs :verify-guards nil))
+ (if (atom spec) t
+  (and (if (equal (caar spec) :whole) (member-equal (cadar spec) children)
+         (or (member-equal (cadar spec) children)
+             (and (equal table (cadar spec)) (subsetp-equal (caddar spec) columns))))
+       (fn2-column-footprint-allows (cdr spec) table columns children))))
+
+(defthm fn2-column-frame-after-column
+ (implies (and (fn2-column-frame table columns children a b)
+               (fn2-column-frame tb cs ch b c) (natp table) (natp tb)
+               (subsetp-equal ch children)
+               (or (member-equal tb children)
+                   (and (equal table tb) (subsetp-equal cs columns))))
+          (fn2-column-frame table columns children a c))
+ :rule-classes nil
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-kids-refl natp (:e cons) unicity-of-0 fix fn2-arm-subsetp-cons fn2-column-subset-head fn2-column-member-cons)
+          :use ((:instance fn2-arm-member-of-subsetp (x tb) (a ch) (b children))
+                (:instance fn2-arm-member-of-subsetp (x table) (a ch) (b children))
+                (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                (:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c (nth table c)))
+                (:instance fn2-arm-kids-mono (i 0) (f1 (cons tb ch)) (free (cons table children)) (a b) (b c))
+                (:instance fn2-arm-kids-trans (i 0) (free (cons table children)))
+                (:instance fn2-arm-kids-trans (i 0) (free columns) (a (nth table a)) (b (nth table b)) (c (nth table c)))
+                (:instance fn2-arm-kids-nth (i 0) (k table) (free (cons tb ch)) (a b) (b c))
+                
+                (:instance fn2-arm-kids-mono (i 0) (f1 cs) (free columns) (a (nth tb b)) (b (nth tb c)))))))
+(defthm fn2-column-subset-refl (subsetp-equal x x)
+ :hints (("Goal" :induct (len x) :in-theory (enable subsetp-equal member-equal fn2-arm-subsetp-cons))))
+(defthm fn2-column-frame-free-table
+ (implies (fn2-column-frame table columns children a b)
+          (fn2-column-frame table columns (cons table children) a b))
+ :rule-classes nil
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-column-member-cons fn2-column-subset-refl fn2-arm-subsetp-cons fn2-column-subset-head (:e cons))
+          :use ((:instance fn2-arm-kids-mono (i 0) (f1 (cons table children)) (free (cons table (cons table children)))))
+          :expand ((subsetp-equal (cons table children) (cons table (cons table children)))))))
+(defthm fn2-column-frame-reconcile-row
+ (implies (and (fn2-column-frame table columns (cons table children) a b)
+               (fn2-arm-row-frame table row cs ch a b)
+               (or (member-equal table children)
+                   (and (not (member-equal table ch)) (subsetp-equal cs columns))))
+          (fn2-column-frame table columns children a b))
+ :rule-classes nil
+ :hints (("Goal" :in-theory '(fn2-column-frame fn2-arm-row-frame fn2-column-member-cons fn2-column-subset-refl fn2-arm-subsetp-cons fn2-column-subset-head (:e cons))
+          :use ((:instance fn2-arm-kids-mono (i 0) (f1 (cons table (cons table children))) (free (cons table children)))
+                (:instance fn2-arm-cols-to-kids (k 0) (columns cs) (a (nth table a)) (b (nth table b)))
+                (:instance fn2-arm-kids-mono (i 0) (f1 cs) (free columns) (a (nth table a)) (b (nth table b))))
+          :expand ((subsetp-equal (cons table (cons table children)) (cons table children))))))
+
+(in-theory (disable fn2-column-frame fn2-column-footprint-allows
+                    fn2-arm-cols-to-kids fn2-column-frame-table
+                    fn2-column-frame-refl fn2-column-frame-child
+                    fn2-column-member-cons fn2-column-subset-head
+                    fn2-column-frame-trans fn2-column-subset-refl))
