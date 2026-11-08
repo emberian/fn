@@ -8,8 +8,15 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).parents[1]/'tools'))
 import ledger
 import certs
+import certify_books
 
 class DeepExportReader(unittest.TestCase):
+    def test_record_runner_accepts_generated_certificate_roots(self):
+        for n in ['meta/emit/served-export','tests/translation-inventory-unit','tests/acl2/example-tests','books/reference']:
+            self.assertIsNotNone(certify_books.BOOK_NAME.fullmatch(n))
+        for n in ['../books/reference','meta/emit/../../x','host/native/node','/books/reference']:
+            self.assertIsNone(certify_books.BOOK_NAME.fullmatch(n))
+
     def test_deep_data_preserves_include_closure(self):
         depth=3000
         with tempfile.TemporaryDirectory() as td, patch.dict(os.environ,{'FN_LEDGER_FORMS_CACHE':td+'/cache'}):
