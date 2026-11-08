@@ -1000,36 +1000,18 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-log-step fn2-env-j-row fn2-env-j1-row fn2-env-j2-row
                                fn2-env-written-extends fn2-env-batch-durable-extends))))
-(defthm fn2-env-j-log-transport
-  (implies (and (fn2-env-j-rows keys g a) (fn2-env-log-step delta g a h b))
-           (fn2-env-j-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal" :use ((:functional-instance fn2-pw-transport
-                          (fn2-pw-point fn2-env-j-row) (fn2-pw-all fn2-env-j-rows)
-                          (fn2-pw-step fn2-env-log-step)
-                          (fn2-pw-affected (lambda (key delta g a h b) nil))
-                          (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j-rows) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j-log-locality)
-          ("Subgoal 1" :use fn2-env-j-log-locality)))
+(fn2-pw-lift-locality fn2-env-j-log-transport
+  :point fn2-env-j-row :all fn2-env-j-rows :step fn2-env-log-step
+  :locality fn2-env-j-log-locality)
 (defthm fn2-env-j3-log-locality
   (implies (and (fn2-env-log-step delta g a h b) (fn2-env-j3-point key g a))
            (fn2-env-j3-point key h b))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-log-step fn2-env-j3-point fn2-env-j3-row
                                fn2-env-role-written fn2-env-written-extends))))
-(defthm fn2-env-j3-log-transport
-  (implies (and (fn2-env-j3-rows keys g a) (fn2-env-log-step delta g a h b))
-           (fn2-env-j3-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal" :use ((:functional-instance fn2-pw-transport
-                          (fn2-pw-point fn2-env-j3-point) (fn2-pw-all fn2-env-j3-rows)
-                          (fn2-pw-step fn2-env-log-step)
-                          (fn2-pw-affected (lambda (key delta g a h b) nil))
-                          (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j3-rows fn2-env-j3-point) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j3-log-locality)
-          ("Subgoal 1" :use fn2-env-j3-log-locality)))
+(fn2-pw-lift-locality fn2-env-j3-log-transport
+  :point fn2-env-j3-point :all fn2-env-j3-rows :step fn2-env-log-step
+  :locality fn2-env-j3-log-locality :open (fn2-env-j3-point))
 
 (defthm fn2-env-j-rows-extends
   (implies (and (fn2-env-j-rows ids log fn2-core) (true-listp more))
@@ -1091,18 +1073,9 @@
            (fn2-env-j-row key h b))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-child-step fn2-env-j-row-child-frame))))
-(defthm fn2-env-j-child-transport
-  (implies (and (fn2-env-j-rows keys g a) (fn2-env-child-step delta g a h b))
-           (fn2-env-j-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal" :use ((:functional-instance fn2-pw-transport
-                          (fn2-pw-point fn2-env-j-row) (fn2-pw-all fn2-env-j-rows)
-                          (fn2-pw-step fn2-env-child-step)
-                          (fn2-pw-affected (lambda (key delta g a h b) nil))
-                          (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j-rows) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j-child-locality)
-          ("Subgoal 1" :use fn2-env-j-child-locality)))
+(fn2-pw-lift-locality fn2-env-j-child-transport
+  :point fn2-env-j-row :all fn2-env-j-rows :step fn2-env-child-step
+  :locality fn2-env-j-child-locality)
 
 (defthm fn2-env-j-child-frame
   (and (equal (fn2-env-j-rows ids log (update-fn2-core-ops x fn2-core)) (fn2-env-j-rows ids log fn2-core))
@@ -1171,18 +1144,9 @@
            (fn2-env-j3-point key h b))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-child-step fn2-env-j3-point fn2-env-j3-row-child-frame))))
-(defthm fn2-env-j3-child-transport
-  (implies (and (fn2-env-j3-rows keys g a) (fn2-env-child-step delta g a h b))
-           (fn2-env-j3-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal" :use ((:functional-instance fn2-pw-transport
-                          (fn2-pw-point fn2-env-j3-point) (fn2-pw-all fn2-env-j3-rows)
-                          (fn2-pw-step fn2-env-child-step)
-                          (fn2-pw-affected (lambda (key delta g a h b) nil))
-                          (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j3-rows fn2-env-j3-point) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j3-child-locality)
-          ("Subgoal 1" :use fn2-env-j3-child-locality)))
+(fn2-pw-lift-locality fn2-env-j3-child-transport
+  :point fn2-env-j3-point :all fn2-env-j3-rows :step fn2-env-child-step
+  :locality fn2-env-j3-child-locality :open (fn2-env-j3-point))
 
 (defthm fn2-env-j3-child-frame
   (and (equal (fn2-env-j3-rows ids log (update-fn2-core-ops x fn2-core)) (fn2-env-j3-rows ids log fn2-core))
@@ -2943,20 +2907,9 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-j-view-step)
            :use ((:instance fn2-env-j-row-of-tk (id key) (log g))))))
-(defthm fn2-env-j-view-transport
-  (implies (and (fn2-env-j-rows keys g a) (fn2-env-j-view-step delta g a h b))
-           (fn2-env-j-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:functional-instance fn2-pw-transport
-                   (fn2-pw-point fn2-env-j-row)
-                   (fn2-pw-step fn2-env-j-view-step)
-                   (fn2-pw-affected (lambda (key delta g a h b) nil))
-                   (fn2-pw-all fn2-env-j-rows)
-                   (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j-rows) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j-view-locality)
-          ("Subgoal 1" :use fn2-env-j-view-locality)))
+(fn2-pw-lift-locality fn2-env-j-view-transport
+  :point fn2-env-j-row :all fn2-env-j-rows :step fn2-env-j-view-step
+  :locality fn2-env-j-view-locality)
 
 (defthm fn2-env-j-rows-of-tk-rows
   (implies (and (fn2-env-j-rows ids log a) (fn2-env-j-frontier log a)
@@ -3019,20 +2972,9 @@
   :hints (("Goal" :in-theory '(fn2-env-j3-point fn2-env-j3-view-step)
            :use ((:instance fn2-env-j3-of-tk (id key) (log g))
                  (:instance fn2-env-j3-of-tk (id key) (log g) (a b) (b a))))))
-(defthm fn2-env-j3-view-transport
-  (implies (and (fn2-env-j3-rows keys g a) (fn2-env-j3-view-step delta g a h b))
-           (fn2-env-j3-rows keys h b))
-  :rule-classes nil
-  :hints (("Goal"
-           :use ((:functional-instance fn2-pw-transport
-                   (fn2-pw-point fn2-env-j3-point)
-                   (fn2-pw-step fn2-env-j3-view-step)
-                   (fn2-pw-affected (lambda (key delta g a h b) nil))
-                   (fn2-pw-all fn2-env-j3-rows)
-                   (fn2-pw-repaired (lambda (keys delta g a h b) t))))
-           :in-theory '(fn2-env-j3-rows fn2-env-j3-point) :do-not-induct t)
-          ("Subgoal 2" :use fn2-env-j3-view-locality)
-          ("Subgoal 1" :use fn2-env-j3-view-locality)))
+(fn2-pw-lift-locality fn2-env-j3-view-transport
+  :point fn2-env-j3-point :all fn2-env-j3-rows :step fn2-env-j3-view-step
+  :locality fn2-env-j3-view-locality :open (fn2-env-j3-point))
 
 (defthm fn2-env-j3-rows-of-tk
   (implies (and (fn2-env-tk b a) (fn2-env-ek b a))

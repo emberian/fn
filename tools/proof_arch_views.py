@@ -73,8 +73,39 @@ def migrate(source):
     return lr.write(result, edits)
 
 
+def lift_transports(source):
+    """Replace the six identical transport schemas, checking each statement."""
+    parsed = lr.parse(source)
+    edits = []
+    for family in ('log', 'child', 'view'):
+        for invariant in ('j', 'j3'):
+            name = f'fn2-env-{invariant}-{family}-transport'
+            found = lr.match('(defthm ' + name + ' ?*rest)', parsed.forms, deep=False)
+            if not found:
+                continue
+            assert len(found) == 1, name
+            match = found[0]
+            point = 'fn2-env-j-row' if invariant == 'j' else 'fn2-env-j3-point'
+            step = ('fn2-env-' + family + '-step' if family != 'view'
+                    else f'fn2-env-{invariant}-view-step')
+            all_fn = f'fn2-env-{invariant}-rows'
+            locality = f'fn2-env-{invariant}-{family}-locality'
+            expected = lr.parse(f'(implies (and ({all_fn} keys g a) ({step} delta g a h b)) '
+                                f'({all_fn} keys h b))').forms[0]
+            if lr.flat(match.node.items[2]).lower() != lr.flat(expected).lower():
+                raise ValueError('unexpected statement: ' + name)
+            opened = ' :open (fn2-env-j3-point)' if invariant == 'j3' else ''
+            replacement = (f'(fn2-pw-lift-locality {name}\n'
+                           f'  :point {point} :all {all_fn} :step {step}\n'
+                           f'  :locality {locality}{opened})')
+            edits.append((match.start, match.end, replacement))
+    return lr.write(source, edits)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('file', type=Path)
+    parser.add_argument('--lifts', action='store_true', help='consolidate transport declarations')
     args = parser.parse_args()
-    args.file.write_text(migrate(args.file.read_text()))
+    operation = lift_transports if args.lifts else migrate
+    args.file.write_text(operation(args.file.read_text()))

@@ -113,3 +113,22 @@
   :rule-classes nil
   :hints (("Goal" :induct (fn2-fold-range start count g a))
           ("Subgoal *1/2" :use ((:instance fn2-fold-off-footprint (key start))))))
+
+; A semantic locality law may already cover every key (including affected
+; keys repaired by the transition). Declare its conjunction lift without
+; repeating functional-instantiation plumbing. LOCALITY is a theorem or
+; instance using KEY, DELTA, G, A, H, B; OPEN contains only point adapters.
+(defmacro fn2-pw-lift-locality (name &key point all step locality open)
+  `(defthm ,name
+     (implies (and (,all keys g a) (,step delta g a h b))
+              (,all keys h b))
+     :rule-classes nil
+     :hints (("Goal"
+              :use ((:functional-instance fn2-pw-transport
+                      (fn2-pw-point ,point) (fn2-pw-all ,all) (fn2-pw-step ,step)
+                      (fn2-pw-affected (lambda (key delta g a h b) nil))
+                      (fn2-pw-repaired (lambda (keys delta g a h b) t))))
+              :in-theory '(,all ,@open) :do-not-induct t)
+             ; ACL2 omits previously discharged functional constraints.
+             ("Subgoal 2" :use ,locality)
+             ("Subgoal 1" :use ,locality))))
