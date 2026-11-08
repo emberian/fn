@@ -4790,6 +4790,7 @@
   :hints (("Goal" :induct (fn2-env-take-index slot gen log)
            :in-theory '(fn2-env-take-index natp fn2-env-nth-0 fn2-env-nth-1+ fn2-env-len-cdr
                         (:type-prescription fn2-env-take-index) (:t len) atom (:e <)))))
+(local (in-theory (disable fn2-env-nth-0 fn2-env-nth-1+ fn2-env-len-cdr)))
 (defthm fn2-env-answer-resultp
   (implies (fn2-dev-answer slot gen l)
            (and (consp (fn2-dev-answer slot gen l)) (fn2-dev-resultp (car (fn2-dev-answer slot gen l)))))
@@ -4950,6 +4951,127 @@
            :use ((:instance fn2-env-host-action-fields (slot (mv-nth 1 (fn2-host-outbox-peek 0 fn2-core))))
                  (:instance fn2-env-op-span-output (op (mv-nth 1 (fn2-host-outbox-peek 0 fn2-core)))
                             (gen (mv-nth 2 (fn2-host-outbox-peek 0 fn2-core))))))))
+
+;; ---------------------------------------------------------------------------
+;; J5 ACROSS :POST-RESULT, the pieces. The step leaves every child but the ops
+;; table and appends the result iff fn2-post-result accepted it on cell 0
+;; (FN2-ENV-POST-STEP); it changes exactly the posted op's terminal cell
+;; (FN2-ENV-OP-OF-POST); the logged result keeps every other op's take and
+;; answer (FN2-ENV-J5-TAKEN-OTHER-RESULT) and is the posted op's first answer,
+;; since J5 had none for it (FN2-ENV-J5-TAKEN-POSTED-RESULT). The ops-level
+;; reader facts are proved with the column readers closed.
+(defun fn2-env-ops-op (s fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (if (and (natp s) (< s (fn2-ops-rows fn2-ops)))
+      (list t (fn2-ops-gen s fn2-ops) (fn2-ops-phase s fn2-ops) (fn2-ops-kind s fn2-ops)
+            (fn2-ops-owner-kind s fn2-ops) (fn2-ops-owner-slot s fn2-ops) (fn2-ops-owner-gen s fn2-ops)
+            (fn2-ops-range-slot s fn2-ops) (fn2-ops-range-gen s fn2-ops)
+            (fn2-ops-range-off s fn2-ops) (fn2-ops-range-len s fn2-ops)
+            (fn2-ops-storage-offset s fn2-ops) (fn2-ops-fua s fn2-ops)
+            (fn2-ops-c0-posted s fn2-ops) (fn2-ops-c0-harvested s fn2-ops) (fn2-ops-c0-event s fn2-ops)
+            (fn2-ops-c0-outcome s fn2-ops) (fn2-ops-c0-count s fn2-ops))
+    (list nil)))
+(defun fn2-env-post-accepted-p (cell slot gen evkind outcome reason count aux0 aux1 fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (let ((tail (fn2-ops-post-tail fn2-ops)) (n (fn2-ops-post-count fn2-ops))
+        (capacity (fn2-ops-posted-fifo-length fn2-ops)))
+    (and (fn2-post-eligiblep cell slot gen fn2-ops)
+         (fn2-post-payloadp cell slot evkind outcome reason count aux0 aux1 fn2-ops)
+         (< tail capacity) (< n capacity) (< n *fn2-u60-max*)
+         (< capacity 1152921504606846976))))
+(defun fn2-env-op-posted (op evkind outcome count)
+  ; OP with its terminal cell posted (EVKIND OUTCOME COUNT), unharvested
+  (declare (xargs :verify-guards nil))
+  (update-nth 13 1 (update-nth 14 0 (update-nth 15 evkind (update-nth 16 outcome (update-nth 17 count op))))))
+(defthm fn2-env-take-index-append-result
+  (implies (not (fn2-dev-takep r))
+           (equal (fn2-env-take-index s g (append log (list r)))
+                  (fn2-env-take-index s g log)))
+  :hints (("Goal" :induct (fn2-env-take-index s g log)
+           :in-theory '(fn2-env-take-index binary-append car-cons cdr-cons atom (:e fn2-dev-takep) (:e fn2-env-take-index))
+           :expand ((append log (list r)) (fn2-env-take-index s g (append log (list r)))
+                    (fn2-env-take-index s g (list r))))))
+(defthm fn2-env-answer-append-result
+  (equal (fn2-dev-answer s g (append l (list r)))
+         (if (fn2-dev-answer s g l)
+             (append (fn2-dev-answer s g l) (list r))
+           (and (fn2-dev-resultp r) (equal (nth 1 r) s) (equal (nth 2 r) g) (list r))))
+  :hints (("Goal" :in-theory '(fn2-dev-answer-append fn2-dev-answer atom (:e fn2-dev-answer) car-cons cdr-cons))))
+(local (defthm fn2-env-nthcdr-append-list
+  (implies (and (natp n) (<= n (len x)))
+           (equal (nthcdr n (append x y)) (append (nthcdr n x) y)))))
+(local (defthm fn2-env-car-append (implies (consp x) (equal (car (append x y)) (car x)))))
+(defthm fn2-env-j5-taken-other-result
+  (let ((r (list :result slot gen evkind outcome count)))
+    (implies (and (fn2-env-j5-taken op s log) (true-listp log)
+                  (not (and (equal s slot) (equal (nth 1 op) gen))))
+             (fn2-env-j5-taken op s (append log (list r)))))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-taken fn2-env-take-index-append-result fn2-env-answer-append-result
+                            fn2-env-nthcdr-append-list fn2-env-car-append fn2-env-consp-append)
+                           (fn2-env-take-index fn2-dev-answer nthcdr binary-append take))
+           :use ((:instance fn2-env-take-index-bound (slot s) (gen (nth 1 op)))))))
+(defthm fn2-env-j5-taken-posted-result
+  (let ((r (list :result slot gen evkind outcome count)))
+    (implies (and (fn2-env-j5-taken op slot log) (true-listp log)
+                  (equal (nth 1 op) gen) (equal (nth 2 op) *fn2-op-phase-submitted*) (equal (nth 13 op) 0))
+             (fn2-env-j5-taken (fn2-env-op-posted op evkind outcome count) slot (append log (list r)))))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-taken fn2-env-take-index-append-result fn2-env-answer-append-result
+                            fn2-env-nthcdr-append-list fn2-env-car-append fn2-env-consp-append fn2-env-op-posted)
+                           (fn2-env-take-index fn2-dev-answer nthcdr binary-append take))
+           :use ((:instance fn2-env-take-index-bound (gen (nth 1 op)))))))
+(defthm fn2-env-ops-op-of-post-result
+  (equal (fn2-env-ops-op s (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-ops))
+         (if (and (equal s slot) (equal cell 0)
+                  (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 fn2-ops))
+             (fn2-env-op-posted (fn2-env-ops-op s fn2-ops) evkind outcome count)
+           (fn2-env-ops-op s fn2-ops)))
+  :hints (("Goal" :do-not '(generalize eliminate-destructors fertilize) :do-not-induct t
+           :cases ((fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 fn2-ops))
+           :in-theory (e/d (fn2-post-result fn2-count-stray fn2-env-ops-op fn2-env-post-accepted-p fn2-env-op-posted
+                            update-nth)
+                           (fn2-post-eligiblep fn2-post-payloadp nth)))))
+(defthm fn2-env-post-count-of-post-result
+  (equal (fn2-ops-post-count (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-ops))
+         (if (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 fn2-ops)
+             (+ 1 (fn2-ops-post-count fn2-ops))
+           (fn2-ops-post-count fn2-ops)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-post-result fn2-count-stray fn2-env-post-accepted-p fn2-ops-post-count
+                            update-fn2-ops-stray update-fn2-ops-posted-fifoi update-fn2-ops-post-tail
+                            update-fn2-ops-post-count update-nth-array)
+                           (fn2-post-eligiblep fn2-post-payloadp nth update-nth)))))
+(defthm fn2-env-op-is-ops-op
+  (equal (fn2-env-op s fn2-core) (fn2-env-ops-op s (fn2-core-ops fn2-core)))
+  :hints (("Goal" :in-theory '(fn2-env-op fn2-env-ops-op))))
+; The :post-result step: the core's ops become fn2-post-result's, and the
+; device log gains the result iff the post was accepted on cell 0.
+(defthm fn2-env-post-step
+  (let ((cell (fn2-env-arg 1 action)) (slot (fn2-env-arg 2 action)) (gen (fn2-env-arg 3 action))
+        (evkind (fn2-env-arg 4 action)) (outcome (fn2-env-arg 5 action)) (reason (fn2-env-arg 6 action))
+        (count (fn2-env-arg 7 action)) (aux0 (fn2-env-arg 8 action)) (aux1 (fn2-env-arg 9 action)))
+    (and (equal (mv-nth 1 (fn2-env-post action nil rlog fn2-core))
+                (update-fn2-core-ops (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1
+                                                      (fn2-core-ops fn2-core))
+                                     fn2-core))
+         (equal (mv-nth 0 (fn2-env-post action nil rlog fn2-core))
+                (and (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops fn2-core))
+                     (equal cell 0)
+                     (list :result slot gen evkind outcome count)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-env-post fn2-host-post-result fn2-env-post-count fn2-env-post-count-of-post-result)
+                           (fn2-post-result fn2-env-post-accepted-p fn2-env-arg fn2-env-taken fn2-ops-post-count)))))
+(defthm fn2-env-op-of-post
+  (equal (fn2-env-op s (mv-nth 1 (fn2-env-post action nil rlog fn2-core)))
+         (if (and (equal s (fn2-env-arg 2 action)) (equal (fn2-env-arg 1 action) 0)
+                  (mv-nth 0 (fn2-env-post action nil rlog fn2-core)))
+             (fn2-env-op-posted (fn2-env-op s fn2-core) (fn2-env-arg 4 action) (fn2-env-arg 5 action) (fn2-env-arg 7 action))
+           (fn2-env-op s fn2-core)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-env-post-step fn2-env-op-is-ops-op fn2-env-ops-op-of-post-result
+                        fn2-core-ops-of-update-fn2-core-ops (:e equal)))))
+(in-theory (disable fn2-env-op-is-ops-op))
 
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
