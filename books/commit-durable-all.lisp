@@ -672,6 +672,15 @@
   (let* ((io (fn2-env-role-io id role fn2-core)) (op (fn2-env-op (nth 1 io) fn2-core)))
     (and (nth 0 io) (equal (nth 3 io) 1) (nth 0 op) (equal (nth 1 op) (nth 2 io))
          (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-retired*))))))
+;; A role write's posted terminal cell is a write result (the post's payload
+;; check), so the harvest's complete-in branch accepts it. Its own disabled
+;; function of the op: every frame that keeps the op keeps it.
+(defun fn2-env-j5-event-ok (op)
+  (declare (xargs :verify-guards nil))
+  (implies (equal (nth 13 op) 1) (equal (nth 15 op) *fn2-event-write-result*)))
+(defthm fn2-env-j5-event-ok-of-update-phase
+  (equal (fn2-env-j5-event-ok (update-nth 2 x op)) (fn2-env-j5-event-ok op)))
+(in-theory (disable fn2-env-j5-event-ok))
 (defun fn2-env-j5-role (id role log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (let* ((phase (fn2-machine-phase id fn2-core)) (mode (fn2-machine-cb-mode id fn2-core))
@@ -685,7 +694,7 @@
              (equal (nth 7 op) (nth 4 io)) (equal (nth 8 op) (nth 5 io))
              (equal (nth 9 op) 0) (equal (nth 10 op) *fn2-commit-unit-bytes*)
              (equal (nth 11 op) offset) (equal (nth 12 op) fua)
-             (fn2-env-j5-taken op slot log)
+             (fn2-env-j5-taken op slot log) (fn2-env-j5-event-ok op)
              (let ((w (fn2-env-take-index slot (nth 1 op) log)))
                (if w (fn2-env-j5-take-ok (nth w log) offset fua b) t)))
       (fn2-env-role-written id role (or (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
@@ -5079,6 +5088,13 @@
   (equal (fn2-env-j5-taken (fn2-env-op-c1-posted op) slot log) (fn2-env-j5-taken op slot log))
   :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-taken fn2-env-nth-op-c1-posted (:e natp) (:e <))
                                              (theory 'minimal-theory)))))
+(defthm fn2-env-j5-event-ok-of-c1-posted
+  (equal (fn2-env-j5-event-ok (fn2-env-op-c1-posted op)) (fn2-env-j5-event-ok op))
+  :hints (("Goal" :in-theory (enable fn2-env-j5-event-ok))))
+(defthm fn2-env-j5-event-ok-of-posted
+  (implies (equal evkind *fn2-event-write-result*)
+           (fn2-env-j5-event-ok (fn2-env-op-posted op evkind outcome count)))
+  :hints (("Goal" :in-theory (enable fn2-env-j5-event-ok))))
 (in-theory (disable fn2-env-op-c1-posted))
 (defthm fn2-env-take-index-append-result
   (implies (not (fn2-dev-takep r))
@@ -5261,6 +5277,13 @@
   :hints (("Goal" :in-theory (e/d (fn2-env-post-accepted-p fn2-post-eligiblep fn2-op-handle-code fn2-op-slotp
                                    fn2-env-op-is-ops-op fn2-env-ops-op)
                                   (fn2-post-payloadp)))))
+(defthm fn2-env-post-accepted-event
+  ; an accepted terminal post carries the op kind's terminal event
+  (implies (fn2-env-post-accepted-p 0 slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c))
+           (equal evkind (fn2-terminal-event (nth 3 (fn2-env-op slot c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-post-accepted-p fn2-post-payloadp fn2-env-op-is-ops-op fn2-env-ops-op)
+                                  (fn2-post-eligiblep fn2-terminal-event)))))
 (defthm fn2-env-post-accepted-release-cell
   ; a post accepted on the release cell needs an op that may release
   (implies (and (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c))
@@ -5386,9 +5409,10 @@
                          fn2-env-j5-taken-other-result fn2-env-j5-taken-posted-result fn2-env-j5-taken-op-c1-posted
                          fn2-env-take-index-append-result fn2-env-not-takep-result fn2-env-nth-append-low
                          fn2-env-role-written fn2-env-written-extends (:type-prescription fn2-env-role-written)
-                         (:e member-equal) (:e natp) (:e <) (:e equal) natp nfix (:e nfix))
+                         fn2-env-j5-event-ok-of-posted fn2-env-j5-event-ok-of-c1-posted
+                         (:e member-equal) (:e natp) (:e <) (:e equal) natp nfix (:e nfix) (:e fn2-terminal-event))
                        (theory 'minimal-theory))
-           :use ((:instance fn2-env-post-accepted-op)
+           :use ((:instance fn2-env-post-accepted-op) (:instance fn2-env-post-accepted-event)
                  (:instance fn2-env-take-index-bound (slot (nth 1 (fn2-env-role-io id role c)))
                             (gen (nth 1 (fn2-env-op (nth 1 (fn2-env-role-io id role c)) c))))))))
 (defthm fn2-env-j5-roles-post
@@ -5855,7 +5879,7 @@
            :in-theory (union-theories '(fn2-env-j5-role fn2-env-log+ fn2-env-role-live-take fn2-env-take-frames
                                         fn2-env-j5-taken-take fn2-env-j5-taken-queued-untaken fn2-env-take-index-append fn2-env-nth-len-append fn2-env-role-octets-span
                                         fn2-env-role-offset-natp fn2-action-completionp (:e fn2-action-completionp)
-                                        nth-update-nth append-to-nil natp nfix (:e equal) (:e nfix) (:e natp) (:e <))
+                                        fn2-env-j5-event-ok-of-update-phase nth-update-nth append-to-nil natp nfix (:e equal) (:e nfix) (:e natp) (:e <))
                                       (theory 'minimal-theory))
            :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id role c))))
                  (:instance fn2-env-take-entry-shape (recoveryp nil))
