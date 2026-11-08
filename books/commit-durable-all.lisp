@@ -639,20 +639,20 @@
           (fn2-env-pool-octets *fn2-commit-unit-bytes* (fn2-pool-base slot fn2-pool) fn2-pool)
         nil)
       octets)))
-; The first take of (SLOT GEN) in the oldest-first LOG from I, its index.
-(defun fn2-env-take-index (slot gen log i)
-  (declare (xargs :verify-guards nil :measure (len log)))
+; The index of the first take of (SLOT GEN) in the oldest-first LOG.
+(defun fn2-env-take-index (slot gen log)
+  (declare (xargs :verify-guards nil))
   (cond ((atom log) nil)
-        ((and (fn2-dev-takep (car log)) (equal (nth 1 (car log)) slot) (equal (nth 2 (car log)) gen)) (nfix i))
-        (t (fn2-env-take-index slot gen (cdr log) (+ 1 (nfix i))))))
+        ((and (fn2-dev-takep (car log)) (equal (nth 1 (car log)) slot) (equal (nth 2 (car log)) gen)) 0)
+        (t (let ((w (fn2-env-take-index slot gen (cdr log)))) (and w (+ 1 w))))))
 ; The op's take is in LOG iff it left the outbox; its first answer is the
 ; posted terminal cell iff one is posted.
 (defun fn2-env-j5-taken (op slot log)
   (declare (xargs :verify-guards nil))
   (let ((gen (nth 1 op)) (phase (nth 2 op)))
     (if (equal phase *fn2-op-phase-queued*)
-        (and (not (fn2-env-take-index slot gen log 0)) (equal (nth 13 op) 0))
-      (let ((w (fn2-env-take-index slot gen log 0)))
+        (and (not (fn2-env-take-index slot gen log)) (equal (nth 13 op) 0))
+      (let ((w (fn2-env-take-index slot gen log)))
         (and (equal phase *fn2-op-phase-submitted*) (natp w)
              (let ((ans (fn2-dev-answer slot gen (nthcdr (+ 1 w) log))))
                (if (equal (nth 13 op) 1)
@@ -684,7 +684,7 @@
              (equal (nth 9 op) 0) (equal (nth 10 op) *fn2-commit-unit-bytes*)
              (equal (nth 11 op) offset) (equal (nth 12 op) fua)
              (fn2-env-j5-taken op slot log)
-             (let ((w (fn2-env-take-index slot (nth 1 op) log 0)))
+             (let ((w (fn2-env-take-index slot (nth 1 op) log)))
                (if w (fn2-env-j5-take-ok (nth w log) offset fua b) t)))
       (fn2-env-role-written id role (or (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
                                          (and (equal phase *fn2-commit-state-log-write*) (equal mode 1)))
@@ -707,14 +707,18 @@
                           (if (<= 2 issued) (fn2-env-b2n (fn2-env-role-live id 2 fn2-core)) 0))
                        issued)))
           (t t))))
-; The fence's take follows the answers of the writes its rise fences.
+; The fence's take (a fence) follows the answers of the writes its rise
+; fences: role 0's once the dependency flag is up, roles 1 and 2 once the log
+; flag is.
 (defun fn2-env-j5-fence (id op slot log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (and (fn2-env-j5-taken op slot log)
-       (let ((w (fn2-env-take-index slot (nth 1 op) log 0)))
+       (let ((w (fn2-env-take-index slot (nth 1 op) log)))
          (if w (let ((pre (take w log)))
-                 (and (fn2-env-role-written id 0 nil pre fn2-core)
-                      (implies (not (equal (fn2-machine-cb-mode id fn2-core) 1))
+                 (and (equal (nth 3 (nth w log)) *fn2-action-fence*)
+                      (implies (equal (fn2-machine-cb-deps-ok id fn2-core) 1)
+                               (fn2-env-role-written id 0 nil pre fn2-core))
+                      (implies (equal (fn2-machine-cb-log-ok id fn2-core) 1)
                                (and (fn2-env-role-written id 1 nil pre fn2-core)
                                     (fn2-env-role-written id 2 nil pre fn2-core)))))
            t))))
@@ -731,7 +735,9 @@
                     (implies (equal (nth 6 op) gen)
                              (cond ((member-equal phase (list *fn2-commit-state-draining* *fn2-commit-state-uncertain*
                                                               *fn2-commit-state-dropping*))
-                                    t)
+                                    ;; settling: a live fence may still rise the flag
+                                    (implies (equal (nth 3 op) *fn2-action-fence*)
+                                             (fn2-env-j5-fence id op s log fn2-core)))
                                    ((member-equal phase (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
                                     (and (equal (nth 3 op) *fn2-action-write*)
                                          (let ((roles (if (equal phase *fn2-commit-state-log-write*) '(1 2) '(0))))
@@ -952,10 +958,12 @@
 (local (defthm fn2-env-nthcdr-append
   (implies (<= (nfix n) (len x))
            (equal (nthcdr n (append x y)) (append (nthcdr n x) y)))))
+(local (defthm fn2-env-consp-append (implies (consp x) (consp (append x y)))))
 (local (defthm fn2-env-done-answer-append
   (implies (consp tail)
            (equal (fn2-dev-done-answer-p (append tail y) evkind count)
-                  (fn2-dev-done-answer-p tail evkind count)))))
+                  (fn2-dev-done-answer-p tail evkind count)))
+  :hints (("Goal" :in-theory '(fn2-dev-done-answer-p car-cons fn2-env-consp-append) :expand ((append tail y))))))
 (local (defthm fn2-env-done-answer-nil (not (fn2-dev-done-answer-p nil evkind count))))
 (defthm fn2-env-done-write-extends
   (implies (and (fn2-env-done-write-p w log) (true-listp more))
@@ -4739,6 +4747,126 @@
   (implies (and (not (equal (fn2-env-tag action) :turn))
                 (not (fn2-env-recovery-done id fn2-core)))
            (not (fn2-env-recovery-done id (mv-nth 1 (fn2-env-step action t image rlog fn2-core))))))
+
+;; ---------------------------------------------------------------------------
+;; WHAT J5 CARRIES. J3 follows from J5's count and per-role clause
+;; (FN2-ENV-J3-ROW-OF-J5): a counted write is a role whose write left the live
+;; set, hence written. The fence flag's rise keeps J2 by J5's fence clause
+;; (FN2-ENV-J2-RISE-OF-J5-FENCE): the row's flagged writes were answered before
+;; its fence was taken, and the fence's first answer is the successful result
+;; the handler counts.
+(defthm fn2-env-role-live-booleanp
+  (booleanp (fn2-env-role-live id role fn2-core))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-env-role-live))
+; J3 VIA J5. The exact count (cb-done plus the live roles is cb-issued) and
+; the per-role clause (an issued role no longer live is written) give J3's
+; counted-completion clause: whatever the handler counted is a role whose
+; write left the live set, so it is written. J3's shared extents are the
+; row's own (kept by every step that keeps J3).
+(defthm fn2-env-j3-row-of-j5
+  (implies (and (fn2-env-j5-roles id log fn2-core)
+                (implies (and (fn2-commit-idp id fn2-core)
+                              (member-equal (fn2-machine-phase id fn2-core)
+                                            (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*)))
+                         (and (natp (fn2-env-role-extent id 0 fn2-core))
+                              (equal (fn2-env-role-extent id 1 fn2-core) (fn2-env-role-extent id 0 fn2-core))
+                              (equal (fn2-env-role-extent id 2 fn2-core) (fn2-env-role-extent id 0 fn2-core)))))
+           (fn2-env-j3-row id log fn2-core))
+  :hints (("Goal" :in-theory '(fn2-env-j3-row fn2-env-j5-roles fn2-env-j5-role fn2-env-b2n
+                               member-equal (:e member-equal) nfix (:e nfix) natp (:e <) (:e equal) (:e binary-+)
+                               fn2-env-role-live-booleanp)
+           :do-not-induct t)))
+
+(local (defthm fn2-env-nth-0 (equal (nth 0 l) (car l))))
+(local (defthm fn2-env-nth-1+ (implies (natp n) (equal (nth (+ 1 n) l) (nth n (cdr l))))))
+(local (defthm fn2-env-len-cdr (implies (consp l) (equal (len l) (+ 1 (len (cdr l)))))))
+(defthm fn2-env-take-index-bound
+  (let ((w (fn2-env-take-index slot gen log)))
+    (implies w (and (natp w) (< w (len log)) (fn2-dev-takep (nth w log))
+                    (equal (nth 1 (nth w log)) slot) (equal (nth 2 (nth w log)) gen))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-env-take-index slot gen log)
+           :in-theory '(fn2-env-take-index natp fn2-env-nth-0 fn2-env-nth-1+ fn2-env-len-cdr
+                        (:type-prescription fn2-env-take-index) (:t len) atom (:e <)))))
+(defthm fn2-env-answer-resultp
+  (implies (fn2-dev-answer slot gen l)
+           (and (consp (fn2-dev-answer slot gen l)) (fn2-dev-resultp (car (fn2-dev-answer slot gen l)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-dev-answer slot gen l) :in-theory '(fn2-dev-answer atom))))
+
+;; THE FENCE'S RISE. A write answered done in full before a fence is taken
+;; whose first answer is a successful fence result is fenced.
+(defthm fn2-env-fence-after-of-later
+  (implies (fn2-dev-fence-after-p y) (fn2-dev-fence-after-p (append x y)))
+  :hints (("Goal" :induct (len x) :in-theory (disable fn2-dev-answer fn2-dev-done-answer-p))))
+(local (defthm fn2-env-cdr-append
+  (implies (consp x) (equal (cdr (append x y)) (append (cdr x) y)))))
+(defthm fn2-env-fenced-by-later-fence
+  (implies (and (fn2-env-done-write-p w x) (fn2-dev-fence-after-p y) (true-listp y))
+           (fn2-dev-fenced-write-p w (append x y)))
+  :hints (("Goal" :in-theory '(fn2-env-done-write-p fn2-dev-fenced-write-p fn2-env-nth-append-low fn2-env-nthcdr-append
+                                fn2-env-done-answer-append fn2-dev-answer-append fn2-env-len-append fn2-env-cdr-append
+                                fn2-env-fence-after-of-later fn2-env-done-answer-nil natp nfix fix
+                                true-listp-append (:type-prescription true-listp-append)
+                                (:type-prescription len) (:type-prescription fn2-dev-answer) (:type-prescription binary-append))
+           :cases ((consp (fn2-dev-answer (nth 1 (nth w x)) (nth 2 (nth w x)) (nthcdr (+ 1 w) x)))))))
+(defthm fn2-env-written-fenced-by-later-fence
+  (implies (and (fn2-env-written-from w offset b nil x) (fn2-dev-fence-after-p y) (true-listp y))
+           (fn2-env-written-from w offset b t (append x y)))
+  :hints (("Goal" :induct (fn2-env-written-from w offset b nil x)
+           :in-theory '(fn2-env-written-from fn2-env-done-write-extends fn2-env-fenced-by-later-fence
+                        fn2-env-nth-append-low fn2-env-len-append (:type-prescription true-listp-append)
+                        true-listp-append natp nfix fix (:type-prescription len)))))
+(local (defthm fn2-env-nthcdr-at
+  (implies (and (natp n) (< n (len l)))
+           (and (consp (nthcdr n l)) (equal (car (nthcdr n l)) (nth n l))
+                (equal (cdr (nthcdr n l)) (nthcdr (+ 1 n) l))))
+  :rule-classes nil))
+(local (defthm fn2-env-append-take-nthcdr
+  (implies (<= (nfix n) (len l)) (equal (append (take n l) (nthcdr n l)) l))))
+(defthm fn2-env-written-fenced-by-fence-take
+  (let ((f (nth wf log)))
+    (implies (and (fn2-env-written-from 0 offset b nil (take wf log))
+                  (natp wf) (< wf (len log)) (true-listp log)
+                  (fn2-dev-takep f) (equal (nth 3 f) *fn2-dev-fence-kind*)
+                  (fn2-dev-done-answer-p (fn2-dev-answer (nth 1 f) (nth 2 f) (nthcdr (+ 1 wf) log))
+                                         *fn2-dev-fence-result* nil))
+             (fn2-env-written-from 0 offset b t log)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-append-take-nthcdr) (fn2-env-written-from fn2-dev-answer fn2-dev-done-answer-p fn2-dev-takep
+                                                                 fn2-env-written-fenced-by-later-fence take nthcdr))
+           :use ((:instance fn2-env-written-fenced-by-later-fence (w 0) (x (take wf log)) (y (nthcdr wf log)))
+                 (:instance fn2-dev-fence-after-p (log (nthcdr wf log)))
+                 (:instance fn2-env-nthcdr-at (n wf) (l log))))))
+
+; The fence flag's rise keeps J2: a fence J5 accounts for, whose first answer
+; is the successful fence result the handler counts, fences every write the
+; row's flags name.
+(defthm fn2-env-j2-rise-of-j5-fence
+  (progn$
+    (implies (and (fn2-env-j5-fence id op slot log fn2-core) (true-listp log)
+                  (equal (nth 2 op) *fn2-op-phase-submitted*) (equal (nth 13 op) 1)
+                  (equal (nth 15 op) *fn2-event-fence-result*) (equal (nth 16 op) *fn2-outcome-done*))
+             (and (implies (equal (fn2-machine-cb-deps-ok id fn2-core) 1)
+                           (fn2-env-role-written id 0 t log fn2-core))
+                  (implies (equal (fn2-machine-cb-log-ok id fn2-core) 1)
+                           (and (fn2-env-role-written id 1 t log fn2-core)
+                                (fn2-env-role-written id 2 t log fn2-core))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-fence fn2-env-j5-taken fn2-env-role-written fn2-dev-done-answer-p
+                               natp nfix (:e nfix) unicity-of-0 (:e equal) (:e member-equal) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-take-index-bound (gen (nth 1 op)))
+                 (:instance fn2-env-answer-resultp (gen (nth 1 op))
+                            (l (nthcdr (+ 1 (fn2-env-take-index slot (nth 1 op) log)) log)))
+                 (:instance fn2-env-written-fenced-by-fence-take (wf (fn2-env-take-index slot (nth 1 op) log))
+                            (offset (fn2-env-role-offset id 0 fn2-core)) (b nil))
+                 (:instance fn2-env-written-fenced-by-fence-take (wf (fn2-env-take-index slot (nth 1 op) log))
+                            (offset (fn2-env-role-offset id 1 fn2-core)) (b nil))
+                 (:instance fn2-env-written-fenced-by-fence-take (wf (fn2-env-take-index slot (nth 1 op) log))
+                            (offset (fn2-env-role-offset id 2 fn2-core)) (b (fn2-machine-batch-no id fn2-core)))))))
+
 
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
