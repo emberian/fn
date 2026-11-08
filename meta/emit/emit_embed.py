@@ -644,9 +644,11 @@ def emit_world(emb, path, ns, eqn_paths):
 #   import all Fn2.Instances.LayerAWorld.KCursor_d0to20
 #   -- END world bodies
 # `kinds K ..` every function a kind's arms reach; `names F ..` those functions; `prefixes P ..` every
-# function whose name starts with one (a kind's column accessors, named by concatenation); `natives` the module of
+# function whose name starts with one; `accessors K ..` each kind's column getters and setters (its
+# own, and the directory's in `fn2-machines` for READY-PREV, READY-NEXT, WAIT-REASON); `natives` the module of
 # ACL2's native definitions and their callees; `scan` every `«F»` the file itself names.
 
+DIRECTORY_FIELDS = ("READY-PREV", "READY-NEXT", "WAIT-REASON")
 WB = re.compile(r"^-- BEGIN world bodies \(emit_embed\.py\): (.*)\n(?:import all .*\n)*-- END world bodies$", re.M)
 
 
@@ -659,7 +661,11 @@ def world_layout(emb):
     for e in as_list(emb.get(":NATIVE-DEFINITIONS", List([]))):
         nf = Fn(as_list(e))
         native_callees |= {c for c in calls_of(nf.body, set()) | calls_of(nf.measure, set()) if c in mod_of}
-    return dict(mod_of=mod_of, mods=mods, D=D, reach=reach, native_callees=native_callees)
+    columns = {}
+    for k in as_list(emb[":KINDS"]):
+        k = as_list(k)
+        columns[str(k[0])] = [str(as_list(c)[0]) for c in as_list(plist(k[1:])[":COLUMNS"])]
+    return dict(mod_of=mod_of, mods=mods, D=D, reach=reach, native_callees=native_callees, columns=columns)
 
 
 def world_bodies(text, layout, pkg):
@@ -682,6 +688,11 @@ def world_bodies(text, layout, pkg):
             if missing:
                 die(f"world bodies: {missing} are not translated functions")
             roots |= set(clause[1:])
+        elif clause[0] == "accessors":
+            for kn in clause[1:]:
+                for c in layout["columns"][kn]:
+                    own = kn if c not in DIRECTORY_FIELDS else "FN2-MACHINES"
+                    roots |= {n for n in (f"{own}-{c}", f"{own}-SET-{c}") if n in mod_of}
         elif clause[0] == "prefixes":
             roots |= {f for f in mod_of if any(f.startswith(x) for x in clause[1:])}
         elif clause[0] == "natives":
