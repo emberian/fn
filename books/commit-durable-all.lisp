@@ -5497,6 +5497,68 @@
            :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
                             fn2-op-slotp fn2-env-ops-op)
                            (fn2-opsp)))))
+;; THE HARVEST'S OPS STEP (fn2-harvest-next, then fn2-op-finish): the
+;; harvested slot is the posted head's, every other op is kept, and a
+;; terminal cell harvested from an op with no release cell leaves it done,
+;; which fn2-op-finish recycles while the free and retired counts have room.
+(defun fn2-env-op-harvested (cell phase op)
+  ; OP with cell CELL harvested and its phase PHASE
+  (declare (xargs :verify-guards nil))
+  (update-nth 2 phase (if (equal cell 0) (update-nth 14 1 op) op)))
+(defthm fn2-env-peek-posted-cell
+  (let ((pk (fn2-ops-peek-posted fn2-ops)))
+    (implies (eq (mv-nth 0 pk) t)
+             (and (fn2-op-slotp (mv-nth 1 pk) fn2-ops) (unsigned-byte-p 1 (mv-nth 2 pk))
+                  (if (equal (mv-nth 2 pk) 0)
+                      (and (equal (fn2-ops-c0-posted (mv-nth 1 pk) fn2-ops) 1)
+                           (equal (fn2-ops-c0-harvested (mv-nth 1 pk) fn2-ops) 0))
+                    (equal (fn2-ops-c1-posted (mv-nth 1 pk) fn2-ops) 1)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-ops-peek-posted))))
+(defthm fn2-env-ops-op-of-harvest-next
+  (let ((hn (fn2-harvest-next fn2-ops)))
+    (equal (fn2-env-ops-op s (mv-nth 4 hn))
+           (if (and (eq (mv-nth 0 hn) t) (equal s (mv-nth 1 hn)))
+               (fn2-env-op-harvested (mv-nth 3 hn) (fn2-ops-phase s (mv-nth 4 hn)) (fn2-env-ops-op s fn2-ops))
+             (fn2-env-ops-op s fn2-ops))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-harvest-next fn2-ops-latch-peer fn2-env-ops-op fn2-env-op-harvested update-nth)
+                           (fn2-op-harvest-phase fn2-ops-peek-posted nth))
+           :use ((:instance fn2-env-peek-posted-cell)))))
+(defthm fn2-env-harvest-next-head
+  ; the harvested slot, generation and cell are the posted head's
+  (let ((hn (fn2-harvest-next fn2-ops)) (pk (fn2-ops-peek-posted fn2-ops)))
+    (and (equal (mv-nth 0 hn) (mv-nth 0 pk))
+         (implies (eq (mv-nth 0 pk) t)
+                  (and (equal (mv-nth 1 hn) (mv-nth 1 pk)) (equal (mv-nth 3 hn) (mv-nth 2 pk))
+                       (equal (mv-nth 2 hn) (fn2-ops-gen (mv-nth 1 pk) fn2-ops))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-harvest-next) (fn2-ops-peek-posted fn2-op-harvest-phase fn2-ops-latch-peer)))))
+(defthm fn2-env-harvest-phase-done
+  ; a terminal cell harvested from an op with no release cell finishes it
+  (let* ((hn (fn2-harvest-next fn2-ops)) (s (mv-nth 1 hn)))
+    (implies (and (eq (mv-nth 0 hn) t) (equal (mv-nth 3 hn) 0)
+                  (equal (fn2-ops-c1-posted s fn2-ops) 0)
+                  (not (equal (fn2-ops-kind s fn2-ops) *fn2-action-send*)))
+             (equal (fn2-ops-phase s (mv-nth 4 hn)) *fn2-op-phase-done*)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-harvest-next fn2-ops-latch-peer fn2-op-harvest-phase) (fn2-ops-peek-posted)))))
+(defthm fn2-env-op-finish-done
+  ; finishing a done op at its generation recycles it
+  (implies (and (fn2-opsp fn2-ops) (fn2-op-slotp h fn2-ops) (equal g (fn2-ops-gen h fn2-ops))
+                (equal (fn2-ops-phase h fn2-ops) *fn2-op-phase-done*)
+                ;; the free and retired counts have room (FN2-OPS-SEMANTICP bounds them by the rows)
+                (not (equal (fn2-ops-free-count fn2-ops) *fn2-none*))
+                (not (equal (fn2-ops-retired-count fn2-ops) *fn2-none*)))
+           (and (member-equal (mv-nth 0 (fn2-op-finish h g fn2-ops)) '(:ok :retired))
+                (member-equal (nth 2 (fn2-env-ops-op h (mv-nth 1 (fn2-op-finish h g fn2-ops))))
+                              (list *fn2-op-phase-free* *fn2-op-phase-retired*))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
+                            fn2-op-slotp fn2-env-ops-op)
+                           (fn2-opsp)))))
 (defthm fn2-env-take-frames
   (let ((c2 (mv-nth 1 (fn2-env-take nil image c))))
     (and (equal (fn2-machine-phase id c2) (fn2-machine-phase id c))
@@ -6300,6 +6362,42 @@
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (atom ids) t
     (and (fn2-env-j6p-row (car ids) fn2-core) (fn2-env-j6p-rows (cdr ids) fn2-core))))
+;; J6L, THE ROLES' LEASES. Through the write phases the three roles' pool
+;; rows are three rows, each at the generation its unit records, and a role
+;; whose write is live holds its row's lease (leased-out): the harvest's
+;; release of that write's range is accepted. Owed before the harvest step
+;; can use it: J6L across each step, and a foreign operation's release-out
+;; (no owner check, pool.lisp's A2) never hits a live role's row.
+(defun fn2-env-role-lease (id role fn2-core)
+  ; (STATE GEN) of the role's pool row
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((s (nth 4 (fn2-env-role-io id role fn2-core))))
+    (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (r)
+      (if (and (natp s) (< s (fn2-pool-rows fn2-pool)))
+          (list (fn2-pool-state s fn2-pool) (fn2-pool-gen s fn2-pool))
+        nil)
+      r)))
+(defun fn2-env-role-lease-ok (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((r (fn2-env-role-lease id role fn2-core)))
+    (and (equal (nth 1 r) (nth 5 (fn2-env-role-io id role fn2-core)))
+         (implies (fn2-env-role-live id role fn2-core)
+                  (equal (nth 0 r) *fn2-pool-state-leased-out*)))))
+(defun fn2-env-j6l-row (id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (and (fn2-commit-idp id fn2-core)
+                (member-equal (fn2-machine-phase id fn2-core)
+                              (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*
+                                    *fn2-commit-state-fence*)))
+           (let ((s0 (nth 4 (fn2-env-role-io id 0 fn2-core))) (s1 (nth 4 (fn2-env-role-io id 1 fn2-core)))
+                 (s2 (nth 4 (fn2-env-role-io id 2 fn2-core))))
+             (and (not (equal s0 s1)) (not (equal s0 s2)) (not (equal s1 s2))
+                  (fn2-env-role-lease-ok id 0 fn2-core) (fn2-env-role-lease-ok id 1 fn2-core)
+                  (fn2-env-role-lease-ok id 2 fn2-core)))))
+(defun fn2-env-j6l-rows (ids fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom ids) t
+    (and (fn2-env-j6l-row (car ids) fn2-core) (fn2-env-j6l-rows (cdr ids) fn2-core))))
 (defthm fn2-env-j5-rows-loan-write-fill
   (implies (and (fn2-core-pool-semanticp c) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
            (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
