@@ -1,0 +1,4092 @@
+{
+  "status": "checkpoint; producer relation matrix replacement and 15-30 second target remain incomplete",
+  "baseline_source": "5ee4da987cef1e7bbca2de6c562e2b747550f6e5",
+  "measured_source": "11b28d99e7d76282640fbeb849fbf4c2a4bbb4ba",
+  "box": "bb2",
+  "toolchain": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",
+  "jobs": 8,
+  "command": "tools/box_certify_bb2.sh proof-arch -j 8 books/commit-durable-all.lisp tests/commit-durable-all-unit.lisp tests/commit-executor-contracts-unit.lisp tests/pointwise-contracts-unit.lisp tests/view-contracts-unit.lisp",
+  "baseline_summary": [
+    "certify summary: 152 built, 0 failed"
+  ],
+  "after_summaries": [
+    "certify summary: 93 built, 0 failed",
+    "certify summary: 5 built, 0 failed"
+  ],
+  "measurement_scope": "After uses the latest per-path sample from the full 93-book rebuild and the 5-book current-source refresh. Common closure compares the same 90 paths. Per-book wall-time sums are not elapsed run time or CPU time. Primitive events count non-wrapping ACL2 event summaries, including proof attempts; not unique admitted theorem names.",
+  "cpu_time": "not measured separately",
+  "commit_durable_all": {
+    "before": {
+      "cert_pl_wall_s": 233.886,
+      "certify": {
+        "total_s": 233.65,
+        "prove_s": 168.71,
+        "print_s": 0.11,
+        "other_s": 64.83
+      },
+      "primitive_event_count": 1197,
+      "primitive_event_time_s": 170.92,
+      "include_time_s": 61.67,
+      "max_event": {
+        "kind": "DEFTHM",
+        "name": "FN2-ENV-TAKE-OP",
+        "total_s": 9.18,
+        "prove_s": 9.16,
+        "print_s": 0.0,
+        "other_s": 0.02
+      }
+    },
+    "after": {
+      "cert_pl_wall_s": 228.227,
+      "certify": {
+        "total_s": 228.01,
+        "prove_s": 162.88,
+        "print_s": 0.15,
+        "other_s": 64.98
+      },
+      "primitive_event_count": 1286,
+      "primitive_event_time_s": 164.92,
+      "include_time_s": 61.74,
+      "max_event": {
+        "kind": "DEFTHM",
+        "name": "FN2-ENV-TAKE-OP",
+        "total_s": 8.73,
+        "prove_s": 8.72,
+        "print_s": 0.0,
+        "other_s": 0.02
+      }
+    }
+  },
+  "comparison": {
+    "common_paths": [
+      "books/accounts",
+      "books/accounts-core",
+      "books/arm-children",
+      "books/arms",
+      "books/article-manifest",
+      "books/assembly",
+      "books/assembly-access",
+      "books/assembly-access-a",
+      "books/assembly-attach",
+      "books/assembly-callbacks",
+      "books/assembly-callbacks-a",
+      "books/assembly-callbacks-b",
+      "books/assembly-callbacks-b2",
+      "books/assembly-callbacks-bt",
+      "books/assembly-callbacks-c",
+      "books/assembly-callbacks-c-commit",
+      "books/assembly-callbacks-c-prepare",
+      "books/assembly-callbacks-d",
+      "books/assembly-callbacks-d-conn",
+      "books/assembly-callbacks-d-cursor",
+      "books/assembly-callbacks-d-txn",
+      "books/assembly-callbacks-d-upload",
+      "books/assembly-callbacks-e-auth",
+      "books/assembly-callbacks-e-cns",
+      "books/assembly-callbacks-r",
+      "books/assembly-callbacks-r2",
+      "books/assembly-callbacks-s",
+      "books/assembly-core",
+      "books/assembly-dispatch",
+      "books/assembly-index",
+      "books/assembly-init",
+      "books/assembly-rows-a",
+      "books/assembly-rows-b",
+      "books/assembly-rows-c",
+      "books/assembly-rows-other",
+      "books/assembly-rows-other-2",
+      "books/authority",
+      "books/authority-kind",
+      "books/boot",
+      "books/boot-kind",
+      "books/cns",
+      "books/cns-edges",
+      "books/cns-kind",
+      "books/commit",
+      "books/commit-arms",
+      "books/commit-durable-all",
+      "books/commit-turn-frame",
+      "books/conn",
+      "books/conn-kind",
+      "books/core",
+      "books/core-children",
+      "books/core-children-a",
+      "books/cursor",
+      "books/cursor-kind",
+      "books/executor",
+      "books/executor-access",
+      "books/executor-contracts",
+      "books/executor-wake",
+      "books/host-boundary",
+      "books/machine-arms",
+      "books/machine-dispatch",
+      "books/machines",
+      "books/machines-a",
+      "books/machines-a-access",
+      "books/machines-a-costs",
+      "books/machines-a-run",
+      "books/machines-a-scribe",
+      "books/machines-all",
+      "books/machines-b",
+      "books/machines-c",
+      "books/machines-c-bind",
+      "books/machines-c-groups",
+      "books/machines-c-read",
+      "books/machines-c-sealer",
+      "books/machines-c-sealer-events",
+      "books/machines-c-sealer-kind",
+      "books/machines-c-stage",
+      "books/machines-c-successor",
+      "books/machines-directory",
+      "books/recovery-machine",
+      "books/recovery-payload",
+      "books/reference-state",
+      "books/sched",
+      "books/sealer",
+      "books/txn",
+      "books/txn-kind",
+      "books/upload",
+      "books/upload-kind",
+      "tests/commit-durable-all-unit",
+      "tests/commit-executor-contracts-unit"
+    ],
+    "before_common": {
+      "book_count": 90,
+      "sum_cert_pl_wall_s": 3950.298,
+      "event_data_complete": true,
+      "primitive_event_count": 48357,
+      "max_primitive_event": {
+        "book": "books/recovery-payload",
+        "kind": "DEFTHM",
+        "name": "FN2-RP-ENTRIES-NATURALS",
+        "total_s": 92.21,
+        "prove_s": 92.18,
+        "print_s": 0.03,
+        "other_s": 0.0
+      }
+    },
+    "after_common": {
+      "book_count": 90,
+      "sum_cert_pl_wall_s": 3969.262,
+      "event_data_complete": true,
+      "primitive_event_count": 48492,
+      "max_primitive_event": {
+        "book": "books/recovery-payload",
+        "kind": "DEFTHM",
+        "name": "FN2-RP-ENTRIES-NATURALS",
+        "total_s": 93.07,
+        "prove_s": 93.06,
+        "print_s": 0.01,
+        "other_s": 0.0
+      }
+    },
+    "added_paths": [
+      "books/pointwise-contracts",
+      "tests/pointwise-contracts-unit",
+      "tests/view-contracts-unit"
+    ],
+    "after_added": {
+      "book_count": 3,
+      "sum_cert_pl_wall_s": 0.69,
+      "event_data_complete": true,
+      "primitive_event_count": 164,
+      "max_primitive_event": {
+        "book": "tests/pointwise-contracts-unit",
+        "kind": "DEFTHM",
+        "name": "FN2-FOLD-TEST-REPLACEMENT",
+        "total_s": 0.02,
+        "prove_s": 0.01,
+        "print_s": 0.0,
+        "other_s": 0.0
+      }
+    },
+    "before_only_paths": [
+      "books/alloc",
+      "books/assumptions-device",
+      "books/assumptions-native-span",
+      "books/authority-codec",
+      "books/authority-port",
+      "books/authority-schema",
+      "books/blake3",
+      "books/blake3-pool-spec",
+      "books/blake3-spec",
+      "books/claims",
+      "books/columns",
+      "books/commit-alloc",
+      "books/commit-format",
+      "books/commit-members",
+      "books/conn-answer",
+      "books/consumer-codec",
+      "books/consumer-port",
+      "books/declare",
+      "books/device-boundary",
+      "books/digests",
+      "books/exec-state",
+      "books/fnct-pool",
+      "books/fnv",
+      "books/folds",
+      "books/format",
+      "books/format-base",
+      "books/format-check",
+      "books/format-context",
+      "books/format-events",
+      "books/format-physical",
+      "books/format-storage",
+      "books/grammar",
+      "books/identity",
+      "books/layout",
+      "books/nntp-grammar",
+      "books/operations",
+      "books/ordered",
+      "books/overlay",
+      "books/owed",
+      "books/pool",
+      "books/pool-block",
+      "books/pool-ranges",
+      "books/port",
+      "books/profile",
+      "books/range",
+      "books/range-served",
+      "books/recovery",
+      "books/resources",
+      "books/ribbon",
+      "books/runs",
+      "books/runs-assemble",
+      "books/runs-manifest",
+      "books/runs-page",
+      "books/runs-schema",
+      "books/runs-served",
+      "books/terminal-values",
+      "books/trace",
+      "books/tuple",
+      "books/upload-feed",
+      "books/upload-scan",
+      "books/vocab",
+      "books/words"
+    ],
+    "time_scope": "sum of per-book cert.pl wall times, not elapsed run time or CPU time"
+  },
+  "common_books": {
+    "books/accounts": {
+      "before": {
+        "cert_pl_wall_s": 5.947,
+        "certify": {
+          "total_s": 5.78,
+          "prove_s": 4.3,
+          "print_s": 0.02,
+          "other_s": 1.46
+        },
+        "primitive_event_count": 497,
+        "primitive_event_time_s": 4.11,
+        "include_time_s": 0.72,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ACCOUNT-GRANT-SCAN-FITS",
+          "total_s": 1.46,
+          "prove_s": 1.46,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 5.906,
+        "certify": {
+          "total_s": 5.74,
+          "prove_s": 4.35,
+          "print_s": 0.02,
+          "other_s": 1.37
+        },
+        "primitive_event_count": 497,
+        "primitive_event_time_s": 4.1,
+        "include_time_s": 0.66,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ACCOUNT-GRANT-SCAN-FITS",
+          "total_s": 1.46,
+          "prove_s": 1.46,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/accounts-core": {
+      "before": {
+        "cert_pl_wall_s": 1.144,
+        "certify": {
+          "total_s": 0.98,
+          "prove_s": 0.16,
+          "print_s": 0.0,
+          "other_s": 0.82
+        },
+        "primitive_event_count": 24,
+        "primitive_event_time_s": 0.17,
+        "include_time_s": 0.83,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-ACCOUNT-REQUEST-PARK-CHILDREN",
+          "total_s": 0.05,
+          "prove_s": 0.04,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 1.119,
+        "certify": {
+          "total_s": 0.95,
+          "prove_s": 0.15,
+          "print_s": 0.0,
+          "other_s": 0.8
+        },
+        "primitive_event_count": 24,
+        "primitive_event_time_s": 0.17,
+        "include_time_s": 0.82,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-ACCOUNT-REQUEST-PARK-CHILDREN",
+          "total_s": 0.05,
+          "prove_s": 0.04,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/arm-children": {
+      "before": {
+        "cert_pl_wall_s": 9.074,
+        "certify": {
+          "total_s": 8.89,
+          "prove_s": 8.01,
+          "print_s": 0.04,
+          "other_s": 0.84
+        },
+        "primitive_event_count": 165,
+        "primitive_event_time_s": 8.08,
+        "include_time_s": 0.61,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-MACHINES-PARTITION-INSTALL-ROWS",
+          "total_s": 0.77,
+          "prove_s": 0.76,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 9.13,
+        "certify": {
+          "total_s": 8.93,
+          "prove_s": 8.02,
+          "print_s": 0.05,
+          "other_s": 0.86
+        },
+        "primitive_event_count": 165,
+        "primitive_event_time_s": 8.11,
+        "include_time_s": 0.64,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-MACHINES-PARTITION-INSTALL-ROWS",
+          "total_s": 0.78,
+          "prove_s": 0.77,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/arms": {
+      "before": {
+        "cert_pl_wall_s": 0.803,
+        "certify": {
+          "total_s": 0.68,
+          "prove_s": 0.32,
+          "print_s": 0.0,
+          "other_s": 0.36
+        },
+        "primitive_event_count": 130,
+        "primitive_event_time_s": 0.29,
+        "include_time_s": 0.02,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ARM-COLS-TRANS",
+          "total_s": 0.04,
+          "prove_s": 0.04,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.988,
+        "certify": {
+          "total_s": 0.89,
+          "prove_s": 0.41,
+          "print_s": 0.0,
+          "other_s": 0.48
+        },
+        "primitive_event_count": 176,
+        "primitive_event_time_s": 0.37,
+        "include_time_s": 0.05,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ARM-COLS-TRANS",
+          "total_s": 0.04,
+          "prove_s": 0.04,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/article-manifest": {
+      "before": {
+        "cert_pl_wall_s": 4.103,
+        "certify": {
+          "total_s": 3.95,
+          "prove_s": 0.32,
+          "print_s": 0.0,
+          "other_s": 3.62
+        },
+        "primitive_event_count": 21,
+        "primitive_event_time_s": 0.55,
+        "include_time_s": 3.41,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-AM-UNITS",
+          "total_s": 0.2,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.2
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 3.991,
+        "certify": {
+          "total_s": 3.83,
+          "prove_s": 0.3,
+          "print_s": 0.01,
+          "other_s": 3.52
+        },
+        "primitive_event_count": 21,
+        "primitive_event_time_s": 0.32,
+        "include_time_s": 3.52,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-AM-PUT-ENTRY",
+          "total_s": 0.08,
+          "prove_s": 0.06,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/assembly": {
+      "before": {
+        "cert_pl_wall_s": 22.455,
+        "certify": {
+          "total_s": 22.26,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 22.26
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 22.34,
+        "max_event": null
+      },
+      "after": {
+        "cert_pl_wall_s": 21.659,
+        "certify": {
+          "total_s": 21.42,
+          "prove_s": 0.0,
+          "print_s": 0.02,
+          "other_s": 21.4
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 21.5,
+        "max_event": null
+      }
+    },
+    "books/assembly-access": {
+      "before": {
+        "cert_pl_wall_s": 70.248,
+        "certify": {
+          "total_s": 70.03,
+          "prove_s": 41.79,
+          "print_s": 0.18,
+          "other_s": 28.06
+        },
+        "primitive_event_count": 4786,
+        "primitive_event_time_s": 45.9,
+        "include_time_s": 9.76,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-LISTENER-SET-TARGET-ALL-TYPE",
+          "total_s": 3.2,
+          "prove_s": 3.2,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 70.333,
+        "certify": {
+          "total_s": 70.13,
+          "prove_s": 41.87,
+          "print_s": 0.15,
+          "other_s": 28.11
+        },
+        "primitive_event_count": 4786,
+        "primitive_event_time_s": 45.89,
+        "include_time_s": 9.87,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-LISTENER-SET-TARGET-ALL-TYPE",
+          "total_s": 3.29,
+          "prove_s": 3.29,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-access-a": {
+      "before": {
+        "cert_pl_wall_s": 45.632,
+        "certify": {
+          "total_s": 45.43,
+          "prove_s": 35.62,
+          "print_s": 0.06,
+          "other_s": 9.76
+        },
+        "primitive_event_count": 544,
+        "primitive_event_time_s": 35.87,
+        "include_time_s": 9.59,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ACCOUNT-CORE-SET-ENDS-PRESERVES-WFP",
+          "total_s": 3.37,
+          "prove_s": 3.37,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 47.507,
+        "certify": {
+          "total_s": 47.31,
+          "prove_s": 37.56,
+          "print_s": 0.08,
+          "other_s": 9.67
+        },
+        "primitive_event_count": 544,
+        "primitive_event_time_s": 38.15,
+        "include_time_s": 9.46,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ACCOUNT-CORE-SET-ENDS-PRESERVES-WFP",
+          "total_s": 3.36,
+          "prove_s": 3.36,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-attach": {
+      "before": {
+        "cert_pl_wall_s": 62.98,
+        "certify": {
+          "total_s": 62.75,
+          "prove_s": 0.01,
+          "print_s": 0.02,
+          "other_s": 62.72
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 25.36,
+        "max_event": null
+      },
+      "after": {
+        "cert_pl_wall_s": 61.994,
+        "certify": {
+          "total_s": 61.79,
+          "prove_s": 0.01,
+          "print_s": 0.01,
+          "other_s": 61.77
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 24.36,
+        "max_event": null
+      }
+    },
+    "books/assembly-callbacks": {
+      "before": {
+        "cert_pl_wall_s": 110.284,
+        "certify": {
+          "total_s": 110.09,
+          "prove_s": 84.75,
+          "print_s": 0.18,
+          "other_s": 25.16
+        },
+        "primitive_event_count": 1541,
+        "primitive_event_time_s": 88.58,
+        "include_time_s": 20.38,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RECOVERY-MACHINE-WRITE+PHASE+RC-POS+RC-ROLE+RC-STAGE+RC-FILLED+RC-READY+RC-HIGH+RC-EPOCH+RC-ROFF+RC-MPOS+RC-MUNIT+RC-MUNITS+RC-MTOTAL+RC-MEVENT-PRESERVES-TYPE",
+          "total_s": 1.07,
+          "prove_s": 1.06,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 110.579,
+        "certify": {
+          "total_s": 110.37,
+          "prove_s": 82.2,
+          "print_s": 0.26,
+          "other_s": 27.91
+        },
+        "primitive_event_count": 1541,
+        "primitive_event_time_s": 85.67,
+        "include_time_s": 23.31,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RECOVERY-MACHINE-WRITE+PHASE+RC-POS+RC-ROLE+RC-STAGE+RC-FILLED+RC-READY+RC-HIGH+RC-EPOCH+RC-ROFF+RC-MPOS+RC-MUNIT+RC-MUNITS+RC-MTOTAL+RC-MEVENT-PRESERVES-TYPE",
+          "total_s": 1.06,
+          "prove_s": 1.06,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-a": {
+      "before": {
+        "cert_pl_wall_s": 45.257,
+        "certify": {
+          "total_s": 45.05,
+          "prove_s": 25.42,
+          "print_s": 0.05,
+          "other_s": 19.59
+        },
+        "primitive_event_count": 1118,
+        "primitive_event_time_s": 27.75,
+        "include_time_s": 15.89,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ECHO-ARM-PHASE-CONGRUENCE",
+          "total_s": 1.51,
+          "prove_s": 1.51,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 43.14,
+        "certify": {
+          "total_s": 42.92,
+          "prove_s": 23.42,
+          "print_s": 0.08,
+          "other_s": 19.42
+        },
+        "primitive_event_count": 1118,
+        "primitive_event_time_s": 25.55,
+        "include_time_s": 16.11,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-LISTENER-ARM-PHASE-CONGRUENCE",
+          "total_s": 1.14,
+          "prove_s": 1.14,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-b": {
+      "before": {
+        "cert_pl_wall_s": 79.125,
+        "certify": {
+          "total_s": 78.9,
+          "prove_s": 60.45,
+          "print_s": 0.08,
+          "other_s": 18.38
+        },
+        "primitive_event_count": 247,
+        "primitive_event_time_s": 62.19,
+        "include_time_s": 16.54,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-COMMIT-ADMIT-KEYED",
+          "total_s": 4.91,
+          "prove_s": 4.9,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 77.533,
+        "certify": {
+          "total_s": 77.35,
+          "prove_s": 59.28,
+          "print_s": 0.08,
+          "other_s": 18.0
+        },
+        "primitive_event_count": 247,
+        "primitive_event_time_s": 61.04,
+        "include_time_s": 16.21,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-COMMIT-ADMIT-KEYED",
+          "total_s": 4.85,
+          "prove_s": 4.84,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/assembly-callbacks-b2": {
+      "before": {
+        "cert_pl_wall_s": 70.056,
+        "certify": {
+          "total_s": 69.86,
+          "prove_s": 50.94,
+          "print_s": 0.07,
+          "other_s": 18.85
+        },
+        "primitive_event_count": 91,
+        "primitive_event_time_s": 51.25,
+        "include_time_s": 17.87,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-SEAL-MEMBER-NATP",
+          "total_s": 3.2,
+          "prove_s": 3.18,
+          "print_s": 0.02,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 71.653,
+        "certify": {
+          "total_s": 71.45,
+          "prove_s": 52.22,
+          "print_s": 0.05,
+          "other_s": 19.18
+        },
+        "primitive_event_count": 91,
+        "primitive_event_time_s": 52.47,
+        "include_time_s": 18.2,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-SEAL-MEMBER-NATP",
+          "total_s": 3.32,
+          "prove_s": 3.32,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-bt": {
+      "before": {
+        "cert_pl_wall_s": 65.672,
+        "certify": {
+          "total_s": 65.49,
+          "prove_s": 46.34,
+          "print_s": 0.06,
+          "other_s": 19.09
+        },
+        "primitive_event_count": 47,
+        "primitive_event_time_s": 46.52,
+        "include_time_s": 18.96,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-SEAL-TXN-SHAPE",
+          "total_s": 8.31,
+          "prove_s": 8.31,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 64.029,
+        "certify": {
+          "total_s": 63.82,
+          "prove_s": 46.34,
+          "print_s": 0.03,
+          "other_s": 17.45
+        },
+        "primitive_event_count": 47,
+        "primitive_event_time_s": 46.5,
+        "include_time_s": 17.3,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-SEAL-TXN-SHAPE",
+          "total_s": 8.31,
+          "prove_s": 8.31,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-c": {
+      "before": {
+        "cert_pl_wall_s": 166.151,
+        "certify": {
+          "total_s": 165.95,
+          "prove_s": 144.19,
+          "print_s": 0.03,
+          "other_s": 21.74
+        },
+        "primitive_event_count": 179,
+        "primitive_event_time_s": 144.44,
+        "include_time_s": 20.79,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-PRINCIPALS-BIND-GENESIS-PRESERVES-TYPE",
+          "total_s": 42.18,
+          "prove_s": 42.18,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 164.045,
+        "certify": {
+          "total_s": 163.84,
+          "prove_s": 142.85,
+          "print_s": 0.06,
+          "other_s": 20.93
+        },
+        "primitive_event_count": 179,
+        "primitive_event_time_s": 143.24,
+        "include_time_s": 19.85,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-PRINCIPALS-BIND-GENESIS-PRESERVES-WFP",
+          "total_s": 39.96,
+          "prove_s": 39.95,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-c-commit": {
+      "before": {
+        "cert_pl_wall_s": 83.685,
+        "certify": {
+          "total_s": 83.48,
+          "prove_s": 64.85,
+          "print_s": 0.04,
+          "other_s": 18.58
+        },
+        "primitive_event_count": 38,
+        "primitive_event_time_s": 55.9,
+        "include_time_s": 17.64,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-CORE-REPLAY-PRESERVES-WFP",
+          "total_s": 17.84,
+          "prove_s": 17.84,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 85.118,
+        "certify": {
+          "total_s": 84.93,
+          "prove_s": 66.0,
+          "print_s": 0.05,
+          "other_s": 18.88
+        },
+        "primitive_event_count": 38,
+        "primitive_event_time_s": 56.78,
+        "include_time_s": 17.93,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-CORE-REPLAY-PRESERVES-WFP",
+          "total_s": 18.17,
+          "prove_s": 18.16,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-c-prepare": {
+      "before": {
+        "cert_pl_wall_s": 47.83,
+        "certify": {
+          "total_s": 47.62,
+          "prove_s": 27.45,
+          "print_s": 0.04,
+          "other_s": 20.14
+        },
+        "primitive_event_count": 195,
+        "primitive_event_time_s": 27.12,
+        "include_time_s": 19.84,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCCESSOR-ARG-PRESERVES-WFP",
+          "total_s": 3.5,
+          "prove_s": 3.5,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 49.382,
+        "certify": {
+          "total_s": 49.16,
+          "prove_s": 28.48,
+          "print_s": 0.03,
+          "other_s": 20.66
+        },
+        "primitive_event_count": 195,
+        "primitive_event_time_s": 28.17,
+        "include_time_s": 20.32,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCCESSOR-ARG-PRESERVES-WFP",
+          "total_s": 3.72,
+          "prove_s": 3.72,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-d": {
+      "before": {
+        "cert_pl_wall_s": 151.943,
+        "certify": {
+          "total_s": 151.72,
+          "prove_s": 130.76,
+          "print_s": 0.12,
+          "other_s": 20.84
+        },
+        "primitive_event_count": 186,
+        "primitive_event_time_s": 130.94,
+        "include_time_s": 20.38,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-UPLOAD-BLOCK-CV-PRESERVES-TYPE",
+          "total_s": 37.22,
+          "prove_s": 37.22,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 150.295,
+        "certify": {
+          "total_s": 150.08,
+          "prove_s": 128.97,
+          "print_s": 0.08,
+          "other_s": 21.03
+        },
+        "primitive_event_count": 186,
+        "primitive_event_time_s": 129.14,
+        "include_time_s": 20.57,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-UPLOAD-BLOCK-CV-PRESERVES-WFP",
+          "total_s": 37.0,
+          "prove_s": 37.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-d-conn": {
+      "before": {
+        "cert_pl_wall_s": 61.668,
+        "certify": {
+          "total_s": 61.46,
+          "prove_s": 39.72,
+          "print_s": 0.18,
+          "other_s": 21.56
+        },
+        "primitive_event_count": 879,
+        "primitive_event_time_s": 41.86,
+        "include_time_s": 18.87,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CONN-WRITE+PHASE+GENERATION+ACCOUNT-REF+WAIT-REASON+CAP-INDEX+CAP-NONCE+RX-SLOT+RX-GEN+TX-SLOT+TX-GEN+START+POS+OVERFLOW+COMPACTING+CURSOR+TX-OFF+ORDINAL+AUTH-PENDING+REFUSED+NEXT-FREE+UPLOAD+QUERY+QUERY-GEN",
+          "total_s": 2.19,
+          "prove_s": 2.17,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 64.305,
+        "certify": {
+          "total_s": 64.1,
+          "prove_s": 40.7,
+          "print_s": 0.14,
+          "other_s": 23.25
+        },
+        "primitive_event_count": 879,
+        "primitive_event_time_s": 43.02,
+        "include_time_s": 20.4,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CONN-WRITE+PHASE+GENERATION+ACCOUNT-REF+WAIT-REASON+CAP-INDEX+CAP-NONCE+RX-SLOT+RX-GEN+TX-SLOT+TX-GEN+START+POS+OVERFLOW+COMPACTING+CURSOR+TX-OFF+ORDINAL+AUTH-PENDING+REFUSED+NEXT-FREE+UPLOAD+QUERY+QUERY-GEN",
+          "total_s": 2.21,
+          "prove_s": 2.19,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/assembly-callbacks-d-cursor": {
+      "before": {
+        "cert_pl_wall_s": 35.275,
+        "certify": {
+          "total_s": 35.07,
+          "prove_s": 9.92,
+          "print_s": 0.04,
+          "other_s": 25.1
+        },
+        "primitive_event_count": 350,
+        "primitive_event_time_s": 11.13,
+        "include_time_s": 20.51,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CURSOR-ARM-PHASE-CONGRUENCE",
+          "total_s": 1.4,
+          "prove_s": 1.4,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 34.96,
+        "certify": {
+          "total_s": 34.75,
+          "prove_s": 9.8,
+          "print_s": 0.04,
+          "other_s": 24.9
+        },
+        "primitive_event_count": 350,
+        "primitive_event_time_s": 11.06,
+        "include_time_s": 20.32,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CURSOR-ARM-PHASE-CONGRUENCE",
+          "total_s": 1.4,
+          "prove_s": 1.4,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-d-txn": {
+      "before": {
+        "cert_pl_wall_s": 83.896,
+        "certify": {
+          "total_s": 83.67,
+          "prove_s": 58.35,
+          "print_s": 0.12,
+          "other_s": 25.2
+        },
+        "primitive_event_count": 1255,
+        "primitive_event_time_s": 60.76,
+        "include_time_s": 21.54,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-TXN-SUB-GROUP",
+          "total_s": 5.24,
+          "prove_s": 5.22,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 83.566,
+        "certify": {
+          "total_s": 83.36,
+          "prove_s": 58.64,
+          "print_s": 0.15,
+          "other_s": 24.56
+        },
+        "primitive_event_count": 1255,
+        "primitive_event_time_s": 61.18,
+        "include_time_s": 20.63,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-TXN-SUB-GROUP",
+          "total_s": 5.22,
+          "prove_s": 5.21,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/assembly-callbacks-d-upload": {
+      "before": {
+        "cert_pl_wall_s": 57.297,
+        "certify": {
+          "total_s": 57.09,
+          "prove_s": 33.26,
+          "print_s": 0.16,
+          "other_s": 23.68
+        },
+        "primitive_event_count": 1075,
+        "primitive_event_time_s": 35.88,
+        "include_time_s": 20.2,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-UPLOAD-WRITE+PHASE+GENERATION+WAIT-REASON+CONN+CONN-GEN+C0-SLOT+C0-GEN+C1-SLOT+C1-GEN+FILLED+HASHED+TXN+NEXT-FREE+PEXT+CEXT",
+          "total_s": 1.59,
+          "prove_s": 1.58,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 56.162,
+        "certify": {
+          "total_s": 55.98,
+          "prove_s": 32.2,
+          "print_s": 0.14,
+          "other_s": 23.64
+        },
+        "primitive_event_count": 1075,
+        "primitive_event_time_s": 34.68,
+        "include_time_s": 20.37,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-UPLOAD-WRITE+PHASE+GENERATION+WAIT-REASON+CONN+CONN-GEN+C0-SLOT+C0-GEN+C1-SLOT+C1-GEN+FILLED+HASHED+TXN+NEXT-FREE+PEXT+CEXT",
+          "total_s": 1.57,
+          "prove_s": 1.56,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/assembly-callbacks-e-auth": {
+      "before": {
+        "cert_pl_wall_s": 194.776,
+        "certify": {
+          "total_s": 194.58,
+          "prove_s": 170.2,
+          "print_s": 0.11,
+          "other_s": 24.26
+        },
+        "primitive_event_count": 1034,
+        "primitive_event_time_s": 172.25,
+        "include_time_s": 21.37,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-AUTH-DECODE-NAME-PRESERVES-WFP",
+          "total_s": 25.94,
+          "prove_s": 25.94,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 186.339,
+        "certify": {
+          "total_s": 186.13,
+          "prove_s": 163.03,
+          "print_s": 0.15,
+          "other_s": 22.94
+        },
+        "primitive_event_count": 1034,
+        "primitive_event_time_s": 165.02,
+        "include_time_s": 20.0,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-AUTH-DECODE-NAME-PRESERVES-WFP",
+          "total_s": 25.32,
+          "prove_s": 25.32,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-e-cns": {
+      "before": {
+        "cert_pl_wall_s": 177.522,
+        "certify": {
+          "total_s": 177.32,
+          "prove_s": 150.08,
+          "print_s": 0.3,
+          "other_s": 26.94
+        },
+        "primitive_event_count": 2041,
+        "primitive_event_time_s": 154.63,
+        "include_time_s": 20.56,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-DECODE-PORT-PRESERVES-TYPE",
+          "total_s": 23.64,
+          "prove_s": 23.64,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 178.441,
+        "certify": {
+          "total_s": 178.23,
+          "prove_s": 150.25,
+          "print_s": 0.32,
+          "other_s": 27.66
+        },
+        "primitive_event_count": 2041,
+        "primitive_event_time_s": 155.18,
+        "include_time_s": 20.69,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-DECODE-PORT-PRESERVES-TYPE",
+          "total_s": 23.63,
+          "prove_s": 23.63,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-r": {
+      "before": {
+        "cert_pl_wall_s": 20.591,
+        "certify": {
+          "total_s": 20.39,
+          "prove_s": 0.27,
+          "print_s": 0.01,
+          "other_s": 20.11
+        },
+        "primitive_event_count": 4,
+        "primitive_event_time_s": 0.28,
+        "include_time_s": 20.09,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ALLOCATE-PRESERVES-TYPE",
+          "total_s": 0.16,
+          "prove_s": 0.16,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 20.031,
+        "certify": {
+          "total_s": 19.83,
+          "prove_s": 0.27,
+          "print_s": 0.09,
+          "other_s": 19.47
+        },
+        "primitive_event_count": 4,
+        "primitive_event_time_s": 0.27,
+        "include_time_s": 19.57,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ALLOCATE-PRESERVES-TYPE",
+          "total_s": 0.16,
+          "prove_s": 0.16,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-r2": {
+      "before": {
+        "cert_pl_wall_s": 71.078,
+        "certify": {
+          "total_s": 70.89,
+          "prove_s": 48.73,
+          "print_s": 0.17,
+          "other_s": 21.99
+        },
+        "primitive_event_count": 836,
+        "primitive_event_time_s": 50.12,
+        "include_time_s": 20.09,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ON-FENCE-RESULT-PRESERVES-TYPE",
+          "total_s": 1.97,
+          "prove_s": 1.96,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 72.75,
+        "certify": {
+          "total_s": 72.55,
+          "prove_s": 51.13,
+          "print_s": 0.16,
+          "other_s": 21.26
+        },
+        "primitive_event_count": 836,
+        "primitive_event_time_s": 52.56,
+        "include_time_s": 19.06,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ON-WRITE-RESULT-PRESERVES-WFP",
+          "total_s": 2.17,
+          "prove_s": 2.15,
+          "print_s": 0.02,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-callbacks-s": {
+      "before": {
+        "cert_pl_wall_s": 61.029,
+        "certify": {
+          "total_s": 60.82,
+          "prove_s": 41.9,
+          "print_s": 0.04,
+          "other_s": 18.88
+        },
+        "primitive_event_count": 164,
+        "primitive_event_time_s": 42.19,
+        "include_time_s": 18.5,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RECOVERY-DISCOVER-UNIT-PRESERVES-WFP",
+          "total_s": 5.94,
+          "prove_s": 5.94,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 63.755,
+        "certify": {
+          "total_s": 63.54,
+          "prove_s": 43.96,
+          "print_s": 0.06,
+          "other_s": 19.53
+        },
+        "primitive_event_count": 164,
+        "primitive_event_time_s": 44.08,
+        "include_time_s": 19.18,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RECOVERY-ADOPT-PRESERVES-TYPE",
+          "total_s": 6.22,
+          "prove_s": 6.21,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-core": {
+      "before": {
+        "cert_pl_wall_s": 44.374,
+        "certify": {
+          "total_s": 44.18,
+          "prove_s": 32.37,
+          "print_s": 0.05,
+          "other_s": 11.76
+        },
+        "primitive_event_count": 3639,
+        "primitive_event_time_s": 23.05,
+        "include_time_s": 9.6,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-HARVEST-ONE-PRESERVES-TYPE",
+          "total_s": 1.06,
+          "prove_s": 1.06,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 43.473,
+        "certify": {
+          "total_s": 43.27,
+          "prove_s": 31.54,
+          "print_s": 0.05,
+          "other_s": 11.69
+        },
+        "primitive_event_count": 3639,
+        "primitive_event_time_s": 22.52,
+        "include_time_s": 9.58,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-HARVEST-ONE-PRESERVES-TYPE",
+          "total_s": 1.0,
+          "prove_s": 1.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-dispatch": {
+      "before": {
+        "cert_pl_wall_s": 30.242,
+        "certify": {
+          "total_s": 30.04,
+          "prove_s": 7.02,
+          "print_s": 0.04,
+          "other_s": 22.98
+        },
+        "primitive_event_count": 223,
+        "primitive_event_time_s": 7.14,
+        "include_time_s": 20.19,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-MACHINE-OBSERVE-ROUTE-FN2-ECHO-PRESERVES-WFP",
+          "total_s": 0.38,
+          "prove_s": 0.37,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 34.013,
+        "certify": {
+          "total_s": 33.8,
+          "prove_s": 7.45,
+          "print_s": 0.04,
+          "other_s": 26.31
+        },
+        "primitive_event_count": 223,
+        "primitive_event_time_s": 7.56,
+        "include_time_s": 23.46,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-MACHINE-OBSERVE-FN2-LISTENER-PRESERVES-TYPE",
+          "total_s": 0.4,
+          "prove_s": 0.4,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-index": {
+      "before": {
+        "cert_pl_wall_s": 12.948,
+        "certify": {
+          "total_s": 12.73,
+          "prove_s": 3.38,
+          "print_s": 0.04,
+          "other_s": 9.31
+        },
+        "primitive_event_count": 52,
+        "primitive_event_time_s": 3.59,
+        "include_time_s": 9.13,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINES-INIT-PARTITIONS",
+          "total_s": 0.88,
+          "prove_s": 0.86,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 13.363,
+        "certify": {
+          "total_s": 13.18,
+          "prove_s": 3.49,
+          "print_s": 0.02,
+          "other_s": 9.66
+        },
+        "primitive_event_count": 52,
+        "primitive_event_time_s": 3.71,
+        "include_time_s": 9.41,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINES-INIT-PARTITIONS",
+          "total_s": 0.92,
+          "prove_s": 0.91,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-init": {
+      "before": {
+        "cert_pl_wall_s": 59.265,
+        "certify": {
+          "total_s": 59.07,
+          "prove_s": 49.17,
+          "print_s": 0.0,
+          "other_s": 9.9
+        },
+        "primitive_event_count": 180,
+        "primitive_event_time_s": 49.64,
+        "include_time_s": 9.46,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CORE-INIT-WFP",
+          "total_s": 37.25,
+          "prove_s": 37.23,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 60.356,
+        "certify": {
+          "total_s": 60.18,
+          "prove_s": 50.4,
+          "print_s": 0.04,
+          "other_s": 9.74
+        },
+        "primitive_event_count": 180,
+        "primitive_event_time_s": 50.74,
+        "include_time_s": 9.37,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CORE-INIT-WFP",
+          "total_s": 38.58,
+          "prove_s": 38.56,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/assembly-rows-a": {
+      "before": {
+        "cert_pl_wall_s": 31.166,
+        "certify": {
+          "total_s": 30.96,
+          "prove_s": 14.84,
+          "print_s": 0.03,
+          "other_s": 16.1
+        },
+        "primitive_event_count": 201,
+        "primitive_event_time_s": 15.0,
+        "include_time_s": 15.76,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-LISTENER-ROW-GENERATION-WIDTH",
+          "total_s": 0.52,
+          "prove_s": 0.52,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 33.428,
+        "certify": {
+          "total_s": 33.23,
+          "prove_s": 15.41,
+          "print_s": 0.04,
+          "other_s": 17.78
+        },
+        "primitive_event_count": 201,
+        "primitive_event_time_s": 15.52,
+        "include_time_s": 17.46,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-LISTENER-ROW-GENERATION-WIDTH",
+          "total_s": 0.53,
+          "prove_s": 0.52,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-rows-b": {
+      "before": {
+        "cert_pl_wall_s": 45.872,
+        "certify": {
+          "total_s": 45.67,
+          "prove_s": 28.91,
+          "print_s": 0.03,
+          "other_s": 16.73
+        },
+        "primitive_event_count": 336,
+        "primitive_event_time_s": 29.14,
+        "include_time_s": 16.14,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ROW-GENERATION-WIDTH",
+          "total_s": 0.55,
+          "prove_s": 0.55,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 49.559,
+        "certify": {
+          "total_s": 49.36,
+          "prove_s": 30.71,
+          "print_s": 0.03,
+          "other_s": 18.63
+        },
+        "primitive_event_count": 336,
+        "primitive_event_time_s": 31.04,
+        "include_time_s": 17.99,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT-ROW-GENERATION-WIDTH",
+          "total_s": 0.57,
+          "prove_s": 0.57,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-rows-c": {
+      "before": {
+        "cert_pl_wall_s": 20.084,
+        "certify": {
+          "total_s": 19.89,
+          "prove_s": 3.16,
+          "print_s": 0.0,
+          "other_s": 16.73
+        },
+        "primitive_event_count": 29,
+        "primitive_event_time_s": 3.18,
+        "include_time_s": 16.75,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SEALER-ROW-GENERATION-WIDTH",
+          "total_s": 0.61,
+          "prove_s": 0.61,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 19.87,
+        "certify": {
+          "total_s": 19.65,
+          "prove_s": 3.19,
+          "print_s": 0.02,
+          "other_s": 16.44
+        },
+        "primitive_event_count": 29,
+        "primitive_event_time_s": 3.21,
+        "include_time_s": 16.47,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SEALER-ROW-GENERATION-WIDTH",
+          "total_s": 0.62,
+          "prove_s": 0.62,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-rows-other": {
+      "before": {
+        "cert_pl_wall_s": 65.887,
+        "certify": {
+          "total_s": 65.68,
+          "prove_s": 47.48,
+          "print_s": 0.06,
+          "other_s": 18.14
+        },
+        "primitive_event_count": 441,
+        "primitive_event_time_s": 47.92,
+        "include_time_s": 17.36,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CONN-ROW-GENERATION-WIDTH",
+          "total_s": 0.63,
+          "prove_s": 0.63,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 64.134,
+        "certify": {
+          "total_s": 63.92,
+          "prove_s": 46.76,
+          "print_s": 0.03,
+          "other_s": 17.14
+        },
+        "primitive_event_count": 441,
+        "primitive_event_time_s": 47.3,
+        "include_time_s": 16.29,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CONN-ROW-GENERATION-WIDTH",
+          "total_s": 0.62,
+          "prove_s": 0.62,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/assembly-rows-other-2": {
+      "before": {
+        "cert_pl_wall_s": 118.728,
+        "certify": {
+          "total_s": 118.54,
+          "prove_s": 100.77,
+          "print_s": 0.33,
+          "other_s": 17.44
+        },
+        "primitive_event_count": 740,
+        "primitive_event_time_s": 101.74,
+        "include_time_s": 16.19,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CURSOR-ROW-PHASE-WIDTH",
+          "total_s": 0.67,
+          "prove_s": 0.67,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 117.863,
+        "certify": {
+          "total_s": 117.64,
+          "prove_s": 100.18,
+          "print_s": 0.09,
+          "other_s": 17.37
+        },
+        "primitive_event_count": 740,
+        "primitive_event_time_s": 101.28,
+        "include_time_s": 15.86,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CURSOR-ROW-PHASE-WIDTH",
+          "total_s": 0.67,
+          "prove_s": 0.67,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/authority": {
+      "before": {
+        "cert_pl_wall_s": 26.956,
+        "certify": {
+          "total_s": 26.75,
+          "prove_s": 17.16,
+          "print_s": 0.04,
+          "other_s": 9.56
+        },
+        "primitive_event_count": 74,
+        "primitive_event_time_s": 17.35,
+        "include_time_s": 9.34,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-AUTH-WRITE-WORD-PRESERVES-TYPE",
+          "total_s": 3.39,
+          "prove_s": 3.39,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 28.312,
+        "certify": {
+          "total_s": 28.12,
+          "prove_s": 18.45,
+          "print_s": 0.03,
+          "other_s": 9.64
+        },
+        "primitive_event_count": 74,
+        "primitive_event_time_s": 18.63,
+        "include_time_s": 9.41,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-AUTH-WRITE-WORD-PRESERVES-ROWS",
+          "total_s": 3.41,
+          "prove_s": 3.41,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/authority-kind": {
+      "before": {
+        "cert_pl_wall_s": 21.638,
+        "certify": {
+          "total_s": 21.46,
+          "prove_s": 10.61,
+          "print_s": 0.02,
+          "other_s": 10.84
+        },
+        "primitive_event_count": 1322,
+        "primitive_event_time_s": 10.59,
+        "include_time_s": 7.15,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-AUTH-CHILDREN",
+          "total_s": 1.94,
+          "prove_s": 1.9,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 21.455,
+        "certify": {
+          "total_s": 21.26,
+          "prove_s": 10.31,
+          "print_s": 0.03,
+          "other_s": 10.92
+        },
+        "primitive_event_count": 1322,
+        "primitive_event_time_s": 10.06,
+        "include_time_s": 7.33,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-AUTH-CHILDREN",
+          "total_s": 1.98,
+          "prove_s": 1.95,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      }
+    },
+    "books/boot": {
+      "before": {
+        "cert_pl_wall_s": 9.121,
+        "certify": {
+          "total_s": 8.95,
+          "prove_s": 6.16,
+          "print_s": 0.0,
+          "other_s": 2.79
+        },
+        "primitive_event_count": 27,
+        "primitive_event_time_s": 6.19,
+        "include_time_s": 2.79,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-PAD-PRESERVES-TYPE",
+          "total_s": 1.3,
+          "prove_s": 1.3,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 8.957,
+        "certify": {
+          "total_s": 8.81,
+          "prove_s": 6.14,
+          "print_s": 0.0,
+          "other_s": 2.66
+        },
+        "primitive_event_count": 27,
+        "primitive_event_time_s": 6.18,
+        "include_time_s": 2.67,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-PAD-PRESERVES-TYPE",
+          "total_s": 1.29,
+          "prove_s": 1.29,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/boot-kind": {
+      "before": {
+        "cert_pl_wall_s": 23.046,
+        "certify": {
+          "total_s": 22.87,
+          "prove_s": 17.64,
+          "print_s": 0.02,
+          "other_s": 5.21
+        },
+        "primitive_event_count": 1033,
+        "primitive_event_time_s": 16.96,
+        "include_time_s": 3.02,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-CONFIG-PREPARE-TYPE",
+          "total_s": 14.52,
+          "prove_s": 14.51,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 23.219,
+        "certify": {
+          "total_s": 23.06,
+          "prove_s": 17.82,
+          "print_s": 0.01,
+          "other_s": 5.23
+        },
+        "primitive_event_count": 1033,
+        "primitive_event_time_s": 17.09,
+        "include_time_s": 3.07,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-CONFIG-PREPARE-TYPE",
+          "total_s": 14.66,
+          "prove_s": 14.65,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/cns": {
+      "before": {
+        "cert_pl_wall_s": 36.133,
+        "certify": {
+          "total_s": 35.92,
+          "prove_s": 25.01,
+          "print_s": 0.06,
+          "other_s": 10.84
+        },
+        "primitive_event_count": 202,
+        "primitive_event_time_s": 25.79,
+        "include_time_s": 9.48,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-PUT-RESULT-SHAPE",
+          "total_s": 6.94,
+          "prove_s": 6.9,
+          "print_s": 0.01,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 34.508,
+        "certify": {
+          "total_s": 34.3,
+          "prove_s": 24.04,
+          "print_s": 0.08,
+          "other_s": 10.18
+        },
+        "primitive_event_count": 202,
+        "primitive_event_time_s": 24.65,
+        "include_time_s": 9.2,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-PUT-RESULT-SHAPE",
+          "total_s": 6.85,
+          "prove_s": 6.79,
+          "print_s": 0.04,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/cns-edges": {
+      "before": {
+        "cert_pl_wall_s": 45.719,
+        "certify": {
+          "total_s": 45.56,
+          "prove_s": 44.13,
+          "print_s": 0.08,
+          "other_s": 1.34
+        },
+        "primitive_event_count": 505,
+        "primitive_event_time_s": 43.81,
+        "include_time_s": 0.65,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-EDGE-UNLINK-PRESERVES-ROWS",
+          "total_s": 13.03,
+          "prove_s": 13.01,
+          "print_s": 0.02,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 45.336,
+        "certify": {
+          "total_s": 45.18,
+          "prove_s": 43.78,
+          "print_s": 0.05,
+          "other_s": 1.35
+        },
+        "primitive_event_count": 505,
+        "primitive_event_time_s": 43.5,
+        "include_time_s": 0.66,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-CNS-EDGE-UNLINK-PRESERVES-ROWS",
+          "total_s": 12.83,
+          "prove_s": 12.82,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/cns-kind": {
+      "before": {
+        "cert_pl_wall_s": 24.841,
+        "certify": {
+          "total_s": 24.65,
+          "prove_s": 15.94,
+          "print_s": 0.04,
+          "other_s": 8.67
+        },
+        "primitive_event_count": 2908,
+        "primitive_event_time_s": 16.59,
+        "include_time_s": 1.03,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CNS-INIT",
+          "total_s": 2.28,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 2.28
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 24.491,
+        "certify": {
+          "total_s": 24.32,
+          "prove_s": 15.53,
+          "print_s": 0.03,
+          "other_s": 8.76
+        },
+        "primitive_event_count": 2908,
+        "primitive_event_time_s": 16.35,
+        "include_time_s": 1.05,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CNS-INIT",
+          "total_s": 2.29,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 2.28
+        }
+      }
+    },
+    "books/commit": {
+      "before": {
+        "cert_pl_wall_s": 2.164,
+        "certify": {
+          "total_s": 1.98,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 1.98
+        },
+        "primitive_event_count": 36,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 1.95,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.193,
+        "certify": {
+          "total_s": 2.03,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 2.03
+        },
+        "primitive_event_count": 36,
+        "primitive_event_time_s": 0.02,
+        "include_time_s": 2.01,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-COMMIT-CHILD-LEMMA-NAME",
+          "total_s": 0.01,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/commit-arms": {
+      "before": {
+        "cert_pl_wall_s": 20.265,
+        "certify": {
+          "total_s": 20.05,
+          "prove_s": 0.0,
+          "print_s": 0.01,
+          "other_s": 20.04
+        },
+        "primitive_event_count": 43,
+        "primitive_event_time_s": 0.02,
+        "include_time_s": 19.93,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-COMMIT-PEER-PHASE",
+          "total_s": 0.01,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 19.41,
+        "certify": {
+          "total_s": 19.21,
+          "prove_s": 0.01,
+          "print_s": 0.02,
+          "other_s": 19.18
+        },
+        "primitive_event_count": 43,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 19.1,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/commit-durable-all": {
+      "before": {
+        "cert_pl_wall_s": 233.886,
+        "certify": {
+          "total_s": 233.65,
+          "prove_s": 168.71,
+          "print_s": 0.11,
+          "other_s": 64.83
+        },
+        "primitive_event_count": 1197,
+        "primitive_event_time_s": 170.92,
+        "include_time_s": 61.67,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ENV-TAKE-OP",
+          "total_s": 9.18,
+          "prove_s": 9.16,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 228.227,
+        "certify": {
+          "total_s": 228.01,
+          "prove_s": 162.88,
+          "print_s": 0.15,
+          "other_s": 64.98
+        },
+        "primitive_event_count": 1286,
+        "primitive_event_time_s": 164.92,
+        "include_time_s": 61.74,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ENV-TAKE-OP",
+          "total_s": 8.73,
+          "prove_s": 8.72,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/commit-turn-frame": {
+      "before": {
+        "cert_pl_wall_s": 72.92,
+        "certify": {
+          "total_s": 72.69,
+          "prove_s": 9.43,
+          "print_s": 0.02,
+          "other_s": 63.25
+        },
+        "primitive_event_count": 363,
+        "primitive_event_time_s": 10.1,
+        "include_time_s": 62.32,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT~FN2-HARVEST-ONE-ARM-KIDS",
+          "total_s": 1.54,
+          "prove_s": 1.54,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 75.855,
+        "certify": {
+          "total_s": 75.64,
+          "prove_s": 10.75,
+          "print_s": 0.07,
+          "other_s": 64.83
+        },
+        "primitive_event_count": 363,
+        "primitive_event_time_s": 11.84,
+        "include_time_s": 63.62,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-COMMIT~FN2-HARVEST-ONE-ARM-KIDS",
+          "total_s": 1.55,
+          "prove_s": 1.53,
+          "print_s": 0.01,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/conn": {
+      "before": {
+        "cert_pl_wall_s": 3.695,
+        "certify": {
+          "total_s": 3.52,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 3.52
+        },
+        "primitive_event_count": 17,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 3.54,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 3.536,
+        "certify": {
+          "total_s": 3.37,
+          "prove_s": 0.0,
+          "print_s": 0.01,
+          "other_s": 3.36
+        },
+        "primitive_event_count": 17,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 3.39,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/conn-kind": {
+      "before": {
+        "cert_pl_wall_s": 11.401,
+        "certify": {
+          "total_s": 11.23,
+          "prove_s": 7.1,
+          "print_s": 0.03,
+          "other_s": 4.09
+        },
+        "primitive_event_count": 1457,
+        "primitive_event_time_s": 7.08,
+        "include_time_s": 0.96,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN",
+          "total_s": 0.98,
+          "prove_s": 0.94,
+          "print_s": 0.0,
+          "other_s": 0.03
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 11.255,
+        "certify": {
+          "total_s": 11.09,
+          "prove_s": 7.03,
+          "print_s": 0.02,
+          "other_s": 4.04
+        },
+        "primitive_event_count": 1457,
+        "primitive_event_time_s": 6.62,
+        "include_time_s": 1.0,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-ADMIT-FN2-CONN-CHILDREN",
+          "total_s": 0.97,
+          "prove_s": 0.94,
+          "print_s": 0.0,
+          "other_s": 0.03
+        }
+      }
+    },
+    "books/core": {
+      "before": {
+        "cert_pl_wall_s": 0.815,
+        "certify": {
+          "total_s": 0.67,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.67
+        },
+        "primitive_event_count": 2,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.71,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-CORE-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.846,
+        "certify": {
+          "total_s": 0.66,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.65
+        },
+        "primitive_event_count": 2,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.7,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-CORE-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/core-children": {
+      "before": {
+        "cert_pl_wall_s": 0.481,
+        "certify": {
+          "total_s": 0.31,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.31
+        },
+        "primitive_event_count": 10,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.37,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CORE-CHILD-PROPERTY",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.5,
+        "certify": {
+          "total_s": 0.31,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.31
+        },
+        "primitive_event_count": 10,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.37,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CORE-CHILD-PROPERTY",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/core-children-a": {
+      "before": {
+        "cert_pl_wall_s": 0.707,
+        "certify": {
+          "total_s": 0.53,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.53
+        },
+        "primitive_event_count": 6,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.6,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-CORE-CHILDREN",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.687,
+        "certify": {
+          "total_s": 0.54,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.54
+        },
+        "primitive_event_count": 6,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.6,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-CORE-CHILDREN",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/cursor": {
+      "before": {
+        "cert_pl_wall_s": 159.828,
+        "certify": {
+          "total_s": 159.61,
+          "prove_s": 143.07,
+          "print_s": 0.25,
+          "other_s": 16.29
+        },
+        "primitive_event_count": 407,
+        "primitive_event_time_s": 146.56,
+        "include_time_s": 8.82,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CURSOR-HSCAN-LOOP",
+          "total_s": 25.59,
+          "prove_s": 25.56,
+          "print_s": 0.02,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 161.619,
+        "certify": {
+          "total_s": 161.41,
+          "prove_s": 145.16,
+          "print_s": 0.29,
+          "other_s": 15.96
+        },
+        "primitive_event_count": 407,
+        "primitive_event_time_s": 148.66,
+        "include_time_s": 8.56,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CURSOR-HSCAN-LOOP",
+          "total_s": 25.42,
+          "prove_s": 25.37,
+          "print_s": 0.04,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/cursor-kind": {
+      "before": {
+        "cert_pl_wall_s": 46.598,
+        "certify": {
+          "total_s": 46.42,
+          "prove_s": 27.67,
+          "print_s": 0.04,
+          "other_s": 18.7
+        },
+        "primitive_event_count": 2367,
+        "primitive_event_time_s": 32.55,
+        "include_time_s": 7.15,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CURSOR-INIT",
+          "total_s": 5.79,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 5.79
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 48.615,
+        "certify": {
+          "total_s": 48.43,
+          "prove_s": 29.08,
+          "print_s": 0.06,
+          "other_s": 19.29
+        },
+        "primitive_event_count": 2367,
+        "primitive_event_time_s": 34.6,
+        "include_time_s": 7.38,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CURSOR-INIT",
+          "total_s": 5.7,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 5.7
+        }
+      }
+    },
+    "books/executor": {
+      "before": {
+        "cert_pl_wall_s": 42.015,
+        "certify": {
+          "total_s": 41.81,
+          "prove_s": 17.29,
+          "print_s": 0.05,
+          "other_s": 24.47
+        },
+        "primitive_event_count": 73,
+        "primitive_event_time_s": 17.32,
+        "include_time_s": 24.37,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-START-PRESERVES-WFP",
+          "total_s": 4.58,
+          "prove_s": 4.58,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 40.708,
+        "certify": {
+          "total_s": 40.51,
+          "prove_s": 17.75,
+          "print_s": 0.04,
+          "other_s": 22.72
+        },
+        "primitive_event_count": 73,
+        "primitive_event_time_s": 17.8,
+        "include_time_s": 22.59,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BOOT-START-PRESERVES-TYPE",
+          "total_s": 4.67,
+          "prove_s": 4.67,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/executor-access": {
+      "before": {
+        "cert_pl_wall_s": 23.682,
+        "certify": {
+          "total_s": 23.48,
+          "prove_s": 6.81,
+          "print_s": 0.04,
+          "other_s": 16.64
+        },
+        "primitive_event_count": 120,
+        "primitive_event_time_s": 7.05,
+        "include_time_s": 15.85,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-EXEC-TRACE-ACTIONS",
+          "total_s": 5.15,
+          "prove_s": 5.14,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 23.275,
+        "certify": {
+          "total_s": 23.09,
+          "prove_s": 6.82,
+          "print_s": 0.01,
+          "other_s": 16.25
+        },
+        "primitive_event_count": 120,
+        "primitive_event_time_s": 7.08,
+        "include_time_s": 15.47,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-EXEC-TRACE-ACTIONS",
+          "total_s": 5.17,
+          "prove_s": 5.17,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/executor-contracts": {
+      "before": {
+        "cert_pl_wall_s": 24.928,
+        "certify": {
+          "total_s": 24.7,
+          "prove_s": 1.38,
+          "print_s": 0.01,
+          "other_s": 23.31
+        },
+        "primitive_event_count": 143,
+        "primitive_event_time_s": 2.02,
+        "include_time_s": 22.57,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-EXECUTOR-REPRESENTATION-TURN",
+          "total_s": 0.84,
+          "prove_s": 0.14,
+          "print_s": 0.0,
+          "other_s": 0.7
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 28.867,
+        "certify": {
+          "total_s": 28.66,
+          "prove_s": 1.49,
+          "print_s": 0.04,
+          "other_s": 27.14
+        },
+        "primitive_event_count": 143,
+        "primitive_event_time_s": 2.13,
+        "include_time_s": 26.41,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-EXECUTOR-REPRESENTATION-TURN",
+          "total_s": 0.85,
+          "prove_s": 0.15,
+          "print_s": 0.0,
+          "other_s": 0.7
+        }
+      }
+    },
+    "books/executor-wake": {
+      "before": {
+        "cert_pl_wall_s": 17.053,
+        "certify": {
+          "total_s": 16.84,
+          "prove_s": 0.5,
+          "print_s": 0.01,
+          "other_s": 16.33
+        },
+        "primitive_event_count": 12,
+        "primitive_event_time_s": 0.5,
+        "include_time_s": 16.4,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-EXEC-ARM-COUNT-BOUND",
+          "total_s": 0.38,
+          "prove_s": 0.38,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 16.403,
+        "certify": {
+          "total_s": 16.21,
+          "prove_s": 0.51,
+          "print_s": 0.01,
+          "other_s": 15.69
+        },
+        "primitive_event_count": 12,
+        "primitive_event_time_s": 0.52,
+        "include_time_s": 15.76,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-EXEC-ARM-COUNT-BOUND",
+          "total_s": 0.39,
+          "prove_s": 0.39,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/host-boundary": {
+      "before": {
+        "cert_pl_wall_s": 64.479,
+        "certify": {
+          "total_s": 64.28,
+          "prove_s": 2.35,
+          "print_s": 0.02,
+          "other_s": 61.9
+        },
+        "primitive_event_count": 22,
+        "primitive_event_time_s": 2.36,
+        "include_time_s": 61.87,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-HOST-OP-SPAN",
+          "total_s": 2.36,
+          "prove_s": 2.34,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 68.687,
+        "certify": {
+          "total_s": 68.48,
+          "prove_s": 2.26,
+          "print_s": 0.03,
+          "other_s": 66.18
+        },
+        "primitive_event_count": 22,
+        "primitive_event_time_s": 2.29,
+        "include_time_s": 66.14,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-HOST-OP-SPAN",
+          "total_s": 2.28,
+          "prove_s": 2.26,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/machine-arms": {
+      "before": {
+        "cert_pl_wall_s": 2.381,
+        "certify": {
+          "total_s": 2.21,
+          "prove_s": 0.24,
+          "print_s": 0.0,
+          "other_s": 1.96
+        },
+        "primitive_event_count": 190,
+        "primitive_event_time_s": 0.33,
+        "include_time_s": 0.64,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-ARMS-TERMINAL",
+          "total_s": 0.04,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.361,
+        "certify": {
+          "total_s": 2.21,
+          "prove_s": 0.25,
+          "print_s": 0.0,
+          "other_s": 1.96
+        },
+        "primitive_event_count": 190,
+        "primitive_event_time_s": 0.33,
+        "include_time_s": 0.64,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-ARMS-TERMINAL",
+          "total_s": 0.04,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      }
+    },
+    "books/machine-dispatch": {
+      "before": {
+        "cert_pl_wall_s": 1.102,
+        "certify": {
+          "total_s": 0.92,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.92
+        },
+        "primitive_event_count": 2,
+        "primitive_event_time_s": 0.01,
+        "include_time_s": 0.97,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-STUB-EVENTS-FIXED",
+          "total_s": 0.01,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 1.083,
+        "certify": {
+          "total_s": 0.91,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.91
+        },
+        "primitive_event_count": 2,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.98,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-STUB-EVENTS-FIXED",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines": {
+      "before": {
+        "cert_pl_wall_s": 2.165,
+        "certify": {
+          "total_s": 2.0,
+          "prove_s": 0.06,
+          "print_s": 0.0,
+          "other_s": 1.93
+        },
+        "primitive_event_count": 343,
+        "primitive_event_time_s": 0.48,
+        "include_time_s": 0.28,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKEN-KIND-EVENTS",
+          "total_s": 0.11,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.11
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.176,
+        "certify": {
+          "total_s": 2.01,
+          "prove_s": 0.06,
+          "print_s": 0.0,
+          "other_s": 1.95
+        },
+        "primitive_event_count": 343,
+        "primitive_event_time_s": 0.5,
+        "include_time_s": 0.29,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKEN-KIND-EVENTS",
+          "total_s": 0.11,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.11
+        }
+      }
+    },
+    "books/machines-a": {
+      "before": {
+        "cert_pl_wall_s": 5.965,
+        "certify": {
+          "total_s": 5.79,
+          "prove_s": 2.98,
+          "print_s": 0.04,
+          "other_s": 2.77
+        },
+        "primitive_event_count": 1694,
+        "primitive_event_time_s": 1.42,
+        "include_time_s": 0.35,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-LISTENER",
+          "total_s": 0.19,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.19
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 5.912,
+        "certify": {
+          "total_s": 5.76,
+          "prove_s": 2.92,
+          "print_s": 0.02,
+          "other_s": 2.82
+        },
+        "primitive_event_count": 1694,
+        "primitive_event_time_s": 1.34,
+        "include_time_s": 0.36,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-LISTENER",
+          "total_s": 0.19,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.19
+        }
+      }
+    },
+    "books/machines-a-access": {
+      "before": {
+        "cert_pl_wall_s": 0.841,
+        "certify": {
+          "total_s": 0.67,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.67
+        },
+        "primitive_event_count": 1,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.73,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-MACHINE-ACCESS-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.859,
+        "certify": {
+          "total_s": 0.7,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.7
+        },
+        "primitive_event_count": 1,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.77,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-MACHINE-ACCESS-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-a-costs": {
+      "before": {
+        "cert_pl_wall_s": 0.89,
+        "certify": {
+          "total_s": 0.74,
+          "prove_s": 0.03,
+          "print_s": 0.0,
+          "other_s": 0.71
+        },
+        "primitive_event_count": 51,
+        "primitive_event_time_s": 0.03,
+        "include_time_s": 0.73,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ISSUE-ACCEPT-CHILDREN-KEEPS-POOL",
+          "total_s": 0.01,
+          "prove_s": 0.01,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.982,
+        "certify": {
+          "total_s": 0.79,
+          "prove_s": 0.04,
+          "print_s": 0.0,
+          "other_s": 0.76
+        },
+        "primitive_event_count": 51,
+        "primitive_event_time_s": 0.03,
+        "include_time_s": 0.77,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ISSUE-ACCEPT-CHILDREN-KEEPS-POOL",
+          "total_s": 0.01,
+          "prove_s": 0.01,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-a-run": {
+      "before": {
+        "cert_pl_wall_s": 5.068,
+        "certify": {
+          "total_s": 4.89,
+          "prove_s": 3.38,
+          "print_s": 0.01,
+          "other_s": 1.5
+        },
+        "primitive_event_count": 120,
+        "primitive_event_time_s": 3.76,
+        "include_time_s": 0.93,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ECHO-RUN-REPLY-CHILDREN-SHAPE",
+          "total_s": 0.31,
+          "prove_s": 0.3,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 5.015,
+        "certify": {
+          "total_s": 4.83,
+          "prove_s": 3.36,
+          "print_s": 0.01,
+          "other_s": 1.46
+        },
+        "primitive_event_count": 120,
+        "primitive_event_time_s": 3.69,
+        "include_time_s": 0.91,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-ECHO-RUN-REPLY-CHILDREN-SHAPE",
+          "total_s": 0.32,
+          "prove_s": 0.31,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-a-scribe": {
+      "before": {
+        "cert_pl_wall_s": 2.717,
+        "certify": {
+          "total_s": 2.55,
+          "prove_s": 1.82,
+          "print_s": 0.0,
+          "other_s": 0.73
+        },
+        "primitive_event_count": 17,
+        "primitive_event_time_s": 1.83,
+        "include_time_s": 0.77,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SCRIBE-PATCH-LOOP-PRESERVES-TYPE",
+          "total_s": 0.29,
+          "prove_s": 0.29,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.68,
+        "certify": {
+          "total_s": 2.51,
+          "prove_s": 1.81,
+          "print_s": 0.0,
+          "other_s": 0.7
+        },
+        "primitive_event_count": 17,
+        "primitive_event_time_s": 1.81,
+        "include_time_s": 0.73,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SCRIBE-PATCH-LOOP-PRESERVES-TYPE",
+          "total_s": 0.29,
+          "prove_s": 0.29,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-all": {
+      "before": {
+        "cert_pl_wall_s": 0.659,
+        "certify": {
+          "total_s": 0.47,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.47
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 0.56,
+        "max_event": null
+      },
+      "after": {
+        "cert_pl_wall_s": 0.645,
+        "certify": {
+          "total_s": 0.48,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.48
+        },
+        "primitive_event_count": 0,
+        "primitive_event_time_s": 0,
+        "include_time_s": 0.55,
+        "max_event": null
+      }
+    },
+    "books/machines-b": {
+      "before": {
+        "cert_pl_wall_s": 18.361,
+        "certify": {
+          "total_s": 18.18,
+          "prove_s": 8.86,
+          "print_s": 0.04,
+          "other_s": 9.29
+        },
+        "primitive_event_count": 2871,
+        "primitive_event_time_s": 6.62,
+        "include_time_s": 3.87,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BLOCK-HASH-INTO-SHAPE",
+          "total_s": 0.45,
+          "prove_s": 0.44,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 19.522,
+        "certify": {
+          "total_s": 19.33,
+          "prove_s": 9.73,
+          "print_s": 0.02,
+          "other_s": 9.58
+        },
+        "primitive_event_count": 2871,
+        "primitive_event_time_s": 8.11,
+        "include_time_s": 4.04,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-BLOCK-HASH-INTO-SHAPE",
+          "total_s": 0.45,
+          "prove_s": 0.44,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/machines-c": {
+      "before": {
+        "cert_pl_wall_s": 11.12,
+        "certify": {
+          "total_s": 10.9,
+          "prove_s": 5.98,
+          "print_s": 0.0,
+          "other_s": 4.92
+        },
+        "primitive_event_count": 44,
+        "primitive_event_time_s": 5.97,
+        "include_time_s": 4.9,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RUN-CURSORS-INIT-FOR-WFP",
+          "total_s": 1.12,
+          "prove_s": 1.12,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 11.004,
+        "certify": {
+          "total_s": 10.82,
+          "prove_s": 5.93,
+          "print_s": 0.01,
+          "other_s": 4.88
+        },
+        "primitive_event_count": 44,
+        "primitive_event_time_s": 5.93,
+        "include_time_s": 4.87,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RUN-CURSORS-INIT-FOR-WFP",
+          "total_s": 1.13,
+          "prove_s": 1.13,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-c-bind": {
+      "before": {
+        "cert_pl_wall_s": 53.17,
+        "certify": {
+          "total_s": 52.98,
+          "prove_s": 46.53,
+          "print_s": 0.03,
+          "other_s": 6.42
+        },
+        "primitive_event_count": 246,
+        "primitive_event_time_s": 46.89,
+        "include_time_s": 5.58,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-REPLAY-RECORDS-SHAPE-ONE",
+          "total_s": 28.77,
+          "prove_s": 28.76,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 53.672,
+        "certify": {
+          "total_s": 53.46,
+          "prove_s": 46.86,
+          "print_s": 0.04,
+          "other_s": 6.56
+        },
+        "primitive_event_count": 246,
+        "primitive_event_time_s": 47.31,
+        "include_time_s": 5.62,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-REPLAY-RECORDS-SHAPE-ONE",
+          "total_s": 28.75,
+          "prove_s": 28.73,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/machines-c-groups": {
+      "before": {
+        "cert_pl_wall_s": 23.305,
+        "certify": {
+          "total_s": 23.09,
+          "prove_s": 16.91,
+          "print_s": 0.01,
+          "other_s": 6.17
+        },
+        "primitive_event_count": 97,
+        "primitive_event_time_s": 17.24,
+        "include_time_s": 5.72,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-GRP-WRITE-NAME-PRESERVES-ROWS",
+          "total_s": 2.36,
+          "prove_s": 2.36,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 22.969,
+        "certify": {
+          "total_s": 22.76,
+          "prove_s": 16.63,
+          "print_s": 0.02,
+          "other_s": 6.1
+        },
+        "primitive_event_count": 97,
+        "primitive_event_time_s": 17.0,
+        "include_time_s": 5.64,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-GRP-WRITE-NAME-PRESERVES-ROWS",
+          "total_s": 2.34,
+          "prove_s": 2.34,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-c-read": {
+      "before": {
+        "cert_pl_wall_s": 58.721,
+        "certify": {
+          "total_s": 58.5,
+          "prove_s": 49.06,
+          "print_s": 0.07,
+          "other_s": 9.38
+        },
+        "primitive_event_count": 709,
+        "primitive_event_time_s": 50.13,
+        "include_time_s": 6.44,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RD-IDENTITY-RD-SHAPE",
+          "total_s": 14.35,
+          "prove_s": 14.32,
+          "print_s": 0.01,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 61.567,
+        "certify": {
+          "total_s": 61.36,
+          "prove_s": 51.38,
+          "print_s": 0.12,
+          "other_s": 9.86
+        },
+        "primitive_event_count": 709,
+        "primitive_event_time_s": 52.66,
+        "include_time_s": 6.65,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RD-IDENTITY-RD-SHAPE",
+          "total_s": 14.54,
+          "prove_s": 14.5,
+          "print_s": 0.02,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/machines-c-sealer": {
+      "before": {
+        "cert_pl_wall_s": 6.709,
+        "certify": {
+          "total_s": 6.5,
+          "prove_s": 0.54,
+          "print_s": 0.02,
+          "other_s": 5.94
+        },
+        "primitive_event_count": 36,
+        "primitive_event_time_s": 0.59,
+        "include_time_s": 5.94,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SEAL-GENESIS-SHAPE-ONE",
+          "total_s": 0.22,
+          "prove_s": 0.2,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 6.392,
+        "certify": {
+          "total_s": 6.2,
+          "prove_s": 0.43,
+          "print_s": 0.0,
+          "other_s": 5.77
+        },
+        "primitive_event_count": 36,
+        "primitive_event_time_s": 0.47,
+        "include_time_s": 5.77,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SEAL-GENESIS-SHAPE-ONE",
+          "total_s": 0.14,
+          "prove_s": 0.14,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/machines-c-sealer-events": {
+      "before": {
+        "cert_pl_wall_s": 6.112,
+        "certify": {
+          "total_s": 5.92,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 5.92
+        },
+        "primitive_event_count": 3,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 6.0,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 6.061,
+        "certify": {
+          "total_s": 5.85,
+          "prove_s": 0.0,
+          "print_s": 0.01,
+          "other_s": 5.84
+        },
+        "primitive_event_count": 3,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 5.92,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-c-sealer-kind": {
+      "before": {
+        "cert_pl_wall_s": 6.224,
+        "certify": {
+          "total_s": 6.06,
+          "prove_s": 0.52,
+          "print_s": 0.0,
+          "other_s": 5.54
+        },
+        "primitive_event_count": 221,
+        "primitive_event_time_s": 0.27,
+        "include_time_s": 5.16,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-SEALER",
+          "total_s": 0.05,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.05
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 6.229,
+        "certify": {
+          "total_s": 6.02,
+          "prove_s": 0.5,
+          "print_s": 0.0,
+          "other_s": 5.52
+        },
+        "primitive_event_count": 221,
+        "primitive_event_time_s": 0.28,
+        "include_time_s": 5.16,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-SEALER",
+          "total_s": 0.06,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.06
+        }
+      }
+    },
+    "books/machines-c-stage": {
+      "before": {
+        "cert_pl_wall_s": 43.152,
+        "certify": {
+          "total_s": 42.96,
+          "prove_s": 37.0,
+          "print_s": 0.06,
+          "other_s": 5.89
+        },
+        "primitive_event_count": 89,
+        "primitive_event_time_s": 37.41,
+        "include_time_s": 5.51,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SUCC-STAGE-INSERT",
+          "total_s": 12.0,
+          "prove_s": 11.97,
+          "print_s": 0.01,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 44.649,
+        "certify": {
+          "total_s": 44.45,
+          "prove_s": 38.38,
+          "print_s": 0.04,
+          "other_s": 6.03
+        },
+        "primitive_event_count": 89,
+        "primitive_event_time_s": 38.72,
+        "include_time_s": 5.62,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SUCC-STAGE-INSERT",
+          "total_s": 12.2,
+          "prove_s": 12.18,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/machines-c-successor": {
+      "before": {
+        "cert_pl_wall_s": 31.191,
+        "certify": {
+          "total_s": 30.99,
+          "prove_s": 22.5,
+          "print_s": 0.04,
+          "other_s": 8.45
+        },
+        "primitive_event_count": 1151,
+        "primitive_event_time_s": 21.7,
+        "include_time_s": 5.86,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-TXNS-INIT-FOR-TYPE",
+          "total_s": 2.47,
+          "prove_s": 2.47,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 30.682,
+        "certify": {
+          "total_s": 30.49,
+          "prove_s": 21.96,
+          "print_s": 0.04,
+          "other_s": 8.5
+        },
+        "primitive_event_count": 1151,
+        "primitive_event_time_s": 21.19,
+        "include_time_s": 5.99,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-SUCC-TXNS-INIT-FOR-TYPE",
+          "total_s": 2.45,
+          "prove_s": 2.45,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/machines-directory": {
+      "before": {
+        "cert_pl_wall_s": 1.537,
+        "certify": {
+          "total_s": 1.37,
+          "prove_s": 0.54,
+          "print_s": 0.0,
+          "other_s": 0.83
+        },
+        "primitive_event_count": 394,
+        "primitive_event_time_s": 0.3,
+        "include_time_s": 0.36,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-MACHINES",
+          "total_s": 0.16,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.16
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 1.587,
+        "certify": {
+          "total_s": 1.4,
+          "prove_s": 0.52,
+          "print_s": 0.0,
+          "other_s": 0.88
+        },
+        "primitive_event_count": 394,
+        "primitive_event_time_s": 0.36,
+        "include_time_s": 0.36,
+        "max_event": {
+          "kind": "DEFSTOBJ",
+          "name": "FN2-MACHINES",
+          "total_s": 0.17,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.17
+        }
+      }
+    },
+    "books/recovery-machine": {
+      "before": {
+        "cert_pl_wall_s": 2.187,
+        "certify": {
+          "total_s": 2.02,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 2.02
+        },
+        "primitive_event_count": 8,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 2.07,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.255,
+        "certify": {
+          "total_s": 2.09,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 2.09
+        },
+        "primitive_event_count": 8,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 2.13,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/recovery-payload": {
+      "before": {
+        "cert_pl_wall_s": 264.313,
+        "certify": {
+          "total_s": 264.08,
+          "prove_s": 242.57,
+          "print_s": 0.22,
+          "other_s": 21.28
+        },
+        "primitive_event_count": 48,
+        "primitive_event_time_s": 242.93,
+        "include_time_s": 21.16,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RP-ENTRIES-NATURALS",
+          "total_s": 92.21,
+          "prove_s": 92.18,
+          "print_s": 0.03,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 272.361,
+        "certify": {
+          "total_s": 272.15,
+          "prove_s": 250.19,
+          "print_s": 0.22,
+          "other_s": 21.74
+        },
+        "primitive_event_count": 48,
+        "primitive_event_time_s": 250.51,
+        "include_time_s": 21.63,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-RP-ENTRIES-NATURALS",
+          "total_s": 93.07,
+          "prove_s": 93.06,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/reference-state": {
+      "before": {
+        "cert_pl_wall_s": 0.837,
+        "certify": {
+          "total_s": 0.67,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.67
+        },
+        "primitive_event_count": 5,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.72,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-REF-COUNTDOWN-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 0.872,
+        "certify": {
+          "total_s": 0.7,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.7
+        },
+        "primitive_event_count": 5,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 0.76,
+        "max_event": {
+          "kind": "DEFMACRO",
+          "name": "FN2-REF-COUNTDOWN-EVENTS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/sched": {
+      "before": {
+        "cert_pl_wall_s": 2.754,
+        "certify": {
+          "total_s": 2.58,
+          "prove_s": 1.77,
+          "print_s": 0.01,
+          "other_s": 0.8
+        },
+        "primitive_event_count": 305,
+        "primitive_event_time_s": 1.65,
+        "include_time_s": 0.37,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SCHED-REATTRIBUTE",
+          "total_s": 0.56,
+          "prove_s": 0.55,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 2.787,
+        "certify": {
+          "total_s": 2.62,
+          "prove_s": 1.78,
+          "print_s": 0.0,
+          "other_s": 0.84
+        },
+        "primitive_event_count": 305,
+        "primitive_event_time_s": 1.67,
+        "include_time_s": 0.36,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SCHED-REATTRIBUTE",
+          "total_s": 0.57,
+          "prove_s": 0.56,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    },
+    "books/sealer": {
+      "before": {
+        "cert_pl_wall_s": 41.437,
+        "certify": {
+          "total_s": 41.26,
+          "prove_s": 30.75,
+          "print_s": 0.05,
+          "other_s": 10.46
+        },
+        "primitive_event_count": 1230,
+        "primitive_event_time_s": 31.53,
+        "include_time_s": 6.42,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SEAL-FILTER",
+          "total_s": 7.62,
+          "prove_s": 7.59,
+          "print_s": 0.01,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 41.611,
+        "certify": {
+          "total_s": 41.41,
+          "prove_s": 30.79,
+          "print_s": 0.05,
+          "other_s": 10.57
+        },
+        "primitive_event_count": 1230,
+        "primitive_event_time_s": 31.59,
+        "include_time_s": 6.56,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-SEAL-FILTER",
+          "total_s": 7.54,
+          "prove_s": 7.52,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/txn": {
+      "before": {
+        "cert_pl_wall_s": 19.41,
+        "certify": {
+          "total_s": 19.22,
+          "prove_s": 12.46,
+          "print_s": 0.05,
+          "other_s": 6.7
+        },
+        "primitive_event_count": 82,
+        "primitive_event_time_s": 12.56,
+        "include_time_s": 6.61,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-TXN-SYNTH-OV-2-PRESERVES-TYPE",
+          "total_s": 2.57,
+          "prove_s": 2.56,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 19.253,
+        "certify": {
+          "total_s": 19.04,
+          "prove_s": 12.4,
+          "print_s": 0.03,
+          "other_s": 6.6
+        },
+        "primitive_event_count": 82,
+        "primitive_event_time_s": 12.47,
+        "include_time_s": 6.5,
+        "max_event": {
+          "kind": "DEFTHM",
+          "name": "FN2-TXN-SYNTH-OV-2-PRESERVES-WFP",
+          "total_s": 2.5,
+          "prove_s": 2.49,
+          "print_s": 0.01,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/txn-kind": {
+      "before": {
+        "cert_pl_wall_s": 15.93,
+        "certify": {
+          "total_s": 15.74,
+          "prove_s": 7.23,
+          "print_s": 0.04,
+          "other_s": 8.47
+        },
+        "primitive_event_count": 924,
+        "primitive_event_time_s": 6.55,
+        "include_time_s": 6.33,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-TXN-CHILDREN",
+          "total_s": 1.23,
+          "prove_s": 1.21,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 15.837,
+        "certify": {
+          "total_s": 15.64,
+          "prove_s": 7.29,
+          "print_s": 0.03,
+          "other_s": 8.32
+        },
+        "primitive_event_count": 924,
+        "primitive_event_time_s": 6.61,
+        "include_time_s": 6.21,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-TXN-CHILDREN",
+          "total_s": 1.22,
+          "prove_s": 1.2,
+          "print_s": 0.0,
+          "other_s": 0.02
+        }
+      }
+    },
+    "books/upload": {
+      "before": {
+        "cert_pl_wall_s": 3.657,
+        "certify": {
+          "total_s": 3.47,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 3.46
+        },
+        "primitive_event_count": 43,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 3.48,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 3.533,
+        "certify": {
+          "total_s": 3.37,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 3.36
+        },
+        "primitive_event_count": 43,
+        "primitive_event_time_s": 0.0,
+        "include_time_s": 3.37,
+        "max_event": {
+          "kind": "TABLE",
+          "name": "FN2-BOOK-LAYERS",
+          "total_s": 0.0,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "books/upload-kind": {
+      "before": {
+        "cert_pl_wall_s": 21.194,
+        "certify": {
+          "total_s": 21.01,
+          "prove_s": 13.48,
+          "print_s": 0.04,
+          "other_s": 7.5
+        },
+        "primitive_event_count": 1750,
+        "primitive_event_time_s": 13.62,
+        "include_time_s": 3.04,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-UPLOAD-CHILDREN",
+          "total_s": 1.35,
+          "prove_s": 1.31,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 21.301,
+        "certify": {
+          "total_s": 21.12,
+          "prove_s": 13.56,
+          "print_s": 0.02,
+          "other_s": 7.54
+        },
+        "primitive_event_count": 1750,
+        "primitive_event_time_s": 13.6,
+        "include_time_s": 3.14,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-MACHINE-TAKE-FN2-UPLOAD-CHILDREN",
+          "total_s": 1.49,
+          "prove_s": 1.44,
+          "print_s": 0.0,
+          "other_s": 0.04
+        }
+      }
+    },
+    "tests/commit-durable-all-unit": {
+      "before": {
+        "cert_pl_wall_s": 88.21,
+        "certify": {
+          "total_s": 88.0,
+          "prove_s": 0.06,
+          "print_s": 0.01,
+          "other_s": 87.92
+        },
+        "primitive_event_count": 39,
+        "primitive_event_time_s": 0.07,
+        "include_time_s": 61.65,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CDA-ADMITTED-P",
+          "total_s": 0.04,
+          "prove_s": 0.03,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 87.586,
+        "certify": {
+          "total_s": 87.38,
+          "prove_s": 0.07,
+          "print_s": 0.0,
+          "other_s": 87.31
+        },
+        "primitive_event_count": 39,
+        "primitive_event_time_s": 0.08,
+        "include_time_s": 61.12,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CDA-ADMITTED-P",
+          "total_s": 0.04,
+          "prove_s": 0.03,
+          "print_s": 0.0,
+          "other_s": 0.0
+        }
+      }
+    },
+    "tests/commit-executor-contracts-unit": {
+      "before": {
+        "cert_pl_wall_s": 62.521,
+        "certify": {
+          "total_s": 62.32,
+          "prove_s": 0.06,
+          "print_s": 0.01,
+          "other_s": 62.25
+        },
+        "primitive_event_count": 10,
+        "primitive_event_time_s": 0.02,
+        "include_time_s": 61.59,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CET-UNFENCED-NOTIFY-CORE",
+          "total_s": 0.01,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      },
+      "after": {
+        "cert_pl_wall_s": 64.089,
+        "certify": {
+          "total_s": 63.89,
+          "prove_s": 0.07,
+          "print_s": 0.01,
+          "other_s": 63.81
+        },
+        "primitive_event_count": 10,
+        "primitive_event_time_s": 0.01,
+        "include_time_s": 63.12,
+        "max_event": {
+          "kind": "DEFUN",
+          "name": "FN2-CET-ZERO-VALUES",
+          "total_s": 0.01,
+          "prove_s": 0.0,
+          "print_s": 0.0,
+          "other_s": 0.01
+        }
+      }
+    }
+  },
+  "added_books": {
+    "books/pointwise-contracts": {
+      "cert_pl_wall_s": 0.138,
+      "certify": {
+        "total_s": 0.06,
+        "prove_s": 0.01,
+        "print_s": 0.0,
+        "other_s": 0.05
+      },
+      "primitive_event_count": 22,
+      "primitive_event_time_s": 0.0,
+      "include_time_s": 0,
+      "max_event": {
+        "kind": "DEFUN",
+        "name": "FN2-PW-POINT",
+        "total_s": 0.0,
+        "prove_s": 0.0,
+        "print_s": 0.0,
+        "other_s": 0.0
+      }
+    },
+    "tests/pointwise-contracts-unit": {
+      "cert_pl_wall_s": 0.165,
+      "certify": {
+        "total_s": 0.07,
+        "prove_s": 0.03,
+        "print_s": 0.0,
+        "other_s": 0.04
+      },
+      "primitive_event_count": 18,
+      "primitive_event_time_s": 0.04,
+      "include_time_s": 0.0,
+      "max_event": {
+        "kind": "DEFTHM",
+        "name": "FN2-FOLD-TEST-REPLACEMENT",
+        "total_s": 0.02,
+        "prove_s": 0.01,
+        "print_s": 0.0,
+        "other_s": 0.0
+      }
+    },
+    "tests/view-contracts-unit": {
+      "cert_pl_wall_s": 0.387,
+      "certify": {
+        "total_s": 0.29,
+        "prove_s": 0.07,
+        "print_s": 0.0,
+        "other_s": 0.22
+      },
+      "primitive_event_count": 124,
+      "primitive_event_time_s": 0.03,
+      "include_time_s": 0.08,
+      "max_event": {
+        "kind": "DEFSTOBJ",
+        "name": "FN2-VIEW-FIXTURE",
+        "total_s": 0.02,
+        "prove_s": 0.0,
+        "print_s": 0.0,
+        "other_s": 0.02
+      }
+    }
+  },
+  "statements": {
+    "baseline": "5ee4da987",
+    "original_statement_occurrences": 450,
+    "original_unique_names": 439,
+    "missing_or_changed": [],
+    "added_occurrences": 14,
+    "baseline_statement_sha256": "e89c15abde06dee4b231ecdb52cd317979a5c4ae6bbc0d6b19925085c6da8d2a"
+  },
+  "controls": "Both existing durability/executor unit books certify. Their weak executor invariant remains rejected by must-fail. Pointwise and view units also certify, including repair/locality-removal and cardinality/whole-child controls.",
+  "known_remaining": [
+    "FN2-ENV-REL-FORMS still traverses callees per view.",
+    "Book target 15-30s unmet; include time alone is 61.74s.",
+    "Common closure total increased; no whole-closure speedup claim."
+  ],
+  "proof_source_sha256": {
+    "books/pointwise-contracts.lisp": "a6390e3efa0a9d398613e18b80118a19007eab85a78103b094aa9cb1e589aab1",
+    "books/arms.lisp": "d7048bfe888fd9552030ceb8e5d37fb7097353e181aafb41651481eeeea671e2",
+    "books/commit-durable-all.lisp": "3bb4590aa8b119fa2ae552fac88df419de69e9290fc49fe70702c1a28ad17e0a",
+    "tests/pointwise-contracts-unit.lisp": "a80f3a801333acf1e475c6570a79a3d5d2c3df2318ef57187f72174efdcebc8c",
+    "tests/view-contracts-unit.lisp": "06207dbb989ad0e776005dea2a2f1479ebfb6b8da8ca52a70038d4371cb83ace"
+  }
+}
