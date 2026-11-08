@@ -4,6 +4,18 @@
 import Fn2.ACL2.Pres
 import Fn2.ACL2.Fuel
 import Fn2.Instances.LayerAWorld
+import Fn2.Instances.LayerAWorld.KCns_d13to40Keys
+import Fn2.Instances.LayerAWorld.KConn_d0to24Keys
+import Fn2.Instances.LayerAWorld.S2_d0to29Keys
+import Fn2.Instances.LayerAWorld.SConnListener_d6to10Keys
+import Fn2.Instances.LayerAWorld.KCns_d13to40Eqns
+import Fn2.Instances.LayerAWorld.KConn_d0to24Eqns
+import Fn2.Instances.LayerAWorld.S2_d0to29Eqns
+import Fn2.Instances.LayerAWorld.SConnListener_d6to10Eqns
+import Fn2.Instances.LayerAWorld.IndexEqns1
+import Fn2.Instances.LayerAWorld.IndexEqns2
+import Fn2.Instances.LayerAWorld.IndexEqns3
+import Fn2.Instances.LayerAWorld.IndexEqns4
 
 set_option maxHeartbeats 0
 set_option maxRecDepth 100000
@@ -1280,7 +1292,8 @@ def attachedOwed : List (String × Nat × String) := [("FN2-COMMIT-STREAM-WAKE",
 theorem «FN2-ACCOUNT-CHARGE-CORE».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-ACCOUNT-CHARGE-CORE" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 3 Val.nil)) := by
-  have h2 : fns "FN2-ACCOUNT-CHARGE-CORE" acts = «FN2-ACCOUNT-CHARGE-CORE».dispatch acts := (fns_key (k := 6733924589424346322439595937964304291367990622296166981) acts rfl).trans rfl
+  have h2 : fns "FN2-ACCOUNT-CHARGE-CORE" acts = «FN2-ACCOUNT-CHARGE-CORE».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-ACCOUNT-CHARGE-CORE».key «FN2-ACCOUNT-CHARGE-CORE».ix «FN2-ACCOUNT-CHARGE-CORE».find
   rw [h2] at h
   unfold «FN2-ACCOUNT-CHARGE-CORE».dispatch at h
   split at h
@@ -1291,7 +1304,8 @@ theorem «FN2-ACCOUNT-CHARGE-CORE».fns_keepsPhase_FN2_CONN (acts : List Val) (v
 theorem «FN2-ACCOUNT-UNBOOK-REF».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-ACCOUNT-UNBOOK-REF" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 1 Val.nil)) := by
-  have h2 : fns "FN2-ACCOUNT-UNBOOK-REF" acts = «FN2-ACCOUNT-UNBOOK-REF».dispatch acts := (fns_key (k := 26304392927438852822029671632758176986534300211103046) acts rfl).trans rfl
+  have h2 : fns "FN2-ACCOUNT-UNBOOK-REF" acts = «FN2-ACCOUNT-UNBOOK-REF».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-ACCOUNT-UNBOOK-REF».key «FN2-ACCOUNT-UNBOOK-REF».ix «FN2-ACCOUNT-UNBOOK-REF».find
   rw [h2] at h
   unfold «FN2-ACCOUNT-UNBOOK-REF».dispatch at h
   split at h
@@ -1302,7 +1316,8 @@ theorem «FN2-ACCOUNT-UNBOOK-REF».fns_keepsPhase_FN2_CONN (acts : List Val) (v 
 theorem «FN2-CONN-CURSOR-CANCEL».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-CURSOR-CANCEL" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 0 = 0 then v else Native.nth (Val.int 0) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 2 Val.nil)) := by
-  have h2 : fns "FN2-CONN-CURSOR-CANCEL" acts = «FN2-CONN-CURSOR-CANCEL».dispatch acts := (fns_key (k := 26304392927617175397799732623424875873707095943759180) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-CURSOR-CANCEL" acts = «FN2-CONN-CURSOR-CANCEL».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-CURSOR-CANCEL».key «FN2-CONN-CURSOR-CANCEL».ix «FN2-CONN-CURSOR-CANCEL».find
   rw [h2] at h
   unfold «FN2-CONN-CURSOR-CANCEL».dispatch at h
   split at h
@@ -1313,7 +1328,8 @@ theorem «FN2-CONN-CURSOR-CANCEL».fns_keepsPhase_FN2_CONN (acts : List Val) (v 
 theorem «FN2-CONN-CURSOR-GO».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-CURSOR-GO" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 0 = 0 then v else Native.nth (Val.int 0) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 2 Val.nil)) := by
-  have h2 : fns "FN2-CONN-CURSOR-GO" acts = «FN2-CONN-CURSOR-GO».dispatch acts := (fns_key (k := 6124468736261403047898722026363219105105743) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-CURSOR-GO" acts = «FN2-CONN-CURSOR-GO».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-CURSOR-GO».key «FN2-CONN-CURSOR-GO».ix «FN2-CONN-CURSOR-GO».find
   rw [h2] at h
   unfold «FN2-CONN-CURSOR-GO».dispatch at h
   split at h
@@ -1324,7 +1340,8 @@ theorem «FN2-CONN-CURSOR-GO».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Va
 theorem «FN2-CONN-FEED-RUN».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-FEED-RUN" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 5 = 0 then v else Native.nth (Val.int 5) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 10 Val.nil)) := by
-  have h2 : fns "FN2-CONN-FEED-RUN" acts = «FN2-CONN-FEED-RUN».dispatch acts := (fns_key (k := 23923706001021105655854594570305164957006) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-FEED-RUN" acts = «FN2-CONN-FEED-RUN».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-FEED-RUN».key «FN2-CONN-FEED-RUN».ix «FN2-CONN-FEED-RUN».find
   rw [h2] at h
   unfold «FN2-CONN-FEED-RUN».dispatch at h
   split at h
@@ -1335,7 +1352,8 @@ theorem «FN2-CONN-FEED-RUN».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val
 theorem «FN2-CONN-GREET-OP».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-GREET-OP" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 2 = 0 then v else Native.nth (Val.int 2) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 7 Val.nil)) := by
-  have h2 : fns "FN2-CONN-GREET-OP" acts = «FN2-CONN-GREET-OP».dispatch acts := (fns_key (k := 23923706001021105655854670287078846975824) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-GREET-OP" acts = «FN2-CONN-GREET-OP».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-GREET-OP».key «FN2-CONN-GREET-OP».ix «FN2-CONN-GREET-OP».find
   rw [h2] at h
   unfold «FN2-CONN-GREET-OP».dispatch at h
   split at h
@@ -1346,7 +1364,8 @@ theorem «FN2-CONN-GREET-OP».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val
 theorem «FN2-CONN-RELEASE-RX».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-RELEASE-RX" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 5 Val.nil)) := by
-  have h2 : fns "FN2-CONN-RELEASE-RX" acts = «FN2-CONN-RELEASE-RX».dispatch acts := (fns_key (k := 1567863996482919180262143378662020353864061528) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-RELEASE-RX" acts = «FN2-CONN-RELEASE-RX».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-RELEASE-RX».key «FN2-CONN-RELEASE-RX».ix «FN2-CONN-RELEASE-RX».find
   rw [h2] at h
   unfold «FN2-CONN-RELEASE-RX».dispatch at h
   split at h
@@ -1357,7 +1376,8 @@ theorem «FN2-CONN-RELEASE-RX».fns_keepsPhase_FN2_CONN (acts : List Val) (v : V
 theorem «FN2-CONN-RUN-ANSWER».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-RUN-ANSWER" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 4 = 0 then v else Native.nth (Val.int 4) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 12 Val.nil)) := by
-  have h2 : fns "FN2-CONN-RUN-ANSWER" acts = «FN2-CONN-RUN-ANSWER».dispatch acts := (fns_key (k := 1567863996482919180262143673947285300614481234) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-RUN-ANSWER" acts = «FN2-CONN-RUN-ANSWER».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-RUN-ANSWER».key «FN2-CONN-RUN-ANSWER».ix «FN2-CONN-RUN-ANSWER».find
   rw [h2] at h
   unfold «FN2-CONN-RUN-ANSWER».dispatch at h
   split at h
@@ -1368,7 +1388,8 @@ theorem «FN2-CONN-RUN-ANSWER».fns_keepsPhase_FN2_CONN (acts : List Val) (v : V
 theorem «FN2-CONN-RUN-BLOCK-OPEN».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-RUN-BLOCK-OPEN" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 6 Val.nil)) := by
-  have h2 : fns "FN2-CONN-RUN-BLOCK-OPEN" acts = «FN2-CONN-RUN-BLOCK-OPEN».dispatch acts := (fns_key (k := 6733924589469996901837035786456882279299866890062546254) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-RUN-BLOCK-OPEN" acts = «FN2-CONN-RUN-BLOCK-OPEN».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-RUN-BLOCK-OPEN».key «FN2-CONN-RUN-BLOCK-OPEN».ix «FN2-CONN-RUN-BLOCK-OPEN».find
   rw [h2] at h
   unfold «FN2-CONN-RUN-BLOCK-OPEN».dispatch at h
   split at h
@@ -1379,7 +1400,8 @@ theorem «FN2-CONN-RUN-BLOCK-OPEN».fns_keepsPhase_FN2_CONN (acts : List Val) (v
 theorem «FN2-CONN-RUN-OUTCOME».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-RUN-OUTCOME" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 2 = 0 then v else Native.nth (Val.int 2) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 8 Val.nil)) := by
-  have h2 : fns "FN2-CONN-RUN-OUTCOME" acts = «FN2-CONN-RUN-OUTCOME».dispatch acts := (fns_key (k := 401373183099627310147108780530508985307522616645) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-RUN-OUTCOME" acts = «FN2-CONN-RUN-OUTCOME».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-RUN-OUTCOME».key «FN2-CONN-RUN-OUTCOME».ix «FN2-CONN-RUN-OUTCOME».find
   rw [h2] at h
   unfold «FN2-CONN-RUN-OUTCOME».dispatch at h
   split at h
@@ -1390,7 +1412,8 @@ theorem «FN2-CONN-RUN-OUTCOME».fns_keepsPhase_FN2_CONN (acts : List Val) (v : 
 theorem «FN2-CONN-RUN-OVERFLOW».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-RUN-OVERFLOW" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 5 Val.nil)) := by
-  have h2 : fns "FN2-CONN-RUN-OVERFLOW" acts = «FN2-CONN-RUN-OVERFLOW».dispatch acts := (fns_key (k := 102751534873504591397659847815810300503772365606743) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-RUN-OVERFLOW" acts = «FN2-CONN-RUN-OVERFLOW».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-RUN-OVERFLOW».key «FN2-CONN-RUN-OVERFLOW».ix «FN2-CONN-RUN-OVERFLOW».find
   rw [h2] at h
   unfold «FN2-CONN-RUN-OVERFLOW».dispatch at h
   split at h
@@ -1401,7 +1424,8 @@ theorem «FN2-CONN-RUN-OVERFLOW».fns_keepsPhase_FN2_CONN (acts : List Val) (v :
 theorem «FN2-CONN-WAKE».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-CONN-WAKE" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 0 = 0 then v else Native.nth (Val.int 0) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 1 Val.nil)) := by
-  have h2 : fns "FN2-CONN-WAKE" acts = «FN2-CONN-WAKE».dispatch acts := (fns_key (k := 5570171866803687451373743459141) acts rfl).trans rfl
+  have h2 : fns "FN2-CONN-WAKE" acts = «FN2-CONN-WAKE».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CONN-WAKE».key «FN2-CONN-WAKE».ix «FN2-CONN-WAKE».find
   rw [h2] at h
   unfold «FN2-CONN-WAKE».dispatch at h
   split at h
@@ -1412,7 +1436,8 @@ theorem «FN2-CONN-WAKE».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h
 theorem «FN2-MACHINE-RECLAIM-FN2-CONN».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-MACHINE-RECLAIM-FN2-CONN" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 0 = 0 then v else Native.nth (Val.int 0) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 2 Val.nil)) := by
-  have h2 : fns "FN2-MACHINE-RECLAIM-FN2-CONN" acts = «FN2-MACHINE-RECLAIM-FN2-CONN».dispatch acts := (fns_key (k := 7404028386932843071394941252653784968033372316825984025103237598798) acts rfl).trans rfl
+  have h2 : fns "FN2-MACHINE-RECLAIM-FN2-CONN" acts = «FN2-MACHINE-RECLAIM-FN2-CONN».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-MACHINE-RECLAIM-FN2-CONN».key «FN2-MACHINE-RECLAIM-FN2-CONN».ix «FN2-MACHINE-RECLAIM-FN2-CONN».find
   rw [h2] at h
   unfold «FN2-MACHINE-RECLAIM-FN2-CONN».dispatch at h
   split at h
@@ -1423,7 +1448,8 @@ theorem «FN2-MACHINE-RECLAIM-FN2-CONN».fns_keepsPhase_FN2_CONN (acts : List Va
 theorem «FN2-MACHINE-TAKE-FN2-CURSOR».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-MACHINE-TAKE-FN2-CURSOR" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 3 = 0 then v else Native.nth (Val.int 3) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 15 Val.nil)) := by
-  have h2 : fns "FN2-MACHINE-TAKE-FN2-CURSOR" acts = «FN2-MACHINE-TAKE-FN2-CURSOR».dispatch acts := (fns_key (k := 28921985886456418247636489268189151627093728041850392602360368978) acts rfl).trans rfl
+  have h2 : fns "FN2-MACHINE-TAKE-FN2-CURSOR" acts = «FN2-MACHINE-TAKE-FN2-CURSOR».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-MACHINE-TAKE-FN2-CURSOR».key «FN2-MACHINE-TAKE-FN2-CURSOR».ix «FN2-MACHINE-TAKE-FN2-CURSOR».find
   rw [h2] at h
   unfold «FN2-MACHINE-TAKE-FN2-CURSOR».dispatch at h
   split at h
@@ -1434,7 +1460,8 @@ theorem «FN2-MACHINE-TAKE-FN2-CURSOR».fns_keepsPhase_FN2_CONN (acts : List Val
 theorem «FN2-MACHINE-TAKE-FN2-UPLOAD».fns_keepsPhase_FN2_CONN (acts : List Val) (v : Val) (h : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 12) (if 3 = 0 then v else Native.nth (Val.int 3) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 12) (acts.getD 7 Val.nil)) := by
-  have h2 : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch acts := (fns_key (k := 28921985886456418247636489268189151627093728041850412371993903428) acts rfl).trans rfl
+  have h2 : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-MACHINE-TAKE-FN2-UPLOAD».key «FN2-MACHINE-TAKE-FN2-UPLOAD».ix «FN2-MACHINE-TAKE-FN2-UPLOAD».find
   rw [h2] at h
   unfold «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch at h
   split at h
@@ -1445,7 +1472,8 @@ theorem «FN2-MACHINE-TAKE-FN2-UPLOAD».fns_keepsPhase_FN2_CONN (acts : List Val
 theorem «FN2-CNS-AUTHORITY-ALLOWS».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-AUTHORITY-ALLOWS" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 4 = 0 then v else Native.nth (Val.int 4) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 9 Val.nil)) := by
-  have h2 : fns "FN2-CNS-AUTHORITY-ALLOWS" acts = «FN2-CNS-AUTHORITY-ALLOWS».dispatch acts := (fns_key (k := 1723884694904297330483794297179121428888084709055409379155) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-AUTHORITY-ALLOWS" acts = «FN2-CNS-AUTHORITY-ALLOWS».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-AUTHORITY-ALLOWS».key «FN2-CNS-AUTHORITY-ALLOWS».ix «FN2-CNS-AUTHORITY-ALLOWS».find
   rw [h2] at h
   unfold «FN2-CNS-AUTHORITY-ALLOWS».dispatch at h
   split at h
@@ -1456,7 +1484,8 @@ theorem «FN2-CNS-AUTHORITY-ALLOWS».fns_keepsPhase_FN2_CNS (acts : List Val) (v
 theorem «FN2-CNS-COMMIT-OP».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-COMMIT-OP" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 6 = 0 then v else Native.nth (Val.int 6) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 16 Val.nil)) := by
-  have h2 : fns "FN2-CNS-COMMIT-OP" acts = «FN2-CNS-COMMIT-OP».dispatch acts := (fns_key (k := 23923706001020802060042256512270006570832) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-COMMIT-OP" acts = «FN2-CNS-COMMIT-OP».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-COMMIT-OP».key «FN2-CNS-COMMIT-OP».ix «FN2-CNS-COMMIT-OP».find
   rw [h2] at h
   unfold «FN2-CNS-COMMIT-OP».dispatch at h
   split at h
@@ -1467,7 +1496,8 @@ theorem «FN2-CNS-COMMIT-OP».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val)
 theorem «FN2-CNS-DECODE-PORT».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-DECODE-PORT" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 13 = 0 then v else Native.nth (Val.int 13) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 8 Val.nil)) := by
-  have h2 : fns "FN2-CNS-DECODE-PORT" acts = «FN2-CNS-DECODE-PORT».dispatch acts := (fns_key (k := 1567863996482899283808090840618163666787717716) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-DECODE-PORT" acts = «FN2-CNS-DECODE-PORT».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-DECODE-PORT».key «FN2-CNS-DECODE-PORT».ix «FN2-CNS-DECODE-PORT».find
   rw [h2] at h
   unfold «FN2-CNS-DECODE-PORT».dispatch at h
   split at h
@@ -1478,7 +1508,8 @@ theorem «FN2-CNS-DECODE-PORT».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Va
 theorem «FN2-CNS-FEED-ARTICLE».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-FEED-ARTICLE" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 5 = 0 then v else Native.nth (Val.int 5) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 11 Val.nil)) := by
-  have h2 : fns "FN2-CNS-FEED-ARTICLE" acts = «FN2-CNS-FEED-ARTICLE».dispatch acts := (fns_key (k := 401373183099622216655490234458052959899819920453) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-FEED-ARTICLE" acts = «FN2-CNS-FEED-ARTICLE».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-FEED-ARTICLE».key «FN2-CNS-FEED-ARTICLE».ix «FN2-CNS-FEED-ARTICLE».find
   rw [h2] at h
   unfold «FN2-CNS-FEED-ARTICLE».dispatch at h
   split at h
@@ -1489,7 +1520,8 @@ theorem «FN2-CNS-FEED-ARTICLE».fns_keepsPhase_FN2_CNS (acts : List Val) (v : V
 theorem «FN2-CNS-ITEM-NEXT».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-ITEM-NEXT" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 9 = 0 then v else Native.nth (Val.int 9) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 7 Val.nil)) := by
-  have h2 : fns "FN2-CNS-ITEM-NEXT" acts = «FN2-CNS-ITEM-NEXT».dispatch acts := (fns_key (k := 23923706001020802060153295012762281662548) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-ITEM-NEXT" acts = «FN2-CNS-ITEM-NEXT».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-ITEM-NEXT».key «FN2-CNS-ITEM-NEXT».ix «FN2-CNS-ITEM-NEXT».find
   rw [h2] at h
   unfold «FN2-CNS-ITEM-NEXT».dispatch at h
   split at h
@@ -1500,7 +1532,8 @@ theorem «FN2-CNS-ITEM-NEXT».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val)
 theorem «FN2-CNS-LOOKUP-CURSOR».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-LOOKUP-CURSOR" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 4 = 0 then v else Native.nth (Val.int 4) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 6 Val.nil)) := by
-  have h2 : fns "FN2-CNS-LOOKUP-CURSOR" acts = «FN2-CNS-LOOKUP-CURSOR».dispatch acts := (fns_key (k := 102751534873503287464283975969499058930626581450578) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-LOOKUP-CURSOR" acts = «FN2-CNS-LOOKUP-CURSOR».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-LOOKUP-CURSOR».key «FN2-CNS-LOOKUP-CURSOR».ix «FN2-CNS-LOOKUP-CURSOR».find
   rw [h2] at h
   unfold «FN2-CNS-LOOKUP-CURSOR».dispatch at h
   split at h
@@ -1511,7 +1544,8 @@ theorem «FN2-CNS-LOOKUP-CURSOR».fns_keepsPhase_FN2_CNS (acts : List Val) (v : 
 theorem «FN2-CNS-POST-REPLY».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-POST-REPLY" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 1 = 0 then v else Native.nth (Val.int 1) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 19 Val.nil)) := by
-  have h2 : fns "FN2-CNS-POST-REPLY" acts = «FN2-CNS-POST-REPLY».dispatch acts := (fns_key (k := 6124468736261325327432208865703521621658713) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-POST-REPLY" acts = «FN2-CNS-POST-REPLY».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-POST-REPLY».key «FN2-CNS-POST-REPLY».ix «FN2-CNS-POST-REPLY».find
   rw [h2] at h
   unfold «FN2-CNS-POST-REPLY».dispatch at h
   split at h
@@ -1522,7 +1556,8 @@ theorem «FN2-CNS-POST-REPLY».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val
 theorem «FN2-CNS-PUT-ARTICLE».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-PUT-ARTICLE" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 3 = 0 then v else Native.nth (Val.int 3) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 17 Val.nil)) := by
-  have h2 : fns "FN2-CNS-PUT-ARTICLE" acts = «FN2-CNS-PUT-ARTICLE».dispatch acts := (fns_key (k := 1567863996482899283822673819461126223086963781) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-PUT-ARTICLE" acts = «FN2-CNS-PUT-ARTICLE».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-PUT-ARTICLE».key «FN2-CNS-PUT-ARTICLE».ix «FN2-CNS-PUT-ARTICLE».find
   rw [h2] at h
   unfold «FN2-CNS-PUT-ARTICLE».dispatch at h
   split at h
@@ -1533,7 +1568,8 @@ theorem «FN2-CNS-PUT-ARTICLE».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Va
 theorem «FN2-CNS-PUT-ITEM».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-CNS-PUT-ITEM" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 3 = 0 then v else Native.nth (Val.int 3) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 17 Val.nil)) := by
-  have h2 : fns "FN2-CNS-PUT-ITEM" acts = «FN2-CNS-PUT-ITEM».dispatch acts := (fns_key (k := 93451976566487508047978509632550487373) acts rfl).trans rfl
+  have h2 : fns "FN2-CNS-PUT-ITEM" acts = «FN2-CNS-PUT-ITEM».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-CNS-PUT-ITEM».key «FN2-CNS-PUT-ITEM».ix «FN2-CNS-PUT-ITEM».find
   rw [h2] at h
   unfold «FN2-CNS-PUT-ITEM».dispatch at h
   split at h
@@ -1544,7 +1580,8 @@ theorem «FN2-CNS-PUT-ITEM».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) 
 theorem «FN2-MACHINE-TAKE-FN2-UPLOAD».fns_keepsPhase_FN2_CNS (acts : List Val) (v : Val) (h : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = some v) :
     Native.nth (Val.int 0) (Native.nth (Val.int 17) (if 3 = 0 then v else Native.nth (Val.int 3) v)) =
       Native.nth (Val.int 0) (Native.nth (Val.int 17) (acts.getD 7 Val.nil)) := by
-  have h2 : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch acts := (fns_key (k := 28921985886456418247636489268189151627093728041850412371993903428) acts rfl).trans rfl
+  have h2 : fns "FN2-MACHINE-TAKE-FN2-UPLOAD" acts = «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch acts :=
+    Dispatch.via_eq (T := fnTrees) acts «FN2-MACHINE-TAKE-FN2-UPLOAD».key «FN2-MACHINE-TAKE-FN2-UPLOAD».ix «FN2-MACHINE-TAKE-FN2-UPLOAD».find
   rw [h2] at h
   unfold «FN2-MACHINE-TAKE-FN2-UPLOAD».dispatch at h
   split at h

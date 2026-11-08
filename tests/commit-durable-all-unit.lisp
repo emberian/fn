@@ -159,3 +159,44 @@
 (assert-event (fn2-commit-recoverable-fence-removal))
 (assert-event (fn2-recovery-complete-positive))
 (assert-event (fn2-recovery-complete-held-removal))
+
+;; THE STRENGTHENED INVARIANT ON LIVE RUNS. FN2-ENV-DUR-INV (J1-J4 and the
+;; evidence projection) holds after every action of the honest runs above,
+;; in both barrier modes, from genesis: the positions of the actions after
+;; which it fails (expected none), the run's length, and its acknowledged
+;; batches (expected 1 and 2, so the acknowledging steps were checked).
+(defun fn2-cda-j-trace (actions i ids rlog acked fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil acked fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let* ((rlog (if entry (cons entry rlog) rlog))
+             (acked (fn2-env-observe ids acked fn2-core))
+             (ok (fn2-env-dur-inv ids acked (reverse rlog) fn2-core)))
+        (mv-let (bad acked fn2-core) (fn2-cda-j-trace (cdr actions) (+ 1 i) ids rlog acked fn2-core)
+          (mv (if ok bad (cons i bad)) acked fn2-core))))))
+(defun fn2-cda-j-scenario (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             (ids (fn2-env-commit-ids profile))
+             (pre (fn2-env-dur-inv ids nil nil fn2-core))
+             ((mv bad acked fn2-core) (fn2-cda-j-trace actions 0 ids nil nil fn2-core)))
+          (mv (list pre bad (len actions) acked) fn2-core))
+        result))))
+(make-event `(defconst *fn2-cda-j-honest* ',(fn2-cda-j-scenario 0)))
+(make-event `(defconst *fn2-cda-j-honest-fua* ',(fn2-cda-j-scenario 1)))
+(defun fn2-cda-j-positive (r)
+  (declare (xargs :verify-guards nil))
+  (and (nth 0 r) (null (nth 1 r)) (< 100 (nth 2 r))
+       (subsetp-equal '(1 2) (nth 3 r))))
+(assert-event (fn2-cda-j-positive *fn2-cda-j-honest*))
+(assert-event (fn2-cda-j-positive *fn2-cda-j-honest-fua*))
+;; Positive witness of FN2-ENV-DUR-TURN-PRESERVES: both honest runs keep the
+;; strengthened invariant through every fn2-turn and acknowledge 1 and 2.
+(defun fn2-dur-turn-positive ()
+  (declare (xargs :verify-guards nil))
+  (and (fn2-cda-j-positive *fn2-cda-j-honest*) (fn2-cda-j-positive *fn2-cda-j-honest-fua*)))
+(assert-event (fn2-dur-turn-positive))

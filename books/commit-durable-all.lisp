@@ -7,6 +7,8 @@
 ; tested instance of the statement here.
 (in-package "ACL2")
 (include-book "host-boundary")
+(include-book "executor-contracts")
+(include-book "commit-turn-frame")
 (include-book "assumptions-device")
 (include-book "owed")
 
@@ -414,6 +416,119 @@
   (and (fn2-env-observed-p (fn2-env-rows ids fn2-core) acked)
        (fn2-env-acked-durable-p acked log)))
 
+;; ---------------------------------------------------------------------------
+;; J1-J4, THE PHASE/HISTORY STRENGTHENING. FN2-ENV-INV is only the evidence
+;; projection: a row at :notify with no durable log is consistent with it, and
+;; one fn2-turn acknowledges that row's batch (tests/commit-executor-contracts-
+;; unit). FN2-ENV-DUR-INV adds what a commit row's phase and flags promise
+;; about the device log:
+;;  J1 a row whose reply count is positive, or at :publish or :notify, has a
+;;     positive batch at or below the installed root; a row at :install has
+;;     its batch durable in the log;
+;;  J2 a row's dependency flag names a write of its role-0 unit answered done
+;;     in full, its log flag the role-1 unit and the role-2 seal of its batch;
+;;     each fenced once the fence flag is set (or FUA in barrier mode 1); the
+;;     three roles share one extent;
+;;  J4 the published root is at or below the installed one, and batches
+;;     1..installed are durable in the log (publication follows predecessor
+;;     publication: the root installs batch B only as published + 1).
+;; J3 (submitted bytes stay bound to their loans) is the link the flags'
+;; rises need from the operations table; see FN2-ENV-DUR-INV's owed list.
+(defun fn2-env-root (fn2-core)
+  ; (ROWSP INSTALLED PUBLISHED) of the commit root's row 0
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (r)
+    (if (< 0 (fn2-commit-root-rows fn2-commit-root))
+        (list t (nfix (fn2-commit-root-installed 0 fn2-commit-root))
+              (nfix (fn2-commit-root-published 0 fn2-commit-root)))
+      (list nil 0 0))
+    r))
+(defun fn2-env-installed (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (nth 1 (fn2-env-root fn2-core)))
+; Entry W of LOG is a write the device answered done in full.
+(defun fn2-env-done-write-p (w log)
+  (declare (xargs :verify-guards nil))
+  (and (natp w) (true-listp log) (< w (len log))
+       (let ((e (nth w log)))
+         (and (fn2-dev-take-writep e)
+              (fn2-dev-done-answer-p (fn2-dev-answer (nth 1 e) (nth 2 e) (nthcdr (+ 1 w) log))
+                                     *fn2-dev-write-result* (len (nth 6 e)))))))
+; Some write from W on at OFFSET, answered done in full; carrying the seal of
+; commit B when B is non-nil; fenced (FN2-DEV-FENCED-WRITE-P) when FENCED.
+(defun fn2-env-written-from (w offset b fenced log)
+  (declare (xargs :verify-guards nil :measure (nfix (- (len log) (nfix w)))
+                  :hints (("Goal" :in-theory (disable fn2-env-done-write-p fn2-dev-fenced-write-p fn2-env-seal-commit)))))
+  (cond ((not (and (natp w) (true-listp log) (< w (len log)))) nil)
+        ((and (fn2-env-done-write-p w log) (equal (nth 4 (nth w log)) offset)
+              (or (not b) (equal (fn2-env-seal-commit (nth 6 (nth w log))) b))
+              (or (not fenced) (fn2-dev-fenced-write-p w log)))
+         t)
+        (t (fn2-env-written-from (+ 1 w) offset b fenced log))))
+(defun fn2-env-role-offset (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (mv-let (e epoch counter slot gen) (fn2-commit-resource id role fn2-core)
+    (declare (ignore epoch counter slot gen))
+    (+ (* (nfix e) *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*))))
+(defun fn2-env-role-extent (id role fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (mv-let (e epoch counter slot gen) (fn2-commit-resource id role fn2-core)
+    (declare (ignore epoch counter slot gen))
+    e))
+(defun fn2-env-j1-row (id log fn2-core)
+  ; J1
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((batch (fn2-machine-batch-no id fn2-core))
+        (installed (fn2-env-installed fn2-core))
+        (ackedp (and (eq (fn2-machine-cb-acks-read-code id fn2-core) :ok)
+                     (eq (fn2-machine-batch-no-read-code id fn2-core) :ok)
+                     (posp (fn2-machine-cb-acks id fn2-core))))
+        (rowp (fn2-commit-idp id fn2-core))
+        (phase (fn2-machine-phase id fn2-core)))
+    (and (implies (or ackedp (and rowp (member-equal phase (list *fn2-commit-state-publish*
+                                                                 *fn2-commit-state-notify*))))
+                  (and (posp batch) (<= batch installed)))
+         (implies (and rowp (equal phase *fn2-commit-state-install*))
+                  (and (posp batch) (fn2-env-batch-durable-p batch log))))))
+(defun fn2-env-j2-row (id log fn2-core)
+  ; J2
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((batch (fn2-machine-batch-no id fn2-core))
+        (rowp (fn2-commit-idp id fn2-core))
+        (fenced (or (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
+                    (equal (fn2-machine-cb-mode id fn2-core) 1))))
+    (and
+     (implies (and rowp (or (equal (fn2-machine-cb-deps-ok id fn2-core) 1)
+                            (equal (fn2-machine-cb-log-ok id fn2-core) 1)))
+              (and (natp (fn2-env-role-extent id 0 fn2-core))
+                   (equal (fn2-env-role-extent id 1 fn2-core) (fn2-env-role-extent id 0 fn2-core))
+                   (equal (fn2-env-role-extent id 2 fn2-core) (fn2-env-role-extent id 0 fn2-core))))
+     (implies (and rowp (equal (fn2-machine-cb-deps-ok id fn2-core) 1))
+              (fn2-env-written-from 0 (fn2-env-role-offset id 0 fn2-core) nil
+                                    (equal (fn2-machine-cb-fence-ok id fn2-core) 1) log))
+     (implies (and rowp (equal (fn2-machine-cb-log-ok id fn2-core) 1))
+              (and (fn2-env-written-from 0 (fn2-env-role-offset id 1 fn2-core) nil fenced log)
+                   (fn2-env-written-from 0 (fn2-env-role-offset id 2 fn2-core) batch fenced log))))))
+(defun fn2-env-j-row (id log fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (and (fn2-env-j1-row id log fn2-core) (fn2-env-j2-row id log fn2-core)))
+(defun fn2-env-j-rows (ids log fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom ids) t
+    (and (fn2-env-j-row (car ids) log fn2-core) (fn2-env-j-rows (cdr ids) log fn2-core))))
+(defun fn2-env-j-frontier (log fn2-core)
+  ; J4
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((root (fn2-env-root fn2-core)))
+    ; a core without a root row reads (nil 0 0): nothing installed
+    (and (<= (nth 2 root) (nth 1 root))
+         (fn2-env-prefix-durable-p (nth 1 root) log))))
+(defun fn2-env-dur-inv (ids acked log fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (and (fn2-env-inv ids acked log fn2-core)
+       (fn2-env-j-rows ids log fn2-core)
+       (fn2-env-j-frontier log fn2-core)))
+
 ; Durability only grows with the log.
 (local (defthm fn2-env-nth-append-low
   (implies (< (nfix n) (len x)) (equal (nth n (append x y)) (nth n x)))))
@@ -489,6 +604,312 @@
                          (more (if (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))
                                    (list (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))) nil))))
            :in-theory (disable fn2-env-inv fn2-env-inv-frame-step fn2-env-observe fn2-env-step))))
+
+;; J SUFFICES FOR THE EVIDENCE PROJECTION. Under J1 and J4 every batch a row
+;; shows acknowledged is at or below the installed root, and 1..installed are
+;; durable: re-observing ANY core satisfying J keeps ACKED-DURABLE, and the
+;; re-observed set covers the rows. So a turn (which logs nothing) preserves
+;; FN2-ENV-TURN-INV once it preserves J's rows and frontier at the fixed log.
+(defthm fn2-env-prefix-durable-down
+  (implies (and (fn2-env-prefix-durable-p n log) (natp m) (<= m (nfix n)))
+           (fn2-env-prefix-durable-p m log))
+  :hints (("Goal" :induct (fn2-env-prefix-durable-p n log)
+           :in-theory (disable fn2-env-batch-durable-p))))
+(defun fn2-env-acks-bounded-p (rows n)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows) t
+    (let ((r (car rows)))
+      (and (implies (and (eq (nth 0 r) :ok) (eq (nth 1 r) :ok) (posp (nth 2 r)))
+                    (and (natp (nth 3 r)) (<= (nth 3 r) (nfix n))))
+           (fn2-env-acks-bounded-p (cdr rows) n)))))
+(defthm fn2-env-acked-durable-add-nat
+  (implies (and (natp b) (fn2-env-acked-durable-p acked log) (fn2-env-prefix-durable-p b log))
+           (fn2-env-acked-durable-p (add-to-set-equal b acked) log))
+  :hints (("Goal" :in-theory (disable fn2-env-prefix-durable-p))))
+(defthm fn2-env-observe-rows-durable
+  (implies (and (fn2-env-acks-bounded-p rows n) (fn2-env-prefix-durable-p n log)
+                (fn2-env-acked-durable-p acked log))
+           (fn2-env-acked-durable-p (fn2-env-observe-rows rows acked) log))
+  :hints (("Goal" :induct (fn2-env-observe-rows rows acked)
+           :in-theory (disable fn2-env-prefix-durable-p fn2-env-acked-durable-p add-to-set-equal))))
+(defthm fn2-env-observed-p-mono
+  (implies (and (fn2-env-observed-p rows a) (subsetp-equal a b))
+           (fn2-env-observed-p rows b)))
+(defthm fn2-env-subsetp-add-to-set-x
+  (implies (subsetp-equal x acked) (subsetp-equal x (add-to-set-equal a acked))))
+(defthm fn2-env-observe-rows-superset-gen
+  (implies (subsetp-equal x acked) (subsetp-equal x (fn2-env-observe-rows rows acked)))
+  :hints (("Goal" :induct (fn2-env-observe-rows rows acked) :in-theory (disable add-to-set-equal))))
+(defthm fn2-env-member-observe-rows
+  (implies (member-equal a acked) (member-equal a (fn2-env-observe-rows rows acked)))
+  :hints (("Goal" :induct (fn2-env-observe-rows rows acked))))
+(defthm fn2-env-member-add-to-set
+  (member-equal a (add-to-set-equal a x)))
+(defthm fn2-env-observe-rows-covers
+  (fn2-env-observed-p rows (fn2-env-observe-rows rows acked))
+  :hints (("Goal" :induct (fn2-env-observe-rows rows acked) :in-theory (disable add-to-set-equal))))
+(defthm fn2-env-installed-natp
+  (natp (fn2-env-installed fn2-core))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-env-installed fn2-env-root))))
+(in-theory (disable fn2-env-installed))
+(defthm fn2-env-j-row-acks-bounded
+  (implies (and (fn2-env-j-row id log fn2-core)
+                (eq (fn2-machine-cb-acks-read-code id fn2-core) :ok)
+                (eq (fn2-machine-batch-no-read-code id fn2-core) :ok)
+                (posp (fn2-machine-cb-acks id fn2-core)))
+           (and (natp (fn2-machine-batch-no id fn2-core))
+                (<= (fn2-machine-batch-no id fn2-core) (nfix (fn2-env-installed fn2-core)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-j-row) (fn2-env-written-from fn2-env-batch-durable-p fn2-env-role-offset
+                                                    fn2-env-role-extent fn2-commit-idp)))))
+(defthm fn2-env-j-rows-acks-bounded
+  (implies (fn2-env-j-rows ids log fn2-core)
+           (fn2-env-acks-bounded-p (fn2-env-rows ids fn2-core) (fn2-env-installed fn2-core)))
+  :hints (("Goal" :induct (fn2-env-j-rows ids log fn2-core)
+           :in-theory '(fn2-env-j-rows fn2-env-rows fn2-env-acks-bounded-p car-cons cdr-cons
+                        nth-0-cons nth-add1 (:executable-counterpart zp) zp-open atom))
+          ("Subgoal *1/2" :use ((:instance fn2-env-j-row-acks-bounded (id (car ids)))))))
+(defthm fn2-env-j-frontier-installed
+  (implies (fn2-env-j-frontier log fn2-core)
+           (fn2-env-prefix-durable-p (fn2-env-installed fn2-core) log))
+  :hints (("Goal" :in-theory (e/d (fn2-env-installed) (fn2-env-prefix-durable-p fn2-env-root)))))
+
+;; J ONLY GROWS WITH THE LOG, and the host steps leave every child J reads.
+(local (defthm fn2-env-nthcdr-append
+  (implies (<= (nfix n) (len x))
+           (equal (nthcdr n (append x y)) (append (nthcdr n x) y)))))
+(local (defthm fn2-env-done-answer-append
+  (implies (consp tail)
+           (equal (fn2-dev-done-answer-p (append tail y) evkind count)
+                  (fn2-dev-done-answer-p tail evkind count)))))
+(local (defthm fn2-env-done-answer-nil (not (fn2-dev-done-answer-p nil evkind count))))
+(defthm fn2-env-done-write-extends
+  (implies (and (fn2-env-done-write-p w log) (true-listp more))
+           (fn2-env-done-write-p w (append log more)))
+  :hints (("Goal" :in-theory '(fn2-env-done-write-p fn2-env-nth-append-low fn2-env-nthcdr-append
+                                fn2-env-done-answer-append fn2-dev-answer-append fn2-env-len-append
+                                fn2-env-done-answer-nil natp nfix fix (:type-prescription true-listp-append) true-listp-append
+                                (:type-prescription len) (:type-prescription fn2-dev-answer)
+                                (:type-prescription binary-append))
+           :cases ((consp (fn2-dev-answer (nth 1 (nth w log)) (nth 2 (nth w log)) (nthcdr (+ 1 w) log)))))))
+(defthm fn2-env-written-extends
+  (implies (and (fn2-env-written-from w offset b fenced log) (true-listp more))
+           (fn2-env-written-from w offset b fenced (append log more)))
+  :hints (("Goal" :induct (fn2-env-written-from w offset b fenced log)
+           :in-theory '(fn2-env-written-from fn2-env-done-write-extends fn2-dev-fenced-write-extends
+                        fn2-env-nth-append-low fn2-env-len-append (:type-prescription true-listp-append)
+                        true-listp-append natp nfix fix (:type-prescription len)))))
+(defthm fn2-env-batch-durable-extends
+  (implies (and (fn2-env-batch-durable-p b log) (true-listp more))
+           (fn2-env-batch-durable-p b (append log more)))
+  :hints (("Goal" :in-theory '(fn2-env-batch-durable-p) :use ((:instance fn2-env-seal-durable-extends (w 0))))))
+(defthm fn2-env-j-rows-extends
+  (implies (and (fn2-env-j-rows ids log fn2-core) (true-listp more))
+           (fn2-env-j-rows ids (append log more) fn2-core))
+  :hints (("Goal" :induct (fn2-env-j-rows ids log fn2-core)
+           :in-theory '(fn2-env-j-rows fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-env-written-extends fn2-env-batch-durable-extends))))
+(defthm fn2-env-j-frontier-extends
+  (implies (and (fn2-env-j-frontier log fn2-core) (true-listp more))
+           (fn2-env-j-frontier (append log more) fn2-core))
+  :hints (("Goal" :in-theory '(fn2-env-j-frontier fn2-env-prefix-durable-extends))))
+;; the readers J uses, past the host steps' children (ops, pool, extents)
+(defun fn2-env-j-reader-frame-1 (fn args updates)
+  (declare (xargs :mode :program))
+  (if (atom updates) nil
+    (cons `(defthm ,(fn2-columns-sym fn (concatenate 'string "-OF-" (symbol-name (car updates))))
+             (equal (,fn ,@args (,(car updates) x fn2-core)) (,fn ,@args fn2-core))
+             :hints (("Goal" :in-theory (enable ,fn))))
+          (fn2-env-j-reader-frame-1 fn args (cdr updates)))))
+(defun fn2-env-j-reader-frame-events (readers updates)
+  (declare (xargs :mode :program))
+  (if (atom readers) nil
+    (append (fn2-env-j-reader-frame-1 (caar readers) (cdar readers) updates)
+            (fn2-env-j-reader-frame-events (cdr readers) updates))))
+(make-event
+ (value (cons 'progn
+   (fn2-env-j-reader-frame-events
+    '((fn2-machine-idp id) (fn2-machine-kind id) (fn2-machine-slot id) (fn2-machine-phase id) (fn2-machine-batch-no id) (fn2-machine-cb-acks id)
+      (fn2-machine-cb-acks-read-code id) (fn2-machine-batch-no-read-code id)
+      (fn2-machine-cb-fence-ok id) (fn2-machine-cb-mode id) (fn2-machine-cb-deps-ok id)
+      (fn2-machine-cb-log-ok id) (fn2-commit-idp id) (fn2-commit-row id) (fn2-commit-resource id role) (fn2-env-root))
+    '(update-fn2-core-ops update-fn2-core-pool update-fn2-core-extents)))))
+(defthm fn2-env-j-row-child-frame
+  (and (equal (fn2-env-j-row id log (update-fn2-core-ops x fn2-core)) (fn2-env-j-row id log fn2-core))
+       (equal (fn2-env-j-row id log (update-fn2-core-pool x fn2-core)) (fn2-env-j-row id log fn2-core))
+       (equal (fn2-env-j-row id log (update-fn2-core-extents x fn2-core)) (fn2-env-j-row id log fn2-core))
+       (equal (fn2-env-root (update-fn2-core-ops x fn2-core)) (fn2-env-root fn2-core))
+       (equal (fn2-env-root (update-fn2-core-pool x fn2-core)) (fn2-env-root fn2-core))
+       (equal (fn2-env-root (update-fn2-core-extents x fn2-core)) (fn2-env-root fn2-core)))
+  :hints (("Goal" :in-theory '(fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-env-role-offset fn2-env-role-extent fn2-env-installed
+                                fn2-machine-phase-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-pool fn2-machine-phase-of-update-fn2-core-extents fn2-machine-batch-no-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-pool fn2-machine-batch-no-of-update-fn2-core-extents fn2-machine-cb-acks-of-update-fn2-core-ops fn2-machine-cb-acks-of-update-fn2-core-pool fn2-machine-cb-acks-of-update-fn2-core-extents fn2-machine-cb-acks-read-code-of-update-fn2-core-ops fn2-machine-cb-acks-read-code-of-update-fn2-core-pool fn2-machine-cb-acks-read-code-of-update-fn2-core-extents fn2-machine-batch-no-read-code-of-update-fn2-core-ops fn2-machine-batch-no-read-code-of-update-fn2-core-pool fn2-machine-batch-no-read-code-of-update-fn2-core-extents fn2-machine-cb-fence-ok-of-update-fn2-core-ops fn2-machine-cb-fence-ok-of-update-fn2-core-pool fn2-machine-cb-fence-ok-of-update-fn2-core-extents fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-cb-mode-of-update-fn2-core-pool fn2-machine-cb-mode-of-update-fn2-core-extents fn2-machine-cb-deps-ok-of-update-fn2-core-ops fn2-machine-cb-deps-ok-of-update-fn2-core-pool fn2-machine-cb-deps-ok-of-update-fn2-core-extents fn2-machine-cb-log-ok-of-update-fn2-core-ops fn2-machine-cb-log-ok-of-update-fn2-core-pool fn2-machine-cb-log-ok-of-update-fn2-core-extents fn2-commit-idp-of-update-fn2-core-ops fn2-commit-idp-of-update-fn2-core-pool fn2-commit-idp-of-update-fn2-core-extents fn2-commit-resource-of-update-fn2-core-ops fn2-commit-resource-of-update-fn2-core-pool fn2-commit-resource-of-update-fn2-core-extents fn2-env-root-of-update-fn2-core-ops fn2-env-root-of-update-fn2-core-pool fn2-env-root-of-update-fn2-core-extents))))
+(defthm fn2-env-j-child-frame
+  (and (equal (fn2-env-j-rows ids log (update-fn2-core-ops x fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (update-fn2-core-pool x fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (update-fn2-core-extents x fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-frontier log (update-fn2-core-ops x fn2-core)) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (update-fn2-core-pool x fn2-core)) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (update-fn2-core-extents x fn2-core)) (fn2-env-j-frontier log fn2-core)))
+  :hints (("Goal" :induct (fn2-env-j-rows ids log fn2-core)
+           :in-theory '(fn2-env-j-rows fn2-env-j-frontier fn2-env-j-row-child-frame))))
+(defthm fn2-env-j-host-frame
+  (and (equal (fn2-env-j-rows ids log (fn2-host-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-core))
+              (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (fn2-host-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-core))
+              (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (fn2-host-post-clock mono real flags fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (fn2-host-post-signal bits fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (mv-nth 1 (fn2-host-outbox-ack n fn2-core))) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (mv-nth 1 (fn2-host-op-finish slot gen fn2-core))) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (fn2-env-fill rslot rgen slot gen idx octets fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-rows ids log (fn2-env-begin-epoch epoch fn2-core)) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-host-post-result cell slot gen evkind outcome reason count aux0 aux1 fn2-core))
+              (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-host-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-core))
+              (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-host-post-clock mono real flags fn2-core)) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-host-post-signal bits fn2-core)) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (mv-nth 1 (fn2-host-outbox-ack n fn2-core))) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (mv-nth 1 (fn2-host-op-finish slot gen fn2-core))) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-env-fill rslot rgen slot gen idx octets fn2-core)) (fn2-env-j-frontier log fn2-core))
+       (equal (fn2-env-j-frontier log (fn2-env-begin-epoch epoch fn2-core)) (fn2-env-j-frontier log fn2-core)))
+  :hints (("Goal" :in-theory (e/d (fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock
+                                   fn2-host-post-signal fn2-host-outbox-ack fn2-host-op-finish
+                                   fn2-env-fill fn2-env-begin-epoch)
+                                  (fn2-env-j-rows fn2-env-j-frontier)))))
+(defthm fn2-env-j-take-frame
+  (and (equal (fn2-env-j-rows ids log (mv-nth 1 (fn2-env-take nil image fn2-core))) (fn2-env-j-rows ids log fn2-core))
+       (equal (fn2-env-j-frontier log (mv-nth 1 (fn2-env-take nil image fn2-core))) (fn2-env-j-frontier log fn2-core)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-take) (fn2-env-j-rows fn2-env-j-frontier)))))
+(defthm fn2-env-j-host-step-frame
+  (implies (not (member-eq (fn2-env-tag action) '(:turn :admit)))
+           (and (equal (fn2-env-j-rows ids log (mv-nth 1 (fn2-env-step action nil image rlog fn2-core)))
+                       (fn2-env-j-rows ids log fn2-core))
+                (equal (fn2-env-j-frontier log (mv-nth 1 (fn2-env-step action nil image rlog fn2-core)))
+                       (fn2-env-j-frontier log fn2-core))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-step fn2-env-loan-write fn2-env-post)
+                                  (fn2-env-j-rows fn2-env-j-frontier fn2-env-take)))))
+(defthm fn2-env-dur-inv-host-step
+  (implies (and (fn2-env-dur-inv ids acked log fn2-core)
+                (not (member-eq (fn2-env-tag action) '(:turn :admit))))
+           (mv-let (entry after) (fn2-env-step action nil image rlog fn2-core)
+             (fn2-env-dur-inv ids (fn2-env-observe ids acked after)
+                              (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-dur-inv)
+                                  (fn2-env-inv fn2-env-j-rows fn2-env-j-frontier fn2-env-observe fn2-env-step))
+           :use ((:instance fn2-env-inv-host-step)
+                 (:instance fn2-env-j-rows-extends
+                            (fn2-core (mv-nth 1 (fn2-env-step action nil image rlog fn2-core)))
+                            (more (if (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))
+                                      (list (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))) nil)))
+                 (:instance fn2-env-j-frontier-extends
+                            (fn2-core (mv-nth 1 (fn2-env-step action nil image rlog fn2-core)))
+                            (more (if (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))
+                                      (list (mv-nth 0 (fn2-env-step action nil image rlog fn2-core))) nil)))))))
+
+;; J2 AT :DURABLE. A row whose dependency, log and fence flags are set has
+;; its batch durable: the fenced role-2 write carries its seal, and the
+;; fenced role-0 and role-1 writes are its extent's page and records units.
+(defthm fn2-env-written-fenced-offset
+  (implies (fn2-env-written-from w offset b t log)
+           (fn2-dev-fenced-offset-from w offset log))
+  :hints (("Goal" :induct (fn2-env-written-from w offset b t log)
+           :in-theory (disable fn2-env-done-write-p fn2-dev-fenced-write-p fn2-env-seal-commit))))
+(defthm fn2-env-written-seal-durable
+  (implies (and (fn2-env-written-from w offset b t log) b (natp offset)
+                (equal (mod offset *fn2-commit-extent-bytes*) (* 2 *fn2-commit-unit-bytes*))
+                (fn2-dev-fenced-offset-from 0 (- offset (* 2 *fn2-commit-unit-bytes*)) log)
+                (fn2-dev-fenced-offset-from 0 (+ (- offset (* 2 *fn2-commit-unit-bytes*)) *fn2-commit-unit-bytes*) log))
+           (fn2-env-seal-durable-from w b log))
+  :hints (("Goal" :induct (fn2-env-written-from w offset b t log)
+           :in-theory (disable fn2-env-done-write-p fn2-dev-fenced-write-p fn2-env-seal-commit
+                               fn2-dev-fenced-offset-from mod))))
+(defthm fn2-env-extent-offset-mod
+  (implies (natp e)
+           (equal (mod (+ (* e *fn2-commit-extent-bytes*) (* 2 *fn2-commit-unit-bytes*)) *fn2-commit-extent-bytes*)
+                  (* 2 *fn2-commit-unit-bytes*)))
+  :hints (("Goal" :in-theory (enable mod))))
+(defthm fn2-env-j-row-durable-flags
+  (implies (and (fn2-env-j-row id log fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-machine-cb-deps-ok id fn2-core) 1)
+                (equal (fn2-machine-cb-log-ok id fn2-core) 1)
+                (equal (fn2-machine-cb-fence-ok id fn2-core) 1)
+                (fn2-machine-batch-no id fn2-core))
+           (fn2-env-batch-durable-p (fn2-machine-batch-no id fn2-core) log))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-role-offset fn2-env-role-extent)
+                                  (fn2-env-written-from fn2-dev-fenced-offset-from fn2-env-seal-durable-from
+                                   fn2-env-installed fn2-commit-idp fn2-commit-resource))
+           :use ((:instance fn2-env-written-seal-durable (w 0) (b (fn2-machine-batch-no id fn2-core))
+                            (offset (fn2-env-role-offset id 2 fn2-core)))
+                 (:instance fn2-env-written-fenced-offset (w 0) (b nil) (offset (fn2-env-role-offset id 0 fn2-core)))
+                 (:instance fn2-env-written-fenced-offset (w 0) (b nil) (offset (fn2-env-role-offset id 1 fn2-core)))
+                 (:instance fn2-env-extent-offset-mod (e (fn2-env-role-extent id 0 fn2-core)))))))
+
+(defthm fn2-env-prefix-durable-batch
+  (implies (and (fn2-env-prefix-durable-p n log) (posp m) (<= m (nfix n)))
+           (fn2-env-batch-durable-p m log))
+  :hints (("Goal" :in-theory (disable fn2-env-batch-durable-p fn2-env-prefix-durable-p)
+           :use ((:instance fn2-env-prefix-durable-down)
+                 (:instance fn2-env-prefix-durable-p (n m))))))
+(defun-nx fn2-env-j-same-evidence (id a b)
+  ; the columns and children J2 reads of row ID agree in cores A and B
+  (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+       (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a))
+       (equal (fn2-machine-batch-no-read-code id b) (fn2-machine-batch-no-read-code id a))
+       (equal (fn2-machine-cb-deps-ok id b) (fn2-machine-cb-deps-ok id a))
+       (equal (fn2-machine-cb-log-ok id b) (fn2-machine-cb-log-ok id a))
+       (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+       (equal (fn2-machine-cb-mode id b) (fn2-machine-cb-mode id a))
+       (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))
+       (equal (fn2-env-role-extent id 1 b) (fn2-env-role-extent id 1 a))
+       (equal (fn2-env-role-extent id 2 b) (fn2-env-role-extent id 2 a))))
+(defthm fn2-env-role-offset-of-extent
+  (equal (fn2-env-role-offset id role c)
+         (+ (* (nfix (fn2-env-role-extent id role c)) *fn2-commit-extent-bytes*) (* role *fn2-commit-unit-bytes*)))
+  :hints (("Goal" :in-theory (enable fn2-env-role-offset fn2-env-role-extent))))
+;; THE ROW TRANSFER: a step that keeps J2's evidence of row ID, keeps the
+;; frontier and does not lower the installed root keeps J at ID, provided it
+;; changes neither the row's phase nor its acknowledgement, or the row's
+;; batch was already at or below the installed root (then every phase and
+;; reply count is consistent with J1, the batch being durable by J4). Each
+;; commit arm's lift instantiates it with the arm's FRAME and WRITES.
+(defthm fn2-env-j2-row-congruence
+  (implies (fn2-env-j-same-evidence id a b)
+           (equal (fn2-env-j2-row id log b) (fn2-env-j2-row id log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j2-row fn2-env-j-same-evidence fn2-env-role-offset-of-extent))))
+(defthm fn2-env-j1-row-transfer
+  (implies (and (fn2-env-j1-row id log a)
+                (fn2-env-j-frontier log b)
+                (fn2-env-j-same-evidence id a b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
+                (or (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                         (equal (fn2-machine-cb-acks id b) (fn2-machine-cb-acks id a))
+                         (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (fn2-env-j1-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j1-row fn2-env-j-same-evidence posp natp nfix
+                               (:type-prescription fn2-env-installed-natp) member-equal)
+           :use ((:instance fn2-env-j-frontier-installed (fn2-core b))
+                 (:instance fn2-env-prefix-durable-batch (n (fn2-env-installed b))
+                            (m (fn2-machine-batch-no id a)))))))
+(defthm fn2-env-j-row-transfer
+  (implies (and (fn2-env-j-row id log a)
+                (fn2-env-j-frontier log b)
+                (fn2-env-j-same-evidence id a b)
+                (<= (fn2-env-installed a) (fn2-env-installed b))
+                (or (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                         (equal (fn2-machine-cb-acks id b) (fn2-machine-cb-acks id a))
+                         (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (fn2-env-j-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j-row)
+           :use ((:instance fn2-env-j1-row-transfer) (:instance fn2-env-j2-row-congruence)))))
 
 ;; :ADMIT. The admission adds no reply a commit row did not show before:
 ;; fn2-env-no-new-acks-p of the rows after against the rows before, so
@@ -848,6 +1269,232 @@
                           (append log (if entry (list entry) nil)) after)))
   :hints (("Goal" :in-theory (union-theories '(member-equal) (theory 'minimal-theory))
            :use (fn2-env-inv-admit-step fn2-env-inv-host-step))))
+
+;; THE COLUMN BRIDGE: a commit-table row frame (table child 9) that keeps
+;; the rows field (column 33) and the directory's kinds and slots
+;; (fn2-ctf-dir) keeps every J reader of a commit id outside the frame's
+;; columns, and every column at a slot other than the frame's row; J is
+;; trivially true of a non-commit id. FN2-ENV-J-ROW-OF-ROW-FRAME is the lift
+;; each commit arm instantiates with its FRAME (fn2-commit-run-arm-row-frame).
+;; Column and child indices are the commit table's (cross-checked below).
+(make-event
+ (let* ((world (w state)) (tcols (strip-cars (fn2-machine-property 'fn2-commit :table world))))
+   (value `(assert-event
+            (and (equal *fn2-env-tk* 9) (equal *fn2-env-ri* 33) (equal *fn2-env-m* 3)
+                 (equal ',(list (position-eq 'phase tcols) (position-eq 'batch-no tcols) (position-eq 'cb-mode tcols)
+                                (position-eq 'cb-fence-ok tcols) (position-eq 'cb-deps-ok tcols)
+                                (position-eq 'cb-log-ok tcols) (position-eq 'cb-acks tcols)
+                                (fn2-arm-frame-child-index 'fn2-core-commit-io world)
+                                (fn2-arm-frame-child-index 'fn2-core-commit-root world))
+                        '(0 9 13 23 24 25 27 30 31)))))))
+(defthm fn2-env-j-row-off-kind
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (not (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*)))
+           (fn2-env-j-row id log fn2-core))
+  :hints (("Goal" :in-theory (e/d (fn2-env-j-row fn2-env-j1-row fn2-env-j2-row fn2-machine-cb-acks-read-code)
+                                  (fn2-env-written-from fn2-env-batch-durable-p fn2-env-installed))
+           :use ((:instance fn2-commit-idp-kind-value)))))
+(defun fn2-env-row-read-events (fields)
+  (declare (xargs :mode :program))
+  (if (atom fields) nil
+    (let* ((f (caar fields)) (j (cdar fields))
+           (r (fn2-columns-col-name 'fn2-machine f))
+           (tr (fn2-columns-col-name 'fn2-commit f)) (ai (fn2-columns-sym tr "$AI")))
+      (cons
+       `(defthm ,(fn2-columns-sym r "-OF-ROW-FRAME")
+          (implies (and (fn2-arm-row-frame 9 row cs ch a b) (not (member-equal 9 ch)) (natp row)
+                        (not (member-equal 33 cs)) (fn2-ctf-dir b a)
+                        (equal (fn2-machine-kind id a) *fn2-commit-kind*)
+                        (or (not (member-equal ,j cs)) (not (equal (fn2-machine-slot id a) row))))
+                   (equal (,r id b) (,r id a)))
+          :rule-classes nil
+          :hints (("Goal" :in-theory (e/d (,r fn2-commit-table fn2-commit-rows ,tr ,ai)
+                                          (fn2-machine-kind fn2-machine-slot fn2-machine-idp nth update-nth
+                                           fn2-arm-row-frame fn2-ctf-dir))
+                   :cases ((member-equal ,j cs))
+                   :do-not-induct t
+                   :use ((:instance fn2-ctf-dir-readers)
+                         (:instance fn2-arm-row-frame-cols (table 9) (columns cs) (children ch))
+                         (:instance fn2-arm-cols-nth (k 0) (j 33) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-arm-cols-nth (k 0) (j ,j) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-env-cols-nth-in (k 0) (j ,j) (row row) (columns cs) (a (nth 9 a)) (b (nth 9 b)))
+                         (:instance fn2-env-nth-off-update-nth (r row) (s (fn2-machine-slot id a))
+                                    (x (nth ,j (nth 9 a))) (y (nth ,j (nth 9 b))))))))
+       (fn2-env-row-read-events (cdr fields))))))
+(make-event (value (cons 'progn (fn2-env-row-read-events
+  '((phase . 0) (batch-no . 9) (cb-mode . 13) (cb-fence-ok . 23) (cb-deps-ok . 24) (cb-log-ok . 25) (cb-acks . 27))))))
+(defthm fn2-env-read-codes-of-row-frame
+  (implies (and (fn2-arm-row-frame 9 row cs ch a b) (not (member-equal 9 ch))
+                (not (member-equal 33 cs)) (fn2-ctf-dir b a))
+           (and (equal (fn2-machine-batch-no-read-code id b) (fn2-machine-batch-no-read-code id a))
+                (equal (fn2-machine-cb-acks-read-code id b) (fn2-machine-cb-acks-read-code id a))
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-machine-batch-no-read-code fn2-machine-cb-acks-read-code fn2-commit-idp
+                                   fn2-commit-snapshot-read-code fn2-machine-phase-read-code fn2-commit-row
+                                   fn2-commit-table fn2-commit-rows)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp nth update-nth
+                                   fn2-arm-row-frame fn2-ctf-dir))
+           :do-not-induct t
+           :use ((:instance fn2-ctf-dir-readers)
+                 (:instance fn2-arm-row-frame-cols (table 9) (columns cs) (children ch))
+                 (:instance fn2-arm-cols-nth (k 0) (j 33) (columns cs) (a (nth 9 a)) (b (nth 9 b)))))))
+(defthm fn2-env-child-congruences
+  (implies (and (equal (nth 30 b) (nth 30 a)) (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a)))
+           (equal (fn2-commit-resource id role b) (fn2-commit-resource id role a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-resource fn2-core-commit-io))))
+(defthm fn2-env-root-congruence
+  (implies (equal (nth 31 b) (nth 31 a)) (equal (fn2-env-root b) (fn2-env-root a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-root fn2-core-commit-root))))
+(defthm fn2-env-row-frame-child
+  (implies (and (fn2-arm-row-frame tb row cs ch a b) (natp k) (not (equal k tb)) (not (member-equal k ch)))
+           (equal (nth k b) (nth k a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-arm-row-frame) (nth))
+           :use ((:instance fn2-arm-kids-nth (i 0) (free (cons tb ch)))))))
+(defthm fn2-env-j-row-of-row-frame
+  (implies (and (fn2-env-j-row id log a) (fn2-env-j-frontier log a)
+                (fn2-corep b) (fn2-core-wfp b)
+                (fn2-arm-row-frame 9 row cs ch a b) (natp row)
+                (not (member-equal 9 ch)) (not (member-equal 30 ch)) (not (member-equal 31 ch))
+                (not (member-equal 33 cs)) (not (member-equal 9 cs)) (not (member-equal 13 cs))
+                (not (member-equal 23 cs)) (not (member-equal 24 cs)) (not (member-equal 25 cs))
+                (fn2-ctf-dir b a)
+                (or (not (equal (fn2-machine-slot id a) row))
+                    (and (not (member-equal 0 cs)) (not (member-equal 27 cs)))
+                    (and (posp (fn2-machine-batch-no id a))
+                         (<= (fn2-machine-batch-no id a) (fn2-env-installed a)))))
+           (and (fn2-env-j-row id log b) (fn2-env-j-frontier log b)
+                (equal (fn2-env-installed b) (fn2-env-installed a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j-same-evidence fn2-env-role-extent fn2-env-installed fn2-env-j-frontier
+                                               fn2-arm-row-frame natp member-equal)
+                                             (theory 'minimal-theory))
+           :cases ((equal (fn2-machine-kind id a) *fn2-commit-kind*))
+           :do-not-induct t
+           :use ((:instance fn2-ctf-dir-readers)
+                 (:instance fn2-env-j-row-off-kind (fn2-core b))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 30))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 31))
+                 (:instance fn2-env-root-congruence)
+                 (:instance fn2-env-read-codes-of-row-frame)
+                 (:instance fn2-env-child-congruences (role 0))
+                 (:instance fn2-env-child-congruences (role 1))
+                 (:instance fn2-env-child-congruences (role 2))
+                 (:instance fn2-machine-phase-of-row-frame)
+                 (:instance fn2-machine-batch-no-of-row-frame)
+                 (:instance fn2-machine-cb-mode-of-row-frame)
+                 (:instance fn2-machine-cb-fence-ok-of-row-frame)
+                 (:instance fn2-machine-cb-deps-ok-of-row-frame)
+                 (:instance fn2-machine-cb-log-ok-of-row-frame)
+                 (:instance fn2-machine-cb-acks-of-row-frame)
+                 (:instance fn2-env-j-row-transfer)))))
+
+;; ---------------------------------------------------------------------------
+;; Executor instance interface.  A turn logs nothing, but may expose new
+;; replies.  Therefore the fixed ghost ACKED is re-observed at the current
+;; core in the lifted predicate; holding ACKED fixed in FN2-ENV-INV itself
+;; would incorrectly forbid a legitimate notify step.
+;; This is the evidence projection of the required phase/history invariant.
+;; It is NOT inductive by itself: executor-contracts-unit's companion
+;; commit test exhibits an unfenced :notify row satisfying the old invariant.
+;; The notify-invariant lane supplies J1-J4; the run/observe/grant frame
+;; obligations also remain necessary.  Do not admit FN2-ENV-TURN-INSTANCE
+;; until those semantic obligations are discharged.
+(defun-nx fn2-env-turn-inv (g c)
+  (fn2-env-inv (nth 0 g) (fn2-env-observe (nth 0 g) (nth 1 g) c) (nth 2 g) c))
+(defun-nx fn2-env-turn-rel (tag args g before after)
+  (declare (ignorable tag args))
+  (implies (fn2-env-turn-inv g before) (fn2-env-turn-inv g after)))
+(defmacro fn2-env-turn-instance ()
+  '(defthm fn2-env-turn-preserves
+     (implies (and (fn2-env-turn-inv g fn2-core)
+                   (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+              (fn2-env-turn-inv g (mv-nth 4 (fn2-turn fn2-core))))
+     :hints (("Goal"
+              :use ((:functional-instance fn2-executor-inv-turn
+                      (fn2-executor-inv fn2-env-turn-inv)
+                      (fn2-executor-rel fn2-env-turn-rel)))
+              :in-theory (disable fn2-corep fn2-core-wfp fn2-turn
+                           fn2-env-inv fn2-env-observe fn2-env-observe-is-rows fn2-env-rows
+                           fn2-env-observed-p fn2-env-acked-durable-p)
+              :do-not-induct t))))
+(defthm fn2-env-turn-inv-entry
+  (implies (fn2-env-inv ids acked log fn2-core)
+           (fn2-env-turn-inv (list ids acked log) fn2-core))
+  :hints (("Goal" :in-theory (disable fn2-env-rows fn2-env-observed-p
+                                      fn2-env-observe-rows fn2-env-acked-durable-p))))
+(defun-nx fn2-env-dur-turn-inv (g c)
+  ; the turn's predicate: J's rows and frontier at the fixed log (nth 2 g),
+  ; the ghost acknowledged set (nth 1 g) durable in it
+  (and (fn2-env-j-rows (nth 0 g) (nth 2 g) c)
+       (fn2-env-j-frontier (nth 2 g) c)
+       (fn2-env-acked-durable-p (nth 1 g) (nth 2 g))))
+(defthm fn2-env-dur-turn-inv-projection
+  (implies (fn2-env-dur-turn-inv g c) (fn2-env-turn-inv g c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-turn-inv fn2-env-inv)
+                                  (fn2-env-j-rows fn2-env-j-frontier fn2-env-installed fn2-env-rows
+                                   fn2-env-observe-rows fn2-env-acked-durable-p fn2-env-prefix-durable-p
+                                   fn2-env-observed-p))
+           :use ((:instance fn2-env-observe-rows-durable (rows (fn2-env-rows (nth 0 g) c))
+                            (n (fn2-env-installed c)) (acked (nth 1 g)) (log (nth 2 g)))
+                 (:instance fn2-env-observe-rows-covers (rows (fn2-env-rows (nth 0 g) c)) (acked (nth 1 g)))
+                 (:instance fn2-env-j-rows-acks-bounded (ids (nth 0 g)) (log (nth 2 g)) (fn2-core c))
+                 (:instance fn2-env-j-frontier-installed (log (nth 2 g)) (fn2-core c))))))
+(defthm fn2-env-dur-inv-entry
+  (implies (fn2-env-dur-inv ids acked log fn2-core)
+           (fn2-env-dur-turn-inv (list ids acked log) fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn2-env-j-rows fn2-env-j-frontier fn2-env-rows fn2-env-observed-p
+                                      fn2-env-acked-durable-p))))
+; The turn's half, to be proved by FN2-EXECUTOR-INSTANTIATE with predicate
+; FN2-ENV-DUR-TURN-INV and relation "every cut preserves it" (not a new turn
+; induction). With FN2-ENV-DUR-TURN-INV-PROJECTION it gives the :turn step of
+; FN2-ENV-DUR-INV, and with FN2-ENV-DUR-INV-HOST-STEP the run's invariant.
+(defthm-owed fn2-env-dur-turn-preserves (g fn2-core)
+  (implies (and (fn2-env-dur-turn-inv g fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (fn2-env-dur-turn-inv g (mv-nth 4 (fn2-turn fn2-core))))
+  :schema :invariant :from (:machine fn2-commit)
+  :teeth (fn2-dur-turn-positive fn2-dur-turn-j-removal)
+  :doc "fn2-turn preserves J1-J4 (FN2-ENV-J-ROWS, FN2-ENV-J-FRONTIER) at a fixed device log, so that every batch a commit row shows acknowledged stays durable (FN2-ENV-DUR-TURN-INV-PROJECTION). The executor-level lift FN2-EXECUTOR-INV-TURN reduces it to one obligation per cut in *FN2-EXECUTOR-CONTRACT-CUTS*. Owed, by owner: (1) cross-kind: every non-commit cut (the other kinds' -RUN / -RUN-STUB and observe routes, the wait-source grants, fn2-member-replay; *FN2-COMMIT-TURN-FRAME-BLOCKERS*) must leave the directory's kinds and slots, the commit table, the commit root and the commit-io table, which needs their KIDS/DIR constraints (dispatch-contracts, handler-frames); (2) commit-internal: the arms that raise J's flags or root fields: :dependencies/:log-write (deps-ok/log-ok from the counted write results), the write/fence handler (cb-done, fence-ok), which need J3 (each counted completion is the first done answer in the log to a take of the row's role write at its offset carrying its loan's bytes, the seal of its batch for role 2); :durable to :install (FN2-ENV-J-ROW-DURABLE-FLAGS), :install and :publish (root-swap installs only published + 1, publishes only installed), :notify (FN2-COMMIT-RUN-NOTIFY-PHASE-WRITES: a reply only at :notify, batch at or below installed by J1).")
+(defthm fn2-env-turn-inv-exit-by-definition
+  (implies (and (fn2-env-turn-inv (list ids acked log) (mv-nth 4 (fn2-turn fn2-core)))
+                (equal (fn2-env-tag action) :turn))
+           (mv-let (entry after) (fn2-env-step action nil image rlog fn2-core)
+             (declare (ignore entry))
+             (fn2-env-inv ids (fn2-env-observe ids acked after) log after)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-step fn2-env-turn-inv)
+                      (fn2-env-inv fn2-env-observe fn2-env-observe-is-rows fn2-turn)))))
+
+; The turn's accounting, reset and service-bit changes really do preserve
+; the full evidence projection.  These are discharged obligations, not
+; extra premises added to the final durability claim.
+(defthm fn2-env-rows-executor-children
+  (and (equal (fn2-env-rows ids (update-fn2-core-control x fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (update-fn2-core-sched x fn2-core)) (fn2-env-rows ids fn2-core)))
+  :hints (("Goal" :in-theory (enable fn2-machine-cb-acks fn2-machine-batch-no fn2-machine-idp
+                                     fn2-machine-kind fn2-machine-slot))))
+(defthm fn2-env-rows-executor-accounting
+  (and (equal (fn2-env-rows ids (fn2-exec-account-work bytes steps fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-set-turn-bytes value fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-set-turn-steps value fn2-core)) (fn2-env-rows ids fn2-core))
+       (equal (fn2-env-rows ids (fn2-exec-clear-service service fn2-core)) (fn2-env-rows ids fn2-core)))
+  :hints (("Goal" :in-theory (e/d (fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
+                                   fn2-core-stop fn2-exec-clear-service) (fn2-env-rows)))))
+(defthm fn2-env-turn-inv-accounting
+  (implies (fn2-env-turn-inv g fn2-core)
+           (and (fn2-env-turn-inv g (fn2-exec-account-work bytes steps fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-set-turn-bytes value fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-set-turn-steps value fn2-core))
+                (fn2-env-turn-inv g (fn2-exec-clear-service service fn2-core))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-turn-inv fn2-env-inv)
+                     (fn2-env-rows fn2-env-observed-p fn2-env-observe-rows fn2-env-acked-durable-p
+                      fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps fn2-exec-clear-service)))))
 
 ;; ---------------------------------------------------------------------------
 ;; RECOVERY COMPLETENESS, the statement's recovery half: an image that holds

@@ -1,4 +1,5 @@
 import Fn2.ACL2.Faithful
+import Fn2.Instances.LayerAWorld
 
 /-!
 # Fn2.ACL2.Fuel: fuel adequacy for the recursive translations (PW1)
