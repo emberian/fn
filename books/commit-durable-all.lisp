@@ -759,15 +759,19 @@
   (if (zp k) t
     (and (fn2-env-j5-op s id log fn2-core) (fn2-env-j5-ops (+ 1 (nfix s)) (- k 1) id log fn2-core))))
 ; The live fences the row owns at its generation.
+(defun fn2-env-owned-fence-at (s id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((op (fn2-env-op s fn2-core)))
+    (if (and (nth 0 op) (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-retired*)))
+             (equal (nth 4 op) *fn2-commit-kind*) (equal (nth 5 op) id)
+             (equal (nth 6 op) (fn2-machine-generation id fn2-core))
+             (equal (nth 3 op) *fn2-action-fence*))
+        1 0)))
 (defun fn2-env-owned-fences (s k id fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (acl2-count k)))
+  (declare (xargs :stobjs fn2-core :verify-guards nil :measure (acl2-count k)
+                  :hints (("Goal" :in-theory (disable fn2-env-owned-fence-at)))))
   (if (zp k) 0
-    (+ (let ((op (fn2-env-op s fn2-core)))
-         (if (and (nth 0 op) (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-retired*)))
-                  (equal (nth 4 op) *fn2-commit-kind*) (equal (nth 5 op) id)
-                  (equal (nth 6 op) (fn2-machine-generation id fn2-core))
-                  (equal (nth 3 op) *fn2-action-fence*))
-             1 0))
+    (+ (fn2-env-owned-fence-at s id fn2-core)
        (fn2-env-owned-fences (+ 1 (nfix s)) (- k 1) id fn2-core))))
 (defun fn2-env-j5-row (id log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -1018,7 +1022,8 @@
     '((fn2-machine-idp id) (fn2-machine-kind id) (fn2-machine-slot id) (fn2-machine-phase id) (fn2-machine-batch-no id) (fn2-machine-cb-acks id)
       (fn2-machine-cb-acks-read-code id) (fn2-machine-batch-no-read-code id)
       (fn2-machine-cb-fence-ok id) (fn2-machine-cb-mode id) (fn2-machine-cb-deps-ok id)
-      (fn2-machine-cb-log-ok id) (fn2-machine-cb-done id) (fn2-commit-idp id) (fn2-commit-row id) (fn2-commit-resource id role) (fn2-env-root))
+      (fn2-machine-cb-log-ok id) (fn2-machine-cb-done id) (fn2-machine-generation id)
+      (fn2-machine-cb-fence-live id) (fn2-machine-cb-issued id) (fn2-commit-idp id) (fn2-commit-row id) (fn2-commit-resource id role) (fn2-env-root))
     '(update-fn2-core-ops update-fn2-core-pool update-fn2-core-extents)))))
 (defthm fn2-env-j-row-child-frame
   (and (equal (fn2-env-j-row id log (update-fn2-core-ops x fn2-core)) (fn2-env-j-row id log fn2-core))
@@ -5072,7 +5077,891 @@
            :in-theory '(fn2-env-post-step fn2-env-op-is-ops-op fn2-env-ops-op-of-post-result
                         fn2-core-ops-of-update-fn2-core-ops (:e equal)))))
 (in-theory (disable fn2-env-op-is-ops-op))
+;; J5 ACROSS :POST-RESULT. The readers of every child but the ops table
+;; are framed (FN2-ENV-OPS-FRAME); op S after the post is op S, or the posted
+;; op with its terminal cell set (FN2-ENV-OP-OF-POST-RESULT-CORE), whose
+;; fields 0..12 are unchanged (FN2-ENV-NTH-OP-POSTED). So each J5 clause holds
+;; op by op (FN2-ENV-J5-OP-POST, -J5-ROLE-POST), the owned fences and J6 are
+;; unchanged, and the step keeps J5-ROWS (FN2-ENV-J5-ROWS-POST-STEP).
+(defthm fn2-env-ops-frame
+  (and (equal (fn2-env-io u (update-fn2-core-ops x c)) (fn2-env-io u c))
+       (equal (fn2-env-role-octets id role (update-fn2-core-ops x c)) (fn2-env-role-octets id role c))
+       (equal (fn2-env-ops-rows (update-fn2-core-ops x c)) (fn2-ops-rows x))
+       (equal (fn2-env-role-offset id role (update-fn2-core-ops x c)) (fn2-env-role-offset id role c))
+       (equal (fn2-env-role-written id role f log (update-fn2-core-ops x c)) (fn2-env-role-written id role f log c))
+       (equal (fn2-env-role-io id role (update-fn2-core-ops x c)) (fn2-env-role-io id role c)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-io fn2-env-role-octets fn2-env-ops-rows
+                                   fn2-env-role-offset fn2-env-role-written fn2-env-role-io)
+                                  (fn2-env-ops-op fn2-env-written-from fn2-env-pool-octets)))))
+(defthm fn2-env-op-of-update-ops
+  (equal (fn2-env-op s (update-fn2-core-ops x c)) (fn2-env-ops-op s x))
+  :hints (("Goal" :in-theory (e/d (fn2-env-op-is-ops-op) (fn2-env-ops-op)))))
+(in-theory (disable fn2-env-op-of-update-ops))
+(defthm fn2-env-j5-fence-ops-frame
+  (equal (fn2-env-j5-fence id op s log (update-fn2-core-ops x c)) (fn2-env-j5-fence id op s log c))
+  :hints (("Goal" :in-theory (e/d (fn2-env-j5-fence) (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take)))))
+(defthm fn2-env-take-append-low
+  (implies (and (natp n) (<= n (len x))) (equal (take n (append x y)) (take n x))))
+(defthm fn2-env-j5-fence-other-result
+  (let ((r (list :result slot gen evkind outcome count)))
+    (implies (and (fn2-env-j5-fence id op s log c) (true-listp log)
+                  (not (and (equal s slot) (equal (nth 1 op) gen))))
+             (fn2-env-j5-fence id op s (append log (list r)) c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-fence fn2-env-take-index-append-result fn2-env-take-append-low
+                            fn2-env-j5-taken-other-result fn2-env-nth-append-low)
+                           (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take binary-append nth))
+           :use ((:instance fn2-env-take-index-bound (slot s) (gen (nth 1 op)))))))
+(defthm fn2-env-nth-op-posted
+  (implies (and (natp i) (< i 13)) (equal (nth i (fn2-env-op-posted op evkind outcome count)) (nth i op)))
+  :hints (("Goal" :in-theory (enable fn2-env-op-posted))))
+(defthm fn2-env-j5-fence-posted-result
+  (let ((r (list :result slot gen evkind outcome count)))
+    (implies (and (fn2-env-j5-fence id op slot log c) (true-listp log)
+                  (equal (nth 1 op) gen) (equal (nth 2 op) *fn2-op-phase-submitted*) (equal (nth 13 op) 0))
+             (fn2-env-j5-fence id (fn2-env-op-posted op evkind outcome count) slot (append log (list r)) c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-fence fn2-env-take-index-append-result fn2-env-take-append-low
+                            fn2-env-j5-taken-posted-result fn2-env-nth-append-low fn2-env-nth-op-posted)
+                           (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take binary-append nth fn2-env-op-posted))
+           :use ((:instance fn2-env-take-index-bound (gen (nth 1 op)))))))
+(in-theory (disable fn2-env-op-posted))
+(defthm fn2-env-post-accepted-op
+  (implies (fn2-env-post-accepted-p 0 slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c))
+           (let ((op (fn2-env-op slot c)))
+             (and (nth 0 op) (equal (nth 1 op) gen) (equal (nth 2 op) *fn2-op-phase-submitted*)
+                  (equal (nth 13 op) 0))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-post-accepted-p fn2-post-eligiblep fn2-op-handle-code fn2-op-slotp
+                                   fn2-env-op-is-ops-op fn2-env-ops-op)
+                                  (fn2-post-payloadp)))))
+(defthm fn2-env-op-of-post-result-core
+  (equal (fn2-env-op s (update-fn2-core-ops (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1
+                                                             (fn2-core-ops c))
+                                            c))
+         (if (and (equal s slot) (equal cell 0)
+                  (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c)))
+             (fn2-env-op-posted (fn2-env-op s c) evkind outcome count)
+           (fn2-env-op s c)))
+  :hints (("Goal" :in-theory (quote (fn2-env-op-of-update-ops fn2-env-ops-op-of-post-result fn2-env-op-is-ops-op)))))
+(defun fn2-env-post-log (p log r)
+  ; the device log after a post: R appended iff the post was accepted on cell 0
+  (declare (xargs :verify-guards nil))
+  (if p (append log (list r)) log))
+(defmacro fn2-env-pr-ops () '(fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c)))
+(defun fn2-env-post-ok (cell slot gen evkind outcome reason count aux0 aux1 fn2-ops)
+  ; the post was accepted on cell 0: the device log gains its result
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (and (equal cell 0) (fn2-env-post-accepted-p cell slot gen evkind outcome reason count aux0 aux1 fn2-ops)))
+(defmacro fn2-env-pr-p () '(fn2-env-post-ok cell slot gen evkind outcome reason count aux0 aux1 (fn2-core-ops c)))
+(defmacro fn2-env-pr-log () '(fn2-env-post-log (fn2-env-pr-p) log (list :result slot gen evkind outcome count)))
+(in-theory (disable fn2-env-post-ok fn2-env-post-log))
+(defthm fn2-env-j5-op-post
+  (implies (and (fn2-env-j5-op s id log c) (true-listp log))
+           (fn2-env-j5-op s id (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((not (fn2-env-pr-p)) (and (fn2-env-pr-p) (not (equal s slot))) (and (fn2-env-pr-p) (equal s slot)))
+           :in-theory (union-theories
+                       '(fn2-env-j5-op fn2-env-post-log fn2-env-post-ok fn2-env-op-of-post-result-core fn2-env-ops-frame fn2-env-nth-op-posted
+                         fn2-env-j5-fence-ops-frame fn2-env-j5-fence-other-result fn2-env-j5-fence-posted-result
+                         fn2-machine-generation-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops
+                         fn2-machine-cb-fence-live-of-update-fn2-core-ops fn2-commit-row-of-update-fn2-core-ops
+                         member-equal (:e member-equal) (:e natp) (:e <) (:e equal) natp)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-post-accepted-op)))))
+(defthm fn2-env-j5-ops-post
+  (implies (and (fn2-env-j5-ops s k id log c) (true-listp log))
+           (fn2-env-j5-ops s k id (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log c)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-j5-op-post) (theory 'minimal-theory)))))
+(defthm fn2-env-owned-fences-post
+  (equal (fn2-env-owned-fences s k id (update-fn2-core-ops (fn2-env-pr-ops) c))
+         (fn2-env-owned-fences s k id c))
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id c)
+           :in-theory (union-theories
+                       '(fn2-env-owned-fences fn2-env-owned-fence-at fn2-env-op-of-post-result-core fn2-env-nth-op-posted
+                         fn2-machine-generation-of-update-fn2-core-ops (:e natp) (:e <) natp)
+                       (theory 'minimal-theory)))))
+(defthm fn2-env-ops-rows-post
+  (equal (fn2-env-ops-rows (update-fn2-core-ops (fn2-env-pr-ops) c)) (fn2-env-ops-rows c))
+  :hints (("Goal" :in-theory '(fn2-env-ops-frame fn2-post-result-preserves-rows fn2-env-ops-rows))))
+(defthm fn2-env-role-live-post
+  (equal (fn2-env-role-live id role (update-fn2-core-ops (fn2-env-pr-ops) c))
+         (fn2-env-role-live id role c))
+  :hints (("Goal" :in-theory (union-theories
+                       '(fn2-env-role-live fn2-env-op-of-post-result-core fn2-env-nth-op-posted fn2-env-ops-frame
+                         (:e natp) (:e <) natp)
+                       (theory 'minimal-theory)))))
+(defthm fn2-env-not-takep-result
+  (not (fn2-dev-takep (list :result slot gen evkind outcome count)))
+  :hints (("Goal" :in-theory (enable fn2-dev-takep))))
+(defthm fn2-env-j5-role-post
+  (implies (and (fn2-env-j5-role id role log c) (true-listp log))
+           (fn2-env-j5-role id role (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((not (fn2-env-pr-p))
+                   (and (fn2-env-pr-p) (not (equal (nth 1 (fn2-env-role-io id role c)) slot)))
+                   (and (fn2-env-pr-p) (equal (nth 1 (fn2-env-role-io id role c)) slot)))
+           :in-theory (union-theories
+                       '(fn2-env-j5-role fn2-env-post-log fn2-env-post-ok fn2-env-op-of-post-result-core fn2-env-ops-frame fn2-env-nth-op-posted
+                         fn2-env-role-live-post fn2-env-role-live-booleanp
+                         fn2-machine-generation-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops
+                         fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-ops
+                         fn2-machine-cb-fence-ok-of-update-fn2-core-ops
+                         fn2-env-j5-taken-other-result fn2-env-j5-taken-posted-result
+                         fn2-env-take-index-append-result fn2-env-not-takep-result fn2-env-nth-append-low
+                         fn2-env-role-written fn2-env-written-extends (:type-prescription fn2-env-role-written)
+                         (:e member-equal) (:e natp) (:e <) (:e equal) natp nfix (:e nfix))
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-post-accepted-op)
+                 (:instance fn2-env-take-index-bound (slot (nth 1 (fn2-env-role-io id role c)))
+                            (gen (nth 1 (fn2-env-op (nth 1 (fn2-env-role-io id role c)) c))))))))
+(defthm fn2-env-j5-roles-post
+  (implies (and (fn2-env-j5-roles id log c) (true-listp log))
+           (fn2-env-j5-roles id (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn2-env-j5-roles fn2-env-j5-role-post fn2-env-role-live-post
+                         fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
+                         fn2-machine-cb-done-of-update-fn2-core-ops)
+                       (theory 'minimal-theory)))))
+(defthm fn2-env-j6-row-post
+  (equal (fn2-env-j6-row id (update-fn2-core-ops (fn2-env-pr-ops) c)) (fn2-env-j6-row id c))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn2-env-j6-row fn2-env-role-live-post fn2-env-ops-frame fn2-env-op-of-post-result-core
+                         fn2-env-nth-op-posted fn2-commit-idp-of-update-fn2-core-ops
+                         fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
+                         fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-ops
+                         (:e natp) (:e <) natp)
+                       (theory 'minimal-theory)))))
+(defthm fn2-env-j5-row-post
+  (implies (and (fn2-env-j5-row id log c) (true-listp log))
+           (fn2-env-j5-row id (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories
+                       '(fn2-env-j5-row fn2-env-j5-ops-post fn2-env-ops-rows-post fn2-env-j5-roles-post
+                         fn2-env-owned-fences-post fn2-commit-idp-of-update-fn2-core-ops
+                         fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-fence-live-of-update-fn2-core-ops)
+                       (theory 'minimal-theory)))))
+(defthm fn2-env-j5-rows-post
+  (implies (and (fn2-env-j5-rows ids log c) (true-listp log))
+           (fn2-env-j5-rows ids (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
+  :hints (("Goal" :induct (fn2-env-j5-rows ids log c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j5-row-post fn2-env-j6-row-post)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-step-post-unfolds
+  (implies (equal (fn2-env-tag action) :post-result)
+           (equal (fn2-env-step action nil image rlog c) (fn2-env-post action nil rlog c)))
+  :hints (("Goal" :in-theory '(fn2-env-step))))
+(defthm fn2-env-j5-rows-post-step
+  ; :post-result keeps J5 and J6
+  (implies (and (fn2-env-j5-rows ids log c) (true-listp log) (equal (fn2-env-tag action) :post-result))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-j5-rows ids (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-env-step-post-unfolds fn2-env-post-step fn2-env-post-log fn2-env-post-ok
+                        append-to-nil (:e append))
+           :use ((:instance fn2-env-j5-rows-post
+                            (cell (fn2-env-arg 1 action)) (slot (fn2-env-arg 2 action)) (gen (fn2-env-arg 3 action))
+                            (evkind (fn2-env-arg 4 action)) (outcome (fn2-env-arg 5 action))
+                            (reason (fn2-env-arg 6 action)) (count (fn2-env-arg 7 action))
+                            (aux0 (fn2-env-arg 8 action)) (aux1 (fn2-env-arg 9 action)))))))
 
+;; J5 ACROSS :TAKE. The device takes the outbox head: the ack moves that op
+;; from queued to its ack phase (submitted for a completion kind), and a
+;; non-completion kind is finished at once (FN2-ENV-TAKE-OP); every other
+;; op and every other child's reader is unchanged (FN2-ENV-TAKE-FRAMES). The
+;; log gains the take, so the taken op's first take is the new last entry
+;; (FN2-ENV-J5-TAKEN-TAKE) and every other op's take and answer stay
+;; (FN2-ENV-J5-TAKEN-OTHER-TAKE). A taken fence follows the writes its rise
+;; fences by J2 (FN2-ENV-FENCE-PREFIX-OF-J2).
+(defthm fn2-env-outbox-ack-1-head
+  (implies (equal (mv-nth 0 (fn2-outbox-ack 1 fn2-ops)) :ok)
+           (let ((h (fn2-ops-out-sloti (fn2-ops-out-head fn2-ops) fn2-ops))
+                 (g (fn2-ops-out-geni (fn2-ops-out-head fn2-ops) fn2-ops)))
+             (and (natp h) (< h (fn2-ops-rows fn2-ops))
+                  (equal (fn2-ops-gen h fn2-ops) g)
+                  (equal (fn2-ops-phase h fn2-ops) *fn2-op-phase-queued*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-outbox-ack fn2-outbox-prefixp fn2-op-phase-code fn2-op-handle-code fn2-op-slotp)
+           :expand ((fn2-outbox-prefixp 1 (fn2-ops-out-head fn2-ops) fn2-ops)))))
+(defthm fn2-env-ops-op-of-outbox-ack-1
+  (implies (and (fn2-opsp fn2-ops) (equal (mv-nth 0 (fn2-outbox-ack 1 fn2-ops)) :ok))
+           (equal (fn2-env-ops-op s (mv-nth 1 (fn2-outbox-ack 1 fn2-ops)))
+                  (let ((h (fn2-ops-out-sloti (fn2-ops-out-head fn2-ops) fn2-ops)))
+                    (if (equal s h)
+                        (update-nth 2 (fn2-op-ack-phase (nth 3 (fn2-env-ops-op h fn2-ops))) (fn2-env-ops-op s fn2-ops))
+                      (fn2-env-ops-op s fn2-ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-outbox-ack fn2-outbox-prefixp fn2-op-phase-code fn2-op-handle-code fn2-op-slotp
+                            fn2-outbox-submit-prefix fn2-env-ops-op)
+                           (fn2-op-ack-phase fn2-opsp))
+           :expand ((fn2-outbox-prefixp 1 (fn2-ops-out-head fn2-ops) fn2-ops)
+                    (fn2-outbox-submit-prefix 1 fn2-ops)))))
+(defthm fn2-env-outbox-peek-0
+  (implies (and (fn2-opsp fn2-ops) (equal (mv-nth 0 (fn2-outbox-peek 0 fn2-ops)) :ok))
+           (and (equal (mv-nth 1 (fn2-outbox-peek 0 fn2-ops)) (fn2-ops-out-sloti (fn2-ops-out-head fn2-ops) fn2-ops))
+                (equal (mv-nth 2 (fn2-outbox-peek 0 fn2-ops)) (fn2-ops-out-geni (fn2-ops-out-head fn2-ops) fn2-ops))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-outbox-peek) (fn2-opsp)))))
+(defthm fn2-env-ops-op-of-op-finish-other
+  (implies (and (fn2-opsp fn2-ops) (not (equal s h)))
+           (equal (fn2-env-ops-op s (mv-nth 1 (fn2-op-finish h g fn2-ops))) (fn2-env-ops-op s fn2-ops)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
+                            fn2-op-slotp fn2-env-ops-op)
+                           (fn2-opsp)))))
+(defthm fn2-env-ops-op-of-op-finish-self
+  (implies (fn2-opsp fn2-ops)
+           (let ((o (fn2-env-ops-op h (mv-nth 1 (fn2-op-finish h g fn2-ops)))))
+             (or (equal o (fn2-env-ops-op h fn2-ops))
+                 (member-equal (nth 2 o) (list *fn2-op-phase-free* *fn2-op-phase-retired*)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
+                            fn2-op-slotp fn2-env-ops-op)
+                           (fn2-opsp)))))
+(defthm fn2-env-take-frames
+  (let ((c2 (mv-nth 1 (fn2-env-take nil image c))))
+    (and (equal (fn2-machine-phase id c2) (fn2-machine-phase id c))
+         (equal (fn2-machine-generation id c2) (fn2-machine-generation id c))
+         (equal (fn2-machine-cb-fence-live id c2) (fn2-machine-cb-fence-live id c))
+         (equal (fn2-machine-cb-issued id c2) (fn2-machine-cb-issued id c))
+         (equal (fn2-machine-cb-done id c2) (fn2-machine-cb-done id c))
+         (equal (fn2-machine-cb-mode id c2) (fn2-machine-cb-mode id c))
+         (equal (fn2-machine-batch-no id c2) (fn2-machine-batch-no id c))
+         (equal (fn2-machine-cb-fence-ok id c2) (fn2-machine-cb-fence-ok id c))
+         (equal (fn2-machine-cb-deps-ok id c2) (fn2-machine-cb-deps-ok id c))
+         (equal (fn2-machine-cb-log-ok id c2) (fn2-machine-cb-log-ok id c))
+         (equal (fn2-commit-idp id c2) (fn2-commit-idp id c))
+         (equal (fn2-commit-row id c2) (fn2-commit-row id c))
+         (equal (fn2-env-io u c2) (fn2-env-io u c))
+         (equal (fn2-env-role-io id role c2) (fn2-env-role-io id role c))
+         (equal (fn2-env-role-octets id role c2) (fn2-env-role-octets id role c))
+         (equal (fn2-env-role-offset id role c2) (fn2-env-role-offset id role c))
+         (equal (fn2-env-role-written id role f log c2) (fn2-env-role-written id role f log c))
+         (equal (fn2-env-j5-fence id op s log c2) (fn2-env-j5-fence id op s log c))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-env-take fn2-host-outbox-ack fn2-host-op-finish)
+                           (fn2-host-outbox-peek fn2-host-action fn2-host-op-span fn2-env-octets
+                            fn2-outbox-ack fn2-op-finish fn2-env-io fn2-env-role-io fn2-env-role-octets
+                            fn2-env-role-offset fn2-env-role-written fn2-env-j5-fence fn2-env-fill)))))
+(defthm fn2-env-outbox-ack-refused
+  (implies (not (equal (mv-nth 0 (fn2-outbox-ack n fn2-ops)) :ok))
+           (equal (mv-nth 1 (fn2-outbox-ack n fn2-ops)) fn2-ops))
+  :hints (("Goal" :in-theory (enable fn2-outbox-ack))))
+(defthm fn2-env-outbox-ack-1-head-op
+  (implies (equal (mv-nth 0 (fn2-outbox-ack 1 fn2-ops)) :ok)
+           (let ((o (fn2-env-ops-op (fn2-ops-out-sloti (fn2-ops-out-head fn2-ops) fn2-ops) fn2-ops)))
+             (and (nth 0 o) (equal (nth 1 o) (fn2-ops-out-geni (fn2-ops-out-head fn2-ops) fn2-ops))
+                  (equal (nth 2 o) *fn2-op-phase-queued*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-ops-op nth-0-cons nth-add1 (:e zp) (:e nth) car-cons cdr-cons
+                                               (:e binary-+) (:e equal) zp nth)
+                                             (theory 'minimal-theory))
+           :use fn2-env-outbox-ack-1-head)))
+(defthm fn2-env-take-op
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)) (c2 (mv-nth 1 tk)))
+             (and (implies (not (and e (equal s (nth 1 e)))) (equal (fn2-env-op s c2) (fn2-env-op s c)))
+                  (implies e
+                           (let ((o (fn2-env-op (nth 1 e) c)) (o2 (fn2-env-op (nth 1 e) c2)))
+                             (and (nth 0 o) (equal (nth 1 o) (nth 2 e)) (equal (nth 2 o) *fn2-op-phase-queued*)
+                                  (equal (nth 3 o) (nth 3 e))
+                                  (equal (nth 11 o) (nth 4 e)) (equal (nth 12 o) (nth 5 e))
+                                  (if (fn2-action-completionp (nth 3 o))
+                                      (equal o2 (update-nth 2 *fn2-op-phase-submitted* o))
+                                    (or (equal o2 (update-nth 2 *fn2-op-phase-done* o))
+                                        (member-equal (nth 2 o2) (list *fn2-op-phase-free* *fn2-op-phase-retired*))))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-take fn2-host-outbox-ack fn2-host-op-finish fn2-host-outbox-peek
+                            fn2-env-op-of-update-ops fn2-env-op-is-ops-op fn2-env-ops-op-of-outbox-ack-1
+                            fn2-env-ops-op-of-op-finish-other fn2-op-ack-phase fn2-env-outbox-ack-refused)
+                           (fn2-host-action fn2-host-op-span fn2-env-octets fn2-env-ops-op
+                            fn2-outbox-ack fn2-op-finish fn2-outbox-peek fn2-env-fill fn2-opsp fn2-action-completionp))
+           :use ((:instance fn2-core-ops-type (fn2-core c))
+                 (:instance fn2-env-outbox-ack-1-head-op (fn2-ops (fn2-core-ops c)))
+                 (:instance fn2-env-outbox-peek-0 (fn2-ops (fn2-core-ops c)))
+                 (:instance fn2-env-host-action-fields (fn2-core c)
+                            (slot (mv-nth 1 (fn2-outbox-peek 0 (fn2-core-ops c)))))
+                 (:instance fn2-env-ops-op-of-op-finish-self
+                            (h (mv-nth 1 (fn2-outbox-peek 0 (fn2-core-ops c))))
+                            (g (mv-nth 2 (fn2-outbox-peek 0 (fn2-core-ops c))))
+                            (fn2-ops (mv-nth 1 (fn2-outbox-ack 1 (fn2-core-ops c)))))))))
+(defthm fn2-env-take-index-append
+  (equal (fn2-env-take-index s g (append log (list e)))
+         (or (fn2-env-take-index s g log)
+             (and (fn2-dev-takep e) (equal (nth 1 e) s) (equal (nth 2 e) g) (len log))))
+  :hints (("Goal" :induct (fn2-env-take-index s g log)
+           :in-theory '(fn2-env-take-index binary-append car-cons cdr-cons atom len (:e fn2-env-take-index) fix
+                        (:type-prescription fn2-env-take-index) (:e len) (:e binary-append))
+           :expand ((append log (list e)) (fn2-env-take-index s g (append log (list e)))
+                    (fn2-env-take-index s g (list e))))))
+(defthm fn2-env-j5-taken-other-take
+  (implies (and (fn2-env-j5-taken op s log) (true-listp log) (fn2-dev-takep e) (not (equal s (nth 1 e))))
+           (fn2-env-j5-taken op s (append log (list e))))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-taken fn2-env-take-index-append fn2-env-answer-append-result
+                            fn2-env-nthcdr-append-list fn2-env-car-append fn2-env-consp-append)
+                           (fn2-env-take-index fn2-dev-answer nthcdr binary-append take fn2-dev-takep))
+           :use ((:instance fn2-env-take-index-bound (slot s) (gen (nth 1 op)))))))
+(defthm fn2-env-nthcdr-len-append
+  (implies (true-listp log) (equal (nthcdr (+ 1 (len log)) (append log (list e))) nil)))
+(defthm fn2-env-answer-of-nil (equal (fn2-dev-answer s g nil) nil))
+(defthm fn2-env-j5-taken-take
+  (implies (and (fn2-env-j5-taken o slot log) (true-listp log) (equal (nth 2 o) *fn2-op-phase-queued*)
+                (fn2-dev-takep e) (equal (nth 1 e) slot) (equal (nth 2 e) (nth 1 o)))
+           (and (fn2-env-j5-taken (update-nth 2 *fn2-op-phase-submitted* o) slot (append log (list e)))
+                (equal (fn2-env-take-index slot (nth 1 o) (append log (list e))) (len log))))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-taken fn2-env-take-index-append fn2-env-nthcdr-len-append fn2-env-answer-of-nil)
+                           (fn2-env-take-index fn2-dev-answer nthcdr binary-append take fn2-dev-takep)))))
+(defthm fn2-env-j5-fence-other-take
+  (implies (and (fn2-env-j5-fence id op s log c) (true-listp log) (fn2-dev-takep e) (not (equal s (nth 1 e))))
+           (fn2-env-j5-fence id op s (append log (list e)) c))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-fence fn2-env-take-index-append fn2-env-take-append-low
+                            fn2-env-j5-taken-other-take fn2-env-nth-append-low)
+                           (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take binary-append nth fn2-dev-takep))
+           :use ((:instance fn2-env-take-index-bound (slot s) (gen (nth 1 op)))))))
+(defthm fn2-env-nth-len-append (equal (nth (len x) (append x (list e))) e))
+(defthm fn2-env-take-len-true-list (implies (true-listp x) (equal (take (len x) x) x)))
+(defthm fn2-env-j5-fence-take
+  (implies (and (fn2-env-j5-taken o slot log) (true-listp log) (equal (nth 2 o) *fn2-op-phase-queued*)
+                (fn2-dev-takep e) (equal (nth 1 e) slot) (equal (nth 2 e) (nth 1 o))
+                (equal (nth 3 e) *fn2-action-fence*)
+                (implies (equal (fn2-machine-cb-deps-ok id c) 1) (fn2-env-role-written id 0 nil log c))
+                (implies (equal (fn2-machine-cb-log-ok id c) 1)
+                         (and (fn2-env-role-written id 1 nil log c) (fn2-env-role-written id 2 nil log c))))
+           (fn2-env-j5-fence id (update-nth 2 *fn2-op-phase-submitted* o) slot (append log (list e)) c))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-j5-fence fn2-env-take-append-low fn2-env-nth-len-append fn2-env-take-len-true-list)
+                           (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take binary-append fn2-dev-takep
+                            fn2-env-take-index-append))
+           :use ((:instance fn2-env-j5-taken-take)))))
+(defthm fn2-env-take-entry-shape
+  (let ((e (mv-nth 0 (fn2-env-take recoveryp image c))))
+    (implies e (and (fn2-dev-takep e) (true-listp (nth 6 e)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-take fn2-env-octets) (fn2-host-outbox-peek fn2-host-action fn2-host-op-span
+                                   fn2-host-outbox-ack fn2-host-op-finish fn2-env-fill fn2-dev-image-octets)))))
+(defthm fn2-env-written-unfenced
+  (implies (fn2-env-written-from w offset b fenced log)
+           (fn2-env-written-from w offset b nil log))
+  :hints (("Goal" :induct (fn2-env-written-from w offset b fenced log)
+           :in-theory (e/d (fn2-env-written-from) (fn2-env-done-write-p fn2-dev-fenced-write-p fn2-env-seal-commit)))))
+(defthm fn2-env-fence-prefix-of-j2
+  (implies (and (fn2-env-j2-row id log c) (fn2-commit-idp id c))
+           (and (implies (equal (fn2-machine-cb-deps-ok id c) 1) (fn2-env-role-written id 0 nil log c))
+                (implies (equal (fn2-machine-cb-log-ok id c) 1)
+                         (and (fn2-env-role-written id 1 nil log c) (fn2-env-role-written id 2 nil log c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j2-row fn2-env-role-written fn2-env-written-unfenced (:e equal))
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j5-fence-taken
+  (implies (fn2-env-j5-fence id op s log c) (fn2-env-j5-taken op s log))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory '(fn2-env-j5-fence))))
+(defun fn2-env-log+ (log e)
+  ; the device log after a step whose entry is E (nil: none)
+  (declare (xargs :verify-guards nil))
+  (append log (if e (list e) nil)))
+(defmacro fn2-env-tk-e () '(mv-nth 0 (fn2-env-take nil image c)))
+(defmacro fn2-env-tk-c () '(mv-nth 1 (fn2-env-take nil image c)))
+(defthm fn2-env-j5-op-take-same
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log) (fn2-env-j5-op s id log c)
+                (not (and (fn2-env-tk-e) (equal s (nth 1 (fn2-env-tk-e))))))
+           (fn2-env-j5-op s id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (union-theories
+                       '(fn2-env-j5-op fn2-env-log+ fn2-env-take-frames fn2-env-j5-fence-other-take append-to-nil)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op)
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))))))
+(defthm fn2-env-j5-op-take-slot
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-op s id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c)
+                (fn2-env-tk-e) (equal s (nth 1 (fn2-env-tk-e))))
+           (fn2-env-j5-op s id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (union-theories
+                       '(fn2-env-j5-op fn2-env-log+ fn2-env-take-frames fn2-env-j5-fence-take fn2-env-j5-fence-taken
+                         fn2-action-completionp (:e fn2-action-completionp)
+                         nth-update-nth (:e nfix) (:e equal) (:e member-equal) member-equal (:e natp) (:e <) natp)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op)
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))
+                 (:instance fn2-env-fence-prefix-of-j2)))))
+(defthm fn2-env-j5-op-take
+  (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)))
+    (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                  (fn2-env-j5-op s id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c))
+             (fn2-env-j5-op s id (fn2-env-log+ log e) (mv-nth 1 tk))))
+  :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)
+           :use (fn2-env-j5-op-take-same fn2-env-j5-op-take-slot))))
+(in-theory (disable fn2-env-log+))
+(defthm fn2-env-j5-ops-take
+  (let* ((tk (fn2-env-take nil image c)) (e (mv-nth 0 tk)))
+    (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                  (fn2-env-j5-ops s k id log c) (fn2-env-j2-row id log c) (fn2-commit-idp id c))
+             (fn2-env-j5-ops s k id (fn2-env-log+ log e) (mv-nth 1 tk))))
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log c)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-j5-op-take) (theory 'minimal-theory)))))
+(defthm fn2-env-owned-fence-at-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (equal (fn2-env-owned-fence-at s id (mv-nth 1 (fn2-env-take nil image c)))
+                  (fn2-env-owned-fence-at s id c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((not (mv-nth 0 (fn2-env-take nil image c)))
+                   (and (mv-nth 0 (fn2-env-take nil image c)) (not (equal s (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
+                   (and (mv-nth 0 (fn2-env-take nil image c)) (equal s (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
+           :in-theory (union-theories
+                       '(fn2-env-owned-fence-at fn2-env-take-frames fn2-action-completionp (:e fn2-action-completionp)
+                         nth-update-nth (:e nfix) (:e equal) (:e member-equal) member-equal (:e natp) (:e <) natp)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op)))))
+(defthm fn2-env-owned-fences-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (equal (fn2-env-owned-fences s k id (mv-nth 1 (fn2-env-take nil image c)))
+                  (fn2-env-owned-fences s k id c)))
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id c)
+           :in-theory (union-theories '(fn2-env-owned-fences fn2-env-owned-fence-at-take) (theory 'minimal-theory)))))
+(defthm fn2-env-ops-rows-take
+  (equal (fn2-env-ops-rows (mv-nth 1 (fn2-env-take nil image c))) (fn2-env-ops-rows c))
+  :hints (("Goal" :in-theory (e/d (fn2-env-take fn2-host-outbox-ack fn2-host-op-finish fn2-env-ops-rows)
+                                  (fn2-host-outbox-peek fn2-host-action fn2-host-op-span fn2-env-octets
+                                   fn2-outbox-ack fn2-op-finish fn2-env-fill)))))
+(defthm fn2-env-role-live-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (and (implies (fn2-env-role-live id role (mv-nth 1 (fn2-env-take nil image c)))
+                         (fn2-env-role-live id role c))
+                (implies (and (fn2-env-role-live id role c)
+                              (equal (nth 3 (fn2-env-op (nth 1 (fn2-env-role-io id role c)) c)) *fn2-action-write*))
+                         (fn2-env-role-live id role (mv-nth 1 (fn2-env-take nil image c))))))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((not (mv-nth 0 (fn2-env-take nil image c)))
+                   (and (mv-nth 0 (fn2-env-take nil image c))
+                        (not (equal (nth 1 (fn2-env-role-io id role c)) (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
+                   (and (mv-nth 0 (fn2-env-take nil image c))
+                        (equal (nth 1 (fn2-env-role-io id role c)) (nth 1 (mv-nth 0 (fn2-env-take nil image c))))))
+           :in-theory (union-theories
+                       '(fn2-env-role-live fn2-env-take-frames fn2-action-completionp (:e fn2-action-completionp)
+                         nth-update-nth (:e nfix) (:e equal) (:e member-equal) member-equal (:e natp) (:e <) natp)
+                       (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id role c))))))))
+(defthm fn2-env-pool-octets-addr-natp
+  (implies (consp (fn2-env-pool-octets n addr fn2-pool)) (natp addr))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :expand ((fn2-env-pool-octets n addr fn2-pool)))))
+(defthm fn2-env-role-octets-span
+  (implies (equal (len (fn2-env-role-octets id role c)) *fn2-commit-unit-bytes*)
+           (equal (fn2-env-pool-span (nth 4 (fn2-env-role-io id role c)) 0 *fn2-commit-unit-bytes* c)
+                  (fn2-env-role-octets id role c)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-role-octets fn2-env-pool-span fn2-env-octets fn2-env-pool-base)
+                                  (fn2-env-role-io fn2-env-pool-octets))
+           :cases ((consp (fn2-env-role-octets id role c))))))
+(defthm fn2-env-role-offset-natp
+  (implies (natp role) (natp (fn2-env-role-offset id role c)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-env-role-offset))))
+(defthm fn2-env-take-ok-of-role
+  (let ((o (fn2-env-op (nth 1 (fn2-env-tk-e)) c)))
+    (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-tk-e)
+                  (equal (nth 3 o) *fn2-action-write*) (equal (nth 7 o) rs) (equal (nth 9 o) 0)
+                  (equal (nth 10 o) *fn2-commit-unit-bytes*) (equal (nth 11 o) offset) (equal (nth 12 o) fua)
+                  (natp offset)
+                  (implies b (equal (fn2-env-seal-commit (fn2-env-pool-span rs 0 *fn2-commit-unit-bytes* c)) b)))
+             (fn2-env-j5-take-ok (fn2-env-tk-e) offset fua b)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-take-ok fn2-dev-take-writep fn2-op-output-kindp (:e equal) (:e fn2-op-output-kindp))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op (s 0))
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))
+                 (:instance fn2-env-take-output-entry (recoveryp nil) (fn2-core c))))))
+(defthm fn2-env-j5-role-take-dead
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-role id role log c) (not (fn2-env-role-live id role c)))
+           (fn2-env-j5-role id role (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-role fn2-env-log+ fn2-env-role-live-take fn2-env-take-frames
+                                        fn2-env-role-written fn2-env-written-extends (:type-prescription true-listp))
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j5-role-take-other
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-role id role log c) (fn2-env-role-live id role c)
+                (not (and (fn2-env-tk-e) (equal (nth 1 (fn2-env-role-io id role c)) (nth 1 (fn2-env-tk-e))))))
+           (fn2-env-j5-role id role (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (union-theories '(fn2-env-j5-role fn2-env-log+ fn2-env-role-live-take fn2-env-take-frames
+                                        fn2-env-j5-taken-other-take fn2-env-take-index-append fn2-env-nth-append-low
+                                        append-to-nil natp nfix (:e equal) (:e nfix))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id role c))))
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))
+                 (:instance fn2-env-take-index-bound (slot (nth 1 (fn2-env-role-io id role c)))
+                            (gen (nth 1 (fn2-env-op (nth 1 (fn2-env-role-io id role c)) c))))))))
+(defthm fn2-env-j5-taken-queued-untaken
+  (implies (and (fn2-env-j5-taken op slot log) (equal (nth 2 op) *fn2-op-phase-queued*) (equal (nth 1 op) g))
+           (not (fn2-env-take-index slot g log)))
+  :hints (("Goal" :in-theory '(fn2-env-j5-taken (:e equal)))))
+(defthm fn2-env-j5-role-take-taken
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log) (natp role)
+                (fn2-env-j5-role id role log c) (fn2-env-role-live id role c)
+                (fn2-env-tk-e) (equal (nth 1 (fn2-env-role-io id role c)) (nth 1 (fn2-env-tk-e)))
+                (implies (equal role 2)
+                         (and (equal (len (fn2-env-role-octets id 2 c)) *fn2-commit-unit-bytes*)
+                              (equal (fn2-env-seal-commit (fn2-env-role-octets id 2 c)) (fn2-machine-batch-no id c)))))
+           (fn2-env-j5-role id role (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (union-theories '(fn2-env-j5-role fn2-env-log+ fn2-env-role-live-take fn2-env-take-frames
+                                        fn2-env-j5-taken-take fn2-env-j5-taken-queued-untaken fn2-env-take-index-append fn2-env-nth-len-append fn2-env-role-octets-span
+                                        fn2-env-role-offset-natp fn2-action-completionp (:e fn2-action-completionp)
+                                        nth-update-nth append-to-nil natp nfix (:e equal) (:e nfix) (:e natp) (:e <))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id role c))))
+                 (:instance fn2-env-take-entry-shape (recoveryp nil))
+                 (:instance fn2-env-role-offset-natp)
+                 (:instance fn2-env-take-ok-of-role (rs (nth 4 (fn2-env-role-io id role c)))
+                            (offset (fn2-env-role-offset id role c))
+                            (fua (if (equal (fn2-machine-phase id c) *fn2-commit-state-log-write*) (fn2-machine-cb-mode id c) 0))
+                            (b (and (equal role 2) (fn2-machine-batch-no id c))))))))
+(defthm fn2-env-j6-role2-seal
+  (implies (and (fn2-env-j6-row id c) (fn2-commit-idp id c)
+                (equal (fn2-machine-phase id c) *fn2-commit-state-log-write*)
+                (fn2-env-role-live id 2 c)
+                (equal (nth 2 (fn2-env-op (nth 1 (fn2-env-role-io id 2 c)) c)) *fn2-op-phase-queued*))
+           (and (equal (len (fn2-env-role-octets id 2 c)) *fn2-commit-unit-bytes*)
+                (equal (fn2-env-seal-commit (fn2-env-role-octets id 2 c)) (fn2-machine-batch-no id c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j6-row member-equal (:e member-equal) (:e equal))
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j5-role-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log) (natp role)
+                (fn2-env-j5-role id role log c) (fn2-env-j6-row id c) (fn2-commit-idp id c)
+                (implies (equal role 2) (equal (fn2-machine-phase id c) *fn2-commit-state-log-write*)))
+           (fn2-env-j5-role id role (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn2-env-j6-role2-seal)
+                 (:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id role c))))
+                 (:instance fn2-env-j5-role-take-dead) (:instance fn2-env-j5-role-take-other)
+                 (:instance fn2-env-j5-role-take-taken)))))
+(defthm fn2-env-role-live-take-of-j5-role
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j5-role id role log c))
+           (equal (fn2-env-role-live id role (fn2-env-tk-c)) (fn2-env-role-live id role c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-role fn2-env-role-live-booleanp) (theory 'minimal-theory))
+           :use ((:instance fn2-env-role-live-take)))))
+(defthm fn2-env-j5-roles-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-roles id log c) (fn2-env-j6-row id c) (fn2-commit-idp id c))
+           (fn2-env-j5-roles id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-roles fn2-env-take-frames fn2-env-role-live-take-of-j5-role
+                                        fn2-env-j5-role-take (:e natp) (:e equal))
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j6-row-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j6-row id c))
+           (fn2-env-j6-row id (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((not (fn2-env-tk-e))
+                   (and (fn2-env-tk-e) (not (equal (nth 1 (fn2-env-role-io id 2 c)) (nth 1 (fn2-env-tk-e)))))
+                   (and (fn2-env-tk-e) (equal (nth 1 (fn2-env-role-io id 2 c)) (nth 1 (fn2-env-tk-e)))))
+           :in-theory (union-theories '(fn2-env-j6-row fn2-env-take-frames fn2-env-role-live-take
+                                        fn2-action-completionp (:e fn2-action-completionp)
+                                        nth-update-nth (:e nfix) (:e equal) (:e member-equal) member-equal (:e natp) (:e <) natp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-role-io id 2 c))))
+                 (:instance fn2-env-role-live-take (role 2))))))
+(defthm fn2-env-j5-row-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-row id log c) (fn2-env-j6-row id c) (fn2-env-j2-row id log c))
+           (fn2-env-j5-row id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-row fn2-env-j5-ops-take fn2-env-ops-rows-take fn2-env-j5-roles-take
+                                        fn2-env-owned-fences-take fn2-env-take-frames)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j5-rows-take
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-rows ids log c) (fn2-env-j-rows ids log c))
+           (fn2-env-j5-rows ids (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
+  :hints (("Goal" :induct (fn2-env-j5-rows ids log c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j-rows fn2-env-j-row fn2-env-j5-row-take fn2-env-j6-row-take)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-step-take-unfolds
+  (implies (equal (fn2-env-tag action) :take)
+           (equal (fn2-env-step action nil image rlog c) (fn2-env-take nil image c)))
+  :hints (("Goal" :in-theory '(fn2-env-step))))
+(defthm fn2-env-j5-rows-take-step
+  ; :take keeps J5 and J6 (J2 gives a taken fence its prefix)
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
+                (fn2-env-j5-rows ids log c) (fn2-env-j-rows ids log c) (equal (fn2-env-tag action) :take))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-j5-rows ids (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-env-step-take-unfolds fn2-env-log+)
+           :use ((:instance fn2-env-j5-rows-take)))))
+;; J5 ACROSS THE FRAME STEPS. :accept-result, :clock and :signal update the
+;; ops table keeping every op (FN2-ENV-OPS-KEPT: an op is unchanged, or an
+;; accept keeps its head fields), and an op the row could account for is
+;; never an accept, so J5 and J6 hold over the kept table
+;; (FN2-ENV-J5-ROWS-KEPT). :epoch writes the extents child and :loan-write
+;; the pool, which J5 does not read; J6 reads the pool, so J6 across
+;; :loan-write is FN2-POOL-CONSERVATION's (the loan's range is disjoint from
+;; the roles').
+(defun fn2-env-op-kept (o2 o)
+  ; O2 is O, or O is an accept whose head fields (validity .. owner-gen) O2 keeps
+  (declare (xargs :verify-guards nil))
+  (or (equal o2 o)
+      (and (equal (nth 3 o) *fn2-action-accept*)
+           (equal (nth 0 o2) (nth 0 o)) (equal (nth 1 o2) (nth 1 o)) (equal (nth 2 o2) (nth 2 o))
+           (equal (nth 3 o2) (nth 3 o)) (equal (nth 4 o2) (nth 4 o)) (equal (nth 5 o2) (nth 5 o))
+           (equal (nth 6 o2) (nth 6 o)))))
+(defun-nx fn2-env-ops-kept-from (s k x fn2-core)
+  (declare (xargs :measure (acl2-count k) :hints (("Goal" :in-theory (disable fn2-env-op-kept)))))
+  (if (zp k) t
+    (and (fn2-env-op-kept (fn2-env-ops-op s x) (fn2-env-op s fn2-core))
+         (fn2-env-ops-kept-from (+ 1 (nfix s)) (- k 1) x fn2-core))))
+(defun-nx fn2-env-ops-kept (x fn2-core)
+  ; every op of X is kept from the core's
+  (and (equal (fn2-ops-rows x) (fn2-env-ops-rows fn2-core)) (natp (fn2-env-ops-rows fn2-core))
+       (fn2-env-ops-kept-from 0 (fn2-env-ops-rows fn2-core) x fn2-core)))
+(defthm fn2-env-ops-kept-from-at
+  (implies (and (fn2-env-ops-kept-from s0 k x c) (natp k) (natp s0) (natp s) (<= s0 s) (< s (+ s0 k)))
+           (fn2-env-op-kept (fn2-env-ops-op s x) (fn2-env-op s c)))
+  :hints (("Goal" :induct (fn2-env-ops-kept-from s0 k x c) :in-theory (disable fn2-env-op-kept fn2-env-ops-op fn2-env-op))))
+(defthm fn2-env-ops-kept-at
+  (implies (fn2-env-ops-kept x c)
+           (fn2-env-op-kept (fn2-env-ops-op s x) (fn2-env-op s c)))
+  :hints (("Goal" :cases ((and (natp s) (< s (fn2-env-ops-rows c))))
+           :in-theory (e/d (fn2-env-op-is-ops-op fn2-env-ops-rows) (fn2-env-op-kept fn2-env-ops-kept-from))
+           :use ((:instance fn2-env-ops-kept-from-at (s0 0) (k (fn2-env-ops-rows c)))))
+          ("Subgoal 2" :in-theory (enable fn2-env-op-kept fn2-env-ops-op fn2-env-op-is-ops-op fn2-env-ops-rows))))
+(in-theory (disable fn2-env-op-kept fn2-env-ops-kept))
+(defthm fn2-env-j5-op-kept
+  (implies (and (fn2-env-j5-op s id log c) (fn2-env-ops-kept x c))
+           (fn2-env-j5-op s id log (update-fn2-core-ops x c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-op fn2-env-op-kept fn2-env-op-of-update-ops fn2-env-ops-frame
+                                        fn2-env-j5-fence-ops-frame
+                                        fn2-machine-generation-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops
+                                        fn2-machine-cb-fence-live-of-update-fn2-core-ops fn2-commit-row-of-update-fn2-core-ops
+                                        member-equal (:e member-equal) (:e equal))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-ops-kept-at)))))
+(defthm fn2-env-j5-ops-kept
+  (implies (and (fn2-env-j5-ops s k id log c) (fn2-env-ops-kept x c))
+           (fn2-env-j5-ops s k id log (update-fn2-core-ops x c)))
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log c)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-j5-op-kept) (theory 'minimal-theory)))))
+(defthm fn2-env-owned-fence-at-kept
+  (implies (fn2-env-ops-kept x c)
+           (equal (fn2-env-owned-fence-at s id (update-fn2-core-ops x c)) (fn2-env-owned-fence-at s id c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-owned-fence-at fn2-env-op-kept fn2-env-op-of-update-ops
+                                        fn2-machine-generation-of-update-fn2-core-ops
+                                        member-equal (:e member-equal) (:e equal))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-ops-kept-at)))))
+(defthm fn2-env-owned-fences-kept
+  (implies (fn2-env-ops-kept x c)
+           (equal (fn2-env-owned-fences s k id (update-fn2-core-ops x c)) (fn2-env-owned-fences s k id c)))
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id c)
+           :in-theory (union-theories '(fn2-env-owned-fences fn2-env-owned-fence-at-kept) (theory 'minimal-theory)))))
+(defthm fn2-env-role-live-kept
+  (implies (fn2-env-ops-kept x c)
+           (equal (fn2-env-role-live id role (update-fn2-core-ops x c)) (fn2-env-role-live id role c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-role-live fn2-env-op-kept fn2-env-op-of-update-ops fn2-env-ops-frame)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-ops-kept-at (s (nth 1 (fn2-env-role-io id role c))))))))
+(defthm fn2-env-j5-role-kept
+  (implies (and (fn2-env-j5-role id role log c) (fn2-env-ops-kept x c))
+           (fn2-env-j5-role id role log (update-fn2-core-ops x c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-role fn2-env-op-kept fn2-env-op-of-update-ops fn2-env-ops-frame
+                                        fn2-env-role-live-kept
+                                        fn2-machine-generation-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops
+                                        fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-ops
+                                        fn2-machine-cb-fence-ok-of-update-fn2-core-ops (:e equal))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-ops-kept-at (s (nth 1 (fn2-env-role-io id role c))))))))
+(defthm fn2-env-j5-roles-kept
+  (implies (and (fn2-env-j5-roles id log c) (fn2-env-ops-kept x c))
+           (fn2-env-j5-roles id log (update-fn2-core-ops x c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-roles fn2-env-j5-role-kept fn2-env-role-live-kept
+                                        fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
+                                        fn2-machine-cb-done-of-update-fn2-core-ops)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j6-row-kept
+  (implies (fn2-env-ops-kept x c)
+           (equal (fn2-env-j6-row id (update-fn2-core-ops x c)) (fn2-env-j6-row id c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j6-row fn2-env-op-kept fn2-env-op-of-update-ops fn2-env-ops-frame
+                                        fn2-env-role-live-kept fn2-commit-idp-of-update-fn2-core-ops
+                                        fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
+                                        fn2-machine-cb-mode-of-update-fn2-core-ops fn2-machine-batch-no-of-update-fn2-core-ops)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-ops-kept-at (s (nth 1 (fn2-env-role-io id 2 c))))))))
+(defthm fn2-env-j5-rows-kept
+  (implies (and (fn2-env-j5-rows ids log c) (fn2-env-ops-kept x c))
+           (fn2-env-j5-rows ids log (update-fn2-core-ops x c)))
+  :hints (("Goal" :induct (fn2-env-j5-rows ids log c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j5-row fn2-env-j5-ops-kept fn2-env-j5-roles-kept
+                                        fn2-env-owned-fences-kept fn2-env-j6-row-kept fn2-env-ops-frame
+                                        fn2-commit-idp-of-update-fn2-core-ops fn2-machine-phase-of-update-fn2-core-ops
+                                        fn2-machine-cb-fence-live-of-update-fn2-core-ops)
+                                      (theory 'minimal-theory))
+           :expand ((fn2-env-ops-kept x c)))))
+(defthm fn2-env-ops-op-accept-kind
+  (implies (and (fn2-op-slotp slot fn2-ops) (equal (fn2-ops-kind slot fn2-ops) *fn2-action-accept*))
+           (equal (nth 3 (fn2-env-ops-op slot fn2-ops)) *fn2-action-accept*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-ops-op fn2-op-slotp))))
+(defthm fn2-env-ops-op-of-peer-sets
+  (and (equal (fn2-env-ops-op s (fn2-ops-set-peer-family i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-ops-set-peer-port i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-ops-set-peer-w0 i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-ops-set-peer-w1 i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-ops-set-peer-w2 i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-ops-set-peer-w3 i v y)) (fn2-env-ops-op s y))
+       (equal (fn2-env-ops-op s (fn2-count-stray y)) (fn2-env-ops-op s y)))
+  :hints (("Goal" :in-theory (enable fn2-env-ops-op fn2-ops-set-peer-family fn2-ops-set-peer-port fn2-ops-set-peer-w0
+                                     fn2-ops-set-peer-w1 fn2-ops-set-peer-w2 fn2-ops-set-peer-w3 fn2-count-stray
+                                     update-fn2-ops-peer-family$ai update-fn2-ops-peer-port$ai update-fn2-ops-peer-w0$ai
+                                     update-fn2-ops-peer-w1$ai update-fn2-ops-peer-w2$ai update-fn2-ops-peer-w3$ai
+                                     update-fn2-ops-stray update-nth-array))))
+(defthm fn2-env-car-update-nth
+  (equal (car (update-nth n v l)) (if (zp n) v (car l)))
+  :rule-classes nil
+  :hints (("Goal" :expand ((update-nth n v l)))))
+(defthm fn2-env-car-op-posted
+  (equal (car (fn2-env-op-posted op evkind outcome count)) (car op))
+  :hints (("Goal" :in-theory (enable fn2-env-op-posted)
+           :use ((:instance fn2-env-car-update-nth (n 13) (v 1)
+                            (l (update-nth 14 0 (update-nth 15 evkind (update-nth 16 outcome (update-nth 17 count op))))))
+                 (:instance fn2-env-car-update-nth (n 14) (v 0)
+                            (l (update-nth 15 evkind (update-nth 16 outcome (update-nth 17 count op)))))
+                 (:instance fn2-env-car-update-nth (n 15) (v evkind) (l (update-nth 16 outcome (update-nth 17 count op))))
+                 (:instance fn2-env-car-update-nth (n 16) (v outcome) (l (update-nth 17 count op)))
+                 (:instance fn2-env-car-update-nth (n 17) (v count) (l op))))))
+(defthm fn2-env-ops-op-of-post-accept-result
+  (fn2-env-op-kept (fn2-env-ops-op s (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce family port
+                                                             w0 w1 w2 w3 fn2-ops))
+                   (fn2-env-ops-op s fn2-ops))
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-post-accept-result fn2-env-op-kept fn2-env-ops-op-of-peer-sets
+                            fn2-env-ops-op-of-post-result fn2-env-nth-op-posted fn2-env-car-op-posted)
+                           (fn2-post-result fn2-peer-recordp fn2-env-ops-op fn2-env-op-posted fn2-count-stray
+                            fn2-ops-set-peer-family fn2-ops-set-peer-port fn2-ops-set-peer-w0
+                            fn2-ops-set-peer-w1 fn2-ops-set-peer-w2 fn2-ops-set-peer-w3))
+           :use ((:instance fn2-env-ops-op-accept-kind)))))
+(defthm fn2-env-ops-op-of-post-clock-signal
+  (and (equal (fn2-env-ops-op s (fn2-post-clock mono real flags fn2-ops)) (fn2-env-ops-op s fn2-ops))
+       (equal (fn2-env-ops-op s (fn2-post-signal bits fn2-ops)) (fn2-env-ops-op s fn2-ops)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-ops-op fn2-post-clock fn2-post-signal)
+                                  (binary-logior binary-logand fn2-saturating-inc60 unsigned-byte-p)))))
+(defthm fn2-env-op-kept-refl (fn2-env-op-kept o o) :hints (("Goal" :in-theory (enable fn2-env-op-kept))))
+; An ops update X(fn2-ops) that keeps every op: the core's ops become X's.
+(defmacro fn2-env-ops-kept-events (name call)
+  ; CALL: the update applied to (fn2-core-ops c), e.g. (fn2-post-signal bits (fn2-core-ops c))
+  (let ((from (fn2-columns-sym name "-KEPT-FROM")) (all (fn2-columns-sym name "-KEPT")))
+    `(progn
+       (defthm ,from
+         (fn2-env-ops-kept-from s k ,call c)
+         :hints (("Goal" :induct (fn2-env-ops-kept-from s k ,call c)
+                  :in-theory '(fn2-env-ops-kept-from fn2-env-op-is-ops-op fn2-env-op-kept-refl
+                               fn2-env-ops-op-of-post-accept-result fn2-env-ops-op-of-post-clock-signal))))
+       (defthm ,all
+         (implies (fn2-corep c) (fn2-env-ops-kept ,call c))
+         :hints (("Goal" :in-theory (e/d (fn2-env-ops-kept fn2-env-ops-rows ,from) (fn2-env-ops-kept-from fn2-ops-rows))
+                  :use ((:instance fn2-core-ops-type (fn2-core c)))))))))
+(fn2-env-ops-kept-events fn2-env-post-accept
+  (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 (fn2-core-ops c)))
+(fn2-env-ops-kept-events fn2-env-post-clock (fn2-post-clock mono real flags (fn2-core-ops c)))
+(fn2-env-ops-kept-events fn2-env-post-signal (fn2-post-signal bits (fn2-core-ops c)))
+; J5 reads no child but the machine table, commit-io, ops and (J6) pool: the
+; extents and the pool frames.
+(defmacro fn2-env-j5-child-frame-events (upd)
+  (progn$
+    `(progn
+       (defthm ,(fn2-columns-sym 'fn2-env-j5-readers (concatenate 'string "-OF-" (symbol-name upd)))
+         (and (equal (fn2-env-io u (,upd x c)) (fn2-env-io u c))
+              (equal (fn2-env-op s (,upd x c)) (fn2-env-op s c))
+              (equal (fn2-env-ops-rows (,upd x c)) (fn2-env-ops-rows c))
+              (equal (fn2-env-role-io id role (,upd x c)) (fn2-env-role-io id role c))
+              (equal (fn2-env-role-offset id role (,upd x c)) (fn2-env-role-offset id role c))
+              (equal (fn2-env-role-written id role f log (,upd x c)) (fn2-env-role-written id role f log c)))
+         :hints (("Goal" :in-theory (e/d (fn2-env-io fn2-env-op fn2-env-ops-rows fn2-env-role-io fn2-env-role-offset
+                                          fn2-env-role-written)
+                                         (fn2-env-written-from)))))
+       (defthm ,(fn2-columns-sym 'fn2-env-j5-fence (concatenate 'string "-OF-" (symbol-name upd)))
+         (equal (fn2-env-j5-fence id op s log (,upd x c)) (fn2-env-j5-fence id op s log c))
+         :hints (("Goal" :in-theory (e/d (fn2-env-j5-fence) (fn2-env-role-written fn2-env-j5-taken fn2-env-take-index take)))))
+       (defthm ,(fn2-columns-sym 'fn2-env-j5-op (concatenate 'string "-OF-" (symbol-name upd)))
+         (equal (fn2-env-j5-op s id log (,upd x c)) (fn2-env-j5-op s id log c))
+         :hints (("Goal" :in-theory (e/d (fn2-env-j5-op) (fn2-env-op fn2-env-io fn2-env-j5-fence)))))
+       (defthm ,(fn2-columns-sym 'fn2-env-j5-ops (concatenate 'string "-OF-" (symbol-name upd)))
+         (equal (fn2-env-j5-ops s k id log (,upd x c)) (fn2-env-j5-ops s k id log c))
+         :hints (("Goal" :induct (fn2-env-j5-ops s k id log c) :in-theory (disable fn2-env-j5-op))))
+       (defthm ,(fn2-columns-sym 'fn2-env-owned-fences (concatenate 'string "-OF-" (symbol-name upd)))
+         (equal (fn2-env-owned-fences s k id (,upd x c)) (fn2-env-owned-fences s k id c))
+         :hints (("Goal" :induct (fn2-env-owned-fences s k id c) :in-theory (disable fn2-env-op))))
+       (defthm ,(fn2-columns-sym 'fn2-env-j5-row (concatenate 'string "-OF-" (symbol-name upd)))
+         (equal (fn2-env-j5-row id log (,upd x c)) (fn2-env-j5-row id log c))
+         :hints (("Goal" :in-theory (e/d (fn2-env-j5-row fn2-env-j5-roles fn2-env-j5-role fn2-env-role-live)
+                                         (fn2-env-j5-ops fn2-env-owned-fences fn2-env-op fn2-env-role-io
+                                          fn2-env-role-offset fn2-env-role-written fn2-env-j5-taken fn2-env-take-index
+                                          fn2-env-j5-take-ok))))))))
+(fn2-env-j5-child-frame-events update-fn2-core-extents)
+(fn2-env-j5-child-frame-events update-fn2-core-pool)
+(defthm fn2-env-j6-readers-of-update-fn2-core-extents
+  (and (equal (fn2-env-role-octets id role (update-fn2-core-extents x c)) (fn2-env-role-octets id role c))
+       (equal (fn2-env-role-live id role (update-fn2-core-extents x c)) (fn2-env-role-live id role c)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-role-octets fn2-env-role-live)
+                                  (fn2-env-op fn2-env-role-io fn2-env-pool-octets)))))
+(defthm fn2-env-j6-row-of-update-fn2-core-extents
+  (equal (fn2-env-j6-row id (update-fn2-core-extents x c)) (fn2-env-j6-row id c))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-j6-row fn2-env-j6-readers-of-update-fn2-core-extents
+                                               fn2-env-j5-readers-of-update-fn2-core-extents
+                                               fn2-commit-idp-of-update-fn2-core-extents
+                                               fn2-machine-phase-of-update-fn2-core-extents
+                                               fn2-machine-cb-issued-of-update-fn2-core-extents
+                                               fn2-machine-cb-mode-of-update-fn2-core-extents
+                                               fn2-machine-batch-no-of-update-fn2-core-extents)
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-j5-rows-of-update-fn2-core-extents
+  (equal (fn2-env-j5-rows ids log (update-fn2-core-extents x c)) (fn2-env-j5-rows ids log c))
+  :hints (("Goal" :induct (fn2-env-j5-rows ids log c)
+           :in-theory (union-theories '(fn2-env-j5-rows fn2-env-j5-row-of-update-fn2-core-extents
+                                        fn2-env-j6-row-of-update-fn2-core-extents)
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j5-rows-frame-step
+  ; :accept-result, :clock, :signal and :epoch keep J5 and J6
+  (implies (and (fn2-corep c) (true-listp log) (fn2-env-j5-rows ids log c)
+                (member-equal (fn2-env-tag action) '(:accept-result :clock :signal :epoch)))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-j5-rows ids (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-step fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
+                                        fn2-env-begin-epoch fn2-env-j5-rows-kept fn2-env-post-accept-kept
+                                        fn2-env-post-clock-kept fn2-env-post-signal-kept
+                                        fn2-env-j5-rows-of-update-fn2-core-extents append-to-nil
+                                        member-equal (:e member-equal) (:e equal) mv-nth (:e car) (:e cdr) car-cons cdr-cons
+                                        (:e mv-nth))
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-j5-row-loan-write
+  ; :loan-write writes the pool only, which J5 does not read (J6 across it is
+  ; FN2-POOL-CONSERVATION's: the loan's range is disjoint from the roles')
+  (implies (equal (fn2-env-tag action) :loan-write)
+           (equal (fn2-env-j5-row id log (mv-nth 1 (fn2-env-step action nil image rlog c)))
+                  (fn2-env-j5-row id log c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-step fn2-env-loan-write fn2-env-fill fn2-env-j5-row-of-update-fn2-core-pool
+                                        (:e equal) (:e zp) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                      (theory 'minimal-theory)))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
