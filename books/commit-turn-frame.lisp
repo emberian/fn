@@ -203,39 +203,9 @@
 ;; the registry's run/observe contracts and the executor's glue contracts.
 
 ;; ---------------------------------------------------------------------------
-;; THE COMMIT HANDLERS (the dispatch states their FRAMEs owed): each
-;; handler's chained row-frame contract at its declared columns and
-;; children, as an arm's (machines.lisp fn2-arm-frame-arm-events), after its
-;; callees' contracts.
-(defun fn2-ctf-handler-forms (name observes world)
-  (declare (xargs :mode :program))
-  (if (atom observes) nil
-    (let* ((fn (cadar observes)) (c (cddar observes))
-           (cols (fn2-machine-property name :table world))
-           (tk (fn2-machine-child-index (fn2-columns-sym name "-TABLE") world))
-           (j (fn2-machine-column-indices (cons 'phase (fn2-arm-get :writes c)) cols))
-           (ch (fn2-machine-child-indices (append (fn2-arm-get :tables c) (fn2-machine-directory-child (fn2-arm-get :writes c))
-                                                  *fn2-arm-implicit-tables*) world)))
-      (list*
-       `(make-event
-         (value (cons 'progn (fn2-arm-frame-fns-forms
-                              (fn2-arm-frame-todo (fn2-arm-frame-body-callees ',fn (w state)) ',name (w state) nil 64) ',name))))
-       `(make-event
-         (let* ((world (w state)) (callees (fn2-arm-frame-body-callees ',fn world)))
-           (value
-            `(progn
-               (defthm ,',(fn2-arm-frame-name fn "-ARM-ROW-FRAME")
-                 (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
-                               ,@',(fn2-arm-frame-row-frame-hyps tk ch j 'id))
-                          (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0
-                                             (mv-nth 1 (,',fn ,@',(formals fn world)))))
-                 :hints ,(fn2-arm-frame-hints (cons ',fn (append (fn2-arm-frame-inline-runes ',fn ',name world)
-                                                                (fn2-arm-frame-lemmas callees '("-ARM-ROW-FRAME" "-ARM-SLOT") ',name world)))))
-               (in-theory (disable ,',(fn2-arm-frame-name fn "-ARM-ROW-FRAME")))
-               (table fn2-arm-frame-fns ',',fn '(:arm ,',ch ,',j nil))))))
-       (fn2-ctf-handler-forms name (cdr observes) world)))))
-(make-event
- (value (cons 'progn (fn2-ctf-handler-forms 'fn2-commit (fn2-machine-property 'fn2-commit :observes (w state)) (w state)))))
+;; THE COMMIT HANDLERS: each handler's row frame (FN-ARM-ROW-FRAME, entry
+;; (:arm CH J NIL)) is the dispatch's (machines.lisp fn2-machine-observe-rows,
+;; at assembly-dispatch); its callees' contracts, then the route's below.
 (make-event
  (value (cons 'progn (fn2-arm-frame-fns-forms
                       (fn2-arm-frame-todo '(fn2-machine-observe-terminal fn2-machine-refuse-observation fn2-machine-observe-contract-check
@@ -247,7 +217,9 @@
   (if (atom observes) (mv nil nil)
     (mv-let (ch j) (fn2-ctf-handler-decls (cdr observes) world)
       (let ((e (cdr (assoc-eq (cadar observes) (table-alist 'fn2-arm-frame-fns world)))))
-        (mv (union-equal (remove-duplicates-equal (cadr e)) ch) (union-equal (caddr e) j))))))
+        (if (not (eq (car e) :arm))
+            (mv (er hard 'fn2-ctf-handler-decls "The commit handler ~x0 has no proved row frame: ~x1." (cadar observes) e) nil)
+        (mv (union-equal (remove-duplicates-equal (cadr e)) ch) (union-equal (caddr e) j)))))))
 (make-event
  (mv-let (ch j) (fn2-ctf-handler-decls (fn2-machine-property 'fn2-commit :observes (w state)) (w state))
    (let ((term (fn2-arm-frame-known 'fn2-machine-observe-terminal 'fn2-commit (w state))))

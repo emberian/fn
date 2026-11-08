@@ -2707,6 +2707,47 @@
      ; theory computation each: 470 of them took 29 s in assembly-callbacks)
      (make-event (fn2-arm-frame-disable-form
                   ',(cons fn (fn2-arm-frame-todo (fn2-arm-frame-body-callees fn world) kind world nil 64)) ',kind (w state)))))
+;; A handler's ROW-FRAME (the chained row-frame contract an arm's FRAME is
+;; proved from, without the phase part): at its declared children CH and
+;; columns J, after its callees' contracts; a callee without contracts or
+;; beyond the declaration, or a failed proof, leaves it owed in table
+;; fn2-arm-frame-owed under the ROW-FRAME's name.
+(defun fn2-arm-frame-handler-final (kind fn ch j world)
+  (declare (xargs :verify-guards nil))
+  (let* ((tk (fn2-arm-frame-child-index (fn2-columns-sym kind "-TABLE") world))
+         (frame (fn2-arm-frame-name fn "-ARM-ROW-FRAME"))
+         (inline (fn2-arm-frame-body-setters fn kind world))
+         (callees (fn2-arm-frame-body-callees fn world))
+         (problem (cond ((and inline (not (member tk ch)) (not (subsetp-equal inline j)))
+                         (list :columns (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))
+                               (set-difference-equal inline j)))
+                        (t (or (fn2-arm-frame-static-problem (if (and inline (member-eq 'id (formals fn world)))
+                                                                 (remove-eq (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE")) callees)
+                                                               callees)
+                                                             ch j tk kind world)
+                               (fn2-arm-frame-slot-problem callees kind world))))))
+    (cond ((getpropc frame 'theorem nil world) '(value-triple :known))
+          (problem `(table fn2-arm-frame-owed ',frame ',problem))
+          (t `(:or (progn
+                     (defthm ,frame
+                       (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 fn2-core)
+                                     ,@(fn2-arm-frame-row-frame-hyps tk ch j 'id))
+                                (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0
+                                                   ,(fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
+                       :hints ,(fn2-arm-frame-hints (cons fn (append (fn2-arm-frame-inline-runes fn kind world)
+                                                                    (fn2-arm-frame-lemmas callees '("-ARM-ROW-FRAME" "-ARM-SLOT") kind world)))))
+                     (in-theory (disable ,frame))
+                     (table fn2-arm-frame-fns ',fn '(:arm ,ch ,j nil)))
+                   (table fn2-arm-frame-owed ',frame '(:proof ,fn)))))))
+(defun fn2-arm-frame-handler-form (kind fn ch j world)
+  (declare (xargs :verify-guards nil))
+  (let ((todo (fn2-arm-frame-todo (fn2-arm-frame-body-callees fn world) kind world nil 64)))
+    `(progn
+       ,@(and (not (fn2-arm-frame-known 'fn2-core-stop nil world)) (fn2-arm-frame-basis-events world))
+       ,@(and (not (assoc-eq kind (table-alist 'fn2-arm-frame-kinds world))) (fn2-arm-frame-kind-events kind world))
+       ,@(fn2-arm-frame-fns-forms todo kind)
+       (make-event (fn2-arm-frame-handler-final ',kind ',fn ',ch ',j (w state)))
+       (make-event (fn2-arm-frame-disable-form ',todo ',kind (w state))))))
 (defun fn2-machine-arm-rows (name arms world)
   (declare (xargs :verify-guards nil))
   (if (atom arms) nil
@@ -2777,7 +2818,10 @@
           :schema :invariant :from (:machine ,name)
           :teeth (fn2-arm-frame-positive fn2-arm-frame-negative)
           :doc ,(concatenate 'string "Handler " (symbol-name tag) " of " (symbol-name name)
-                             " changes only its declared fields and children and moves only to a declared phase."))))
+                             " changes only its declared fields and children and moves only to a declared phase."))
+       ;; its row frame, independent of the phases it moves to: proved from
+       ;; its callees' contracts, else owed and named (fn2-arm-frame-handler-form)
+       `(make-event (value (fn2-arm-frame-handler-form ',name ',fn ',children ',columns (w state))))))
        (fn2-machine-observe-rows name (cdr observes) world)))))
 
 ; Teeth: the certificates accept every declared bound and successor and
