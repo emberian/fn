@@ -692,6 +692,15 @@
                                          (and (equal phase *fn2-commit-state-log-write*) (equal mode 1)))
                             log fn2-core))))
 (defun fn2-env-b2n (x) (declare (xargs :guard t)) (if x 1 0))
+; At :log-write a live role 2 is issued (cb-issued 2), and a live role 1
+; is another operation: one harvested result answers one role.
+(defun fn2-env-j5-apart (id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (fn2-env-role-live id 2 fn2-core)
+           (and (equal (fn2-machine-cb-issued id fn2-core) 2)
+                (implies (fn2-env-role-live id 1 fn2-core)
+                         (not (equal (nth 1 (fn2-env-role-io id 1 fn2-core))
+                                     (nth 1 (fn2-env-role-io id 2 fn2-core))))))))
 ; The issued roles of a write phase: (FIRST . COUNT).
 (defun fn2-env-j5-roles (id log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -707,7 +716,8 @@
                 (implies (<= 2 issued) (fn2-env-j5-role id 2 log fn2-core))
                 (equal (+ done (if (<= 1 issued) (fn2-env-b2n (fn2-env-role-live id 1 fn2-core)) 0)
                           (if (<= 2 issued) (fn2-env-b2n (fn2-env-role-live id 2 fn2-core)) 0))
-                       issued)))
+                       issued)
+                (fn2-env-j5-apart id fn2-core)))
           (t t))))
 ; The fence's take (a fence) follows the answers of the writes its rise
 ; fences: role 0's once the dependency flag is up, roles 1 and 2 once the log
@@ -5322,7 +5332,7 @@
            (fn2-env-j5-roles id (fn2-env-pr-log) (update-fn2-core-ops (fn2-env-pr-ops) c)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn2-env-j5-roles fn2-env-j5-role-post fn2-env-role-live-post
+                       '(fn2-env-j5-roles fn2-env-j5-role-post fn2-env-role-live-post fn2-env-j5-apart fn2-env-ops-frame
                          fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
                          fn2-machine-cb-done-of-update-fn2-core-ops)
                        (theory 'minimal-theory)))))
@@ -5754,13 +5764,20 @@
            (equal (fn2-env-role-live id role (fn2-env-tk-c)) (fn2-env-role-live id role c)))
   :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-role fn2-env-role-live-booleanp) (theory 'minimal-theory))
            :use ((:instance fn2-env-role-live-take)))))
+(defthm fn2-env-j5-apart-take
+  ; a role live after the take was live before, at the same unit
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j5-apart id c))
+           (fn2-env-j5-apart id (fn2-env-tk-c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-j5-apart fn2-env-take-frames) (theory 'minimal-theory))
+           :use ((:instance fn2-env-role-live-take (role 1)) (:instance fn2-env-role-live-take (role 2))))))
 (defthm fn2-env-j5-roles-take
   (implies (and (fn2-corep c) (fn2-core-wfp c) (true-listp log)
                 (fn2-env-j5-roles id log c) (fn2-env-j6-row id c) (fn2-commit-idp id c))
            (fn2-env-j5-roles id (fn2-env-log+ log (fn2-env-tk-e)) (fn2-env-tk-c)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn2-env-j5-roles fn2-env-take-frames fn2-env-role-live-take-of-j5-role
-                                        fn2-env-j5-role-take (:e natp) (:e equal))
+                                        fn2-env-j5-role-take (:e natp) (:e equal) fn2-env-j5-apart-take)
                                       (theory 'minimal-theory)))))
 (defthm fn2-env-j6-row-take
   (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-j6-row id c))
@@ -5893,7 +5910,7 @@
   (implies (and (fn2-env-j5-roles id log c) (fn2-env-ops-kept x c))
            (fn2-env-j5-roles id log (update-fn2-core-ops x c)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(fn2-env-j5-roles fn2-env-j5-role-kept fn2-env-role-live-kept
+           :in-theory (union-theories '(fn2-env-j5-roles fn2-env-j5-role-kept fn2-env-role-live-kept fn2-env-j5-apart fn2-env-ops-frame
                                         fn2-machine-phase-of-update-fn2-core-ops fn2-machine-cb-issued-of-update-fn2-core-ops
                                         fn2-machine-cb-done-of-update-fn2-core-ops)
                                       (theory 'minimal-theory)))))
@@ -6410,6 +6427,7 @@
   (implies (fn2-env-j5-same-evidence id a b)
            (equal (fn2-env-j5-roles id log b) (fn2-env-j5-roles id log a)))
   :hints (("Goal" :in-theory (union-theories '(fn2-env-j5-roles fn2-env-j5-role-congruence fn2-env-role-live-congruence
+                                               fn2-env-j5-apart fn2-env-j5-evidence-role-reads
                                                fn2-env-j5-evidence-reads (:e natp) (:e <))
                                              (theory 'minimal-theory)))))
 (defthm fn2-env-j5-point-congruence
