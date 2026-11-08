@@ -1,4 +1,5 @@
 import Fn2.ACL2.Val
+import Fn2.Arms.Commit
 
 /-!
 # Fn2.Arms: the step language of `defmachine`, and its definitional interpreter
@@ -105,6 +106,7 @@ structure Arm where
   decl : Val
   fn : String
   refuse : RefuseCtx := {}
+  commit : CommitCtx := {}
   deriving Inhabited, Repr
 
 /-- A true list (no dotted tail). -/
@@ -169,10 +171,12 @@ def expandRefuse (rc : RefuseCtx) (s : Val) : List Val :=
           Val.ofList [.sym ":CHARGE", .sym ":STEPS", .sym "*FN2-WORK-TRANSITION*", .sym ":RUNNABLE", .sym "T"]]
   | _, _ => [s]
 
-def readStepsF (rc : RefuseCtx) (readSteps : Val → Except String (List Step)) (ss : Val) :
+def readStepsF (rc : RefuseCtx) (cc : CommitCtx) (readSteps : Val → Except String (List Step)) (ss : Val) :
     Except String (List Step) := do
   if !ss.properList then throw s!"steps with a dotted tail: {ss.render}"
-  (ss.toList.flatMap (expandRefuse rc)).mapM readStep
+  let expanded ← (ss.toList.flatMap (expandRefuse rc)).mapM fun s =>
+    if s.car == .sym ":COMMIT" then Commit.expand cc s else pure [s]
+  expanded.flatten.mapM readStep
 where
   readStep (s : Val) : Except String Step := do
     if !s.properList then throw s!"a step with a dotted tail: {s.render}"
@@ -254,8 +258,8 @@ where
     | _ => throw s!"unknown step {s.render}"
 
 /-- The step reader: `readStepsF` unfolded `readDepth` times. -/
-def readSteps (rc : RefuseCtx := {}) : Val → Except String (List Step) :=
-  fixN readDepth (readStepsF rc) (fun ss => .error s!"steps nested too deep: {ss.render}")
+def readSteps (rc : RefuseCtx := {}) (cc : CommitCtx := {}) : Val → Except String (List Step) :=
+  fixN readDepth (readStepsF rc cc) (fun ss => .error s!"steps nested too deep: {ss.render}")
 
 /-- An arm's declaration read: `:from` and `:on-refusal` (in any order, as `fn2-arms-options`
 reads them), then the steps. -/
@@ -279,7 +283,8 @@ def Arm.read (a : Arm) : Except String ArmDecl := do
   let r := match r with
     | .cons (.sym h) _ => if h.startsWith ":" then Val.ofList [r] else r
     | _ => r
-  pure ⟨fr, ← readSteps a.refuse r, ← readSteps a.refuse ss⟩
+  let cc := { a.commit with tag := if a.commit.tag == "" then a.tag else a.commit.tag }
+  pure ⟨fr, ← readSteps a.refuse cc r, ← readSteps a.refuse cc ss⟩
 
 /-- A column's carrier, for the checked write: an unsigned width, or an enum's tag count. -/
 inductive ColType

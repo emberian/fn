@@ -118,7 +118,8 @@
 ; here is on the interpreter's path (LEAN-METATHEORY sections 5 and 12, decision 7). The
 ; generator has already checked every arm: a kind certifies only if fn2-arms-steps accepts it.
 
-(defun meta-kw (key plist) (let ((e (member key plist))) (and e (cadr e))))
+(defun meta-kw (key plist)
+  (loop for (k v) on plist by #'cddr when (eq k key) return v))
 
 (defun meta-sig (fn)
   ; a child-form function's (TAKES RETURNS RESULT-COUNT), when the generator narrowed it
@@ -294,12 +295,20 @@
                         collect k))
          (kinds (remove-if-not #'meta-child-form-p stepped))
          (kds (mapcar #'meta-kind stepped))
+         (commit-words (meta-commit-words kds))
          (ops (let ((acc nil))
                 (dolist (k stepped)
                   (setq acc (meta-ops-in (list (fn2-machine-declared k :subarms *meta-w*)
                                                (fn2-machine-declared k :arms *meta-w*)
                                                (fn2-machine-declared k :observe-arms *meta-w*))
                                          acc)))
+                (when commit-words
+                  (dolist (op '(fn2-successor-release fn2-commit-take fn2-commit-posture
+                                fn2-machine-pool-capacity-read-code fn2-machine-pool-capacity
+                                fn2-successor-stage fn2-successor-emit fn2-commit-admit-txn
+                                fn2-successor-bind))
+                    (if (fn2-arms-op-row op *meta-w*) (pushnew op acc)
+                      (meta-err "Missing :commit operation declaration ~s" op))))
                 ;; the operations the generator calls without naming them in a step: the parks an
                 ;; :issue's exhaustion or a (:park ...) reaches, and the declared waits' parkers
                 (dolist (o (append '(fn2-machine-park fn2-machine-park-admission)
@@ -340,6 +349,20 @@
                  ;; the functions of the arm vocabulary (Fn2.Arms.vocabularyFns), so every name the
                  ;; reader accepts has a translation or a native
                  '(nfix ifix zp zip natp posp unsigned-byte-p ash min max)
+                 ;; The whole-core certificate also covers a child-form kind's
+                 ;; assembled entry face. Probe-only kinds have no such face;
+                 ;; the canonical served inventory records actual obligations.
+                 (loop for kd in kds
+                       when (eq (meta-kw :form (cdr kd)) :children)
+                       append
+                       (append
+                        (loop for key in '(:arms :observes)
+                              for infix in '("-RUN-" "-ON-")
+                              append (loop for entry in (meta-kw key (cdr kd))
+                                           for fn = (fn2-arms-fn-name (car kd) infix (car entry))
+                                           when (function-symbolp fn *meta-w*) collect fn))
+                        (let ((fn (fn2-columns-sym (car kd) "-SNAPSHOT-READ-CODE")))
+                          (and (function-symbolp fn *meta-w*) (list fn)))))
                  (loop for k in kinds collect (fn2-columns-sym k "-ROWS")))))
     (multiple-value-bind (order refused) (meta-closure roots)
       (list :embed
@@ -351,6 +374,9 @@
             (list :refused refused)
             (list :constants
                   (let ((cs (meta-constants '("*FN2-STOP-REASON-" "*FN2-WAIT-" "*FN2-WORK-" "*FN2-NONE*"))))
+                    (when commit-words
+                      (setq cs (meta-arm-constants
+                        '(*fn2-commit-outcome-accepted* *fn2-commit-outcome-uncertain*) cs)))
                     ;; a core-form kind's index constants (its arms read them as constants)
                     (dolist (kd kds)
                       (when (eq (meta-kw :form (cdr kd)) :core)
@@ -427,3 +453,108 @@
                 (*print-base* 10) (*print-radix* nil) (*print-escape* t))
             (prin1 package out) (terpri out)))
         (format t "~&FN2-META-CERTIFICATE PASS ~a~%" path)))))
+
+; Registry-wide package: no selected-kind or selected-arm allowlist. The
+; ordinary world printer and canonical printer share the same declared closure.
+(defun meta-commit-steps (decl)
+  ;; Walk statement positions only. Phase/case keys and expressions are data,
+  ;; so (:case phase (:commit (:idle))) does not contain a :commit word.
+  (let ((words nil))
+    (labels ((steps (xs) (dolist (x xs) (step1 x)))
+             (branches (xs) (dolist (x xs) (steps (cdr x))))
+             (step1 (x)
+               (case (car x)
+                 (:commit
+                  (push x words)
+                  (dolist (key '(:dependencies :unchanged :accepted :refused :uncertain))
+                    (steps (meta-kw key (cddr x)))))
+                 (:if (steps (caddr x)) (steps (cadddr x)))
+                 (:cond (branches (cdr x)))
+                 (:case (branches (cddr x)))
+                 (:do (branches (meta-kw :case (cdddr x))))
+                 (:issue (steps (meta-kw :ok (cddr x)))
+                         (steps (meta-kw :refused (cddr x))))
+                 (:repeat (steps (caddr x)))))
+             (declaration (xs)
+               (case (car xs)
+                 (:from (declaration (cddr xs)))
+                 (:on-refusal
+                  (let ((r (cadr xs)))
+                    (steps (if (keywordp (car r)) (list r) r)))
+                  (declaration (cddr xs)))
+                 (otherwise (steps xs)))))
+      (declaration decl))
+    (reverse words)))
+
+(defun meta-commit-words (kinds)
+  (let ((rows nil))
+    (dolist (kd kinds)
+      (dolist (area '(:subarms :arms :observes))
+        (dolist (entry (meta-kw area (cdr kd)))
+          (let ((env (list :kind (car kd) :tag (if (eq area :subarms) nil (car entry))
+                           :columns (meta-kw :columns (cdr kd)) :world *meta-w*)))
+            (dolist (x (meta-commit-steps (meta-kw :decl (cdr entry))))
+              (if (fboundp 'fn2-arms-commit-expand)
+                  (multiple-value-bind (err expansion) (fn2-arms-commit-expand x env)
+                    (if err (meta-err "Invalid live :commit word in ~s ~s" (car kd) (car entry))
+                      (push (list (car kd) area (car entry) x expansion) rows)))
+                (meta-err ":commit has no admitted expander")))))))
+    (reverse rows)))
+
+(defun meta-print-served-certificate (path)
+  (setq *meta-errors* nil)
+  (let* ((embed (meta-embed))
+         (get (lambda (key) (cadr (assoc key (cdr embed)))))
+         (inventory (fn2-tv-arm-inventory *meta-w*))
+         (boundary
+          (sort (loop for s being the symbols of (find-package "ACL2")
+                      when (and (eq (symbol-package s) (find-package "ACL2"))
+                                (function-symbolp s *meta-w*)
+                                (let ((n (symbol-name s)))
+                                  (and (>= (length n) 9) (string= "FN2-HOST-" n :end2 9))))
+                      collect s) #'string< :key #'symbol-name))
+         (roots (remove-duplicates
+                 (append (loop for row in inventory append
+                               (cons (fifth row) (and (sixth row) (list (sixth row)))))
+                         boundary '(fn2-turn)
+                         (mapcar #'car (funcall get :functions))))))
+    (multiple-value-bind (order refused) (meta-closure roots)
+      (let ((package
+             (list :fn2-served-certificate :version 2
+                   :toolchain (fn2-tv-object (list (acl2-version+) (lisp-implementation-type)
+                                                  (lisp-implementation-version)))
+                   :manifest (fn2-tv-manifest *meta-w*)
+                   :arm-inventory (fn2-tv-object inventory)
+                   :boundary-roots (fn2-tv-object (append boundary '(fn2-turn)))
+                   :roots (mapcar #'fn2-tv-object roots)
+                   :kinds (fn2-tv-object (funcall get :kinds))
+                   :commit-words (fn2-tv-object (meta-commit-words (funcall get :kinds)))
+                   :operations (fn2-tv-object (funcall get :operations))
+                   :operation-declarations (fn2-tv-object
+                     (mapcar (lambda (op) (cons (car op) (fn2-arms-op-row (car op) *meta-w*)))
+                             (funcall get :operations)))
+                   :waits (fn2-tv-object (table-alist 'fn2-waits *meta-w*))
+                   :constants (fn2-tv-object
+                     (remove-duplicates
+                      (append (funcall get :constants)
+                              (loop for kd in (funcall get :kinds) append
+                                    (loop for suffix in '("-KIND*" "-ADMISSION-ORDINAL*")
+                                          for name = (fn2-columns-pre "*" (fn2-columns-sym (car kd) suffix))
+                                          for value = (getpropc name 'const nil *meta-w*)
+                                          when (and (consp value) (eq (car value) 'quote))
+                                          collect (cons name (cadr value))))) :key #'car))
+                   :function-count (length order)
+                   :natives (mapcar #'fn2-tv-object *meta-natives*)
+                   :refused (mapcar #'fn2-tv-object refused))))
+        (when *meta-errors*
+          (dolist (e (reverse *meta-errors*)) (format t "~&META ERROR ~a~%" e))
+          (return-from meta-print-served-certificate nil))
+        (with-open-file (out path :direction :output :if-exists :supersede)
+          (let ((*package* (find-package "ACL2")) (*print-case* :upcase)
+                (*print-pretty* nil) (*print-length* nil) (*print-level* nil)
+                (*print-base* 10) (*print-radix* nil) (*print-escape* t))
+            (prin1 package out) (terpri out)
+            (dolist (fn order)
+              (prin1 (fn2-tv-function fn *meta-w*) out) (terpri out))))
+        (format t "~&FN2-META-SERVED-CERTIFICATE PASS ~a ~d arms ~d functions ~d refused~%"
+                path (length inventory) (length order) (length refused))))))

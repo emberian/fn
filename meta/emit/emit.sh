@@ -60,3 +60,11 @@ if ! grep -F 'FN2-META-CERTIFICATE PASS' "$log.core" >/dev/null; then
   tail -20 "$log.core"; echo "canonical core export refused (log $log.core)"; exit 1
 fi
 python3 -I "$here/emit_core_certificate.py" "$here/core-certificate.sexp"
+
+# Every declared root receives a contract and a coverage row. This is a
+# proposal: check_served_certificate.py counts only current kernel evidence.
+"$ACL2" --timeout 900 < meta/emit/print-served-certificate.lsp > "$log.served" 2>&1 || :
+if ! grep -F 'FN2-META-SERVED-CERTIFICATE PASS' "$log.served" >/dev/null; then
+  tail -20 "$log.served"; echo "canonical served export refused (log $log.served)"; exit 1
+fi
+python3 -I "$here/emit_embed.py" --served-certificate "$here/served-certificate.sexp"

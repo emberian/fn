@@ -8,32 +8,6 @@ set_option maxRecDepth 100000
 namespace Fn2.Instances.LayerAWorld
 open Fn2.ACL2
 
-theorem «FN2-BOOT-RELEASE-INDEX$AP».find : S11x4c060b_d3b0.fnTree.find 441314481894044238144879905388805792704579697837811897221456 = some «FN2-BOOT-RELEASE-INDEX$AP».dispatch := rfl
-theorem «FN2-BOOT-RELEASE-INDEX$AP».row (a0 : Val) : «FN2-BOOT-RELEASE-INDEX$AP».dispatch [a0] = some («FN2-BOOT-RELEASE-INDEX$AP» a0) := rfl
-theorem «FN2-BOOT-OUTCOME$AP».find : S11x4c060b_d3b0.fnTree.find 1567863996477726964488667252850267603587055952 = some «FN2-BOOT-OUTCOME$AP».dispatch := rfl
-theorem «FN2-BOOT-OUTCOME$AP».row (a0 : Val) : «FN2-BOOT-OUTCOME$AP».dispatch [a0] = some («FN2-BOOT-OUTCOME$AP» a0) := rfl
-theorem «FN2-BOOT-ANCHOR-SLOT$AP».find : S11x4c060b_d3b0.fnTree.find 6733924589447696504895894700031272971671185691276230992 = some «FN2-BOOT-ANCHOR-SLOT$AP».dispatch := rfl
-theorem «FN2-BOOT-ANCHOR-SLOT$AP».row (a0 : Val) : «FN2-BOOT-ANCHOR-SLOT$AP».dispatch [a0] = some («FN2-BOOT-ANCHOR-SLOT$AP» a0) := rfl
-theorem «FN2-BOOT-EPOCH1$AP».find : S11x4c060b_d3b0.fnTree.find 6124468736241120955033671627310245121114448 = some «FN2-BOOT-EPOCH1$AP».dispatch := rfl
-theorem «FN2-BOOT-EPOCH1$AP».row (a0 : Val) : «FN2-BOOT-EPOCH1$AP».dispatch [a0] = some («FN2-BOOT-EPOCH1$AP» a0) := rfl
-theorem «FN2-BOOT-OFFSET$AP».find : S11x4c060b_d3b0.fnTree.find 6124468736241120955033855371659346935300432 = some «FN2-BOOT-OFFSET$AP».dispatch := rfl
-theorem «FN2-BOOT-OFFSET$AP».row (a0 : Val) : «FN2-BOOT-OFFSET$AP».dispatch [a0] = some («FN2-BOOT-OFFSET$AP» a0) := rfl
-theorem «FN2-BOOT-INDEX$AP».find : S11x4c060b_d3b0.fnTree.find 23923706000941878730600567449521072914768 = some «FN2-BOOT-INDEX$AP».dispatch := rfl
-theorem «FN2-BOOT-INDEX$AP».row (a0 : Val) : «FN2-BOOT-INDEX$AP».dispatch [a0] = some («FN2-BOOT-INDEX$AP» a0) := rfl
-theorem «FN2-BOOT-BASE$AP».find : S11x4c060b_d3b0.fnTree.find 93451976566179213791406482045624664400 = some «FN2-BOOT-BASE$AP».dispatch := rfl
-theorem «FN2-BOOT-BASE$AP».row (a0 : Val) : «FN2-BOOT-BASE$AP».dispatch [a0] = some («FN2-BOOT-BASE$AP» a0) := rfl
-theorem «FN2-BOOT-CREATE$AP».find : S11x4c060b_d3b0.fnTree.find 6124468736241120955033634875120388862656848 = some «FN2-BOOT-CREATE$AP».dispatch := rfl
-theorem «FN2-BOOT-CREATE$AP».row (a0 : Val) : «FN2-BOOT-CREATE$AP».dispatch [a0] = some («FN2-BOOT-CREATE$AP» a0) := rfl
-theorem «FN2-BOOT-RX-SLOT$AP».find : S11x4c060b_d3b0.fnTree.find 1567863996477726964488681472484202576106242384 = some «FN2-BOOT-RX-SLOT$AP».dispatch := rfl
-theorem «FN2-BOOT-RX-SLOT$AP».row (a0 : Val) : «FN2-BOOT-RX-SLOT$AP».dispatch [a0] = some («FN2-BOOT-RX-SLOT$AP» a0) := rfl
-theorem «FN2-BOOT-POOL-SLOT$AP».find : S11x4c060b_d3b0.fnTree.find 102751534873164314344729599290801781346824286912848 = some «FN2-BOOT-POOL-SLOT$AP».dispatch := rfl
-theorem «FN2-BOOT-POOL-SLOT$AP».row (a0 : Val) : «FN2-BOOT-POOL-SLOT$AP».dispatch [a0] = some («FN2-BOOT-POOL-SLOT$AP» a0) := rfl
-theorem «FN2-BOOT-PENDING$AP».find : S11x4c060b_d3b0.fnTree.find 1567863996477726964488671679636774611887341904 = some «FN2-BOOT-PENDING$AP».dispatch := rfl
-theorem «FN2-BOOT-PENDING$AP».row (a0 : Val) : «FN2-BOOT-PENDING$AP».dispatch [a0] = some («FN2-BOOT-PENDING$AP» a0) := rfl
-theorem «FN2-BOOT-ACCOUNT-REF$AP».find : S11x4c060b_d3b0.fnTree.find 6733924589447696504895893828529976058712252161798193488 = some «FN2-BOOT-ACCOUNT-REF$AP».dispatch := rfl
-theorem «FN2-BOOT-ACCOUNT-REF$AP».row (a0 : Val) : «FN2-BOOT-ACCOUNT-REF$AP».dispatch [a0] = some («FN2-BOOT-ACCOUNT-REF$AP» a0) := rfl
-theorem «FN2-BOOT-GENERATION$AP».find : S11x4c060b_d3b0.fnTree.find 26304392927530064472250061268891228282042488157651280 = some «FN2-BOOT-GENERATION$AP».dispatch := rfl
-theorem «FN2-BOOT-GENERATION$AP».row (a0 : Val) : «FN2-BOOT-GENERATION$AP».dispatch [a0] = some («FN2-BOOT-GENERATION$AP» a0) := rfl
 theorem «FN2-BOOT-CONFIG-AUTHORITYP».find : S11x4c060b_d3b0.fnTree.find 112976507364875324965084164846715932913812933704801446861756752 = some «FN2-BOOT-CONFIG-AUTHORITYP».dispatch := rfl
 theorem «FN2-BOOT-CONFIG-AUTHORITYP».row (a0 : Val) : «FN2-BOOT-CONFIG-AUTHORITYP».dispatch [a0] = some («FN2-BOOT-CONFIG-AUTHORITYP» a0) := rfl
 theorem «FN2-BOOT-CONFIG-EXTENTSP».find : S11x4c060b_d3b0.fnTree.find 1723884694898610305253359448955016066190061622774042219344 = some «FN2-BOOT-CONFIG-EXTENTSP».dispatch := rfl
@@ -262,6 +236,32 @@ theorem «FN2-ALLOC-EDGES-HOLDER$AP».find : S11x4c060b_d3b0.fnTree.find 4413144
 theorem «FN2-ALLOC-EDGES-HOLDER$AP».row (a0 : Val) : «FN2-ALLOC-EDGES-HOLDER$AP».dispatch [a0] = some («FN2-ALLOC-EDGES-HOLDER$AP» a0) := rfl
 theorem «FN2-ALLOC-EDGES-STATE$AP».find : S11x4c060b_d3b0.fnTree.find 1723884694892834149237798969436233485281530961964080316752 = some «FN2-ALLOC-EDGES-STATE$AP».dispatch := rfl
 theorem «FN2-ALLOC-EDGES-STATE$AP».row (a0 : Val) : «FN2-ALLOC-EDGES-STATE$AP».dispatch [a0] = some («FN2-ALLOC-EDGES-STATE$AP» a0) := rfl
+theorem «FN2-BOOT-COUNT$AP».find : S11x4c060b_d3b0.fnTree.find 23923706000941878730600135404162107326800 = some «FN2-BOOT-COUNT$AP».dispatch := rfl
+theorem «FN2-BOOT-COUNT$AP».row (a0 : Val) : «FN2-BOOT-COUNT$AP».dispatch [a0] = some («FN2-BOOT-COUNT$AP» a0) := rfl
+theorem «FN2-BOOT-EVENT-READY$AP».find : S11x4c060b_d3b0.fnTree.find 6733924589447696504895976464121234198993021950044160336 = some «FN2-BOOT-EVENT-READY$AP».dispatch := rfl
+theorem «FN2-BOOT-EVENT-READY$AP».row (a0 : Val) : «FN2-BOOT-EVENT-READY$AP».dispatch [a0] = some («FN2-BOOT-EVENT-READY$AP» a0) := rfl
+theorem «FN2-BOOT-NEXT-EPOCH$AP».find : S11x4c060b_d3b0.fnTree.find 26304392927530064472250615878188239583375273811525968 = some «FN2-BOOT-NEXT-EPOCH$AP».dispatch := rfl
+theorem «FN2-BOOT-NEXT-EPOCH$AP».row (a0 : Val) : «FN2-BOOT-NEXT-EPOCH$AP».dispatch [a0] = some («FN2-BOOT-NEXT-EPOCH$AP» a0) := rfl
+theorem «FN2-BOOT-EPOCH0$AP».find : S11x4c060b_d3b0.fnTree.find 6124468736241120955033671627310245104337232 = some «FN2-BOOT-EPOCH0$AP».dispatch := rfl
+theorem «FN2-BOOT-EPOCH0$AP».row (a0 : Val) : «FN2-BOOT-EPOCH0$AP».dispatch [a0] = some («FN2-BOOT-EPOCH0$AP» a0) := rfl
+theorem «FN2-BOOT-STAGE$AP».find : S11x4c060b_d3b0.fnTree.find 23923706000941878730601289711021048742224 = some «FN2-BOOT-STAGE$AP».dispatch := rfl
+theorem «FN2-BOOT-STAGE$AP».row (a0 : Val) : «FN2-BOOT-STAGE$AP».dispatch [a0] = some («FN2-BOOT-STAGE$AP» a0) := rfl
+theorem «FN2-BOOT-TOTAL$AP».find : S11x4c060b_d3b0.fnTree.find 23923706000941878730601360382105271681360 = some «FN2-BOOT-TOTAL$AP».dispatch := rfl
+theorem «FN2-BOOT-TOTAL$AP».row (a0 : Val) : «FN2-BOOT-TOTAL$AP».dispatch [a0] = some («FN2-BOOT-TOTAL$AP» a0) := rfl
+theorem «FN2-BOOT-IMAGE-SIZE$AP».find : S11x4c060b_d3b0.fnTree.find 26304392927530064472250222185389503210347518197252432 = some «FN2-BOOT-IMAGE-SIZE$AP».dispatch := rfl
+theorem «FN2-BOOT-IMAGE-SIZE$AP».row (a0 : Val) : «FN2-BOOT-IMAGE-SIZE$AP».dispatch [a0] = some («FN2-BOOT-IMAGE-SIZE$AP» a0) := rfl
+theorem «FN2-BOOT-RX-GEN$AP».find : S11x4c060b_d3b0.fnTree.find 6124468736241120955033912001878192088695120 = some «FN2-BOOT-RX-GEN$AP».dispatch := rfl
+theorem «FN2-BOOT-RX-GEN$AP».row (a0 : Val) : «FN2-BOOT-RX-GEN$AP».dispatch [a0] = some («FN2-BOOT-RX-GEN$AP» a0) := rfl
+theorem «FN2-BOOT-POOL-GEN$AP».find : S11x4c060b_d3b0.fnTree.find 401373183098298102909099997229694445161808150864 = some «FN2-BOOT-POOL-GEN$AP».dispatch := rfl
+theorem «FN2-BOOT-POOL-GEN$AP».row (a0 : Val) : «FN2-BOOT-POOL-GEN$AP».dispatch [a0] = some («FN2-BOOT-POOL-GEN$AP» a0) := rfl
+theorem «FN2-BOOT-STOPPED$AP».find : S11x4c060b_d3b0.fnTree.find 1567863996477726964488686123512827278101070160 = some «FN2-BOOT-STOPPED$AP».dispatch := rfl
+theorem «FN2-BOOT-STOPPED$AP».row (a0 : Val) : «FN2-BOOT-STOPPED$AP».dispatch [a0] = some («FN2-BOOT-STOPPED$AP» a0) := rfl
+theorem «FN2-BOOT-DEADLINE$AP».find : S11x4c060b_d3b0.fnTree.find 401373183098298102909085442637372091092827390288 = some «FN2-BOOT-DEADLINE$AP».dispatch := rfl
+theorem «FN2-BOOT-DEADLINE$AP».row (a0 : Val) : «FN2-BOOT-DEADLINE$AP».dispatch [a0] = some («FN2-BOOT-DEADLINE$AP» a0) := rfl
+theorem «FN2-BOOT-PRINCIPAL-SLOT$AP».find : S11x4c060b_d3b0.fnTree.find 112976507364875324965088592479370192745047820422185016994578768 = some «FN2-BOOT-PRINCIPAL-SLOT$AP».dispatch := rfl
+theorem «FN2-BOOT-PRINCIPAL-SLOT$AP».row (a0 : Val) : «FN2-BOOT-PRINCIPAL-SLOT$AP».dispatch [a0] = some («FN2-BOOT-PRINCIPAL-SLOT$AP» a0) := rfl
+theorem «FN2-BOOT-PHASE$AP».find : S11x4c060b_d3b0.fnTree.find 23923706000941878730601070160590754038096 = some «FN2-BOOT-PHASE$AP».dispatch := rfl
+theorem «FN2-BOOT-PHASE$AP».row (a0 : Val) : «FN2-BOOT-PHASE$AP».dispatch [a0] = some («FN2-BOOT-PHASE$AP» a0) := rfl
 theorem «FN2-AUTH-STOPPED$AP».find : S11x4c060b_d3b0.fnTree.find 1567863996472656754514765659372387608301945168 = some «FN2-AUTH-STOPPED$AP».dispatch := rfl
 theorem «FN2-AUTH-STOPPED$AP».row (a0 : Val) : «FN2-AUTH-STOPPED$AP».dispatch [a0] = some («FN2-AUTH-STOPPED$AP» a0) := rfl
 theorem «FN2-AUTH-CUT$AP».find : S11x4c060b_d3b0.fnTree.find 365046783460457053620994584705515856 = some «FN2-AUTH-CUT$AP».dispatch := rfl
