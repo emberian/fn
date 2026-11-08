@@ -170,6 +170,11 @@
   (or (and (eq (caar spec) :columns) (member-equal (cadar spec) children))
       (fn2-column-spec-finer-p children (cdr spec)))))
 
+(defun fn2-column-spec-children (spec)
+ (declare (xargs :verify-guards nil))
+ (if (atom spec) nil
+  (cons (cadar spec) (fn2-column-spec-children (cdr spec)))))
+
 (defun fn2-column-callee-specs (fns world)
  (declare (xargs :verify-guards nil))
  (if (atom fns) nil
@@ -229,8 +234,12 @@
         (children (if (eq (car e) :arm) (cadr e) (fn2-arm-frame-entry-s e))))
   (cond ((assoc-eq fn (table-alist 'fn2-column-contracts world)) '(value-triple :already))
         ((assoc-eq fn (table-alist 'fn2-column-precisions world)) (fn2-column-precise-contract-event fn kind world))
-        ((or (eq (car e) :child) (and (member-eq (car e) '(:op :row :write :arm))
-              (not (fn2-column-spec-finer-p children (fn2-column-callee-specs (fn2-arm-frame-body-callees fn world) world))))) (fn2-column-base-event fn kind world))
+        ((or (eq (car e) :child)
+             (not (getpropc fn 'unnormalized-body nil world))
+             (and (member-eq (car e) '(:op :row :write :arm))
+              (let ((spec (fn2-column-callee-specs (fn2-arm-frame-body-callees fn world) world)))
+               (and (not (fn2-column-spec-finer-p children spec))
+                    (subsetp-equal children (fn2-column-spec-children spec)))))) (fn2-column-base-event fn kind world))
         (t (fn2-column-compose-event fn kind world)))))
 
 (defun fn2-column-events (fns kind)
@@ -314,10 +323,47 @@
   (append (fn2-column-call-view-uses views (car calls) world)
           (fn2-column-calls-view-uses (cdr calls) views world))))
 
+(mutual-recursion
+ (defun fn2-column-view-references (view term)
+  (declare (xargs :verify-guards nil :measure (acl2-count term)))
+  (cond ((atom term) nil) ((eq (car term) 'quote) nil)
+   (t (append (and (eq (car term) view) (list (caddr term)))
+              (fn2-column-view-references-list view (cdr term))))))
+ (defun fn2-column-view-references-list (view terms)
+  (declare (xargs :verify-guards nil :measure (acl2-count terms)))
+  (if (atom terms) nil
+   (append (fn2-column-view-references view (car terms))
+           (fn2-column-view-references-list view (cdr terms))))))
+
+(defun fn2-column-transitive-uses (view refs before out)
+ (declare (xargs :verify-guards nil))
+ (if (atom refs) nil
+  (cons `(:instance ,(fn2-columns-sym view "-TRANSITIVE")
+           (a ,(car refs)) (b ,before) (c ,out))
+        (fn2-column-transitive-uses view (cdr refs) before out))))
+
+(defun fn2-column-view-chain-uses (views call clause world)
+ (declare (xargs :verify-guards nil))
+ (if (atom views) nil
+  (let* ((fn (car call)) (formals (formals fn world))
+         (before (nth (position-eq 'fn2-core formals) (cdr call)))
+         (out (fn2-arm-frame-out-term fn call world))
+         (refs (remove-duplicates-equal (fn2-column-view-references-list (car views) clause))))
+   (append (fn2-column-transitive-uses (car views) refs before out)
+           (fn2-column-view-chain-uses (cdr views) call clause world)))))
+
+(defun fn2-column-calls-chain-uses (calls views clause world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) nil
+  (append (fn2-column-view-chain-uses views (car calls) clause world)
+          (fn2-column-calls-chain-uses (cdr calls) views clause world))))
+
 (defun fn2-column-view-hint (views clause world)
  (declare (xargs :verify-guards nil))
- (let ((uses (remove-duplicates-equal (fn2-column-calls-view-uses
-              (remove-duplicates-equal (fn2-column-calls-list clause world)) views world))))
+ (let* ((calls (remove-duplicates-equal (fn2-column-calls-list clause world)))
+        (uses (remove-duplicates-equal
+               (append (fn2-column-calls-view-uses calls views world)
+                       (fn2-column-calls-chain-uses calls views clause world)))))
   (and uses (list :use uses))))
 
 ; Consumer proofs keep producer definitions closed and instantiate only

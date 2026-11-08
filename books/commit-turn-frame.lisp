@@ -748,6 +748,6 @@
 (make-event (value (cons 'progn (fn2-column-events (fn2-ctf-postorder-new '(fn2-commit-reserve-extent fn2-commit-prepare-root fn2-commit-ready fn2-commit-put-members fn2-exec-wake) (w state)) 'fn2-commit))))
 (make-event (value (cons 'progn (fn2-column-events
  (fn2-ctf-postorder-new
-  '(fn2-machine-contract-check fn2-machine-refuse-phase
+  '(fn2-machine-contract-check fn2-machine-refuse-phase fn2-commit-start
     fn2-commit-write+phase+generation+principal-slot+deadline+stopped+batch-no+member-count+first-key+partner+cb-mode+cb-stage+cb-cursor+cb-issued+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live+cb-fence-ok+cb-deps-ok+cb-log-ok+cb-published+cb-acks+cb-seal-len+cb-wrote+cb-open+dep-bytes+rec-bytes)
   (w state)) 'fn2-commit))))
