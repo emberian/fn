@@ -63,10 +63,10 @@
 (in-theory (disable fn2-ctl-owner-p fn2-ctl-step-posture))
 
 
-(defcost fn2-ctl-dispatch-cns :answers (:ok :no-row :pool)
+(defcost fn2-ctl-dispatch-cns :answers (:ok :no-row :pool :none) :must-route (:none)
  :tables (fn2-core-machines fn2-core-pool fn2-cns-table fn2-core-machine-tables)
  :doc "Take a consumer request row for a control frame and hand the frame metadata.")
-(defcost fn2-ctl-dispatch-auth :answers (:ok :no-row :pool)
+(defcost fn2-ctl-dispatch-auth :answers (:ok :no-row :pool :none) :must-route (:none)
  :tables (fn2-core-machines fn2-core-pool fn2-auth-table fn2-core-machine-tables)
  :doc "Take an authority request row (fn2-auth) for a kind-29 frame, handing it the frame and the connection's authority.")
 (defcost fn2-ctl-owner-principal :answers (:ok :absent)
@@ -120,7 +120,7 @@
  :doc "Fetch's article: the occurrence's Message-ID checked against the request's, its octets (read into the lease) appended to the control range: (mv code at len).")
 ;; An append's reply carries D's word as its reason (e-surface.md 3.3): an
 ;; append where posting is not served is D's refused (NNTP's 440).
-(defconst *fn2-cns-append-word-refused* (fn2-upload-word-code :refused))
+(defconst *fn2-upload-word-refused* (fn2-upload-word-code :refused))
 (defcost fn2-cns-posting-p :doc "Whether posting is served (fn2-conn-posting-p, the input configuration): an append is a POST.")
 (defcost fn2-cns-lease-class :child fn2-cns-lease-class-of :doc "The pool class of a page's read lease (one storage unit; nil: none).")
 (defcost fn2-cns-lease-reserve :child fn2-pool-reserve :answers (:ok :exhausted :bounds :state) :tables (fn2-core-pool)
@@ -828,11 +828,14 @@
                                                         row-rx-slot row-rx-gen row-admin row-worked row-principal)
             :case (((:ok) (:set (auth aid) (auth-gen agen) (tx-off 0) (tx-len 0))
                           (:next :waiting) (:charge :steps *fn2-work-transition*))
+                   ((:none) (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
                    (:otherwise (:next :closing) (:charge :steps *fn2-work-transition* :runnable t)))))
           (t (:do (tcode cid cgen) (fn2-ctl-dispatch-cns id row-generation row-request row-pos row-flen
                                                          row-fkind row-rx-slot row-rx-gen)
               :case (((:ok) (:set (cns cid) (cns-gen cgen) (worked 1) (tx-off 0) (tx-len 0))
                             (:next :waiting) (:charge :steps *fn2-work-transition*))
+                     ;; no consumer request rows in the profile: the frame is not served
+                     ((:none) (:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
                      (:otherwise (:next :closing) (:charge :steps *fn2-work-transition* :runnable t)))))))
   (:waiting
    (:if (< 0 row-tx-len)
@@ -1243,13 +1246,16 @@
           ;; profile's share): refused, never parked on an upload or a
           ;; transaction that never comes; the reason is D's word
           ((and (equal row-upload *fn2-none*) (equal posting 0))
-           (:set (reason *fn2-cns-append-word-refused*)) (:goto refuse))
+           (:set (reason *fn2-upload-word-refused*)) (:goto refuse))
           ((equal row-upload *fn2-none*)
            (:do (tcode u ugen)
                 (fn2-machine-take-fn2-upload *fn2-none* id row-generation row-request *fn2-upload-rule-post*
                                              row-principal-slot row-op)
             :case (((:ok) (:set (upload u) (upload-gen ugen) (fed 0) (feed-mode 0) (feed-discard 0))
                     (:charge :steps *fn2-work-transition* :runnable t))
+                   ;; no fn2-upload row: unreachable in composition (posting,
+                   ;; checked above, needs the profile's upload windows)
+                   ((:none) (:stop :machine-phase))
                    (:otherwise (:park :taken fn2-upload :steps *fn2-work-transition*)))))
           ((not (equal row-feed-mode *fn2-conn-feed-done*))
            (:do (status start mode why copied)
