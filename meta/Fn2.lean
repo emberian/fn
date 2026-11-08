@@ -9,6 +9,9 @@ import Fn2.ACL2.SimpAttr
 import Fn2.ACL2.Read
 import Fn2.ACL2.Faithful
 import Fn2.ACL2.Fuel
+import Fn2.ACL2.Countdown
+import Fn2.ACL2.PrimitiveContracts
+import Fn2.ACL2.PoolCompare
 import Fn2.ACL2.Pres
 import Fn2.Arms
 import Fn2.ArmsLemmas

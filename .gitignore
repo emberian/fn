@@ -16,3 +16,4 @@ workxxx.*
 # Lane scratch (BRIEF-COMMON: never committed)
 /LANEDUMP.md
 /meta/emit/bridge-certificate.sexp
+/meta/emit/loop-certificate.sexp

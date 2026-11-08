@@ -229,6 +229,37 @@ def emit_echo_validation(kd, tuple_, out):
     target.write_text(template)
 
 
+def write_identity(src, destination, p, fs, allf, want, scope):
+    root = Path(__file__).resolve().parents[2]
+    tracked = sorted(root.glob('books/*.lisp')) + sorted((root/'meta').rglob('*.lean'))
+    tracked += sorted((root/'meta/emit').glob('*.py')) + sorted((root/'meta/emit').glob('*.in'))
+    tracked += sorted((root/'meta/emit').glob('*.lisp')) + sorted((root/'meta/emit').glob('*.lsp'))
+    tracked += [root/'meta/emit/emit.sh']
+    digest = lambda b: hashlib.sha256(b).hexdigest()
+    try:
+        revision = subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
+    except subprocess.CalledProcessError:
+        revision = os.environ.get('FN2_EMIT_SRC', 'unrecorded')
+    identity = dict(format=1, source=revision,
+        source_files={str(p.relative_to(root)):digest(p.read_bytes()) for p in tracked},
+        package_sha256=digest(Path(src).read_bytes()),
+        lean_toolchain=(root/'meta/lean-toolchain').read_text().strip(),
+        mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
+        acl2_toolchain=json.loads(os.environ.get('FN2_ACL2_IDENTITY', '"UNRECORDED"')),
+        exporting_runtime=[str(x) for x in decode(p[':TOOLCHAIN'])] if ':TOOLCHAIN' in p else 'UNRECORDED',
+        validated_body_candidates=sorted(want),
+        unvalidated_functions=sorted(set(allf)-want),
+        absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
+        guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
+        primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
+        primitive_domain_obligations={
+            'representation': 'Integer Val, ACL2/COMMON-LISP imported names and KEYWORD names; no rational or complex lowering',
+            'trusted_correspondence': 'Cross-kernel object correspondence; mathematical native contracts are in PrimitiveContracts and Faithful',
+            'scope': scope},
+        status='PROPOSED: kernel gates required; see the scoped check record')
+    Path(destination).write_text(json.dumps(identity,indent=2)+'\n')
+
+
 def main(src, outdir, bookpath=None):
     top = as_list(read_canonical(open(src, newline='').read()))
     if top[0] != ':FN2-CERTIFICATE': raise ValueError('wrong package tag')
@@ -328,34 +359,8 @@ def main(src, outdir, bookpath=None):
     for f,d in fs:
         C += body_certificate(f,d,allf)
     Path(bookpath or out/'bridge-body.lisp').write_text('\n\n'.join(C)+'\n')
-    root = Path(__file__).resolve().parents[2]
-    tracked = sorted(root.glob('books/*.lisp')) + sorted((root/'meta').rglob('*.lean'))
-    tracked += sorted((root/'meta/emit').glob('*.py')) + sorted((root/'meta/emit').glob('*.in'))
-    tracked += [root/'meta/emit/print-world.lisp', root/'meta/emit/print-certificate.lsp',
-                root/'meta/emit/bridge-body.lisp', root/'meta/emit/emit.sh']
-    digest = lambda b: hashlib.sha256(b).hexdigest()
-    try:
-        revision = subprocess.check_output(['git','-C',str(root),'rev-parse','HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
-    except subprocess.CalledProcessError:
-        revision = os.environ.get('FN2_EMIT_SRC', 'unrecorded')
-    identity = dict(format=1, source=revision,
-        source_files={str(p.relative_to(root)):digest(p.read_bytes()) for p in tracked},
-        package_sha256=digest(Path(src).read_bytes()),
-        lean_toolchain=(root/'meta/lean-toolchain').read_text().strip(),
-        mathlib_manifest_sha256=digest((root/'meta/lake-manifest.json').read_bytes()),
-        acl2_toolchain=json.loads(os.environ.get('FN2_ACL2_IDENTITY', '"UNRECORDED"')),
-        exporting_runtime=[str(x) for x in decode(p[':TOOLCHAIN'])] if ':TOOLCHAIN' in p else 'UNRECORDED',
-        validated_body_candidates=sorted(want),
-        unvalidated_functions=sorted(set(allf)-want),
-        absent_guard_properties=sorted(f.name for f,d in fs if str(f.guard) == ':MISSING'),
-        guard_policy='Preserved exactly; equations are unconditional, no absent guard is interpreted as true',
-        primitive_basis=sorted(set().union(*(calls_of(f.body,set()) for f,d in fs)) & set(NATIVE)),
-        primitive_domain_obligations={
-            'representation': 'Integer Val, ACL2/COMMON-LISP imported names and KEYWORD names; no rational or complex lowering',
-            'trusted_correspondence': 'CONS EQUAL INTEGERP < NTH MV-NTH UPDATE-NTH retain the existing ACL2/Val primitive correspondence',
-            'scope': 'No recursive body, ASH, division, string conversion or attached executable is certified by this instance'},
-        status='PROPOSED: certify bridge-body.lisp and build BridgeTranslation/Arms.Validation')
-    (out/'bridge-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
+    write_identity(src, out/'bridge-identity.json', p, fs, allf, want,
+        'Nonrecursive echo FREE body closure and whole-core arm; no attached executable')
     print('CERTIFICATE PROPOSAL', len(fs), 'body equations;', len(functions)-len(fs), 'exported functions unvalidated')
     for f,d in fs:
         print(f.name, show(f.body)[:120])

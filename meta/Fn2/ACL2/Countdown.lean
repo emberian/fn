@@ -61,6 +61,29 @@ theorem equals_solution (measure : α → Nat) (step : α → Sum β α)
     | inr next =>
       simpa [run, h] using ih next (by have := decreases x next h; omega)
 
+def value (default : β) (step : α → Sum β α) (fuel : Nat) (x : α) : β :=
+  match run step fuel x with | .ok result => result | .error _ => default
+
+theorem value_succ (default : β) (step : α → Sum β α) (fuel : Nat) (x : α) :
+    value default step (fuel + 1) x = match step x with
+      | .inl result => result | .inr next => value default step fuel next := by
+  cases h : step x <;> simp [value, run, h]
+
+theorem value_fixedpoint (default : β) (measure : α → Nat) (step : α → Sum β α)
+    (decreases : ∀ x y, step x = .inr y → measure y < measure x) (x : α) :
+    value default step (measure x + 1) x = match step x with
+      | .inl result => result
+      | .inr next => value default step (measure next + 1) next := by
+  rw [value_succ]
+  cases h : step x with
+  | inl result => rfl
+  | inr next =>
+    have hd := decreases x next h
+    obtain ⟨result, hr⟩ := adequate measure step decreases (measure next + 1) next (by omega)
+    have hs := stable step (measure next + 1) (measure x - (measure next + 1)) next result hr
+    rw [Nat.add_sub_of_le (by omega : measure next + 1 ≤ measure x)] at hs
+    simp [value, hr, hs]
+
 def witnessStep : Nat → Sum Nat Nat
   | 0 => .inl 7
   | n + 1 => .inr n

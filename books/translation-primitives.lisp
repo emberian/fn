@@ -1,6 +1,6 @@
 ; Rational intermediates and character/string obligations at the bridge.
 (in-package "ACL2")
-(include-book "arithmetic-5/top" :dir :system)
+(local (include-book "arithmetic-5/top" :dir :system))
 
 (defthm fn2-tv-ash-negative
   (implies (and (integerp count) (< count 0))
