@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "resources")
 (include-book "operations")
+(include-book "columns")
 
 (defconst *fn2-arm-dimensions* '(:bytes :steps :descriptors))
 ; An op reservation is held only across one issue: the pending operation is
@@ -1053,3 +1054,357 @@
 (in-theory (disable fn2-arm-kids fn2-arm-cols fn2-arm-row-frame fn2-arm-col-lens
                     fn2-arm-member-of-subsetp fn2-arm-member-of-subsetp-free fn2-arm-not-member-of-subsetp fn2-arm-subsetp-cons
                     fn2-arm-subsetp-cons-cons fn2-arm-update-nth-update-nth-same))
+
+; ----------------------------------------------------------------------
+; A footprint is a finite list of paths at which arbitrary replacement is
+; allowed. A path names a child, a column, a cell, or a byte. Prefix overlap
+; matters: permission to replace a child also permits changing its row count.
+; These masks and views are logical objects, never served allocations.
+(defun fn2-view-at (path core)
+  (declare (xargs :verify-guards nil))
+  (if (atom path) core (fn2-view-at (cdr path) (nth (nfix (car path)) core))))
+(defun fn2-footprint-clear (path core)
+  (declare (xargs :verify-guards nil))
+  (if (atom path) nil
+    (update-nth (nfix (car path))
+                (fn2-footprint-clear (cdr path) (nth (nfix (car path)) core)) core)))
+(defun fn2-footprint-mask (paths core)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) core
+    (fn2-footprint-mask (cdr paths) (fn2-footprint-clear (car paths) core))))
+(defun fn2-footprint (paths a b)
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-footprint-mask paths a) (fn2-footprint-mask paths b)))
+(defun fn2-view-path-disjoint (p q)
+  (declare (xargs :verify-guards nil))
+  (and (consp p) (consp q)
+       (or (not (equal (nfix (car p)) (nfix (car q))))
+           (fn2-view-path-disjoint (cdr p) (cdr q)))))
+(defun fn2-view-path-protected (path footprint)
+  (declare (xargs :verify-guards nil))
+  (if (atom footprint) t
+    (and (fn2-view-path-disjoint path (car footprint))
+         (fn2-view-path-protected path (cdr footprint)))))
+(defun fn2-view-protected (paths footprint)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) t
+    (and (fn2-view-path-protected (car paths) footprint)
+         (fn2-view-protected (cdr paths) footprint))))
+(defun fn2-view-project (paths core)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) nil
+    (cons (fn2-view-at (car paths) core) (fn2-view-project (cdr paths) core))))
+(defun fn2-view-equal (paths a b)
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-view-project paths a) (fn2-view-project paths b)))
+(defthm fn2-view-equal-refl (fn2-view-equal paths a a))
+(defthm fn2-view-equal-trans
+  (implies (and (fn2-view-equal paths a b) (fn2-view-equal paths b c))
+           (fn2-view-equal paths a c)) :rule-classes nil)
+(defthm fn2-footprint-refl (fn2-footprint paths a a))
+(defthm fn2-footprint-trans
+  (implies (and (fn2-footprint paths a b) (fn2-footprint paths b c))
+           (fn2-footprint paths a c)) :rule-classes nil)
+(defun fn2-view-clear-induct (p q core)
+  (declare (xargs :verify-guards nil))
+  (if (or (atom p) (atom q)) core
+    (fn2-view-clear-induct (cdr p) (cdr q) (nth (nfix (car p)) core))))
+(defthm fn2-view-at-of-clear
+  (implies (fn2-view-path-disjoint path changed)
+           (equal (fn2-view-at path (fn2-footprint-clear changed core))
+                  (fn2-view-at path core)))
+  :hints (("Goal" :induct (fn2-view-clear-induct path changed core)
+           :in-theory (disable nth update-nth))))
+(defthm fn2-view-at-of-mask
+  (implies (fn2-view-path-protected path footprint)
+           (equal (fn2-view-at path (fn2-footprint-mask footprint core))
+                  (fn2-view-at path core)))
+  :hints (("Goal" :induct (fn2-footprint-mask footprint core)
+           :in-theory (disable fn2-view-at fn2-footprint-clear))))
+(defthm fn2-footprint-to-reader
+  (implies (and (fn2-footprint footprint a b)
+                (fn2-view-path-protected path footprint))
+           (equal (fn2-view-at path b) (fn2-view-at path a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-footprint)
+           :use ((:instance fn2-view-at-of-mask (core a))
+                 (:instance fn2-view-at-of-mask (core b))))))
+(defthm fn2-footprint-to-view
+  (implies (and (fn2-footprint footprint a b)
+                (fn2-view-protected paths footprint))
+           (fn2-view-equal paths a b))
+  :rule-classes nil
+  :hints (("Goal" :induct (len paths)
+           :in-theory '(fn2-view-equal fn2-view-project fn2-view-protected len atom))
+          ("Subgoal *1/1" :use ((:instance fn2-footprint-to-reader (path (car paths)))))))
+(defthm fn2-view-reader
+  (implies (and (fn2-view-equal paths a b) (member-equal path paths))
+           (equal (fn2-view-at path b) (fn2-view-at path a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-view-equal))))
+(in-theory (disable fn2-footprint fn2-footprint-mask fn2-footprint-clear
+                    fn2-view-at fn2-view-equal fn2-view-project
+                    fn2-view-path-disjoint fn2-view-path-protected fn2-view-protected))
+
+(defun fn2-footprint-write (path value core)
+  (declare (xargs :verify-guards nil))
+  (if (atom path) value
+    (update-nth (nfix (car path))
+                (fn2-footprint-write (cdr path) value (nth (nfix (car path)) core)) core)))
+(defthm fn2-footprint-clear-of-write
+  (equal (fn2-footprint-clear path (fn2-footprint-write path value core))
+         (fn2-footprint-clear path core))
+  :hints (("Goal" :induct (fn2-footprint-write path value core)
+           :in-theory (e/d (fn2-footprint-clear fn2-arm-update-nth-update-nth-same)
+                           (nth update-nth)))))
+(defthm fn2-footprint-of-write
+  (fn2-footprint (list path) core (fn2-footprint-write path value core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-footprint fn2-footprint-mask))))
+(in-theory (disable fn2-footprint-write))
+
+(defthm fn2-view-update-nth-nfix
+  (equal (update-nth (nfix i) v x) (update-nth i v x))
+  :hints (("Goal" :in-theory (enable update-nth nfix))))
+(defthm fn2-view-nth-nfix
+  (equal (nth (nfix i) x) (nth i x))
+  :hints (("Goal" :in-theory (enable nth nfix))))
+; Consume the existing generated row frames directly. A closed reader may
+; observe a whole unmodified column or an unmodified row within a written
+; column. The directory and cardinality remain separate observations.
+(defun fn2-view-row-protected (path table row columns children)
+  (declare (xargs :verify-guards nil))
+  (and (consp path)
+       (not (member-equal (nfix (car path)) children))
+       (or (not (equal (nfix (car path)) table))
+           (and (consp (cdr path))
+                (or (not (member-equal (nfix (cadr path)) columns))
+                    (and (consp (cddr path))
+                         (not (equal (nfix (caddr path)) (nfix row)))))))))
+(defthm fn2-view-other-row
+  (implies (and (equal (update-nth row nil a) (update-nth row nil b))
+                (not (equal (nfix i) (nfix row))))
+           (equal (nth i b) (nth i a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable nth update-nth nth-update-nth)
+           :use ((:instance nth-update-nth (m i) (n row) (val nil) (l a))
+                 (:instance nth-update-nth (m i) (n row) (val nil) (l b))))))
+(defthm fn2-view-written-column
+  (implies (and (fn2-arm-cols k row columns a b) (natp k) (natp j)
+                (member-equal (+ k j) columns))
+           (equal (update-nth row nil (nth j b)) (update-nth row nil (nth j a))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-arm-kids-nth-induct k j a b)
+           :in-theory (enable fn2-arm-cols nth))))
+(defthm fn2-view-nfix-idempotent (equal (nfix (nfix x)) (nfix x)))
+(defthm fn2-row-frame-to-reader
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp table)
+                (fn2-view-row-protected path table row columns children))
+           (equal (fn2-view-at path b) (fn2-view-at path a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-view-row-protected fn2-view-at)
+                                  (nth update-nth fn2-arm-kids fn2-arm-cols
+                                   (:d nfix) fn2-view-nth-nfix))
+           :expand ((:free (c) (fn2-view-at path c))
+                    (:free (c) (fn2-view-at (cdr path) c))
+                    (:free (c) (fn2-view-at (cddr path) c)))
+           :do-not-induct t
+           :use ((:instance fn2-arm-row-frame)
+                 (:instance fn2-arm-kids-nth (i 0) (k (nfix (car path))) (free (cons table children)))
+                 (:instance fn2-arm-row-frame-cols)
+                 (:instance fn2-arm-cols-nth (k 0) (j (nfix (cadr path)))
+                            (a (nth table a)) (b (nth table b)))
+                 (:instance fn2-view-written-column (k 0) (j (nfix (cadr path)))
+                            (a (nth table a)) (b (nth table b)))
+                 (:instance fn2-view-other-row (i (nfix (caddr path)))
+                            (a (nth (nfix (cadr path)) (nth table a)))
+                            (b (nth (nfix (cadr path)) (nth table b))))))))
+(defun fn2-view-rows-protected (paths table row columns children)
+  (declare (xargs :verify-guards nil))
+  (if (atom paths) t
+    (and (fn2-view-row-protected (car paths) table row columns children)
+         (fn2-view-rows-protected (cdr paths) table row columns children))))
+(defthm fn2-row-frame-to-view
+  (implies (and (fn2-arm-row-frame table row columns children a b) (natp table)
+                (fn2-view-rows-protected paths table row columns children))
+           (fn2-view-equal paths b a))
+  :rule-classes nil
+  :hints (("Goal" :induct (len paths)
+           :in-theory '(fn2-view-equal fn2-view-project fn2-view-rows-protected len atom))
+          ("Subgoal *1/1" :use ((:instance fn2-row-frame-to-reader (path (car paths)))))))
+(in-theory (disable fn2-view-row-protected fn2-view-rows-protected))
+
+; Resolve names only when a declaration is expanded: ARMS precedes both
+; the concrete core and machine layouts in the dependency graph.
+(defun fn2-view-child (layout children index)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (if (or (eq layout (caar children)) (eq layout (cadar children))) index
+      (fn2-view-child layout (cdr children) (+ 1 index)))))
+(defun fn2-view-layout (layout world)
+  (declare (xargs :verify-guards nil))
+  (or (fn2-decl-get :columns (fn2-decl-row (list :columns layout) world))
+      (fn2-decl-get :table (fn2-decl-row (list :machine layout) world))))
+(defun fn2-view-range-paths (prefix start count)
+  (declare (xargs :verify-guards nil :measure (nfix count)))
+  (if (zp count) nil
+    (cons (append prefix (list (nfix start)))
+          (fn2-view-range-paths prefix (+ 1 (nfix start)) (- count 1)))))
+(defun fn2-view-column-paths (cols names prefix rows)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (let* ((column (position-eq (car cols) names))
+           (path (append prefix (list column)))
+           (here (cond ((eq rows t) `(list ',path))
+                       ((eq (car rows) :one) `(list (append ',path (list ,(cadr rows)))))
+                       (t `(fn2-view-range-paths ',path ,(cadr rows) ,(caddr rows))))))
+      (if (not (natp column))
+          (er hard? 'fn2-defview "Unknown column ~x0 in ~x1." (car cols) names)
+        (cons here (fn2-view-column-paths (cdr cols) names prefix rows))))))
+(defun fn2-view-select-paths (select carrier world)
+  (declare (xargs :verify-guards nil))
+  (if (atom select) nil
+    (let* ((s (car select)) (layout (car s)) (spec (cdr s))
+           (children (unquote (getpropc '*fn2-core-children* 'const nil world)))
+           (child (and (not (eq layout carrier)) (fn2-view-child layout children 0)))
+           (prefix (if (eq layout carrier) nil (list child)))
+           (cols (fn2-view-layout layout world))
+           (names (strip-cars cols))
+           (rows (fn2-arm-get :rows spec))
+           (columns (fn2-arm-get :columns spec))
+           (scalars (fn2-arm-get :scalars spec)))
+      (cond ((and (not (eq layout carrier)) (not (eq carrier 'fn2-core)))
+             (er hard? 'fn2-defview "~x0 is not a child of carrier ~x1." layout carrier))
+            ((not (fn2-arm-plistp spec '(:columns :rows :scalars :whole)))
+             (er hard? 'fn2-defview "Unknown view selection option: ~x0." spec))
+            ((and (not (eq layout carrier)) (not (natp child)))
+             (er hard? 'fn2-defview "No ~x0 child in carrier ~x1." layout carrier))
+            ((and columns (not (or (eq rows t)
+                                    (and (true-listp rows) (eq (car rows) :one) (equal (len rows) 2))
+                                    (and (true-listp rows) (eq (car rows) :range) (equal (len rows) 3)))))
+             (er hard? 'fn2-defview "Expected :rows t, (:one row), or (:range start count): ~x0." s))
+            ((not (subsetp-eq scalars '(rows)))
+             (er hard? 'fn2-defview "Unknown scalar selection ~x0." scalars))
+            (t (append
+                (if (fn2-arm-get :whole spec) (list `(list ',prefix))
+                  (append (fn2-view-column-paths columns names prefix rows)
+                          (and scalars (list `(list ',(append prefix (list (len cols))))))))
+                (fn2-view-select-paths (cdr select) carrier world)))))))
+(defthm fn2-view-range-member
+  (implies (and (natp start) (natp count) (natp i) (<= start i) (< i (+ start count)))
+           (member-equal (append prefix (list i)) (fn2-view-range-paths prefix start count)))
+  :hints (("Goal" :induct (fn2-view-range-paths prefix start count)
+           :in-theory (disable binary-append))))
+
+(defthm fn2-view-member-append
+  (iff (member-equal x (append a b)) (or (member-equal x a) (member-equal x b))))
+(defun fn2-view-column-reader-events (name layout fields rows carrier parameters paths world)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (let* ((field (car fields)) (reader (fn2-columns-col-name layout field))
+           (child (and (not (eq layout carrier))
+                       (fn2-view-child layout (unquote (getpropc '*fn2-core-children* 'const nil world)) 0)))
+           (prefix (if (eq layout carrier) nil (list child)))
+           (index (position-eq field (strip-cars (fn2-view-layout layout world))))
+           (path (append prefix (list index)))
+           (at (if (and (consp rows) (eq (car rows) :one)) (cadr rows) 'i))
+           (selected (if (eq rows t) `',path `(append ',path (list ,at))))
+           (bounds (and (consp rows) (eq (car rows) :range)
+                        `((natp ,(cadr rows)) (natp ,(caddr rows)) (natp i)
+                          (<= ,(cadr rows) i) (< i (+ ,(cadr rows) ,(caddr rows))))))
+           (ca (if child `(nth ,child a) 'a)) (cb (if child `(nth ,child b) 'b)))
+      (cons
+       `(defthm ,(fn2-columns-sym name (concatenate 'string "-" (symbol-name reader)))
+          (implies (and (,name ,@parameters b a) ,@bounds)
+                   (equal (,reader ,at ,cb) (,reader ,at ,ca)))
+          :rule-classes nil
+          :hints (("Goal" :in-theory
+                   (e/d (,name ,reader ,(fn2-columns-sym reader "$AI") fn2-view-at
+                         fn2-view-nth-nfix fn2-view-member-append)
+                        (nth (:d nfix) fn2-view-equal fn2-view-project fn2-view-range-paths))
+                   :do-not-induct t
+                   :use ((:instance fn2-view-reader (paths ,paths) (path ,selected) (a b) (b a))
+                         ,@(and bounds `((:instance fn2-view-range-member
+                                          (prefix ',path) (start ,(cadr rows)) (count ,(caddr rows)))))))))
+       (fn2-view-column-reader-events name layout (cdr fields) rows carrier parameters paths world)))))
+(defun fn2-view-rows-reader-event (name layout carrier parameters paths world)
+  (declare (xargs :verify-guards nil))
+  (let* ((reader (fn2-columns-sym layout "-ROWS"))
+         (child (and (not (eq layout carrier))
+                     (fn2-view-child layout (unquote (getpropc '*fn2-core-children* 'const nil world)) 0)))
+         (path (append (and child (list child)) (list (len (fn2-view-layout layout world)))))
+         (ca (if child `(nth ,child a) 'a)) (cb (if child `(nth ,child b) 'b)))
+    `(defthm ,(fn2-columns-sym name (concatenate 'string "-" (symbol-name reader)))
+       (implies (,name ,@parameters b a) (equal (,reader ,cb) (,reader ,ca)))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (e/d (,name ,reader fn2-view-at) (nth fn2-view-equal))
+                :use ((:instance fn2-view-reader (paths ,paths) (path ',path) (a b) (b a))))))))
+(defun fn2-view-reader-events (name select carrier parameters paths world)
+  (declare (xargs :verify-guards nil))
+  (if (atom select) nil
+    (append (fn2-view-column-reader-events name (caar select)
+              (fn2-arm-get :columns (cdar select)) (fn2-arm-get :rows (cdar select))
+              carrier parameters paths world)
+            (and (fn2-arm-get :scalars (cdar select))
+                 (list (fn2-view-rows-reader-event name (caar select) carrier parameters paths world)))
+            (fn2-view-reader-events name (cdr select) carrier parameters paths world))))
+(defun fn2-view-static-parts-p (parts)
+  (declare (xargs :verify-guards nil))
+  (if (atom parts) t
+    (and (equal (caar parts) 'list) (equal (caadar parts) 'quote)
+         (fn2-view-static-parts-p (cdr parts)))))
+(defun fn2-view-read-term (path term)
+  (declare (xargs :verify-guards nil))
+  (if (atom path) term
+    (fn2-view-read-term (cdr path) `(nth ,(car path) ,term))))
+(defun fn2-view-static-equalities (parts)
+  (declare (xargs :verify-guards nil))
+  (if (atom parts) nil
+    (let ((path (cadadr (car parts))))
+      (cons `(equal ,(fn2-view-read-term path 'b) ,(fn2-view-read-term path 'a))
+            (fn2-view-static-equalities (cdr parts))))))
+(defun fn2-view-events (name carrier select parameters observe open world)
+  (declare (xargs :verify-guards nil))
+  (let* ((parts (fn2-view-select-paths select carrier world))
+         (paths `(append ,@parts))
+         (body (cond (observe `(equal (,observe b) (,observe a)))
+                     ((fn2-view-static-parts-p parts) `(and ,@(fn2-view-static-equalities parts)))
+                     (t `(fn2-view-equal ,paths b a))))
+         (projection (fn2-columns-sym name "-PROJECTION")))
+    `(progn
+       (,(if observe 'defun-nx 'defun) ,name (,@parameters b a)
+         (declare (xargs :verify-guards nil) (ignorable ,@parameters)) ,body)
+       (defthm ,(fn2-columns-sym name "-REFLEXIVE") (,name ,@parameters a a)
+         :hints (("Goal" :in-theory (enable ,name fn2-view-equal))))
+       (defthm ,(fn2-columns-sym name "-TRANSITIVE")
+         (implies (and (,name ,@parameters c b) (,name ,@parameters b a))
+                  (,name ,@parameters c a))
+         :rule-classes nil
+         :hints (("Goal" :in-theory (enable ,name fn2-view-equal))))
+       (defthm ,projection
+         ,(if observe `(implies (fn2-view-equal ,paths b a) (,name ,@parameters b a))
+            `(equal (,name ,@parameters b a) (fn2-view-equal ,paths b a)))
+         :rule-classes nil
+         :hints (("Goal" :in-theory (enable ,name fn2-view-equal fn2-view-project fn2-view-at ,@open))))
+       (defthm ,(fn2-columns-sym name "-OF-FOOTPRINT")
+         (implies (and (fn2-footprint footprint a b) (fn2-view-protected ,paths footprint))
+                  (,name ,@parameters b a))
+         :rule-classes nil
+         :hints (("Goal" :in-theory nil
+                  :use ((:instance fn2-footprint-to-view (paths ,paths) (a b) (b a))
+                        (:instance ,projection)
+                        (:instance fn2-footprint (paths footprint) (a a) (b b))
+                        (:instance fn2-footprint (paths footprint) (a b) (b a))))))
+       (defthm ,(fn2-columns-sym name "-OF-ROW-FRAME")
+         (implies (and (fn2-arm-row-frame table row columns children a b) (natp table)
+                       (fn2-view-rows-protected ,paths table row columns children))
+                  (,name ,@parameters b a))
+         :rule-classes nil
+         :hints (("Goal" :in-theory nil
+                  :use ((:instance fn2-row-frame-to-view (paths ,paths))
+                        (:instance ,projection)))))
+       ,@(and (not observe) (fn2-view-reader-events name select carrier parameters paths world))
+       (table fn2-views ',name '(:carrier ,carrier :select ,select :parameters ,parameters :paths ,paths :observe ,observe))
+       (in-theory (disable ,name)))))
+(defmacro fn2-defview (name &key carrier select parameters observe open)
+  `(make-event (value (fn2-view-events ',name ',carrier ',select ',parameters ',observe ',open (w state)))))
