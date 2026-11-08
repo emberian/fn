@@ -389,4 +389,22 @@ theorem run_stop_global (w : World) (f : Frame) (st : St) (fuel : Nat)
     flush_empty w f st hp hn, hc, hi, hr, he, hs, except_ok_bind, stopEnd, ho, evOpt]
   rfl
 
+/-- An open-answer operation follows its accepted continuation or the declared stop. -/
+theorem run_do_accept_stop (w : World) (f : Frame) (st sf : St) (fuel : Nat)
+    (v reason : String) (c : Call) (accept : List Val) (rest : List Step) (op : Op) (r code : Val)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hfind : findOp w c.op = .ok op)
+    (hcall : callOp w f.kind st c = .ok (op,r))
+    (hbind : bindOuts st op.stobjsOut [v] r = .ok sf)
+    (hanswers : op.answers = .open_)
+    (hcode : var sf v = .ok code)
+    (href : f.refusal = [.stop reason none]) :
+    run w f (fuel+1) st (.do_ [v] c true accept none [] [] :: rest) =
+      if codeIn code accept then run w f fuel sf rest
+      else run w f fuel sf [.stop reason none] := by
+  simp only [run, flush_empty w f st hp hn, hfind, hcall, hbind, hanswers, hcode,
+    href, except_ok_bind, Bool.false_eq_true, ↓reduceIte, List.find?_nil,
+    List.isEmpty_cons, Bool.not_false, faultRoute, Bool.false_and]
+  rfl
+
 end Fn2.Arms

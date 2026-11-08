@@ -366,3 +366,7 @@ import Fn2
 #print axioms Fn2.Arms.CoreValidation.omitted_child_rejected
 #print axioms Fn2.Arms.CoreValidation.lease_write
 #print axioms Fn2.Arms.CoreValidation.cleanup_write
+#print axioms Fn2.Arms.run_stop_global
+#print axioms Fn2.Arms.run_do_accept_stop
+#print axioms Fn2.Arms.CoreValidation.cns_draining_certificate
+#print axioms Fn2.Arms.CoreValidation.draining_mutation_positive

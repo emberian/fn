@@ -44,3 +44,33 @@
  :rule-classes nil
  :hints (("Goal" :in-theory
            (e/d (@BODY_DEFINITIONS@) (@BODY_EXECUTABLES@)))))
+
+
+; A real DRAINING-to-FREE mutation with one active CNS row and one free-list head.
+(defconst *fn2-tv-cns-drain-core*
+ (let* ((core *fn2-tv-cns-core*)
+        (own (update-nth 57 '(0) (update-nth 1 '(0) (update-nth 0 '(10) (nth @OWN_INDEX@ core)))))
+        (dir (update-nth 19 (make-list 7 :initial-element 1)
+              (update-nth 18 (make-list 7 :initial-element 0)
+               (update-nth 9 4 (update-nth 8 (make-list 7 :initial-element 4294967295)
+                                 (nth @DIRECTORY_INDEX@ core)))))))
+  (update-nth @OWN_INDEX@ own (update-nth @DIRECTORY_INDEX@ dir core))))
+
+(defthm fn2-tv-cns-draining-mutation-positive
+ (let* ((result (fn2-cns-run-draining 0 0 *fn2-tv-cns-drain-core*))
+        (core (nth 4 result)) (own (nth @OWN_INDEX@ core)) (dir (nth @DIRECTORY_INDEX@ core)))
+  (and (equal (len *fn2-tv-cns-drain-core*) @CORE_SIZE@)
+       (equal (fn2-cns-snapshot-read-code 0 *fn2-tv-cns-drain-core*) :ok)
+       (equal (fn2-cns-phase 0 (nth @OWN_INDEX@ *fn2-tv-cns-drain-core*)) 10)
+       (equal (take 4 result) '(0 20 0 nil))
+       (equal (fn2-cns-phase 0 own) 0)
+       (equal (fn2-cns-generation 0 own) 1)
+       (equal (fn2-cns-ctl 0 own) 4294967295)
+       (equal (fn2-cns-next-free 0 own) 4294967295)
+       (equal (fn2-machines-free-headi 6 dir) 0)
+       (equal (fn2-machines-active-counti 6 dir) 0)
+       (equal (fn2-machines-admission-creditsi 6 dir) 1)
+       (equal (nth 5 core) (nth 5 *fn2-tv-cns-drain-core*))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory
+           (e/d (@BODY_DEFINITIONS@) (@BODY_EXECUTABLES@)))))

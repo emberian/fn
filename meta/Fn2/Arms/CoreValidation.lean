@@ -1076,7 +1076,7 @@ theorem lease_put (id slot budget own dir control : Val)  (st : St)
     : put (coreWorld world coreTuple) (drainFrame id slot budget) st (leasePairs ) =
       .ok (setStobj (setStobj st "FN2-CNS" (leaseOwn slot  own)) "FN2-MACHINES" dir) := by
   let f := drainFrame id slot budget
-  let pairs := leasePairs 
+  let pairs := leasePairs
   have hp : (natLt slot («FN2-CNS-ROWS» own) &&
       ((pairs.filter fun p => directoryFields.contains p.1).isEmpty || natLt id («FN2-MACHINES-ROWS» dir)) &&
       pairs.all (fun (n,v) => match f.kind.columns.find? (·.1 == n) with
@@ -1310,5 +1310,654 @@ theorem flush_lease (id slot budget own dir control : Val) (st : St)
   rw [lease_put id slot budget own dir control st hi hs ho hd hc hb]
   simp only [except_ok_bind, Bool.or_false]
   rfl
+
+def releaseOp : Op := world.ops[1]!
+def reclaimOp : Op := world.ops[0]!
+
+theorem ev_var_expression (st : St) (expr : Expr) (name : String) (value : Val)
+    (hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple) expr = .ok (.var name))
+    (hv : var st name = .ok value) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st expr = .ok value := by
+  simp only [ev, hr, except_ok_bind, Term.eval, var_env_bound st name value hv]
+
+theorem release_call (lslot : Val) (lgen : Val) (id : Val) (generation : Val) (pool : Val) (control : Val) (st : St)
+    (h_lslot : var st "ROW-LSLOT" = .ok lslot)
+    (h_lgen : var st "ROW-LGEN" = .ok lgen)
+    (h_id : var st "ID" = .ok id)
+    (h_generation : var st "ROW-GENERATION" = .ok generation)
+    (h_kind : var st "KIND" = .ok (.int 11))
+    (h_pool : stobj st "FN2-POOL" = .ok pool)
+    (h_control : stobj st "FN2-CONTROL" = .ok control)
+    : callOp (coreWorld world coreTuple) (coreKind cns coreTuple) st releaseCall =
+      .ok (releaseOp, «FN2-CORE-RELEASE-CHILDREN» lslot lgen (.int 11) id generation pool control) := by
+  have hop : findOp (coreWorld world coreTuple) releaseCall.op = .ok releaseOp := by rfl
+  have hkeys : expandOwner (coreWorld world coreTuple) (coreKind cns coreTuple) [] = .ok [] := by rfl
+  have e0 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "ROW-LSLOT") = .ok lslot :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) h_lslot
+  have e1 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "ROW-LGEN") = .ok lgen :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) h_lgen
+  have ha : actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      releaseOp.formals releaseOp.stobjsIn releaseCall.args [] = .ok [lslot, lgen, (.int 11), id, generation, pool, control] := by
+    change actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      ["SLOT", "GEN", "OKIND", "OSLOT", "OGEN", "FN2-POOL", "FN2-CONTROL"]
+      [none, none, none, none, none, (some "FN2-POOL"), (some "FN2-CONTROL")]
+      [(.sym "ROW-LSLOT"), (.sym "ROW-LGEN")] [] = _
+    dsimp only [actuals]
+    simp only [e0, e1, h_lslot, h_lgen, h_id, h_generation, h_kind, h_pool, h_control, except_ok_bind]
+    rfl
+  unfold callOp
+  rw [hop]
+  simp only [except_ok_bind]
+  change (do
+    let keys ← expandOwner (coreWorld world coreTuple) (coreKind cns coreTuple) []
+    let args ← actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st releaseOp.formals releaseOp.stobjsIn releaseCall.args keys
+    let r ← callFn (coreWorld world coreTuple) "FN2-CORE-RELEASE-CHILDREN" args
+    pure (releaseOp,r)) = _
+  simp only [hkeys, except_ok_bind, ha, «FN2-CORE-RELEASE-CHILDREN».core_call]
+  rfl
+
+theorem reclaim_call (id : Val) (retire : Val) (dir : Val) (control : Val) (st : St)
+    (h_id : var st "ID" = .ok id)
+    (h_retire : var st "RETIRE" = .ok retire)
+    (h_ord : var st "ORDINAL" = .ok (.int 6))
+    (h_dir : stobj st "FN2-MACHINES" = .ok dir)
+    (h_control : stobj st "FN2-CONTROL" = .ok control)
+    : callOp (coreWorld world coreTuple) (coreKind cns coreTuple) st reclaimCall =
+      .ok (reclaimOp, «FN2-MACHINES-RECLAIM» id (.int 6) retire dir control) := by
+  have hop : findOp (coreWorld world coreTuple) reclaimCall.op = .ok reclaimOp := by rfl
+  have hkeys : expandOwner (coreWorld world coreTuple) (coreKind cns coreTuple) [] = .ok [] := by rfl
+  have e0 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "ID") = .ok id :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) h_id
+  have e1 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "*FN2-CNS-ADMISSION-ORDINAL*") = .ok (.int 6) :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) h_ord
+  have e2 : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "RETIRE") = .ok retire :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) h_retire
+  have ha : actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      reclaimOp.formals reclaimOp.stobjsIn reclaimCall.args [] = .ok [id, (.int 6), retire, dir, control] := by
+    change actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      ["ID", "ORD", "RETIRE", "FN2-MACHINES", "FN2-CONTROL"]
+      [none, none, none, (some "FN2-MACHINES"), (some "FN2-CONTROL")]
+      [(.sym "ID"), (.sym "*FN2-CNS-ADMISSION-ORDINAL*"), (.sym "RETIRE")] [] = _
+    dsimp only [actuals]
+    simp only [e0, e1, e2, h_id, h_retire, h_ord, h_dir, h_control, except_ok_bind]
+    rfl
+  unfold callOp
+  rw [hop]
+  simp only [except_ok_bind]
+  change (do
+    let keys ← expandOwner (coreWorld world coreTuple) (coreKind cns coreTuple) []
+    let args ← actuals (coreWorld world coreTuple) (coreKind cns coreTuple) st reclaimOp.formals reclaimOp.stobjsIn reclaimCall.args keys
+    let r ← callFn (coreWorld world coreTuple) "FN2-MACHINES-RECLAIM" args
+    pure (reclaimOp,r)) = _
+  simp only [hkeys, except_ok_bind, ha, «FN2-MACHINES-RECLAIM».core_call]
+  rfl
+
+theorem ev_retire (st : St) (gen dir : Val)
+    (hg : var st "ROW-GENERATION" = .ok gen)
+    (hd : (st.vars ++ st.stobjs).get? "FN2-MACHINES" = some dir) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (form ">=" [.sym "ROW-GENERATION",form "FN2-MACHINE-GEN-LIMIT" []]) =
+      .ok («NOT» (Prim.lt gen («FN2-MACHINES-GEN-LIMIT» dir))) := by
+  let env := st.vars ++ st.stobjs
+  have hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (form ">=" [.sym "ROW-GENERATION",form "FN2-MACHINE-GEN-LIMIT" []]) =
+      .ok (.app "IF" [.app "<" [.var "ROW-GENERATION",.app "FN2-MACHINES-GEN-LIMIT" [.var "FN2-MACHINES"]],
+        .quote Val.nil,.quote Val.t]) := by with_unfolding_all rfl
+  have eg : Term.eval (coreWorld world coreTuple).fns env (.var "ROW-GENERATION") = .ok gen := by
+    simp only [env, Term.eval, var_env_bound st _ _ hg]
+  have el := eval_gen_limit env dir hd
+  have elt : Term.eval (coreWorld world coreTuple).fns env
+      (.app "<" [.var "ROW-GENERATION",.app "FN2-MACHINES-GEN-LIMIT" [.var "FN2-MACHINES"]]) =
+      .ok (Prim.lt gen («FN2-MACHINES-GEN-LIMIT» dir)) := by
+    rw [Term.eval.eq_5 _ _ "<" _ (by simp) (by simp)]
+    simp only [List.attach_cons, List.attach_nil, List.map_cons, List.map_nil,
+      List.mapM_cons, List.mapM_nil, eg, el, except_ok_bind]
+    rfl
+  simp only [ev, hr, except_ok_bind]
+  change Term.eval (coreWorld world coreTuple).fns env _ = _
+  rw [Term.eval.eq_3]
+  rw [elt]
+  simp only [except_ok_bind]
+  cases hh : (Prim.lt gen («FN2-MACHINES-GEN-LIMIT» dir)).truthy <;>
+    simp [hh, Term.eval, «NOT»]
+
+theorem ev_cleanup_generation (st : St) (retire gen : Val)
+    (hrv : var st "RETIRE" = .ok retire) (hgv : var st "ROW-GENERATION" = .ok gen) :
+    ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (form "IF" [.sym "RETIRE",.sym "ROW-GENERATION",form "+" [.int 1,.sym "ROW-GENERATION"]]) =
+      .ok (if retire.truthy then gen else Prim.plus (.int 1) gen) := by
+  let env := st.vars ++ st.stobjs
+  have hr : readExpr (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (form "IF" [.sym "RETIRE",.sym "ROW-GENERATION",form "+" [.int 1,.sym "ROW-GENERATION"]]) =
+      .ok (.app "IF" [.var "RETIRE",.var "ROW-GENERATION",.app "BINARY-+" [.quote (.int 1),.var "ROW-GENERATION"]]) := by
+    with_unfolding_all rfl
+  have er : Term.eval (coreWorld world coreTuple).fns env (.var "RETIRE") = .ok retire := by
+    simp only [env, Term.eval, var_env_bound st _ _ hrv]
+  have eg : Term.eval (coreWorld world coreTuple).fns env (.var "ROW-GENERATION") = .ok gen := by
+    simp only [env, Term.eval, var_env_bound st _ _ hgv]
+  have ep : Term.eval (coreWorld world coreTuple).fns env (.app "BINARY-+" [.quote (.int 1),.var "ROW-GENERATION"]) =
+      .ok (Prim.plus (.int 1) gen) := by
+    rw [Term.eval.eq_5 _ _ "BINARY-+" _ (by simp) (by simp)]
+    simp only [List.attach_cons, List.attach_nil, List.map_cons, List.map_nil,
+      List.mapM_cons, List.mapM_nil, eg, Term.eval.eq_2, except_ok_bind]
+    rfl
+  simp only [ev, hr, except_ok_bind]
+  change Term.eval (coreWorld world coreTuple).fns env _ = _
+  rw [Term.eval.eq_3, er]
+  simp only [except_ok_bind]
+  cases hh : retire.truthy <;> simp only [hh, Bool.false_eq_true, ↓reduceIte, eg, ep]
+
+theorem eval_cleanup_next (st : St) (retire : Val) (hv : var st "RETIRE" = .ok retire) :
+    (do let term ← readNext (coreWorld world coreTuple) (coreKind cns coreTuple) cleanupNext
+        term.eval (coreWorld world coreTuple).fns (st.vars ++ st.stobjs)) =
+      .ok (if retire.truthy then .int 11 else .int 0) := by
+  have hr : readNext (coreWorld world coreTuple) (coreKind cns coreTuple) cleanupNext =
+      .ok (.app "IF" [.var "RETIRE",.quote (.int 11),.quote (.int 0)]) := by with_unfolding_all rfl
+  simp only [hr, except_ok_bind, Term.eval.eq_3, Term.eval.eq_1, var_env_bound st _ _ hv]
+  cases hh : retire.truthy <;> simp only [hh, Bool.false_eq_true, ↓reduceIte, except_ok_bind, Term.eval.eq_2]
+
+def cleanupPhase (retire : Val) : Val := if retire.truthy then .int 11 else .int 0
+def cleanupGeneration (retire gen : Val) : Val := if retire.truthy then gen else Prim.plus (.int 1) gen
+
+theorem flush_cleanup (id slot budget own dir control retire gen next : Val) (st : St)
+    (hp : st.pending = cleanupPending) (hn : st.next = some cleanupNext)
+    (hi : var st "ID" = .ok id) (hs : var st "SLOT" = .ok slot)
+    (ho : stobj st "FN2-CNS" = .ok own) (hd : stobj st "FN2-MACHINES" = .ok dir)
+    (hc : stobj st "FN2-CONTROL" = .ok control)
+    (hr : var st "RETIRE" = .ok retire) (hg : var st "ROW-GENERATION" = .ok gen)
+    (hnext : var st "NEXT" = .ok next)
+    (hb : natLt slot («FN2-CNS-ROWS» own) = true)
+    (hdb : natLt id («FN2-MACHINES-ROWS» dir) = true) :
+    flush (coreWorld world coreTuple) (drainFrame id slot budget) st =
+    if cleanupFits (cleanupGeneration retire gen) next then
+      .ok { (setStobj
+        (setStobj st "FN2-CNS" (cleanupOwn slot (cleanupPhase retire) (cleanupGeneration retire gen) next own))
+        "FN2-MACHINES" («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) dir))
+        with pending := [], next := none, nextDone := true }
+    else .ok { (setStobj st "FN2-CONTROL" («FN2-CONTROL-RECORD-STOP» (.int 13) control))
+        with pending := [], next := none, nextDone := true } := by
+  have eg := ev_cleanup_generation st retire gen hr hg
+  have en : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (.sym "*FN2-NONE*") = .ok (.int 4294967295) :=
+    ev_quote_of_read st _ _ (by with_unfolding_all rfl)
+  have ew : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (.sym "*FN2-WAIT-NONE*") = .ok (.int 0) :=
+    ev_quote_of_read st _ _ (by with_unfolding_all rfl)
+  have ez : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.int 0) = .ok (.int 0) :=
+    ev_quote_of_read st _ _ (by rfl)
+  have ex : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st (.sym "NEXT") = .ok next :=
+    ev_var_expression st _ _ _ (by with_unfolding_all rfl) hnext
+  have hread : readNext (coreWorld world coreTuple) (coreKind cns coreTuple) cleanupNext =
+      .ok (.app "IF" [.var "RETIRE",.quote (.int 11),.quote (.int 0)]) := by with_unfolding_all rfl
+  have ep : Term.eval (coreWorld world coreTuple).fns (st.vars ++ st.stobjs)
+      (.app "IF" [.var "RETIRE",.quote (.int 11),.quote (.int 0)]) = .ok (cleanupPhase retire) := by
+    simpa only [hread, except_ok_bind] using eval_cleanup_next st retire hr
+  have hf : ColType.fits (.enum 12) (cleanupPhase retire) = true := by
+    cases hh : retire.truthy <;> simp [cleanupPhase, hh, ColType.fits]
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  simp only [flush, hp, hn, hk, cleanupPending, List.mapM_cons, List.mapM_nil,
+    eg, en, ew, ez, ex, hread, ep, except_ok_bind]
+  change (do
+    let st' ← put (coreWorld world coreTuple) (drainFrame id slot budget) st
+      (cleanupPairs (cleanupPhase retire) (cleanupGeneration retire gen) next)
+    pure { st' with pending := [], next := none, nextDone := st.nextDone || true }) = _
+  rw [cleanup_put id slot budget own dir control (cleanupPhase retire) (cleanupGeneration retire gen) next st hi hs ho hd hc hb hdb hf]
+  split <;> simp only [except_ok_bind, Bool.or_true] <;> rfl
+
+theorem find_release : findOp (coreWorld world coreTuple) "FN2-CNS-LEASE-RELEASE" = .ok releaseOp := by rfl
+theorem find_reclaim : findOp (coreWorld world coreTuple) "FN2-CNS-RECLAIM" = .ok reclaimOp := by rfl
+
+theorem bind_release (st : St) (r : Val) (hs : r = Val.ofList [r.car,r.cdr.car,r.cdr.cdr.car]) :
+    bindOuts st releaseOp.stobjsOut ["LC"] r =
+      .ok { (setStobj (setStobj st "FN2-POOL" r.cdr.car) "FN2-CONTROL" r.cdr.cdr.car)
+        with vars := ("LC",r.car) :: st.vars } := by
+  calc
+    _ = bindOuts st releaseOp.stobjsOut ["LC"] (Val.ofList [r.car,r.cdr.car,r.cdr.cdr.car]) :=
+      congrArg (bindOuts st releaseOp.stobjsOut ["LC"]) hs
+    _ = _ := by rfl
+
+theorem bind_reclaim (st : St) (r : Val) (hs : r = Val.ofList [r.car,r.cdr.car]) :
+    bindOuts st reclaimOp.stobjsOut [] r =
+      .ok (setStobj (setStobj st "FN2-MACHINES" r.car) "FN2-CONTROL" r.cdr.car) := by
+  calc
+    _ = bindOuts st reclaimOp.stobjsOut [] (Val.ofList [r.car,r.cdr.car]) :=
+      congrArg (bindOuts st reclaimOp.stobjsOut []) hs
+    _ = _ := by rfl
+
+theorem accepted_code (code : Val) :
+    codeIn code [.sym ":OK",.sym ":RETIRED"] =
+      (Native.memberEqual code (Val.ofList [.sym ":OK",.sym ":RETIRED"])).truthy := by
+  by_cases ho : code = .sym ":OK" <;> by_cases hr : code = .sym ":RETIRED" <;>
+    simp [codeIn, Native.memberEqual, Val.ofList, ho, hr, Val.truthy, Val.nil]
+
+theorem run_draining_cases (fuel : Nat) (id slot budget : Val) (kids : Fin 57 → Val) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel + 1)
+      (drainState id slot budget kids) drainingSteps =
+    if (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)).truthy then
+      run (coreWorld world coreTuple) (drainFrame id slot budget) fuel (drainState id slot budget kids) leaseSteps
+    else run (coreWorld world coreTuple) (drainFrame id slot budget) fuel (drainState id slot budget kids) cleanupSteps := by
+  let st := drainState id slot budget kids
+  have el : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st
+      (form "EQUAL" [.sym "ROW-LEASE",.sym "*FN2-CNS-LEASE-HELD*"]) =
+      .ok (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)) :=
+    ev_lease_test st _ (by rfl)
+  have et : ev (coreWorld world coreTuple) (coreKind cns coreTuple) st Val.t = .ok Val.t :=
+    ev_quote_of_read st _ _ (by rfl)
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  change run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel + 1) st drainingSteps = _
+  by_cases hh : (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)).truthy = true
+  · simp only [run, drainingSteps, hk, List.findM?, el, et, except_ok_bind, hh]
+    rfl
+  · simp only [run, drainingSteps, hk, List.findM?, el, et, except_ok_bind, hh]
+    rfl
+
+theorem charge_cleanup (fuel : Nat) (id slot budget : Val) (st : St)
+    (hp : st.pending = []) (hn : st.next = none) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+1) st
+      [.charge none (some (.sym "*FN2-WORK-RELEASE*")) none none] =
+    chargeResult (drainFrame id slot budget) st (.int 0) (.int 20) (.int 0) Val.nil := by
+  have he := ev_quote_of_read st (.sym "*FN2-WORK-RELEASE*") (.int 20) (by with_unfolding_all rfl)
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  simp only [run, flush_empty _ _ st hp hn, except_ok_bind, evOpt, hk, he]
+
+theorem charge_lease (fuel : Nat) (id slot budget : Val) (st sf : St)
+    (hf : flush (coreWorld world coreTuple) (drainFrame id slot budget) st = .ok sf) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+1) st
+      [.charge none (some (.sym "*FN2-WORK-TRANSITION*")) none (some Val.t)] =
+    chargeResult (drainFrame id slot budget) sf (.int 0) (.int 24) (.int 0) Val.t := by
+  have he := ev_quote_of_read sf (.sym "*FN2-WORK-TRANSITION*") (.int 24) (by with_unfolding_all rfl)
+  have ht := ev_quote_of_read sf Val.t Val.t (by rfl)
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  simp only [run, hf, except_ok_bind, evOpt, hk, he, ht]
+
+theorem stop_phase (fuel : Nat) (id slot budget control : Val) (st : St)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hc : stobj st "FN2-CONTROL" = .ok control) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+1) st
+      [.stop "MACHINE-PHASE" none] =
+    chargeResult (drainFrame id slot budget)
+      (setStobj st "FN2-CONTROL" («FN2-CONTROL-RECORD-STOP» (.int 15) control))
+      (.int 0) (.int 1) (.int 0) Val.nil := by
+  exact run_stop_global (coreWorld world coreTuple) (drainFrame id slot budget) st fuel
+    "MACHINE-PHASE" control (.int 15) (.int 1) («FN2-CONTROL-RECORD-STOP» (.int 15) control)
+    hp hn hc (by rfl) (by rfl) (by rfl) (by rfl)
+    («FN2-CONTROL-RECORD-STOP».core_call _ _)
+
+
+def cleanupState (id slot budget retire next : Val) (kids : Fin 57 → Val) : St :=
+  { (drainState id slot budget kids) with
+    vars := ("RETIRE",retire) :: ("NEXT",next) :: (drainState id slot budget kids).vars,
+    pending := cleanupPending, next := some cleanupNext }
+
+def cleanupRetire (slot : Val) (kids : Fin 57 → Val) : Val :=
+  «NOT» (Prim.lt («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+    («FN2-MACHINES-GEN-LIMIT» (kids ⟨3,by decide⟩)))
+def cleanupHead (kids : Fin 57 → Val) : Val :=
+  «FN2-MACHINES-FREE-HEAD-OF» (.int 6) (kids ⟨3,by decide⟩)
+
+theorem cleanup_prefix (fuel : Nat) (id slot budget : Val) (kids : Fin 57 → Val) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+6)
+      (drainState id slot budget kids) cleanupSteps =
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+2)
+      (cleanupState id slot budget (cleanupRetire slot kids) (cleanupHead kids) kids)
+      [.do_ [] reclaimCall false [] none [] [],
+       .charge none (some (.sym "*FN2-WORK-RELEASE*")) none none] := by
+  let st := drainState id slot budget kids
+  have en := ev_free_head st (kids ⟨3,by decide⟩) (by rfl) (by rfl)
+  let st1 : St := { st with vars := ("NEXT",cleanupHead kids) :: st.vars }
+  have er := ev_retire st1 («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+    (kids ⟨3,by decide⟩) (by rfl) (by rfl)
+  have hk : (drainFrame id slot budget).kind = coreKind cns coreTuple := by rfl
+  change run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+6) st cleanupSteps = _
+  unfold cleanupSteps
+  rw [run]
+  simp only [hk, en, except_ok_bind]
+  change run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+5) st1 _ = _
+  rw [run]
+  simp only [hk, er, except_ok_bind]
+  rfl
+
+def cleanupAfter (id slot budget : Val) (kids : Fin 57 → Val) : St :=
+  let retire := cleanupRetire slot kids
+  let gen := cleanupGeneration retire («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+  let next := cleanupHead kids
+  let st := cleanupState id slot budget retire next kids
+  if cleanupFits gen next then
+    { (setStobj (setStobj st "FN2-CNS" (cleanupOwn slot (cleanupPhase retire) gen next (kids ⟨17,by decide⟩)))
+      "FN2-MACHINES" («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) (kids ⟨3,by decide⟩)))
+      with pending := [], next := none, nextDone := true }
+  else { (setStobj st "FN2-CONTROL" («FN2-CONTROL-RECORD-STOP» (.int 13) (kids ⟨5,by decide⟩)))
+      with pending := [], next := none, nextDone := true }
+
+theorem cleanup_flush_state (id slot budget : Val) (kids : Fin 57 → Val)
+    (hb : natLt slot («FN2-CNS-ROWS» (kids ⟨17,by decide⟩)) = true)
+    (hd : natLt id («FN2-MACHINES-ROWS» (kids ⟨3,by decide⟩)) = true) :
+    flush (coreWorld world coreTuple) (drainFrame id slot budget)
+      (cleanupState id slot budget (cleanupRetire slot kids) (cleanupHead kids) kids) =
+      .ok (cleanupAfter id slot budget kids) := by
+  rw [flush_cleanup id slot budget (kids ⟨17,by decide⟩) (kids ⟨3,by decide⟩)
+    (kids ⟨5,by decide⟩) (cleanupRetire slot kids)
+    («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩)) (cleanupHead kids)
+    _ (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl)
+      (by rfl) (by rfl) (by rfl) hb hd]
+  by_cases hf : cleanupFits (cleanupGeneration (cleanupRetire slot kids)
+    («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))) (cleanupHead kids) = true <;>
+    simp only [cleanupAfter, hf, Bool.false_eq_true, ↓reduceIte]
+
+theorem run_reclaim (fuel : Nat) (id slot budget retire dir control : Val) (st : St)
+    (hp : st.pending = []) (hn : st.next = none)
+    (hi : var st "ID" = .ok id) (hr : var st "RETIRE" = .ok retire)
+    (hord : var st "ORDINAL" = .ok (.int 6))
+    (hd : stobj st "FN2-MACHINES" = .ok dir) (hc : stobj st "FN2-CONTROL" = .ok control) :
+    let r := «FN2-MACHINES-RECLAIM» id (.int 6) retire dir control
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+2) st
+      [.do_ [] reclaimCall false [] none [] [],
+       .charge none (some (.sym "*FN2-WORK-RELEASE*")) none none] =
+    chargeResult (drainFrame id slot budget)
+      (setStobj (setStobj st "FN2-MACHINES" r.car) "FN2-CONTROL" r.cdr.car)
+      (.int 0) (.int 20) (.int 0) Val.nil := by
+  dsimp only
+  have hcall := reclaim_call id retire dir control st hi hr hord hd hc
+  rw [run]
+  simp only [flush_empty _ _ st hp hn, except_ok_bind, reclaimCall, find_reclaim]
+  change (do
+    let (_,r) ← callOp (coreWorld world coreTuple) (coreKind cns coreTuple) st reclaimCall
+    let st' ← bindOuts st reclaimOp.stobjsOut [] r
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+1) st'
+      [.charge none (some (.sym "*FN2-WORK-RELEASE*")) none none]) = _
+  rw [hcall]
+  simp only [except_ok_bind, bind_reclaim _ _ (reclaim_result_shape _ _ _ _ _)]
+  exact charge_cleanup fuel id slot budget _ hp hn
+
+def cleanupKids (id slot : Val) (kids : Fin 57 → Val) : Fin 57 → Val :=
+  let retire := cleanupRetire slot kids
+  let gen := cleanupGeneration retire («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+  let next := cleanupHead kids
+  if cleanupFits gen next then
+    patchKids kids (kids ⟨0,by decide⟩) («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) (kids ⟨3,by decide⟩))
+      (kids ⟨5,by decide⟩) (cleanupOwn slot (cleanupPhase retire) gen next (kids ⟨17,by decide⟩))
+  else patchKids kids (kids ⟨0,by decide⟩) (kids ⟨3,by decide⟩)
+    («FN2-CONTROL-RECORD-STOP» (.int 13) (kids ⟨5,by decide⟩)) (kids ⟨17,by decide⟩)
+
+def reclaimedKids (id retire : Val) (kids : Fin 57 → Val) : Fin 57 → Val :=
+  let r := «FN2-MACHINES-RECLAIM» id (.int 6) retire (kids ⟨3,by decide⟩) (kids ⟨5,by decide⟩)
+  patchKids kids (kids ⟨0,by decide⟩) r.car r.cdr.car (kids ⟨17,by decide⟩)
+
+def armResult (steps retry : Val) (kids : Fin 57 → Val) : Val :=
+  Val.ofList ([.int 0,steps,.int 0,retry] ++ [(kids ⟨0, by decide⟩), (kids ⟨1, by decide⟩), (kids ⟨2, by decide⟩), (kids ⟨3, by decide⟩), (kids ⟨4, by decide⟩), (kids ⟨5, by decide⟩), (kids ⟨6, by decide⟩), (kids ⟨7, by decide⟩), (kids ⟨8, by decide⟩), (kids ⟨9, by decide⟩), (kids ⟨10, by decide⟩), (kids ⟨11, by decide⟩), (kids ⟨12, by decide⟩), (kids ⟨13, by decide⟩), (kids ⟨14, by decide⟩), (kids ⟨15, by decide⟩), (kids ⟨16, by decide⟩), (kids ⟨17, by decide⟩), (kids ⟨18, by decide⟩), (kids ⟨19, by decide⟩), (kids ⟨20, by decide⟩), (kids ⟨21, by decide⟩), (kids ⟨22, by decide⟩), (kids ⟨23, by decide⟩), (kids ⟨24, by decide⟩), (kids ⟨25, by decide⟩), (kids ⟨26, by decide⟩), (kids ⟨27, by decide⟩), (kids ⟨28, by decide⟩), (kids ⟨29, by decide⟩), (kids ⟨30, by decide⟩), (kids ⟨31, by decide⟩), (kids ⟨32, by decide⟩), (kids ⟨33, by decide⟩), (kids ⟨34, by decide⟩), (kids ⟨35, by decide⟩), (kids ⟨36, by decide⟩), (kids ⟨37, by decide⟩), (kids ⟨38, by decide⟩), (kids ⟨39, by decide⟩), (kids ⟨40, by decide⟩), (kids ⟨41, by decide⟩), (kids ⟨42, by decide⟩), (kids ⟨43, by decide⟩), (kids ⟨44, by decide⟩), (kids ⟨45, by decide⟩), (kids ⟨46, by decide⟩), (kids ⟨47, by decide⟩), (kids ⟨48, by decide⟩), (kids ⟨49, by decide⟩), (kids ⟨50, by decide⟩), (kids ⟨51, by decide⟩), (kids ⟨52, by decide⟩), (kids ⟨53, by decide⟩), (kids ⟨54, by decide⟩), (kids ⟨55, by decide⟩), (kids ⟨56, by decide⟩)])
+
+theorem cleanup_run (fuel : Nat) (id slot budget : Val) (kids : Fin 57 → Val)
+    (hb : natLt slot («FN2-CNS-ROWS» (kids ⟨17,by decide⟩)) = true)
+    (hd : natLt id («FN2-MACHINES-ROWS» (kids ⟨3,by decide⟩)) = true) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+6)
+      (drainState id slot budget kids) cleanupSteps =
+    .ok (.done (armResult (.int 20) Val.nil
+      (reclaimedKids id (cleanupRetire slot kids) (cleanupKids id slot kids)))) := by
+  rw [cleanup_prefix, run]
+  simp only [cleanup_flush_state id slot budget kids hb hd, except_ok_bind, reclaimCall, find_reclaim]
+  change (do
+    let (_,r) ← callOp (coreWorld world coreTuple) (coreKind cns coreTuple)
+      (cleanupAfter id slot budget kids) reclaimCall
+    let st' ← bindOuts (cleanupAfter id slot budget kids) reclaimOp.stobjsOut [] r
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+1) st'
+      [.charge none (some (.sym "*FN2-WORK-RELEASE*")) none none]) = _
+  by_cases hf : cleanupFits (cleanupGeneration (cleanupRetire slot kids)
+    («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))) (cleanupHead kids) = true <;>
+    simp only [cleanupAfter, cleanupKids, hf, ↓reduceIte] <;> rw [reclaim_call _ _ _ _ _ (by rfl) (by rfl) (by rfl) (by rfl) (by rfl)] <;>
+    simp only [except_ok_bind, bind_reclaim _ _ (reclaim_result_shape _ _ _ _ _)] <;>
+    rw [charge_cleanup fuel id slot budget _ (by rfl) (by rfl)] <;> rfl
+
+def releaseRaw (id slot : Val) (kids : Fin 57 → Val) : Val :=
+  «FN2-CORE-RELEASE-CHILDREN» («FN2-CNS-LSLOT» slot (kids ⟨17,by decide⟩))
+    («FN2-CNS-LGEN» slot (kids ⟨17,by decide⟩)) (.int 11) id
+    («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩)) (kids ⟨0,by decide⟩) (kids ⟨5,by decide⟩)
+
+def releaseState (id slot budget : Val) (kids : Fin 57 → Val) : St :=
+  let st := drainState id slot budget kids
+  let r := releaseRaw id slot kids
+  { (setStobj (setStobj st "FN2-POOL" r.cdr.car) "FN2-CONTROL" r.cdr.cdr.car)
+    with vars := ("LC",r.car) :: st.vars }
+
+def leaseKids (id slot : Val) (kids : Fin 57 → Val) : Fin 57 → Val :=
+  let r := releaseRaw id slot kids
+  if codeIn r.car [.sym ":OK",.sym ":RETIRED"] then
+    patchKids kids r.cdr.car (kids ⟨3,by decide⟩) r.cdr.cdr.car (leaseOwn slot (kids ⟨17,by decide⟩))
+  else patchKids kids r.cdr.car (kids ⟨3,by decide⟩)
+    («FN2-CONTROL-RECORD-STOP» (.int 15) r.cdr.cdr.car) (kids ⟨17,by decide⟩)
+
+theorem lease_prefix (fuel : Nat) (id slot budget : Val) (kids : Fin 57 → Val) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+3)
+      (drainState id slot budget kids) leaseSteps =
+    if codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] then
+      run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+2)
+        (releaseState id slot budget kids)
+        [.set leasePending,.charge none (some (.sym "*FN2-WORK-TRANSITION*")) none (some Val.t)]
+    else run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+2)
+        (releaseState id slot budget kids) [.stop "MACHINE-PHASE" none] := by
+  let st := drainState id slot budget kids
+  have hc := release_call («FN2-CNS-LSLOT» slot (kids ⟨17,by decide⟩))
+    («FN2-CNS-LGEN» slot (kids ⟨17,by decide⟩)) id («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+    (kids ⟨0,by decide⟩) (kids ⟨5,by decide⟩) st
+    (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl)
+  change run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+3) st leaseSteps = _
+  unfold leaseSteps
+  rw [run_do_accept_stop (coreWorld world coreTuple) (drainFrame id slot budget) st
+    (releaseState id slot budget kids) (fuel+2) "LC" "MACHINE-PHASE" releaseCall
+    [.sym ":OK",.sym ":RETIRED"] _ releaseOp (releaseRaw id slot kids) (releaseRaw id slot kids).car
+    (by rfl) (by rfl) find_release hc
+    (bind_release _ _ (release_result_shape _ _ _ _ _ _ _)) (by rfl) (by rfl) (by rfl)]
+
+
+theorem lease_run (fuel : Nat) (id slot budget : Val) (kids : Fin 57 → Val)
+    (hb : natLt slot («FN2-CNS-ROWS» (kids ⟨17,by decide⟩)) = true) :
+    run (coreWorld world coreTuple) (drainFrame id slot budget) (fuel+3)
+      (drainState id slot budget kids) leaseSteps =
+    .ok (.done (armResult
+      (if codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] then .int 24 else .int 1)
+      (if codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] then Val.t else Val.nil)
+      (leaseKids id slot kids))) := by
+  rw [lease_prefix]
+  unfold leaseKids
+  by_cases ha : codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] = true
+  · simp only [ha, ↓reduceIte]
+    rw [run]
+    have hp : pend (releaseState id slot budget kids) leasePending =
+        .ok { (releaseState id slot budget kids) with pending := leasePending } := by rfl
+    rw [hp]
+    simp only [except_ok_bind]
+    rw [charge_lease fuel id slot budget _ _
+      (flush_lease id slot budget (kids ⟨17,by decide⟩) (kids ⟨3,by decide⟩)
+        (releaseRaw id slot kids).cdr.cdr.car _
+        (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) (by rfl) hb)]
+    rfl
+  · simp only [ha, ↓reduceIte]
+    rw [stop_phase (fuel+1) id slot budget (releaseRaw id slot kids).cdr.cdr.car _ (by rfl) (by rfl) (by rfl)]
+    rfl
+
+def drainingLease (slot : Val) (kids : Fin 57 → Val) : Bool :=
+  (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)).truthy
+
+def drainingCharge (id slot : Val) (kids : Fin 57 → Val) : Val :=
+  if drainingLease slot kids then
+    if codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] then .int 24 else .int 1
+  else .int 20
+
+def drainingRetry (id slot : Val) (kids : Fin 57 → Val) : Val :=
+  if drainingLease slot kids then
+    if codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] then Val.t else Val.nil
+  else Val.nil
+
+def drainingKids (id slot : Val) (kids : Fin 57 → Val) : Fin 57 → Val :=
+  if drainingLease slot kids then leaseKids id slot kids
+  else reclaimedKids id (cleanupRetire slot kids) (cleanupKids id slot kids)
+
+theorem draining_run (id slot budget : Val) (kids : Fin 57 → Val)
+    (hb : natLt slot («FN2-CNS-ROWS» (kids ⟨17,by decide⟩)) = true)
+    (hd : natLt id («FN2-MACHINES-ROWS» (kids ⟨3,by decide⟩)) = true) :
+    runArm (coreWorld world coreTuple) (coreKind cns coreTuple) draining false
+      ([id,slot,.int 11,.int 6,budget] ++ [(kids ⟨0, by decide⟩), (kids ⟨1, by decide⟩), (kids ⟨2, by decide⟩), (kids ⟨3, by decide⟩), (kids ⟨4, by decide⟩), (kids ⟨5, by decide⟩), (kids ⟨6, by decide⟩), (kids ⟨7, by decide⟩), (kids ⟨8, by decide⟩), (kids ⟨9, by decide⟩), (kids ⟨10, by decide⟩), (kids ⟨11, by decide⟩), (kids ⟨12, by decide⟩), (kids ⟨13, by decide⟩), (kids ⟨14, by decide⟩), (kids ⟨15, by decide⟩), (kids ⟨16, by decide⟩), (kids ⟨17, by decide⟩), (kids ⟨18, by decide⟩), (kids ⟨19, by decide⟩), (kids ⟨20, by decide⟩), (kids ⟨21, by decide⟩), (kids ⟨22, by decide⟩), (kids ⟨23, by decide⟩), (kids ⟨24, by decide⟩), (kids ⟨25, by decide⟩), (kids ⟨26, by decide⟩), (kids ⟨27, by decide⟩), (kids ⟨28, by decide⟩), (kids ⟨29, by decide⟩), (kids ⟨30, by decide⟩), (kids ⟨31, by decide⟩), (kids ⟨32, by decide⟩), (kids ⟨33, by decide⟩), (kids ⟨34, by decide⟩), (kids ⟨35, by decide⟩), (kids ⟨36, by decide⟩), (kids ⟨37, by decide⟩), (kids ⟨38, by decide⟩), (kids ⟨39, by decide⟩), (kids ⟨40, by decide⟩), (kids ⟨41, by decide⟩), (kids ⟨42, by decide⟩), (kids ⟨43, by decide⟩), (kids ⟨44, by decide⟩), (kids ⟨45, by decide⟩), (kids ⟨46, by decide⟩), (kids ⟨47, by decide⟩), (kids ⟨48, by decide⟩), (kids ⟨49, by decide⟩), (kids ⟨50, by decide⟩), (kids ⟨51, by decide⟩), (kids ⟨52, by decide⟩), (kids ⟨53, by decide⟩), (kids ⟨54, by decide⟩), (kids ⟨55, by decide⟩), (kids ⟨56, by decide⟩)]) 7 =
+    .ok (armResult (drainingCharge id slot kids) (drainingRetry id slot kids)
+      (drainingKids id slot kids)) := by
+  rw [drain_entry, run_draining_cases 6]
+  by_cases hl : (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)).truthy = true
+  · simp only [drainingLease, hl, ↓reduceIte, lease_run 3 id slot budget kids hb,
+      except_ok_bind, drainingCharge, drainingRetry, drainingKids, drainingLease, hl, Bool.false_eq_true, ↓reduceIte]
+    rfl
+  · simp only [drainingLease, hl, ↓reduceIte, cleanup_run 0 id slot budget kids hb hd,
+      except_ok_bind, drainingCharge, drainingRetry, drainingKids, drainingLease, hl, Bool.false_eq_true, ↓reduceIte]
+    rfl
+
+theorem draining_emitted (id budget : Val) (kids : Fin 57 → Val)
+    (h : «FN2-CNS-SNAPSHOT-READ-CODE» id (coreImage kids) = .sym ":OK") :
+    let slot := «FN2-MACHINE-SLOT» id (coreImage kids)
+    «FN2-CNS-RUN-DRAINING» id budget (coreImage kids) =
+      Val.ofList [.int 0,drainingCharge id slot kids,.int 0,drainingRetry id slot kids,
+        coreImage (drainingKids id slot kids)] := by
+  dsimp only
+  let slot := «FN2-MACHINE-SLOT» id (coreImage kids)
+  change «FN2-CNS-RUN-DRAINING» id budget (coreImage kids) =
+    Val.ofList [.int 0,drainingCharge id slot kids,.int 0,drainingRetry id slot kids,
+      coreImage (drainingKids id slot kids)]
+  have hr1 : «FN2-CNS-ROW-GENERATION» id (coreImage kids) = «FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩) := by
+    simp only [«FN2-CNS-ROW-GENERATION», h, «EQ», Prim.equal, beq_self_eq_true,
+      Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+    rfl
+  have hr2 : «FN2-CNS-ROW-LGEN» id (coreImage kids) = «FN2-CNS-LGEN» slot (kids ⟨17,by decide⟩) := by
+    simp only [«FN2-CNS-ROW-LGEN», h, «EQ», Prim.equal, beq_self_eq_true,
+      Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+    rfl
+  have hr3 : «FN2-CNS-ROW-LSLOT» id (coreImage kids) = «FN2-CNS-LSLOT» slot (kids ⟨17,by decide⟩) := by
+    simp only [«FN2-CNS-ROW-LSLOT», h, «EQ», Prim.equal, beq_self_eq_true,
+      Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+    rfl
+  have hr4 : «FN2-CNS-ROW-LEASE» id (coreImage kids) = «FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩) := by
+    simp only [«FN2-CNS-ROW-LEASE», h, «EQ», Prim.equal, beq_self_eq_true,
+      Val.ofBool, Val.t, Val.truthy, ↓reduceIte]
+    rfl
+  have htest : («EQ» («FN2-CNS-SNAPSHOT-READ-CODE» id (coreImage kids)) (.sym ":OK")).truthy = true := by rw [h]; rfl
+  unfold «FN2-CNS-RUN-DRAINING»
+  simp only [htest, ↓reduceIte, hr1, hr2, hr3, hr4]
+  by_cases hl : (Prim.equal («FN2-CNS-LEASE» slot (kids ⟨17,by decide⟩)) (.int 1)).truthy = true
+  · simp only [drainingCharge, drainingRetry, drainingKids, drainingLease, hl, Bool.false_eq_true, ↓reduceIte]
+    rw [release_adapter]
+    change (if (Native.memberEqual (releaseRaw id slot kids).car (Val.ofList [.sym ":OK",.sym ":RETIRED"])).truthy then
+      Val.ofList [.int 0,.int 24,.int 0,Val.t,
+        «FN2-CNS-WRITE+LSLOT+LGEN+LEASE» id (.int 4294967295) (.int 0) (.int 0)
+          (coreImage (patchKids kids (releaseRaw id slot kids).cdr.car (kids ⟨3,by decide⟩)
+            (releaseRaw id slot kids).cdr.cdr.car (kids ⟨17,by decide⟩)))]
+      else Val.ofList [.int 0,.int 1,.int 0,Val.nil,
+        «FN2-CORE-STOP» (.int 15) (coreImage (patchKids kids (releaseRaw id slot kids).cdr.car
+          (kids ⟨3,by decide⟩) (releaseRaw id slot kids).cdr.cdr.car (kids ⟨17,by decide⟩)))]) = _
+    rw [← accepted_code]
+    by_cases ha : codeIn (releaseRaw id slot kids).car [.sym ":OK",.sym ":RETIRED"] = true
+    · simp only [leaseKids, ha, Bool.false_eq_true, ↓reduceIte]
+      rw [lease_write _ _ ((snapshot_pool_control_frame _ _ _ _).trans h)]
+      rfl
+    · simp only [leaseKids, ha, Bool.false_eq_true, ↓reduceIte]
+      rfl
+  · simp only [drainingCharge, drainingRetry, drainingKids, drainingLease, hl, Bool.false_eq_true, ↓reduceIte]
+    have hn : «FN2-MACHINE-FREE-HEAD» (.int 6) (coreImage kids) = cleanupHead kids := by rfl
+    have hg : «NOT» (Prim.lt («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))
+      («FN2-MACHINE-GEN-LIMIT» (coreImage kids))) = cleanupRetire slot kids := by rfl
+    rw [hn, hg]
+    have hw := cleanup_write id (cleanupGeneration (cleanupRetire slot kids)
+      («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))) (cleanupHead kids)
+      (cleanupRetire slot kids) (coreImage kids) h (by rfl)
+    dsimp only [cleanupGeneration] at hw
+    rw [hw]
+    unfold cleanupKids
+    by_cases hf : cleanupFits (cleanupGeneration (cleanupRetire slot kids)
+      («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩))) (cleanupHead kids) = true
+    · dsimp only [cleanupGeneration] at hf
+      simp only [cleanupGeneration, hf, Bool.false_eq_true, ↓reduceIte]
+      change Val.ofList [.int 0,.int 20,.int 0,Val.nil,
+        «FN2-CNS-RECLAIM» id (.int 6) (cleanupRetire slot kids)
+          (coreImage (patchKids kids (kids ⟨0,by decide⟩)
+            («FN2-MACHINES-SET-WAIT-REASON» id (.int 0) (kids ⟨3,by decide⟩)) (kids ⟨5,by decide⟩)
+            (cleanupOwn slot (cleanupPhase (cleanupRetire slot kids))
+              (cleanupGeneration (cleanupRetire slot kids) («FN2-CNS-GENERATION» slot (kids ⟨17,by decide⟩)))
+              (cleanupHead kids) (kids ⟨17,by decide⟩))))] = _
+      rw [reclaim_adapter]
+      rfl
+    · dsimp only [cleanupGeneration] at hf
+      simp only [cleanupGeneration, hf, Bool.false_eq_true, ↓reduceIte]
+      change Val.ofList [.int 0,.int 20,.int 0,Val.nil,
+        «FN2-CNS-RECLAIM» id (.int 6) (cleanupRetire slot kids)
+          (coreImage (patchKids kids (kids ⟨0,by decide⟩) (kids ⟨3,by decide⟩)
+            («FN2-CONTROL-RECORD-STOP» (.int 13) (kids ⟨5,by decide⟩)) (kids ⟨17,by decide⟩)))] = _
+      rw [reclaim_adapter]
+      rfl
+
+theorem cns_draining_certificate (id budget : Val) (kids : Fin 57 → Val) :
+    ∃ fuel result,
+      runCore world coreTuple cns draining false [id,budget,coreImage kids] fuel = .ok result ∧
+      result = «FN2-CNS-RUN-DRAINING» id budget (coreImage kids) := by
+  apply Wrapper.certificate world coreTuple cns draining false
+    [id,budget,coreImage kids] («FN2-CNS-RUN-DRAINING» id budget (coreImage kids))
+    («FN2-CNS-SNAPSHOT-READ-CODE» id (coreImage kids)) (by rfl) (by rfl)
+  · exact Fn2.Instances.CoreWorld.«FN2-CNS-SNAPSHOT-READ-CODE».dispatched
+      (err := "no function FN2-CNS-SNAPSHOT-READ-CODE/2") _ _
+  · intro h
+    let slot := «FN2-MACHINE-SLOT» id (coreImage kids)
+    obtain ⟨hi, hr, hs, hb⟩ := snapshot_bounds id (coreImage kids) h
+    have hid : («FN2-MACHINE-IDP» id (coreImage kids)).truthy = true := by
+      simp [«FN2-MACHINE-IDP», hi, hr]
+    have hslot : slot = «FN2-MACHINES-SLOT» id (kids ⟨3,by decide⟩) := by
+      simp [slot, «FN2-MACHINE-SLOT», «FN2-MACHINE-SLOT-READ-CODE», hid, «EQ», Prim.equal]
+      rfl
+    have hown : natLt slot («FN2-CNS-ROWS» (kids ⟨17,by decide⟩)) = true := by
+      rw [← natp_lt, hslot]
+      change ((«NATP» («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» (coreImage kids)))).truthy &&
+        (Prim.lt («FN2-MACHINES-SLOT» id («FN2-CORE-MACHINES» (coreImage kids)))
+          («FN2-CNS-ROWS» («FN2-CNS-TABLE» (coreImage kids)))).truthy) = true
+      rw [hs,hb]
+      rfl
+    have hdir : natLt id («FN2-MACHINES-ROWS» (kids ⟨3,by decide⟩)) = true := by
+      rw [← natp_lt]
+      change ((«NATP» id).truthy &&
+        (Prim.lt id («FN2-MACHINES-ROWS» («FN2-CORE-MACHINES» (coreImage kids)))).truthy) = true
+      rw [hi,hr]
+      rfl
+    refine ⟨slot,.int 11,7,
+      armResult (drainingCharge id slot kids) (drainingRetry id slot kids) (drainingKids id slot kids),
+      ?_,?_,?_,?_⟩
+    · exact Fn2.Instances.CoreWorld.«FN2-MACHINE-SLOT».dispatched
+        (err := "no function FN2-MACHINE-SLOT/2") _ _
+    · rfl
+    · exact draining_run id slot budget kids hown hdir
+    · rw [draining_emitted id budget kids h]
+      rfl
+  · intro h
+    unfold «FN2-CNS-RUN-DRAINING»
+    simp only [«EQ», Prim.equal, beq_eq_false_iff_ne.mpr h, Val.ofBool, Bool.false_eq_true, ↓reduceIte]
+    rfl
+
+#print axioms cns_draining_certificate
+def drainWitnessKids : Fin 57 → Val := fun i =>
+  if i.val = 3 then
+    Native.updateNth (.int 19) (Val.ofList (List.replicate 7 (.int 1)))
+      (Native.updateNth (.int 18) (Val.ofList (List.replicate 7 (.int 0)))
+        (Native.updateNth (.int 9) (.int 4)
+          (Native.updateNth (.int 8) (Val.ofList (List.replicate 7 (.int 4294967295))) (witnessKids i))))
+  else if i.val = 17 then
+    fieldWrite 57 (.int 0) (.int 0) (fieldWrite 1 (.int 0) (.int 0) (fieldWrite 0 (.int 0) (.int 10) (witnessKids i)))
+  else witnessKids i
+
+def drainWitnessCore : Val := coreImage drainWitnessKids
+def drainWitnessResult : Val := «FN2-CNS-RUN-DRAINING» (.int 0) (.int 0) drainWitnessCore
+
+theorem draining_mutation_positive :
+    drainWitnessCore.toList.length = coreTuple.length ∧
+    «FN2-CNS-SNAPSHOT-READ-CODE» (.int 0) drainWitnessCore = .sym ":OK" ∧
+    «FN2-CNS-PHASE» (.int 0) («FN2-CNS-TABLE» drainWitnessCore) = .int 10 ∧
+    drainWitnessResult.toList.take 4 = [.int 0,.int 20,.int 0,Val.nil] ∧
+    «FN2-CNS-PHASE» (.int 0) («FN2-CNS-TABLE» (Native.nth (.int 4) drainWitnessResult)) = .int 0 ∧
+    «FN2-CNS-GENERATION» (.int 0) («FN2-CNS-TABLE» (Native.nth (.int 4) drainWitnessResult)) = .int 1 ∧
+    «FN2-CNS-CTL» (.int 0) («FN2-CNS-TABLE» (Native.nth (.int 4) drainWitnessResult)) = .int 4294967295 ∧
+    «FN2-CNS-NEXT-FREE» (.int 0) («FN2-CNS-TABLE» (Native.nth (.int 4) drainWitnessResult)) = .int 4294967295 ∧
+    «FN2-MACHINES-FREE-HEADI» (.int 6) («FN2-CORE-MACHINES» (Native.nth (.int 4) drainWitnessResult)) = .int 0 ∧
+    «FN2-MACHINES-ACTIVE-COUNTI» (.int 6) («FN2-CORE-MACHINES» (Native.nth (.int 4) drainWitnessResult)) = .int 0 ∧
+    «FN2-MACHINES-ADMISSION-CREDITSI» (.int 6) («FN2-CORE-MACHINES» (Native.nth (.int 4) drainWitnessResult)) = .int 1 ∧
+    «FN2-CORE-CONTROL» (Native.nth (.int 4) drainWitnessResult) = «FN2-CORE-CONTROL» drainWitnessCore := by decide +kernel
 
 end Fn2.Arms.CoreValidation
