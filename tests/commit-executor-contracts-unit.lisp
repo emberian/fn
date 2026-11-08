@@ -45,7 +45,7 @@
   (declare (xargs :verify-guards nil))
   (if (atom layout) nil
     (cons (case (fn2-layout-kind-code (cadar layout))
-            (7 (make-list 33 :initial-element 0)) ((10 15 16) nil) (otherwise 0))
+            (7 (cons 1 (make-list 32 :initial-element 0))) ((10 15 16) nil) (otherwise 0))
           (fn2-cet-zero-values (cdr layout)))))
 (defun fn2-cet-seal-octets (batch)
   (declare (xargs :verify-guards nil))
