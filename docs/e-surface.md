@@ -146,8 +146,18 @@ An ack is the consumer's durable declaration that its own transaction finished t
 prefix. Forward only, decided by the request row, not by the fold: C's `:ack` fold answers `:unchanged`
 for an equal and a lower position alike, so the arm reads the recorded position before staging anything.
 Equal: accepted with no transaction, no write and no durable reservation. Lower: refused `behind` without
-rewind. Past the committed frontier: `beyond-frontier`. Only a greater position stages a consumer
-transaction (C's `:ack c e to`). An `:unchanged` after the stage (another ack won the race) re-reads the
+rewind. Past the principal's stream frontier: `beyond-frontier`. Only a greater position stages a
+consumer transaction (C's `:ack c e to`).
+**The frontier is the principal's stream frontier** (deputy ruling 2026-11-08): the greatest position at
+or below B's published one that carries an `addr` entry of the principal, 0 when none does; never B's
+global commit frontier. It is what `status` reports as frontier, what its gap is measured to, what a page
+walks to and proposes as the next cursor, what `:now` registers at, and what `beyond-frontier` is judged
+against. So after the reader's own ack (a B batch with no addr entry of its own) `status` reports nothing
+unread, an ack past what the reader could see is refused, and another principal's commit does not move
+it (the global frontier would disclose other writers' activity). Served as one positioned seek over the
+addr key (principal, position), at most 61 probes over u60 positions (`fn2-cns-stream-frontier`, at both
+sites: `fn2-cns-lookup-cursor` and `fn2-cns-decode-port`); a frontier the store cannot answer refuses
+the request `unavailable`. Fixture: `tests/consumer-commit-unit.lisp`. An `:unchanged` after the stage (another ack won the race) re-reads the
 position and answers by the same rule. Delivery is at-least-once until ack; exactly-once is the consumer's (§10.1).
 A rebase is a new registration epoch: `:keep` keeps the recorded position and the starts of the streams
 that stay, a new stream added from now (INBOX §4.3, so joining a room never rescans); `:now` moves to the
