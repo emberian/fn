@@ -439,8 +439,10 @@ def columns_decl(name, row, sym):
     # reasons are prose: the model records which fields exist, not why
     # :callbacks is the generated callback map (defmachine-callback's signatures, a manifest of
     # emitted functions like :generated): omitted by name, with the prose reasons
+    # :extra-field-resident is T10's declared byte measure of a field (books/resident.lisp sums
+    # it); the model records which fields exist, not their resident bytes: omitted by name
     d = row_dict(name, row, [":COLUMNS", ":ROWS-BOUND", ":EXTRA-FIELDS", ":INIT-NAME", ":PUT-POLICY"],
-                 [":COLUMN-REASONS", ":EXTRA-FIELD-REASONS"]
+                 [":COLUMN-REASONS", ":EXTRA-FIELD-REASONS", ":EXTRA-FIELD-RESIDENT"]
                  + ([":CALLBACKS"] if ":CALLBACKS" in plist(row, name) else []), f"columns {name}")
     fields = [
         f"name := {sym(name)}",
