@@ -48,6 +48,12 @@ class CoverageControls(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'function count'):
             list(e.function_records([],1))
 
+    def test_packed_symbol_keeps_package_and_name(self):
+        obj=e.read_canonical('(:SYMBOL (65 67 76 50) (70 79 79))')
+        self.assertEqual(e.packed_text(obj),'(:PACKED-SYMBOL "ACL2" "FOO")')
+        obj=e.read_canonical('(:SYMBOL (65) (34 92))')
+        self.assertEqual(e.packed_text(obj),'(:PACKED-SYMBOL "A" "\\"\\\\")')
+
     def test_list_constant_keeps_every_element(self):
         value=e.alist_value(e.List([e.Atom('K'),e.Atom('1'),e.Atom('2'),e.Atom('3')]))
         self.assertEqual(value,e.List([e.Atom('1'),e.Atom('2'),e.Atom('3')]))

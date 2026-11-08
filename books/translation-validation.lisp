@@ -154,6 +154,41 @@
         '(value-triple :all-exports-match-live-functions)
       (er soft 'fn2-tv-check-functions "At least one export differs from its live function."))))
 
+; Source-book packing only: the transport and equality remain canonical.
+; Unpack one record at a time, rather than retaining millions of byte-list
+; cons cells while ACL2 checksums the entire certificate book.
+(defun fn2-tv-unpack (x)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom x) x)
+        ((and (eq (car x) :packed-symbol) (stringp (cadr x)) (stringp (caddr x))
+              (null (cdddr x)))
+         (list :symbol (fn2-tv-codes (coerce (cadr x) 'list))
+                       (fn2-tv-codes (coerce (caddr x) 'list))))
+        (t (cons (fn2-tv-unpack (car x)) (fn2-tv-unpack (cdr x))))))
+
+(defun fn2-tv-matches-packed-function (entry fn world)
+  (declare (xargs :verify-guards nil))
+  (fn2-tv-matches-function (fn2-tv-unpack entry) fn world))
+
+(defthm fn2-tv-matches-packed-function-exact
+  (implies (fn2-tv-matches-packed-function entry fn world)
+           (equal (fn2-tv-unpack entry) (fn2-tv-function fn world)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-tv-matches-function-exact
+                                  (entry (fn2-tv-unpack entry)))))))
+
+(defun fn2-tv-matches-packed-functions (entries world)
+  (declare (xargs :verify-guards nil))
+  (if (atom entries) (null entries)
+    (and (fn2-tv-matches-packed-function (cdar entries) (caar entries) world)
+         (fn2-tv-matches-packed-functions (cdr entries) world))))
+
+(defmacro fn2-tv-check-packed-functions (entries)
+  `(make-event
+    (if (fn2-tv-matches-packed-functions ,entries (w state))
+        '(value-triple :all-packed-exports-match-live-functions)
+      (er soft 'fn2-tv-check-packed-functions "At least one export differs from its live function."))))
+
 ; Closure is checked in the live world, not inferred from an emitter's count.
 (defconst *fn2-tv-native-boundary*
   '(if return-last equal cons car cdr consp integerp acl2-numberp rationalp symbolp stringp characterp coerce

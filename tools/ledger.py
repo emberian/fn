@@ -162,15 +162,26 @@ class Reader:
         return self.atom()
 
     def rest_of_list(self) -> list:
+        # Canonical export data can contain thousands of nested cons cells.
+        # Ordinary list nesting must not consume Python's call stack.
         items: list = []
-        while True:
+        stack = [items]
+        while stack:
             self.skip_space()
             if self.pos >= len(self.source):
                 raise ReadError("unterminated list")
-            if self.source[self.pos] == ")":
+            c = self.source[self.pos]
+            if c == ")":
                 self.pos += 1
-                return items
-            items.append(self.form())
+                stack.pop()
+            elif c == "(":
+                self.pos += 1
+                child: list = []
+                stack[-1].append(child)
+                stack.append(child)
+            else:
+                stack[-1].append(self.form())
+        return items
 
     def string(self) -> str:
         source, n = self.source, len(self.source)
@@ -364,8 +375,14 @@ def _cached_top_level(reader: "Reader") -> list[tuple[object, int]]:
     forms = reader._top_level()
     _FORMS_MEMO[key] = forms
     if directory is not None:
-        data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
-        _forms_cache_write(directory, key.hex(), data)
+        try:
+            data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
+        except RecursionError:
+            # A cache is optional; a deeply nested, successfully read book is
+            # still usable when pickle's recursive encoder cannot store it.
+            data = None
+        if data is not None:
+            _forms_cache_write(directory, key.hex(), data)
     return forms
 
 
@@ -373,14 +390,8 @@ def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:
     try:
         if not directory.is_dir():
             directory.mkdir(parents=True, exist_ok=True)
-            # Another reader's format (an older ledger.py) goes once nothing
-            # has created it for a day: a shared directory (a box's runs, by
-            # FN_LEDGER_FORMS_CACHE) may hold two versions' readers at once.
-            for other in directory.parent.iterdir():
-                if (other.is_dir() and other != directory
-                        and time.time() - other.stat().st_mtime > 86400):
-                    import shutil
-                    shutil.rmtree(other, ignore_errors=True)
+            # Retain other readers' caches. Their ownership/liveness is not
+            # determined by mtime; cleanup belongs to the cache owner.
         sub = directory / name[:2]
         sub.mkdir(exist_ok=True)
         temporary = sub / ".{}.{}.tmp".format(name, os.getpid())

@@ -118,7 +118,8 @@
 ; here is on the interpreter's path (LEAN-METATHEORY sections 5 and 12, decision 7). The
 ; generator has already checked every arm: a kind certifies only if fn2-arms-steps accepts it.
 
-(defun meta-kw (key plist) (let ((e (member key plist))) (and e (cadr e))))
+(defun meta-kw (key plist)
+  (loop for (k v) on plist by #'cddr when (eq k key) return v))
 
 (defun meta-sig (fn)
   ; a child-form function's (TAKES RETURNS RESULT-COUNT), when the generator narrowed it
@@ -165,17 +166,6 @@
 (defun meta-ops-in (x acc)
   ; every declared operation an arm names: :do, :issue and :park calls and pure calls in expressions
   (cond ((atom x) acc)
-        ;; :commit's calls are implicit in the source word. Export their live
-        ;; operation declarations too; the independent reader still receives
-        ;; the original, unexpanded :commit declaration.
-        ((eq (car x) :commit)
-         (dolist (op '(fn2-successor-release fn2-commit-take fn2-commit-posture
-                       fn2-machine-pool-capacity-read-code fn2-machine-pool-capacity
-                       fn2-successor-stage fn2-successor-emit fn2-commit-admit-txn
-                       fn2-successor-bind))
-           (if (fn2-arms-op-row op *meta-w*) (pushnew op acc)
-             (meta-err "Missing :commit operation declaration ~s" op)))
-         (meta-ops-in (cdr x) acc))
         ((and (symbolp (car x)) (fn2-arms-op-row (car x) *meta-w*))
          (meta-ops-in (cdr x) (adjoin (car x) acc)))
         (t (meta-ops-in (cdr x) (meta-ops-in (car x) acc)))))
@@ -289,10 +279,7 @@
 (defun meta-arm-constants (x acc)
   ; every *C* an arm names that the world defines (its value; the emitter refuses by name a value
   ; outside the subset)
-  (cond ((and (consp x) (eq (car x) :commit))
-         (meta-arm-constants (cdr x)
-           (meta-arm-constants '(*fn2-commit-outcome-accepted* *fn2-commit-outcome-uncertain*) acc)))
-        ((consp x) (meta-arm-constants (cdr x) (meta-arm-constants (car x) acc)))
+  (cond ((consp x) (meta-arm-constants (cdr x) (meta-arm-constants (car x) acc)))
         ((and (symbolp x) (not (keywordp x)) (eq (symbol-package x) (find-package "ACL2")))
          (let ((n (symbol-name x)) (v (getpropc x 'const nil *meta-w*)))
            (if (and (> (length n) 2) (char= (char n 0) #\*) (char= (char n (1- (length n))) #\*)
@@ -308,12 +295,20 @@
                         collect k))
          (kinds (remove-if-not #'meta-child-form-p stepped))
          (kds (mapcar #'meta-kind stepped))
+         (commit-words (meta-commit-words kds))
          (ops (let ((acc nil))
                 (dolist (k stepped)
                   (setq acc (meta-ops-in (list (fn2-machine-declared k :subarms *meta-w*)
                                                (fn2-machine-declared k :arms *meta-w*)
                                                (fn2-machine-declared k :observe-arms *meta-w*))
                                          acc)))
+                (when commit-words
+                  (dolist (op '(fn2-successor-release fn2-commit-take fn2-commit-posture
+                                fn2-machine-pool-capacity-read-code fn2-machine-pool-capacity
+                                fn2-successor-stage fn2-successor-emit fn2-commit-admit-txn
+                                fn2-successor-bind))
+                    (if (fn2-arms-op-row op *meta-w*) (pushnew op acc)
+                      (meta-err "Missing :commit operation declaration ~s" op))))
                 ;; the operations the generator calls without naming them in a step: the parks an
                 ;; :issue's exhaustion or a (:park ...) reaches, and the declared waits' parkers
                 (dolist (o (append '(fn2-machine-park fn2-machine-park-admission)
@@ -379,6 +374,9 @@
             (list :refused refused)
             (list :constants
                   (let ((cs (meta-constants '("*FN2-STOP-REASON-" "*FN2-WAIT-" "*FN2-WORK-" "*FN2-NONE*"))))
+                    (when commit-words
+                      (setq cs (meta-arm-constants
+                        '(*fn2-commit-outcome-accepted* *fn2-commit-outcome-uncertain*) cs)))
                     ;; a core-form kind's index constants (its arms read them as constants)
                     (dolist (kd kds)
                       (when (eq (meta-kw :form (cdr kd)) :core)
@@ -458,6 +456,36 @@
 
 ; Registry-wide package: no selected-kind or selected-arm allowlist. The
 ; ordinary world printer and canonical printer share the same declared closure.
+(defun meta-commit-steps (decl)
+  ;; Walk statement positions only. Phase/case keys and expressions are data,
+  ;; so (:case phase (:commit (:idle))) does not contain a :commit word.
+  (let ((words nil))
+    (labels ((steps (xs) (dolist (x xs) (step1 x)))
+             (branches (xs) (dolist (x xs) (steps (cdr x))))
+             (step1 (x)
+               (case (car x)
+                 (:commit
+                  (push x words)
+                  (dolist (key '(:dependencies :unchanged :accepted :refused :uncertain))
+                    (steps (meta-kw key (cddr x)))))
+                 (:if (steps (caddr x)) (steps (cadddr x)))
+                 (:cond (branches (cdr x)))
+                 (:case (branches (cddr x)))
+                 (:do (branches (meta-kw :case (cdddr x))))
+                 (:issue (steps (meta-kw :ok (cddr x)))
+                         (steps (meta-kw :refused (cddr x))))
+                 (:repeat (steps (caddr x)))))
+             (declaration (xs)
+               (case (car xs)
+                 (:from (declaration (cddr xs)))
+                 (:on-refusal
+                  (let ((r (cadr xs)))
+                    (steps (if (keywordp (car r)) (list r) r)))
+                  (declaration (cddr xs)))
+                 (otherwise (steps xs)))))
+      (declaration decl))
+    (reverse words)))
+
 (defun meta-commit-words (kinds)
   (let ((rows nil))
     (dolist (kd kinds)
@@ -465,17 +493,12 @@
         (dolist (entry (meta-kw area (cdr kd)))
           (let ((env (list :kind (car kd) :tag (if (eq area :subarms) nil (car entry))
                            :columns (meta-kw :columns (cdr kd)) :world *meta-w*)))
-            (labels ((walk (x)
-                       (cond ((atom x) nil)
-                             ((eq (car x) 'quote) nil)
-                             ((eq (car x) :commit)
-                              (if (fboundp 'fn2-arms-commit-expand)
-                                  (multiple-value-bind (err expansion) (fn2-arms-commit-expand x env)
-                                    (if err (meta-err "Invalid live :commit word in ~s ~s" (car kd) (car entry))
-                                      (push (list (car kd) area (car entry) x expansion) rows)))
-                                (meta-err ":commit has no admitted expander")))
-                             (t (walk (car x)) (walk (cdr x))))))
-              (walk (meta-kw :decl (cdr entry))))))))
+            (dolist (x (meta-commit-steps (meta-kw :decl (cdr entry))))
+              (if (fboundp 'fn2-arms-commit-expand)
+                  (multiple-value-bind (err expansion) (fn2-arms-commit-expand x env)
+                    (if err (meta-err "Invalid live :commit word in ~s ~s" (car kd) (car entry))
+                      (push (list (car kd) area (car entry) x expansion) rows)))
+                (meta-err ":commit has no admitted expander")))))))
     (reverse rows)))
 
 (defun meta-print-served-certificate (path)

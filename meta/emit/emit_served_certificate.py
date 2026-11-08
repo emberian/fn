@@ -41,6 +41,25 @@ def function_records(stream, count):
     if len(names) != count:
         raise ValueError(f'function count {len(names)} differs from header {count}')
 
+def packed_text(x):
+    """Losslessly pack symbol byte lists in the generated source book only.
+    ACL2 expands each record and compares the original canonical structure.
+    """
+    chunks=[];todo=[x]
+    while todo:
+        a=todo.pop()
+        if isinstance(a,List):
+            if len(a)==3 and a[0]==':SYMBOL':
+                quote=lambda v:'"'+codes(v).replace('\\','\\\\').replace('"','\\"')+'"'
+                chunks.append('(:PACKED-SYMBOL '+quote(a[1])+' '+quote(a[2])+')')
+                continue
+            chunks.append('(');todo.append(')')
+            for i in range(len(a)-1,-1,-1):
+                todo.append(a[i])
+                if i:todo.append(' ')
+        else:chunks.append(str(a))
+    return ''.join(chunks)
+
 def live_check(expected, actual):
     return ("(make-event (if (equal '"+show(expected)+' '+actual+")\n"
       " '(value-triple :served-metadata-matches-live-world)\n"
@@ -178,7 +197,7 @@ def idle_certificate(kd, ki, ai, layout, consts, namespace):
       ROW_VALUES='['+', '.join(rows)+']',COLUMN_NAMES='['+', '.join(lean_str(c) for c in cols)+']',
       COLUMN_CASES=' | '.join(['rfl']*len(cols)),ROW_CALL_PROOFS='\n'.join(proofs),
       DIRECTORY_VALUE=xs[directory],OWN_VALUE=xs[own],DIRECTORY_INDEX=str(directory),OWN_INDEX=str(own),
-      SNAPSHOT_CALL=call_proof(kn+'-SNAPSHOT-READ-CODE',['i','c'],'echoKind, '),
+      SNAPSHOT_CALL='change callFn world '+lean_str(kn+'-SNAPSHOT-READ-CODE')+' [i,c] = .ok ('+ident(kn+'-SNAPSHOT-READ-CODE')+' i c)\n    '+call_proof(kn+'-SNAPSHOT-READ-CODE',['i','c']),
       SLOT_CALL=call_proof('FN2-MACHINE-SLOT',['i','c']),
       REFUSED_PROOF='simp only [refusedEntry, coreStop, const, world, consts, coreTuple, callFn, '+
         'nativeCall_none "FN2-CONTROL-RECORD-STOP" _ (by decide +kernel), '+
@@ -242,6 +261,12 @@ def proof_obligations(decl):
     reasons=[name for tags,name in groups if found & tags]
     return 'not generated: '+', '.join(reasons or ['terminal certificate for '+', '.join(sorted(found))])
 
+def acl2_sources():
+    sys.path.insert(0,str(BASE/'tools'))
+    import certs
+    names=certs.required_closure(BASE,['books/reference','books/translation-validation'])
+    return [BASE/(n+'.lisp') for n in names]
+
 def generate(src):
     src=Path(src); out=BASE/'meta/Fn2/Instances/ServedCertificates';out.mkdir(parents=True,exist_ok=True)
     export=BASE/'meta/emit/served-export.lisp'
@@ -259,11 +284,11 @@ def generate(src):
         acl2.write("(fn2-tv-check-manifest '"+canonical_text(p[':MANIFEST'])+")\n")
         acl2.write("(fn2-tv-check-arm-inventory '"+show(inventory)+")\n")
         acl2.write(metadata_checks(p))
-        acl2.write("(fn2-tv-check-functions '(\n")
+        acl2.write("(fn2-tv-check-packed-functions '(\n")
         functions=[]; names=set()
         for name,row,d in function_records(stream,int(str(p[':FUNCTION-COUNT']))):
             names.add(name)
-            acl2.write('('+name+' . '+canonical_text(row)+')\n')
+            acl2.write('('+name+' . '+packed_text(row)+')\n')
             functions.append({'name':name,'canonical_export':'proposed',
               'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
         acl2.write('))\n')
@@ -304,7 +329,7 @@ def generate(src):
       'native_boundary':[str(decode(n)) for n in as_list(p[':NATIVES'])],
       'gates':{},'inputs':{str(f.relative_to(BASE)):digest(f) for f in sorted(set(
         [export,BASE/'meta/Fn2.lean',BASE/'meta/lean-toolchain',BASE/'meta/lake-manifest.json',
-         *BASE.glob('books/**/*.lisp'),*BASE.glob('meta/Fn2/**/*.lean'),
+         *acl2_sources(),*BASE.glob('meta/Fn2/**/*.lean'),
          *BASE.glob('meta/emit/*.py'),*BASE.glob('meta/emit/*.lisp'),*BASE.glob('meta/emit/*.lsp'),
          *BASE.glob('meta/emit/*.lean.in')]))}}
     dst=BASE/'build/served-certificate-coverage.json';dst.parent.mkdir(exist_ok=True)

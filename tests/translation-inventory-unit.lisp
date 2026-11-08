@@ -50,3 +50,23 @@
           (not (fn2-tv-refused-functions '(fn2-tv-outer) (w state))))
      '(value-triple :missing-callee-and-false-refusal-rejected)
    (er soft 'closure-control "Closure omitted a live callee or accepted a false refusal.")))
+
+; Packed strings must reconstruct the exact canonical symbol, including its
+; package. Changing the package or name is not a compression equivalence.
+(make-event
+ `(fn2-tv-check-packed-functions
+   ',(list (cons 'fn2-tv-outer
+                 (update-nth 1 '(:packed-symbol "ACL2" "FN2-TV-OUTER")
+                             (fn2-tv-function 'fn2-tv-outer (w state)))))))
+(make-event
+ `(must-fail
+   (fn2-tv-check-packed-functions
+    ',(list (cons 'fn2-tv-outer
+                  (update-nth 1 '(:packed-symbol "COMMON-LISP" "FN2-TV-OUTER")
+                              (fn2-tv-function 'fn2-tv-outer (w state))))))))
+(make-event
+ `(must-fail
+   (fn2-tv-check-packed-functions
+    ',(list (cons 'fn2-tv-outer
+                  (update-nth 1 '(:packed-symbol "ACL2" "FN2-TV-OTHER")
+                              (fn2-tv-function 'fn2-tv-outer (w state))))))))
