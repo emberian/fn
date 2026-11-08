@@ -6779,6 +6779,66 @@
   :hints (("Goal" :induct (fn2-env-j6p-rows ids c)
            :in-theory (union-theories '(fn2-env-j6p-rows fn2-env-j6l-rows fn2-env-j6p-j6l-row-host-step)
                                       (theory 'minimal-theory)))))
+;; THE HARVEST'S RELEASE IS ACCEPTED. A role write's harvest releases its
+;; range's pool row (fn2-harvest-one's release-out branch: a write result,
+;; FN2-ENV-J5-EVENT-OK). At a write phase J6P names the role's row (valid, a
+;; unit long) and J6L its lease (the unit's generation, leased out while the
+;; write is live); a semantic pool's leased-out row has a lease out
+;; (FN2-ENV-POOL-LEASED-OUT-COUNT), so the release is accepted
+;; (FN2-ENV-ROLE-RELEASE-ACCEPTED). The harvest-one delivery theorem built on
+;; it is the next statement (lanedumps/proof-floor-continue.md).
+(defthm fn2-env-row-invariant-leased-out-count
+  (implies (and (fn2-pool-row-invariantp n p) (natp i) (< i (nfix n))
+                (equal (fn2-pool-state i p) *fn2-pool-state-leased-out*))
+           (< 0 (fn2-pool-out-count i p)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-pool-row-invariantp n p)
+           :in-theory (union-theories '((:induction fn2-pool-row-invariantp) iff zp nfix natp (:e zp) (:e nfix) (:e equal)
+                                        commutativity-of-+ associativity-of-+ unicity-of-0 inverse-of-+ fold-consts-in-+ (:e binary-+) fix)
+                                      (theory 'minimal-theory))
+           :expand ((fn2-pool-row-invariantp n p)))))
+(defthm fn2-env-pool-leased-out-count
+  ; a semantic pool's leased-out row has a lease out
+  (implies (and (fn2-pool-semanticp p) (natp i) (< i (fn2-pool-rows p))
+                (equal (fn2-pool-state i p) *fn2-pool-state-leased-out*))
+           (< 0 (fn2-pool-out-count i p)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-pool-semanticp) (fn2-pool-row-invariantp fn2-pool-class-accountsp fn2-pool-retired-slots))
+           :use ((:instance fn2-env-row-invariant-leased-out-count (n (fn2-pool-rows p)))))))
+(defthm fn2-env-release-out-accepted
+  ; the release of a leased-out row at its generation is accepted
+  (implies (and (fn2-pool-semanticp p) (natp i) (< i (fn2-pool-rows p))
+                (equal (fn2-pool-state i p) *fn2-pool-state-leased-out*) (equal g (fn2-pool-gen i p)))
+           (equal (mv-nth 0 (fn2-pool-release-out i g p)) :ok))
+  :hints (("Goal" :in-theory (union-theories '(fn2-pool-release-out fn2-pool-handle-code mv-nth car-cons (:e zp) zp
+                                               natp (:e equal) (:e natp))
+                                             (theory 'minimal-theory))
+           :use fn2-env-pool-leased-out-count)))
+(defthm fn2-env-j6-role-oks
+  ; J6P and J6L at a write phase name each role's pool row and lease
+  (implies (and (fn2-commit-idp id c)
+                (member-equal (fn2-machine-phase id c)
+                              (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write* *fn2-commit-state-fence*))
+                (fn2-env-j6p-row id c) (fn2-env-j6l-row id c) (natp role) (< role 3))
+           (and (fn2-env-role-pool-ok id role c) (fn2-env-role-lease-ok id role c)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :cases ((equal role 0) (equal role 1) (equal role 2))
+           :in-theory (union-theories '(fn2-env-j6p-row fn2-env-j6l-row natp (:e natp) (:e <)) (theory 'minimal-theory)))))
+(defthm fn2-env-role-release-accepted
+  ; a live role's pool row, J6P's and J6L's, may be released
+  (implies (and (fn2-core-pool-semanticp c) (fn2-env-role-pool-ok id role c) (fn2-env-role-lease-ok id role c)
+                (fn2-env-role-live id role c))
+           (equal (mv-nth 0 (fn2-pool-release-out (nth 4 (fn2-env-role-io id role c)) (nth 5 (fn2-env-role-io id role c))
+                                                  (fn2-core-pool c)))
+                  :ok))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-role-pool-ok fn2-env-role-lease-ok
+                                        fn2-env-pool-row fn2-env-role-lease fn2-core-pool-semanticp
+                                        car-cons cdr-cons nth-0-cons nth-add1 (:e zp) (:e nth) (:e equal) (:e member-equal)
+                                        member-equal natp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-release-out-accepted (p (fn2-core-pool c)) (i (nth 4 (fn2-env-role-io id role c)))
+                            (g (nth 5 (fn2-env-role-io id role c))))))))
 (defthm fn2-env-j5-rows-loan-write-fill
   (implies (and (fn2-core-pool-semanticp c) (fn2-env-j5-rows ids log c) (fn2-env-j6p-rows ids c))
            (let ((c2 (fn2-env-fill rslot rgen slot gen idx octets c)))
