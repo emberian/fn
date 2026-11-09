@@ -241,6 +241,8 @@
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own))
                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp fn2-sim-ready)))))
+  ; A stopped core submits nothing (host-ops.lisp's peek answers :stopped).
+  (if (fn2-core-stopped-p fn2-core) (mv nil fn2-core fn2-sim fn2-own)
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
               (fn2-ops (fn2-core-ops fn2-core)))
     (found fn2-ops fn2-sim fn2-own)
@@ -264,7 +266,7 @@
               (if (and (eq ack :ok) (not (fn2-action-completionp kind)))
                   (fn2-op-finish slot gen fn2-ops) (mv :ok fn2-ops))))
           (mv (eq ack :ok) fn2-ops fn2-sim fn2-own))))
-    (mv found fn2-core fn2-sim fn2-own)))
+    (mv found fn2-core fn2-sim fn2-own))))
 (fn2-sim-preserves fn2-sim-take-one (fn2-core fn2-sim fn2-own) :part nil
   :carriers ((fn2-core 1 :prefix "-CORE" :hints (("Goal" :in-theory (enable fn2-core-wfp)))) (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY" :hints (("Goal" :in-theory (enable fn2-sim-ready)))) (fn2-own 3 :prefix "-OWN"))
   :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-sim-ready))))
