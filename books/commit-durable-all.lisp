@@ -11423,5 +11423,8 @@
 ;; without a live handle; from J5/J6's op ownership), and the other arms through
 ;; the step rules with their allocator steps (collect/install's root
 ;; edges at rows 6+2e: FN2-ENV-X-OF-KIDS6 is the frame, owed the root
-;; edge's step rule from the edge add/drop shapes at rows past 5, durable's allocation, drain's pool release of the
-;; row's own units, dropping's cancel leaving the row unheld).
+;; edge's step rule from the edge add/drop shapes at rows past 5;
+;; durable's allocation; drain's pool release of the row's own units and
+;; its member settlement, which writes the directory, so by the arm's
+;; frame and FN2-CTF-DIR, not by kids; dropping's cancel leaving the row
+;; unheld), then the composed commit visit.
