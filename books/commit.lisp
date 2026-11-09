@@ -123,6 +123,22 @@
     (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core)
                   (subsetp-equal ',(fn2-arm-frame-indices (cdr (assoc-eq name *fn2-commit-hook-children*)) world) fn2-arm-free))
              (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 (mv-nth 1 (,name ,@formals)))))))
+;; A hook whose children hold an owner table (dispatch-owners.lisp, in the
+;; world where the hooks are made) keeps the stored owners avoiding the commit
+;; kind, given the owner kind it is passed (OKIND) is not the commit kind: the
+;; dispatch's all-steps owners statement reads it (dispatch-owners-steps.lisp).
+(defun fn2-commit-hook-owner-accs (owners)
+ (declare (xargs :verify-guards nil))
+ (if (atom owners) nil (cons (nth 3 (car owners)) (fn2-commit-hook-owner-accs (cdr owners)))))
+(defun fn2-commit-hook-owners-claim (name formals world)
+ (declare (xargs :verify-guards nil))
+ (and (function-symbolp 'fn2-dh-owners-ok world)
+      (intersectp-eq (cdr (assoc-eq name *fn2-commit-hook-children*))
+                     (fn2-commit-hook-owner-accs (table-alist 'fn2-dh-owners world)))
+      `((defthm ,(fn2-columns-sym name "-OWNERS")
+         (implies (and (fn2-dh-owners-ok *fn2-commit-kind* fn2-core)
+                       ,@(and (member-eq 'okind formals) '((not (equal okind *fn2-commit-kind*)))))
+                  (fn2-dh-owners-ok *fn2-commit-kind* (mv-nth 1 (,name ,@formals))))))))
 (defun fn2-commit-hook-frame-events (name world)
  (declare (xargs :verify-guards nil))
  (append (and (not (fn2-arm-frame-known 'fn2-core-stop nil world)) (fn2-arm-frame-basis-events world))
@@ -159,7 +175,8 @@
        (and (fn2-corep (mv-nth 1 ,call)) (fn2-core-wfp (mv-nth 1 ,call))
             ,@(fn2-commit-hook-frame-claims *fn2-commit-hook-frame* call))))
      (defthm ,(fn2-columns-sym name "-RESULT-CONSP") (consp ,call) :rule-classes :type-prescription)
-     ,@(and children (fn2-commit-hook-kids-claim name formals world)))
+     ,@(and children (fn2-commit-hook-kids-claim name formals world))
+     ,@(fn2-commit-hook-owners-claim name formals world))
     ,@(and children `((make-event (value (cons 'progn (fn2-commit-hook-frame-events ',name (w state)))))))
     (defun ,default ,formals
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore ,@args))

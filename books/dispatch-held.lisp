@@ -868,6 +868,36 @@
   (cond ((atom b) a)
         ((assoc-equal (caar b) a) (fn2-dh-union-hyps a (cdr b)))
         (t (fn2-dh-union-hyps (append a (list (car b))) (cdr b)))))
+(mutual-recursion
+ (defun fn2-dh-eq-binds (x formals acc)
+   ; (V . TERM) for each (EQUAL TERM V) or (EQUAL V TERM) of X with V a formal
+   ; and TERM a non-constant term without V
+   (declare (xargs :mode :program))
+   (cond ((or (atom x) (eq (car x) 'quote)) acc)
+         (t (let ((acc (fn2-dh-eq-binds-list (cdr x) formals acc)))
+              (if (and (eq (car x) 'equal) (consp (cdr x)) (consp (cddr x)))
+                  (let ((a (cadr x)) (b (caddr x)))
+                    (cond ((and (member-eq b formals) (consp a) (not (quotep a)) (not (member-eq b (all-vars a))))
+                           (add-to-set-equal (cons b a) acc))
+                          ((and (member-eq a formals) (consp b) (not (quotep b)) (not (member-eq a (all-vars b))))
+                           (add-to-set-equal (cons a b) acc))
+                          (t acc)))
+                acc)))))
+ (defun fn2-dh-eq-binds-list (xs formals acc)
+   (declare (xargs :mode :program))
+   (if (atom xs) acc (fn2-dh-eq-binds-list (cdr xs) formals (fn2-dh-eq-binds (car xs) formals acc)))))
+(defun fn2-dh-eq-calls (binds call)
+  (declare (xargs :mode :program))
+  (if (atom binds) nil
+    (cons (cons (car call) (sublis-var-lst (list (car binds)) (cdr call)))
+          (fn2-dh-eq-calls (cdr binds) call))))
+;; The call expanded, and as the induction step meets it once an equality of
+;; the body has replaced a formal by the term it is compared with.
+(defun fn2-dh-hints-expand (hints call body)
+  (declare (xargs :mode :program))
+  (cons (append (car hints)
+                (list :expand (cons call (fn2-dh-eq-calls (fn2-dh-eq-binds body (cdr call) nil) call))))
+        (cdr hints)))
 (defun fn2-dh-chain-event (fn kind mode world)
   (declare (xargs :mode :program))
   (let* ((outs (fn2-dh-outs-m fn mode world))
@@ -901,13 +931,25 @@
                       ,(fn2-dh-lemma name outs call (strip-cars hyps) (strip-cars ohyps)
                                      (fn2-dh-chain-hints fn call body kids recp nil touches owners world) world)
                       (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs hyps ohyps name) old)))))
-        (if (not checkp) plain
+        (cond
+         ((and recp (not checkp))
+          ;; a recursive function whose definition the induction step does
+          ;; not open on its own: the same lemma with the call expanded
+          `(make-event
+            '(:or ,plain
+                  (progn
+                    ,(fn2-dh-lemma name outs call (strip-cars hyps) (strip-cars ohyps)
+                                   (fn2-dh-hints-expand (fn2-dh-chain-hints fn call body kids recp nil touches owners world) call body)
+                                   world)
+                    (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs hyps ohyps name) old))))))
+         ((not checkp) plain)
+         (t
           `(make-event
             '(:or ,plain
                   (progn
                     ,(fn2-dh-lemma name outs call (strip-cars chyps) (strip-cars ohyps)
                                    (fn2-dh-chain-hints fn call body kids recp t touches owners world) world)
-                    (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs chyps ohyps name) old)))))))))))
+                    (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs chyps ohyps name) old))))))))))))
 (defun fn2-dh-chain-forms-m (fns kind mode)
   (declare (xargs :mode :program))
   (if (atom fns) nil
