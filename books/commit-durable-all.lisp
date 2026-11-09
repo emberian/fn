@@ -10640,18 +10640,768 @@
                             (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
                  (:instance fn2-env-x-drop-accepts (role 2) (s 0) (g 0)
                             (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))))
+;; THE ARMS KEEP X. The visited row's move (FN2-ENV-X-MOVE: a row frame
+;; keeping X's children, every lendable role still lendable, holding after
+;; only where it held); the arms writing none of X's children (fence,
+;; notify, free: FN2-ENV-X-<PHASE>-ARM) and a visit of an id that is not a
+;; readable row; the issuing arms by their callees' step rules (table
+;; fn2-env-x-steps, instanced at every X of a step by FN2-ENV-X-HINT): the
+;; row writes at a holding row that lends nothing (-QUIET) or moving it to
+;; :uncertain (-UNCERTAIN), the issue (FN2-ENV-X-ISSUE) and the refused edge
+;; add, unreachable under X (FN2-ENV-X-EDGE-REFUSED).
+(defthm fn2-env-x-row-move
+  ; the visited row V's XR across a step keeping X's children, when every
+  ; lendable role of V stays lendable and V holds after only if it held before
+  (implies (and (fn2-env-x-row v a) (fn2-commit-idp v a)
+                (equal (fn2-commit-idp v b) (fn2-commit-idp v a)) (equal (fn2-commit-row v b) (fn2-commit-row v a))
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a))
+                (implies (fn2-env-x-lend-ok v 0 a) (fn2-env-x-lend-ok v 0 b))
+                (implies (fn2-env-x-lend-ok v 1 a) (fn2-env-x-lend-ok v 1 b))
+                (implies (fn2-env-x-lend-ok v 2 a) (fn2-env-x-lend-ok v 2 b))
+                (implies (fn2-env-x-held v b) (fn2-env-x-held v a)))
+           (and (fn2-env-x-row v b)
+                (implies (fn2-env-x-held v b)
+                         (and (fn2-env-x-held v a) (equal (fn2-env-role-extent v 0 b) (fn2-env-role-extent v 0 a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-hold-congruence (id v))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 0)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 1)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 2)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-child-congruences (id v) (role 0)) (:instance fn2-env-child-congruences (id v) (role 1))
+                 (:instance fn2-env-child-congruences (id v) (role 2))
+                 (:instance fn2-env-x-unit-mono (id v) (k 0)) (:instance fn2-env-x-unit-mono (id v) (k 1))
+                 (:instance fn2-env-x-unit-mono (id v) (k 2))))))
+(defthm fn2-env-x-move
+  ; THE VISITED ROW'S MOVE KEEPS X: a commit-table row frame at V's slot
+  ; that keeps X's children (the edges, extents and commit-io) keeps X when
+  ; every lendable role of V stays lendable and V holds after only if it held before
+  (implies (and (fn2-env-x a) (fn2-corep a) (fn2-core-wfp a)
+                (fn2-arm-row-frame 9 row cs ch a b) (natp row) (not (member-equal 9 ch)) (not (member-equal 33 cs))
+                (fn2-ctf-dir b a)
+                (fn2-commit-idp v a) (equal (fn2-machine-slot v a) row)
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a))
+                (implies (fn2-env-x-lend-ok v 0 a) (fn2-env-x-lend-ok v 0 b))
+                (implies (fn2-env-x-lend-ok v 1 a) (fn2-env-x-lend-ok v 1 b))
+                (implies (fn2-env-x-lend-ok v 2 a) (fn2-env-x-lend-ok v 2 b))
+                (implies (fn2-env-x-held v b) (fn2-env-x-held v a)))
+           (fn2-env-x b))
+  :hints (("Goal" :in-theory '(fn2-env-x fn2-env-commit-row-slot)
+           :do-not-induct t
+           :use ((:instance fn2-env-read-codes-of-row-frame (id v))
+                 (:instance fn2-ctf-dir-readers (id v))
+                 (:instance fn2-env-commit-idp-kind (id v) (fn2-core a))
+                 (:instance fn2-env-x-rows-necc (id v) (c a))
+                 (:instance fn2-env-x-row-move)
+                 (:instance fn2-env-x-reads-of-nth (u 0) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-off-of-kids)
+                 (:instance fn2-env-x-of-row-frame)))))
+(defun fn2-env-x-quiet-arm-events (state-name code)
+  ; FN2-ENV-X-<STATE>-ARM: an arm that writes none of X's children keeps X
+  ; by FN2-ENV-X-MOVE (its phase lends nothing; it holds after only from a holding phase)
+  (declare (xargs :mode :program))
+  (let* ((e (assoc code *fn2-commit-arm-decls*)) (ch (cadr e)) (cs (caddr e))
+         (const (fn2-env-arm-state-const state-name))
+         (b '(mv-nth 4 (fn2-commit-run id budget fn2-core)))
+         (row '(fn2-machine-slot id fn2-core))
+         (frame (fn2-columns-sym (fn2-columns-col-name 'fn2-env state-name) "-ARM-FRAME"))
+         (next (fn2-columns-sym (fn2-columns-col-name 'fn2-env-commit-run state-name) "-NEXT")))
+    (if (or (intersectp ch '(9 20 21 30)) (member 33 cs))
+        (er hard 'fn2-env-x-quiet-arm-events "~x0 writes a child X reads: ~x1." state-name e)
+      `((defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-x state-name) "-ARM")
+          (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                        (equal (fn2-commit-row-phase id fn2-core) ,const))
+                   (fn2-env-x ,b))
+          :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal
+                                       fn2-env-x-lend-ok fn2-env-x-held fn2-commit-idp fn2-commit-arm-row-phase)
+                   :do-not-induct t
+                   :use ((:instance ,frame) (:instance ,next)
+                         ,@(loop$ for k in '(20 21 30) collect
+                                  `(:instance fn2-env-row-frame-child (tb 9) (k ,k) (row ,row) (cs ',cs) (ch ',ch)
+                                              (a fn2-core) (b ,b)))
+                         (:instance fn2-env-x-move (a fn2-core) (b ,b) (row ,row) (cs ',cs) (ch ',ch) (v id))))))))))
+(make-event (value (cons 'progn (fn2-env-x-quiet-arm-events :fence 5))))
+(make-event (value (cons 'progn (fn2-env-x-quiet-arm-events :notify 9))))
+(make-event (value (cons 'progn (fn2-env-x-quiet-arm-events :free 0))))
+(defthm fn2-env-x-kids-core-stop
+  (fn2-env-x-kids (fn2-core-stop r c) c)
+  :hints (("Goal" :in-theory (e/d (fn2-core-stop fn2-env-x-kids fn2-env-x-ext-same fn2-core-extents update-fn2-core-control) ()))))
+(defthm fn2-env-x-core-stop
+  (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c)) (fn2-env-x (fn2-core-stop r c)))
+  :hints (("Goal" :in-theory '(fn2-env-x-kids)
+           :use ((:instance fn2-env-x-kids-core-stop) (:instance fn2-env-x-of-kids (a c) (b (fn2-core-stop r c)))))))
+(defthm fn2-env-x-non-row-visit
+  ; a visit of an id that is not a readable commit row only stops the core
+  (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (not (fn2-commit-idp id fn2-core)))
+           (fn2-env-x (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :in-theory '(fn2-commit-run fn2-commit-idp fn2-env-x-core-stop mv-nth (:e mv-nth) car-cons cdr-cons (:e zp) (:e binary-+) zp))))
+(defthm fn2-env-x-row-readers-of-kids
+  ; the arms' row readers read the directory (child 3) and the commit table (child 9) alone
+  (implies (and (equal (nth 3 b) (nth 3 a)) (equal (nth 9 b) (nth 9 a)))
+           (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-commit-row-phase id b) (fn2-commit-row-phase id a))
+                (equal (fn2-commit-row-cb-wrote id b) (fn2-commit-row-cb-wrote id a))
+                (equal (fn2-commit-row-cb-issued id b) (fn2-commit-row-cb-issued id a))
+                (equal (fn2-commit-row-cb-done id b) (fn2-commit-row-cb-done id a))
+                (equal (fn2-commit-row-pending id b) (fn2-commit-row-pending id a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code fn2-commit-row-phase
+                                   fn2-commit-row-cb-wrote fn2-commit-row-cb-issued fn2-commit-row-cb-done fn2-commit-row-pending
+                                   fn2-commit-table fn2-machine-kind fn2-machine-slot fn2-machine-idp fn2-core-machines
+                                   fn2-machine-kind-read-code fn2-machine-slot-read-code)
+                                  ()))))
+(defun fn2-env-x-kids-call-events (name call free)
+  ; FN2-ENV-X-KIDS-<NAME>, FN2-ENV-X-<NAME>, FN2-ENV-X-READS-<NAME>: CALL's
+  ; ARM-KIDS (children FREE) miss every child X and the row readers read
+  (declare (xargs :mode :program))
+  (let ((kids (fn2-columns-sym (fn2-columns-col-name 'fn2-env-x-kids name) ""))
+        (keep (fn2-columns-sym (fn2-columns-col-name 'fn2-env-x name) ""))
+        (reads (fn2-columns-sym (fn2-columns-col-name 'fn2-env-x-reads name) ""))
+        (arm-kids (intern-in-package-of-symbol (concatenate 'string "FN2-COMMIT~" (symbol-name (car (if (eq (car call) 'mv-nth) (caddr call) call))) "-ARM-KIDS") 'fn2-env-x)))
+    (if (intersectp free '(3 9 20 21 30))
+        (er hard 'fn2-env-x-kids-call-events "~x0 writes a child X reads: ~x1." name free)
+      `((defthm ,kids
+          (and (equal (nth 3 ,call) (nth 3 c)) (equal (nth 9 ,call) (nth 9 c)) (fn2-env-x-kids ,call c))
+          :hints (("Goal" :in-theory '(fn2-env-x-kids fn2-env-x-ext-same fn2-core-extents (:e subsetp-equal) (:e member-equal)
+                                       (:e natp) (:e binary-+) fn2-arm-kids-refl)
+                   :use ((:instance ,arm-kids (fn2-arm-free ',free) (fn2-arm-c0 c) (fn2-core c))
+                         ,@(loop$ for k in '(3 9 20 21 30) collect
+                                  `(:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',free) (a c) (b ,call)))))))
+        (defthm ,keep
+          (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c)) (fn2-env-x ,call))
+          :hints (("Goal" :in-theory '(fn2-env-x-kids) :use ((:instance ,kids) (:instance fn2-env-x-of-kids (a c) (b ,call))))))
+        (defthm ,reads
+          (and (equal (fn2-commit-idp id ,call) (fn2-commit-idp id c))
+               (equal (fn2-commit-row-phase id ,call) (fn2-commit-row-phase id c))
+               (equal (fn2-commit-row-cb-wrote id ,call) (fn2-commit-row-cb-wrote id c))
+               (equal (fn2-commit-row-cb-issued id ,call) (fn2-commit-row-cb-issued id c))
+               (equal (fn2-commit-row-cb-done id ,call) (fn2-commit-row-cb-done id c))
+               (equal (fn2-commit-row-pending id ,call) (fn2-commit-row-pending id c)))
+          :hints (("Goal" :in-theory nil :use ((:instance ,kids) (:instance fn2-env-x-row-readers-of-kids (a c) (b ,call))))))))))
+(make-event (value (cons 'progn (fn2-env-x-kids-call-events 'mark-abort '(fn2-commit-mark-abort batch first c) '(31 5)))))
+(make-event (value (cons 'progn (fn2-env-x-kids-call-events 'write-issue
+  '(mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)) '(1 0 5)))))
+(defthm fn2-env-member-self (member-equal x (cons x y)))
+(defun fn2-env-x-writer-events (w cs world)
+  ; FN2-ENV-X-<W>-QUIET: the row write W keeps X at a holding row that lends
+  ; nothing; FN2-ENV-X-<W>-UNCERTAIN (W not writing stage, issued, done or
+  ; wrote): its move of a holding row to :uncertain keeps X
+  (declare (xargs :mode :program))
+  (let* ((formals (formals w world)) (call (cons w (subst 'c 'fn2-core formals)))
+         (ucall (subst 11 'fn2-arms-w-phase call))
+         (frame (fn2-columns-sym w "-ARM-ROW-FRAME")) (dir (fn2-columns-sym w "-CTF-DIR"))
+         (phase (fn2-columns-sym w "-ARM-PHASE"))
+         (row '(fn2-machine-slot id c))
+         (base `((:instance ,frame (fn2-arm-tb 9) (fn2-arm-row ,row) (fn2-arm-cs ',cs) (fn2-arm-ch '(5)) (fn2-arm-c0 c) (fn2-core c))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row ,row) (columns ',cs) (children '(5)) (a c))
+                 (:instance ,dir (fn2-ctf-c0 c) (fn2-core c))
+                 (:instance fn2-ctf-dir-refl (a c))))
+         (hyps '((fn2-env-x c) (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-held id c))))
+    (append
+     `((defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-x w) "-QUIET")
+         (implies (and ,@hyps (not (fn2-env-x-lend-ok id 0 c)) (not (fn2-env-x-lend-ok id 1 c)) (not (fn2-env-x-lend-ok id 2 c)))
+                  (fn2-env-x ,call))
+         :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e subsetp-equal) (:e member-equal))
+                  :do-not-induct t
+                  :use (,@(subst call 'out base)
+                        ,@(loop$ for k in '(20 21 30) collect
+                                 `(:instance fn2-env-row-frame-child (tb 9) (k ,k) (row ,row) (cs ',cs) (ch '(5)) (a c) (b ,call)))
+                        (:instance fn2-env-x-move (a c) (b ,call) (row ,row) (cs ',cs) (ch '(5)) (v id)))))))
+     (and (not (intersectp cs '(14 16 17 29)))
+          (let ((base `((:instance ,frame (fn2-arm-tb 9) (fn2-arm-row ,row) (fn2-arm-cs ',cs) (fn2-arm-ch '(5)) (fn2-arm-c0 c) (fn2-core c) (fn2-arms-w-phase 11))
+                        (:instance fn2-arm-row-frame-refl (table 9) (row ,row) (columns ',cs) (children '(5)) (a c))
+                        (:instance ,dir (fn2-ctf-c0 c) (fn2-core c) (fn2-arms-w-phase 11))
+                        (:instance fn2-ctf-dir-refl (a c)))))
+            `((defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-x w) "-UNCERTAIN")
+                (implies (and ,@hyps) (fn2-env-x ,ucall))
+                :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e subsetp-equal) (:e member-equal)
+                                             fn2-env-member-self member-equal fn2-env-x-lend-ok)
+                         :do-not-induct t
+                         :use (,@base
+                               (:instance ,phase (fn2-arm-pset (list (fn2-machine-phase id c) 11)) (fn2-arms-w-phase 11) (fn2-core c))
+                               ,@(loop$ for k in '(20 21 30) collect
+                                        `(:instance fn2-env-row-frame-child (tb 9) (k ,k) (row ,row) (cs ',cs) (ch '(5)) (a c) (b ,ucall)))
+                               ,@(loop$ for f in '(fn2-machine-cb-stage-of-row-frame fn2-machine-cb-issued-of-row-frame
+                                                   fn2-machine-cb-done-of-row-frame fn2-machine-cb-wrote-of-row-frame) collect
+                                        `(:instance ,f (id id) (row ,row) (cs ',cs) (ch '(5)) (a c) (b ,ucall)))
+                               (:instance fn2-env-commit-idp-kind (id id) (fn2-core c))
+                               (:instance fn2-env-x-lend-held-congruence (id id) (k 0) (a c) (b ,ucall))
+                               (:instance fn2-env-x-lend-held-congruence (id id) (k 1) (a c) (b ,ucall))
+                               (:instance fn2-env-x-lend-held-congruence (id id) (k 2) (a c) (b ,ucall))
+                               (:instance fn2-env-x-move (a c) (b ,ucall) (row ,row) (cs ',cs) (ch '(5)) (v id))))))))))))
+(make-event (value (cons 'progn (fn2-env-x-writer-events 'fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason '(0 15 19 21) (w state)))))
+(make-event (value (cons 'progn (fn2-env-x-writer-events 'fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason '(0 6 15 19 21) (w state)))))
+(make-event (value (cons 'progn (fn2-env-x-writer-events 'fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open '(0 14 15 20 30) (w state)))))
+(make-event (value (cons 'progn (fn2-env-x-writer-events 'fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-deps-ok+cb-log-ok '(0 16 17 18 24 25) (w state)))))
+(make-event (value (cons 'progn (fn2-env-x-writer-events 'fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-log-ok '(0 16 17 18 25) (w state)))))
+(defthm fn2-env-x-row-machine-reads
+  ; the arms' row readers are the machine readers at a readable commit row
+  (implies (equal (fn2-commit-snapshot-read-code id c) :ok)
+           (and (equal (fn2-commit-row-cb-wrote id c) (fn2-machine-cb-wrote id c))
+                (equal (fn2-commit-row-cb-issued id c) (fn2-machine-cb-issued id c))
+                (equal (fn2-commit-row-cb-done id c) (fn2-machine-cb-done id c))))
+  :hints (("Goal" :in-theory nil :use ((:instance fn2-env-commit-row-wrote-reads (fn2-core c))
+                                       (:instance fn2-env-commit-row-count-reads (fn2-core c))))))
+(defun fn2-env-x-lend-reads-events (name call)
+  ; CALL keeps the readers XR reads of a commit row (by FN2-ENV-X-KIDS-<NAME>)
+  (declare (xargs :mode :program))
+  `((defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-x-lend-reads name) "")
+      (implies (fn2-commit-idp id c)
+               (and (equal (fn2-env-x-held id ,call) (fn2-env-x-held id c))
+                    (equal (fn2-env-x-lend-ok id k ,call) (fn2-env-x-lend-ok id k c))
+                    (equal (fn2-machine-phase id ,call) (fn2-machine-phase id c))
+                    (equal (fn2-machine-cb-issued id ,call) (fn2-machine-cb-issued id c))
+                    (equal (fn2-machine-cb-done id ,call) (fn2-machine-cb-done id c))))
+      :hints (("Goal" :in-theory nil
+               :use ((:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-x-kids name) ""))
+                     (:instance fn2-env-commit-idp-kind (fn2-core c))
+                     (:instance fn2-env-x-readers-of-kids (a c) (b ,call))
+                     (:instance fn2-env-x-lend-held-congruence (a c) (b ,call))))))))
+(make-event (value (cons 'progn (fn2-env-x-lend-reads-events 'mark-abort '(fn2-commit-mark-abort batch first c)))))
+(make-event (value (cons 'progn (fn2-env-x-lend-reads-events 'write-issue
+  '(mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c))))))
+(defthm fn2-env-x-kids-edge-shape
+  ; an edge add refused for its operation's shape leaves every child X reads
+  (implies (not (and (unsigned-byte-p 32 s) (unsigned-byte-p 60 g)))
+           (and (equal (nth 3 (mv-nth 1 (fn2-commit-io-edge id role add s g c))) (nth 3 c))
+                (equal (nth 9 (mv-nth 1 (fn2-commit-io-edge id role add s g c))) (nth 9 c))
+                (fn2-env-x-kids (mv-nth 1 (fn2-commit-io-edge id role add s g c)) c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents fn2-env-x-kids fn2-env-x-ext-same
+                            fn2-core-stop update-fn2-core-control)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot)))))
+(defthm fn2-env-x-edge-refused
+  ; THE REFUSED EDGE ADD IS UNREACHABLE: at an issuing role under X the
+  ; add accepts (FN2-ENV-X-EDGE-ADD-ACCEPTS) unless the operation's slot or
+  ; generation is out of range, and then nothing X reads is written
+  (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-issue-ok id role c)
+                (not (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)))
+           (fn2-env-x (fn2-core-stop r (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :hints (("Goal" :in-theory '(fn2-env-x-issue-ok fn2-env-x-kids fn2-env-x-core-stop)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-edge-add-accepts)
+                 (:instance fn2-env-x-kids-edge-shape (add t))
+                 (:instance fn2-commit-io-edge-preserves-type (fn2-core c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-commit-io-edge-preserves-wfp (fn2-core c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-env-x-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))))
+(defthm fn2-env-cb-issued-natp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (natp (fn2-machine-cb-issued id fn2-core)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-machine-cb-issued))))
+(defthm fn2-env-cb-done-natp-tp
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+           (natp (fn2-machine-cb-done id fn2-core)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn2-env-cb-done-natp)))
+(defthm fn2-env-x-idp-snapshot
+  (implies (fn2-commit-idp id c) (equal (fn2-commit-snapshot-read-code id c) :ok))
+  :hints (("Goal" :in-theory '(fn2-commit-idp))))
+(deftheory fn2-env-x-arm-rules
+  '(fn2-env-x-core-stop fn2-env-x-mark-abort fn2-env-x-write-issue fn2-env-x-reads-mark-abort fn2-env-x-reads-write-issue
+    fn2-env-x-lend-reads-mark-abort fn2-env-x-lend-reads-write-issue
+    fn2-env-x-fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-quiet
+    fn2-env-x-fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-uncertain
+    fn2-env-x-fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-quiet
+    fn2-env-x-fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-uncertain
+    fn2-env-x-fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open-quiet
+    fn2-env-x-fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-deps-ok+cb-log-ok-quiet
+    fn2-env-x-fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-log-ok-quiet
+    fn2-env-x-issue fn2-env-x-edge-refused fn2-env-x-row-machine-reads fn2-commit-arm-row-phase
+    fn2-env-x-held fn2-env-x-lend-ok fn2-env-x-issue-ok fn2-env-x-idp-snapshot
+    fn2-env-cb-issued-natp fn2-env-cb-done-natp-tp member-equal (:e member-equal) nfix natp))
+(mutual-recursion
+ (defun fn2-env-x-subterms (term)
+   ; the arguments of every (FN2-ENV-X TERM) call in TERM
+   (declare (xargs :mode :program))
+   (cond ((atom term) nil) ((eq (car term) 'quote) nil)
+         ((eq (car term) 'fn2-env-x) (list (cadr term)))
+         (t (fn2-env-x-subterms-list (cdr term)))))
+ (defun fn2-env-x-subterms-list (terms)
+   (declare (xargs :mode :program))
+   (if (atom terms) nil (append (fn2-env-x-subterms (car terms)) (fn2-env-x-subterms-list (cdr terms))))))
+(defun fn2-env-x-bindings (alist)
+  (declare (xargs :mode :program))
+  (if (atom alist) nil (cons (list (caar alist) (cdar alist)) (fn2-env-x-bindings (cdr alist)))))
+(defun fn2-env-x-rule-uses (rules term world)
+  ; :instance of each rule in RULES whose FN2-ENV-X conclusion matches TERM
+  (declare (xargs :mode :program))
+  (if (atom rules) nil
+    (let* ((concl (let ((f (formula (car rules) nil world))) (if (eq (car f) 'implies) (caddr f) f)))
+           (pat (and (consp concl) (eq (car concl) 'fn2-env-x) (cadr concl))))
+      (mv-let (ok alist) (if pat (one-way-unify pat term) (mv nil nil))
+        (append (and ok (list (list* :instance (car rules) (fn2-env-x-bindings alist))))
+                (fn2-env-x-rule-uses (cdr rules) term world))))))
+(defun fn2-env-x-terms-uses (rules terms world)
+  (declare (xargs :mode :program))
+  (if (atom terms) nil (append (fn2-env-x-rule-uses rules (car terms) world) (fn2-env-x-terms-uses rules (cdr terms) world))))
+(defun fn2-env-x-hint (clause world n)
+  ; X ARM HINT: instance the FN2-ENV-X step rules (table fn2-env-x-steps) at
+  ; every (FN2-ENV-X step) in CLAUSE; N more rounds for their hypotheses
+  (declare (xargs :mode :program))
+  (let* ((rules (strip-cars (table-alist 'fn2-env-x-steps world)))
+         (terms (remove-duplicates-equal (fn2-env-x-subterms-list clause)))
+         (uses (remove-duplicates-equal (fn2-env-x-terms-uses rules terms world))))
+    (and uses (< 0 n)
+         `(:computed-hint-replacement ((and stable-under-simplificationp (fn2-env-x-hint clause world ,(- n 1))))
+           :use ,uses))))
+(table fn2-env-x-steps 'fn2-env-x-core-stop t)
+(table fn2-env-x-steps 'fn2-env-x-mark-abort t)
+(table fn2-env-x-steps 'fn2-env-x-write-issue t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-quiet t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-uncertain t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-quiet t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-uncertain t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open-quiet t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-deps-ok+cb-log-ok-quiet t)
+(table fn2-env-x-steps 'fn2-env-x-fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-log-ok-quiet t)
+(table fn2-env-x-steps 'fn2-env-x-issue t)
+(table fn2-env-x-steps 'fn2-env-x-edge-refused t)
+(defthm fn2-env-x-dependencies-run
+  (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*)
+                (<= (fn2-machine-cb-done id fn2-core) (fn2-machine-cb-issued id fn2-core))
+                (unsigned-byte-p 32 (+ 1 (fn2-commit-row-pending id fn2-core))))
+           (fn2-env-x (mv-nth 4 (fn2-commit-run-dependencies id budget fn2-core))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-commit-run-dependencies) (union-theories (theory 'fn2-env-x-arm-rules) (theory 'fn2-arm-frame-base))))
+          (and stable-under-simplificationp (fn2-env-x-hint clause world 4))))
+(deftheory fn2-env-x-arm-rules-2 (union-theories '(unsigned-byte-p integer-range-p (:e expt)) (theory 'fn2-env-x-arm-rules)))
+(defthm fn2-env-x-log-write-run
+  (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-log-write*)
+                (<= (fn2-machine-cb-done id fn2-core) (fn2-machine-cb-issued id fn2-core))
+                (unsigned-byte-p 32 (+ 1 (fn2-commit-row-pending id fn2-core))))
+           (fn2-env-x (mv-nth 4 (fn2-commit-run-log-write id budget fn2-core))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-commit-run-log-write) (union-theories (theory 'fn2-env-x-arm-rules-2) (theory 'fn2-arm-frame-base))))
+          (and stable-under-simplificationp (fn2-env-x-hint clause world 4))))
+(make-event (value (cons 'progn (fn2-env-x-kids-call-events 'contract-check
+  '(mv-nth 4 (fn2-machine-contract-check ok bytes steps descriptors runnable c)) '(5)))))
+(defthm fn2-env-x-dependencies-arm
+  (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*)
+                (<= (fn2-machine-cb-done id fn2-core) (fn2-machine-cb-issued id fn2-core))
+                (unsigned-byte-p 32 (+ 1 (fn2-commit-row-pending id fn2-core))))
+           (fn2-env-x (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-commit-run fn2-env-x-dependencies-run fn2-env-x-contract-check fn2-commit-run-dependencies-preserves-type
+                        fn2-commit-run-dependencies-preserves-wfp fn2-commit-idp)
+           :use ((:instance fn2-env-row-phase-snapshot)))))
+(defthm fn2-env-x-log-write-arm
+  (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-log-write*)
+                (<= (fn2-machine-cb-done id fn2-core) (fn2-machine-cb-issued id fn2-core))
+                (unsigned-byte-p 32 (+ 1 (fn2-commit-row-pending id fn2-core))))
+           (fn2-env-x (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-commit-run fn2-env-x-log-write-run fn2-env-x-contract-check fn2-commit-run-log-write-preserves-type
+                        fn2-commit-run-log-write-preserves-wfp fn2-commit-idp)
+           :use ((:instance fn2-env-row-phase-snapshot)))))
+;; THE HANDLER KEEPS X (FN2-ENV-X-COMMIT-ON-WRITE-RESULT, -ON-FENCE-RESULT)
+;; at a row that holds its extent: a failed or stray result moves it to
+;; :uncertain (FN2-ENV-X-FAIL-WRITE); a counted write raises the count with
+;; its role still outstanding, or, the last, after the loan drop returned
+;; the row's units (FN2-ENV-X-DROP-IO-UNLENT, FN2-ENV-X-OK-WRITE, by
+;; FN2-ENV-X-MOVE2: lending is asked only of units still lent); a write the
+;; table refuses only stops the core (the -SPLIT lemmas).
+(defun-nx fn2-env-x-lent (id k c)
+  ; unit K of ID's row is lent
+  (equal (nth 3 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c)) 1))
+(defthm fn2-env-x-unit-mono2
+  ; only a lent unit asks its role stay lendable
+  (implies (and (fn2-env-x-unit id k a)
+                (equal (fn2-env-x-edge (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-x-edge (+ (* 3 (fn2-commit-row id a)) k) a))
+                (equal (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) a))
+                (equal (fn2-commit-resource id k b) (fn2-commit-resource id k a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (implies (and (fn2-env-x-lend-ok id k a) (fn2-env-x-lent id k a)) (fn2-env-x-lend-ok id k b)))
+           (fn2-env-x-unit id k b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit fn2-env-x-lent))))
+(defthm fn2-env-x-row-move2
+  (implies (and (fn2-env-x-row v a) (fn2-commit-idp v a)
+                (equal (fn2-commit-idp v b) (fn2-commit-idp v a)) (equal (fn2-commit-row v b) (fn2-commit-row v a))
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a))
+                (implies (and (fn2-env-x-lend-ok v 0 a) (fn2-env-x-lent v 0 a)) (fn2-env-x-lend-ok v 0 b))
+                (implies (and (fn2-env-x-lend-ok v 1 a) (fn2-env-x-lent v 1 a)) (fn2-env-x-lend-ok v 1 b))
+                (implies (and (fn2-env-x-lend-ok v 2 a) (fn2-env-x-lent v 2 a)) (fn2-env-x-lend-ok v 2 b))
+                (implies (fn2-env-x-held v b) (fn2-env-x-held v a)))
+           (and (fn2-env-x-row v b)
+                (implies (fn2-env-x-held v b)
+                         (and (fn2-env-x-held v a) (equal (fn2-env-role-extent v 0 b) (fn2-env-role-extent v 0 a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-hold-congruence (id v))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 0)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 1)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-reads-of-nth (u (+ (* 3 (fn2-commit-row v a)) 2)) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-child-congruences (id v) (role 0)) (:instance fn2-env-child-congruences (id v) (role 1))
+                 (:instance fn2-env-child-congruences (id v) (role 2))
+                 (:instance fn2-env-x-unit-mono2 (id v) (k 0)) (:instance fn2-env-x-unit-mono2 (id v) (k 1))
+                 (:instance fn2-env-x-unit-mono2 (id v) (k 2))))))
+(defthm fn2-env-x-move2
+  ; FN2-ENV-X-MOVE asking lending only of the units still lent
+  (implies (and (fn2-env-x a) (fn2-corep a) (fn2-core-wfp a)
+                (fn2-arm-row-frame 9 row cs ch a b) (natp row) (not (member-equal 9 ch)) (not (member-equal 33 cs))
+                (fn2-ctf-dir b a)
+                (fn2-commit-idp v a) (equal (fn2-machine-slot v a) row)
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a))
+                (implies (and (fn2-env-x-lend-ok v 0 a) (fn2-env-x-lent v 0 a)) (fn2-env-x-lend-ok v 0 b))
+                (implies (and (fn2-env-x-lend-ok v 1 a) (fn2-env-x-lent v 1 a)) (fn2-env-x-lend-ok v 1 b))
+                (implies (and (fn2-env-x-lend-ok v 2 a) (fn2-env-x-lent v 2 a)) (fn2-env-x-lend-ok v 2 b))
+                (implies (fn2-env-x-held v b) (fn2-env-x-held v a)))
+           (fn2-env-x b))
+  :hints (("Goal" :in-theory '(fn2-env-x fn2-env-commit-row-slot)
+           :do-not-induct t
+           :use ((:instance fn2-env-read-codes-of-row-frame (id v))
+                 (:instance fn2-ctf-dir-readers (id v))
+                 (:instance fn2-env-commit-idp-kind (id v) (fn2-core a))
+                 (:instance fn2-env-x-rows-necc (id v) (c a))
+                 (:instance fn2-env-x-row-move2)
+                 (:instance fn2-env-x-reads-of-nth (u 0) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-off-of-kids)
+                 (:instance fn2-env-x-of-row-frame)))))
+(defthm fn2-env-x-drop-unlent
+  ; a holding row's loan drop of role K returns the unit and keeps the row's others
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-held id c)
+                (natp role) (< role 3) (natp k) (< k 3))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil 0 0 c))))
+             (and (equal (fn2-commit-row id c1) (fn2-commit-row id c))
+                  (implies (equal k role) (not (fn2-env-x-lent id k c1)))
+                  (implies (not (equal k role)) (equal (fn2-env-x-lent id k c1) (fn2-env-x-lent id k c))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x fn2-env-x-lent natp nfix fn2-commit-row-natp (:e unsigned-byte-p) (:e member-equal) (:e natp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-drop-accepts (s 0) (g 0))
+                 (:instance fn2-env-x-rows-necc (id id))
+                 (:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil 0 0 c))))
+                 (:instance fn2-env-io-edge-drop-ok-shape (s 0) (g 0) (k 3))
+                 (:instance fn2-env-io-edge-drop-ok-shape (s 0) (g 0) (k 9))
+                 (:instance fn2-env-x-drop-io (s 0) (g 0) (u (+ (* 3 (fn2-commit-row id c)) k)))))))
+(defthm fn2-env-x-drop-io-unlent
+  ; the handler's loan drop leaves none of the row's three units lent
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-held id c) (natp k) (< k 3))
+           (and (not (fn2-env-x-lent id k (fn2-commit-drop-io id c)))
+                (equal (fn2-commit-row id (fn2-commit-drop-io id c)) (fn2-commit-row id c))))
+  :hints (("Goal" :in-theory '(fn2-commit-drop-io (:e unsigned-byte-p) (:e natp) (:e <) mv-nth car-cons cdr-cons (:e zp) zp natp)
+           :do-not-induct t
+           :cases ((equal k 0) (equal k 1) (equal k 2))
+           :use ((:instance fn2-env-x-drop (role 0) (s 0) (g 0))
+                 (:instance fn2-env-x-drop-accepts (role 0) (s 0) (g 0))
+                 (:instance fn2-env-x-drop-unlent (role 0))
+                 (:instance fn2-env-x-drop (role 1) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-x-drop-accepts (role 1) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-x-drop-unlent (role 1) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-x-drop (role 2) (s 0) (g 0)
+                            (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
+                 (:instance fn2-env-x-drop-accepts (role 2) (s 0) (g 0)
+                            (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
+                 (:instance fn2-env-x-drop-unlent (role 2)
+                            (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))))
+(defthm fn2-env-update-nth-self
+  (implies (and (natp n) (< n (len l))) (equal (update-nth n (nth n l) l) l))
+  :hints (("Goal" :in-theory (enable update-nth nth))))
+(defthm fn2-env-update-commit-table-self
+  (implies (fn2-corep c) (equal (update-fn2-commit-table (fn2-commit-table c) c) c))
+  :hints (("Goal" :in-theory (e/d (update-fn2-commit-table fn2-commit-table fn2-corep) ()))))
+(defthm fn2-env-fail-write-split
+  (implies (and (fn2-corep c)
+                (not (and (fn2-machine-idp id c) (equal (fn2-machine-kind id c) *fn2-commit-kind*) (natp (fn2-machine-slot id c))
+                          (< (fn2-machine-slot id c) (fn2-commit-rows (fn2-commit-table c)))
+                          (unsigned-byte-p 32 a1) (unsigned-byte-p 32 a2) (unsigned-byte-p 60 a3) (unsigned-byte-p 1 a4)
+                          (unsigned-byte-p 8 a5) (unsigned-byte-p 8 a6) (unsigned-byte-p 1 a7))))
+           (equal (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c)
+                  (fn2-machine-refuse-write c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live
+                                               fn2-env-update-commit-table-self)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-x-refuse-write
+  (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c)) (fn2-env-x (fn2-machine-refuse-write c)))
+  :hints (("Goal" :in-theory '(fn2-machine-refuse-write fn2-env-x-core-stop))))
+(defthm fn2-env-x-lend-ok-uncertain
+  (implies (equal (fn2-machine-phase id c) 11) (fn2-env-x-lend-ok id k c))
+  :hints (("Goal" :in-theory '(fn2-env-x-lend-ok))))
+(defthm fn2-env-x-fail-write
+  ; the handler's failure write moves a holding row to :uncertain
+  (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-held id c))
+           (fn2-env-x (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-env-x-refuse-write fn2-env-fail-write-split)
+           :cases ((and (fn2-machine-idp id c) (equal (fn2-machine-kind id c) *fn2-commit-kind*) (natp (fn2-machine-slot id c))
+                        (< (fn2-machine-slot id c) (fn2-commit-rows (fn2-commit-table c)))
+                        (unsigned-byte-p 32 a1) (unsigned-byte-p 32 a2) (unsigned-byte-p 60 a3) (unsigned-byte-p 1 a4)
+                        (unsigned-byte-p 8 a5) (unsigned-byte-p 8 a6) (unsigned-byte-p 1 a7))))
+          (and stable-under-simplificationp
+               '(:in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e subsetp-equal) (:e member-equal) fn2-env-x-lend-ok-uncertain)
+                 :use ((:instance fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-reads
+                                  (fn2-core c) (fn2-arms-w-phase 11) (fn2-arms-w-cb-cursor a1) (fn2-arms-w-cb-done a2) (fn2-arms-w-cb-bytes a3)
+                                  (fn2-arms-w-cb-failed a4) (fn2-arms-w-outcome a5) (fn2-arms-w-cb-reason a6) (fn2-arms-w-cb-fence-live a7))
+                       (:instance fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-arm-row-frame
+                                  (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id c)) (fn2-arm-cs '(0 15 17 18 19 20 21 22)) (fn2-arm-ch '(5))
+                                  (fn2-arm-c0 c) (fn2-core c) (fn2-arms-w-phase 11) (fn2-arms-w-cb-cursor a1) (fn2-arms-w-cb-done a2) (fn2-arms-w-cb-bytes a3)
+                                  (fn2-arms-w-cb-failed a4) (fn2-arms-w-outcome a5) (fn2-arms-w-cb-reason a6) (fn2-arms-w-cb-fence-live a7))
+                       (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id c)) (columns '(0 15 17 18 19 20 21 22)) (children '(5)) (a c))
+                       (:instance fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-ctf-dir
+                                  (fn2-ctf-c0 c) (fn2-core c) (fn2-arms-w-phase 11) (fn2-arms-w-cb-cursor a1) (fn2-arms-w-cb-done a2) (fn2-arms-w-cb-bytes a3)
+                                  (fn2-arms-w-cb-failed a4) (fn2-arms-w-outcome a5) (fn2-arms-w-cb-reason a6) (fn2-arms-w-cb-fence-live a7))
+                       (:instance fn2-ctf-dir-refl (a c))
+                       (:instance fn2-env-row-frame-child (tb 9) (k 20) (row (fn2-machine-slot id c)) (cs '(0 15 17 18 19 20 21 22)) (ch '(5)) (a c)
+                                  (b (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c)))
+                       (:instance fn2-env-row-frame-child (tb 9) (k 21) (row (fn2-machine-slot id c)) (cs '(0 15 17 18 19 20 21 22)) (ch '(5)) (a c)
+                                  (b (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c)))
+                       (:instance fn2-env-row-frame-child (tb 9) (k 30) (row (fn2-machine-slot id c)) (cs '(0 15 17 18 19 20 21 22)) (ch '(5)) (a c)
+                                  (b (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c)))
+                       (:instance fn2-env-x-move (a c) (b (fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live id 11 a1 a2 a3 a4 a5 a6 a7 c))
+                                  (row (fn2-machine-slot id c)) (cs '(0 15 17 18 19 20 21 22)) (ch '(5)) (v id)))))))
+(defthm fn2-env-x-drop-io-kids
+  (and (equal (nth 3 (fn2-commit-drop-io id c)) (nth 3 c)) (equal (nth 9 (fn2-commit-drop-io id c)) (nth 9 c)))
+  :hints (("Goal" :in-theory '((:e subsetp-equal) (:e member-equal) (:e natp) (:e binary-+) fn2-arm-kids-refl)
+           :use ((:instance fn2-commit~fn2-commit-drop-io-arm-kids (fn2-arm-free '(30 20 21 5)) (fn2-arm-c0 c) (fn2-core c))
+                 (:instance fn2-arm-kids-nth (i 0) (k 3) (free '(30 20 21 5)) (a c) (b (fn2-commit-drop-io id c)))
+                 (:instance fn2-arm-kids-nth (i 0) (k 9) (free '(30 20 21 5)) (a c) (b (fn2-commit-drop-io id c)))))))
+(defthm fn2-env-x-reads-drop-io
+  (and (equal (fn2-commit-idp i (fn2-commit-drop-io id c)) (fn2-commit-idp i c))
+       (equal (fn2-commit-row-phase i (fn2-commit-drop-io id c)) (fn2-commit-row-phase i c))
+       (equal (fn2-commit-row-cb-wrote i (fn2-commit-drop-io id c)) (fn2-commit-row-cb-wrote i c))
+       (equal (fn2-commit-row-cb-issued i (fn2-commit-drop-io id c)) (fn2-commit-row-cb-issued i c))
+       (equal (fn2-commit-row-cb-done i (fn2-commit-drop-io id c)) (fn2-commit-row-cb-done i c))
+       (equal (fn2-commit-row-pending i (fn2-commit-drop-io id c)) (fn2-commit-row-pending i c)))
+  :hints (("Goal" :in-theory nil :use ((:instance fn2-env-x-drop-io-kids)
+                                       (:instance fn2-env-x-row-readers-of-kids (id i) (a c) (b (fn2-commit-drop-io id c)))))))
+(defthm fn2-env-x-lend-reads-drop-io
+  (implies (fn2-commit-idp i c)
+           (and (equal (fn2-env-x-held i (fn2-commit-drop-io id c)) (fn2-env-x-held i c))
+                (equal (fn2-env-x-lend-ok i k (fn2-commit-drop-io id c)) (fn2-env-x-lend-ok i k c))
+                (equal (fn2-machine-phase i (fn2-commit-drop-io id c)) (fn2-machine-phase i c))
+                (equal (fn2-machine-cb-issued i (fn2-commit-drop-io id c)) (fn2-machine-cb-issued i c))
+                (equal (fn2-machine-cb-done i (fn2-commit-drop-io id c)) (fn2-machine-cb-done i c))))
+  :hints (("Goal" :in-theory nil
+           :use ((:instance fn2-env-x-drop-io-kids)
+                 (:instance fn2-env-commit-idp-kind (id i) (fn2-core c))
+                 (:instance fn2-env-x-readers-of-kids (id i) (a c) (b (fn2-commit-drop-io id c)))
+                 (:instance fn2-env-x-lend-held-congruence (id i) (a c) (b (fn2-commit-drop-io id c)))))))
+(defthm fn2-env-ok-write-split
+  (implies (and (fn2-corep c) (not (and (fn2-machine-idp id c) (equal (fn2-machine-kind id c) *fn2-commit-kind*) (natp (fn2-machine-slot id c))
+                          (< (fn2-machine-slot id c) (fn2-commit-rows (fn2-commit-table c)))
+                          (unsigned-byte-p 32 d) (unsigned-byte-p 60 a1) (unsigned-byte-p 1 a2) (unsigned-byte-p 1 a3))))
+           (equal (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c) (fn2-machine-refuse-write c)))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok fn2-env-update-commit-table-self)
+                                             (theory 'fn2-arm-frame-base)))))
+;; the handler's count rise: a role stays lendable while it stays outstanding
+(defthm fn2-env-x-lend-ok-count
+  (implies (and (fn2-env-x-lend-ok id k a)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a))
+                (natp (fn2-machine-cb-done id a))
+                (or (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                    (and (equal (fn2-machine-cb-done id b) (+ 1 (fn2-machine-cb-done id a)))
+                         (< (fn2-machine-cb-done id b) (fn2-machine-cb-issued id a)))))
+           (fn2-env-x-lend-ok id k b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-lend-ok natp nfix))))
+(defthm fn2-env-x-held-congruence
+  (implies (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a)))
+           (equal (fn2-env-x-held id b) (fn2-env-x-held id a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-held))))
+(defthm fn2-env-x-ok-write
+  ; the handler's success write: the count rises by one with the role still
+  ; outstanding, or after the row's units are returned, or stays
+  (implies (and (fn2-env-x c) (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (or (equal d (fn2-machine-cb-done id c))
+                    (and (equal d (+ 1 (fn2-machine-cb-done id c))) (< d (fn2-machine-cb-issued id c)))
+                    (and (not (fn2-env-x-lent id 0 c)) (not (fn2-env-x-lent id 1 c)) (not (fn2-env-x-lent id 2 c)))))
+           (fn2-env-x (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e subsetp-equal) (:e member-equal)
+                        fn2-env-x-row-machine-reads fn2-env-x-idp-snapshot fn2-env-cb-done-natp-tp)
+           :cases ((and (fn2-machine-idp id c) (equal (fn2-machine-kind id c) *fn2-commit-kind*) (natp (fn2-machine-slot id c))
+                        (< (fn2-machine-slot id c) (fn2-commit-rows (fn2-commit-table c)))
+                        (unsigned-byte-p 32 d) (unsigned-byte-p 60 a1) (unsigned-byte-p 1 a2) (unsigned-byte-p 1 a3)))
+           :use ((:instance fn2-env-ok-write-split) (:instance fn2-env-x-refuse-write)
+                 (:instance fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-reads
+                            (fn2-core c) (fn2-arms-w-cb-done d) (fn2-arms-w-cb-bytes a1) (fn2-arms-w-cb-fence-live a2) (fn2-arms-w-cb-fence-ok a3))
+                 (:instance fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-arm-row-frame
+                            (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id c)) (fn2-arm-cs '(17 18 22 23)) (fn2-arm-ch '(5))
+                            (fn2-arm-c0 c) (fn2-core c) (fn2-arms-w-cb-done d) (fn2-arms-w-cb-bytes a1) (fn2-arms-w-cb-fence-live a2) (fn2-arms-w-cb-fence-ok a3))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id c)) (columns '(17 18 22 23)) (children '(5)) (a c))
+                 (:instance fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-ctf-dir
+                            (fn2-ctf-c0 c) (fn2-core c) (fn2-arms-w-cb-done d) (fn2-arms-w-cb-bytes a1) (fn2-arms-w-cb-fence-live a2) (fn2-arms-w-cb-fence-ok a3))
+                 (:instance fn2-ctf-dir-refl (a c))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 20) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 21) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-row-frame-child (tb 9) (k 30) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-machine-phase-of-row-frame (id id) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-machine-cb-stage-of-row-frame (id id) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-machine-cb-issued-of-row-frame (id id) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-machine-cb-wrote-of-row-frame (id id) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-read-codes-of-row-frame (id id) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-ctf-dir-readers (id id) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-commit-idp-kind (id id) (fn2-core c))
+                 (:instance fn2-env-x-lend-ok-count (k 0) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-x-lend-ok-count (k 1) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-x-lend-ok-count (k 2) (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-x-held-congruence (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)))
+                 (:instance fn2-env-x-move2 (a c) (b (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d a1 a2 a3 c)) (row (fn2-machine-slot id c)) (cs '(17 18 22 23)) (ch '(5)) (v id))))))
+(table fn2-env-x-steps 'fn2-env-x-commit-drop-io t)
+(table fn2-env-x-steps 'fn2-env-x-ok-write t)
+(table fn2-env-x-steps 'fn2-env-x-fail-write t)
+(defthm fn2-env-x-snapshot-idp
+  (implies (equal (fn2-commit-snapshot-read-code id c) :ok) (fn2-commit-idp id c))
+  :hints (("Goal" :in-theory '(fn2-commit-idp))))
+(deftheory fn2-env-x-handler-rules
+  (union-theories '(fn2-env-x-reads-drop-io fn2-env-x-lend-reads-drop-io fn2-env-x-drop-io-unlent fn2-env-x-snapshot-idp fn2-env-x-commit-drop-io)
+                  (theory 'fn2-env-x-arm-rules-2)))
+(defmacro fn2-env-x-handler-event (name)
+  `(defthm ,(intern-in-package-of-symbol (concatenate 'string "FN2-ENV-X-" (subseq (symbol-name name) 4 nil)) 'fn2-env-x)
+     ; THE HANDLER KEEPS X at a row that holds its extent: a stray or failed
+     ; result moves it to :uncertain; a counted write returns the units
+     ; first when it is the last outstanding (FN2-ENV-X-COMMIT-DROP-IO)
+     (implies (and (fn2-env-x fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                   (implies (fn2-commit-idp id fn2-core) (fn2-env-x-held id fn2-core)))
+              (fn2-env-x (mv-nth 1 (,name id event outcome reason count aux0 aux1 fn2-core))))
+     :hints (("Goal" :do-not-induct t
+              :in-theory (union-theories '(,name) (union-theories (theory 'fn2-env-x-handler-rules) (theory 'fn2-arm-frame-base))))
+             (and stable-under-simplificationp (fn2-env-x-hint clause world 8)))))
+(fn2-env-x-handler-event fn2-commit-on-write-result)
+(fn2-env-x-handler-event fn2-commit-on-fence-result)
+(in-theory (disable fn2-env-x-idp-snapshot fn2-env-x-snapshot-idp fn2-env-x-row-machine-reads fn2-env-member-self
+                    fn2-env-update-nth-self fn2-env-update-commit-table-self))
+;; THE SIX UNIT EDGE ROWS: XR reads the units of rows below 2 alone, so a
+;; step that keeps edge rows 0..5, the six units, the directory, the commit
+;; table, every live handle and XA keeps X (FN2-ENV-X-OF-KIDS6); for the
+;; root edges at rows 6+2e (collect, install) and the allocator's other rows.
+(defun-sk fn2-env-x-off6 (row a b)
+  ; FN2-ENV-X-OFF over the six unit edge rows alone: B keeps what X reads of
+  ; every unit below 6 outside ROW's three, and every live handle
+  (forall (u e ep ct)
+    (and (implies (and (natp u) (< u 6) (not (and (<= (* 3 (nfix row)) u) (< u (+ 3 (* 3 (nfix row)))))))
+                  (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u a))
+                       (equal (fn2-env-io u b) (fn2-env-io u a))
+                       (equal (fn2-env-x-res u b) (fn2-env-x-res u a))))
+         (implies (fn2-env-x-handle-ok e ep ct a) (fn2-env-x-handle-ok e ep ct b)))))
+(defthm fn2-env-x-off6-unit
+  (implies (and (fn2-env-x-off6 row a b) (natp r) (< r 2) (natp row) (natp k) (< k 3) (not (equal r row)))
+           (let ((u (+ (* 3 r) k)))
+             (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u a))
+                  (equal (fn2-env-io u b) (fn2-env-io u a))
+                  (equal (fn2-env-x-res u b) (fn2-env-x-res u a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp nfix)
+           :use ((:instance fn2-env-x-off6-necc (u (+ (* 3 r) k)) (e 0) (ep 0) (ct 0))))))
+(defthm fn2-env-x-row-of-off6-low
+  (implies (and (fn2-env-x-row id a) (fn2-env-x-off6 row a b) (natp row) (fn2-corep a) (fn2-core-wfp a)
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (not (equal (fn2-commit-row id a) row))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a))
+                (< (fn2-commit-row id a) 2))
+           (and (fn2-env-x-row id b)
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-env-role-extent fn2-commit-row-natp natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-lend-held-congruence (k 0)) (:instance fn2-env-x-lend-held-congruence (k 1))
+                 (:instance fn2-env-x-lend-held-congruence (k 2))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 0))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 1))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 2))
+                 (:instance fn2-env-resource-of-res (k 0)) (:instance fn2-env-resource-of-res (k 1))
+                 (:instance fn2-env-resource-of-res (k 2))
+                 (:instance fn2-env-x-unit-transfer (k 0)) (:instance fn2-env-x-unit-transfer (k 1))
+                 (:instance fn2-env-x-unit-transfer (k 2))
+                 (:instance fn2-env-x-hold-transfer)
+                 (:instance fn2-env-x-off6-necc (u 0) (e (mv-nth 0 (fn2-commit-resource id 0 a)))
+                            (ep (mv-nth 1 (fn2-commit-resource id 0 a))) (ct (mv-nth 2 (fn2-commit-resource id 0 a))))))))
+(defthm fn2-env-x-row-of-off6
+  ; FN2-ENV-X-ROW-OF-OFF from the six unit edge rows: a row at or past 2 holds nothing and reads no unit
+  (implies (and (fn2-env-x-row id a) (fn2-env-x-off6 row a b) (natp row) (fn2-corep a) (fn2-core-wfp a)
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (not (equal (fn2-commit-row id a) row))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a)))
+           (and (fn2-env-x-row id b)
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (implies (and (fn2-commit-idp id a) (fn2-env-x-held id a)) (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-commit-row-natp natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-lend-held-congruence (k 0)) (:instance fn2-env-x-row-of-off6-low)))))
+(defthm fn2-env-x-off6-shift
+  ; every row at or past 2 names no unit below 6
+  (implies (and (fn2-env-x-off6 2 a b) (natp r) (<= 2 r)) (fn2-env-x-off6 r a b))
+  :hints (("Goal" :in-theory '(fn2-env-x-off6 natp nfix)
+           :use ((:instance fn2-env-x-off6-necc (row 2) (u (mv-nth 0 (fn2-env-x-off6-witness r a b)))
+                            (e (mv-nth 1 (fn2-env-x-off6-witness r a b))) (ep (mv-nth 2 (fn2-env-x-off6-witness r a b)))
+                            (ct (mv-nth 3 (fn2-env-x-off6-witness r a b))))))))
+(defthm fn2-env-x-row-of-kids6
+  (implies (and (fn2-env-x-rows a) (fn2-corep a) (fn2-core-wfp a) (equal (nth 3 b) (nth 3 a)) (equal (nth 9 b) (nth 9 a))
+                (fn2-env-x-off6 2 a b))
+           (and (fn2-env-x-row x b)
+                (equal (fn2-commit-idp x b) (fn2-commit-idp x a)) (equal (fn2-commit-row x b) (fn2-commit-row x a))
+                (implies (fn2-commit-idp x a)
+                         (and (equal (fn2-env-x-held x b) (fn2-env-x-held x a))
+                              (implies (fn2-env-x-held x a) (equal (fn2-env-role-extent x 0 b) (fn2-env-role-extent x 0 a)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row-not-idp fn2-commit-row-natp natp)
+           :do-not-induct t
+           :cases ((fn2-commit-idp x a))
+           :use ((:instance fn2-env-x-readers-of-kids (id x))
+                 (:instance fn2-env-commit-idp-kind (id x) (fn2-core a))
+                 (:instance fn2-env-x-rows-necc (id x) (c a))
+                 (:instance fn2-env-x-off6-shift (r (+ 2 (fn2-commit-row x a))))
+                 (:instance fn2-env-x-row-of-off6 (id x) (row (+ 2 (fn2-commit-row x a))))))))
+(defthm fn2-env-x-of-kids6
+  ; X kept by a step that keeps the directory, the commit table, the six
+  ; unit edge rows and units, every live handle, and XA
+  (implies (and (fn2-env-x a) (fn2-corep a) (fn2-core-wfp a) (equal (nth 3 b) (nth 3 a)) (equal (nth 9 b) (nth 9 a))
+                (fn2-env-x-off6 2 a b) (fn2-env-xa b))
+           (fn2-env-x b))
+  :hints (("Goal" :in-theory '(fn2-env-x fn2-env-x-rows fn2-env-x-apart)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-of-kids6 (x (fn2-env-x-rows-witness b)))
+                 (:instance fn2-env-x-row-of-kids6 (x (mv-nth 0 (fn2-env-x-apart-witness b))))
+                 (:instance fn2-env-x-row-of-kids6 (x (mv-nth 1 (fn2-env-x-apart-witness b))))
+                 (:instance fn2-env-x-apart-necc (c a) (a (mv-nth 0 (fn2-env-x-apart-witness b)))
+                            (b (mv-nth 1 (fn2-env-x-apart-witness b))))))))
 ;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Proved: the
-;; X-level frame (FN2-ENV-X-OF-ROW-FRAME), the host steps and :take
-;; (FN2-ENV-X-HOST-STEP), the issue's accepted step at the core
-;; (FN2-ENV-X-ISSUE) and the handler's loan drop (FN2-ENV-X-COMMIT-DROP-IO).
+;; X-level frame (FN2-ENV-X-OF-ROW-FRAME, FN2-ENV-X-MOVE), the host steps
+;; and :take (FN2-ENV-X-HOST-STEP), the issue (FN2-ENV-X-ISSUE), the
+;; handler's loan drop (FN2-ENV-X-COMMIT-DROP-IO), and the commit visits
+;; at :dependencies and :log-write (FN2-ENV-X-DEPENDENCIES-ARM,
+;; FN2-ENV-X-LOG-WRITE-ARM: given done <= issued and pending+1 a u32 at the
+;; visited row), :fence, :notify, :free and a non-row id, and the
+;; write/fence handler at a holding row.
 ;; Owed: established, XA at the core's init (alloc-init's
 ;; zero counts, edges-init's free rows) and XR/XD at admission
 ;; (fn2-commit-reserve-extent takes the free head, so apart from every held
 ;; row's live extent, FN2-ENV-ALLOC-RESERVE-SHAPE; the admitted row was
-;; :free, so no unit edge live); kept, the arm-level lift of FN2-ENV-X-ISSUE
-;; through fn2-commit-run-dependencies/-log-write (the refused edge add stops
-;; the core) and of the drop through fn2-commit-arm-observe (with its row
-;; write: done+1 = issued, so no role stays lendable), and the other arms through
-;; FN2-ENV-X-OF-ROW-FRAME with their allocator steps (collect/install's root
-;; edges at rows 6+2e, durable's allocation, dropping's cancel leaving the
-;; row unheld) proving FN2-ENV-X-OFF and XA after.
+;; :free, so no unit edge live); kept, the handler's reach (a result
+;; reaches only a row holding its extent, the hypothesis of
+;; FN2-ENV-X-COMMIT-ON-WRITE-RESULT/-ON-FENCE-RESULT: a stray result at a
+;; :free, :draining or released :dropping row would move it to :uncertain
+;; without a live handle; from J5/J6's op ownership), and the other arms through
+;; the step rules with their allocator steps (collect/install's root
+;; edges at rows 6+2e: FN2-ENV-X-OF-KIDS6 is the frame, owed the root
+;; edge's step rule from the edge add/drop shapes at rows past 5;
+;; durable's allocation; drain's pool release of the row's own units and
+;; its member settlement, which writes the directory, so by the arm's
+;; frame and FN2-CTF-DIR, not by kids; dropping's cancel leaving the row
+;; unheld), then the composed commit visit.
