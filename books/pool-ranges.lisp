@@ -169,6 +169,8 @@
           ((not (and (natp k) (natp cursor) (natp limit)
                      (<= k (fn2-pool-fill slot fn2-pool))
                      (<= cursor (- (fn2-pool-fill slot fn2-pool) k))
+                     ;; the move stays inside the slot's own extent
+                     (<= (fn2-pool-fill slot fn2-pool) (fn2-pool-cap slot fn2-pool))
                      (fn2-pool-range-in slot 0 (fn2-pool-fill slot fn2-pool) fn2-pool)))
            (mv :bounds 0 fn2-pool))
           (t (let* ((tail (- (fn2-pool-fill slot fn2-pool) k))

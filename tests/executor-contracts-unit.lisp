@@ -110,6 +110,9 @@
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
 (in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir
                     fn2-machine-observe-fn2-conn-default-ops-pool))
+;; the refusing run keeps the rows the commit kind holds (its held chain)
+(make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-refuser) (w state)) 'fn2-conn))))
+(make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-refuser 4 (w state))))
 (defattach (fn2-conn-run-stub fn2-ect-refuser)
            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
@@ -147,5 +150,37 @@
 (must-fail
  (defattach (fn2-conn-run-stub fn2-ect-refuser)
             (fn2-machine-observe-fn2-conn-stub fn2-ect-op-writer)
+            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
+            (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
+;; THE RUN STUB's held frame (FN2-DISPATCH-HELD): a connection run issuing a
+;; Close owned by the commit kind may write a row the commit kind holds, so
+;; its held claim is refused naming FN2-ISSUE-CLOSE (the issue's owner kind
+;; is the commit kind's), and its defattach fails the stub's -DISPATCH-HELD
+;; constraint (its KIDS and directory contracts proved, so that constraint
+;; alone fails); the refusing run above meets it.
+(defun fn2-ect-commit-closer (id budget fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-machine-idp id fn2-core)
+                              (equal (fn2-machine-kind id fn2-core) *fn2-conn-kind*)))
+           (ignore budget))
+  (mv-let (code slot gen fn2-core) (fn2-issue-close 0 0 *fn2-commit-kind* id 0 0 fn2-core)
+    (declare (ignore code slot gen))
+    (fn2-machine-refuse-phase id fn2-core)))
+(fn2-core-preserves fn2-ect-commit-closer (id budget fn2-core) :position 4 :rows nil)
+(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-commit-closer) 'fn2-conn (w state) nil 64) 'fn2-conn))))
+(make-event (value (fn2-dc-frame-check 'fn2-conn-run-stub 'fn2-ect-commit-closer 'fn2-conn
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) (w state))))
+(make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-commit-closer) 'fn2-conn))))
+(make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-closer 4 '(id budget fn2-core)
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+(make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-closer) (w state)) 'fn2-conn))))
+(assert-event
+ (let ((bad (fn2-dh-bad-hyps (fn2-dh-all-hyps (fn2-dh-facts 'fn2-ect-commit-closer (w state))) *fn2-commit-kind*)))
+   (and (consp bad) (equal (cadr (car bad)) 'fn2-issue-close))))
+(must-fail
+ (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-closer 4 (w state)))))
+(must-fail
+ (defattach (fn2-conn-run-stub fn2-ect-commit-closer)
+            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
             (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
             (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
