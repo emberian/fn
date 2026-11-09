@@ -7,7 +7,14 @@
 ; lemma from its children's.
 (in-package "ACL2")
 (include-book "borrow-conservation")
-(include-book "host-boundary")
+;; The books defining every face (tests/borrow-conservation-unit.lisp checks
+;; that host-boundary's world has no face beyond them).
+(include-book "assembly-callbacks")
+(include-book "assembly-callbacks-d-conn")
+(include-book "assembly-callbacks-d-upload")
+(include-book "assembly-callbacks-d-txn")
+(include-book "assembly-callbacks-d-cursor")
+(include-book "assembly-callbacks-e-auth")
 
 ;; ---------------------------------------------------------------------------
 ;; The world walk.
@@ -153,10 +160,15 @@
   (cond ((atom fs) nil)
         ((fn2-bf-provedp (car fs) wrld) (cons (fn2-bf-lemma-name (car fs)) (fn2-bf-lemma-names (cdr fs) wrld)))
         (t (fn2-bf-lemma-names (cdr fs) wrld))))
+(defun fn2-bf-leaf-names (fs pw wrld)
+  ;; the lemmas proved before the walk that the writers FS call
+  (declare (xargs :verify-guards nil))
+  (if (atom fs) nil
+    (union-eq (fn2-bf-lemma-names (fn2-bf-callees (car fs) pw wrld) wrld) (fn2-bf-leaf-names (cdr fs) pw wrld))))
 (defun fn2-bf-writer-lemma (f pw wrld)
-  ;; First the writer's body against only its callees' lemmas (no arithmetic,
-  ;; no case analysis of conditions the pool does not depend on); else the
-  ;; current theory with the body open.
+  ;; First the writer's body opened once in the ground theory with the
+  ;; lemmas before it (no arithmetic, no case analysis of conditions the pool
+  ;; does not depend on); else the whole theory with the body open.
   (declare (xargs :verify-guards nil))
   (let* ((formals (formals f wrld)) (outs (getpropc f 'stobjs-out nil wrld))
          (call (cons f formals)) (pool (fn2-bf-out call outs 'fn2-pool))
@@ -167,13 +179,11 @@
                               (fn2-borrows-accountedp fn2-pool fn2-ops) (natp (fn2-ops-rows fn2-ops)))
                          (fn2-borrows-accountedp ,pool ,ops))))
     `(:or (defthm ,(fn2-bf-lemma-name f) ,stmt
-            :hints (("Goal" ,@induct
-                     :in-theory (union-theories '(,f mv-nth car-cons cdr-cons fn2-bc-mv-nth-cons-const
-                                                  ,@(fn2-bf-lemma-names (fn2-bf-callees f pw wrld) wrld))
-                                                (union-theories (theory 'fn2-bf-ground)
-                                                                (theory 'minimal-theory))))))
+            :hints (("Goal" ,@(if induct `(,@induct :in-theory (enable ,f)) `(:expand (,call))))))
           (defthm ,(fn2-bf-lemma-name f) ,stmt
-            :hints (("Goal" ,@induct :in-theory (enable ,f)))))))
+            :hints (("Goal" ,@induct
+                     :in-theory (union-theories '(,f ,@(fn2-bf-lemma-names (fn2-bf-callees f pw wrld) wrld))
+                                                (theory 'fn2-bf-full))))))))
 (defun fn2-bf-writer-lemmas (fs pw wrld)
   (declare (xargs :verify-guards nil))
   (cond ((atom fs) nil)
@@ -206,6 +216,10 @@
 (defun fn2-bf-wf-callee-names (fs wrld)
   (declare (xargs :verify-guards nil))
   (if (atom fs) nil (append (fn2-bf-wf-leaf-names (car fs) wrld) (fn2-bf-wf-callee-names (cdr fs) wrld))))
+(defun fn2-bf-wf-leaf-names-of (fs ow wrld)
+  (declare (xargs :verify-guards nil))
+  (if (atom fs) nil
+    (union-eq (fn2-bf-wf-callee-names (fn2-bf-callees (car fs) ow wrld) wrld) (fn2-bf-wf-leaf-names-of (cdr fs) ow wrld))))
 (defun fn2-bf-wf-lemma (f ow wrld)
   (declare (xargs :verify-guards nil))
   (let* ((formals (formals f wrld)) (outs (getpropc f 'stobjs-out nil wrld))
@@ -213,17 +227,24 @@
          (induct (and (getpropc f 'recursivep nil wrld) `(:induct ,call)))
          (stmt `(implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)) (and (fn2-opsp ,ops) (fn2-ops-wfp ,ops)))))
     `(:or (defthm ,(fn2-bf-wf-name f) ,stmt
-            :hints (("Goal" ,@induct
-                     :in-theory (union-theories '(,f mv-nth car-cons cdr-cons fn2-bc-mv-nth-cons-const
-                                                  ,@(fn2-bf-wf-callee-names (fn2-bf-callees f ow wrld) wrld))
-                                                (union-theories (theory 'fn2-bf-ground)
-                                                                (theory 'minimal-theory))))))
+            :hints (("Goal" ,@(if induct `(,@induct :in-theory (enable ,f)) `(:expand (,call))))))
           (defthm ,(fn2-bf-wf-name f) ,stmt
-            :hints (("Goal" ,@induct :in-theory (enable ,f)))))))
+            :hints (("Goal" ,@induct
+                     :in-theory (union-theories '(,f ,@(fn2-bf-wf-callee-names (fn2-bf-callees f ow wrld) wrld))
+                                                (theory 'fn2-bf-full))))))))
 (defun fn2-bf-wf-lemmas (fs ow)
   (declare (xargs :verify-guards nil))
   (if (atom fs) nil
     (cons `(make-event (fn2-bf-wf-lemma ',(car fs) ',ow (w state))) (fn2-bf-wf-lemmas (cdr fs) ow))))
+(defun fn2-bf-new-names (order wrld)
+  ;; the writer lemmas the walk proves for ORDER
+  (declare (xargs :verify-guards nil))
+  (cond ((atom order) nil)
+        ((fn2-bf-provedp (car order) wrld) (fn2-bf-new-names (cdr order) wrld))
+        (t (cons (fn2-bf-lemma-name (car order)) (fn2-bf-new-names (cdr order) wrld)))))
+(defun fn2-bf-wf-names (wf)
+  (declare (xargs :verify-guards nil))
+  (if (atom wf) nil (cons (fn2-bf-wf-name (car wf)) (fn2-bf-wf-names (cdr wf)))))
 ;; The core-level functions the faces reach that the borrow-conservation
 ;; steps state, and that leave the ops child as it was.
 (defun fn2-bf-ops-frame (f wrld)
@@ -270,7 +291,7 @@
        (implies (and ,@(fn2-bf-core-facts 'fn2-core opsp))
                 (and ,@(fn2-bf-core-facts core opsp)
                      (fn2-borrows-accountedp (fn2-core-pool ,core) (fn2-core-ops ,core))))
-       :hints (("Goal" ,@induct :in-theory (e/d (,f fn2-core-borrows-accountedp) (fn2-borrows-accountedp)))))))
+       :hints (("Goal" ,@(if induct `(,@induct :in-theory (enable ,f)) `(:expand (,call))))))))
 (defun fn2-bf-face-lemmas (fs opsfs)
   (declare (xargs :verify-guards nil))
   (if (atom fs) nil
@@ -293,10 +314,22 @@
       (defconst *fn2-bf-faces* ',faces)
       (defconst *fn2-bf-core-fns* ',core-fns)
       (defconst *fn2-bf-writers* ',order)
-      (local (in-theory (disable fn2-borrows-accountedp fn2-core-borrows-accountedp ,@order ,@wf ,@core-fns)))
       (defconst *fn2-bf-ops-wf* ',wf)
+      (local (in-theory (disable fn2-borrows-accountedp fn2-core-borrows-accountedp ,@order ,@wf ,@core-fns)))
+      (local (deftheory fn2-bf-full (current-theory :here)))
+      ;; The writers' and ops lemmas in one theory, set once: the ground
+      ;; theory, the lemmas proved before the walk that they call, and each
+      ;; lemma as it is proved; each opens only its own body.
+      (local (in-theory (union-theories '(mv-nth car-cons cdr-cons fn2-bc-mv-nth-cons-const
+                                          ,@(fn2-bf-leaf-names order pw wrld)
+                                          ,@(fn2-bf-wf-leaf-names-of wf ow wrld))
+                                        (union-theories (theory 'fn2-bf-ground) (theory 'minimal-theory)))))
       ,@(fn2-bf-writer-lemmas order pw wrld)
       ,@(fn2-bf-wf-lemmas wf ow)
+      ;; The faces and core functions in the whole theory, the count opened to
+      ;; the core's children.
+      (local (in-theory (union-theories ',(append (fn2-bf-new-names order wrld) (fn2-bf-wf-names wf)) (theory 'fn2-bf-full))))
+      (local (in-theory (enable fn2-core-borrows-accountedp)))
       ,@(fn2-bf-ops-frames frames)
       ,@(fn2-bf-face-lemmas core-fns ops-fns))))
 
