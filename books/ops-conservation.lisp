@@ -13,6 +13,8 @@
 ;; not read, so no reader-by-writer matrix is needed. The per-row clause
 ;; FN2-OPS-ROW-OKP is fn2-ops-row-semanticp's body at one slot.
 (encapsulate ()
+(local (include-book "stobj-scope"))
+(local (fn2-stobj-scope fn2-ops))
 (local
 (defconst *fn2-ops-c-gen* 0))
 (local
