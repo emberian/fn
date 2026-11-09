@@ -9,6 +9,7 @@ var/
 *.cert.out
 *.cert.time
 *.port
+*.image
 *.fasl
 *.lx64fsl
 Makefile-tmp

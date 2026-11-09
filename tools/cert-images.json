@@ -1,52 +1,16 @@
 {
-  "comment": "tools/cert_images.py plan --write; see that module",
+  "comment": "fn2 world images (tools/cert_images.py, the fn2 section): one root each; a book certifies from the largest current image whose root is in its non-local closure",
   "images": [
     {
-      "name": "nntp-auth",
+      "name": "executor",
       "roots": [
-        "books/nntp-auth"
+        "books/executor"
       ]
     },
     {
-      "name": "store-events",
+      "name": "host-boundary",
       "roots": [
-        "books/store-events"
-      ]
-    },
-    {
-      "name": "owner",
-      "roots": [
-        "books/owner"
-      ]
-    },
-    {
-      "name": "bp-app-handoff",
-      "roots": [
-        "books/bp-app-handoff"
-      ]
-    },
-    {
-      "name": "nntp",
-      "roots": [
-        "books/nntp"
-      ]
-    },
-    {
-      "name": "store-intern",
-      "roots": [
-        "books/store-intern"
-      ]
-    },
-    {
-      "name": "byte-store-frame",
-      "roots": [
-        "books/byte-store-frame"
-      ]
-    },
-    {
-      "name": "served-catalog-owner",
-      "roots": [
-        "books/served-catalog-owner"
+        "books/host-boundary"
       ]
     }
   ]
