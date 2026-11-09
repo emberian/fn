@@ -8812,6 +8812,92 @@
    (fn2-env-j-reader-frame-events '((fn2-machine-idp id) (fn2-machine-kind id) (fn2-machine-slot id) (fn2-machine-phase id)
                                     (fn2-commit-idp id) (fn2-commit-row id))
                                   '(update-fn2-core-commit-io update-fn2-core-alloc-edges)))))
+;; THE LOAN DROP (fn2-commit-drop-io, three edge drops): it clears at most
+;; a unit's loan flag (commit-io field 8) and keeps every id, every row's
+;; journal resources and the other children: the handler's half of
+;; FN2-ENV-ROLES-DROPPED.
+(defthm fn2-env-io-edge-keeps-io-fields
+  ; an edge drop writes commit-io's loan column (field 8) alone
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (natp k) (not (equal k 8)))
+           (equal (nth k (nth *fn2-core-commit-io* (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                  (nth k (nth *fn2-core-commit-io* c))))
+  :hints (("Goal" :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io
+                                   fn2-commit-io-set-lent update-fn2-commit-io-lent$ai
+                                   fn2-env-core-stop-keeps-io-pool update-nth-array
+                                   update-fn2-core-alloc-edges update-fn2-core-extents nth-update-nth)
+                                  (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop update-nth nth
+                                   fn2-commit-io-extent fn2-commit-io-epoch fn2-commit-io-counter fn2-commit-io-lent
+                                   fn2-commit-io-op-slot fn2-commit-io-op-gen fn2-commit-io-pool-slot fn2-commit-io-pool-gen)))))
+(defthm fn2-env-resource-of-io-fields
+  ; a row's journal resources read the directory and commit-io's extent,
+  ; epoch, counter and pool columns and its row count
+  (implies (and (equal (fn2-commit-idp x b) (fn2-commit-idp x a)) (equal (fn2-commit-row x b) (fn2-commit-row x a))
+                (equal (nth 0 (nth *fn2-core-commit-io* b)) (nth 0 (nth *fn2-core-commit-io* a)))
+                (equal (nth 1 (nth *fn2-core-commit-io* b)) (nth 1 (nth *fn2-core-commit-io* a)))
+                (equal (nth 2 (nth *fn2-core-commit-io* b)) (nth 2 (nth *fn2-core-commit-io* a)))
+                (equal (nth 3 (nth *fn2-core-commit-io* b)) (nth 3 (nth *fn2-core-commit-io* a)))
+                (equal (nth 4 (nth *fn2-core-commit-io* b)) (nth 4 (nth *fn2-core-commit-io* a)))
+                (equal (nth 9 (nth *fn2-core-commit-io* b)) (nth 9 (nth *fn2-core-commit-io* a))))
+           (equal (fn2-commit-resource x r b) (fn2-commit-resource x r a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-resource fn2-core-commit-io fn2-commit-io-extent fn2-commit-io-epoch fn2-commit-io-counter
+                               fn2-commit-io-pool-slot fn2-commit-io-pool-gen fn2-commit-io-rows fn2-commit-io-extent$ai
+                               fn2-commit-io-epoch$ai fn2-commit-io-counter$ai fn2-commit-io-pool-slot$ai fn2-commit-io-pool-gen$ai))))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-tk fn2-env-ok fn2-env-pk)
+  '(fn2-commit-io-edge) (w state)))))
+(make-event (value (cons 'progn (fn2-env-keeps-ids-events
+  '((fn2-env-io-edge-keeps-ids (mv-nth 1 (fn2-commit-io-edge id role add opslot opgen c)) fn2-commit-io-edge-fn2-env-tk))))))
+(defthm fn2-env-io-edge-drop-resource
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (equal (fn2-commit-resource x r (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (fn2-commit-resource x r c)))
+  :hints (("Goal" :in-theory '((:e natp) (:e equal) fn2-env-tk-reflexive)
+           :use ((:instance fn2-commit-io-edge-fn2-env-tk (fn2-core c) (fn2-rel-c0 c) (add nil) (opslot s) (opgen g))
+                 (:instance fn2-env-read-codes-of-tk (id x) (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-resource-of-io-fields (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-io-edge-keeps-ids (add nil) (opslot s) (opgen g))
+                 (:instance fn2-env-io-edge-keeps-io-fields (k 0)) (:instance fn2-env-io-edge-keeps-io-fields (k 1))
+                 (:instance fn2-env-io-edge-keeps-io-fields (k 2)) (:instance fn2-env-io-edge-keeps-io-fields (k 3))
+                 (:instance fn2-env-io-edge-keeps-io-fields (k 4)) (:instance fn2-env-io-edge-keeps-io-fields (k 9))))))
+(defthm fn2-env-drop-io-is-rewrite
+  (equal (fn2-commit-drop-io id c)
+         (if (and (eq (mv-nth 0 (fn2-commit-io-edge id 0 nil 0 0 c)) :ok)
+                  (eq (mv-nth 0 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))) :ok)
+                  (eq (mv-nth 0 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))) :ok))
+             (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))) (fn2-core-stop *fn2-stop-reason-commit-io* (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-drop-io))))
+(defthm fn2-env-drop-io-units
+  ; dropping the row's three loans clears at most a unit's loan flag
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (fn2-env-io-drop-p (fn2-env-io u c) (fn2-env-io u (fn2-commit-drop-io id c))))
+  :hints (("Goal" :in-theory '(fn2-commit-io-edge-preserves-type fn2-commit-io-edge-preserves-wfp)
+           :do-not-induct t
+           :use ((:instance fn2-env-drop-io-is-rewrite)
+                 (:instance fn2-env-io-edge-drop-units (role 0) (s 0) (g 0))
+                 (:instance fn2-env-io-edge-drop-units (role 1) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-io-edge-drop-units (role 2) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
+                 (:instance fn2-env-io-drop-p-trans (x (fn2-env-io u c)) (y (fn2-env-io u (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))) (z (fn2-env-io u (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))
+                 (:instance fn2-env-io-drop-p-trans (x (fn2-env-io u c)) (y (fn2-env-io u (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))) (z (fn2-env-io u (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))))
+                 (:instance fn2-env-io-of-io-child (a (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))) (b (fn2-core-stop *fn2-stop-reason-commit-io* (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))))
+                 (:instance fn2-env-core-stop-keeps-io-pool (r *fn2-stop-reason-commit-io*) (c (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))))))
+(defthm fn2-env-drop-io-ids
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (and (equal (fn2-commit-idp x (fn2-commit-drop-io id c)) (fn2-commit-idp x c))
+                (equal (fn2-commit-row x (fn2-commit-drop-io id c)) (fn2-commit-row x c))))
+  :hints (("Goal" :in-theory '(fn2-commit-io-edge-preserves-type fn2-commit-io-edge-preserves-wfp
+                               fn2-env-io-edge-keeps-ids fn2-env-core-stop-keeps-ids fn2-commit-row)
+           :do-not-induct t
+           :use ((:instance fn2-env-drop-io-is-rewrite)))))
+(defthm fn2-env-drop-io-resource
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (equal (fn2-commit-resource x role (fn2-commit-drop-io id c)) (fn2-commit-resource x role c)))
+  :hints (("Goal" :in-theory '(fn2-commit-io-edge-preserves-type fn2-commit-io-edge-preserves-wfp fn2-env-io-edge-drop-resource
+                               fn2-env-io-edge-keeps-ids fn2-env-core-stop-keeps-ids fn2-commit-row)
+           :do-not-induct t
+           :use ((:instance fn2-env-drop-io-is-rewrite)
+                 (:instance fn2-env-core-stop-keeps-io-pool (r *fn2-stop-reason-commit-io*) (c (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))
+                 (:instance fn2-env-core-stop-keeps-ids (reason *fn2-stop-reason-commit-io*) (x x) (c (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))
+                 (:instance fn2-env-child-congruences (id x) (a (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))) (b (fn2-core-stop *fn2-stop-reason-commit-io* (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))))))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
