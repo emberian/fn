@@ -8328,6 +8328,491 @@
                  (:instance fn2-env-j5-rows-admit (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
                  (:instance fn2-env-admit-semanticp (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))))))
 ;; ---------------------------------------------------------------------------
+;; J5 AND J6 ACROSS THE WRITE/FENCE HANDLER (fn2-commit-arm-observe). The
+;; harvest (fn2-harvest-one) finishes the operation it delivers before the
+;; handler runs, so at the handler's entry the delivered role write (or
+;; fence) is no longer live and not yet counted: FN2-ENV-J5-ROW-D is J5 with
+;; that one result in flight (cb-done plus the live roles is one short of
+;; cb-issued, or the owned fences one short of cb-fence-live), the dead
+;; roles' written evidence asked only of a full done result. The handler
+;; counts the result (cb-done, or the fence flags) or moves the row to
+;; :uncertain, and drops the row's three IO loans with the phase's last
+;; result (fn2-commit-drop-io). Each outcome, stated over the evidence the
+;; handler keeps (FN2-ENV-ROLES-DROPPED: ops, pool, units but for cleared
+;; loans; FN2-ENV-COLS-KEPT), gives J5 and J6, J6P, J6L, J6S again:
+;; FN2-ENV-J5-ROW-COUNT (a full write counted), FN2-ENV-J5-ROW-FENCE-DONE (a
+;; full fence counted at :fence), FN2-ENV-J5-ROW-TO-UNCERTAIN (any other
+;; outcome), FN2-ENV-J6*-IN-PHASE and FN2-ENV-J6S-TO-UNCERTAIN.
+(defun fn2-env-io-drop-p (x y)
+  ; unit Y is unit X, or X with its loan flag cleared
+  (declare (xargs :verify-guards nil))
+  (or (equal y x) (equal y (update-nth 3 0 x))))
+(defun-nx fn2-env-roles-dropped (id a b)
+  ; B keeps the ops table, the pool and row ID's units (but for cleared
+  ; loans) and extents
+  (and (fn2-env-ok b a) (equal (nth 0 b) (nth 0 a))
+       (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+       (equal (fn2-commit-row id b) (fn2-commit-row id a))
+       (fn2-env-io-drop-p (fn2-env-role-io id 0 a) (fn2-env-role-io id 0 b))
+       (fn2-env-io-drop-p (fn2-env-role-io id 1 a) (fn2-env-role-io id 1 b))
+       (fn2-env-io-drop-p (fn2-env-role-io id 2 a) (fn2-env-role-io id 2 b))
+       (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))
+       (equal (fn2-env-role-extent id 1 b) (fn2-env-role-extent id 1 a))
+       (equal (fn2-env-role-extent id 2 b) (fn2-env-role-extent id 2 a))))
+(defthm fn2-env-roles-dropped-reads
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3))
+           (let ((x (fn2-env-role-io id role a)) (y (fn2-env-role-io id role b)))
+             (and (equal (nth 0 y) (nth 0 x)) (equal (nth 1 y) (nth 1 x)) (equal (nth 2 y) (nth 2 x))
+                  (equal (nth 4 y) (nth 4 x)) (equal (nth 5 y) (nth 5 x))
+                  (implies (equal (nth 3 y) 1) (equal y x))
+                  (equal (fn2-env-role-extent id role b) (fn2-env-role-extent id role a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-roles-dropped fn2-env-io-drop-p nth-update-nth (:e nfix) (:e zp) (:e equal) natp)
+           :cases ((equal role 0) (equal role 1) (equal role 2)))))
+(defthm fn2-env-role-live-dropped
+  ; a role live after a loan drop was live before, on the same unit; a unit
+  ; left as it was keeps the role's liveness
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3))
+           (and (implies (fn2-env-role-live id role b)
+                         (and (fn2-env-role-live id role a) (equal (fn2-env-role-io id role b) (fn2-env-role-io id role a))))
+                (implies (equal (fn2-env-role-io id role b) (fn2-env-role-io id role a))
+                         (equal (fn2-env-role-live id role b) (fn2-env-role-live id role a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-live fn2-env-roles-dropped fn2-env-op-of-ok)
+           :use ((:instance fn2-env-roles-dropped-reads)))))
+(defthm fn2-env-role-readers-dropped
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3))
+           (and (equal (fn2-env-role-octets id role b) (fn2-env-role-octets id role a))
+                (equal (fn2-env-role-pool-ok id role b) (fn2-env-role-pool-ok id role a))
+                (equal (fn2-env-role-lease id role b) (fn2-env-role-lease id role a))
+                (equal (fn2-env-role-offset id role b) (fn2-env-role-offset id role a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-octets fn2-env-role-pool-ok fn2-env-role-lease fn2-env-pool-row fn2-core-pool
+                               fn2-env-role-offset-of-extent fn2-env-roles-dropped)
+           :use ((:instance fn2-env-roles-dropped-reads)))))
+(defthm fn2-env-role-written-dropped
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3)
+                (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a)))
+           (equal (fn2-env-role-written id role f log b) (fn2-env-role-written id role f log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-written) :use ((:instance fn2-env-role-readers-dropped)))))
+(defthm fn2-env-j5-role-dropped
+  ; a role keeps J5-ROLE when its liveness does
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-mode id b) (fn2-machine-cb-mode id a))
+                (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a))
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a))
+                (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+                (equal (fn2-env-role-live id role b) (fn2-env-role-live id role a)))
+           (equal (fn2-env-j5-role id role log b) (fn2-env-j5-role id role log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-role fn2-env-roles-dropped fn2-env-op-of-ok)
+           :do-not-induct t
+           :use ((:instance fn2-env-role-live-dropped) (:instance fn2-env-role-readers-dropped)
+                 (:instance fn2-env-role-written-dropped
+                            (f (or (equal (fn2-machine-cb-fence-ok id a) 1)
+                                   (and (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                                        (equal (fn2-machine-cb-mode id a) 1)))))))))
+(defun fn2-env-j5-d-role (id role ok log fn2-core)
+  ; J5-ROLE, its dead role's written evidence asked only when OK
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (or ok (fn2-env-role-live id role fn2-core)) (fn2-env-j5-role id role log fn2-core)))
+(defun fn2-env-j5-roles-d (id ok log fn2-core)
+  ; J5-ROLES with one issued role's result delivered and not yet counted
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((phase (fn2-machine-phase id fn2-core)) (issued (fn2-machine-cb-issued id fn2-core))
+        (done (fn2-machine-cb-done id fn2-core)))
+    (cond ((equal phase *fn2-commit-state-dependencies*)
+           (and (natp issued) (<= issued 1) (natp done)
+                (implies (fn2-env-role-live id 0 fn2-core) (equal issued 1))
+                (implies (equal issued 1) (fn2-env-j5-d-role id 0 ok log fn2-core))
+                (equal (+ 1 done (if (equal issued 1) (fn2-env-b2n (fn2-env-role-live id 0 fn2-core)) 0)) issued)))
+          ((equal phase *fn2-commit-state-log-write*)
+           (and (natp issued) (<= issued 2) (natp done)
+                (implies (<= 1 issued) (fn2-env-j5-d-role id 1 ok log fn2-core))
+                (implies (<= 2 issued) (fn2-env-j5-d-role id 2 ok log fn2-core))
+                (equal (+ 1 done (if (<= 1 issued) (fn2-env-b2n (fn2-env-role-live id 1 fn2-core)) 0)
+                          (if (<= 2 issued) (fn2-env-b2n (fn2-env-role-live id 2 fn2-core)) 0))
+                       issued)
+                (fn2-env-j5-apart id fn2-core)))
+          (t t))))
+(defun fn2-env-j5-row-d (id event outcome count log fn2-core)
+  ; J5 at the handler's entry: the harvest has finished the operation whose
+  ; EVENT it delivers (a role write's or the fence's), not yet counted
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let* ((write (equal event *fn2-event-write-result*))
+         (ok (and (equal outcome *fn2-outcome-done*) (equal count (if write *fn2-commit-unit-bytes* 0))))
+         (phase (fn2-machine-phase id fn2-core)) (fence-live (fn2-machine-cb-fence-live id fn2-core)))
+    (implies (fn2-commit-idp id fn2-core)
+             (and (fn2-env-j5-ops 0 (fn2-env-ops-rows fn2-core) id log fn2-core)
+                  (if write (fn2-env-j5-roles-d id ok log fn2-core) (fn2-env-j5-roles id log fn2-core))
+                  (or (member-equal phase (list *fn2-commit-state-draining* *fn2-commit-state-uncertain*
+                                                *fn2-commit-state-dropping*))
+                      (and (equal fence-live (if (equal phase *fn2-commit-state-fence*) fence-live 0))
+                           (member-equal fence-live '(0 1))
+                           (equal (+ (if write 0 1) (fn2-env-owned-fences 0 (fn2-env-ops-rows fn2-core) id fn2-core))
+                                  fence-live)))))))
+(defun-nx fn2-env-cols-kept (id a b)
+  ; the columns J5 and J6 read of row ID but its phase, count and fence flags
+  (and (equal (fn2-machine-cb-mode id b) (fn2-machine-cb-mode id a))
+       (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+       (equal (fn2-machine-generation id b) (fn2-machine-generation id a))
+       (equal (fn2-machine-batch-no id b) (fn2-machine-batch-no id a))
+       (equal (fn2-machine-cb-deps-ok id b) (fn2-machine-cb-deps-ok id a))
+       (equal (fn2-machine-cb-log-ok id b) (fn2-machine-cb-log-ok id a))))
+(defun-nx fn2-env-drop-all-or-none (id a b)
+  ; the loans are all kept, or the last result of the phase is counted
+  (or (and (equal (fn2-env-role-io id 0 b) (fn2-env-role-io id 0 a))
+           (equal (fn2-env-role-io id 1 b) (fn2-env-role-io id 1 a))
+           (equal (fn2-env-role-io id 2 b) (fn2-env-role-io id 2 a)))
+      (equal (fn2-machine-cb-issued id a) (+ 1 (fn2-machine-cb-done id a)))))
+(defthm fn2-env-j5-roles-count
+  ; counting a delivered full write keeps J5-ROLES
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b) (fn2-env-drop-all-or-none id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+                (equal (fn2-machine-cb-done id b) (+ 1 (fn2-machine-cb-done id a)))
+                (fn2-env-j5-roles-d id t log a))
+           (fn2-env-j5-roles id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-roles fn2-env-j5-roles-d fn2-env-j5-d-role fn2-env-j5-apart fn2-env-b2n
+                               fn2-env-cols-kept fn2-env-drop-all-or-none natp (:e natp) (:e <) (:e equal) fix)
+           :do-not-induct t
+           :use ((:instance fn2-env-role-live-dropped (role 0)) (:instance fn2-env-role-live-dropped (role 1))
+                 (:instance fn2-env-role-live-dropped (role 2))
+                 (:instance fn2-env-j5-role-dropped (role 0)) (:instance fn2-env-j5-role-dropped (role 1))
+                 (:instance fn2-env-j5-role-dropped (role 2))
+                 (:instance fn2-env-roles-dropped-reads (role 1)) (:instance fn2-env-roles-dropped-reads (role 2))))))
+(defthm fn2-env-j5-fence-dropped
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b))
+           (equal (fn2-env-j5-fence id op s log b) (fn2-env-j5-fence id op s log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-fence fn2-env-cols-kept (:e natp) (:e <))
+           :use ((:instance fn2-env-role-written-dropped (role 0) (f nil) (log (take (fn2-env-take-index s (nth 1 op) log) log)))
+                 (:instance fn2-env-role-written-dropped (role 1) (f nil) (log (take (fn2-env-take-index s (nth 1 op) log) log)))
+                 (:instance fn2-env-role-written-dropped (role 2) (f nil) (log (take (fn2-env-take-index s (nth 1 op) log) log)))))))
+(defthm fn2-env-owned-fence-at-of-ok
+  (implies (and (fn2-env-ok b a) (equal (fn2-machine-generation id b) (fn2-machine-generation id a)))
+           (equal (fn2-env-owned-fence-at s id b) (fn2-env-owned-fence-at s id a)))
+  :hints (("Goal" :in-theory '(fn2-env-owned-fence-at fn2-env-op-of-ok))))
+(defthm fn2-env-owned-fences-of-ok
+  (implies (and (fn2-env-ok b a) (equal (fn2-machine-generation id b) (fn2-machine-generation id a)))
+           (equal (fn2-env-owned-fences s k id b) (fn2-env-owned-fences s k id a)))
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id a)
+           :in-theory (union-theories '(fn2-env-owned-fences fn2-env-owned-fence-at-of-ok) (theory 'minimal-theory)))))
+(defthm fn2-env-j5-op-to-uncertain
+  ; a row moved to :uncertain keeps J5-OP: settling asks only of its live
+  ; fences, which every phase's J5-OP already followed
+  (implies (and (fn2-env-j5-op s id log a) (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*))
+           (fn2-env-j5-op s id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-op fn2-env-roles-dropped fn2-env-cols-kept fn2-env-op-of-ok
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-fence-dropped (op (fn2-env-op s a)))))))
+(defthm fn2-env-j5-ops-to-uncertain
+  (implies (and (fn2-env-j5-ops s k id log a) (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*))
+           (fn2-env-j5-ops s k id log b))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log a)
+           :in-theory (union-theories '(fn2-env-j5-ops) (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-j5-op-to-uncertain)))))
+(defthm fn2-env-j5-op-fence-done
+  ; a counted fence result at :fence: no live fence of the row is left at
+  ; its generation, so none of its operations is
+  (implies (and (fn2-env-j5-op s id log a) (equal (fn2-env-owned-fence-at s id a) 0) (fn2-env-ok b a)
+                (equal (fn2-machine-phase id a) *fn2-commit-state-fence*)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-fence*)
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a)))
+           (fn2-env-j5-op s id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-op fn2-env-owned-fence-at fn2-env-op-of-ok
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t)))
+(defthm fn2-env-owned-fence-at-bit
+  (or (equal (fn2-env-owned-fence-at s id c) 0) (equal (fn2-env-owned-fence-at s id c) 1))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-owned-fence-at))))
+(defthm fn2-env-owned-fence-at-natp
+  (natp (fn2-env-owned-fence-at s id c))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory '(fn2-env-owned-fence-at (:e natp)))))
+(defthm fn2-env-owned-fences-natp
+  (natp (fn2-env-owned-fences s k id c))
+  :rule-classes :type-prescription
+  :hints (("Goal" :induct (fn2-env-owned-fences s k id c)
+           :in-theory (union-theories '(fn2-env-owned-fences natp (:e natp) (:type-prescription fn2-env-owned-fence-at-natp)) (theory 'minimal-theory)))))
+(defthm fn2-env-j5-ops-fence-done
+  (implies (and (fn2-env-j5-ops s k id log a) (equal (fn2-env-owned-fences s k id a) 0) (fn2-env-ok b a)
+                (equal (fn2-machine-phase id a) *fn2-commit-state-fence*)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-fence*)
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a)))
+           (fn2-env-j5-ops s k id log b))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log a)
+           :in-theory (union-theories '(fn2-env-j5-ops fn2-env-owned-fences natp) (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-j5-op-fence-done)
+                                (:instance fn2-env-owned-fence-at-natp (c a))
+                                (:instance fn2-env-owned-fences-natp (s (+ 1 (nfix s))) (k (- k 1)) (c a))))))
+(defun fn2-env-op-owned-at (s id fn2-core)
+  ; op S is live, owned by commit row ID, at the row's generation
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((op (fn2-env-op s fn2-core)))
+    (and (nth 0 op) (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-retired*)))
+         (equal (nth 4 op) *fn2-commit-kind*) (equal (nth 5 op) id)
+         (equal (nth 6 op) (fn2-machine-generation id fn2-core)))))
+(defthm fn2-env-j5-op-not-owned-at
+  ; J5-OP of an operation the row does not own at its generation reads only
+  ; the operation and the generation
+  (implies (and (fn2-env-j5-op s id log a) (not (fn2-env-op-owned-at s id a)) (fn2-env-ok b a)
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a)))
+           (fn2-env-j5-op s id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-op fn2-env-op-owned-at fn2-env-op-of-ok) :do-not-induct t)))
+(defthm fn2-env-j5-op-owned-at-live-role
+  ; an operation the row owns at its generation in a write phase is a live
+  ; role's write
+  (implies (and (fn2-env-j5-op s id log a) (fn2-env-op-owned-at s id a))
+           (and (implies (equal (fn2-machine-phase id a) *fn2-commit-state-dependencies*)
+                         (fn2-env-role-live id 0 a))
+                (implies (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                         (or (fn2-env-role-live id 1 a) (fn2-env-role-live id 2 a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-op fn2-env-op-owned-at fn2-env-role-live fn2-env-role-io
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t)))
+(defthm fn2-env-io-of-role-io
+  (implies (and (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (equal (fn2-env-role-io id k b) (fn2-env-role-io id k a)))
+           (equal (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-io))))
+(defthm fn2-env-j5-op-units-kept
+  ; J5-OP reads the ops table, the row's phase, generation, fence flag and
+  ; units, and its fence evidence
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))
+                (equal (fn2-env-role-io id 0 b) (fn2-env-role-io id 0 a))
+                (equal (fn2-env-role-io id 1 b) (fn2-env-role-io id 1 a))
+                (equal (fn2-env-role-io id 2 b) (fn2-env-role-io id 2 a)))
+           (equal (fn2-env-j5-op s id log b) (fn2-env-j5-op s id log a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-op fn2-env-op-of-ok fn2-env-roles-dropped fn2-env-cols-kept)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-of-role-io (k 0)) (:instance fn2-env-io-of-role-io (k 1))
+                 (:instance fn2-env-io-of-role-io (k 2))
+                 (:instance fn2-env-j5-fence-dropped (op (fn2-env-op s a)))))))
+(defthm fn2-env-roles-dropped-ids
+  (implies (fn2-env-roles-dropped id a b)
+           (fn2-env-ok b a))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-roles-dropped))))
+(defthm fn2-env-j5-op-count
+  ; counting a role's result, and dropping the loans with the last one,
+  ; keeps J5-OP: the loans drop only once no role of the phase is live
+  (implies (and (fn2-env-j5-op s id log a) (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))
+                (member-equal (fn2-machine-phase id a) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                (or (and (equal (fn2-env-role-io id 0 b) (fn2-env-role-io id 0 a))
+                         (equal (fn2-env-role-io id 1 b) (fn2-env-role-io id 1 a))
+                         (equal (fn2-env-role-io id 2 b) (fn2-env-role-io id 2 a)))
+                    (and (implies (equal (fn2-machine-phase id a) *fn2-commit-state-dependencies*)
+                                  (not (fn2-env-role-live id 0 a)))
+                         (implies (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                                  (and (not (fn2-env-role-live id 1 a)) (not (fn2-env-role-live id 2 a)))))))
+           (fn2-env-j5-op s id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-cols-kept member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-op-units-kept) (:instance fn2-env-j5-op-not-owned-at)
+                 (:instance fn2-env-j5-op-owned-at-live-role)
+                 (:instance fn2-env-roles-dropped-ids)))))
+(defthm fn2-env-j5-ops-count
+  (implies (and (fn2-env-j5-ops s k id log a) (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))
+                (member-equal (fn2-machine-phase id a) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                (or (and (equal (fn2-env-role-io id 0 b) (fn2-env-role-io id 0 a))
+                         (equal (fn2-env-role-io id 1 b) (fn2-env-role-io id 1 a))
+                         (equal (fn2-env-role-io id 2 b) (fn2-env-role-io id 2 a)))
+                    (and (implies (equal (fn2-machine-phase id a) *fn2-commit-state-dependencies*)
+                                  (not (fn2-env-role-live id 0 a)))
+                         (implies (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                                  (and (not (fn2-env-role-live id 1 a)) (not (fn2-env-role-live id 2 a)))))))
+           (fn2-env-j5-ops s k id log b))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-env-j5-ops s k id log a)
+           :in-theory (union-theories '(fn2-env-j5-ops) (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-j5-op-count)))))
+(defthm fn2-env-roles-d-last
+  ; with the phase's last result in flight no role of the phase is live
+  (implies (and (fn2-env-j5-roles-d id ok log a)
+                (equal (fn2-machine-cb-issued id a) (+ 1 (fn2-machine-cb-done id a))))
+           (and (implies (equal (fn2-machine-phase id a) *fn2-commit-state-dependencies*)
+                         (not (fn2-env-role-live id 0 a)))
+                (implies (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                         (and (not (fn2-env-role-live id 1 a)) (not (fn2-env-role-live id 2 a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-roles-d fn2-env-j5-apart fn2-env-b2n natp (:e natp) (:e <) fix) :do-not-induct t)))
+(defthm fn2-env-j5-row-count
+  ; a full write result of a write phase, counted, with the loans dropped
+  ; at the phase's last: J5 again
+  (implies (and (fn2-env-j5-row-d id *fn2-event-write-result* *fn2-outcome-done* *fn2-commit-unit-bytes* log a)
+                (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b) (fn2-env-drop-all-or-none id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (member-equal (fn2-machine-phase id a) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+                (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))
+                (equal (fn2-machine-cb-done id b) (+ 1 (fn2-machine-cb-done id a))))
+           (fn2-env-j5-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-row fn2-env-j5-row-d fn2-env-roles-dropped fn2-env-cols-kept fn2-env-drop-all-or-none
+                               fn2-env-op-of-ok fn2-env-owned-fences-of-ok unicity-of-0 fix (:type-prescription fn2-env-owned-fences-natp)
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp) (:e equal))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-roles-count)
+                 (:instance fn2-env-roles-d-last (ok t))
+                 (:instance fn2-env-j5-ops-count (s 0) (k (fn2-env-ops-rows a)))))))
+(defthm fn2-env-j5-row-fence-done
+  ; the fence's full result at :fence, counted: J5 again
+  (implies (and (fn2-env-j5-row-d id *fn2-event-fence-result* outcome count log a) (fn2-env-ok b a)
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
+                (equal (fn2-machine-phase id a) *fn2-commit-state-fence*)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-fence*)
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a))
+                (equal (fn2-machine-cb-fence-live id b) 0))
+           (fn2-env-j5-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-row fn2-env-j5-row-d fn2-env-j5-roles fn2-env-op-of-ok fn2-env-owned-fences-of-ok
+                               (:type-prescription fn2-env-owned-fences-natp)
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp) (:e equal))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-ops-fence-done (s 0) (k (fn2-env-ops-rows a)))))))
+(defthm fn2-env-j5-row-to-uncertain
+  ; a row moved to :uncertain keeps J5 of its operations
+  (implies (and (fn2-env-j5-ops 0 (fn2-env-ops-rows a) id log a) (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*))
+           (fn2-env-j5-row id log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-row fn2-env-j5-roles fn2-env-roles-dropped fn2-env-op-of-ok
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp) (:e equal))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-ops-to-uncertain (s 0) (k (fn2-env-ops-rows a)))))))
+(defthm fn2-env-role-lease-ok-dropped
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3))
+           (implies (fn2-env-role-lease-ok id role a) (fn2-env-role-lease-ok id role b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-lease-ok)
+           :use ((:instance fn2-env-roles-dropped-reads) (:instance fn2-env-role-readers-dropped)
+                 (:instance fn2-env-role-live-dropped)))))
+(defthm fn2-env-role-settle-ok-dropped
+  (implies (and (fn2-env-roles-dropped id a b) (natp role) (< role 3)
+                (implies (fn2-env-role-live id role a)
+                         (and (fn2-env-role-pool-ok id role a) (fn2-env-role-lease-ok id role a))))
+           (fn2-env-role-settle-ok id role b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-settle-ok)
+           :use ((:instance fn2-env-role-lease-ok-dropped) (:instance fn2-env-role-readers-dropped)
+                 (:instance fn2-env-role-live-dropped)))))
+(defthm fn2-env-j6-in-phase
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (implies (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*)
+                         (equal (fn2-env-role-live id 2 b) (fn2-env-role-live id 2 a)))
+                (fn2-env-j6-row id a))
+           (fn2-env-j6-row id b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6-row fn2-env-roles-dropped fn2-env-cols-kept fn2-env-op-of-ok (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-roles-dropped-reads (role 2))
+                 (:instance fn2-env-role-readers-dropped (role 0)) (:instance fn2-env-role-readers-dropped (role 1))
+                 (:instance fn2-env-role-readers-dropped (role 2))))))
+(defthm fn2-env-j6p-in-phase
+  (implies (and (fn2-env-roles-dropped id a b) (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (fn2-env-j6p-row id a))
+           (fn2-env-j6p-row id b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6p-row fn2-env-roles-dropped (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-role-readers-dropped (role 0)) (:instance fn2-env-role-readers-dropped (role 1))
+                 (:instance fn2-env-role-readers-dropped (role 2))))))
+(defthm fn2-env-j6l-in-phase
+  (implies (and (fn2-env-roles-dropped id a b) (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (fn2-env-j6l-row id a))
+           (fn2-env-j6l-row id b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6l-row fn2-env-roles-dropped (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-roles-dropped-reads (role 0)) (:instance fn2-env-roles-dropped-reads (role 1))
+                 (:instance fn2-env-roles-dropped-reads (role 2))
+                 (:instance fn2-env-role-lease-ok-dropped (role 0)) (:instance fn2-env-role-lease-ok-dropped (role 1))
+                 (:instance fn2-env-role-lease-ok-dropped (role 2))))))
+(defthm fn2-env-j6s-in-phase
+  (implies (and (fn2-env-roles-dropped id a b) (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (fn2-env-j6s-row id a))
+           (fn2-env-j6s-row id b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6s-row fn2-env-role-settle-ok fn2-env-roles-dropped (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-role-settle-ok-dropped (role 0)) (:instance fn2-env-role-settle-ok-dropped (role 1))
+                 (:instance fn2-env-role-settle-ok-dropped (role 2))))))
+(defthm fn2-env-j6s-to-uncertain
+  ; a row moved to :uncertain from a phase that may own writes: its live
+  ; roles keep J6P's pool rows and J6L's leases (J6S)
+  (implies (and (fn2-env-roles-dropped id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                (member-equal (fn2-machine-phase id a)
+                              (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write* *fn2-commit-state-fence*
+                                    *fn2-commit-state-draining* *fn2-commit-state-uncertain* *fn2-commit-state-dropping*))
+                (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6-row fn2-env-j6p-row fn2-env-j6l-row fn2-env-j6s-row fn2-env-roles-dropped
+                               fn2-env-role-settle-ok member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp)
+                               (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-role-settle-ok-dropped (role 0)) (:instance fn2-env-role-settle-ok-dropped (role 1))
+                 (:instance fn2-env-role-settle-ok-dropped (role 2))
+                 (:instance fn2-env-j6-role-oks (c a) (role 0)) (:instance fn2-env-j6-role-oks (c a) (role 1))
+                 (:instance fn2-env-j6-role-oks (c a) (role 2))))))
+(defthm fn2-env-io-drop-p-refl (fn2-env-io-drop-p x x) :hints (("Goal" :in-theory '(fn2-env-io-drop-p))))
+(defthm fn2-env-update-nth-twice
+  (equal (update-nth n v (update-nth n w x)) (update-nth n v x)))
+(defthm fn2-env-io-drop-p-trans
+  (implies (and (fn2-env-io-drop-p x y) (fn2-env-io-drop-p y z)) (fn2-env-io-drop-p x z))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-io-drop-p fn2-env-update-nth-twice))))
+(defthm fn2-env-update-nth-3-of-unit
+  (equal (update-nth 3 v (list a b c d e f)) (list a b c v e f))
+  :hints (("Goal" :in-theory '(update-nth (:e zp) (:e binary-+) car-cons cdr-cons zp))))
+(defthm fn2-env-io-edge-drop-units
+  ; an edge drop clears at most row ID's ROLE unit's loan flag; no other
+  ; unit, no extent, epoch, counter or pool column changes
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (let ((b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (fn2-env-io-drop-p (fn2-env-io u c) (fn2-env-io u b))
+                  (implies (not (equal (nfix u) (+ (* 3 (fn2-commit-row id c)) (nfix role))))
+                           (equal (fn2-env-io u b) (fn2-env-io u c))))))
+  :hints (("Goal" :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-env-io
+                                   fn2-commit-io-set-lent update-fn2-commit-io-lent$ai
+                                   fn2-commit-io-op-slot fn2-commit-io-op-gen fn2-commit-io-lent fn2-commit-io-pool-slot
+                                   fn2-commit-io-pool-gen fn2-commit-io-rows fn2-commit-io-op-slot$ai fn2-commit-io-op-gen$ai
+                                   fn2-commit-io-lent$ai fn2-commit-io-pool-slot$ai fn2-commit-io-pool-gen$ai
+                                   fn2-env-core-stop-keeps-io-pool update-nth-array fn2-env-io-drop-p
+                                   update-fn2-core-alloc-edges update-fn2-core-extents nth-update-nth)
+                                  (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop update-nth nth
+                                   fn2-commit-io-extent fn2-commit-io-epoch fn2-commit-io-counter)))))
+(make-event
+ (value (cons 'progn
+   (fn2-env-j-reader-frame-events '((fn2-machine-idp id) (fn2-machine-kind id) (fn2-machine-slot id) (fn2-machine-phase id)
+                                    (fn2-commit-idp id) (fn2-commit-row id))
+                                  '(update-fn2-core-commit-io update-fn2-core-alloc-edges)))))
+;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
  (let* ((run (fn2-env-run profile actions))
