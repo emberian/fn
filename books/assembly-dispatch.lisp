@@ -1,6 +1,7 @@
 ; Materialize dispatch after all registered continuations.
 (in-package "ACL2")
 (include-book "assembly-callbacks")
+(include-book "dispatch-held")
 
 ;; The footprint contracts (-DC-KIDS, fn2-dc-*) and the directory relation
 ;; FN2-CTF-DIR with its chained contracts (fn2-ctf-dir-*) are machines.lisp's:
@@ -17,7 +18,10 @@
 ;; follow, and the stub's frame claims are proved of the attachment before
 ;; its defattach. An observe attachment also keeps the operation table and
 ;; the pool (FN2-DISPATCH-OPS-POOL): its footprint off both, else refused
-;; naming the contracts that write them.
+;; naming the contracts that write them. A run attachment of a kind with a
+;; held claim (fn2-dispatch-held-kind-p) keeps the rows the commit kind holds
+;; (FN-DISPATCH-HELD, from its held-frame chain, dispatch-held-chain.lisp),
+;; else it is refused naming the callees that write as the commit kind.
 (defun fn2-dispatch-attach-events (names world)
   (declare (xargs :mode :program))
   (if (atom names) nil
@@ -26,7 +30,8 @@
            (run-stub (fn2-columns-sym name "-RUN-STUB"))
            (obs (fn2-columns-col-name 'fn2-machine-observe name))
            (obs-stub (fn2-columns-col-name 'fn2-machine-observe (fn2-columns-sym name "-STUB")))
-           (e (fn2-dispatch-frame-children name world)))
+           (e (fn2-dispatch-frame-children name world))
+           (held (fn2-dispatch-held-kind-p name world)))
       (if (and (function-symbolp run world) (function-symbolp run-stub world))
           (append
            `((make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(,run ,obs) ',name (w state) nil 64) ',name))))
@@ -37,12 +42,14 @@
              (make-event (value (cons 'progn (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(,run ,obs) (w state)) ',name))))
              (make-event (value (fn2-dc-frame-kids ',run 4 '(id budget fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
              (make-event (value (fn2-dc-frame-kids ',obs 1 '(id event outcome reason count aux0 aux1 fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
+             ,@(and held `((make-event (value (fn2-dh-claim-form ',run-stub ',run 4 (w state))))))
              (defattach (,run-stub ,run)
                         (,obs-stub ,obs)
                         (,(fn2-columns-sym name "-ARM-CHARGE-OK-P-STUB") ,(fn2-columns-sym name "-ARM-CHARGE-OK-P"))
                         (,(fn2-columns-sym name "-ARM-BOUND-STUB") ,(fn2-columns-sym name "-ARM-BOUND")))
              (in-theory (disable ,(fn2-columns-sym run "-DISPATCH-KIDS") ,(fn2-columns-sym obs "-DISPATCH-KIDS")
-                                 ,(fn2-columns-sym obs "-DISPATCH-OPS-POOL")))
+                                 ,(fn2-columns-sym obs "-DISPATCH-OPS-POOL")
+                                 ,@(and held (list (fn2-columns-sym run "-DISPATCH-HELD")))))
              (make-event (fn2-dc-disable-form (fn2-ctf-postorder-new '(,run ,obs) (w state)) ',name (w state))))
            (fn2-dispatch-attach-events (cdr names) world))
         (fn2-dispatch-attach-events (cdr names) world)))))
