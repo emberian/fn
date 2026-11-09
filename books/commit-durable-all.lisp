@@ -8497,6 +8497,52 @@
                                unsigned-byte-p integer-range-p (:e expt) member-equal (:e member-equal)
                                car-cons cdr-cons (:e car) (:e cdr) (:e consp))
            :do-not-induct t)))
+;; THE WRITE HANDLER'S BRANCH. With its writers' inputs in range (outcome
+;; and reason u8, the byte count's room u60; FN2-ENV-HANDLER-BYTES-ROOM gives
+;; the room in a write phase), fn2-commit-on-write-result either moves the row
+;; to :uncertain or counts one full write of a write phase in place.
+(defthmd fn2-env-idp-snapshot-ok
+  (implies (fn2-commit-idp id fn2-core) (equal (fn2-commit-snapshot-read-code id fn2-core) :ok))
+  :hints (("Goal" :in-theory '(fn2-commit-idp))))
+(defthmd fn2-env-write-counts-keeps-phase
+  ; the counting writer leaves the row's phase
+  (equal (fn2-machine-phase id (fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok id d b fl fo c))
+         (fn2-machine-phase id c))
+  :hints (("Goal" :in-theory '(member-equal car-cons cdr-cons (:e consp))
+           :use ((:instance fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-arm-phase
+                            (fn2-arm-pset (list (fn2-machine-phase id c))) (fn2-core c)
+                            (fn2-arms-w-cb-done d) (fn2-arms-w-cb-bytes b) (fn2-arms-w-cb-fence-live fl)
+                            (fn2-arms-w-cb-fence-ok fo))))))
+(defthm fn2-env-on-write-result-branch
+  ; the write handler counts a full write of a write phase (the row stays
+  ; in its phase), or moves the row to :uncertain
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason)
+                (unsigned-byte-p 60 (+ (fn2-commit-row-cb-bytes id m) (nfix count))))
+           (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+             (or (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                 (and (member-equal (fn2-machine-phase id m) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                      (equal (fn2-machine-phase id b) (fn2-machine-phase id m))
+                      (equal (fn2-commit-row-cb-done id b) (+ 1 (fn2-commit-row-cb-done id m)))
+                      (equal (fn2-commit-row-cb-fence-live id b) (fn2-commit-row-cb-fence-live id m))
+                      (equal (fn2-commit-row-cb-fence-ok id b) (fn2-commit-row-cb-fence-ok id m))
+                      (not (equal (fn2-commit-row-cb-fence-live id m) 1))
+                      (< (fn2-commit-row-cb-done id m) (fn2-commit-row-cb-issued id m))
+                      (equal outcome *fn2-outcome-done*) (equal count *fn2-commit-unit-bytes*)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-write-result fn2-commit-arm-row-phase fn2-env-drop-io-ids fn2-env-write-counts-keeps-phase fn2-commit~fn2-commit-drop-io-arm-phase
+                                               fn2-env-idp-snapshot-ok
+                                               fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-reads
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-reads
+                                               fn2-commit-drop-io-type fn2-commit-drop-io-wfp
+                                               fn2-commit-row-cb-acks-width fn2-commit-row-cb-done-width fn2-commit-row-cb-bytes-width
+                                               fn2-commit-row-cb-issued-width fn2-commit-row-cb-failed-width
+                                               fn2-commit-row-cb-fence-live-width fn2-commit-row-cb-fence-ok-width
+                                               fn2-commit-row-outcome-width fn2-commit-row-cb-reason-width fn2-commit-row-cb-cursor-width fn2-commit-row-pending-width
+                                               (:e unsigned-byte-p) unsigned-byte-p integer-range-p nfix natp fix)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-commit-idp-cell (fn2-core m)) (:instance fn2-env-commit-idp-cell (fn2-core (fn2-commit-drop-io id m)))))))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
