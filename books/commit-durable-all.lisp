@@ -544,21 +544,6 @@
 ;; rise fences (role 0; in barrier mode 0 roles 1 and 2 too). J6: through the
 ;; write phases each role's pool range lies in the pool (its take reads 4096
 ;; octets) and role 2's range carries the batch's seal until role 2 is taken.
-(defun fn2-env-op (s fn2-core)
-  ; (VALID GEN PHASE KIND OKIND OSLOT OGEN RSLOT RGEN ROFF RLEN OFFSET FUA C0P C0H C0E C0O C0C MAYREL C1P)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (r)
-    (if (and (natp s) (< s (fn2-ops-rows fn2-ops)))
-        (list t (fn2-ops-gen s fn2-ops) (fn2-ops-phase s fn2-ops) (fn2-ops-kind s fn2-ops)
-              (fn2-ops-owner-kind s fn2-ops) (fn2-ops-owner-slot s fn2-ops) (fn2-ops-owner-gen s fn2-ops)
-              (fn2-ops-range-slot s fn2-ops) (fn2-ops-range-gen s fn2-ops)
-              (fn2-ops-range-off s fn2-ops) (fn2-ops-range-len s fn2-ops)
-              (fn2-ops-storage-offset s fn2-ops) (fn2-ops-fua s fn2-ops)
-              (fn2-ops-c0-posted s fn2-ops) (fn2-ops-c0-harvested s fn2-ops) (fn2-ops-c0-event s fn2-ops)
-              (fn2-ops-c0-outcome s fn2-ops) (fn2-ops-c0-count s fn2-ops)
-              (fn2-ops-may-release s fn2-ops) (fn2-ops-c1-posted s fn2-ops))
-      (list nil))
-    r))
 (defun fn2-env-ops-rows (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-rows fn2-ops) n))
@@ -7510,13 +7495,6 @@
 ;; slot retired). LENT-OK: every lent unit names a valid op slot at a
 ;; generation no newer than the slot's, and never a free or reserved op at
 ;; its current generation.
-(defun fn2-env-incarnation-ok (s g fn2-core)
-  ; (S G) names an incarnation of op slot S that has begun and been issued
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (let ((op (fn2-env-op s fn2-core)))
-    (and (nth 0 op) (natp g) (<= g (nfix (nth 1 op)))
-         (implies (equal g (nth 1 op))
-                  (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))))))
 (defun fn2-env-freshness (log fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (atom log) t
@@ -7526,7 +7504,6 @@
   (forall u (let ((io (fn2-env-io u fn2-core)))
               (implies (and (nth 0 io) (equal (nth 3 io) 1))
                        (fn2-env-incarnation-ok (nth 1 io) (nth 2 io) fn2-core)))))
-(in-theory (disable fn2-env-incarnation-ok))
 ;; The host steps but :take leave every op's validity, generation and phase
 ;; (FN2-ENV-OP-HEADS-KEPT) and every unit (FN2-ENV-UNITS-KEPT): FRESHNESS
 ;; and LENT-OK read nothing else.

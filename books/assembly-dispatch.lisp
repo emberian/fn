@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks")
 (include-book "dispatch-owners")
+(include-book "dispatch-heads")
 
 ;; The footprint contracts (-DC-KIDS, fn2-dc-*) and the directory relation
 ;; FN2-CTF-DIR with its chained contracts (fn2-ctf-dir-*) are machines.lisp's:
@@ -45,6 +46,10 @@
              (make-event (value (fn2-dc-frame-kids ',run 4 '(id budget fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
              (make-event (value (fn2-dc-frame-kids ',obs 1 '(id event outcome reason count aux0 aux1 fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
              ,@(and held `((make-event (value (fn2-dh-claim-form ',run-stub ',run 4 ',(and (member-eq name *fn2-dispatch-held-owner-read*) t) (w state))))))
+             ;; the run keeps the op heads advancing: its chain (writing ops)
+             ;; or its KIDS contract; and the IO units, where the frame does
+             (make-event (value (cons 'progn (fn2-dfr-walk-forms ',run ',name (w state)))))
+             (make-event (value (fn2-dfr-run-claims ',run ',name (w state))))
              ;; both keep the stored owners avoiding the commit kind
              (make-event (value (fn2-dh-owners-claim-form ',run-stub ',run 4 ',name (w state))))
              (make-event (value (fn2-dh-owners-claim-form ',obs-stub ',obs 1 ',name (w state))))
@@ -55,7 +60,9 @@
              (in-theory (disable ,(fn2-columns-sym run "-DISPATCH-KIDS") ,(fn2-columns-sym obs "-DISPATCH-KIDS")
                                  ,(fn2-columns-sym obs "-DISPATCH-OPS-POOL") ,(fn2-columns-sym obs "-KEEPS-UNITS")
                                  ,@(and held (list (fn2-columns-sym run "-DISPATCH-HELD")))
-                                 ,(fn2-columns-sym run "-DISPATCH-OWNERS") ,(fn2-columns-sym obs "-DISPATCH-OWNERS")))
+                                 ,(fn2-columns-sym run "-DISPATCH-OWNERS") ,(fn2-columns-sym obs "-DISPATCH-OWNERS")
+                                 ,(fn2-columns-sym run "-DISPATCH-HEADS")
+                                 ,@(and (fn2-dispatch-run-units-p name world) (list (fn2-columns-sym run "-KEEPS-UNITS")))))
              (make-event (fn2-dc-disable-form (fn2-ctf-postorder-new '(,run ,obs) (w state)) ',name (w state))))
            (fn2-dispatch-attach-events (cdr names) world))
         (fn2-dispatch-attach-events (cdr names) world)))))

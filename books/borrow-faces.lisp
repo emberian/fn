@@ -7,6 +7,7 @@
 ; lemma from its children's.
 (in-package "ACL2")
 (include-book "borrow-conservation")
+(include-book "core-walk")
 ;; The books defining every face (tests/borrow-conservation-unit.lisp checks
 ;; that host-boundary's world has no face beyond them).
 (include-book "assembly-callbacks")
@@ -48,30 +49,15 @@
                 (intersectp-eq ws (all-fnnames (cddr trip))))
            (cons (car trip) acc)
          acc)))))
-(defun fn2-bf-name (f suffix)
-  (declare (xargs :verify-guards nil))
-  (intern-in-package-of-symbol (concatenate 'string (symbol-name f) suffix) 'fn2-bf-name))
 (defun fn2-bf-lemma-name (f) (declare (xargs :verify-guards nil)) (fn2-bf-name f "-BORROWS-ACCOUNTED"))
 (defun fn2-bf-provedp (f wrld)
   (declare (xargs :verify-guards nil))
   (getpropc (fn2-bf-lemma-name f) 'theorem nil wrld))
-(defun fn2-bf-callees (f pw wrld)
-  (declare (xargs :verify-guards nil))
-  (let ((body (getpropc f 'unnormalized-body nil wrld)))
-    (and (pseudo-termp body) (intersection-eq (remove-eq f (all-fnnames body)) pw))))
 (defun fn2-bf-topo (todo pw done stack wrld fuel)
   ;; post-order over pool-writer callees; a writer with its lemma already
   ;; proved is a leaf (its callees are not walked)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
-  (cond ((zp fuel) done)
-        ((atom todo) done)
-        ((or (member-eq (car todo) done) (member-eq (car todo) stack))
-         (fn2-bf-topo (cdr todo) pw done stack wrld (- fuel 1)))
-        ((fn2-bf-provedp (car todo) wrld)
-         (fn2-bf-topo (cdr todo) pw (append done (list (car todo))) stack wrld (- fuel 1)))
-        (t (let ((done (fn2-bf-topo (fn2-bf-callees (car todo) pw wrld) pw done
-                                    (cons (car todo) stack) wrld (- fuel 1))))
-             (fn2-bf-topo (cdr todo) pw (append done (list (car todo))) stack wrld (- fuel 1))))))
+  (declare (xargs :verify-guards nil))
+  (fn2-walk-topo todo pw "-BORROWS-ACCOUNTED" done stack wrld fuel))
 (defun fn2-bf-children (faces pw wrld)
   (declare (xargs :verify-guards nil))
   (if (atom faces) nil
@@ -94,38 +80,9 @@
    *fn2-bf-stated*))
 
 ;; Below the faces: every core-level function a face reaches (a face applies
-;; them to intermediate cores), callees first. The stobj's own field updaters
-;; are not walked; the core's accessor-of-updater rules state them.
-(defun fn2-bf-core-fns (fs wrld)
-  (declare (xargs :verify-guards nil))
-  (cond ((atom fs) nil)
-        ((and (true-listp (getpropc (car fs) 'stobjs-out nil wrld))
-              (member-eq 'fn2-core (getpropc (car fs) 'stobjs-out nil wrld))
-              (not (getpropc (car fs) 'stobj-function nil wrld))
-              (getpropc (car fs) 'unnormalized-body nil wrld))
-         (cons (car fs) (fn2-bf-core-fns (cdr fs) wrld)))
-        (t (fn2-bf-core-fns (cdr fs) wrld))))
-(defun fn2-bf-core-closure (todo wrld acc fuel)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
-  (cond ((zp fuel) acc)
-        ((atom todo) acc)
-        ((member-eq (car todo) acc) (fn2-bf-core-closure (cdr todo) wrld acc (- fuel 1)))
-        (t (let ((body (getpropc (car todo) 'unnormalized-body nil wrld)))
-             (fn2-bf-core-closure
-              (append (fn2-bf-core-fns (and (pseudo-termp body) (remove-eq (car todo) (all-fnnames body))) wrld)
-                      (cdr todo))
-              wrld (cons (car todo) acc) (- fuel 1))))))
-;; The core-level functions (in callees-first order) that write the ops child:
-;; directly, or through one before them.
-(defun fn2-bf-ops-faces (fs wrld acc)
-  (declare (xargs :verify-guards nil))
-  (if (atom fs) acc
-    (fn2-bf-ops-faces
-     (cdr fs) wrld
-     (let ((body (getpropc (car fs) 'unnormalized-body nil wrld)))
-       (if (and (pseudo-termp body) (intersectp-eq (cons 'update-fn2-core-ops acc) (all-fnnames body)))
-           (cons (car fs) acc)
-         acc)))))
+;; them to intermediate cores; fn2-bf-core-closure, core-walk.lisp), callees
+;; first. The stobj's own field updaters are not walked; the core's
+;; accessor-of-updater rules state them.
 
 ;; The issue children's lemma under the walk's name, so the walk stops there
 ;; (below it, the lease's key writes are argued in borrow-accounting.lisp).
@@ -152,11 +109,6 @@
 ;; ---------------------------------------------------------------------------
 ;; One lemma per writer. Its pool output keeps the count against the ops it
 ;; was given; a writer that also returns ops keeps it against its own ops.
-(defun fn2-bf-out (call outs stobj)
-  (declare (xargs :verify-guards nil))
-  (if (and (consp outs) (consp (cdr outs)))
-      `(mv-nth ,(position-eq stobj outs) ,call)
-    call))
 (defun fn2-bf-lemma-names (fs wrld)
   (declare (xargs :verify-guards nil))
   (cond ((atom fs) nil)

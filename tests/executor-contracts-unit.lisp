@@ -108,6 +108,10 @@
 (make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-refuser fn2-ect-commit-writer) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-refuser 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+;; both keep the op heads advancing and the IO units (dispatch-heads.lisp),
+;; so the defattach below fails by the frame alone
+(make-event (value (fn2-dfr-run-claims 'fn2-ect-refuser 'fn2-conn (w state))))
+(make-event (value (fn2-dfr-run-claims 'fn2-ect-commit-writer 'fn2-conn (w state))))
 (in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir
                     fn2-machine-observe-fn2-conn-default-ops-pool fn2-machine-observe-fn2-conn-default-keeps-units
                     fn2-machine-observe-fn2-conn-default-dispatch-owners))
@@ -176,6 +180,9 @@
 (make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-commit-closer) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-closer 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+;; its issue advances the op heads (its chain), and it keeps the IO units
+(make-event (value (cons 'progn (fn2-dfr-walk-forms 'fn2-ect-commit-closer 'fn2-conn (w state)))))
+(make-event (value (fn2-dfr-run-claims 'fn2-ect-commit-closer 'fn2-conn (w state))))
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-closer) (w state)) 'fn2-conn))))
 (make-event (value (fn2-dh-owners-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-closer 4 'fn2-conn (w state))))
 (assert-event
@@ -213,6 +220,8 @@
 (make-event (value (cons 'progn (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-owner 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+(make-event (value (cons 'progn (fn2-dfr-walk-forms 'fn2-ect-commit-owner 'fn2-conn (w state)))))
+(make-event (value (fn2-dfr-run-claims 'fn2-ect-commit-owner 'fn2-conn (w state))))
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
 (must-fail
  (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-owner 4 nil (w state)))))
@@ -227,3 +236,16 @@
             (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
             (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
             (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
+
+;; THE RUN STUB's op heads (FN2-DFR-HEADS-ADVANCE, dispatch-heads.lisp): a
+;; connection run that frees an issued op at its generation unmakes an
+;; incarnation, so its walk lemma is refused (no lemma of the ops field
+;; writer it calls) and so is its claim; the refusing run above keeps them.
+(defun fn2-ect-op-freer (id budget fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil) (ignore budget))
+  (let ((fn2-core (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+                    (fn2-ops-set-phase 0 *fn2-op-phase-free* fn2-ops) fn2-core)))
+    (fn2-machine-refuse-phase id fn2-core)))
+(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-op-freer) 'fn2-conn (w state) nil 64) 'fn2-conn))))
+(must-fail (make-event (value (cons 'progn (fn2-dfr-walk-forms 'fn2-ect-op-freer 'fn2-conn (w state))))))
+(must-fail (make-event (value (fn2-dfr-run-claims 'fn2-ect-op-freer 'fn2-conn (w state)))))
