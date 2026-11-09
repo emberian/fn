@@ -617,6 +617,13 @@
   (if (atom owners) nil
     (cons `(fn2-dh-col-ok fn2-dh-k ',(nth 1 (car owners)) (,(nth 3 (car owners)) ,x))
           (fn2-dh-owner-comps (cdr owners) x))))
+(defun fn2-dh-owner-comps-at (owners x acc v)
+  ; the comps of core X with the table at ACC replaced by V
+  (declare (xargs :mode :program))
+  (if (atom owners) nil
+    (cons `(fn2-dh-col-ok fn2-dh-k ',(nth 1 (car owners))
+                          ,(if (eq (nth 3 (car owners)) acc) v `(,(nth 3 (car owners)) ,x)))
+          (fn2-dh-owner-comps-at (cdr owners) x acc v))))
 (defun fn2-dh-owner-of-col (c owners)
   (declare (xargs :mode :program))
   (cond ((atom owners) nil) ((equal (nth 1 (car owners)) c) (caar owners)) (t (fn2-dh-owner-of-col c (cdr owners)))))
@@ -954,7 +961,7 @@
     (let* ((acc (car fields)) (update (fn2-columns-pre "UPDATE-" acc))
            (e (assoc-eq acc (pairlis$ (fn2-dh-owner-accs owners) owners)))
            (rhs (if e
-                    `(and ,@(subst 'v `(,acc c) (fn2-dh-owner-comps owners 'c)))
+                    `(and ,@(fn2-dh-owner-comps-at owners 'c acc 'v))
                   '(fn2-dh-owners-ok k c))))
       (cons `(defthm ,(fn2-columns-sym 'fn2-dh-owners-ok (concatenate 'string "-OF-" (symbol-name update)))
                (equal (fn2-dh-owners-ok k (,update v c)) ,(subst 'k 'fn2-dh-k rhs))
