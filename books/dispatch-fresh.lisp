@@ -49,7 +49,7 @@
 ;; commit-io keeps them (-KEEPS-UNITS). The batch kinds (txn, cns, auth)
 ;; write commit-io's extents, epochs, counters, readiness and pool rows
 ;; (fn2-commit-save-pool, -reserve-extent, -release-pool) but never a unit's
-;; operation or loan; their runs keep FRESHNESS.
+;; operation or loan (-KEEPS-LOANS): their runs keep both too.
 (defthm fn2-dfr-heads-advance-of-kept
   (implies (fn2-env-op-heads-kept a b) (fn2-dfr-heads-advance a b))
   :hints (("Goal" :in-theory '(fn2-dfr-heads-advance fn2-env-incarnation-ok-of-heads))))
@@ -71,6 +71,30 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance fn2-dfr-lent-ok-of-advance))))
 
+;; The batch kinds' runs keep each unit's validity, operation and loan
+;; (-KEEPS-LOANS), all LENT-OK reads of it.
+(defthm fn2-dfr-env-io-loan
+  (and (equal (nth 0 (fn2-env-io u c)) (nth 0 (fn2-dfr-io-loan u (fn2-core-commit-io c))))
+       (equal (nth 1 (fn2-env-io u c)) (nth 1 (fn2-dfr-io-loan u (fn2-core-commit-io c))))
+       (equal (nth 2 (fn2-env-io u c)) (nth 2 (fn2-dfr-io-loan u (fn2-core-commit-io c))))
+       (equal (nth 3 (fn2-env-io u c)) (nth 3 (fn2-dfr-io-loan u (fn2-core-commit-io c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-io fn2-dfr-io-loan)
+                                  (fn2-commit-io-rows fn2-commit-io-op-slot fn2-commit-io-op-gen fn2-commit-io-lent
+                                   fn2-commit-io-pool-slot fn2-commit-io-pool-gen)))))
+(defthm fn2-dfr-lent-ok-of-advance-loans
+  (implies (and (fn2-env-lent-ok a) (fn2-dfr-heads-advance a b)
+                (fn2-dfr-loans-kept (fn2-core-commit-io a) (fn2-core-commit-io b)))
+           (fn2-env-lent-ok b))
+  :hints (("Goal" :in-theory '(fn2-env-lent-ok)
+           :use ((:instance fn2-dfr-loans-kept-necc (a (fn2-core-commit-io a)) (b (fn2-core-commit-io b))
+                            (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-env-lent-ok-necc (fn2-core a) (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-dfr-heads-advance-necc
+                            (s (nth 1 (fn2-env-io (fn2-env-lent-ok-witness b) b)))
+                            (g (nth 2 (fn2-env-io (fn2-env-lent-ok-witness b) b))))
+                 (:instance fn2-dfr-env-io-loan (u (fn2-env-lent-ok-witness b)) (c a))
+                 (:instance fn2-dfr-env-io-loan (u (fn2-env-lent-ok-witness b)) (c b))))))
 (defun fn2-dfr-run-events (names world)
   (declare (xargs :mode :program))
   (if (atom names) nil
@@ -85,8 +109,10 @@
                                :use ((:instance fn2-dfr-fresh-lent-of-advance (a fn2-core) (b ,out))
                                      ,(fn2-columns-sym stub "-DISPATCH-HEADS") ,(fn2-columns-sym stub "-KEEPS-UNITS")))))
                    (fn2-dfr-run-events (cdr names) world)))
-            (t (cons `(defthm ,(fn2-columns-sym stub "-FRESH")
-                        (implies (fn2-env-freshness log fn2-core) (fn2-env-freshness log ,out))
-                        :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance ,(fn2-columns-sym stub "-DISPATCH-HEADS")))))
+            (t (cons `(defthm ,(fn2-columns-sym stub "-FRESH-LENT")
+                        (implies (and (fn2-env-freshness log fn2-core) (fn2-env-lent-ok fn2-core))
+                                 (and (fn2-env-freshness log ,out) (fn2-env-lent-ok ,out)))
+                        :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance fn2-dfr-lent-ok-of-advance-loans
+                                                     ,(fn2-columns-sym stub "-DISPATCH-HEADS") ,(fn2-columns-sym stub "-KEEPS-LOANS")))))
                      (fn2-dfr-run-events (cdr names) world)))))))
 (make-event (value (cons 'progn (fn2-dfr-run-events (fn2-machine-names (w state)) (w state)))))
