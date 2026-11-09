@@ -13,6 +13,8 @@
 ;; not read, so no reader-by-writer matrix is needed. The per-row clause
 ;; FN2-OPS-ROW-OKP is fn2-ops-row-semanticp's body at one slot.
 (encapsulate ()
+(local (include-book "stobj-scope"))
+(local (fn2-stobj-scope fn2-ops))
 (local
 (defconst *fn2-ops-c-gen* 0))
 (local
@@ -961,35 +963,87 @@
                               (fn2-ops-post-tail fn2-ops) (fn2-ops-post-count fn2-ops))
          (fn2-ops-same-membersp (fn2-ops-posted-list fn2-ops) (fn2-ops-pending-cells rows fn2-ops))))))
 (local
-(defun-nx fn2-ops-sem-main (s fn2-ops)
-  (let* ((rows (fn2-ops-rows fn2-ops))
-         (qa (fn2-ops-out-slot-length fn2-ops))
-         (free (fn2-ops-phase-slots rows *fn2-op-phase-free* fn2-ops))
-         (reserved (fn2-ops-phase-slots rows *fn2-op-phase-reserved* fn2-ops))
-         (queued (fn2-ops-phase-slots rows *fn2-op-phase-queued* fn2-ops))
-         (retired (fn2-ops-phase-slots rows *fn2-op-phase-retired* fn2-ops))
-         (chain (fn2-ops-free-chain rows (fn2-ops-free-head fn2-ops) fn2-ops))
-         (out (fn2-ops-outbox-list fn2-ops)))
-    (and (fn2-ops-rows-ok-except rows s fn2-ops)
-         (unsigned-byte-p 32 qa)
+(defun-nx fn2-ops-sem-rows-part (s fn2-ops)
+  (fn2-ops-rows-ok-except (fn2-ops-rows fn2-ops) s fn2-ops)))
+(local
+(defun-nx fn2-ops-sem-outring-part (fn2-ops)
+  (let ((qa (fn2-ops-out-slot-length fn2-ops)))
+    (and (unsigned-byte-p 32 qa)
          (equal (fn2-ops-out-gen-length fn2-ops) qa)
          (fn2-ops-ring-shapep qa (fn2-ops-out-head fn2-ops)
-                             (fn2-ops-out-tail fn2-ops) (fn2-ops-queued fn2-ops))
-         (not (member-equal :bad-chain chain))
+                              (fn2-ops-out-tail fn2-ops) (fn2-ops-queued fn2-ops))))))
+(local
+(defun-nx fn2-ops-sem-free-part (fn2-ops)
+  (let* ((rows (fn2-ops-rows fn2-ops))
+         (free (fn2-ops-phase-slots rows *fn2-op-phase-free* fn2-ops))
+         (chain (fn2-ops-free-chain rows (fn2-ops-free-head fn2-ops) fn2-ops)))
+    (and (not (member-equal :bad-chain chain))
          (fn2-ops-same-membersp chain free)
-         (equal (fn2-ops-free-count fn2-ops) (len free))
-         (equal (fn2-ops-retired-count fn2-ops) (len retired))
+         (equal (fn2-ops-free-count fn2-ops) (len free))))))
+(local
+(defun-nx fn2-ops-sem-counts-part (fn2-ops)
+  (let* ((rows (fn2-ops-rows fn2-ops))
+         (qa (fn2-ops-out-slot-length fn2-ops))
+         (reserved (fn2-ops-phase-slots rows *fn2-op-phase-reserved* fn2-ops))
+         (queued (fn2-ops-phase-slots rows *fn2-op-phase-queued* fn2-ops))
+         (retired (fn2-ops-phase-slots rows *fn2-op-phase-retired* fn2-ops)))
+    (and (equal (fn2-ops-retired-count fn2-ops) (len retired))
          (equal (fn2-ops-reserved-credits fn2-ops) (len reserved))
          (equal (fn2-ops-queued fn2-ops) (len queued))
-         (<= (+ (len reserved) (len queued)) qa)
-         (fn2-ops-queued-refsp out fn2-ops)
+         (<= (+ (len reserved) (len queued)) qa)))))
+(local
+(defun-nx fn2-ops-sem-refs-part (fn2-ops)
+  (let ((queued (fn2-ops-phase-slots (fn2-ops-rows fn2-ops) *fn2-op-phase-queued* fn2-ops))
+        (out (fn2-ops-outbox-list fn2-ops)))
+    (and (fn2-ops-queued-refsp out fn2-ops)
          (fn2-ops-same-membersp (fn2-ops-ref-slots out) queued)))))
+(local
+(defun-nx fn2-ops-sem-main (s fn2-ops)
+  (and (fn2-ops-sem-rows-part s fn2-ops) (fn2-ops-sem-outring-part fn2-ops) (fn2-ops-sem-free-part fn2-ops)
+       (fn2-ops-sem-counts-part fn2-ops) (fn2-ops-sem-refs-part fn2-ops))))
+(local
+(deftheory fn2-ops-sem-parts
+  '(fn2-ops-sem-rows-part fn2-ops-sem-outring-part fn2-ops-sem-free-part fn2-ops-sem-counts-part
+    fn2-ops-sem-refs-part)))
 (local
 (defthm fn2-ops-sem-rest-split
   (equal (fn2-ops-sem-rest s fn2-ops) (and (fn2-ops-sem-main s fn2-ops) (fn2-ops-sem-post fn2-ops)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn2-ops-sem-rest fn2-ops-sem-main fn2-ops-sem-post)
-                                             (theory 'minimal-theory))))))
+                                             (union-theories (theory 'fn2-ops-sem-parts) (theory 'minimal-theory)))))))
+;; One frame per part and write form: a row write outside the columns the
+;; parts read, the posted FIFO, and a scalar none reads.
+(local
+(defmacro fn2-ops-sem-part-frames (part args row-reads scalar-reads)
+  (let* ((call (cons part args))
+         (row (intern-in-package-of-symbol (concatenate 'string (symbol-name part) "-OF-ROW-WRITE") part))
+         (fifo (intern-in-package-of-symbol (concatenate 'string (symbol-name part) "-OF-FIFO-WRITE") part))
+         (scalar (intern-in-package-of-symbol (concatenate 'string (symbol-name part) "-OF-SCALAR-WRITE") part)))
+    `(progn
+       (defthm ,row
+         (implies (and (natp s) (natp kk) (< kk 44) (not (member kk ',row-reads)))
+                  (equal ,(subst '(update-nth-array kk s vv fn2-ops) 'fn2-ops call) ,call))
+         :hints (("Goal" :in-theory (enable ,part))))
+       (defthm ,fifo
+         (equal ,(subst '(update-nth-array 47 ii vv fn2-ops) 'fn2-ops call) ,call)
+         :hints (("Goal" :in-theory (enable ,part))))
+       (defthm ,scalar
+         (implies (and (natp kk) (<= 44 kk) (not (member kk ',scalar-reads)))
+                  (equal ,(subst '(update-nth kk vv fn2-ops) 'fn2-ops call) ,call))
+         :hints (("Goal" :in-theory (enable ,part))))))))
+(local
+(in-theory (disable fn2-ops-sem-rows-part fn2-ops-sem-outring-part fn2-ops-sem-free-part fn2-ops-sem-counts-part
+                    fn2-ops-sem-refs-part)))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-rows-part (s fn2-ops) () (44 72)))
+(local
+(defthm fn2-ops-sem-rows-part-of-clear-row
+  (implies (natp s)
+           (equal (fn2-ops-sem-rows-part s (fn2-ops-clear-row s g nx fn2-ops)) (fn2-ops-sem-rows-part s fn2-ops)))
+  :hints (("Goal" :in-theory (enable fn2-ops-sem-rows-part)))))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-outring-part (fn2-ops) () (45 46 48 49 50)))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-free-part (fn2-ops) (1 41) (44 70 71)))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-counts-part (fn2-ops) (1) (44 45 50 51 73)))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-refs-part (fn2-ops) (0 1) (44 45 46 48 50)))
 (local
 (defthm fn2-ops-sem-main-of-row-write
   (implies (and (natp s) (natp kk) (< kk 44) (not (member kk '(0 1 41))))
@@ -1018,7 +1072,7 @@
                 (not (equal (nth s (nth 1 fn2-ops)) 2)) (not (equal (nth s (nth 1 fn2-ops)) 6)))
            (fn2-ops-sem-main s (update-nth-array 1 s vv fn2-ops)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn2-ops-sem-main) (member-equal fn2-ops-free-chain-consp fn2-ops-phase-slots-of-set-phase-other))
+           :in-theory (e/d (fn2-ops-sem-main fn2-ops-sem-rows-part fn2-ops-sem-outring-part fn2-ops-sem-free-part fn2-ops-sem-counts-part fn2-ops-sem-refs-part) (member-equal fn2-ops-free-chain-consp fn2-ops-phase-slots-of-set-phase-other))
            :use ((:instance fn2-ops-not-member-of-subsetp (a s)
                   (x (fn2-ops-ref-slots (fn2-ops-outbox-list fn2-ops)))
                   (y (fn2-ops-phase-slots (nth 44 fn2-ops) 2 fn2-ops))))))))
@@ -1032,6 +1086,11 @@
 (defthm fn2-ops-sem-post-of-row-write
   (implies (and (natp s) (natp kk) (< kk 44) (not (member kk '(19 20 33 34))))
            (equal (fn2-ops-sem-post (update-nth-array kk s vv fn2-ops)) (fn2-ops-sem-post fn2-ops)))
+  :hints (("Goal" :in-theory (enable fn2-ops-sem-post)))))
+(local
+(defthm fn2-ops-sem-post-of-scalar-write
+  (implies (and (natp kk) (<= 44 kk) (not (member kk '(44 47 52 53 54))))
+           (equal (fn2-ops-sem-post (update-nth kk vv fn2-ops)) (fn2-ops-sem-post fn2-ops)))
   :hints (("Goal" :in-theory (enable fn2-ops-sem-post)))))
 (local
 (defthm fn2-ops-sem-rest-of-row-write
@@ -1358,7 +1417,26 @@
                  :use (fn2-op-reserve-row fn2-ops-semanticp-elim fn2-op-reserve-ok-facts
                        (:instance fn2-ops-sem-facts-of-semanticp (s (nth 70 fn2-ops)))
                        (:instance fn2-ops-reserve-step-rest (h (nth 70 fn2-ops)))))))
-(fn2-ops-op-conservation fn2-op-set-range (slot gen rslot rgen off len fn2-ops) 1 slot)
+(local
+(defthm fn2-ops-row-key-okp-unposted-rlen
+  ;; a row with neither cell posted does not read its range length
+  (implies (and (equal p0 0) (equal p1 0))
+           (equal (fn2-ops-row-key-okp phase p0 h0 p1 h1 may kind aux0 gen limit
+                                       e0 o0 r0 c0 a00 a01 e1 o1 r1 c1 a10 a11 rlen)
+                  (fn2-ops-row-key-okp phase p0 h0 p1 h1 may kind aux0 gen limit
+                                       e0 o0 r0 c0 a00 a01 e1 o1 r1 c1 a10 a11 0)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-ops-row-key-okp)))))
+; set-range writes a reserved row's range: unposted, so its key is the old one
+(fn2-ops-op-conservation fn2-op-set-range (slot gen rslot rgen off len fn2-ops) 1 slot
+  :row-hints (("Goal" :do-not-induct t
+               :in-theory (e/d (fn2-op-set-range fn2-op-phase-code fn2-op-slotp fn2-op-handle-code)
+                               (fn2-ops-row-okp fn2-ops-row-key-okp))
+               :use ((:instance fn2-ops-row-okp-idle-cells (i slot))
+                     (:instance fn2-ops-row-okp-by-key)
+                     (:instance fn2-ops-row-okp-by-key (fn2-ops (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops))))
+                     (:instance fn2-ops-row-key-okp-unposted-rlen (phase (fn2-ops-phase slot fn2-ops)) (p0 (fn2-ops-c0-posted slot fn2-ops)) (h0 (fn2-ops-c0-harvested slot fn2-ops)) (p1 (fn2-ops-c1-posted slot fn2-ops)) (h1 (fn2-ops-c1-harvested slot fn2-ops)) (may (fn2-ops-may-release slot fn2-ops)) (kind (fn2-ops-kind slot fn2-ops)) (aux0 (fn2-ops-c0-aux0 slot fn2-ops)) (gen (fn2-ops-gen slot fn2-ops)) (limit (fn2-ops-gen-limit fn2-ops)) (e0 (fn2-ops-c0-event slot fn2-ops)) (o0 (fn2-ops-c0-outcome slot fn2-ops)) (r0 (fn2-ops-c0-reason slot fn2-ops)) (c0 (fn2-ops-c0-count slot fn2-ops)) (a00 (fn2-ops-c0-aux0 slot fn2-ops)) (a01 (fn2-ops-c0-aux1 slot fn2-ops)) (e1 (fn2-ops-c1-event slot fn2-ops)) (o1 (fn2-ops-c1-outcome slot fn2-ops)) (r1 (fn2-ops-c1-reason slot fn2-ops)) (c1 (fn2-ops-c1-count slot fn2-ops)) (a10 (fn2-ops-c1-aux0 slot fn2-ops)) (a11 (fn2-ops-c1-aux1 slot fn2-ops)) (rlen (fn2-ops-range-len slot fn2-ops)))
+                     (:instance fn2-ops-row-key-okp-unposted-rlen (phase (fn2-ops-phase slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (p0 (fn2-ops-c0-posted slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (h0 (fn2-ops-c0-harvested slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (p1 (fn2-ops-c1-posted slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (h1 (fn2-ops-c1-harvested slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (may (fn2-ops-may-release slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (kind (fn2-ops-kind slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (aux0 (fn2-ops-c0-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (gen (fn2-ops-gen slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (limit (fn2-ops-gen-limit (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (e0 (fn2-ops-c0-event slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (o0 (fn2-ops-c0-outcome slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (r0 (fn2-ops-c0-reason slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (c0 (fn2-ops-c0-count slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a00 (fn2-ops-c0-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a01 (fn2-ops-c0-aux1 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (e1 (fn2-ops-c1-event slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (o1 (fn2-ops-c1-outcome slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (r1 (fn2-ops-c1-reason slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (c1 (fn2-ops-c1-count slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a10 (fn2-ops-c1-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a11 (fn2-ops-c1-aux1 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (rlen (fn2-ops-range-len slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))))))))
 (fn2-ops-op-conservation fn2-op-set-capability (slot gen index nonce fn2-ops) 1 slot :row nil)
 (fn2-ops-op-conservation fn2-op-set-storage (slot gen offset fua fn2-ops) 1 slot :row nil)
 (fn2-ops-op-conservation fn2-op-set-cancel-target (slot gen tslot tgen fn2-ops) 1 slot :row nil)
@@ -1855,9 +1933,14 @@
               (update-nth 48 (fn2-ring-next (nth 48 fn2-ops) (len (nth 45 fn2-ops)))
                (update-nth-array 1 slot (fn2-op-ack-phase (nth slot (nth 2 fn2-ops))) fn2-ops)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn2-ops-sem-rest fn2-ops-sem-facts fn2-op-ack-phase)
-                           (fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp fn2-ops-ring-next-is-mod))
+           :in-theory (e/d (fn2-ops-sem-main fn2-ops-sem-facts fn2-op-ack-phase fn2-ops-sem-outring-part
+                            fn2-ops-sem-counts-part fn2-ops-sem-refs-part fn2-ops-sem-free-part)
+                           (fn2-ops-sem-rest fn2-ops-semanticp fn2-ops-sem-facts-of-semanticp fn2-ops-ring-next-is-mod))
            :use (fn2-ops-semanticp-elim
+                 (:instance fn2-ops-sem-rest-split (s slot))
+                 (:instance fn2-ops-sem-rest-split (s slot) (fn2-ops (update-nth 50 (+ -1 (nth 50 fn2-ops))
+              (update-nth 48 (fn2-ring-next (nth 48 fn2-ops) (len (nth 45 fn2-ops)))
+               (update-nth-array 1 slot (fn2-op-ack-phase (nth slot (nth 2 fn2-ops))) fn2-ops)))))
                  (:instance fn2-ops-sem-facts-of-semanticp (s slot))
                  (:instance fn2-ops-ring-shape-pop (cap (len (nth 45 fn2-ops))) (h (nth 48 fn2-ops))
                             (tl (nth 49 fn2-ops)) (c (nth 50 fn2-ops)))
