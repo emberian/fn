@@ -9217,3 +9217,250 @@
                  (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id m)) (columns '(0 20 15 19 21 22 17 18 23)) (children '(30 20 21 5)) (a m))
                  (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))) (k 3))
                  (:instance fn2-ctf-dir-of-nth (x m) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))))))
+;; THE EXTENT INVARIANT (FN2-ENV-X). Admission reserves the row's extent and
+;; names its handle in all three units; an issuing arm's edge add
+;; (fn2-commit-io-edge ... t) lends unit 3*row+role to the issued write and
+;; adds the :outstanding-io edge row of the same index. X says that add
+;; accepts: XA, allocator-wide, every extent's outstanding-io count is the
+;; number of live :outstanding-io edges naming it (so a free edge row leaves
+;; the count below its ceiling), and there are six commit unit edge rows; per
+;; commit row (XR), a unit is lent exactly when its edge row is live, a live
+;; one names the unit's operation generation and handle and is an issued,
+;; unharvested role of the row's write phase (or the row is :uncertain), and
+;; while the row holds its extent (admission until the refused batch's
+;; cancel) the three units share one live handle; XD: two rows holding
+;; extents hold different ones.
+(defun-nx fn2-env-x-edge (u c)
+  ; (SLOTP STATE KIND HOLDER EXTENT EPOCH COUNTER) of alloc edge row U
+  (let ((e (fn2-core-alloc-edges c)))
+    (if (and (natp u) (< u (fn2-alloc-edges-rows e)))
+        (list t (fn2-alloc-edges-state u e) (fn2-alloc-edges-kind u e) (fn2-alloc-edges-holder u e)
+              (fn2-alloc-edges-extent u e) (fn2-alloc-edges-epoch u e) (fn2-alloc-edges-counter u e))
+      (list nil))))
+(defun-nx fn2-env-x-handle-ok (e ep ct c)
+  (equal (fn2-alloc-handle-code e ep ct (fn2-core-extents c)) :ok))
+(defun-nx fn2-env-xa (c)
+  (and (fn2-env-io-counted (fn2-core-extents c) (fn2-core-alloc-edges c))
+       (<= 6 (fn2-alloc-edges-rows (fn2-core-alloc-edges c)))))
+(defun fn2-env-x-held (id fn2-core)
+  ; the row holds its admitted extent
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((p (fn2-machine-phase id fn2-core)))
+    (or (member-equal p (list *fn2-commit-state-collect* *fn2-commit-state-seal* *fn2-commit-state-dependencies*
+                              *fn2-commit-state-log-write* *fn2-commit-state-fence* *fn2-commit-state-durable*
+                              *fn2-commit-state-install* *fn2-commit-state-publish* *fn2-commit-state-notify*
+                              *fn2-commit-state-uncertain*))
+        (and (equal p *fn2-commit-state-dropping*) (equal (fn2-machine-cb-stage id fn2-core) 0)))))
+(defun fn2-env-x-lend-ok (id k fn2-core)
+  ; a live unit edge's role: issued and unharvested in its write phase
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((p (fn2-machine-phase id fn2-core)) (issued (fn2-machine-cb-issued id fn2-core))
+        (done (fn2-machine-cb-done id fn2-core)))
+    (or (equal p *fn2-commit-state-uncertain*)
+        (and (natp done) (< done (nfix issued)) (equal (fn2-machine-cb-wrote id fn2-core) 1)
+             (or (and (equal p *fn2-commit-state-dependencies*) (equal k 0))
+                 (and (equal p *fn2-commit-state-log-write*) (<= 1 k) (<= k (nfix issued))))))))
+(defun fn2-env-x-unit (id k fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let* ((u (+ (* 3 (fn2-commit-row id fn2-core)) k)) (io (fn2-env-io u fn2-core)) (ed (fn2-env-x-edge u fn2-core))
+         (live (and (nth 0 ed) (equal (nth 1 ed) *fn2-alloc-edge-state-live*))))
+    (mv-let (e ep ct slot gen) (fn2-commit-resource id k fn2-core)
+      (declare (ignore slot gen))
+      (and (nth 0 ed) (nth 0 io)
+           (equal (nth 1 ed) (if (equal (nth 3 io) 1) *fn2-alloc-edge-state-live* *fn2-alloc-edge-state-free*))
+           (implies live
+                    (and (equal (nth 2 ed) (fn2-alloc-edge-kind-keyword->code :outstanding-io))
+                         (equal (nth 3 ed) (nth 2 io)) (equal (nth 4 ed) e) (equal (nth 5 ed) ep) (equal (nth 6 ed) ct)
+                         (fn2-env-x-lend-ok id k fn2-core)))))))
+(defun fn2-env-x-hold (id fn2-core)
+  ; the three units' one handle, live
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (mv-let (e0 ep0 ct0 s0 g0) (fn2-commit-resource id 0 fn2-core)
+    (declare (ignore s0 g0))
+    (mv-let (e1 ep1 ct1 s1 g1) (fn2-commit-resource id 1 fn2-core)
+      (declare (ignore s1 g1))
+      (mv-let (e2 ep2 ct2 s2 g2) (fn2-commit-resource id 2 fn2-core)
+        (declare (ignore s2 g2))
+        (and (equal e1 e0) (equal ep1 ep0) (equal ct1 ct0) (equal e2 e0) (equal ep2 ep0) (equal ct2 ct0)
+             (fn2-env-x-handle-ok e0 ep0 ct0 fn2-core))))))
+(defun fn2-env-x-row (id fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (implies (fn2-commit-idp id fn2-core)
+           (and (implies (fn2-env-x-held id fn2-core) (< (fn2-commit-row id fn2-core) 2))
+                (implies (< (fn2-commit-row id fn2-core) 2)
+                         (and (fn2-env-x-unit id 0 fn2-core) (fn2-env-x-unit id 1 fn2-core) (fn2-env-x-unit id 2 fn2-core)))
+                (implies (fn2-env-x-held id fn2-core) (fn2-env-x-hold id fn2-core)))))
+(defun-sk fn2-env-x-rows (c) (forall id (fn2-env-x-row id c)))
+(defun-sk fn2-env-x-apart (c)
+  (forall (a b)
+    (implies (and (fn2-commit-idp a c) (fn2-commit-idp b c) (fn2-env-x-held a c) (fn2-env-x-held b c)
+                  (not (equal (fn2-commit-row a c) (fn2-commit-row b c))))
+             (not (equal (fn2-env-role-extent a 0 c) (fn2-env-role-extent b 0 c))))))
+(defun-nx fn2-env-x (c) (and (fn2-env-xa c) (fn2-env-x-rows c) (fn2-env-x-apart c)))
+(defthm fn2-env-core-alloc-edges-wfp
+  (implies (and (fn2-corep c) (fn2-core-wfp c)) (fn2-alloc-edges-wfp (fn2-core-alloc-edges c)))
+  :rule-classes nil)
+(defthm fn2-env-io-edge-add-code
+  ; the edge add's code: the allocator's, at unit R's handle and edge row R
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (< (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-commit-io-rows (fn2-core-commit-io c)))
+                (unsigned-byte-p 32 s) (unsigned-byte-p 60 g))
+           (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c))
+                  (let* ((r (+ (* 3 (fn2-commit-row id c)) (nfix role))) (io (fn2-core-commit-io c)))
+                    (mv-nth 0 (fn2-alloc-edge-add r g (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io)
+                                                  (fn2-commit-io-counter r io) :outstanding-io
+                                                  (fn2-core-extents c) (fn2-core-alloc-edges c))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(defthm fn2-env-x-unit-facts
+  ; unit K of a row below 2: in range, its edge row live exactly when lent
+  (implies (and (fn2-env-x-unit id k c) (natp k) (< k 3))
+           (let* ((r (+ (* 3 (fn2-commit-row id c)) k)) (io (fn2-core-commit-io c)) (ed (fn2-core-alloc-edges c)))
+             (and (< r (fn2-commit-io-rows io)) (fn2-alloc-edge-slotp r ed)
+                  (implies (not (fn2-env-x-lend-ok id k c))
+                           (equal (fn2-alloc-edges-state r ed) *fn2-alloc-edge-state-free*)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit fn2-env-x-edge fn2-env-io fn2-alloc-edge-slotp nth-0-cons nth-add1 (:e zp) (:e nth)
+                               car-cons cdr-cons zp nth (:e binary-+) natp))))
+(defthm fn2-env-x-hold-handle
+  ; a holding row's unit K names the live handle
+  (implies (and (fn2-env-x-hold id c) (fn2-commit-idp id c) (natp k) (< k 3)
+                (< (+ (* 3 (fn2-commit-row id c)) k) (fn2-commit-io-rows (fn2-core-commit-io c))))
+           (let* ((r (+ (* 3 (fn2-commit-row id c)) k)) (io (fn2-core-commit-io c)))
+             (equal (fn2-alloc-handle-code (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io) (fn2-commit-io-counter r io)
+                                           (fn2-core-extents c))
+                    :ok)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-hold fn2-env-x-handle-ok fn2-commit-resource mv-nth car-cons cdr-cons (:e zp) (:e binary-+)
+                               (:e nfix) nfix natp (:e <) fn2-commit-row-natp)
+           :cases ((equal k 0) (equal k 1) (equal k 2)))))
+(defthm fn2-env-x-edge-add-accepts
+  ; THE ISSUE'S EDGE ADD ACCEPTS: at :dependencies (role 0, none issued) or
+  ; :log-write (role issued+1) the row's extent invariant leaves the unit's
+  ; edge row free over the live handle with room in its count
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c)
+                (or (and (equal (fn2-machine-phase id c) *fn2-commit-state-dependencies*) (equal role 0)
+                         (equal (fn2-machine-cb-issued id c) 0))
+                    (and (equal (fn2-machine-phase id c) *fn2-commit-state-log-write*)
+                         (natp (fn2-machine-cb-issued id c)) (< (fn2-machine-cb-issued id c) 2)
+                         (equal role (+ 1 (fn2-machine-cb-issued id c)))))
+                (unsigned-byte-p 32 s) (unsigned-byte-p 60 g))
+           (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal role 0) (equal role 1) (equal role 2))
+           :in-theory '(fn2-env-x fn2-env-xa fn2-env-x-row fn2-env-x-held fn2-env-x-lend-ok member-equal (:e member-equal)
+                        nfix natp (:e nfix) fn2-env-io-edge-add-code fn2-env-edge-add-io-accepts fn2-commit-row-natp
+                        (:e equal) (:e <) car-cons cdr-cons)
+           :use ((:instance fn2-env-x-rows-necc (id id))
+                 (:instance fn2-env-x-unit-facts (k role))
+                 (:instance fn2-env-x-hold-handle (k role))
+                 (:instance fn2-env-core-alloc-edges-wfp (c c))))))
+(defthm fn2-env-io-edge-add-ok-shape
+  ; an accepted edge add: commit-io lends unit R to (S G), the allocator adds
+  ; edge row R, and no other child changes
+  (implies (and (fn2-corep c) (fn2-core-wfp c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok))
+           (let* ((b (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                  (r (+ (* 3 (fn2-commit-row id c)) (nfix role))) (io (fn2-core-commit-io c))
+                  (add (fn2-alloc-edge-add r g (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io)
+                                           (fn2-commit-io-counter r io) :outstanding-io
+                                           (fn2-core-extents c) (fn2-core-alloc-edges c))))
+             (and (fn2-commit-idp id c)
+                  (equal (mv-nth 0 add) :ok)
+                  (equal (fn2-core-alloc-edges b) (mv-nth 2 add))
+                  (equal (fn2-core-extents b) (mv-nth 1 add))
+                  (equal (fn2-core-commit-io b)
+                         (fn2-commit-io-set-lent r 1 (fn2-commit-io-set-op-gen r g (fn2-commit-io-set-op-slot r s io))))
+                  (implies (and (natp k) (not (member-equal k (list *fn2-core-commit-io* *fn2-core-extents* *fn2-core-alloc-edges*))))
+                           (equal (nth k b) (nth k c))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(make-event (value (cons 'progn (fn2-env-row-read-events '((cb-stage . 14) (cb-wrote . 29))))))
+(defthm fn2-env-x-lend-held-congruence
+  (implies (and (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a)))
+           (and (equal (fn2-env-x-lend-ok id k b) (fn2-env-x-lend-ok id k a))
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-lend-ok fn2-env-x-held))))
+(defthm fn2-env-x-unit-congruence
+  (implies (and (equal (fn2-env-x-lend-ok id k b) (fn2-env-x-lend-ok id k a))
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a)))
+           (equal (fn2-env-x-unit id k b) (fn2-env-x-unit id k a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit fn2-env-x-edge fn2-env-io fn2-core-alloc-edges fn2-core-commit-io)
+           :use ((:instance fn2-env-child-congruences (role k))))))
+(defthm fn2-env-x-hold-congruence
+  (implies (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 30 b) (nth 30 a)))
+           (and (equal (fn2-env-x-hold id b) (fn2-env-x-hold id a))
+                (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-hold fn2-env-x-handle-ok fn2-core-extents fn2-env-role-extent)
+           :use ((:instance fn2-env-child-congruences (role 0)) (:instance fn2-env-child-congruences (role 1))
+                 (:instance fn2-env-child-congruences (role 2))))))
+(defthm fn2-env-x-row-congruence
+  ; XR at ID reads ID's readability, slot, phase, stage, issued, done and
+  ; wrote, and the commit-io, extents and edges children alone
+  (implies (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a))
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a)))
+           (and (equal (fn2-env-x-row id b) (fn2-env-x-row id a))
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row)
+           :use ((:instance fn2-env-x-lend-held-congruence (k 0)) (:instance fn2-env-x-lend-held-congruence (k 1))
+                 (:instance fn2-env-x-lend-held-congruence (k 2))
+                 (:instance fn2-env-x-unit-congruence (k 0)) (:instance fn2-env-x-unit-congruence (k 1))
+                 (:instance fn2-env-x-unit-congruence (k 2)) (:instance fn2-env-x-hold-congruence)))))
+(defthm fn2-env-x-row-of-row-frame
+  ; a commit-table frame that writes none of the children X reads keeps XR at
+  ; every row it does not write, and at its own when it writes none of the
+  ; columns XR reads (phase 0, stage 14, issued 16, done 17, wrote 29)
+  (implies (and (fn2-arm-row-frame 9 row cs ch a b) (natp row)
+                (not (member-equal 9 ch)) (not (member-equal 33 cs)) (fn2-ctf-dir b a)
+                (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a))
+                (equal (fn2-machine-kind id a) *fn2-commit-kind*)
+                (or (not (equal (fn2-machine-slot id a) row))
+                    (and (not (member-equal 0 cs)) (not (member-equal 14 cs)) (not (member-equal 16 cs))
+                         (not (member-equal 17 cs)) (not (member-equal 29 cs)))))
+           (and (equal (fn2-env-x-row id b) (fn2-env-x-row id a))
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-congruence)
+                 (:instance fn2-env-read-codes-of-row-frame)
+                 (:instance fn2-machine-phase-of-row-frame)
+                 (:instance fn2-machine-cb-stage-of-row-frame)
+                 (:instance fn2-machine-cb-issued-of-row-frame)
+                 (:instance fn2-machine-cb-done-of-row-frame)
+                 (:instance fn2-machine-cb-wrote-of-row-frame)))))
+;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Established: XA
+;; at the core's init (alloc-init's zero counts, edges-init's free rows),
+;; XR/XD at admission (fn2-commit-reserve-extent: the free head, so apart
+;; from every held row's live extent, FN2-ENV-ALLOC-RESERVE-SHAPE; the
+;; admitted row was :free, so no unit edge live). Kept: by the issuing arms
+;; (FN2-ENV-IO-EDGE-ADD-OK-SHAPE, then the issued role is lent and live,
+;; issued+1, wrote 1), by the handler's loan drop (FN2-ENV-EDGE-DROP-IO-
+;; ACCEPTS from the live row's matching edge), by the other arms through
+;; FN2-ENV-X-ROW-OF-ROW-FRAME (collect/install's root edges and durable's
+;; allocation keep the handle; dropping's cancel leaves the row unheld), and
+;; by the host steps and :take (they write no commit-io, extents or edges).
