@@ -9,6 +9,7 @@
 (include-book "core-children")
 (include-book "assumptions-device")
 (include-book "pointwise-contracts")
+(include-book "alloc")
 (local (deflabel fn2-env-children-before-ops-conservation))
 (include-book "ops-conservation")
 ; FN2-OPS-CREDIT-CONSERVATION's per-operation exports are used by name only.
@@ -1833,3 +1834,422 @@
          (fn2-env-pool-octets n a p)))
   :hints (("Goal" :induct (fn2-env-pool-octets n a p)
            :in-theory (union-theories '(fn2-env-pool-octets fn2-env-pool-lease-out-rows) (theory 'minimal-theory)))))
+;; THE OUTSTANDING-IO COUNT, allocator-wide (EXTENT INVARIANT, XA): every
+;; extent's cached outstanding-io count is the number of live
+;; :outstanding-io edges naming it.
+(defun fn2-env-edge-key (j fn2-alloc-edges)
+  (declare (xargs :stobjs fn2-alloc-edges :verify-guards nil))
+  (list (fn2-alloc-edges-state j fn2-alloc-edges) (fn2-alloc-edges-kind j fn2-alloc-edges)
+        (fn2-alloc-edges-extent j fn2-alloc-edges)))
+(defun fn2-env-oc-hit (j i kind fn2-alloc-edges)
+  (declare (xargs :stobjs fn2-alloc-edges :verify-guards nil))
+  (if (and (equal (fn2-alloc-edges-state j fn2-alloc-edges) *fn2-alloc-edge-state-live*)
+           (equal (fn2-alloc-edges-extent j fn2-alloc-edges) i)
+           (equal (fn2-alloc-edges-kind j fn2-alloc-edges) (fn2-alloc-edge-kind-keyword->code kind)))
+      1 0))
+(defun-sk fn2-env-edges-same-except (x a b)
+  (forall j (implies (and (natp j) (not (equal j x))) (equal (fn2-env-edge-key j b) (fn2-env-edge-key j a)))))
+(defthm fn2-env-oc-hit-of-key
+  (implies (equal (fn2-env-edge-key j b) (fn2-env-edge-key j a))
+           (equal (fn2-env-oc-hit j i kind b) (fn2-env-oc-hit j i kind a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-edge-key fn2-env-oc-hit car-cons cdr-cons))))
+(defthm fn2-env-owned-count-is-hits
+  (equal (fn2-alloc-owned-count n i kind e)
+         (if (zp n) 0 (+ (fn2-env-oc-hit (- n 1) i kind e) (fn2-alloc-owned-count (- n 1) i kind e))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-alloc-owned-count fn2-env-oc-hit))))
+(defthm fn2-env-owned-count-natp
+  (natp (fn2-alloc-owned-count n i kind e))
+  :rule-classes :type-prescription)
+(defthm fn2-env-owned-count-except
+  (implies (and (fn2-env-edges-same-except x a b) (natp x))
+           (equal (fn2-alloc-owned-count n i kind b)
+                  (if (< x (nfix n))
+                      (+ (fn2-alloc-owned-count n i kind a) (- (fn2-env-oc-hit x i kind b) (fn2-env-oc-hit x i kind a)))
+                    (fn2-alloc-owned-count n i kind a))))
+  :hints (("Goal" :induct (fn2-alloc-owned-count n i kind a)
+           :in-theory (union-theories '(fn2-alloc-owned-count nfix zp natp) (theory 'ground-zero)))
+          ("Subgoal *1/2" :use ((:instance fn2-env-edges-same-except-necc (j (- n 1)))
+                                (:instance fn2-env-oc-hit-of-key (j (- n 1)) (a a) (b b))
+                                (:instance fn2-env-owned-count-is-hits (e a))
+                                (:instance fn2-env-owned-count-is-hits (e b))))))
+(defthm fn2-env-owned-count-bound
+  ; at most the rows below N, and one fewer with a row X below N not live
+  (and (<= (fn2-alloc-owned-count n i kind e) (nfix n))
+       (implies (and (natp x) (< x (nfix n)) (not (equal (fn2-alloc-edges-state x e) *fn2-alloc-edge-state-live*)))
+                (<= (fn2-alloc-owned-count n i kind e) (- (nfix n) 1))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-alloc-owned-count n i kind e)
+           :in-theory (union-theories '(fn2-alloc-owned-count nfix zp natp) (theory 'ground-zero)))))
+(defthm fn2-env-owned-count-hit
+  (implies (and (natp x) (< x (nfix n)) (equal (fn2-env-oc-hit x i kind e) 1))
+           (<= 1 (fn2-alloc-owned-count n i kind e)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-alloc-owned-count n i kind e)
+           :in-theory (union-theories '(fn2-alloc-owned-count nfix zp natp fn2-env-oc-hit fn2-env-owned-count-natp) (theory 'ground-zero)))))
+(defthm fn2-env-edges-same-except-trans
+  (implies (and (fn2-env-edges-same-except x a b) (fn2-env-edges-same-except x b c))
+           (fn2-env-edges-same-except x a c))
+  :hints (("Goal" :in-theory '(fn2-env-edges-same-except)
+           :use ((:instance fn2-env-edges-same-except-necc (j (fn2-env-edges-same-except-witness x a c)))
+                 (:instance fn2-env-edges-same-except-necc (a b) (b c) (j (fn2-env-edges-same-except-witness x a c)))))))
+(defthm fn2-env-edges-same-except-refl
+  (fn2-env-edges-same-except x a a)
+  :hints (("Goal" :in-theory '(fn2-env-edges-same-except))))
+(defthm fn2-env-edges-same-except-setters
+  (implies (natp x) (and (fn2-env-edges-same-except x e (fn2-alloc-edges-set-state x v e))
+       (fn2-env-edges-same-except x e (fn2-alloc-edges-set-kind x v e))
+       (fn2-env-edges-same-except x e (fn2-alloc-edges-set-extent x v e))
+       (fn2-env-edges-same-except x e (fn2-alloc-edges-set-holder x v e))
+       (fn2-env-edges-same-except x e (fn2-alloc-edges-set-epoch x v e))
+       (fn2-env-edges-same-except x e (fn2-alloc-edges-set-counter x v e))))
+  :hints (("Goal" :in-theory (e/d (fn2-env-edges-same-except fn2-env-edge-key) (nth update-nth)))))
+(defun-sk fn2-env-io-counted (fn2-extents fn2-alloc-edges)
+  (forall i (implies (and (natp i) (< i (fn2-extents-rows fn2-extents)))
+                     (equal (fn2-extents-outstanding-io i fn2-extents)
+                            (fn2-alloc-owned-count (fn2-alloc-edges-rows fn2-alloc-edges) i :outstanding-io
+                                                   fn2-alloc-edges)))))
+(defthm fn2-env-alloc-account-frame
+  (and (equal (fn2-extents-outstanding-io j (fn2-alloc-account i s r p)) (fn2-extents-outstanding-io j p))
+       (equal (fn2-extents-state j (fn2-alloc-account i s r p)) (fn2-extents-state j p))
+       (equal (fn2-extents-epoch j (fn2-alloc-account i s r p)) (fn2-extents-epoch j p))
+       (equal (fn2-extents-counter j (fn2-alloc-account i s r p)) (fn2-extents-counter j p))
+       (equal (fn2-extents-rows (fn2-alloc-account i s r p)) (fn2-extents-rows p)))
+  :hints (("Goal" :in-theory (e/d (fn2-alloc-account update-fn2-alloc-total-free update-fn2-alloc-total-reserved
+                                   update-fn2-alloc-total-allocated update-fn2-alloc-total-retired update-fn2-alloc-ready
+                                   update-fn2-alloc-blocked update-fn2-alloc-quarantined fn2-env-car-of-update-nth)
+                                  (fn2-alloc-reason fn2-alloc-adjust fn2-alloc-adjust-okp)))))
+(defthm fn2-env-alloc-set-edge-frame
+  (implies (and (natp i) (natp j)) (and (equal (fn2-extents-outstanding-io j (fn2-alloc-set-edge i kind v p))
+              (if (and (equal kind :outstanding-io) (equal j i)) v (fn2-extents-outstanding-io j p)))
+       (equal (fn2-extents-state j (fn2-alloc-set-edge i kind v p)) (fn2-extents-state j p))
+       (equal (fn2-extents-epoch j (fn2-alloc-set-edge i kind v p)) (fn2-extents-epoch j p))
+       (equal (fn2-extents-counter j (fn2-alloc-set-edge i kind v p)) (fn2-extents-counter j p))))
+  :hints (("Goal" :in-theory (e/d (fn2-alloc-set-edge fn2-extents-set-installed-root fn2-extents-set-selectable-checkpoint
+                                   fn2-extents-set-recovery-base fn2-extents-set-prepared-successor fn2-extents-set-reservation
+                                   fn2-extents-set-obligation fn2-extents-set-promised-read fn2-extents-set-borrow
+                                   fn2-extents-set-outstanding-io fn2-extents-set-recovery-candidate fn2-env-car-of-update-nth
+                                   update-fn2-extents-installed-root$ai update-fn2-extents-selectable-checkpoint$ai update-fn2-extents-recovery-base$ai update-fn2-extents-prepared-successor$ai update-fn2-extents-reservation$ai update-fn2-extents-obligation$ai update-fn2-extents-promised-read$ai update-fn2-extents-borrow$ai update-fn2-extents-outstanding-io$ai update-fn2-extents-recovery-candidate$ai update-nth-array) ()))))
+(defthm fn2-env-edge-setters-reads
+  (implies (natp x)
+   (and (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-state x v e)) v)
+        (equal (fn2-alloc-edges-kind x (fn2-alloc-edges-set-kind x v e)) v)
+        (equal (fn2-alloc-edges-extent x (fn2-alloc-edges-set-extent x v e)) v)
+        (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-kind x v e)) (fn2-alloc-edges-state x e))
+        (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-holder x v e)) (fn2-alloc-edges-state x e))
+        (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-extent x v e)) (fn2-alloc-edges-state x e))
+        (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-epoch x v e)) (fn2-alloc-edges-state x e))
+        (equal (fn2-alloc-edges-state x (fn2-alloc-edges-set-counter x v e)) (fn2-alloc-edges-state x e))
+        (equal (fn2-alloc-edges-kind x (fn2-alloc-edges-set-holder x v e)) (fn2-alloc-edges-kind x e))
+        (equal (fn2-alloc-edges-kind x (fn2-alloc-edges-set-extent x v e)) (fn2-alloc-edges-kind x e))
+        (equal (fn2-alloc-edges-kind x (fn2-alloc-edges-set-epoch x v e)) (fn2-alloc-edges-kind x e))
+        (equal (fn2-alloc-edges-kind x (fn2-alloc-edges-set-counter x v e)) (fn2-alloc-edges-kind x e))
+        (equal (fn2-alloc-edges-extent x (fn2-alloc-edges-set-epoch x v e)) (fn2-alloc-edges-extent x e))
+        (equal (fn2-alloc-edges-extent x (fn2-alloc-edges-set-counter x v e)) (fn2-alloc-edges-extent x e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-state x v e)) (fn2-alloc-edges-rows e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-kind x v e)) (fn2-alloc-edges-rows e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-holder x v e)) (fn2-alloc-edges-rows e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-extent x v e)) (fn2-alloc-edges-rows e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-epoch x v e)) (fn2-alloc-edges-rows e))
+        (equal (fn2-alloc-edges-rows (fn2-alloc-edges-set-counter x v e)) (fn2-alloc-edges-rows e))))
+  :hints (("Goal" :in-theory (e/d () (nth update-nth)))))
+(defthm fn2-env-edge-add-io-accepts
+  ; an :outstanding-io edge add at a free edge row over a live handle accepts
+  (implies (and (fn2-env-io-counted p e) (fn2-alloc-edges-wfp e)
+                (equal (fn2-alloc-handle-code i epoch counter p) :ok)
+                (fn2-alloc-edge-slotp x e)
+                (equal (fn2-alloc-edges-state x e) *fn2-alloc-edge-state-free*))
+           (equal (mv-nth 0 (fn2-alloc-edge-add x holder i epoch counter :outstanding-io p e)) :ok))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-add fn2-alloc-edge-count fn2-alloc-handle-code fn2-alloc-slotp fn2-alloc-edge-slotp)
+                           (fn2-env-io-counted fn2-alloc-owned-count fn2-alloc-edges-wfp fn2-alloc-account fn2-alloc-set-edge))
+           :use ((:instance fn2-env-io-counted-necc (fn2-extents p) (fn2-alloc-edges e))
+                 (:instance fn2-env-owned-count-bound (n (fn2-alloc-edges-rows e)) (kind :outstanding-io))
+                 (:instance (:definition fn2-alloc-edges-wfp) (fn2-alloc-edges e))))))
+(defthm fn2-env-edges-put-row
+  (implies (natp x)
+           (fn2-env-edges-same-except
+            x e (fn2-alloc-edges-set-counter x c (fn2-alloc-edges-set-epoch x ep (fn2-alloc-edges-set-extent x i
+                  (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))))))
+  :hints (("Goal" :in-theory '(fn2-env-edges-same-except-setters)
+           :use ((:instance fn2-env-edges-same-except-trans (a e) (b (fn2-alloc-edges-set-state x s e))
+                            (c (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))
+                 (:instance fn2-env-edges-same-except-trans (a e) (b (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e)))
+                            (c (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e)))))
+                 (:instance fn2-env-edges-same-except-trans (a e)
+                            (b (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))
+                            (c (fn2-alloc-edges-set-extent x i (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))))
+                 (:instance fn2-env-edges-same-except-trans (a e)
+                            (b (fn2-alloc-edges-set-extent x i (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e)))))
+                            (c (fn2-alloc-edges-set-epoch x ep (fn2-alloc-edges-set-extent x i (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e)))))))
+                 (:instance fn2-env-edges-same-except-trans (a e)
+                            (b (fn2-alloc-edges-set-epoch x ep (fn2-alloc-edges-set-extent x i (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))))
+                            (c (fn2-alloc-edges-set-counter x c (fn2-alloc-edges-set-epoch x ep (fn2-alloc-edges-set-extent x i (fn2-alloc-edges-set-holder x h (fn2-alloc-edges-set-kind x k (fn2-alloc-edges-set-state x s e))))))))))))
+(defthm fn2-env-edge-add-shape
+  ; an accepted edge add changes edge row X alone, from free to a live row of
+  ; KIND naming I, and the extents' KIND count of I alone, by one
+  (let ((r (fn2-alloc-edge-add x holder i epoch counter kind p e)))
+    (implies (equal (mv-nth 0 r) :ok)
+             (and (fn2-env-edges-same-except x e (mv-nth 2 r))
+                  (natp x) (natp i) (< i (fn2-extents-rows p)) (member-equal kind *fn2-alloc-edges*)
+                  (equal (fn2-alloc-edges-state x e) *fn2-alloc-edge-state-free*)
+                  (equal (fn2-alloc-edges-state x (mv-nth 2 r)) *fn2-alloc-edge-state-live*)
+                  (equal (fn2-alloc-edges-kind x (mv-nth 2 r)) (fn2-alloc-edge-kind-keyword->code kind))
+                  (equal (fn2-alloc-edges-extent x (mv-nth 2 r)) i)
+                  (equal (fn2-alloc-edges-rows (mv-nth 2 r)) (fn2-alloc-edges-rows e))
+                  (equal (fn2-extents-rows (mv-nth 1 r)) (fn2-extents-rows p))
+                  (implies (natp j)
+                           (and (equal (fn2-extents-outstanding-io j (mv-nth 1 r))
+                                       (if (and (equal kind :outstanding-io) (equal j i))
+                                           (+ 1 (fn2-extents-outstanding-io j p))
+                                         (fn2-extents-outstanding-io j p)))
+                                (equal (fn2-extents-state j (mv-nth 1 r)) (fn2-extents-state j p))
+                                (equal (fn2-extents-epoch j (mv-nth 1 r)) (fn2-extents-epoch j p))
+                                (equal (fn2-extents-counter j (mv-nth 1 r)) (fn2-extents-counter j p)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-add fn2-alloc-handle-code fn2-alloc-slotp fn2-alloc-edge-slotp fn2-alloc-edge-count)
+                           (fn2-alloc-account fn2-alloc-set-edge fn2-alloc-reason fn2-env-edges-same-except
+                            fn2-alloc-edges-set-state fn2-alloc-edges-set-kind fn2-alloc-edges-set-holder
+                            fn2-alloc-edges-set-extent fn2-alloc-edges-set-epoch fn2-alloc-edges-set-counter
+                            fn2-alloc-edges-state fn2-alloc-edges-kind fn2-alloc-edges-extent fn2-alloc-edges-rows
+                            fn2-extents-state fn2-extents-epoch fn2-extents-counter fn2-extents-rows
+                            fn2-extents-outstanding-io)))))
+(defthm fn2-env-edge-add-slot
+  (implies (equal (mv-nth 0 (fn2-alloc-edge-add x holder i epoch counter kind p e)) :ok)
+           (fn2-alloc-edge-slotp x e))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-alloc-edge-add mv-nth car-cons cdr-cons (:e zp) (:e binary-+)))))
+(defthm fn2-env-edge-add-refused
+  (let ((r (fn2-alloc-edge-add x holder i epoch counter kind p e)))
+    (implies (not (equal (mv-nth 0 r) :ok))
+             (and (equal (mv-nth 1 r) p) (equal (mv-nth 2 r) e))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-alloc-edge-add mv-nth car-cons cdr-cons (:e zp) (:e binary-+)))))
+(defthm fn2-env-edge-drop-refused
+  (let ((r (fn2-alloc-edge-drop x holder i epoch counter kind p e)))
+    (implies (not (equal (mv-nth 0 r) :ok))
+             (and (equal (mv-nth 1 r) p) (equal (mv-nth 2 r) e))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-alloc-edge-drop mv-nth car-cons cdr-cons (:e zp) (:e binary-+)))))
+(defthm fn2-env-kind-code-oi
+  (implies (member-equal kind *fn2-alloc-edges*)
+           (equal (equal (fn2-alloc-edge-kind-keyword->code kind) 8) (equal kind :outstanding-io)))
+  :hints (("Goal" :in-theory '(member-equal (:e fn2-alloc-edge-kind-keyword->code) (:e member-equal) car-cons cdr-cons)
+           :expand ((:free (a b) (member-equal kind (cons a b)))))))
+(defthm fn2-env-io-counted-edge-add
+  ; every edge add keeps XA
+  (implies (and (fn2-env-io-counted p e) (fn2-alloc-edges-wfp e))
+           (let ((r (fn2-alloc-edge-add x holder i epoch counter kind p e)))
+             (fn2-env-io-counted (mv-nth 1 r) (mv-nth 2 r))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (mv-nth 0 (fn2-alloc-edge-add x holder i epoch counter kind p e)) :ok)))
+          ("Subgoal 2" :in-theory '(fn2-env-io-counted) :use ((:instance fn2-env-edge-add-refused)))
+          ("Subgoal 1" :in-theory (e/d (fn2-env-oc-hit fn2-env-kind-code-oi)
+                                       (fn2-alloc-edge-add fn2-env-io-counted fn2-env-io-counted-necc fn2-alloc-owned-count fn2-env-edges-same-except
+                                        fn2-alloc-edges-state fn2-alloc-edges-kind fn2-alloc-edges-extent fn2-alloc-edges-rows
+                                        fn2-extents-state fn2-extents-epoch fn2-extents-counter fn2-extents-rows
+                                        fn2-extents-outstanding-io))
+           :expand ((:free (kind) (fn2-env-io-counted (mv-nth 1 (fn2-alloc-edge-add x holder i epoch counter kind p e))
+                                        (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e)))))
+           :use ((:instance fn2-env-edge-add-slot)
+                 (:instance fn2-env-edge-add-shape
+                            (j (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-add x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e)))))
+                 (:instance fn2-env-io-counted-necc (fn2-extents p) (fn2-alloc-edges e)
+                            (i (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-add x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e)))))
+                 (:instance fn2-env-owned-count-except (kind :outstanding-io) (a e) (b (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e)))
+                            (n (fn2-alloc-edges-rows e))
+                            (i (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-add x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e)))))
+                 (:instance (:definition fn2-alloc-edges-wfp) (fn2-alloc-edges e))))))
+(defthm fn2-env-edge-drop-shape
+  ; an accepted edge drop frees edge row X alone, a live row of KIND naming I,
+  ; and lowers the extents' KIND count of I alone, by one
+  (let ((r (fn2-alloc-edge-drop x holder i epoch counter kind p e)))
+    (implies (equal (mv-nth 0 r) :ok)
+             (and (fn2-env-edges-same-except x e (mv-nth 2 r))
+                  (natp x) (natp i) (< i (fn2-extents-rows p)) (member-equal kind *fn2-alloc-edges*)
+                  (fn2-alloc-edge-slotp x e)
+                  (equal (fn2-alloc-edges-state x e) *fn2-alloc-edge-state-live*)
+                  (equal (fn2-alloc-edges-kind x e) (fn2-alloc-edge-kind-keyword->code kind))
+                  (equal (fn2-alloc-edges-extent x e) i)
+                  (equal (fn2-alloc-edges-state x (mv-nth 2 r)) *fn2-alloc-edge-state-free*)
+                  (equal (fn2-alloc-edges-rows (mv-nth 2 r)) (fn2-alloc-edges-rows e))
+                  (equal (fn2-extents-rows (mv-nth 1 r)) (fn2-extents-rows p))
+                  (implies (natp j)
+                           (and (equal (fn2-extents-outstanding-io j (mv-nth 1 r))
+                                       (if (and (equal kind :outstanding-io) (equal j i))
+                                           (- (fn2-extents-outstanding-io j p) 1)
+                                         (fn2-extents-outstanding-io j p)))
+                                (equal (fn2-extents-state j (mv-nth 1 r)) (fn2-extents-state j p))
+                                (equal (fn2-extents-epoch j (mv-nth 1 r)) (fn2-extents-epoch j p))
+                                (equal (fn2-extents-counter j (mv-nth 1 r)) (fn2-extents-counter j p)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-drop fn2-alloc-handle-code fn2-alloc-slotp fn2-alloc-edge-slotp fn2-alloc-edge-count
+                            fn2-alloc-edge-matchesp)
+                           (fn2-alloc-account fn2-alloc-set-edge fn2-alloc-reason fn2-env-edges-same-except
+                            fn2-alloc-edges-set-state fn2-alloc-edges-set-kind fn2-alloc-edges-set-holder
+                            fn2-alloc-edges-set-extent fn2-alloc-edges-set-epoch fn2-alloc-edges-set-counter
+                            fn2-alloc-edges-state fn2-alloc-edges-kind fn2-alloc-edges-extent fn2-alloc-edges-rows
+                            fn2-extents-state fn2-extents-epoch fn2-extents-counter fn2-extents-rows
+                            fn2-extents-outstanding-io)))))
+(defthm fn2-env-io-counted-edge-drop
+  ; every edge drop keeps XA
+  (implies (and (fn2-env-io-counted p e) (fn2-alloc-edges-wfp e))
+           (let ((r (fn2-alloc-edge-drop x holder i epoch counter kind p e)))
+             (fn2-env-io-counted (mv-nth 1 r) (mv-nth 2 r))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((equal (mv-nth 0 (fn2-alloc-edge-drop x holder i epoch counter kind p e)) :ok)))
+          ("Subgoal 2" :in-theory '(fn2-env-io-counted) :use ((:instance fn2-env-edge-drop-refused)))
+          ("Subgoal 1" :in-theory (e/d (fn2-env-oc-hit fn2-env-kind-code-oi fn2-alloc-edge-slotp)
+                                       (fn2-alloc-edge-drop fn2-env-io-counted fn2-env-io-counted-necc fn2-alloc-owned-count fn2-env-edges-same-except
+                                        fn2-alloc-edges-state fn2-alloc-edges-kind fn2-alloc-edges-extent fn2-alloc-edges-rows
+                                        fn2-extents-state fn2-extents-epoch fn2-extents-counter fn2-extents-rows
+                                        fn2-extents-outstanding-io))
+           :expand ((:free (kind) (fn2-env-io-counted (mv-nth 1 (fn2-alloc-edge-drop x holder i epoch counter kind p e))
+                                        (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e)))))
+           :use ((:instance fn2-env-edge-drop-shape
+                            (j (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-drop x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e)))))
+                 (:instance fn2-env-io-counted-necc (fn2-extents p) (fn2-alloc-edges e)
+                            (i (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-drop x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e)))))
+                 (:instance fn2-env-owned-count-except (kind :outstanding-io) (a e) (b (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e)))
+                            (n (fn2-alloc-edges-rows e))
+                            (i (fn2-env-io-counted-witness (mv-nth 1 (fn2-alloc-edge-drop x holder i epoch counter kind p e))
+                                                           (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e)))))
+                 (:instance (:definition fn2-alloc-edges-wfp) (fn2-alloc-edges e))))))
+(defthm fn2-env-edge-drop-io-accepts
+  ; an :outstanding-io edge drop of a matching row over a live handle accepts
+  (implies (and (fn2-env-io-counted p e) (fn2-alloc-edges-wfp e)
+                (equal (fn2-alloc-handle-code i epoch counter p) :ok)
+                (fn2-alloc-edge-slotp x e)
+                (fn2-alloc-edge-matchesp x holder i epoch counter :outstanding-io e))
+           (equal (mv-nth 0 (fn2-alloc-edge-drop x holder i epoch counter :outstanding-io p e)) :ok))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-drop fn2-alloc-edge-count fn2-alloc-handle-code fn2-alloc-slotp fn2-alloc-edge-slotp
+                            fn2-env-oc-hit fn2-alloc-edge-matchesp)
+                           (fn2-env-io-counted fn2-alloc-owned-count fn2-alloc-edges-wfp fn2-alloc-account fn2-alloc-set-edge))
+           :use ((:instance fn2-env-io-counted-necc (fn2-extents p) (fn2-alloc-edges e))
+                 (:instance fn2-env-owned-count-hit (n (fn2-alloc-edges-rows e)) (kind :outstanding-io))
+                 (:instance (:definition fn2-alloc-edges-wfp) (fn2-alloc-edges e))))))
+(defthm fn2-env-io-counted-of-column
+  ; XA reads the extents' outstanding-io column and row count alone
+  (implies (and (fn2-env-io-counted p e)
+                (equal (nth *fn2-extents-outstanding-io$ai* q) (nth *fn2-extents-outstanding-io$ai* p))
+                (equal (fn2-extents-rows q) (fn2-extents-rows p)))
+           (fn2-env-io-counted q e))
+  :hints (("Goal" :in-theory '(fn2-extents-outstanding-io fn2-extents-outstanding-io$ai)
+           :expand ((fn2-env-io-counted q e))
+           :use ((:instance fn2-env-io-counted-necc (fn2-extents p) (fn2-alloc-edges e) (i (fn2-env-io-counted-witness q e)))))))
+(defthm fn2-env-alloc-account-columns
+  (and (equal (nth *fn2-extents-outstanding-io$ai* (fn2-alloc-account i s r p)) (nth *fn2-extents-outstanding-io$ai* p))
+       (equal (nth *fn2-extents-state$ai* (fn2-alloc-account i s r p)) (nth *fn2-extents-state$ai* p))
+       (equal (nth *fn2-extents-epoch$ai* (fn2-alloc-account i s r p)) (nth *fn2-extents-epoch$ai* p))
+       (equal (nth *fn2-extents-counter$ai* (fn2-alloc-account i s r p)) (nth *fn2-extents-counter$ai* p))
+       (equal (nth *fn2-extents-rows* (fn2-alloc-account i s r p)) (nth *fn2-extents-rows* p)))
+  :hints (("Goal" :in-theory (e/d (fn2-alloc-account update-fn2-alloc-total-free update-fn2-alloc-total-reserved
+                                   update-fn2-alloc-total-allocated update-fn2-alloc-total-retired update-fn2-alloc-ready
+                                   update-fn2-alloc-blocked update-fn2-alloc-quarantined fn2-env-car-of-update-nth)
+                                  (fn2-alloc-reason fn2-alloc-adjust fn2-alloc-adjust-okp)))))
+(defthm fn2-env-alloc-reserve-shape
+  (let ((r (fn2-alloc-reserve p)))
+    (and (equal (nth *fn2-extents-outstanding-io$ai* (mv-nth 5 r)) (nth *fn2-extents-outstanding-io$ai* p))
+         (equal (fn2-extents-rows (mv-nth 5 r)) (fn2-extents-rows p))
+         (implies (and (equal (mv-nth 0 r) :ok) (natp (fn2-extents-rows p)) (< (fn2-extents-rows p) 4294967296))
+                  (and (natp (mv-nth 2 r)) (< (mv-nth 2 r) (fn2-extents-rows p))
+                       (equal (fn2-extents-state (mv-nth 2 r) p) *fn2-extent-state-free*)
+                       (equal (fn2-extents-state (mv-nth 2 r) (mv-nth 5 r)) *fn2-extent-state-reserved*)
+                       (equal (fn2-extents-epoch (mv-nth 2 r) (mv-nth 5 r)) (mv-nth 3 r))
+                       (equal (fn2-extents-counter (mv-nth 2 r) (mv-nth 5 r)) (mv-nth 4 r))))
+         (implies (and (natp j) (not (and (equal (mv-nth 0 r) :ok) (equal j (mv-nth 2 r)))))
+                  (and (equal (fn2-extents-state j (mv-nth 5 r)) (fn2-extents-state j p))
+                       (equal (fn2-extents-epoch j (mv-nth 5 r)) (fn2-extents-epoch j p))
+                       (equal (fn2-extents-counter j (mv-nth 5 r)) (fn2-extents-counter j p))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-reserve fn2-alloc-link-statep fn2-alloc-slotp fn2-env-car-of-update-nth
+                            fn2-extents-set-state fn2-extents-set-epoch fn2-extents-set-counter fn2-extents-set-reservation
+                            update-fn2-extents-state$ai update-fn2-extents-epoch$ai update-fn2-extents-counter$ai
+                            update-fn2-extents-reservation$ai update-nth-array update-fn2-alloc-free-head update-fn2-alloc-next-counter)
+                           (fn2-alloc-account fn2-alloc-reason fn2-alloc-pressure nth update-nth)))))
+(defthm fn2-env-alloc-commit-allocation-shape
+  (let ((r (fn2-alloc-commit-allocation i epoch counter okind oid p)))
+    (and (equal (nth *fn2-extents-outstanding-io$ai* (mv-nth 1 r)) (nth *fn2-extents-outstanding-io$ai* p))
+         (equal (fn2-extents-rows (mv-nth 1 r)) (fn2-extents-rows p))
+         (implies (natp j)
+                  (and (equal (fn2-extents-epoch j (mv-nth 1 r)) (fn2-extents-epoch j p))
+                       (equal (fn2-extents-counter j (mv-nth 1 r)) (fn2-extents-counter j p))
+                       (equal (fn2-extents-state j (mv-nth 1 r))
+                              (if (and (equal (mv-nth 0 r) :ok) (equal j i)) *fn2-extent-state-allocated*
+                                (fn2-extents-state j p)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-commit-allocation fn2-alloc-handle-code fn2-alloc-slotp fn2-env-car-of-update-nth
+                            fn2-extents-set-state fn2-extents-set-reservation fn2-extents-set-owner-kind fn2-extents-set-owner-id
+                            update-fn2-extents-state$ai update-fn2-extents-reservation$ai update-fn2-extents-owner-kind$ai
+                            update-fn2-extents-owner-id$ai update-nth-array)
+                           (fn2-alloc-account fn2-alloc-reason nth update-nth)))))
+(defthm fn2-env-alloc-cancel-shape
+  (let ((r (fn2-alloc-cancel-reservation i epoch counter p)))
+    (and (equal (nth *fn2-extents-outstanding-io$ai* (mv-nth 1 r)) (nth *fn2-extents-outstanding-io$ai* p))
+         (equal (fn2-extents-rows (mv-nth 1 r)) (fn2-extents-rows p))
+         (implies (and (equal (mv-nth 0 r) :ok) (natp j))
+                  (and (natp i) (equal (fn2-alloc-handle-code i epoch counter p) :ok)
+                       (implies (not (equal j i))
+                                (and (equal (fn2-extents-state j (mv-nth 1 r)) (fn2-extents-state j p))
+                                     (equal (fn2-extents-epoch j (mv-nth 1 r)) (fn2-extents-epoch j p))
+                                     (equal (fn2-extents-counter j (mv-nth 1 r)) (fn2-extents-counter j p))))))
+         (implies (not (equal (mv-nth 0 r) :ok)) (equal (mv-nth 1 r) p))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-cancel-reservation fn2-alloc-free fn2-alloc-free-linksp fn2-alloc-handle-code fn2-alloc-slotp
+                            fn2-env-car-of-update-nth fn2-extents-set-state fn2-extents-set-epoch fn2-extents-set-counter
+                            fn2-extents-set-reservation fn2-extents-set-owner-kind fn2-extents-set-owner-id
+                            fn2-extents-set-retirement fn2-extents-set-next-free
+                            update-fn2-extents-state$ai update-fn2-extents-epoch$ai update-fn2-extents-counter$ai
+                            update-fn2-extents-reservation$ai update-fn2-extents-owner-kind$ai update-fn2-extents-owner-id$ai
+                            update-fn2-extents-retirement$ai update-fn2-extents-next-free$ai update-nth-array update-fn2-alloc-free-head)
+                           (fn2-alloc-account fn2-alloc-reason fn2-alloc-protector fn2-alloc-unlink nth update-nth)))))
+(defthm fn2-env-edge-add-rows-reads
+  ; an edge add writes edge row X alone: every column of any other row stays,
+  ; and row X takes HOLDER, I, EPOCH and COUNTER
+  (let ((e2 (mv-nth 2 (fn2-alloc-edge-add x holder i epoch counter kind p e))))
+    (and (implies (and (natp u) (natp x) (not (equal u x)))
+                  (and (equal (fn2-alloc-edges-state u e2) (fn2-alloc-edges-state u e))
+                       (equal (fn2-alloc-edges-kind u e2) (fn2-alloc-edges-kind u e))
+                       (equal (fn2-alloc-edges-holder u e2) (fn2-alloc-edges-holder u e))
+                       (equal (fn2-alloc-edges-extent u e2) (fn2-alloc-edges-extent u e))
+                       (equal (fn2-alloc-edges-epoch u e2) (fn2-alloc-edges-epoch u e))
+                       (equal (fn2-alloc-edges-counter u e2) (fn2-alloc-edges-counter u e))))
+         (implies (and (natp x) (equal (mv-nth 0 (fn2-alloc-edge-add x holder i epoch counter kind p e)) :ok))
+                  (and (equal (fn2-alloc-edges-holder x e2) holder)
+                       (equal (fn2-alloc-edges-epoch x e2) epoch)
+                       (equal (fn2-alloc-edges-counter x e2) counter)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-add fn2-alloc-handle-code)
+                           (fn2-alloc-account fn2-alloc-set-edge fn2-alloc-reason nth update-nth)))))
+(defthm fn2-env-edge-drop-rows-reads
+  (let ((e2 (mv-nth 2 (fn2-alloc-edge-drop x holder i epoch counter kind p e))))
+    (implies (and (natp u) (natp x) (not (equal u x)))
+             (and (equal (fn2-alloc-edges-state u e2) (fn2-alloc-edges-state u e))
+                  (equal (fn2-alloc-edges-kind u e2) (fn2-alloc-edges-kind u e))
+                  (equal (fn2-alloc-edges-holder u e2) (fn2-alloc-edges-holder u e))
+                  (equal (fn2-alloc-edges-extent u e2) (fn2-alloc-edges-extent u e))
+                  (equal (fn2-alloc-edges-epoch u e2) (fn2-alloc-edges-epoch u e))
+                  (equal (fn2-alloc-edges-counter u e2) (fn2-alloc-edges-counter u e)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-alloc-edge-drop fn2-alloc-handle-code)
+                           (fn2-alloc-account fn2-alloc-set-edge fn2-alloc-reason nth update-nth)))))
+(in-theory (disable fn2-env-edge-key fn2-env-oc-hit fn2-env-io-counted fn2-env-edges-same-except
+                    fn2-env-owned-count-except fn2-env-edges-same-except-trans fn2-env-edges-same-except-refl
+                    fn2-env-edges-same-except-setters fn2-env-alloc-account-frame fn2-env-alloc-set-edge-frame
+                    fn2-env-edge-setters-reads fn2-env-edge-add-io-accepts fn2-env-io-counted-edge-add fn2-env-kind-code-oi
+                    fn2-env-io-counted-edge-drop fn2-env-edge-drop-io-accepts fn2-env-io-counted-of-column
+                    fn2-env-alloc-account-columns fn2-env-edges-put-row))
