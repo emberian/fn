@@ -71,6 +71,18 @@
       result)))
 (assert-event (fn2-host-latch-control))
 (include-book "../books/host-boundary")
+(include-book "../books/borrow-faces")
+(include-book "std/testing/must-fail" :dir :system)
+; borrow-faces walks the faces in its own world (the books defining them);
+; host-boundary's world has no other: every fn2-core-returning caller of a
+; pool writer here is one A2 (FN2-CORE-BORROW-CONSERVATION) states.
+(assert-event (subsetp-eq (fn2-bf-faces (w state)) *fn2-bf-faces*))
+; Control: a new core function writing the pool is a face the check refuses.
+(encapsulate ()
+  (local (defun fn2-host-test-extra-face (fn2-core)
+           (declare (xargs :stobjs fn2-core :verify-guards nil))
+           (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fn2-pool) (fn2-pool-set-fill 0 0 fn2-pool) fn2-core)))
+  (local (must-fail (assert-event (subsetp-eq (fn2-bf-faces (w state)) *fn2-bf-faces*)))))
 ; The simulator drives the boundary below; host-boundary does not include it.
 (include-book "../sim/sim")
 ;; The first sim row holding an active Accept, scanning from INDEX.
