@@ -8838,10 +8838,169 @@
            :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
                             fn2-op-slotp fn2-env-ops-op)
                            (fn2-opsp)))))
-;; OWED: FRESHNESS and LENT-OK across :take need the taken op's generation
-;; after the take (FN2-ENV-OPS-OP-OF-OP-FINISH-GEN through the ack); across
-;; :turn the commit arms' issues and harvests, and other kinds' ops writers
-;; (dispatch-contracts).
+;; FRESHNESS AND LENT-OK ACROSS :TAKE AND :ADMIT. :take acks the outbox
+;; head and finishes it unless it is a completion: the taken op is then
+;; submitted, done or retired at its generation, or free at the next
+;; (FN2-ENV-OPS-OP-OF-OP-FINISH-GEN at the acked table), so every op's head
+;; advances (FN2-ENV-OP-HEADS-ADVANCED), the taken incarnation was queued,
+;; and no unit changes. :admit writes neither the ops table (FN2-ENV-OK) nor
+;; commit-io's operation and loan columns (FN2-ENV-LK).
+;; An op's head advanced from O to O2: same validity, and either the same
+;; generation with a phase that stays out of free/reserved if it was out, or
+;; a newer generation. Every incarnation that began and was issued stays so.
+(defun fn2-env-head-advanced (o o2)
+  (declare (xargs :verify-guards nil))
+  (and (equal (nth 0 o2) (nth 0 o))
+       (or (and (equal (nth 1 o2) (nth 1 o))
+                (implies (not (member-equal (nth 2 o) (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))
+                         (not (member-equal (nth 2 o2) (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))))
+           (and (natp (nth 1 o)) (natp (nth 1 o2)) (< (nth 1 o) (nth 1 o2))))))
+(defthm fn2-env-head-advanced-refl (fn2-env-head-advanced o o))
+(defun-sk fn2-env-op-heads-advanced (a b)
+  (forall s (fn2-env-head-advanced (fn2-env-op s a) (fn2-env-op s b))))
+(in-theory (disable fn2-env-head-advanced))
+(defthm fn2-env-incarnation-ok-of-advanced
+  (implies (and (fn2-env-incarnation-ok s g a) (fn2-env-op-heads-advanced a b))
+           (fn2-env-incarnation-ok s g b))
+  :hints (("Goal" :in-theory (e/d (fn2-env-incarnation-ok fn2-env-head-advanced) (fn2-env-op fn2-env-op-heads-advanced))
+           :use ((:instance fn2-env-op-heads-advanced-necc)))))
+(defthm fn2-env-freshness-of-advanced
+  (implies (and (fn2-env-freshness log a) (fn2-env-op-heads-advanced a b))
+           (fn2-env-freshness log b))
+  :hints (("Goal" :induct (fn2-env-freshness log a)
+           :in-theory (union-theories '(fn2-env-freshness fn2-env-incarnation-ok-of-advanced) (theory 'minimal-theory)))))
+(defthm fn2-env-lent-ok-of-advanced
+  (implies (and (fn2-env-lent-ok a) (fn2-env-op-heads-advanced a b) (fn2-env-units-kept a b))
+           (fn2-env-lent-ok b))
+  :hints (("Goal" :in-theory '(fn2-env-lent-ok fn2-env-incarnation-ok-of-advanced)
+           :use ((:instance fn2-env-units-kept-necc (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-env-lent-ok-necc (fn2-core a) (u (fn2-env-lent-ok-witness b)))))))
+(defthm fn2-env-ops-ack-finish-advanced
+  ; the outbox head acked, then finished: its head advanced
+  (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops) (equal (mv-nth 0 (fn2-outbox-ack 1 fn2-ops)) :ok)
+                (equal h (fn2-ops-out-sloti (fn2-ops-out-head fn2-ops) fn2-ops))
+                (natp (nth 1 (fn2-env-ops-op h fn2-ops))))
+           (let ((a (mv-nth 1 (fn2-outbox-ack 1 fn2-ops))) (o (fn2-env-ops-op h fn2-ops)))
+             (and (fn2-env-head-advanced o (fn2-env-ops-op h a))
+                  (fn2-env-head-advanced o (fn2-env-ops-op h (mv-nth 1 (fn2-op-finish h g a)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-env-head-advanced fn2-op-ack-phase fn2-env-ops-op-of-outbox-ack-1)
+                           (fn2-env-ops-op fn2-op-finish fn2-outbox-ack fn2-opsp fn2-ops-wfp fn2-action-completionp))
+           :use ((:instance fn2-env-outbox-ack-1-head-op)
+                 (:instance fn2-env-ops-op-of-op-finish-gen (fn2-ops (mv-nth 1 (fn2-outbox-ack 1 fn2-ops))))))))
+(defthm fn2-env-core-ops-wfp
+  (implies (fn2-core-wfp c) (fn2-ops-wfp (fn2-core-ops c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-core-wfp) (fn2-ops-wfp fn2-opsp)))))
+(defthm fn2-env-take-ops-cases
+  ; :take leaves the ops table, acks its outbox head, or acks and finishes it
+  (implies (fn2-corep c)
+           (let* ((o (fn2-core-ops c)) (o2 (fn2-core-ops (fn2-env-tk-c))) (a (mv-nth 1 (fn2-outbox-ack 1 o))))
+             (or (equal o2 o)
+                 (and (equal (mv-nth 0 (fn2-outbox-ack 1 o)) :ok) (equal (mv-nth 0 (fn2-outbox-peek 0 o)) :ok)
+                      (or (equal o2 a)
+                          (equal o2 (mv-nth 1 (fn2-op-finish (mv-nth 1 (fn2-outbox-peek 0 o)) (mv-nth 2 (fn2-outbox-peek 0 o)) a))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :in-theory (e/d (fn2-env-take fn2-host-outbox-ack fn2-host-op-finish fn2-host-outbox-peek)
+                           (fn2-host-action fn2-host-op-span fn2-env-octets fn2-env-ops-op fn2-action-completionp
+                            fn2-outbox-ack fn2-op-finish fn2-outbox-peek fn2-env-fill fn2-opsp fn2-ops-wfp)))))
+(defthm fn2-env-ops-take-cases-advanced
+  ; each of :take's three ops outcomes advances every op's head
+  (implies (and (fn2-opsp o) (fn2-ops-wfp o)
+                (implies (equal (mv-nth 0 (fn2-outbox-ack 1 o)) :ok)
+                         (natp (nth 1 (fn2-env-ops-op (fn2-ops-out-sloti (fn2-ops-out-head o) o) o))))
+                (let ((a (mv-nth 1 (fn2-outbox-ack 1 o))))
+                  (or (equal o2 o)
+                      (and (equal (mv-nth 0 (fn2-outbox-ack 1 o)) :ok) (equal (mv-nth 0 (fn2-outbox-peek 0 o)) :ok)
+                           (or (equal o2 a)
+                               (equal o2 (mv-nth 1 (fn2-op-finish (mv-nth 1 (fn2-outbox-peek 0 o)) (mv-nth 2 (fn2-outbox-peek 0 o)) a))))))))
+           (fn2-env-head-advanced (fn2-env-ops-op s o) (fn2-env-ops-op s o2)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :do-not '(generalize eliminate-destructors fertilize)
+           :cases ((equal s (fn2-ops-out-sloti (fn2-ops-out-head o) o)))
+           :in-theory (union-theories '(fn2-env-ops-op-of-outbox-ack-1 fn2-env-ops-op-of-op-finish-other
+                                        fn2-env-head-advanced-refl fn2-outbox-ack-preserves-type)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-outbox-peek-0 (fn2-ops o))
+                 (:instance fn2-env-ops-ack-finish-advanced (fn2-ops o)
+                            (h (fn2-ops-out-sloti (fn2-ops-out-head o) o)) (g (mv-nth 2 (fn2-outbox-peek 0 o))))))))
+(defthm fn2-env-take-head-advanced
+  ; :take advances every op's head: the taken op is submitted, done or
+  ; retired at its generation, or free at the next; every other op stays
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (fn2-env-head-advanced (fn2-env-op s c) (fn2-env-op s (fn2-env-tk-c))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-op-is-ops-op) (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-ops-cases)
+                 (:instance fn2-core-ops-type (fn2-core c)) (:instance fn2-env-core-ops-wfp)
+                 (:instance fn2-env-outbox-ack-1-head-op (fn2-ops (fn2-core-ops c)))
+                 (:instance fn2-env-op-gen-natp (s (fn2-ops-out-sloti (fn2-ops-out-head (fn2-core-ops c)) (fn2-core-ops c))))
+                 (:instance fn2-env-ops-take-cases-advanced (o (fn2-core-ops c)) (o2 (fn2-core-ops (fn2-env-tk-c))))))))
+(defthm fn2-env-take-entry-incarnation
+  ; the taken incarnation began and was issued
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-tk-e))
+           (fn2-env-incarnation-ok (nth 1 (fn2-env-tk-e)) (nth 2 (fn2-env-tk-e)) c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-incarnation-ok) (fn2-env-op fn2-env-take))
+           :use ((:instance fn2-env-take-op (s (nth 1 (fn2-env-tk-e))))
+                 (:instance fn2-env-op-gen-natp (s (nth 1 (fn2-env-tk-e))))))))
+(defthm fn2-env-take-heads-advanced
+  (implies (and (fn2-corep c) (fn2-core-wfp c)) (fn2-env-op-heads-advanced c (fn2-env-tk-c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-op-heads-advanced)
+           :use ((:instance fn2-env-take-head-advanced (s (fn2-env-op-heads-advanced-witness c (fn2-env-tk-c))))))))
+(defthm fn2-env-take-units-kept
+  (fn2-env-units-kept c (fn2-env-tk-c))
+  :hints (("Goal" :in-theory '(fn2-env-units-kept fn2-env-take-frames))))
+(defthm fn2-env-fresh-lent-take-step
+  ; :take keeps FRESHNESS and LENT-OK: the taken incarnation began and was
+  ; issued, and every op's head advances
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-freshness log c) (fn2-env-lent-ok c)
+                (equal (fn2-env-tag action) :take))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (and (fn2-env-freshness (append log (if entry (list entry) nil)) after) (fn2-env-lent-ok after))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-step-take-unfolds fn2-env-freshness-append fn2-env-freshness-nil append-to-nil
+                                        fn2-env-freshness-of-advanced fn2-env-lent-ok-of-advanced fn2-env-take-units-kept
+                                        fn2-env-incarnation-ok-of-advanced
+                                        fn2-env-freshness (:e atom) atom car-cons cdr-cons mv-nth (:e car) (:e cdr) (:e mv-nth))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-take-heads-advanced)
+                 (:instance fn2-env-take-entry-incarnation) (:instance fn2-env-take-entry-shape (recoveryp nil))))))
+(defthm fn2-env-admit-lk
+  ; admission never writes commit-io's operation and loan columns
+  (implies (fn2-env-lk fn2-core c0) (fn2-env-lk (fn2-env-admit members mode fn2-core) c0))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-admit fn2-commit-admit-keyed fn2-commit-start-fn2-env-lk
+                                               fn2-commit-put-members-fn2-env-lk fn2-core-stop-fn2-env-lk fn2-exec-wake-fn2-env-lk)
+                                             (theory 'fn2-arm-frame-base)))))
+(defthm fn2-env-lent-ok-of-lk
+  ; LENT-OK reads a unit's validity, operation and loan alone
+  (implies (and (fn2-env-lent-ok a) (fn2-env-op-heads-kept a b) (fn2-env-lk b a))
+           (fn2-env-lent-ok b))
+  :hints (("Goal" :in-theory '(fn2-env-lent-ok fn2-env-incarnation-ok-of-heads)
+           :use ((:instance fn2-env-io-of-lk (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-env-lent-ok-necc (fn2-core a) (u (fn2-env-lent-ok-witness b)))))))
+(defthm fn2-env-admit-heads-kept
+  (fn2-env-op-heads-kept c (fn2-env-admit members mode c))
+  :hints (("Goal" :in-theory '(fn2-env-op-heads-kept fn2-env-op-of-admit))))
+(defthm fn2-env-fresh-lent-admit-step
+  ; :admit keeps FRESHNESS and LENT-OK: it writes neither the ops table nor a loan
+  (implies (and (fn2-env-freshness log c) (fn2-env-lent-ok c) (equal (fn2-env-tag action) :admit))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (and (fn2-env-freshness (append log (if entry (list entry) nil)) after) (fn2-env-lent-ok after))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-freshness-of-heads fn2-env-lent-ok-of-lk
+                                        fn2-env-admit-heads-kept fn2-env-freshness-append fn2-env-freshness-nil
+                                        mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-step-admit-unfolds (fn2-core c))
+                 (:instance fn2-env-admit-lk (fn2-core c) (c0 c) (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
+                 (:instance fn2-env-lk-reflexive (a c))))))
+;; OWED: FRESHNESS and LENT-OK across :turn: the commit arms' issues and
+;; harvests, and other kinds' ops writers (dispatch-contracts).
 ;; ---------------------------------------------------------------------------
 ;; J5 AND J6 ACROSS THE WRITE/FENCE HANDLER (fn2-commit-arm-observe). The
 ;; harvest (fn2-harvest-one) finishes the operation it delivers before the
