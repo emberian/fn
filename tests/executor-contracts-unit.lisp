@@ -192,10 +192,11 @@
 ;; THE STORED OWNERS (FN2-DISPATCH-OWNERS): a connection run taking a cursor
 ;; row whose conn-kind is the commit kind stores the commit kind as an
 ;; owner the cursor later writes as, so its owners claim is refused naming
-;; the take down to FN2-CURSOR-SET-CONN-KIND, and its defattach fails the
-;; stub's -DISPATCH-OWNERS constraint (its KIDS, directory and held
-;; contracts proved, so that constraint alone fails); the refusing run above
-;; meets it.
+;; the take down to FN2-CURSOR-SET-CONN-KIND, and its defattach fails. Its
+;; held claim is refused too: the take's held conclusions read stored owners,
+;; so its chain carries the take's owner hypotheses (the walk is not
+;; ordered: it does not see that the read precedes the store); its KIDS and
+;; directory contracts are proved. The refusing run above meets both.
 (defun fn2-ect-commit-owner (id budget fn2-core)
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (fn2-machine-idp id fn2-core)
@@ -213,7 +214,8 @@
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-owner 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
-(make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-owner 4 nil (w state))))
+(must-fail
+ (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-owner 4 nil (w state)))))
 (assert-event
  (let ((bad (fn2-dh-bad-hyps (fn2-dh-all-hyps (fn2-dh-facts 'fn2-ect-commit-owner (w state)) t) *fn2-commit-kind* t)))
    (and (consp bad) (equal (cadr (car bad)) 'fn2-machine-take-fn2-cursor)
