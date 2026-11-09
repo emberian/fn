@@ -218,3 +218,37 @@
 (assert-event (not (fn2-ccu-expected 16
  (fn2-ccu-set :allocator (fn2-ccu-set :installed-root-edges 15 (cadr (member-eq :allocator *fn2-ccu-small*)))
   *fn2-ccu-small*))))
+
+;; The served ceiling (sim/session.lisp fn2-ss-post-ceiling): one connection
+;; POSTs unique small articles in sequence over the seeded store (three
+;; articles, three batches: 6 extents allocated, 3 installed-root edges),
+;; faults off. Each accepted POST takes two extents (its payload and its
+;; batch's journal) and one installed-root edge, so the allocator, not the
+;; root directory, refuses first: at E extents the node accepts (E - 6) / 2
+;; POSTs; the next is a clean "441 ... the store is full" (the article was
+;; sent, the reply came, the connection stays open, no stop), and every
+;; accepted article reads back 220 by its Message-ID.
+(include-book "../sim/session")
+(defun fn2-ccu-served-expected (accepted extents r)
+ (declare (xargs :verify-guards nil))
+ (b* (((unless (and (consp r) (eq (car r) :ok) (equal (nth 1 r) 200))) nil)
+      (before (nth 2 r)) (records (nth 3 r)) (batches (+ 3 accepted))
+      (ok (car records)) (refused (nth accepted records)) (last (car (last records))))
+  (and (equal before (list (list (- extents 6) 0 6 :ok 3) (list 3 3 3)))
+       (equal (len records) (+ accepted 3))
+       (equal (take 4 (nth (- accepted 1) records)) (list accepted 340 240 220))
+       (equal (take 4 ok) (list 1 340 240 220))
+       (equal (take 4 refused) (list (+ 1 accepted) 340 441 :not-asked))
+       (equal (nth 5 refused) (list 0 0 extents :all-live batches))
+       (equal (nth 6 refused) (list batches batches batches))
+       (equal (nthcdr 7 refused) (list :none nil))
+       (equal (nthcdr 5 last) (nthcdr 5 refused)))))
+(make-event `(defconst *fn2-ccu-served-session*
+  ',(fn2-ss-post-ceiling 138560 *fn2-ss-cc-session-profile* 12 3)))
+(make-event `(defconst *fn2-ccu-served-node*
+  ',(fn2-ss-post-ceiling 138560 *fn2-ss-cc-node-profile* 80 3)))
+(assert-event (fn2-ccu-served-expected 5 16 *fn2-ccu-served-session*))
+(assert-event (fn2-ccu-served-expected 61 128 *fn2-ccu-served-node*))
+;; teeth: one acceptance more or fewer is refused
+(assert-event (not (fn2-ccu-served-expected 6 16 *fn2-ccu-served-session*)))
+(assert-event (not (fn2-ccu-served-expected 60 128 *fn2-ccu-served-node*)))
