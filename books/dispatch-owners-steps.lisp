@@ -13,6 +13,7 @@
 ; profile and prior core.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "host-ops")
 
 ;; The stubs and the hooks as chain facts at the commit kind: their
 ;; constraints, each under K the commit kind (and a hook's OKIND not it).
@@ -56,3 +57,20 @@
   (implies (fn2-dh-owners-ok *fn2-commit-kind* fn2-core)
            (fn2-dh-owners-ok *fn2-commit-kind* (mv-nth 4 (fn2-turn fn2-core))))
   :hints (("Goal" :in-theory '(fn2-dh-owners-of-fn2-turn (:e equal) (:e not)))))
+;; The host's steps on the core between turns: the adapter's posts, acks
+;; and finishes (host-ops.lisp), each writing only the operation table, so
+;; each keeps the stored owners at every K. (host-boundary.lisp's other
+;; entries read the core.)
+(defconst *fn2-dh-host-steps*
+  '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
+    fn2-host-count-stray fn2-host-outbox-ack fn2-host-op-finish))
+(make-event (value (cons 'progn (fn2-dh-chain-forms-m (fn2-dh-postorder-m *fn2-dh-host-steps* :owners (w state)) nil :owners))))
+(assert-event
+ (let ((w (w state)))
+   (and (getpropc 'fn2-dh-owners-of-fn2-host-post-result 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-post-accept-result 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-post-clock 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-post-signal 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-count-stray 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-outbox-ack 'theorem nil w)
+        (getpropc 'fn2-dh-owners-of-fn2-host-op-finish 'theorem nil w))))
