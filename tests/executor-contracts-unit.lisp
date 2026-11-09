@@ -109,10 +109,13 @@
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-refuser 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
 (in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir
-                    fn2-machine-observe-fn2-conn-default-ops-pool))
+                    fn2-machine-observe-fn2-conn-default-ops-pool fn2-machine-observe-fn2-conn-default-keeps-units
+                    fn2-machine-observe-fn2-conn-default-dispatch-owners))
 ;; the refusing run keeps the rows the commit kind holds (its held chain)
+;; and the stored owners avoiding it
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-refuser) (w state)) 'fn2-conn))))
-(make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-refuser 4 (w state))))
+(make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-refuser 4 nil (w state))))
+(make-event (value (fn2-dh-owners-claim-form 'fn2-conn-run-stub 'fn2-ect-refuser 4 'fn2-conn (w state))))
 (defattach (fn2-conn-run-stub fn2-ect-refuser)
            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
@@ -174,13 +177,53 @@
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-closer 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-closer) (w state)) 'fn2-conn))))
+(make-event (value (fn2-dh-owners-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-closer 4 'fn2-conn (w state))))
 (assert-event
- (let ((bad (fn2-dh-bad-hyps (fn2-dh-all-hyps (fn2-dh-facts 'fn2-ect-commit-closer (w state))) *fn2-commit-kind*)))
+ (let ((bad (fn2-dh-bad-hyps (fn2-dh-all-hyps (fn2-dh-facts 'fn2-ect-commit-closer (w state)) nil) *fn2-commit-kind* nil)))
    (and (consp bad) (equal (cadr (car bad)) 'fn2-issue-close))))
 (must-fail
- (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-closer 4 (w state)))))
+ (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-closer 4 nil (w state)))))
 (must-fail
  (defattach (fn2-conn-run-stub fn2-ect-commit-closer)
+            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
+            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
+            (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
+
+;; THE STORED OWNERS (FN2-DISPATCH-OWNERS): a connection run taking a cursor
+;; row whose conn-kind is the commit kind stores the commit kind as an
+;; owner the cursor later writes as, so its owners claim is refused naming
+;; the take down to FN2-CURSOR-SET-CONN-KIND, and its defattach fails. Its
+;; held claim is refused too: the take's held conclusions read stored owners,
+;; so its chain carries the take's owner hypotheses (the walk is not
+;; ordered: it does not see that the read precedes the store); its KIDS and
+;; directory contracts are proved. The refusing run above meets both.
+(defun fn2-ect-commit-owner (id budget fn2-core)
+  (declare (xargs :stobjs fn2-core
+                  :guard (and (fn2-core-wfp fn2-core) (fn2-machine-idp id fn2-core)
+                              (equal (fn2-machine-kind id fn2-core) *fn2-conn-kind*)))
+           (ignore budget))
+  (mv-let (code x xgen fn2-core)
+    (fn2-machine-take-fn2-cursor *fn2-none* id 0 *fn2-commit-kind* 0 0 0 0 0 0 0 0 0 0 0 fn2-core)
+    (declare (ignore code x xgen))
+    (fn2-machine-refuse-phase id fn2-core)))
+(fn2-core-preserves fn2-ect-commit-owner (id budget fn2-core) :position 4 :rows nil)
+(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-commit-owner) 'fn2-conn (w state) nil 64) 'fn2-conn))))
+(make-event (value (fn2-dc-frame-check 'fn2-conn-run-stub 'fn2-ect-commit-owner 'fn2-conn
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) (w state))))
+(make-event (value (cons 'progn (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
+(make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-owner 4 '(id budget fn2-core)
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+(make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
+(must-fail
+ (make-event (value (fn2-dh-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-owner 4 nil (w state)))))
+(assert-event
+ (let ((bad (fn2-dh-bad-hyps (fn2-dh-all-hyps (fn2-dh-facts 'fn2-ect-commit-owner (w state)) t) *fn2-commit-kind* t)))
+   (and (consp bad) (equal (cadr (car bad)) 'fn2-machine-take-fn2-cursor)
+        (member-eq 'fn2-cursor-set-conn-kind (car bad)))))
+(must-fail
+ (make-event (value (fn2-dh-owners-claim-form 'fn2-conn-run-stub 'fn2-ect-commit-owner 4 'fn2-conn (w state)))))
+(must-fail
+ (defattach (fn2-conn-run-stub fn2-ect-commit-owner)
             (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
             (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
             (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
