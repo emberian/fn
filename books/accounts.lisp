@@ -662,7 +662,8 @@
   :rule-classes :forward-chaining)
 (defthm fn2-account-entriesp-alistp
   (implies (fn2-account-entriesp entries p) (alistp entries))
-  :hints (("Goal" :in-theory (disable fn2-account-entryp))))
+  :hints (("Goal" :in-theory (disable fn2-account-entryp)))
+  :rule-classes :forward-chaining)
 (defun fn2-account-reserve-total (key entries)
   (declare (xargs :guard t))
   (if (atom entries) 0

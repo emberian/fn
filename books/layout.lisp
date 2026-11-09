@@ -56,7 +56,11 @@
          (fn2-layout-kindp (cadar layout))
          (fn2-layout-name-freep (caar layout) (cdr layout))
          (fn2-layoutp (cdr layout)))))
-(defthm fn2-layoutp-list (implies (fn2-layoutp layout) (true-listp layout)))
+;; A compound recognizer: a layout assumed (a hypothesis, a guard, a case) is a
+;; true list by type-set. As a rewrite rule it backchained from every
+;; TRUE-LISTP goal in every book above this one into the recursive recognizer.
+(defthm fn2-layoutp-list (implies (fn2-layoutp layout) (true-listp layout))
+  :rule-classes :compound-recognizer)
 (defthm fn2-layoutp-head
   (implies (and (fn2-layoutp layout) (consp layout))
            (and (consp (car layout)) (consp (cdar layout))
