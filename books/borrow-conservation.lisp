@@ -163,12 +163,13 @@
 (fn2-bc-host-rows fn2-host-outbox-ack (n) 1)
 (fn2-bc-host-rows fn2-host-op-finish (slot gen) 1)
 ;; ---------------------------------------------------------------------------
-;; FN2-CORE-BORROW-CONSERVATION (A2): over every step that leases or releases
-;; a borrow (each action's issue, the arm-wake issue, and one harvest), each
-;; pool row's out-count stays the number of live send/write operations on
-;; that row that have not released, every live borrow names its row's current
-;; generation, and only a send may release early. So the release a harvested
-;; operation triggers always spends a borrow that operation itself counted.
+;; A2 over the steps named here: each action's issue and arm-wake, one
+;; harvest, the core pool writers and the host's loan write, the host's ops
+;; entries and the mailbox. Each pool row's out-count stays the number of live
+;; send/write operations on that row that have not released, every live borrow
+;; names its row's current generation, and only a send may release early. The
+;; keystone FN2-CORE-BORROW-CONSERVATION (borrow-faces.lisp) adds every
+;; machine-arm face that writes the pool.
 (defconst *fn2-core-borrow-steps*
   '(:harvest :receive :send :read :write :fence :accept :close :cancel :entropy :arm-wake
     :reserve :release :reset :pool-write :copy-range :hand :accept-hand :drop-prefix :truncate :loan-write
@@ -272,12 +273,6 @@
        (fn2-core-borrows-accounted-check fn2-core)))
 (defun-nx fn2-core-borrow-conclusion (op a core)
   (fn2-core-borrows-accounted-check (fn2-core-borrow-step op a core)))
-(defthm-owed fn2-core-borrow-conservation (op a core)
-  (implies (fn2-core-borrow-hyps op core)
-           (fn2-core-borrow-conclusion op a core))
-  :schema :invariant :from (:columns fn2-pool)
-  :teeth (fn2-core-borrow-teeth)
-  :doc "A2: every issue (each action kind and arm-wake), every harvest, every core pool writer (reserve, release, reset, write, copy-range, hand, accept-hand, drop-prefix, truncate) and the host's loan write, the host boundary's ops entries (post-result, post-accept-result, post-clock, post-signal, count-stray, outbox-ack, op-finish) and the executor's mailbox keep each pool row's out-count equal to the number of live send/write operations on that row that have not released their borrow, with every live borrow naming its row's current generation and may-release only on a send; so the release a harvested operation triggers spends that operation's own counted borrow.")
 (defthm fn2-core-borrow-conservation-proved
   (implies (fn2-core-borrow-hyps op core)
            (fn2-core-borrow-conclusion op a core))
@@ -293,7 +288,3 @@
                                    fn2-ops-semanticp fn2-core-borrows-accountedp
                                    fn2-core-borrows-accounted-check fn2-core-rows-natp))
            :use ((:instance fn2-core-rows-natp)))))
-(defthm fn2-core-borrow-conservation-statement
-  (fn2-core-borrow-conservation$owed op a core)
-  :hints (("Goal" :in-theory '(fn2-core-borrow-conservation$owed) :use fn2-core-borrow-conservation-proved)))
-(fn2-owed-discharge fn2-core-borrow-conservation fn2-core-borrow-conservation-statement)
