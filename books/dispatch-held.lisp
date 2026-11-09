@@ -710,12 +710,14 @@
     (let ((h (fn2-dh-root-hyp (sublis-var alist (caar hyps)) cformals owners)))
       (fn2-dh-add-hyps (cdr hyps) g alist cformals owners
                        (if (assoc-equal h acc) acc (cons (cons h (cons g (cdar hyps))) acc))))))
-;; OWNERP: only the facts of the owner conclusions
+;; OWNERP: only the facts of the owner conclusions; :HELD, of the others
 (defun fn2-dh-inst-hyps (facts g formals actuals cformals owners ownerp acc)
   (declare (xargs :mode :program))
   (if (atom facts) acc
     (fn2-dh-inst-hyps (cdr facts) g formals actuals cformals owners ownerp
-                      (if (or (not ownerp) (fn2-dh-owner-obs-p (car (car facts))))
+                      (if (cond ((eq ownerp :held) (not (fn2-dh-owner-obs-p (car (car facts)))))
+                                (ownerp (fn2-dh-owner-obs-p (car (car facts))))
+                                (t t))
                           (fn2-dh-add-hyps (nth 3 (car facts)) g (pairlis$ formals actuals) cformals owners acc)
                         acc))))
 (mutual-recursion
@@ -848,6 +850,24 @@
                                     '(union-theories (theory 'fn2-dh-owners-rules) (theory 'fn2-dh-base))
                                   '(theory 'fn2-dh-base)))
             ,@(and recp `(:induct ,call)))))))
+(defun fn2-dh-owner-state-hyp-p (h owners)
+  ; H asks of stored owners: an owner table's or the core's, or a stored owner read
+  (declare (xargs :mode :program))
+  (and (consp h)
+       (or (fn2-dh-owner-obs-p (car h))
+           (and (eq (car h) 'not) (consp (cadr h)) (eq (car (cadr h)) 'equal)
+                (let ((a (cadr (cadr h))) (b (caddr (cadr h))))
+                  (or (and (consp a) (symbolp (car a)) (fn2-dh-owner-of-reader (car a) owners))
+                      (and (consp b) (symbolp (car b)) (fn2-dh-owner-of-reader (car b) owners))))))))
+(defun fn2-dh-owner-state-hyps-p (hyps owners)
+  (declare (xargs :mode :program))
+  (and (consp hyps) (or (fn2-dh-owner-state-hyp-p (caar hyps) owners)
+                        (fn2-dh-owner-state-hyps-p (cdr hyps) owners))))
+(defun fn2-dh-union-hyps (a b)
+  (declare (xargs :mode :program))
+  (cond ((atom b) a)
+        ((assoc-equal (caar b) a) (fn2-dh-union-hyps a (cdr b)))
+        (t (fn2-dh-union-hyps (append a (list (car b))) (cdr b)))))
 (defun fn2-dh-chain-event (fn kind mode world)
   (declare (xargs :mode :program))
   (let* ((outs (fn2-dh-outs-m fn mode world))
@@ -857,14 +877,17 @@
          (body (getpropc fn 'unnormalized-body nil world))
          (owners (fn2-dh-owners world))
          (kids (and (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world)) (fn2-dh-kids-uses fn kind mode world)))
-         (hyps (if (or kids mode) nil (reverse (fn2-dh-walk body nil fn nil world nil))))
+         (ohyps (if kids nil (reverse (fn2-dh-walk body nil fn t world nil))))
+         ;; the held conclusions need the callees' held facts, and their
+         ;; owner facts only when a held hypothesis asks of stored owners
+         (hyps0 (if (or kids mode) nil (reverse (fn2-dh-walk body nil fn :held world nil))))
+         (hyps (if (fn2-dh-owner-state-hyps-p hyps0 owners) (fn2-dh-union-hyps hyps0 ohyps) hyps0))
          ;; a pool writer checking a row's owner (a code of *fn2-dh-pool-codes*)
          ;; against its own OKIND, when its callees' lemmas do not prove it:
          ;; it writes as OKIND
          (checkp (and (not kids) (not mode) (member-eq 'okind formals) (intersectp-eq *fn2-dh-pool-codes* (all-fnnames body))))
          (chyps (append hyps (list (list '(not (equal okind fn2-dh-k)) fn :owner-check))))
          (touches (and owners (intersectp-eq (getpropc fn 'stobjs-in nil world) (cons 'fn2-core (strip-cars owners)))))
-         (ohyps (if kids nil (reverse (fn2-dh-walk body nil fn t world nil))))
          (recp (getpropc fn 'recursivep nil world))
          (old (fn2-dh-facts fn world)))
     (cond

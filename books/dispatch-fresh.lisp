@@ -34,7 +34,7 @@
           (cons `(defthm ,(fn2-columns-sym stub "-FRESH-LENT")
                    (implies (and (fn2-env-freshness log fn2-core) (fn2-env-lent-ok fn2-core))
                             (and (fn2-env-freshness log (mv-nth 1 ,call)) (fn2-env-lent-ok (mv-nth 1 ,call))))
-                   :hints (("Goal" :in-theory '(fn2-dispatch-ops-pool)
+                   :hints (("Goal" :in-theory '(fn2-dispatch-ops-pool fn2-core-ops)
                             :use ((:instance fn2-dfr-fresh-lent-of-ops-io (a fn2-core) (b (mv-nth 1 ,call)))
                                   ,(fn2-columns-sym stub "-OPS-POOL") ,(fn2-columns-sym stub "-KEEPS-UNITS")))))
                 (fn2-dfr-events (cdr names) world)))))))

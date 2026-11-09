@@ -209,7 +209,7 @@
 (make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-commit-owner) 'fn2-conn (w state) nil 64) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-check 'fn2-conn-run-stub 'fn2-ect-commit-owner 'fn2-conn
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) (w state))))
-(make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-commit-owner) 'fn2-conn))))
+(make-event (value (cons 'progn (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-commit-owner 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
 (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-ect-commit-owner) (w state)) 'fn2-conn))))
