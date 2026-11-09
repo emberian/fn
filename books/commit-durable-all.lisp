@@ -13088,26 +13088,372 @@
                          (:instance fn2-env-f-end-move (v id) (a fn2-core) (b ,b))
                          (:instance fn2-env-f-step (v id) (a fn2-core) (b ,b) (cs ',cs) (ch ',ch))))))))))
 (make-event (value (cons 'progn (fn2-env-f-end-arm-events :notify 9))))
+;; F AT :DRAINING: the drain step under F (FN2-ENV-F-SUB-DRAIN-PHASE: F rules out its follower move) leaves a
+;; :draining row :draining or :free, so the visit is an end move (FN2-ENV-F-DRAINING-ARM).
+(make-event
+ (let* ((ev (get-event 'fn2-commit~fn2-commit-sub-drain-arm-phase (w state)))
+        (th (cadr (member :in-theory (cdr (car (cadr (member :hints ev)))))))
+        (runes (unquote (cadr th))))
+   (value
+    `(defthm fn2-env-f-sub-drain-phase
+       ; under F the drain step of a :draining row leaves it :draining or :free (no follower move)
+       (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                     (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-draining*)
+                     (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) (subsetp-equal '(0) fn2-arm-pset))
+                (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-sub-drain id budget fn2-core))) fn2-arm-pset))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (union-theories '(,@runes fn2-env-f-pub-p fn2-env-f-row-reads) (theory 'fn2-arm-frame-base))
+                :do-not-induct t
+                :use ((:instance fn2-env-f-follower (c fn2-core)))))))))
+(defthm fn2-env-f-draining-phase
+  ; under F the :draining arm leaves the row :draining or :free
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-draining*)
+                (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) (subsetp-equal '(0 10) fn2-arm-pset))
+           (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-draining id budget fn2-core))) fn2-arm-pset))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run-draining fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase
+                                               fn2-core-stop-arm-phase (:e subsetp-equal) subsetp-equal)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-sub-drain-phase)))))
+(defthm fn2-env-f-draining-next
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-draining*))
+           (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) '(0 10)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit~fn2-machine-contract-check-arm-phase
+                                               fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase fn2-core-stop-arm-phase fn2-commit-idp)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-draining-phase (fn2-arm-pset '(0 10)))
+                 (:instance fn2-env-row-phase-snapshot)))))
+(make-event (value (cons 'progn (fn2-env-f-end-arm-events :draining 10))))
+;; F AT :COLLECT, :SEAL AND :DROPPING. A visit is a move F-TR allows when the root's abort fields
+;; (FN2-ENV-FAR, observed by FN2-ENV-F-AR) move only by the refusal's mark (the row then :dropping and
+;; unwritten: FN2-ENV-F-AR-OF-MARK-ABORT) or by the newest dropped batch's close (the row then :draining:
+;; FN2-ENV-F-AR-OF-END-ABORT), a written row is never refused (-WRITTEN) and a dropped batch drains only
+;; behind no older dropping partner (FN2-ENV-F-DROPPING-OLDER). FN2-ENV-F-PHASE-OF-<WRITER>: at a commit
+;; row a writer sets the phase it is given (the arm contracts state membership only).
+(defthm fn2-env-f-idp-machine-idp
+  ; a commit row's id is a machine id whose slot is a commit-table row
+  (implies (fn2-commit-idp id c)
+           (and (fn2-machine-idp id c) (< (fn2-machine-slot id c) (fn2-commit-rows (fn2-commit-table c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code))))
+(defun fn2-env-f-write-phase-events (w args hyps)
+  ; FN2-ENV-F-PHASE-OF-<W>: at a commit row, the writer W (its other arguments ARGS under HYPS) sets the phase it is given
+  (declare (xargs :mode :program))
+  `((make-event
+     (let* ((ev (get-event ',(fn2-columns-sym w "-ARM-PHASE") (w state)))
+            (th (cadr (member :in-theory (cdr (car (cadr (member :hints ev)))))))
+            (runes (unquote (cadr th))))
+       (value
+        `(defthm ,',(fn2-columns-sym (fn2-columns-col-name 'fn2-env-f-phase-of w) "")
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core) (natp p) (< p 13) ,@',hyps)
+                    (equal (fn2-machine-phase id (,',w id p ,@',args fn2-core)) p))
+           :hints (("Goal" :in-theory (union-theories '(,@runes (:e member-equal) member-equal) (theory 'fn2-arm-frame-base))
+                    :do-not-induct t :use ((:instance fn2-env-f-idp-machine-idp (c fn2-core)))))))))))
+(make-event (value (cons 'progn (fn2-env-f-write-phase-events 'fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open '(0 0 o 0) '((member-equal o '(0 1)))))))
+(defthm fn2-env-f-root-of-mark-abort
+  ; the abort mark writes the root's aborting batch and first event alone, at row 0, opening or lowering the abort at the batch
+  (let ((r (nth 31 c)) (r2 (nth 31 (fn2-commit-mark-abort bt first c))))
+    (and (equal (nth *fn2-commit-root-rows* r2) (nth *fn2-commit-root-rows* r))
+         (equal (nth *fn2-commit-root-proposed$ai* r2) (nth *fn2-commit-root-proposed$ai* r))
+         (equal (nth *fn2-commit-root-installed$ai* r2) (nth *fn2-commit-root-installed$ai* r))
+         (equal (nth *fn2-commit-root-published$ai* r2) (nth *fn2-commit-root-published$ai* r))
+         (or (equal r2 r)
+             (and (< 0 (nth *fn2-commit-root-rows* r))
+                  (equal (nth 0 (nth *fn2-commit-root-aborting$ai* r2)) bt)
+                  (or (equal (nth 0 (nth *fn2-commit-root-aborting$ai* r)) 0)
+                      (< (nfix bt) (nfix (nth 0 (nth *fn2-commit-root-aborting$ai* r)))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-mark-abort fn2-core-commit-root
+                                               update-fn2-core-commit-root fn2-commit-root-set-aborting fn2-commit-root-set-abort-event
+                                               update-fn2-commit-root-aborting$ai update-fn2-commit-root-abort-event$ai
+                                               fn2-commit-root-aborting fn2-commit-root-aborting$ai fn2-commit-root-rows update-nth-array
+                                               nth-update-nth (:e nth) (:e zp) (:e nfix) (:e equal) (:e <) nth-0-cons nth-add1 car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+           :do-not-induct t)))
+(defthm fn2-env-f-ar-of-mark-abort
+  ; the abort mark opens (or lowers) the abort at the batch and leaves proposed, installed and published
+  (implies (natp bt)
+           (let ((ar (fn2-env-f-ar c)) (ar2 (fn2-env-f-ar (fn2-commit-mark-abort bt first c))))
+             (and (equal (nth 1 ar2) (nth 1 ar)) (equal (nth 2 ar2) (nth 2 ar)) (equal (nth 3 ar2) (nth 3 ar))
+                  (or (equal (nth 0 ar2) (nth 0 ar))
+                      (and (equal (nth 0 ar2) bt) (or (equal (nth 0 ar) 0) (< bt (nth 0 ar))))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-f-ar fn2-commit-abort-state fn2-env-root fn2-core-commit-root
+                                               fn2-commit-root-aborting fn2-commit-root-aborting$ai fn2-commit-root-proposed fn2-commit-root-proposed$ai
+                                               fn2-commit-root-installed fn2-commit-root-installed$ai fn2-commit-root-published fn2-commit-root-published$ai
+                                               fn2-commit-root-rows (:e nth) nth-0-cons nth-add1 (:e zp) car-cons cdr-cons nfix (:e nfix) mv-nth (:e mv-nth) natp)
+                                             (theory 'minimal-theory))
+           :do-not-induct t :use ((:instance fn2-env-f-root-of-mark-abort)))))
+(fn2-defview fn2-env-far :carrier fn2-core
+  :select ((fn2-commit-root :columns (aborting abort-event proposed installed published) :rows (:one 0) :scalars (rows)))
+  :observe fn2-env-f-ar
+  :open (fn2-env-f-ar fn2-commit-abort-state fn2-env-root fn2-core-commit-root fn2-commit-root-rows
+         fn2-commit-root-aborting fn2-commit-root-abort-event fn2-commit-root-proposed fn2-commit-root-installed fn2-commit-root-published
+         fn2-commit-root-aborting$ai fn2-commit-root-abort-event$ai fn2-commit-root-proposed$ai fn2-commit-root-installed$ai
+         fn2-commit-root-published$ai))
+(defthm fn2-env-far-view-equivalence
+  (implies (fn2-env-far b a) (equal (fn2-env-f-ar b) (fn2-env-f-ar a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-far))))
+(fn2-with-column-projections (fn2-env-far)
+(defthm fn2-env-f-seal-step-far
+  ; the seal step writes no abort field of the root
+  (fn2-env-far (mv-nth 1 (fn2-commit-seal-step id fn2-core)) fn2-core)
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-far-reflexive) (theory 'fn2-column-projection-base)) :do-not-induct t)
+         (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world)))))
+(defthm fn2-env-f-seal-step-idp
+  ; the seal step keeps the directory and the row's frame outside its seal columns: a commit row stays one
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c))
+           (fn2-commit-idp id (mv-nth 1 (fn2-commit-seal-step id c))))
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) (:e subsetp-equal) (:e natp) fn2-arm-kids-refl)
+           :do-not-induct t
+           :use ((:instance fn2-env-seal-step-kids (a c))
+                 (:instance fn2-arm-kids-nth (i 0) (k 3) (free '(9 0 5 22 23 24 25 26 31)) (a c) (b (mv-nth 1 (fn2-commit-seal-step id c))))
+                 (:instance fn2-ctf-dir-refl (a c))
+                 (:instance fn2-ctf-dir-of-nth (b (mv-nth 1 (fn2-commit-seal-step id c))) (x c) (a c))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id c)) (columns '(15 16 28))
+                            (children '(0 20 21 22 23 24 25 26 27 28 29 30 31 56 10 19 5)) (a c))
+                 (:instance fn2-commit~fn2-commit-seal-step-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id c))
+                            (fn2-arm-cs '(15 16 28)) (fn2-arm-ch '(0 20 21 22 23 24 25 26 27 28 29 30 31 56 10 19 5))
+                            (fn2-arm-c0 c) (fn2-core c))
+                 (:instance fn2-env-read-codes-of-row-frame (row (fn2-machine-slot id c)) (cs '(15 16 28))
+                            (ch '(0 20 21 22 23 24 25 26 27 28 29 30 31 56 10 19 5)) (a c) (b (mv-nth 1 (fn2-commit-seal-step id c))))))))
+(defun fn2-env-f-written-events (state-name pset)
+  ; FN2-ENV-F-<STATE>-WRITTEN: a written row at STATE is not refused; the visit leaves its phase in PSET (no :dropping)
+  (declare (xargs :mode :program))
+  (let* ((arm (fn2-env-arm-fn state-name)) (const (fn2-env-arm-state-const state-name))
+         (lem (fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-WRITTEN-ARM")))
+    `((make-event
+       (let* ((ev (get-event ',(fn2-columns-sym arm "-ARM-PHASE") (w state)))
+              (th (cadr (member :in-theory (cdr (car (cadr (member :hints ev)))))))
+              (runes (unquote (cadr th))))
+         (value
+          `(defthm ,',lem
+             (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (not (equal (fn2-commit-row-cb-wrote id fn2-core) 0))
+                           (equal (fn2-machine-phase id fn2-core) ,',const)
+                           (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset) (subsetp-equal ',',pset fn2-arm-pset))
+                      (member-equal (fn2-machine-phase id (mv-nth 4 (,',arm id budget fn2-core))) fn2-arm-pset))
+             :rule-classes nil
+             :hints (("Goal" :in-theory (union-theories '(,@runes) (theory 'fn2-arm-frame-base)) :do-not-induct t))))))
+      (defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-WRITTEN")
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (not (equal (fn2-commit-row-cb-wrote id fn2-core) 0))
+                      (equal (fn2-commit-row-phase id fn2-core) ,const))
+                 (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) ',pset))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit~fn2-machine-contract-check-arm-phase
+                                                     fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase fn2-core-stop-arm-phase fn2-commit-idp)
+                                                   (theory 'fn2-arm-frame-base))
+                 :do-not-induct t
+                 :use ((:instance ,lem (fn2-arm-pset ',pset)) (:instance fn2-env-row-phase-snapshot))))))))
+(defun fn2-env-f-refuse-arm-events (state-name code wpset pres)
+  ; for an arm that may refuse an unwritten batch (:collect, :seal) from one
+  ; of PRES ((PRE . KEEP): KEEP shows PRE keeps the root's abort fields):
+  ; FN2-ENV-F-<STATE>-ROOT (the root's abort fields move only by the refusal's mark,
+  ; the row then :dropping and unwritten), -WRITTEN (a written row is not
+  ; refused), -MOVE (the visit is a move F-TR allows) and -ARM (F kept)
+  (declare (xargs :mode :program))
+  (let* ((e (assoc code *fn2-commit-arm-decls*)) (ch (cadr e)) (cs (caddr e))
+         (arm (fn2-env-arm-fn state-name)) (const (fn2-env-arm-state-const state-name))
+         (b '(mv-nth 4 (fn2-commit-run id budget fn2-core)))
+         (marks (loop$ for p in pres collect `(fn2-commit-mark-abort (fn2-commit-row-batch-no id fn2-core) (fn2-commit-row-first-key id fn2-core) ,(car p))))
+         (root (fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-ROOT"))
+         (written (fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-WRITTEN"))
+         (move (fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-MOVE"))
+         (frame (fn2-columns-sym (fn2-columns-col-name 'fn2-env state-name) "-ARM-FRAME"))
+         (next (fn2-columns-sym (fn2-columns-col-name 'fn2-env-commit-run state-name) "-NEXT")))
+    (if (or (member 9 ch) (intersectp cs '(9 12 29 33)))
+        (er hard 'fn2-env-f-refuse-arm-events "~x0 writes what F reads: ~x1." state-name e)
+      (append
+       `((fn2-with-column-projections (fn2-env-far)
+          (defthm ,root
+            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (equal (fn2-commit-row-phase id fn2-core) ,const))
+                     (implies (not (fn2-env-far ,b fn2-core))
+                              (and (equal (fn2-machine-phase id ,b) *fn2-commit-state-dropping*)
+                                   (equal (fn2-commit-row-cb-wrote id fn2-core) 0)
+                                   (or ,@(loop$ for m in marks collect `(fn2-env-far ,b ,m))))))
+            :rule-classes nil
+            :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-far) (theory 'fn2-column-projection-base))
+                                                       (union-theories '(fn2-commit-run ,arm fn2-commit-idp fn2-commit-arm-row-phase
+                                                                         fn2-env-f-phase-of-fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open
+                                                                         fn2-commit~fn2-commit-mark-abort-arm-phase fn2-commit~fn2-machine-contract-check-arm-phase
+                                                                         (:e member-equal) member-equal fn2-env-x-reads-mark-abort fn2-commit-mark-abort-type
+                                                                         fn2-commit-mark-abort-wfp fn2-env-f-seal-step-idp fn2-commit-seal-step-preserves-type
+                                                                         fn2-commit-seal-step-preserves-wfp)
+                                                                       (theory 'fn2-arm-frame-base)))
+                     :do-not-induct t)
+                    (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world))))))
+       (fn2-env-f-written-events state-name wpset)
+       `((defthm ,move
+           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                         (equal (fn2-commit-row-phase id fn2-core) ,const))
+                    (fn2-env-f-move id fn2-core ,b))
+           :rule-classes nil
+           :hints (("Goal" :in-theory '(fn2-env-f-move fn2-env-f-tr fn2-env-f-tr-quiet fn2-env-f-tr-refuse fn2-env-f-pre-p fn2-env-f-live-p
+                                        fn2-env-f-row-reads (:e member-equal) member-equal natp (:type-prescription fn2-machine-batch-no-natp)
+                                        (:type-prescription fn2-machine-slot-natp))
+                    :do-not-induct t
+                    :use ((:instance ,root) (:instance ,written) (:instance ,next) (:instance ,frame)
+                          (:instance fn2-env-commit-idp-kind)
+                          (:instance fn2-machine-cb-wrote-of-row-frame (a fn2-core) (b ,b) (row (fn2-machine-slot id fn2-core))
+                                     (cs ',cs) (ch ',ch))
+                          (:instance fn2-env-far-view-equivalence (a fn2-core) (b ,b))
+                          ,@(loop$ for m in marks collect `(:instance fn2-env-far-view-equivalence (a ,m) (b ,b)))
+                          ,@(loop$ for p in pres append
+                                   `((:instance fn2-env-f-ar-of-mark-abort (bt (fn2-machine-batch-no id fn2-core))
+                                                (first (fn2-commit-row-first-key id fn2-core)) (c ,(car p)))
+                                     ,@(and (cdr p) `((:instance ,(cdr p)) (:instance fn2-env-far-view-equivalence (a fn2-core) (b ,(car p)))))))))))
+         (defthm ,(fn2-columns-sym (fn2-columns-col-name 'fn2-env-f state-name) "-ARM")
+           (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                         (equal (fn2-commit-row-phase id fn2-core) ,const))
+                    (fn2-env-f ,b))
+           :hints (("Goal" :in-theory '(fn2-commit-idp natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal)
+                    :do-not-induct t
+                    :use ((:instance ,frame) (:instance ,move) (:instance fn2-env-f-non-row-visit)
+                          (:instance fn2-env-f-step (v id) (a fn2-core) (b ,b) (cs ',cs) (ch ',ch)))))))))))
+(make-event (value (cons 'progn (fn2-env-f-refuse-arm-events :collect 1 '(2 11 1) '((fn2-core))))))
+(make-event (value (cons 'progn (fn2-env-f-refuse-arm-events :seal 2 '(3 11 2) '((fn2-core) ((mv-nth 1 (fn2-commit-seal-step id fn2-core)) . fn2-env-f-seal-step-far))))))
+(defthm fn2-env-f-root-of-end-abort
+  ; the newest dropped batch closes the abort: proposed back to aborting-1, aborting 0
+  (let ((r (nth 31 c)) (r2 (nth 31 (fn2-commit-end-abort id c))) (bt (fn2-machine-batch-no id c)))
+    (and (equal (nth *fn2-commit-root-rows* r2) (nth *fn2-commit-root-rows* r))
+         (equal (nth *fn2-commit-root-installed$ai* r2) (nth *fn2-commit-root-installed$ai* r))
+         (equal (nth *fn2-commit-root-published$ai* r2) (nth *fn2-commit-root-published$ai* r))
+         (or (equal r2 r)
+             (and (fn2-commit-idp id c) (< 0 (nth *fn2-commit-root-rows* r))
+                  (equal bt (nth 0 (nth *fn2-commit-root-proposed$ai* r)))
+                  (posp (nth 0 (nth *fn2-commit-root-aborting$ai* r)))
+                  (equal (nth 0 (nth *fn2-commit-root-aborting$ai* r2)) 0)
+                  (equal (nth 0 (nth *fn2-commit-root-proposed$ai* r2)) (- (nth 0 (nth *fn2-commit-root-aborting$ai* r)) 1))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-end-abort fn2-core-commit-root fn2-core-stop update-fn2-core-control
+                                               update-fn2-core-commit-root fn2-commit-root-set-aborting fn2-commit-root-set-abort-event
+                                               fn2-commit-root-set-proposed fn2-commit-root-set-first-key
+                                               update-fn2-commit-root-aborting$ai update-fn2-commit-root-abort-event$ai
+                                               update-fn2-commit-root-proposed$ai update-fn2-commit-root-first-key$ai
+                                               fn2-commit-root-aborting fn2-commit-root-aborting$ai fn2-commit-root-proposed fn2-commit-root-proposed$ai
+                                               fn2-commit-root-abort-event fn2-commit-root-abort-event$ai fn2-commit-root-rows update-nth-array
+                                               nth-update-nth (:e nth) (:e zp) (:e nfix) (:e equal) (:e <) nth-0-cons nth-add1 car-cons cdr-cons posp)
+                                             (theory 'minimal-theory))
+           :do-not-induct t)))
+(defthm fn2-env-f-ar-of-end-abort
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (let ((ar (fn2-env-f-ar c)) (ar2 (fn2-env-f-ar (fn2-commit-end-abort id c))))
+             (or (equal ar2 ar)
+                 (and (posp (nth 0 ar)) (equal (fn2-machine-batch-no id c) (nth 1 ar))
+                      (equal ar2 (list 0 (- (nth 0 ar) 1) (nth 2 ar) (nth 3 ar)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-f-ar fn2-commit-abort-state fn2-env-root fn2-core-commit-root
+                                               fn2-commit-root-aborting fn2-commit-root-aborting$ai fn2-commit-root-proposed fn2-commit-root-proposed$ai
+                                               fn2-commit-root-installed fn2-commit-root-installed$ai fn2-commit-root-published fn2-commit-root-published$ai
+                                               fn2-commit-root-rows (:e nth) nth-0-cons nth-add1 (:e zp) car-cons cdr-cons nfix (:e nfix) mv-nth (:e mv-nth)
+                                               natp posp (:type-prescription fn2-machine-batch-no-natp))
+                                             (theory 'minimal-theory))
+           :do-not-induct t :cases ((equal (nth 31 (fn2-commit-end-abort id c)) (nth 31 c)))
+           :use ((:instance fn2-env-f-root-of-end-abort)))))
+(make-event (value (cons 'progn (fn2-env-f-write-phase-events 'fn2-commit-write+phase+cb-stage '(0) nil))))
+(fn2-with-column-projections (fn2-env-far)
+(defthm fn2-env-f-dropping-root
+  ; the :dropping visit moves the root's abort fields only by the abort's close, the row then :draining
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dropping*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (implies (not (fn2-env-far b fn2-core))
+                      (and (equal (fn2-machine-phase id b) *fn2-commit-state-draining*)
+                           (fn2-env-far b (fn2-commit-end-abort id fn2-core))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-far) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run fn2-commit-run-dropping fn2-commit-idp fn2-commit-arm-row-phase
+                                                               fn2-env-f-phase-of-fn2-commit-write+phase+cb-stage
+                                                               fn2-commit~fn2-machine-contract-check-arm-phase
+                                                               (:e member-equal) member-equal fn2-env-x-reads-end-abort fn2-commit-end-abort-type
+                                                               fn2-commit-end-abort-wfp)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t)
+         (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world)))))
+(defmacro fn2-env-f-older-dropping (id c)
+  `(and (equal (fn2-commit-peer-phase (fn2-commit-row-partner ,id ,c) ,c) *fn2-commit-state-dropping*)
+        (< (fn2-commit-peer-batch-no (fn2-commit-row-partner ,id ,c) ,c) (fn2-commit-row-batch-no ,id ,c))))
+(make-event
+ (let* ((ev (get-event 'fn2-commit-run-dropping-arm-phase (w state)))
+        (th (cadr (member :in-theory (cdr (car (cadr (member :hints ev)))))))
+        (runes (unquote (cadr th))))
+   (value
+    `(defthm fn2-env-f-dropping-older-arm
+       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-dropping*)
+                     (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset)
+                     (or (member-equal *fn2-commit-state-draining* fn2-arm-pset) (fn2-env-f-older-dropping id fn2-core)))
+                (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-dropping id budget fn2-core))) fn2-arm-pset))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (union-theories '(,@runes) (theory 'fn2-arm-frame-base)) :do-not-induct t))))))
+(defthm fn2-env-f-dropping-older
+  ; a dropped batch behind an older dropping partner stays :dropping
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dropping*)
+                (fn2-env-f-older-dropping id fn2-core))
+           (equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) *fn2-commit-state-dropping*))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-run fn2-commit~fn2-machine-contract-check-arm-phase
+                                               fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase fn2-core-stop-arm-phase fn2-commit-idp
+                                               (:e member-equal) member-equal)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-dropping-older-arm (fn2-arm-pset '(12))) (:instance fn2-env-row-phase-snapshot)))))
+(defthm fn2-env-f-dropping-move
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dropping*))
+           (fn2-env-f-move id fn2-core (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-f-move fn2-env-f-tr fn2-env-f-tr-quiet fn2-env-f-tr-drop
+                               fn2-env-f-row-reads (:e member-equal) member-equal natp nfix posp fn2-commit-peer-phase fn2-commit-peer-batch-no
+                               (:type-prescription fn2-machine-batch-no-natp) (:type-prescription fn2-machine-slot-natp)
+                               (:type-prescription fn2-env-f-commit-idp-boolean))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-dropping-root) (:instance fn2-env-f-dropping-older) (:instance fn2-env-commit-run-dropping-next)
+                 (:instance fn2-env-dropping-arm-frame) (:instance fn2-env-commit-idp-kind)
+                 (:instance fn2-machine-cb-wrote-of-row-frame (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 15 14)) (ch '(29 28 3 2 20 21 31 40 33 0 5)))
+                 (:instance fn2-env-far-view-equivalence (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-far-view-equivalence (a (fn2-commit-end-abort id fn2-core)) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-f-ar-of-end-abort (c fn2-core))
+                 (:instance fn2-env-f-row-reads (c fn2-core))))))
+(defthm fn2-env-f-dropping-arm
+  ; F KEPT BY THE :DROPPING VISIT: it drains only behind no older dropping partner, the newest closing the abort
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dropping*))
+           (fn2-env-f (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :in-theory '(fn2-commit-idp natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-dropping-arm-frame) (:instance fn2-env-f-dropping-move) (:instance fn2-env-f-non-row-visit)
+                 (:instance fn2-env-f-step (v id) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (cs '(0 15 14)) (ch '(29 28 3 2 20 21 31 40 33 0 5)))))))
 ;; OWED (the next proof-floor seat): F KEPT, X ESTABLISHED. Proved: X kept
 ;; by every commit visit given F (FN2-ENV-X-COMMIT-RUN; :dependencies and
 ;; :log-write given done <= issued and pending+1 a u32 at the visited row),
 ;; the host steps and :take, the issue, the handler's loan drop and the
 ;; write/fence handler at a holding row; F kept by any one-row move
-;; FN2-ENV-F-TR allows (FN2-ENV-F-STEP) and by the :log-write, :fence,
-;; :durable, :uncertain, :free and :notify visits (FN2-ENV-F-<ARM>-ARM),
-;; a non-row visit, an out-of-range phase and a stop. Owed: (a) F at the
-;; other arms, each (or core stopped (FN2-ENV-F-MOVE ...)) within its arm
-;; frame, by opening the arm: :draining (open fn2-commit-sub-drain under
-;; F-FOLLOWER: its contract's successors include :uncertain), :collect,
-;; :seal, :dependencies (a refusal: dropping, unwritten, the abort by
-;; fn2-commit-mark-abort), :install/:publish (the swap after an :ok partner
-;; read; a later stop leaves the core stopped, which ends the turn's loop),
-;; :dropping (drains only behind no older dropping partner;
-;; fn2-commit-end-abort); then F at init and admission (fn2-commit-pick: no
-;; open abort, the new batch proposed+1, the other ghost row the partner)
-;; and across the handler (needs (c)); (b) X at the core's init
-;; (alloc-init's zero counts, edges-init's free rows) and XR/XD at
-;; admission (the free extent head, FN2-ENV-ALLOC-RESERVE-SHAPE); (c) the
-;; handler's reach: a result reaches only a row in a write phase, :fence
-;; or :uncertain with work pending (FN2-ENV-X-COMMIT-ON-WRITE-RESULT's
-;; hypothesis, and F's), from J5/J6's op ownership.
+;; FN2-ENV-F-TR allows (FN2-ENV-F-STEP) and by the :collect, :seal,
+;; :log-write, :fence, :durable, :notify, :draining, :uncertain, :dropping
+;; and :free visits (FN2-ENV-F-<ARM>-ARM), a non-row visit, an
+;; out-of-range phase and a stop. Owed: (a) F at :dependencies (its issue
+;; writes cb-wrote: carry "a :dropping result is unwritten" through the
+;; refusal write); (b) F at :install and :publish is HELD BY A RULING: a
+;; stop after the root swap leaves the row at :install with the batch
+;; installed (fn2-commit-root-edge refused: an :installed-root edge row
+;; 6+2e+1 already live, a saturated count, or no matching
+;; :prepared-successor at 6+2e; no invariant in hand constrains the root
+;; edge rows), or at :publish with the batch published
+;; (fn2-successor-publish or fn2-commit-stream-wake answering other than
+;; :ok; both are constrained hooks here, their declared answers include
+;; :state and :bounds). Either breaks F's c2. Such a stop is a recovery
+;; event whose durable effect needs a design decision before any "or
+;; stopped" clause; (c) F at init and admission (fn2-commit-pick: no open
+;; abort, the new batch proposed+1, the other row the partner) and across
+;; the handler (needs (e)); (d) X at the core's init (alloc-init's zero
+;; counts, edges-init's free rows) and XR/XD at admission (the free extent
+;; head, FN2-ENV-ALLOC-RESERVE-SHAPE); (e) the handler's reach: a result
+;; reaches only a row in a write phase, :fence or :uncertain with work
+;; pending (FN2-ENV-X-COMMIT-ON-WRITE-RESULT's hypothesis, and F's), from
+;; J5/J6's op ownership.
