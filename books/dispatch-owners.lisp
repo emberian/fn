@@ -7,10 +7,11 @@
 ; (machines.lisp fn2-dispatch-held-claims). It holds after init (every
 ; column starts at 0) and every function the dispatch's chains reach keeps
 ; it (dispatch-held.lisp: one lemma per function, the writers of the
-; columns asked that the value stored is not K).
+; columns asked that the value stored is not K). Below the commit hooks
+; (assembly-callbacks-b), whose constraints and attachments keep it.
 (in-package "ACL2")
 (include-book "dispatch-held")
-(include-book "assembly-callbacks")
+(include-book "assembly-init")
 
 ;; (stobj owner-column core-accessor)
 (defconst *fn2-dispatch-held-owner-tables*

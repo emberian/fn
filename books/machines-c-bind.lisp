@@ -953,6 +953,31 @@
    (assert-event (fn2-assert-compliant-p '(fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-arg-octets-late fn2-successor-resolve) (w state)))))
 ; The stage-side wrappers, in their own assembly book (assembly-callbacks-c-
 ; commit): the one-minute rule (C-SUCCESSOR-BOOK).
+;; A hook's attachment. Each constraint of the hook is proved of the
+;; attachment by itself: the hook's -CONSTRAINT and -RESULT-CONSP (FN's
+;; definition opened, its KIDS contract used), its KIDS by FN's contract and,
+;; where the hook keeps the stored owners (commit.lisp
+;; fn2-commit-hook-owners-claim), that by FN's owner chain (dispatch-held.lisp)
+;; at the commit kind; the defattach then only cites them.
+(defun fn2-succ-attach-lemmas (names hook fn world)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (let ((thm (getpropc (fn2-columns-sym hook (car names)) 'untranslated-theorem nil world)))
+   (cons `(defthm ,(fn2-columns-sym fn (concatenate 'string "-HOOK" (car names)))
+           ,(subst fn hook thm)
+           :hints (("Goal" :in-theory (enable ,fn) :use ((:instance ,(fn2-columns-sym fn "-ARM-KIDS")))))
+           :rule-classes nil)
+         (fn2-succ-attach-lemmas (cdr names) hook fn world)))))
+(defun fn2-succ-attach-form (hook fn world)
+ (declare (xargs :verify-guards nil))
+ (let ((ownersp (getpropc (fn2-columns-sym hook "-OWNERS") 'theorem nil world)))
+  `(progn
+    ,@(fn2-succ-attach-lemmas '("-CONSTRAINT" "-RESULT-CONSP") hook fn world)
+    (defattach (,hook ,fn)
+     :hints (("Goal" :in-theory (disable ,fn)
+              :use (,(fn2-columns-sym fn "-HOOK-CONSTRAINT") ,(fn2-columns-sym fn "-HOOK-RESULT-CONSP")
+                    (:instance ,(fn2-columns-sym fn "-ARM-KIDS"))
+                    ,@(and ownersp `((:instance ,(fn2-columns-pre "FN2-DH-OWNERS-OF-" fn) (fn2-dh-k *fn2-commit-kind*)))))))))))
 (defmacro fn2-successor-commit-events ()
  '(progn
    (fn2-succ-wrap fn2-successor-stage (tx)
@@ -1065,15 +1090,12 @@
    ; own contract at those children, which its defcost's :tables cover.
    (make-event (value (cons 'progn (fn2-commit-hook-attach-events 'fn2-successor-publish 'fn2-succ-core-publish (w state)))))
    (make-event (value (cons 'progn (fn2-commit-hook-attach-events 'fn2-successor-drop 'fn2-succ-core-drop (w state)))))
-   (defattach (fn2-successor-publish fn2-succ-core-publish)
-    :hints (("Goal" :in-theory (enable fn2-succ-core-publish)
-                    :use ((:instance fn2-succ-core-publish-arm-kids)))))
-   (defattach (fn2-successor-drop fn2-succ-core-drop)
-    :hints (("Goal" :in-theory (enable fn2-succ-core-drop)
-                    :use ((:instance fn2-succ-core-drop-arm-kids)))))
+   (make-event (value (cons 'progn (fn2-dh-chain-forms-m (fn2-dh-postorder-m '(fn2-succ-core-publish) :owners (w state)) nil :owners))))
+   (make-event (value (fn2-succ-attach-form 'fn2-successor-publish 'fn2-succ-core-publish (w state))))
+   (make-event (value (cons 'progn (fn2-dh-chain-forms-m (fn2-dh-postorder-m '(fn2-succ-core-drop) :owners (w state)) nil :owners))))
+   (make-event (value (fn2-succ-attach-form 'fn2-successor-drop 'fn2-succ-core-drop (w state))))
    (make-event (value (cons 'progn (fn2-commit-hook-attach-events 'fn2-member-replay 'fn2-succ-core-replay (w state)))))
-   (defattach (fn2-member-replay fn2-succ-core-replay)
-    :hints (("Goal" :in-theory (enable fn2-succ-core-replay)
-                    :use ((:instance fn2-succ-core-replay-arm-kids)))))
+   (make-event (value (cons 'progn (fn2-dh-chain-forms-m (fn2-dh-postorder-m '(fn2-succ-core-replay) :owners (w state)) nil :owners))))
+   (make-event (value (fn2-succ-attach-form 'fn2-member-replay 'fn2-succ-core-replay (w state))))
    (in-theory (disable fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop fn2-succ-core-replay))
    (assert-event (fn2-assert-compliant-p '(fn2-successor-stage fn2-successor-out fn2-successor-applied fn2-successor-fill-octets fn2-successor-emit fn2-successor-bind fn2-successor-release fn2-succ-core-publish fn2-successor-published fn2-successor-stream-member fn2-succ-core-drop fn2-succ-core-replay) (w state)))))
