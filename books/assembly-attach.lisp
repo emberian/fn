@@ -3,6 +3,7 @@
 ; to the constrained dispatch stubs in assembly-dispatch.lisp after executor.lisp.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "dispatch-held-chain")
 (include-book "assembly-callbacks-d-conn")
 (include-book "assembly-callbacks-d-upload")
 (include-book "assembly-callbacks-d-txn")
