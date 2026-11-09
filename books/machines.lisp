@@ -2441,7 +2441,15 @@
          :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-kind fn2-machine-kind-read-code
                                             fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp
                                             fn2-machines-kind fn2-machines-slot fn2-machines-rows fn2-core-machines))))
-       (in-theory (disable fn2-ctf-dir))
+       ;; a body's branches, kept apart: the relation of an IF from its
+       ;; arms', and an MV-NTH of an IF or a CONS by cases, so a chain
+       ;; through a body's conditional calls does not split on the conditions
+       (defthm fn2-ctf-dir-of-if
+         (implies (and (fn2-ctf-dir x a) (fn2-ctf-dir y a)) (fn2-ctf-dir (if c x y) a)))
+       (defthm fn2-ctf-mv-nth-of-if (equal (mv-nth n (if c x y)) (if c (mv-nth n x) (mv-nth n y))))
+       (defthm fn2-ctf-mv-nth-cons
+         (implies (syntaxp (quotep n)) (equal (mv-nth n (cons x y)) (if (zp n) x (mv-nth (- n 1) y)))))
+       (in-theory (disable fn2-ctf-dir fn2-ctf-dir-of-if fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons))
        ,@(fn2-ctf-dir-update-events children 0 m)
        (deftheory fn2-ctf-dir-base
          (union-theories '(fn2-ctf-dir-refl fn2-ctf-dir-of-update-fn2-core-machines
@@ -2504,14 +2512,22 @@
                          (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',(car d)) (a fn2-core) (b ,out))
                          (:instance fn2-ctf-dir-of-nth (b ,out) (x fn2-core) (a fn2-ctf-c0))))))))
      (t
-      `((defthm ,name ,stmt
-          :hints (("Goal" :in-theory (union-theories
-                                      '(,fn fn2-machines-directory-keeps-refl
-                                        ,@(strip-cdrs (table-alist 'fn2-arm-frame-directory-keeps world))
-                                        ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world))
-                                        ,@(fn2-ctf-dir-callee-runes (fn2-arm-frame-body-callees fn world) world))
-                                      (theory 'fn2-ctf-dir-base))
-                   :do-not-induct t))))))))
+      ;; the body's chain with its branches kept apart (no split on a
+      ;; condition the directory does not depend on), else split
+      (let ((runes `(,fn fn2-machines-directory-keeps-refl
+                     ,@(strip-cdrs (table-alist 'fn2-arm-frame-directory-keeps world))
+                     ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world))
+                     ,@(fn2-ctf-dir-callee-runes (fn2-arm-frame-body-callees fn world) world))))
+        `((make-event
+           '(:or (defthm ,name ,stmt
+                   :hints (("Goal" :in-theory (set-difference-theories
+                                               (union-theories '(fn2-ctf-dir-of-if fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons ,@runes)
+                                                               (theory 'fn2-ctf-dir-base))
+                                               '(mv-nth))
+                            :do-not-induct t)))
+                 (defthm ,name ,stmt
+                   :hints (("Goal" :in-theory (union-theories ',runes (theory 'fn2-ctf-dir-base))
+                            :do-not-induct t)))))))))))
 (defun fn2-ctf-dir-forms (fns kind)
   (declare (xargs :verify-guards nil))
   (if (atom fns) nil
