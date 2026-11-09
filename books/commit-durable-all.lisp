@@ -10323,17 +10323,370 @@
                  (:instance fn2-env-x-rows-necc (c c))
                  (:instance fn2-env-x-of-row-frame (a c) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))) (row (fn2-machine-slot id c))
                             (cs '(5 16 29)) (ch '(30 20 21 5)) (v id))))))
+;; THE LOAN DROP KEEPS X (FN2-ENV-X-COMMIT-DROP-IO). A holding row's unit
+;; drop (fn2-commit-io-edge ... nil) accepts (FN2-ENV-X-DROP-ACCEPTS: a lent
+;; unit's edge row is the live outstanding-io row of its generation over the
+;; row's live handle; a unit not lent drops nothing), returns the unit to a
+;; free edge row and keeps everything else X reads (FN2-ENV-X-DROP); the
+;; handler's fn2-commit-drop-io drops the three in turn and does not stop.
+(defthm fn2-env-lent-bit
+  ; a commit-io unit's loan flag is 0 or 1
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (natp u) (< u (fn2-commit-io-rows (fn2-core-commit-io c))))
+           (or (equal (fn2-commit-io-lent u (fn2-core-commit-io c)) 0)
+               (equal (fn2-commit-io-lent u (fn2-core-commit-io c)) 1)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-io-wfp-of-fn2-core-commit-io fn2-core-commit-io-type natp)
+           :use ((:instance fn2-commit-io-lent-bound (i u) (fn2-commit-io (fn2-core-commit-io c)))
+                 (:instance fn2-commit-io-lent-natp (i u) (fn2-commit-io (fn2-core-commit-io c)))))))
+(defthm fn2-env-io-edge-drop-ok-shape
+  ; an accepted loan drop: a unit not lent changes nothing; a lent one is
+  ; returned (lent 0) and the allocator drops its edge row R; no other child changes
+  (implies (and (fn2-corep c) (fn2-core-wfp c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok))
+           (let* ((b (mv-nth 1 (fn2-commit-io-edge id role nil s g c)))
+                  (r (+ (* 3 (fn2-commit-row id c)) (nfix role))) (io (fn2-core-commit-io c))
+                  (drop (fn2-alloc-edge-drop r (fn2-commit-io-op-gen r io) (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io)
+                                             (fn2-commit-io-counter r io) :outstanding-io
+                                             (fn2-core-extents c) (fn2-core-alloc-edges c))))
+             (and (fn2-commit-idp id c) (< r (fn2-commit-io-rows io))
+                  (if (equal (fn2-commit-io-lent r io) 0)
+                      (and (equal (fn2-core-alloc-edges b) (fn2-core-alloc-edges c))
+                           (equal (fn2-core-extents b) (fn2-core-extents c))
+                           (equal (fn2-core-commit-io b) io))
+                    (and (equal (mv-nth 0 drop) :ok)
+                         (equal (fn2-core-alloc-edges b) (mv-nth 2 drop))
+                         (equal (fn2-core-extents b) (mv-nth 1 drop))
+                         (equal (fn2-core-commit-io b) (fn2-commit-io-set-lent r 0 io))))
+                  (implies (and (natp k) (not (member-equal k (list *fn2-core-commit-io* *fn2-core-extents* *fn2-core-alloc-edges*))))
+                           (equal (nth k b) (nth k c))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(defthm fn2-env-io-edge-drop-code
+  ; the loan drop's code: :ok for a unit not lent, else the allocator's drop at edge row R
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (< (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-commit-io-rows (fn2-core-commit-io c)))
+                (unsigned-byte-p 32 s) (unsigned-byte-p 60 g))
+           (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c))
+                  (let* ((r (+ (* 3 (fn2-commit-row id c)) (nfix role))) (io (fn2-core-commit-io c)))
+                    (if (equal (fn2-commit-io-lent r io) 0) :ok
+                      (mv-nth 0 (fn2-alloc-edge-drop r (fn2-commit-io-op-gen r io) (fn2-commit-io-extent r io)
+                                                     (fn2-commit-io-epoch r io) (fn2-commit-io-counter r io) :outstanding-io
+                                                     (fn2-core-extents c) (fn2-core-alloc-edges c)))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(defthm fn2-env-x-row-held-unit
+  ; a holding row's XR: below 2, each unit's, and the hold
+  (implies (and (fn2-env-x-row id c) (fn2-commit-idp id c) (fn2-env-x-held id c) (natp k) (< k 3))
+           (and (< (fn2-commit-row id c) 2) (fn2-env-x-unit id k c) (fn2-env-x-hold id c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row natp) :cases ((equal k 0) (equal k 1) (equal k 2)))))
+(defthm fn2-env-x-drop-accepts
+  ; THE LOAN DROP ACCEPTS: a holding row's lent unit's edge row is the live
+  ; outstanding-io row of its operation generation over the row's live handle
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-held id c)
+                (natp role) (< role 3) (unsigned-byte-p 32 s) (unsigned-byte-p 60 g))
+           (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-env-x fn2-env-xa fn2-env-x-unit fn2-env-x-edge fn2-env-io fn2-core-alloc-edges
+                        fn2-alloc-edge-matchesp fn2-alloc-edge-slotp fn2-env-io-edge-drop-code fn2-env-edge-drop-io-accepts
+                        fn2-commit-row-natp nfix natp car-cons cdr-cons nth-0-cons nth-add1 (:e zp) zp
+                        (:e nth) (:e binary-+) fn2-core-commit-io)
+           :use ((:instance fn2-env-x-rows-necc (id id))
+                 (:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-hold-handle (k role))
+                 (:instance fn2-env-resource-at (k role))
+                 (:instance fn2-env-core-alloc-edges-wfp (c c))
+                 (:instance fn2-env-lent-bit (u (+ (* 3 (fn2-commit-row id c)) role)))))))
+(defthm fn2-env-io-set-lent-at
+  (let ((io2 (fn2-commit-io-set-lent r v io)))
+    (implies (and (natp u) (natp r) (< r (fn2-commit-io-rows io)))
+             (and (equal (fn2-commit-io-rows io2) (fn2-commit-io-rows io))
+                  (equal (fn2-commit-io-pool-slot u io2) (fn2-commit-io-pool-slot u io))
+                  (equal (fn2-commit-io-pool-gen u io2) (fn2-commit-io-pool-gen u io))
+                  (equal (fn2-commit-io-extent u io2) (fn2-commit-io-extent u io))
+                  (equal (fn2-commit-io-epoch u io2) (fn2-commit-io-epoch u io))
+                  (equal (fn2-commit-io-counter u io2) (fn2-commit-io-counter u io))
+                  (equal (fn2-commit-io-op-slot u io2) (fn2-commit-io-op-slot u io))
+                  (equal (fn2-commit-io-op-gen u io2) (fn2-commit-io-op-gen u io))
+                  (equal (fn2-commit-io-lent u io2) (if (equal u r) v (fn2-commit-io-lent u io))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-io-set-lent update-fn2-commit-io-lent$ai update-nth-array))))
+(defthm fn2-env-x-drop-edges
+  ; an accepted loan drop keeps every other unit's edge row and leaves unit R's free
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok)
+                (equal (fn2-alloc-edges-state (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                       (if (equal (fn2-commit-io-lent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)) 1)
+                           *fn2-alloc-edge-state-live* *fn2-alloc-edge-state-free*))
+                (fn2-alloc-edge-slotp (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                (natp role) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (r (+ (* 3 (fn2-commit-row id c)) role)))
+             (and (implies (not (equal u r)) (equal (fn2-env-x-edge u c1) (fn2-env-x-edge u c)))
+                  (nth 0 (fn2-env-x-edge r c1)) (equal (nth 1 (fn2-env-x-edge r c1)) *fn2-alloc-edge-state-free*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-edge fn2-alloc-edge-slotp natp nfix fn2-commit-row-natp fn2-core-commit-io fn2-core-alloc-edges nth-0-cons car-cons cdr-cons nth-add1 (:e zp) zp (:e nth))
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-drop-ok-shape (k 0))
+                 (:instance fn2-env-lent-bit (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-edge-drop-shape (x (+ (* 3 (fn2-commit-row id c)) role))
+                            (holder (fn2-commit-io-op-gen (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)) (j e))
+                 (:instance fn2-env-edge-drop-rows-reads (x (+ (* 3 (fn2-commit-row id c)) role))
+                            (holder (fn2-commit-io-op-gen (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)))))))
+(defthm fn2-env-x-drop-io
+  ; an accepted loan drop keeps every other commit-io unit, every resource and pool range, and returns unit R
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok)
+                (equal (fn2-alloc-edges-state (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                       (if (equal (fn2-commit-io-lent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)) 1)
+                           *fn2-alloc-edge-state-live* *fn2-alloc-edge-state-free*))
+                (fn2-alloc-edge-slotp (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                (natp role) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (r (+ (* 3 (fn2-commit-row id c)) role)))
+             (and (implies (not (equal u r)) (equal (fn2-env-io u c1) (fn2-env-io u c)))
+                  (equal (fn2-env-x-res u c1) (fn2-env-x-res u c))
+                  (equal (fn2-commit-io-pool-slot u (fn2-core-commit-io c1)) (fn2-commit-io-pool-slot u (fn2-core-commit-io c)))
+                  (equal (fn2-commit-io-pool-gen u (fn2-core-commit-io c1)) (fn2-commit-io-pool-gen u (fn2-core-commit-io c)))
+                  (nth 0 (fn2-env-io r c1)) (equal (nth 3 (fn2-env-io r c1)) 0))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-io fn2-env-x-res natp nfix fn2-commit-row-natp fn2-core-commit-io fn2-core-alloc-edges nth-0-cons car-cons cdr-cons nth-add1 (:e zp) zp (:e nth))
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-drop-ok-shape (k 0))
+                 (:instance fn2-env-lent-bit (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-io-set-lent-at (r (+ (* 3 (fn2-commit-row id c)) role)) (v 0) (io (fn2-core-commit-io c)))
+                 (:instance fn2-env-io-set-lent-at (u (+ (* 3 (fn2-commit-row id c)) role)) (r (+ (* 3 (fn2-commit-row id c)) role)) (v 0)
+                            (io (fn2-core-commit-io c)))))))
+(defthm fn2-env-x-drop-alloc
+  ; an accepted loan drop keeps every handle's liveness and XA
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok)
+                (equal (fn2-alloc-edges-state (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                       (if (equal (fn2-commit-io-lent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)) 1)
+                           *fn2-alloc-edge-state-live* *fn2-alloc-edge-state-free*))
+                (fn2-alloc-edge-slotp (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-alloc-edges c))
+                (natp role) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (equal (fn2-env-x-handle-ok e ep ct c1) (fn2-env-x-handle-ok e ep ct c))
+                  (implies (fn2-env-xa c) (fn2-env-xa c1)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-handle-ok fn2-alloc-handle-code fn2-alloc-slotp fn2-env-xa natp nfix fn2-commit-row-natp fn2-core-commit-io fn2-core-alloc-edges)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-drop-ok-shape (k 0))
+                 (:instance fn2-env-core-alloc-edges-wfp)
+                 (:instance fn2-env-lent-bit (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-edge-drop-shape (x (+ (* 3 (fn2-commit-row id c)) role))
+                            (holder (fn2-commit-io-op-gen (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)) (j e))
+                 (:instance fn2-env-io-counted-edge-drop (x (+ (* 3 (fn2-commit-row id c)) role))
+                            (holder (fn2-commit-io-op-gen (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)))))))
+(defthm fn2-env-x-unit-raw
+  ; unit K's XR in the allocator's and commit-io's own terms
+  (implies (and (fn2-env-x-unit id k c) (natp (fn2-commit-row id c)) (natp k))
+           (let ((r (+ (* 3 (fn2-commit-row id c)) k)))
+             (and (fn2-alloc-edge-slotp r (fn2-core-alloc-edges c))
+                  (< r (fn2-commit-io-rows (fn2-core-commit-io c)))
+                  (equal (fn2-alloc-edges-state r (fn2-core-alloc-edges c))
+                         (if (equal (fn2-commit-io-lent r (fn2-core-commit-io c)) 1)
+                             *fn2-alloc-edge-state-live* *fn2-alloc-edge-state-free*)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit fn2-env-x-edge fn2-env-io fn2-alloc-edge-slotp fn2-core-commit-io natp
+                               nth-0-cons nth-add1 (:e zp) (:e nth) car-cons cdr-cons zp nth (:e binary-+)))))
+(defthm fn2-env-x-unit-free
+  ; a returned unit whose edge row is free has XR
+  (implies (and (nth 0 (fn2-env-x-edge (+ (* 3 (fn2-commit-row id c)) k) c))
+                (equal (nth 1 (fn2-env-x-edge (+ (* 3 (fn2-commit-row id c)) k) c)) *fn2-alloc-edge-state-free*)
+                (nth 0 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c))
+                (equal (nth 3 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c)) 0))
+           (fn2-env-x-unit id k c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit))))
+(defthm fn2-env-x-drop-edge
+  ; the loan drop: the directory and commit table stay, the row frame and directory hold
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (equal (nth 3 c1) (nth 3 c)) (equal (nth 9 c1) (nth 9 c))
+                  (fn2-arm-row-frame 9 row cs '(30 20 21 5) c c1)
+                  (fn2-ctf-dir c1 c) (fn2-corep c1) (fn2-core-wfp c1))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '((:e member-equal) (:e subsetp-equal) natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-drop-ok-shape (k 3))
+                 (:instance fn2-env-io-edge-drop-ok-shape (k 9))
+                 (:instance fn2-commit~fn2-commit-io-edge-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row row) (fn2-arm-cs cs)
+                            (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 c) (fn2-core c) (add nil) (opslot s) (opgen g))
+                 (:instance fn2-arm-row-frame-refl (table 9) (columns cs) (children '(30 20 21 5)) (a c))
+                 (:instance fn2-commit-io-edge-ctf-dir (fn2-ctf-c0 c) (fn2-core c) (add nil) (opslot s) (opgen g))
+                 (:instance fn2-ctf-dir-refl (a c))
+                 (:instance fn2-commit-io-edge-preserves-type (fn2-core c) (add nil) (opslot s) (opgen g))
+                 (:instance fn2-commit-io-edge-preserves-wfp (fn2-core c) (add nil) (opslot s) (opgen g))))))
+(defthm fn2-env-x-drop-unit-dropped
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3))
+           (fn2-env-x-unit id role (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-drop-edge (row 0) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-drop-edges (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-x-drop-io (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-x-unit-free (k role) (c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))
+(defthm fn2-env-x-drop-unit-other
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3) (natp k) (< k 3) (not (equal k role)))
+           (fn2-env-x-unit id k (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-row-held-unit)
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-drop-edge (row 0) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-drop-edges (u (+ (* 3 (fn2-commit-row id c)) k)))
+                 (:instance fn2-env-x-drop-io (u (+ (* 3 (fn2-commit-row id c)) k)))
+                 (:instance fn2-env-resource-of-res-pool (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-lend-held-congruence (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-unit-transfer (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))
+(defthm fn2-env-x-drop-unit
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3) (natp k) (< k 3))
+           (fn2-env-x-unit id k (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory nil :cases ((equal k role))
+           :use ((:instance fn2-env-x-drop-unit-dropped) (:instance fn2-env-x-drop-unit-other)))))
+(defthm fn2-env-x-drop-resource
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3) (natp k))
+           (equal (fn2-commit-resource id k (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (fn2-commit-resource id k c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-x-drop-edge (row 0) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-drop-io (u (+ (* 3 (fn2-commit-row id c)) k)))
+                 (:instance fn2-env-resource-of-res-pool (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))
+(defthm fn2-env-x-drop-hold
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (equal (fn2-env-x-held id c1) (fn2-env-x-held id c))
+                  (fn2-env-x-hold id c1))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp (:e natp) fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-drop-edge (row 0) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-lend-held-congruence (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (k 0))
+                 (:instance fn2-env-x-drop-resource (k 0)) (:instance fn2-env-x-drop-resource (k 1)) (:instance fn2-env-x-drop-resource (k 2))
+                 (:instance fn2-env-x-drop-alloc (u 0) (e (mv-nth 0 (fn2-commit-resource id 0 c))) (ep (mv-nth 1 (fn2-commit-resource id 0 c)))
+                            (ct (mv-nth 2 (fn2-commit-resource id 0 c))))
+                 (:instance fn2-env-x-hold-transfer (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))
+(defthm fn2-env-x-drop-row
+  ; after a holding row's loan drop the row has XR, holding as before at the same extent
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (fn2-env-x-row id c1)
+                  (equal (fn2-env-x-held id c1) (fn2-env-x-held id c))
+                  (equal (fn2-env-role-extent id 0 c1) (fn2-env-role-extent id 0 c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-env-role-extent natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-drop-unit (k 0)) (:instance fn2-env-x-drop-unit (k 1)) (:instance fn2-env-x-drop-unit (k 2))
+                 (:instance fn2-env-x-drop-hold) (:instance fn2-env-x-drop-resource (k 0))
+                 (:instance fn2-env-x-row-held-unit (k 0))
+                 (:instance fn2-env-x-drop-edge (row 0) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))
+(defthm fn2-env-x-drop-off
+  ; a loan drop keeps what X reads off its row
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-row id c) (fn2-env-x-held id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role nil s g c)) :ok) (natp role) (< role 3))
+           (fn2-env-x-off (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-off natp nfix fn2-env-commit-row-slot (:type-prescription fn2-machine-slot-natp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-x-drop-edges (u (mv-nth 0 (fn2-env-x-off-witness (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))
+                 (:instance fn2-env-x-drop-io (u (mv-nth 0 (fn2-env-x-off-witness (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))
+                 (:instance fn2-env-x-drop-alloc (u 0) (e (mv-nth 1 (fn2-env-x-off-witness (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))) (ep (mv-nth 2 (fn2-env-x-off-witness (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))) (ct (mv-nth 3 (fn2-env-x-off-witness (fn2-machine-slot id c) c (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))))))))
+(defthm fn2-env-x-drop
+  ; A HOLDING ROW'S LOAN DROP KEEPS X (and is accepted: FN2-ENV-X-DROP-ACCEPTS)
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-held id c)
+                (natp role) (< role 3) (unsigned-byte-p 32 s) (unsigned-byte-p 60 g))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+             (and (fn2-env-x c1) (fn2-env-x-held id c1) (fn2-commit-idp id c1) (fn2-corep c1) (fn2-core-wfp c1))))
+  :hints (("Goal" :in-theory '(fn2-env-x (:type-prescription fn2-machine-slot-natp) (:type-prescription fn2-commit-idp)
+                               (:e member-equal) (:e natp) natp fn2-commit-row-natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-drop-accepts)
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-row-held-unit (k role))
+                 (:instance fn2-env-x-unit-raw (k role))
+                 (:instance fn2-env-x-rows-necc (c c))
+                 (:instance fn2-env-x-drop-row)
+                 (:instance fn2-env-x-drop-off)
+                 (:instance fn2-env-x-drop-edge (row (fn2-machine-slot id c)) (cs nil))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))))
+                 (:instance fn2-env-x-drop-alloc (u 0) (e 0) (ep 0) (ct 0))
+                 (:instance fn2-env-x-of-row-frame (a c) (b (mv-nth 1 (fn2-commit-io-edge id role nil s g c))) (row (fn2-machine-slot id c))
+                            (cs nil) (ch '(30 20 21 5)) (v id))))))
+(defthm fn2-env-x-commit-drop-io
+  ; THE HANDLER'S LOAN DROP KEEPS X: a holding row returns its three units,
+  ; each drop accepted, and the core is not stopped
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-held id c))
+           (fn2-env-x (fn2-commit-drop-io id c)))
+  :hints (("Goal" :in-theory '(fn2-commit-drop-io (:e unsigned-byte-p) (:e natp) (:e <) mv-nth car-cons cdr-cons (:e zp) zp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-drop (role 0) (s 0) (g 0))
+                 (:instance fn2-env-x-drop (role 0) (s 0) (g 0))
+                 (:instance fn2-env-x-drop-accepts (role 0) (s 0) (g 0))
+                 (:instance fn2-env-x-drop (role 1) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-x-drop-accepts (role 1) (s 0) (g 0) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-x-drop (role 2) (s 0) (g 0)
+                            (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
+                 (:instance fn2-env-x-drop-accepts (role 2) (s 0) (g 0)
+                            (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))))
 ;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Proved: the
 ;; X-level frame (FN2-ENV-X-OF-ROW-FRAME), the host steps and :take
-;; (FN2-ENV-X-HOST-STEP), and the issue's accepted step at the core
-;; (FN2-ENV-X-ISSUE). Owed: established, XA at the core's init (alloc-init's
+;; (FN2-ENV-X-HOST-STEP), the issue's accepted step at the core
+;; (FN2-ENV-X-ISSUE) and the handler's loan drop (FN2-ENV-X-COMMIT-DROP-IO).
+;; Owed: established, XA at the core's init (alloc-init's
 ;; zero counts, edges-init's free rows) and XR/XD at admission
 ;; (fn2-commit-reserve-extent takes the free head, so apart from every held
 ;; row's live extent, FN2-ENV-ALLOC-RESERVE-SHAPE; the admitted row was
 ;; :free, so no unit edge live); kept, the arm-level lift of FN2-ENV-X-ISSUE
 ;; through fn2-commit-run-dependencies/-log-write (the refused edge add stops
-;; the core), the handler's loan drop (FN2-ENV-EDGE-DROP-IO-ACCEPTS from the
-;; live row's matching edge), and the other arms through
+;; the core) and of the drop through fn2-commit-arm-observe (with its row
+;; write: done+1 = issued, so no role stays lendable), and the other arms through
 ;; FN2-ENV-X-OF-ROW-FRAME with their allocator steps (collect/install's root
 ;; edges at rows 6+2e, durable's allocation, dropping's cancel leaving the
 ;; row unheld) proving FN2-ENV-X-OFF and XA after.
