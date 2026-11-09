@@ -1706,3 +1706,30 @@
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-env-harvest-next-advanced fn2-env-op-finish-advanced fn2-env-ops-advanced-refl
                                fn2-harvest-next-preserves-type fn2-harvest-next-preserves-wfp))))
+;; THE HANDLERS' READERS (J5 across the handlers, in commit-durable-all):
+;; generators for "a commit row's row readers are its machine readers" and
+;; "a row writer keeps commit-io"; an IF lift for the conditional loan drop.
+(defmacro fn2-env-row-is-machine (fields)
+  ; under a readable commit row, the row reader is the machine reader
+  (if (atom fields) '(progn)
+    (let* ((f (car fields)) (r (fn2-columns-col-name 'fn2-machine f)) (tr (fn2-columns-col-name 'fn2-commit-row f))
+           (rc (fn2-columns-sym r "-READ-CODE")))
+      `(progn
+         (defthmd ,(fn2-columns-sym tr "-IS-MACHINE")
+           (implies (equal (fn2-commit-snapshot-read-code id c) :ok) (equal (,tr id c) (,r id c)))
+           :hints (("Goal" :in-theory '(,tr ,r ,rc fn2-commit-snapshot-read-code fn2-machine-phase-read-code (:e equal)))))
+         (fn2-env-row-is-machine ,(cdr fields))))))
+(defmacro fn2-env-writer-keeps-io (w)
+  ; W writes the commit table and the control child alone: commit-io stays
+  `(make-event
+    (let ((out (fn2-arm-frame-out-term ',w (cons ',w (formals ',w (w state))) (w state))))
+      (value
+       `(defthm ,(fn2-columns-sym ',w "-KEEPS-IO")
+          (equal (nth 30 ,out) (nth 30 fn2-core))
+          :hints (("Goal" :in-theory '((:e subsetp-equal) (:e natp) (:e member-equal) fn2-arm-kids-refl)
+                   :use ((:instance ,(fn2-columns-sym ',w "-ARM-KIDS") (fn2-arm-free '(9 5)) (fn2-arm-c0 fn2-core))
+                         (:instance fn2-arm-kids-nth (i 0) (k 30) (free '(9 5)) (a fn2-core) (b ,out))))))))))
+(defthmd fn2-env-nth-of-if
+  (equal (nth k (if c a b)) (if c (nth k a) (nth k b))))
+(defthmd fn2-env-member-pair
+  (and (member-equal a (list a b)) (member-equal b (list a b))))
