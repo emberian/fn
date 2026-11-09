@@ -2441,7 +2441,15 @@
          :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps fn2-machine-kind fn2-machine-kind-read-code
                                             fn2-machine-slot fn2-machine-slot-read-code fn2-machine-idp
                                             fn2-machines-kind fn2-machines-slot fn2-machines-rows fn2-core-machines))))
-       (in-theory (disable fn2-ctf-dir))
+       ;; a body's branches, kept apart: the relation of an IF from its
+       ;; arms', and an MV-NTH of an IF or a CONS by cases, so a chain
+       ;; through a body's conditional calls does not split on the conditions
+       (defthm fn2-ctf-dir-of-if
+         (implies (and (fn2-ctf-dir x a) (fn2-ctf-dir y a)) (fn2-ctf-dir (if c x y) a)))
+       (defthm fn2-ctf-mv-nth-of-if (equal (mv-nth n (if c x y)) (if c (mv-nth n x) (mv-nth n y))))
+       (defthm fn2-ctf-mv-nth-cons
+         (implies (syntaxp (quotep n)) (equal (mv-nth n (cons x y)) (if (zp n) x (mv-nth (- n 1) y)))))
+       (in-theory (disable fn2-ctf-dir fn2-ctf-dir-of-if fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons))
        ,@(fn2-ctf-dir-update-events children 0 m)
        (deftheory fn2-ctf-dir-base
          (union-theories '(fn2-ctf-dir-refl fn2-ctf-dir-of-update-fn2-core-machines
@@ -2504,14 +2512,22 @@
                          (:instance fn2-arm-kids-nth (i 0) (k ,m) (free ',(car d)) (a fn2-core) (b ,out))
                          (:instance fn2-ctf-dir-of-nth (b ,out) (x fn2-core) (a fn2-ctf-c0))))))))
      (t
-      `((defthm ,name ,stmt
-          :hints (("Goal" :in-theory (union-theories
-                                      '(,fn fn2-machines-directory-keeps-refl
-                                        ,@(strip-cdrs (table-alist 'fn2-arm-frame-directory-keeps world))
-                                        ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world))
-                                        ,@(fn2-ctf-dir-callee-runes (fn2-arm-frame-body-callees fn world) world))
-                                      (theory 'fn2-ctf-dir-base))
-                   :do-not-induct t))))))))
+      ;; the body's chain with its branches kept apart (no split on a
+      ;; condition the directory does not depend on), else split
+      (let ((runes `(,fn fn2-machines-directory-keeps-refl
+                     ,@(strip-cdrs (table-alist 'fn2-arm-frame-directory-keeps world))
+                     ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world))
+                     ,@(fn2-ctf-dir-callee-runes (fn2-arm-frame-body-callees fn world) world))))
+        `((make-event
+           '(:or (defthm ,name ,stmt
+                   :hints (("Goal" :in-theory (set-difference-theories
+                                               (union-theories '(fn2-ctf-dir-of-if fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons ,@runes)
+                                                               (theory 'fn2-ctf-dir-base))
+                                               '(mv-nth))
+                            :do-not-induct t)))
+                 (defthm ,name ,stmt
+                   :hints (("Goal" :in-theory (union-theories ',runes (theory 'fn2-ctf-dir-base))
+                            :do-not-induct t)))))))))))
 (defun fn2-ctf-dir-forms (fns kind)
   (declare (xargs :verify-guards nil))
   (if (atom fns) nil
@@ -3635,7 +3651,8 @@
 ;; books/dispatch-heads.lisp): a run reserves a free op, issues it, or
 ;; leaves it, so every incarnation that has begun and been issued stays so;
 ;; a kind whose frame leaves the commit layer's IO units also keeps them
-;; (-KEEPS-UNITS, as the observe stubs). Emitted where the relation is
+;; (-KEEPS-UNITS, as the observe stubs), any other kind their operations and
+;; loans (-KEEPS-LOANS, FN2-DFR-LOANS-KEPT). Emitted where the relation is
 ;; defined. NAME from a KIDS contract LEMMA at children S without the ops
 ;; child (the stubs' default body; an attachment writing no ops); an
 ;; attachment that writes ops is proved by its chain (FN2-DFR-WALK-FORMS).
@@ -3659,6 +3676,19 @@
   (declare (xargs :verify-guards nil))
   (and (fn2-dispatch-heads-p world)
        (not (member-equal (fn2-arm-frame-child-index 'fn2-core-commit-io world) (fn2-dispatch-frame-children name world)))))
+(defun fn2-dispatch-loans-claim (name out body-out lemma s enable world)
+  ; NAME: commit-io's units keep their operation and loan (FN2-DFR-LOANS-KEPT),
+  ; from a KIDS contract LEMMA at children S without commit-io
+  (declare (xargs :verify-guards nil))
+  (let ((k (fn2-arm-frame-child-index 'fn2-core-commit-io world)))
+    (if (member-equal k s)
+        `(make-event (er soft 'fn2-dispatch-frame "~x0: its KIDS contract may change the commit-io child (~x1)." ',name ',s))
+      `(defthm ,name (fn2-dfr-loans-kept (fn2-core-commit-io fn2-core) (fn2-core-commit-io ,out))
+         :hints (("Goal" :in-theory (union-theories '(,@enable fn2-core-commit-io fn2-dfr-loans-kept-refl) (theory 'fn2-arm-frame-base))
+                  :do-not-induct t
+                  :use ((:instance ,lemma (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
+                        (:instance fn2-arm-kids-refl (i 0) (free ',s) (a fn2-core))
+                        (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',s) (a fn2-core) (b ,body-out)))))))))
 (defun fn2-dispatch-run-heads-claims (g name world)
   ; G (a run stub, or its default) by the default body's KIDS contract
   (declare (xargs :verify-guards nil))
@@ -3667,8 +3697,9 @@
               (out `(mv-nth 4 (,g id budget fn2-core)))
               (body '(mv-nth 4 (fn2-machine-refuse-phase id fn2-core))))
          (cons (fn2-dispatch-heads-claim (fn2-columns-sym g "-DISPATCH-HEADS") out body (cdr d) (car d) (list g) world)
-               (and (fn2-dispatch-run-units-p name world)
-                    (list (fn2-dispatch-units-claim (fn2-columns-sym g "-KEEPS-UNITS") out body (cdr d) (car d) (list g) world)))))))
+               (list (if (fn2-dispatch-run-units-p name world)
+                         (fn2-dispatch-units-claim (fn2-columns-sym g "-KEEPS-UNITS") out body (cdr d) (car d) (list g) world)
+                       (fn2-dispatch-loans-claim (fn2-columns-sym g "-KEEPS-LOANS") out body (cdr d) (car d) (list g) world)))))))
 ;; THE RUN STUBS' HELD FRAME (books/dispatch-held.lisp): the rows the commit
 ;; kind holds in the operation table and the pool -- every held operation
 ;; row's columns; every row's extent, every held pool row's columns and, the
@@ -3804,7 +3835,7 @@
               ,@(fn2-dispatch-claims run-stub run-formals 4 er 'fn2-machine-refuse-phase)
               ;; the run stub keeps the rows the commit kind holds
               ,@(fn2-dispatch-held-claims run-stub run-formals name world)
-              ;; and the op heads advancing (and the IO units, where its frame does)
+              ;; and the op heads advancing, and the IO units (or, a batch kind, their loans)
               ,@(fn2-dispatch-run-heads-claims run-stub name world)
               ;; both stubs keep the stored owners
               ,@(fn2-dispatch-owners-claims run-stub run-formals 4 'fn2-machine-refuse-phase world)
@@ -3858,8 +3889,8 @@
                         (,bound-stub ,bound-def))
              ,@(and (fn2-dispatch-heads-p world)
                     `((in-theory (disable ,(fn2-columns-sym run-def "-DISPATCH-HEADS")
-                                          ,@(and (fn2-dispatch-run-units-p name world)
-                                                 (list (fn2-columns-sym run-def "-KEEPS-UNITS")))))))
+                                          ,(fn2-columns-sym run-def (if (fn2-dispatch-run-units-p name world)
+                                                                        "-KEEPS-UNITS" "-KEEPS-LOANS"))))))
              (in-theory (disable ,(fn2-columns-sym run-def "-ARM-KIDS") ,(fn2-ctf-dir-name run-def)
                                  ,(fn2-columns-sym obs-def "-ARM-KIDS") ,(fn2-ctf-dir-name obs-def)
                                  ,(fn2-columns-sym obs-def "-OPS-POOL") ,(fn2-columns-sym obs-def "-KEEPS-UNITS"))))
