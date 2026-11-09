@@ -3631,6 +3631,44 @@
         (out `(mv-nth 1 (,fn ,@(formals fn world)))))
     (if (null d) `(make-event (er soft 'fn2-dispatch-frame "~x0 (of ~x1) has no KIDS contract." ',fn ',who))
       (fn2-dispatch-units-claim (fn2-columns-sym fn "-KEEPS-UNITS") out out (cdr d) (car d) nil world))))
+;; THE RUN STUBS KEEP THE OP HEADS ADVANCING (FN2-DFR-HEADS-ADVANCE,
+;; books/dispatch-heads.lisp): a run reserves a free op, issues it, or
+;; leaves it, so every incarnation that has begun and been issued stays so;
+;; a kind whose frame leaves the commit layer's IO units also keeps them
+;; (-KEEPS-UNITS, as the observe stubs). Emitted where the relation is
+;; defined. NAME from a KIDS contract LEMMA at children S without the ops
+;; child (the stubs' default body; an attachment writing no ops); an
+;; attachment that writes ops is proved by its chain (FN2-DFR-WALK-FORMS).
+(defun fn2-dispatch-heads-p (world)
+  (declare (xargs :verify-guards nil))
+  (function-symbolp 'fn2-dfr-heads-advance world))
+(defun fn2-dispatch-heads-claim (name out body-out lemma s enable world)
+  (declare (xargs :verify-guards nil))
+  (let ((k (fn2-arm-frame-child-index 'fn2-core-ops world)))
+    (if (member-equal k s)
+        `(make-event (er soft 'fn2-dispatch-frame "~x0: its KIDS contract may change the ops child (~x1)." ',name ',s))
+      `(defthm ,name (fn2-dfr-heads-advance fn2-core ,out)
+         :hints (("Goal" :in-theory (union-theories '(,@enable fn2-core-ops) (theory 'fn2-arm-frame-base))
+                  :do-not-induct t
+                  :use ((:instance fn2-dfr-heads-advance-of-ops-equal (a fn2-core) (b ,out))
+                        (:instance ,lemma (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
+                        (:instance fn2-arm-kids-refl (i 0) (free ',s) (a fn2-core))
+                        (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',s) (a fn2-core) (b ,body-out)))))))))
+(defun fn2-dispatch-run-units-p (name world)
+  ; the kind's frame leaves the commit-io child
+  (declare (xargs :verify-guards nil))
+  (and (fn2-dispatch-heads-p world)
+       (not (member-equal (fn2-arm-frame-child-index 'fn2-core-commit-io world) (fn2-dispatch-frame-children name world)))))
+(defun fn2-dispatch-run-heads-claims (g name world)
+  ; G (a run stub, or its default) by the default body's KIDS contract
+  (declare (xargs :verify-guards nil))
+  (and (fn2-dispatch-heads-p world)
+       (let* ((d (fn2-dc-entry 'fn2-machine-refuse-phase nil world))
+              (out `(mv-nth 4 (,g id budget fn2-core)))
+              (body '(mv-nth 4 (fn2-machine-refuse-phase id fn2-core))))
+         (cons (fn2-dispatch-heads-claim (fn2-columns-sym g "-DISPATCH-HEADS") out body (cdr d) (car d) (list g) world)
+               (and (fn2-dispatch-run-units-p name world)
+                    (list (fn2-dispatch-units-claim (fn2-columns-sym g "-KEEPS-UNITS") out body (cdr d) (car d) (list g) world)))))))
 ;; THE RUN STUBS' HELD FRAME (books/dispatch-held.lisp): the rows the commit
 ;; kind holds in the operation table and the pool -- every held operation
 ;; row's columns; every row's extent, every held pool row's columns and, the
@@ -3766,6 +3804,8 @@
               ,@(fn2-dispatch-claims run-stub run-formals 4 er 'fn2-machine-refuse-phase)
               ;; the run stub keeps the rows the commit kind holds
               ,@(fn2-dispatch-held-claims run-stub run-formals name world)
+              ;; and the op heads advancing (and the IO units, where its frame does)
+              ,@(fn2-dispatch-run-heads-claims run-stub name world)
               ;; both stubs keep the stored owners
               ,@(fn2-dispatch-owners-claims run-stub run-formals 4 'fn2-machine-refuse-phase world)
               ,@(fn2-dispatch-owners-claims obs-stub obs-formals 1 'fn2-machine-refuse-observation world)
@@ -3796,6 +3836,7 @@
              (fn2-core-preserves ,obs-def (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)
              ,@(fn2-dispatch-claims run-def run-formals 4 er 'fn2-machine-refuse-phase)
              ,@(fn2-dispatch-held-claims run-def run-formals name world)
+             ,@(fn2-dispatch-run-heads-claims run-def name world)
              ,@(fn2-dispatch-owners-claims run-def run-formals 4 'fn2-machine-refuse-phase world)
              ,@(fn2-dispatch-owners-claims obs-def obs-formals 1 'fn2-machine-refuse-observation world)
              ,@(fn2-dispatch-claims obs-def obs-formals 1 eo 'fn2-machine-refuse-observation)
@@ -3815,6 +3856,10 @@
                         (,obs-stub ,obs-def)
                         (,charge-stub ,charge-def)
                         (,bound-stub ,bound-def))
+             ,@(and (fn2-dispatch-heads-p world)
+                    `((in-theory (disable ,(fn2-columns-sym run-def "-DISPATCH-HEADS")
+                                          ,@(and (fn2-dispatch-run-units-p name world)
+                                                 (list (fn2-columns-sym run-def "-KEEPS-UNITS")))))))
              (in-theory (disable ,(fn2-columns-sym run-def "-ARM-KIDS") ,(fn2-ctf-dir-name run-def)
                                  ,(fn2-columns-sym obs-def "-ARM-KIDS") ,(fn2-ctf-dir-name obs-def)
                                  ,(fn2-columns-sym obs-def "-OPS-POOL") ,(fn2-columns-sym obs-def "-KEEPS-UNITS"))))

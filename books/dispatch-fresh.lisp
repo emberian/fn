@@ -40,28 +40,19 @@
                 (fn2-dfr-events (cdr names) world)))))))
 (make-event (value (cons 'progn (fn2-dfr-events (fn2-machine-names (w state)) (w state)))))
 
-;; THE RUN STUBS (owed: their constraint and each attachment's proof). A run
-;; writes the operation table: it reserves a free op at its generation,
-;; issues it, recycles it (generation + 1) or retires it. None of those makes
-;; an incarnation that has begun and been issued (fn2-env-incarnation-ok)
-;; stop being one: HEADS-ADVANCE, the relation each run must keep, under
-;; which FRESHNESS and LENT-OK are kept (with the units kept, as every run of
-;; a kind without a :batch-membership leaves the commit children).
-(defun-sk fn2-dfr-heads-advance (a b)
-  (forall (s g) (implies (fn2-env-incarnation-ok s g a) (fn2-env-incarnation-ok s g b))))
+;; THE RUN STUBS. A run writes the operation table: it reserves a free op
+;; at its generation, issues it, or leaves it. None of those makes an
+;; incarnation that has begun and been issued (fn2-env-incarnation-ok) stop
+;; being one: every run stub keeps HEADS-ADVANCE (-DISPATCH-HEADS,
+;; books/dispatch-heads.lisp), under which FRESHNESS is kept, and LENT-OK
+;; with the IO units kept, as every run of a kind whose frame leaves
+;; commit-io keeps them (-KEEPS-UNITS). The batch kinds (txn, cns, auth)
+;; write commit-io's extents, epochs, counters, readiness and pool rows
+;; (fn2-commit-save-pool, -reserve-extent, -release-pool) but never a unit's
+;; operation or loan; their runs keep FRESHNESS.
 (defthm fn2-dfr-heads-advance-of-kept
   (implies (fn2-env-op-heads-kept a b) (fn2-dfr-heads-advance a b))
   :hints (("Goal" :in-theory '(fn2-dfr-heads-advance fn2-env-incarnation-ok-of-heads))))
-(defthm fn2-dfr-heads-advance-trans
-  (implies (and (fn2-dfr-heads-advance a b) (fn2-dfr-heads-advance b c)) (fn2-dfr-heads-advance a c))
-  :hints (("Goal" :in-theory '(fn2-dfr-heads-advance)
-           :use ((:instance fn2-dfr-heads-advance-necc (s (mv-nth 0 (fn2-dfr-heads-advance-witness a c)))
-                            (g (mv-nth 1 (fn2-dfr-heads-advance-witness a c))))
-                 (:instance fn2-dfr-heads-advance-necc (a b) (b c) (s (mv-nth 0 (fn2-dfr-heads-advance-witness a c)))
-                            (g (mv-nth 1 (fn2-dfr-heads-advance-witness a c))))))))
-(defthm fn2-dfr-incarnation-ok-of-advance
-  (implies (and (fn2-env-incarnation-ok s g a) (fn2-dfr-heads-advance a b)) (fn2-env-incarnation-ok s g b))
-  :hints (("Goal" :in-theory nil :use ((:instance fn2-dfr-heads-advance-necc)))))
 (defthm fn2-dfr-freshness-of-advance
   (implies (and (fn2-env-freshness log a) (fn2-dfr-heads-advance a b)) (fn2-env-freshness log b))
   :hints (("Goal" :induct (fn2-env-freshness log a)
@@ -79,3 +70,23 @@
            (and (fn2-env-freshness log b) (fn2-env-lent-ok b)))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance fn2-dfr-lent-ok-of-advance))))
+
+(defun fn2-dfr-run-events (names world)
+  (declare (xargs :mode :program))
+  (if (atom names) nil
+    (let* ((stub (fn2-columns-sym (car names) "-RUN-STUB"))
+           (call `(,stub id budget fn2-core)) (out `(mv-nth 4 ,call)))
+      (cond ((not (function-symbolp stub world)) (fn2-dfr-run-events (cdr names) world))
+            ((getpropc (fn2-columns-sym stub "-KEEPS-UNITS") 'theorem nil world)
+             (cons `(defthm ,(fn2-columns-sym stub "-FRESH-LENT")
+                      (implies (and (fn2-env-freshness log fn2-core) (fn2-env-lent-ok fn2-core))
+                               (and (fn2-env-freshness log ,out) (fn2-env-lent-ok ,out)))
+                      :hints (("Goal" :in-theory '(fn2-env-units-kept-of-io)
+                               :use ((:instance fn2-dfr-fresh-lent-of-advance (a fn2-core) (b ,out))
+                                     ,(fn2-columns-sym stub "-DISPATCH-HEADS") ,(fn2-columns-sym stub "-KEEPS-UNITS")))))
+                   (fn2-dfr-run-events (cdr names) world)))
+            (t (cons `(defthm ,(fn2-columns-sym stub "-FRESH")
+                        (implies (fn2-env-freshness log fn2-core) (fn2-env-freshness log ,out))
+                        :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance ,(fn2-columns-sym stub "-DISPATCH-HEADS")))))
+                     (fn2-dfr-run-events (cdr names) world)))))))
+(make-event (value (cons 'progn (fn2-dfr-run-events (fn2-machine-names (w state)) (w state)))))

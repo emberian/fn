@@ -1,0 +1,57 @@
+; The world walk the per-function generators share (borrow-faces.lisp,
+; dispatch-heads.lisp): a function's callees, the core-level functions below
+; a set of roots, the ones among them writing the ops child, callees first.
+(in-package "ACL2")
+(defun fn2-bf-name (f suffix)
+  (declare (xargs :verify-guards nil))
+  (intern-in-package-of-symbol (concatenate 'string (symbol-name f) suffix) 'fn2-bf-name))
+(defun fn2-bf-callees (f pw wrld)
+  (declare (xargs :verify-guards nil))
+  (let ((body (getpropc f 'unnormalized-body nil wrld)))
+    (and (pseudo-termp body) (intersection-eq (remove-eq f (all-fnnames body)) pw))))
+(defun fn2-bf-core-fns (fs wrld)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom fs) nil)
+        ((and (true-listp (getpropc (car fs) 'stobjs-out nil wrld))
+              (member-eq 'fn2-core (getpropc (car fs) 'stobjs-out nil wrld))
+              (not (getpropc (car fs) 'stobj-function nil wrld))
+              (getpropc (car fs) 'unnormalized-body nil wrld))
+         (cons (car fs) (fn2-bf-core-fns (cdr fs) wrld)))
+        (t (fn2-bf-core-fns (cdr fs) wrld))))
+(defun fn2-bf-core-closure (todo wrld acc fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((zp fuel) acc)
+        ((atom todo) acc)
+        ((member-eq (car todo) acc) (fn2-bf-core-closure (cdr todo) wrld acc (- fuel 1)))
+        (t (let ((body (getpropc (car todo) 'unnormalized-body nil wrld)))
+             (fn2-bf-core-closure
+              (append (fn2-bf-core-fns (and (pseudo-termp body) (remove-eq (car todo) (all-fnnames body))) wrld)
+                      (cdr todo))
+              wrld (cons (car todo) acc) (- fuel 1))))))
+(defun fn2-bf-ops-faces (fs wrld acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom fs) acc
+    (fn2-bf-ops-faces
+     (cdr fs) wrld
+     (let ((body (getpropc (car fs) 'unnormalized-body nil wrld)))
+       (if (and (pseudo-termp body) (intersectp-eq (cons 'update-fn2-core-ops acc) (all-fnnames body)))
+           (cons (car fs) acc)
+         acc)))))
+(defun fn2-bf-out (call outs stobj)
+  (declare (xargs :verify-guards nil))
+  (if (and (consp outs) (consp (cdr outs)))
+      `(mv-nth ,(position-eq stobj outs) ,call)
+    call))
+;; Post-order over the callees of TODO among PW; a function whose lemma
+;; (its name and SUFFIX) is already proved is a leaf: its callees are not walked.
+(defun fn2-walk-topo (todo pw suffix done stack wrld fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((zp fuel) done)
+        ((atom todo) done)
+        ((or (member-eq (car todo) done) (member-eq (car todo) stack))
+         (fn2-walk-topo (cdr todo) pw suffix done stack wrld (- fuel 1)))
+        ((getpropc (fn2-bf-name (car todo) suffix) 'theorem nil wrld)
+         (fn2-walk-topo (cdr todo) pw suffix (append done (list (car todo))) stack wrld (- fuel 1)))
+        (t (let ((done (fn2-walk-topo (fn2-bf-callees (car todo) pw wrld) pw suffix done
+                                      (cons (car todo) stack) wrld (- fuel 1))))
+             (fn2-walk-topo (cdr todo) pw suffix (append done (list (car todo))) stack wrld (- fuel 1))))))
