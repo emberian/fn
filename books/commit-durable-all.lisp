@@ -9767,26 +9767,14 @@
                                               update-fn2-alloc-epoch-begun ,@names)
                                              ()))))
           (fn2-env-x-kids-step-events (cdr steps) names))))
-(make-event
- (value
-  (cons 'progn
-        (fn2-env-x-kids-step-events
-         '((post-result (fn2-host-post-result cell slot gen evkind outcome reason count aux0 aux1 c))
-           (accept-result (fn2-host-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 c))
-           (clock (fn2-host-post-clock mono real flags c))
-           (signal (fn2-host-post-signal bits c)))
-         (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
-(make-event
- (value
-  (cons 'progn
-        (fn2-env-x-kids-step-events
-         '(
-           (outbox-ack (mv-nth 1 (fn2-host-outbox-ack n c)))
-           (op-finish (mv-nth 1 (fn2-host-op-finish slot gen c)))
-           (fill (fn2-env-fill rslot rgen slot gen idx octets c))
-           (begin-epoch (fn2-env-begin-epoch epoch c))
-           )
-         (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((post-result (fn2-host-post-result cell slot gen evkind outcome reason count aux0 aux1 c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((accept-result (fn2-host-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((clock (fn2-host-post-clock mono real flags c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((signal (fn2-host-post-signal bits c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((outbox-ack (mv-nth 1 (fn2-host-outbox-ack n c)))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((op-finish (mv-nth 1 (fn2-host-op-finish slot gen c)))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((fill (fn2-env-fill rslot rgen slot gen idx octets c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
+(make-event (value (car (fn2-env-x-kids-step-events '((begin-epoch (fn2-env-begin-epoch epoch c))) (fn2-env-updater-names (strip-cars *fn2-core-children*))))))
 (defthm fn2-env-x-kids-refl (fn2-env-x-kids a a)
   :rule-classes nil :hints (("Goal" :in-theory '(fn2-env-x-kids fn2-env-x-ext-same))))
 (defthm fn2-env-x-kids-trans
