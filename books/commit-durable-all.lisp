@@ -8710,6 +8710,138 @@
            :do-not-induct t
            :use ((:instance fn2-env-step-admit-unfolds (fn2-core c))
                  (:instance fn2-env-j5e-rows-admit (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))))))
+;; FRESHNESS AND LENT-OK, ops-wide. An issue reserves the free head at its
+;; slot's generation and lends a unit that names it; the issued write's
+;; J5-TAKEN (no take of it yet) and its unit's role-live need that nothing
+;; of that incarnation is in the log or in a unit before it was reserved.
+;; FRESHNESS: every take in the log names a valid op slot at a generation
+;; no newer than the slot's, and none names a free or reserved op at its
+;; current generation (a recycle raises the generation, a retire leaves the
+;; slot retired). LENT-OK: every lent unit names a valid op slot at a
+;; generation no newer than the slot's, and never a free or reserved op at
+;; its current generation.
+(defun fn2-env-incarnation-ok (s g fn2-core)
+  ; (S G) names an incarnation of op slot S that has begun and been issued
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((op (fn2-env-op s fn2-core)))
+    (and (nth 0 op) (natp g) (<= g (nfix (nth 1 op)))
+         (implies (equal g (nth 1 op))
+                  (not (member-equal (nth 2 op) (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))))))
+(defun fn2-env-freshness (log fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom log) t
+    (and (implies (fn2-dev-takep (car log)) (fn2-env-incarnation-ok (nth 1 (car log)) (nth 2 (car log)) fn2-core))
+         (fn2-env-freshness (cdr log) fn2-core))))
+(defun-sk fn2-env-lent-ok (fn2-core)
+  (forall u (let ((io (fn2-env-io u fn2-core)))
+              (implies (and (nth 0 io) (equal (nth 3 io) 1))
+                       (fn2-env-incarnation-ok (nth 1 io) (nth 2 io) fn2-core)))))
+(in-theory (disable fn2-env-incarnation-ok))
+;; The host steps but :take leave every op's validity, generation and phase
+;; (FN2-ENV-OP-HEADS-KEPT) and every unit (FN2-ENV-UNITS-KEPT): FRESHNESS
+;; and LENT-OK read nothing else.
+(defun-sk fn2-env-op-heads-kept (a b)
+  (forall s (and (equal (nth 0 (fn2-env-op s b)) (nth 0 (fn2-env-op s a)))
+                 (equal (nth 1 (fn2-env-op s b)) (nth 1 (fn2-env-op s a)))
+                 (equal (nth 2 (fn2-env-op s b)) (nth 2 (fn2-env-op s a))))))
+(defun-sk fn2-env-units-kept (a b)
+  (forall u (equal (fn2-env-io u b) (fn2-env-io u a))))
+(defthm fn2-env-incarnation-ok-of-heads
+  (implies (and (fn2-env-incarnation-ok s g a) (fn2-env-op-heads-kept a b))
+           (fn2-env-incarnation-ok s g b))
+  :hints (("Goal" :in-theory '(fn2-env-incarnation-ok) :use ((:instance fn2-env-op-heads-kept-necc)))))
+(defthm fn2-env-freshness-of-heads
+  (implies (and (fn2-env-freshness log a) (fn2-env-op-heads-kept a b))
+           (fn2-env-freshness log b))
+  :hints (("Goal" :induct (fn2-env-freshness log a)
+           :in-theory (union-theories '(fn2-env-freshness fn2-env-incarnation-ok-of-heads) (theory 'minimal-theory)))))
+(defthm fn2-env-freshness-append
+  (equal (fn2-env-freshness (append x y) c) (and (fn2-env-freshness x c) (fn2-env-freshness y c)))
+  :hints (("Goal" :induct (fn2-env-freshness x c)
+           :in-theory (union-theories '(fn2-env-freshness binary-append car-cons cdr-cons default-car default-cdr) (theory 'ground-zero)))))
+(defthm fn2-env-lent-ok-of-kept
+  (implies (and (fn2-env-lent-ok a) (fn2-env-op-heads-kept a b) (fn2-env-units-kept a b))
+           (fn2-env-lent-ok b))
+  :hints (("Goal" :in-theory '(fn2-env-lent-ok fn2-env-incarnation-ok-of-heads)
+           :use ((:instance fn2-env-units-kept-necc (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-env-lent-ok-necc (fn2-core a) (u (fn2-env-lent-ok-witness b)))))))
+(defthm fn2-env-io-of-update-ops
+  (equal (fn2-env-io u (update-fn2-core-ops x c)) (fn2-env-io u c))
+  :hints (("Goal" :in-theory (enable fn2-env-io))))
+(defthm fn2-env-units-kept-of-io
+  ; a step that leaves commit-io leaves every unit
+  (implies (equal (nth *fn2-core-commit-io* b) (nth *fn2-core-commit-io* a)) (fn2-env-units-kept a b))
+  :hints (("Goal" :in-theory '(fn2-env-units-kept) :use ((:instance fn2-env-io-of-io-child (u (fn2-env-units-kept-witness a b)))))))
+(defthm fn2-env-heads-kept-post
+  (fn2-env-op-heads-kept c (update-fn2-core-ops (fn2-env-pr-ops) c))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-op-heads-kept fn2-env-op-of-post-result-core fn2-env-nth-op-posted
+                                               fn2-env-nth-op-c1-posted (:e natp) (:e <))
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-heads-kept-kept
+  (implies (fn2-env-ops-kept x c) (fn2-env-op-heads-kept c (update-fn2-core-ops x c)))
+  :hints (("Goal" :in-theory '(fn2-env-op-heads-kept fn2-env-op-kept fn2-env-op-of-update-ops)
+           :use ((:instance fn2-env-ops-kept-at (s (fn2-env-op-heads-kept-witness c (update-fn2-core-ops x c))))))))
+(defthm fn2-env-heads-units-kept-of-children
+  ; the extents and the pool hold no op and no unit
+  (and (fn2-env-op-heads-kept c (update-fn2-core-extents x c)) (fn2-env-units-kept c (update-fn2-core-extents x c))
+       (fn2-env-op-heads-kept c (update-fn2-core-pool x c)) (fn2-env-units-kept c (update-fn2-core-pool x c)))
+  :hints (("Goal" :in-theory '(fn2-env-op-heads-kept fn2-env-units-kept fn2-env-j5-readers-of-update-fn2-core-extents
+                               fn2-env-j5-readers-of-update-fn2-core-pool))))
+(defthm fn2-env-heads-units-kept-fill
+  (and (fn2-env-op-heads-kept c (fn2-env-fill rslot rgen slot gen idx octets c))
+       (fn2-env-units-kept c (fn2-env-fill rslot rgen slot gen idx octets c)))
+  :hints (("Goal" :in-theory '(fn2-env-heads-units-kept-of-children) :use ((:instance fn2-env-fill-is-pool-update)))))
+(defthm fn2-env-units-kept-update-ops
+  (fn2-env-units-kept c (update-fn2-core-ops x c))
+  :hints (("Goal" :in-theory '(fn2-env-units-kept fn2-env-io-of-update-ops))))
+(defthm fn2-env-fresh-lent-kept
+  (implies (and (fn2-env-freshness log a) (fn2-env-lent-ok a) (fn2-env-op-heads-kept a b) (fn2-env-units-kept a b))
+           (and (fn2-env-freshness log b) (fn2-env-lent-ok b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-freshness-of-heads fn2-env-lent-ok-of-kept))))
+(defthm fn2-env-freshness-result
+  (fn2-env-freshness (list (list :result slot gen evkind outcome count)) c)
+  :hints (("Goal" :in-theory '(fn2-env-freshness fn2-env-not-takep-result (:e consp) car-cons cdr-cons (:e atom) atom))))
+(defthm fn2-env-freshness-nil (fn2-env-freshness nil c) :hints (("Goal" :in-theory '(fn2-env-freshness (:e atom)))))
+(defthm fn2-env-fresh-lent-host-step
+  ; every step but :turn, :admit and :take keeps FRESHNESS and LENT-OK
+  (implies (and (fn2-corep c) (fn2-env-freshness log c) (fn2-env-lent-ok c)
+                (not (member-eq (fn2-env-tag action) '(:turn :admit :take))))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (and (fn2-env-freshness (append log (if entry (list entry) nil)) after) (fn2-env-lent-ok after))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-step fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
+                                        fn2-env-begin-epoch fn2-env-loan-write fn2-env-post-step
+                                        fn2-env-post-accept-kept fn2-env-post-clock-kept fn2-env-post-signal-kept
+                                        fn2-env-freshness-append fn2-env-freshness-result fn2-env-freshness-nil append-to-nil
+                                        fn2-env-freshness-of-heads fn2-env-lent-ok-of-kept
+                                        fn2-env-heads-kept-post fn2-env-heads-kept-kept fn2-env-units-kept-update-ops
+                                        fn2-env-heads-units-kept-of-children fn2-env-heads-units-kept-fill
+                                        member-eq (:e member-eq) (:e equal) mv-nth (:e car) (:e cdr) car-cons cdr-cons (:e mv-nth))
+                                      (theory 'minimal-theory)))))
+(defthm fn2-env-op-gen-natp
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (nth 0 (fn2-env-op s c))) (natp (nth 1 (fn2-env-op s c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-op fn2-ops-gen fn2-core-wfp) (fn2-corep fn2-opsp))
+           :use ((:instance fn2-ops-gen-raw-nth-natp (i s) (fn2-ops (fn2-core-ops c)))
+                 (:instance fn2-core-ops-type (fn2-core c))))))
+(defthm fn2-env-ops-op-of-op-finish-gen
+  ; finishing an op leaves it, retires it at its generation, or frees it at
+  ; the next generation
+  (implies (fn2-opsp fn2-ops)
+           (let ((o (fn2-env-ops-op h (mv-nth 1 (fn2-op-finish h g fn2-ops)))) (o0 (fn2-env-ops-op h fn2-ops)))
+             (or (equal o o0)
+                 (and (equal (nth 0 o) (nth 0 o0)) (equal (nth 2 o) *fn2-op-phase-retired*) (equal (nth 1 o) (nth 1 o0)))
+                 (and (equal (nth 0 o) (nth 0 o0)) (equal (nth 2 o) *fn2-op-phase-free*) (equal (nth 1 o) (+ 1 (nth 1 o0)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-finish fn2-op-recycle fn2-ops-clear-row fn2-op-phase-code fn2-op-handle-code
+                            fn2-op-slotp fn2-env-ops-op)
+                           (fn2-opsp)))))
+;; OWED: FRESHNESS and LENT-OK across :take need the taken op's generation
+;; after the take (FN2-ENV-OPS-OP-OF-OP-FINISH-GEN through the ack); across
+;; :turn the commit arms' issues and harvests, and other kinds' ops writers
+;; (dispatch-contracts).
 ;; ---------------------------------------------------------------------------
 ;; J5 AND J6 ACROSS THE WRITE/FENCE HANDLER (fn2-commit-arm-observe). The
 ;; harvest (fn2-harvest-one) finishes the operation it delivers before the
@@ -9337,6 +9469,22 @@
            :use ((:instance fn2-env-j5e-live-dropped) (:instance fn2-env-j5e-phases-dropped)
                  (:instance fn2-env-roles-dropped-idp)
                  (:instance fn2-env-j5e-live-natp (c a)) (:instance fn2-env-j5e-live-natp (c b))))))
+(defthm fn2-env-handler-bytes-room
+  ; the handler's byte count stays in range: at a write phase with one write
+  ; delivered and uncounted, at most one write is done (J5-ROLES-D), so the
+  ; row holds at most a unit of bytes (J5E), and the delivered count is at
+  ; most a unit (FN2-ENV-J5-EVENT-OK: at most the write's range)
+  (implies (and (fn2-commit-idp id c)
+                (member-equal (fn2-machine-phase id c)
+                              (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                (fn2-env-j5e-phases id c) (fn2-env-j5-roles-d id ok log c)
+                (<= (nfix count) *fn2-commit-unit-bytes*))
+           (unsigned-byte-p 60 (+ (fn2-machine-cb-bytes id c) (nfix count))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5e-phases fn2-env-j5e-bytes fn2-env-j5-roles-d fn2-env-b2n nfix natp
+                               unsigned-byte-p integer-range-p (:e expt) member-equal (:e member-equal)
+                               car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t)))
 ;; ---------------------------------------------------------------------------
 ;; THE STATEMENT. Only A-FENCE-PERSISTS is assumed.
 (defthm-owed fn2-commit-ack-implies-recoverable (profile actions choice recovery-actions)
