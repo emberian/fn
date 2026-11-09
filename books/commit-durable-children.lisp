@@ -1733,3 +1733,103 @@
   (equal (nth k (if c a b)) (if c (nth k a) (nth k b))))
 (defthmd fn2-env-member-pair
   (and (member-equal a (list a b)) (member-equal b (list a b))))
+;; THE WRITE ISSUE'S OP AND POOL ROW (toward J5 across the issuing arms): an
+;; accepted write issue writes its op afresh, queued at its generation with
+;; the issue's owner, range, storage offset and FUA, and leaves every other
+;; op; its lease-out marks the range's pool row leased out and keeps every
+;; row's generation, base, capacity and owner and every octet.
+(defthmd fn2-env-ops-op-reserve
+  ; an accepted reservation writes the free head's op afresh at its
+  ; generation; every other op stays
+  (let ((r (fn2-op-reserve kind okind oslot ogen principal may-release o)))
+    (implies (natp s)
+             (equal (fn2-env-ops-op s (mv-nth 3 r))
+                    (if (and (equal (mv-nth 0 r) :ok) (equal s (mv-nth 1 r)))
+                        (list t (fn2-ops-gen s o) *fn2-op-phase-reserved* kind okind oslot ogen 0 0 0 0 0 0 0 0 0 0 0 may-release 0)
+                      (fn2-env-ops-op s o)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-reserve fn2-ops-clear-row fn2-op-slotp fn2-env-ops-op)
+                           (fn2-op-cleanup-reserve fn2-op-cleanup-kindp fn2-ops-queued fn2-ops-reserved-credits
+                            fn2-ops-out-slot-length fn2-ops-free-count unsigned-byte-p fn2-ops-next-free)))))
+(defthmd fn2-env-ops-op-set-range
+  (let ((r (fn2-op-set-range slot gen rslot rgen off len o)))
+    (implies (natp s)
+             (equal (fn2-env-ops-op s (mv-nth 1 r))
+                    (if (and (equal (mv-nth 0 r) :ok) (equal s slot))
+                        (update-nth 7 rslot (update-nth 8 rgen (update-nth 9 off (update-nth 10 len (fn2-env-ops-op s o)))))
+                      (fn2-env-ops-op s o)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-range fn2-op-slotp fn2-op-phase-code fn2-op-handle-code fn2-env-ops-op) (unsigned-byte-p)))))
+(defthmd fn2-env-ops-op-set-storage
+  (let ((r (fn2-op-set-storage slot gen offset fua o)))
+    (implies (natp s)
+             (equal (fn2-env-ops-op s (mv-nth 1 r))
+                    (if (and (equal (mv-nth 0 r) :ok) (equal s slot))
+                        (update-nth 11 offset (update-nth 12 fua (fn2-env-ops-op s o)))
+                      (fn2-env-ops-op s o)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-storage fn2-op-slotp fn2-op-phase-code fn2-op-handle-code fn2-env-ops-op) (unsigned-byte-p)))))
+(defthmd fn2-env-ops-op-set-capability
+  (equal (fn2-env-ops-op s (mv-nth 1 (fn2-op-set-capability slot gen index nonce o))) (fn2-env-ops-op s o))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-capability fn2-op-slotp fn2-op-phase-code fn2-op-handle-code fn2-env-ops-op) (unsigned-byte-p)))))
+(defthmd fn2-env-ops-op-set-cancel-target
+  (equal (fn2-env-ops-op s (mv-nth 1 (fn2-op-set-cancel-target slot gen tslot tgen o))) (fn2-env-ops-op s o))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-cancel-target fn2-op-slotp fn2-op-phase-code fn2-op-handle-code fn2-env-ops-op) (unsigned-byte-p)))))
+(defthmd fn2-env-ops-op-enqueue
+  (let ((r (fn2-op-enqueue slot gen o)))
+    (implies (natp s)
+             (equal (fn2-env-ops-op s (mv-nth 1 r))
+                    (if (and (equal (mv-nth 0 r) :ok) (equal s slot))
+                        (update-nth 2 *fn2-op-phase-queued* (fn2-env-ops-op s o))
+                      (fn2-env-ops-op s o)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-enqueue fn2-ops-clear-row fn2-op-slotp fn2-op-phase-code fn2-op-handle-code fn2-env-ops-op)
+                           (fn2-ops-queued fn2-ops-reserved-credits fn2-ops-out-slot-length fn2-ops-free-count
+                            unsigned-byte-p fn2-ops-next-free fn2-ops-out-tail fn2-ops-out-gen-length fn2-ring-next)))))
+(defthmd fn2-env-ops-op-issue-write
+  ; an accepted write issue writes its op afresh, queued at its generation
+  ; with the issue's owner, range, storage offset and FUA; every other op
+  ; stays
+  (let ((r (fn2-issue-children *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0 okind oslot ogen principal pool ops control)))
+    (implies (and (natp s) (equal (mv-nth 0 r) :ok))
+             (equal (fn2-env-ops-op s (mv-nth 4 r))
+                    (if (equal s (mv-nth 1 r))
+                        (list t (mv-nth 2 r) *fn2-op-phase-queued* *fn2-action-write* okind oslot ogen slot gen off len offset fua
+                              0 0 0 0 0 0 0)
+                      (fn2-env-ops-op s ops)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-issue-children fn2-env-ops-op-reserve fn2-env-ops-op-set-range fn2-env-ops-op-set-storage
+                                        fn2-env-ops-op-set-capability fn2-env-ops-op-set-cancel-target fn2-env-ops-op-enqueue
+                                        fn2-env-op-reserve-ok-facts fn2-core-lease
+                                        update-nth-array nth-update-nth update-nth car-cons cdr-cons (:e zp) (:e binary-+) (:e nfix) (:e equal)
+                                        mv-nth (:e eq))
+                                      (theory 'minimal-theory)))))
+(defthmd fn2-env-car-of-update-nth
+  (equal (car (update-nth n v l)) (if (zp n) v (car l))))
+(defthmd fn2-env-pool-lease-out-rows
+  ; an accepted lease-out marks its row leased out and counts the lease;
+  ; every row's generation, base, capacity and owner and every octet stay
+  (let ((q (mv-nth 1 (fn2-pool-lease-out slot gen off len okind oslot ogen p))))
+    (implies (natp slot)
+    (and (equal (fn2-pool-rows q) (fn2-pool-rows p))
+         (equal (fn2-pool-data-length q) (fn2-pool-data-length p))
+         (equal (fn2-pool-datai a q) (fn2-pool-datai a p))
+         (implies (natp s)
+                  (and (equal (fn2-pool-gen s q) (fn2-pool-gen s p))
+                       (equal (fn2-pool-base s q) (fn2-pool-base s p))
+                       (equal (fn2-pool-cap s q) (fn2-pool-cap s p))
+                       (equal (fn2-pool-owner-slot s q) (fn2-pool-owner-slot s p))
+                       (equal (fn2-pool-state s q)
+                              (if (and (equal (mv-nth 0 (fn2-pool-lease-out slot gen off len okind oslot ogen p)) :ok)
+                                       (equal s slot))
+                                  *fn2-pool-state-leased-out*
+                                (fn2-pool-state s p))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-pool-lease-out fn2-pool-set-out-count fn2-pool-set-state update-fn2-pool-out-count$ai update-fn2-pool-state$ai fn2-pool-cap fn2-pool-cap$ai fn2-pool-gen fn2-pool-gen$ai fn2-pool-base fn2-pool-base$ai fn2-pool-owner-slot fn2-pool-owner-slot$ai fn2-pool-state fn2-pool-state$ai update-nth-array fn2-env-car-of-update-nth fn2-pool-rows fn2-pool-data-length fn2-pool-datai) (fn2-pool-readable-code unsigned-byte-p fn2-pool-fill fn2-pool-out-count)))))
+(defthmd fn2-env-pool-octets-of-lease-out
+  (implies (natp slot) (equal (fn2-env-pool-octets n a (mv-nth 1 (fn2-pool-lease-out slot gen off len okind oslot ogen p)))
+         (fn2-env-pool-octets n a p)))
+  :hints (("Goal" :induct (fn2-env-pool-octets n a p)
+           :in-theory (union-theories '(fn2-env-pool-octets fn2-env-pool-lease-out-rows) (theory 'minimal-theory)))))
