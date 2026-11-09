@@ -2,7 +2,7 @@
 ; send/write operations on that row that have not released their borrow.
 (in-package "ACL2")
 (include-book "assembly-core")
-(include-book "ops-conservation")
+(include-book "ops-semantic-steps")
 
 (defun fn2-borrow-valsp (kind phase h0 p1 h1 aux0)
   (declare (xargs :guard t))
@@ -1188,6 +1188,478 @@
            (equal (fn2-core-borrows-accounted-check core) (fn2-core-borrows-accountedp core)))
   :hints (("Goal" :in-theory (e/d (fn2-core-borrows-accountedp) (fn2-borrows-accounted-check fn2-core-wfp)))))
 ;; ---------------------------------------------------------------------------
+;; The other pool writers. Every pool primitive outside the borrow (lease-out,
+;; release-out) writes at most one row S, and either keeps S's borrow key
+;; (out-count, state, gen) or finds S not leased out (so, by the invariant,
+;; holding no borrow) and leaves it holding none. One transfer covers them.
+(defun-nx fn2-pool-row-key-same (s a b)
+  (and (equal (fn2-pool-out-count s b) (fn2-pool-out-count s a))
+       (equal (fn2-pool-state s b) (fn2-pool-state s a))
+       (equal (fn2-pool-gen s b) (fn2-pool-gen s a))))
+(defun-nx fn2-pool-free-row-writep (s a b)
+  (or (fn2-pool-row-key-same s a b)
+      (and (not (equal (fn2-pool-state s a) *fn2-pool-state-leased-out*))
+           (or (equal (fn2-pool-out-count s b) 0)
+               (equal (fn2-pool-out-count s b) (fn2-pool-out-count s a))))))
+(defthm fn2-ops-borrow-count-natp
+  (natp (fn2-ops-borrow-count n r ops))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-op-borrow-on))))
+(defthm fn2-ops-borrow-count-positive
+  (implies (and (fn2-op-borrowp i ops) (equal (fn2-ops-range-slot i ops) r) (natp i) (< i (nfix n)))
+           (< 0 (fn2-ops-borrow-count n r ops)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-ops-borrow-count n r ops) :in-theory (enable fn2-op-borrow-on))))
+(defthm fn2-pool-unleased-row-count
+  (implies (and (fn2-pool-borrows-countedp pool ops) (natp s) (< s (fn2-pool-rows pool))
+                (not (equal (fn2-pool-state s pool) *fn2-pool-state-leased-out*)))
+           (and (equal (fn2-pool-out-count s pool) 0)
+                (equal (fn2-ops-borrow-count (fn2-ops-rows ops) s ops) 0)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-pool-borrows-countedp-necc (r s)))
+           :in-theory (disable fn2-pool-borrows-countedp fn2-pool-borrows-countedp-necc))))
+(defthm fn2-pool-borrows-countedp-free-row
+  (implies (and (fn2-pool-borrows-countedp pool ops) (fn2-pool-keys-except s pool p2)
+                (equal (fn2-pool-rows p2) (fn2-pool-rows pool))
+                (fn2-pool-free-row-writep s pool p2))
+           (fn2-pool-borrows-countedp p2 ops))
+  :hints (("Goal" :in-theory (e/d (fn2-pool-free-row-writep fn2-pool-row-key-same)
+                                  (fn2-pool-borrows-countedp fn2-pool-keys-except
+                                   fn2-pool-borrows-countedp-necc fn2-pool-keys-except-necc))
+           :expand ((fn2-pool-borrows-countedp p2 ops))
+           :cases ((equal (fn2-pool-borrows-countedp-witness p2 ops) s))
+           :use ((:instance fn2-pool-borrows-countedp-necc (r (fn2-pool-borrows-countedp-witness p2 ops)))
+                 (:instance fn2-pool-keys-except-necc (a pool) (b p2) (r (fn2-pool-borrows-countedp-witness p2 ops)))
+                 (:instance fn2-pool-unleased-row-count)))))
+(defthm fn2-ops-borrows-namedp-free-row
+  (implies (and (fn2-pool-borrows-countedp pool ops) (fn2-ops-borrows-namedp pool ops) (natp (fn2-ops-rows ops))
+                (fn2-pool-keys-except s pool p2)
+                (equal (fn2-pool-rows p2) (fn2-pool-rows pool))
+                (fn2-pool-free-row-writep s pool p2))
+           (fn2-ops-borrows-namedp p2 ops))
+  :hints (("Goal" :in-theory (e/d (fn2-pool-free-row-writep fn2-pool-row-key-same)
+                                  (fn2-pool-borrows-countedp fn2-ops-borrows-namedp fn2-pool-keys-except
+                                   fn2-ops-borrows-namedp-necc fn2-pool-keys-except-necc))
+           :expand ((fn2-ops-borrows-namedp p2 ops))
+           :cases ((equal (fn2-ops-range-slot (fn2-ops-borrows-namedp-witness p2 ops) ops) s))
+           :use ((:instance fn2-ops-borrows-namedp-necc (i (fn2-ops-borrows-namedp-witness p2 ops)))
+                 (:instance fn2-pool-keys-except-necc (a pool) (b p2)
+                            (r (fn2-ops-range-slot (fn2-ops-borrows-namedp-witness p2 ops) ops)))
+                 (:instance fn2-pool-unleased-row-count)
+                 (:instance fn2-ops-borrow-count-positive (i (fn2-ops-borrows-namedp-witness p2 ops))
+                            (r s) (n (fn2-ops-rows ops)))))))
+(defthm fn2-borrows-accountedp-free-row-transfer
+  (implies (and (fn2-borrows-accountedp pool ops) (fn2-pool-keys-except s pool p2) (natp (fn2-ops-rows ops))
+                (equal (fn2-pool-rows p2) (fn2-pool-rows pool))
+                (fn2-pool-free-row-writep s pool p2))
+           (fn2-borrows-accountedp p2 ops))
+  :hints (("Goal" :in-theory (union-theories '(fn2-borrows-accountedp fn2-pool-borrows-countedp-free-row
+                                               fn2-ops-borrows-namedp-free-row)
+                                             (theory 'minimal-theory)))))
+(in-theory (disable fn2-pool-free-row-writep fn2-pool-row-key-same))
+;; The data column and the loops over it are outside every key.
+(defthm fn2-bc-pool-data-write-keys
+  (and (equal (fn2-pool-out-count r (update-fn2-pool-datai i v pool)) (fn2-pool-out-count r pool))
+       (equal (fn2-pool-state r (update-fn2-pool-datai i v pool)) (fn2-pool-state r pool))
+       (equal (fn2-pool-gen r (update-fn2-pool-datai i v pool)) (fn2-pool-gen r pool))
+       (equal (fn2-pool-rows (update-fn2-pool-datai i v pool)) (fn2-pool-rows pool)))
+  :hints (("Goal" :in-theory (enable fn2-borrow-readers update-fn2-pool-datai))))
+(defthm fn2-bc-pool-copy-up-keys
+  (and (equal (fn2-pool-out-count r (fn2-pool-copy-up src dst n pool)) (fn2-pool-out-count r pool))
+       (equal (fn2-pool-state r (fn2-pool-copy-up src dst n pool)) (fn2-pool-state r pool))
+       (equal (fn2-pool-gen r (fn2-pool-copy-up src dst n pool)) (fn2-pool-gen r pool))
+       (equal (fn2-pool-rows (fn2-pool-copy-up src dst n pool)) (fn2-pool-rows pool)))
+  :hints (("Goal" :induct (fn2-pool-copy-up src dst n pool)
+           :in-theory (e/d (fn2-pool-copy-up) (update-fn2-pool-datai fn2-borrow-readers)))))
+(defthm fn2-bc-pool-copy-down-keys
+  (and (equal (fn2-pool-out-count r (fn2-pool-copy-down src dst n pool)) (fn2-pool-out-count r pool))
+       (equal (fn2-pool-state r (fn2-pool-copy-down src dst n pool)) (fn2-pool-state r pool))
+       (equal (fn2-pool-gen r (fn2-pool-copy-down src dst n pool)) (fn2-pool-gen r pool))
+       (equal (fn2-pool-rows (fn2-pool-copy-down src dst n pool)) (fn2-pool-rows pool)))
+  :hints (("Goal" :induct (fn2-pool-copy-down src dst n pool)
+           :in-theory (e/d (fn2-pool-copy-down) (update-fn2-pool-datai fn2-borrow-readers)))))
+;; A row index that is not a natural reads and writes row 0.
+(defthm fn2-bc-nth-of-non-natp
+  (implies (not (natp n)) (equal (nth n l) (nth 0 l))))
+(defthm fn2-bc-update-nth-of-non-natp
+  (implies (not (natp n)) (equal (update-nth n v l) (update-nth 0 v l))))
+(defthm fn2-bc-update-nth-array-of-non-natp
+  (implies (not (natp i)) (equal (update-nth-array k i v l) (update-nth-array k 0 v l))))
+(defthm fn2-bc-nth-of-cons-0
+  (implies (and (natp r) (not (equal r 0))) (equal (nth r (cons a (cdr l))) (nth r l))))
+(in-theory (disable fn2-bc-nth-of-non-natp fn2-bc-update-nth-of-non-natp fn2-bc-update-nth-array-of-non-natp
+                    fn2-bc-nth-of-cons-0))
+;; One pool writer: its effect on row SLOT, then the invariant.
+(defmacro fn2-bc-pool-writer (name formals position slot &key enable (hyps 't))
+  (let* ((call `(,name ,@formals)) (q `(mv-nth ,position ,call)) (slot `(nfix ,slot))
+         (effect (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-FREE-ROW") name)))
+    `(progn
+       (defthm ,effect
+         (implies ,hyps
+                  (and (fn2-pool-keys-except ,slot pool ,q)
+                       (equal (fn2-pool-rows ,q) (fn2-pool-rows pool))
+                       (fn2-pool-free-row-writep ,slot pool ,q)))
+         :hints (("Goal" :in-theory (e/d (,name fn2-pool-writers fn2-borrow-readers fn2-pool-handle-code
+                                          fn2-pool-workspace-code fn2-pool-input-code fn2-pool-readable-code
+                                          fn2-pool-free-row-writep fn2-pool-row-key-same fn2-pool-keys-except
+                                          fn2-bc-nth-of-non-natp fn2-bc-update-nth-of-non-natp
+                                          fn2-bc-update-nth-array-of-non-natp fn2-bc-nth-of-cons-0 ,@enable)
+                                         (update-nth-array fn2-pool-ownerp fn2-pool-copy-up fn2-pool-copy-down
+                                          update-fn2-pool-datai)))))
+       (defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BORROWS-ACCOUNTED") name)
+         (implies (and (fn2-borrows-accountedp pool ops) (natp (fn2-ops-rows ops)) ,hyps)
+                  (fn2-borrows-accountedp ,q ops))
+         :hints (("Goal" :in-theory (disable ,name ,effect fn2-borrows-accountedp fn2-borrows-accountedp-free-row-transfer)
+                  :use (,effect (:instance fn2-borrows-accountedp-free-row-transfer (s ,slot) (p2 ,q)))))))))
+(fn2-bc-pool-writer fn2-pool-reserve (class okind oslot ogen pool) 3 (fn2-pool-class-headsi class pool)
+  :enable (update-fn2-pool-class-countsi update-fn2-pool-class-headsi))
+(fn2-bc-pool-writer fn2-pool-release (slot gen okind oslot ogen pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen pool) 2 slot)
+(fn2-bc-pool-writer fn2-pool-adapter-write (slot gen opslot opgen idx byte pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-complete-in (slot gen opslot opgen n pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-hand (slot gen okind oslot ogen tkind tslot tgen pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-accept-hand (slot gen tkind tslot tgen pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-accept-own (slot gen okind oslot ogen pool) 1 slot :enable (fn2-pool-accept-hand))
+(fn2-bc-pool-writer fn2-pool-write (slot gen idx byte okind oslot ogen pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-reset (slot gen okind oslot ogen pool) 1 slot)
+(fn2-bc-pool-writer fn2-pool-copy-range (src sgen soff dst dgen doff len okind oslot ogen pool) 1 dst)
+(fn2-bc-pool-writer fn2-pool-drop-prefix (slot gen k cursor limit okind oslot ogen pool) 2 slot)
+(fn2-bc-pool-writer fn2-pool-truncate (slot gen n okind oslot ogen pool) 1 slot)
+(defthm fn2-core-release-children-borrows-accounted
+  (implies (and (fn2-borrows-accountedp pool ops) (natp (fn2-ops-rows ops)))
+           (fn2-borrows-accountedp (mv-nth 1 (fn2-core-release-children slot gen okind oslot ogen pool control)) ops))
+  :hints (("Goal" :in-theory (e/d (fn2-core-release-children) (fn2-pool-release fn2-borrows-accountedp
+                                                               fn2-control-record-stop fn2-pool-release-countp)))))
+;; Their core faces.
+(defmacro fn2-bc-core-pool (name formals position)
+  `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BORROWS-ACCOUNTED") name)
+     (implies (and (fn2-core-borrows-accountedp core) (natp (fn2-ops-rows (fn2-core-ops core))))
+              (fn2-core-borrows-accountedp (mv-nth ,position (,name ,@formals core))))
+     :hints (("Goal" :in-theory (e/d (,name fn2-core-borrows-accountedp)
+                                     (fn2-borrows-accountedp fn2-pool-reserve fn2-pool-reset fn2-pool-write
+                                      fn2-pool-copy-range fn2-pool-hand fn2-pool-accept-own fn2-pool-drop-prefix
+                                      fn2-pool-truncate fn2-core-release-children))))))
+(fn2-bc-core-pool fn2-core-reserve (class okind oslot ogen) 3)
+(fn2-bc-core-pool fn2-core-release (slot gen okind oslot ogen) 1)
+(fn2-bc-core-pool fn2-core-reset (slot gen okind oslot ogen) 1)
+(fn2-bc-core-pool fn2-core-write (slot gen idx byte okind oslot ogen) 1)
+(fn2-bc-core-pool fn2-core-copy-range (src sgen soff dst dgen doff len okind oslot ogen) 1)
+(fn2-bc-core-pool fn2-core-hand (slot gen okind oslot ogen tkind tslot tgen) 1)
+(fn2-bc-core-pool fn2-core-accept-hand (slot gen okind oslot ogen) 1)
+(fn2-bc-core-pool fn2-core-drop-prefix (slot gen k cursor limit okind oslot ogen) 2)
+(fn2-bc-core-pool fn2-core-truncate (slot gen n okind oslot ogen) 1)
+;; ---------------------------------------------------------------------------
+;; The ops-only steps: none moves a borrow. Each keeps every row's borrow key
+;; (post-result, post-accept-result, ack, request-cancel and the scalars), or
+;; touches only a row that holds no borrow before or after (finish).
+(defun-sk fn2-ops-keys-same (a b)
+  (forall i (implies (natp i) (equal (fn2-op-borrow-key i b) (fn2-op-borrow-key i a))))
+  :rewrite :direct)
+(defthm fn2-ops-keys-same-except
+  (implies (fn2-ops-keys-same a b) (fn2-ops-keys-except s a b))
+  :hints (("Goal" :in-theory (disable fn2-ops-keys-same fn2-ops-keys-same-necc)
+           :expand ((fn2-ops-keys-except s a b))
+           :use ((:instance fn2-ops-keys-same-necc (i (fn2-ops-keys-except-witness s a b)))))))
+(defthm fn2-ops-keys-same-trans
+  (implies (and (fn2-ops-keys-same a b) (fn2-ops-keys-same b c)) (fn2-ops-keys-same a c))
+  :hints (("Goal" :in-theory (disable fn2-ops-keys-same fn2-ops-keys-same-necc)
+           :expand ((fn2-ops-keys-same a c))
+           :use ((:instance fn2-ops-keys-same-necc (i (fn2-ops-keys-same-witness a c)))
+                 (:instance fn2-ops-keys-same-necc (a b) (b c) (i (fn2-ops-keys-same-witness a c)))))))
+(defthm fn2-ops-keys-same-refl (fn2-ops-keys-same a a))
+(defthm fn2-borrows-accountedp-keys-same-transfer
+  (implies (and (fn2-borrows-accountedp pool ops) (fn2-ops-keys-same ops ops2)
+                (equal (fn2-ops-rows ops2) (fn2-ops-rows ops)))
+           (fn2-borrows-accountedp pool ops2))
+  :hints (("Goal" :in-theory (e/d (fn2-borrows-accountedp)
+                                  (fn2-pool-borrows-countedp fn2-ops-borrows-namedp fn2-ops-keys-same
+                                   fn2-ops-keys-except fn2-pool-borrows-countedp-necc fn2-ops-borrows-namedp-necc
+                                   fn2-ops-keys-same-except fn2-ops-borrow-count-except fn2-ops-keys-except-reads))
+           :expand ((fn2-pool-borrows-countedp pool ops2) (fn2-ops-borrows-namedp pool ops2))
+           :use ((:instance fn2-pool-borrows-countedp-necc (r (fn2-pool-borrows-countedp-witness pool ops2)))
+                 (:instance fn2-ops-keys-same-except (a ops) (b ops2) (s (nfix (fn2-ops-rows ops))))
+                 (:instance fn2-ops-borrow-count-except (s (nfix (fn2-ops-rows ops))) (a ops) (b ops2)
+                            (n (fn2-ops-rows ops)) (r (fn2-pool-borrows-countedp-witness pool ops2)))
+                 (:instance fn2-ops-borrows-namedp-necc (i (fn2-ops-borrows-namedp-witness pool ops2)))
+                 (:instance fn2-ops-keys-same-except (a ops) (b ops2) (s (+ 1 (nfix (fn2-ops-borrows-namedp-witness pool ops2)))))
+                 (:instance fn2-ops-keys-except-reads (a ops) (b ops2) (r 0)
+                            (s (+ 1 (nfix (fn2-ops-borrows-namedp-witness pool ops2))))
+                            (i (fn2-ops-borrows-namedp-witness pool ops2)))))))
+;; A write outside the key's columns keeps every key.
+(defconst *fn2-bc-key-columns* '(1 2 7 8 15 20 25 33 34))
+(defthm fn2-op-borrow-key-of-update-nth-array-nonkey
+  (implies (and (natp k) (not (member k *fn2-bc-key-columns*)))
+           (equal (fn2-op-borrow-key i (update-nth-array k s v x)) (fn2-op-borrow-key i x)))
+  :hints (("Goal" :in-theory (e/d (fn2-borrow-readers fn2-op-borrowp fn2-op-borrow-key) (fn2-op-borrowp-by-vals)))))
+(defthm fn2-op-borrow-key-of-update-nth-nonkey
+  (implies (and (natp k) (<= 44 k))
+           (equal (fn2-op-borrow-key i (update-nth k v x)) (fn2-op-borrow-key i x)))
+  :hints (("Goal" :in-theory (e/d (fn2-borrow-readers fn2-op-borrowp fn2-op-borrow-key) (fn2-op-borrowp-by-vals)))))
+(defthm fn2-ops-keys-same-of-nonkey-write
+  (implies (and (natp k) (not (member k *fn2-bc-key-columns*)))
+           (and (fn2-ops-keys-same x (update-nth-array k s v x))
+                (implies (<= 44 k) (fn2-ops-keys-same x (update-nth k v x)))))
+  :hints (("Goal" :in-theory (disable update-nth-array fn2-op-borrowp-by-vals)
+           :expand ((fn2-ops-keys-same x (update-nth-array k s v x)) (fn2-ops-keys-same x (update-nth k v x)))
+           :cases ((<= 44 k)))))
+(defthm fn2-ops-keys-same-through-nonkey-write
+  (implies (and (fn2-ops-keys-same a x) (natp k) (not (member k *fn2-bc-key-columns*)))
+           (fn2-ops-keys-same a (update-nth-array k s v x)))
+  :hints (("Goal" :in-theory (disable fn2-ops-keys-same update-nth-array fn2-ops-keys-same-trans
+                                      fn2-ops-keys-same-of-nonkey-write)
+           :use ((:instance fn2-ops-keys-same-trans (b x) (c (update-nth-array k s v x)))
+                 fn2-ops-keys-same-of-nonkey-write))))
+(defmacro fn2-bc-ops-keys-kept (name formals position &key enable)
+  (let ((q (if position `(mv-nth ,position (,name ,@formals)) `(,name ,@formals))))
+    `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-KEYS-SAME") name)
+       (and (fn2-ops-keys-same ops ,q) (equal (fn2-ops-rows ,q) (fn2-ops-rows ops)))
+       :hints (("Goal" :in-theory (e/d (,name fn2-ops-writers fn2-ops-keys-same ,@enable)
+                                       (update-nth-array fn2-ops-rows fn2-op-borrowp-by-vals)))
+               (and stable-under-simplificationp
+                    '(:in-theory (e/d (,name fn2-ops-writers fn2-ops-rows fn2-ops-keys-same ,@enable)
+                                      (update-nth-array fn2-op-borrowp-by-vals))))))))
+(fn2-bc-ops-keys-kept fn2-count-stray (ops) nil)
+(fn2-bc-ops-keys-kept fn2-post-clock (mono real flags ops) nil)
+(fn2-bc-ops-keys-kept fn2-post-signal (bits ops) nil)
+(fn2-bc-ops-keys-kept fn2-op-request-cancel (slot gen ops) 1)
+;; Post-result: the posted cell's harvest bit is clear before and after, and
+;; a c1 post comes only on a send whose borrow is retained (release-pending)
+;; or not yet released (submitted), so the row's borrow is the same.
+(defthm fn2-bc-row-cell-order
+  (implies (and (fn2-ops-semanticp ops) (natp slot) (< slot (fn2-ops-rows ops)))
+           (let ((phase (fn2-ops-phase slot ops)) (h0 (fn2-ops-c0-harvested slot ops))
+                 (p0 (fn2-ops-c0-posted slot ops)) (p1 (fn2-ops-c1-posted slot ops))
+                 (h1 (fn2-ops-c1-harvested slot ops)))
+             (and (<= h0 p0) (<= h1 p1)
+                  (implies (equal phase *fn2-op-phase-submitted*) (equal h0 0))
+                  (implies (equal phase *fn2-op-phase-release-pending*)
+                           (and (equal h0 1) (equal h1 0)
+                                (or (and (equal (fn2-ops-kind slot ops) *fn2-action-send*)
+                                         (equal (fn2-ops-c0-aux0 slot ops) 1))
+                                    (equal p1 1)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-bc-row-body) (fn2-ops-semanticp fn2-post-payloadp))
+           :use ((:instance fn2-ops-semanticp-row-facts)
+                 (:instance fn2-ops-row-semanticp-body-at (j slot) (n (fn2-ops-rows ops)))))))
+(defthm fn2-post-result-keys-same
+  (implies (fn2-ops-semanticp ops)
+           (and (fn2-ops-keys-same ops (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 ops))
+                (equal (fn2-ops-rows (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 ops))
+                       (fn2-ops-rows ops))))
+  :hints (("Goal" :in-theory (e/d (fn2-post-result fn2-ops-writers fn2-post-eligiblep fn2-op-handle-code fn2-op-slotp
+                                   fn2-count-stray fn2-ops-keys-same)
+                                  (update-nth-array fn2-post-payloadp fn2-ops-semanticp
+                                   fn2-op-borrowp-by-vals))
+           :cases ((equal (fn2-ops-keys-same-witness ops (fn2-post-result cell slot gen evkind outcome reason count aux0 aux1 ops))
+                          slot))
+           :use ((:instance fn2-bc-row-cell-order)))
+          (and stable-under-simplificationp
+               '(:in-theory (e/d (fn2-post-result fn2-ops-writers fn2-post-eligiblep fn2-op-handle-code fn2-op-slotp
+                                  fn2-count-stray fn2-op-borrow-key fn2-op-borrowp fn2-borrow-valsp fn2-borrow-readers
+                                  fn2-bc-row-body fn2-ops-keys-same)
+                                 (update-nth-array fn2-post-payloadp fn2-ops-semanticp
+                                  fn2-op-borrowp-by-vals fn2-ops-row-semanticp fn2-ops-semanticp-row-facts))))))
+(defthm fn2-post-accept-result-keys-same
+  (implies (fn2-ops-semanticp ops)
+           (and (fn2-ops-keys-same ops (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce
+                                                               family port w0 w1 w2 w3 ops))
+                (equal (fn2-ops-rows (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce
+                                                             family port w0 w1 w2 w3 ops))
+                       (fn2-ops-rows ops))))
+  :hints (("Goal" :in-theory (e/d (fn2-post-accept-result fn2-ops-writers)
+                                  (update-nth-array fn2-ops-keys-same fn2-post-result fn2-ops-semanticp fn2-ops-keys-same-trans
+                                   fn2-count-stray fn2-ops-rows fn2-peer-recordp fn2-op-slotp))
+           :use ((:instance fn2-post-result-keys-same (cell 0) (evkind *fn2-event-accept-result*) (count 0)
+                            (aux0 cap-index) (aux1 cap-nonce))))))
+;; Ack: each acknowledged row is queued (fn2-outbox-prefixp), so a send or
+;; write moves only queued -> submitted and keeps its borrow; a row named
+;; twice in the prefix is submitted at its second visit and stays so.
+(defun-nx fn2-bc-ack-row-okp (slot ops)
+  (or (not (or (equal (fn2-ops-kind slot ops) *fn2-action-send*)
+               (equal (fn2-ops-kind slot ops) *fn2-action-write*)))
+      (equal (fn2-ops-phase slot ops) *fn2-op-phase-queued*)
+      (equal (fn2-ops-phase slot ops) *fn2-op-phase-submitted*)))
+(defun-nx fn2-bc-ack-okp (n index ops)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n) t
+    (and (fn2-bc-ack-row-okp (fn2-ops-out-sloti index ops) ops)
+         (fn2-bc-ack-okp (- n 1) (fn2-ring-next index (fn2-ops-out-slot-length ops)) ops))))
+(defthm fn2-bc-ack-okp-of-prefixp
+  (implies (fn2-outbox-prefixp n index ops) (fn2-bc-ack-okp n index ops))
+  :hints (("Goal" :induct (fn2-outbox-prefixp n index ops)
+           :in-theory (e/d (fn2-op-phase-code fn2-op-handle-code fn2-bc-ack-row-okp) (fn2-op-phase-code-by-row)))))
+(defun-nx fn2-bc-ack-step (slot ops)
+  (update-nth-array 1 slot (fn2-op-ack-phase (fn2-ops-kind slot ops)) ops))
+(defthm fn2-bc-ack-step-row-okp
+  (implies (and (fn2-bc-ack-row-okp r ops) (natp slot))
+           (fn2-bc-ack-row-okp r (fn2-bc-ack-step slot ops)))
+  :hints (("Goal" :cases ((natp r)))
+          ("Subgoal 2" :in-theory (e/d (fn2-bc-ack-row-okp fn2-bc-ack-step fn2-borrow-readers fn2-op-ack-phase
+                                        fn2-action-completionp fn2-bc-nth-of-non-natp)
+                                       (update-nth-array)))
+          ("Subgoal 1" :in-theory (e/d (fn2-bc-ack-row-okp fn2-bc-ack-step fn2-borrow-readers fn2-op-ack-phase
+                                        fn2-action-completionp)
+                                       (update-nth-array)))))
+(defthm fn2-bc-ack-row-okp-of-update-nth
+  (implies (and (natp k) (not (equal k 1)) (not (equal k 2)))
+           (equal (fn2-bc-ack-row-okp r (update-nth k v ops)) (fn2-bc-ack-row-okp r ops)))
+  :hints (("Goal" :in-theory (enable fn2-bc-ack-row-okp fn2-borrow-readers))))
+(defthm fn2-bc-out-slot-frames
+  (and (implies (and (natp k) (not (equal k 45)))
+                (and (equal (fn2-ops-out-sloti i (update-nth k v ops)) (fn2-ops-out-sloti i ops))
+                     (equal (fn2-ops-out-slot-length (update-nth k v ops)) (fn2-ops-out-slot-length ops))))
+       (equal (fn2-ops-out-sloti i (fn2-bc-ack-step slot ops)) (fn2-ops-out-sloti i ops))
+       (equal (fn2-ops-out-slot-length (fn2-bc-ack-step slot ops)) (fn2-ops-out-slot-length ops)))
+  :hints (("Goal" :in-theory (e/d (fn2-ops-out-sloti fn2-ops-out-slot-length fn2-bc-ack-step) (update-nth-array)))))
+(defthm fn2-bc-ack-okp-of-step
+  (implies (and (fn2-bc-ack-okp n index ops) (natp slot))
+           (fn2-bc-ack-okp n index (fn2-bc-ack-step slot ops)))
+  :hints (("Goal" :induct (fn2-bc-ack-okp n index ops)
+           :in-theory (disable fn2-bc-ack-row-okp fn2-bc-ack-step fn2-ops-out-sloti fn2-ops-out-slot-length))))
+(defthm fn2-bc-ack-okp-of-update-nth
+  (implies (and (natp k) (not (equal k 1)) (not (equal k 2)) (not (equal k 45)))
+           (equal (fn2-bc-ack-okp n index (update-nth k v ops)) (fn2-bc-ack-okp n index ops)))
+  :hints (("Goal" :induct (fn2-bc-ack-okp n index ops)
+           :in-theory (disable fn2-bc-ack-row-okp fn2-ops-out-sloti fn2-ops-out-slot-length))))
+(defthm fn2-bc-ack-step-keys-same
+  (implies (and (fn2-bc-ack-row-okp slot ops) (natp slot))
+           (fn2-ops-keys-same ops (fn2-bc-ack-step slot ops)))
+  :hints (("Goal" :in-theory (e/d (fn2-ops-keys-same fn2-bc-ack-step fn2-bc-ack-row-okp fn2-op-borrow-key
+                                   fn2-op-borrowp fn2-borrow-valsp fn2-borrow-readers fn2-op-ack-phase
+                                   fn2-action-completionp)
+                                  (update-nth-array fn2-op-borrowp-by-vals)))))
+(defthm fn2-ops-keys-same-through-scalar
+  (implies (and (fn2-ops-keys-same a x) (natp k) (<= 44 k))
+           (fn2-ops-keys-same a (update-nth k v x)))
+  :hints (("Goal" :in-theory (disable fn2-ops-keys-same fn2-ops-keys-same-trans fn2-ops-keys-same-of-nonkey-write)
+           :use ((:instance fn2-ops-keys-same-trans (b x) (c (update-nth k v x)))
+                 (:instance fn2-ops-keys-same-of-nonkey-write (s 0))))))
+(defthm fn2-ops-keys-same-trans-back
+  (implies (and (fn2-ops-keys-same b c) (fn2-ops-keys-same a b)) (fn2-ops-keys-same a c))
+  :hints (("Goal" :use fn2-ops-keys-same-trans :in-theory (disable fn2-ops-keys-same fn2-ops-keys-same-trans))))
+(defthm fn2-bc-submit-step-is-ack-step
+  (equal (fn2-ops-set-phase slot (fn2-op-ack-phase (fn2-ops-kind slot ops)) ops) (fn2-bc-ack-step slot ops))
+  :hints (("Goal" :in-theory (enable fn2-ops-writers fn2-bc-ack-step))))
+(defthm fn2-bc-ack-step-rows
+  (equal (fn2-ops-rows (fn2-bc-ack-step slot ops)) (fn2-ops-rows ops))
+  :hints (("Goal" :in-theory (e/d (fn2-bc-ack-step fn2-ops-rows) (update-nth-array)))))
+(defthm fn2-outbox-submit-prefix-keys-same
+  (implies (fn2-bc-ack-okp n (fn2-ops-out-head ops) ops)
+           (and (fn2-ops-keys-same ops (fn2-outbox-submit-prefix n ops))
+                (equal (fn2-ops-rows (fn2-outbox-submit-prefix n ops)) (fn2-ops-rows ops))))
+  :hints (("Goal" :induct (fn2-outbox-submit-prefix n ops)
+           :in-theory (e/d ((:induction fn2-outbox-submit-prefix) update-fn2-ops-out-head update-fn2-ops-queued
+                            fn2-ops-out-head fn2-ops-rows fn2-op-slotp)
+                           (fn2-ops-keys-same fn2-bc-ack-okp fn2-bc-ack-row-okp update-nth-array
+                            fn2-bc-ack-step fn2-ops-out-sloti fn2-ops-out-slot-length fn2-ops-kind
+                            fn2-ops-keys-same-trans fn2-op-ack-phase fn2-action-completionp)))
+          (and stable-under-simplificationp
+               '(:expand ((fn2-outbox-submit-prefix n ops) (fn2-bc-ack-okp n (fn2-ops-out-head ops) ops)
+                          (fn2-bc-ack-okp n (nth 48 ops) ops))))))
+(defthm fn2-outbox-ack-keys-same
+  (and (fn2-ops-keys-same ops (mv-nth 1 (fn2-outbox-ack n ops)))
+       (equal (fn2-ops-rows (mv-nth 1 (fn2-outbox-ack n ops))) (fn2-ops-rows ops)))
+  :hints (("Goal" :in-theory (e/d (fn2-outbox-ack) (fn2-ops-keys-same fn2-outbox-prefixp fn2-outbox-submit-prefix)))))
+(fn2-bc-ops-keys-kept fn2-take-clock (ops) 4)
+(fn2-bc-ops-keys-kept fn2-take-signal (ops) 1)
+(defmacro fn2-bc-ops-kept-accounted (name formals position &key semantic)
+  (let* ((q (if position `(mv-nth ,position (,name ,@formals)) `(,name ,@formals)))
+         (keys (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-KEYS-SAME") name)))
+    `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BORROWS-ACCOUNTED") name)
+       (implies (and (fn2-borrows-accountedp pool ops) ,@(and semantic '((fn2-ops-semanticp ops))))
+                (fn2-borrows-accountedp pool ,q))
+       :hints (("Goal" :in-theory (disable ,name fn2-borrows-accountedp ,keys fn2-borrows-accountedp-keys-same-transfer
+                                          fn2-ops-semanticp)
+                :use (,keys (:instance fn2-borrows-accountedp-keys-same-transfer (ops2 ,q))))))))
+(fn2-bc-ops-kept-accounted fn2-count-stray (ops) nil)
+(fn2-bc-ops-kept-accounted fn2-post-clock (mono real flags ops) nil)
+(fn2-bc-ops-kept-accounted fn2-post-signal (bits ops) nil)
+(fn2-bc-ops-kept-accounted fn2-take-clock (ops) 4)
+(fn2-bc-ops-kept-accounted fn2-take-signal (ops) 1)
+(fn2-bc-ops-kept-accounted fn2-op-request-cancel (slot gen ops) 1)
+(fn2-bc-ops-kept-accounted fn2-outbox-ack (n ops) 1)
+(fn2-bc-ops-kept-accounted fn2-post-result (cell slot gen evkind outcome reason count aux0 aux1 ops) nil :semantic t)
+(fn2-bc-ops-kept-accounted fn2-post-accept-result
+  (slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 ops) nil :semantic t)
+;; Finish recycles a done row, which holds no borrow before or after.
+(defthm fn2-op-finish-refused
+  (implies (not (and (natp slot) (< slot (fn2-ops-rows ops)) (equal (fn2-ops-phase slot ops) *fn2-op-phase-done*)))
+           (equal (mv-nth 1 (fn2-op-finish slot gen ops)) ops))
+  :hints (("Goal" :in-theory (e/d (fn2-op-finish fn2-op-phase-code fn2-op-handle-code fn2-op-slotp fn2-op-recycle)
+                                  (fn2-op-phase-code-by-row)))))
+(defthm fn2-op-borrowp-when-done
+  (implies (equal (fn2-ops-phase j x) *fn2-op-phase-done*) (not (fn2-op-borrowp j x)))
+  :hints (("Goal" :in-theory (e/d (fn2-op-borrowp fn2-borrow-valsp) (fn2-op-borrowp-by-vals)))))
+(defthm fn2-op-finish-borrows-accounted
+  (implies (and (fn2-borrows-accountedp pool ops) (natp (fn2-ops-rows ops)))
+           (fn2-borrows-accountedp pool (mv-nth 1 (fn2-op-finish slot gen ops))))
+  :hints (("Goal" :cases ((and (natp slot) (< slot (fn2-ops-rows ops))
+                               (equal (fn2-ops-phase slot ops) *fn2-op-phase-done*)))
+           :in-theory (e/d (fn2-borrows-accountedp)
+                           (fn2-op-finish fn2-pool-borrows-countedp fn2-ops-borrows-namedp fn2-ops-keys-except
+                            fn2-borrows-accountedp-ops-transfer fn2-op-borrowp-by-vals fn2-op-finish-row
+                            fn2-ops-borrows-namedp-necc))
+           :use ((:instance fn2-borrows-accountedp-ops-transfer (j slot) (ops2 (mv-nth 1 (fn2-op-finish slot gen ops))))
+                 fn2-op-finish-row
+                 (:instance fn2-ops-borrows-namedp-necc (i slot))
+                 (:instance fn2-op-borrowp-when-done (j slot) (x ops))))))
+;; The host boundary's ops entries and the executor's mailbox, on the core.
+(defmacro fn2-bc-core-ops-only (name formals target position)
+  `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BORROWS-ACCOUNTED") name)
+     (implies (and (fn2-core-borrows-accountedp core) (fn2-ops-semanticp (fn2-core-ops core))
+                   (natp (fn2-ops-rows (fn2-core-ops core))))
+              (fn2-core-borrows-accountedp ,(if position `(mv-nth ,position (,name ,@formals core)) `(,name ,@formals core))))
+     :hints (("Goal" :in-theory (e/d (,name fn2-core-borrows-accountedp)
+                                     (fn2-borrows-accountedp fn2-ops-semanticp ,target))))))
+(fn2-bc-core-ops-only fn2-host-post-result (cell slot gen evkind outcome reason count aux0 aux1) fn2-post-result nil)
+(fn2-bc-core-ops-only fn2-host-post-accept-result (slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3)
+  fn2-post-accept-result nil)
+(fn2-bc-core-ops-only fn2-host-post-clock (mono real flags) fn2-post-clock nil)
+(fn2-bc-core-ops-only fn2-host-post-signal (bits) fn2-post-signal nil)
+(fn2-bc-core-ops-only fn2-host-count-stray () fn2-count-stray nil)
+(fn2-bc-core-ops-only fn2-host-outbox-ack (n) fn2-outbox-ack 1)
+(fn2-bc-core-ops-only fn2-host-op-finish (slot gen) fn2-op-finish 1)
+(defthm fn2-bc-exec-clock-pool
+  (equal (fn2-core-pool (fn2-exec-clock mono core)) (fn2-core-pool core))
+  :hints (("Goal" :in-theory (enable fn2-exec-clock fn2-core-stop fn2-exec-set-now fn2-exec-set-armed-deadline
+                                     fn2-exec-set-idle-deadline fn2-exec-set-wake-generation))))
+(defthm fn2-bc-exec-trace-actions-pool
+  (equal (fn2-core-pool (fn2-exec-trace-actions left ordinal start core)) (fn2-core-pool core))
+  :hints (("Goal" :in-theory (enable fn2-exec-trace-actions))))
+(defthm fn2-bc-exec-record-pool
+  (equal (fn2-core-pool (fn2-exec-record kind id principal position bytes steps actions runnable wake start core))
+         (fn2-core-pool core))
+  :hints (("Goal" :in-theory (e/d (fn2-exec-record fn2-core-stop) (fn2-exec-trace-actions)))))
+(defthm fn2-exec-mailbox-borrows-accounted
+  (implies (fn2-core-borrows-accountedp core)
+           (fn2-core-borrows-accountedp (mv-nth 5 (fn2-exec-mailbox core))))
+  :hints (("Goal" :in-theory (e/d (fn2-exec-mailbox fn2-core-borrows-accountedp)
+                                  (fn2-borrows-accountedp fn2-take-clock fn2-take-signal fn2-exec-clock
+                                   fn2-exec-record fn2-core-stop)))))
+(defthm fn2-core-loan-write-borrows-accounted
+  (implies (and (fn2-core-borrows-accountedp core) (natp (fn2-ops-rows (fn2-core-ops core))))
+           (fn2-core-borrows-accountedp
+            (update-fn2-core-pool (mv-nth 1 (fn2-pool-adapter-write slot gen opslot opgen idx byte (fn2-core-pool core)))
+                                  core)))
+  :hints (("Goal" :in-theory (e/d (fn2-core-borrows-accountedp) (fn2-borrows-accountedp fn2-pool-adapter-write)))))
+(defthm fn2-core-borrows-accounted-check-equiv-rows
+  (implies (and (natp (fn2-pool-rows (fn2-core-pool core))) (natp (fn2-ops-rows (fn2-core-ops core))))
+           (equal (fn2-core-borrows-accounted-check core) (fn2-core-borrows-accountedp core)))
+  :hints (("Goal" :in-theory (e/d (fn2-core-borrows-accountedp) (fn2-borrows-accounted-check)))))
+(defmacro fn2-bc-host-rows (name formals position)
+  (let ((q (if position `(mv-nth ,position (,name ,@formals core)) `(,name ,@formals core))))
+    `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-BC-ROWS") name)
+       (and (equal (fn2-core-pool ,q) (fn2-core-pool core))
+            (equal (fn2-ops-rows (fn2-core-ops ,q)) (fn2-ops-rows (fn2-core-ops core))))
+       :hints (("Goal" :in-theory (enable ,name))))))
+(fn2-bc-host-rows fn2-host-post-result (cell slot gen evkind outcome reason count aux0 aux1) nil)
+(fn2-bc-host-rows fn2-host-post-accept-result (slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3) nil)
+(fn2-bc-host-rows fn2-host-post-clock (mono real flags) nil)
+(fn2-bc-host-rows fn2-host-post-signal (bits) nil)
+(fn2-bc-host-rows fn2-host-count-stray () nil)
+(fn2-bc-host-rows fn2-host-outbox-ack (n) 1)
+(fn2-bc-host-rows fn2-host-op-finish (slot gen) 1)
+;; ---------------------------------------------------------------------------
 ;; FN2-CORE-BORROW-CONSERVATION (A2): over every step that leases or releases
 ;; a borrow (each action's issue, the arm-wake issue, and one harvest), each
 ;; pool row's out-count stays the number of live send/write operations on
@@ -1195,7 +1667,9 @@
 ;; generation, and only a send may release early. So the release a harvested
 ;; operation triggers always spends a borrow that operation itself counted.
 (defconst *fn2-core-borrow-steps*
-  '(:harvest :receive :send :read :write :fence :accept :close :cancel :entropy :arm-wake))
+  '(:harvest :receive :send :read :write :fence :accept :close :cancel :entropy :arm-wake
+    :reserve :release :reset :pool-write :copy-range :hand :accept-hand :drop-prefix :truncate :loan-write
+    :post-result :post-accept-result :post-clock :post-signal :count-stray :outbox-ack :finish :mailbox))
 (defun fn2-core-borrow-step (op a fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (case op
@@ -1238,6 +1712,54 @@
     (:arm-wake (mv-let (code slot gen fn2-core)
                  (fn2-issue-arm-wake (nth 0 a) (nth 1 a) fn2-core)
                  (declare (ignore code slot gen)) fn2-core))
+    (:reserve (mv-let (code slot gen fn2-core)
+                (fn2-core-reserve (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) fn2-core)
+                (declare (ignore code slot gen)) fn2-core))
+    (:release (mv-let (code fn2-core)
+                (fn2-core-release (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) fn2-core)
+                (declare (ignore code)) fn2-core))
+    (:reset (mv-let (code fn2-core)
+              (fn2-core-reset (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) fn2-core)
+              (declare (ignore code)) fn2-core))
+    (:pool-write (mv-let (code fn2-core)
+                   (fn2-core-write (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a) (nth 6 a) fn2-core)
+                   (declare (ignore code)) fn2-core))
+    (:copy-range (mv-let (code fn2-core)
+                   (fn2-core-copy-range (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                        (nth 6 a) (nth 7 a) (nth 8 a) (nth 9 a) fn2-core)
+                   (declare (ignore code)) fn2-core))
+    (:hand (mv-let (code fn2-core)
+             (fn2-core-hand (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a)
+                            fn2-core)
+             (declare (ignore code)) fn2-core))
+    (:accept-hand (mv-let (code fn2-core)
+                    (fn2-core-accept-hand (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) fn2-core)
+                    (declare (ignore code)) fn2-core))
+    (:drop-prefix (mv-let (code next fn2-core)
+                    (fn2-core-drop-prefix (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                          (nth 6 a) (nth 7 a) fn2-core)
+                    (declare (ignore code next)) fn2-core))
+    (:truncate (mv-let (code fn2-core)
+                 (fn2-core-truncate (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a) fn2-core)
+                 (declare (ignore code)) fn2-core))
+    (:loan-write (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+                   (code fn2-pool)
+                   (fn2-pool-adapter-write (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a) fn2-pool)
+                   (let ((ignored code)) (declare (ignore ignored)) fn2-core)))
+    (:post-result (fn2-host-post-result (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                        (nth 6 a) (nth 7 a) (nth 8 a) fn2-core))
+    (:post-accept-result (fn2-host-post-accept-result (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                                      (nth 6 a) (nth 7 a) (nth 8 a) (nth 9 a) (nth 10 a)
+                                                      (nth 11 a) fn2-core))
+    (:post-clock (fn2-host-post-clock (nth 0 a) (nth 1 a) (nth 2 a) fn2-core))
+    (:post-signal (fn2-host-post-signal (nth 0 a) fn2-core))
+    (:count-stray (fn2-host-count-stray fn2-core))
+    (:outbox-ack (mv-let (code fn2-core) (fn2-host-outbox-ack (nth 0 a) fn2-core)
+                   (declare (ignore code)) fn2-core))
+    (:finish (mv-let (code fn2-core) (fn2-host-op-finish (nth 0 a) (nth 1 a) fn2-core)
+               (declare (ignore code)) fn2-core))
+    (:mailbox (mv-let (o v n b s fn2-core) (fn2-exec-mailbox fn2-core)
+                (declare (ignore o v n b s)) fn2-core))
     (otherwise fn2-core)))
 (defun fn2-core-borrow-hyps (op fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -1252,7 +1774,7 @@
            (fn2-core-borrow-conclusion op a core))
   :schema :invariant :from (:columns fn2-pool)
   :teeth (fn2-core-borrow-teeth)
-  :doc "A2: every issue (each action kind and arm-wake) and every harvest keeps each pool row's out-count equal to the number of live send/write operations on that row that have not released their borrow, with every live borrow naming its row's current generation and may-release only on a send; so the release a harvested operation triggers spends that operation's own counted borrow.")
+  :doc "A2: every issue (each action kind and arm-wake), every harvest, every core pool writer (reserve, release, reset, write, copy-range, hand, accept-hand, drop-prefix, truncate) and the host's loan write, the host boundary's ops entries (post-result, post-accept-result, post-clock, post-signal, count-stray, outbox-ack, op-finish) and the executor's mailbox keep each pool row's out-count equal to the number of live send/write operations on that row that have not released their borrow, with every live borrow naming its row's current generation and may-release only on a send; so the release a harvested operation triggers spends that operation's own counted borrow.")
 (defthm fn2-core-borrow-conservation-proved
   (implies (fn2-core-borrow-hyps op core)
            (fn2-core-borrow-conclusion op a core))
@@ -1260,8 +1782,14 @@
                                   (fn2-harvest-one fn2-issue-receive fn2-issue-send fn2-issue-read
                                    fn2-issue-write fn2-issue-fence fn2-issue-accept fn2-issue-close
                                    fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake fn2-core-wfp
+                                   fn2-core-reserve fn2-core-release fn2-core-reset fn2-core-write
+                                   fn2-core-copy-range fn2-core-hand fn2-core-accept-hand fn2-core-drop-prefix
+                                   fn2-core-truncate fn2-pool-adapter-write fn2-host-post-result
+                                   fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
+                                   fn2-host-count-stray fn2-host-outbox-ack fn2-host-op-finish fn2-exec-mailbox
                                    fn2-ops-semanticp fn2-core-borrows-accountedp
-                                   fn2-core-borrows-accounted-check)))))
+                                   fn2-core-borrows-accounted-check fn2-core-rows-natp))
+           :use ((:instance fn2-core-rows-natp)))))
 (defthm fn2-core-borrow-conservation-statement
   (fn2-core-borrow-conservation$owed op a core)
   :hints (("Goal" :in-theory '(fn2-core-borrow-conservation$owed) :use fn2-core-borrow-conservation-proved)))
