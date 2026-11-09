@@ -9818,14 +9818,522 @@
   :hints (("Goal" :in-theory '(fn2-env-x-kids)
            :use ((:instance fn2-env-x-kids-host-step)
                  (:instance fn2-env-x-of-kids (a c) (b (mv-nth 1 (fn2-env-step action nil image rlog c))))))))
-;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Established: XA
-;; at the core's init (alloc-init's zero counts, edges-init's free rows),
-;; XR/XD at admission (fn2-commit-reserve-extent: the free head, so apart
-;; from every held row's live extent, FN2-ENV-ALLOC-RESERVE-SHAPE; the
-;; admitted row was :free, so no unit edge live). Kept: by the issuing arms
-;; (FN2-ENV-IO-EDGE-ADD-OK-SHAPE, then the issued role is lent and live,
-;; issued+1, wrote 1), by the handler's loan drop (FN2-ENV-EDGE-DROP-IO-
-;; ACCEPTS from the live row's matching edge), by the other arms through
-;; FN2-ENV-X-ROW-OF-ROW-FRAME (collect/install's root edges and durable's
-;; allocation keep the handle; dropping's cancel leaves the row unheld), and
-;; by the host steps and :take (they write no commit-io, extents or edges).
+;; THE ISSUE KEEPS X (FN2-ENV-X-ISSUE). The issuing arms' accepted step
+;; (fn2-commit-io-edge ... t, then the row write of cb-issued+1, pending and
+;; cb-wrote 1): the edge add lends unit R and makes edge row R the live
+;; outstanding-io row of the operation's generation over R's handle, keeping
+;; every other unit, every resource, every handle and XA
+;; (FN2-ENV-X-EDGE-ADD-EDGES/-IO/-ALLOC); the row write touches the commit
+;; table and control alone (FN2-ENV-X-WRITE-KIDS); the issued role is then
+;; lendable (done <= issued, from J5-ROLES) and every lent role stays so.
+(defthm fn2-env-commit-row-wrote-reads
+  (implies (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)
+           (equal (fn2-commit-row-cb-wrote id fn2-core) (fn2-machine-cb-wrote id fn2-core)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-row-cb-wrote fn2-machine-cb-wrote fn2-machine-cb-wrote-read-code
+                                   fn2-commit-snapshot-read-code fn2-machine-phase-read-code)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp)))))
+(defthm fn2-env-x-unit-mono
+  ; unit K's XR moves with its edge row, commit-io unit and resource when the step keeps its lending
+  (implies (and (fn2-env-x-unit id k a)
+                (equal (fn2-env-x-edge (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-x-edge (+ (* 3 (fn2-commit-row id a)) k) a))
+                (equal (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-io (+ (* 3 (fn2-commit-row id a)) k) a))
+                (equal (fn2-commit-resource id k b) (fn2-commit-resource id k a))
+                (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (implies (fn2-env-x-lend-ok id k a) (fn2-env-x-lend-ok id k b)))
+           (fn2-env-x-unit id k b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit))))
+(defthm fn2-env-x-unit-lent
+  ; a lent unit whose edge row is the live outstanding-io row of its operation
+  ; generation and handle, in a lending phase, has XR
+  (implies (and (nth 0 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c))
+                (equal (nth 3 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c)) 1)
+                (equal (fn2-env-x-edge (+ (* 3 (fn2-commit-row id c)) k) c)
+                       (list t *fn2-alloc-edge-state-live* (fn2-alloc-edge-kind-keyword->code :outstanding-io)
+                             (nth 2 (fn2-env-io (+ (* 3 (fn2-commit-row id c)) k) c))
+                             (mv-nth 0 (fn2-commit-resource id k c)) (mv-nth 1 (fn2-commit-resource id k c))
+                             (mv-nth 2 (fn2-commit-resource id k c))))
+                (fn2-env-x-lend-ok id k c))
+           (fn2-env-x-unit id k c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-unit nth-0-cons nth-add1 (:e zp) (:e nth) car-cons cdr-cons zp nth (:e binary-+)))))
+(defthm fn2-env-io-set3-at
+  ; the issue's lend writes unit R's operation slot, generation and loan flag alone
+  (let ((io2 (fn2-commit-io-set-lent r 1 (fn2-commit-io-set-op-gen r g (fn2-commit-io-set-op-slot r s io)))))
+    (implies (and (natp u) (natp r) (< r (fn2-commit-io-rows io)))
+             (and (equal (fn2-commit-io-rows io2) (fn2-commit-io-rows io))
+                  (equal (fn2-commit-io-pool-slot u io2) (fn2-commit-io-pool-slot u io))
+                  (equal (fn2-commit-io-pool-gen u io2) (fn2-commit-io-pool-gen u io))
+                  (equal (fn2-commit-io-extent u io2) (fn2-commit-io-extent u io))
+                  (equal (fn2-commit-io-epoch u io2) (fn2-commit-io-epoch u io))
+                  (equal (fn2-commit-io-counter u io2) (fn2-commit-io-counter u io))
+                  (equal (fn2-commit-io-op-slot u io2) (if (equal u r) s (fn2-commit-io-op-slot u io)))
+                  (equal (fn2-commit-io-op-gen u io2) (if (equal u r) g (fn2-commit-io-op-gen u io)))
+                  (equal (fn2-commit-io-lent u io2) (if (equal u r) 1 (fn2-commit-io-lent u io))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot update-fn2-commit-io-lent$ai
+                                     update-fn2-commit-io-op-gen$ai update-fn2-commit-io-op-slot$ai update-nth-array))))
+(defthm fn2-env-x-edge-add-edges
+  ; an accepted edge add at unit R keeps every other unit's edge row and
+  ; makes R's the live outstanding-io row of G and R's handle
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp role) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                  (r (+ (* 3 (fn2-commit-row id c)) role)) (io (fn2-core-commit-io c)))
+             (and (implies (not (equal u r)) (equal (fn2-env-x-edge u c1) (fn2-env-x-edge u c)))
+                  (equal (fn2-env-x-edge r c1)
+                         (list t *fn2-alloc-edge-state-live* (fn2-alloc-edge-kind-keyword->code :outstanding-io) g
+                               (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io) (fn2-commit-io-counter r io))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-edge natp nfix fn2-alloc-edge-slotp fn2-commit-row-natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-add-ok-shape (k 0))
+                 (:instance fn2-env-edge-add-shape (x (+ (* 3 (fn2-commit-row id c)) role)) (holder g)
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)) (j 0))
+                 (:instance fn2-env-edge-add-rows-reads (x (+ (* 3 (fn2-commit-row id c)) role)) (holder g)
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)))
+                 (:instance fn2-env-edge-add-slot (x (+ (* 3 (fn2-commit-row id c)) role)) (holder g)
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)))))))
+(defthm fn2-env-io-edge-ok-range
+  ; an accepted edge add names a commit-io unit in range, with a u32 slot and u60 generation
+  (implies (equal (mv-nth 0 (fn2-commit-io-edge id role add s g c)) :ok)
+           (and (< (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-commit-io-rows (fn2-core-commit-io c)))
+                (unsigned-byte-p 32 s) (unsigned-byte-p 60 g)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-core-extents fn2-core-alloc-edges
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(defthm fn2-env-x-edge-add-io
+  ; an accepted edge add keeps every other commit-io unit and every unit's
+  ; resource, and lends unit R to (S G)
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp role) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                  (r (+ (* 3 (fn2-commit-row id c)) role)) (io (fn2-core-commit-io c)))
+             (and (implies (not (equal u r)) (equal (fn2-env-io u c1) (fn2-env-io u c)))
+                  (equal (fn2-env-x-res u c1) (fn2-env-x-res u c))
+                  (nth 0 (fn2-env-io r c))
+                  (equal (fn2-env-io r c1) (list t s g 1 (fn2-commit-io-pool-slot r io) (fn2-commit-io-pool-gen r io))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-io fn2-env-x-res natp nfix fn2-commit-row-natp fn2-core-commit-io nth-0-cons car-cons cdr-cons)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-add-ok-shape (k 0))
+                 (:instance fn2-env-io-edge-ok-range (add t))
+                 (:instance fn2-env-io-set3-at (r (+ (* 3 (fn2-commit-row id c)) role)) (io (fn2-core-commit-io c)))
+                 (:instance fn2-env-io-set3-at (u (+ (* 3 (fn2-commit-row id c)) role)) (r (+ (* 3 (fn2-commit-row id c)) role))
+                            (io (fn2-core-commit-io c)))))))
+(defthm fn2-env-x-edge-add-alloc
+  ; an accepted edge add keeps every handle's liveness and XA
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+             (and (equal (fn2-env-x-handle-ok e ep ct c1) (fn2-env-x-handle-ok e ep ct c))
+                  (implies (fn2-env-xa c) (fn2-env-xa c1)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-handle-ok fn2-alloc-handle-code fn2-alloc-slotp fn2-env-xa)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-add-ok-shape (k 0))
+                 (:instance fn2-env-core-alloc-edges-wfp)
+                 (:instance fn2-env-edge-add-shape (x (+ (* 3 (fn2-commit-row id c)) (nfix role))) (holder g)
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)) (j e))
+                 (:instance fn2-env-io-counted-edge-add (x (+ (* 3 (fn2-commit-row id c)) (nfix role))) (holder g)
+                            (i (fn2-commit-io-extent (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (epoch (fn2-commit-io-epoch (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (counter (fn2-commit-io-counter (+ (* 3 (fn2-commit-row id c)) (nfix role)) (fn2-core-commit-io c)))
+                            (kind :outstanding-io) (p (fn2-core-extents c)) (e (fn2-core-alloc-edges c)))))))
+(defthm fn2-env-x-issue-write
+  ; the issue's row write: cb-issued, pending and cb-wrote at the row, nothing X reads elsewhere
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (unsigned-byte-p 32 pending) (unsigned-byte-p 32 issued))
+           (let ((b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+             (and (fn2-arm-row-frame 9 (fn2-machine-slot id c) '(5 16 29) '(5) c b)
+                  (fn2-ctf-dir b c)
+                  (fn2-commit-idp id b)
+                  (equal (fn2-commit-row id b) (fn2-commit-row id c))
+                  (equal (fn2-machine-phase id b) (fn2-machine-phase id c))
+                  (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id c))
+                  (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id c))
+                  (equal (fn2-machine-cb-issued id b) issued)
+                  (equal (fn2-machine-cb-wrote id b) 1)
+                  (equal (nth 20 b) (nth 20 c)) (equal (nth 21 b) (nth 21 c)) (equal (nth 30 b) (nth 30 c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp (:type-prescription fn2-machine-slot-natp) (:e subsetp-equal) (:e member-equal)
+                               fn2-commit-idp unsigned-byte-p integer-range-p (:e expt))
+           :do-not-induct t
+           :use ((:instance fn2-commit-write+pending+cb-issued+cb-wrote-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id c))
+                            (fn2-arm-cs '(5 16 29)) (fn2-arm-ch '(5)) (fn2-arm-c0 c) (fn2-core c)
+                            (fn2-arms-w-pending pending) (fn2-arms-w-cb-issued issued) (fn2-arms-w-cb-wrote 1))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id c)) (columns '(5 16 29)) (children '(5)) (a c))
+                 (:instance fn2-commit-write+pending+cb-issued+cb-wrote-ctf-dir (fn2-ctf-c0 c) (fn2-core c)
+                            (fn2-arms-w-pending pending) (fn2-arms-w-cb-issued issued) (fn2-arms-w-cb-wrote 1))
+                 (:instance fn2-ctf-dir-refl (a c))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-commit-idp-cell (fn2-core c))
+                 (:instance fn2-commit-write+pending+cb-issued+cb-wrote-reads (fn2-core c)
+                            (fn2-arms-w-pending pending) (fn2-arms-w-cb-issued issued) (fn2-arms-w-cb-wrote 1))
+                 (:instance fn2-env-read-codes-of-row-frame (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-machine-phase-of-row-frame (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-machine-cb-stage-of-row-frame (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-machine-cb-done-of-row-frame (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-env-commit-row-count-reads (fn2-core (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-env-commit-row-wrote-reads (fn2-core (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)) (k 20))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)) (k 21))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending issued 1 c)) (k 30))))))
+(defthm fn2-env-x-reads-of-nth
+  ; what X reads of the allocator and commit-io, by child
+  (implies (and (equal (nth 20 b) (nth 20 a)) (equal (nth 21 b) (nth 21 a)) (equal (nth 30 b) (nth 30 a)))
+           (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u a)) (equal (fn2-env-io u b) (fn2-env-io u a))
+                (equal (fn2-env-x-res u b) (fn2-env-x-res u a))
+                (equal (fn2-env-x-handle-ok e ep ct b) (fn2-env-x-handle-ok e ep ct a))
+                (fn2-env-x-ext-same b a) (equal (fn2-env-xa b) (fn2-env-xa a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-edge fn2-env-io fn2-env-x-res fn2-env-x-handle-ok fn2-env-x-ext-same fn2-env-xa
+                               fn2-core-alloc-edges fn2-core-commit-io fn2-core-extents))))
+(defthm fn2-env-x-issue-edge
+  ; the issue's edge add: the directory and commit table stay, the row frame and directory hold
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok))
+           (let ((c1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+             (and (equal (nth 3 c1) (nth 3 c)) (equal (nth 9 c1) (nth 9 c))
+                  (fn2-arm-row-frame 9 row cs '(30 20 21 5) c c1)
+                  (fn2-ctf-dir c1 c)
+                  (fn2-corep c1) (fn2-core-wfp c1))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '((:e member-equal) (:e subsetp-equal) natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-io-edge-add-ok-shape (k 3))
+                 (:instance fn2-env-io-edge-add-ok-shape (k 9))
+                 (:instance fn2-commit~fn2-commit-io-edge-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row row) (fn2-arm-cs cs)
+                            (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 c) (fn2-core c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-arm-row-frame-refl (table 9) (columns cs) (children '(30 20 21 5)) (a c))
+                 (:instance fn2-commit-io-edge-ctf-dir (fn2-ctf-c0 c) (fn2-core c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-ctf-dir-refl (a c))
+                 (:instance fn2-commit-io-edge-preserves-type (fn2-core c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-commit-io-edge-preserves-wfp (fn2-core c) (add t) (opslot s) (opgen g))))))
+(defthm fn2-env-resource-at
+  (implies (and (fn2-commit-idp id c) (natp k) (< k 3)
+                (< (+ (* 3 (fn2-commit-row id c)) k) (fn2-commit-io-rows (fn2-core-commit-io c))))
+           (let ((r (+ (* 3 (fn2-commit-row id c)) k)) (io (fn2-core-commit-io c)))
+             (and (equal (mv-nth 0 (fn2-commit-resource id k c)) (fn2-commit-io-extent r io))
+                  (equal (mv-nth 1 (fn2-commit-resource id k c)) (fn2-commit-io-epoch r io))
+                  (equal (mv-nth 2 (fn2-commit-resource id k c)) (fn2-commit-io-counter r io)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-resource fn2-core-commit-io) (fn2-commit-idp fn2-commit-row)))))
+(defthm fn2-env-resource-of-res-pool
+  (implies (and (equal (fn2-env-x-res (+ (* 3 (fn2-commit-row id a)) k) b) (fn2-env-x-res (+ (* 3 (fn2-commit-row id a)) k) a))
+                (equal (fn2-commit-io-pool-slot (+ (* 3 (fn2-commit-row id a)) k) (fn2-core-commit-io b))
+                       (fn2-commit-io-pool-slot (+ (* 3 (fn2-commit-row id a)) k) (fn2-core-commit-io a)))
+                (equal (fn2-commit-io-pool-gen (+ (* 3 (fn2-commit-row id a)) k) (fn2-core-commit-io b))
+                       (fn2-commit-io-pool-gen (+ (* 3 (fn2-commit-row id a)) k) (fn2-core-commit-io a)))
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (natp (fn2-commit-row id a)) (natp k))
+           (equal (fn2-commit-resource id k b) (fn2-commit-resource id k a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-commit-resource fn2-env-x-res fn2-core-commit-io)
+                                  (fn2-commit-idp fn2-commit-row)))))
+(defthm fn2-env-x-lend-ok-mono
+  ; a lending phase's issue keeps every lent unit lendable
+  (implies (and (fn2-env-x-lend-ok id k a)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-issued id b) (+ 1 (fn2-machine-cb-issued id a)))
+                (natp (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-wrote id b) 1))
+           (fn2-env-x-lend-ok id k b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-lend-ok nfix natp))))
+(defthmd fn2-env-io-edge-ok-commit-io
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok) (natp role))
+           (equal (fn2-core-commit-io (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                  (fn2-commit-io-set-lent (+ (* 3 (fn2-commit-row id c)) role) 1
+                                          (fn2-commit-io-set-op-gen (+ (* 3 (fn2-commit-row id c)) role) g
+                                                                    (fn2-commit-io-set-op-slot (+ (* 3 (fn2-commit-row id c)) role) s
+                                                                                               (fn2-core-commit-io c))))))
+  :hints (("Goal" :in-theory '(nfix natp) :use ((:instance fn2-env-io-edge-add-ok-shape (k 0))))))
+(defthmd fn2-env-io-set3-rw
+  ; the issue's lend writes unit R's operation slot, generation and loan flag alone
+  (let ((io2 (fn2-commit-io-set-lent r 1 (fn2-commit-io-set-op-gen r g (fn2-commit-io-set-op-slot r s io)))))
+    (implies (and (natp u) (natp r) (< r (fn2-commit-io-rows io)))
+             (and (equal (fn2-commit-io-rows io2) (fn2-commit-io-rows io))
+                  (equal (fn2-commit-io-pool-slot u io2) (fn2-commit-io-pool-slot u io))
+                  (equal (fn2-commit-io-pool-gen u io2) (fn2-commit-io-pool-gen u io))
+                  (equal (fn2-commit-io-extent u io2) (fn2-commit-io-extent u io))
+                  (equal (fn2-commit-io-epoch u io2) (fn2-commit-io-epoch u io))
+                  (equal (fn2-commit-io-counter u io2) (fn2-commit-io-counter u io))
+                  (equal (fn2-commit-io-op-slot u io2) (if (equal u r) s (fn2-commit-io-op-slot u io)))
+                  (equal (fn2-commit-io-op-gen u io2) (if (equal u r) g (fn2-commit-io-op-gen u io)))
+                  (equal (fn2-commit-io-lent u io2) (if (equal u r) 1 (fn2-commit-io-lent u io))))))
+  :hints (("Goal" :in-theory nil :use ((:instance fn2-env-io-set3-at)))))
+(defthm fn2-env-x-write-kids
+  ; the issue's row write writes the commit table and the control child alone
+  (let ((b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)))
+    (and (equal (nth 3 b) (nth 3 c)) (equal (nth 20 b) (nth 20 c)) (equal (nth 21 b) (nth 21 c)) (equal (nth 30 b) (nth 30 c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '((:e subsetp-equal) (:e member-equal) natp (:type-prescription fn2-machine-slot-natp))
+           :use ((:instance fn2-commit-write+pending+cb-issued+cb-wrote-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id c))
+                            (fn2-arm-cs '(5 16 29)) (fn2-arm-ch '(5)) (fn2-arm-c0 c) (fn2-core c)
+                            (fn2-arms-w-pending pending) (fn2-arms-w-cb-issued i) (fn2-arms-w-cb-wrote w))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id c)) (columns '(5 16 29)) (children '(5)) (a c))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)) (k 3))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)) (k 20))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)) (k 21))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id c)) (cs '(5 16 29)) (ch '(5)) (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)) (k 30))))))
+(defthmd fn2-env-x-write-reads
+  (let ((b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)))
+    (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u c)) (equal (fn2-env-io u b) (fn2-env-io u c))
+         (equal (fn2-env-x-res u b) (fn2-env-x-res u c))
+         (equal (fn2-env-x-handle-ok e ep ct b) (fn2-env-x-handle-ok e ep ct c))
+         (equal (fn2-env-xa b) (fn2-env-xa c))
+         (equal (fn2-core-commit-io b) (fn2-core-commit-io c))))
+  :hints (("Goal" :in-theory '(fn2-core-commit-io)
+           :use ((:instance fn2-env-x-write-kids)
+                 (:instance fn2-env-x-reads-of-nth (a c) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i w c)))))))
+(defthm fn2-env-x-issue-reads
+  ; what X reads after the issue's accepted edge add and row write
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok) (natp role)
+                (unsigned-byte-p 32 pending) (unsigned-byte-p 32 i) (natp u))
+           (let* ((c1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                  (c2 (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 c1))
+                  (r (+ (* 3 (fn2-commit-row id c)) role)) (io (fn2-core-commit-io c)))
+             (and (fn2-commit-idp id c2) (equal (fn2-commit-row id c2) (fn2-commit-row id c))
+                  (equal (fn2-machine-phase id c2) (fn2-machine-phase id c))
+                  (equal (fn2-machine-cb-stage id c2) (fn2-machine-cb-stage id c))
+                  (equal (fn2-machine-cb-done id c2) (fn2-machine-cb-done id c))
+                  (equal (fn2-machine-cb-issued id c2) i) (equal (fn2-machine-cb-wrote id c2) 1)
+                  (equal (fn2-env-x-res u c2) (fn2-env-x-res u c))
+                  (equal (fn2-commit-io-pool-slot u (fn2-core-commit-io c2)) (fn2-commit-io-pool-slot u io))
+                  (equal (fn2-commit-io-pool-gen u (fn2-core-commit-io c2)) (fn2-commit-io-pool-gen u io))
+                  (implies (not (equal u r))
+                           (and (equal (fn2-env-x-edge u c2) (fn2-env-x-edge u c)) (equal (fn2-env-io u c2) (fn2-env-io u c))))
+                  (< r (fn2-commit-io-rows io))
+                  (equal (fn2-env-io r c2) (list t s g 1 (fn2-commit-io-pool-slot r io) (fn2-commit-io-pool-gen r io)))
+                  (equal (fn2-env-x-edge r c2)
+                         (list t *fn2-alloc-edge-state-live* (fn2-alloc-edge-kind-keyword->code :outstanding-io) g
+                               (fn2-commit-io-extent r io) (fn2-commit-io-epoch r io) (fn2-commit-io-counter r io)))
+                  (equal (fn2-env-x-handle-ok e ep ct c2) (fn2-env-x-handle-ok e ep ct c))
+                  (implies (fn2-env-xa c) (fn2-env-xa c2))
+                  (fn2-arm-row-frame 9 (fn2-machine-slot id c) '(5 16 29) '(30 20 21 5) c c2)
+                  (fn2-ctf-dir c2 c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '((:e subsetp-equal) nfix natp fn2-env-x-write-reads fn2-env-io-edge-ok-commit-io fn2-env-io-set3-rw fn2-commit-row-natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-edge (row (fn2-machine-slot id c)) (cs '(5 16 29)))
+                 (:instance fn2-env-io-edge-ok-range (add t))
+                 (:instance fn2-env-commit-idp-kind (fn2-core c))
+                 (:instance fn2-env-x-readers-of-kids (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+                 (:instance fn2-env-x-issue-write (c (mv-nth 1 (fn2-commit-io-edge id role t s g c))) (issued i))
+                 (:instance fn2-ctf-dir-readers (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+                 (:instance fn2-env-x-edge-add-edges)
+                 (:instance fn2-env-x-edge-add-edges (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-x-edge-add-io)
+                 (:instance fn2-env-x-edge-add-alloc)
+                 (:instance fn2-env-io-set3-at (r (+ (* 3 (fn2-commit-row id c)) role)) (io (fn2-core-commit-io c)))
+                 (:instance fn2-env-io-edge-add-ok-shape (k 0))
+                 (:instance fn2-arm-row-frame-trans (table 9) (row (fn2-machine-slot id c)) (columns '(5 16 29))
+                            (children '(30 20 21 5)) (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                            (c2 '(5 16 29)) (ch2 '(5))
+                            (c (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-ctf-dir-trans (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                            (c (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))
+(defun-nx fn2-env-x-issue-ok (id role c)
+  ; the issue's role: :dependencies issues role 0 first; :log-write issues role issued+1
+  (or (and (equal (fn2-machine-phase id c) *fn2-commit-state-dependencies*) (equal role 0)
+           (equal (fn2-machine-cb-issued id c) 0))
+      (and (equal (fn2-machine-phase id c) *fn2-commit-state-log-write*)
+           (natp (fn2-machine-cb-issued id c)) (< (fn2-machine-cb-issued id c) 2)
+           (equal role (+ 1 (fn2-machine-cb-issued id c))))))
+(defthm fn2-env-x-lend-ok-issued
+  ; after the issue the issued role is lendable
+  (implies (and (fn2-env-x-issue-ok id role a)
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (natp (fn2-machine-cb-done id a)) (<= (fn2-machine-cb-done id a) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-issued id b) (+ 1 (fn2-machine-cb-issued id a)))
+                (equal (fn2-machine-cb-wrote id b) 1))
+           (fn2-env-x-lend-ok id role b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-lend-ok fn2-env-x-issue-ok nfix natp))))
+(defthm fn2-env-x-issue-ok-role
+  (implies (fn2-env-x-issue-ok id role c) (and (natp role) (< role 3) (natp (fn2-machine-cb-issued id c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-issue-ok natp))))
+(defthm fn2-env-nth-list6
+  (and (equal (nth 0 (list a b c d e f)) a) (equal (nth 2 (list a b c d e f)) c) (equal (nth 3 (list a b c d e f)) d))
+  :rule-classes nil)
+(defthm fn2-env-x-issue-unit-issued
+  ; after the issue the issued role's unit is the edge add's live row, lendable
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (fn2-env-x-issue-ok id role c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp (fn2-machine-cb-done id c)) (<= (fn2-machine-cb-done id c) (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i))
+           (fn2-env-x-unit id role (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1
+                                                                             (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-reads (u (+ (* 3 (fn2-commit-row id c)) role)))
+                 (:instance fn2-env-x-issue-ok-role)
+                 (:instance fn2-env-nth-list6 (a t) (b s) (c g) (d 1)
+                            (e (fn2-commit-io-pool-slot (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c)))
+                            (f (fn2-commit-io-pool-gen (+ (* 3 (fn2-commit-row id c)) role) (fn2-core-commit-io c))))
+                 (:instance fn2-env-resource-of-res-pool (a c) (k role)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-resource-at (c c) (k role))
+                 (:instance fn2-env-x-unit-lent (k role)
+                            (c (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-lend-ok-issued (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))
+(defthm fn2-env-x-issue-unit-other
+  ; after the issue the row's other units keep XR
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-unit id k c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok) (natp role)
+                (natp k) (not (equal k role)) (natp (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i))
+           (fn2-env-x-unit id k (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1
+                                                                          (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-reads (u (+ (* 3 (fn2-commit-row id c)) k)))
+                 (:instance fn2-env-resource-of-res-pool (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-unit-mono (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-lend-ok-mono (a c)
+                            (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))
+(defthm fn2-env-x-issue-off
+  ; the issue keeps what X reads off the issuing row
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok) (natp role) (< role 3)
+                (unsigned-byte-p 32 pending) (unsigned-byte-p 32 i))
+           (fn2-env-x-off (fn2-machine-slot id c) c
+                          (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-off natp nfix fn2-env-commit-row-slot (:type-prescription fn2-machine-slot-natp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-reads (u 0)
+                            (e (mv-nth 1 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))
+                            (ep (mv-nth 2 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))
+                            (ct (mv-nth 3 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))
+                 (:instance fn2-env-x-issue-reads
+                            (u (mv-nth 0 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))
+                            (e (mv-nth 1 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))
+                            (ep (mv-nth 2 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c))))))
+                            (ct (mv-nth 3 (fn2-env-x-off-witness (fn2-machine-slot id c) c
+                                           (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))))
+(defthm fn2-env-x-issue-unit
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-issue-ok id role c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp (fn2-machine-cb-done id c)) (<= (fn2-machine-cb-done id c) (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i) (fn2-env-x-unit id k c) (natp k))
+           (fn2-env-x-unit id k (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '((:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :cases ((equal k role))
+           :use ((:instance fn2-env-x-issue-unit-issued) (:instance fn2-env-x-issue-unit-other) (:instance fn2-env-x-issue-ok-role)))))
+(defthm fn2-env-x-issue-hold
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-issue-ok id role c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp (fn2-machine-cb-done id c)) (<= (fn2-machine-cb-done id c) (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i))
+           (let ((c2 (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+             (and (equal (fn2-commit-resource id 0 c2) (fn2-commit-resource id 0 c))
+                  (equal (fn2-commit-resource id 1 c2) (fn2-commit-resource id 1 c))
+                  (equal (fn2-commit-resource id 2 c2) (fn2-commit-resource id 2 c))
+                  (equal (fn2-env-x-held id c2) (fn2-env-x-held id c))
+                  (implies (fn2-env-x-hold id c) (fn2-env-x-hold id c2)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-held natp fn2-commit-row-natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-ok-role)
+                 (:instance fn2-env-x-issue-reads (u (+ (* 3 (fn2-commit-row id c)) 0)) (e (mv-nth 0 (fn2-commit-resource id 0 c))) (ep (mv-nth 1 (fn2-commit-resource id 0 c))) (ct (mv-nth 2 (fn2-commit-resource id 0 c))))
+                 (:instance fn2-env-resource-of-res-pool (a c) (k 0) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-issue-reads (u (+ (* 3 (fn2-commit-row id c)) 1)) (e (mv-nth 0 (fn2-commit-resource id 0 c))) (ep (mv-nth 1 (fn2-commit-resource id 0 c))) (ct (mv-nth 2 (fn2-commit-resource id 0 c))))
+                 (:instance fn2-env-resource-of-res-pool (a c) (k 1) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-issue-reads (u (+ (* 3 (fn2-commit-row id c)) 2)) (e (mv-nth 0 (fn2-commit-resource id 0 c))) (ep (mv-nth 1 (fn2-commit-resource id 0 c))) (ct (mv-nth 2 (fn2-commit-resource id 0 c))))
+                 (:instance fn2-env-resource-of-res-pool (a c) (k 2) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-x-hold-transfer (a c) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))
+(defthm fn2-env-x-issue-row
+  ; after the issue the issuing row has XR, holding as before at the same extent
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c) (fn2-env-x-issue-ok id role c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp (fn2-machine-cb-done id c)) (<= (fn2-machine-cb-done id c) (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i) (fn2-env-x-row id c))
+           (let ((c2 (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+             (and (fn2-env-x-row id c2)
+                  (equal (fn2-env-x-held id c2) (fn2-env-x-held id c))
+                  (equal (fn2-env-role-extent id 0 c2) (fn2-env-role-extent id 0 c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-env-role-extent natp (:type-prescription fn2-commit-idp))
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-unit (k 0)) (:instance fn2-env-x-issue-unit (k 1)) (:instance fn2-env-x-issue-unit (k 2))
+                 (:instance fn2-env-x-issue-hold)
+                 (:instance fn2-env-x-issue-reads (u 0)) (:instance fn2-env-x-issue-ok-role)))))
+(defthm fn2-env-x-issue
+  ; THE ISSUE KEEPS X: at :dependencies (role 0, none issued) or :log-write
+  ; (role issued+1), with no more counted than issued, the accepted edge add
+  ; (FN2-ENV-X-EDGE-ADD-ACCEPTS) and the row write of issued+1, pending and
+  ; cb-wrote 1 keep the extent invariant
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-x c) (fn2-commit-idp id c) (fn2-env-x-issue-ok id role c)
+                (equal (mv-nth 0 (fn2-commit-io-edge id role t s g c)) :ok)
+                (natp (fn2-machine-cb-done id c)) (<= (fn2-machine-cb-done id c) (fn2-machine-cb-issued id c))
+                (unsigned-byte-p 32 pending) (equal i (+ 1 (fn2-machine-cb-issued id c))) (unsigned-byte-p 32 i))
+           (fn2-env-x (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+  :hints (("Goal" :in-theory '(fn2-env-x (:type-prescription fn2-machine-slot-natp) (:type-prescription fn2-commit-idp)
+                               (:e member-equal) (:e natp) natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-issue-ok-role)
+                 (:instance fn2-env-x-issue-row)
+                 (:instance fn2-env-x-issue-off)
+                 (:instance fn2-env-x-issue-reads (u 0))
+                 (:instance fn2-env-x-rows-necc (c c))
+                 (:instance fn2-env-x-of-row-frame (a c) (b (fn2-commit-write+pending+cb-issued+cb-wrote id pending i 1 (mv-nth 1 (fn2-commit-io-edge id role t s g c)))) (row (fn2-machine-slot id c))
+                            (cs '(5 16 29)) (ch '(30 20 21 5)) (v id))))))
+;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Proved: the
+;; X-level frame (FN2-ENV-X-OF-ROW-FRAME), the host steps and :take
+;; (FN2-ENV-X-HOST-STEP), and the issue's accepted step at the core
+;; (FN2-ENV-X-ISSUE). Owed: established, XA at the core's init (alloc-init's
+;; zero counts, edges-init's free rows) and XR/XD at admission
+;; (fn2-commit-reserve-extent takes the free head, so apart from every held
+;; row's live extent, FN2-ENV-ALLOC-RESERVE-SHAPE; the admitted row was
+;; :free, so no unit edge live); kept, the arm-level lift of FN2-ENV-X-ISSUE
+;; through fn2-commit-run-dependencies/-log-write (the refused edge add stops
+;; the core), the handler's loan drop (FN2-ENV-EDGE-DROP-IO-ACCEPTS from the
+;; live row's matching edge), and the other arms through
+;; FN2-ENV-X-OF-ROW-FRAME with their allocator steps (collect/install's root
+;; edges at rows 6+2e, durable's allocation, dropping's cancel leaving the
+;; row unheld) proving FN2-ENV-X-OFF and XA after.
