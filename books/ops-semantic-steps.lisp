@@ -1,7 +1,10 @@
 ; FN2-CORE-OPS-SEMANTIC: fn2-ops-semanticp across every core step that
 ; writes the ops child, from the per-operation exports of ops-conservation.
 (in-package "ACL2")
-(include-book "host-boundary")
+(include-book "assembly-core")
+(include-book "executor-wake")
+(include-book "host-ops")
+(include-book "assembly-callbacks-d-cursor")
 (include-book "ops-conservation")
 
 (defun-nx fn2-core-ops-semanticp (core) (fn2-ops-semanticp (fn2-core-ops core)))
@@ -57,17 +60,6 @@
 
 ;; The mailbox: take-clock or take-signal, then executor scalars, the stop
 ;; record and the trace, none of which is the ops child.
-(defthm fn2-oss-exec-clock-ops
-  (equal (fn2-core-ops (fn2-exec-clock mono core)) (fn2-core-ops core))
-  :hints (("Goal" :in-theory (enable fn2-exec-clock fn2-core-stop fn2-exec-set-now fn2-exec-set-armed-deadline
-                                     fn2-exec-set-idle-deadline fn2-exec-set-wake-generation))))
-(defthm fn2-oss-exec-trace-actions-ops
-  (equal (fn2-core-ops (fn2-exec-trace-actions left ordinal start core)) (fn2-core-ops core))
-  :hints (("Goal" :in-theory (enable fn2-exec-trace-actions))))
-(defthm fn2-oss-exec-record-ops
-  (equal (fn2-core-ops (fn2-exec-record kind id principal position bytes steps actions runnable wake start core))
-         (fn2-core-ops core))
-  :hints (("Goal" :in-theory (e/d (fn2-exec-record fn2-core-stop) (fn2-exec-trace-actions)))))
 (defthm fn2-exec-mailbox-ops-semanticp
   (implies (fn2-core-ops-semanticp core)
            (fn2-core-ops-semanticp (mv-nth 5 (fn2-exec-mailbox core))))
@@ -91,12 +83,34 @@
 (fn2-oss-host fn2-host-outbox-ack (n) :position 1)
 (fn2-oss-host fn2-host-op-finish (slot gen) :position 1)
 
-;; Init establishes it.
-(defthm fn2-core-init-ops-semanticp
-  (implies (and (fn2-corep core) (fn2-core-profilep profile))
-           (fn2-core-ops-semanticp (fn2-core-init profile core)))
-  :hints (("Goal" :in-theory (e/d (fn2-core-init fn2-core-ops-semanticp fn2-core-profilep)
-                                  (fn2-ops-semanticp fn2-ops-init)))))
+;; Init establishes it: every other child's init keeps the ops child (one
+;; read-over-write each), and the ops child's own init is FN2-OPS-INIT, so
+;; the core profile predicate and the other children's inits stay closed.
+(defun fn2-oss-init-others (children)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (append (and (not (eq (caar children) 'fn2-core-ops)) (list (fn2-core-init-child-name (caar children))))
+            (fn2-oss-init-others (cdr children)))))
+(defun fn2-oss-init-frames (children)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (let ((name (fn2-core-init-child-name (caar children))))
+      (append (and (not (eq (caar children) 'fn2-core-ops))
+                   `((defthm ,(fn2-columns-sym name "-OPS-FRAME")
+                       (equal (fn2-core-ops (,name profile core)) (fn2-core-ops core))
+                       :hints (("Goal" :in-theory (union-theories
+                                                   '(,name ,(fn2-columns-pre "FN2-CORE-OPS-OF-UPDATE-" (caar children)))
+                                                   (theory 'minimal-theory)))))))
+              (fn2-oss-init-frames (cdr children))))))
+(make-event (cons 'progn (fn2-oss-init-frames *fn2-core-children*)))
+(make-event
+ `(defthm fn2-core-init-ops-semanticp
+    (implies (and (fn2-corep core) (fn2-core-profilep profile))
+             (fn2-core-ops-semanticp (fn2-core-init profile core)))
+    :hints (("Goal" :in-theory (e/d (fn2-core-init init-fn2-core-ops fn2-core-ops-semanticp)
+                                    (fn2-ops-semanticp fn2-ops-init fn2-core-profilep
+                                     ,@(fn2-oss-init-others *fn2-core-children*)))
+             :use init-fn2-core-ops-profile))))
 
 ;; ---------------------------------------------------------------------------
 ;; The machine arms that write the ops child: each child function's ops
