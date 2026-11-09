@@ -8518,12 +8518,15 @@
   ; in its phase), or moves the row to :uncertain
   (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
                 (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason)
-                (unsigned-byte-p 60 (+ (fn2-commit-row-cb-bytes id m) (nfix count))))
+                (implies (member-equal (fn2-machine-phase id m) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*
+                                                              *fn2-commit-state-uncertain*))
+                         (unsigned-byte-p 60 (+ (fn2-commit-row-cb-bytes id m) (nfix count)))))
            (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
              (or (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
                  (and (member-equal (fn2-machine-phase id m) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
                       (equal (fn2-machine-phase id b) (fn2-machine-phase id m))
                       (equal (fn2-commit-row-cb-done id b) (+ 1 (fn2-commit-row-cb-done id m)))
+                      (equal (fn2-commit-row-cb-bytes id b) (+ *fn2-commit-unit-bytes* (fn2-commit-row-cb-bytes id m)))
                       (equal (fn2-commit-row-cb-fence-live id b) (fn2-commit-row-cb-fence-live id m))
                       (equal (fn2-commit-row-cb-fence-ok id b) (fn2-commit-row-cb-fence-ok id m))
                       (not (equal (fn2-commit-row-cb-fence-live id m) 1))
@@ -8626,3 +8629,591 @@
            :use ((:instance fn2-env-harvest-one-ops-cases (c fn2-core))
                  (:instance fn2-core-ops-type (fn2-core fn2-core)) (:instance fn2-env-core-ops-wfp (c fn2-core))
                  (:instance fn2-env-harvest-cases-advanced (o (nth 1 fn2-core)) (o2 (nth 1 (mv-nth 10 (fn2-harvest-one fn2-core)))))))))
+;; ---------------------------------------------------------------------------
+;; J5 AND J6 ACROSS THE HANDLERS AND THE DISPATCHER. Each handler, from the
+;; evidence at its entry (J5-ROW-D, J5E-ROW-D: the delivered result finished
+;; and uncounted), keeps the handled evidence (FN2-ENV-ON-WRITE-RESULT-HANDLED:
+;; loans drop with the phase's last write only; the ops table, the pool, the
+;; columns J5 reads and the pending count stay) and counts the result in
+;; place or moves the row to :uncertain; each outcome gives J5, J5E-ROW-D
+;; (the route's terminal takes the pending result) and J6, J6P, J6L, J6S.
+;; The dispatcher adds the contract check (a stop at most); every other
+;; commit row keeps its evidence (FN2-MACHINE-OBSERVE-FN2-COMMIT-FN2-ENV-J-OTHER).
+(fn2-env-row-is-machine (cb-done cb-bytes cb-issued cb-fence-live cb-fence-ok pending generation))
+(fn2-env-writer-keeps-io fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live)
+(fn2-env-writer-keeps-io fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok)
+(defthmd fn2-env-phase-of-if
+  (equal (fn2-machine-phase id (if c a b)) (if c (fn2-machine-phase id a) (fn2-machine-phase id b))))
+(make-event (value (cons 'progn (fn2-env-row-read-events '((pending . 5) (cb-bytes . 18) (cb-fence-live . 22))))))
+(defthm fn2-env-handler-frame-keeps
+  ; a frame of the handlers' columns at row ID's slot (children commit-io,
+  ; extents, edges and control free) keeps the ops table, the pool, the row's
+  ; id and slot, the columns J5 and J6 read but phase, count and fence flags,
+  ; and the pending count
+  (implies (and (fn2-arm-row-frame 9 (fn2-machine-slot id a) '(0 20 15 19 21 22 17 18 23) '(30 20 21 5) a b)
+                (fn2-commit-idp id a))
+           (and (fn2-env-ok b a) (equal (nth 0 b) (nth 0 a))
+                (fn2-commit-idp id b) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-pending id b) (fn2-machine-pending id a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-cols-kept fn2-ctf-dir-refl (:e member-equal) (:e natp) natp
+                               fn2-env-ok)
+           :do-not-induct t
+           :use ((:instance fn2-env-commit-idp-cell (fn2-core a)) (:instance fn2-env-ok-view-equivalence)
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (k 0))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (k 1))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (k 3))
+                 (:instance fn2-ctf-dir-of-nth (x a))
+                 (:instance fn2-env-read-codes-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-cb-mode-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-cb-issued-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-generation-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-batch-no-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-cb-deps-ok-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-cb-log-ok-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))
+                 (:instance fn2-machine-pending-of-row-frame (row (fn2-machine-slot id a)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)))))))
+(defthm fn2-env-on-write-result-io
+  ; the write handler's commit-io is its entry's, or the loan drop's when it
+  ; counts the phase's last write
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+             (or (equal (nth 30 b) (nth 30 m))
+                 (and (equal (nth 30 b) (nth 30 (fn2-commit-drop-io id m)))
+                      (equal (+ 1 (fn2-commit-row-cb-done id m)) (fn2-commit-row-cb-issued id m))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-write-result fn2-env-idp-snapshot-ok fn2-env-nth-of-if
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-keeps-io
+                                               fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-keeps-io)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-on-write-result-phase
+  ; the write handler keeps the row's phase or moves it to :uncertain
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+             (member-equal (fn2-machine-phase id b) (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-write-result fn2-env-idp-snapshot-ok fn2-env-phase-of-if
+                                               fn2-env-write-counts-keeps-phase fn2-commit~fn2-commit-drop-io-arm-phase
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-arm-phase
+                                               fn2-env-member-pair (:e member-equal) (:e natp) (:e <))
+                                             (set-difference-theories (theory 'fn2-arm-frame-base) '(member-equal)))
+           :do-not-induct t)))
+(defthm fn2-env-on-write-result-handled
+  ; the write handler keeps the ops table, the pool, the row's id, slot,
+  ; extents and the columns J5 and J6 read but phase, count and fence flags,
+  ; and its pending count; it clears loans of the row's units only, all
+  ; three with the phase's last write
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+             (and (fn2-env-roles-dropped id m b) (fn2-env-cols-kept id m b)
+                  (equal (fn2-machine-pending id b) (fn2-machine-pending id m))
+                  (fn2-env-drop-all-or-none id m b))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-roles-dropped fn2-env-drop-all-or-none fn2-env-role-io fn2-env-role-extent fn2-env-io-drop-p
+                               fn2-env-idp-snapshot-ok fn2-commit-row-cb-done-is-machine fn2-commit-row-cb-issued-is-machine
+                               fn2-commit-row (:type-prescription fn2-commit-idp) (:e subsetp-equal) (:e natp))
+           :do-not-induct t
+           :use ((:instance fn2-commit-on-write-result-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id m)) (fn2-arm-cs '(0 20 15 19 21 22 17 18 23)) (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 m) (fn2-core m) (event *fn2-event-write-result*))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id m)) (columns '(0 20 15 19 21 22 17 18 23)) (children '(30 20 21 5)) (a m))
+                 (:instance fn2-env-handler-frame-keeps (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-on-write-result-io)
+                 (:instance fn2-env-drop-io-ids (x id) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 0)) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 0)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 0)) (c m))
+                 (:instance fn2-env-child-congruences (role 0) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 0) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 0) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 1)) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 1)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 1)) (c m))
+                 (:instance fn2-env-child-congruences (role 1) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 1) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 1) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 2)) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 2)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 2)) (c m))
+                 (:instance fn2-env-child-congruences (role 2) (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 2) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 2) (c m))))))
+(defthm fn2-env-j5e-row-d-handled
+  ; with the pending count kept, the handler leaves J5E-ROW-D: the delivered
+  ; result is still in the count until the route's terminal takes it
+  (implies (and (fn2-env-j5e-row-d id a) (fn2-env-roles-dropped id a b)
+                (or (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                    (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*))
+                (equal (fn2-machine-generation id b) (fn2-machine-generation id a))
+                (implies (member-equal (fn2-machine-phase id b)
+                                       (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                         (and (equal (fn2-machine-cb-done id b) (+ 1 (nfix (fn2-machine-cb-done id a))))
+                              (equal (fn2-machine-cb-bytes id b) (+ *fn2-commit-unit-bytes* (fn2-machine-cb-bytes id a)))))
+                (equal (fn2-machine-pending id b) (fn2-machine-pending id a)))
+           (fn2-env-j5e-row-d id b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5e-row-d nfix natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-j5e-live-dropped) (:instance fn2-env-j5e-phases-dropped)
+                 (:instance fn2-env-roles-dropped-idp)
+                 (:instance fn2-env-j5e-live-natp (c a)) (:instance fn2-env-j5e-live-natp (c b))))))
+(defthm fn2-env-j6-quiet-to-uncertain
+  ; with no role live, a loan drop to :uncertain leaves J6* (J6S vacuous)
+  (implies (and (fn2-env-roles-dropped id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                (not (fn2-env-role-live id 0 a)) (not (fn2-env-role-live id 1 a)) (not (fn2-env-role-live id 2 a)))
+           (and (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j6-row fn2-env-j6p-row fn2-env-j6l-row fn2-env-j6s-row fn2-env-role-settle-ok
+                               (:e member-equal) (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-role-live-dropped (role 0)) (:instance fn2-env-role-live-dropped (role 1))
+                 (:instance fn2-env-role-live-dropped (role 2))))))
+(defthm fn2-env-j6-all-to-uncertain
+  ; a row moved to :uncertain by a loan drop keeps J6, J6P, J6L and J6S:
+  ; from a phase that may own writes by J6S-TO-UNCERTAIN, from any other
+  ; with no role live (J5E)
+  (implies (and (fn2-env-roles-dropped id a b)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                (fn2-env-j5e-phases id a) (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5e-phases member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t
+           :use ((:instance fn2-env-j6s-to-uncertain) (:instance fn2-env-j6-quiet-to-uncertain)))))
+(defthm fn2-env-handled-to-uncertain
+  ; a handler step that keeps the handled evidence and moves the row to
+  ; :uncertain: J5, J5E-ROW-D and J6* after
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-pending id b) (fn2-machine-pending id a))
+                (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                (fn2-env-j5-ops 0 (fn2-env-ops-rows a) id log a)
+                (fn2-env-j5e-row-d id a) (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-cols-kept member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :do-not-induct t
+           :cases ((fn2-commit-idp id a))
+           :use ((:instance fn2-env-j5-row-to-uncertain) (:instance fn2-env-j5e-row-d-handled)
+                 (:instance fn2-env-j6-all-to-uncertain)))
+          ("Subgoal 1" :in-theory '(fn2-env-j5e-row-d fn2-env-cols-kept member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp)))
+          ("Subgoal 2" :in-theory '(fn2-env-j5-row fn2-env-j5e-row-d fn2-env-j6-row fn2-env-j6p-row fn2-env-j6l-row fn2-env-j6s-row)
+           :use ((:instance fn2-env-roles-dropped-idp)))))
+(defthm fn2-env-j5-roles-d-natp-done
+  (implies (and (fn2-env-j5-roles-d id ok log c)
+                (member-equal (fn2-machine-phase id c) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*)))
+           (natp (fn2-machine-cb-done id c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-roles-d member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp)))))
+(defthm fn2-env-live2-kept-count
+  ; at :log-write, a counted write keeps role 2's liveness: the loans stay,
+  ; or the last result was in flight and no role is live
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-drop-all-or-none id a b) (fn2-env-j5-roles-d id ok log a)
+                (equal (fn2-machine-phase id a) *fn2-commit-state-log-write*))
+           (equal (fn2-env-role-live id 2 b) (fn2-env-role-live id 2 a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-drop-all-or-none (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-role-live-dropped (role 2)) (:instance fn2-env-roles-d-last)))))
+(defthm fn2-env-handled-count
+  ; a handler step that counts a full write of a write phase in place,
+  ; keeping the handled evidence: J5, J5E-ROW-D and J6* after
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b) (fn2-env-drop-all-or-none id a b)
+                (equal (fn2-machine-pending id b) (fn2-machine-pending id a))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (member-equal (fn2-machine-phase id a) (list *fn2-commit-state-dependencies* *fn2-commit-state-log-write*))
+                (equal (fn2-machine-cb-fence-ok id b) (fn2-machine-cb-fence-ok id a))
+                (equal (fn2-machine-cb-fence-live id b) (fn2-machine-cb-fence-live id a))
+                (equal (fn2-machine-cb-done id b) (+ 1 (fn2-machine-cb-done id a)))
+                (equal (fn2-machine-cb-bytes id b) (+ *fn2-commit-unit-bytes* (fn2-machine-cb-bytes id a)))
+                (fn2-env-j5-row-d id *fn2-event-write-result* *fn2-outcome-done* *fn2-commit-unit-bytes* log a)
+                (fn2-env-j5e-row-d id a)
+                (fn2-env-j6-row id a) (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-cols-kept)
+           :do-not-induct t
+           :cases ((fn2-commit-idp id a)))
+          ("Subgoal 1" :in-theory '(fn2-env-cols-kept fn2-env-j5-row-d nfix natp (:e equal) (:e natp) (:e <) member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp))
+           :use ((:instance fn2-env-j5-row-count) (:instance fn2-env-j5e-row-d-handled)
+                 (:instance fn2-env-j6-in-phase) (:instance fn2-env-j6p-in-phase) (:instance fn2-env-j6l-in-phase)
+                 (:instance fn2-env-j6s-in-phase)
+                 (:instance fn2-env-live2-kept-count (ok t))
+                 (:instance fn2-env-j5-roles-d-natp-done (c a) (ok t))))
+          ("Subgoal 2" :in-theory '(fn2-env-j5-row fn2-env-j5e-row-d fn2-env-j6-row fn2-env-j6p-row fn2-env-j6l-row fn2-env-j6s-row)
+           :use ((:instance fn2-env-roles-dropped-idp)))))
+(defthm fn2-env-j5-row-d-ops
+  (implies (and (fn2-env-j5-row-d id event outcome count log c) (fn2-commit-idp id c))
+           (fn2-env-j5-ops 0 (fn2-env-ops-rows c) id log c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-row-d))))
+(defthm fn2-env-j5-row-d-roles
+  (implies (and (fn2-env-j5-row-d id *fn2-event-write-result* outcome count log c) (fn2-commit-idp id c))
+           (fn2-env-j5-roles-d id (and (equal outcome *fn2-outcome-done*) (equal count *fn2-commit-unit-bytes*)) log c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-row-d (:e equal)))))
+(defthm fn2-commit-on-write-result-fn2-env-j
+  ; THE WRITE HANDLER. At its entry the harvest has finished the delivered
+  ; role write (J5-ROW-D, J5E-ROW-D); with the result's outcome and reason
+  ; bytes and its count at most a unit, the handler counts it in place or
+  ; moves the row to :uncertain, and J5, J6, J6P, J6L, J6S hold after, with
+  ; J5E-ROW-D (the pending count is the route's terminal's to take)
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason) (<= (nfix count) *fn2-commit-unit-bytes*)
+                (fn2-env-j5-row-d id *fn2-event-write-result* outcome count log m) (fn2-env-j5e-row-d id m)
+                (fn2-env-j6-row id m) (fn2-env-j6p-row id m) (fn2-env-j6l-row id m) (fn2-env-j6s-row id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+             (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                  (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b))))
+  :hints (("Goal" :in-theory '(fn2-env-idp-snapshot-ok fn2-commit-row-cb-done-is-machine fn2-commit-row-cb-bytes-is-machine
+                               fn2-commit-row-cb-fence-live-is-machine fn2-commit-row-cb-fence-ok-is-machine
+                               (:type-prescription fn2-commit-idp) fn2-env-j5e-row-d
+                               member-equal (:e member-equal) car-cons cdr-cons (:e car) (:e cdr) (:e consp) (:e equal))
+           :do-not-induct t
+           :cases ((equal (fn2-machine-phase id m) *fn2-commit-state-uncertain*))
+           :use ((:instance fn2-env-on-write-result-handled)
+                 (:instance fn2-env-on-write-result-phase)
+                 (:instance fn2-env-on-write-result-branch)
+                 (:instance fn2-env-handler-bytes-room (c m) (ok (and (equal outcome *fn2-outcome-done*) (equal count *fn2-commit-unit-bytes*))))
+                 (:instance fn2-env-j5-row-d-ops (event *fn2-event-write-result*) (c m))
+                 (:instance fn2-env-j5-row-d-roles (c m))
+                 (:instance fn2-env-roles-dropped-idp (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-handled-to-uncertain (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-handled-count (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))))))
+(defthm fn2-env-on-fence-result-io
+  ; the fence handler's commit-io is its entry's (it drops no loan)
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+             (or (equal (nth 30 b) (nth 30 m))
+                 (and (equal (nth 30 b) (nth 30 (fn2-commit-drop-io id m)))
+                      (equal (+ 1 (fn2-commit-row-cb-done id m)) (fn2-commit-row-cb-issued id m))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-fence-result fn2-env-idp-snapshot-ok fn2-env-nth-of-if
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-keeps-io
+                                               fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-keeps-io)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t)))
+(defthm fn2-env-on-fence-result-phase
+  ; the fence handler keeps the row's phase or moves it to :uncertain
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+             (member-equal (fn2-machine-phase id b) (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-fence-result fn2-env-idp-snapshot-ok fn2-env-phase-of-if
+                                               fn2-env-write-counts-keeps-phase fn2-commit~fn2-commit-drop-io-arm-phase
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-arm-phase
+                                               fn2-env-member-pair (:e member-equal) (:e natp) (:e <))
+                                             (set-difference-theories (theory 'fn2-arm-frame-base) '(member-equal)))
+           :do-not-induct t)))
+(defthm fn2-env-on-fence-result-handled
+  ; the fence handler keeps the ops table, the pool, the row's id, slot,
+  ; extents and the columns J5 and J6 read but phase, count and fence flags,
+  ; and its pending count; it clears loans of the row's units only, all
+  ; three with the phase's last write
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+             (and (fn2-env-roles-dropped id m b) (fn2-env-cols-kept id m b)
+                  (equal (fn2-machine-pending id b) (fn2-machine-pending id m))
+                  (fn2-env-drop-all-or-none id m b))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-roles-dropped fn2-env-drop-all-or-none fn2-env-role-io fn2-env-role-extent fn2-env-io-drop-p
+                               fn2-env-idp-snapshot-ok fn2-commit-row-cb-done-is-machine fn2-commit-row-cb-issued-is-machine
+                               fn2-commit-row (:type-prescription fn2-commit-idp) (:e subsetp-equal) (:e natp))
+           :do-not-induct t
+           :use ((:instance fn2-commit-on-fence-result-arm-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id m)) (fn2-arm-cs '(0 20 15 19 21 22 17 18 23)) (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 m) (fn2-core m) (event *fn2-event-fence-result*))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id m)) (columns '(0 20 15 19 21 22 17 18 23)) (children '(30 20 21 5)) (a m))
+                 (:instance fn2-env-handler-frame-keeps (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-on-fence-result-io)
+                 (:instance fn2-env-drop-io-ids (x id) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 0)) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 0)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 0)) (c m))
+                 (:instance fn2-env-child-congruences (role 0) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 0) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 0) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 1)) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 1)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 1)) (c m))
+                 (:instance fn2-env-child-congruences (role 1) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 1) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 1) (c m))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 2)) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row id m)) 2)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-units (u (+ (* 3 (fn2-commit-row id m)) 2)) (c m))
+                 (:instance fn2-env-child-congruences (role 2) (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (role 2) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x id) (role 2) (c m))))))
+(defthm fn2-env-on-fence-result-branch
+  ; the fence handler counts the fence at :fence (the row stays there with
+  ; no fence live), or leaves the row at :uncertain
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason))
+           (let ((b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+             (or (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*)
+                 (and (equal (fn2-machine-phase id m) *fn2-commit-state-fence*)
+                      (equal (fn2-machine-phase id b) *fn2-commit-state-fence*)
+                      (equal (fn2-commit-row-cb-fence-live id b) 0)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-on-fence-result fn2-commit-arm-row-phase fn2-env-drop-io-ids fn2-env-write-counts-keeps-phase fn2-commit~fn2-commit-drop-io-arm-phase
+                                               fn2-env-idp-snapshot-ok
+                                               fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-reads
+                                               fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-reads
+                                               fn2-commit-drop-io-type fn2-commit-drop-io-wfp
+                                               fn2-commit-row-cb-acks-width fn2-commit-row-cb-done-width fn2-commit-row-cb-bytes-width
+                                               fn2-commit-row-cb-issued-width fn2-commit-row-cb-failed-width
+                                               fn2-commit-row-cb-fence-live-width fn2-commit-row-cb-fence-ok-width
+                                               fn2-commit-row-outcome-width fn2-commit-row-cb-reason-width fn2-commit-row-cb-cursor-width fn2-commit-row-pending-width
+                                               (:e unsigned-byte-p) unsigned-byte-p integer-range-p nfix natp fix)
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-env-commit-idp-cell (fn2-core m)) (:instance fn2-env-commit-idp-cell (fn2-core (fn2-commit-drop-io id m)))))))
+(defthm fn2-env-handled-fence-done
+  ; a handler step that counts the fence at :fence (none live after),
+  ; keeping the handled evidence: J5, J5E-ROW-D and J6* after
+  (implies (and (fn2-env-roles-dropped id a b) (fn2-env-cols-kept id a b)
+                (equal (fn2-machine-pending id b) (fn2-machine-pending id a))
+                (equal (fn2-machine-phase id a) *fn2-commit-state-fence*)
+                (equal (fn2-machine-phase id b) *fn2-commit-state-fence*)
+                (equal (fn2-machine-cb-fence-live id b) 0)
+                (fn2-env-j5-row-d id *fn2-event-fence-result* outcome count log a)
+                (fn2-env-j5e-row-d id a)
+                (fn2-env-j6-row id a) (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-cols-kept (:e member-equal) (:e equal))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-row-fence-done) (:instance fn2-env-j5e-row-d-handled)
+                 (:instance fn2-env-roles-dropped-idp) (:instance fn2-env-roles-dropped-ids)
+                 (:instance fn2-env-j6-in-phase) (:instance fn2-env-j6p-in-phase) (:instance fn2-env-j6l-in-phase)
+                 (:instance fn2-env-j6s-in-phase)))))
+(defthm fn2-commit-on-fence-result-fn2-env-j
+  ; THE FENCE HANDLER. At its entry the harvest has finished the row's
+  ; fence (J5-ROW-D: the owned fences one short of the live flag); with the
+  ; result's outcome and reason bytes the handler counts it at :fence or
+  ; leaves the row at :uncertain, and J5, J6, J6P, J6L, J6S hold after,
+  ; with J5E-ROW-D
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason)
+                (fn2-env-j5-row-d id *fn2-event-fence-result* outcome count log m) (fn2-env-j5e-row-d id m)
+                (fn2-env-j6-row id m) (fn2-env-j6p-row id m) (fn2-env-j6l-row id m) (fn2-env-j6s-row id m))
+           (let ((b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+             (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                  (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b))))
+  :hints (("Goal" :in-theory '(fn2-env-idp-snapshot-ok fn2-commit-row-cb-fence-live-is-machine
+                               (:type-prescription fn2-commit-idp) fn2-env-j5e-row-d (:e equal))
+           :do-not-induct t
+           :use ((:instance fn2-env-on-fence-result-handled)
+                 (:instance fn2-env-on-fence-result-branch)
+                 (:instance fn2-env-j5-row-d-ops (event *fn2-event-fence-result*) (c m))
+                 (:instance fn2-env-roles-dropped-idp (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-handled-to-uncertain (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-handled-fence-done (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))))))
+(defthm fn2-env-j5e-row-d-of-views
+  ; the same of J5E-ROW-D
+  (implies (and (fn2-env-tk b a) (fn2-env-mk b a) (fn2-env-ok b a) (fn2-env-pdk b a) (fn2-env-lk b a))
+           (equal (fn2-env-j5e-row-d id b) (fn2-env-j5e-row-d id a)))
+  :hints (("Goal" :in-theory '(fn2-env-j5e-row-d fn2-env-j5e-phases fn2-env-j5e-bytes fn2-env-j5e-live fn2-env-owned-fences-of-ok
+                               fn2-env-op-of-ok)
+           :cases ((fn2-commit-idp id a))
+           :use ((:instance fn2-env-read-codes-of-tk) (:instance fn2-machine-phase-of-tk)
+                 (:instance fn2-machine-cb-done-of-tk) (:instance fn2-machine-cb-bytes-of-mk)
+                 (:instance fn2-machine-generation-of-mk) (:instance fn2-machine-pending-of-pdk)
+                 (:instance fn2-env-commit-idp-kind (fn2-core a))
+                 (:instance fn2-env-role-live-of-lk (role 0)) (:instance fn2-env-role-live-of-lk (role 1))
+                 (:instance fn2-env-role-live-of-lk (role 2))))))
+(defthm fn2-env-j-of-views
+  ; a step keeping the views J5, J5E and J6* read keeps them at a commit row
+  (implies (and (fn2-env-tk b a) (fn2-env-mk b a) (fn2-env-ok b a) (fn2-env-pk b a) (fn2-env-io-view b a)
+                (fn2-env-pdk b a) (fn2-env-lk b a) (fn2-commit-idp id a)
+                (fn2-env-j5-row id log a) (fn2-env-j5e-row-d id a)
+                (fn2-env-j6-row id a) (fn2-env-j6p-row id a) (fn2-env-j6l-row id a) (fn2-env-j6s-row id a))
+           (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5e-row-d-of-views)
+           :do-not-induct t
+           :use ((:instance fn2-env-commit-idp-kind (fn2-core a))
+                 (:instance fn2-env-j5-unit-kept-of-views)
+                 (:instance fn2-env-j5-kept-of-parts)
+                 (:instance fn2-env-j5-kept-transfer)
+                 (:instance fn2-env-j6ls-kept-transfer)))))
+(defthm fn2-core-stop-fn2-env-j
+  (implies (and (fn2-commit-idp id c)
+                (fn2-env-j5-row id log c) (fn2-env-j5e-row-d id c)
+                (fn2-env-j6-row id c) (fn2-env-j6p-row id c) (fn2-env-j6l-row id c) (fn2-env-j6s-row id c))
+           (let ((b (fn2-core-stop r c)))
+             (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                  (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b))))
+  :hints (("Goal" :in-theory '(fn2-env-tk-reflexive fn2-env-mk-reflexive fn2-env-ok-reflexive fn2-env-pk-reflexive fn2-env-io-view-reflexive fn2-env-pdk-reflexive fn2-env-lk-reflexive)
+           :do-not-induct t
+           :use ((:instance fn2-env-j-of-views (a c) (b (fn2-core-stop r c)))
+                 (:instance fn2-core-stop-fn2-env-tk (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-mk (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-ok (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-pk (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-io-view (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-pdk (reason r) (fn2-core c) (fn2-rel-c0 c))
+                 (:instance fn2-core-stop-fn2-env-lk (reason r) (fn2-core c) (fn2-rel-c0 c))))))
+(defthm fn2-machine-observe-fn2-commit-fn2-env-j
+  ; THE DISPATCHER at a commit row: a write or fence result, delivered with
+  ; the row's evidence at the handler's entry, leaves J5, J5E-ROW-D and J6*
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (member-equal event (list *fn2-event-write-result* *fn2-event-fence-result*))
+                (unsigned-byte-p 8 outcome) (unsigned-byte-p 8 reason)
+                (implies (equal event *fn2-event-write-result*) (<= (nfix count) *fn2-commit-unit-bytes*))
+                (fn2-env-j5-row-d id event outcome count log m) (fn2-env-j5e-row-d id m)
+                (fn2-env-j6-row id m) (fn2-env-j6p-row id m) (fn2-env-j6l-row id m) (fn2-env-j6s-row id m))
+           (let ((b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+             (and (fn2-env-j5-row id log b) (fn2-env-j5e-row-d id b)
+                  (fn2-env-j6-row id b) (fn2-env-j6p-row id b) (fn2-env-j6l-row id b) (fn2-env-j6s-row id b))))
+  :hints (("Goal" :in-theory '(fn2-machine-observe-fn2-commit fn2-machine-observe-contract-check fn2-env-idp-snapshot-ok
+                               mv-nth car-cons cdr-cons (:e zp) (:e binary-+) (:e equal) member-equal (:e member-equal) (:e consp) (:e car) (:e cdr))
+           :do-not-induct t
+           :use ((:instance fn2-commit-on-write-result-fn2-env-j)
+                 (:instance fn2-commit-on-fence-result-fn2-env-j)
+                 (:instance fn2-env-on-write-result-handled) (:instance fn2-env-on-fence-result-handled)
+                 (:instance fn2-env-roles-dropped-idp (a m) (b (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-roles-dropped-idp (a m) (b (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-core-stop-fn2-env-j (r *fn2-stop-reason-machine-contract*) (c (mv-nth 1 (fn2-commit-on-write-result id *fn2-event-write-result* outcome reason count aux0 aux1 m))))
+                 (:instance fn2-core-stop-fn2-env-j (r *fn2-stop-reason-machine-contract*) (c (mv-nth 1 (fn2-commit-on-fence-result id *fn2-event-fence-result* outcome reason count aux0 aux1 m))))))))
+(defthm fn2-env-drop-io-other-unit
+  ; the loan drop of row ID leaves every unit of another row
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (natp k) (< k 3)
+                (not (equal (fn2-commit-row i c) (fn2-commit-row id c))))
+           (equal (fn2-env-io (+ (* 3 (fn2-commit-row i c)) k) (fn2-commit-drop-io id c)) (fn2-env-io (+ (* 3 (fn2-commit-row i c)) k) c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-io-edge-preserves-type fn2-commit-io-edge-preserves-wfp fn2-env-io-edge-keeps-ids
+                               fn2-commit-row nfix natp (:type-prescription fn2-machine-slot-natp) (:e nfix))
+           :do-not-induct t
+           :use ((:instance fn2-env-drop-io-is-rewrite)
+                 (:instance fn2-env-io-edge-drop-units (role 0) (s 0) (g 0) (u (+ (* 3 (fn2-commit-row i c)) k)))
+                 (:instance fn2-env-io-edge-drop-units (role 1) (s 0) (g 0) (u (+ (* 3 (fn2-commit-row i c)) k)) (c (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))
+                 (:instance fn2-env-io-edge-drop-units (role 2) (s 0) (g 0) (u (+ (* 3 (fn2-commit-row i c)) k)) (c (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i c)) k)) (a (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))) (b (fn2-core-stop *fn2-stop-reason-commit-io* (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c)))))))))
+                 (:instance fn2-env-core-stop-keeps-io-pool (r *fn2-stop-reason-commit-io*) (c (mv-nth 1 (fn2-commit-io-edge id 2 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 1 nil 0 0 (mv-nth 1 (fn2-commit-io-edge id 0 nil 0 0 c))))))))))))
+(defthm fn2-env-role-readers-of-unit
+  ; a role's octets, pool row and lease read its unit and the pool alone
+  (implies (and (equal (fn2-env-role-io id role b) (fn2-env-role-io id role a)) (equal (nth 0 b) (nth 0 a)))
+           (and (equal (fn2-env-role-octets id role b) (fn2-env-role-octets id role a))
+                (equal (fn2-env-role-pool-ok id role b) (fn2-env-role-pool-ok id role a))
+                (equal (fn2-env-role-lease id role b) (fn2-env-role-lease id role a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-role-pool-ok)
+           :use ((:instance fn2-env-role-lease-of-unit)
+                 (:instance fn2-env-role-octets-is-row-octets (c a))
+                 (:instance fn2-env-role-octets-is-row-octets (c b))
+                 (:instance fn2-env-pool-readers-of-pool-child (s (nth 4 (fn2-env-role-io id role a))))))))
+(defthm fn2-env-j-other-row-kept
+  ; a step keeping a row's J5 evidence, the pool and its pending count keeps
+  ; J5, J5E and J6* at the row
+  (implies (and (fn2-env-j5-same-evidence i a b) (equal (nth 0 b) (nth 0 a))
+                (equal (fn2-machine-pending i b) (fn2-machine-pending i a))
+                (fn2-env-j5-row i log a) (fn2-env-j5e-row i a)
+                (fn2-env-j6-row i a) (fn2-env-j6p-row i a) (fn2-env-j6l-row i a) (fn2-env-j6s-row i a))
+           (and (fn2-env-j5-row i log b) (fn2-env-j5e-row i b)
+                (fn2-env-j6-row i b) (fn2-env-j6p-row i b) (fn2-env-j6l-row i b) (fn2-env-j6s-row i b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-kept (:e natp) (:e <))
+           :do-not-induct t
+           :use ((:instance fn2-env-j5-evidence-role-reads (id i) (role 0)) (:instance fn2-env-j5-evidence-role-reads (id i) (role 1))
+                 (:instance fn2-env-j5-evidence-role-reads (id i) (role 2))
+                 (:instance fn2-env-role-readers-of-unit (id i) (role 0)) (:instance fn2-env-role-readers-of-unit (id i) (role 1))
+                 (:instance fn2-env-role-readers-of-unit (id i) (role 2))
+                 (:instance fn2-env-j5-kept-transfer (id i)) (:instance fn2-env-j6ls-kept-transfer (id i))
+                 (:instance fn2-env-j5-evidence-reads (id i))
+                 (:instance fn2-env-role-live-congruence (id i) (role 0)) (:instance fn2-env-role-live-congruence (id i) (role 1))
+                 (:instance fn2-env-role-live-congruence (id i) (role 2))
+                 (:instance fn2-env-owned-fences-congruence (id i) (s 0) (k (fn2-env-ops-rows a)))
+                 (:instance fn2-env-j5-evidence-op (id i))
+                 (:instance fn2-env-j5e-row-of-parts (id i))))))
+(defthm fn2-env-dispatch-io
+  ; the dispatcher's commit-io is its entry's, or the row's loan drop's
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m))
+           (let ((b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+             (or (equal (nth 30 b) (nth 30 m)) (equal (nth 30 b) (nth 30 (fn2-commit-drop-io id m))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-machine-observe-fn2-commit fn2-machine-observe-contract-check fn2-machine-refuse-observation
+                               fn2-env-idp-snapshot-ok fn2-env-core-stop-keeps-io-pool
+                               mv-nth car-cons cdr-cons (:e zp) (:e binary-+) (:e equal) (:e consp) (:e car) (:e cdr))
+           :do-not-induct t
+           :cases ((equal event *fn2-event-write-result*) (equal event *fn2-event-fence-result*))
+           :use ((:instance fn2-env-on-write-result-io) (:instance fn2-env-on-fence-result-io)))))
+(defthm fn2-env-dispatch-other-evidence
+  ; the dispatcher at row ID keeps another row's J5 evidence, the pool and
+  ; that row's pending count
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m) (fn2-commit-idp i m)
+                (not (equal (fn2-commit-row i m) (fn2-commit-row id m))))
+           (let ((b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+             (and (fn2-env-j5-same-evidence i m b) (equal (nth 0 b) (nth 0 m))
+                  (equal (fn2-machine-pending i b) (fn2-machine-pending i m)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-j5-same-evidence fn2-env-role-io fn2-env-role-extent fn2-commit-row fn2-ctf-dir-refl fn2-env-ok
+                               (:type-prescription fn2-commit-idp) (:e member-equal) (:e natp) natp (:e <) (:e subsetp-equal))
+           :do-not-induct t
+           :use ((:instance fn2-machine-observe-fn2-commit-ctf-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id m)) (fn2-arm-cs '(0 20 15 19 21 22 17 18 23)) (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 m) (fn2-core m))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id m)) (columns '(0 20 15 19 21 22 17 18 23)) (children '(30 20 21 5)) (a m))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))) (k 0))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))) (k 1))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))) (k 3))
+                 (:instance fn2-ctf-dir-of-nth (x m) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-read-codes-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-commit-idp-cell (fn2-core m))
+                 (:instance fn2-env-commit-idp-cell (id i) (fn2-core m))
+                 (:instance fn2-env-dispatch-io)
+                 (:instance fn2-env-drop-io-ids (x i) (c m))
+                 (:instance fn2-env-ok-view-equivalence (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-phase-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-mode-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-issued-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-done-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-bytes-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-generation-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-fence-live-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-fence-ok-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-deps-ok-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-cb-log-ok-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-batch-no-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-pending-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 0)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 0)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-other-unit (k 0) (c m))
+                 (:instance fn2-env-child-congruences (id i) (role 0) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (id i) (role 0) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x i) (role 0) (c m))
+                 (:instance fn2-env-role-readers-of-unit (id i) (role 0) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 1)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 1)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-other-unit (k 1) (c m))
+                 (:instance fn2-env-child-congruences (id i) (role 1) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (id i) (role 1) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x i) (role 1) (c m))
+                 (:instance fn2-env-role-readers-of-unit (id i) (role 1) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 2)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-io-of-io-child (u (+ (* 3 (fn2-commit-row i m)) 2)) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-other-unit (k 2) (c m))
+                 (:instance fn2-env-child-congruences (id i) (role 2) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-child-congruences (id i) (role 2) (a (fn2-commit-drop-io id m)) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-env-drop-io-resource (x i) (role 2) (c m))
+                 (:instance fn2-env-role-readers-of-unit (id i) (role 2) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))))))
+(defthm fn2-machine-observe-fn2-commit-fn2-env-j-other
+  ; THE DISPATCHER, OTHER ROWS: J5, J5E and J6* at another commit row stay
+  (implies (and (fn2-corep m) (fn2-core-wfp m) (fn2-commit-idp id m)
+                (not (equal (fn2-commit-row i m) (fn2-commit-row id m)))
+                (fn2-env-j5-row i log m) (fn2-env-j5e-row i m)
+                (fn2-env-j6-row i m) (fn2-env-j6p-row i m) (fn2-env-j6l-row i m) (fn2-env-j6s-row i m))
+           (let ((b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+             (and (fn2-env-j5-row i log b) (fn2-env-j5e-row i b)
+                  (fn2-env-j6-row i b) (fn2-env-j6p-row i b) (fn2-env-j6l-row i b) (fn2-env-j6s-row i b))))
+  :hints (("Goal" :in-theory '()
+           :do-not-induct t
+           :cases ((fn2-commit-idp i m)))
+          ("Subgoal 1" :use ((:instance fn2-env-dispatch-other-evidence)
+                             (:instance fn2-env-j-other-row-kept (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))))
+          ("Subgoal 2" :in-theory '(fn2-env-j5-row fn2-env-j5e-row fn2-env-j6-row fn2-env-j6p-row fn2-env-j6l-row fn2-env-j6s-row fn2-ctf-dir-refl (:type-prescription fn2-commit-idp) (:e natp) (:e subsetp-equal) (:e member-equal))
+           :use ((:instance fn2-env-read-codes-of-row-frame (id i) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))
+                 (:instance fn2-machine-observe-fn2-commit-ctf-row-frame (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id m)) (fn2-arm-cs '(0 20 15 19 21 22 17 18 23)) (fn2-arm-ch '(30 20 21 5)) (fn2-arm-c0 m) (fn2-core m))
+                 (:instance fn2-arm-row-frame-refl (table 9) (row (fn2-machine-slot id m)) (columns '(0 20 15 19 21 22 17 18 23)) (children '(30 20 21 5)) (a m))
+                 (:instance fn2-env-row-frame-child (tb 9) (row (fn2-machine-slot id m)) (cs '(0 20 15 19 21 22 17 18 23)) (ch '(30 20 21 5)) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))) (k 3))
+                 (:instance fn2-ctf-dir-of-nth (x m) (a m) (b (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m))))))))
