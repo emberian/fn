@@ -278,6 +278,46 @@
 (assert-event (let ((r (fn2-cda-j6l-scenario 0))) (and (< 100 (car r)) (null (cadr r)))))
 (assert-event (let ((r (fn2-cda-j6l-scenario 1))) (and (< 100 (car r)) (null (cadr r)))))
 
+;; J5E ON LIVE RUNS: after every action of both honest runs no row has a
+;; role live outside its phase, and every row's pending count covers its
+;; live roles and owned fences (expected nil); the runs reach a live role at
+;; pending 1 at :dependencies and :log-write and the live
+;; fence at pending 1, where one less pending breaks J5E.
+(defun fn2-cda-j5e-trace (actions i ids rlog fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom actions) (mv nil nil fn2-core)
+    (mv-let (entry fn2-core) (fn2-env-step (car actions) nil nil rlog fn2-core)
+      (let* ((rlog (if entry (cons entry rlog) rlog))
+             (ok (fn2-env-j5e-rows ids fn2-core))
+             (id (car ids))
+             (live (fn2-env-j5e-live id fn2-core))
+             (tight (and (< 0 live) (equal live (fn2-machine-pending id fn2-core))
+                         (list (fn2-machine-phase id fn2-core) live))))
+        (mv-let (bad seens fn2-core) (fn2-cda-j5e-trace (cdr actions) (+ 1 i) ids rlog fn2-core)
+          (mv (if ok bad (cons i bad)) (if tight (add-to-set-equal tight seens) seens) fn2-core))))))
+(defun fn2-cda-j5e-scenario (mode)
+  (declare (xargs :verify-guards nil))
+  (let* ((profile (fn2-cda-profile mode))
+         (actions (fn2-cda-run-actions profile (list (list :epoch 1) (list :admit 2 mode) (list :admit 2 mode)) 600)))
+    (with-local-stobj fn2-core
+      (mv-let (result fn2-core)
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
+             (ids (fn2-env-commit-ids profile))
+             (pre (fn2-env-j5e-rows ids fn2-core))
+             ((mv bad seen fn2-core) (fn2-cda-j5e-trace actions 0 ids nil fn2-core)))
+          (mv (list pre bad (len actions) seen) fn2-core))
+        result))))
+(make-event `(defconst *fn2-cda-j5e-honest* ',(fn2-cda-j5e-scenario 0)))
+(make-event `(defconst *fn2-cda-j5e-honest-fua* ',(fn2-cda-j5e-scenario 1)))
+(defun fn2-cda-j5e-positive (r)
+  ; no action breaks J5E, and J5E is tight (live = pending) with role 0 at
+  ; :dependencies, a log role at :log-write and the fence at :fence
+  (declare (xargs :verify-guards nil))
+  (and (nth 0 r) (null (nth 1 r)) (< 100 (nth 2 r))
+       (member-equal '(3 1) (nth 3 r)) (member-equal '(4 1) (nth 3 r)) (member-equal '(5 1) (nth 3 r))))
+(assert-event (fn2-cda-j5e-positive *fn2-cda-j5e-honest*))
+(assert-event (fn2-cda-j5e-positive *fn2-cda-j5e-honest-fua*))
+
 ;; THE J5 CONTROL: what J5 carries that FN2-ENV-DUR-INV does not. Stop the
 ;; mode-0 run when the first row's role-0 write is posted and unharvested,
 ;; and cut one octet from that write's take in the log (a device log whose
