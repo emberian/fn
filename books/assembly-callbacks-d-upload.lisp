@@ -75,6 +75,10 @@
                                         row-request row-rule row-principal-slot)
               :case (((:ok) (:set (txn tid) (txn-gen tgen)) (:next :receiving)
                       (:charge :steps *fn2-work-transition* :runnable t))
+                     ;; no fn2-txn row in the profile: unreachable in composition
+                     ;; (posting, which every upload taker reads, is served only
+                     ;; with one); a contract stop, never a park
+                     ((:none) (:stop :machine-phase))
                      (:otherwise (:park :taken fn2-txn :steps *fn2-work-transition*)))))))
   (:receiving (:goto work))
   (:validating (:goto work))
