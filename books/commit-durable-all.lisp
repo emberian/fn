@@ -8999,8 +8999,409 @@
            :use ((:instance fn2-env-step-admit-unfolds (fn2-core c))
                  (:instance fn2-env-admit-lk (fn2-core c) (c0 c) (members (fn2-env-arg 1 action)) (mode (fn2-env-arg 2 action)))
                  (:instance fn2-env-lk-reflexive (a c))))))
-;; OWED: FRESHNESS and LENT-OK across :turn: the commit arms' issues and
-;; harvests, and other kinds' ops writers (dispatch-contracts).
+;; FRESHNESS AND LENT-OK ACROSS THE ISSUES. FN2-ENV-OPS-ADVANCED: every op
+;; of the table keeps its head or advances it (FN2-ENV-HEAD-ADVANCED). The
+;; op primitives an issue chains (reserve, the reserved op's setters,
+;; enqueue, unreserve) keep the rows and generations and move one op out of
+;; free or reserved at most (their -HEADS lemmas), so every issue wrapper
+;; advances the heads and keeps commit-io; an accepted issue names an op
+;; free at its generation before and queued at it after
+;; (FN2-ENV-ISSUE-CHILDREN-OK), an issued incarnation.
+(defun fn2-env-ops-head (s fn2-ops)
+  ; (VALID GEN PHASE) of op slot S
+  (declare (xargs :stobjs fn2-ops :verify-guards nil))
+  (if (and (natp s) (< s (fn2-ops-rows fn2-ops)))
+      (list t (fn2-ops-gen s fn2-ops) (fn2-ops-phase s fn2-ops))
+    (list nil)))
+(defun-sk fn2-env-ops-advanced (a b)
+  (forall s (fn2-env-head-advanced (fn2-env-ops-head s a) (fn2-env-ops-head s b))))
+(defthm fn2-env-head-advanced-trans
+  (implies (and (fn2-env-head-advanced x y) (fn2-env-head-advanced y z)) (fn2-env-head-advanced x z))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-head-advanced))))
+(defthm fn2-env-ops-advanced-refl (fn2-env-ops-advanced a a)
+  :hints (("Goal" :in-theory '(fn2-env-ops-advanced fn2-env-head-advanced-refl))))
+(defthm fn2-env-ops-advanced-trans
+  (implies (and (fn2-env-ops-advanced a b) (fn2-env-ops-advanced b c)) (fn2-env-ops-advanced a c))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-ops-advanced)
+           :use ((:instance fn2-env-ops-advanced-necc (a a) (b b) (s (fn2-env-ops-advanced-witness a c)))
+                 (:instance fn2-env-ops-advanced-necc (a b) (b c) (s (fn2-env-ops-advanced-witness a c)))
+                 (:instance fn2-env-head-advanced-trans (x (fn2-env-ops-head (fn2-env-ops-advanced-witness a c) a))
+                            (y (fn2-env-ops-head (fn2-env-ops-advanced-witness a c) b))
+                            (z (fn2-env-ops-head (fn2-env-ops-advanced-witness a c) c)))))))
+(in-theory (disable fn2-env-ops-head))
+(defthm fn2-env-ops-advanced-step
+  ; B advances A at S when the rows stay, and S keeps its generation and
+  ; keeps its phase unless it is X, moved out of free or reserved
+  (implies (and (equal (fn2-ops-rows b) (fn2-ops-rows a))
+                (implies (and (natp s) (< s (fn2-ops-rows a)))
+                         (and (equal (fn2-ops-gen s b) (fn2-ops-gen s a))
+                              (or (equal (fn2-ops-phase s b) (fn2-ops-phase s a))
+                                  (and (equal s x)
+                                       (member-equal (fn2-ops-phase s a) (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))))))
+           (fn2-env-head-advanced (fn2-env-ops-head s a) (fn2-env-ops-head s b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-ops-head fn2-env-head-advanced) (fn2-ops-gen fn2-ops-phase fn2-ops-rows)))))
+(defthm fn2-env-op-reserve-heads
+  ; reservation keeps every generation and the rows, and moves the free
+  ; head's phase alone, and only from free
+  (let ((b (mv-nth 3 (fn2-op-reserve kind okind oslot ogen principal may-release o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (equal (fn2-ops-gen s b) (fn2-ops-gen s o)))
+         (implies (and (natp s) (not (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))
+                  (and (equal s (fn2-ops-free-head o)) (equal (fn2-ops-phase s o) *fn2-op-phase-free*)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-reserve fn2-ops-clear-row fn2-op-slotp)
+                           (fn2-op-cleanup-reserve fn2-op-cleanup-kindp fn2-ops-queued fn2-ops-reserved-credits
+                            fn2-ops-out-slot-length fn2-ops-free-count unsigned-byte-p fn2-ops-next-free)))))
+(defthm fn2-env-op-unreserve-heads
+  (let ((b (mv-nth 1 (fn2-op-unreserve slot gen o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (equal (fn2-ops-gen s b) (fn2-ops-gen s o)))
+         (implies (and (natp s) (not (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))
+                  (and (equal s slot) (equal (fn2-ops-phase s o) *fn2-op-phase-reserved*)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-unreserve fn2-ops-clear-row fn2-op-slotp fn2-op-phase-code fn2-op-handle-code)
+                           (fn2-ops-queued fn2-ops-reserved-credits fn2-ops-out-slot-length fn2-ops-free-count
+                            unsigned-byte-p fn2-ops-next-free fn2-ops-out-tail fn2-ops-out-gen-length fn2-ring-next)))))
+(defthm fn2-env-op-enqueue-heads
+  (let ((b (mv-nth 1 (fn2-op-enqueue slot gen o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (equal (fn2-ops-gen s b) (fn2-ops-gen s o)))
+         (implies (and (natp s) (not (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))
+                  (and (equal s slot) (equal (fn2-ops-phase s o) *fn2-op-phase-reserved*)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-enqueue fn2-ops-clear-row fn2-op-slotp fn2-op-phase-code fn2-op-handle-code)
+                           (fn2-ops-queued fn2-ops-reserved-credits fn2-ops-out-slot-length fn2-ops-free-count
+                            unsigned-byte-p fn2-ops-next-free fn2-ops-out-tail fn2-ops-out-gen-length fn2-ring-next)))))
+(defthm fn2-env-op-set-range-heads
+  ; a reserved op's field setter keeps every head
+  (let ((b (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (and (equal (fn2-ops-gen s b) (fn2-ops-gen s o)) (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-range fn2-op-slotp fn2-op-phase-code fn2-op-handle-code) (unsigned-byte-p)))))
+(defthm fn2-env-op-set-capability-heads
+  ; a reserved op's field setter keeps every head
+  (let ((b (mv-nth 1 (fn2-op-set-capability slot gen index nonce o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (and (equal (fn2-ops-gen s b) (fn2-ops-gen s o)) (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-capability fn2-op-slotp fn2-op-phase-code fn2-op-handle-code) (unsigned-byte-p)))))
+(defthm fn2-env-op-set-storage-heads
+  ; a reserved op's field setter keeps every head
+  (let ((b (mv-nth 1 (fn2-op-set-storage slot gen offset fua o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (and (equal (fn2-ops-gen s b) (fn2-ops-gen s o)) (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-storage fn2-op-slotp fn2-op-phase-code fn2-op-handle-code) (unsigned-byte-p)))))
+(defthm fn2-env-op-set-cancel-target-heads
+  ; a reserved op's field setter keeps every head
+  (let ((b (mv-nth 1 (fn2-op-set-cancel-target slot gen tslot tgen o))))
+    (and (equal (fn2-ops-rows b) (fn2-ops-rows o))
+         (implies (natp s) (and (equal (fn2-ops-gen s b) (fn2-ops-gen s o)) (equal (fn2-ops-phase s b) (fn2-ops-phase s o))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-set-cancel-target fn2-op-slotp fn2-op-phase-code fn2-op-handle-code) (unsigned-byte-p)))))
+(defthm fn2-env-op-reserve-ok-facts
+  ; a reservation takes the free head, free at its generation, and leaves it reserved there
+  (let ((r (fn2-op-reserve kind okind oslot ogen principal may-release o)))
+    (implies (equal (mv-nth 0 r) :ok)
+             (and (equal (mv-nth 1 r) (fn2-ops-free-head o)) (natp (mv-nth 1 r)) (< (mv-nth 1 r) (fn2-ops-rows o))
+                  (equal (mv-nth 2 r) (fn2-ops-gen (mv-nth 1 r) o))
+                  (equal (fn2-ops-phase (mv-nth 1 r) o) *fn2-op-phase-free*)
+                  (equal (fn2-ops-gen (mv-nth 1 r) (mv-nth 3 r)) (mv-nth 2 r))
+                  (equal (fn2-ops-phase (mv-nth 1 r) (mv-nth 3 r)) *fn2-op-phase-reserved*))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-reserve fn2-ops-clear-row fn2-op-slotp)
+                           (fn2-op-cleanup-reserve fn2-op-cleanup-kindp fn2-ops-queued fn2-ops-reserved-credits
+                            fn2-ops-out-slot-length fn2-ops-free-count unsigned-byte-p fn2-ops-next-free)))))
+(defthm fn2-env-op-enqueue-ok-facts
+  ; an accepted enqueue leaves the op queued at its generation
+  (implies (and (natp slot) (equal (mv-nth 0 (fn2-op-enqueue slot gen o)) :ok))
+           (and (equal (fn2-ops-gen slot (mv-nth 1 (fn2-op-enqueue slot gen o))) (fn2-ops-gen slot o))
+                (equal (fn2-ops-phase slot (mv-nth 1 (fn2-op-enqueue slot gen o))) *fn2-op-phase-queued*)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-op-enqueue fn2-op-slotp fn2-op-phase-code fn2-op-handle-code)
+                           (fn2-ops-queued fn2-ops-reserved-credits fn2-ops-out-slot-length unsigned-byte-p
+                            fn2-ops-out-tail fn2-ops-out-gen-length fn2-ring-next)))))
+(in-theory (disable fn2-env-op-reserve-ok-facts fn2-env-op-enqueue-ok-facts))
+(defmacro fn2-env-ops-advanced-by-heads (name call heads x)
+  ; NAME: CALL's ops result advances every op head (its HEADS lemma: the
+  ; rows and generations stay, and only X moves, out of free or reserved)
+  (let ((w `(fn2-env-ops-advanced-witness o ,call)))
+    `(defthm ,name
+       (implies (fn2-env-ops-advanced a o) (fn2-env-ops-advanced a ,call))
+       :hints (("Goal" :in-theory '((:e member-equal) member-equal car-cons cdr-cons)
+                :use ((:instance fn2-env-ops-advanced-trans (a a) (b o) (c ,call))
+                      (:instance fn2-env-ops-advanced (a o) (b ,call))
+                      (:instance ,heads (s ,w))
+                      (:instance fn2-env-ops-advanced-step (a o) (b ,call) (s ,w) (x ,x))))))))
+(fn2-env-ops-advanced-by-heads fn2-env-op-reserve-advanced
+  (mv-nth 3 (fn2-op-reserve kind okind oslot ogen principal may-release o)) fn2-env-op-reserve-heads (fn2-ops-free-head o))
+(fn2-env-ops-advanced-by-heads fn2-env-op-unreserve-advanced (mv-nth 1 (fn2-op-unreserve slot gen o)) fn2-env-op-unreserve-heads slot)
+(fn2-env-ops-advanced-by-heads fn2-env-op-enqueue-advanced (mv-nth 1 (fn2-op-enqueue slot gen o)) fn2-env-op-enqueue-heads slot)
+(fn2-env-ops-advanced-by-heads fn2-env-op-set-range-advanced
+  (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len o)) fn2-env-op-set-range-heads slot)
+(fn2-env-ops-advanced-by-heads fn2-env-op-set-capability-advanced
+  (mv-nth 1 (fn2-op-set-capability slot gen index nonce o)) fn2-env-op-set-capability-heads slot)
+(fn2-env-ops-advanced-by-heads fn2-env-op-set-storage-advanced
+  (mv-nth 1 (fn2-op-set-storage slot gen offset fua o)) fn2-env-op-set-storage-heads slot)
+(fn2-env-ops-advanced-by-heads fn2-env-op-set-cancel-target-advanced
+  (mv-nth 1 (fn2-op-set-cancel-target slot gen tslot tgen o)) fn2-env-op-set-cancel-target-heads slot)
+(defthm fn2-env-issue-children-advanced
+  ; an issue advances every op head: it moves one free op through reserved
+  ; to queued at its generation, or leaves it reserved or free
+  (fn2-env-ops-advanced ops (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release
+                                                          target-slot target-gen okind oslot ogen principal pool ops control)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-issue-children)
+                           (fn2-env-ops-advanced fn2-op-reserve fn2-op-unreserve fn2-op-enqueue fn2-op-set-range
+                            fn2-op-set-capability fn2-op-set-storage fn2-op-set-cancel-target
+                            fn2-core-lease fn2-control-record-stop fn2-core-outbox-ready unsigned-byte-p)))))
+(defthm fn2-env-issue-children-ok
+  ; an accepted issue names an op free at its generation before and queued
+  ; at it after
+  (let ((r (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release
+                               target-slot target-gen okind oslot ogen principal pool ops control)))
+    (implies (equal (mv-nth 0 r) :ok)
+             (and (natp (mv-nth 1 r)) (< (mv-nth 1 r) (fn2-ops-rows ops))
+                  (equal (fn2-ops-gen (mv-nth 1 r) ops) (mv-nth 2 r))
+                  (equal (fn2-ops-phase (mv-nth 1 r) ops) *fn2-op-phase-free*)
+                  (equal (fn2-ops-gen (mv-nth 1 r) (mv-nth 4 r)) (mv-nth 2 r))
+                  (equal (fn2-ops-phase (mv-nth 1 r) (mv-nth 4 r)) *fn2-op-phase-queued*))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-issue-children fn2-env-op-set-range-heads fn2-env-op-set-capability-heads
+                            fn2-env-op-set-storage-heads fn2-env-op-set-cancel-target-heads
+                            fn2-env-op-reserve-ok-facts fn2-env-op-enqueue-ok-facts)
+                           (fn2-env-ops-advanced fn2-op-reserve fn2-op-unreserve fn2-op-enqueue fn2-op-set-range
+                            fn2-op-set-capability fn2-op-set-storage fn2-op-set-cancel-target
+                            fn2-core-lease fn2-control-record-stop fn2-core-outbox-ready unsigned-byte-p
+                            fn2-ops-gen fn2-ops-phase fn2-ops-rows fn2-ops-free-head))
+           :use ((:instance fn2-env-op-reserve-ok-facts (o ops))))))
+(defthm fn2-env-heads-advanced-of-ops
+  (implies (fn2-env-ops-advanced (fn2-core-ops a) (fn2-core-ops b)) (fn2-env-op-heads-advanced a b))
+  :hints (("Goal" :in-theory (e/d (fn2-env-op-heads-advanced fn2-env-ops-head fn2-env-op-is-ops-op fn2-env-ops-op
+                                   fn2-env-head-advanced)
+                                  (fn2-env-ops-advanced fn2-env-op))
+           :use ((:instance fn2-env-ops-advanced-necc (a (fn2-core-ops a)) (b (fn2-core-ops b))
+                            (s (fn2-env-op-heads-advanced-witness a b)))))))
+(defmacro fn2-env-issue-advanced (name args kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen)
+  ; NAME's core result advances every op head and keeps every unit; an
+  ; accepted issue names an op free at its generation before, queued after
+  (let ((call `(,name ,@args okind oslot ogen principal core))
+        (children (intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-CHILDREN") name)))
+    `(defthm ,(intern-in-package-of-symbol (concatenate 'string "FN2-ENV-" (subseq (symbol-name name) 4 nil) "-ADVANCED") name)
+       (and (fn2-env-ops-advanced (fn2-core-ops core) (fn2-core-ops (mv-nth 3 ,call)))
+            (equal (nth *fn2-core-commit-io* (mv-nth 3 ,call)) (nth *fn2-core-commit-io* core))
+            (implies (equal (mv-nth 0 ,call) :ok)
+                     (and (natp (mv-nth 1 ,call)) (< (mv-nth 1 ,call) (fn2-ops-rows (fn2-core-ops core)))
+                          (equal (fn2-ops-gen (mv-nth 1 ,call) (fn2-core-ops core)) (mv-nth 2 ,call))
+                          (equal (fn2-ops-phase (mv-nth 1 ,call) (fn2-core-ops core)) *fn2-op-phase-free*)
+                          (equal (fn2-ops-gen (mv-nth 1 ,call) (fn2-core-ops (mv-nth 3 ,call))) (mv-nth 2 ,call))
+                          (equal (fn2-ops-phase (mv-nth 1 ,call) (fn2-core-ops (mv-nth 3 ,call))) *fn2-op-phase-queued*))))
+       :rule-classes nil
+       :hints (("Goal" :in-theory (e/d (,name ,children fn2-env-issue-children-advanced update-fn2-core-control update-fn2-core-ops update-fn2-core-pool fn2-core-ops)
+                                       (fn2-issue-children fn2-env-ops-advanced fn2-ops-gen fn2-ops-phase fn2-ops-rows))
+                :use ((:instance fn2-env-issue-children-ok (ops (fn2-core-ops core)) (pool (fn2-core-pool core))
+                                 (control (fn2-core-control core)) (okind okind) (oslot oslot) (ogen ogen) (principal principal)
+                                 (kind ,kind) (cap-index ,cap-index) (cap-nonce ,cap-nonce) (offset ,offset) (fua ,fua)
+                                 (slot ,slot) (gen ,gen) (off ,off) (len ,len) (may-release ,may-release)
+                                 (target-slot ,target-slot) (target-gen ,target-gen))))))))
+(fn2-env-issue-advanced fn2-issue-receive (cap-index cap-nonce slot gen len)
+  *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
+(fn2-env-issue-advanced fn2-issue-send (cap-index cap-nonce slot gen off len may-release)
+  *fn2-action-send* cap-index cap-nonce 0 0 slot gen off len may-release 0 0)
+(fn2-env-issue-advanced fn2-issue-read (offset slot gen len) *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0)
+(fn2-env-issue-advanced fn2-issue-write (offset slot gen off len fua) *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0)
+(fn2-env-issue-advanced fn2-issue-fence () *fn2-action-fence* 0 0 0 0 0 0 0 0 0 0 0)
+(fn2-env-issue-advanced fn2-issue-accept (cap-index cap-nonce) *fn2-action-accept* cap-index cap-nonce 0 0 0 0 0 0 0 0 0)
+(fn2-env-issue-advanced fn2-issue-close (cap-index cap-nonce) *fn2-action-close* cap-index cap-nonce 0 0 0 0 0 0 0 0 0)
+(fn2-env-issue-advanced fn2-issue-cancel (target-slot target-gen) *fn2-action-cancel* 0 0 0 0 0 0 0 0 0 target-slot target-gen)
+(fn2-env-issue-advanced fn2-issue-entropy (slot gen len) *fn2-action-entropy* 0 0 0 0 slot gen 0 len 0 0 0)
+;; FRESHNESS AND LENT-OK ACROSS THE COMMIT ARMS (FN2-ENV-FL, both). They
+;; read the op heads (FN2-ENV-HK) and the units' operation and loan
+;; (FN2-ENV-LK) alone: ten arms and every callee of the three issuing arms
+;; but the issue and the edge add keep both by their footprints. The
+;; issuing arms (:dependencies, :log-write, :fence) issue, which advances
+;; the heads, and lend a unit to the issued incarnation alone.
+(fn2-defview fn2-env-hk :carrier fn2-core
+  :select ((fn2-ops :columns (gen phase) :rows t :scalars (rows))))
+(defthm fn2-env-op-heads-of-hk
+  (implies (fn2-env-hk b a)
+           (and (equal (nth 0 (fn2-env-op s b)) (nth 0 (fn2-env-op s a)))
+                (equal (nth 1 (fn2-env-op s b)) (nth 1 (fn2-env-op s a)))
+                (equal (nth 2 (fn2-env-op s b)) (nth 2 (fn2-env-op s a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-env-hk fn2-env-op fn2-core-ops))))
+(defun-nx fn2-env-fl (log c) (and (fn2-env-freshness log c) (fn2-env-lent-ok c)))
+(defthm fn2-env-fl-of-hk-lk
+  ; FRESHNESS and LENT-OK read the op heads and the units' operation and loan alone
+  (implies (and (fn2-env-fl log a) (fn2-env-hk b a) (fn2-env-lk b a)) (fn2-env-fl log b))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-fl fn2-env-freshness-of-heads fn2-env-lent-ok-of-lk fn2-env-op-heads-kept)
+           :use ((:instance fn2-env-op-heads-of-hk (s (fn2-env-op-heads-kept-witness a b)))))))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-hk)
+  '(fn2-commit-run-free fn2-commit-run-collect fn2-commit-run-seal fn2-commit-run-durable fn2-commit-run-install
+    fn2-commit-run-publish fn2-commit-run-notify fn2-commit-run-draining fn2-commit-run-uncertain fn2-commit-run-dropping) (w state)))))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-lk)
+  '(fn2-commit-run-free fn2-commit-run-collect fn2-commit-run-seal fn2-commit-run-durable fn2-commit-run-install
+    fn2-commit-run-publish fn2-commit-run-notify fn2-commit-run-draining fn2-commit-run-uncertain fn2-commit-run-dropping) (w state)))))
+(defconst *fn2-env-fl-commit-callees*
+  '(fn2-commit-write+pending+cb-issued+cb-wrote
+    fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-deps-ok+cb-log-ok
+    fn2-commit-write+phase+cb-issued+cb-done+cb-bytes+cb-log-ok
+    fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason
+    fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason
+    fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open
+    fn2-commit-write+deadline+pending+cb-fence-live fn2-commit-write+phase fn2-commit-mark-abort))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-hk) (cons 'fn2-core-stop *fn2-env-fl-commit-callees*) (w state)))))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-lk) *fn2-env-fl-commit-callees* (w state)))))
+(defun fn2-env-fl-keep-events (fns world)
+  ; FN-FN2-ENV-FL: FN keeps FRESHNESS and LENT-OK by its HK and LK frames
+  (declare (xargs :mode :program))
+  (if (atom fns) nil
+    (let* ((fn (car fns)) (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
+      (cons `(defthm ,(fn2-env-rel-name fn 'fn2-env-fl)
+               (implies (fn2-env-fl log fn2-core) (fn2-env-fl log ,out))
+               :hints (("Goal" :in-theory nil
+                        :use ((:instance fn2-env-fl-of-hk-lk (a fn2-core) (b ,out))
+                              (:instance ,(fn2-env-rel-name fn 'fn2-env-hk) (fn2-rel-c0 fn2-core))
+                              (:instance ,(fn2-env-rel-name fn 'fn2-env-lk) (fn2-rel-c0 fn2-core))
+                              (:instance fn2-env-hk-reflexive (a fn2-core))
+                              (:instance fn2-env-lk-reflexive (a fn2-core))))))
+            (fn2-env-fl-keep-events (cdr fns) world)))))
+(make-event (value (cons 'progn (fn2-env-fl-keep-events (cons 'fn2-core-stop *fn2-env-fl-commit-callees*) (w state)))))
+(make-event (value (cons 'progn (fn2-env-fl-keep-events
+  '(fn2-commit-run-free fn2-commit-run-collect fn2-commit-run-seal fn2-commit-run-durable fn2-commit-run-install
+    fn2-commit-run-publish fn2-commit-run-notify fn2-commit-run-draining fn2-commit-run-uncertain fn2-commit-run-dropping) (w state)))))
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-hk) '(fn2-commit-io-edge) (w state)))))
+(defthm fn2-env-io-edge-add-child
+  ; an edge add leaves commit-io, or lends unit R to (S G)
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (let ((io (nth *fn2-core-commit-io* c)) (io2 (nth *fn2-core-commit-io* (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+                 (r (+ (* 3 (fn2-commit-row id c)) (nfix role))))
+             (or (equal io2 io)
+                 (equal io2 (fn2-commit-io-set-lent r 1 (fn2-commit-io-set-op-gen r g (fn2-commit-io-set-op-slot r s io)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn2-commit-io-edge fn2-core-commit-io update-fn2-core-commit-io fn2-env-core-stop-keeps-io-pool
+                            update-fn2-core-alloc-edges update-fn2-core-extents)
+                           (fn2-alloc-edge-drop fn2-alloc-edge-add fn2-commit-row fn2-commit-idp fn2-core-stop
+                            fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot unsigned-byte-p)))))
+(defthm fn2-env-io-set3-units
+  (let ((io2 (fn2-commit-io-set-lent r 1 (fn2-commit-io-set-op-gen r g (fn2-commit-io-set-op-slot r s io)))))
+    (and (equal (fn2-commit-io-rows io2) (fn2-commit-io-rows io))
+         (implies (and (natp u) (< u (fn2-commit-io-rows io)))
+                  (or (and (equal (fn2-commit-io-op-slot u io2) (fn2-commit-io-op-slot u io))
+                           (equal (fn2-commit-io-op-gen u io2) (fn2-commit-io-op-gen u io))
+                           (equal (fn2-commit-io-lent u io2) (fn2-commit-io-lent u io)))
+                      (and (equal (fn2-commit-io-op-slot u io2) s) (equal (fn2-commit-io-op-gen u io2) g))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-commit-io-set-lent fn2-commit-io-set-op-gen fn2-commit-io-set-op-slot update-fn2-commit-io-lent$ai
+                                     update-fn2-commit-io-op-gen$ai update-fn2-commit-io-op-slot$ai update-nth-array))))
+(defthm fn2-env-io-edge-add-units
+  ; an edge add keeps every unit's validity, and its operation and loan or
+  ; names the added operation
+  (implies (and (fn2-corep c) (fn2-core-wfp c))
+           (let ((o (fn2-env-io u c)) (o2 (fn2-env-io u (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+             (and (equal (nth 0 o2) (nth 0 o))
+                  (or (and (equal (nth 1 o2) (nth 1 o)) (equal (nth 2 o2) (nth 2 o)) (equal (nth 3 o2) (nth 3 o)))
+                      (and (equal (nth 1 o2) s) (equal (nth 2 o2) g))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-env-io fn2-core-commit-io nth-0-cons nth-add1 (:e zp) (:e nth) car-cons cdr-cons
+                                        (:e binary-+) zp nth)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-env-io-edge-add-child)
+                 (:instance fn2-env-io-set3-units (io (nth *fn2-core-commit-io* c))
+                            (r (+ (* 3 (fn2-commit-row id c)) (nfix role))))))))
+(defthm fn2-env-io-edge-add-fl
+  ; lending a unit to an issued incarnation keeps FRESHNESS and LENT-OK
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-fl log c) (fn2-env-incarnation-ok s g c))
+           (fn2-env-fl log (mv-nth 1 (fn2-commit-io-edge id role t s g c))))
+  :hints (("Goal" :in-theory '(fn2-env-fl fn2-env-lent-ok fn2-env-freshness-of-heads fn2-env-incarnation-ok-of-heads
+                               fn2-env-op-heads-kept)
+           :use ((:instance fn2-commit-io-edge-fn2-env-hk (fn2-core c) (fn2-rel-c0 c) (add t) (opslot s) (opgen g))
+                 (:instance fn2-env-hk-reflexive (a c))
+                 (:instance fn2-env-op-heads-of-hk (a c) (b (mv-nth 1 (fn2-commit-io-edge id role t s g c)))
+                            (s (fn2-env-op-heads-kept-witness c (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-io-edge-add-units (u (fn2-env-lent-ok-witness (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))
+                 (:instance fn2-env-lent-ok-necc (fn2-core c)
+                            (u (fn2-env-lent-ok-witness (mv-nth 1 (fn2-commit-io-edge id role t s g c)))))))))
+(defmacro fn2-env-issue-fl (name args)
+  ; NAME keeps FRESHNESS and LENT-OK; an accepted issue's op is an issued incarnation
+  (let* ((call `(,name ,@args okind oslot ogen principal c))
+         (adv (intern-in-package-of-symbol (concatenate 'string "FN2-ENV-" (subseq (symbol-name name) 4 nil) "-ADVANCED") name)))
+    `(progn
+       (defthm ,(intern-in-package-of-symbol (concatenate 'string "FN2-ENV-" (subseq (symbol-name name) 4 nil) "-FL") name)
+         (implies (fn2-env-fl log c) (fn2-env-fl log (mv-nth 3 ,call)))
+         :hints (("Goal" :in-theory '(fn2-env-fl fn2-env-freshness-of-advanced fn2-env-lent-ok-of-advanced
+                                      fn2-env-heads-advanced-of-ops fn2-env-units-kept-of-io)
+                  :use ((:instance ,adv (core c))))))
+       (defthm ,(intern-in-package-of-symbol (concatenate 'string "FN2-ENV-" (subseq (symbol-name name) 4 nil) "-ISSUED") name)
+         (implies (and (fn2-corep c) (fn2-core-wfp c) (equal (car ,call) :ok))
+                  (fn2-env-incarnation-ok (mv-nth 1 ,call) (mv-nth 2 ,call) (mv-nth 3 ,call)))
+         :hints (("Goal" :in-theory (e/d (fn2-env-incarnation-ok fn2-env-op-is-ops-op fn2-env-ops-op fn2-env-ops-head
+                                          fn2-env-head-advanced)
+                                         (fn2-ops-gen fn2-ops-phase fn2-ops-rows fn2-env-ops-advanced ,name))
+                  :use ((:instance ,adv (core c))
+                        (:instance fn2-env-op-gen-natp (s (mv-nth 1 ,call)))
+                        (:instance fn2-env-ops-advanced-necc (a (fn2-core-ops c)) (b (fn2-core-ops (mv-nth 3 ,call)))
+                                   (s (mv-nth 1 ,call))))))))))
+(fn2-env-issue-fl fn2-issue-write (offset slot gen off len fua))
+(fn2-env-issue-fl fn2-issue-fence ())
+(defthm fn2-env-issue-write-edge-fl
+  ; an accepted write issue, then the edge add lending its op: FRESHNESS and LENT-OK stay
+  (let ((w (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)))
+    (implies (and (fn2-corep c) (fn2-core-wfp c) (fn2-env-fl log c) (equal (car w) :ok))
+             (fn2-env-fl log (mv-nth 1 (fn2-commit-io-edge id role t (mv-nth 1 w) (mv-nth 2 w) (mv-nth 3 w))))))
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-issue-write-issued fn2-env-issue-write-fl) (theory 'fn2-arm-frame-base))
+           :use ((:instance fn2-env-io-edge-add-fl
+                            (s (mv-nth 1 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)))
+                            (g (mv-nth 2 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)))
+                            (c (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c))))))))
+(defun fn2-env-fl-rule-names (fns)
+  (declare (xargs :mode :program))
+  (if (atom fns) nil (cons (fn2-env-rel-name (car fns) 'fn2-env-fl) (fn2-env-fl-rule-names (cdr fns)))))
+(defmacro fn2-env-fl-issuing-arm (arm)
+  ; ARM keeps FRESHNESS and LENT-OK: its issue advances the op heads and the
+  ; unit it lends names the issued incarnation
+  `(make-event
+    (value
+     '(defthm ,(fn2-env-rel-name arm 'fn2-env-fl)
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-fl log fn2-core))
+                 (fn2-env-fl log (mv-nth 4 (,arm id budget fn2-core))))
+        :hints (("Goal" :do-not-induct t
+                 :in-theory (union-theories '(,arm fn2-env-issue-write-fl fn2-env-issue-fence-fl fn2-env-issue-write-edge-fl
+                                              ,@(fn2-env-fl-rule-names (cons 'fn2-core-stop *fn2-env-fl-commit-callees*)))
+                                            (theory 'fn2-arm-frame-base))))))))
+(fn2-env-fl-issuing-arm fn2-commit-run-dependencies)
+(fn2-env-fl-issuing-arm fn2-commit-run-log-write)
+(fn2-env-fl-issuing-arm fn2-commit-run-fence)
+(make-event (value (cons 'progn (fn2-env-view-keep-events '(fn2-env-hk fn2-env-lk) '(fn2-machine-contract-check fn2-machine-refuse-phase) (w state)))))
+(make-event (value (cons 'progn (fn2-env-fl-keep-events '(fn2-machine-contract-check fn2-machine-refuse-phase) (w state)))))
+(defthm fn2-commit-run-fn2-env-fl
+  ; every commit arm keeps FRESHNESS and LENT-OK
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-fl log fn2-core))
+           (fn2-env-fl log (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn2-commit-run
+                                        fn2-commit-run-dependencies-fn2-env-fl fn2-commit-run-log-write-fn2-env-fl
+                                        fn2-commit-run-fence-fn2-env-fl fn2-commit-run-free-fn2-env-fl
+                                        fn2-commit-run-collect-fn2-env-fl fn2-commit-run-seal-fn2-env-fl
+                                        fn2-commit-run-durable-fn2-env-fl fn2-commit-run-install-fn2-env-fl
+                                        fn2-commit-run-publish-fn2-env-fl fn2-commit-run-notify-fn2-env-fl
+                                        fn2-commit-run-draining-fn2-env-fl fn2-commit-run-uncertain-fn2-env-fl
+                                        fn2-commit-run-dropping-fn2-env-fl fn2-core-stop-fn2-env-fl fn2-machine-contract-check-fn2-env-fl fn2-machine-refuse-phase-fn2-env-fl)
+                                      (theory 'fn2-arm-frame-base)))))
+;; OWED: FRESHNESS and LENT-OK across :turn: the harvest and the write and
+;; fence handlers (fn2-harvest-one finishes an op, which advances its head;
+;; fn2-commit-drop-io clears loans), and other kinds' arms (dispatch-contracts).
 ;; ---------------------------------------------------------------------------
 ;; J5 AND J6 ACROSS THE WRITE/FENCE HANDLER (fn2-commit-arm-observe). The
 ;; harvest (fn2-harvest-one) finishes the operation it delivers before the
