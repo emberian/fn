@@ -429,3 +429,99 @@
            :use ((:instance fn2-dh-octets-of-data-write (n (nfix (nth *fn2-pool-rows* pool)))
                             (m (nfix (nth *fn2-pool-rows* pool))))
                  (:instance fn2-dh-ordered-natp (i r) (n (nfix (nth *fn2-pool-rows* pool))))))))
+;; A copy loop writing [DST, DST+N) inside a row the observation does not hold.
+(defthm fn2-dh-pool-obs-of-copy-up
+  (implies (and (natp r) (< r (nth *fn2-pool-rows* pool)) (not (fn2-dh-pool-held k r pool))
+                (implies (integerp (nth r (nth *fn2-pool-base$ai* pool))) (integerp dst))
+                (<= (nth r (nth *fn2-pool-base$ai* pool)) dst)
+                (<= (+ dst (nfix n)) (+ (nth r (nth *fn2-pool-base$ai* pool)) (nth r (nth *fn2-pool-cap$ai* pool))))
+                (<= (+ dst (nfix n)) (len (nth *fn2-pool-datai* pool))))
+           (equal (fn2-dh-pool-obs k (fn2-pool-copy-up src dst n pool)) (fn2-dh-pool-obs k pool)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-pool-copy-up src dst n pool) :in-theory (e/d (fn2-pool-copy-up) (fn2-dh-pool-obs fn2-dh-pool-held)))
+          ("Subgoal *1/2" :use ((:instance fn2-dh-pool-obs-of-data-write (x dst) (v (fn2-pool-datai src pool)))))))
+(defthm fn2-dh-pool-obs-of-copy-down
+  (implies (and (natp r) (< r (nth *fn2-pool-rows* pool)) (not (fn2-dh-pool-held k r pool))
+                (implies (integerp (nth r (nth *fn2-pool-base$ai* pool))) (integerp dst))
+                (<= (nth r (nth *fn2-pool-base$ai* pool)) dst)
+                (<= (+ dst (nfix n)) (+ (nth r (nth *fn2-pool-base$ai* pool)) (nth r (nth *fn2-pool-cap$ai* pool))))
+                (<= (+ dst (nfix n)) (len (nth *fn2-pool-datai* pool))))
+           (equal (fn2-dh-pool-obs k (fn2-pool-copy-down src dst n pool)) (fn2-dh-pool-obs k pool)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-pool-copy-down src dst n pool) :in-theory (e/d (fn2-pool-copy-down) (fn2-dh-pool-obs fn2-dh-pool-held)))
+          ("Subgoal *1/2" :use ((:instance fn2-dh-pool-obs-of-data-write (x (+ dst n -1))
+                                           (v (fn2-pool-datai (+ src n -1) pool)))))))
+
+;; ---------------------------------------------------------------------------
+;; THE PRIMITIVES: each pool and operation write keeps the observation of
+;; every kind K but the owner it writes as (OKIND, or the accepting TKIND):
+;; the owner check names the row, a reserve takes a free one, an accept a
+;; handed one. Recorded in the table fn2-dh-keeps (fn -> ((obs position
+;; stobj hyps) ...)) for the chain (machines.lisp fn2-dh-chain-*).
+(defun fn2-dh-keeps-name (obs fn) (declare (xargs :mode :program)) (fn2-columns-sym obs (concatenate 'string "-OF-" (symbol-name fn))))
+(defmacro fn2-dh-keeps (fn obs pos stobj hyps &key enable use)
+  (let* ((formals-call `(,fn ,@(car hyps)))
+         (out (if pos `(mv-nth ,pos ,formals-call) formals-call)))
+    `(progn
+       (defthm ,(fn2-dh-keeps-name obs fn)
+         (implies (and ,@(cdr hyps)) (equal (,obs fn2-dh-k ,out) (,obs fn2-dh-k ,stobj)))
+         :hints (("Goal" :in-theory (e/d (,fn ,@enable) (,obs nth update-nth)) ,@(and use `(:use ,use)))))
+       (table fn2-dh-keeps ',fn (cons '(,obs ,pos ,stobj ,(pairlis$ (cdr hyps) nil))
+                                      (cdr (assoc-eq ',fn (table-alist 'fn2-dh-keeps world))))))))
+(defconst *fn2-dh-pool-codes*
+  '(fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-reserve fn2-dh-pool-obs 3 fn2-pool
+  ((class okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))))
+(fn2-dh-keeps fn2-pool-release fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-lease-in fn2-dh-pool-obs 2 fn2-pool
+  ((slot gen len opslot opgen okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-lease-out fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen off len okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-hand fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen okind oslot ogen tkind tslot tgen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-accept-hand fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen tkind tslot tgen fn2-pool) (not (equal tkind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-accept-own fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))))
+(fn2-dh-keeps fn2-pool-reset fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-truncate fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen n okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in))
+(fn2-dh-keeps fn2-pool-write fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen idx byte okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in)
+  :use ((:instance fn2-dh-pool-obs-of-data-write (k fn2-dh-k) (pool fn2-pool) (r slot) (v byte)
+                   (x (+ (fn2-pool-base slot fn2-pool) idx)))))
+(fn2-dh-keeps fn2-pool-copy-range fn2-dh-pool-obs 1 fn2-pool
+  ((src sgen soff dst dgen doff len okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))) :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in)
+  :use ((:instance fn2-dh-pool-obs-of-copy-up (k fn2-dh-k) (pool fn2-pool) (r dst) (n len)
+                   (src (+ (fn2-pool-base src fn2-pool) soff)) (dst (+ (fn2-pool-base dst fn2-pool) doff)))
+        (:instance fn2-dh-pool-obs-of-copy-down (k fn2-dh-k) (pool fn2-pool) (r dst) (n len)
+                   (src (+ (fn2-pool-base src fn2-pool) soff)) (dst (+ (fn2-pool-base dst fn2-pool) doff)))))
+(fn2-dh-keeps fn2-pool-drop-prefix fn2-dh-pool-obs 2 fn2-pool
+  ((slot gen k0 cursor limit okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k)))
+  :enable (fn2-pool-workspace-code fn2-pool-handle-code fn2-pool-ownerp fn2-pool-readable-code fn2-pool-range-in)
+  :use ((:instance fn2-dh-pool-obs-of-copy-up (k fn2-dh-k) (pool fn2-pool) (r slot)
+                   (n (if (< limit (- (- (fn2-pool-fill slot fn2-pool) k0) cursor)) limit
+                        (- (- (fn2-pool-fill slot fn2-pool) k0) cursor)))
+                   (src (+ (fn2-pool-base slot fn2-pool) k0 cursor)) (dst (+ (fn2-pool-base slot fn2-pool) cursor)))))
+(fn2-dh-keeps fn2-core-lease fn2-dh-pool-obs 2 fn2-pool
+  ((kind slot gen off len opslot opgen okind oslot ogen fn2-pool) (not (equal okind fn2-dh-k))))
+(fn2-dh-keeps fn2-core-release-children fn2-dh-pool-obs 1 fn2-pool
+  ((slot gen okind oslot ogen fn2-pool fn2-control) (not (equal okind fn2-dh-k))))
+(fn2-dh-keeps fn2-op-reserve fn2-dh-ops-obs 3 fn2-ops
+  ((kind okind oslot ogen principal may-release fn2-ops) (not (equal okind fn2-dh-k)))
+  :enable (fn2-ops-clear-row fn2-op-slotp))
+;; An issue reserves a free row as OKIND's, then fills and queues that row.
+(fn2-dh-keeps fn2-issue-children fn2-dh-ops-obs 4 fn2-ops
+  ((kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen
+         okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+   (not (equal okind fn2-dh-k)))
+  :enable (fn2-op-reserve fn2-op-unreserve fn2-op-set-range fn2-op-set-capability fn2-op-set-storage
+           fn2-op-set-cancel-target fn2-op-enqueue fn2-op-phase-code fn2-op-handle-code fn2-ops-clear-row
+           fn2-op-slotp))
+(fn2-dh-keeps fn2-issue-children fn2-dh-pool-obs 3 fn2-pool
+  ((kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen
+         okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+   (not (equal okind fn2-dh-k))))
+
