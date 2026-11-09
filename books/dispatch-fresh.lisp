@@ -39,3 +39,43 @@
                                   ,(fn2-columns-sym stub "-OPS-POOL") ,(fn2-columns-sym stub "-KEEPS-UNITS")))))
                 (fn2-dfr-events (cdr names) world)))))))
 (make-event (value (cons 'progn (fn2-dfr-events (fn2-machine-names (w state)) (w state)))))
+
+;; THE RUN STUBS (owed: their constraint and each attachment's proof). A run
+;; writes the operation table: it reserves a free op at its generation,
+;; issues it, recycles it (generation + 1) or retires it. None of those makes
+;; an incarnation that has begun and been issued (fn2-env-incarnation-ok)
+;; stop being one: HEADS-ADVANCE, the relation each run must keep, under
+;; which FRESHNESS and LENT-OK are kept (with the units kept, as every run of
+;; a kind without a :batch-membership leaves the commit children).
+(defun-sk fn2-dfr-heads-advance (a b)
+  (forall (s g) (implies (fn2-env-incarnation-ok s g a) (fn2-env-incarnation-ok s g b))))
+(defthm fn2-dfr-heads-advance-of-kept
+  (implies (fn2-env-op-heads-kept a b) (fn2-dfr-heads-advance a b))
+  :hints (("Goal" :in-theory '(fn2-dfr-heads-advance fn2-env-incarnation-ok-of-heads))))
+(defthm fn2-dfr-heads-advance-trans
+  (implies (and (fn2-dfr-heads-advance a b) (fn2-dfr-heads-advance b c)) (fn2-dfr-heads-advance a c))
+  :hints (("Goal" :in-theory '(fn2-dfr-heads-advance)
+           :use ((:instance fn2-dfr-heads-advance-necc (s (mv-nth 0 (fn2-dfr-heads-advance-witness a c)))
+                            (g (mv-nth 1 (fn2-dfr-heads-advance-witness a c))))
+                 (:instance fn2-dfr-heads-advance-necc (a b) (b c) (s (mv-nth 0 (fn2-dfr-heads-advance-witness a c)))
+                            (g (mv-nth 1 (fn2-dfr-heads-advance-witness a c))))))))
+(defthm fn2-dfr-incarnation-ok-of-advance
+  (implies (and (fn2-env-incarnation-ok s g a) (fn2-dfr-heads-advance a b)) (fn2-env-incarnation-ok s g b))
+  :hints (("Goal" :in-theory nil :use ((:instance fn2-dfr-heads-advance-necc)))))
+(defthm fn2-dfr-freshness-of-advance
+  (implies (and (fn2-env-freshness log a) (fn2-dfr-heads-advance a b)) (fn2-env-freshness log b))
+  :hints (("Goal" :induct (fn2-env-freshness log a)
+           :in-theory (union-theories '(fn2-env-freshness fn2-dfr-incarnation-ok-of-advance) (theory 'minimal-theory)))))
+(defthm fn2-dfr-lent-ok-of-advance
+  (implies (and (fn2-env-lent-ok a) (fn2-dfr-heads-advance a b) (fn2-env-units-kept a b)) (fn2-env-lent-ok b))
+  :hints (("Goal" :in-theory '(fn2-env-lent-ok)
+           :use ((:instance fn2-env-units-kept-necc (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-env-lent-ok-necc (fn2-core a) (u (fn2-env-lent-ok-witness b)))
+                 (:instance fn2-dfr-heads-advance-necc
+                            (s (nth 1 (fn2-env-io (fn2-env-lent-ok-witness b) b)))
+                            (g (nth 2 (fn2-env-io (fn2-env-lent-ok-witness b) b))))))))
+(defthm fn2-dfr-fresh-lent-of-advance
+  (implies (and (fn2-env-freshness log a) (fn2-env-lent-ok a) (fn2-dfr-heads-advance a b) (fn2-env-units-kept a b))
+           (and (fn2-env-freshness log b) (fn2-env-lent-ok b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-dfr-freshness-of-advance fn2-dfr-lent-ok-of-advance))))
