@@ -525,6 +525,33 @@
          okind oslot ogen principal fn2-pool fn2-ops fn2-control)
    (not (equal okind fn2-dh-k))))
 
+;; ---------------------------------------------------------------------------
+;; STORED OWNERS. Some tables keep, per row, the owner kind its writes go out
+;; as (the cursor's conn-kind, an overlay's okind). FN2-DH-COL-OK K C X: no
+;; row of column C of X holds K (and K is not nil, the value of a row past
+;; the end). A write of such a read is then K's only when the column is.
+(defun fn2-dh-avoids (k l)
+  (declare (xargs :guard t))
+  (if (atom l) (if k t nil) (and (not (equal (car l) k)) (fn2-dh-avoids k (cdr l)))))
+(defthm fn2-dh-avoids-nth
+  (implies (fn2-dh-avoids k l) (not (equal (nth i l) k))))
+(defthm fn2-dh-avoids-update-nth
+  (implies (and (fn2-dh-avoids k l) (not (equal v k))) (fn2-dh-avoids k (update-nth i v l))))
+(defthm fn2-dh-avoids-resize-list
+  (implies (and (fn2-dh-avoids k l) (not (equal d k))) (fn2-dh-avoids k (resize-list l n d))))
+(defthm fn2-dh-resize-list-0 (equal (resize-list l 0 d) nil))
+(defun-nx fn2-dh-col-ok (k c x) (fn2-dh-avoids k (nth c x)))
+(defthm fn2-dh-col-ok-of-update-nth
+  (equal (fn2-dh-col-ok k c (update-nth j v x))
+         (if (equal (nfix j) (nfix c)) (fn2-dh-avoids k v) (fn2-dh-col-ok k c x)))
+  :hints (("Goal" :in-theory (disable fn2-dh-avoids))))
+(defthm fn2-dh-col-ok-avoids
+  (implies (fn2-dh-col-ok k c x) (fn2-dh-avoids k (nth c x))))
+(defthm fn2-dh-col-ok-nth
+  (implies (fn2-dh-col-ok k c x) (not (equal (nth i (nth c x)) k)))
+  :hints (("Goal" :in-theory '(fn2-dh-col-ok) :use ((:instance fn2-dh-avoids-nth (l (nth c x)))))))
+(in-theory (disable fn2-dh-col-ok fn2-dh-avoids))
+
 ;; The chain's theory: this book's rules (the observation's functions off,
 ;; the held predicates on), the readers of the operation table and the pool,
 ;; and the core's read-over-write; a chain proof adds its function and the
@@ -555,185 +582,427 @@
 
 ;; ---------------------------------------------------------------------------
 ;; THE CHAIN (fn2-dh-chain-forms): for each function under a closure that
-;; returns the operation table, the pool or the core, callees first, its
-;; observation lemmas -- of the child it returns, or of the core's two
-;; children -- each under the hypotheses its callees' lemmas need of its own
-;; arguments (an owner kind is not K), recorded in fn2-dh-keeps. A core
-;; function whose KIDS contract leaves both children has them from it; any
-;; other opens its body once over its callees' lemmas (by its own induction
-;; when it recurs). A function the chain cannot prove is refused by name.
+;; returns the operation table, the pool, an owner table (below) or the core,
+;; callees first, ONE lemma: the observations of the children it returns (of
+;; the core's two) kept, under the hypotheses its callees' lemmas need of its
+;; own arguments (an owner kind is not K); and the stored owners of every
+;; owner table it returns (at the core, FN2-DH-OWNERS-OK) still avoiding K,
+;; under its callees' owner hypotheses alone. Recorded in fn2-dh-keeps. An
+;; owner kind read from a row of an owner table is asked of the function's
+;; own table (or core): its stored owners avoid K (FN2-DH-COL-OK, or
+;; FN2-DH-OWNERS-OK). A core function whose KIDS contract leaves every
+;; observed child has its lemma from it; any other opens its body once over
+;; its callees' lemmas (by its own induction when it recurs). A function the
+;; chain cannot prove is refused by name.
+;;
+;; THE OWNER TABLES (table fn2-dh-owners, machines.lisp's held view form):
+;; stobj -> (C READERS ACC FNS): the owner column's index, its readers, the
+;; core's accessor of the table, and the table's writers the chain opens
+;; (its raw updaters and column setters).
+(defun fn2-dh-owners (world) (declare (xargs :mode :program)) (table-alist 'fn2-dh-owners world))
+(defun fn2-dh-owner-obs-p (obs) (declare (xargs :mode :program)) (member-eq obs '(fn2-dh-col-ok fn2-dh-owners-ok)))
+(defun fn2-dh-owner-fn-p (fn owners)
+  (declare (xargs :mode :program))
+  (and (consp owners) (or (member-eq fn (nth 4 (car owners))) (fn2-dh-owner-fn-p fn (cdr owners)))))
+(defun fn2-dh-owner-accs (owners)
+  (declare (xargs :mode :program))
+  (if (atom owners) nil (cons (nth 3 (car owners)) (fn2-dh-owner-accs (cdr owners)))))
+(defun fn2-dh-owner-theory (owners)
+  ; the writers the chain opens and the owner columns' readers
+  (declare (xargs :mode :program))
+  (if (atom owners) nil (append (nth 2 (car owners)) (nth 4 (car owners)) (fn2-dh-owner-theory (cdr owners)))))
+(defun fn2-dh-owner-comps (owners x)
+  ; the stored owners of core X avoid K
+  (declare (xargs :mode :program))
+  (if (atom owners) nil
+    (cons `(fn2-dh-col-ok fn2-dh-k ',(nth 1 (car owners)) (,(nth 3 (car owners)) ,x))
+          (fn2-dh-owner-comps (cdr owners) x))))
+(defun fn2-dh-owner-of-col (c owners)
+  (declare (xargs :mode :program))
+  (cond ((atom owners) nil) ((equal (nth 1 (car owners)) c) (caar owners)) (t (fn2-dh-owner-of-col c (cdr owners)))))
+(defun fn2-dh-owner-of-reader (r owners)
+  (declare (xargs :mode :program))
+  (cond ((atom owners) nil) ((member-eq r (nth 2 (car owners))) (caar owners)) (t (fn2-dh-owner-of-reader r (cdr owners)))))
+
 (defun fn2-dh-facts (fn world)
   (declare (xargs :mode :program))
   (cdr (assoc-eq fn (table-alist 'fn2-dh-keeps world))))
-;; FN has its lemmas: the chain's or a primitive's (fn2-dh-keeps), a setter's
-;; rewrite rules, or it is a stobj primitive (its updater's rules)
-(defun fn2-dh-known (fn world)
+;; FN has its lemmas: a primitive's (fn2-dh-keeps), a setter's rewrite rules,
+;; a stobj primitive (its updater's rules), an owner table's writer the chain
+;; opens, or the chain's, covering every conclusion it owes in MODE
+(defun fn2-dh-covers (o facts)
   (declare (xargs :mode :program))
-  (or (fn2-dh-facts fn world) (getpropc fn 'stobj-function nil world)
+  (and (consp facts) (or (and (eq (car o) (car (car facts))) (eq (caddr o) (caddr (car facts))))
+                         (fn2-dh-covers o (cdr facts)))))
+(defun fn2-dh-covered (outs facts)
+  (declare (xargs :mode :program))
+  (or (atom outs)
+      (and (fn2-dh-covers (car outs) facts) (fn2-dh-covered (cdr outs) facts))))
+(defun fn2-dh-prim-known (fn world)
+  (declare (xargs :mode :program))
+  (or (getpropc fn 'stobj-function nil world)
+      (fn2-dh-owner-fn-p fn (fn2-dh-owners world))
+      (let ((facts (fn2-dh-facts fn world))) (and facts (not (nth 4 (car facts)))))
       (getpropc (fn2-columns-sym 'fn2-dh-ops-obs (concatenate 'string "-OF-" (symbol-name fn))) 'theorem nil world)
       (getpropc (fn2-columns-sym 'fn2-dh-pool-obs (concatenate 'string "-OF-" (symbol-name fn))) 'theorem nil world)))
-(defun fn2-dh-outs (fn world)
-  ; (obs position stobj) of each lemma FN owes
+(defun fn2-dh-pos (s outs) (declare (xargs :mode :program)) (if (equal (len outs) 1) nil (position-eq s outs)))
+(defun fn2-dh-owner-outs (owners outs ins)
   (declare (xargs :mode :program))
-  (let* ((outs (getpropc fn 'stobjs-out nil world)) (ins (getpropc fn 'stobjs-in nil world)))
-    (append (and (member-eq 'fn2-ops outs) (member-eq 'fn2-ops ins)
-                 (list (list 'fn2-dh-ops-obs (if (equal (len outs) 1) nil (position-eq 'fn2-ops outs)) 'fn2-ops)))
-            (and (member-eq 'fn2-pool outs) (member-eq 'fn2-pool ins)
-                 (list (list 'fn2-dh-pool-obs (if (equal (len outs) 1) nil (position-eq 'fn2-pool outs)) 'fn2-pool)))
+  (cond ((atom owners) nil)
+        ((and (member-eq (caar owners) outs) (member-eq (caar owners) ins))
+         (cons (list 'fn2-dh-col-ok (fn2-dh-pos (caar owners) outs) (caar owners)) (fn2-dh-owner-outs (cdr owners) outs ins)))
+        (t (fn2-dh-owner-outs (cdr owners) outs ins))))
+(defun fn2-dh-outs-m (fn mode world)
+  ; (obs position stobj) of each conclusion FN owes; MODE :owners, the owner ones alone
+  (declare (xargs :mode :program))
+  (let* ((outs (getpropc fn 'stobjs-out nil world)) (ins (getpropc fn 'stobjs-in nil world))
+         (owners (fn2-dh-owners world)))
+    (append (and (not mode) (member-eq 'fn2-ops outs) (member-eq 'fn2-ops ins)
+                 (list (list 'fn2-dh-ops-obs (fn2-dh-pos 'fn2-ops outs) 'fn2-ops)))
+            (and (not mode) (member-eq 'fn2-pool outs) (member-eq 'fn2-pool ins)
+                 (list (list 'fn2-dh-pool-obs (fn2-dh-pos 'fn2-pool outs) 'fn2-pool)))
+            (fn2-dh-owner-outs owners outs ins)
             (and (member-eq 'fn2-core outs) (member-eq 'fn2-core ins)
-                 (let ((p (if (equal (len outs) 1) nil (position-eq 'fn2-core outs))))
-                   (list (list 'fn2-dh-ops-obs p 'fn2-core) (list 'fn2-dh-pool-obs p 'fn2-core)))))))
+                 (let ((p (fn2-dh-pos 'fn2-core outs)))
+                   (append (and (not mode) (list (list 'fn2-dh-ops-obs p 'fn2-core) (list 'fn2-dh-pool-obs p 'fn2-core)))
+                           (and owners (list (list 'fn2-dh-owners-ok p 'fn2-core)))))))))
+(defun fn2-dh-outs (fn world) (declare (xargs :mode :program)) (fn2-dh-outs-m fn nil world))
+(defun fn2-dh-known-m (fn mode world)
+  (declare (xargs :mode :program))
+  (or (fn2-dh-prim-known fn world) (fn2-dh-covered (fn2-dh-outs-m fn mode world) (fn2-dh-facts fn world))))
+(defun fn2-dh-known (fn world) (declare (xargs :mode :program)) (fn2-dh-known-m fn nil world))
 (defun fn2-dh-sel (obs stobj x)
   (declare (xargs :mode :program))
   (cond ((not (eq stobj 'fn2-core)) x)
         ((eq obs 'fn2-dh-ops-obs) `(fn2-core-ops ,x))
         (t `(fn2-core-pool ,x))))
 (defun fn2-dh-out (pos call) (declare (xargs :mode :program)) (if pos `(mv-nth ,pos ,call) call))
-;; the hypotheses FACTS (of G with FORMALS) need of ACTUALS
-;; each hypothesis with the path of callees it comes from, down to the primitive
-(defun fn2-dh-add-hyps (hyps g alist acc)
+;; An owner kind asked of a stored owner (a reader of an owner table at X),
+;; of an owner table's stored owners or of the core's, is asked of FORMALS'
+;; table of that stobj, else of the core: H's root form there, else H.
+(defun fn2-dh-root-hyp (h formals owners)
+  (declare (xargs :mode :program))
+  (let* ((s (and (consp h)
+                 (cond ((and (eq (car h) 'not) (consp (cadr h)) (eq (car (cadr h)) 'equal))
+                        (let* ((a (cadr (cadr h))) (b (caddr (cadr h)))
+                               (r (cond ((eq b 'fn2-dh-k) a) ((eq a 'fn2-dh-k) b))))
+                          (and (consp r) (symbolp (car r)) (fn2-dh-owner-of-reader (car r) owners))))
+                       ((and (eq (car h) 'fn2-dh-col-ok) (eq (cadr h) 'fn2-dh-k) (quotep (caddr h)))
+                        (fn2-dh-owner-of-col (unquote (caddr h)) owners))
+                       ((and (eq (car h) 'fn2-dh-owners-ok) (eq (cadr h) 'fn2-dh-k)) :core)))))
+    (cond ((null s) h)
+          ((and (not (eq s :core)) (member-eq s formals))
+           `(fn2-dh-col-ok fn2-dh-k ',(nth 1 (assoc-eq s owners)) ,s))
+          ((member-eq 'fn2-core formals) '(fn2-dh-owners-ok fn2-dh-k fn2-core))
+          (t h))))
+;; the hypotheses FACTS (of G with FORMALS) need of ACTUALS, in the caller's
+;; root form; each with the path of callees it comes from, down to the primitive
+(defun fn2-dh-add-hyps (hyps g alist cformals owners acc)
   (declare (xargs :mode :program))
   (if (atom hyps) acc
-    (let ((h (sublis-var alist (caar hyps))))
-      (fn2-dh-add-hyps (cdr hyps) g alist
+    (let ((h (fn2-dh-root-hyp (sublis-var alist (caar hyps)) cformals owners)))
+      (fn2-dh-add-hyps (cdr hyps) g alist cformals owners
                        (if (assoc-equal h acc) acc (cons (cons h (cons g (cdar hyps))) acc))))))
-(defun fn2-dh-inst-hyps (facts g formals actuals acc)
+;; OWNERP: only the facts of the owner conclusions
+(defun fn2-dh-inst-hyps (facts g formals actuals cformals owners ownerp acc)
   (declare (xargs :mode :program))
   (if (atom facts) acc
-    (fn2-dh-inst-hyps (cdr facts) g formals actuals
-                      (fn2-dh-add-hyps (nth 3 (car facts)) g (pairlis$ formals actuals) acc))))
+    (fn2-dh-inst-hyps (cdr facts) g formals actuals cformals owners ownerp
+                      (if (or (not ownerp) (fn2-dh-owner-obs-p (car (car facts))))
+                          (fn2-dh-add-hyps (nth 3 (car facts)) g (pairlis$ formals actuals) cformals owners acc)
+                        acc))))
 (mutual-recursion
- (defun fn2-dh-walk (x alist fn world acc)
+ (defun fn2-dh-walk (x alist fn ownerp world acc)
    (declare (xargs :mode :program))
    (cond ((or (atom x) (eq (car x) 'quote)) acc)
          ((consp (car x))
-          (let ((acc (fn2-dh-walk-list (cdr x) alist fn world acc)))
-            (fn2-dh-walk (caddr (car x)) (pairlis$ (cadr (car x)) (sublis-var-lst alist (cdr x))) fn world acc)))
-         (t (let ((acc (fn2-dh-walk-list (cdr x) alist fn world acc)))
+          (let ((acc (fn2-dh-walk-list (cdr x) alist fn ownerp world acc)))
+            (fn2-dh-walk (caddr (car x)) (pairlis$ (cadr (car x)) (sublis-var-lst alist (cdr x))) fn ownerp world acc)))
+         (t (let ((acc (fn2-dh-walk-list (cdr x) alist fn ownerp world acc)))
               (if (eq (car x) fn) acc
                 (let ((facts (fn2-dh-facts (car x) world)))
-                  (if facts (fn2-dh-inst-hyps facts (car x) (formals (car x) world) (sublis-var-lst alist (cdr x)) acc) acc)))))))
- (defun fn2-dh-walk-list (xs alist fn world acc)
+                  (if facts
+                      (fn2-dh-inst-hyps facts (car x) (formals (car x) world) (sublis-var-lst alist (cdr x))
+                                        (formals fn world) (fn2-dh-owners world) ownerp acc)
+                    acc)))))))
+ (defun fn2-dh-walk-list (xs alist fn ownerp world acc)
    (declare (xargs :mode :program))
-   (if (atom xs) acc (fn2-dh-walk-list (cdr xs) alist fn world (fn2-dh-walk (car xs) alist fn world acc)))))
-(defun fn2-dh-name (obs fn) (declare (xargs :mode :program)) (fn2-columns-sym obs (concatenate 'string "-OF-" (symbol-name fn))))
+   (if (atom xs) acc (fn2-dh-walk-list (cdr xs) alist fn ownerp world (fn2-dh-walk (car xs) alist fn ownerp world acc)))))
+(defun fn2-dh-name (fn) (declare (xargs :mode :program)) (fn2-columns-pre "FN2-DH-OF-" fn))
+(defun fn2-dh-name-m (fn mode) (declare (xargs :mode :program)) (if mode (fn2-columns-pre "FN2-DH-OWNERS-OF-" fn) (fn2-dh-name fn)))
 (defun fn2-dh-writes-p (fns world)
-  ; some callee writes the operation table, the pool or the core
+  ; some callee writes the operation table, the pool, an owner table or the core
   (declare (xargs :mode :program))
   (and (consp fns) (or (fn2-dh-outs (car fns) world) (fn2-dh-writes-p (cdr fns) world))))
-;; The callees of FN (its body's functions with lemmas owed), callees first.
-(defun fn2-dh-postorder (fns world seen fuel)
+;; The callees of FN (its body's functions with lemmas owed in MODE), callees first.
+(defun fn2-dh-postorder (fns mode world seen fuel)
   (declare (xargs :mode :program))
   (cond ((or (zp fuel) (atom fns)) seen)
-        ((or (member-eq (car fns) seen) (not (fn2-dh-outs (car fns) world)) (fn2-dh-known (car fns) world))
-         (fn2-dh-postorder (cdr fns) world seen fuel))
-        (t (fn2-dh-postorder (cdr fns) world
+        ((or (member-eq (car fns) seen) (not (fn2-dh-outs-m (car fns) mode world)) (fn2-dh-known-m (car fns) mode world))
+         (fn2-dh-postorder (cdr fns) mode world seen fuel))
+        (t (fn2-dh-postorder (cdr fns) mode world
              (append (fn2-dh-postorder (remove-eq (car fns) (all-fnnames (getpropc (car fns) 'unnormalized-body nil world)))
-                                       world seen (1- fuel))
+                                       mode world seen (1- fuel))
                      (list (car fns)))
              fuel))))
-(defun fn2-dh-postorder-new (fns world)
+(defun fn2-dh-postorder-m (fns mode world)
   (declare (xargs :mode :program))
-  (remove-duplicates-eq (reverse (remove-duplicates-eq (reverse (fn2-dh-postorder fns world nil 64))))))
-(defun fn2-dh-kids-uses (fn kind world)
-  ; a KIDS contract of FN leaving both children: the hint instances
+  (remove-duplicates-eq (reverse (remove-duplicates-eq (reverse (fn2-dh-postorder fns mode world nil 64))))))
+(defun fn2-dh-postorder-new (fns world) (declare (xargs :mode :program)) (fn2-dh-postorder-m fns nil world))
+(defun fn2-dh-kids-nths (ks d out)
+  (declare (xargs :mode :program))
+  (if (atom ks) nil
+    (cons `(:instance fn2-arm-kids-nth (i 0) (k ,(car ks)) (free ',(car d)) (a fn2-core) (b ,out))
+          (fn2-dh-kids-nths (cdr ks) d out))))
+(defun fn2-dh-kids-uses (fn kind mode world)
+  ; a KIDS contract of FN leaving every observed child (in MODE): the hint instances
   (declare (xargs :mode :program))
   (let ((d (fn2-dc-entry fn kind world))
-        (ks (fn2-arm-frame-indices '(fn2-core-ops fn2-core-pool) world))
+        (ks (fn2-arm-frame-indices (append (and (not mode) '(fn2-core-ops fn2-core-pool)) (fn2-dh-owner-accs (fn2-dh-owners world))) world))
         (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world)))
     (and d (not (intersectp-equal ks (car d)))
          `((:instance ,(cdr d) (fn2-arm-free ',(car d)) (fn2-arm-c0 fn2-core))
            (:instance fn2-arm-kids-refl (i 0) (free ',(car d)) (a fn2-core))
-           (:instance fn2-arm-kids-nth (i 0) (k ,(car ks)) (free ',(car d)) (a fn2-core) (b ,out))
-           (:instance fn2-arm-kids-nth (i 0) (k ,(cadr ks)) (free ',(car d)) (a fn2-core) (b ,out))))))
-(defun fn2-dh-lemmas (outs fn call hyps hints)
+           ,@(fn2-dh-kids-nths ks d out)))))
+(defun fn2-dh-concl (o call world)
+  (declare (xargs :mode :program))
+  (let* ((obs (car o)) (stobj (caddr o)) (out (fn2-dh-out (cadr o) call)))
+    (cond ((eq obs 'fn2-dh-col-ok)
+           (let ((c (nth 1 (assoc-eq stobj (fn2-dh-owners world)))))
+             `(implies (fn2-dh-col-ok fn2-dh-k ',c ,stobj) (fn2-dh-col-ok fn2-dh-k ',c ,out))))
+          ((eq obs 'fn2-dh-owners-ok)
+           `(implies (fn2-dh-owners-ok fn2-dh-k fn2-core) (fn2-dh-owners-ok fn2-dh-k ,out)))
+          (t `(equal (,obs fn2-dh-k ,(fn2-dh-sel obs stobj out)) (,obs fn2-dh-k ,(fn2-dh-sel obs stobj stobj)))))))
+(defun fn2-dh-concls (outs ownerp call world)
+  (declare (xargs :mode :program))
+  (cond ((atom outs) nil)
+        ((iff ownerp (fn2-dh-owner-obs-p (car (car outs))))
+         (cons (fn2-dh-concl (car outs) call world) (fn2-dh-concls (cdr outs) ownerp call world)))
+        (t (fn2-dh-concls (cdr outs) ownerp call world))))
+(defun fn2-dh-lemma (name outs call hyps ohyps hints world)
+  ; one lemma: the observations under HYPS, the stored owners under OHYPS
+  (declare (xargs :mode :program))
+  (let ((held (fn2-dh-concls outs nil call world)) (owned (fn2-dh-concls outs t call world)))
+    `(defthm ,name
+       (and ,@(and held `((implies (and ,@hyps) (and ,@held))))
+            ,@(and owned `((implies (and ,@ohyps) (and ,@owned)))))
+       :hints ,hints)))
+(defun fn2-dh-facts-of (outs hyps ohyps name)
   (declare (xargs :mode :program))
   (if (atom outs) nil
-    (let* ((obs (car (car outs))) (pos (cadr (car outs))) (stobj (caddr (car outs))))
-      (cons `(defthm ,(fn2-dh-name obs fn)
-               (implies (and ,@hyps)
-                        (equal (,obs fn2-dh-k ,(fn2-dh-sel obs stobj (fn2-dh-out pos call))) (,obs fn2-dh-k ,(fn2-dh-sel obs stobj stobj))))
-               :hints ,hints)
-            (fn2-dh-lemmas (cdr outs) fn call hyps hints)))))
-(defun fn2-dh-facts-of (outs hyps)
+    (cons (append (car outs) (list (if (fn2-dh-owner-obs-p (car (car outs))) ohyps hyps) name))
+          (fn2-dh-facts-of (cdr outs) hyps ohyps name))))
+(defun fn2-dh-core-reads (accs update)
   (declare (xargs :mode :program))
-  (if (atom outs) nil (cons (append (car outs) (list hyps)) (fn2-dh-facts-of (cdr outs) hyps))))
-(defun fn2-dh-core-runes (children)
-  ; the ops' and the pool's reads through every core child's update
+  (if (atom accs) nil
+    (cons (fn2-columns-sym (car accs) (concatenate 'string "-OF-" (symbol-name update)))
+          (fn2-dh-core-reads (cdr accs) update))))
+(defun fn2-dh-core-runes (children accs)
+  ; the reads of the ops, the pool and the owner tables through every core child's update
   (declare (xargs :mode :program))
   (if (atom children) nil
     (let ((update (fn2-columns-pre "UPDATE-" (caar children))))
-      (list* (fn2-columns-sym 'fn2-core-ops (concatenate 'string "-OF-" (symbol-name update)))
-             (fn2-columns-sym 'fn2-core-pool (concatenate 'string "-OF-" (symbol-name update)))
-             (fn2-dh-core-runes (cdr children))))))
-(defun fn2-dh-fact-names (facts fn)
+      (append (fn2-dh-core-reads (list* 'fn2-core-ops 'fn2-core-pool accs) update)
+              (fn2-dh-core-runes (cdr children) accs)))))
+(defun fn2-dh-fact-names (facts fn world)
+  ; the lemma of each fact (a primitive's per observation, the chain's one)
   (declare (xargs :mode :program))
-  (if (atom facts) nil (cons (fn2-dh-name (car (car facts)) fn) (fn2-dh-fact-names (cdr facts) fn))))
+  (if (atom facts) nil
+    (let ((name (or (nth 4 (car facts)) (fn2-dh-keeps-name (car (car facts)) fn))))
+      (if (getpropc name 'theorem nil world)
+          (add-to-set-eq name (fn2-dh-fact-names (cdr facts) fn world))
+        (fn2-dh-fact-names (cdr facts) fn world)))))
 (defun fn2-dh-callee-runes (gs world)
-  ; the lemmas of FN's callees (their names are a fact's observation and the callee)
+  ; the lemmas of FN's callees
   (declare (xargs :mode :program))
   (if (atom gs) nil
-    (append (fn2-dh-fact-names (fn2-dh-facts (car gs) world) (car gs))
-            (fn2-dh-callee-runes (cdr gs) world))))
-(defun fn2-dh-chain-event (fn kind world)
+    (union-eq (fn2-dh-fact-names (fn2-dh-facts (car gs) world) (car gs) world)
+              (fn2-dh-callee-runes (cdr gs) world))))
+(defun fn2-dh-chain-hints (fn call body kids recp checked touches owners world)
   (declare (xargs :mode :program))
-  (let* ((outs (fn2-dh-outs fn world))
+  (cond (kids
+         `(("Goal" :in-theory (union-theories '(fn2-core-ops fn2-core-pool
+                                                ,@(and owners (cons 'fn2-dh-owners-ok (fn2-dh-owner-accs owners))))
+                                              (theory 'fn2-arm-frame-base))
+            :use ,kids)))
+        (checked
+         ;; as a primitive's (fn2-dh-keeps): the current theory
+         `(("Goal" :in-theory (e/d (,fn ,@*fn2-dh-pool-codes* ,@(fn2-dh-callee-runes (remove-eq fn (all-fnnames body)) world))
+                                   (fn2-dh-ops-obs fn2-dh-pool-obs nth update-nth))
+            ,@(and recp `(:induct ,call)))))
+        (t
+         `(("Goal" :in-theory (union-theories
+                               '(,fn ,@(fn2-dh-callee-runes (remove-eq fn (all-fnnames body)) world)
+                                     ,@(and touches (list* 'update-nth-array (fn2-dh-owner-theory owners)))
+                                     ,@(and (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))
+                                            (let ((cs (unquote (getpropc '*fn2-core-children* 'const nil world))))
+                                              (fn2-dh-core-runes cs (fn2-dh-owner-accs owners)))))
+                               ,(if touches
+                                    '(union-theories (theory 'fn2-dh-owners-rules) (theory 'fn2-dh-base))
+                                  '(theory 'fn2-dh-base)))
+            ,@(and recp `(:induct ,call)))))))
+(defun fn2-dh-chain-event (fn kind mode world)
+  (declare (xargs :mode :program))
+  (let* ((outs (fn2-dh-outs-m fn mode world))
+         (name (fn2-dh-name-m fn mode))
          (formals (formals fn world))
          (call (cons fn formals))
          (body (getpropc fn 'unnormalized-body nil world))
-         (kids (and (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world)) (fn2-dh-kids-uses fn kind world)))
-         (hyps (if kids nil (reverse (fn2-dh-walk body nil fn world nil))))
-         (recp (getpropc fn 'recursivep nil world)))
+         (owners (fn2-dh-owners world))
+         (kids (and (member-eq 'fn2-core (getpropc fn 'stobjs-out nil world)) (fn2-dh-kids-uses fn kind mode world)))
+         (hyps (if (or kids mode) nil (reverse (fn2-dh-walk body nil fn nil world nil))))
+         ;; a pool writer checking a row's owner (a code of *fn2-dh-pool-codes*)
+         ;; against its own OKIND, when its callees' lemmas do not prove it:
+         ;; it writes as OKIND
+         (checkp (and (not kids) (not mode) (member-eq 'okind formals) (intersectp-eq *fn2-dh-pool-codes* (all-fnnames body))))
+         (chyps (append hyps (list (list '(not (equal okind fn2-dh-k)) fn :owner-check))))
+         (touches (and owners (intersectp-eq (getpropc fn 'stobjs-in nil world) (cons 'fn2-core (strip-cars owners)))))
+         (ohyps (if kids nil (reverse (fn2-dh-walk body nil fn t world nil))))
+         (recp (getpropc fn 'recursivep nil world))
+         (old (fn2-dh-facts fn world)))
     (cond
-     ((or (null outs) (fn2-dh-known fn world)) '(value-triple :known))
+     ((or (null outs) (fn2-dh-known-m fn mode world)) '(value-triple :known))
      ((and (null body) (null kids))
       `(make-event (er soft 'fn2-dispatch-held "~x0 is constrained without a held-frame contract." ',fn)))
      ((and recp (not (equal recp (list fn))))
       `(make-event (er soft 'fn2-dispatch-held "~x0 is mutually recursive (~x1): no held-frame chain." ',fn ',recp)))
      (t
-      `(progn
-         ,@(fn2-dh-lemmas outs fn call (strip-cars hyps)
-                          (if kids
-                              `(("Goal" :in-theory (union-theories '(fn2-core-ops fn2-core-pool) (theory 'fn2-arm-frame-base))
-                                 :use ,kids))
-                            `(("Goal" :in-theory (union-theories
-                                                  '(,fn ,@(fn2-dh-callee-runes (remove-eq fn (all-fnnames body)) world)
-                                                        ,@(and (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))
-                                                               (let ((cs (unquote (getpropc '*fn2-core-children* 'const nil world))))
-                                                                 (fn2-dh-core-runes cs))))
-                                                  (theory 'fn2-dh-base))
-                                      ,@(and recp `(:induct ,call))))))
-         (table fn2-dh-keeps ',fn ',(fn2-dh-facts-of outs hyps)))))))
-(defun fn2-dh-chain-forms (fns kind)
+      (let ((plain `(progn
+                      ,(fn2-dh-lemma name outs call (strip-cars hyps) (strip-cars ohyps)
+                                     (fn2-dh-chain-hints fn call body kids recp nil touches owners world) world)
+                      (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs hyps ohyps name) old)))))
+        (if (not checkp) plain
+          `(make-event
+            '(:or ,plain
+                  (progn
+                    ,(fn2-dh-lemma name outs call (strip-cars chyps) (strip-cars ohyps)
+                                   (fn2-dh-chain-hints fn call body kids recp t touches owners world) world)
+                    (table fn2-dh-keeps ',fn ',(append (fn2-dh-facts-of outs chyps ohyps name) old)))))))))))
+(defun fn2-dh-chain-forms-m (fns kind mode)
   (declare (xargs :mode :program))
   (if (atom fns) nil
-    (cons `(make-event (value (fn2-dh-chain-event ',(car fns) ',kind (w state))))
-          (fn2-dh-chain-forms (cdr fns) kind))))
+    (cons `(make-event (value (fn2-dh-chain-event ',(car fns) ',kind ',mode (w state))))
+          (fn2-dh-chain-forms-m (cdr fns) kind mode))))
+(defun fn2-dh-chain-forms (fns kind) (declare (xargs :mode :program)) (fn2-dh-chain-forms-m fns kind nil))
 
-;; THE CLAIM of a dispatch's attachment FN (its core result at POS, in the
-;; held view at the commit kind, assembly-dispatch fn2-dispatch-held): every
-;; hypothesis of FN's chain at K the commit kind must be an owner kind that
-;; is a constant other than K; else refused, naming each hypothesis with the
-;; callees it comes from, down to the primitive.
-(defun fn2-dh-hyp-ok (h kv)
+;; An owner table S (its owner column COL, the core's accessor ACC): its
+;; entry, and the facts of the column's two writers (their value is not K).
+(defun fn2-dh-setters-of (s cols world)
   (declare (xargs :mode :program))
-  (and (consp h) (eq (car h) 'not) (consp (cadr h)) (eq (car (cadr h)) 'equal)
-       (let ((a (cadr (cadr h))) (b (caddr (cadr h))))
-         (or (and (eq b 'fn2-dh-k) (quotep a) (not (equal (unquote a) kv)))
-             (and (eq a 'fn2-dh-k) (quotep b) (not (equal (unquote b) kv)))))))
-(defun fn2-dh-bad-hyps (hyps kv)
+  (if (atom cols) nil
+    (let ((set (fn2-columns-col-name s (fn2-columns-pre "SET-" (car cols)))))
+      (if (function-symbolp set world) (cons set (fn2-dh-setters-of s (cdr cols) world)) (fn2-dh-setters-of s (cdr cols) world)))))
+(defun fn2-dh-owner-events (s col acc world)
+  (declare (xargs :mode :program))
+  (let* ((reader (fn2-columns-col-name s col))
+         (raw-reader (fn2-columns-sym reader "$AI"))
+         (c (unquote (getpropc (fn2-columns-pre "*" (fn2-columns-sym raw-reader "*")) 'const nil world)))
+         (cset (fn2-columns-col-name s (fn2-columns-pre "SET-" col)))
+         (craw (fn2-columns-pre "UPDATE-" raw-reader)))
+    `((table fn2-dh-owners ',s '(,c (,reader ,raw-reader) ,acc
+                                    (,@(fn2-dh-setters-of s (strip-cars (fn2-view-layout s world)) world)
+                                     ,@(fn2-dh-updaters (caddr (getpropc s 'stobj nil world)) s))))
+      (table fn2-dh-keeps ',cset '((fn2-dh-col-ok nil ,s (((not (equal v fn2-dh-k)))) :open)))
+      (table fn2-dh-keeps ',craw '((fn2-dh-col-ok nil ,s (((not (equal v fn2-dh-k)))) :open))))))
+(defun fn2-dh-owner-events-all (tables world)
+  (declare (xargs :mode :program))
+  (if (atom tables) nil
+    (append (fn2-dh-owner-events (nth 0 (car tables)) (nth 1 (car tables)) (nth 2 (car tables)) world)
+            (fn2-dh-owner-events-all (cdr tables) world))))
+;; FN2-DH-OWNERS-OK K CORE: every owner table's stored owners avoid K.
+(defun fn2-dh-owners-ok-form (world)
+  (declare (xargs :mode :program))
+  `(defun-nx fn2-dh-owners-ok (fn2-dh-k fn2-core) (and ,@(fn2-dh-owner-comps (fn2-dh-owners world) 'fn2-core))))
+
+;; Whether FN's closure writes an owner table of the core (calls the core
+;; updater of one): only then is the owners claim of an attachment owed a chain.
+(defun fn2-dh-owner-writes-any (fns seen)
+  (declare (xargs :mode :program))
+  (and (consp fns) (or (cdr (assoc-eq (car fns) seen)) (fn2-dh-owner-writes-any (cdr fns) seen))))
+(defun fn2-dh-core-updaters (accs)
+  (declare (xargs :mode :program))
+  (if (atom accs) nil (cons (fn2-columns-pre "UPDATE-" (car accs)) (fn2-dh-core-updaters (cdr accs)))))
+
+(defun fn2-dh-owner-writes (fns targets world seen fuel)
+  ; SEEN: an alist fn -> writes-p, extended over FNS's closure
+  (declare (xargs :mode :program))
+  (cond ((or (zp fuel) (atom fns)) seen)
+        ((assoc-eq (car fns) seen) (fn2-dh-owner-writes (cdr fns) targets world seen fuel))
+        (t (let* ((callees (all-fnnames (getpropc (car fns) 'unnormalized-body nil world)))
+                  (seen (fn2-dh-owner-writes callees targets world (acons (car fns) nil seen) (1- fuel))))
+             (fn2-dh-owner-writes (cdr fns) targets world
+                                  (put-assoc-eq (car fns) (or (intersectp-eq callees targets) (fn2-dh-owner-writes-any callees seen)) seen)
+                                  fuel)))))
+(defun fn2-dh-owner-writes-p (fn world)
+  (declare (xargs :mode :program))
+  (let ((targets (fn2-dh-core-updaters (fn2-dh-owner-accs (fn2-dh-owners world)))))
+    (cdr (assoc-eq fn (fn2-dh-owner-writes (list fn) targets world nil 100000)))))
+;; FN2-DH-OWNERS-OK through the core: each table's part of it (-COL), and
+;; its value after each core field's update (-OF-UPDATE-X), for the chain
+;; (theory fn2-dh-owners-rules), so a chain lemma's owner conclusion is the
+;; whole invariant of its result, from the whole invariant of its argument.
+(defun fn2-dh-owner-col-rules (owners)
+  (declare (xargs :mode :program))
+  (if (atom owners) nil
+    (cons `(defthm ,(fn2-columns-sym 'fn2-dh-owners-ok (concatenate 'string "-" (symbol-name (nth 3 (car owners)))))
+             (implies (fn2-dh-owners-ok k c) (fn2-dh-col-ok k ',(nth 1 (car owners)) (,(nth 3 (car owners)) c)))
+             :hints (("Goal" :in-theory '(fn2-dh-owners-ok))))
+          (fn2-dh-owner-col-rules (cdr owners)))))
+(defun fn2-dh-owner-update-rules (fields owners)
+  (declare (xargs :mode :program))
+  (if (atom fields) nil
+    (let* ((acc (car fields)) (update (fn2-columns-pre "UPDATE-" acc))
+           (e (assoc-eq acc (pairlis$ (fn2-dh-owner-accs owners) owners)))
+           (rhs (if e
+                    `(and ,@(subst 'v `(,acc c) (fn2-dh-owner-comps owners 'c)))
+                  '(fn2-dh-owners-ok k c))))
+      (cons `(defthm ,(fn2-columns-sym 'fn2-dh-owners-ok (concatenate 'string "-OF-" (symbol-name update)))
+               (equal (fn2-dh-owners-ok k (,update v c)) ,(subst 'k 'fn2-dh-k rhs))
+               :hints (("Goal" :in-theory (enable fn2-dh-owners-ok))))
+            (fn2-dh-owner-update-rules (cdr fields) owners)))))
+(defun fn2-dh-owners-rules-forms (world)
+  (declare (xargs :mode :program))
+  (let ((owners (fn2-dh-owners world))
+        (fields (strip-cars (unquote (getpropc '*fn2-core-children* 'const nil world)))))
+    `((deflabel fn2-dh-owners-rules-start)
+      ,@(fn2-dh-owner-col-rules owners)
+      ,@(fn2-dh-owner-update-rules fields owners)
+      (deftheory fn2-dh-owners-rules
+        (set-difference-theories (current-theory :here) (current-theory 'fn2-dh-owners-rules-start))))))
+
+;; THE CLAIMS of a dispatch's attachment FN (its core result at POS):
+;; - held (in the held view at the commit kind, assembly-dispatch
+;;   fn2-dispatch-held): every hypothesis of FN's chain at K the commit kind
+;;   must be an owner kind that is a constant other than K, or -- for a stub
+;;   whose claim assumes it (OWNERSP) -- the core's stored owners avoiding K;
+;; - owners: the core's stored owners avoiding the commit kind stay so, from
+;;   a KIDS contract leaving the owner tables or from FN's chain, whose owner
+;;   hypotheses must be constants other than K.
+;; Else refused, naming each hypothesis with the callees it comes from, down
+;; to the primitive.
+(defun fn2-dh-hyp-ok (h kv ownersp)
+  (declare (xargs :mode :program))
+  (or (and ownersp (equal h '(fn2-dh-owners-ok fn2-dh-k fn2-core)))
+      (and (consp h) (eq (car h) 'not) (consp (cadr h)) (eq (car (cadr h)) 'equal)
+           (let ((a (cadr (cadr h))) (b (caddr (cadr h))))
+             (or (and (eq b 'fn2-dh-k) (quotep a) (not (equal (unquote a) kv)))
+                 (and (eq a 'fn2-dh-k) (quotep b) (not (equal (unquote b) kv))))))))
+(defun fn2-dh-bad-hyps (hyps kv ownersp)
   (declare (xargs :mode :program))
   (cond ((atom hyps) nil)
-        ((fn2-dh-hyp-ok (caar hyps) kv) (fn2-dh-bad-hyps (cdr hyps) kv))
-        (t (cons (car hyps) (fn2-dh-bad-hyps (cdr hyps) kv)))))
-(defun fn2-dh-all-hyps (facts)
+        ((fn2-dh-hyp-ok (caar hyps) kv ownersp) (fn2-dh-bad-hyps (cdr hyps) kv ownersp))
+        (t (cons (car hyps) (fn2-dh-bad-hyps (cdr hyps) kv ownersp)))))
+(defun fn2-dh-all-hyps (facts ownerp)
   (declare (xargs :mode :program))
-  (if (atom facts) nil (union-equal (nth 3 (car facts)) (fn2-dh-all-hyps (cdr facts)))))
-(defun fn2-dh-claim-form (who fn pos world)
+  (cond ((atom facts) nil)
+        ((or (not ownerp) (fn2-dh-owner-obs-p (car (car facts))))
+         (union-equal (nth 3 (car facts)) (fn2-dh-all-hyps (cdr facts) ownerp)))
+        (t (fn2-dh-all-hyps (cdr facts) ownerp))))
+(defun fn2-dh-claim-form (who fn pos ownersp world)
   (declare (xargs :mode :program))
   (let* ((facts (fn2-dh-facts fn world))
          (kv (unquote (getpropc '*fn2-commit-kind* 'const nil world)))
-         (bad (fn2-dh-bad-hyps (fn2-dh-all-hyps facts) kv))
+         (bad (fn2-dh-bad-hyps (fn2-dh-all-hyps facts nil) kv ownersp))
          (out `(mv-nth ,pos (,fn ,@(formals fn world)))))
     (cond ((null facts)
            `(make-event (er soft 'fn2-dispatch-held "The attachment ~x0 of ~x1 has no held-frame chain." ',fn ',who)))
@@ -742,7 +1011,38 @@
                             "The attachment ~x0 of ~x1 may write rows the commit kind ~x2 holds: its chain needs ~x3 (each with the callees it comes from)."
                             ',fn ',who ',kv ',bad)))
           (t `(defthm ,(fn2-columns-sym fn "-DISPATCH-HELD")
-                (fn2-dispatch-held ,out fn2-core)
+                ,(if ownersp
+                     `(implies (fn2-dh-owners-ok *fn2-commit-kind* fn2-core) (fn2-dispatch-held ,out fn2-core))
+                   `(fn2-dispatch-held ,out fn2-core))
                 :hints (("Goal" :in-theory (union-theories '(fn2-dispatch-held fn2-dispatch-held-obs fn2-dh-obs (:e equal) (:e not)
-                                                             ,@(fn2-dh-fact-names facts fn))
+                                                             ,@(fn2-dh-fact-names facts fn world))
                                                            (theory 'minimal-theory)))))))))
+(defun fn2-dh-owners-claim-form (who fn pos kind world)
+  (declare (xargs :mode :program))
+  (let* ((d (fn2-dc-entry fn kind world))
+         (ks (fn2-arm-frame-indices (fn2-dh-owner-accs (fn2-dh-owners world)) world))
+         (call `(,fn ,@(formals fn world)))
+         (out `(mv-nth ,pos ,call))
+         (name (fn2-columns-sym fn "-DISPATCH-OWNERS"))
+         (stmt `(implies (fn2-dh-owners-ok *fn2-commit-kind* fn2-core) (fn2-dh-owners-ok *fn2-commit-kind* ,out))))
+    (if (and d (not (intersectp-equal ks (car d))))
+        `(defthm ,name ,stmt
+           :hints (("Goal" :in-theory (union-theories '(fn2-dh-owners-ok ,@(fn2-dh-owner-accs (fn2-dh-owners world)))
+                                                      (theory 'fn2-arm-frame-base))
+                    :use ((:instance ,(cdr d) (fn2-arm-free ',(car d)) (fn2-arm-c0 fn2-core))
+                          (:instance fn2-arm-kids-refl (i 0) (free ',(car d)) (a fn2-core))
+                          ,@(fn2-dh-kids-nths ks d out)))))
+      (let* ((facts (fn2-dh-facts fn world))
+             (kv (unquote (getpropc '*fn2-commit-kind* 'const nil world)))
+             (bad (fn2-dh-bad-hyps (fn2-dh-all-hyps facts t) kv t)))
+        (cond ((null facts)
+               `(make-event (er soft 'fn2-dispatch-held
+                                "The attachment ~x0 of ~x1 writes an owner table (~x2) and has no held-frame chain."
+                                ',fn ',who ',(car d))))
+              (bad
+               `(make-event (er soft 'fn2-dispatch-held
+                                "The attachment ~x0 of ~x1 may store the commit kind ~x2 as an owner: its chain needs ~x3 (each with the callees it comes from)."
+                                ',fn ',who ',kv ',bad)))
+              (t `(defthm ,name ,stmt
+                    :hints (("Goal" :in-theory (union-theories '((:e equal) (:e not) ,@(fn2-dh-fact-names facts fn world))
+                                                               (theory 'minimal-theory)))))))))))

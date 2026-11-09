@@ -3609,6 +3609,28 @@
         (fn2-dc-frame-check who fn kind (set-difference-equal e (fn2-dispatch-ops-pool-children world)) world)
       (if (null d) (fn2-dc-frame-check who fn kind e world)
         (fn2-dispatch-ops-pool-claim (fn2-columns-sym fn "-DISPATCH-OPS-POOL") out out (cdr d) (car d) nil world)))))
+;; THE OBSERVE STUBS keep the commit layer's IO units (the commit-io child):
+;; with the operation table whole, no take's or lent unit's incarnation
+;; changes (FRESHNESS, LENT-OK: books/dispatch-fresh.lisp). From a KIDS
+;; contract LEMMA at children S without it, else refused naming S.
+(defun fn2-dispatch-units-claim (name out body-out lemma s enable world)
+  (declare (xargs :verify-guards nil))
+  (let ((k (fn2-arm-frame-child-index 'fn2-core-commit-io world)))
+    (if (member-equal k s)
+        `(make-event (er soft 'fn2-dispatch-frame "~x0: its KIDS contract may change the commit-io child (~x1)." ',name ',s))
+      `(defthm ,name (equal (nth ,k ,out) (nth ,k fn2-core))
+         :hints (("Goal" :in-theory (union-theories '(,@enable) (theory 'fn2-arm-frame-base))
+                  :do-not-induct t
+                  :use ((:instance ,lemma (fn2-arm-free ',s) (fn2-arm-c0 fn2-core))
+                        (:instance fn2-arm-kids-refl (i 0) (free ',s) (a fn2-core))
+                        (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',s) (a fn2-core) (b ,body-out)))))))))
+(defun fn2-dispatch-units-form (who fn kind world)
+  ; an observe attachment FN of WHO: its claim from its KIDS contract
+  (declare (xargs :verify-guards nil))
+  (let ((d (fn2-dc-entry fn kind world))
+        (out `(mv-nth 1 (,fn ,@(formals fn world)))))
+    (if (null d) `(make-event (er soft 'fn2-dispatch-frame "~x0 (of ~x1) has no KIDS contract." ',fn ',who))
+      (fn2-dispatch-units-claim (fn2-columns-sym fn "-KEEPS-UNITS") out out (cdr d) (car d) nil world))))
 ;; THE RUN STUBS' HELD FRAME (books/dispatch-held.lisp): the rows the commit
 ;; kind holds in the operation table and the pool -- every held operation
 ;; row's columns; every row's extent, every held pool row's columns and, the
@@ -3623,38 +3645,60 @@
 (defun fn2-dispatch-held-p (world)
   (declare (xargs :verify-guards nil))
   (and (function-symbolp 'fn2-dh-ops-obs world) (getpropc '*fn2-commit-kind* 'const nil world)))
-;; The kinds whose writes name an owner kind their own rows hold -- the
-;; cursor writes its connection's reply as the row's conn-kind, the
-;; consumer's successor writes as an overlay row's okind -- keep the held rows
-;; only by an invariant on those rows (that the stored owner is not the
-;; commit kind), which no contract carries yet: they have no held claim.
-(defconst *fn2-dispatch-held-owner-read* '(fn2-cursor fn2-cns))
+;; A kind whose writes name an owner kind its rows hold -- the cursor
+;; writes its connection's reply as its row's conn-kind and a read scan as
+;; the scan row's qk (copied from that conn-kind); the successor (txn, cns,
+;; auth) writes an overlay arena as the overlay row's okind -- keeps the held
+;; rows under the invariant that no stored owner is the commit kind
+;; (FN2-DH-OWNERS-OK over the owner tables, books/dispatch-owners.lisp),
+;; which its held claim assumes and
+;; every stub keeps (-DISPATCH-OWNERS). The consumer (cns) holds a batch
+;; membership (its :commit run admits a transaction member, reserving pools
+;; as the commit kind), so it has no held claim, as txn and auth.
+(defconst *fn2-dispatch-held-owner-read* '(fn2-cursor))
 (defun fn2-dispatch-held-kind-p (name world)
   (declare (xargs :verify-guards nil))
   (and (fn2-dispatch-held-p world)
-       (not (fn2-dispatch-holds-p :batch-membership (fn2-machine-property name :holds world)))
-       (not (member-eq name *fn2-dispatch-held-owner-read*))))
+       (not (fn2-dispatch-holds-p :batch-membership (fn2-machine-property name :holds world)))))
+(defun fn2-dispatch-owners-p (world)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-dispatch-held-p world) (function-symbolp 'fn2-dh-owners-ok world)))
 (defun fn2-dispatch-held-view-form (world)
   (declare (xargs :verify-guards nil))
   (cond ((not (fn2-dispatch-held-p world)) '(value-triple :none))
         ((function-symbolp 'fn2-dispatch-held world) '(value-triple :known))
-        (t '(progn
+        (t `(progn
               (defun-nx fn2-dh-obs (k fn2-core)
                 (cons (fn2-dh-ops-obs k (fn2-core-ops fn2-core)) (fn2-dh-pool-obs k (fn2-core-pool fn2-core))))
               (defun-nx fn2-dispatch-held-obs (fn2-core) (fn2-dh-obs *fn2-commit-kind* fn2-core))
               (fn2-defview fn2-dispatch-held :carrier fn2-core :select ((fn2-ops :whole t) (fn2-pool :whole t))
                 :observe fn2-dispatch-held-obs :open (fn2-dispatch-held-obs fn2-dh-obs fn2-core-ops fn2-core-pool))
               (in-theory (disable fn2-dh-obs fn2-dispatch-held-obs))
-              (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-machine-refuse-phase) (w state)) nil))))))))
+              (make-event (value (cons 'progn (fn2-dh-chain-forms (fn2-dh-postorder-new '(fn2-machine-refuse-phase) (w state)) nil))))
+              ;; the default bodies keep the stored owners
+              ,@(and (function-symbolp 'fn2-dh-owners-ok world)
+                     '((make-event (value (fn2-dh-owners-claim-form nil 'fn2-machine-refuse-phase 4 nil (w state))))
+                       (make-event (value (fn2-dh-owners-claim-form nil 'fn2-machine-refuse-observation 1 nil (w state))))))))))
 (defun fn2-dispatch-held-claims (g formals name world)
   ; G's held claim (the stub in its constraint, or its default), from its body's chain
   (declare (xargs :verify-guards nil))
   (and (fn2-dispatch-held-kind-p name world)
        `((defthm ,(fn2-columns-sym g "-DISPATCH-HELD")
-           (fn2-dispatch-held (mv-nth 4 (,g ,@formals)) fn2-core)
+           ,(if (member-eq name *fn2-dispatch-held-owner-read*)
+                `(implies (fn2-dh-owners-ok *fn2-commit-kind* fn2-core) (fn2-dispatch-held (mv-nth 4 (,g ,@formals)) fn2-core))
+              `(fn2-dispatch-held (mv-nth 4 (,g ,@formals)) fn2-core))
            :hints (("Goal" :in-theory (union-theories '(,g fn2-dispatch-held fn2-dispatch-held-obs fn2-dh-obs (:e equal) (:e not)
-                                                        fn2-dh-ops-obs-of-fn2-machine-refuse-phase
-                                                        fn2-dh-pool-obs-of-fn2-machine-refuse-phase)
+                                                        fn2-dh-of-fn2-machine-refuse-phase)
+                                                      (theory 'minimal-theory))))))))
+;; Every stub (run at POS 4, observe at 1) keeps the stored owners avoiding
+;; the commit kind (FN2-DH-OWNERS-OK), as its default body does.
+(defun fn2-dispatch-owners-claims (g formals pos body-fn world)
+  (declare (xargs :verify-guards nil))
+  (and (fn2-dispatch-owners-p world)
+       `((defthm ,(fn2-columns-sym g "-DISPATCH-OWNERS")
+           (implies (fn2-dh-owners-ok *fn2-commit-kind* fn2-core)
+                    (fn2-dh-owners-ok *fn2-commit-kind* (mv-nth ,pos (,g ,@formals))))
+           :hints (("Goal" :in-theory (union-theories '(,g ,(fn2-columns-sym body-fn "-DISPATCH-OWNERS"))
                                                       (theory 'minimal-theory))))))))
 (defun fn2-machine-stub-events (names world)
   (declare (xargs :verify-guards nil))
@@ -3722,11 +3766,18 @@
               ,@(fn2-dispatch-claims run-stub run-formals 4 er 'fn2-machine-refuse-phase)
               ;; the run stub keeps the rows the commit kind holds
               ,@(fn2-dispatch-held-claims run-stub run-formals name world)
+              ;; both stubs keep the stored owners
+              ,@(fn2-dispatch-owners-claims run-stub run-formals 4 'fn2-machine-refuse-phase world)
+              ,@(fn2-dispatch-owners-claims obs-stub obs-formals 1 'fn2-machine-refuse-observation world)
               ,@(fn2-dispatch-claims obs-stub obs-formals 1 eo 'fn2-machine-refuse-observation)
               ;; the observe stub keeps the operation table and the pool
               ,(fn2-dispatch-ops-pool-claim (fn2-columns-sym obs-stub "-OPS-POOL") `(mv-nth 1 (,obs-stub ,@obs-formals))
                                             '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
-                                            (list obs-stub) world))
+                                            (list obs-stub) world)
+              ;; and the commit layer's IO units
+              ,(fn2-dispatch-units-claim (fn2-columns-sym obs-stub "-KEEPS-UNITS") `(mv-nth 1 (,obs-stub ,@obs-formals))
+                                         '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
+                                         (list obs-stub) world))
              ;; the stubs' derived contracts (row frame, slot, phase), as a
              ;; constrained hook's (machines.lisp fn2-arm-frame-op-events)
               (make-event (value (cons 'progn (fn2-arm-frame-op-events ',run-stub ',er nil (w state)))))
@@ -3745,10 +3796,15 @@
              (fn2-core-preserves ,obs-def (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)
              ,@(fn2-dispatch-claims run-def run-formals 4 er 'fn2-machine-refuse-phase)
              ,@(fn2-dispatch-held-claims run-def run-formals name world)
+             ,@(fn2-dispatch-owners-claims run-def run-formals 4 'fn2-machine-refuse-phase world)
+             ,@(fn2-dispatch-owners-claims obs-def obs-formals 1 'fn2-machine-refuse-observation world)
              ,@(fn2-dispatch-claims obs-def obs-formals 1 eo 'fn2-machine-refuse-observation)
              ,(fn2-dispatch-ops-pool-claim (fn2-columns-sym obs-def "-OPS-POOL") `(mv-nth 1 (,obs-def ,@obs-formals))
                                            '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
                                            (list obs-def) world)
+             ,(fn2-dispatch-units-claim (fn2-columns-sym obs-def "-KEEPS-UNITS") `(mv-nth 1 (,obs-def ,@obs-formals))
+                                        '(mv-nth 1 (fn2-machine-refuse-observation fn2-core)) refuse-lemma refuse-kids
+                                        (list obs-def) world)
              (defun ,charge-def (phase bytes steps descriptors)
                (declare (xargs :guard t) (ignore phase bytes steps descriptors))
                nil)
@@ -3761,7 +3817,7 @@
                         (,bound-stub ,bound-def))
              (in-theory (disable ,(fn2-columns-sym run-def "-ARM-KIDS") ,(fn2-ctf-dir-name run-def)
                                  ,(fn2-columns-sym obs-def "-ARM-KIDS") ,(fn2-ctf-dir-name obs-def)
-                                 ,(fn2-columns-sym obs-def "-OPS-POOL"))))
+                                 ,(fn2-columns-sym obs-def "-OPS-POOL") ,(fn2-columns-sym obs-def "-KEEPS-UNITS"))))
            (fn2-machine-stub-events (cdr names) world)))))))
 
 ;; The stubs and their frames, after the default bodies' contracts and the
