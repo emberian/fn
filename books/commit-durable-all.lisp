@@ -11300,6 +11300,110 @@
 (fn2-env-x-handler-event fn2-commit-on-fence-result)
 (in-theory (disable fn2-env-x-idp-snapshot fn2-env-x-snapshot-idp fn2-env-x-row-machine-reads fn2-env-member-self
                     fn2-env-update-nth-self fn2-env-update-commit-table-self))
+;; THE SIX UNIT EDGE ROWS: XR reads the units of rows below 2 alone, so a
+;; step that keeps edge rows 0..5, the six units, the directory, the commit
+;; table, every live handle and XA keeps X (FN2-ENV-X-OF-KIDS6); for the
+;; root edges at rows 6+2e (collect, install) and the allocator's other rows.
+(defun-sk fn2-env-x-off6 (row a b)
+  ; FN2-ENV-X-OFF over the six unit edge rows alone: B keeps what X reads of
+  ; every unit below 6 outside ROW's three, and every live handle
+  (forall (u e ep ct)
+    (and (implies (and (natp u) (< u 6) (not (and (<= (* 3 (nfix row)) u) (< u (+ 3 (* 3 (nfix row)))))))
+                  (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u a))
+                       (equal (fn2-env-io u b) (fn2-env-io u a))
+                       (equal (fn2-env-x-res u b) (fn2-env-x-res u a))))
+         (implies (fn2-env-x-handle-ok e ep ct a) (fn2-env-x-handle-ok e ep ct b)))))
+(defthm fn2-env-x-off6-unit
+  (implies (and (fn2-env-x-off6 row a b) (natp r) (< r 2) (natp row) (natp k) (< k 3) (not (equal r row)))
+           (let ((u (+ (* 3 r) k)))
+             (and (equal (fn2-env-x-edge u b) (fn2-env-x-edge u a))
+                  (equal (fn2-env-io u b) (fn2-env-io u a))
+                  (equal (fn2-env-x-res u b) (fn2-env-x-res u a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(natp nfix)
+           :use ((:instance fn2-env-x-off6-necc (u (+ (* 3 r) k)) (e 0) (ep 0) (ct 0))))))
+(defthm fn2-env-x-row-of-off6-low
+  (implies (and (fn2-env-x-row id a) (fn2-env-x-off6 row a b) (natp row) (fn2-corep a) (fn2-core-wfp a)
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (not (equal (fn2-commit-row id a) row))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a))
+                (< (fn2-commit-row id a) 2))
+           (and (fn2-env-x-row id b)
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-env-role-extent fn2-commit-row-natp natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-lend-held-congruence (k 0)) (:instance fn2-env-x-lend-held-congruence (k 1))
+                 (:instance fn2-env-x-lend-held-congruence (k 2))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 0))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 1))
+                 (:instance fn2-env-x-off6-unit (r (fn2-commit-row id a)) (k 2))
+                 (:instance fn2-env-resource-of-res (k 0)) (:instance fn2-env-resource-of-res (k 1))
+                 (:instance fn2-env-resource-of-res (k 2))
+                 (:instance fn2-env-x-unit-transfer (k 0)) (:instance fn2-env-x-unit-transfer (k 1))
+                 (:instance fn2-env-x-unit-transfer (k 2))
+                 (:instance fn2-env-x-hold-transfer)
+                 (:instance fn2-env-x-off6-necc (u 0) (e (mv-nth 0 (fn2-commit-resource id 0 a)))
+                            (ep (mv-nth 1 (fn2-commit-resource id 0 a))) (ct (mv-nth 2 (fn2-commit-resource id 0 a))))))))
+(defthm fn2-env-x-row-of-off6
+  ; FN2-ENV-X-ROW-OF-OFF from the six unit edge rows: a row at or past 2 holds nothing and reads no unit
+  (implies (and (fn2-env-x-row id a) (fn2-env-x-off6 row a b) (natp row) (fn2-corep a) (fn2-core-wfp a)
+                (equal (fn2-commit-idp id b) (fn2-commit-idp id a)) (equal (fn2-commit-row id b) (fn2-commit-row id a))
+                (not (equal (fn2-commit-row id a) row))
+                (equal (fn2-machine-phase id b) (fn2-machine-phase id a))
+                (equal (fn2-machine-cb-stage id b) (fn2-machine-cb-stage id a))
+                (equal (fn2-machine-cb-issued id b) (fn2-machine-cb-issued id a))
+                (equal (fn2-machine-cb-done id b) (fn2-machine-cb-done id a))
+                (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a)))
+           (and (fn2-env-x-row id b)
+                (equal (fn2-env-x-held id b) (fn2-env-x-held id a))
+                (implies (and (fn2-commit-idp id a) (fn2-env-x-held id a)) (equal (fn2-env-role-extent id 0 b) (fn2-env-role-extent id 0 a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row fn2-commit-row-natp natp)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-lend-held-congruence (k 0)) (:instance fn2-env-x-row-of-off6-low)))))
+(defthm fn2-env-x-off6-shift
+  ; every row at or past 2 names no unit below 6
+  (implies (and (fn2-env-x-off6 2 a b) (natp r) (<= 2 r)) (fn2-env-x-off6 r a b))
+  :hints (("Goal" :in-theory '(fn2-env-x-off6 natp nfix)
+           :use ((:instance fn2-env-x-off6-necc (row 2) (u (mv-nth 0 (fn2-env-x-off6-witness r a b)))
+                            (e (mv-nth 1 (fn2-env-x-off6-witness r a b))) (ep (mv-nth 2 (fn2-env-x-off6-witness r a b)))
+                            (ct (mv-nth 3 (fn2-env-x-off6-witness r a b))))))))
+(defthm fn2-env-x-row-of-kids6
+  (implies (and (fn2-env-x-rows a) (fn2-corep a) (fn2-core-wfp a) (equal (nth 3 b) (nth 3 a)) (equal (nth 9 b) (nth 9 a))
+                (fn2-env-x-off6 2 a b))
+           (and (fn2-env-x-row x b)
+                (equal (fn2-commit-idp x b) (fn2-commit-idp x a)) (equal (fn2-commit-row x b) (fn2-commit-row x a))
+                (implies (fn2-commit-idp x a)
+                         (and (equal (fn2-env-x-held x b) (fn2-env-x-held x a))
+                              (implies (fn2-env-x-held x a) (equal (fn2-env-role-extent x 0 b) (fn2-env-role-extent x 0 a)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-x-row-not-idp fn2-commit-row-natp natp)
+           :do-not-induct t
+           :cases ((fn2-commit-idp x a))
+           :use ((:instance fn2-env-x-readers-of-kids (id x))
+                 (:instance fn2-env-commit-idp-kind (id x) (fn2-core a))
+                 (:instance fn2-env-x-rows-necc (id x) (c a))
+                 (:instance fn2-env-x-off6-shift (r (+ 2 (fn2-commit-row x a))))
+                 (:instance fn2-env-x-row-of-off6 (id x) (row (+ 2 (fn2-commit-row x a))))))))
+(defthm fn2-env-x-of-kids6
+  ; X kept by a step that keeps the directory, the commit table, the six
+  ; unit edge rows and units, every live handle, and XA
+  (implies (and (fn2-env-x a) (fn2-corep a) (fn2-core-wfp a) (equal (nth 3 b) (nth 3 a)) (equal (nth 9 b) (nth 9 a))
+                (fn2-env-x-off6 2 a b) (fn2-env-xa b))
+           (fn2-env-x b))
+  :hints (("Goal" :in-theory '(fn2-env-x fn2-env-x-rows fn2-env-x-apart)
+           :do-not-induct t
+           :use ((:instance fn2-env-x-row-of-kids6 (x (fn2-env-x-rows-witness b)))
+                 (:instance fn2-env-x-row-of-kids6 (x (mv-nth 0 (fn2-env-x-apart-witness b))))
+                 (:instance fn2-env-x-row-of-kids6 (x (mv-nth 1 (fn2-env-x-apart-witness b))))
+                 (:instance fn2-env-x-apart-necc (c a) (a (mv-nth 0 (fn2-env-x-apart-witness b)))
+                            (b (mv-nth 1 (fn2-env-x-apart-witness b))))))))
 ;; OWED (the next proof-floor seat): X ESTABLISHED AND KEPT. Proved: the
 ;; X-level frame (FN2-ENV-X-OF-ROW-FRAME, FN2-ENV-X-MOVE), the host steps
 ;; and :take (FN2-ENV-X-HOST-STEP), the issue (FN2-ENV-X-ISSUE), the
@@ -11318,5 +11422,6 @@
 ;; :free, :draining or released :dropping row would move it to :uncertain
 ;; without a live handle; from J5/J6's op ownership), and the other arms through
 ;; the step rules with their allocator steps (collect/install's root
-;; edges at rows 6+2e, durable's allocation, drain's pool release of the
+;; edges at rows 6+2e: FN2-ENV-X-OF-KIDS6 is the frame, owed the root
+;; edge's step rule from the edge add/drop shapes at rows past 5, durable's allocation, drain's pool release of the
 ;; row's own units, dropping's cancel leaving the row unheld).
