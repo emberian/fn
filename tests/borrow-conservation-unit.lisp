@@ -1,11 +1,11 @@
 (in-package "ACL2")
-(include-book "../books/borrow-conservation")
+(include-book "../books/borrow-faces")
 (include-book "../books/assembly-init")
 (include-book "std/util/bstar" :dir :system)
 
 ; Teeth for FN2-CORE-BORROW-CONSERVATION. Both runs lease one write borrow
 ; through the real issue, acknowledge it, and harvest one terminal cell
-; through fn2-core-borrow-step; the positive run acknowledges and posts
+; through fn2-core-borrow-all-step; the positive run acknowledges and posts
 ; through the host's steps, then writes and releases the row through the
 ; pool's. The positive run harvests the write's own
 ; result: the antecedent holds, the count moves 1 -> 0, and the conclusion
@@ -54,8 +54,8 @@
 ;; One step of the statement whose antecedent holds: the conclusion holds after it.
 (defun fn2-borrow-test-step (op a fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* (((unless (fn2-core-borrow-hyps op fn2-core)) (mv (list :hyps op) fn2-core))
-       (fn2-core (fn2-core-borrow-step op a fn2-core))
+  (b* (((unless (fn2-core-borrow-all-hyps op fn2-core)) (mv (list :hyps op) fn2-core))
+       (fn2-core (fn2-core-borrow-all-step op a fn2-core))
        ((unless (fn2-core-borrows-accounted-check fn2-core)) (mv (list :conclusion op) fn2-core)))
     (mv t fn2-core)))
 (defun fn2-borrow-test-run (positive fn2-core)
@@ -67,8 +67,8 @@
        ((unless (eq code :ok)) (mv :write fn2-core))
        (op (fn2-borrow-test-free-head fn2-core))
        (a (list 0 slot gen 0 1 0 1 0 1 0))
-       ((unless (fn2-core-borrow-hyps :write fn2-core)) (mv :issue-hyps fn2-core))
-       (fn2-core (fn2-core-borrow-step :write a fn2-core))
+       ((unless (fn2-core-borrow-all-hyps :write fn2-core)) (mv :issue-hyps fn2-core))
+       (fn2-core (fn2-core-borrow-all-step :write a fn2-core))
        ((unless (and (fn2-core-borrows-accounted-check fn2-core)
                      (equal (fn2-borrow-test-out-count slot fn2-core) 1)))
         (mv :issue-conclusion fn2-core))
@@ -88,9 +88,9 @@
                      (fn2-core-borrows-accounted-check fn2-core)
                      (equal (fn2-borrow-test-out-count slot fn2-core) 1)
                      (equal semantic positive)
-                     (equal (fn2-core-borrow-hyps :harvest fn2-core) positive)))
+                     (equal (fn2-core-borrow-all-hyps :harvest fn2-core) positive)))
         (mv :harvest-hyps fn2-core))
-       (fn2-core (fn2-core-borrow-step :harvest nil fn2-core))
+       (fn2-core (fn2-core-borrow-all-step :harvest nil fn2-core))
        ((unless (and (equal (fn2-borrow-test-out-count slot fn2-core) 0)
                      (equal (fn2-core-borrows-accounted-check fn2-core) positive)))
         (mv :harvest-conclusion fn2-core))

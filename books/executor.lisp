@@ -47,27 +47,6 @@
     (mv 1 0 0 bytes *fn2-work-transition* fn2-core)))
 (fn2-core-preserves fn2-exec-harvest (fn2-core) :position 5 :rows nil)
 
-(defun fn2-exec-mailbox (fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-  (b* ((clockp (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-                (yes) (= 1 (fn2-ops-clock-posted fn2-ops)) yes))
-       (start (fn2-exec-queued fn2-core))
-       (fn2-core
-        (if clockp
-            (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-              (posted mono real flags fn2-ops) (fn2-take-clock fn2-ops)
-              (let ((unused-posted posted) (unused-real real) (unused-flags flags))
-                (declare (ignore unused-posted unused-real unused-flags))
-                (fn2-exec-clock mono fn2-core)))
-          (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-            (bits fn2-ops) (fn2-take-signal fn2-ops)
-            (if (< 0 (nfix bits)) (fn2-core-stop *fn2-stop-reason-signal* fn2-core) fn2-core))))
-       (fn2-core (fn2-exec-record (if clockp *fn2-trace-kind-clock* *fn2-trace-kind-signal*) *fn2-none* 0 0 0 *fn2-work-mailbox* 0
-                                 nil *fn2-none* start fn2-core)))
-    (mv 1 0 0 0 *fn2-work-mailbox* fn2-core)))
-(fn2-core-preserves fn2-exec-mailbox (fn2-core) :position 5 :rows nil :prefix "" :hints (("Goal" :in-theory (enable fn2-core-wfp))))
-
 (defun fn2-exec-principal (principal position budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* ((start (fn2-exec-queued fn2-core))
