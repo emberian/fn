@@ -15,6 +15,8 @@
 (include-book "assembly-callbacks-d-txn")
 (include-book "assembly-callbacks-d-cursor")
 (include-book "assembly-callbacks-e-auth")
+;; The layout recognizer's list fact would open on every true-listp goal.
+(local (in-theory (disable fn2-layoutp-list fn2-layoutp-cdr)))
 
 ;; ---------------------------------------------------------------------------
 ;; The world walk.

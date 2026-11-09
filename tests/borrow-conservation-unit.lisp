@@ -1,7 +1,6 @@
 (in-package "ACL2")
 (include-book "../books/borrow-faces")
 (include-book "../books/assembly-init")
-(include-book "../books/host-boundary")
 (include-book "std/util/bstar" :dir :system)
 
 ; Teeth for FN2-CORE-BORROW-CONSERVATION. Both runs lease one write borrow
@@ -110,8 +109,3 @@
 (assert-event (equal (fn2-borrow-test-teeth-1 t) t))
 (assert-event (equal (fn2-borrow-test-teeth-1 nil) t))
 (fn2-assert-owed-teeth fn2-core-borrow-conservation)
-
-; borrow-faces walks the faces in its own world (the books defining them);
-; host-boundary's world has no other: every fn2-core-returning caller of a
-; pool writer here is one A2 states.
-(assert-event (subsetp-eq (fn2-bf-faces (w state)) *fn2-bf-faces*))

@@ -13,6 +13,8 @@
 ;; not read, so no reader-by-writer matrix is needed. The per-row clause
 ;; FN2-OPS-ROW-OKP is fn2-ops-row-semanticp's body at one slot.
 (encapsulate ()
+(local (include-book "stobj-scope"))
+(local (fn2-stobj-scope fn2-ops))
 (local
 (defconst *fn2-ops-c-gen* 0))
 (local
@@ -1032,7 +1034,12 @@
 (local
 (in-theory (disable fn2-ops-sem-rows-part fn2-ops-sem-outring-part fn2-ops-sem-free-part fn2-ops-sem-counts-part
                     fn2-ops-sem-refs-part)))
-(local (fn2-ops-sem-part-frames fn2-ops-sem-rows-part (s fn2-ops) () (44 45 46 51 70 71 72 73)))
+(local (fn2-ops-sem-part-frames fn2-ops-sem-rows-part (s fn2-ops) () (44 72)))
+(local
+(defthm fn2-ops-sem-rows-part-of-clear-row
+  (implies (natp s)
+           (equal (fn2-ops-sem-rows-part s (fn2-ops-clear-row s g nx fn2-ops)) (fn2-ops-sem-rows-part s fn2-ops)))
+  :hints (("Goal" :in-theory (enable fn2-ops-sem-rows-part)))))
 (local (fn2-ops-sem-part-frames fn2-ops-sem-outring-part (fn2-ops) () (45 46 48 49 50)))
 (local (fn2-ops-sem-part-frames fn2-ops-sem-free-part (fn2-ops) (1 41) (44 70 71)))
 (local (fn2-ops-sem-part-frames fn2-ops-sem-counts-part (fn2-ops) (1) (44 45 50 51 73)))
@@ -1410,7 +1417,26 @@
                  :use (fn2-op-reserve-row fn2-ops-semanticp-elim fn2-op-reserve-ok-facts
                        (:instance fn2-ops-sem-facts-of-semanticp (s (nth 70 fn2-ops)))
                        (:instance fn2-ops-reserve-step-rest (h (nth 70 fn2-ops)))))))
-(fn2-ops-op-conservation fn2-op-set-range (slot gen rslot rgen off len fn2-ops) 1 slot)
+(local
+(defthm fn2-ops-row-key-okp-unposted-rlen
+  ;; a row with neither cell posted does not read its range length
+  (implies (and (equal p0 0) (equal p1 0))
+           (equal (fn2-ops-row-key-okp phase p0 h0 p1 h1 may kind aux0 gen limit
+                                       e0 o0 r0 c0 a00 a01 e1 o1 r1 c1 a10 a11 rlen)
+                  (fn2-ops-row-key-okp phase p0 h0 p1 h1 may kind aux0 gen limit
+                                       e0 o0 r0 c0 a00 a01 e1 o1 r1 c1 a10 a11 0)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn2-ops-row-key-okp)))))
+; set-range writes a reserved row's range: unposted, so its key is the old one
+(fn2-ops-op-conservation fn2-op-set-range (slot gen rslot rgen off len fn2-ops) 1 slot
+  :row-hints (("Goal" :do-not-induct t
+               :in-theory (e/d (fn2-op-set-range fn2-op-phase-code fn2-op-slotp fn2-op-handle-code)
+                               (fn2-ops-row-okp fn2-ops-row-key-okp))
+               :use ((:instance fn2-ops-row-okp-idle-cells (i slot))
+                     (:instance fn2-ops-row-okp-by-key)
+                     (:instance fn2-ops-row-okp-by-key (fn2-ops (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops))))
+                     (:instance fn2-ops-row-key-okp-unposted-rlen (phase (fn2-ops-phase slot fn2-ops)) (p0 (fn2-ops-c0-posted slot fn2-ops)) (h0 (fn2-ops-c0-harvested slot fn2-ops)) (p1 (fn2-ops-c1-posted slot fn2-ops)) (h1 (fn2-ops-c1-harvested slot fn2-ops)) (may (fn2-ops-may-release slot fn2-ops)) (kind (fn2-ops-kind slot fn2-ops)) (aux0 (fn2-ops-c0-aux0 slot fn2-ops)) (gen (fn2-ops-gen slot fn2-ops)) (limit (fn2-ops-gen-limit fn2-ops)) (e0 (fn2-ops-c0-event slot fn2-ops)) (o0 (fn2-ops-c0-outcome slot fn2-ops)) (r0 (fn2-ops-c0-reason slot fn2-ops)) (c0 (fn2-ops-c0-count slot fn2-ops)) (a00 (fn2-ops-c0-aux0 slot fn2-ops)) (a01 (fn2-ops-c0-aux1 slot fn2-ops)) (e1 (fn2-ops-c1-event slot fn2-ops)) (o1 (fn2-ops-c1-outcome slot fn2-ops)) (r1 (fn2-ops-c1-reason slot fn2-ops)) (c1 (fn2-ops-c1-count slot fn2-ops)) (a10 (fn2-ops-c1-aux0 slot fn2-ops)) (a11 (fn2-ops-c1-aux1 slot fn2-ops)) (rlen (fn2-ops-range-len slot fn2-ops)))
+                     (:instance fn2-ops-row-key-okp-unposted-rlen (phase (fn2-ops-phase slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (p0 (fn2-ops-c0-posted slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (h0 (fn2-ops-c0-harvested slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (p1 (fn2-ops-c1-posted slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (h1 (fn2-ops-c1-harvested slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (may (fn2-ops-may-release slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (kind (fn2-ops-kind slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (aux0 (fn2-ops-c0-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (gen (fn2-ops-gen slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (limit (fn2-ops-gen-limit (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (e0 (fn2-ops-c0-event slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (o0 (fn2-ops-c0-outcome slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (r0 (fn2-ops-c0-reason slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (c0 (fn2-ops-c0-count slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a00 (fn2-ops-c0-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a01 (fn2-ops-c0-aux1 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (e1 (fn2-ops-c1-event slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (o1 (fn2-ops-c1-outcome slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (r1 (fn2-ops-c1-reason slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (c1 (fn2-ops-c1-count slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a10 (fn2-ops-c1-aux0 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (a11 (fn2-ops-c1-aux1 slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))) (rlen (fn2-ops-range-len slot (mv-nth 1 (fn2-op-set-range slot gen rslot rgen off len fn2-ops)))))))))
 (fn2-ops-op-conservation fn2-op-set-capability (slot gen index nonce fn2-ops) 1 slot :row nil)
 (fn2-ops-op-conservation fn2-op-set-storage (slot gen offset fua fn2-ops) 1 slot :row nil)
 (fn2-ops-op-conservation fn2-op-set-cancel-target (slot gen tslot tgen fn2-ops) 1 slot :row nil)
