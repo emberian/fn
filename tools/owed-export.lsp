@@ -5,6 +5,7 @@
 (include-book "tests/owed-unit")
 (include-book "tests/pool-unit")
 (include-book "tests/vocab-unit")
+(include-book "books/ops-conservation")
 (include-book "tests/core-unit")
 (include-book "tests/sched-unit")
 (include-book "tests/executor-unit")

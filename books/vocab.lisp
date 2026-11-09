@@ -1194,7 +1194,7 @@
 (defconst *fn2-ops-operations*
   '(:init :reserve :set-range :set-capability :set-storage :set-cancel-target :set-wake
     :unreserve :enqueue :ack :post-result :harvest :finish :request-cancel
-    :post-clock :take-clock :post-signal :take-signal :peek))
+    :post-clock :take-clock :post-signal :take-signal :peek :post-accept-result))
 
 ; This logical dispatcher invokes the actual runtime exports, never a twin.
 ; A two-element result retains the response code and the complete logical table.
@@ -1238,6 +1238,9 @@
     (:take-signal (mv-let (bits q) (fn2-take-signal p) (list bits q)))
     (:peek (mv-let (code slot gen) (fn2-outbox-peek (nth 0 a) p)
              (declare (ignore slot gen)) (list code p)))
+    (:post-accept-result
+     (list :posted (fn2-post-accept-result (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                           (nth 6 a) (nth 7 a) (nth 8 a) (nth 9 a) (nth 10 a) (nth 11 a) p)))
     (otherwise (list :unknown p))))
 
 (defun fn2-ops-conservation-hyps (op a fn2-ops)
