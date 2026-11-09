@@ -15,7 +15,9 @@
 ;; (an attachment changing a child outside it is refused, naming the child
 ;; and the functions whose contracts change it), the directory contracts
 ;; follow, and the stub's frame claims are proved of the attachment before
-;; its defattach.
+;; its defattach. An observe attachment also keeps the operation table and
+;; the pool (FN2-DISPATCH-OPS-POOL): its footprint off both, else refused
+;; naming the contracts that write them.
 (defun fn2-dispatch-attach-events (names world)
   (declare (xargs :mode :program))
   (if (atom names) nil
@@ -30,6 +32,8 @@
            `((make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(,run ,obs) ',name (w state) nil 64) ',name))))
              (make-event (value (fn2-dc-frame-check ',run-stub ',run ',name ',e (w state))))
              (make-event (value (fn2-dc-frame-check ',obs-stub ',obs ',name ',e (w state))))
+             ;; the observe stub keeps the operation table and the pool
+             (make-event (value (fn2-dispatch-ops-pool-form ',obs-stub ',obs ',name ',e (w state))))
              (make-event (value (cons 'progn (fn2-ctf-dir-forms (fn2-ctf-postorder-new '(,run ,obs) (w state)) ',name))))
              (make-event (value (fn2-dc-frame-kids ',run 4 '(id budget fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
              (make-event (value (fn2-dc-frame-kids ',obs 1 '(id event outcome reason count aux0 aux1 fn2-core) ',e ',name "-DISPATCH-KIDS" (w state))))
@@ -37,7 +41,8 @@
                         (,obs-stub ,obs)
                         (,(fn2-columns-sym name "-ARM-CHARGE-OK-P-STUB") ,(fn2-columns-sym name "-ARM-CHARGE-OK-P"))
                         (,(fn2-columns-sym name "-ARM-BOUND-STUB") ,(fn2-columns-sym name "-ARM-BOUND")))
-             (in-theory (disable ,(fn2-columns-sym run "-DISPATCH-KIDS") ,(fn2-columns-sym obs "-DISPATCH-KIDS")))
+             (in-theory (disable ,(fn2-columns-sym run "-DISPATCH-KIDS") ,(fn2-columns-sym obs "-DISPATCH-KIDS")
+                                 ,(fn2-columns-sym obs "-DISPATCH-OPS-POOL")))
              (make-event (fn2-dc-disable-form (fn2-ctf-postorder-new '(,run ,obs) (w state)) ',name (w state))))
            (fn2-dispatch-attach-events (cdr names) world))
         (fn2-dispatch-attach-events (cdr names) world)))))

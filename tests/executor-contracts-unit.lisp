@@ -108,7 +108,8 @@
 (make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-refuser fn2-ect-commit-writer) 'fn2-conn))))
 (make-event (value (fn2-dc-frame-kids 'fn2-ect-refuser 4 '(id budget fn2-core)
                                        (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
-(in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir))
+(in-theory (enable fn2-machine-observe-fn2-conn-default-arm-kids fn2-machine-observe-fn2-conn-default-ctf-dir
+                    fn2-machine-observe-fn2-conn-default-ops-pool))
 (defattach (fn2-conn-run-stub fn2-ect-refuser)
            (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
@@ -116,5 +117,35 @@
 (must-fail
  (defattach (fn2-conn-run-stub fn2-ect-commit-writer)
             (fn2-machine-observe-fn2-conn-stub fn2-machine-observe-fn2-conn-default)
+            (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
+            (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
+
+;; THE OBSERVE STUB's ops-and-pool frame (FN2-DISPATCH-OPS-POOL): an observe
+;; attachment issuing a Close owned by the commit kind writes a commit-owned
+;; op row and the outbox, so its footprint check is refused naming
+;; FN2-ISSUE-CLOSE, and its defattach fails the stub's -OPS-POOL constraint
+;; (its KIDS and directory contracts proved, so that constraint alone fails);
+;; the refusing default meets it.
+(defun fn2-ect-op-writer (id event outcome reason count aux0 aux1 fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
+           (ignore event outcome reason count aux0 aux1))
+  (mv-let (code slot gen fn2-core) (fn2-issue-close 0 0 *fn2-commit-kind* id 0 0 fn2-core)
+    (declare (ignore code slot gen))
+    (mv *fn2-none* fn2-core)))
+(fn2-core-preserves fn2-ect-op-writer (id event outcome reason count aux0 aux1 fn2-core) :position 1 :rows nil)
+(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo '(fn2-ect-op-writer) 'fn2-conn (w state) nil 64) 'fn2-conn))))
+(assert-event (subsetp-equal (fn2-dispatch-ops-pool-children (w state))
+                             (cdr (assoc-equal '(fn2-conn . fn2-ect-op-writer) (table-alist 'fn2-dc-kids (w state))))))
+(make-event (value (fn2-dc-frame-check 'fn2-machine-observe-fn2-conn-stub 'fn2-ect-op-writer 'fn2-conn
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) (w state))))
+(must-fail
+ (make-event (value (fn2-dispatch-ops-pool-form 'fn2-machine-observe-fn2-conn-stub 'fn2-ect-op-writer 'fn2-conn
+                                                (fn2-dispatch-frame-children 'fn2-conn (w state)) (w state)))))
+(make-event (value (cons 'progn (fn2-ctf-dir-forms '(fn2-ect-op-writer) 'fn2-conn))))
+(make-event (value (fn2-dc-frame-kids 'fn2-ect-op-writer 1 '(id event outcome reason count aux0 aux1 fn2-core)
+                                       (fn2-dispatch-frame-children 'fn2-conn (w state)) 'fn2-conn "-DISPATCH-KIDS" (w state))))
+(must-fail
+ (defattach (fn2-conn-run-stub fn2-ect-refuser)
+            (fn2-machine-observe-fn2-conn-stub fn2-ect-op-writer)
             (fn2-conn-arm-charge-ok-p-stub fn2-conn-arm-charge-ok-p-default)
             (fn2-conn-arm-bound-stub fn2-conn-arm-bound-default)))
