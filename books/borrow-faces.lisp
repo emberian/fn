@@ -74,10 +74,6 @@
     fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-copy-range fn2-core-hand fn2-core-accept-hand
     fn2-core-drop-prefix fn2-core-truncate init-fn2-core-pool fn2-core-borrow-step))
-;; Faces whose lemma is owed, each with why; A2 below is stated over the rest.
-(defconst *fn2-bf-owed*
-  '(fn2-cns-post-reply          ; pool, fields, digests and b3 written by one reply-pool call: not isolated
-    fn2-auth-post-reply))       ; the same shape through fn2-auth-seal-reply-pool: not isolated
 (defun fn2-bf-pool-writers (wrld)
   (declare (xargs :verify-guards nil))
   ;; create-fn2-pool is a local stobj's creation: no writer's input pool flows into it
@@ -284,8 +280,7 @@
 (local (deftheory fn2-bf-ground (executable-counterpart-theory :here)))
 (make-event
  (let* ((wrld (w state)) (pw (fn2-bf-pool-writers wrld))
-        (all (fn2-bf-faces wrld))
-        (faces (set-difference-eq all *fn2-bf-owed*))
+        (faces (fn2-bf-faces wrld))
         ;; the faces and every core function below them, callees first
         (core-fns (set-difference-eq (fn2-bf-core-closure faces wrld nil 100000) *fn2-bf-stated*))
         (core-fns (intersection-eq (fn2-bf-topo core-fns core-fns nil nil wrld 100000) core-fns))
@@ -295,8 +290,6 @@
         (wf (fn2-bf-wf-topo (fn2-bf-children ops-fns ow wrld) ow nil nil wrld 100000))
         (frames (intersection-eq *fn2-bf-stated* (fn2-bf-core-closure faces wrld nil 100000))))
    `(progn
-      (defconst *fn2-bf-all-faces* ',all)
-      (assert-event (subsetp-eq *fn2-bf-owed* *fn2-bf-all-faces*))
       (defconst *fn2-bf-faces* ',faces)
       (defconst *fn2-bf-core-fns* ',core-fns)
       (defconst *fn2-bf-writers* ',order)
@@ -371,7 +364,7 @@
            (fn2-core-borrow-all-conclusion op a core))
   :schema :invariant :from (:columns fn2-pool)
   :teeth (fn2-core-borrow-teeth)
-  :doc "A2: every core-level step that writes the pool or the ops child keeps each pool row's out-count equal to the number of live send/write operations on that row that have not released their borrow, with every live borrow naming its row's current generation and may-release only on a send; so the release a harvested operation triggers spends that operation's own counted borrow. The steps: every issue (each action kind and arm-wake), every harvest, every core pool writer and the host's loan write, the host boundary's ops entries, the executor's mailbox, and every machine-arm face and core function that writes the pool (*fn2-bf-faces*, computed from the world: every fn2-core-returning caller of a pool writer, less the faces in *fn2-bf-owed*, whose lemmas are owed).")
+  :doc "A2: every core-level step that writes the pool or the ops child keeps each pool row's out-count equal to the number of live send/write operations on that row that have not released their borrow, with every live borrow naming its row's current generation and may-release only on a send; so the release a harvested operation triggers spends that operation's own counted borrow. The steps: every issue (each action kind and arm-wake), every harvest, every core pool writer and the host's loan write, the host boundary's ops entries, the executor's mailbox, and every machine-arm face and core function that writes the pool (*fn2-bf-faces*, computed from the world: every fn2-core-returning caller of a pool writer).")
 (defthm fn2-core-borrow-conservation-all-proved
   (implies (fn2-core-borrow-all-hyps op core)
            (fn2-core-borrow-all-conclusion op a core))
