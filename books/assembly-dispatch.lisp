@@ -1,6 +1,7 @@
 ; Materialize dispatch after all registered continuations.
 (in-package "ACL2")
 (include-book "assembly-callbacks")
+(include-book "dispatch-held")
 
 ;; The footprint contracts (-DC-KIDS, fn2-dc-*) and the directory relation
 ;; FN2-CTF-DIR with its chained contracts (fn2-ctf-dir-*) are machines.lisp's:

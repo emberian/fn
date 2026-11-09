@@ -3609,6 +3609,30 @@
         (fn2-dc-frame-check who fn kind (set-difference-equal e (fn2-dispatch-ops-pool-children world)) world)
       (if (null d) (fn2-dc-frame-check who fn kind e world)
         (fn2-dispatch-ops-pool-claim (fn2-columns-sym fn "-DISPATCH-OPS-POOL") out out (cdr d) (car d) nil world)))))
+;; THE RUN STUBS' HELD FRAME (books/dispatch-held.lisp): the rows the commit
+;; kind holds in the operation table and the pool -- every held operation
+;; row's columns; every row's extent, every held pool row's columns and, the
+;; extents ordered, the data length and its octets -- one observation
+;; (FN2-DISPATCH-HELD, an equality view of the ops and the pool), kept by the
+;; run of a kind that holds no :batch-membership and writes as a constant
+;; owner kind: such a kind's writes are its own rows'. The commit layer's batch members (txn, auth) write
+;; commit-owned pool rows themselves (fn2-commit-txn-open's member put), so
+;; they carry no held claim. Emitted once, where the observation's book and
+;; the commit kind are present.
+(defun fn2-dispatch-held-p (world)
+  (declare (xargs :verify-guards nil))
+  (and (function-symbolp 'fn2-dh-ops-obs world) (getpropc '*fn2-commit-kind* 'const nil world)))
+(defun fn2-dispatch-held-view-form (world)
+  (declare (xargs :verify-guards nil))
+  (cond ((not (fn2-dispatch-held-p world)) '(value-triple :none))
+        ((function-symbolp 'fn2-dispatch-held world) '(value-triple :known))
+        (t '(progn
+              (defun-nx fn2-dh-obs (k fn2-core)
+                (cons (fn2-dh-ops-obs k (fn2-core-ops fn2-core)) (fn2-dh-pool-obs k (fn2-core-pool fn2-core))))
+              (defun-nx fn2-dispatch-held-obs (fn2-core) (fn2-dh-obs *fn2-commit-kind* fn2-core))
+              (fn2-defview fn2-dispatch-held :carrier fn2-core :select ((fn2-ops :whole t) (fn2-pool :whole t))
+                :observe fn2-dispatch-held-obs :open (fn2-dispatch-held-obs fn2-dh-obs fn2-core-ops fn2-core-pool))
+              (in-theory (disable fn2-dh-obs fn2-dispatch-held-obs))))))
 (defun fn2-machine-stub-events (names world)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -3729,6 +3753,7 @@
     (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-refuse-observation nil (w state))))
     (make-event (value (fn2-dc-keeps-commit-form 'fn2-machine-idle nil (w state))))
     (make-event (value (fn2-dispatch-ops-pool-view-form (w state))))
+    (make-event (value (fn2-dispatch-held-view-form (w state))))
     (make-event (value (cons 'progn (fn2-machine-stub-events (fn2-machine-names (w state)) (w state)))))))
 (defmacro fn2-machine-stub-all-events ()
   (cons 'progn (fn2-machine-stub-all-forms)))
