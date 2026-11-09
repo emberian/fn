@@ -1,4 +1,4 @@
-; Teeth of FN2-ENV-STEP-WHEN-STOPPED (books/stop-boundary.lisp): one core,
+; Teeth of FN2-ENV-STEP-REFUSES-WHEN-STOPPED (books/stop-boundary.lisp): one core,
 ; admitted and turned until its outbox holds the commit's first actions, then
 ; offered (:take) and (:admit 2 0) through fn2-env-step itself.
 (in-package "ACL2")

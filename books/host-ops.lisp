@@ -7,16 +7,16 @@
 
 (local (in-theory (enable fn2-core-wfp)))
 
-; A stopped core (fn2-core-stopped-p) takes nothing from the host: every
-; post and count leaves it unchanged, ack, finish, peek and action answer
-; :stopped. Operations the device already holds stay the device's until
-; their completion or teardown; recovery starts a fresh core.
+; A stopped core (fn2-core-stopped-p) submits nothing: outbox ack, op
+; finish, peek and action answer :stopped. Operations the device already
+; holds stay the device's until their completion or teardown, so a stopped
+; core still records their results (and clock and signal posts) in the ops
+; child; no turn ever harvests them, and recovery starts a fresh core.
 (defmacro fn2-host-ops-update (name target args)
   `(defun ,name (,@args fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (if (fn2-core-stopped-p fn2-core) fn2-core
-       (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-         (fn2-ops) (,target ,@args fn2-ops) fn2-core))))
+     (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+       (fn2-ops) (,target ,@args fn2-ops) fn2-core)))
 (fn2-host-ops-update fn2-host-post-result fn2-post-result
   (cell slot gen evkind outcome reason count aux0 aux1))
 (fn2-host-ops-update fn2-host-post-accept-result fn2-post-accept-result

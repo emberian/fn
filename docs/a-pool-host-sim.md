@@ -543,13 +543,15 @@ A stopped core is a recovery boundary: it may hold partially updated volatile
 state, so it never serves again and recovery starts a fresh core from the
 device. Once the stop bit is set (`fn2-core-stopped-p`; it has no setter, and
 only a fresh core's `fn2-control-init` clears it) the turn runs no transition,
-every host post leaves the core unchanged, `fn2-host-outbox-peek`,
-`fn2-host-action`, `fn2-host-outbox-ack`, `fn2-host-op-finish` and
-`fn2-commit-admit-keyed` answer `:stopped`, and both adapters take no action
-after the stopping turn (`fn2-n-iteration`; the simulator's `fn2-ss-step` and
-`fn2-sim-take-one`). Operations the device already took stay the device's until
-their completion or teardown. `FN2-ENV-STEP-WHEN-STOPPED`
-(books/stop-boundary.lisp) states it over every environment action.
+`fn2-host-outbox-peek`, `fn2-host-action`, `fn2-host-outbox-ack`,
+`fn2-host-op-finish` and `fn2-commit-admit-keyed` answer `:stopped`, and both
+adapters take no action after the stopping turn (`fn2-n-iteration`; the
+simulator's `fn2-ss-step` and `fn2-sim-take-one`). Operations the device already
+took stay the device's until their completion or teardown: their results may
+still be posted into the ops table, where no turn harvests them.
+`FN2-ENV-STEP-REFUSES-WHEN-STOPPED`, `FN2-ENV-STEP-FRAME-WHEN-STOPPED` and
+`FN2-ENV-STEPS-WHEN-STOPPED` (books/stop-boundary.lisp) state it over every
+environment action.
 
 The scalar control field `stop-reason` uses the declared `fn2-stop-reason` enum;
 `fn2-core-stop` retains the first reason. `:none` means no stop. The corruption
