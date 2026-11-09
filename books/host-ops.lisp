@@ -7,11 +7,16 @@
 
 (local (in-theory (enable fn2-core-wfp)))
 
+; A stopped core (fn2-core-stopped-p) takes nothing from the host: every
+; post and count leaves it unchanged, ack, finish, peek and action answer
+; :stopped. Operations the device already holds stay the device's until
+; their completion or teardown; recovery starts a fresh core.
 (defmacro fn2-host-ops-update (name target args)
   `(defun ,name (,@args fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-       (fn2-ops) (,target ,@args fn2-ops) fn2-core)))
+     (if (fn2-core-stopped-p fn2-core) fn2-core
+       (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+         (fn2-ops) (,target ,@args fn2-ops) fn2-core))))
 (fn2-host-ops-update fn2-host-post-result fn2-post-result
   (cell slot gen evkind outcome reason count aux0 aux1))
 (fn2-host-ops-update fn2-host-post-accept-result fn2-post-accept-result
@@ -23,8 +28,9 @@
 (defmacro fn2-host-ops-code-update (name target args)
   `(defun ,name (,@args fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-       (code fn2-ops) (,target ,@args fn2-ops) (mv code fn2-core))))
+     (if (fn2-core-stopped-p fn2-core) (mv :stopped fn2-core)
+       (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+         (code fn2-ops) (,target ,@args fn2-ops) (mv code fn2-core)))))
 (fn2-host-ops-code-update fn2-host-outbox-ack fn2-outbox-ack (n))
 (fn2-host-ops-code-update fn2-host-op-finish fn2-op-finish (slot gen))
 
@@ -40,13 +46,16 @@
 
 (defun fn2-host-outbox-peek (k fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
-    (code slot gen) (fn2-outbox-peek k fn2-ops) (mv code slot gen)))
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0)
+    (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+      (code slot gen) (fn2-outbox-peek k fn2-ops) (mv code slot gen))))
 
 ; Fixed-width multiple values: no descriptor list and no byte list. A slot
-; outside the table is the adapter's error, answered :bounds with no fields.
+; outside the table is the adapter's error, answered :bounds with no fields;
+; a stopped core answers :stopped with no fields.
 (defun fn2-host-action (slot fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
   (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
     (code kind cap-index cap-nonce range-slot range-gen range-off range-len
           storage-offset fua may-release cancel-slot cancel-gen
@@ -64,4 +73,4 @@
             wake-deadline wake-observation-gen)))
     (mv code kind cap-index cap-nonce range-slot range-gen range-off range-len
         storage-offset fua may-release cancel-slot cancel-gen
-        wake-deadline wake-observation-gen)))
+        wake-deadline wake-observation-gen))))

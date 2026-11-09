@@ -179,6 +179,15 @@
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
            (unsigned-byte-p 8 (fn2-core-stop-reason fn2-core))))
 (in-theory (disable fn2-core-stop-reason))
+; The sticky stop: once set, only a fresh core (recovery) clears it. A stopped
+; core may hold partially updated volatile state, so every host entry that
+; would submit, admit or settle refuses on it (host-ops.lisp, commit.lisp).
+(defun fn2-core-stopped-p (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+  (stobj-let ((fn2-control (fn2-core-control fn2-core)))
+    (v) (fn2-control-stop fn2-control) (equal v 1)))
+(in-theory (disable fn2-core-stopped-p))
 
 ; DSL for bounded pool operations through the parent. Lists exist only at
 ; macro expansion, never in the emitted runtime paths.
