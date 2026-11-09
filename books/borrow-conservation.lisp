@@ -610,12 +610,7 @@
                 (implies (equal (fn2-ops-may-release (mv-nth 1 (fn2-harvest-next ops)) (fn2-bc-harvest-ops pool ops)) 1)
                          (and (equal (fn2-ops-may-release (mv-nth 1 (fn2-harvest-next ops)) ops) 1)
                               (equal (fn2-ops-kind (mv-nth 1 (fn2-harvest-next ops)) (fn2-bc-harvest-ops pool ops)) (fn2-ops-kind (mv-nth 1 (fn2-harvest-next ops)) ops))))))
-  :hints (("Goal" :in-theory (e/d (fn2-bc-harvest-ops fn2-op-slotp fn2-op-phase)
-                                  (fn2-harvest-next fn2-op-finish fn2-pool-release-out fn2-pool-complete-in
-                            fn2-borrows-accountedp fn2-pool-borrows-countedp fn2-op-borrowp-by-vals
-                            fn2-bc-release-condp-by-vals
-                            fn2-ops-borrows-namedp fn2-ops-semanticp fn2-ops-keys-except fn2-pool-keys-except
-                            fn2-op-cell fn2-bc-input-condp fn2-bc-release-condp fn2-bc-harvest-pool-step fn2-harvest-next-found fn2-op-finish-row))
+  :hints (("Goal" :in-theory (union-theories '(fn2-bc-harvest-ops fn2-op-phase) (theory 'minimal-theory))
            :use (fn2-harvest-next-found
                  (:instance fn2-op-finish-row (slot (mv-nth 1 (fn2-harvest-next ops))) (gen (mv-nth 2 (fn2-harvest-next ops))) (ops (mv-nth 4 (fn2-harvest-next ops))))
                  (:instance fn2-op-borrowp-when-done (j (mv-nth 1 (fn2-harvest-next ops))) (x (mv-nth 4 (fn2-harvest-next ops))))))))
@@ -657,26 +652,48 @@
   (implies (not (equal (mv-nth 0 (fn2-harvest-next ops)) t))
            (and (equal (mv-nth 1 (fn2-bc-harvest-pool-step pool ops)) pool) (equal (fn2-bc-harvest-ops pool ops) ops)))
   :hints (("Goal" :in-theory (e/d (fn2-bc-harvest-pool-step fn2-bc-harvest-ops) (fn2-harvest-next)))))
+(defthm fn2-borrows-accountedp-release-transfer
+  (implies (and (fn2-borrows-accountedp pool ops)
+                (fn2-pool-keys-except rs pool p2) (fn2-ops-keys-except j ops o2)
+                (equal (fn2-pool-rows p2) (fn2-pool-rows pool)) (equal (fn2-ops-rows o2) (fn2-ops-rows ops))
+                (equal (fn2-pool-gen rs p2) (fn2-pool-gen rs pool))
+                (natp j) (< j (fn2-ops-rows ops)) (natp (fn2-ops-rows ops)) (natp rs)
+                (equal (fn2-ops-range-slot j ops) rs)
+                (implies (fn2-op-borrowp j o2)
+                         (and (fn2-op-borrowp j ops) (equal (fn2-ops-range-slot j o2) rs)
+                              (equal (fn2-ops-range-gen j o2) (fn2-ops-range-gen j ops))))
+                (implies (equal (fn2-ops-may-release j o2) 1)
+                         (and (equal (fn2-ops-may-release j ops) 1)
+                              (equal (fn2-ops-kind j o2) (fn2-ops-kind j ops))))
+                (implies (< rs (fn2-pool-rows pool))
+                         (and (equal (fn2-pool-out-count rs p2)
+                                     (- (fn2-pool-out-count rs pool)
+                                        (if (and (fn2-op-borrowp j ops) (not (fn2-op-borrowp j o2))) 1 0)))
+                              (implies (< 0 (fn2-pool-out-count rs p2))
+                                       (equal (fn2-pool-state rs p2) *fn2-pool-state-leased-out*)))))
+           (fn2-borrows-accountedp p2 o2))
+  :hints (("Goal" :in-theory (e/d (fn2-op-borrow-on)
+                                  (fn2-borrows-accountedp fn2-pool-borrows-countedp fn2-ops-borrows-namedp
+                                   fn2-pool-borrows-countedp-transfer fn2-ops-borrows-namedp-transfer
+                                   fn2-ops-keys-except fn2-pool-keys-except fn2-op-borrowp-by-vals))
+           :use ((:instance fn2-pool-borrows-countedp-transfer (pool2 p2) (ops2 o2) (ps rs))
+                 (:instance fn2-ops-borrows-namedp-transfer (pool2 p2) (ops2 o2) (ps rs))
+                 (:instance fn2-borrows-accountedp)
+                 (:instance fn2-borrows-accountedp (pool p2) (ops o2))
+                 (:instance fn2-ops-borrows-namedp-necc (i j))))))
 (defthm fn2-bc-harvest-borrows
   (implies (and (fn2-ops-semanticp ops)
                 (fn2-borrows-accountedp pool ops))
            (fn2-borrows-accountedp (mv-nth 1 (fn2-bc-harvest-pool-step pool ops)) (fn2-bc-harvest-ops pool ops)))
   :hints (("Goal"
            :cases ((equal (mv-nth 0 (fn2-harvest-next ops)) t))
-           :in-theory (e/d (fn2-op-borrow-on)
-                           (fn2-harvest-next fn2-bc-harvest-pool-step fn2-bc-harvest-ops
-                            fn2-borrows-accountedp fn2-pool-borrows-countedp fn2-op-borrowp-by-vals
-                            fn2-bc-release-condp-by-vals fn2-pool-borrows-countedp-transfer
-                            fn2-ops-borrows-namedp-transfer fn2-harvest-next-borrow-release
-                            fn2-ops-borrows-namedp fn2-ops-semanticp fn2-ops-keys-except fn2-pool-keys-except
-                            fn2-bc-harvest-pool-count fn2-bc-harvest-ops-row))
-           :use ((:instance fn2-pool-borrows-countedp-transfer (pool2 (mv-nth 1 (fn2-bc-harvest-pool-step pool ops))) (ops2 (fn2-bc-harvest-ops pool ops)) (j (mv-nth 1 (fn2-harvest-next ops))) (ps (fn2-ops-range-slot (mv-nth 1 (fn2-harvest-next ops)) ops)))
-                 (:instance fn2-ops-borrows-namedp-transfer (pool2 (mv-nth 1 (fn2-bc-harvest-pool-step pool ops))) (ops2 (fn2-bc-harvest-ops pool ops)) (j (mv-nth 1 (fn2-harvest-next ops))) (ps (fn2-ops-range-slot (mv-nth 1 (fn2-harvest-next ops)) ops)))
-                 (:instance fn2-borrows-accountedp)
-                 (:instance fn2-borrows-accountedp (pool (mv-nth 1 (fn2-bc-harvest-pool-step pool ops))) (ops (fn2-bc-harvest-ops pool ops)))
+           :in-theory (union-theories '(fn2-bc-harvest-not-found fn2-ops-semanticp-row-facts)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-borrows-accountedp-release-transfer (p2 (mv-nth 1 (fn2-bc-harvest-pool-step pool ops))) (o2 (fn2-bc-harvest-ops pool ops)) (j (mv-nth 1 (fn2-harvest-next ops))) (rs (fn2-ops-range-slot (mv-nth 1 (fn2-harvest-next ops)) ops)))
                  (:instance fn2-ops-borrows-namedp-necc (i (mv-nth 1 (fn2-harvest-next ops))))
+                 (:instance fn2-borrows-accountedp)
                  fn2-harvest-next-found fn2-harvest-next-borrow-release fn2-bc-harvest-pool-count
-                 fn2-bc-harvest-ops-row
+                 fn2-bc-harvest-ops-row fn2-bc-harvest-pool-frame fn2-bc-harvest-ops-frame
                  (:instance fn2-ops-range-slot-natp (i (mv-nth 1 (fn2-harvest-next ops))) (fn2-ops ops))))))
 (defun-nx fn2-core-borrows-accountedp (core)
   (fn2-borrows-accountedp (fn2-core-pool core) (fn2-core-ops core)))
@@ -960,6 +977,37 @@
   :hints (("Goal" :in-theory (e/d (fn2-issue-children) (fn2-op-reserve fn2-core-lease fn2-op-unreserve fn2-op-set-range fn2-op-set-capability
                             fn2-op-set-storage fn2-op-set-cancel-target fn2-op-enqueue fn2-control-record-stop
                             fn2-op-borrowp fn2-ops-keys-except fn2-pool-keys-except fn2-op-phase-code fn2-ops-gen mv-nth)))))
+(defthm fn2-bc-ops-rows-natp
+  (implies (fn2-ops-wfp ops) (natp (fn2-ops-rows ops)))
+  :hints (("Goal" :in-theory (enable fn2-ops-wfp fn2-borrow-readers))))
+(defthm fn2-bc-ubp-natp
+  (implies (unsigned-byte-p n x) (natp x)))
+(defthm fn2-borrows-accountedp-lease-transfer
+  (implies (and (fn2-borrows-accountedp pool ops)
+                (fn2-pool-keys-except slot pool p2) (fn2-ops-keys-except j ops o2)
+                (equal (fn2-pool-rows p2) (fn2-pool-rows pool)) (equal (fn2-ops-rows o2) (fn2-ops-rows ops))
+                (equal (fn2-pool-gen slot p2) (fn2-pool-gen slot pool))
+                (natp j) (< j (fn2-ops-rows ops)) (natp (fn2-ops-rows ops)) (natp slot)
+                (not (fn2-op-borrowp j ops))
+                (iff (fn2-op-borrowp j o2) b)
+                (implies b (and (equal (fn2-ops-range-slot j o2) slot) (< slot (fn2-pool-rows pool))
+                                (equal (fn2-ops-range-gen j o2) (fn2-pool-gen slot pool))))
+                (implies (equal (fn2-ops-may-release j o2) 1) (equal (fn2-ops-kind j o2) *fn2-action-send*))
+                (equal (fn2-pool-out-count slot p2)
+                       (if b (+ 1 (fn2-pool-out-count slot pool)) (fn2-pool-out-count slot pool)))
+                (implies b (equal (fn2-pool-state slot p2) *fn2-pool-state-leased-out*))
+                (implies (and (not b) (not (equal (fn2-pool-state slot pool) *fn2-pool-state-workspace*)))
+                         (equal (fn2-pool-state slot p2) (fn2-pool-state slot pool))))
+           (fn2-borrows-accountedp p2 o2))
+  :hints (("Goal" :in-theory (e/d (fn2-op-borrow-on)
+                                  (fn2-borrows-accountedp fn2-pool-borrows-countedp fn2-ops-borrows-namedp
+                                   fn2-pool-borrows-countedp-transfer fn2-ops-borrows-namedp-transfer
+                                   fn2-ops-keys-except fn2-pool-keys-except fn2-op-borrowp-by-vals))
+           :use ((:instance fn2-pool-borrows-countedp-transfer (pool2 p2) (ops2 o2) (ps slot))
+                 (:instance fn2-ops-borrows-namedp-transfer (pool2 p2) (ops2 o2) (ps slot))
+                 (:instance fn2-borrows-accountedp)
+                 (:instance fn2-borrows-accountedp (pool p2) (ops o2))
+                 (:instance fn2-pool-borrows-countedp-necc (r slot))))))
 (defthm fn2-issue-children-borrows
   (implies (and (fn2-opsp ops) (fn2-ops-wfp ops) (fn2-borrows-accountedp pool ops))
            (fn2-borrows-accountedp (mv-nth 3 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control)) (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))))
@@ -969,17 +1017,10 @@
                      (unsigned-byte-p 32 off) (unsigned-byte-p 32 len)
                      (unsigned-byte-p 32 target-slot) (unsigned-byte-p 60 target-gen)
                      (fn2-core-outbox-ready ops)) (equal (mv-nth 0 (fn2-op-reserve kind okind oslot ogen principal may-release ops)) :ok)))
-           :in-theory (e/d (fn2-op-borrow-on)
-                           (fn2-issue-children fn2-op-reserve fn2-core-lease fn2-borrows-accountedp
-                            fn2-pool-borrows-countedp fn2-ops-borrows-namedp fn2-op-borrowp-by-vals
-                            fn2-pool-borrows-countedp-transfer fn2-ops-borrows-namedp-transfer
-                            fn2-issue-children-borrow-frame fn2-issue-children-borrow-row
-                            fn2-ops-keys-except fn2-pool-keys-except unsigned-byte-p))
-           :use ((:instance fn2-pool-borrows-countedp-transfer (pool2 (mv-nth 3 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (ops2 (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (j (mv-nth 1 (fn2-op-reserve kind okind oslot ogen principal may-release ops))) (ps slot))
-                 (:instance fn2-ops-borrows-namedp-transfer (pool2 (mv-nth 3 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (ops2 (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (j (mv-nth 1 (fn2-op-reserve kind okind oslot ogen principal may-release ops))) (ps slot))
-                 (:instance fn2-borrows-accountedp)
-                 (:instance fn2-borrows-accountedp (pool (mv-nth 3 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (ops (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))))
-                 (:instance fn2-pool-borrows-countedp-necc (r slot))
+           :in-theory (union-theories '(fn2-issue-children-unreserved fn2-op-borrowp-when-free fn2-bc-ops-rows-natp fn2-bc-ubp-natp)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn2-borrows-accountedp-lease-transfer (p2 (mv-nth 3 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (o2 (mv-nth 4 (fn2-issue-children kind cap-index cap-nonce offset fua slot gen off len may-release target-slot target-gen okind oslot ogen principal pool ops control))) (j (mv-nth 1 (fn2-op-reserve kind okind oslot ogen principal may-release ops)))
+                            (b (and (equal (mv-nth 0 (fn2-core-lease kind slot gen off len (mv-nth 1 (fn2-op-reserve kind okind oslot ogen principal may-release ops)) (mv-nth 2 (fn2-op-reserve kind okind oslot ogen principal may-release ops)) okind oslot ogen pool)) :ok) (or (equal kind *fn2-action-send*) (equal kind *fn2-action-write*)))))
                  (:instance fn2-op-reserve-borrow-row (may may-release))
                  fn2-issue-children-borrow-frame fn2-issue-children-borrow-row))))
 (defmacro fn2-bc-issue-borrows (name args)
