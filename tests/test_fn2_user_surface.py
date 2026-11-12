@@ -180,12 +180,23 @@ def main() -> int:
             created = run_fn("principal", "create", "watcher", "--control-sock", str(ctl_sock), as_json=True)
             assert created["outcome"] == "accepted" and created["id"] > 0, created
 
+            # Repeat create is idempotent: answers the same durable principal_id.
             dup = run_fn(
                 "principal", "create", "watcher",
                 "--control-sock", str(ctl_sock),
+                expect_rc=0, as_json=True,
+            )
+            assert dup["outcome"] == "accepted" and dup["id"] == created["id"], dup
+
+            # Binding to an uncreated principal name is refused unknown-principal.
+            unknown_bind = run_fn(
+                "stream", "status",
+                "--as", "nobody",
+                "--consumer", "inbox1",
+                "--control-sock", str(ctl_sock),
                 expect_rc=1, as_json=True,
             )
-            assert dup["outcome"] == "refused" and dup["reason"] == "exists", dup
+            assert unknown_bind["outcome"] == "refused" and unknown_bind["reason"] == "unknown-principal", unknown_bind
 
             # Non-owner bound connection cannot create principals or issue grants.
             non_admin = run_fn(
