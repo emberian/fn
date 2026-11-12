@@ -531,8 +531,8 @@
 (defun fn2-succ-replay (tx batch event wslot wgen wlen okind oslot ogen b0 fn2-succ-txns fn2-succ-slots
                         fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
-                                            fn2-succ-bind fn2-overlays-rows fn2-overlay-index-rows)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-succ-release-slots fn2-succ-replay-records fn2-succ-room fn2-idc-scratch
+                                            fn2-idc-hold-spares fn2-succ-bind fn2-overlays-rows fn2-overlay-index-rows)))))
  (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-engine-wfp fn2-id-engine)
                     (fn2-overlays-wfp fn2-overlays) (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields)
                     (fn2-pool-wfp fn2-pool) (< 0 (fn2-id-engine-rows fn2-id-engine))))
@@ -541,18 +541,29 @@
        (mv :bounds fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
       ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-idle*))
        (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots))
       ((mv code fn2-succ-slots fn2-fields)
        (fn2-succ-replay-records (+ 1 *fn2-succ-slots*) 0 0 event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (eq code :ok))
+       (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
+        (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       (orows (fn2-overlays-rows fn2-overlays))
-      ((unless (posp orows)) (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (posp orows))
+       (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
+        (mv :state fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       ((mv code need) (fn2-succ-room *fn2-succ-slots* 0 tx (fn2-id-engine-arena 0 fn2-id-engine)
                                      (floor (fn2-overlay-index-rows fn2-overlay-index) orows) 0 fn2-succ-slots fn2-overlays))
-      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (eq code :ok))
+       (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
+        (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       ((mv code fn2-id-engine fn2-pool) (fn2-idc-scratch fn2-id-engine fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (eq code :ok))
+       (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
+        (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       ((mv code fn2-overlays fn2-pool) (fn2-idc-hold-spares need need fn2-id-engine fn2-overlays fn2-overlay-index fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      ((unless (eq code :ok))
+       (let ((fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots)))
+        (mv code fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
       (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-staged*) (batch 0) (event 0)))
       ((mv code fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
        (fn2-succ-bind tx batch event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
@@ -561,7 +572,8 @@
                                    fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-txns-phase fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares fn2-succ-bind fn2-id-engine-arena))
+ (fn2-succ-txns-phase fn2-succ-release-slots fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
+  fn2-succ-bind fn2-id-engine-arena))
 
 ;; The stream members of published batch B (E's fn2-commit-stream-wake,
 ;; attached to B's hook right after fn2-successor-publish, before any
@@ -1165,7 +1177,7 @@
                (if (and (< 0 aslot) (< (+ 1 aslot) (fn2-accounts-rows fn2-accounts))
                         (posp ainc) (<= ainc *fn2-account-u32-max*))
                    (let* ((cur (nfix (fn2-accounts-incarnation aslot fn2-accounts)))
-                          (fn2-accounts (fn2-accounts-set-incarnation aslot (if (< cur ainc) ainc cur) fn2-accounts)))
+                          (fn2-accounts (if (< cur ainc) (fn2-accounts-set-incarnation aslot ainc fn2-accounts) fn2-accounts)))
                     (if (equal (fn2-accounts-state aslot fn2-accounts) *fn2-account-state-free*)
                         (fn2-accounts-set-state aslot *fn2-account-state-configured* fn2-accounts)
                       fn2-accounts))

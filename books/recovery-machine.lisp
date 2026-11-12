@@ -794,19 +794,26 @@
     :accept ()
     :case (((:ok) (:set (rc-roff roff) (rc-rend rend)) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
            ((:invalid) (:stop :recovery-replay)))))
-  ;; stage 1: the workspace's member to C, in member order
+  ;; stage 1: the workspace's member to C, in member order; :full is C's
+  ;; overlay backpressure until the sealer seals an already-published batch
   (replay-flush :on-refusal ((:stop :recovery-replay))
-   (:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen) :accept (:ok))
-   (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1) (rc-stage 0))
-   (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+   (:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen)
+    :accept ()
+    :case (((:ok) (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1) (rc-stage 0))
+                  (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           ((:full) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+           (:otherwise (:stop :recovery-replay)))))
   ;; stage 2, the stream's end: its last member (one step), then the
   ;; batch's publish and the next chained commit's records, or the replay's
   ;; end (one call ending it, when anything was replayed)
   (replay-commit-end :on-refusal ((:stop :recovery-replay))
    (:if (< 0 row-rc-wlen)
-        ((:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen) :accept (:ok))
-         (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1))
-         (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+        ((:do (code) (fn2-member-replay row-rc-commit row-rc-wevent row-rc-wslot row-rc-wgen row-rc-wlen)
+          :accept ()
+          :case (((:ok) (:set (rc-wlen 0) (rc-wevent 0) (rc-wmembers (+ 1 row-rc-wmembers)) (rc-replayed 1))
+                        (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 ((:full) (:charge :bytes 4096 :steps *fn2-work-stage* :runnable t))
+                 (:otherwise (:stop :recovery-replay)))))
         ((:do (pcode) (fn2-successor-publish row-rc-commit) :when (< 0 row-rc-wmembers) :else (:ok) :accept (:ok))
          (:if (< row-rc-commit row-rc-chain)
               ((:do (xcode p) (fn2-recovery-commit-extent (+ 1 row-rc-commit)) :accept (:ok))

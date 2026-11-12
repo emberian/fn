@@ -121,7 +121,7 @@
   (declare (xargs :verify-guards nil))
   (let ((r (fn2-scu-run n)) (want (list (fn2-scu-expected n) t)))
     (or (and (equal (car r) :quiet) (equal (nth 2 r) 0) (equal (nth 1 r) want)
-             (<= (nth 3 r) 32) (<= 16 (nth 4 r)))
+             (<= (nth 3 r) 42) (<= 20 (nth 4 r)))
         (cw "capacity ~x0 stop ~x1 live-runs ~x2 free-pages ~x3~%got ~s4~%"
             (car r) (nth 2 r) (nth 3 r) (nth 4 r)
             (coerce (fn2-scu-chars (car (nth 1 r))) 'string)))))

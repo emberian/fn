@@ -38,7 +38,7 @@
   (put-assoc-equal :owner-account 2
   (put-assoc-equal :cns 2
     (put-assoc-equal :control-connections 3
-      (put-assoc-equal :extent-slots 256
+      (put-assoc-equal :extent-slots 32
         (put-assoc-equal :pool-classes '((32 . 1024) (128 . 16384) (64 . 65536))
           (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))))))))))
 (defconst *m2-mini-conn* 0)
