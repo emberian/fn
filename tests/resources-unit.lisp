@@ -144,7 +144,7 @@
   (declare (xargs :guard t))
   (if (or (atom xs) (atom (cdr xs)))
       nil
-    (if (eq (car xs) k)
+    (if (equal (car xs) k)
         (cadr xs)
       (fn2-resource-plist-get k (cddr xs)))))
 
