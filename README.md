@@ -92,9 +92,9 @@ Each state machine declares its phases, row fields, resource holdings (`:holds`)
 
 ---
 
-## 4. What Role Lean 4 Serves (`meta/`, 365 files, ~430 KLOC, Zero `sorryAx`)
+## 4. What Role Lean 4 Serves (`meta/` — ~17.2 KLOC Handwritten + ~414 KLOC Emitted, Zero `sorryAx`)
 
-Rather than translating ACL2 theorems into Lean as unchecked `axiom` declarations (contrast [`docs/design/LEAN-ACL2-SURVEY-20261112.md`](docs/design/LEAN-ACL2-SURVEY-20261112.md)), `meta/` is a self-contained Lean 4 development checked under `meta/AxiomCensus.lean`: every exported theorem depends only on Lean's standard logical foundation (`propext`, `Quot.sound`, `Classical.choice`), with **zero custom axioms and zero `sorryAx`** across 360+ `#print axioms` checks.
+Rather than translating ACL2 theorems into Lean as unchecked `axiom` declarations (contrast [`docs/design/LEAN-ACL2-SURVEY-20261112.md`](docs/design/LEAN-ACL2-SURVEY-20261112.md)), `meta/` consists of **~17.2 KLOC of handwritten Lean 4** (40 files covering the metatheory, deep ACL2 evaluator, and `Fn2.Arms` operational semantics and combinators) paired with **~414 KLOC of mechanically emitted Lean 4** (326 files in `meta/Fn2/Instances/` and `Fn2/Arms/CoreValidation.lean` generated from the live certified ACL2 world by `meta/emit/`). Every theorem is checked under `meta/AxiomCensus.lean` to depend only on Lean's standard logical foundation (`propext`, `Quot.sound`, `Classical.choice`), with **zero custom axioms and zero `sorryAx`** across 360+ `#print axioms` checks.
 
 Lean 4 serves three specific roles alongside ACL2:
 
