@@ -357,6 +357,12 @@ import Fn2
 #print axioms Fn2.ACL2.PoolCompare.underestimated_fuel_rejected
 #print axioms Fn2.Arms.Wrapper.certificate
 #print axioms Fn2.Arms.Wrapper.omitted_child_rejected
+#print axioms Fn2.Arms.Combinators.tupleImage_patchKids
+#print axioms Fn2.Arms.Combinators.callOp_core_adapter
+#print axioms Fn2.Arms.Combinators.applyFieldWrites_sort
+#print axioms Fn2.Arms.Combinators.put_eq_ite
+#print axioms Fn2.Arms.Combinators.runArm_eq
+#print axioms Fn2.Arms.Combinators.omitted_child_rejected_arm
 
 #print axioms Fn2.Instances.CoreWorld.«FN2-CNS-RUN-DRAINING».canonical_body
 #print axioms Fn2.Instances.CoreWorld.«FN2-CNS-ON-READ-RESULT».canonical_body
