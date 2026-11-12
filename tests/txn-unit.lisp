@@ -538,3 +538,56 @@
          ;; the pairs follow the Newsgroups header, not the group table
          (not (equal got (fn2-tu-xref-want "Xref: fn2.invalid local.test:1 local.two:1"))))))
 (assert-event (fn2-txn-test-xref-groups))
+
+; Profile-configured cross-post group limit (:max-groups-per-article, D27):
+; 1. At :max-groups-per-article 7, a 7-group cross-post (exceeding the old
+;    compile-time literal 6, stepping cleanly around *fn2-txn-slot-depend*)
+;    is accepted (240) and filed in all 7 groups with a 7-pair Xref header.
+; 2. At :max-groups-per-article 2 on the same 7-group store, a 2-group post
+;    is accepted (240) and a 3-group cross-post is refused 441 unaffordable.
+(defconst *fn2-tu-seven-groups*
+  '(("local.g1" . 1) ("local.g2" . 2) ("local.g3" . 3) ("local.g4" . 4)
+    ("local.g5" . 5) ("local.g6" . 6) ("local.g7" . 7)))
+(defconst *fn2-tu-unaffordable-441*
+  "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
+
+(defun fn2-txn-test-profile-groups-max ()
+  (declare (xargs :verify-guards nil))
+  (let* ((base (put-assoc-equal :groups *fn2-tu-seven-groups* *fn2-tu-read-profile*))
+         (prof7 (put-assoc-equal :max-groups-per-article 7 base))
+         (prof2 (put-assoc-equal :max-groups-per-article 2 base))
+         (lines7 (append (fn2-tu-xref-post "<g7@example.invalid>"
+                           "local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7")
+                         '("GROUP local.g7" "HEAD 1" "QUIT")))
+         (oct7 (fn2-tu-text lines7))
+         (r7 (fn2-tu-run prof7 nil (list (list oct7 (fn2-tu-sizes (len oct7) 4096)))))
+         (want7 (list :ok :quiet 0
+                      (fn2-tu-text
+                       (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK"
+                             "211 1 1 1 local.g7"
+                             "221 1 <g7@example.invalid> headers follow"
+                             "Xref: fn2.invalid local.g1:1 local.g2:1 local.g3:1 local.g4:1 local.g5:1 local.g6:1 local.g7:1"
+                             "From: a@example.invalid" "Subject: hello"
+                             "Newsgroups: local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7"
+                             "Message-ID: <g7@example.invalid>" "."
+                             *fn2-tu-205*))))
+         (lines2 (append (fn2-tu-xref-post "<g2ok@example.invalid>" "local.g1,local.g2")
+                         (fn2-tu-xref-post "<g3no@example.invalid>" "local.g1,local.g2,local.g3")
+                         '("QUIT")))
+         (oct2 (fn2-tu-text lines2))
+         (r2 (fn2-tu-run prof2 nil (list (list oct2 (fn2-tu-sizes (len oct2) 4096)))))
+         (want2 (list :ok :quiet 0
+                      (fn2-tu-text
+                       (list *fn2-tu-greeting*
+                             *fn2-tu-340* "240 article received OK"
+                             *fn2-tu-340* *fn2-tu-unaffordable-441*
+                             *fn2-tu-205*)))))
+    (and (fn2-txn-config-profilep prof7)
+         (fn2-txn-config-profilep prof2)
+         (not (fn2-txn-config-profilep (put-assoc-equal :max-groups-per-article 0 base)))
+         (not (fn2-txn-config-profilep (put-assoc-equal :max-groups-per-article (+ 1 *fn2-txn-groups-max*) base)))
+         (or (equal (list (car r7) (nth 1 r7) (nth 3 r7) (car (car (nth 2 r7)))) want7)
+             (cw "prof7 ~x0~%want ~x1~%" r7 want7))
+         (or (equal (list (car r2) (nth 1 r2) (nth 3 r2) (car (car (nth 2 r2)))) want2)
+             (cw "prof2 ~x0~%want ~x1~%" r2 want2)))))
+(assert-event (fn2-txn-test-profile-groups-max))
