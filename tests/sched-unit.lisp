@@ -245,7 +245,15 @@
        (fn2-control (update-fn2-control-now 120 fn2-control))
        (fn2-control (update-fn2-control-idle-deadline *fn2-no-deadline* fn2-control))
        (ready-at-120 (fn2-timer-service-ready-p fn2-sched fn2-control))
+       ;; The tiny profile has 17 rows: step 1 visits [0, 16) (the bound), so the
+       ;; sweep is unfinished, the service stays ready and idle keeps its base.
        ((mv woken1 fn2-sched fn2-control) (fn2-timer-service-step fn2-sched fn2-control))
+       (cur-mid (fn2-control-timer-cursor fn2-control))
+       (ready-mid (fn2-timer-service-ready-p fn2-sched fn2-control))
+       (idle-mid (fn2-control-idle-deadline fn2-control))
+       ;; Step 2 visits row 16, wraps, and refreshes idle from the sweep minimum.
+       ((mv woken2 fn2-sched fn2-control) (fn2-timer-service-step fn2-sched fn2-control))
+       (cur-wrap (fn2-control-timer-cursor fn2-control))
        (exp2 (fn2-sched-expired 2 fn2-sched))
        (dl2 (fn2-sched-deadline 2 fn2-sched))
        (exp4 (fn2-sched-expired 4 fn2-sched))
@@ -261,7 +269,9 @@
              (= idle-before 100)
              (not ready-at-50)
              ready-at-120
-             (= woken1 1)
+             (= (fn2-sched-rows fn2-sched) 17)
+             (= woken1 1) (= cur-mid 16) ready-mid (= idle-mid *fn2-no-deadline*)
+             (= woken2 0) (= cur-wrap 0)
              (= exp2 1) (= dl2 *fn2-no-deadline*)
              (= exp4 0) (= dl4 250)
              (= idle-after-120 250)

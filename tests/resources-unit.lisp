@@ -5,7 +5,7 @@
 (include-book "../books/resources")
 (include-book "../books/sched")
 (include-book "../books/arm-children")
-(include-book "../books/core")
+(include-book "../books/assembly-core")
 (include-book "std/util/bstar" :dir :system)
 
 (defmacro fn2-resource-rejects (name form)
@@ -144,24 +144,28 @@
   (declare (xargs :guard t))
   (if (or (atom xs) (atom (cdr xs)))
       nil
-    (if (eq (car xs) k)
+    (if (equal (car xs) k)
         (cadr xs)
       (fn2-resource-plist-get k (cddr xs)))))
 
 (defun fn2-resource-service-fns (rows)
   (declare (xargs :guard t))
   (if (atom rows) nil
-    (let ((plist (and (consp (car rows)) (cdar rows))))
-      (list* (fn2-resource-plist-get :ready plist)
-             (fn2-resource-plist-get :step plist)
-             (fn2-resource-service-fns (cdr rows))))))
+    (if (not (and (consp (car rows)) (keywordp (caar rows)) (not (equal (caar rows) :guard))))
+        (fn2-resource-service-fns (cdr rows))
+      (let ((plist (cdar rows)))
+        (list* (fn2-resource-plist-get :ready plist)
+               (fn2-resource-plist-get :step plist)
+               (fn2-resource-service-fns (cdr rows)))))))
 
 (defun fn2-resource-action-fns (rows)
   (declare (xargs :guard t))
   (if (atom rows) nil
-    (let ((plist (and (consp (car rows)) (cdar rows))))
-      (cons (fn2-resource-plist-get :issue plist)
-            (fn2-resource-action-fns (cdr rows))))))
+    (if (not (and (consp (car rows)) (keywordp (caar rows)) (not (equal (caar rows) :guard))))
+        (fn2-resource-action-fns (cdr rows))
+      (let ((plist (cdar rows)))
+        (cons (fn2-resource-plist-get :issue plist)
+              (fn2-resource-action-fns (cdr rows)))))))
 
 (assert-event
  (fn2-assert-compliant-p
@@ -173,7 +177,10 @@
 ; reservation + outbox submission, ConnectResult completion, and latched peer observation.
 (defun fn2-resource-test-connect-run (fn2-pool fn2-ops fn2-control)
   (declare (xargs :stobjs (fn2-pool fn2-ops fn2-control) :verify-guards nil))
-  (b* ((fn2-pool (fn2-pool-init *fn2-profile-tiny* fn2-pool))
+  (b* ((fn2-pool (fn2-pool-init (fn2-profile-pool-classes *fn2-profile-tiny*)
+                                (fn2-profile-generation-start *fn2-profile-tiny*)
+                                (fn2-profile-generation-limit *fn2-profile-tiny*)
+                                fn2-pool))
        (fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
        (fn2-control (fn2-control-init *fn2-profile-tiny* fn2-control))
        (free0 (fn2-ops-free-count fn2-ops))

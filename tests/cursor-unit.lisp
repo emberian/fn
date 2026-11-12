@@ -6,6 +6,7 @@
 ; Run: sh tools/certify.sh tests/cursor-unit.lisp
 (in-package "ACL2")
 (include-book "../books/owed-cursor")
+(include-book "../sim/check-wire")
 (include-book "std/util/bstar" :dir :system)
 
 (defconst *fn2-cru-groups* (fn2-profile-get :groups *fn2-cursor-profile*))
@@ -556,7 +557,8 @@
         "GROUP local.test"
         "XPAT Subject 1-4 t*"
         "XPAT Subject 1-4 *,!*two*,!*beta*"
-        "XPAT Subject 1-4 alpha   beta   "
+        "XPAT Subject 1-4 alpha   beta"
+        "XPAT Subject 1-4 alpha beta "
         "XPAT Subject 7-9 *"
         "XPAT :bytes 1-2 164"
         "XPAT :lines 1-4 2"
@@ -602,6 +604,7 @@
                "221 header follows" "2 two" "3 three" "."
                "221 header follows" "1 one" "3 three" "."
                "221 header follows" "4 alpha beta" "."
+               "501 syntax error"
                "221 header follows" "."
                "221 header follows" "1 164" "2 164" "."
                "221 header follows" "4 2" "."
@@ -630,6 +633,7 @@
   (declare (xargs :verify-guards nil))
   (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-d6-lines* sizes))
         (want (fn2-cru-d6-expected-wire)))
-    (or (equal got want) (cw "d6-complete ~x0~%want ~x1~%" got want))))
+    (and (fn2-wire-pass-p (fn2-cw-crlf-octets *fn2-cru-d6-lines*) (car got) (cadr got))
+         (or (equal got want) (cw "d6-complete ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-cursor-test-d6-complete nil))
 (assert-event (fn2-cursor-test-d6-complete '(13 5 1)))
