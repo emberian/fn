@@ -149,6 +149,21 @@
                   (fn2-answer-digests-loop (- left 1) (+ 1 (nfix i)) (+ 1 (nfix run)) slot gen okind oslot ogen fn2-pool)))
             (t nil)))))
 
+;; XPAT's pattern argument is (:rest): strip trailing SP/TAB so word-joined
+;; wildmat validation and matching (" ".join(args[2:])) see the last token's end.
+(defun fn2-xpat-trim-end (ps pe pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix pe) (nfix ps)))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp ps) (natp pe))))
+  (if (<= (nfix pe) (nfix ps)) (nfix ps)
+    (mv-let (ok b) (fn2-gram-read pslot pgen (- (nfix pe) 1) okind oslot ogen fn2-pool)
+      (if (and ok (fn2-gram-wspp b))
+          (fn2-xpat-trim-end ps (- (nfix pe) 1) pslot pgen okind oslot ogen fn2-pool)
+        (nfix pe)))))
+(defthm fn2-xpat-trim-end-natp
+  (natp (fn2-xpat-trim-end ps pe pslot pgen okind oslot ogen fn2-pool))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-xpat-trim-end))
+
 ;; The sub-form verdict of a parsed line: T when the command's own checks
 ;; pass (or it has none). LIST's variant table: 0 ACTIVE, 1 ACTIVE.TIMES,
 ;; 2 COUNTS, 3 DISTRIB.PATS, 4 DISTRIBUTIONS, 5 HEADERS, 6 MOTD,
@@ -181,8 +196,9 @@
         ((equal tag *fn2-nntp-command-xpat*)
          (and (eq f0 :span) (fn2-answer-field-p a0 b0 slot gen okind oslot ogen fn2-pool)
               (eq f2 :span)
-              (mv-let (ok k x y) (fn2-gram-arg-wildmat a2 b2 slot gen okind oslot ogen fn2-pool)
-                (declare (ignore k x y)) ok)))
+              (let ((pe (fn2-xpat-trim-end a2 (+ a2 b2) slot gen okind oslot ogen fn2-pool)))
+                (mv-let (ok k x y) (fn2-gram-arg-wildmat a2 (nfix (- pe a2)) slot gen okind oslot ogen fn2-pool)
+                  (declare (ignore k x y)) ok))))
         ((equal tag *fn2-nntp-command-xfn-zarticle*)
          (and (eq f1 :span) (fn2-answer-digests-loop b1 a1 0 slot gen okind oslot ogen fn2-pool)))
         (t t)))
@@ -335,6 +351,94 @@
                     okind oslot ogen fn2-pool))
 (in-theory (disable fn2-wildmat-match-p))
 
+;; XPAT (RFC 2980 section 2.9; specs/nntp.md NNT-016): multiple pattern tokens
+;; separated by SP or TAB join with a single space (" ".join(args[2:])), with
+;; trailing SP/TAB trimmed.
+(defun fn2-xpat-skip-wsp (i pe pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix (- (nfix pe) (nfix i)))
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp i) (natp pe))))
+  (if (>= (nfix i) (nfix pe)) (nfix pe)
+    (mv-let (ok b) (fn2-gram-read pslot pgen (nfix i) okind oslot ogen fn2-pool)
+      (if (and ok (fn2-gram-wspp b))
+          (fn2-xpat-skip-wsp (+ 1 (nfix i)) pe pslot pgen okind oslot ogen fn2-pool)
+        (nfix i)))))
+(defthm fn2-xpat-skip-wsp-natp
+  (natp (fn2-xpat-skip-wsp i pe pslot pgen okind oslot ogen fn2-pool))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-xpat-skip-wsp))
+
+(defun fn2-xpat-step-one (pidx pe tc pslot pgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp pidx) (natp pe) (natp tc))))
+  (if (>= (nfix pidx) (nfix pe)) (mv nil (nfix pe))
+    (mv-let (ok pb) (fn2-gram-read pslot pgen (nfix pidx) okind oslot ogen fn2-pool)
+      (if (and ok (fn2-gram-wspp pb))
+          (mv (= 32 (nfix tc))
+              (fn2-xpat-skip-wsp (+ 1 (nfix pidx)) pe pslot pgen okind oslot ogen fn2-pool))
+        (fn2-wildmat-step-one pidx pe tc pslot pgen okind oslot ogen fn2-pool)))))
+(defthm fn2-xpat-step-one-natp
+  (natp (mv-nth 1 (fn2-xpat-step-one pidx pe tc pslot pgen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-xpat-step-one))
+
+(defun fn2-xpat-pat-loop (fuel pidx pe pslot pgen tidx te tslot tgen star-pidx star-tidx okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp pidx) (natp pe)
+                              (natp tidx) (natp te) (natp star-pidx) (natp star-tidx))))
+  (if (zp fuel) nil
+    (let ((pidx (nfix pidx)) (pe (nfix pe)) (tidx (nfix tidx)) (te (nfix te))
+          (star-pidx (nfix star-pidx)) (star-tidx (nfix star-tidx)))
+      (if (< tidx te)
+          (mv-let (okp pb) (fn2-gram-read pslot pgen pidx okind oslot ogen fn2-pool)
+            (if (and (< pidx pe) okp (= pb 42))
+                (fn2-xpat-pat-loop (- fuel 1) (+ 1 pidx) pe pslot pgen tidx te tslot tgen (+ 1 pidx) tidx
+                                   okind oslot ogen fn2-pool)
+              (mv-let (okt tb) (fn2-gram-read tslot tgen tidx okind oslot ogen fn2-pool)
+                (if (not okt) nil
+                  (mv-let (ok next-pidx)
+                    (if (< pidx pe)
+                        (fn2-xpat-step-one pidx pe tb pslot pgen okind oslot ogen fn2-pool)
+                      (mv nil pe))
+                    (if ok
+                        (fn2-xpat-pat-loop (- fuel 1) next-pidx pe pslot pgen (+ 1 tidx) te tslot tgen star-pidx star-tidx
+                                           okind oslot ogen fn2-pool)
+                      (if (<= star-pidx pe)
+                          (fn2-xpat-pat-loop (- fuel 1) star-pidx pe pslot pgen (+ 1 star-tidx) te tslot tgen
+                                             star-pidx (+ 1 star-tidx) okind oslot ogen fn2-pool)
+                        nil)))))))
+        (mv-let (okp pb) (fn2-gram-read pslot pgen pidx okind oslot ogen fn2-pool)
+          (if (and (< pidx pe) okp (= pb 42))
+              (fn2-xpat-pat-loop (- fuel 1) (+ 1 pidx) pe pslot pgen tidx te tslot tgen star-pidx star-tidx
+                                 okind oslot ogen fn2-pool)
+            (= pidx pe)))))))
+(in-theory (disable fn2-xpat-pat-loop))
+
+(defun fn2-xpat-wildmat-loop (fuel ps pe pslot pgen ts te tslot tgen matched okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp ps) (natp pe) (natp ts) (natp te))))
+  (if (or (zp fuel) (>= (nfix ps) (nfix pe)))
+      (and matched t)
+    (let* ((ps (nfix ps)) (pe (nfix pe)) (ts (nfix ts)) (te (nfix te))
+           (alt-e (fn2-wildmat-alt-end ps pe pslot pgen okind oslot ogen fn2-pool)))
+      (mv-let (okb b0) (fn2-gram-read pslot pgen ps okind oslot ogen fn2-pool)
+        (let* ((neg (and (< ps alt-e) okb (= b0 33)))
+               (pat-s (if neg (+ 1 ps) ps))
+               (pfuel (nfix (* (+ 2 (nfix (- alt-e pat-s))) (+ 2 (nfix (- te ts))))))
+               (hit (fn2-xpat-pat-loop pfuel pat-s alt-e pslot pgen ts te tslot tgen (+ 1 alt-e) ts
+                                       okind oslot ogen fn2-pool))
+               (next-matched (if hit (not neg) matched)))
+          (if (< alt-e pe)
+              (fn2-xpat-wildmat-loop (- fuel 1) (+ 1 alt-e) pe pslot pgen ts te tslot tgen next-matched
+                                     okind oslot ogen fn2-pool)
+            (and next-matched t)))))))
+(in-theory (disable fn2-xpat-wildmat-loop))
+
+(defun fn2-xpat-wildmat-match-p (ps pe pslot pgen ts te tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp ps) (natp pe) (natp ts) (natp te))))
+  (let ((pe (fn2-xpat-trim-end ps pe pslot pgen okind oslot ogen fn2-pool)))
+    (fn2-xpat-wildmat-loop (+ 1 (nfix (- pe (nfix ps)))) ps pe pslot pgen ts te tslot tgen nil
+                           okind oslot ogen fn2-pool)))
+(in-theory (disable fn2-xpat-wildmat-match-p))
+
 ;; ------------------------------------------------------------------------
 ;; Interim replies: commands whose machine is a later quest answer the reply
 ;; their own row declares for "not available here yet", after their
@@ -342,8 +446,7 @@
 ;; emptiness is a D9 acceptance check (section 4.3), so no interim outlives
 ;; its quest. NEXT and LAST answer 412: no D3 connection has a group.
 (defconst *fn2-answer-interim*
-  '((xpat :no-projection :d6)
-    (xfn-zarticle :no-projection :d6) (xfncatchup :no-projection :e4)
+  '((xfncatchup :no-projection :e4)
     (starttls :cannot :d7) (compress :algorithm :e2)))
 
 (defun fn2-answer-interim-arms (rows)
@@ -365,7 +468,9 @@
   '((group :no-projection) (listgroup :no-projection) (next :no-group-selected) (last :no-group-selected)
     (article :no-projection) (head :no-projection) (body :no-projection)
     (stat :no-projection) (over :no-projection) (xover :no-projection)
-    (hdr :no-projection) (xhdr :no-projection) (newgroups :no-projection) (newnews :no-projection)
+    (hdr :no-projection) (xhdr :no-projection) (xpat :no-projection)
+    (newgroups :no-projection) (newnews :no-projection)
+    (xfn-zarticle :no-projection)
     (check :later)))
 (make-event
  (value `(defun fn2-answer-unread-reply (tag)
@@ -478,8 +583,9 @@
                 (t
                  (fn2-answer-say c *fn2-nntp-reply-list-not-stored* mask 0 tslot tgen okind oslot ogen fn2-pool)))
           (mv code :command pending fn2-pool))))
-     ;; HDR/XHDR: an unknown metadata item (:foo) answers 503 (RFC 3977 8.5).
-     ((and (or (equal tag *fn2-nntp-command-hdr*) (equal tag *fn2-nntp-command-xhdr*))
+     ;; HDR/XHDR/XPAT: an unknown metadata item (:foo) answers 503 (RFC 3977 8.5).
+     ((and (or (equal tag *fn2-nntp-command-hdr*) (equal tag *fn2-nntp-command-xhdr*)
+               (equal tag *fn2-nntp-command-xpat*))
            (not (fn2-answer-hdr-meta-ok-p a0 b0 rslot rgen okind oslot ogen fn2-pool)))
       (mv-let (code fn2-pool)
         (fn2-answer-say c (fn2-answer-unread-reply tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
@@ -681,8 +787,9 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-answer-put-text fn2-answer-civil fn2-answer-date-digits fn2-answer-field-p fn2-answer-hdr-meta-ok-p
-    fn2-answer-digests-loop fn2-answer-subform-p fn2-wildmat-class-end fn2-wildmat-class-in-p
+    fn2-answer-digests-loop fn2-xpat-trim-end fn2-answer-subform-p fn2-wildmat-class-end fn2-wildmat-class-in-p
     fn2-wildmat-step-one fn2-wildmat-pat-loop fn2-wildmat-alt-end fn2-wildmat-loop fn2-wildmat-match-p
+    fn2-xpat-skip-wsp fn2-xpat-step-one fn2-xpat-pat-loop fn2-xpat-wildmat-loop fn2-xpat-wildmat-match-p
     fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-ok fn2-answer-discard-token
     fn2-answer fn2-answer-greeting fn2-answer-overflow fn2-answer-block-open fn2-answer-post-reply
     fn2-answer-ihave-reply fn2-answer-takethis-reply fn2-answer-outcome)

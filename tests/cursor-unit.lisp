@@ -527,3 +527,109 @@
                                     *fn2-cru-xref-lines*)
               (fn2-cursor-spec-wire *fn2-cru-groups* *fn2-cru-xref-seeds* *fn2-cru-xref-lines*))))
 (assert-event (and (fn2-cursor-test-xref) (fn2-cursor-test-xref-negative)))
+
+;; D6 completion: XPAT (RFC 2980 section 2.9; specs/nntp.md:161-180,415-428)
+;; and XFN-ZARTICLE plain-article fallback (specs/nntp.md:2484-2499).
+(defconst *fn2-cru-d6-hex1* "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+(defconst *fn2-cru-d6-hex2* "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
+(defconst *fn2-cru-d6-lines*
+  (list "XPAT Subject 1-3 *"
+        "XPAT Subject <b@example.invalid> t*o"
+        "XPAT Subject <b@example.invalid> *nomatch*"
+        "XPAT Subject <z@example.invalid> *"
+        "XPAT :unknown <b@example.invalid> *"
+        (fn2-csp-cat (list "XFN-ZARTICLE <b@example.invalid> " *fn2-cru-d6-hex1*))
+        (fn2-csp-cat (list "XFN-ZARTICLE <z@example.invalid> " *fn2-cru-d6-hex1*))
+        "XFN-ZARTICLE <b@example.invalid> nothex"
+        "POST"
+        "From: poster@example.invalid"
+        "Subject: alpha beta"
+        "Newsgroups: local.test"
+        "X-Custom: needle in haystack"
+        "Message-ID: <xpat4@example.invalid>"
+        ""
+        "posted zarticle line"
+        "..dot line"
+        "."
+        "GROUP local.empty"
+        "XPAT Subject 1-3 *"
+        "GROUP local.test"
+        "XPAT Subject 1-4 t*"
+        "XPAT Subject 1-4 *,!*two*,!*beta*"
+        "XPAT Subject 1-4 alpha   beta   "
+        "XPAT Subject 7-9 *"
+        "XPAT :bytes 1-2 164"
+        "XPAT :lines 1-4 2"
+        "XPAT :fn-verified 1-2 absent   no-field"
+        "XPAT Newsgroups 1-4 *.test"
+        "XPAT X-Custom 1-4 *needle*"
+        "XPAT X-Custom <xpat4@example.invalid> *needle*"
+        "XPAT X-Custom <a@example.invalid> ?*"
+        "XPAT Xref 1-4 *local.test*"
+        "XPAT Xref 1-2 *"
+        (fn2-csp-cat (list "XFN-ZARTICLE <xpat4@example.invalid> " *fn2-cru-d6-hex1* " " *fn2-cru-d6-hex2*))
+        "STAT"
+        "QUIT"))
+(defun fn2-cru-d6-expected-wire ()
+  (declare (xargs :verify-guards nil))
+  (list (fn2-cw-crlf-octets
+         (list "200 fn-nntp experimental server ready"
+               "412 no newsgroup selected"
+               "221 header follows" "<b@example.invalid> two" "."
+               "221 header follows" "."
+               "430 no article with that message-id"
+               "503 archive projection unavailable"
+               "220 0 <b@example.invalid> article follows"
+               "Xref: fn2.invalid local.test:2"
+               "From: a@example.invalid"
+               "Subject: two"
+               "Date: Fri, 30 Oct 2026 12:00:00 +0000"
+               "Message-ID: <b@example.invalid>"
+               "Newsgroups: local.test"
+               ""
+               "body two"
+               "..dotted"
+               ".."
+               "end"
+               "."
+               "430 no article with that message-id"
+               "501 syntax error"
+               "340 send article to be posted"
+               "240 article received OK"
+               "211 0 1 0 local.empty"
+               "221 header follows" "."
+               "211 4 1 4 local.test"
+               "221 header follows" "2 two" "3 three" "."
+               "221 header follows" "1 one" "3 three" "."
+               "221 header follows" "4 alpha beta" "."
+               "221 header follows" "."
+               "221 header follows" "1 164" "2 164" "."
+               "221 header follows" "4 2" "."
+               "221 header follows" "1 absent no-field" "2 absent no-field" "."
+               "221 header follows" "1 local.test" "2 local.test" "3 local.test" "4 local.test" "."
+               "221 header follows" "4 needle in haystack" "."
+               "221 header follows" "<xpat4@example.invalid> needle in haystack" "."
+               "221 header follows" "."
+               "221 header follows" "."
+               "221 header follows" "1 " "2 " "."
+               "220 0 <xpat4@example.invalid> article follows"
+               "Xref: fn2.invalid local.test:4"
+               "From: poster@example.invalid"
+               "Subject: alpha beta"
+               "Newsgroups: local.test"
+               "X-Custom: needle in haystack"
+               "Message-ID: <xpat4@example.invalid>"
+               ""
+               "posted zarticle line"
+               "..dot line"
+               "."
+               "223 1 <a@example.invalid> retrieved"
+               "205 closing connection"))
+        t))
+(defun fn2-cursor-test-d6-complete (sizes)
+  (declare (xargs :verify-guards nil))
+  (let ((got (fn2-cursor-wire-solo *fn2-cru-seeds* *fn2-cru-d6-lines* sizes))
+        (want (fn2-cru-d6-expected-wire)))
+    (or (equal got want) (cw "d6-complete ~x0~%want ~x1~%" got want))))
+(assert-event (fn2-cursor-test-d6-complete nil))
+(assert-event (fn2-cursor-test-d6-complete '(13 5 1)))

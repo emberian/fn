@@ -3,6 +3,10 @@
 ; Run: sh tools/certify.sh tests/resources-unit.lisp
 (in-package "ACL2")
 (include-book "../books/resources")
+(include-book "../books/sched")
+(include-book "../books/arm-children")
+(include-book "../books/core")
+(include-book "std/util/bstar" :dir :system)
 
 (defmacro fn2-resource-rejects (name form)
   `(assert-event (not ,form) :msg (msg "~x0: a defective table was accepted" ',name)))
@@ -133,3 +137,78 @@
         (assoc-eq :connect (table-alist 'fn2-actions (w state)))
         (assoc-eq :timer (table-alist 'fn2-actions (w state)))
         (assoc-eq 'fn2-probe-app (table-alist 'fn2-app-manifests (w state))))))
+
+; Every service (:ready, :step) and action (:issue) registered in resources.lisp
+; names a defined, guard-verified :common-lisp-compliant function (no dangling stubs).
+(defun fn2-resource-plist-get (k xs)
+  (declare (xargs :guard t))
+  (if (or (atom xs) (atom (cdr xs)))
+      nil
+    (if (eq (car xs) k)
+        (cadr xs)
+      (fn2-resource-plist-get k (cddr xs)))))
+
+(defun fn2-resource-service-fns (rows)
+  (declare (xargs :guard t))
+  (if (atom rows) nil
+    (let ((plist (and (consp (car rows)) (cdar rows))))
+      (list* (fn2-resource-plist-get :ready plist)
+             (fn2-resource-plist-get :step plist)
+             (fn2-resource-service-fns (cdr rows))))))
+
+(defun fn2-resource-action-fns (rows)
+  (declare (xargs :guard t))
+  (if (atom rows) nil
+    (let ((plist (and (consp (car rows)) (cdar rows))))
+      (cons (fn2-resource-plist-get :issue plist)
+            (fn2-resource-action-fns (cdr rows))))))
+
+(assert-event
+ (fn2-assert-compliant-p
+  (append (fn2-resource-service-fns (table-alist 'fn2-services (w state)))
+          (fn2-resource-action-fns (table-alist 'fn2-actions (w state))))
+  (w state)))
+
+; Outbound :connect end-to-end check: refusal frames on invalid peer records,
+; reservation + outbox submission, ConnectResult completion, and latched peer observation.
+(defun fn2-resource-test-connect-run (fn2-pool fn2-ops fn2-control)
+  (declare (xargs :stobjs (fn2-pool fn2-ops fn2-control) :verify-guards nil))
+  (b* ((fn2-pool (fn2-pool-init *fn2-profile-tiny* fn2-pool))
+       (fn2-ops (fn2-ops-init *fn2-profile-tiny* fn2-ops))
+       (fn2-control (fn2-control-init *fn2-profile-tiny* fn2-control))
+       (free0 (fn2-ops-free-count fn2-ops))
+       ((mv bad1 & & fn2-pool fn2-ops fn2-control)
+        (fn2-issue-connect *fn2-peer-family-none* 0 0 0 0 0 1 2 3 0 fn2-pool fn2-ops fn2-control))
+       ((mv bad2 & & fn2-pool fn2-ops fn2-control)
+        (fn2-issue-connect *fn2-peer-family-inet* 119 #x7f000001 99 0 0 1 2 3 0 fn2-pool fn2-ops fn2-control))
+       (unchanged (and (= (fn2-ops-free-count fn2-ops) free0)
+                       (= (fn2-ops-queued fn2-ops) 0)
+                       (= (fn2-control-stop fn2-control) 0)))
+       ((mv ok opslot opgen fn2-pool fn2-ops fn2-control)
+        (fn2-issue-connect *fn2-peer-family-inet* 119 #x7f000001 0 0 0 1 2 3 0 fn2-pool fn2-ops fn2-control))
+       ((mv ack fn2-ops) (fn2-outbox-ack 1 fn2-ops))
+       (fn2-ops (fn2-post-result 0 opslot opgen *fn2-event-connect-result*
+                                 *fn2-outcome-done* *fn2-reason-none* 0 4 7 fn2-ops))
+       ((mv found hslot hgen hcell fn2-ops) (fn2-harvest-next fn2-ops))
+       ((mv pf pp pw0 pw1 pw2 pw3) (fn2-ops-observed-peer fn2-ops)))
+    (mv (and (eq bad1 :bounds) (eq bad2 :bounds) unchanged
+             (eq ok :ok) (eq ack :ok) (eq found t)
+             (= hslot opslot) (= hgen opgen) (= hcell 0)
+             (= pf *fn2-peer-family-inet*) (= pp 119)
+             (= pw0 #x7f000001) (= pw1 0) (= pw2 0) (= pw3 0)
+             (= (fn2-control-stop fn2-control) 0))
+        fn2-pool fn2-ops fn2-control)))
+
+(defun fn2-resource-test-connect ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (ok fn2-pool)
+      (with-local-stobj fn2-ops
+        (mv-let (ok fn2-pool fn2-ops)
+          (with-local-stobj fn2-control
+            (mv-let (ok fn2-pool fn2-ops fn2-control)
+              (fn2-resource-test-connect-run fn2-pool fn2-ops fn2-control)
+              (mv ok fn2-pool fn2-ops)))
+          (mv ok fn2-pool)))
+      ok)))
+(assert-event (fn2-resource-test-connect))
