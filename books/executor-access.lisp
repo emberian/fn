@@ -11,7 +11,9 @@
                 (fn2-control-wfp (fn2-core-control fn2-core))))
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 
-(defmacro fn2-exec-access (field width)
+; READ-ONLY: the getter alone. The stop bit has no setter: fn2-core-stop sets
+; it, and only a fresh core (fn2-control-init) clears it.
+(defmacro fn2-exec-access (field width &key read-only)
   (let ((get (fn2-columns-col-name 'fn2-exec field))
         (put (fn2-columns-col-name 'fn2-exec (fn2-columns-pre "SET-" field)))
         (read (fn2-columns-col-name 'fn2-control field))
@@ -27,19 +29,24 @@
          (implies (fn2-corep fn2-core) (natp (,get fn2-core))) :rule-classes :type-prescription)
        (defthm ,(fn2-columns-sym get "-BOUND")
          (implies (fn2-corep fn2-core) (< (,get fn2-core) ,(expt 2 width))) :rule-classes :linear)
-       (fn2-defoperation (:columns fn2-control) :access :infer
-       (defun ,put (value fn2-core)
-         (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-         (stobj-let ((fn2-control (fn2-core-control fn2-core)))
-           (fn2-control)
-           (if (unsigned-byte-p ,width value) (,write value fn2-control) fn2-control)
-           fn2-core)))
-       (fn2-core-preserves ,put (value fn2-core) :rows nil :prefix "")
+       ,@(and (not read-only)
+              `((fn2-defoperation (:columns fn2-control) :access :infer
+                 (defun ,put (value fn2-core)
+                   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+                   (stobj-let ((fn2-control (fn2-core-control fn2-core)))
+                     (fn2-control)
+                     (if (unsigned-byte-p ,width value) (,write value fn2-control) fn2-control)
+                     fn2-core)))
+                (fn2-core-preserves ,put (value fn2-core) :rows nil :prefix "")))
        (in-theory (disable ,get)))))
 (fn2-exec-access h 32)
 (fn2-exec-access k 32)
 (fn2-exec-access aturn 32)
-(fn2-exec-access stop 1)
+(fn2-exec-access stop 1 :read-only t)
+; The host entries' sticky-stop test (core.lisp) is the executor's stop bit.
+(defthm fn2-core-stopped-p-is-exec-stop
+  (equal (fn2-core-stopped-p fn2-core) (equal (fn2-exec-stop fn2-core) 1))
+  :hints (("Goal" :in-theory (enable fn2-core-stopped-p fn2-exec-stop))))
 (fn2-exec-access idle-deadline 60)
 (fn2-exec-access wake-generation 60)
 (fn2-exec-access armed-deadline 60)

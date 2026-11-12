@@ -522,10 +522,12 @@
         (t (mv :exhausted 0 0)))))
 (in-theory (disable fn2-commit-pick fn2-commit-settled-room))
 ; The harness's keyed fixture: N synthetic members in a batch of their own,
-; closed at once. (mv code id batch event fn2-core).
+; closed at once. (mv code id batch event fn2-core). A stopped core admits
+; nothing: :stopped, the core unchanged.
 (defun fn2-commit-admit-keyed (n mode okind oslot ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (b* (((mv pick id partner) (fn2-commit-pick fn2-core))
+ (b* (((when (fn2-core-stopped-p fn2-core)) (mv :stopped 0 0 0 fn2-core))
+      ((mv pick id partner) (fn2-commit-pick fn2-core))
       ((unless (eq pick :open)) (mv :exhausted 0 0 0 fn2-core))
       ((unless (and (posp n) (<= n *fn2-commit-members-per-batch*))) (mv :admission 0 0 0 fn2-core))
       ((unless (or (equal okind 0) (fn2-commit-settled-room n fn2-core))) (mv :exhausted 0 0 0 fn2-core))

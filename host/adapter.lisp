@@ -444,8 +444,12 @@ otherwise the bound one. Values: (index . cap) or nil."
                 (setf (fn2-nhost-sync host) nil)))))))))
 
 (defun fn2-n-iteration (host)
-  "One loop iteration (layer doc 4.1.3, steps 1-6). Returns the turn status."
+  "One loop iteration (layer doc 4.1.3, steps 1-6). Returns the turn status.
+A stopped core is a recovery boundary: no clock, completion, signal, turn or
+take reaches it after the stopping turn (the core refuses them all anyway)."
   (let ((core (fn2-nhost-core host)))
+    (when (fn2-host-stopped-p core)
+      (return-from fn2-n-iteration :stop))
     (let ((mono (fn2-native-clock t)) (real (fn2-native-clock nil)))
       (fn2-host-post-clock mono real 1 core)
       (fn2-n-record host (list :clock mono real 1)))

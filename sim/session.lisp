@@ -92,25 +92,35 @@
                (member-equal (fn2-sim-kind i fn2-sim) (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*)))
           (fn2-ss-device-busy i fn2-sim)))))
 
+; One session step: take the outbox, turn, take again, advance the device
+; and network (ALLOW: Accepts may complete). (mv status nactions fn2-core
+; fn2-sim fn2-own). A stopped core is a recovery boundary
+; (fn2-core-stopped-p): after the stopping turn the step takes nothing and
+; advances no flight into it; the callers then stop stepping.
+(defun fn2-ss-step (allow fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
+  (b* (((mv & fn2-core fn2-sim fn2-own)
+        (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
+       ((mv status & & nactions fn2-core) (fn2-turn fn2-core))
+       ((when (eq status :stop)) (mv status nactions fn2-core fn2-sim fn2-own))
+       ((mv & fn2-core fn2-sim fn2-own)
+        (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
+       ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance-with-clients nil allow fn2-core fn2-sim fn2-own)))
+    (mv status nactions fn2-core fn2-sim fn2-own)))
+
+; Step to rest; after a stop only what the clients already received is drained.
 (defun fn2-ss-run (fuel idle allow clients fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix fuel)))
-  (if (or (zp fuel) (<= 64 idle)) (mv clients fn2-core fn2-sim fn2-own)
-    (b* (((mv & fn2-core fn2-sim fn2-own)
-          (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
-         ((mv status & & nactions fn2-core) (fn2-turn fn2-core))
-         ((mv & fn2-core fn2-sim fn2-own)
-          (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
+  (if (or (zp fuel) (<= 64 idle) (fn2-core-stopped-p fn2-core)) (mv clients fn2-core fn2-sim fn2-own)
+    (b* (((mv status nactions fn2-core fn2-sim fn2-own) (fn2-ss-step allow fn2-core fn2-sim fn2-own))
          ((mv clients moved fn2-sim) (fn2-ss-drain clients fn2-sim))
-         ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance-with-clients nil allow fn2-core fn2-sim fn2-own))
          ;; a turn that ends :more (a machine runnable, a wake due, an
          ;; observation unharvested) is the node working, never idle: the
          ;; sealer's background seals share the visits a reply waits on
          ;; nor is a turn whose device still holds a flight
          (idle (if (or moved (< 0 nactions) (not (eq status :idle))
-                       (not (equal (fn2-core-stop-reason fn2-core) 0))
                        (fn2-ss-device-busy (fn2-sim-rows fn2-sim) fn2-sim))
-                   0 (+ 1 idle)))
-         (idle (if (equal (fn2-core-stop-reason fn2-core) 0) idle 64)))
+                   0 (+ 1 idle))))
       (fn2-ss-run (- fuel 1) idle allow clients fn2-core fn2-sim fn2-own))))
 
 ;; The simulated device spans every extent B's allocator can name under the
@@ -186,13 +196,8 @@
         (stobj-let ((fn2-sim-network (fn2-sim-net fn2-sim))) (found cap nonce)
           (fn2-ss-fresh (fn2-sim-network-rows fn2-sim-network) clients fn2-sim-network)
           (mv found cap nonce))))
-    (if (or found (zp fuel)) (mv found cap nonce fn2-core fn2-sim fn2-own)
-      (b* (((mv & fn2-core fn2-sim fn2-own)
-            (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
-           ((mv & & & & fn2-core) (fn2-turn fn2-core))
-           ((mv & fn2-core fn2-sim fn2-own)
-            (fn2-sim-take-prefix (fn2-ss-outbox-count fn2-core) 0 fn2-core fn2-sim fn2-own))
-           ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-advance-with-clients nil t fn2-core fn2-sim fn2-own)))
+    (if (or found (zp fuel) (fn2-core-stopped-p fn2-core)) (mv found cap nonce fn2-core fn2-sim fn2-own)
+      (b* (((mv & & fn2-core fn2-sim fn2-own) (fn2-ss-step t fn2-core fn2-sim fn2-own)))
         (fn2-ss-await (- fuel 1) clients fn2-core fn2-sim fn2-own)))))
 
 (defun fn2-ss-reply (id before clients retired)
