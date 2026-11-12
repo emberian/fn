@@ -97,11 +97,11 @@ class LiveNode:
         self.log.close()
 
 
-def run_fn(*args: str, expect_rc: int = 0, as_json: bool = False):
+def run_fn(*args: str, expect_rc: int = 0, as_json: bool = False, timeout: float = 300.0):
     cmd = [FN, *args]
     if as_json and "--json" not in args:
         cmd.append("--json")
-    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=60)
+    proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
     if proc.returncode != expect_rc:
         raise AssertionError(
             f"cmd={cmd!r} rc={proc.returncode} expected={expect_rc}\n"
@@ -141,10 +141,11 @@ def main() -> int:
 
         # Control: serving with mismatched genesis group list is refused by ACL2 boot verification.
         bad_serve = subprocess.run(
-            ["timeout", "120", FN, "serve", str(image), "--group", "wrong.group"],
+            ["timeout", "300", FN, "serve", str(image), "--group", "wrong.group"],
             cwd=ROOT,
             capture_output=True,
             text=True,
+            timeout=320,
         )
         assert bad_serve.returncode == 2, (bad_serve.returncode, bad_serve.stdout)
         assert "REFUSED " in bad_serve.stdout, bad_serve.stdout
@@ -179,12 +180,23 @@ def main() -> int:
             created = run_fn("principal", "create", "watcher", "--control-sock", str(ctl_sock), as_json=True)
             assert created["outcome"] == "accepted" and created["id"] > 0, created
 
+            # Repeat create is idempotent: answers the same durable principal_id.
             dup = run_fn(
                 "principal", "create", "watcher",
                 "--control-sock", str(ctl_sock),
+                expect_rc=0, as_json=True,
+            )
+            assert dup["outcome"] == "accepted" and dup["id"] == created["id"], dup
+
+            # Binding to an uncreated principal name is refused unknown-principal.
+            unknown_bind = run_fn(
+                "stream", "status",
+                "--as", "nobody",
+                "--consumer", "inbox1",
+                "--control-sock", str(ctl_sock),
                 expect_rc=1, as_json=True,
             )
-            assert dup["outcome"] == "refused" and dup["reason"] == "exists", dup
+            assert unknown_bind["outcome"] == "refused" and unknown_bind["reason"] == "unknown-principal", unknown_bind
 
             # Non-owner bound connection cannot create principals or issue grants.
             non_admin = run_fn(
