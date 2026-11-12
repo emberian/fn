@@ -1165,7 +1165,7 @@
                (if (and (< 0 aslot) (< (+ 1 aslot) (fn2-accounts-rows fn2-accounts))
                         (posp ainc) (<= ainc *fn2-account-u32-max*))
                    (let* ((cur (nfix (fn2-accounts-incarnation aslot fn2-accounts)))
-                          (fn2-accounts (fn2-accounts-set-incarnation aslot (if (< cur ainc) ainc cur) fn2-accounts)))
+                          (fn2-accounts (if (< cur ainc) (fn2-accounts-set-incarnation aslot ainc fn2-accounts) fn2-accounts)))
                     (if (equal (fn2-accounts-state aslot fn2-accounts) *fn2-account-state-free*)
                         (fn2-accounts-set-state aslot *fn2-account-state-configured* fn2-accounts)
                       fn2-accounts))
