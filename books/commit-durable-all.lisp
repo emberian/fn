@@ -13429,6 +13429,380 @@
            :use ((:instance fn2-env-dropping-arm-frame) (:instance fn2-env-f-dropping-move) (:instance fn2-env-f-non-row-visit)
                  (:instance fn2-env-f-step (v id) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
                             (cs '(0 15 14)) (ch '(29 28 3 2 20 21 31 40 33 0 5)))))))
+;; F AT :DEPENDENCIES (obligation (a)): the issue branch sets cb-wrote while keeping phase :dependencies;
+;; every refusal branch leaves cb-wrote 0 at :dropping.
+(fn2-defview fn2-env-fw :carrier fn2-core
+  :select ((fn2-commit :columns (cb-wrote) :rows t)))
+(defthm fn2-env-wrote-of-fw
+  (implies (and (fn2-env-fw b a) (fn2-ctf-dir b a) (equal (nth 33 (nth 9 b)) (nth 33 (nth 9 a)))
+                (equal (fn2-machine-kind id a) *fn2-commit-kind*))
+           (equal (fn2-machine-cb-wrote id b) (fn2-machine-cb-wrote id a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn2-env-fw fn2-machine-cb-wrote fn2-machine-cb-wrote-read-code fn2-commit-table fn2-commit-rows
+                                   fn2-commit-cb-wrote fn2-commit-cb-wrote$ai)
+                                  (fn2-machine-kind fn2-machine-slot fn2-machine-idp fn2-ctf-dir))
+           :do-not-induct t
+           :use ((:instance fn2-ctf-dir-readers)))))
+(defthm fn2-env-f-mark-abort-of-root
+  (implies (equal (nth 31 a) (nth 31 b))
+           (equal (nth 31 (fn2-commit-mark-abort bt first a))
+                  (nth 31 (fn2-commit-mark-abort bt first b))))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-mark-abort fn2-core-commit-root update-fn2-core-commit-root
+                                               nth-update-nth (:e nth) (:e nfix) (:e equal))
+                                             (theory 'minimal-theory)))))
+(defthm fn2-env-f-issue-write-root
+  (equal (nth 31 (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)))
+         (nth 31 c))
+  :hints (("Goal" :in-theory '(fn2-arm-kids-refl (:e subsetp-equal) (:e member-equal) (:e natp) (:e binary-+))
+           :use ((:instance fn2-commit~fn2-issue-write-arm-kids (fn2-arm-free '(1 0 5)) (fn2-arm-c0 c) (fn2-core c))
+                 (:instance fn2-arm-kids-nth (i 0) (k 31) (free '(1 0 5)) (a c)
+                            (b (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c))))))))
+(defthm fn2-env-f-mark-abort-issue-write
+  (equal (fn2-env-f-ar (fn2-commit-mark-abort bt first (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c))))
+         (fn2-env-f-ar (fn2-commit-mark-abort bt first c)))
+  :hints (("Goal" :in-theory '(fn2-env-f-issue-write-root)
+           :use ((:instance fn2-env-f-mark-abort-of-root
+                            (a (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c)))
+                            (b c))
+                 (:instance fn2-env-f-ar-of-root
+                            (b (fn2-commit-mark-abort bt first (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal c))))
+                            (a (fn2-commit-mark-abort bt first c)))))))
+(fn2-with-column-projections (fn2-env-far)
+(defthm fn2-env-f-dependencies-root
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (implies (not (fn2-env-far b fn2-core))
+                      (and (equal (fn2-machine-phase id b) *fn2-commit-state-dropping*)
+                           (equal (fn2-commit-row-cb-wrote id fn2-core) 0)
+                           (fn2-env-far b (fn2-commit-mark-abort (fn2-commit-row-batch-no id fn2-core)
+                                                                 (fn2-commit-row-first-key id fn2-core) fn2-core))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-far) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run fn2-commit-run-dependencies fn2-commit-idp
+                                                               fn2-commit-arm-row-phase
+                                                               fn2-env-f-phase-of-fn2-commit-write+phase+cb-stage+cb-cursor+outcome+cb-open
+                                                               fn2-commit~fn2-commit-mark-abort-arm-phase
+                                                               fn2-commit~fn2-machine-contract-check-arm-phase
+                                                               (:e member-equal) member-equal fn2-env-x-reads-mark-abort
+                                                               fn2-env-x-reads-write-issue fn2-env-f-mark-abort-issue-write
+                                                               fn2-commit-mark-abort-type fn2-commit-mark-abort-wfp
+                                                               fn2-issue-write-preserves-type fn2-issue-write-preserves-wfp)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t)
+          (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world)))))
+(make-event (value (cons 'progn (fn2-env-f-written-events :dependencies '(5 4 11 3)))))
+(defthm fn2-env-f-wrote-write-keeps-deps-phase
+  (implies (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-dependencies*)
+           (equal (fn2-machine-phase id (fn2-commit-write+pending+cb-issued+cb-wrote
+                                          id pnd iss wr
+                                          (mv-nth 1 (fn2-commit-io-edge v role add opslot opgen
+                                                                        (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal fn2-core))))))
+                  *fn2-commit-state-dependencies*))
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit~fn2-commit-io-edge-arm-phase
+                                               fn2-commit~fn2-issue-write-arm-phase
+                                               member-equal (:e member-equal))
+                                             (theory 'fn2-arm-frame-base))
+           :do-not-induct t
+           :use ((:instance fn2-commit-write+pending+cb-issued+cb-wrote-arm-phase
+                            (fn2-arm-pset '(3))
+                            (id id) (fn2-arms-w-pending pnd) (fn2-arms-w-cb-issued iss) (fn2-arms-w-cb-wrote wr)
+                            (fn2-core (mv-nth 1 (fn2-commit-io-edge v role add opslot opgen
+                                                                    (mv-nth 3 (fn2-issue-write offset slot gen off len fua okind oslot ogen principal fn2-core))))))))))
+(fn2-with-column-projections (fn2-env-fw)
+(defthm fn2-env-f-dependencies-arm-dropping-fw
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-dependencies*)
+                (equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-dependencies id budget fn2-core))) *fn2-commit-state-dropping*))
+           (fn2-env-fw (mv-nth 4 (fn2-commit-run-dependencies id budget fn2-core)) fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-fw fn2-env-fw-reflexive) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run-dependencies fn2-commit-idp
+                                                               fn2-commit-arm-row-phase
+                                                               fn2-env-f-wrote-write-keeps-deps-phase
+                                                               fn2-core-stop-arm-phase (:e member-equal) member-equal)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t)
+          (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-fw) clause world)))))
+(fn2-with-column-projections (fn2-env-fw)
+(defthm fn2-env-f-dependencies-dropping-fw
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*)
+                (equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) *fn2-commit-state-dropping*))
+           (fn2-env-fw (mv-nth 4 (fn2-commit-run id budget fn2-core)) fn2-core))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-fw fn2-env-fw-reflexive) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run fn2-commit-idp
+                                                               fn2-commit-arm-row-phase
+                                                               fn2-commit~fn2-machine-contract-check-arm-phase
+                                                               fn2-core-stop-arm-phase (:e member-equal) member-equal)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-dependencies-arm-dropping-fw) (:instance fn2-env-row-phase-snapshot)))
+          (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-fw) clause world)))))
+(defthm fn2-env-f-dependencies-move
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*))
+           (fn2-env-f-move id fn2-core (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-f-move fn2-env-f-tr fn2-env-f-tr-quiet fn2-env-f-tr-refuse fn2-env-f-pre-p fn2-env-f-live-p
+                               fn2-env-f-row-reads (:e member-equal) member-equal natp (:e natp)
+                               (:type-prescription fn2-machine-batch-no-natp) (:type-prescription fn2-machine-slot-natp))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-dependencies-root)
+                 (:instance fn2-env-f-dependencies-written)
+                 (:instance fn2-env-f-dependencies-dropping-fw)
+                 (:instance fn2-env-wrote-of-fw (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-commit-run-dependencies-next)
+                 (:instance fn2-env-dependencies-arm-frame)
+                 (:instance fn2-arm-row-frame-cols (table 9) (row (fn2-machine-slot id fn2-core))
+                            (columns '(0 5 29 24 25 16 17 18 19 21 6 20 15 14 30)) (children '(30 20 21 1 0 31 5))
+                            (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-arm-cols-nth (k 0) (j 33) (columns '(0 5 29 24 25 16 17 18 19 21 6 20 15 14 30))
+                            (row (fn2-machine-slot id fn2-core))
+                            (a (nth 9 fn2-core)) (b (nth 9 (mv-nth 4 (fn2-commit-run id budget fn2-core)))))
+                 (:instance fn2-env-commit-idp-kind)
+                 (:instance fn2-env-far-view-equivalence (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-far-view-equivalence
+                            (a (fn2-commit-mark-abort (fn2-commit-row-batch-no id fn2-core) (fn2-commit-row-first-key id fn2-core) fn2-core))
+                            (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-f-ar-of-mark-abort (bt (fn2-machine-batch-no id fn2-core))
+                            (first (fn2-commit-row-first-key id fn2-core)) (c fn2-core))))))
+(defthm fn2-env-f-dependencies-arm
+  ; F KEPT BY THE :DEPENDENCIES VISIT: an issue keeps phase :dependencies; a refusal leaves the row :dropping and unwritten
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-dependencies*))
+           (fn2-env-f (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :hints (("Goal" :in-theory '(fn2-commit-idp natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-dependencies-arm-frame)
+                 (:instance fn2-env-f-dependencies-move)
+                 (:instance fn2-env-f-non-row-visit)
+                 (:instance fn2-env-f-step (v id) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (cs '(0 5 29 24 25 16 17 18 19 21 6 20 15 14 30)) (ch '(30 20 21 1 0 31 5)))))))
+;; F AT :INSTALL AND :PUBLISH (obligation (b), settled by stop-boundary.lisp):
+;; a post-root-swap hook refusal (fn2-commit-root-edge, fn2-successor-publish,
+;; or fn2-commit-stream-wake) stops the core at its sticky recovery boundary
+;; (fn2-core-stopped-p), across which no turn, admission, or device take ever
+;; runs again; every non-stopping visit keeps F, and FN2-ENV-F-COMMIT-RUN
+;; composes all 13 arms.
+(defthm fn2-exec-stop-of-core-stop
+  (equal (fn2-exec-stop (fn2-core-stop reason c)) 1)
+  :hints (("Goal" :in-theory (enable fn2-exec-stop fn2-core-stop fn2-core-control update-fn2-core-control
+                                     fn2-control-record-stop fn2-control-stop update-fn2-control-stop
+                                     update-fn2-control-stop-reason))))
+(defthm fn2-exec-stop-of-contract-check
+  (implies (or (not ok) (equal (fn2-exec-stop c) 1))
+           (equal (fn2-exec-stop (mv-nth 4 (fn2-machine-contract-check ok bytes steps descriptors runnable c))) 1))
+  :hints (("Goal" :in-theory '(fn2-machine-contract-check fn2-exec-stop-of-core-stop mv-nth (:e mv-nth) car-cons cdr-cons (:e zp)))))
+(defthm fn2-env-f-ok-of-partner-state
+  (implies (equal (fn2-commit-partner-state b q c) :ok)
+           (fn2-env-f-ok b (fn2-commit-idp q c)
+                         (if (fn2-commit-idp q c) (fn2-machine-phase q c) 0)
+                         (if (fn2-commit-idp q c) (fn2-machine-batch-no q c) 0)
+                         (nth 0 (fn2-env-f-ar c))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-commit-partner-state fn2-env-f-ok fn2-env-f-ar
+                               nth-0-cons (:e nth) car-cons mv-nth (:e mv-nth)))))
+(defthm fn2-env-f-root-of-root-swap
+  (let ((r (nth 31 c)))
+    (mv-let (ok s) (fn2-commit-root-swap id publish c)
+      (let ((r2 (nth 31 s)))
+        (if ok
+            (and (fn2-commit-idp id c) (< 0 (nth *fn2-commit-root-rows* r))
+                 (equal (nth *fn2-commit-root-rows* r2) (nth *fn2-commit-root-rows* r))
+                 (equal (nth *fn2-commit-root-aborting$ai* r2) (nth *fn2-commit-root-aborting$ai* r))
+                 (equal (nth *fn2-commit-root-proposed$ai* r2) (nth *fn2-commit-root-proposed$ai* r)))
+          (equal r2 r)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-commit-root-swap fn2-core-commit-root fn2-core-stop update-fn2-core-control
+                                               update-fn2-core-commit-root fn2-commit-root-set-installed fn2-commit-root-set-published
+                                               update-fn2-commit-root-installed$ai update-fn2-commit-root-published$ai
+                                               fn2-commit-root-rows update-nth-array nth-update-nth
+                                               (:e nth) (:e zp) (:e nfix) (:e equal) (:e <) nth-0-cons nth-add1 car-cons cdr-cons posp)
+                                             (theory 'minimal-theory))
+           :do-not-induct t)))
+(defthm fn2-env-f-ar-of-root-swap
+  (implies (and (fn2-corep c) (fn2-core-wfp c) (posp (fn2-machine-batch-no id c)))
+           (mv-let (ok s) (fn2-commit-root-swap id publish c)
+             (if ok
+                 (let ((ar (fn2-env-f-ar c)) (bt (fn2-machine-batch-no id c)))
+                   (if publish
+                       (and (equal bt (nth 2 ar))
+                            (equal (fn2-env-f-ar s) (list (nth 0 ar) (nth 1 ar) (nth 2 ar) bt)))
+                     (and (equal bt (+ 1 (nth 3 ar)))
+                          (equal (fn2-env-f-ar s) (list (nth 0 ar) (nth 1 ar) bt (nth 3 ar))))))
+               (equal (nth 31 s) (nth 31 c)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-f-ar fn2-commit-abort-state fn2-core-commit-root
+                                               fn2-commit-root-aborting fn2-commit-root-aborting$ai
+                                               fn2-commit-root-proposed fn2-commit-root-proposed$ai
+                                               fn2-commit-root-rows (:e nth) nth-0-cons nth-add1 (:e zp) car-cons cdr-cons
+                                               mv-nth (:e mv-nth))
+                                             (theory 'minimal-theory))
+           :do-not-induct t
+           :cases ((mv-nth 0 (fn2-commit-root-swap id publish c)))
+           :use ((:instance fn2-env-f-root-of-root-swap)
+                 (:instance fn2-env-root-swap-facts (fn2-core c))))))
+(defthm fn2-env-f-live-batch-posp
+  (implies (and (fn2-env-f c) (fn2-corep c) (fn2-core-wfp c) (fn2-commit-idp id c)
+                (fn2-env-f-live-p (fn2-machine-phase id c)))
+           (posp (fn2-machine-batch-no id c)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn2-env-f fn2-env-f-row (:type-prescription fn2-machine-batch-no-natp))
+                                             (theory 'fn2-env-f-arith))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-rows-necc (i id))))))
+(make-event (value (cons 'progn (fn2-env-f-write-phase-events 'fn2-commit-write+phase '() nil))))
+(make-event (value (cons 'progn (fn2-env-f-write-phase-events 'fn2-commit-write+phase+cb-published '(1) nil))))
+(fn2-with-column-projections (fn2-env-far)
+(defthm fn2-env-f-install-cases
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (or (equal (fn2-exec-stop b) 1)
+                 (and (fn2-env-far b fn2-core)
+                      (member-equal (fn2-machine-phase id b)
+                                    (list *fn2-commit-state-install* *fn2-commit-state-uncertain*)))
+                 (and (equal (fn2-commit-partner-state (fn2-commit-row-batch-no id fn2-core)
+                                                       (fn2-commit-row-partner id fn2-core) fn2-core) :ok)
+                      (mv-nth 0 (fn2-commit-root-swap id nil fn2-core))
+                      (equal (fn2-machine-phase id b) *fn2-commit-state-publish*)
+                      (fn2-env-far b (mv-nth 1 (fn2-commit-root-swap id nil fn2-core)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-far fn2-env-far-reflexive) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run fn2-commit-run-install fn2-machine-contract-check
+                                                               fn2-commit-idp fn2-commit-arm-row-phase fn2-arm-member-of-subsetp-free
+                                                               fn2-exec-stop-of-core-stop fn2-core-stop-arm-phase
+                                                               fn2-env-f-phase-of-fn2-commit-write+phase
+                                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-arm-phase
+                                                               fn2-commit~fn2-commit-root-swap-arm-phase
+                                                               fn2-env-x-reads-root-swap fn2-env-x-reads-root-edge
+                                                               fn2-commit-root-swap-preserves-type fn2-commit-root-swap-preserves-wfp
+                                                               fn2-commit-root-edge-preserves-type fn2-commit-root-edge-preserves-wfp
+                                                               (:e subsetp-equal) subsetp-equal (:e member-equal) member-equal)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-root-of-root-swap (publish nil) (c fn2-core))
+                 (:instance fn2-env-f-ar-of-root (b (mv-nth 1 (fn2-commit-root-swap id nil fn2-core))) (a fn2-core))))
+          (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world)))))
+(defthm fn2-env-f-install-move
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*)
+                (not (equal (fn2-exec-stop (mv-nth 4 (fn2-commit-run id budget fn2-core))) 1)))
+           (fn2-env-f-move id fn2-core (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-f-move fn2-env-f-tr fn2-env-f-tr-quiet fn2-env-f-tr-swap
+                               fn2-env-f-pre-p fn2-env-f-live-p fn2-env-f-row-reads
+                               (:e member-equal) member-equal)
+           :do-not-induct t
+           :use ((:instance fn2-env-f-install-cases)
+                 (:instance fn2-env-f-live-batch-posp (c fn2-core))
+                 (:instance fn2-env-f-ar-of-root-swap (publish nil) (c fn2-core))
+                 (:instance fn2-env-f-ok-of-partner-state
+                            (b (fn2-machine-batch-no id fn2-core)) (q (fn2-machine-partner id fn2-core)) (c fn2-core))
+                 (:instance fn2-env-far-view-equivalence (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-far-view-equivalence
+                            (a (mv-nth 1 (fn2-commit-root-swap id nil fn2-core)))
+                            (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
+(defthm fn2-env-f-install-arm
+  ; AT :INSTALL: EITHER F IS KEPT OR THE CORE STOPS ON ITS RECOVERY BOUNDARY (fn2-commit-root-edge refused)
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-install*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (or (fn2-env-f b) (fn2-core-stopped-p b))))
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-core-stopped-p-is-exec-stop natp (:type-prescription fn2-machine-slot-natp)
+                               (:e member-equal) member-equal)
+           :do-not-induct t
+           :cases ((equal (fn2-exec-stop (mv-nth 4 (fn2-commit-run id budget fn2-core))) 1))
+           :use ((:instance fn2-env-install-arm-frame)
+                 (:instance fn2-env-f-install-move)
+                 (:instance fn2-env-f-non-row-visit)
+                 (:instance fn2-env-f-step (v id) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (cs '(0 15 19 21 6)) (ch '(20 21 31 5)))))))
+(fn2-with-column-projections (fn2-env-far)
+(defthm fn2-env-f-publish-cases
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (or (equal (fn2-exec-stop b) 1)
+                 (and (fn2-env-far b fn2-core)
+                      (member-equal (fn2-machine-phase id b)
+                                    (list *fn2-commit-state-publish* *fn2-commit-state-uncertain*)))
+                 (and (equal (fn2-commit-partner-state (fn2-commit-row-batch-no id fn2-core)
+                                                       (fn2-commit-row-partner id fn2-core) fn2-core) :ok)
+                      (mv-nth 0 (fn2-commit-root-swap id t fn2-core))
+                      (equal (fn2-machine-phase id b) *fn2-commit-state-notify*)
+                      (fn2-env-far b (mv-nth 1 (fn2-commit-root-swap id t fn2-core)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories (union-theories '(fn2-env-far fn2-env-far-reflexive) (theory 'fn2-column-projection-base))
+                                             (union-theories '(fn2-commit-run fn2-commit-run-publish fn2-machine-contract-check
+                                                               fn2-commit-idp fn2-commit-arm-row-phase fn2-arm-member-of-subsetp-free
+                                                               fn2-exec-stop-of-core-stop fn2-core-stop-arm-phase
+                                                               fn2-env-f-phase-of-fn2-commit-write+phase+cb-published
+                                                               fn2-commit-write+phase+cb-cursor+cb-failed+cb-reason-arm-phase
+                                                               fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-arm-phase
+                                                               fn2-commit~fn2-commit-root-swap-arm-phase
+                                                               fn2-successor-publish-arm-phase fn2-commit-stream-wake-arm-phase
+                                                               fn2-env-x-reads-root-swap fn2-env-x-reads-successor-publish
+                                                               fn2-env-x-reads-stream-wake
+                                                               fn2-commit-root-swap-preserves-type fn2-commit-root-swap-preserves-wfp
+                                                               fn2-successor-publish-constraint fn2-commit-stream-wake-constraint
+                                                               (:e subsetp-equal) subsetp-equal (:e member-equal) member-equal)
+                                                             (theory 'fn2-arm-frame-base)))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-root-of-root-swap (publish t) (c fn2-core))
+                 (:instance fn2-env-f-ar-of-root (b (mv-nth 1 (fn2-commit-root-swap id t fn2-core))) (a fn2-core))))
+          (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-far) clause world)))))
+(defthm fn2-env-f-publish-move
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*)
+                (not (equal (fn2-exec-stop (mv-nth 4 (fn2-commit-run id budget fn2-core))) 1)))
+           (fn2-env-f-move id fn2-core (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-env-f-move fn2-env-f-tr fn2-env-f-tr-quiet fn2-env-f-tr-swap
+                               fn2-env-f-live-p fn2-env-f-row-reads (:e fn2-commit-arm-children)
+                               (:e member-equal) member-equal natp (:type-prescription fn2-machine-slot-natp))
+           :do-not-induct t
+           :use ((:instance fn2-env-f-publish-cases)
+                 (:instance fn2-env-publish-arm-frame)
+                 (:instance fn2-env-commit-idp-kind)
+                 (:instance fn2-machine-cb-wrote-of-row-frame (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (row (fn2-machine-slot id fn2-core)) (cs '(0 26 15 19 21 6)) (ch (fn2-commit-arm-children 8)))
+                 (:instance fn2-env-f-live-batch-posp (c fn2-core))
+                 (:instance fn2-env-f-ar-of-root-swap (publish t) (c fn2-core))
+                 (:instance fn2-env-f-ok-of-partner-state
+                            (b (fn2-machine-batch-no id fn2-core)) (q (fn2-machine-partner id fn2-core)) (c fn2-core))
+                 (:instance fn2-env-far-view-equivalence (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                 (:instance fn2-env-far-view-equivalence
+                            (a (mv-nth 1 (fn2-commit-root-swap id t fn2-core)))
+                            (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
+(defthm fn2-env-f-publish-arm
+  ; AT :PUBLISH: EITHER F IS KEPT OR THE CORE STOPS ON ITS RECOVERY BOUNDARY (publish or stream-wake hook refused)
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core)
+                (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-publish*))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (or (fn2-env-f b) (fn2-core-stopped-p b))))
+  :hints (("Goal" :in-theory '(fn2-commit-idp fn2-core-stopped-p-is-exec-stop (:e fn2-commit-arm-children)
+                               natp (:type-prescription fn2-machine-slot-natp) (:e member-equal) member-equal)
+           :do-not-induct t
+           :cases ((equal (fn2-exec-stop (mv-nth 4 (fn2-commit-run id budget fn2-core))) 1))
+           :use ((:instance fn2-env-publish-arm-frame)
+                 (:instance fn2-env-f-publish-move)
+                 (:instance fn2-env-f-non-row-visit)
+                 (:instance fn2-env-f-step (v id) (a fn2-core) (b (mv-nth 4 (fn2-commit-run id budget fn2-core)))
+                            (cs '(0 26 15 19 21 6)) (ch (fn2-commit-arm-children 8)))))))
+(defthm fn2-env-f-commit-run
+  ; EVERY COMMIT VISIT KEEPS F OR STOPS THE CORE AT ITS RECOVERY BOUNDARY (:install/:publish post-swap hook refusal)
+  (implies (and (fn2-env-f fn2-core) (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-env-commit-slots-p profile fn2-core))
+           (let ((b (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+             (or (fn2-env-f b) (fn2-core-stopped-p b))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory '(fn2-core-stopped-p-is-exec-stop (:e member-equal) member-equal)
+           :use (fn2-env-f-other-phase-visit fn2-env-f-free-arm fn2-env-f-collect-arm fn2-env-f-seal-arm
+                 fn2-env-f-dependencies-arm fn2-env-f-log-write-arm fn2-env-f-fence-arm fn2-env-f-durable-arm
+                 fn2-env-f-install-arm fn2-env-f-publish-arm fn2-env-f-notify-arm fn2-env-f-draining-arm
+                 fn2-env-f-uncertain-arm fn2-env-f-dropping-arm))))
 ;; OWED (the next proof-floor seat): F KEPT, X ESTABLISHED. Proved: X kept
 ;; by every commit visit given F (FN2-ENV-X-COMMIT-RUN; :dependencies and
 ;; :log-write given done <= issued and pending+1 a u32 at the visited row),
