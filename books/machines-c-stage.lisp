@@ -17,6 +17,17 @@
 ; (greatest SEQ) holding it; else the row resolve read from the installed
 ; runs if their version has not moved (else :stale); else none (zeros).
 
+; Headroom for :event fields (each staged as 0 = 1 varint byte, bound as a u60
+; = up to 9 varint bytes, so at most +8 bytes per :event field).
+(defun fn2-succ-event-headroom (k j events)
+ (declare (xargs :measure (nfix k) :guard (and (natp k) (natp j))))
+ (if (zp k) 0
+  (+ (if (fn2-succ-has events j) 8 0)
+     (fn2-succ-event-headroom (- k 1) (+ 1 (nfix j)) events))))
+(defthm fn2-succ-event-headroom-natp
+ (natp (fn2-succ-event-headroom k j events)) :rule-classes :type-prescription)
+(in-theory (disable fn2-succ-event-headroom))
+
 ; Args 0..N-1 of a slot from SRC into DST: an :out arg reads its slot's
 ; staged row (field F of slot K, at B0 + 48K + F), an :event arg is 0 until
 ; bind, any other is copied (value and octet reference).
@@ -158,7 +169,8 @@
         (mv :ok fn2-succ-slots fn2-fields)))
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((unless (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
-      (size (fn2-run-layout-size sid 0 entry fn2-fields))
+      (size (+ (fn2-run-layout-size sid 0 entry fn2-fields)
+               (fn2-succ-event-headroom nf 0 (fn2-succ-slots-events s fn2-succ-slots))))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
       ; A late arg is filled again after every stage (its entry row was just
       ; recopied from the raw row, which holds only its bound).
@@ -169,7 +181,7 @@
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
  (fn2-succ-slots-sid fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-events fn2-succ-slots-oset fn2-succ-slots-sk
   fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-slots-vrun fn2-succ-slots-found fn2-run-layout-fields fn2-succ-eval-args
-  fn2-succ-fits fn2-succ-reads-key fn2-succ-tip-scan fn2-run-version fn2-run-layout-size fn2-ov-entry fn2-succ-same-ints
+  fn2-succ-fits fn2-succ-reads-key fn2-succ-tip-scan fn2-run-version fn2-run-layout-size fn2-succ-event-headroom fn2-ov-entry fn2-succ-same-ints
   fn2-run-layout-keys fn2-run-layout-merge fn2-succ-set-fresh))
 
 ; Stage fold slot S (slot I) of TX: its event's args evaluated, the key's
@@ -231,7 +243,8 @@
       ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields))
       ((unless (fn2-succ-fits nk 0 sid entry fn2-fields)) (mv :range fn2-succ-slots fn2-fields))
       ((unless (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))) (mv :bounds fn2-succ-slots fn2-fields))
-      (size (fn2-run-layout-size sid 0 entry fn2-fields))
+      (size (+ (fn2-run-layout-size sid 0 entry fn2-fields)
+               (fn2-succ-event-headroom n 0 (fn2-succ-slots-events s fn2-succ-slots))))
       ((unless (unsigned-byte-p 32 size)) (mv :capacity fn2-succ-slots fn2-fields))
       (fn2-succ-slots (fn2-succ-slots-set-size s size fn2-succ-slots))
       (fn2-succ-slots (fn2-succ-slots-set-unchanged s 0 fn2-succ-slots))
@@ -239,10 +252,10 @@
   (mv :ok fn2-succ-slots fn2-fields)))
 (fn2-idc-fn-shape fn2-succ-stage-fold (i s b0 fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-run-installed fn2-overlays fn2-overlay-index fn2-fields fn2-pool) t
- (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-vrun fn2-succ-slots-found
+ (fn2-succ-slots-sid fn2-succ-slots-kind fn2-succ-slots-set fn2-succ-slots-outs fn2-succ-slots-events fn2-succ-slots-vrun fn2-succ-slots-found
   fn2-succ-kindkw fn2-fold-arity fn2-succ-required fn2-run-layout-keys fn2-run-layout-fields fn2-succ-eval-args fn2-succ-key-rows
   fn2-succ-tip-scan fn2-ov-entry fn2-run-version fn2-succ-copy-rows fn2-succ-zero-rows fn2-fold-assign fn2-fold-apply
-  fn2-succ-fits fn2-run-layout-size fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh nfix))
+  fn2-succ-fits fn2-run-layout-size fn2-succ-event-headroom fn2-succ-slots-oset fn2-succ-slots-sk fn2-succ-slots-ss fn2-succ-slots-sg fn2-succ-set-fresh nfix))
 
 ; Stage dependency slot S (slot I) of TX: its key and the value fields the
 ; transaction decided on from its args, the key's row at the tip as a fold

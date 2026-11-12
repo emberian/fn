@@ -113,10 +113,11 @@
  '((fn2-successor-publish fn2-core-succ-txns fn2-core-overlays fn2-core-id-engine)
    (fn2-successor-drop fn2-core-succ-txns fn2-core-overlays fn2-core-pool)
    (fn2-commit-stream-wake fn2-core-cns-edges)
-   ; C's replay decodes the member's records in the fields scratch and binds
-   ; its rows (machines-c-bind.lisp fn2-succ-core-replay)
+   ; C's replay decodes the member's records in the fields scratch, binds
+   ; its rows and restores any created principal's account slot
+   ; (machines-c-bind.lisp fn2-succ-core-replay)
    (fn2-member-replay fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine
-                      fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)))
+                      fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool fn2-core-accounts)))
 (defun fn2-commit-hook-kids-claim (name formals world)
  (declare (xargs :verify-guards nil))
  `((defthm ,(fn2-columns-sym name "-ARM-KIDS")

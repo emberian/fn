@@ -12,12 +12,12 @@
 (in-package "ACL2")
 (include-book "../books/owed-cursor")
 
-(defconst *fn2-scu-n* 32)
-;; The reading unit profile with a device that stores 32 articles: B's
-;; extents (:extent-slots, 16 by default) hold each article's source and each
-;; batch's commit record, so the default refuses the ninth POST "441 ... the
-;; store is full" (B's admission, not C's); 128 holds two per POST.
-(defconst *fn2-scu-profile* (put-assoc-equal :extent-slots 128 *fn2-cursor-profile*))
+(defconst *fn2-scu-n* 72)
+;; The reading unit profile with a device that stores 72 articles (720 overlay
+;; seals across 10 schemas on 64 :identity-runs rows and 64 slots of 64 KiB):
+;; B's extents (:extent-slots, 16 by default) hold each article's source and
+;; each batch's commit record, so 256 holds two per POST with headroom.
+(defconst *fn2-scu-profile* (put-assoc-equal :extent-slots 256 *fn2-cursor-profile*))
 (defun fn2-scu-digits (n acc)
   (declare (xargs :verify-guards nil :measure (nfix n)))
   (if (or (zp n) (< n 10)) (cons (code-char (+ 48 (nfix n))) acc)
@@ -89,24 +89,50 @@
 
 ;; The served run, with fuel for N posts (each a batch: its seals, merges and
 ;; releases are the sealer's turns between the connection's).
-(defun fn2-scu-run (n)
+(defun fn2-scu-live-runs (k r fn2-run-installed)
+  (declare (xargs :stobjs fn2-run-installed :verify-guards nil :measure (nfix k)))
+  (if (or (zp k) (>= (nfix r) (fn2-run-installed-rows fn2-run-installed))) 0
+    (+ (if (equal (fn2-run-installed-state (nfix r) fn2-run-installed) *fn2-run-installed-state-live*) 1 0)
+       (fn2-scu-live-runs (- k 1) (+ 1 (nfix r)) fn2-run-installed))))
+
+(defun fn2-scu-run-profile (profile n)
   (declare (xargs :verify-guards nil))
   (let ((transcripts (list (list (fn2-cw-crlf-octets (fn2-scu-lines n)) nil))))
     (with-local-stobj fn2-core
       (mv-let (result fn2-core)
-        (b* ((fn2-core (fn2-init-executor *fn2-scu-profile* :echo nil fn2-core))
+        (b* ((fn2-core (fn2-init-executor profile :echo nil fn2-core))
              ((mv & fn2-core)
               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
              ((mv status clients & & fn2-core)
-              (fn2-cs-loop (* 20000 (+ 1 n)) 0 0 (fn2-cw-clients transcripts) nil nil nil 0 :ok fn2-core)))
-          (mv (list status (car (fn2-cw-results clients)) (fn2-core-stop-reason fn2-core)) fn2-core))
+              (fn2-cs-loop (* 20000 (+ 1 n)) 0 0 (fn2-cw-clients transcripts) nil nil nil 0 :ok fn2-core))
+             (live-runs (stobj-let ((fn2-run-installed (fn2-core-run-installed fn2-core))) (cnt)
+                          (fn2-scu-live-runs (fn2-run-installed-rows fn2-run-installed) 0 fn2-run-installed) cnt))
+             (free-pages (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (fp)
+                           (fn2-seal-free-pages fn2-pool) fp)))
+          (mv (list status (car (fn2-cw-results clients)) (fn2-core-stop-reason fn2-core) live-runs free-pages) fn2-core))
         result))))
+
+(defun fn2-scu-run (n)
+  (declare (xargs :verify-guards nil))
+  (fn2-scu-run-profile *fn2-scu-profile* n))
+
 (defun fn2-scu-check (n)
   (declare (xargs :verify-guards nil))
   (let ((r (fn2-scu-run n)) (want (list (fn2-scu-expected n) t)))
-    (or (and (equal (car r) :quiet) (equal (nth 2 r) 0) (equal (nth 1 r) want))
-        (cw "capacity ~x0 stop ~x1~%got ~s2~%" (car r) (nth 2 r)
+    (or (and (equal (car r) :quiet) (equal (nth 2 r) 0) (equal (nth 1 r) want)
+             (<= (nth 3 r) 32) (<= 16 (nth 4 r)))
+        (cw "capacity ~x0 stop ~x1 live-runs ~x2 free-pages ~x3~%got ~s4~%"
+            (car r) (nth 2 r) (nth 3 r) (nth 4 r)
             (coerce (fn2-scu-chars (car (nth 1 r))) 'string)))))
 
-(assert-event (fn2-scu-check *fn2-scu-n*))
+;; Negative tooth: 8 installed-run rows cannot hold 10 distinct schemas' live
+;; runs even at 1 run per schema, proving :sealer-full fires when row demand
+;; exceeds the table and that 72 POSTs (720 overlay seals) only succeed on 64
+;; rows because C5 merges and reclaims superseded runs and 64 KiB page slots.
+(defun fn2-scu-negative-tooth ()
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-scu-run-profile (put-assoc-equal :identity-runs 8 *fn2-scu-profile*) 2)))
+    (equal (nth 2 r) *fn2-stop-reason-sealer-full*)))
+
+(assert-event (and (fn2-scu-check *fn2-scu-n*) (fn2-scu-negative-tooth)))

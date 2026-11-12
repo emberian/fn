@@ -202,11 +202,13 @@
       (r-filter (fn2-sealer-ready fn2-core))
       (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-install* fn2-core))
       (r-install (fn2-sealer-ready fn2-core))
+      (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-release* fn2-core))
+      (r-release (fn2-sealer-ready fn2-core))
       (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-failed* fn2-core))
       (r-failed (fn2-sealer-ready fn2-core))
       (fn2-core (fn2-smu-set-seal-phase *fn2-seal-phase-build* fn2-core))
       (fn2-core (fn2-smu-turns 400 fn2-core)))
-  (mv (list step1 r-build r-filter r-install r-failed
+  (mv (list step1 r-build r-filter r-install r-release r-failed
             (fn2-smu-runs 0 64 fn2-core) (fn2-smu-phases 0 1 fn2-core) (fn2-smu-row fn2-core)
             (fn2-exec-status fn2-core) (fn2-core-stop-reason fn2-core))
       fn2-core)))
@@ -215,6 +217,6 @@
  (with-local-stobj fn2-core (mv-let (r fn2-core) (fn2-smu-mid-seal-wake fn2-core) r)))
 (assert-event
  (fn2-smu-check (fn2-smu-mid-seal-wake-result)
-                `(:more t t t nil
+                `(:more t t t t nil
                   ((8 1 3 0)) (,*fn2-overlay-phase-free*) (,*fn2-sealer-state-sealing* ,*fn2-wait-sealable*)
                   :idle ,*fn2-stop-reason-none*)))

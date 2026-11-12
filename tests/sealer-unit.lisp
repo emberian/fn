@@ -335,6 +335,8 @@
       (p-filter (fn2-seal-pending-p fn2-seals fn2-overlays))
       (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-install* fn2-seals))
       (p-install (fn2-seal-pending-p fn2-seals fn2-overlays))
+      (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-release* fn2-seals))
+      (p-release (fn2-seal-pending-p fn2-seals fn2-overlays))
       (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-failed* fn2-seals))
       (p-failed (fn2-seal-pending-p fn2-seals fn2-overlays))
       (fn2-seals (fn2-seals-set-phase 0 *fn2-seal-phase-idle* fn2-seals))
@@ -345,7 +347,7 @@
       (fn2-run-writers (fn2-run-writers-put 0 (unit (+ 5 (fn2-run-cache-rows fn2-run-cache))) (counter 2) (slot 3) (gen 1)))
       ((mv c2 fn2-run-cache) (fn2-seal-cache 0 fn2-run-writers fn2-run-cache))
       (kept-unit (fn2-run-cache-unit (fn2-run-cache-row 5 fn2-run-cache) fn2-run-cache)))
-  (fn2-su-mv (list p-idle-blocked p-build p-filter p-install p-failed p-idle-sealable c1 c2 kept-unit))))
+  (fn2-su-mv (list p-idle-blocked p-build p-filter p-install p-release p-failed p-idle-sealable c1 c2 kept-unit))))
 (defun fn2-su-pending-result ()
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
@@ -356,4 +358,189 @@
                           fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
    (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
        fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
-(assert-event (equal (fn2-su-pending-result) '(nil t t t nil t :ok :cache 5)))
+(assert-event (equal (fn2-su-pending-result) '(nil t t t t nil t :ok :cache 5)))
+
+;; Minimal C5: bounded multi-run merge, row & arena reclamation, run-only
+;; cross-schema compaction, and atomic multi-run replacement under :full.
+(fn2-su-defun fn2-su-setup-cap (orows irows pages pfill)
+ (b* ((fn2-seals (fn2-seals-init 1 fn2-seals))
+      (fn2-overlays (fn2-overlays-init orows fn2-overlays))
+      (fn2-overlay-index (fn2-overlay-index-init (* orows *fn2-su-icap*) fn2-overlay-index))
+      (fn2-run-installed (fn2-run-installed-init irows fn2-run-installed))
+      (fn2-run-builds (fn2-run-builds-init 1 fn2-run-builds))
+      (fn2-run-writers (fn2-run-writers-init *fn2-seal-writer-rows* fn2-run-writers))
+      (fn2-run-restarts (fn2-run-restarts-init (* *fn2-seal-writer-rows* *fn2-run-restart-capacity*) fn2-run-restarts))
+      (fn2-run-cache (fn2-run-cache-init 1024 fn2-run-cache))
+      (fn2-ribbon-builds (fn2-ribbon-builds-init 1 fn2-ribbon-builds))
+      (fn2-ribbon-band (fn2-ribbon-band-init (fn2-ribbon-slots *fn2-su-icap*) fn2-ribbon-band))
+      (fn2-fields (fn2-fields-init 3900 fn2-fields))
+      (fn2-pool (fn2-pool-init (list (cons pages 65536)) 1 100 fn2-pool))
+      (fn2-fc (fn2-fc-init 1 fn2-fc))
+      (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
+      (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
+      (fn2-digests (fn2-digests-init 150 fn2-digests))
+      (fn2-run-cursors (fn2-run-cursors-init 9 fn2-run-cursors))
+      (fn2-run-paths (fn2-run-paths-init (* 9 *fn2-run-max-levels*) fn2-run-paths))
+      (fn2-ranges (fn2-ranges-init 1 fn2-ranges))
+      (fn2-range-sources (fn2-range-sources-init 8 fn2-range-sources))
+      ((mv code fn2-seals) (fn2-seal-init 0 *fn2-su-fbase* 0 pfill 9 0 1 fn2-seals))
+      ((unless (eq code :ok)) (fn2-su-mv code))
+      ((mv code fn2-seals) (fn2-seal-merge-rows 0 0 1 (+ *fn2-su-fbase* *fn2-seal-field-rows*)
+                                                (+ *fn2-su-fbase* *fn2-seal-field-rows* *fn2-run-entry-rows*) fn2-seals)))
+  (fn2-su-mv code)))
+
+(fn2-su-defun fn2-su-run-cap (sid layout batches irows pages pfill queries)
+ (b* ((fn2-su-bind (code) (fn2-su-call fn2-su-setup-cap (+ 1 (len batches)) irows pages pfill))
+      ((unless (eq code :ok)) (fn2-su-mv (list :setup code)))
+      (fn2-su-bind (code) (fn2-su-call fn2-su-load sid layout batches 0 (fn2-su-seqs (len batches) 1) nil))
+      ((unless (eq code :ok)) (fn2-su-mv (list :load code)))
+      (fn2-su-bind (code done) (fn2-su-call fn2-su-drive 1000000 nil 0))
+      (fn2-su-bind (answers) (fn2-su-call fn2-su-queries sid layout queries))
+      (fn2-su-bind (installed) (fn2-su-call fn2-su-installed 0 irows))
+      (free-pages (fn2-seal-free-pages fn2-pool)))
+  (fn2-su-mv (list code done answers installed free-pages))))
+
+(defun fn2-sealer-cap-image (sid layout batches irows pages pfill queries)
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+  (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+    (fn2-su-run-cap sid layout batches irows pages pfill queries fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed
+                    fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
+                    fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+   (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
+
+;; Step until the seal row reaches *fn2-seal-phase-install*, occupy every free
+;; installed-run row, and verify fn2-seal-step refuses :full WITHOUT retiring
+;; any of the merge's live input runs or its frozen overlay.
+(fn2-su-defun fn2-su-step-to-install (fuel) :measure (nfix fuel)
+ (if (or (zp fuel) (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-install*))
+     (fn2-su-mv (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-install*))
+  (b* (((mv code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
+            fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+            fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
+        (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+                       fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
+                       fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)))
+   (if (eq code :more) (fn2-su-call fn2-su-step-to-install (- fuel 1)) (fn2-su-mv nil)))))
+
+(defun fn2-su-fill-free-rows (k r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :verify-guards nil :measure (nfix k)))
+ (if (or (zp k) (>= (nfix r) (fn2-run-installed-rows fn2-run-installed))) fn2-run-installed
+  (let ((fn2-run-installed
+         (if (equal (fn2-run-installed-state (nfix r) fn2-run-installed) *fn2-run-installed-state-free*)
+             (fn2-run-installed-put (nfix r) (state *fn2-run-installed-state-live*) (schema 99) (run (+ 900 (nfix r))))
+           fn2-run-installed)))
+   (fn2-su-fill-free-rows (- k 1) (+ 1 (nfix r)) fn2-run-installed))))
+
+(fn2-su-defun fn2-su-c5-mechanisms ()
+ (b* (;; 1. Seal 2 runs of sid 8 (sizes 20, then 4 so size-tier leaves 2 runs on 8 rows),
+      ;; then occupy 4 dummy rows of sid 99 so free-rows = 2 <= floor(8/3) = 2:
+      ;; run-only compaction becomes pending with NO sealable overlays and merges sid 8 -> 1 run!
+      (fn2-su-bind (code) (fn2-su-call fn2-su-setup-cap 4 8 40 *fn2-run-page-size*))
+      ((unless (eq code :ok)) (fn2-su-mv (list :setup code)))
+      (b1 (fn2-su-batch 0 20 100))
+      (b2 (fn2-su-batch 10 4 200))
+      (fn2-su-bind (code) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list b1 b2) 0 '(1 2) nil))
+      ((unless (eq code :ok)) (fn2-su-mv (list :load code)))
+      (fn2-su-bind (dcode &) (fn2-su-call fn2-su-drive 100000 nil 0))
+      (fn2-su-bind (runs-before) (fn2-su-call fn2-su-installed 0 8))
+      (p-unpressured (fn2-seal-compact-pending-p fn2-seals fn2-run-installed fn2-pool))
+      ;; Occupy rows 2..5 with sid 99 singletons (1 run each), leaving free-rows = 2 <= 2
+      (fn2-run-installed (fn2-run-installed-put 2 (state *fn2-run-installed-state-live*) (schema 91) (run 501)))
+      (fn2-run-installed (fn2-run-installed-put 3 (state *fn2-run-installed-state-live*) (schema 92) (run 502)))
+      (fn2-run-installed (fn2-run-installed-put 4 (state *fn2-run-installed-state-live*) (schema 93) (run 503)))
+      (fn2-run-installed (fn2-run-installed-put 5 (state *fn2-run-installed-state-live*) (schema 94) (run 504)))
+      (p-pressured (fn2-seal-compact-pending-p fn2-seals fn2-run-installed fn2-pool))
+      (pages-before (fn2-seal-free-pages fn2-pool))
+      (fn2-su-bind (ccode cdone) (fn2-su-call fn2-su-drive 100000 nil 0))
+      (pages-after (fn2-seal-free-pages fn2-pool))
+      (sid8-after (fn2-seal-live-runs 8 0 8 fn2-run-installed))
+      (fn2-su-bind (ans-after) (fn2-su-call fn2-su-queries 8 *fn2-su-groups* *fn2-su-queries*))
+      ;; 2. Atomic multi-run replacement under :full at *fn2-seal-phase-install*:
+      (fn2-su-bind (code2) (fn2-su-call fn2-su-setup-cap 4 8 40 *fn2-run-page-size*))
+      ((unless (eq code2 :ok)) (fn2-su-mv (list :setup2 code2)))
+      (fn2-su-bind (code2) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list b1 b2) 0 '(1 2) nil))
+      ((unless (eq code2 :ok)) (fn2-su-mv (list :load2 code2)))
+      (fn2-su-bind (& &) (fn2-su-call fn2-su-drive 100000 nil 0))
+      ;; Load batch 3 (size 10 >= 4/2, so it merges with run 2, k >= 1):
+      (b3 (fn2-su-batch 5 10 300))
+      (fn2-su-bind (code3) (fn2-su-call fn2-su-load 8 *fn2-su-groups* (list b3) 2 '(3) nil))
+      ((unless (eq code3 :ok)) (fn2-su-mv (list :load3 code3)))
+      (fn2-su-bind (at-install) (fn2-su-call fn2-su-step-to-install 100000))
+      (planned-k (fn2-seals-k 0 fn2-seals))
+      (fn2-run-installed (fn2-su-fill-free-rows 8 0 fn2-run-installed))
+      ((mv full-code fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts
+           fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
+           fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths)
+       (fn2-seal-step 4096 fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers
+                      fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool
+                      fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths))
+      (sid8-still-live (fn2-seal-live-runs 8 0 8 fn2-run-installed))
+      (ov2-still-frozen (equal (fn2-overlays-phase 2 fn2-overlays) *fn2-overlay-phase-frozen*)))
+  (fn2-su-mv (list dcode (len runs-before) p-unpressured p-pressured ccode cdone
+                   (< pages-before pages-after) sid8-after
+                   (equal ans-after (fn2-sealer-spec *fn2-su-groups-key* (list b1 b2) *fn2-su-queries*))
+                   at-install (< 0 planned-k) full-code sid8-still-live ov2-still-frozen))))
+
+(defun fn2-su-c5-mechanisms-result ()
+ (declare (xargs :verify-guards nil))
+ (fn2-run-with-local (fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+                      fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+  (mv-let (r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+             fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+    (fn2-su-c5-mechanisms fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+                          fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources)
+   (mv r fn2-seals fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-restarts fn2-run-cache
+       fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests fn2-run-cursors fn2-run-paths fn2-ranges fn2-range-sources))))
+
+(defconst *fn2-su-c5-batches*
+ (list (fn2-su-batch 0 12 100) (fn2-su-batch 6 12 200) (fn2-su-batch 12 12 300) (fn2-su-batch 18 12 400)
+       (fn2-su-batch 0 10 500) (fn2-su-batch 8 10 600) (fn2-su-batch 14 10 700) (fn2-su-batch 4 16 800)))
+
+(defthm-owed fn2-sealer-merge-reclaims (batches queries pfill)
+ (implies (and (fn2-sealer-inputp *fn2-su-groups* *fn2-su-groups-key* batches)
+               (consp batches) (<= (len batches) 8)
+               (natp pfill) (<= 400 pfill) (<= pfill *fn2-run-page-size*))
+          (let ((img (fn2-sealer-cap-image 8 *fn2-su-groups* batches 4 24 pfill queries)))
+           (and (equal (car img) :idle)
+                (equal (cadr img) (len batches))
+                (equal (caddr img) (fn2-sealer-spec *fn2-su-groups-key* batches queries))
+                (<= (len (cadddr img)) 4)
+                (< 16 (nth 4 img)))))
+ :teeth (fn2-sealer-merge-reclaims-positive fn2-sealer-merge-reclaims-negative)
+ :schema :invariant
+ :doc "Minimal C5: sealing up to 8 batches across a 4-row installed-run table and 24-page pool merges superseded runs, reclaims their installed-run rows and 64 KiB page slots in :release, and preserves newest-wins lookup semantics.")
+
+(defun fn2-sealer-merge-reclaims-positive ()
+ (declare (xargs :verify-guards nil))
+ (let* ((spec (fn2-sealer-spec *fn2-su-groups-key* *fn2-su-c5-batches* *fn2-su-queries*))
+        (img (fn2-sealer-cap-image 8 *fn2-su-groups* *fn2-su-c5-batches* 4 24 400 *fn2-su-queries*))
+        (sbatches (list (fn2-su-facts 0 6) (fn2-su-facts 3 6) (fn2-su-facts 6 6) (fn2-su-facts 9 6)))
+        (squeries (list (fn2-su-fact 0 7) (fn2-su-fact 5 7) (fn2-su-fact 14 7) (fn2-su-fact 99 7)))
+        (sspec (fn2-sealer-spec *fn2-su-summary-key* sbatches squeries))
+        (simg (fn2-sealer-cap-image 13 *fn2-su-summary* sbatches 3 20 400 squeries)))
+  (and (fn2-sealer-inputp *fn2-su-groups* *fn2-su-groups-key* *fn2-su-c5-batches*)
+       (equal (car img) :idle)
+       (equal (cadr img) 8)
+       (equal (caddr img) spec)
+       (<= (len (cadddr img)) 2)
+       (< 20 (nth 4 img))
+       ;; Identity summary (schema 13) multi-run merge skips single-overlay Ribbon filter (filter = 0)
+       (equal (car simg) :idle)
+       (equal (caddr simg) sspec)
+       (equal (fn2-su-c5-mechanisms-result) '(:idle 2 nil t :idle 1 t 1 t t t :full 2 t)))))
+
+(defun fn2-sealer-merge-reclaims-negative ()
+ (declare (xargs :verify-guards nil))
+ (let ((spec (fn2-sealer-spec *fn2-su-groups-key* *fn2-su-c5-batches* *fn2-su-queries*))
+       ;; Only 1 installed-run row cannot hold a live run plus a replacement row before retiring: :full
+       (too-small (fn2-sealer-cap-image 8 *fn2-su-groups* *fn2-su-c5-batches* 1 24 400 *fn2-su-queries*))
+       ;; Reversed batch order yields older values on overlapping keys, refuting oldest-wins merge
+       (wrong-order (fn2-sealer-spec *fn2-su-groups-key* (reverse *fn2-su-c5-batches*) *fn2-su-queries*)))
+  (and (eq (car too-small) :full)
+       (not (equal wrong-order spec)))))
+
+(fn2-assert-owed-teeth fn2-sealer-merge-reclaims)
