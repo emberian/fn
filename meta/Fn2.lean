@@ -27,6 +27,7 @@ public import Fn2.Arms.Columns
 public import Fn2.Arms.ServedColumns
 public import Fn2.Arms.Core
 public import Fn2.Arms.Wrapper
+public import Fn2.Arms.Combinators
 public import Fn2.Instances.CoreTranslation
 public import Fn2.Arms.CoreValidation
 public import Fn2.Arms.Validation

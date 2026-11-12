@@ -60,7 +60,7 @@ def compile_closure(roots, lib, seconds, jobs):
         path=BASE/'meta'/Path(*module.split('.')).with_suffix('.lean')
         if not path.is_file():raise ValueError('missing local Lean import '+module)
         ds=[]
-        for line in re.findall(r'^import\s+(.+)$',path.read_text(),re.M):
+        for line in re.findall(r'^(?:public\s+)?import\s+(?:all\s+)?(.+)$',path.read_text(),re.M):
             ds += [x for x in line.split() if x=='Fn2' or x.startswith('Fn2.')]
         deps[module]=ds
         for d in ds:visit(d)
@@ -97,8 +97,16 @@ def compile_closure(roots, lib, seconds, jobs):
 def lean_gates(report, lib, seconds, jobs):
     # The caller starts this process under swarm-build/lake env. Install each
     # changed dependency into this lane's own library, never another lane's.
-    compile_closure(['Fn2.Arms.Wrapper','Fn2.Instances.ServedCommit',
-      *['Fn2.Instances.LayerAEqns'+str(i) for i in range(1,5)]],lib,seconds,jobs)
+    own={'.'.join(Path(r[k]).relative_to('meta').with_suffix('').parts)
+         for r in report['roots'] for k in ('contract','proof') if k in r}
+    extra=set()
+    for r in report['roots']:
+        for k in ('contract','proof'):
+            if k not in r or not (BASE/r[k]).is_file():continue
+            for line in re.findall(r'^(?:public\s+)?import\s+(?:all\s+)?(.+)$',(BASE/r[k]).read_text(),re.M):
+                extra.update(x for x in line.split() if (x=='Fn2' or x.startswith('Fn2.')) and x not in own)
+    compile_closure(sorted({'Fn2.Arms.Wrapper','Fn2.Instances.ServedCommit',
+      *['Fn2.Instances.LayerAEqns'+str(i) for i in range(1,5)],*extra}),lib,seconds,jobs)
     if report.get('commit_words',0):
         rc,out,log=compile_one('meta/Fn2/Instances/ServedCommit.lean',lib,seconds,'commit-words.log')
         if rc or not all(census(out,'Fn2.Instances.ServedCommit.word'+str(i)+'_translation')
