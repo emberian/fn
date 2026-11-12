@@ -139,6 +139,65 @@
 (fn2-issue-children-wrapper fn2-issue-entropy-children (slot gen len)
   *fn2-action-entropy* 0 0 0 0 slot gen 0 len 0 0 0)
 
+; Outbound peer connection initiation (resources.lisp :connect, E4/E5):
+; validates a concrete target peer record (:inet, :inet6, or :local), reserves
+; a :connect descriptor, stores the peer target in the descriptor's peer columns,
+; and enqueues to the outbox without touching the buffer pool.
+(defun fn2-op-set-connect-peer (slot gen family port w0 w1 w2 w3 fn2-ops)
+  (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
+  (let ((code (fn2-op-phase-code slot gen *fn2-op-phase-reserved* fn2-ops)))
+    (cond ((not (eq code :ok)) (mv code fn2-ops))
+          ((not (and (not (equal family *fn2-peer-family-none*))
+                     (fn2-peer-recordp *fn2-outcome-done* family port w0 w1 w2 w3)))
+           (mv :bounds fn2-ops))
+          (t (let ((fn2-ops (fn2-ops-put slot (peer-family family) (peer-port port)
+                                         (peer-w0 w0) (peer-w1 w1) (peer-w2 w2) (peer-w3 w3))))
+               (mv :ok fn2-ops))))))
+(fn2-ops-preserves fn2-op-set-connect-peer (slot gen family port w0 w1 w2 w3 fn2-ops)
+  :position 1 :disable nil :raw-rows t)
+(in-theory (disable fn2-op-set-connect-peer))
+
+(defun fn2-issue-connect (family port w0 w1 w2 w3 okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+  (declare (xargs :stobjs (fn2-pool fn2-ops fn2-control)
+                  :guard (and (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops) (fn2-control-wfp fn2-control))))
+  (mv-let (stop-reason code opslot opgen fn2-ops)
+    (b* (((unless (and (not (equal family *fn2-peer-family-none*))
+                       (fn2-peer-recordp *fn2-outcome-done* family port w0 w1 w2 w3)))
+          (mv *fn2-stop-reason-none* :bounds 0 0 fn2-ops))
+         ((unless (fn2-core-outbox-ready fn2-ops))
+          (mv *fn2-stop-reason-none* :state 0 0 fn2-ops))
+         ((mv code opslot opgen fn2-ops)
+          (fn2-op-reserve *fn2-action-connect* okind oslot ogen principal 0 fn2-ops))
+         ((unless (eq code :ok))
+          (mv *fn2-stop-reason-none* code 0 0 fn2-ops))
+         ((mv code fn2-ops)
+          (fn2-op-set-connect-peer opslot opgen family port w0 w1 w2 w3 fn2-ops))
+         ((unless (eq code :ok))
+          (mv *fn2-stop-reason-issue-capability* code opslot opgen fn2-ops))
+         ((mv code fn2-ops) (fn2-op-enqueue opslot opgen fn2-ops)))
+      (mv (if (eq code :ok) *fn2-stop-reason-none* *fn2-stop-reason-issue-enqueue*)
+          code opslot opgen fn2-ops))
+    (let ((fn2-control (if (= stop-reason *fn2-stop-reason-none*) fn2-control
+                         (fn2-control-record-stop stop-reason fn2-control))))
+      (mv code opslot opgen fn2-pool fn2-ops fn2-control))))
+(fn2-pool-preserves fn2-issue-connect (family port w0 w1 w2 w3 okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+  :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL"))
+  :disable nil)
+(defthm fn2-issue-connect-pool-unchanged
+  (equal (mv-nth 3 (fn2-issue-connect family port w0 w1 w2 w3 okind oslot ogen principal fn2-pool fn2-ops fn2-control))
+         fn2-pool))
+(defthm fn2-issue-connect-pre-reserve-refusal
+  (b* (((mv code & & p1 o1 c1)
+        (fn2-issue-connect family port w0 w1 w2 w3 okind oslot ogen principal fn2-pool fn2-ops fn2-control)))
+    (implies (and (not (eq code :ok))
+                  (= (fn2-control-stop fn2-control) 0)
+                  (= (fn2-control-stop c1) 0))
+             (and (equal p1 fn2-pool)
+                  (equal o1 fn2-ops)
+                  (equal c1 fn2-control))))
+  :hints (("Goal" :in-theory (enable fn2-control-record-stop fn2-op-reserve))))
+(in-theory (disable fn2-issue-connect))
+
 ; ----------------------------------------------------------------------
 ; Pool range release: a release that is neither done nor retired stops the core.
 (defun fn2-core-release-children (slot gen okind oslot ogen fn2-pool fn2-control)
@@ -353,7 +412,8 @@
   '(fn2-machines-free-head-of fn2-machines-reclaim fn2-machines-wake-row) (w state)))
 (assert-event
  (fn2-assert-compliant-p
-  '(fn2-control-record-stop fn2-issue-children fn2-core-release-children
+  '(fn2-control-record-stop fn2-issue-children fn2-op-set-connect-peer fn2-issue-connect
+    fn2-core-release-children
     fn2-pool-slot-read-code fn2-pool-slot-capacity fn2-pool-slot-borrows
     fn2-machines-park fn2-machines-grant-op fn2-machines-park-admission
     fn2-machines-grant-admission fn2-machines-park-pool) (w state)))

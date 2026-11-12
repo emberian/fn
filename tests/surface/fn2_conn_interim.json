@@ -21,12 +21,14 @@
     "XOVER",
     "HDR",
     "XHDR",
+    "XPAT",
     "LIST",
     "NEWGROUPS",
     "NEWNEWS",
     "CHECK",
     "IHAVE",
-    "TAKETHIS"
+    "TAKETHIS",
+    "XFN-ZARTICLE"
   ],
   "interim": {
     "COMPRESS": {
@@ -39,20 +41,10 @@
       "reply": "580 can not initiate TLS negotiation",
       "quest": "D7"
     },
-    "XFN-ZARTICLE": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
-    },
     "XFNCATCHUP": {
       "code": 503,
       "reply": "503 archive projection unavailable",
       "quest": "E4"
-    },
-    "XPAT": {
-      "code": 503,
-      "reply": "503 archive projection unavailable",
-      "quest": "D6"
     }
   },
   "notes": {

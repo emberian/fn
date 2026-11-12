@@ -19,6 +19,43 @@
 (defconst *fn2-txn-counts-sid* 5)
 (defconst *fn2-txn-outcome-sid* 9)
 
+;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
+;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority
+;; head read dependency (matching authority.lisp's *fn2-auth-depend-slot*), and
+;; every remaining pair of slots carries one group's count accept + overview entry.
+(defconst *fn2-txn-slot-accepts* 8)
+(defconst *fn2-txn-slot-depend* 20)
+(defconst *fn2-txn-groups-max*
+  (floor (- *fn2-succ-slots* (+ 1 *fn2-txn-slot-accepts*)) 2))
+(assert-event (and (posp *fn2-txn-groups-max*)
+                   (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
+
+;; Profile-configured cross-post group limit (:max-groups-per-article, D27):
+;; a D core child read by fn2-txn instead of a compile-time literal.
+(defcolumns fn2-txn-config ((groups-max :u8)))
+(defun fn2-txn-config-profilep (profile)
+  (declare (xargs :guard t))
+  (let ((g (fn2-profile-get :max-groups-per-article profile)))
+    (or (null g)
+        (and (posp g) (<= g *fn2-txn-groups-max*)))))
+(defun fn2-txn-config-from (profile fn2-txn-config)
+  (declare (xargs :stobjs fn2-txn-config :guard (fn2-txn-config-profilep profile)))
+  (let* ((fn2-txn-config (fn2-txn-config-init 1 fn2-txn-config))
+         (g (fn2-profile-get :max-groups-per-article profile)))
+    (fn2-txn-config-put 0
+      (groups-max (if (and (posp g) (<= g *fn2-txn-groups-max*) (unsigned-byte-p 8 g))
+                      g
+                    *fn2-txn-groups-max*)))))
+(defthm fn2-txn-config-from-type
+  (implies (fn2-txn-configp fn2-txn-config)
+           (fn2-txn-configp (fn2-txn-config-from profile fn2-txn-config))))
+(defthm fn2-txn-config-from-wfp
+  (fn2-txn-config-wfp (fn2-txn-config-from profile fn2-txn-config)))
+(in-theory (disable fn2-txn-config-from fn2-txn-config-profilep))
+(defcorechild fn2-core-txn-config fn2-txn-config
+ :init (fn2-txn-config-from profile fn2-txn-config) :profilep (fn2-txn-config-profilep profile)
+ :why "Profile-configured cross-post group limit (:max-groups-per-article) read by fn2-txn (D27).")
+
 ;; The claim table (a D core child, one row per transaction slot).
 (fn2-claims-preserves fn2-claims-init-buckets (left fn2-claims)
   :hyps ((fn2-claimsp fn2-claims) (fn2-claims-wfp fn2-claims) (<= (nfix left) (fn2-claims-rows fn2-claims))))

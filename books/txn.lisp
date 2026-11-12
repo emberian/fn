@@ -25,12 +25,12 @@
 ;; Body lines counted per :prepare run (one pool read each).
 (defconst *fn2-txn-count-bytes* 2048)
 ;; The schemas a POST writes (identity.lisp, ordered.lisp) and its write
-;; slots (C-S3, W = 24): the identity admission (C §4a: the evidence, the
-;; history entry, the summary's and the candidate's :admit, the article
-;; index), the article row, the operation outcome, then one group-count
-;; accept per carried group. A cross-post to more carried groups than
-;; *fn2-txn-groups-max* is refused :unaffordable (the overview row and the
-;; addr entries of D5 2/n take the other slots).
+;; slots (C-S3): the identity admission (C §4a: the evidence, the history
+;; entry, the summary's and the candidate's :admit, the article index), the
+;; article row, the operation outcome, then one group-count accept and
+;; overview row per carried group up to the profile's :max-groups-per-article
+;; (fn2-txn-groups-limit, bounded by *fn2-txn-groups-max* in txn-kind.lisp),
+;; skipping *fn2-txn-slot-depend* (authority.lisp's read-dependency slot).
 (defconst *fn2-txn-slot-evidence* 0)
 (defconst *fn2-txn-slot-history* 1)
 (defconst *fn2-txn-slot-summary* 2)
@@ -39,13 +39,14 @@
 (defconst *fn2-txn-slot-article* 5)
 (defconst *fn2-txn-slot-outcome* 6)
 (defconst *fn2-txn-slot-addr* 7)
-(defconst *fn2-txn-slot-accepts* 8)
-(defconst *fn2-txn-groups-max* 6)
-;; then the read dependency on the principal's authority head (authority.lisp's
-;; fn2-authority-depend declares it, asserted at the same slot in
-;; assembly-callbacks-d-txn), when a grant governed the append
-(defconst *fn2-txn-slot-depend* (+ *fn2-txn-slot-accepts* (* 2 *fn2-txn-groups-max*)))
-(assert-event (< *fn2-txn-slot-depend* *fn2-succ-slots*))
+
+(defun fn2-txn-group-slot (k)
+  (declare (xargs :guard (natp k)))
+  (let ((s (+ *fn2-txn-slot-accepts* (* 2 (nfix k)))))
+    (if (< s *fn2-txn-slot-depend*) s (+ 1 s))))
+(defthm fn2-txn-group-slot-natp
+  (natp (fn2-txn-group-slot k))
+  :rule-classes :type-prescription)
 ;; The article row's values: a born article is live, version 1; the
 ;; operation outcome recorded with it is accepted (it is bound only into the
 ;; batch that accepts it).
@@ -302,6 +303,8 @@
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
+(defcost fn2-txn-groups-limit
+  :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
 
 (defmachine-arms fn2-txn :declare
  :subarms
@@ -323,7 +326,7 @@
               :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:ok)
-                      (:cond ((>= row-ngroups *fn2-txn-groups-max*)
+                      (:cond ((>= row-ngroups (fn2-txn-groups-limit))
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                              ;; the authority seam (AUTHORITY-20261105 section
@@ -618,6 +621,23 @@
 (defmacro fn2-txn-op-events ()
  '(progn
 (defcost-faces fn2-txn)
+(defun fn2-txn-groups-limit (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-txn-config (fn2-core-txn-config fn2-core)))
+    (lim)
+    (if (and (fn2-txn-config-wfp fn2-txn-config)
+             (natp (fn2-txn-config-rows fn2-txn-config))
+             (< 0 (fn2-txn-config-rows fn2-txn-config)))
+        (fn2-txn-config-groups-max 0 fn2-txn-config)
+      0)
+    (min (nfix lim) *fn2-txn-groups-max*)))
+(defthm fn2-txn-groups-limit-natp
+  (natp (fn2-txn-groups-limit fn2-core))
+  :rule-classes :type-prescription)
+(defthm fn2-txn-groups-limit-bound
+  (<= (fn2-txn-groups-limit fn2-core) *fn2-txn-groups-max*)
+  :rule-classes :linear)
+(in-theory (disable fn2-txn-groups-limit))
 (defthm fn2-txn-hash-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash n slot gen off okind oslot ogen fn2-core)))
   :hints (("Goal" :in-theory (e/d (fn2-txn-hash) (unsigned-byte-p)))))
@@ -811,7 +831,7 @@
   ;; Chunk 1 is scratch here: the source is durable and counted and its
   ;; digest already copied into chunk 0 (fn2-txn-put-post-for).
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k))))
-  (b* ((ac (+ *fn2-txn-slot-accepts* (* 2 (nfix k))))
+  (b* ((ac (fn2-txn-group-slot k))
        (ov (+ 1 ac))
        ((unless (and (natp noff) (posp nlen) (< nlen 256))) (mv :bounds fn2-core))
        ((mv c fn2-core)
@@ -859,7 +879,7 @@
                   :guard (and (fn2-core-wfp fn2-core) (natp k) (natp j))))
   (if (zp k) (mv :ok fn2-core)
     (mv-let (c fn2-core)
-      (fn2-successor-fill-octets tx (+ 1 *fn2-txn-slot-accepts* (* 2 (nfix j)))
+      (fn2-successor-fill-octets tx (+ 1 (fn2-txn-group-slot j))
                                  *fn2-overview-entry-field-line* c0 g0 ov-off ov-len okind oslot ogen fn2-core)
       (if (not (eq c :ok)) (mv c fn2-core)
         (fn2-txn-fill-ov-lines (- k 1) (+ 1 (nfix j)) tx c0 g0 ov-off ov-len okind oslot ogen fn2-core)))))
@@ -893,7 +913,7 @@
                   :guard (and (fn2-core-wfp fn2-core) (natp k) (natp j) (natp off))))
   (if (zp k) (mv :ok fn2-core)
     (b* (((mv vcode number)
-          (fn2-successor-out tx (+ 1 *fn2-txn-slot-accepts* (* 2 (nfix j))) *fn2-overview-entry-field-number* fn2-core))
+          (fn2-successor-out tx (+ 1 (fn2-txn-group-slot j)) *fn2-overview-entry-field-number* fn2-core))
          ((unless (and (eq vcode :ok) (natp number))) (mv :bounds fn2-core))
          ((mv code next fn2-core)
           (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))

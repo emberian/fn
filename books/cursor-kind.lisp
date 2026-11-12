@@ -12,7 +12,7 @@
  :fields ((conn :link) (conn-gen :u60) (conn-kind :u8) (mask :u8)
           (rx-slot :link) (rx-gen :u60) (line-s :u32) (line-e :u32) (tx-slot :link) (tx-gen :u60)
           (group :u60) (current :u60) (pin :u60)
-          (tag :u8) (k0 :u8) (a0 :u32) (b0 :u32) (k1 :u8) (a1 :u32) (b1 :u32)
+          (tag :u8) (k0 :u8) (a0 :u32) (b0 :u32) (k1 :u8) (a1 :u32) (b1 :u32) (a2 :u32) (b2 :u32) (lat :u32)
           (step :u8) (lo :u32) (hi :u32) (next :u32) (found :u32) (count :u32) (low :u32) (high :u32)
           (sel :u60) (ncurrent :u60) (spin :u60) (update :u8) (reply :u16) (roff :u32)
           (lpos :u32) (seen :bool) (have :u8) (turn :bool) (done :bool) (cancel :bool)
@@ -52,7 +52,7 @@
  :capacity (fn2-b-cursor-rows profile)
  :taken (:phase :select :rows :cursor-row :ranges ()
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
-         :clear (tag k0 a0 b0 k1 a1 b1 step lo hi next found count low high sel ncurrent spin update reply roff
+         :clear (tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
                  mkind mpos bunit bepoch balloc blen bready mread bhash bcv hmode hk hstep cursor))

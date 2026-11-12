@@ -18,7 +18,8 @@
    (rx-head :u32) (rx-count :u32) (tx-head :u32) (tx-count :u32)
    (half-open :bool) (nonreading :bool)
    (reset-armed :bool) (reset-left :u60)
-   (peer-family :u8) (peer-uid :u32) (peer-gid :u32))
+   (peer-family :u8) (peer-uid :u32) (peer-gid :u32)
+   (peer-port :u16) (peer-w0 :u32) (peer-w1 :u32) (peer-w2 :u32) (peer-w3 :u32))
   :init-name fn2-network-columns-init
   :extra-fields
   ((fn2-network-rx :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t :why "Connection receive pipes have byte capacity independent of row count.")
@@ -41,7 +42,8 @@
                              (cap window) (phase *fn2-network-phase-closed*)
                              (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
                              (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0)
-                             (peer-family *fn2-peer-family-none*) (peer-uid 0) (peer-gid 0))))
+                             (peer-family *fn2-peer-family-none*) (peer-uid 0) (peer-gid 0)
+                             (peer-port 0) (peer-w0 0) (peer-w1 0) (peer-w2 0) (peer-w3 0))))
       (fn2-network-init-rows (+ 1 slot) window fn2-sim-network))))
 (defthm fn2-network-init-rows-type
   (implies (and (fn2-sim-networkp fn2-sim-network)
@@ -96,6 +98,38 @@
              (mv :ok nonce fn2-sim-network)))))
 (fn2-sim-network-preserves fn2-network-accept (slot fn2-sim-network) :position 2 :prefix "" :rows nil :wfp-type nil)
 
+; Open capability SLOT as an outbound peer connection to (FAMILY PORT W0 W1 W2 W3),
+; advancing its nonce and clearing pipes/faults. Invalid peer records, open slots,
+; out-of-range slots, and exhausted nonces refuse by name and change nothing.
+(defun fn2-network-connect (slot family port w0 w1 w2 w3 fn2-sim-network)
+  (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
+  (cond ((not (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))))
+         (mv :bounds 0 fn2-sim-network))
+        ((not (and (not (equal family *fn2-peer-family-none*))
+                   (fn2-peer-recordp *fn2-outcome-done* family port w0 w1 w2 w3)))
+         (mv :peer 0 fn2-sim-network))
+        ((equal (fn2-sim-network-phase slot fn2-sim-network) *fn2-network-phase-open*)
+         (mv :busy 0 fn2-sim-network))
+        ((equal (fn2-sim-network-nonce slot fn2-sim-network) #xffffffff)
+         (mv :exhausted 0 fn2-sim-network))
+        (t (let* ((nonce (+ 1 (fn2-sim-network-nonce slot fn2-sim-network)))
+                  (fn2-sim-network
+                   (fn2-sim-network-put slot (nonce nonce) (phase *fn2-network-phase-open*)
+                                    (rx-head 0) (rx-count 0) (tx-head 0) (tx-count 0)
+                                    (half-open 0) (nonreading 0) (reset-armed 0) (reset-left 0)
+                                    (peer-family family) (peer-port port)
+                                    (peer-w0 w0) (peer-w1 w1) (peer-w2 w2) (peer-w3 w3)
+                                    (peer-uid (if (equal family *fn2-peer-family-local*) w0 0))
+                                    (peer-gid (if (equal family *fn2-peer-family-local*) w1 0)))))
+             (mv :ok nonce fn2-sim-network)))))
+(fn2-sim-network-preserves fn2-network-connect (slot family port w0 w1 w2 w3 fn2-sim-network)
+  :position 2 :prefix "" :rows nil :wfp-type nil)
+(defthm fn2-network-connect-refusal
+  (implies (not (eq (mv-nth 0 (fn2-network-connect slot family port w0 w1 w2 w3 fn2-sim-network)) :ok))
+           (equal (mv-nth 2 (fn2-network-connect slot family port w0 w1 w2 w3 fn2-sim-network))
+                  fn2-sim-network))
+  :hints (("Goal" :in-theory (enable fn2-network-connect))))
+
 ; Configure capability SLOT's peer: :none, or :local with its uid and gid
 ; (a record fn2-peer-recordp accepts). Anything else is refused by name and
 ; changes nothing.
@@ -110,18 +144,34 @@
              (mv :ok fn2-sim-network)))))
 (fn2-sim-network-preserves fn2-network-set-peer (slot family uid gid fn2-sim-network) :position 1 :prefix "" :rows nil :wfp-type nil)
 
-; The peer record an Accept that landed on capability SLOT carries: (mv
+; The peer record an Accept or Connect on capability SLOT carries: (mv
 ; family port w0 w1 w2 w3), :none for a slot outside the table.
 (defun fn2-network-peer (slot fn2-sim-network)
   (declare (xargs :stobjs fn2-sim-network :guard (fn2-sim-network-wfp fn2-sim-network)))
-  (if (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))
-           (equal (fn2-sim-network-peer-family slot fn2-sim-network) *fn2-peer-family-local*)
-           (fn2-peer-recordp *fn2-outcome-done* *fn2-peer-family-local* 0
-                             (fn2-sim-network-peer-uid slot fn2-sim-network)
-                             (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0))
-      (mv *fn2-peer-family-local* 0 (fn2-sim-network-peer-uid slot fn2-sim-network)
-          (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0)
-    (mv *fn2-peer-family-none* 0 0 0 0 0)))
+  (if (not (and (natp slot) (< slot (fn2-sim-network-rows fn2-sim-network))))
+      (mv *fn2-peer-family-none* 0 0 0 0 0)
+    (let ((fam (fn2-sim-network-peer-family slot fn2-sim-network)))
+      (cond ((and (equal fam *fn2-peer-family-local*)
+                  (fn2-peer-recordp *fn2-outcome-done* *fn2-peer-family-local* 0
+                                    (fn2-sim-network-peer-uid slot fn2-sim-network)
+                                    (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0))
+             (mv *fn2-peer-family-local* 0 (fn2-sim-network-peer-uid slot fn2-sim-network)
+                 (fn2-sim-network-peer-gid slot fn2-sim-network) 0 0))
+            ((let ((port (fn2-sim-network-peer-port slot fn2-sim-network))
+                   (w0 (fn2-sim-network-peer-w0 slot fn2-sim-network))
+                   (w1 (fn2-sim-network-peer-w1 slot fn2-sim-network))
+                   (w2 (fn2-sim-network-peer-w2 slot fn2-sim-network))
+                   (w3 (fn2-sim-network-peer-w3 slot fn2-sim-network)))
+               (and (or (equal fam *fn2-peer-family-inet*)
+                        (equal fam *fn2-peer-family-inet6*))
+                    (fn2-peer-recordp *fn2-outcome-done* fam port w0 w1 w2 w3)))
+             (mv fam
+                 (fn2-sim-network-peer-port slot fn2-sim-network)
+                 (fn2-sim-network-peer-w0 slot fn2-sim-network)
+                 (fn2-sim-network-peer-w1 slot fn2-sim-network)
+                 (fn2-sim-network-peer-w2 slot fn2-sim-network)
+                 (fn2-sim-network-peer-w3 slot fn2-sim-network)))
+            (t (mv *fn2-peer-family-none* 0 0 0 0 0))))))
 (defthm fn2-network-peer-recordp
   (mv-let (family port w0 w1 w2 w3) (fn2-network-peer slot fn2-sim-network)
     (fn2-peer-recordp *fn2-outcome-done* family port w0 w1 w2 w3)))
@@ -405,6 +455,41 @@
 (local (assert-event (fn2-network-fault-test :reset)))
 (local (assert-event (fn2-network-fault-test :close)))
 
+(local
+ (defun fn2-network-connect-test ()
+   (declare (xargs :guard t))
+   (with-local-stobj fn2-sim-network
+     (mv-let (answer fn2-sim-network)
+       (let ((fn2-sim-network (fn2-network-init 2 4 fn2-sim-network)))
+         (mv-let (bad-peer n0 fn2-sim-network)
+           (fn2-network-connect 0 *fn2-peer-family-none* 0 0 0 0 0 fn2-sim-network)
+           (declare (ignore n0))
+           (mv-let (bad-inet n1 fn2-sim-network)
+             (fn2-network-connect 0 *fn2-peer-family-inet* 119 #x7f000001 99 0 0 fn2-sim-network)
+             (declare (ignore n1))
+             (mv-let (ok nonce fn2-sim-network)
+               (fn2-network-connect 0 *fn2-peer-family-inet* 119 #x7f000001 0 0 0 fn2-sim-network)
+               (mv-let (busy n2 fn2-sim-network)
+                 (fn2-network-connect 0 *fn2-peer-family-inet* 119 #x7f000001 0 0 0 fn2-sim-network)
+                 (declare (ignore n2))
+                 (mv-let (oob n3 fn2-sim-network)
+                   (fn2-network-connect 2 *fn2-peer-family-inet* 119 #x7f000001 0 0 0 fn2-sim-network)
+                   (declare (ignore n3))
+                   (mv-let (s fn2-sim-network) (fn2-network-send-byte 0 nonce 65 fn2-sim-network)
+                     (mv-let (r b fn2-sim-network) (fn2-network-client-read 0 nonce fn2-sim-network)
+                       (mv-let (pf pp pw0 pw1 pw2 pw3) (fn2-network-peer 0 fn2-sim-network)
+                         (mv (and (eq bad-peer :peer) (eq bad-inet :peer)
+                                  (eq ok :ok) (equal nonce 1)
+                                  (eq busy :busy) (eq oob :bounds)
+                                  (equal pf *fn2-peer-family-inet*)
+                                  (equal pp 119)
+                                  (equal pw0 #x7f000001)
+                                  (equal pw1 0) (equal pw2 0) (equal pw3 0)
+                                  (eq s :ok) (eq r :ok) (equal b 65))
+                             fn2-sim-network))))))))))
+       answer))))
+(local (assert-event (fn2-network-connect-test)))
+
 ; Process death closes every pipe and drops queued bytes. Retaining each
 ; nonce means the next accept advances it, so a pre-death capability cannot
 ; alias a post-restart connection. No allocation or resizing occurs here.
@@ -428,7 +513,7 @@
 (fn2-sim-network-preserves fn2-network-restart (fn2-sim-network) :position nil :prefix "" :rows nil :wfp-type nil)
 
 (assert-event (fn2-assert-compliant-p
-  '(fn2-network-init fn2-network-accept fn2-network-set-peer fn2-network-peer fn2-network-close fn2-network-refuse
+  '(fn2-network-init fn2-network-accept fn2-network-connect fn2-network-set-peer fn2-network-peer fn2-network-close fn2-network-refuse
     fn2-network-faults fn2-network-transfer-tick fn2-network-queue-put fn2-network-queue-get
     fn2-network-client-byte fn2-network-client-read fn2-network-receive-byte fn2-network-send-byte
     fn2-network-drop-all fn2-network-restart) (w state)))
