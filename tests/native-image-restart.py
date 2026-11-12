@@ -18,13 +18,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Node:
-    def __init__(self, directory, image, mode, label):
+    def __init__(self, directory, image, mode, label, control_sock=None):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
         self.pending = b""
+        cmd = ["timeout", "600", str(ROOT / "fn"), mode, str(image)]
+        if control_sock is not None:
+            cmd.extend(["--control-sock", str(control_sock)])
         self.proc = subprocess.Popen(
-            ["timeout", "600", str(ROOT / "fn"), mode, str(image)], cwd=ROOT,
+            cmd, cwd=ROOT,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
         )
         (directory / f"{label}.launcher.pid").write_text(f"{self.proc.pid}\n")
@@ -152,11 +155,25 @@ def main():
         head, whole = article(mid, n)
         articles.append((mid, head, whole))
     assert len(wire(articles[0][2])) < 12288 < len(wire(articles[1][2]))
-    node = Node(directory, image, "serve", "post")
+    ctl_sock = Path(f"/tmp/fn2-nir-{os.getpid()}-{time.time_ns()}.sock")
+    node = Node(directory, image, "serve", "post", control_sock=ctl_sock)
     try:
         port = int(node.marker(b"LISTENING ").split()[1])
+        node.marker(b"LISTENING-LOCAL ")
         sock, stream = connect(port)
         try:
+            # Control: before granting anonymous append on local.test, POST is refused.
+            sock.sendall(b"POST\r\n")
+            assert stream.readline() == b"340 send article to be posted\r\n"
+            sock.sendall(wire(stuffed(articles[0][2]) + [b"."]))
+            denied = stream.readline()
+            assert denied.startswith(b"441 "), denied
+            grant_rc = subprocess.call(
+                [str(ROOT / "fn"), "grant", "set", "anonymous", "append", "local.test",
+                 "--control-sock", str(ctl_sock)],
+                cwd=ROOT,
+            )
+            assert grant_rc == 0, grant_rc
             for mid, _, whole in articles:
                 sock.sendall(b"POST\r\n")
                 assert stream.readline() == b"340 send article to be posted\r\n"
@@ -169,6 +186,9 @@ def main():
             sock.close()
     finally:
         node.close()
+        for p in (ctl_sock, Path(f"{ctl_sock}.groups")):
+            if p.exists():
+                p.unlink()
     previous = None
     for label in ("restart-1", "restart-2"):
         node = Node(directory, image, "serve", label)

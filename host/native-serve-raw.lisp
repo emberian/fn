@@ -11,6 +11,19 @@
     (and (= (length parts) 4) (every (lambda (p) (<= 0 p 255)) parts)
          (reduce (lambda (a p) (+ (* a 256) p)) parts :initial-value 0))))
 
+(defun fn2-nserve-groups (text)
+  "Trusted startup group names separated by newlines or commas, numbered from 1."
+  (loop with start = 0 and len = (length text) and id = 0 and acc = nil
+        while (<= start len)
+        for end = (or (position-if (lambda (c) (or (char= c #\Newline) (char= c #\,)))
+                                   text :start start)
+                      len)
+        for name = (string-trim '(#\Space #\Tab #\Return) (subseq text start end))
+        when (plusp (length name))
+          do (incf id) (push (cons name id) acc)
+        do (setf start (1+ end))
+        finally (return (nreverse acc))))
+
 (defvar *fn2-nserve-base* nil
   "The served profile before the environment's keys; nil names the surface sessions'.
 A driver that serves another profile over the same seeded store (tests/native-consumer.lsp)
@@ -26,7 +39,9 @@ core reads a value that is not a u32 as uid 0."
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
          (address (sb-ext:posix-getenv "FN2_LISTENER_ADDRESS"))
          (path (sb-ext:posix-getenv "FN2_LISTENER_PATH"))
-         (owner (sb-ext:posix-getenv "FN2_OWNER_UID")))
+         (owner (sb-ext:posix-getenv "FN2_OWNER_UID"))
+         (groups (sb-ext:posix-getenv "FN2_GROUPS"))
+         (peering (sb-ext:posix-getenv "FN2_PEERING")))
     (when owner
       (setf profile (put-assoc-equal :owner-uid (or (ignore-errors (parse-integer owner)) -1) profile)))
     (when port
@@ -35,6 +50,14 @@ core reads a value that is not a u32 as uid 0."
       (setf profile (put-assoc-equal :listener-address (or (fn2-nserve-dotted address) -1) profile)))
     (when path
       (setf profile (put-assoc-equal :listener-path path profile)))
+    (when groups
+      (setf profile (put-assoc-equal :groups (fn2-nserve-groups groups) profile)))
+    (when peering
+      (setf profile (put-assoc-equal :peering-interim
+                                     (cond ((or (equal peering "1") (equal peering "true")) t)
+                                           ((or (equal peering "0") (equal peering "false")) nil)
+                                           (t :invalid))
+                                     profile)))
     profile))
 
 ; The ready, refusal and stop lines each start a line (fn1's harness matches
@@ -55,6 +78,9 @@ core reads a value that is not a u32 as uid 0."
       (unless (eq bind :ok)
         (format t "~%REFUSED ~(~a~)~%" bind) (finish-output)
         (return-from fn2-nserve-main 2)))
+    (unless (fn2-core-profilep (if image (fn2-image-profile profile) profile))
+      (format t "~%REFUSED profile~%") (finish-output)
+      (return-from fn2-nserve-main 2))
     (let ((host (handler-case
                  (if image
                    (fn2-n-make-host profile :trace-capacity capacity :device-path image :create-size image-bytes)
