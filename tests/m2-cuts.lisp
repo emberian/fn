@@ -30,12 +30,17 @@
 (defconst *m2-profile*
   ;; T 4: fn2-txn's row, fn2-auth's and the two consumer rows' successors (fn2-txn-consumer-share)
   (put-assoc-equal :t 4
+  (put-assoc-equal :p 8
+  (put-assoc-equal :c 8
+  (put-assoc-equal :o 32
+  (put-assoc-equal :qa 16
   (put-assoc-equal :authority 1
   (put-assoc-equal :owner-account 2
   (put-assoc-equal :cns 2
     (put-assoc-equal :control-connections 3
-      (put-assoc-equal :extent-slots 128
-        (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*))))))))
+      (put-assoc-equal :extent-slots 256
+        (put-assoc-equal :pool-classes '((32 . 1024) (128 . 16384) (64 . 65536))
+          (put-assoc-equal :groups (list (cons *mini-group* 1) (cons *mini-reply-group* 2)) *fn2-cursor-profile*)))))))))))))
 (defconst *m2-mini-conn* 0)
 (defconst *m2-origin-conn* 1)
 ; The administrator's connection (an owner connection never bound): it
@@ -208,8 +213,6 @@
             r)))
     (mv r new (m2-wired clients store s) fn2-core)))
 
-(defconst *m2-no-fetch*
-  "page: a reference item, and fetch (code 13) is not served, so Mini cannot resolve it")
 ; The served page's items (tests/fnct-client.lisp fnc-items) as the model's
 ; (POSITION TYPE MESSAGE-ID PAYLOAD): a record's payload its octets as a string.
 (defun m2-model-items (items)
@@ -219,6 +222,23 @@
       (cons (list (nth 1 i) (if (eq (nth 0 i) :reference) :ref (nth 0 i)) (nth 2 i)
                   (and (eq (nth 0 i) :record) (fnc-chars-string (nth 3 i))))
             (m2-model-items (cdr items))))))
+; Resolve every :ref item on a served page through fetch (code 13):
+; (mv items ok s fn2-core). A failed fetch leaves the page uncommitted.
+(defun m2-resolve (items s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (if (atom items) (mv nil t s fn2-core)
+    (let ((i (car items)))
+      (if (not (eq (nth 1 i) :ref))
+          (mv-let (rest ok s fn2-core) (m2-resolve (cdr items) s fn2-core)
+            (mv (cons i rest) ok s fn2-core))
+        (b* ((pos (nfix (nth 0 i)))
+             (mid (nth 2 i))
+             ((mv fr & s fn2-core)
+              (m2-mini-send 'fetch (fnc-fetch (fn2-cw-chars (coerce mid 'list)) pos) s fn2-core)))
+          (if (not (m2-accepted-p fr))
+              (mv nil nil (m2-why (m2-reason-text "fetch" fr) s) fn2-core)
+            (mv-let (rest ok s fn2-core) (m2-resolve (cdr items) s fn2-core)
+              (mv (cons (list pos :record mid (fnc-chars-string (nth 2 fr))) rest) ok s fn2-core))))))))
 (defconst *m2-r-size*
   "R is appended as its header and operation tag: its 198,919 octets are past one L frame (one receive)")
 
@@ -250,12 +270,13 @@
   (b* ((s (if (eq flag :reclaim-before-fetch)
               (m2-why "reclaim: no served world step reclaims a stored article (fn2-cns has no reclaim of R)" s)
             s))
-       (items (and (m2-accepted-p r) (m2-model-items (nth 3 (nth 2 r)))))
-       (s (if (assoc-equal :ref (strip-cdrs items)) (m2-why *m2-no-fetch* s) s))
        (db (mini-put :parked nil (nth 1 s)))
-       (s (m2-db db s)))
+       (s (m2-db db s))
+       ((unless (m2-accepted-p r)) (mv (m2-why (m2-reason-text "a page" r) s) fn2-core))
+       ((mv items ok s fn2-core) (m2-resolve (m2-model-items (nth 3 (nth 2 r))) s fn2-core))
+       (db (nth 1 s)))
     (cond
-     ((not (m2-accepted-p r)) (mv (m2-why (m2-reason-text "a page" r) s) fn2-core))
+     ((not ok) (mv s fn2-core))
      ((eq flag :die-before-commit) (mv (m2-db (mini-put :uncertain-ack t db) s) fn2-core))
      (t
       (b* ((db (mini-commit items db))
@@ -342,6 +363,53 @@
     (:withdraw (mv (m2-why "withdraw: no served cancel, and fn2-cns delivers no withdrawal report" s) fn2-core))
     (otherwise (mv (m2-why (concatenate 'string "world step " (m2-reply-text (car op)) " is not served") s) fn2-core))))
 
+(defun m2-admit (cap fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+       ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl cap 77 3 0 fn2-core))
+       ((unless (eq acode :ok)) (mv acode fn2-core))
+       ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+       (fn2-core (fn2-exec-wake wake fn2-core)))
+    (mv :ok fn2-core)))
+
+; Process death and cold-restart recovery over the adapter's persisted device:
+; a fresh core runs B5 recovery + M7 fn2-member-replay, opens the next writer
+; epoch, re-admits the three local control connections, and re-binds Mini and
+; origin (judging both principals' recovered identities and authority heads).
+(defun m2-crash (s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((store (car (nth 4 s)))
+       (fn2-core (fn2-init-executor *m2-profile* :echo nil fn2-core))
+       (rid (fn2-machine-global-id *fn2-recovery-machine-kind* 0 *m2-profile*))
+       ((mv start fn2-core) (fn2-recovery-start rid 2 0 fn2-core))
+       ((mv & & store & fn2-core) (m2-loop 400000 0 nil store nil fn2-core))
+       (done (equal (fn2-machine-phase rid fn2-core) *fn2-recovery-machine-state-done*))
+       (class (nth (fn2-machine-rc-class rid fn2-core) *fn2-rec-classes*))
+       (stop (fn2-core-stop-reason fn2-core))
+       ((unless (and (eq start :ok) done (eq class :intact) (equal stop 0)))
+        (mv (m2-why (concatenate 'string "crash recovery answered "
+                                 (m2-reply-text (list start done class stop))) s)
+            fn2-core))
+       ((mv a0 fn2-core) (m2-admit *m2-mini-conn* fn2-core))
+       ((mv a1 fn2-core) (m2-admit *m2-origin-conn* fn2-core))
+       ((mv a2 fn2-core) (m2-admit *m2-admin-conn* fn2-core))
+       ((unless (and (eq a0 :ok) (eq a1 :ok) (eq a2 :ok)))
+        (mv (m2-why (concatenate 'string "crash re-admit answered " (m2-reply-text (list a0 a1 a2))) s) fn2-core))
+       (clients (list (list nil nil nil nil nil) (list nil nil nil nil nil) (list nil nil nil nil nil)))
+       (db (mini-put :parked nil (nth 1 s)))
+       (s (m2-db db (m2-wired clients (cons store nil) s)))
+       ((unless (m2-auth-get :setup s)) (mv s fn2-core))
+       (heads (m2-auth-get :heads s))
+       (mh (nfix (cdr (assoc-equal *m2-mini-id* heads))))
+       (oh (nfix (cdr (assoc-equal *m2-origin-id* heads))))
+       ((mv o s fn2-core) (m2-send-on *m2-mini-conn* (fnca-frame 'principal-bind (list (fnca-octets "mini"))) s fn2-core))
+       (s (m2-judge "Mini's post-crash principal-bind" o
+                    (fnca-reply 'principal-bind :accepted nil (list *m2-mini-id* mh) nil) s))
+       ((mv o s fn2-core) (m2-send-on *m2-origin-conn* (fnca-frame 'principal-bind (list (fnca-octets "origin"))) s fn2-core))
+       (s (m2-judge "origin's post-crash principal-bind" o
+                    (fnca-reply 'principal-bind :accepted nil (list *m2-origin-id* oh) nil) s)))
+    (mv s fn2-core)))
+
 (defun m2-drive (script s fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (atom script) (mv s fn2-core)
@@ -353,10 +421,7 @@
               (c (and (m2-accepted-p r) (fnc-reply-cursor 'register (cdr (assoc-equal *m2-mini-conn* new))))))
            (m2-drive (cdr script) (m2-db (mini-put :fncu c (mini-db-init (nfix (nth 2 r)))) s) fn2-core)))
         (:world (b* (((mv s fn2-core) (m2-world (cadr st) s fn2-core))) (m2-drive (cdr script) s fn2-core)))
-        (:crash
-         (m2-drive (cdr script)
-                   (m2-why "crash: the adapter loop has no crash and recovery of the served core (no durable image under fn2-cw; K10, D5 2/n)" s)
-                   fn2-core))
+        (:crash (b* (((mv s fn2-core) (m2-crash s fn2-core))) (m2-drive (cdr script) s fn2-core)))
         (:wait
          (b* (((mv s fn2-core) (m2-settle s fn2-core))
               ((mv r & s fn2-core) (m2-mini-send 'wait (fnc-wait (m2-cursor s) 8 30) s fn2-core))
@@ -379,6 +444,74 @@
            (m2-drive (cdr script) s fn2-core)))
         (otherwise (m2-drive (cdr script) s fn2-core))))))
 
+;; NNTP GROUP and ARTICLE readback over fn2-conn --------------------------------
+(defun m2-pending-accept (left i fn2-ops)
+  (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix left)))
+  (cond ((or (zp left) (>= (nfix i) (fn2-ops-rows fn2-ops))) nil)
+        ((and (equal (fn2-ops-kind (nfix i) fn2-ops) *fn2-action-accept*)
+              (equal (fn2-ops-phase (nfix i) fn2-ops) *fn2-op-phase-submitted*))
+         (list (nfix i) (fn2-ops-gen (nfix i) fn2-ops)))
+        (t (m2-pending-accept (- left 1) (+ 1 (nfix i)) fn2-ops))))
+
+(defun m2-until-gt (xs)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom xs) nil)
+        ((equal (car xs) 62) (list 62))
+        (t (let ((r (m2-until-gt (cdr xs)))) (and r (cons (car xs) r))))))
+
+(defun m2-nntp-readback (cut s fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((db (nth 1 s))
+       (want-q (and (consp (mini-get :index db)) (null (mini-get :outbox db))))
+       (cmds (if want-q
+                 (list (concatenate 'string "GROUP " *mini-group*) "ARTICLE 1"
+                       (concatenate 'string "GROUP " *mini-reply-group*) "ARTICLE 1" "QUIT")
+               (list (concatenate 'string "GROUP " *mini-group*) "ARTICLE 1" "QUIT")))
+       (in (fn2-cw-crlf-octets cmds))
+       (acc (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (acc)
+              (m2-pending-accept (fn2-ops-rows fn2-ops) 0 fn2-ops) acc))
+       ((unless acc)
+        (mv (m2-why "NNTP readback: no pending listener Accept for fn2-conn" s) fn2-core))
+       (io (nth 4 s))
+       (clients4 (append (nth 0 s) (list (list in (list (len in)) nil nil nil))))
+       (fn2-core (fn2-cw-post-accept (nth 0 acc) (nth 1 acc) 3 77 nil fn2-core))
+       ((mv & clients4 store deferred fn2-core)
+        (m2-loop 20000 0 clients4 (car io) (cdr io) fn2-core))
+       (wire (reverse (nth 2 (nth 3 clients4))))
+       (s (m2-wired (take 3 clients4) (cons store deferred) s))
+       (prefix-lines
+        (append (list "200 fn-nntp experimental server ready"
+                      (if (eq cut :c4-changed-source)
+                          (concatenate 'string "211 2 1 2 " *mini-group*)
+                        (concatenate 'string "211 1 1 1 " *mini-group*))
+                      "220 1 <r1@origin> article follows"
+                      (concatenate 'string "Xref: fn2.invalid " *mini-group* ":1"))
+                (m2-r-lines "<r1@origin>" *mini-r1*)
+                (list ".")))
+       ((unless want-q)
+        (let ((expected (fn2-cw-crlf-octets (append prefix-lines (list "205 closing connection")))))
+          (mv (if (equal wire expected) s (m2-why "NNTP readback of R over fn2-conn mismatched" s)) fn2-core)))
+       (pre (append (fn2-cw-crlf-octets (append prefix-lines
+                                                (list (concatenate 'string "211 1 1 1 " *mini-reply-group*))))
+                    (fn2-cw-chars (coerce "220 1 " 'list))))
+       (qmid-octets (m2-until-gt (nthcdr (len pre) wire)))
+       (qmid (and (consp qmid-octets) (equal (car qmid-octets) 60) (< 2 (len qmid-octets))
+                  (fnc-chars-string qmid-octets)))
+       (expected
+        (and qmid
+             (fn2-cw-crlf-octets
+              (append prefix-lines
+                      (list (concatenate 'string "211 1 1 1 " *mini-reply-group*)
+                            (concatenate 'string "220 1 " qmid " article follows")
+                            (concatenate 'string "Xref: fn2.invalid " *mini-reply-group* ":1")
+                            (concatenate 'string "Message-ID: " qmid))
+                      (m2-q-lines "m-o1")
+                      (list "." "205 closing connection"))))))
+    (mv (if (and expected (equal wire expected))
+            s
+          (m2-why "NNTP readback of R and Q over fn2-conn mismatched" s))
+        fn2-core)))
+
 ;; The acceptance (e-surface.md 10.1) over what Mini holds -------------------------
 (defun m2-accept (cut db)
   (declare (xargs :verify-guards nil))
@@ -394,14 +527,6 @@
            (otherwise (equal (cdr (assoc-equal "o1" (mini-get :index db))) *mini-r1*))))))
 
 ; A cut's run from the initialized core: (mv pass reasons).
-(defun m2-admit (cap fn2-core)
-  (declare (xargs :stobjs fn2-core :verify-guards nil))
-  (b* ((fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
-       ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl cap 77 3 0 fn2-core))
-       ((unless (eq acode :ok)) (mv acode fn2-core))
-       ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
-       (fn2-core (fn2-exec-wake wake fn2-core)))
-    (mv :ok fn2-core)))
 (defun m2-cut-run (cut mutate)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
@@ -419,13 +544,14 @@
            (script (append (pairlis$ (make-list (len *mini-grants*) :initial-element :world) (pairlis$ *mini-grants* nil))
                            (cdr (assoc-eq cut *mini-cuts*))))
            ((mv s fn2-core) (m2-drive script (m2-s clients (mini-db-init 0) nil mutate (cons nil nil) nil) fn2-core))
+           ((mv s fn2-core)
+            (if (equal (fn2-core-stop-reason fn2-core) 0)
+                (m2-nntp-readback cut s fn2-core)
+              (mv (m2-why (concatenate 'string "the core stopped: " (m2-reply-text (fn2-core-stop-reason fn2-core))) s) fn2-core)))
            (s (if (equal (fn2-core-stop-reason fn2-core) 0) s
                 (m2-why (concatenate 'string "the core stopped: " (m2-reply-text (fn2-core-stop-reason fn2-core))) s)))
            (ok (m2-accept cut (nth 1 s)))
-           (s (if ok s (m2-why "Mini's acceptance fails over what it observed (e-surface.md 10.1)" s)))
-           ; R's and Q's octets through NNTP's ARTICLE and GROUP are not read
-           ; back by this driver; a cut cannot pass before they are.
-           (s (if (nth 2 s) s (m2-why "NNTP readback of R and Q (GROUP, ARTICLE over fn2-conn) is not driven yet" s))))
+           (s (if ok s (m2-why "Mini's acceptance fails over what it observed (e-surface.md 10.1)" s))))
         (mv (null (nth 2 s)) (nth 2 s) fn2-core))
       (mv pass reasons))))
 
@@ -466,3 +592,49 @@
      (prog2$ (cw "M2CONTROL plain ~x0 ~x1~%M2CONTROL mutated ~x2 ~x3~%" pass0 r0 pass1 r1)
              (if (m2-test-mutation) (value '(value-triple :m2-control-ok))
                (er soft 'm2-control "the mutated register reply was not judged"))))))
+
+; Cold-restart replay teeth:
+; 1) c6-node-crash survives two full node crashes (B5 recovery + M7 replay of
+;    principals, accounts, grants, grant-current, authority-head, consumer
+;    cursors, groups, articles, overviews, addr, outcomes + NNTP readback of R
+;    and Q over fn2-conn) with zero storage/crash/NNTP failures.
+(defun m2-test-c6-crash ()
+  (declare (xargs :verify-guards nil))
+  (mv-let (pass rs) (m2-cut-run :c6-node-crash nil)
+    (and (not pass)
+         (equal rs
+                (list *m2-r-size*
+                      "append accepted: the kind 28 append result carries no Message-ID to hold across retries"
+                      "Mini's acceptance fails over what it observed (e-surface.md 10.1)")))))
+(assert! (m2-test-c6-crash))
+
+; 2) Replayed principals configure their slots in fn2-core-accounts, so a
+;    post-crash principal-create allocates slot 4 (never re-issuing mini's
+;    slot 1 or origin's slot 3) and binds cleanly.
+(defun m2-test-post-crash-principal-create ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (b* ((fn2-core (fn2-init-executor *m2-profile* :echo nil fn2-core))
+           ((mv & fn2-core)
+            (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+              (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
+           ((mv a0 fn2-core) (m2-admit *m2-mini-conn* fn2-core))
+           ((mv a1 fn2-core) (m2-admit *m2-origin-conn* fn2-core))
+           ((mv a2 fn2-core) (m2-admit *m2-admin-conn* fn2-core))
+           ((unless (and (eq a0 :ok) (eq a1 :ok) (eq a2 :ok))) (mv nil fn2-core))
+           (clients (list (list nil nil nil nil nil) (list nil nil nil nil nil) (list nil nil nil nil nil)))
+           (s (m2-s clients (mini-db-init 0) nil nil (cons nil nil) nil))
+           ((mv s fn2-core) (m2-auth-setup s fn2-core))
+           ((mv s fn2-core) (m2-crash s fn2-core))
+           (peer2-id (+ (* 4 4294967296) 1))
+           ((mv o1 s fn2-core)
+            (m2-send-on *m2-admin-conn* (fnca-frame 'principal-create (list (fnca-octets "peer2"))) s fn2-core))
+           ((mv o2 s fn2-core)
+            (m2-send-on *m2-admin-conn* (fnca-frame 'principal-bind (list (fnca-octets "peer2"))) s fn2-core)))
+        (mv (and (null (nth 2 s))
+                 (equal o1 (fnca-reply 'principal-create :accepted nil (list peer2-id) nil))
+                 (equal o2 (fnca-reply 'principal-bind :accepted nil (list peer2-id 0) nil)))
+            fn2-core))
+      ok)))
+(assert! (m2-test-post-crash-principal-create))

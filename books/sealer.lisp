@@ -192,11 +192,46 @@
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
  (let ((class (fn2-pool-class-for *fn2-run-page-size* fn2-pool)))
   (if (and (natp class) (< class (fn2-pool-nclasses fn2-pool))) (nfix (fn2-pool-free-count class fn2-pool)) 0)))
+; Among rows R.. (K), the live schema with the greatest live-run count
+; above BEST-N (smaller SID breaking ties): (mv best best-n).
+(defun fn2-seal-most-runs (k r best best-n fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix k)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r) (natp best) (natp best-n))))
+ (b* (((unless (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed))))
+       (mv (nfix best) (nfix best-n)))
+      ((unless (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
+       (fn2-seal-most-runs (- k 1) (+ 1 r) best best-n fn2-run-installed))
+      (sid (nfix (fn2-run-installed-schema r fn2-run-installed)))
+      (n (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 sid fn2-run-installed))
+      (better (or (< (nfix best-n) n) (and (equal n (nfix best-n)) (< sid (nfix best))))))
+  (fn2-seal-most-runs (- k 1) (+ 1 r) (if better sid best) (if better n best-n) fn2-run-installed)))
+(defthm fn2-seal-most-runs-types
+ (and (natp (mv-nth 0 (fn2-seal-most-runs k r best best-n fn2-run-installed)))
+      (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed))))
+ :rule-classes ((:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-most-runs k r best best-n fn2-run-installed))))
+                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed))))))
+; Pressure on the shared installed-run rows or 64 KiB page pool: proactive
+; (merge the sealing schema's runs regardless of size ratio, and compact idle
+; multi-run schemas once overlays drain) vs urgent (preemptively compact a
+; multi-run schema before sealing a schema with <= 1 live run so the last free
+; installed row or page is never consumed without freeing inputs).
+(defun fn2-seal-pressured-p (fn2-run-installed fn2-pool)
+ (declare (xargs :stobjs (fn2-run-installed fn2-pool)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
+ (let ((rows (fn2-run-installed-rows fn2-run-installed)))
+  (or (<= (fn2-seal-free-rows rows 0 fn2-run-installed) (max 2 (floor rows 3)))
+      (<= (fn2-seal-free-pages fn2-pool) 8))))
+(defun fn2-seal-urgent-p (fn2-run-installed fn2-pool)
+ (declare (xargs :stobjs (fn2-run-installed fn2-pool)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
+ (let ((rows (fn2-run-installed-rows fn2-run-installed)))
+  (or (<= (fn2-seal-free-rows rows 0 fn2-run-installed) 2)
+      (<= (fn2-seal-free-pages fn2-pool) 2))))
 ; Overlay O of SID with E entries: (mv count least-run) of the runs joining it.
 (defun fn2-seal-plan (sid e fn2-run-installed fn2-pool)
  (declare (xargs :stobjs (fn2-run-installed fn2-pool) :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
  (let* ((rows (fn2-run-installed-rows fn2-run-installed))
-        (force (or (<= (fn2-seal-free-pages fn2-pool) 1) (<= (fn2-seal-free-rows rows 0 fn2-run-installed) 1)
+        (force (or (fn2-seal-pressured-p fn2-run-installed fn2-pool)
                    (<= *fn2-seal-run-budget* (fn2-seal-live-runs rows 0 sid fn2-run-installed)))))
   (mv-let (k rlo) (fn2-seal-select *fn2-seal-merge-runs* e *fn2-u60-max* force sid fn2-run-installed)
    (mv (min *fn2-seal-merge-runs* (nfix k)) (nfix rlo)))))
@@ -204,37 +239,91 @@
  (and (natp (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool)))
       (<= (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*)
       (natp (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
- :rule-classes ((:linear :corollary (<= (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*))
+ :rule-classes ((:linear :corollary (<= 0 (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
+                (:linear :corollary (<= (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*))
+                (:linear :corollary (<= 0 (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-plan sid e fn2-run-installed fn2-pool))))))
-(in-theory (disable fn2-seal-live-runs fn2-seal-free-rows fn2-seal-select fn2-seal-free-pages fn2-seal-plan))
+; Run-only compaction target when no overlay is merged in (O = overlays-rows):
+; if a schema exceeds *fn2-seal-run-budget* live runs, or row/page pressure is
+; active and some schema holds >= 2 live runs, compact up to *fn2-seal-merge-runs*
+; newest runs of the schema with the most live runs: (mv sid k rlo), k = 0 when none.
+(defun fn2-seal-compact-target (fn2-run-installed fn2-pool)
+ (declare (xargs :stobjs (fn2-run-installed fn2-pool)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
+ (b* ((rows (fn2-run-installed-rows fn2-run-installed))
+      ((mv sid best-n) (fn2-seal-most-runs rows 0 0 0 fn2-run-installed))
+      ((unless (and (<= 2 best-n)
+                    (or (< *fn2-seal-run-budget* best-n)
+                        (fn2-seal-pressured-p fn2-run-installed fn2-pool))))
+       (mv 0 0 0))
+      ((mv k rlo) (fn2-seal-select *fn2-seal-merge-runs* 0 *fn2-u60-max* t sid fn2-run-installed))
+      (k (min *fn2-seal-merge-runs* (nfix k))))
+  (if (<= 2 k) (mv (nfix sid) k (nfix rlo)) (mv 0 0 0))))
+(defthm fn2-seal-compact-target-types
+ (and (natp (mv-nth 0 (fn2-seal-compact-target fn2-run-installed fn2-pool)))
+      (natp (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool)))
+      (<= (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*)
+      (natp (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+ :rule-classes ((:linear :corollary (<= 0 (mv-nth 0 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+                (:linear :corollary (<= 0 (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+                (:linear :corollary (<= (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool)) *fn2-seal-merge-runs*))
+                (:linear :corollary (<= 0 (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+                (:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+                (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
+                (:type-prescription :corollary (natp (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool))))))
+(defun fn2-seal-compact-pending-p (fn2-seals fn2-run-installed fn2-pool)
+ (declare (xargs :stobjs (fn2-seals fn2-run-installed fn2-pool)
+  :guard (and (fn2-seals-wfp fn2-seals) (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
+ (and (< 0 (fn2-seals-rows fn2-seals))
+      (equal (fn2-seals-phase 0 fn2-seals) *fn2-seal-phase-idle*)
+      (mv-let (sid k rlo) (fn2-seal-compact-target fn2-run-installed fn2-pool)
+       (declare (ignore sid rlo))
+       (<= 2 k))))
+(in-theory (disable fn2-seal-live-runs fn2-seal-free-rows fn2-seal-select fn2-seal-free-pages
+                    fn2-seal-most-runs fn2-seal-pressured-p fn2-seal-urgent-p
+                    fn2-seal-plan fn2-seal-compact-target fn2-seal-compact-pending-p))
 
-; Start: pick the next overlay. None: :idle. An empty one is retired at
-; once (:retired). Otherwise the next run identifier is handed out, the hash
-; workspace taken under the seal row's owner, and the build started.
+; Start: pick the next overlay, or a run-only compaction when none is sealable
+; (or preemptively when row/page space is urgent and the chosen overlay's
+; schema has nothing to merge while another schema holds >= 2 live runs).
+; O = (fn2-overlays-rows fn2-overlays) marks a run-only merge (K >= 2).
 (defun fn2-seal-start (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
               (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))
-  :guard-hints (("Goal" :in-theory (disable fn2-seal-pick fn2-seal-retire fn2-pool-reserve fn2-pool-class-for fn2-run-build-start fn2-seal-plan
+  :guard-hints (("Goal" :in-theory (disable fn2-seal-pick fn2-seal-retire fn2-pool-reserve fn2-pool-class-for fn2-run-build-start
+                                            fn2-seal-plan fn2-seal-compact-target fn2-seal-urgent-p
                                             fn2-overlays-rows fn2-seals-rows fn2-run-builds-rows fn2-run-writers-rows fn2-pool-rows
                                             fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
                                             fn2-seals-wbase fn2-seals-fbase fn2-seals-fill fn2-overlays-count fn2-seals-units)))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       (rows (fn2-overlays-rows fn2-overlays))
       (o (fn2-seal-pick rows 0 rows fn2-overlays))
-      ((unless (< o rows)) (mv :idle fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
-      ((unless (posp (fn2-overlays-count o fn2-overlays)))
+      ((when (and (< o rows) (not (posp (fn2-overlays-count o fn2-overlays)))))
        (mv-let (code fn2-overlays fn2-pool) (fn2-seal-retire o fn2-overlays fn2-pool)
         (mv (if (eq code :ok) :retired code) fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool)))
+      ((mv csid ck crlo) (fn2-seal-compact-target fn2-run-installed fn2-pool))
+      (csid (nfix csid)) (ck (min *fn2-seal-merge-runs* (nfix ck))) (crlo (nfix crlo))
+      ((mv osid ok orlo)
+       (if (< o rows)
+           (mv-let (k rlo) (fn2-seal-plan (fn2-overlays-schema o fn2-overlays) (fn2-overlays-count o fn2-overlays) fn2-run-installed fn2-pool)
+            (mv (nfix (fn2-overlays-schema o fn2-overlays)) (min *fn2-seal-merge-runs* (nfix k)) (nfix rlo)))
+         (mv 0 0 0)))
+      (compact-only (or (not (< o rows))
+                        (and (zp ok) (<= 2 ck) (fn2-seal-urgent-p fn2-run-installed fn2-pool))))
+      ((when (and compact-only (< ck 2)))
+       (mv :idle fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
+      (use-o (if compact-only rows o))
+      (sid (if compact-only csid osid))
+      (k (if compact-only ck ok))
+      (rlo (if compact-only crlo orlo))
       (okind (fn2-seals-okind 0 fn2-seals)) (oslot (fn2-seals-oslot 0 fn2-seals)) (ogen (fn2-seals-ogen 0 fn2-seals))
       (crow (fn2-seals-crow 0 fn2-seals))
       (run (+ 1 (nfix (fn2-seals-runs 0 fn2-seals))))
       (hbase (+ (* *fn2-digest-stride* (nfix crow)) *fn2-seal-hash-region*))
-      (sid (fn2-overlays-schema o fn2-overlays))
-      ((mv k rlo) (fn2-seal-plan sid (fn2-overlays-count o fn2-overlays) fn2-run-installed fn2-pool))
       (ufirst (+ 1 (nfix (fn2-seals-units 0 fn2-seals))))
-      ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 hbase) (unsigned-byte-p 32 o)
+      ((unless (and (unsigned-byte-p 60 run) (unsigned-byte-p 32 hbase) (unsigned-byte-p 32 use-o)
                     (unsigned-byte-p 60 sid) (unsigned-byte-p 8 k) (unsigned-byte-p 60 rlo) (unsigned-byte-p 60 ufirst)))
        (mv :bounds fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
       (class (fn2-pool-class-for *fn2-seal-hash-bytes* fn2-pool))
@@ -247,13 +336,14 @@
        (fn2-run-build-start 0 sid run (fn2-seals-wbase 0 fn2-seals) crow hbase hslot hgen (fn2-seals-fbase 0 fn2-seals)
                             (fn2-seals-fill 0 fn2-seals) 1 1 okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool))
-      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-build*) (sub *fn2-seal-sub-open*) (o o) (pos 0) (sid sid) (run run)
+      (fn2-seals (fn2-seals-put 0 (phase *fn2-seal-phase-build*) (sub *fn2-seal-sub-open*) (o use-o) (pos 0) (sid sid) (run run)
                                 (runs run) (hslot hslot) (hgen hgen) (filter 0) (entries 0) (k k) (rlo rlo) (ufirst ufirst)
                                 (held 0))))
   (mv :more fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool)))
 (fn2-seal-shape fn2-seal-start (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool)
  (fn2-seals fn2-overlays fn2-run-builds fn2-run-writers fn2-pool) (fn2-seals fn2-overlays fn2-run-installed fn2-run-builds fn2-run-writers fn2-pool) t
- (fn2-seal-pick fn2-seal-retire fn2-run-build-start fn2-seal-plan fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
+ (fn2-seal-pick fn2-seal-retire fn2-run-build-start fn2-seal-plan fn2-seal-compact-target fn2-seal-urgent-p
+  fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-crow fn2-seals-runs
   fn2-seals-wbase fn2-seals-fbase fn2-seals-fill fn2-seals-units fn2-overlays-schema fn2-overlays-count))
 
 ; The next physical unit whose cache row holds no page (the engine half
@@ -523,10 +613,14 @@
                                             fn2-overlays-oslot fn2-overlays-ogen fn2-fields-rows fn2-range-sources-rows)))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-seals fn2-ranges fn2-range-sources fn2-fields))
       (g (fn2-seals-rg 0 fn2-seals)) (o (fn2-seals-o 0 fn2-seals)) (sid (fn2-seals-sid 0 fn2-seals))
+      (orows (fn2-overlays-rows fn2-overlays))
+      (k (nfix (fn2-seals-k 0 fn2-seals)))
+      (has-ov (< o orows))
       (qbase (fn2-seals-qbase 0 fn2-seals)) (sbase (fn2-seals-sbase 0 fn2-seals)) (cbase (fn2-seals-cbase 0 fn2-seals))
       (rbase (fn2-seals-rbase 0 fn2-seals))
       (okind (fn2-seals-okind 0 fn2-seals)) (oslot (fn2-seals-oslot 0 fn2-seals)) (ogen (fn2-seals-ogen 0 fn2-seals))
-      ((unless (and (natp g) (< g (fn2-ranges-rows fn2-ranges)) (natp o) (< o (fn2-overlays-rows fn2-overlays))
+      ((unless (and (natp g) (< g (fn2-ranges-rows fn2-ranges)) (natp o) (<= o orows)
+                    (or has-ov (<= 2 k))
                     (unsigned-byte-p 60 sid) (unsigned-byte-p 32 qbase) (unsigned-byte-p 32 sbase) (unsigned-byte-p 32 cbase)
                     (unsigned-byte-p 32 rbase) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-seals fn2-ranges fn2-range-sources fn2-fields))
@@ -536,15 +630,17 @@
                                   (pfield *fn2-range-no-position*) (plimit 0) (out 0) (ok 0) (os 0) (og 0) (delivered 0)
                                   (qk okind) (qs oslot) (qg ogen)))
       ((mv code fn2-range-sources)
-       (fn2-range-add-source g 0 *fn2-range-kind-overlay* o (fn2-overlays-seq o fn2-overlays) (fn2-overlays-okind o fn2-overlays)
-                             (fn2-overlays-oslot o fn2-overlays) (fn2-overlays-ogen o fn2-overlays) fn2-ranges fn2-range-sources))
+       (if has-ov
+           (fn2-range-add-source g 0 *fn2-range-kind-overlay* o (fn2-overlays-seq o fn2-overlays) (fn2-overlays-okind o fn2-overlays)
+                                 (fn2-overlays-oslot o fn2-overlays) (fn2-overlays-ogen o fn2-overlays) fn2-ranges fn2-range-sources)
+         (mv :ok fn2-range-sources)))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-ranges fn2-range-sources fn2-fields))
       ((mv code n fn2-range-sources)
-       (fn2-range-add-runs (fn2-run-installed-rows fn2-run-installed) 1 g sid (fn2-seals-rlo 0 fn2-seals)
+       (fn2-range-add-runs (fn2-run-installed-rows fn2-run-installed) (if has-ov 1 0) g sid (fn2-seals-rlo 0 fn2-seals)
                            fn2-ranges fn2-range-sources fn2-run-installed))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-ranges fn2-range-sources fn2-fields))
-      ;; the overlay and every run of the plan (K) are the sources
-      ((unless (equal n (+ 1 (nfix (fn2-seals-k 0 fn2-seals))))) (mv :invariant fn2-seals fn2-ranges fn2-range-sources fn2-fields))
+      ;; the overlay (if any) and every run of the plan (K) are the sources
+      ((unless (equal n (if has-ov (+ 1 k) k))) (mv :invariant fn2-seals fn2-ranges fn2-range-sources fn2-fields))
       (vrun (fn2-run-version sid (fn2-run-installed-rows fn2-run-installed) fn2-run-installed))
       ((unless (and (unsigned-byte-p 32 n) (unsigned-byte-p 60 vrun) (< g (fn2-ranges-rows fn2-ranges))))
        (mv :bounds fn2-seals fn2-ranges fn2-range-sources fn2-fields))
@@ -922,24 +1018,34 @@
 (defun fn2-seal-install (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))
-  :guard-hints (("Goal" :in-theory (disable fn2-seal-install-run fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs fn2-pool-release fn2-pool-release-countp fn2-seals-k fn2-seals-sid fn2-seals-rlo
+  :guard-hints (("Goal" :in-theory (disable fn2-seal-install-run fn2-seal-free-row fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs
+                                            fn2-pool-release fn2-pool-release-countp fn2-seals-k fn2-seals-sid fn2-seals-rlo
                                             fn2-seals-rows fn2-run-installed-rows fn2-overlays-rows fn2-pool-rows
                                             fn2-seals-o fn2-seals-hslot fn2-seals-hgen fn2-seals-okind fn2-seals-oslot fn2-seals-ogen)))))
  (b* (((unless (< 0 (fn2-seals-rows fn2-seals))) (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       (k (nfix (fn2-seals-k 0 fn2-seals)))
       (sid (fn2-seals-sid 0 fn2-seals)) (rlo (fn2-seals-rlo 0 fn2-seals))
       (rows (fn2-run-installed-rows fn2-run-installed))
+      (o (fn2-seals-o 0 fn2-seals)) (orows (fn2-overlays-rows fn2-overlays))
+      (has-ov (< o orows))
+      (hslot (fn2-seals-hslot 0 fn2-seals))
+      ((unless (and (natp o) (<= o orows) (or has-ov (<= 2 k)) (fn2-pool-release-countp hslot fn2-pool)))
+       (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ;; the plan's runs, every one of them (only the sealer moves runs)
       ((unless (or (zp k) (equal (fn2-seal-inputs rows 0 sid rlo fn2-run-installed) k)))
        (mv :invariant fn2-seals fn2-overlays fn2-run-installed fn2-pool))
+      ;; atomic replacement: verify a free installed row exists BEFORE retiring
+      ;; any input run, so :full leaves every input run live and overlay frozen
+      ((unless (< (fn2-seal-free-row rows 0 fn2-run-installed) rows))
+       (mv :full fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((mv code fn2-run-installed)
        (if (zp k) (mv :ok fn2-run-installed) (fn2-seal-retire-runs rows 0 sid rlo fn2-run-installed)))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((mv code fn2-run-installed) (fn2-seal-install-run fn2-seals fn2-run-installed))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
-      ((mv code fn2-overlays fn2-pool) (fn2-seal-retire (fn2-seals-o 0 fn2-seals) fn2-overlays fn2-pool))
+      ((mv code fn2-overlays fn2-pool)
+       (if has-ov (fn2-seal-retire o fn2-overlays fn2-pool) (mv :ok fn2-overlays fn2-pool)))
       ((unless (eq code :ok)) (mv code fn2-seals fn2-overlays fn2-run-installed fn2-pool))
-      (hslot (fn2-seals-hslot 0 fn2-seals))
       ((unless (fn2-pool-release-countp hslot fn2-pool)) (mv :bounds fn2-seals fn2-overlays fn2-run-installed fn2-pool))
       ((mv code fn2-pool) (fn2-pool-release hslot (fn2-seals-hgen 0 fn2-seals) (fn2-seals-okind 0 fn2-seals)
                                             (fn2-seals-oslot 0 fn2-seals) (fn2-seals-ogen 0 fn2-seals) fn2-pool))
@@ -949,7 +1055,8 @@
   (mv :done fn2-seals fn2-overlays fn2-run-installed fn2-pool)))
 (fn2-seal-shape fn2-seal-install (fn2-seals fn2-overlays fn2-run-installed fn2-pool)
  (fn2-seals fn2-overlays fn2-run-installed fn2-pool) (fn2-seals fn2-overlays fn2-run-installed fn2-pool) t
- (fn2-seal-install-run fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs fn2-seals-k fn2-seals-rlo fn2-pool-release fn2-pool-release-countp fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-sid fn2-seals-run fn2-seals-top fn2-seals-rslot fn2-seals-rgen
+ (fn2-seal-install-run fn2-seal-free-row fn2-seal-retire fn2-seal-retire-runs fn2-seal-inputs fn2-seals-k fn2-seals-rlo
+  fn2-pool-release fn2-pool-release-countp fn2-seals-okind fn2-seals-oslot fn2-seals-ogen fn2-seals-sid fn2-seals-run fn2-seals-top fn2-seals-rslot fn2-seals-rgen
   fn2-seals-runit fn2-seals-rcounter fn2-seals-entries fn2-seals-filter fn2-seals-funit fn2-seals-fcounter fn2-seals-o
   fn2-seals-hslot fn2-seals-hgen))
 
@@ -1066,4 +1173,4 @@
   fn2-run-restarts fn2-run-cache fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests
   fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths) t
  (fn2-seal-start fn2-seal-build fn2-seal-filter-open fn2-seal-filter fn2-seal-install fn2-seal-release fn2-seals-phase fn2-seals-sub))
-(assert-event (fn2-assert-compliant-p '(fn2-seal-step fn2-seal-pending-p fn2-seal-cache) (w state)))
+(assert-event (fn2-assert-compliant-p '(fn2-seal-step fn2-seal-pending-p fn2-seal-compact-pending-p fn2-seal-cache) (w state)))
