@@ -20,6 +20,7 @@
 (include-book "seeded-store")
 (include-book "echo")
 (include-book "check-wire")
+(include-book "../books/node-profile")
 
 ;; The session serves reading (D6) over the seeded store (seeded-store.lisp).
 
@@ -365,3 +366,131 @@
   (declare (xargs :verify-guards nil))
   (let ((r (fn2-ss-transcript-faults seed profile nil lines)))
     (if (and (consp r) (consp (cdr r)) (consp (cddr r))) (list (car r) (cadr r)) r)))
+
+;; The served commit ceiling (lane commit-ceiling; ROOTSWAP-ASTRA Q2): one
+;; connection POSTs N unique small articles in sequence, each POST and its
+;; article delivered whole and run to quiescence before the next, faults
+;; off (every probability 0, process death included), the seeds' three
+;; batches first. After each attempt it records the POST's and the article's
+;; first reply lines, an ARTICLE <mid> readback of an accepted one, the
+;; allocator (free, reserved, allocated, pressure, installed-root edges), the
+;; commit root's proposed, installed and published frontiers, the stop
+;; reason and whether the connection closed. A missing reply records :none:
+;; an unanswered POST is a defect, never backpressure. The run ends AFTER
+;; attempts past the first one not answered 240. Test evidence only.
+(defun fn2-ss-cc-installed (n fn2-extents)
+  (declare (xargs :stobjs fn2-extents :verify-guards nil :measure (nfix n)))
+  (if (zp n) 0
+    (+ (nfix (fn2-extents-installed-root (- n 1) fn2-extents)) (fn2-ss-cc-installed (- n 1) fn2-extents))))
+(defun fn2-ss-cc-alloc (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (r)
+    (list (fn2-alloc-total-free fn2-extents) (fn2-alloc-total-reserved fn2-extents)
+          (fn2-alloc-total-allocated fn2-extents) (fn2-alloc-pressure fn2-extents)
+          (fn2-ss-cc-installed (fn2-extents-rows fn2-extents) fn2-extents))
+    r))
+(defun fn2-ss-cc-frontiers (fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (f)
+    (list (fn2-commit-root-proposed 0 fn2-commit-root) (fn2-commit-root-installed 0 fn2-commit-root)
+          (fn2-commit-root-published 0 fn2-commit-root))
+    f))
+(defun fn2-ss-cc-dec (i) (declare (xargs :verify-guards nil)) (coerce (explode-atom (nfix i) 10) 'string))
+(defun fn2-ss-cc-mid (i) (declare (xargs :verify-guards nil)) (fn2-csp-cat (list "<cc" (fn2-ss-cc-dec i) "@example.invalid>")))
+(defun fn2-ss-cc-article (i)
+  (declare (xargs :verify-guards nil))
+  (fn2-cw-crlf-octets
+   (list "From: cc@example.invalid" (fn2-csp-cat (list "Subject: ceiling " (fn2-ss-cc-dec i)))
+         "Newsgroups: local.test" (fn2-csp-cat (list "Message-ID: " (fn2-ss-cc-mid i))) ""
+         (fn2-csp-cat (list "body " (fn2-ss-cc-dec i))) ".")))
+;; A reply's status: its first three octets as a number, or :none.
+(defun fn2-ss-cc-digitp (x) (declare (xargs :verify-guards nil)) (and (natp x) (<= 48 x) (<= x 57)))
+(defun fn2-ss-cc-status (got)
+  (declare (xargs :verify-guards nil))
+  (if (and (<= 3 (len got)) (fn2-ss-cc-digitp (nth 0 got)) (fn2-ss-cc-digitp (nth 1 got)) (fn2-ss-cc-digitp (nth 2 got)))
+      (+ (* 100 (- (nth 0 got) 48)) (* 10 (- (nth 1 got) 48)) (- (nth 2 got) 48))
+    :none))
+(defun fn2-ss-cc-chars (octets)
+  (declare (xargs :verify-guards nil))
+  (if (atom octets) nil (cons (code-char (nfix (car octets))) (fn2-ss-cc-chars (cdr octets)))))
+(defun fn2-ss-cc-line (got)
+  (declare (xargs :verify-guards nil))
+  (let ((at (search (list 13 10) got)))
+    (coerce (fn2-ss-cc-chars (if at (take at got) got)) 'string)))
+(local (defthm fn2-ss-cc-countdown
+  (implies (not (zp left)) (o< (nfix (- left 1)) (nfix left))) :rule-classes nil))
+(local (defthm fn2-ss-cc-count-op (o-p (nfix left)) :rule-classes nil))
+;; Attempts I .. I + LEFT - 1.
+(defun fn2-ss-cc-posts (left i after clients fn2-core fn2-sim fn2-own)
+  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil :measure (nfix left)
+                  :hints (("Goal" :use (fn2-ss-cc-countdown fn2-ss-cc-count-op) :in-theory nil))))
+  (if (or (zp left) (zp after)) (mv nil fn2-core fn2-sim fn2-own)
+    (b* (((mv got1 closed clients fn2-core fn2-sim fn2-own)
+          (fn2-ss-exchange 1 (fn2-cw-crlf-octets (list "POST")) nil clients nil fn2-core fn2-sim fn2-own))
+         (post (fn2-ss-cc-status got1))
+         ((mv got2 closed clients fn2-core fn2-sim fn2-own)
+          (if (and (equal post 340) (not closed))
+              (fn2-ss-exchange 1 (fn2-ss-cc-article i) nil clients nil fn2-core fn2-sim fn2-own)
+            (mv nil closed clients fn2-core fn2-sim fn2-own)))
+         (article (if (equal post 340) (fn2-ss-cc-status got2) :not-sent))
+         ((mv got3 closed clients fn2-core fn2-sim fn2-own)
+          (if (and (equal article 240) (not closed))
+              (fn2-ss-exchange 1 (fn2-cw-crlf-octets (list (fn2-csp-cat (list "ARTICLE " (fn2-ss-cc-mid i)))))
+                               nil clients nil fn2-core fn2-sim fn2-own)
+            (mv nil closed clients fn2-core fn2-sim fn2-own)))
+         (readback (if (equal article 240) (fn2-ss-cc-status got3) :not-asked))
+         (record (list i post article readback
+                       (fn2-ss-cc-line (if (equal post 340) got2 got1))
+                       (fn2-ss-cc-alloc fn2-core) (fn2-ss-cc-frontiers fn2-core)
+                       (fn2-stop-reason-code->keyword (fn2-core-stop-reason fn2-core)) closed))
+         ((when closed) (mv (list record) fn2-core fn2-sim fn2-own))
+         ((mv rest fn2-core fn2-sim fn2-own)
+          (fn2-ss-cc-posts (- left 1) (+ 1 (nfix i)) (if (equal article 240) after (- after 1)) clients fn2-core fn2-sim fn2-own)))
+      (mv (cons record rest) fn2-core fn2-sim fn2-own))))
+;; (boot greeting before records): BEFORE the allocator and frontiers after
+;; the seeds, RECORDS one (i post article readback line allocator frontiers
+;; stop closed) per attempt.
+(defun fn2-ss-post-ceiling (seed profile n after)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core)
+      (with-local-stobj fn2-sim
+        (mv-let (result fn2-core fn2-sim)
+          (with-local-stobj fn2-own
+            (mv-let (result fn2-core fn2-sim fn2-own)
+              (b* (((mv code fn2-core fn2-sim fn2-own) (fn2-ss-boot seed profile fn2-core fn2-sim fn2-own))
+                   ((unless (eq code :ok)) (mv (list :unseeded code) fn2-core fn2-sim fn2-own))
+                   (fn2-sim (fn2-ss-set-faults 0 nil fn2-sim))
+                   (before (list (fn2-ss-cc-alloc fn2-core) (fn2-ss-cc-frontiers fn2-core)))
+                   ((mv found clients fn2-core fn2-sim fn2-own) (fn2-ss-admit 1 nil fn2-core fn2-sim fn2-own))
+                   ((unless found) (mv :refused fn2-core fn2-sim fn2-own))
+                   ((mv greeting &) (fn2-ss-reply 1 0 clients nil))
+                   ((mv records fn2-core fn2-sim fn2-own) (fn2-ss-cc-posts n 1 after clients fn2-core fn2-sim fn2-own)))
+                (mv (list :ok (fn2-ss-cc-status greeting) before records) fn2-core fn2-sim fn2-own))
+              (mv result fn2-core fn2-sim)))
+          (mv result fn2-core)))
+      result)))
+;; The posting session's profiles: the session's (16 extents) and the native
+;; node's (*fn2-node-profile*, 128 extents), each with posting served and a
+;; device spanning every extent.
+(defconst *fn2-ss-cc-session-profile* (put-assoc-equal :posting-interim t *fn2-ss-sim-profile*))
+(defconst *fn2-ss-cc-node-profile*
+  (put-assoc-equal :trace nil
+    (put-assoc-equal :sim-sectors
+                     (ceiling (* (fn2-b-capacity :extent-slots 16 *fn2-node-profile*) *fn2-commit-extent-bytes*)
+                              *fn2-format-sector-bytes*)
+                     *fn2-node-profile*)))
+;; The harness's form (tests/surface/fn2_sim_session.py post_ceiling): one
+;; @@FN2CC line per attempt, then @@FN2SS ceiling - 0 <attempts>@@.
+(defun fn2-ss-cc-say-records (records)
+  (declare (xargs :verify-guards nil))
+  (if (atom records) nil
+    (prog2$ (cw "@@FN2CC ~x0@@~%" (car records)) (fn2-ss-cc-say-records (cdr records)))))
+(defun fn2-ss-post-ceiling-say (seed which n after)
+  (declare (xargs :verify-guards nil))
+  (let ((r (fn2-ss-post-ceiling seed (if (eq which :node) *fn2-ss-cc-node-profile* *fn2-ss-cc-session-profile*) n after)))
+    (if (not (eq (car r) :ok))
+        (fn2-ss-say "unseeded" nil nil -1)
+      (progn$ (cw "@@FN2CB ~x0 ~x1@@~%" (nth 1 r) (nth 2 r))
+              (fn2-ss-cc-say-records (nth 3 r))
+              (fn2-ss-say "ceiling" nil nil (len (nth 3 r)))))))

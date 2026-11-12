@@ -82,6 +82,38 @@ class Fn2SimSession:
         octets, _, _ = self._form(f'(fn2-ss-close {int(ident)} fn2-core fn2-sim fn2-own state)', 'closed')
         return octets
 
+    def post_ceiling(self, n, after=2, profile='session', seed=138560):
+        """The served commit ceiling (sim/session.lisp fn2-ss-post-ceiling): a fresh node of PROFILE
+        ('session', 16 extents, or 'node', *fn2-node-profile*'s 128) over the seeded store, faults off,
+        one connection POSTing N unique small articles in sequence, each waited for, until AFTER
+        attempts past the first not answered 240. Returns (before, records): BEFORE the allocator
+        (free reserved allocated pressure installed-root-edges) and the commit root's (proposed
+        installed published) after the seeds; each record the ACL2 list
+        (i post article readback line allocator frontiers stop closed), a missing reply :NONE."""
+        which = ':node' if profile == 'node' else ':session'
+        self.proc.stdin.write(
+            f'(fn2-ss-post-ceiling-say {int(seed)} {which} {int(n)} {int(after)})\n'.encode())
+        self.proc.stdin.flush()
+        before, records = None, []
+        while True:
+            line = self._line()
+            if not line:
+                raise RuntimeError('the simulator session ended during the ceiling run')
+            if self.log:
+                self.log.write(line); self.log.flush()
+            m = re.search(rb'@@FN2CB (.*?)@@', line)
+            if m:
+                before = m.group(1).decode()
+            m = re.search(rb'@@FN2CC (.*?)@@', line)
+            if m:
+                records.append(m.group(1).decode())
+            m = MARK.search(line)
+            if m:
+                tag = m.group(1).decode()
+                if tag != 'ceiling':
+                    raise RuntimeError(f'simulator session: expected ceiling, got {tag}')
+                return before, records
+
     def stop(self):
         """WIRE's verdict per connection ('ok' or the failure), then the process ends."""
         self.proc.stdin.write(b'(fn2-ss-stop fn2-core state)\n')
@@ -114,3 +146,16 @@ def session(case=None, family='nntp', out='build/surface'):
     os.makedirs(os.path.join(ROOT, out), exist_ok=True)
     name = (case.id() if case is not None else 'session').replace('/', '_')[-120:]
     return Fn2SimSession(seed, log=os.path.join(ROOT, out, f'sim-{name}.log'))
+
+
+if __name__ == '__main__':
+    # python3 tests/surface/fn2_sim_session.py ceiling N [session|node]: the served commit
+    # ceiling, one line per POST attempt.
+    import sys
+    if len(sys.argv) >= 3 and sys.argv[1] == 'ceiling':
+        s = Fn2SimSession(138560)
+        before, records = s.post_ceiling(int(sys.argv[2]), profile=(sys.argv[3] if len(sys.argv) > 3 else 'session'))
+        print('after seeds:', before)
+        for r in records:
+            print(r)
+        s.stop()
