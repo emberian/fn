@@ -127,6 +127,49 @@ def metadata_checks(p):
 def commit_words(p):
     return as_list(decode(p[':COMMIT-WORDS'])) if ':COMMIT-WORDS' in p else []
 
+def world_index(fn2_dir, extra_calls=None):
+    lw = fn2_dir / 'Instances/LayerAWorld.lean'
+    if not lw.is_file():
+        return None
+    mods = [m for m in re.findall(r'^public import Fn2\.Instances\.LayerAWorld\.(\w+)$', lw.read_text(), re.M)
+            if not (m.endswith('Keys') or m.endswith('Eqns') or m.startswith('Index') or m == 'Natives')]
+    mod_of = {}; D = {}
+    for m in mods:
+        txt = (fn2_dir / 'Instances/LayerAWorld' / (m + '.lean')).read_text()
+        for p in re.split(r'^(?=(?:def|theorem) )', txt, flags=re.M)[1:]:
+            hm = re.match(r'^(?:def|theorem) «([^»]+)»(?:\.(?:go|guard|constraint(?:_\d+)?))?(?:\s|:)', p)
+            if not hm: continue
+            fn = hm.group(1); mod_of[fn] = m
+            D.setdefault(fn, set()).update(re.findall(r'«([^»]+)»', p))
+    if extra_calls:
+        for fn, cs in extra_calls.items():
+            if fn in mod_of: D.setdefault(fn, set()).update(cs)
+    for fn in D: D[fn] = {g for g in D[fn] if g in mod_of and g != fn}
+    eqn_of = {}
+    for k in range(1, 5):
+        ep = fn2_dir / f'Instances/LayerAEqns{k}.lean'
+        if ep.is_file():
+            for fn in re.findall(r'^theorem «([^»]+)»\.fns_eq\b', ep.read_text(), re.M):
+                eqn_of[fn] = f'Fn2.Instances.LayerAEqns{k}'
+    return {'mods': mods, 'mod_of': mod_of, 'D': D, 'eqn_of': eqn_of}
+
+def fill_world_bodies(text, widx):
+    if not widx: return text
+    m = re.search(r'^-- BEGIN world bodies \(emit_embed\.py\): scan\n(?:import all .*\n)*-- END world bodies$', text, re.M)
+    if not m: return text
+    rest = text[:m.start()] + text[m.end():]
+    mod_of, D = widx['mod_of'], widx['D']
+    seen, stack = set(), [n for n in set(re.findall(r'«([^»]+)»', rest)) if n in mod_of]
+    while stack:
+        f = stack.pop()
+        if f not in seen:
+            seen.add(f); stack.extend(D[f])
+    used = {mod_of[f] for f in seen}
+    lines = ['-- BEGIN world bodies (emit_embed.py): scan']
+    lines += [f'import all Fn2.Instances.LayerAWorld.{x}' for x in widx['mods'] if x in used]
+    lines.append('-- END world bodies')
+    return text[:m.start()] + '\n'.join(lines) + text[m.end():]
+
 def lean_metadata(p, out):
     manifest=fields(p[':MANIFEST'])
     lines=['import Fn2.Instances.ServedKinds','import Fn2.ACL2.Translation',
@@ -145,7 +188,7 @@ def lean_metadata(p, out):
         lines += [f'def tuple{ki} : Translation.Object := '+lean_object(k[':TUPLE']),
           f'theorem tuple{ki}_complete : tuple{ki}.value? = some (Val.ofList (kinds[{ki}]!.tuple.map Val.sym)) := by rfl']
     lines += ['#print axioms complete_layout','end Fn2.Instances.ServedMetadata','']
-    out.write_text('\n'.join(lines))
+    out.write_text(as_module('\n'.join(lines), expose=True, import_all=CORE_STRING_BODIES))
 
 def lean_commit_words(p,out):
     kinds=decode(p[':KINDS']);indices={str(k[0]):i for i,k in enumerate(kinds)}
@@ -161,7 +204,8 @@ def lean_commit_words(p,out):
           f'    {{tag := {lean_str(actualtag)}, phases := kinds[{ki}]!.states,',
           f'     tickets := kinds[{ki}]!.columns.filterMap (fun (n,t) => match t with | .uw 60 => some n | _ => none)}}',
           f'    word{i} = .ok expansion{i}.toList := by decide +kernel',f'#print axioms word{i}_translation']
-    lines += ['end Fn2.Instances.ServedCommit',''];out.write_text('\n'.join(lines))
+    lines += ['end Fn2.Instances.ServedCommit','']
+    out.write_text(as_module('\n'.join(lines), expose=True, import_all=CORE_STRING_BODIES))
 
 def call_proof(name, args, extra=''):
     av = '[' + ', '.join(args) + ']'
@@ -257,9 +301,9 @@ def whole_contract(kd, ki, area, ai, layout, name, namespace):
         lines += [f'def contract {binders} (kids : Fin {len(layout)} → Val) : Prop :=',
           f'  ∃ fuel result, runCore world coreTuple kind arm {str(observe).lower()} {args} fuel = .ok result ∧',
           f'    world.fns {lean_str(name)} {args} = some result']
-    return '\n'.join(lines+['end Fn2.Arms.Served.'+namespace,''])
+    return as_module('\n'.join(lines+['end Fn2.Arms.Served.'+namespace,'']), expose=True)
 
-def certificate_source(kd,ki,ai,layout,consts,ns,name,area):
+def certificate_source(kd,ki,ai,layout,consts,ns,name,area,widx=None):
     observe=str(area)==':OBSERVE-ARMS'
     maker=wake_certificate if observe else idle_certificate
     args='id event outcome reason count aux0 aux1' if observe else 'id budget'
@@ -300,7 +344,7 @@ theorem omitted_child_rejected (fuel : Nat) (result : Val) :
 '''
     source='import Fn2.Arms.Wrapper\nimport Fn2.Instances.ServedCertificates.'+ns+'\n'+source
     source=source.replace('end Fn2.Arms.Served.'+ns+'Proof',link+'end Fn2.Arms.Served.'+ns+'Proof')
-    return source
+    return fill_world_bodies(as_module(source, expose=True, import_all=CORE_STRING_BODIES, bodies='scan'), widx)
 
 def statement_words(decl):
     """Inspect statements, not expression data, phase names or case labels."""
@@ -368,14 +412,16 @@ def generate(src):
         acl2.write("(fn2-tv-check-arm-inventory '"+show(inventory)+")\n")
         acl2.write(metadata_checks(p))
         acl2.write("(fn2-tv-check-packed-functions '(\n")
-        functions=[]; names=set()
+        functions=[]; names=set(); extra_calls={}
         for name,row,d in function_records(stream,int(str(p[':FUNCTION-COUNT']))):
             names.add(name)
+            extra_calls[name] = calls_of(decode(d[':LOGICAL-BODY']), set())
             acl2.write('('+name+' . '+packed_text(row)+')\n')
             functions.append({'name':name,'canonical_export':'proposed',
               'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
         acl2.write('))\n')
         acl2.write("(fn2-tv-check-served-closure '("+' '.join(sorted(names))+") '("+' '.join(str(decode(n)) for n in as_list(p[':REFUSED']))+"))\n")
+    widx=world_index(BASE/'meta/Fn2',extra_calls)
     bykind={str(k[0]):(i,k) for i,k in enumerate(kinds)}; roots=[]
     for ri,row in enumerate(inventory):
         kn,area,tag,form,fn,core,decl,sig=row
@@ -389,7 +435,7 @@ def generate(src):
         elif (str(area)==':ARMS' and show(decl)=='((:IDLE))') or (str(area)==':OBSERVE-ARMS' and show(decl)=='((:WAKE))'):
             try:
                 proof=out/(ns+'Proof.lean')
-                source=certificate_source(kd,ki,ai,layout,consts,ns,name,area)
+                source=certificate_source(kd,ki,ai,layout,consts,ns,name,area,widx)
                 proof.write_text(source)
                 rec.update(proof=str(proof.relative_to(BASE)),reason='generated proof has not passed Lean')
             except (ValueError,KeyError) as e: rec['reason']='terminal certificate: '+str(e)
