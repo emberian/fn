@@ -39,6 +39,20 @@
    '("VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
      "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
      "OVER MSGID" "HDR" "XPAT" "NEWNEWS")))
+(defconst *fn2-answer-capabilities-tls-text*
+ (concatenate 'string *fn2-answer-capabilities-text* (fn2-answer-crlf-lines '("STARTTLS"))))
+(defconst *fn2-answer-capabilities-posting-tls-text*
+ (concatenate 'string *fn2-answer-capabilities-posting-text* (fn2-answer-crlf-lines '("STARTTLS"))))
+(assert-event (and (<= (length *fn2-answer-capabilities-tls-text*) *fn2-answer-body-bytes*)
+                   (<= (length *fn2-answer-capabilities-posting-tls-text*) *fn2-answer-body-bytes*)))
+(defun fn2-answer-tls-disallowed-p (mask)
+ (declare (xargs :guard t))
+ (not (equal 0 (logand (nfix mask)
+               (logior *fn2-nntp-state-tls* *fn2-nntp-state-authenticated* *fn2-nntp-state-compressed*)))))
+(defun fn2-answer-tls-offered-p (mask)
+ (declare (xargs :guard t))
+ (and (not (fn2-answer-tls-disallowed-p mask))
+      (not (equal 0 (logand (nfix mask) *fn2-nntp-state-tls-available*)))))
 ;; LIST OVERVIEW.FMT (RFC 3977 section 8.4; the overview fields C stores).
 (defconst *fn2-answer-overview-fmt-text*
   (fn2-answer-crlf-lines '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:" "Lines:" "Xref:full")))
@@ -447,7 +461,7 @@
 ;; its quest. NEXT and LAST answer 412: no D3 connection has a group.
 (defconst *fn2-answer-interim*
   '((xfncatchup :no-projection :e4)
-    (starttls :cannot :d7) (compress :algorithm :e2)))
+    (compress :algorithm :e2)))
 
 (defun fn2-answer-interim-arms (rows)
   (declare (xargs :verify-guards nil))
@@ -516,9 +530,20 @@
      ((equal tag *fn2-nntp-command-capabilities*)
       (mv-let (code fn2-pool)
         (fn2-answer-say-body c *fn2-nntp-reply-capabilities-list* mask
-                             (if posting *fn2-answer-capabilities-posting-text* *fn2-answer-capabilities-text*)
+                             (if (fn2-answer-tls-offered-p mask)
+                                 (if posting *fn2-answer-capabilities-posting-tls-text* *fn2-answer-capabilities-tls-text*)
+                               (if posting *fn2-answer-capabilities-posting-text* *fn2-answer-capabilities-text*))
                              tslot tgen okind oslot ogen fn2-pool)
         (mv code :command pending fn2-pool)))
+     ((equal tag *fn2-nntp-command-starttls*)
+      (if (fn2-answer-tls-offered-p mask)
+          ;; No 382 until the connection owns an admission token.
+          (mv :ok :upgrading pending fn2-pool)
+        (mv-let (code fn2-pool)
+          (fn2-answer-say c (if (fn2-answer-tls-disallowed-p mask)
+                               *fn2-nntp-reply-starttls-active* *fn2-nntp-reply-starttls-cannot*)
+                           mask 0 tslot tgen okind oslot ogen fn2-pool)
+          (mv code :command pending fn2-pool))))
      ((equal tag *fn2-nntp-command-help*)
       (mv-let (code fn2-pool)
         (fn2-answer-say-body c *fn2-nntp-reply-help-text* mask *fn2-nntp-help-text* tslot tgen okind oslot ogen fn2-pool)

@@ -1,0 +1,73 @@
+;; STARTTLS token lifecycle and connection helpers, materialized after the core.
+(in-package "ACL2")
+(include-book "tls-kind")
+(include-book "conn-answer")
+
+(defcost fn2-tls-render-handoff :bytes 512 :answers (:ok :bounds) :tables (fn2-core-pool)
+ :doc "Render the admitted382 or refused580 through the NNTP grammar.")
+(defcost fn2-tls-enabled-p :doc "Whether the supported profile enables configured TLS.")
+(defcost fn2-tls-timeout-ms :doc "The admitted handshake's profile deadline in milliseconds.")
+(defcost fn2-tls-arm-timer :child fn2-sched-arm-delay-ms
+ :answers (:ok :bounds :state) :tables (fn2-core-sched fn2-core-control)
+ :doc "Arm the connection deadline before sending the STARTTLS handoff reply.")
+(defcost fn2-tls-clear-timer :child fn2-sched-clear-deadline
+ :answers (:ok :bounds) :tables (fn2-core-sched)
+ :doc "Clear handshake deadline and expiration before resuming or reclaiming a connection.")
+(defcost fn2-tls-expired-p :child fn2-sched-timer-expired-p
+ :doc "The scheduler's handshake-deadline observation.")
+(defcost fn2-tls-release-token :answers (:ok :stale)
+ :tables (fn2-core-tls-admit fn2-core-machines)
+ :doc "Wake the matching token's drain after its connection has no external operation/loan.")
+
+(defmacro fn2-tls-op-events ()
+ '(progn
+(defun fn2-tls-render-handoff (admitted mask slot gen oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+  (fn2-answer-say *fn2-nntp-command-starttls*
+    (if admitted *fn2-nntp-reply-starttls-continue* *fn2-nntp-reply-starttls-cannot*)
+    mask 0 slot gen *fn2-conn-kind* oslot ogen fn2-pool)
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-tls-render-handoff (admitted mask slot gen oslot ogen fn2-core) :position 1 :rows nil
+ :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(in-theory (disable fn2-tls-render-handoff))
+(defun fn2-tls-enabled-p (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-tls-config (fn2-core-tls-config fn2-core))) (enabled)
+  (and (< 0 (fn2-tls-config-rows fn2-tls-config))
+       (equal (fn2-tls-config-enabled 0 fn2-tls-config) 1)) enabled))
+(defun fn2-tls-timeout-ms (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-tls-config (fn2-core-tls-config fn2-core))) (milliseconds)
+  (if (< 0 (fn2-tls-config-rows fn2-tls-config)) (fn2-tls-config-timeout-ms 0 fn2-tls-config) 0)
+  milliseconds))
+(defun fn2-tls-release-token (token gen conn conn-gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (equal token *fn2-none*) (mv :ok fn2-core)
+  (if (and (eq (fn2-tls-admit-snapshot-read-code token fn2-core) :ok)
+           (equal (fn2-machine-generation token fn2-core) gen)
+           (equal (fn2-tls-admit-row-conn token fn2-core) conn)
+           (equal (fn2-tls-admit-row-conn-gen token fn2-core) conn-gen)
+           (equal (fn2-tls-admit-row-phase token fn2-core) *fn2-tls-admit-state-held*))
+   (let* ((fn2-core (fn2-tls-admit-put-core token (phase *fn2-tls-admit-state-draining*)))
+          (fn2-core (fn2-machine-wake-row token fn2-core)))
+    (mv :ok fn2-core))
+   (mv :stale fn2-core))))
+(fn2-core-preserves fn2-tls-release-token (token gen conn conn-gen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-tls-enabled-p fn2-tls-timeout-ms fn2-tls-release-token))))
+
+(defmachine-arms fn2-tls-admit :declare
+ :arms
+ ((:free (:idle)) (:held (:idle))
+  (:draining
+   (:let next (fn2-machine-free-head *fn2-tls-admit-admission-ordinal*))
+   (:let retire (>= row-generation (fn2-machine-gen-limit)))
+   (:set (generation (if retire row-generation (+ 1 row-generation)))
+         (conn *fn2-none*) (conn-gen 0) (next-free next) (wait-reason *fn2-wait-none*))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-tls-admit id retire))
+   (:charge :steps *fn2-work-release*))
+  (:retired (:idle)))
+ :observes ())
+(defmacro fn2-tls-events ()
+ '(progn (defmachine-arms fn2-tls-admit) (defmachine-run fn2-tls-admit)))

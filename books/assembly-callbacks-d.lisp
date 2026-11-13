@@ -7,6 +7,8 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-c")
 (include-book "upload")
+(include-book "tls")
+(fn2-tls-op-events)
 (fn2-upload-op-events)
 (fn2-book-layer :d)
 (defcost fn2-conn-greet-op :bytes 512
@@ -53,6 +55,7 @@
   (case after (:closing *fn2-conn-after-closing*)
     ((:article-input :ihave :takethis :discard) *fn2-conn-after-article-input*)
     (:query *fn2-conn-after-query*)
+    (:upgrading *fn2-conn-after-upgrading*)
     (otherwise *fn2-conn-after-command*)))
 (defun fn2-conn-rule-code (after)
   (declare (xargs :guard t))

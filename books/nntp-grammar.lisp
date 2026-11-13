@@ -17,7 +17,7 @@
   ;; RFC 3977 section 3.1: 512 octets with CRLF, arguments at most 497;
   ;; RFC 5322 section 2.1.1: a block line of 998 octets plus CRLF.
   :line-cap 512 :args-cap 497 :block-line-cap 1000
-  :states (:reader :peer :authenticated :anonymous)
+  :states (:reader :peer :authenticated :anonymous :tls :tls-available :compressed)
   :layers ((:reader nil) (:auth nil) (:post nil) (:owner nil) (:connection nil) (:peer :peer))
   :fields (("NUMBER" :number) ("COUNT" :number) ("LOW" :number) ("HIGH" :number) ("N" :number)
            ("CLEN" :number) ("NEXT" :number) ("END" :number) ("YYYYMMDDhhmmss" :digits14)

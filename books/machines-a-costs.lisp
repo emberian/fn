@@ -19,6 +19,9 @@
 ; Issues: one descriptor and one transient op reservation (D0's :operation).
 (defcost fn2-issue-accept :child fn2-issue-accept-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Accept: one outbox descriptor.")
+(defcost fn2-issue-cancel :child fn2-issue-cancel-children :descriptors 1 :answers t
+ :tables (fn2-core-ops) :effects ((:acquire (:operation)))
+ :doc "Cancel the exact saved operation reference; its terminal result releases any loan.")
 (defcost fn2-issue-close :child fn2-issue-close-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))
   :doc "Close: one outbox descriptor.")
 (defcost fn2-issue-receive :child fn2-issue-receive-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
@@ -111,3 +114,8 @@
   :doc "Accept a range handed to this row.")
 (defcost fn2-core-drop-prefix :answers t :child fn2-pool-drop-prefix :tables (fn2-core-pool) :doc "Drop a consumed prefix: bounded in-slot compaction continuation.")
 (defcost fn2-core-truncate :answers t :child fn2-pool-truncate :tables (fn2-core-pool) :doc "Keep a held range's first N filled bytes (N 0 is a reset).")
+
+(defthm fn2-issue-cancel-children-keeps-pool
+ (equal (mv-nth 3 (fn2-issue-cancel-children target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control))
+        fn2-pool)
+ :hints (("Goal" :in-theory (enable fn2-issue-cancel-children fn2-issue-children fn2-core-lease))))

@@ -54,6 +54,8 @@ void *fn2_tls_new(void *config, size_t capacity)
     }
     SSL_set_bio(tls->ssl, inner, inner); /* SSL owns inner; tls owns wire. */
     SSL_set_accept_state(tls->ssl);
+    /* The immutable pool loan may move between pinned SBCL calls. */
+    SSL_set_mode(tls->ssl, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
     tls->wire = wire;
     return tls;
 }

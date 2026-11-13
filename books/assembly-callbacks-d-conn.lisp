@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-d")
 (include-book "conn")
+(fn2-tls-events)
 
 (defconst *fn2-upload-word-framing* (fn2-upload-word-code :framing))
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
@@ -18,7 +19,14 @@
 
 (defmachine-arms fn2-conn :declare
  :subarms
- ((input
+ ((tls-timeout
+   ;; Cancel the saved descriptor, then let Close/drain wait for both real
+   ;; terminal observations. A deadline alone never releases a live loan.
+   (:if (equal row-pending 0)
+        ((:next :closing) (:charge :steps *fn2-work-transition* :runnable t))
+        ((:issue (fn2-issue-cancel row-tls-op row-tls-op-gen :principal row-principal-slot)
+          :ok ((:next :closing) (:wait :completion :bytes 0))))))
+  (input
    ;; Need-more: every filled octet is examined. All consumed: reset RX. Full
    ;; with a retained partial line: compact (next run). Else Receive at fill.
    (:let nfill (fn2-conn-fill row-rx-slot))
@@ -86,6 +94,11 @@
                     (line-e (fn2-conn-fill row-tx-slot))
                     (request row-ordinal) (ordinal (+ 1 row-ordinal)))
               (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
+             ((equal after *fn2-conn-after-upgrading*)
+              (:set (start p) (pos p) (overflow 0) (auth-pending next)
+                    (tls-stage *fn2-conn-tls-stage-none*) (tls-ok 0))
+              (:next :upgrading)
+              (:charge :bytes *fn2-conn-run-bytes* :steps *fn2-work-transition* :runnable t))
              ;; a reader command: nothing rendered; the next run takes a
              ;; query cursor for the line [s, p) (section 15.3)
              ((equal after *fn2-conn-after-query*)
@@ -126,7 +139,8 @@
    (:set (tx-off 0) (after after) (refused refused) (posting posting)
          (account-ref (if (equal refused 1) *fn2-none* ref))
          (mask (logior (if (and (equal peering 1) (not (equal row-peer-family 0))) *fn2-nntp-state-peer* 0)
-                       (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*))))
+                       (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*
+                               (if (fn2-tls-enabled-p) *fn2-nntp-state-tls-available* 0)))))
    (:next :reply)
    (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (:command
@@ -218,7 +232,8 @@
   ;; :reply sends [tx-off, fill) of TX by loan; once sent and released, TX is
   ;; reset and the row moves to its AFTER phase.
   (:reply
-   (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+   (:cond ((and (equal row-after *fn2-conn-after-upgrading*) (fn2-tls-expired-p id)) (:goto tls-timeout))
+          ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
           (t (:let off row-tx-off)
              (:let after row-after)
@@ -227,7 +242,9 @@
                   ((:let len (min *fn2-conn-send-bytes* (nfix (- nfill off))))
                    (:issue (fn2-issue-send row-cap-index row-cap-nonce row-tx-slot row-tx-gen off len 1
                                            :principal row-principal-slot)
-                           :ok ((:set (borrows 1)) (:wait :completion :bytes len))))
+                           :bind (issued-slot issued-gen)
+                           :ok ((:set (borrows 1) (tls-op issued-slot) (tls-op-gen issued-gen))
+                                (:wait :completion :bytes len))))
                   ((:if (equal after *fn2-conn-after-query*)
                         ((:do (code)
                               (fn2-core-truncate row-tx-slot row-tx-gen
@@ -242,9 +259,50 @@
                               :case ((:otherwise (:stop :machine-phase))))
                          (:set (tx-off 0))
                          (:next (:if (equal after *fn2-conn-after-closing*) :closing
-                                  (:if (equal after *fn2-conn-after-article-input*) :article-input :command)))
+                                  (:if (equal after *fn2-conn-after-article-input*) :article-input
+                                   (:if (equal after *fn2-conn-after-upgrading*) :upgrading :command))))
                          (:charge :steps *fn2-work-mailbox* :runnable t))))))))
-  (:upgrading (:stop :machine-phase))
+  (:upgrading
+   (:cond ((fn2-tls-expired-p id) (:goto tls-timeout))
+          ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((equal row-tls-stage *fn2-conn-tls-stage-none*)
+           (:do (tcode token token-gen) (fn2-machine-take-fn2-tls-admit *fn2-none* id row-generation)
+            :accept ()
+            :case (((:ok)
+                    (:do (dcode deadline) (fn2-tls-arm-timer id (fn2-tls-timeout-ms))
+                     :case ((:otherwise (:stop :machine-phase))))
+                    (:do (rcode) (fn2-tls-render-handoff t row-mask row-tx-slot row-tx-gen)
+                     :case ((:otherwise (:stop :machine-phase))))
+                    (:set (tls-token token) (tls-token-gen token-gen) (tls-stage *fn2-conn-tls-stage-admitted*)
+                          (tls-ok 0) (tx-off 0) (after *fn2-conn-after-upgrading*))
+                    (:next :reply) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+                   (:otherwise
+                    (:do (rcode) (fn2-tls-render-handoff nil row-mask row-tx-slot row-tx-gen)
+                     :case ((:otherwise (:stop :machine-phase))))
+                    (:set (tx-off 0) (after *fn2-conn-after-command*))
+                    (:next :reply) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t)))))
+          ((equal row-tls-stage *fn2-conn-tls-stage-admitted*)
+           (:let nfill (fn2-conn-fill row-rx-slot))
+           (:let retained (nfix (- nfill row-start)))
+           (:issue (fn2-issue-tls-start row-cap-index row-cap-nonce row-rx-slot row-rx-gen row-start retained
+                                       :principal row-principal-slot)
+            :bind (issued-slot issued-gen)
+            :ok ((:set (tls-op issued-slot) (tls-op-gen issued-gen) (tls-stage *fn2-conn-tls-stage-running*))
+                 (:wait :completion :bytes 0))))
+          ((equal row-tls-stage *fn2-conn-tls-stage-finished*)
+           (:if (equal row-tls-ok 1)
+                ((:do (dcode) (fn2-tls-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
+                 (:do (rcode) (fn2-core-reset row-rx-slot row-rx-gen) :case ((:otherwise (:stop :machine-phase))))
+                 (:do (tcode) (fn2-tls-release-token row-tls-token row-tls-token-gen id row-generation)
+                  :case ((:otherwise (:stop :machine-phase))))
+                 (:set (start 0) (pos 0) (overflow 0) (group 0) (current 0) (pin 0)
+                       (auth-pending *fn2-conn-auth-none*)
+                       (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous* *fn2-nntp-state-tls*))
+                       (tls-token *fn2-none*) (tls-token-gen 0) (tls-op *fn2-none*) (tls-op-gen 0)
+                       (tls-stage *fn2-conn-tls-stage-none*) (tls-ok 0))
+                 (:next :command) (:charge :steps *fn2-work-transition* :runnable t))
+                ((:next :closing) (:charge :steps *fn2-work-transition* :runnable t))))
+          (t (:stop :machine-phase))))
   (:closing
    (:if (not (equal row-pending 0))
         ((:charge :steps *fn2-work-empty*))
@@ -255,7 +313,10 @@
   (:draining
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
           ((not (equal row-borrows 0)) (:charge :steps *fn2-work-poll*))
-          (t (:let qry row-query)
+          (t (:do (dcode) (fn2-tls-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
+             (:do (tcode) (fn2-tls-release-token row-tls-token row-tls-token-gen id row-generation)
+              :case ((:otherwise (:stop :machine-phase))))
+             (:let qry row-query)
              (:let qgen row-query-gen)
              (:let upl row-upload)
              (:do (tcode) (fn2-core-release row-tx-slot row-tx-gen)
@@ -276,7 +337,9 @@
                    (cap-index 0) (cap-nonce 0) (start 0) (pos 0) (overflow 0) (compacting 0)
                    (cursor 0) (tx-off 0) (ordinal 0) (auth-pending *fn2-conn-auth-none*) (refused 0)
                    (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)
-                   (upload *fn2-none*) (query *fn2-none*) (query-gen 0))
+                   (upload *fn2-none*) (query *fn2-none*) (query-gen 0)
+                   (tls-token *fn2-none*) (tls-token-gen 0) (tls-op *fn2-none*) (tls-op-gen 0)
+                   (tls-stage *fn2-conn-tls-stage-none*) (tls-ok 0))
              (:next (:if retire :retired :free))
              (:do () (fn2-machine-reclaim-fn2-conn id retire))
              (:charge :steps *fn2-work-release*))))
@@ -343,7 +406,7 @@
         ((:do (code) (fn2-account-charge-core row-principal-slot *fn2-account-charge-rx* count))
          (:if (eq code :ok) ((:wake)) ((:stop :machine-observation))))
         ((:next :closing) (:wake))))
-  (:send-result :from (:reply)
+  (:send-result :from (:reply :closing)
    (:if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot) :ok))
         ((:stop :machine-observation))
         ((:let borrows (fn2-machine-pool-borrows row-tx-slot))
@@ -358,6 +421,10 @@
    (:if (not (eq (fn2-machine-pool-borrows-read-code row-tx-slot) :ok))
         ((:stop :machine-observation))
         ((:set (borrows (fn2-machine-pool-borrows row-tx-slot))) (:wake))))
+  (:tls-result :from (:upgrading :closing)
+   (:set (tls-stage *fn2-conn-tls-stage-finished*) (tls-ok (if (equal outcome *fn2-outcome-done*) 1 0)))
+   (:wake))
+  (:cancel-result :from (:closing) (:wake))
   (:close-result :from (:closing)
    (:next :draining) (:wake))))
 
