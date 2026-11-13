@@ -1,8 +1,9 @@
 # Working on fn
 
 fn is an ACL2-verified NNTP node: ACL2 books own every decision; the SBCL host does I/O and
-calls them. Read docs/README.md, docs/architecture.md and planning/decisions.md before
-substantial changes, then the spec you touch. Proposals and open questions are not requirements.
+calls them. Read docs/design/README.md, docs/design/FN2-ORIENTATION.md and
+docs/design/STATE-20261104.md before substantial changes, then the spec you touch. Proposals and
+open questions are not requirements.
 
 ## The engineering laws
 - ACL2 decides identity, bounds, framing, charges and reply lines. Host code and Python never
