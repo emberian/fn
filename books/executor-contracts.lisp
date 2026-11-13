@@ -44,7 +44,7 @@
           '(fn2-machine-refuse-phase fn2-machine-idle
             fn2-exec-harvest fn2-exec-mailbox fn2-exec-pop fn2-exec-charge-run
             fn2-machine-take-wake fn2-exec-wake fn2-exec-record fn2-exec-visit
-            fn2-exec-clear-service fn2-exec-arm
+            fn2-exec-clear-service fn2-exec-run-services fn2-exec-arm
             fn2-exec-account-work fn2-exec-set-turn-bytes fn2-exec-set-turn-steps
             fn2-machine-reclaim)))))))
 
