@@ -631,8 +631,8 @@ def read_groups_sidecar(path: Path) -> list[tuple[int, str]]:
     return rows
 
 
-def resolve_stream_id(raw: str | None, sock_path: str, image: Path | None = None) -> tuple[int, dict | None]:
-    """Resolve names using the served ACL2 directory; IMAGE supplies no identity."""
+def resolve_stream_id(raw: str | None, sock_path: str) -> tuple[int, dict | None]:
+    """Resolve names using the served ACL2 directory."""
     if raw is None:
         raise ValueError("stream name or numeric stream id is required for read/append grants")
     try:
@@ -897,7 +897,7 @@ def cmd_grant_set(args: argparse.Namespace) -> int:
         scope, target = 0, 0
     else:
         scope = 1
-        target, err = resolve_stream_id(args.stream, sock_path, args.image)
+        target, err = resolve_stream_id(args.stream, sock_path)
         if err is not None:
             return emit(err, args.json)
 
@@ -939,7 +939,7 @@ def cmd_grant_get(args: argparse.Namespace) -> int:
         scope, target = 0, 0
     else:
         scope = 1
-        target, err = resolve_stream_id(args.stream, sock_path, args.image)
+        target, err = resolve_stream_id(args.stream, sock_path)
         if err is not None:
             return emit(err, args.json)
 
@@ -1296,14 +1296,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gset.add_argument("--revoke", action="store_true", help="disable (revoke) the grant")
     p_gset.add_argument("--expected-head", type=int, help="explicit expected authority head for CAS")
     p_gset.add_argument("--op", help="idempotent operation id (1..2^60-1; auto-generated if omitted)")
-    p_gset.add_argument("--image", type=Path, help="optional node image path for stream name lookup")
     _add_control_args(p_gset)
 
     p_gget = grant_sub.add_parser("get", help="inspect current grant state for a principal")
     p_gget.add_argument("principal", help="grantee principal name or numeric principal id")
     p_gget.add_argument("right", choices=("consume", "read", "append"))
     p_gget.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (omit for consume)")
-    p_gget.add_argument("--image", type=Path, help="optional node image path for stream name lookup")
     _add_control_args(p_gget)
 
     p_stream = sub.add_parser("stream", help="consumer & stream operations over --control-sock")
