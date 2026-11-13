@@ -123,6 +123,11 @@
 (defun fn2-arms-table-pairs (kinds)
   (declare (xargs :verify-guards nil))
   (if (atom kinds) nil (cons (cons (fn2-columns-sym (car kinds) "-TABLE") (car kinds)) (fn2-arms-table-pairs (cdr kinds)))))
+(defun fn2-arms-machine-tables (names wanted)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append (and (member-eq (car names) wanted) (list (car names)))
+            (fn2-arms-machine-tables (cdr names) wanted))))
 (defun fn2-arms-extra-children (kind world)
   ; (mv err ((FIELD . STOBJ) ...))
   (declare (xargs :verify-guards nil))
@@ -132,15 +137,16 @@
                          (fn2-machine-declared kind :observe-arms world) (fn2-machine-declared kind :genesis world))
                    world 1000000)
                   (cons kind *fn2-arms-children*)))
-         ;; a link's kind (G3, D F8): its table, after the registered extras
-         ;; in link order (machine tables register only at the assembly)
+         ;; a link's kind (G3, D F8) or another machine table a child op touches:
+         ;; its table, after the registered extras in link then registry order
          (linked (set-difference-eq (fn2-arms-link-kinds (fn2-arms-links kind world)) (cons kind *fn2-arms-children*)))
-         (wanted (set-difference-eq wanted linked))
+         (mtables (append linked (set-difference-eq (fn2-arms-machine-tables (fn2-machine-names world) wanted) linked)))
+         (wanted (set-difference-eq wanted mtables))
          (found (fn2-arms-registry-order (fn2-core-child-registry world) wanted))
          (missing (set-difference-eq wanted (strip-cdrs found))))
     (if missing
         (mv (msg "~x0's arms call operations over ~x1, which no defcorechild registers (an arm reaches a child through the core's registry)." kind missing) nil)
-      (mv nil (append found (fn2-arms-table-pairs linked))))))
+      (mv nil (append found (fn2-arms-table-pairs mtables))))))
 (defun fn2-arms-kind-tuple (kind world)
   (declare (xargs :verify-guards nil))
   (mv-let (err extras) (fn2-arms-extra-children kind world)

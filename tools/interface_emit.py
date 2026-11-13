@@ -1039,6 +1039,14 @@ def keystone_findings(decls: list[dict], root: Path = ROOT) -> tuple[list[str], 
 
 
 def main(argv=None) -> int:
+    if (ROOT / "tools/image-node.lsp").is_file() and not (ROOT / "host/native/build.lisp").exists():
+        options = list(sys.argv[1:] if argv is None else argv)
+        if options == ["--check"]:
+            import served_host_check
+            return served_host_check.main(["--load"])
+        print("fn uses direct guarded entries; run interface_emit.py --check "
+              "for the served load/guard gate", file=sys.stderr)
+        return 2
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")

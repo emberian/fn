@@ -4,6 +4,11 @@
 (include-book "books/node-profile" :uncertified-okp nil)
 (set-inhibit-output-lst '(proof-tree prove event summary observation warning))
 :q
+; Qualify native crypto before opening a store or binding a listener.
+(handler-case (load "host/b3-native.lisp")
+  (error (c)
+    (format *error-output* "REFUSED native-crypto: ~A~%" c)
+    (sb-ext:exit :code 2)))
 (load "host/ffi.lisp")
 (load "host/adapter.lisp")
 (load "host/native-serve-raw.lisp")

@@ -9,6 +9,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import pickle
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 from emit_certificate import *
@@ -41,6 +42,18 @@ def function_records(stream, count):
         yield n, row, d
     if len(names) != count:
         raise ValueError(f'function count {len(names)} differs from header {count}')
+
+def proposal_body(body, formals, attachment):
+    """Match print-world's executable body for proof search only.
+
+    Keep the canonical logical-body record intact: the live ACL2 check and
+    attachment obligations still apply independently of this proposed call.
+    """
+    if str(body) == ':MISSING' and not is_nil(attachment):
+        if not isinstance(attachment, Atom) or str(attachment).startswith(':'):
+            raise ValueError('attachment must name a function')
+        return List([attachment, *(Atom(v) for v in formals)])
+    return body
 
 def packed_text(x):
     """Losslessly pack symbol byte lists in the generated source book only.
@@ -268,7 +281,7 @@ def wake_certificate(kd, ki, ai, layout, consts, namespace):
     body=Path(__file__).with_name('wake_validation.lean.in').read_text()
     return render_template(prefix+body,values)
 
-def whole_contract(kd, ki, area, ai, layout, name, namespace):
+def whole_contract_section(kd, ki, area, ai, layout, name, ns):
     """Universal, successful interpretation, including every core child.
     Subarms in child form use their complete tuple and the checked projection
     of the narrowed result; they do not have invented core entry wrappers.
@@ -278,8 +291,7 @@ def whole_contract(kd, ki, area, ai, layout, name, namespace):
     vals=['id','event','outcome','reason','count','aux0','aux1'] if observe else ['id','budget']
     binders=' '.join('('+v+' : Val)' for v in vals)
     args='['+', '.join(vals)+', image kids]'
-    lines=['import Fn2.Arms.Core','import Fn2.Instances.ServedMetadata',
-      'namespace Fn2.Arms.Served.'+namespace,'open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds',
+    lines=['namespace Fn2.Arms.Served.'+namespace_id(ns),'open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds',
       'def kind : Kind := kinds['+str(ki)+']!', 'def arm : Arm := kind.'+part+'['+str(ai)+']!',
       'def image (kids : Fin '+str(len(layout))+' → Val) : Val := Val.ofList (List.ofFn kids)']
     if area==':SUBARMS' and str(k[':FORM'])==':CHILDREN':
@@ -302,7 +314,18 @@ def whole_contract(kd, ki, area, ai, layout, name, namespace):
         lines += [f'def contract {binders} (kids : Fin {len(layout)} → Val) : Prop :=',
           f'  ∃ fuel result, runCore world coreTuple kind arm {str(observe).lower()} {args} fuel = .ok result ∧',
           f'    world.fns {lean_str(name)} {args} = some result']
-    return as_module('\n'.join(lines+['end Fn2.Arms.Served.'+namespace,'']), expose=True)
+    return '\n'.join(lines+['end Fn2.Arms.Served.'+namespace_id(ns)])
+
+def namespace_id(ns):
+    return ns
+
+def whole_contract(kd, ki, area, ai, layout, name, namespace):
+    return as_module('\n'.join(['import Fn2.Arms.Core','import Fn2.Instances.ServedMetadata',
+      whole_contract_section(kd,ki,area,ai,layout,name,namespace),'']), expose=True)
+
+def kind_contracts_source(sections):
+    return as_module('\n'.join(['import Fn2.Arms.Core','import Fn2.Instances.ServedMetadata',
+      *sections,'']), expose=True)
 
 def certificate_source(kd,ki,ai,layout,consts,ns,name,area,widx=None):
     observe=str(area)==':OBSERVE-ARMS'
@@ -343,7 +366,7 @@ theorem omitted_child_rejected (fuel : Nat) (result : Val) :
 #print axioms accepted_entry_positive
 #print axioms omitted_child_rejected
 '''
-    source='import Fn2.Arms.Wrapper\nimport Fn2.Instances.ServedCertificates.'+ns+'\n'+source
+    source=f'import Fn2.Arms.Wrapper\nimport Fn2.Instances.ServedCertificates.Kind{ki}Contracts\n'+source
     source=source.replace('end Fn2.Arms.Served.'+ns+'Proof',link+'end Fn2.Arms.Served.'+ns+'Proof')
     return fill_world_bodies(as_module(source, expose=True, import_all=CORE_STRING_BODIES, bodies='scan'), widx)
 
@@ -399,64 +422,106 @@ def generate(src):
     src=Path(src); out=BASE/'meta/Fn2/Instances/ServedCertificates';out.mkdir(parents=True,exist_ok=True)
     for stale in out.glob('*.lean'): stale.unlink()
     export=BASE/'meta/emit/served-export.lisp'
-    with src.open(newline='') as stream, export.open('w') as acl2:
-        p=header(stream); manifest=fields(p[':MANIFEST'])
-        layout=List([r[1] for r in decode(manifest[':CORE-LAYOUT'])[1]])
-        kinds=decode(p[':KINDS']); inventory=decode(p[':ARM-INVENTORY'])
-        emb={':KINDS':kinds,':OPERATIONS':decode(p[':OPERATIONS']),':CONSTANTS':decode(p[':CONSTANTS']),':CORE-TUPLE':layout}
-        waits=[(r[0],List(r[1:])) for r in decode(p[':WAITS'])]
-        emit_kinds(emb,waits,out.parent/'ServedKinds.lean','Fn2.Instances.ServedKinds','Fn2.Instances.LayerAWorld',{})
-        lean_metadata(p,out.parent/'ServedMetadata.lean')
-        lean_commit_words(p,out.parent/'ServedCommit.lean')
-        consts={str(r[0]):alist_value(r) for r in emb[':CONSTANTS']}
-        acl2.write('(in-package "ACL2")\n(include-book "../../books/reference")\n(include-book "../../books/translation-validation")\n')
-        acl2.write("(fn2-tv-check-manifest '"+canonical_text(p[':MANIFEST'])+")\n")
-        acl2.write("(fn2-tv-check-arm-inventory '"+show(inventory)+")\n")
-        acl2.write(metadata_checks(p))
-        acl2.write("(fn2-tv-check-packed-functions '(\n")
-        functions=[]; names=set(); extra_calls={}; fn_defs={}
-        for name,row,d in function_records(stream,int(str(p[':FUNCTION-COUNT']))):
-            names.add(name)
-            lbody = decode(d[':LOGICAL-BODY'])
-            fms = [str(v) for v in as_list(decode(d[':FORMALS']))] if ':FORMALS' in d else []
-            sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
-            sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
-            just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')
-            just = None if is_nil(just_dec) else just_dec
-            fn_defs[name] = (fms, lbody, sout, just)
-            extra_calls[name] = calls_of(lbody, set())
-            acl2.write('('+name+' . '+packed_text(row)+')\n')
-            functions.append({'name':name,'canonical_export':'proposed',
-              'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
-        acl2.write('))\n')
-        acl2.write("(fn2-tv-check-served-closure '("+' '.join(sorted(names))+") '("+' '.join(str(decode(n)) for n in as_list(p[':REFUSED']))+"))\n")
-    widx=world_index(BASE/'meta/Fn2',extra_calls)
-    bykind={str(k[0]):(i,k) for i,k in enumerate(kinds)}; roots=[]
+    lw_file=BASE/'meta/Fn2/Instances/LayerAWorld.lean'
+    pkg_cache=BASE/'build/served-package-cache.pkl'
+    pkg_deps=[src,Path(__file__),Path(__file__).with_name('emit_lean.py'),
+      Path(__file__).with_name('emit_certificate.py'),Path(__file__).with_name('emit_embed.py'),
+      *([lw_file] if lw_file.is_file() else [])]
+    pkg_key=hashlib.sha256(('v2:' + ''.join(digest(d) for d in pkg_deps)).encode()).hexdigest()
+    static_targets=[export,out.parent/'ServedKinds.lean',out.parent/'ServedMetadata.lean',out.parent/'ServedCommit.lean']
+    cached=None
+    if pkg_cache.is_file() and all(t.is_file() for t in static_targets):
+        try:
+            raw=pickle.loads(pkg_cache.read_bytes())
+            if raw.get('key')==pkg_key and all(digest(t)==raw['target_shas'].get(t.name) for t in static_targets):
+                cached=raw
+        except Exception:
+            cached=None
+    if cached is not None:
+        layout=cached['layout']; kinds=cached['kinds']; inventory=cached['inventory']
+        emb=cached['emb']; waits=cached['waits']; consts=cached['consts']
+        cw_parsed=cached['cw_parsed']; refused_list=cached['refused_list']; natives_list=cached['natives_list']
+        functions=[dict(f) for f in cached['functions']]; names=cached['names']
+        fn_defs=cached['fn_defs']; widx=cached['widx']
+    else:
+        with src.open(newline='') as stream, export.open('w') as acl2:
+            p=header(stream); manifest=fields(p[':MANIFEST'])
+            layout=List([r[1] for r in decode(manifest[':CORE-LAYOUT'])[1]])
+            kinds=decode(p[':KINDS']); inventory=decode(p[':ARM-INVENTORY'])
+            emb={':KINDS':kinds,':OPERATIONS':decode(p[':OPERATIONS']),':CONSTANTS':decode(p[':CONSTANTS']),':CORE-TUPLE':layout}
+            waits=[(r[0],List(r[1:])) for r in decode(p[':WAITS'])]
+            emit_kinds(emb,waits,out.parent/'ServedKinds.lean','Fn2.Instances.ServedKinds','Fn2.Instances.LayerAWorld',{})
+            lean_metadata(p,out.parent/'ServedMetadata.lean')
+            lean_commit_words(p,out.parent/'ServedCommit.lean')
+            cw_parsed=commit_words(p)
+            refused_list=[str(decode(n)) for n in as_list(p[':REFUSED'])]
+            natives_list=[str(decode(n)) for n in as_list(p[':NATIVES'])]
+            consts={str(r[0]):alist_value(r) for r in emb[':CONSTANTS']}
+            acl2.write('(in-package "ACL2")\n(include-book "../../books/reference")\n(include-book "../../books/translation-validation")\n')
+            acl2.write("(fn2-tv-check-manifest '"+canonical_text(p[':MANIFEST'])+")\n")
+            acl2.write("(fn2-tv-check-arm-inventory '"+show(inventory)+")\n")
+            acl2.write(metadata_checks(p))
+            acl2.write("(fn2-tv-check-packed-functions '(\n")
+            functions=[]; names=set(); extra_calls={}; fn_defs={}
+            for name,row,d in function_records(stream,int(str(p[':FUNCTION-COUNT']))):
+                names.add(name)
+                lbody = decode(d[':LOGICAL-BODY'])
+                fms = [str(v) for v in as_list(decode(d[':FORMALS']))] if ':FORMALS' in d else []
+                att = decode(d[':ATTACHMENT']) if ':ATTACHMENT' in d else Atom('NIL')
+                lbody = proposal_body(lbody, fms, att)
+                sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
+                sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
+                just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')
+                just = None if is_nil(just_dec) else just_dec
+                fn_defs[name] = (fms, lbody, sout, just)
+                extra_calls[name] = calls_of(lbody, set())
+                acl2.write('('+name+' . '+packed_text(row)+')\n')
+                functions.append({'name':name,'canonical_export':'proposed',
+                  'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
+            acl2.write('))\n')
+            acl2.write("(fn2-tv-check-served-closure '("+' '.join(sorted(names))+") '("+' '.join(refused_list)+"))\n")
+        widx=world_index(BASE/'meta/Fn2',extra_calls)
+        pkg_cache.parent.mkdir(parents=True,exist_ok=True)
+        pkg_cache.write_bytes(pickle.dumps({
+          'key':pkg_key,'target_shas':{t.name:digest(t) for t in static_targets},
+          'layout':layout,'kinds':kinds,'inventory':inventory,'emb':emb,'waits':waits,'consts':consts,
+          'cw_parsed':cw_parsed,'refused_list':refused_list,'natives_list':natives_list,
+          'functions':functions,'names':names,'fn_defs':fn_defs,'widx':widx}))
+    bykind={str(k[0]):(i,k) for i,k in enumerate(kinds)}; roots=[]; kind_sections={}
     for ri,row in enumerate(inventory):
         kn,area,tag,form,fn,core,decl,sig=row
         ki,kd=bykind[str(kn)]; key={':ARMS':':ARMS',':OBSERVE-ARMS':':OBSERVES',':SUBARMS':':SUBARMS'}[str(area)]
         entries=plist(kd[1:])[key]; ai=next(i for i,a in enumerate(entries) if a[0]==tag)
-        name=str(fn if str(core)=='NIL' else core); ns='Root'+str(ri); contract=out/(ns+'.lean')
-        contract.write_text(whole_contract(kd,ki,str(area),ai,layout,name,ns))
+        name=str(fn if str(core)=='NIL' else core); ns='Root'+str(ri); contract=out/f'Kind{ki}Contracts.lean'
+        kind_sections.setdefault(ki,[]).append(whole_contract_section(kd,ki,str(area),ai,layout,name,ns))
         rec={'name':name,'kind':str(kn),'area':str(area),'tag':str(tag),'form':str(form),
           'contract':str(contract.relative_to(BASE)),'status':'unvalidated','reason':proof_obligations(decl)}
         if name not in names: rec['reason']='function absent from canonical served closure'
-        elif (str(area)==':ARMS' and show(decl)=='((:IDLE))') or (str(area)==':OBSERVE-ARMS' and show(decl)=='((:WAKE))'):
+        roots.append(rec)
+    for ki,sections in sorted(kind_sections.items()):
+        (out/f'Kind{ki}Contracts.lean').write_text(kind_contracts_source(sections))
+    emit_served_proofs(kinds, inventory, layout, consts, emb[':OPERATIONS'], waits,
+                       cw_parsed, fn_defs, widx, fill_world_bodies, out, roots, BASE)
+    for ri,row in enumerate(inventory):
+        rec=roots[ri]
+        if 'proof' in rec or rec['reason']=='function absent from canonical served closure': continue
+        kn,area,tag,form,fn,core,decl,sig=row
+        if (str(area)==':ARMS' and show(decl)=='((:IDLE))') or (str(area)==':OBSERVE-ARMS' and show(decl)=='((:WAKE))'):
+            ki,kd=bykind[str(kn)]; key={':ARMS':':ARMS',':OBSERVE-ARMS':':OBSERVES',':SUBARMS':':SUBARMS'}[str(area)]
+            entries=plist(kd[1:])[key]; ai=next(i for i,a in enumerate(entries) if a[0]==tag)
+            name=str(fn if str(core)=='NIL' else core); ns='Root'+str(ri)
             try:
                 proof=out/(ns+'Proof.lean')
                 source=certificate_source(kd,ki,ai,layout,consts,ns,name,area,widx)
                 proof.write_text(source)
                 rec.update(proof=str(proof.relative_to(BASE)),reason='generated proof has not passed Lean')
             except (ValueError,KeyError) as e: rec['reason']='terminal certificate: '+str(e)
-        roots.append(rec)
-    emit_served_proofs(kinds, inventory, layout, consts, emb[':OPERATIONS'], waits,
-                       commit_words(p), fn_defs, widx, fill_world_bodies, out, roots, BASE)
     if len(set(r['name'] for r in roots))!=len(roots): raise ValueError('duplicate arm root')
     report={'schema':1,'package':str(src.relative_to(BASE)) if src.is_relative_to(BASE) else str(src),
       'package_sha256':digest(src),'functions':functions,'roots':roots,
-      'unresolved':[str(decode(n)) for n in as_list(p[':REFUSED'])],
-      'commit_words':len(commit_words(p)),
-      'native_boundary':[str(decode(n)) for n in as_list(p[':NATIVES'])],
+      'unresolved':refused_list,
+      'commit_words':len(cw_parsed),
+      'native_boundary':natives_list,
       'gates':{},'inputs':{str(f.relative_to(BASE)):digest(f) for f in sorted(set(
         [export,BASE/'meta/Fn2.lean',BASE/'meta/lean-toolchain',BASE/'meta/lake-manifest.json',
          *acl2_sources(),*BASE.glob('meta/Fn2/**/*.lean'),
