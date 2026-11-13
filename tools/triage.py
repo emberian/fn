@@ -161,5 +161,3 @@ def key_checkpoint(log: str, limit: int = CHECKPOINT_LINES) -> str | None:
         shown.append(f"... ({len(body) - limit} more lines, in the run log "
                      f"on the box)")
     return "\n".join([lines[start].strip()] + shown)
-
-

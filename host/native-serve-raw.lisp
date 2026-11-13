@@ -62,14 +62,26 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
 
 ; The ready, refusal and stop lines each start a line (fn1's harness matches
 ; `LISTENING <port>` at a line's start; the raw REPL's prompt precedes this call).
+(defun fn2-nserve-kill-at (text)
+  "Bounded test instrumentation; zero disables process-death injection."
+  (if (null text) 0
+    (and (<= 1 (length text) 20)
+         (every (lambda (c) (digit-char-p c 10)) text)
+         (let ((n (car (fn2-n-control-numbers text 1))))
+           (and (<= n most-positive-fixnum) n)))))
+
 (defun fn2-nserve-main ()
   (let* ((profile (fn2-nserve-profile))
          (image (sb-ext:posix-getenv "FN2_IMAGE"))
          (initialize (equal (sb-ext:posix-getenv "FN2_IMAGE_MODE") "init"))
+         (kill-at (fn2-nserve-kill-at (sb-ext:posix-getenv "FN2_KILL_AT")))
          (image-bytes (and initialize (ignore-errors (parse-integer (or (sb-ext:posix-getenv "FN2_IMAGE_BYTES") "")))))
          (capacity (or (ignore-errors (parse-integer (or (sb-ext:posix-getenv "FN2_ENVELOPE_TRACE") "0"))) 0)))
     (format t "~%NODE-PID ~d~%" (%fn2-native-getpid))
     (finish-output)
+    (unless kill-at
+      (format t "REFUSED kill-at~%") (finish-output)
+      (return-from fn2-nserve-main 2))
     (when (and initialize (not image-bytes))
       (format t "REFUSED image-size~%") (finish-output)
       (return-from fn2-nserve-main 2))
@@ -83,8 +95,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
       (return-from fn2-nserve-main 2))
     (let ((host (handler-case
                  (if image
-                   (fn2-n-make-host profile :trace-capacity capacity :device-path image :create-size image-bytes)
-                   (fn2-n-make-host profile :trace-capacity capacity :seeds *fn2-ss-seeds*))
+                   (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at :device-path image :create-size image-bytes)
+                   (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at :seeds *fn2-ss-seeds*))
                  (error (condition)
                    (format t "~%REFUSED ~a~%" condition) (finish-output)
                    (return-from fn2-nserve-main 2)))))

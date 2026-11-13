@@ -11,6 +11,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -127,9 +128,11 @@ def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True):
         cmd += ['-o', str(out)]
     log = root / 'build/served-certificate-gates' / logname
     log.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env['LEAN_PATH'] = str(lib.resolve()) + (os.pathsep + env['LEAN_PATH'] if env.get('LEAN_PATH') else '')
     try:
         result = subprocess.run(
-            cmd, cwd=meta_dir, text=True,
+            cmd, cwd=meta_dir, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds,
         )
         log.write_text(result.stdout)
@@ -146,8 +149,23 @@ def toolchain_fingerprint(root=BASE):
     lean_bin = shutil.which('lean')
     if not lean_bin:
         raise RuntimeError('lean executable not found in PATH')
-    compiler = Path(lean_bin).resolve()
-    return digest(compiler) + digest(root / 'meta/lean-toolchain') + digest(root / 'meta/lake-manifest.json')
+    # An elan proxy's bytes do not identify the compiler selected by a local
+    # override. Query from the same cwd as compile_one, then hash that compiler
+    # and its shared runtime as well as the launcher.
+    prefix = Path(subprocess.check_output(
+        [lean_bin, '--print-prefix'], cwd=root / 'meta', text=True, timeout=15).strip())
+    compiler = prefix / 'bin/lean'
+    if not compiler.is_file():
+        raise RuntimeError('selected Lean compiler missing: ' + str(compiler))
+    version = subprocess.check_output(
+        [lean_bin, '--version'], cwd=root / 'meta', text=True, timeout=15)
+    files = [Path(lean_bin).resolve(), compiler.resolve(),
+             root / 'meta/lean-toolchain', root / 'meta/lake-manifest.json']
+    runtime = prefix / 'lib/lean'
+    files.extend(sorted(runtime.glob('*.so')))
+    files.extend(sorted(runtime.glob('*.dylib')))
+    return hashlib.sha256((version + ''.join(
+        str(p) + ':' + digest(p) for p in files)).encode()).hexdigest()
 
 
 def dep_signature(deps, done, lib):
@@ -196,7 +214,7 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None)
             def build(n):
                 source = 'meta/' + n.replace('.', '/') + '.lean'
                 key = hashlib.sha256(
-                    (tool + digest(root / source) + ''.join(done[d] for d in deps[n])).encode()
+                    (tool + digest(root / source) + dep_signature(deps[n], done, lib)).encode()
                 ).hexdigest()
                 artifact = lib / Path(*n.split('.')).with_suffix('.olean')
                 old = cache.get(n, {})
@@ -639,15 +657,20 @@ def main():
     if args.only:
         if not args.lean:
             raise ValueError('--only requires --lean')
-        lean_gates(report, args.lib.resolve(), args.timeout, args.j, batch_size=args.batch_size, only=args.only)
         matched = [r for i, r in enumerate(report['roots'])
                    if args.only in r['name'] or args.only == f'Root{i}' or args.only == r.get('kind', '')]
-        passed = sum('lean_gate' in r for r in matched)
+        if not matched:
+            print(f'FILTERED LEAN PROBE ({args.only}): no matching roots')
+            return 1
+        lean_gates(report, args.lib.resolve(), args.timeout, args.j, batch_size=args.batch_size, only=args.only)
+        candidates = [r for r in matched if 'proof' in r]
+        passed = sum('lean_gate' in r for r in candidates)
+        print(f'  {len(candidates)} proof candidates; {len(matched)-len(candidates)} roots without generated proofs')
         print(f'FILTERED LEAN PROBE ({args.only}): {passed}/{len(matched)} roots passed Lean census (report NOT modified)')
         for r in matched:
             if 'lean_gate' not in r and 'proof' in r:
                 print('  FAIL', r['name'], r.get('reason', ''))
-        return
+        return 0 if candidates and passed == len(candidates) else 1
     if args.acl2:
         acl2_gate(report, args.acl2)
     if args.lean:
@@ -660,7 +683,16 @@ def main():
     if args.snapshots:
         write_snapshots(report, args.snapshots, stamp=args.stamp)
     print('\n'.join(text.splitlines()[:3]))
+    if args.lean:
+        candidates = [r for r in report['roots'] if 'proof' in r]
+        failures = [r for r in candidates if 'lean_gate' not in r]
+        print(f'LEAN CANDIDATES: {len(candidates)-len(failures)}/{len(candidates)} passed; '
+              f'{len(report["roots"])-len(candidates)} roots without generated proofs')
+        for r in failures:
+            print('  FAIL', r['name'], r.get('reason', ''))
+        return 1 if failures or not candidates else 0
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

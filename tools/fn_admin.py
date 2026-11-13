@@ -105,6 +105,7 @@ AUTH_OPCODES = {
     "principal-bind": 1,
     "grant-set": 2,
     "grant-get": 3,
+    "stream-resolve": 4,
 }
 AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2}
 CNS_CODES = {
@@ -270,7 +271,7 @@ def parse_u60_op(raw: str | None, required: bool = False) -> int:
 
 def build_auth_request(verb: str, **kw) -> bytes:
     code = AUTH_OPCODES[verb]
-    if verb in ("principal-create", "principal-bind"):
+    if verb in ("principal-create", "principal-bind", "stream-resolve"):
         body = bytes([code]) + octets16(kw["name"].encode("utf-8"))
     elif verb == "grant-set":
         op_bytes = be_pos(kw["op"])
@@ -316,7 +317,10 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
         if i != len(p):
             raise WireError("non-accepted authority reply has trailing bytes")
         return out
-    if verb == "principal-create":
+    if verb == "stream-resolve":
+        target, i = leb_decode(p, i)
+        out["target"] = target
+    elif verb == "principal-create":
         pid, i = leb_decode(p, i)
         out["id"] = pid
     elif verb == "principal-bind":
@@ -627,28 +631,19 @@ def read_groups_sidecar(path: Path) -> list[tuple[int, str]]:
     return rows
 
 
-def resolve_stream_id(raw: str | None, sock_path: str, image: Path | None = None) -> int:
+def resolve_stream_id(raw: str | None, sock_path: str) -> tuple[int, dict | None]:
+    """Resolve names using the served ACL2 directory."""
     if raw is None:
-        raise ValueError("stream name or positive integer stream id is required for read/append grants")
+        raise ValueError("stream name or numeric stream id is required for read/append grants")
     try:
-        sid = int(raw, 10)
-        if sid < 0:
-            raise ValueError("stream id must be non-negative")
-        return sid
+        return int(raw, 10), None
     except ValueError:
         pass
-    candidates = [groups_sidecar_for_sock(sock_path)]
-    if image is not None:
-        candidates.append(groups_sidecar_for_image(image.resolve()))
-    for sidecar in candidates:
-        for sid, name in read_groups_sidecar(sidecar):
-            if name == raw:
-                return sid
-    if raw == "local.test" and not any(c.is_file() for c in candidates):
-        return 1
-    raise ValueError(
-        f"cannot resolve stream name {raw!r} locally; pass numeric stream id or serve with --control-sock"
-    )
+    with ControlSession(sock_path) as sess:
+        result = sess.auth("stream-resolve", name=raw)
+    if result["outcome"] != "accepted":
+        return 0, result
+    return result["target"], None
 
 
 def resolve_principal_on_node(sock_path: str, raw: str) -> tuple[int, int, dict | None]:
@@ -776,6 +771,17 @@ def normalize_groups(raw_groups: list[str] | None) -> list[str]:
     return names
 
 
+def prepare_native_crypto(root: Path) -> None:
+    """Build atomically; the Lisp process qualifies the library before any I/O."""
+    try:
+        subprocess.run(
+            ["sh", str(root / "host" / "build-blake3.sh"), str(root / "build" / "lib")],
+            cwd=root, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise OSError("native BLAKE3 build failed; node was not started") from exc
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -789,6 +795,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
     else:
         size_bytes = str(args.size)
 
+    prepare_native_crypto(root)
     groups = normalize_groups(args.group)
     image.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -839,6 +846,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         print("REFUSED image-missing", flush=True)
         return EXIT_ERROR
 
+    prepare_native_crypto(root)
     groups = normalize_groups(args.group)
     if not groups:
         sidecar_rows = read_groups_sidecar(groups_sidecar_for_image(image))
@@ -902,7 +910,9 @@ def cmd_grant_set(args: argparse.Namespace) -> int:
         scope, target = 0, 0
     else:
         scope = 1
-        target = resolve_stream_id(args.stream, sock_path, args.image)
+        target, err = resolve_stream_id(args.stream, sock_path)
+        if err is not None:
+            return emit(err, args.json)
 
     pid, head, err = resolve_principal_on_node(sock_path, args.principal)
     if err is not None:
@@ -942,7 +952,9 @@ def cmd_grant_get(args: argparse.Namespace) -> int:
         scope, target = 0, 0
     else:
         scope = 1
-        target = resolve_stream_id(args.stream, sock_path, args.image)
+        target, err = resolve_stream_id(args.stream, sock_path)
+        if err is not None:
+            return emit(err, args.json)
 
     pid, _, err = resolve_principal_on_node(sock_path, args.principal)
     if err is not None:
@@ -1297,14 +1309,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gset.add_argument("--revoke", action="store_true", help="disable (revoke) the grant")
     p_gset.add_argument("--expected-head", type=int, help="explicit expected authority head for CAS")
     p_gset.add_argument("--op", help="idempotent operation id (1..2^60-1; auto-generated if omitted)")
-    p_gset.add_argument("--image", type=Path, help="optional node image path for stream name lookup")
     _add_control_args(p_gset)
 
     p_gget = grant_sub.add_parser("get", help="inspect current grant state for a principal")
     p_gget.add_argument("principal", help="grantee principal name or numeric principal id")
     p_gget.add_argument("right", choices=("consume", "read", "append"))
     p_gget.add_argument("stream", nargs="?", help="stream/group name or numeric stream id (omit for consume)")
-    p_gget.add_argument("--image", type=Path, help="optional node image path for stream name lookup")
     _add_control_args(p_gget)
 
     p_stream = sub.add_parser("stream", help="consumer & stream operations over --control-sock")

@@ -1,6 +1,8 @@
 """Controls for the generated coverage boundary; proof gates run separately."""
 import importlib.util
 import json
+import contextlib
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -24,6 +26,92 @@ class CoverageControls(unittest.TestCase):
         self.assertEqual(e.proposal_body(missing, ['ID'], e.Atom('NIL')), missing)
         with self.assertRaisesRegex(ValueError, 'attachment must name'):
             e.proposal_body(missing, ['ID'], e.List([attached]))
+
+    def test_elan_proxy_does_not_hide_selected_compiler_changes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta').mkdir(); (root/'tool/bin').mkdir(parents=True)
+            (root/'tool/lib/lean').mkdir(parents=True)
+            for p in ['meta/lean-toolchain', 'meta/lake-manifest.json', 'proxy', 'tool/bin/lean', 'tool/lib/lean/libleanshared.so']:
+                (root/p).write_text(p)
+            def query(args, **kwargs):
+                self.assertEqual(kwargs['cwd'], root/'meta')
+                return str(root/'tool') if args[-1]=='--print-prefix' else 'Lean 4.30.0'
+            with mock.patch.object(c.shutil,'which',return_value=str(root/'proxy')), \
+                 mock.patch.object(c.subprocess,'check_output',side_effect=query):
+                a=c.toolchain_fingerprint(root)
+                (root/'tool/bin/lean').write_text('different selected compiler')
+                b=c.toolchain_fingerprint(root)
+                self.assertNotEqual(a,b)
+                (root/'tool/lib/lean/libleanshared.so').write_text('different runtime')
+                self.assertNotEqual(b,c.toolchain_fingerprint(root))
+
+    def test_dependency_rebuild_artifact_invalidates_downstream(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            (root/'meta/Fn2/B.lean').write_text('import Fn2.A\ndef b := 2')
+            lib=root/'lib'; cache={}; calls=[]; revision=[0]
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source)
+                artifact=lib/Path(source).relative_to('meta').with_suffix('.olean')
+                artifact.parent.mkdir(parents=True,exist_ok=True)
+                artifact.write_text(source+str(revision[0]))
+                log=root/'log'; log.write_text('checked')
+                return 0,'checked','log'
+            with mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                calls.clear(); revision[0]=1
+                (lib/'Fn2/A.olean').write_text('damaged artifact')
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+
+    def test_filtered_cli_rejects_no_match_and_failed_proofs(self):
+        with tempfile.TemporaryDirectory() as td:
+            report_path=Path(td)/'report.json'
+            report_path.write_text(json.dumps({'roots':[
+                {'name':'R0','kind':'K','proof':'proof.lean'},
+                {'name':'R1','kind':'K'}]}))
+            original=report_path.read_bytes()
+            def accepted(report, *args, **kwargs):
+                report['roots'][0]['lean_gate']={'theorem':'validated'}
+            cases=[('MISSING',accepted,1),('R0',lambda *a,**k: None,1),
+                   ('R0',accepted,0),('K',accepted,0),('R1',accepted,1)]
+            for selector,gate,expected in cases:
+                with self.subTest(selector=selector,expected=expected), \
+                     mock.patch.object(c.sys,'argv',['check','--report',str(report_path),'--lean','--only',selector]), \
+                     mock.patch.object(c,'current'), mock.patch.object(c,'lean_gates',side_effect=gate) as called, \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(c.main(),expected)
+                    if selector=='MISSING': called.assert_not_called()
+                    self.assertEqual(report_path.read_bytes(),original)
+
+    def test_compiler_imports_the_library_whose_artifacts_are_checked(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta').mkdir()
+            lib=root/'checked-lib'
+            result=mock.Mock(returncode=0,stdout='checked')
+            with mock.patch.dict(c.os.environ, {'LEAN_PATH':'/other/old-lib'}), \
+                 mock.patch.object(c.subprocess,'run',return_value=result) as run:
+                c.compile_one('meta/F.lean',lib,5,'test.log',root=root)
+                args,kwargs=run.call_args
+                self.assertEqual(kwargs['env']['LEAN_PATH'],str(lib.resolve())+c.os.pathsep+'/other/old-lib')
+                self.assertEqual(kwargs['cwd'],root/'meta')
+                self.assertIn(str(lib/'F.olean'),args[0])
+
+    def test_full_cli_fails_rejected_candidates_but_allows_partial_coverage(self):
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'report.json'
+            for succeeds in [False,True]:
+                p.write_text(json.dumps({'roots':[{'name':'R','proof':'R.lean'}, {'name':'OWED'}]}))
+                def gate(report,*args,**kwargs):
+                    if succeeds: report['roots'][0]['lean_gate']={'theorem':'validated'}
+                with mock.patch.object(c.sys,'argv',['check','--report',str(p),'--lean']), \
+                     mock.patch.object(c,'current'),mock.patch.object(c,'reconcile'), \
+                     mock.patch.object(c,'summary',return_value='coverage'), \
+                     mock.patch.object(c,'lean_gates',side_effect=gate), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(c.main(),0 if succeeds else 1)
+                    self.assertEqual(len(json.loads(p.read_text())['roots']),2)
 
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
@@ -156,7 +244,8 @@ class CoverageControls(unittest.TestCase):
             lib=root/'build/lean-lib'
             with mock.patch.object(c,'compile_one',side_effect=fake_compile_one), \
                  mock.patch.object(c.shutil,'which',return_value=str(fake_bin)), \
-                 mock.patch.object(c.subprocess,'check_output',return_value='Lean 4.30.0\n'):
+                 mock.patch.object(c,'toolchain_fingerprint',return_value='test-toolchain'), \
+                 mock.patch.object(c.subprocess,'check_output',return_value='Lean test'):
                 # Run 1: All 3 proofs batch into a single Lean invocation; shared contract compiled once.
                 rep1=make_report()
                 c.lean_gates(rep1,lib,30,2,root=root,batch_size=4)

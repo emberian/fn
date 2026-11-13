@@ -1,5 +1,5 @@
 ; Served authority's port (layer E; docs/design/AUTHORITY-20261105.md section
-; 3): four verbs on the owner's control socket. principal-create and
+; 3): five verbs on the owner's control socket. principal-create and
 ; principal-bind name durable principals (fn2-principals); grant-set and
 ; grant-get write and read the owner-issued grants (fn2-grants and its
 ; current/head folds). One carrier, L: FNCT request kind 29 (the opcode is the
@@ -14,7 +14,7 @@
 (defconst *fn2-authority-reply-kind* 30)
 
 (defport fn2-authority
-  :fields ((name (:octets 64)) (grantee (:id principal)) (right (:enum fn2-authority-right (:consume :read :append)))
+  :fields ((stream-name (:octets 250)) (name (:octets 64)) (grantee (:id principal)) (right (:enum fn2-authority-right (:consume :read :append)))
            (scope (:enum fn2-authority-scope (:own-consumers :stream))) (target (:id stream)) (enabled :bool)
            (expected-head (:id grant)) (op (:octets 64))
            (principal (:id principal)) (authority-head (:id grant)) (grant (:id grant)) (receipt :receipt)
@@ -22,7 +22,10 @@
   :reasons (frame unknown-principal unknown-stream scope stale-revision operation-reused operation-expired)
   :verbs
   ;; Owner only; a repeated name answers its recorded identity (no deletion or reuse in this slice).
-  ((principal-create :request (name) :result (principal)
+  ((stream-resolve :request (stream-name) :result (target)
+                   :effect :read :retry :repeat :grant (:administer stream-name) :meter (:requests)
+                   :reasons (frame unknown-stream) :spec "AUTHORITY-20261105.md 3")
+   (principal-create :request (name) :result (principal)
                      :effect :durable :retry :idempotent :grant (:administer name) :meter (:requests :durable-octets)
                      :reasons (frame)
                      :spec "AUTHORITY-20261105.md 1, 3")
@@ -43,4 +46,4 @@
               :spec "AUTHORITY-20261105.md 3")))
 
 (defcarrier fn2-authority-local :port fn2-authority :frame :fnct
-  :binds ((principal-create 29 0) (principal-bind 29 1) (grant-set 29 2) (grant-get 29 3)))
+  :binds ((principal-create 29 0) (principal-bind 29 1) (grant-set 29 2) (grant-get 29 3) (stream-resolve 29 4)))
