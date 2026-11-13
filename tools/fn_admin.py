@@ -1355,6 +1355,10 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             return cmd_article(args)
         parser.error(f"unknown command {args.command}")
         return EXIT_ERROR
+    except UncertainOutcome as exc:
+        data = dict(exc.detail)
+        data.update(outcome="uncertain", reason=str(exc))
+        return emit(data, getattr(args, "json", False))
     except (ValueError, WireError, OSError) as exc:
         if getattr(args, "json", False):
             print(json.dumps({"outcome": "error", "error": str(exc)}, sort_keys=True))
