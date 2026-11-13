@@ -165,8 +165,9 @@
    (when (eq (fn2-native-tls-flush tls fd host) :failed)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil))
-   (unless (fn2-nop-tls-finished op)
-    (when (and handshake (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op)))
+   ;; Retain the outgoing RX loan until every pipelined byte is in the BIO,
+   ;; including application records following the final handshake record.
+   (when (and handshake (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op)))
       (let ((n (min (- (fn2-nop-len op) (fn2-nop-tls-seed-offset op))
                     (fn2-nhost-tls-quantum host) (fn2-tls-%input-room handle))))
        (when (plusp n)
@@ -176,6 +177,7 @@
           (unless (= fed n) (error "fn2 TLS: retained-input BIO capacity contract failed"))
           (setf fed-seed t)
           (incf (fn2-nop-tls-seed-offset op) fed))))))
+   (unless (fn2-nop-tls-finished op)
     (if handshake (fn2-n-boundary host "tls-handshake") (fn2-n-boundary host "tls-record"))
     (multiple-value-bind (code count)
         (if handshake
@@ -201,7 +203,7 @@
            (fn2-n-complete host slot :failed 0))
          (return-from fn2-n-tls-ready nil))
       (otherwise (fn2-n-complete host slot :failed 0) (return-from fn2-n-tls-ready nil)))))
-   (cond ((and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))
+   (cond ((and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls) (or (not handshake) (= (fn2-nop-tls-seed-offset op) (fn2-nop-len op))))
           (let ((count (fn2-nop-tls-count op)))
            (cond ((= kind *fn2-action-receive*) (incf (fn2-ncap-rx cap) count))
                  ((= kind *fn2-action-send*) (incf (fn2-ncap-tx cap) count)))

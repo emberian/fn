@@ -62,7 +62,7 @@ CONTRACTS = {
         '(= n (fn2-tls-%feed (fn2-native-tls-handle tls) (sb-sys:vector-sap buffer) n))'],
     'fn2-n-tls-ready': [
         '(fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host))',
-        '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))',
+        '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls) (or (not handshake) (= (fn2-nop-tls-seed-offset op) (fn2-nop-len op))))',
         '(incf (fn2-nop-tls-seed-offset op) fed)'],
     'fn2-n-take': [
         '(fn2-host-outbox-ack 1 core)',
