@@ -1,4 +1,4 @@
-;;; Run with sbcl --script tests/native-control-parser.lisp from repo root.
+;;; Run with sbcl --script tests/native-control-parser.lsp from repo root.
 ;;; Load only the actual control functions; no ACL2 world or sockets needed.
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
