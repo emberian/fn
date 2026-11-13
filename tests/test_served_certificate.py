@@ -18,14 +18,25 @@ e=module('emit_served_certificate')
 class CoverageControls(unittest.TestCase):
     def test_attachment_proposal_preserves_logical_body_and_argument_order(self):
         missing=e.Atom(':MISSING'); attached=e.Atom('FN2-HOOK-IMPL')
-        call=e.proposal_body(missing, ['ID', 'BUDGET', 'FN2-CORE'], attached)
-        self.assertEqual(call, e.List([attached, e.Atom('ID'), e.Atom('BUDGET'), e.Atom('FN2-CORE')]))
-        # An attachment must not replace a real logical body, including NIL.
-        for body in [e.Atom('NIL'), e.List([e.Atom('QUOTE'), e.Atom('NIL')])]:
-            self.assertEqual(e.proposal_body(body, ['ID'], attached), body)
-        self.assertEqual(e.proposal_body(missing, ['ID'], e.Atom('NIL')), missing)
-        with self.assertRaisesRegex(ValueError, 'attachment must name'):
-            e.proposal_body(missing, ['ID'], e.List([attached]))
+        def symbol(name):
+            return e.List([e.Atom(':SYMBOL'),e.List([e.Atom(str(ord(c))) for c in 'ACL2']),
+                           e.List([e.Atom(str(ord(c))) for c in name])])
+        # The live fn2-tv-attachment export is an association pair, not a
+        # bare target like the separate print-world executable metadata.
+        canonical=e.List([e.Atom(':CONS'),symbol('FN2-HOOK'),symbol(str(attached))])
+        before=e.canonical_text(canonical)
+        attachment=e.decode(canonical)
+        call=e.proposal_body('FN2-HOOK',missing,['ID','BUDGET','FN2-CORE'],attachment)
+        self.assertEqual(call,e.List([attached,e.Atom('ID'),e.Atom('BUDGET'),e.Atom('FN2-CORE')]))
+        self.assertEqual(e.canonical_text(canonical),before)
+        for body in [e.Atom('NIL'),e.List([e.Atom('QUOTE'),e.Atom('NIL')])]:
+            self.assertEqual(e.proposal_body('FN2-HOOK',body,['ID'],attachment),body)
+        self.assertEqual(e.proposal_body('FN2-HOOK',missing,['ID'],e.Atom('NIL')),missing)
+        for malformed in [attached,e.List([attached]),
+                          e.List([e.Atom('OTHER'),e.Atom('.'),attached]),
+                          e.List([e.Atom('FN2-HOOK'),e.Atom('.'),e.Atom('NIL')])]:
+            with self.assertRaisesRegex(ValueError,'attachment must bind'):
+                e.proposal_body('FN2-HOOK',missing,['ID'],malformed)
 
     def test_elan_proxy_does_not_hide_selected_compiler_changes(self):
         with tempfile.TemporaryDirectory() as td:
