@@ -3004,6 +3004,13 @@ def convert_main(files: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if (ROOT / "tools/image-node.lsp").is_file() and not (ROOT / BUILD_SCRIPT).exists():
+        options = list(sys.argv[1:] if argv is None else argv)
+        if not options or options[0] in ("--load", "--interfaces"):
+            import served_host_check
+            if options and options[0] == "--interfaces":
+                options[0] = "--load"
+            return served_host_check.main(options or ["--load"])
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("files", nargs="*",
