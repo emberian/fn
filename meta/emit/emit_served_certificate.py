@@ -43,6 +43,18 @@ def function_records(stream, count):
     if len(names) != count:
         raise ValueError(f'function count {len(names)} differs from header {count}')
 
+def proposal_body(body, formals, attachment):
+    """Match print-world's executable body for proof search only.
+
+    Keep the canonical logical-body record intact: the live ACL2 check and
+    attachment obligations still apply independently of this proposed call.
+    """
+    if str(body) == ':MISSING' and not is_nil(attachment):
+        if not isinstance(attachment, Atom) or str(attachment).startswith(':'):
+            raise ValueError('attachment must name a function')
+        return List([attachment, *(Atom(v) for v in formals)])
+    return body
+
 def packed_text(x):
     """Losslessly pack symbol byte lists in the generated source book only.
     ACL2 expands each record and compares the original canonical structure.
@@ -415,7 +427,7 @@ def generate(src):
     pkg_deps=[src,Path(__file__),Path(__file__).with_name('emit_lean.py'),
       Path(__file__).with_name('emit_certificate.py'),Path(__file__).with_name('emit_embed.py'),
       *([lw_file] if lw_file.is_file() else [])]
-    pkg_key=hashlib.sha256(''.join(digest(d) for d in pkg_deps).encode()).hexdigest()
+    pkg_key=hashlib.sha256(('v2:' + ''.join(digest(d) for d in pkg_deps)).encode()).hexdigest()
     static_targets=[export,out.parent/'ServedKinds.lean',out.parent/'ServedMetadata.lean',out.parent/'ServedCommit.lean']
     cached=None
     if pkg_cache.is_file() and all(t.is_file() for t in static_targets):
@@ -455,6 +467,8 @@ def generate(src):
                 names.add(name)
                 lbody = decode(d[':LOGICAL-BODY'])
                 fms = [str(v) for v in as_list(decode(d[':FORMALS']))] if ':FORMALS' in d else []
+                att = decode(d[':ATTACHMENT']) if ':ATTACHMENT' in d else Atom('NIL')
+                lbody = proposal_body(lbody, fms, att)
                 sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
                 sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
                 just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')

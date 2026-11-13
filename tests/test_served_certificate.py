@@ -14,6 +14,17 @@ c=module('check_served_certificate')
 e=module('emit_served_certificate')
 
 class CoverageControls(unittest.TestCase):
+    def test_attachment_proposal_preserves_logical_body_and_argument_order(self):
+        missing=e.Atom(':MISSING'); attached=e.Atom('FN2-HOOK-IMPL')
+        call=e.proposal_body(missing, ['ID', 'BUDGET', 'FN2-CORE'], attached)
+        self.assertEqual(call, e.List([attached, e.Atom('ID'), e.Atom('BUDGET'), e.Atom('FN2-CORE')]))
+        # An attachment must not replace a real logical body, including NIL.
+        for body in [e.Atom('NIL'), e.List([e.Atom('QUOTE'), e.Atom('NIL')])]:
+            self.assertEqual(e.proposal_body(body, ['ID'], attached), body)
+        self.assertEqual(e.proposal_body(missing, ['ID'], e.Atom('NIL')), missing)
+        with self.assertRaisesRegex(ValueError, 'attachment must name'):
+            e.proposal_body(missing, ['ID'], e.List([attached]))
+
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
           'roots':[{'name':'ARM','status':'unvalidated','reason':'not checked'}], 'unresolved':['MISSING']}
