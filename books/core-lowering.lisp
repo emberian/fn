@@ -98,7 +98,7 @@
            (body (getpropc fn 'unnormalized-body nil world))
            (problem (cond ((fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)) :callee-writes-state)
                           ((member-eq fn stack) :recursive-callee)
-                          ((not (pseudo-termp body)) :constrained-callee)
+                          ((or (null body) (not (pseudo-termp body))) :constrained-callee)
                           (t nil))))
       (if problem (mv problem nil nil)
         (mv-let (problem expanded opened)
@@ -131,6 +131,10 @@
 
 ; Refinement is compiler evidence, not an independent behavioural contract.
 ; Keep its proof and evaluating teeth in the promoted obligation store.
+(defun fn2-lower-teeth-problem (teeth)
+ (declare (xargs :verify-guards nil))
+ (and teeth (not (and (true-listp teeth) (equal (len teeth) 2)
+                     (no-duplicatesp-eq teeth) (fn2-owed-teethp teeth)))))
 (defun fn2-lower-obligation-events (fn child concrete vars formula theorem teeth)
  (declare (xargs :verify-guards nil) (ignore child))
  (let ((teeth (or teeth (list (fn2-columns-sym theorem "-POSITIVE")
@@ -172,8 +176,9 @@
                         (acons '(fn2-corep fn2-core) (cons 'and (fn2-lower-predicates children "P")) replacement)) world))
          (args (append (remove-eq 'fn2-core formals) children))
          (problem
-          (cond (expansion-problem expansion-problem)
-                ((not (pseudo-termp body)) :missing-body)
+          (cond ((fn2-lower-teeth-problem teeth) :evidence-pair)
+                (expansion-problem expansion-problem)
+                ((or (null body) (not (pseudo-termp body))) :missing-body)
                 ((not (and (equal (remove-eq nil ins) '(fn2-core))
                            (member-eq 'fn2-core formals)
                            (equal (position-eq 'fn2-core formals) (position-eq 'fn2-core ins)))) :input-shape)

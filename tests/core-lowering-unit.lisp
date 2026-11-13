@@ -108,3 +108,8 @@
   (and (eq (fn2-decl-get :claim row) :compiler)
        (eq (fn2-decl-get :boundary row) :core-child-extraction)
        (equal (fn2-decl-get :proof row) '(:proved fn2-lower-read-composed-child-refines-core)))))
+
+(must-fail (defcore-readonly-child fn2-lower-read fn2-lower-one-tooth
+             :teeth (fn2-lower-read-child-refines-core-positive)))
+(must-fail (defcore-readonly-child fn2-lower-read fn2-lower-duplicate-teeth
+             :teeth (fn2-lower-read-child-refines-core-positive fn2-lower-read-child-refines-core-positive)))

@@ -198,7 +198,8 @@
                  (acons '(fn2-corep fn2-core) (cons 'and (fn2-lower-predicates children "P"))
                   (fn2-lower-projections entries))) world))
         (problem
-         (cond ((fn2-product-reserved-formals formals) :reserved-formal)
+         (cond ((fn2-lower-teeth-problem teeth) :evidence-pair)
+               ((fn2-product-reserved-formals formals) :reserved-formal)
                ((not (and (equal (remove-eq nil ins) '(fn2-core))
                           (eq (car (last formals)) 'fn2-core))) :input-shape)
                ((not (and (equal (remove-eq nil outs) '(fn2-core))

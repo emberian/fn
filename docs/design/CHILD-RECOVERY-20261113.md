@@ -19,6 +19,8 @@ Forge `/build/lanes/stride-acl2-children`:
   17 cached dependencies, 2 built books; commit 2a51c703e.
 - `certify-20261113T224044Z-3325415`: composed lowering fixture passed,
   17 cached dependencies, 2 built books; commit b10314917. No book over 10 s.
+- `certify-20261113T225938Z-3347262`: primitive mutable product fixture passed,
+  18 cached dependencies, 2 built books; commit f903cc73a. No book over 10 s.
 - Broader machine-arms-unit is red at the existing
   `fn2-arms-probe-run-loop-children-keeps-directory` theorem, before the
   sibling fixture. Run `certify-20261113T220851Z-3291257`.
@@ -34,6 +36,23 @@ checks exact input/output metadata and proves unconditional whole-result
 refinement before recording a lowering. Mutable, residual-core and recursive
 closures refuse. The composed fixture checks stored values (39 41), a pure
 multi-value leaf, metadata and refusals; 28 forms passed proof_repl.
+
+`defcore-product-child` additionally compiles primitive state updates through
+an expansion-time typed product. Emitted code uses concrete child stobjs and
+ordered let/mv-let bindings, with exact child and reconstruction-face ABIs,
+verified guards and unconditional equality of the whole scalar/core result.
+The two-child fixture includes a complete-state positive and bounds refusal,
+live state, one setter evaluation, and a mutation that retains the scalar and
+touched child while clobbering the unrelated sibling. Nonrecursive core-call
+composition and recursive state carriers remain unsupported in this slice.
+
+Commit cfa65caeb connects both generators to promoted fn2-squares, with compiler
+claim/source/concrete sides, the exact admitted proof and positive/mutation
+teeth. `fn2-check-lowering-teeth` rejects missing zero-argument evidence functions
+and runs them. Warm 4 Gi REPL passed all 34 reader and 30 product fixture forms;
+record certification of this enhancement is pending allocation. A small later
+follow-up requires exactly two distinct tooth names and rejects missing body
+metadata explicitly; its added refusal assertions await the next warm gate.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
@@ -55,9 +74,11 @@ not created its forge tree or run remote certification. Recovery repaired the
 new macro/function collision by naming the macro
 `fn2-commit-operation-child-events`. Do not merge c3 wholesale.
 
-The checkpoint removes some original authority core definitions without
-finishing their defcost child declarations. Prefer generated lowering from
-original admitted bodies; simply enabling child arms is invalid.
+The saved checkpoint removed some original authority core definitions without
+finishing their defcost child declarations. Forward commit e344d528c retired
+exactly its seven source-file changes, preserving c3 in history; 238039de3 then
+merged origin/dev at 8ab622ffe. Active lane sources use original admitted core
+definitions with generated lowering. Simply enabling child arms is invalid.
 
 A bounded 6 Gi source-dependency attempt for machines-c-bind failed inside the
 unchanged layout prerequisite after 71.39 s accumulated proof, before any C-bind
