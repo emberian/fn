@@ -1,0 +1,67 @@
+; Storage-return state used only by the explicit native cut program.
+(in-package "ACL2")
+(include-book "sim-state")
+
+; Active 3 is the existing early borrow-release continuation.  Active 4 is
+; private to this cut program: physical I/O finished, terminal post not sent.
+; FN2-SIM-FIND-WRITE selects only active 1, so a crash cannot replay this write.
+(defconst *fn2-sim-native-returned* 4)
+
+(defun fn2-sim-native-storagep (slot fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
+  (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
+       (= (fn2-sim-active slot fn2-sim) 1)
+       (= (fn2-sim-cancelled slot fn2-sim) 0)
+       (member-equal (fn2-sim-kind slot fn2-sim)
+                     (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*))))
+
+; Packet fields: slot, generation, kind, event, length, raw code, raw count,
+; raw auxiliary result, schedule word, and the original completion time.
+(defun fn2-sim-native-packetp (packet fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
+  (and (true-listp packet) (= (len packet) 10)
+       (natp (nth 0 packet)) (< (nth 0 packet) (fn2-sim-rows fn2-sim))
+       (unsigned-byte-p 60 (nth 1 packet)) (natp (nth 4 packet))
+       (unsigned-byte-p 32 (nth 8 packet)) (unsigned-byte-p 60 (nth 9 packet))))
+
+(local (defthm fn2-native-update-same
+  (equal (update-nth i a (update-nth i b xs)) (update-nth i a xs))
+  :hints (("Goal" :induct (update-nth i a xs)))))
+(local (defthm fn2-native-update-current
+  (implies (and (natp i) (< i (len xs)))
+           (equal (update-nth i (nth i xs) xs) xs))
+  :hints (("Goal" :induct (update-nth i (nth i xs) xs)))))
+
+(local (defthm fn2-native-nth-atom
+  (implies (not (consp xs)) (equal (nth i xs) nil))
+  :hints (("Goal" :induct (nth i xs)))))
+
+(local (defthm fn2-native-update-head
+  (implies (consp xs) (equal (update-nth 0 (nth 0 xs) xs) xs))))
+
+(defthm fn2-sim-native-active-roundtrip
+  (implies (and (fn2-sim-ready fn2-sim) (natp slot)
+                (< slot (fn2-sim-rows fn2-sim))
+                (equal (fn2-sim-active slot fn2-sim) 1))
+           (equal (fn2-sim-set-active slot 1
+                    (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim))
+                  fn2-sim))
+  :hints (("Goal" :cases ((consp fn2-sim))
+           :use ((:instance fn2-native-update-current (i slot) (xs (nth *fn2-sim-active$ai* fn2-sim))))
+           :in-theory (e/d (fn2-sim-set-active fn2-sim-active
+                                    update-fn2-sim-active$ai update-nth-array
+                                    fn2-sim-ready fn2-sim-wfp)
+                            (update-nth nth)))))
+
+
+(defthm fn2-sim-native-returned-ready
+  (implies (and (fn2-sim-ready fn2-sim) (natp slot)
+                (< slot (fn2-sim-rows fn2-sim)))
+           (fn2-sim-ready (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim)))
+  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+
+(defthm fn2-sim-native-returned-active
+  (implies (natp slot)
+           (equal (fn2-sim-active slot (fn2-sim-set-active slot *fn2-sim-native-returned* fn2-sim))
+                  *fn2-sim-native-returned*))
+  :hints (("Goal" :in-theory (enable fn2-sim-active))))
