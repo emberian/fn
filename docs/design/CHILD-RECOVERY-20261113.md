@@ -50,9 +50,18 @@ Commit cfa65caeb connects both generators to promoted fn2-squares, with compiler
 claim/source/concrete sides, the exact admitted proof and positive/mutation
 teeth. `fn2-check-lowering-teeth` rejects missing zero-argument evidence functions
 and runs them. Warm 4 Gi REPL passed all 34 reader and 30 product fixture forms;
-record certification of this enhancement is pending allocation. A small later
-follow-up requires exactly two distinct tooth names and rejects missing body
-metadata explicitly; its added refusal assertions await the next warm gate.
+record certification passed at `certify-20261113T234947Z-3398538` for the exact
+cfa65caeb + ea9538828 source: 17 cached and 4 built books, no book over 10 s.
+The paired/distinct evidence and missing-body hardening passed the warm gate.
+
+A separate unvalidated continuation shares core-call expansion with the typed
+product pass, retaining the carrier in product mode. Its fixture composes two
+updates and checks that a second-step refusal preserves the first legitimate
+update, plus full-state runtime teeth. This source has only parsed so far.
+The next production probe uses a private copy of the qualified 74f29a868
+callback baseline; copying and reading it did not mutate the active runtime
+lane. Three new reader derivations there will be probe evidence, not current
+consumer-tree certification.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

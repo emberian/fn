@@ -68,14 +68,15 @@
           (fn2-lower-core-args (cdr args) entries))))
 
 ; Keep ordinary lambda bindings: substituting their values can duplicate a
-; bounded scan at each mv-nth use. Only the linear core carrier is erased.
+; bounded scan at each mv-nth use. Reader mode erases the core carrier;
+; product mode retains it for the typed state-lowering pass.
 (defun fn2-lower-without-core-args (formals args)
   (declare (xargs :verify-guards nil))
   (if (atom formals) nil
     (append (and (not (eq (car formals) 'fn2-core)) (list (car args)))
             (fn2-lower-without-core-args (cdr formals) (cdr args)))))
 (mutual-recursion
- (defun fn2-lower-expand (term fields world stack fuel)
+ (defun fn2-lower-expand (term fields world stack fuel readonlyp)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond
    ((zp fuel) (mv :expansion-budget nil nil))
@@ -83,11 +84,11 @@
    ((consp (car term))
     (let* ((formals (cadar term)) (body (caddar term))
            (corepos (position-eq 'fn2-core formals))
-           (erase (and corepos (eq (nth corepos (cdr term)) 'fn2-core))))
-      (mv-let (problem body opened) (fn2-lower-expand body fields world stack (1- fuel))
+           (erase (and readonlyp corepos (eq (nth corepos (cdr term)) 'fn2-core))))
+      (mv-let (problem body opened) (fn2-lower-expand body fields world stack (1- fuel) readonlyp)
         (mv-let (problem2 args opened2)
           (fn2-lower-expand-list (if erase (fn2-lower-without-core-args formals (cdr term)) (cdr term))
-                                fields world stack (1- fuel))
+                                fields world stack (1- fuel) readonlyp)
           (mv (or problem problem2)
               (cons (list 'lambda (if erase (remove-eq 'fn2-core formals) formals) body) args)
               (union-eq opened opened2))))))
@@ -96,23 +97,23 @@
          (member-eq 'fn2-core (getpropc (car term) 'stobjs-in nil world)))
     (let* ((fn (car term)) (formals (getpropc fn 'formals nil world))
            (body (getpropc fn 'unnormalized-body nil world))
-           (problem (cond ((fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world)) :callee-writes-state)
+           (problem (cond ((and readonlyp (fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world))) :callee-writes-state)
                           ((member-eq fn stack) :recursive-callee)
                           ((or (null body) (not (pseudo-termp body))) :constrained-callee)
                           (t nil))))
       (if problem (mv problem nil nil)
         (mv-let (problem expanded opened)
-          (fn2-lower-expand (cons (list 'lambda formals body) (cdr term)) fields world (cons fn stack) (1- fuel))
+          (fn2-lower-expand (cons (list 'lambda formals body) (cdr term)) fields world (cons fn stack) (1- fuel) readonlyp)
           (mv problem expanded (cons fn opened))))))
    (t (mv-let (problem args opened)
-        (fn2-lower-expand-list (cdr term) fields world stack (1- fuel))
+        (fn2-lower-expand-list (cdr term) fields world stack (1- fuel) readonlyp)
         (mv problem (cons (car term) args) opened)))))
- (defun fn2-lower-expand-list (terms fields world stack fuel)
+ (defun fn2-lower-expand-list (terms fields world stack fuel readonlyp)
   (declare (xargs :verify-guards nil :measure (nfix fuel)))
   (cond ((atom terms) (mv nil nil nil))
         ((zp fuel) (mv :expansion-budget nil nil))
-        (t (mv-let (problem term opened) (fn2-lower-expand (car terms) fields world stack (1- fuel))
-             (mv-let (problem2 rest opened2) (fn2-lower-expand-list (cdr terms) fields world stack (1- fuel))
+        (t (mv-let (problem term opened) (fn2-lower-expand (car terms) fields world stack (1- fuel) readonlyp)
+             (mv-let (problem2 rest opened2) (fn2-lower-expand-list (cdr terms) fields world stack (1- fuel) readonlyp)
                (mv (or problem problem2) (cons term rest) (union-eq opened opened2))))))))
 
 ; Logical translated bodies represent multiple values as a fixed-arity list.
@@ -160,7 +161,7 @@
   (declare (xargs :verify-guards nil))
   (mv-let (expansion-problem body opened)
     (fn2-lower-expand (getpropc fn 'unnormalized-body nil world)
-                      (strip-cars (fn2-core-child-registry world)) world (list fn) 10000)
+                      (strip-cars (fn2-core-child-registry world)) world (list fn) 10000 t)
   (let* ((body body)
          (ins (getpropc fn 'stobjs-in nil world))
          (outs (getpropc fn 'stobjs-out nil world))
