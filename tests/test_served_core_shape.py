@@ -62,6 +62,7 @@ class ShapeControls(unittest.TestCase):
         self.assertIn('disch := first | assumption | decide',source)
         self.assertIn('«CORE» : Fin 3 → Val',source)
         self.assertIn('Combinators.tupleImage_kidsOfVal',source)
+        self.assertIn('Int.reduceSub',source)
         self.assertNotIn('sorry',source)
         self.assertNotIn('axiom ',source)
 
@@ -82,14 +83,14 @@ class ShapeControls(unittest.TestCase):
 
 class AdapterRefusalControls(unittest.TestCase):
     def builder(self,body,core_mode=True,output=None):
-        from types import SimpleNamespace
-        from served_proof_gen import ArmProofBuilder
+        from served_proof_gen import ArmProofBuilder, TupleShapeAnalyzer
         b=object.__new__(ArmProofBuilder)
         b.core_mode=core_mode; b.n_tup=3
         b.kinfo={'ops':{'F':{'core_out':output or ['FN2-CORE'],
                             'core_in':['FN2-CORE'],'core_formals':['CORE']}}}
-        b.tuple_analyzer=SimpleNamespace(core_shapes=CoreShapeAnalyzer({
-            'F':(['CORE'],term(body),[],None)}))
+        definitions={'F':(['CORE'],term(body),[],None)}
+        b.tuple_analyzer=TupleShapeAnalyzer(definitions,{})
+        b.tuple_analyzer.core_shapes=CoreShapeAnalyzer(definitions)
         return b
 
     def test_adapter_refuses_padding_result(self):
@@ -105,8 +106,16 @@ class AdapterRefusalControls(unittest.TestCase):
 
     def test_adapter_does_not_treat_multi_result_as_whole_core(self):
         from served_proof_gen import UnsupportedArmError
-        with self.assertRaisesRegex(UnsupportedArmError,'core result layout'):
+        with self.assertRaisesRegex(UnsupportedArmError,'core result tuple shape'):
             self.builder('CORE',output=[None,'FN2-CORE']).prove_core_call({'op':'F'},None)
+
+    def test_core_projection_does_not_replace_proper_result_tuple_check(self):
+        from served_proof_gen import UnsupportedArmError
+        body=['CONS',['QUOTE',0],['CONS','CORE',['QUOTE',99]]]
+        b=self.builder(body,output=[None,'FN2-CORE'])
+        self.assertTrue(b.tuple_analyzer.core_shapes.ensure('F',3,(1,),0))
+        with self.assertRaisesRegex(UnsupportedArmError,'core result tuple shape'):
+            b.prove_core_call({'op':'F'},None)
 
 
 if __name__=='__main__': unittest.main()
