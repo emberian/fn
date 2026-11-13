@@ -100,6 +100,7 @@ ACL2_BOOKS = \
   books/executor \
   books/executor-access \
   books/executor-contracts \
+  books/executor-services \
   books/executor-wake \
   books/fnct-pool \
   books/fnv \
@@ -186,6 +187,7 @@ ACL2_BOOKS = \
   books/runs-schema \
   books/runs-served \
   books/sched \
+  books/sched-timers \
   books/sealer \
   books/squares \
   books/stobj-scope \
@@ -260,6 +262,7 @@ ACL2_BOOKS = \
   tests/death-unit \
   tests/declare-unit \
   tests/executor-contracts-unit \
+  tests/executor-timers-unit \
   tests/executor-unit \
   tests/fnct-client \
   tests/folds-unit \
