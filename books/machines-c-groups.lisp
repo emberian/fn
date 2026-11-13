@@ -464,17 +464,121 @@
  (declare (xargs :guard t))
  (fn2-profile-owner-account profile))
 
+(defun fn2-group-lookup-children (tx slot gen off len okind oslot ogen budget
+                                  fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                  fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-grp-lookup)))))
+ (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
+     (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+    (if (eq c :ok)
+        (mv-let (code group fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+          (fn2-grp-lookup *fn2-groups-sid* *fn2-groups-name-max* *fn2-groups-entry-field-group*
+                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
+                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+          (mv code (nfix group) fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))))
+(fn2-idc-fn-shape fn2-group-lookup-children (tx slot gen off len okind oslot ogen budget
+                                             fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                             fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ ((fn2-succ-txns 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
+ (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+  fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) t
+ (fn2-idc-stripe fn2-grp-lookup fn2-fc-rows fn2-fc-wfp))
+(defthm fn2-group-lookup-children-natp
+ (natp (mv-nth 1 (fn2-group-lookup-children tx slot gen off len okind oslot ogen budget
+                                            fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                            fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)))
+ :hints (("Goal" :in-theory (enable fn2-group-lookup-children))) :rule-classes :type-prescription)
+
+(defun fn2-principal-lookup-children (tx slot gen off len okind oslot ogen budget
+                                      fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                      fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-grp-lookup)))))
+ (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
+     (mv :state 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+    (if (eq c :ok)
+        (mv-let (code principal fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
+          (fn2-grp-lookup *fn2-principals-sid* *fn2-principals-name-max* *fn2-principals-entry-field-principal*
+                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
+                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+          (mv code (nfix principal) fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields))
+      (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))))
+(fn2-idc-fn-shape fn2-principal-lookup-children (tx slot gen off len okind oslot ogen budget
+                                                 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                                 fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ ((fn2-succ-txns 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
+ (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+  fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) t
+ (fn2-idc-stripe fn2-grp-lookup fn2-fc-rows fn2-fc-wfp))
+(defthm fn2-principal-lookup-children-natp
+ (natp (mv-nth 1 (fn2-principal-lookup-children tx slot gen off len okind oslot ogen budget
+                                                fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                                fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)))
+ :hints (("Goal" :in-theory (enable fn2-principal-lookup-children))) :rule-classes :type-prescription)
+
+(defun fn2-principal-of-slot-children (p fn2-accounts)
+ (declare (xargs :stobjs fn2-accounts :guard t))
+ (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+          (natp p) (< p (fn2-accounts-rows fn2-accounts)))
+     (mv :ok (nfix (fn2-account-principal-id p fn2-accounts)))
+   (mv :state 0)))
+(defthm fn2-principal-of-slot-children-natp
+ (natp (mv-nth 1 (fn2-principal-of-slot-children p fn2-accounts)))
+ :rule-classes :type-prescription)
+(in-theory (disable fn2-principal-of-slot-children))
+
+(defun fn2-id-decide-start-children (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen
+                                     fn2-succ-txns fn2-id-decides fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-fields fn2-fc) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-id-decide-start)))))
+ (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
+     (mv :state fn2-succ-txns fn2-id-decides fn2-fields)
+   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+    (if (eq c :ok)
+        (fn2-id-decide-start tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
+      (mv c fn2-succ-txns fn2-id-decides fn2-fields)))))
+(fn2-idc-fn-shape fn2-id-decide-start-children (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen
+                                                fn2-succ-txns fn2-id-decides fn2-fields fn2-fc)
+ ((fn2-succ-txns 1) (fn2-id-decides 2) (fn2-fields 3))
+ (fn2-succ-txns fn2-id-decides fn2-fields fn2-fc) t
+ (fn2-idc-stripe fn2-id-decide-start fn2-fc-rows fn2-fc-wfp))
+
+(defun fn2-id-decide-children (tx budget fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index
+                               fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index
+                          fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) :guard t
+  :guard-hints (("Goal" :in-theory (disable fn2-id-decide-step)))))
+ (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
+     (mv :state fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
+   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+    (if (eq c :ok)
+        (fn2-id-decide-step tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index
+                            fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
+      (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))))
+(fn2-idc-fn-shape fn2-id-decide-children (tx budget fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index
+                                          fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
+ ((fn2-succ-txns 1) (fn2-id-decides 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
+ (fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+  fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) t
+ (fn2-idc-stripe fn2-id-decide-step fn2-fc-rows fn2-fc-wfp))
+
 (defcost fn2-group-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes 4096 :child fn2-group-lookup-children
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One source of a group-name lookup: one overlay search (at most 250-octet compares over 9 probes) or one run step of at most 4,096 pool reads.")
 (defcost fn2-principal-lookup :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes 4096 :child fn2-principal-lookup-children
  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One source of a principal-name lookup in fn2-principals: one overlay search (at most 64-octet compares) or one run step of at most 4,096 pool reads.")
-(defcost fn2-principal-of-slot :answers (:ok :state)
+(defcost fn2-principal-of-slot :answers (:ok :state) :child fn2-principal-of-slot-children
  :doc "The durable principal id (slot * 2^32 + incarnation) of an account slot: (mv code id).")
 
 (defmacro fn2-groups-core-events ()
@@ -487,17 +591,15 @@
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code group fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-grp-lookup *fn2-groups-sid* *fn2-groups-name-max* *fn2-groups-entry-field-group*
-                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
-                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+     (fn2-group-lookup-children tx slot gen off len okind oslot ogen budget
+                                fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
      (mv code group fn2-core)))
    (fn2-core-preserves fn2-group-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
-    :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+    :position 2 :rows nil)
    (defun fn2-groups-genesis (profile fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
@@ -519,15 +621,12 @@
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code principal fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-grp-lookup *fn2-principals-sid* *fn2-principals-name-max* *fn2-principals-entry-field-principal*
-                          tx slot gen off len okind oslot ogen budget b0 fn2-succ-txns fn2-id-decides fn2-overlays
-                          fn2-overlay-index fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c 0 fn2-succ-txns fn2-run-cursors fn2-run-paths fn2-fields)))
+     (fn2-principal-lookup-children tx slot gen off len okind oslot ogen budget
+                                    fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
+                                    fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
      (mv code principal fn2-core)))
    (fn2-core-preserves fn2-principal-lookup (tx slot gen off len okind oslot ogen budget fn2-core)
-    :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+    :position 2 :rows nil)
    ;; The store's two persisted principals (AUTHORITY-20261105 section 1): the
    ;; anonymous account (slot 0) and the owner's, each bound once here
    ;; (incarnation 0 -> 1, so every durable principal id is positive and 0
@@ -558,7 +657,8 @@
    ;; directory its overlay. A profile serving no authority (the tiny unit
    ;; profiles) has no reader of the names and need not hold the overlay.
    (defun fn2-principals-genesis (profile fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
     (mv-let (code ids fn2-core) (fn2-principals-bind-genesis profile fn2-core)
      (if (or (not (eq code :ok)) (not (posp (nfix (fn2-profile-get :authority profile)))))
          (mv code fn2-core)
@@ -579,22 +679,19 @@
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core)))
      (code id)
-     (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
-              (natp p) (< p (fn2-accounts-rows fn2-accounts)))
-         (mv :ok (fn2-account-principal-id p fn2-accounts))
-       (mv :state 0))
-     (mv code (nfix id))))
+     (fn2-principal-of-slot-children p fn2-accounts)
+     (mv code id)))
    (in-theory (disable fn2-group-lookup fn2-groups-genesis fn2-principal-lookup fn2-principals-bind-genesis
                        fn2-principals-genesis fn2-principal-of-slot))
    (assert-event (fn2-assert-compliant-p '(fn2-group-lookup fn2-groups-genesis fn2-principal-lookup
                                           fn2-principals-genesis fn2-principal-of-slot) (w state)))))
 
-(defcost fn2-identity-decide-start :answers (:bounds :ok :state)
+(defcost fn2-identity-decide-start :answers (:bounds :ok :state) :child fn2-id-decide-start-children
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-fields)
  :doc "Start a transaction's identity decision: its query (five rows) written, its lookup idle.")
 (defcost fn2-identity-decide :answers (:bad-magic :bounds :conflict :done :duplicate :end :entry :evidence :format :invariant :length
   :lost :miss :more :noncanonical :owner :part :payload :schema :stale :state :stored :truncated :unknown-tag :wide)
- :bytes 4096
+ :bytes 4096 :child fn2-id-decide-children
  :tables (fn2-core-succ-txns fn2-core-id-decides fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One source of an identity decision's two exact reads (the summary, then the candidate): one overlay search or one run step of at most 4,096 pool reads.")
 (defcost fn2-identity-facts :answers (:ok :state) :child fn2-id-facts
@@ -606,13 +703,11 @@
     (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-succ-txns fn2-id-decides fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-id-decide-start tx mslot mgen moff mlen dslot dgen doff okind oslot ogen b0 fn2-succ-txns fn2-id-decides fn2-fields)
-        (mv c fn2-succ-txns fn2-id-decides fn2-fields)))
+     (fn2-id-decide-start-children tx mslot mgen moff mlen dslot dgen doff okind oslot ogen
+                                   fn2-succ-txns fn2-id-decides fn2-fields fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-identity-decide-start (tx mslot mgen moff mlen dslot dgen doff okind oslot ogen fn2-core)
-    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+    :position 1 :rows nil)
    (defun fn2-identity-decide (tx budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -621,14 +716,11 @@
                 (fn2-run-paths (fn2-core-run-paths fn2-core)) (fn2-run-cache (fn2-core-run-cache fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)
-     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-      (if (eq c :ok)
-          (fn2-id-decide-step tx budget b0 fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed
-                              fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-        (mv c fn2-succ-txns fn2-id-decides fn2-run-cursors fn2-run-paths fn2-fields)))
+     (fn2-id-decide-children tx budget fn2-succ-txns fn2-id-decides fn2-overlays fn2-overlay-index
+                             fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
      (mv code fn2-core)))
    (fn2-core-preserves fn2-identity-decide (tx budget fn2-core)
-    :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+    :position 1 :rows nil)
    (defun fn2-identity-facts (tx fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core)))

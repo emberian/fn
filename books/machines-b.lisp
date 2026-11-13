@@ -341,12 +341,79 @@
  :doc "Decode a chained commit's records frame header: the record stream's start and end in its unit.")
 (defcost fn2-recovery-adopt :answers t :tables (fn2-core-extents fn2-core-alloc-edges)
  :doc "Adopt one arena position into the allocator with its recorded identity.")
-(defcost fn2-commit-admit-txn :answers (:ok :exhausted :admission) :bytes 4096
- :tables (fn2-core-commit-members fn2-core-commit-settled fn2-core-commit-root fn2-core-fields fn2-core-pool)
+(defun fn2-commit-txn-frame-children (base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool)
+                 :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+                 :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-decode)))))
+ (if (and (natp base) (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+          (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (unsigned-byte-p 8 okind)
+          (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+     (mv-let (code next fn2-fields)
+       (fn2-format-txn-record-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+       (mv code
+           (nfix (fn2-fields-value (+ base *fn2-format-txn-record-field-record-kind*) fn2-fields))
+           (nfix (fn2-fields-value (+ base *fn2-format-txn-record-field-length*) fn2-fields))
+           (nfix next)
+           fn2-fields))
+   (mv :bounds 0 0 0 fn2-fields)))
+(fn2-fields-preserves fn2-commit-txn-frame-children (base slot gen off end okind oslot ogen fn2-fields fn2-pool)
+  :position 4 :raw-rows t :hints (("Goal" :in-theory (disable fn2-format-txn-record-decode))))
+(defthm fn2-commit-txn-frame-children-natp-1
+ (natp (mv-nth 1 (fn2-commit-txn-frame-children base slot gen off end okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame-children))))
+(defthm fn2-commit-txn-frame-children-natp-2
+ (natp (mv-nth 2 (fn2-commit-txn-frame-children base slot gen off end okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame-children))))
+(defthm fn2-commit-txn-frame-children-natp-3
+ (natp (mv-nth 3 (fn2-commit-txn-frame-children base slot gen off end okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-frame-children))))
+(in-theory (disable fn2-commit-txn-frame-children))
+
+(defun fn2-commit-txn-source-children (slot gen len okind oslot ogen fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-fields fn2-pool)
+                 :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+                 :guard-hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode)))))
+ (b* ((base 256)
+      ((mv code rkind blen next fn2-fields)
+       (fn2-commit-txn-frame-children base slot gen 0 len okind oslot ogen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (equal rkind *record-kind-article-acceptance*) (natp len) (<= (+ next blen) len)))
+       (mv :none 0 0 0 0 fn2-fields)))
+  (if (and (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
+           (unsigned-byte-p 32 next) (unsigned-byte-p 32 (+ next blen)) (unsigned-byte-p 8 okind)
+           (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
+      (mv-let (code end fn2-fields)
+        (fn2-format-article-acceptance-decode base slot gen next (+ next blen) okind oslot ogen fn2-fields fn2-pool)
+        (declare (ignore end))
+        (mv code
+            (nfix (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-physical-unit*) fn2-fields))
+            (nfix (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-writer-epoch*) fn2-fields))
+            (nfix (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-allocation*) fn2-fields))
+            (nfix (fn2-fields-value (+ base *fn2-format-article-acceptance-field-source-encoded-length*) fn2-fields))
+            fn2-fields))
+    (mv :bounds 0 0 0 0 fn2-fields))))
+(fn2-fields-preserves fn2-commit-txn-source-children (slot gen len okind oslot ogen fn2-fields fn2-pool)
+  :position 5 :raw-rows t :hints (("Goal" :in-theory (disable fn2-format-article-acceptance-decode))))
+(defthm fn2-commit-txn-source-children-natp-1
+ (natp (mv-nth 1 (fn2-commit-txn-source-children slot gen len okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-source-children))))
+(defthm fn2-commit-txn-source-children-natp-2
+ (natp (mv-nth 2 (fn2-commit-txn-source-children slot gen len okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-source-children))))
+(defthm fn2-commit-txn-source-children-natp-3
+ (natp (mv-nth 3 (fn2-commit-txn-source-children slot gen len okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-source-children))))
+(defthm fn2-commit-txn-source-children-natp-4
+ (natp (mv-nth 4 (fn2-commit-txn-source-children slot gen len okind oslot ogen fn2-fields fn2-pool)))
+ :rule-classes :type-prescription :hints (("Goal" :in-theory (enable fn2-commit-txn-source-children))))
+(in-theory (disable fn2-commit-txn-source-children))
+
+(defcost fn2-commit-admit-txn :child fn2-commit-admit-txn-children :answers (:ok :exhausted :admission) :bytes 4096
+ :tables (fn2-commit-table fn2-core-commit-io fn2-core-commit-members fn2-core-commit-settled
+          fn2-core-commit-root fn2-core-extents fn2-core-fields fn2-core-pool fn2-core-sched fn2-core-control)
  :doc "B-S2: admit a transaction member's workspace to a commit batch; (mv code batch event).")
 (defcost fn2-commit-take :child fn2-cs-take :answers (:ok :pending :none) :tables (fn2-core-commit-settled)
  :doc "B-S2: the owner's settled outcome; (mv code batch event outcome).")
-(defcost fn2-commit-txn-source :answers (:ok :none :bounds) :tables (fn2-core-fields fn2-core-pool)
+(defcost fn2-commit-txn-source :child fn2-commit-txn-source-children :answers (:ok :none :bounds) :tables (fn2-core-fields)
  :doc "B-S2 S9: the article's source reference from an admitted workspace's acceptance record.")
 ; B-S2 S10: read [OFF, OFF+LEN) of a stored reference (physical unit PU,
 ; writer epoch, allocation) into the caller's lease LSLOT LGEN, in child
@@ -373,7 +440,7 @@
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
-(defcost fn2-commit-posture :answers (:serving :draining) :tables (fn2-core-machines)
+(defcost fn2-commit-posture :child fn2-commit-posture-children :answers (:serving :draining)
  :doc "B-S2 S11: :draining while a commit row is :uncertain (computed from the rows' phases), else :serving.")
 ;; LEFT octets from OFF of the lease SLOT GEN (owner OKIND OSLOT OGEN) into
 ;; hasher row ROW, one fn2-b3-update (at most 4,096 octets) a step, FUEL
