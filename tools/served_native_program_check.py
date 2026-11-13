@@ -207,4 +207,5 @@ def check(root=ROOT):
         findings.append('simulator advance no longer reaches the crash transition')
     return {'scope': 'served source cut inventory, ABI contracts and AST order; not control-flow/refinement proof',
             'cuts': len(sites), 'model_crash': 'fn2-sim-crash', 'findings': findings,
-            'audit_ok': not findings, 'correspondence_status': 'unproved'}
+            'audit_ok': not findings, 'cut_mapping_status': 'incomplete',
+            'host_refinement': 'not_checked'}
