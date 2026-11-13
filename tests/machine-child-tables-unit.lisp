@@ -28,7 +28,7 @@
 (defmachine-arms fn2-arms-machine-reader :children)
 (assert-event (member-eq 'fn2-arms-probe
                         (getpropc 'fn2-arms-machine-reader-run-work-children 'stobjs-in nil (w state))))
-;; The unregistered fn2-arms-tz control below must still be refused.
+;; The unregistered fn2-arms-tz control above must still be refused.
 
 ;; An operation over a stobj no defcorechild registers is refused.
 (defcolumns fn2-arms-tz ((value :u32)))
