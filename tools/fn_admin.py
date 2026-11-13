@@ -1161,7 +1161,8 @@ def cmd_post(args: argparse.Namespace) -> int:
             return emit({"outcome": "refused", "reason": "eof-before-340"}, args.json)
         stage_s = stage.decode("latin-1").rstrip("\r\n")
         if not stage_s.startswith("340 "):
-            return emit({"outcome": "refused", "status": stage_s}, args.json)
+            outcome = "uncertain" if stage_s.startswith("403 ") else "refused"
+            return emit({"outcome": outcome, "status": stage_s}, args.json)
         sent_body = True
         sock.sendall(wire_body)
         reply = reader.readline()
@@ -1170,6 +1171,8 @@ def cmd_post(args: argparse.Namespace) -> int:
         reply_s = reply.decode("latin-1").rstrip("\r\n")
         if reply_s.startswith("240 "):
             return emit({"outcome": "accepted", "status": reply_s}, args.json)
+        if reply_s.startswith("403 ") or reply_s.startswith("441 ") and "outcome is uncertain" in reply_s:
+            return emit({"outcome": "uncertain", "status": reply_s}, args.json)
         return emit({"outcome": "refused", "status": reply_s}, args.json)
     except (TimeoutError, socket.timeout, ConnectionResetError, BrokenPipeError) as exc:
         if sent_body:
