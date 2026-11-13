@@ -63,5 +63,48 @@ class ShapeControls(unittest.TestCase):
         self.assertNotIn('sorry',source)
         self.assertNotIn('axiom ',source)
 
+    def test_only_consumed_dependency_closure_is_emitted(self):
+        a=CoreShapeAnalyzer({
+            'F':(['CORE'],term(['G','CORE']),[],None),
+            'G':(['CORE'],term('CORE'),[],None),
+            'UNUSED':(['CORE'],term('CORE'),[],None)})
+        self.assertTrue(a.ensure('F',3,(),0))
+        self.assertTrue(a.ensure('UNUSED',3,(),0))
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'Shapes.lean'
+            emit_shape_candidates(a,p,{},lambda text,_:text,targets={('F',3,(),0)})
+            source=p.read_text()
+        self.assertIn('«G_core_shape_3_whole_arg0»',source)
+        self.assertNotIn('UNUSED',source)
+
+
+class AdapterRefusalControls(unittest.TestCase):
+    def builder(self,body,core_mode=True,output=None):
+        from types import SimpleNamespace
+        from served_proof_gen import ArmProofBuilder
+        b=object.__new__(ArmProofBuilder)
+        b.core_mode=core_mode; b.n_tup=3
+        b.kinfo={'ops':{'F':{'core_out':output or ['FN2-CORE'],
+                            'core_in':['FN2-CORE'],'core_formals':['CORE']}}}
+        b.tuple_analyzer=SimpleNamespace(core_shapes=CoreShapeAnalyzer({
+            'F':(['CORE'],term(body),[],None)}))
+        return b
+
+    def test_adapter_refuses_padding_result(self):
+        from served_proof_gen import UnsupportedArmError
+        b=self.builder(['UPDATE-NTH',['QUOTE',3],['QUOTE',0],'CORE'])
+        with self.assertRaisesRegex(UnsupportedArmError,'core shape unavailable'):
+            b.prove_core_call({'op':'F'},None)
+
+    def test_adapter_does_not_apply_core_rule_in_child_world(self):
+        from served_proof_gen import UnsupportedArmError
+        with self.assertRaisesRegex(UnsupportedArmError,'core result layout'):
+            self.builder('CORE',False).prove_core_call({'op':'F'},None)
+
+    def test_adapter_does_not_treat_multi_result_as_whole_core(self):
+        from served_proof_gen import UnsupportedArmError
+        with self.assertRaisesRegex(UnsupportedArmError,'core result layout'):
+            self.builder('CORE',output=[None,'FN2-CORE']).prove_core_call({'op':'F'},None)
+
 
 if __name__=='__main__': unittest.main()
