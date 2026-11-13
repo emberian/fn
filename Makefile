@@ -83,6 +83,7 @@ ACL2_BOOKS = \
   books/core-children \
   books/core-children-a \
   books/core-lowering \
+  books/core-product-lowering \
   books/core-walk \
   books/crash-model \
   books/cursor \
@@ -253,6 +254,7 @@ ACL2_BOOKS = \
   tests/core-child-registration \
   tests/core-child-unit \
   tests/core-lowering-unit \
+  tests/core-update-lowering-unit \
   tests/core-unit \
   tests/crash-model-differential \
   tests/crash-model-unit \
