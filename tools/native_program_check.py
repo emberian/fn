@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Check the native host's write paths against the byte model's programs.
+"""Audit native death cuts (promoted host) or legacy byte-model programs.
+
+With tools/image-node.lsp present, audit the served source's cut inventory,
+argument/result contracts and AST ordering. The JSON explicitly reports
+correspondence_status=unproved: audit success is not host/model refinement
+coverage. Native process-death campaigns and model certification are separate.
+
+Legacy-tree behavior below:
 
 For each byte-model program the native cut table names
 (`tests/campaign/native_cuts.py`, `ALL_CUTS`, fields `.program` and
@@ -1016,6 +1023,22 @@ def main(argv=None) -> int:
         print("balance: {} file(s), {}".format(
             len(args.balance), "{} unbalanced".format(len(problems)) if problems else "balanced"))
         return 1 if problems else 0
+    if (ROOT / "tools/image-node.lsp").is_file():
+        from served_native_program_check import check as served_check
+        try:
+            report = served_check(ROOT)
+        except (OSError, ValueError) as error:
+            print(f"served native program check: {error}")
+            return 2
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print(f"served native program check: {report['cuts']} cut sites, "
+                  f"{len(report['findings'])} findings")
+            print(report['scope'])
+            for finding in report['findings']:
+                print(finding)
+        return 0 if report['audit_ok'] else 1
     try:
         report = check()
     except Unbalanced as error:

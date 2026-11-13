@@ -82,6 +82,7 @@ ACL2_BOOKS = \
   books/core \
   books/core-children \
   books/core-children-a \
+  books/core-lowering \
   books/core-walk \
   books/crash-model \
   books/cursor \
@@ -207,6 +208,7 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/authority-client \
   tests/authority-served \
+  tests/authority-stream-resolve \
   tests/blake3-native \
   tests/blake3-unit \
   tests/blake3-vectors \
@@ -250,6 +252,7 @@ ACL2_BOOKS = \
   tests/core-child-assembly-reference \
   tests/core-child-registration \
   tests/core-child-unit \
+  tests/core-lowering-unit \
   tests/core-unit \
   tests/crash-model-differential \
   tests/crash-model-unit \

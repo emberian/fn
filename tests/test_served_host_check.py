@@ -51,6 +51,28 @@ class ServedHostCheck(unittest.TestCase):
         with self.assertRaises(ValueError):
             gate.selected([symbol('#+mystery'), [symbol('unknown')]])
 
+    def test_binding_positions_are_not_calls_but_qualified_calls_are(self):
+        form = gate.ledger.read_forms("""
+          (defun fn2-helper (fn2-argument)
+            (let ((fn2-local (acl2::fn2-entry fn2-argument)))
+              (multiple-value-bind (fn2-a fn2-b) (fn2-values fn2-local)
+                (funcall #'acl2::fn2-result fn2-a))))
+        """)[0]
+        self.assertEqual(set(gate.expression_calls(form)),
+                         {'fn2-entry', 'fn2-values', 'fn2-result'})
+
+    def test_condition_reader_is_an_explicit_raw_helper(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.tree(directory, """
+              (define-condition fn2-native-error (error)
+                ((detail :initarg :detail :reader fn2-native-detail)))
+              (defun fn2-reporter (x) (fn2-native-detail x))
+            """)
+            _, order, _ = gate.inspect(root)
+            calls, helpers = gate.entry_names(root, order)
+            self.assertIn('fn2-native-detail', calls)
+            self.assertIn('fn2-native-detail', helpers)
+
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required for raw gate controls')
     def test_runtime_check_rejects_unverified_missing_and_unbound_callees(self):
         for cls, helper, bound, ok in (
