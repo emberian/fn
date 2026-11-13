@@ -157,6 +157,24 @@ def leb_decode(buf: bytes, offset: int = 0) -> tuple[int, int]:
             raise WireError("varint overflow")
 
 
+def _take(buf: bytes, offset: int, count: int, what: str) -> tuple[bytes, int]:
+    """Take exactly COUNT octets, rejecting truncation before integer conversion."""
+    end = offset + count
+    if offset < 0 or count < 0 or end > len(buf):
+        raise WireError(f"truncated {what}")
+    return buf[offset:end], end
+
+
+def _octets16_at(buf: bytes, offset: int, what: str) -> tuple[bytes, int]:
+    raw, offset = _take(buf, offset, 2, f"{what} length")
+    return _take(buf, offset, int.from_bytes(raw, "big"), what)
+
+
+def _octets32_at(buf: bytes, offset: int, what: str) -> tuple[bytes, int]:
+    raw, offset = _take(buf, offset, 4, f"{what} length")
+    return _take(buf, offset, int.from_bytes(raw, "big"), what)
+
+
 def be_pos(n: int) -> bytes:
     return n.to_bytes(max(1, (n.bit_length() + 7) // 8), "big")
 
@@ -283,11 +301,10 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
     if p[1] >= len(CLASSES):
         raise WireError(f"invalid FNCT class {p[1]}")
     cls = CLASSES[p[1]]
-    rlen = int.from_bytes(p[2:4], "big")
-    if 4 + rlen > len(p):
-        raise WireError("truncated authority reason")
-    reason = p[4:4 + rlen].decode("ascii", errors="replace")
-    i = 4 + rlen
+    rlen_raw, _ = _take(p, 2, 2, "authority reason length")
+    rlen = int.from_bytes(rlen_raw, "big")
+    reason_raw, i = _take(p, 4, rlen, "authority reason")
+    reason = reason_raw.decode("ascii", errors="replace")
     out: dict = {"outcome": cls, "reason": reason or "none"}
     if cls != "accepted":
         if i != len(p):
@@ -303,27 +320,22 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
     elif verb == "grant-set":
         grant_id, i = leb_decode(p, i)
         head, i = leb_decode(p, i)
-        if i + 2 > len(p):
-            raise WireError("truncated grant-set receipt")
-        rc_len = int.from_bytes(p[i:i + 2], "big")
-        i += 2
-        receipt = p[i:i + rc_len]
-        i += rc_len
+        receipt, i = _octets16_at(p, i, "grant-set receipt")
         out.update(grant=grant_id, authority_head=head, receipt=receipt.hex())
     elif verb == "grant-get":
-        if i >= len(p):
-            raise WireError("truncated grant-get result")
-        found = bool(p[i])
-        i += 1
+        found_raw, i = _take(p, i, 1, "grant-get result")
+        if found_raw[0] not in (0, 1):
+            raise WireError("invalid grant-get found boolean")
+        found = bool(found_raw[0])
         head, i = leb_decode(p, i)
         out.update(found=found, enabled=False, authority_head=head)
         if found:
             grant_id, i = leb_decode(p, i)
             grantor, i = leb_decode(p, i)
-            if i >= len(p):
-                raise WireError("truncated grant-get-found enabled")
-            enabled = bool(p[i])
-            i += 1
+            enabled_raw, i = _take(p, i, 1, "grant-get-found enabled")
+            if enabled_raw[0] not in (0, 1):
+                raise WireError("invalid grant-get enabled boolean")
+            enabled = bool(enabled_raw[0])
             prev, i = leb_decode(p, i)
             out.update(grant=grant_id, grantor=grantor, enabled=enabled, previous=prev)
     if i != len(p):
@@ -368,18 +380,16 @@ def parse_cns_items(buf: bytes) -> list[dict]:
     items: list[dict] = []
     i = 0
     while i < len(buf):
-        if i + 14 > len(buf):
-            raise WireError("truncated item header")
-        t = buf[i]
-        dom = int.from_bytes(buf[i + 1:i + 5], "big")
-        pos = int.from_bytes(buf[i + 5:i + 13], "big")
-        reasons = buf[i + 13]
-        i += 14
-        sl = int.from_bytes(buf[i:i + 2], "big"); streams = buf[i + 2:i + 2 + sl]; i += 2 + sl
-        ml = int.from_bytes(buf[i:i + 2], "big"); mid = buf[i + 2:i + 2 + ml]; i += 2 + ml
-        bl = int.from_bytes(buf[i:i + 4], "big"); body = buf[i + 4:i + 4 + bl]; i += 4 + bl
-        if i > len(buf) or t >= len(ITEM_TYPES):
-            raise WireError("malformed page item")
+        header, i = _take(buf, i, 14, "item header")
+        t = header[0]
+        if t >= len(ITEM_TYPES):
+            raise WireError("invalid page item type")
+        dom = int.from_bytes(header[1:5], "big")
+        pos = int.from_bytes(header[5:13], "big")
+        reasons = header[13]
+        streams, i = _octets16_at(buf, i, "item streams")
+        mid, i = _octets16_at(buf, i, "item Message-ID")
+        body, i = _octets32_at(buf, i, "item body")
         entry: dict = {
             "type": ITEM_TYPES[t],
             "domain": dom,
@@ -389,8 +399,8 @@ def parse_cns_items(buf: bytes) -> list[dict]:
             "message_id": mid.decode("latin-1"),
         }
         if entry["type"] == "reference":
-            if bl != 41:
-                raise WireError(f"reference item body length {bl} != 41")
+            if len(body) != 41:
+                raise WireError(f"reference item body length {len(body)} != 41")
             entry["octets"] = int.from_bytes(body[:8], "big")
             entry["content"] = body[9:].hex()
         elif entry["type"] == "record":
@@ -406,14 +416,14 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
     kind, p = fnct_open(frame)
     if kind != KIND_CNS_REPLY:
         raise WireError(f"expected kind 28 reply, got kind {kind}")
-    if len(p) < 7 or p[0] >= len(CLASSES):
-        raise WireError("malformed kind 28 reply")
-    cls = CLASSES[p[0]]
-    wl = int.from_bytes(p[1:3], "big")
-    word = p[3:3 + wl].decode("ascii", errors="replace")
-    rl = int.from_bytes(p[3 + wl:7 + wl], "big")
-    q = p[7 + wl:7 + wl + rl]
-    if 7 + wl + rl != len(p):
+    cls_raw, i = _take(p, 0, 1, "kind 28 class")
+    if cls_raw[0] >= len(CLASSES):
+        raise WireError("malformed kind 28 class")
+    cls = CLASSES[cls_raw[0]]
+    word_raw, i = _octets16_at(p, i, "kind 28 reason")
+    word = word_raw.decode("ascii", errors="replace")
+    q, i = _octets32_at(p, i, "kind 28 result")
+    if i != len(p):
         raise WireError("kind 28 payload length mismatch")
     out: dict = {"outcome": cls, "reason": word or "none"}
     if cls != "accepted":
@@ -423,11 +433,15 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
     if verb in ("register", "position"):
         out.update(cursor=q.hex(), position=cursor_position(q))
     elif verb == "ack":
+        if len(q) != 12:
+            raise WireError(f"ack result length {len(q)} != 12")
         out.update(
             domain=int.from_bytes(q[0:4], "big"),
             position=int.from_bytes(q[4:12], "big"),
         )
     elif verb == "status":
+        if len(q) != 28:
+            raise WireError(f"status result length {len(q)} != 28")
         out.update(
             domain=int.from_bytes(q[0:4], "big"),
             position=int.from_bytes(q[4:12], "big"),
@@ -435,38 +449,46 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
             gap=int.from_bytes(q[20:28], "big"),
         )
     elif verb in ("read", "wait"):
-        nl = int.from_bytes(q[1:3], "big")
-        nxt = q[3:3 + nl]
-        count = int.from_bytes(q[3 + nl:7 + nl], "big")
-        il = int.from_bytes(q[7 + nl:11 + nl], "big")
-        items = parse_cns_items(q[11 + nl:11 + nl + il])
+        more_raw, j = _take(q, 0, 1, "page more flag")
+        if more_raw[0] not in (0, 1):
+            raise WireError("invalid page more boolean")
+        nxt, j = _octets16_at(q, j, "page next cursor")
+        count_raw, j = _take(q, j, 4, "page item count")
+        count = int.from_bytes(count_raw, "big")
+        items_raw, j = _octets32_at(q, j, "page items")
+        if j != len(q):
+            raise WireError("trailing bytes in page result")
+        items = parse_cns_items(items_raw)
         if len(items) != count:
             raise WireError(f"item count mismatch: header {count} vs parsed {len(items)}")
         out.update(
-            more=bool(q[0]),
+            more=bool(more_raw[0]),
             cursor=nxt.hex(),
             next=cursor_position(nxt),
             count=count,
             items=items,
         )
     elif verb == "append":
-        ml = int.from_bytes(q[0:2], "big")
-        mid = q[2:2 + ml].decode("latin-1")
-        i = 2 + ml
-        dom = int.from_bytes(q[i:i + 4], "big")
-        pos = int.from_bytes(q[i + 4:i + 12], "big")
-        i += 12
-        nl = int.from_bytes(q[i:i + 2], "big"); numbers = q[i + 2:i + 2 + nl]; i += 2 + nl
-        rc_l = int.from_bytes(q[i:i + 2], "big"); receipt = q[i + 2:i + 2 + rc_l]; i += 2 + rc_l
-        ev = EVIDENCE_TYPES[q[i]] if q[i] < len(EVIDENCE_TYPES) else str(q[i])
+        mid_raw, j = _octets16_at(q, 0, "append Message-ID")
+        dom_raw, j = _take(q, j, 4, "append domain")
+        pos_raw, j = _take(q, j, 8, "append position")
+        numbers, j = _octets16_at(q, j, "append numbers")
+        receipt, j = _octets16_at(q, j, "append receipt")
+        evidence_raw, j = _take(q, j, 1, "append evidence")
+        if j != len(q):
+            raise WireError("trailing bytes in append result")
+        if evidence_raw[0] >= len(EVIDENCE_TYPES):
+            raise WireError("invalid append evidence")
         out.update(
-            message_id=mid,
-            domain=dom,
-            position=pos,
+            message_id=mid_raw.decode("latin-1"),
+            domain=int.from_bytes(dom_raw, "big"),
+            position=int.from_bytes(pos_raw, "big"),
             numbers=numbers.hex(),
             receipt=receipt.hex(),
-            evidence=ev,
+            evidence=EVIDENCE_TYPES[evidence_raw[0]],
         )
+    else:
+        raise WireError(f"unknown consumer reply verb {verb}")
     return out
 
 
@@ -514,18 +536,28 @@ class ControlSession:
     def auth(self, verb: str, **kw) -> dict:
         mutating = verb in ("principal-create", "grant-set")
         frame = build_auth_request(verb, **kw)
-        self.sock.sendall(frame)
-        reply = self._recv_frame(mutating=mutating)
-        return decode_auth_reply(verb, reply)
+        try:
+            self.sock.sendall(frame)
+            reply = self._recv_frame(mutating=mutating)
+            return decode_auth_reply(verb, reply)
+        except WireError as exc:
+            if mutating:
+                raise UncertainOutcome(f"invalid reply after request send: {exc}") from exc
+            raise
 
     def cns(self, verb: str, **kw) -> dict:
         mutating = verb in ("register", "ack", "append")
         if verb == "wait":
             self.sock.settimeout(float(kw.get("seconds", 30)) + 30.0)
         frame = build_cns_request(verb, **kw)
-        self.sock.sendall(frame)
-        reply = self._recv_frame(mutating=mutating)
-        return decode_cns_reply(verb, reply)
+        try:
+            self.sock.sendall(frame)
+            reply = self._recv_frame(mutating=mutating)
+            return decode_cns_reply(verb, reply)
+        except WireError as exc:
+            if mutating:
+                raise UncertainOutcome(f"invalid reply after request send: {exc}") from exc
+            raise
 
     def bind_as(self, principal: str | None) -> dict | None:
         if not principal:
