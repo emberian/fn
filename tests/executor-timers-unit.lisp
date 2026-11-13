@@ -34,6 +34,7 @@
              (<= reference-steps *fn2-timer-service-step-max*)
              (fn2-representation-relation fn2-core fn2-ref-core lists)
              (not (fn2-core-stopped-p fn2-core))) lists fn2-core fn2-ref-core)))
+(in-theory (disable fn2-et-service))
 (defun fn2-et-drain (fuel lists fn2-core fn2-ref-core)
   (declare (xargs :stobjs (fn2-core fn2-ref-core) :verify-guards nil :measure (nfix fuel)))
   (if (not (fn2-exec-services-ready-p fn2-core)) (mv t lists fn2-core fn2-ref-core)
