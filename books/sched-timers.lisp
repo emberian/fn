@@ -5,13 +5,15 @@
 (defun fn2-sched-arm-delay-ms (machine milliseconds fn2-sched fn2-control)
   (declare (xargs :stobjs (fn2-sched fn2-control)
                   :guard (and (fn2-sched-wfp fn2-sched) (fn2-control-wfp fn2-control))))
-  (let ((deadline (+ (fn2-control-now fn2-control) (* 1000 (nfix milliseconds)))))
-    (if (not (and (unsigned-byte-p 32 milliseconds) (< 0 milliseconds)
-                  (unsigned-byte-p 60 deadline) (< deadline *fn2-no-deadline*)))
-        (mv :bounds 0 fn2-sched fn2-control)
-      (mv-let (code fn2-sched fn2-control)
-        (fn2-sched-arm-deadline machine deadline fn2-sched fn2-control)
-        (mv code deadline fn2-sched fn2-control)))))
+  ;; Reject unbounded external integers before multiplying or adding them.
+  (if (not (and (unsigned-byte-p 32 milliseconds) (< 0 milliseconds)))
+      (mv :bounds 0 fn2-sched fn2-control)
+    (let ((deadline (+ (fn2-control-now fn2-control) (* 1000 milliseconds))))
+      (if (not (and (unsigned-byte-p 60 deadline) (< deadline *fn2-no-deadline*)))
+          (mv :bounds 0 fn2-sched fn2-control)
+        (mv-let (code fn2-sched fn2-control)
+          (fn2-sched-arm-deadline machine deadline fn2-sched fn2-control)
+          (mv code deadline fn2-sched fn2-control))))))
 (defthm fn2-sched-arm-delay-ms-deadline-width
   (implies (fn2-controlp fn2-control)
            (unsigned-byte-p 60 (mv-nth 1 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)))))
@@ -31,6 +33,10 @@
 (defthm fn2-sched-arm-delay-ms-control-type
   (implies (fn2-controlp fn2-control)
            (fn2-controlp (mv-nth 3 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)))))
+(defthm fn2-sched-arm-delay-ms-refusal
+  (implies (not (eq (mv-nth 0 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)) :ok))
+           (and (equal (mv-nth 2 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)) fn2-sched)
+                (equal (mv-nth 3 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)) fn2-control))))
 (in-theory (disable fn2-sched-arm-delay-ms))
 
 (defun fn2-sched-timer-expired-p (machine fn2-sched)
