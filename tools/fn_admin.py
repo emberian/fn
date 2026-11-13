@@ -771,6 +771,17 @@ def normalize_groups(raw_groups: list[str] | None) -> list[str]:
     return names
 
 
+def prepare_native_crypto(root: Path) -> None:
+    """Build atomically; the Lisp process qualifies the library before any I/O."""
+    try:
+        subprocess.run(
+            ["sh", str(root / "host" / "build-blake3.sh"), str(root / "build" / "lib")],
+            cwd=root, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise OSError("native BLAKE3 build failed; node was not started") from exc
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -784,6 +795,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
     else:
         size_bytes = str(args.size)
 
+    prepare_native_crypto(root)
     groups = normalize_groups(args.group)
     image.parent.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -834,6 +846,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         print("REFUSED image-missing", flush=True)
         return EXIT_ERROR
 
+    prepare_native_crypto(root)
     groups = normalize_groups(args.group)
     if not groups:
         sidecar_rows = read_groups_sidecar(groups_sidecar_for_image(image))

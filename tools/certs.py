@@ -1656,14 +1656,11 @@ def cached_entries(cache: Path, key: str,
 
 def choose_entry(entries: list[tuple[Path, dict]],
                  target: str) -> tuple[Path, dict] | None:
-    """The entry this worktree may install, or None when all are foreign-local.
+    """Prefer this tree's pair, then the newest compatible origin candidate.
 
-    An ACL2 certificate's post-alist records the *absolute* full-book-name of
-    every sub-book.  A pair made in worktree X and installed in worktree Y on
-    the same machine makes Y include X's books -- X's paths still resolve --
-    and Y's own later certificates then conflict with them.  So: this
-    worktree's own pair first; otherwise one whose origin does not exist on
-    this machine, where nothing can be followed by mistake.
+    Qualified v4 entries are project-relative and can come from a live
+    foreign worktree; legacy entries retain the absolute-origin isolation
+    enforced by usable_origin. Actual installation also checks ACL2 alists.
     """
     own = [entry for entry in entries if entry[1].get("origin_root") == target]
     if own:
@@ -1763,10 +1760,22 @@ def source_set_identity(required: dict[str, str]) -> str:
 
 
 def usable_origin(meta: dict, target: str) -> bool:
-    """Whether following this entry's absolute names is allowed here."""
+    """Admit portable :FN entries; retain origin isolation for legacy pairs.
+
+    This is only candidate selection. Payload digests, current closure keys,
+    requested toolchain identity and ACL2 post-alist compatibility still gate
+    installation. V4 certificates name local books through :FN, not through
+    the path of the live worktree that originally certified them.
+    """
     origin = meta.get("origin_root")
     if not origin:
         return False
+    compatibility = meta.get("toolchain")
+    if (meta.get("key_version") == KEY_VERSION
+            and isinstance(compatibility, dict)
+            and compatibility.get("project_directories") == acl2_projects.DIRECTORIES
+            and meta.get("toolchain_identity") == stable_identity(compatibility)):
+        return True
     if origin == target or not Path(origin).exists():
         return True
     return meta.get("origin_kind", LIVE_ORIGIN) != LIVE_ORIGIN
@@ -2890,9 +2899,8 @@ def write_entry(directory: Path, name: str, key: str, listing: list[str],
         "port_sha256": content_hash(port) if port is not None else None,
         "source_sha256": record.source,
         "evidence": record.evidence,
-        # The worktree the pair was produced in.  A certificate's post-alist
-        # names its sub-books by absolute path, so this is what decides where
-        # the pair may be installed; `origin_host` is provenance only.
+        # Certification origin is provenance. Qualified v4 entries use :FN
+        # project-relative book names; legacy entries still isolate origins.
         "origin_root": origin,
         # `worktree` keeps the pair on its own machine; `gate` and `run` are
         # snapshots, installable wherever the cache reaches.

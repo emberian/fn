@@ -375,29 +375,54 @@
               (fn2-n-start-ready host slot cap))))))
     any))
 
-;;; The session's control input (layer doc 4.1.4): "sync PORT SENT EOF" and "stop".
+(defun fn2-n-control-numbers (text count)
+  "Parse the harness's decimal counters, never Lisp syntax. TEXT is bounded."
+  (let ((pos 0) (values nil) (end (length text)))
+    (dotimes (field count)
+      (loop while (and (< pos end) (char= (char text pos) #\Space)) do (incf pos))
+      (let ((start pos) (value 0))
+        (loop while (and (< pos end) (digit-char-p (char text pos) 10))
+              do (setf value (+ (* value 10) (digit-char-p (char text pos) 10)))
+                 (incf pos))
+        (unless (and (> pos start) (<= (- pos start) 20)
+                     (or (= pos end) (char= (char text pos) #\Space)))
+          (error "fn2 native: invalid decimal control field"))
+        (push value values)))
+    (loop while (and (< pos end) (char= (char text pos) #\Space)) do (incf pos))
+    (unless (= pos end) (error "fn2 native: extra control fields"))
+    (nreverse values)))
+
+(defun fn2-n-control-line (host line)
+  (cond ((string= line "stop") (setf (fn2-nhost-stop host) t))
+        ((and (> (length line) 5) (string= line "sync " :end1 5))
+         (setf (fn2-nhost-sync host) (append (fn2-n-control-numbers (subseq line 5) 3) '(nil))))
+        ((and (> (length line) 5) (string= line "open " :end1 5))
+         (setf (fn2-nhost-sync host) (append (fn2-n-control-numbers (subseq line 5) 1) '(0 0 t))))
+        ((string= line "") nil)
+        (t (error "fn2 native: unknown control line ~s" line))))
+
+;;; Harness-only input (control-fd=-1 on the served node). A command has at
+;;; most three 20-digit decimal fields. Bound retained input before appending;
+;;; fragmented or malicious input cannot grow an unbounded Lisp string.
+(defun fn2-n-control-octet (host byte)
+  (let ((text (fn2-nhost-control-text host)))
+    (if (= byte 10)
+        (progn
+          (fn2-n-control-line host (string-trim '(#\Return #\Space) text))
+          (setf (fn2-nhost-control-text host) ""))
+      (progn
+        (when (>= (length text) 96) (error "fn2 native: control line too long"))
+        (unless (or (= byte 13) (<= 32 byte 126))
+          (error "fn2 native: non-ASCII control input"))
+        (setf (fn2-nhost-control-text host) (concatenate 'string text (string (code-char byte))))))))
+
 (defun fn2-n-control-read (host)
   (let ((fd (fn2-nhost-control-fd host)) (window (fn2-nhost-control-window host)))
     (multiple-value-bind (n errno) (fn2-native-syscall (%fn2-native-read fd window 4096))
       (declare (ignore errno))
-      (cond ((zerop n) (setf (fn2-nhost-stop host) t))       ; the session went away
+      (cond ((zerop n) (setf (fn2-nhost-stop host) t))
             ((plusp n)
-             (let ((text (concatenate 'string (fn2-nhost-control-text host)
-                                      (map 'string #'code-char (loop for i below n collect (sb-sys:sap-ref-8 window i))))))
-               (loop for at = (position #\Newline text)
-                     while at
-                     do (let ((line (string-trim '(#\Return #\Space) (subseq text 0 at))))
-                          (setf text (subseq text (1+ at)))
-                          (cond ((string= line "stop") (setf (fn2-nhost-stop host) t))
-                                ((and (> (length line) 5) (string= (subseq line 0 5) "sync "))
-                                 (with-input-from-string (in (subseq line 5))
-                                   (setf (fn2-nhost-sync host) (list (read in) (read in) (read in) nil))))
-                                ((and (> (length line) 5) (string= (subseq line 0 5) "open "))
-                                 (with-input-from-string (in (subseq line 5))
-                                   (setf (fn2-nhost-sync host) (list (read in) 0 0 t))))
-                                ((string= line "") nil)
-                                (t (error "fn2 native: unknown control line ~s" line)))))
-               (setf (fn2-nhost-control-text host) text)))))))
+             (dotimes (i n) (fn2-n-control-octet host (sb-sys:sap-ref-8 window i))))))))
 
 (defun fn2-n-cap-by-port (host port &optional openp)
   "The incarnation PORT names: for an open, the newest one accepted with that peer
