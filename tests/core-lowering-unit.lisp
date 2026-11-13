@@ -66,3 +66,45 @@
    (fn2-lower-recursive (1- n) fn2-core)))
 (must-fail (defcore-readonly-child fn2-lower-recursive fn2-lower-recursive-child))
 (assert-event (not (assoc-eq 'fn2-lower-recursive (table-alist 'fn2-core-lowered (w state)))))
+;; A formal proof is not a substitute for the promoted evaluating teeth.
+(must-fail (fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-composed))
+(defmacro fn2-lowering-fixture-teeth (source child outputs expected)
+ (let* ((base (fn2-columns-sym child "-REFINES-CORE"))
+        (witness (fn2-columns-sym base "-WITNESS"))
+        (left (fn2-arms-result-vars outputs))
+        (right (if (equal outputs 1) '(r0) '(r0 r1))))
+  `(progn
+    (defun ,witness (mutant)
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+      (mv-let (answer fn2-core)
+       (let* ((fn2-core
+               (stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (fn2-lower-config)
+                (let* ((fn2-lower-config (fn2-lower-config-init 1 fn2-lower-config))
+                       (fn2-lower-config (fn2-lower-config-set-value 0 37 fn2-lower-config))) fn2-lower-config)
+                fn2-core))
+              (pre (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (natp 40))))
+        ,(let ((continuation
+                `(stobj-let ((fn2-lower-config (fn2-core-config fn2-core))) (answer)
+                  ,(let ((check
+                          `(and pre (fn2-lower-configp fn2-lower-config) (fn2-lower-config-wfp fn2-lower-config)
+                                (equal (list ,@left) ',expected)
+                                (if mutant
+                                    (not (equal (list ,@left) (list (+ 1 (nfix ,(car right))) ,@(cdr right))))
+                                  (equal (list ,@left) (list ,@right))))))
+                     (if (equal outputs 1) `(let ((,(car right) (,child 40 fn2-lower-config))) ,check)
+                      `(mv-let ,right (,child 40 fn2-lower-config) ,check)))
+                  (mv answer fn2-core))))
+           (if (equal outputs 1) `(let ((,(car left) (,source 40 fn2-core))) ,continuation)
+            `(mv-let ,left (,source 40 fn2-core) ,continuation))))
+       answer)))
+    (defun ,(fn2-columns-sym base "-POSITIVE") () (declare (xargs :verify-guards nil)) (,witness nil))
+    (defun ,(fn2-columns-sym base "-NEGATIVE") () (declare (xargs :verify-guards nil)) (,witness t)))))
+(fn2-lowering-fixture-teeth fn2-lower-read fn2-lower-read-child 1 (37))
+(fn2-lowering-fixture-teeth fn2-lower-read-composed fn2-lower-read-composed-child 2 (39 41))
+(fn2-check-lowering-teeth fn2-lower-read fn2-lower-read-composed)
+(assert-event
+ (let ((row (fn2-decl-row '(:square fn2-lower-read-composed-child-refines-core) (w state))))
+  (and (eq (fn2-decl-get :claim row) :compiler)
+       (eq (fn2-decl-get :boundary row) :core-child-extraction)
+       (equal (fn2-decl-get :proof row) '(:proved fn2-lower-read-composed-child-refines-core)))))
