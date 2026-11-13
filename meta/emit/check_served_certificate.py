@@ -146,8 +146,23 @@ def toolchain_fingerprint(root=BASE):
     lean_bin = shutil.which('lean')
     if not lean_bin:
         raise RuntimeError('lean executable not found in PATH')
-    compiler = Path(lean_bin).resolve()
-    return digest(compiler) + digest(root / 'meta/lean-toolchain') + digest(root / 'meta/lake-manifest.json')
+    # An elan proxy's bytes do not identify the compiler selected by a local
+    # override. Query from the same cwd as compile_one, then hash that compiler
+    # and its shared runtime as well as the launcher.
+    prefix = Path(subprocess.check_output(
+        [lean_bin, '--print-prefix'], cwd=root / 'meta', text=True, timeout=15).strip())
+    compiler = prefix / 'bin/lean'
+    if not compiler.is_file():
+        raise RuntimeError('selected Lean compiler missing: ' + str(compiler))
+    version = subprocess.check_output(
+        [lean_bin, '--version'], cwd=root / 'meta', text=True, timeout=15)
+    files = [Path(lean_bin).resolve(), compiler.resolve(),
+             root / 'meta/lean-toolchain', root / 'meta/lake-manifest.json']
+    runtime = prefix / 'lib/lean'
+    files.extend(sorted(runtime.glob('*.so')))
+    files.extend(sorted(runtime.glob('*.dylib')))
+    return hashlib.sha256((version + ''.join(
+        str(p) + ':' + digest(p) for p in files)).encode()).hexdigest()
 
 
 def dep_signature(deps, done, lib):
@@ -196,7 +211,7 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None)
             def build(n):
                 source = 'meta/' + n.replace('.', '/') + '.lean'
                 key = hashlib.sha256(
-                    (tool + digest(root / source) + ''.join(done[d] for d in deps[n])).encode()
+                    (tool + digest(root / source) + dep_signature(deps[n], done, lib)).encode()
                 ).hexdigest()
                 artifact = lib / Path(*n.split('.')).with_suffix('.olean')
                 old = cache.get(n, {})
