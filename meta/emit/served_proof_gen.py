@@ -1602,7 +1602,6 @@ def emit_kind_common(out_dir, kinfo, core_layout, fn_defs, fill_world_bodies, wi
 
     lines = [
         "import Fn2.Instances.ServedCertificates.ServedCommon",
-        "import Fn2.Instances.ServedCertificates.ServedOps",
         "",
         "set_option maxHeartbeats 1600000",
         "set_option maxRecDepth 100000",
@@ -1611,7 +1610,7 @@ def emit_kind_common(out_dir, kinfo, core_layout, fn_defs, fill_world_bodies, wi
         "",
         f"namespace Fn2.Instances.ServedCertificates.Kind{ki}Common",
         "open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Instances.ServedKinds Fn2.Instances.LayerAWorld",
-        "open Fn2.Instances.ServedCertificates.ServedCommon Fn2.Instances.ServedCertificates.ServedOps",
+        "open Fn2.Instances.ServedCertificates.ServedCommon",
         "",
         f"def kObj : Kind := kinds[{ki}]!",
         "",
@@ -3732,7 +3731,7 @@ def emit_kind_subarms(ki, kinfo, fn_defs, kcommon, tuple_analyzer, out_dir, fill
             "import Fn2.Arms.Combinators",
             "import Fn2.Arms.Wrapper",
             "import Fn2.Instances.ServedCertificates.ServedCommon",
-            "import Fn2.Instances.ServedCertificates.ServedOps",
+            *(["import Fn2.Instances.ServedCertificates.ServedOps"] if builder.used_multi_ops else []),
             f"import Fn2.Instances.ServedCertificates.Kind{ki}Common",
             *(f"import Fn2.Instances.ServedCertificates.{dm}" for dm in dep_mods),
             "",
@@ -3840,9 +3839,9 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
         "import Fn2.Arms.Combinators",
         "import Fn2.Arms.Wrapper",
         "import Fn2.Instances.ServedCertificates.ServedCommon",
-        "import Fn2.Instances.ServedCertificates.ServedOps",
+        *(["import Fn2.Instances.ServedCertificates.ServedOps"] if builder.used_multi_ops else []),
         f"import Fn2.Instances.ServedCertificates.Kind{ki}Common",
-        f"import Fn2.Instances.ServedCertificates.{ns}",
+        f"import Fn2.Instances.ServedCertificates.Kind{ki}Contracts",
     ]
     if builder.used_subarms:
         for sm in sorted({m for stg in builder.used_subarms for m in sub_reg[stg]["all_mods"]}):
@@ -4334,7 +4333,11 @@ def emit_served_proofs(kinds, inventory, layout, consts, ops_raw, waits_raw, cw_
                 ri, ki, kd, area_s, ai, tag_s, name, sig, decl, kinfos[kn_s], kcommons[kn_s],
                 fn_defs, tuple_analyzer, sub_child_regs[kn_s], sub_core_regs[kn_s],
                 widx, fill_world_bodies, out_dir,
-                write_proof=(name in VALIDATED_GENERATED_ROOTS),
+                write_proof=(
+                    name in VALIDATED_GENERATED_ROOTS
+                    or (area_s == ":ARMS" and show(decl) == "((:IDLE))")
+                    or (area_s == ":OBSERVE-ARMS" and show(decl) == "((:WAKE))")
+                ),
             )
             all_multi_targets.update(used_mops)
             if proof_path is not None:

@@ -1,8 +1,10 @@
 """Controls for the generated coverage boundary; proof gates run separately."""
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT=Path(__file__).parents[1]
 def module(name):
@@ -24,6 +26,7 @@ class CoverageControls(unittest.TestCase):
         self.assertFalse(c.census("'Other.validated' does not depend on any axioms",'N.validated'))
         for extra in ['sorryAx','UnprovedContract']:
             self.assertFalse(c.census("'N.validated' depends on axioms: ["+extra+"]",'N.validated'))
+        self.assertFalse(c.census("warning: declaration uses 'sorry'\n'N.validated' does not depend on any axioms",'N.validated'))
 
     def test_stale_body_and_package_invalidate_coverage(self):
         with tempfile.TemporaryDirectory() as td:
@@ -63,5 +66,113 @@ class CoverageControls(unittest.TestCase):
     def test_list_constant_keeps_every_element(self):
         value=e.alist_value(e.List([e.Atom('K'),e.Atom('1'),e.Atom('2'),e.Atom('3')]))
         self.assertEqual(value,e.List([e.Atom('1'),e.Atom('2'),e.Atom('3')]))
+
+    def test_parse_and_batch_module_slices_scope_and_reject_axioms(self):
+        m0=e.as_module('import Fn2.Arms.Core\nnamespace Fn2.Arms.Served.Root0Proof\ntheorem t : True := trivial\nend Fn2.Arms.Served.Root0Proof\n',
+          expose=True, import_all=('Init.Data.String.Basic',))
+        m1=e.as_module('import Fn2.Arms.Core\nimport Fn2.Arms.Wrapper\nnamespace Fn2.Arms.Served.Root1Proof\ntheorem t : True := trivial\nend Fn2.Arms.Served.Root1Proof\n',
+          expose=True, import_all=('Init.Data.String.Basic',))
+        s0=c.parse_module_slice(m0); s1=c.parse_module_slice(m1)
+        self.assertIsNotNone(s0); self.assertIsNotNone(s1)
+        batched,ranges=c.build_batch_source([(0,*s0),(1,*s1)])
+        self.assertEqual(batched.count('public import Fn2.Arms.Core'),1)
+        self.assertEqual(batched.count('import all Init.Data.String.Basic'),1)
+        self.assertIn('section Batch_Root0Proof',batched)
+        self.assertIn('section Batch_Root1Proof',batched)
+        self.assertLess(ranges[0][1],ranges[1][0])
+        with_axiom=m0.replace('theorem t','axiom bad : False\ntheorem t')
+        self.assertIsNone(c.parse_module_slice(with_axiom))
+
+    def test_batched_lean_gates_cache_invalidation_and_error_isolation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/'meta/Fn2/Arms').mkdir(parents=True)
+            (root/'meta/Fn2/Instances/ServedCertificates').mkdir(parents=True)
+            (root/'meta/lean-toolchain').write_text('v4.30.0\n')
+            (root/'meta/lake-manifest.json').write_text('{}\n')
+            (root/'meta/Fn2/Arms/Wrapper.lean').write_text('module\n@[expose] public section\nend\n')
+            for k in range(1,5):
+                (root/f'meta/Fn2/Instances/LayerAEqns{k}.lean').write_text('module\n@[expose] public section\nend\n')
+            cpath='meta/Fn2/Instances/ServedCertificates/Kind0Contracts.lean'
+            (root/cpath).write_text(e.as_module(
+              'import Fn2.Arms.Wrapper\nnamespace Fn2.Arms.Served.Root0\ndef contract := True\nend Fn2.Arms.Served.Root0\n'
+              'namespace Fn2.Arms.Served.Root1\ndef contract := True\nend Fn2.Arms.Served.Root1\n'
+              'namespace Fn2.Arms.Served.Root2\ndef contract := True\nend Fn2.Arms.Served.Root2\n', expose=True))
+            for ri in range(3):
+                pp=root/f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean'
+                pp.write_text(e.as_module(
+                  f'import Fn2.Instances.ServedCertificates.Kind0Contracts\nnamespace Fn2.Arms.Served.Root{ri}Proof\n'
+                  f'theorem validated : True := trivial\n'
+                  f'theorem accepted_entry_positive : True := trivial\n'
+                  f'theorem omitted_child_rejected : True := trivial\n'
+                  f'end Fn2.Arms.Served.Root{ri}Proof\n', expose=True))
+
+            calls=[]
+            fail_root=set()
+            def fake_compile_one(source, lib, seconds, logname, root=root, write_olean=True):
+                src_p=Path(source) if Path(source).is_absolute() else (root/source)
+                calls.append((src_p.name, write_olean))
+                txt=src_p.read_text()
+                if write_olean:
+                    out=lib/src_p.relative_to(root/'meta').with_suffix('.olean')
+                    out.parent.mkdir(parents=True,exist_ok=True)
+                    out.write_text('olean:'+src_p.name)
+                lines=[]
+                rc=0
+                for ri in range(3):
+                    ns=f'Fn2.Arms.Served.Root{ri}Proof'
+                    if f'namespace {ns}' in txt:
+                        if ri in fail_root:
+                            rc=1
+                            ln=next(idx+1 for idx,l in enumerate(txt.splitlines()) if f'namespace {ns}' in l)
+                            lines.append(f'{src_p.name}:{ln}:0: error: tactic failed')
+                        else:
+                            for t in c.ROOT_THEOREMS:
+                                lines.append(f"'{ns}.{t}' depends on axioms: [propext, Quot.sound]")
+                out_str='\n'.join(lines)+('\n' if lines else '')
+                log=root/'build/served-certificate-gates'/logname
+                log.parent.mkdir(parents=True,exist_ok=True)
+                log.write_text(out_str)
+                return rc, out_str, str(log.relative_to(root))
+
+            def make_report():
+                return {'gates':{}, 'commit_words':0, 'roots':[
+                  {'name':f'R{ri}','kind':'K0','contract':cpath,
+                   'proof':f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean',
+                   'status':'unvalidated','reason':'pending'} for ri in range(3)]}
+
+            fake_bin=root/'fake-lean'; fake_bin.write_text('lean-bin')
+            lib=root/'build/lean-lib'
+            with mock.patch.object(c,'compile_one',side_effect=fake_compile_one), \
+                 mock.patch.object(c.shutil,'which',return_value=str(fake_bin)), \
+                 mock.patch.object(c.subprocess,'check_output',return_value='Lean 4.30.0\n'):
+                # Run 1: All 3 proofs batch into a single Lean invocation; shared contract compiled once.
+                rep1=make_report()
+                c.lean_gates(rep1,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep1['roots']],['validated']*3)
+                proof_invocations=[n for n,wo in calls if not wo]
+                self.assertEqual(len(proof_invocations),1)
+                contract_invocations=[n for n,wo in calls if n=='Kind0Contracts.lean']
+                self.assertEqual(len(contract_invocations),1)
+
+                # Run 2: Unchanged inputs hit bound cache with 0 compiler calls.
+                calls.clear()
+                rep2=make_report()
+                c.lean_gates(rep2,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep2['roots']],['validated']*3)
+                self.assertEqual(calls,[])
+
+                # Run 3: Editing Root1Proof invalidates ONLY Root1Proof; if Root1Proof fails in a batch,
+                # error isolation validates healthy siblings and rejects Root1Proof.
+                (root/'meta/Fn2/Instances/ServedCertificates/Root1Proof.lean').write_text(
+                  (root/'meta/Fn2/Instances/ServedCertificates/Root1Proof.lean').read_text()+'\n-- edit 1\n')
+                (root/'meta/Fn2/Instances/ServedCertificates/Root2Proof.lean').write_text(
+                  (root/'meta/Fn2/Instances/ServedCertificates/Root2Proof.lean').read_text()+'\n-- edit 2\n')
+                fail_root.add(1)
+                calls.clear()
+                rep3=make_report()
+                c.lean_gates(rep3,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep3['roots']],['validated','unvalidated','validated'])
+                self.assertIn('Lean rejected proof/census',rep3['roots'][1]['reason'])
 
 if __name__=='__main__':unittest.main()
