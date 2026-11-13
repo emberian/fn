@@ -25,6 +25,44 @@ class CoverageControls(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'attachment must name'):
             e.proposal_body(missing, ['ID'], e.List([attached]))
 
+    def test_elan_proxy_does_not_hide_selected_compiler_changes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta').mkdir(); (root/'tool/bin').mkdir(parents=True)
+            (root/'tool/lib/lean').mkdir(parents=True)
+            for p in ['meta/lean-toolchain', 'meta/lake-manifest.json', 'proxy', 'tool/bin/lean', 'tool/lib/lean/libleanshared.so']:
+                (root/p).write_text(p)
+            def query(args, **kwargs):
+                self.assertEqual(kwargs['cwd'], root/'meta')
+                return str(root/'tool') if args[-1]=='--print-prefix' else 'Lean 4.30.0'
+            with mock.patch.object(c.shutil,'which',return_value=str(root/'proxy')), \
+                 mock.patch.object(c.subprocess,'check_output',side_effect=query):
+                a=c.toolchain_fingerprint(root)
+                (root/'tool/bin/lean').write_text('different selected compiler')
+                b=c.toolchain_fingerprint(root)
+                self.assertNotEqual(a,b)
+                (root/'tool/lib/lean/libleanshared.so').write_text('different runtime')
+                self.assertNotEqual(b,c.toolchain_fingerprint(root))
+
+    def test_dependency_rebuild_artifact_invalidates_downstream(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            (root/'meta/Fn2/B.lean').write_text('import Fn2.A\ndef b := 2')
+            lib=root/'lib'; cache={}; calls=[]; revision=[0]
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source)
+                artifact=lib/Path(source).relative_to('meta').with_suffix('.olean')
+                artifact.parent.mkdir(parents=True,exist_ok=True)
+                artifact.write_text(source+str(revision[0]))
+                log=root/'log'; log.write_text('checked')
+                return 0,'checked','log'
+            with mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                calls.clear(); revision[0]=1
+                (lib/'Fn2/A.olean').write_text('damaged artifact')
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
           'roots':[{'name':'ARM','status':'unvalidated','reason':'not checked'}], 'unresolved':['MISSING']}
@@ -156,7 +194,8 @@ class CoverageControls(unittest.TestCase):
             lib=root/'build/lean-lib'
             with mock.patch.object(c,'compile_one',side_effect=fake_compile_one), \
                  mock.patch.object(c.shutil,'which',return_value=str(fake_bin)), \
-                 mock.patch.object(c.subprocess,'check_output',return_value='Lean 4.30.0\n'):
+                 mock.patch.object(c,'toolchain_fingerprint',return_value='test-toolchain'), \
+                 mock.patch.object(c.subprocess,'check_output',return_value='Lean test'):
                 # Run 1: All 3 proofs batch into a single Lean invocation; shared contract compiled once.
                 rep1=make_report()
                 c.lean_gates(rep1,lib,30,2,root=root,batch_size=4)
