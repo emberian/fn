@@ -208,6 +208,7 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/authority-client \
   tests/authority-served \
+  tests/authority-stream-resolve \
   tests/blake3-native \
   tests/blake3-unit \
   tests/blake3-vectors \
