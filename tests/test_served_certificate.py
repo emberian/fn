@@ -98,6 +98,21 @@ class CoverageControls(unittest.TestCase):
                 self.assertEqual(kwargs['cwd'],root/'meta')
                 self.assertIn(str(lib/'F.olean'),args[0])
 
+    def test_full_cli_fails_rejected_candidates_but_allows_partial_coverage(self):
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'report.json'
+            for succeeds in [False,True]:
+                p.write_text(json.dumps({'roots':[{'name':'R','proof':'R.lean'}, {'name':'OWED'}]}))
+                def gate(report,*args,**kwargs):
+                    if succeeds: report['roots'][0]['lean_gate']={'theorem':'validated'}
+                with mock.patch.object(c.sys,'argv',['check','--report',str(p),'--lean']), \
+                     mock.patch.object(c,'current'),mock.patch.object(c,'reconcile'), \
+                     mock.patch.object(c,'summary',return_value='coverage'), \
+                     mock.patch.object(c,'lean_gates',side_effect=gate), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(c.main(),0 if succeeds else 1)
+                    self.assertEqual(len(json.loads(p.read_text())['roots']),2)
+
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
           'roots':[{'name':'ARM','status':'unvalidated','reason':'not checked'}], 'unresolved':['MISSING']}

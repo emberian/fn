@@ -683,6 +683,15 @@ def main():
     if args.snapshots:
         write_snapshots(report, args.snapshots, stamp=args.stamp)
     print('\n'.join(text.splitlines()[:3]))
+    if args.lean:
+        candidates = [r for r in report['roots'] if 'proof' in r]
+        failures = [r for r in candidates if 'lean_gate' not in r]
+        print(f'LEAN CANDIDATES: {len(candidates)-len(failures)}/{len(candidates)} passed; '
+              f'{len(report["roots"])-len(candidates)} roots without generated proofs')
+        for r in failures:
+            print('  FAIL', r['name'], r.get('reason', ''))
+        return 1 if failures or not candidates else 0
+    return 0
 
 
 if __name__ == '__main__':
