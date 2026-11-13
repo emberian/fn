@@ -71,7 +71,9 @@
 (fn2-core-preserves fn2-exec-principal (principal position budget fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-service (service position budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :use fn2-exec-run-services-work-natp
+                                 :in-theory (disable fn2-exec-grant-p fn2-exec-system-row fn2-exec-queued)))))
   (b* ((start (fn2-exec-queued fn2-core))
        ((mv service-steps fn2-core) (fn2-exec-run-services service fn2-core))
        ((mv wake fn2-core)
