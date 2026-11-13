@@ -1,6 +1,7 @@
 """Controls for the generated coverage boundary; proof gates run separately."""
 import importlib.util
 import json
+import sys
 import contextlib
 import io
 from pathlib import Path
@@ -75,6 +76,60 @@ class CoverageControls(unittest.TestCase):
                 (lib/'Fn2/A.olean').write_text('damaged artifact')
                 c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
                 self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+
+    def test_failed_dependency_preserves_only_verified_cache_for_resume(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            (root/'meta/Fn2/B.lean').write_text('import Fn2.A\ndef b := 2')
+            lib=root/'lib'; calls=[]
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source)
+                log=root/logname;log.write_text('compiler output')
+                if source.endswith('/B.lean'):
+                    return 1,'refused',log.name
+                artifact=lib/Path(source).relative_to('meta').with_suffix('.olean')
+                artifact.parent.mkdir(parents=True,exist_ok=True)
+                artifact.write_text('checked A')
+                return 0,'',log.name
+            with mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                with self.assertRaisesRegex(RuntimeError,'dependency refused'):
+                    c.compile_closure(['Fn2.B'],lib,5,1,root=root,tool='tool')
+                saved=json.loads((root/'build/served-lean-cache.json').read_text())
+                self.assertEqual(set(saved),{'Fn2.A'})
+                calls.clear()
+                with self.assertRaisesRegex(RuntimeError,'dependency refused'):
+                    c.compile_closure(['Fn2.B'],lib,5,1,root=root,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/B.lean'])
+
+    def test_atomic_checkpoint_failure_keeps_previous_complete_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'cache.json';path.write_text('{"old": 1}\n')
+            old=path.read_bytes()
+            with mock.patch.object(c.os,'replace',side_effect=OSError('replace refused')):
+                with self.assertRaisesRegex(OSError,'replace refused'):
+                    c.atomic_cache_checkpoint(path,{'new':2})
+            self.assertEqual(path.read_bytes(),old)
+            self.assertEqual(list(path.parent.glob('*.tmp')),[])
+
+    def test_concurrent_cache_or_library_writer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'tree';lib=Path(td)/'shared-lib'
+            with c.lean_cache_session(root,lib): pass
+            cache=root/'build/served-lean-cache.json';old=cache.read_bytes()
+            for lock in [cache.with_suffix('.lock'),lib/'.served-lean-library.lock']:
+                code=('import fcntl,sys; f=open(sys.argv[1],"a+b"); '
+                      'fcntl.flock(f,fcntl.LOCK_EX); print("held",flush=True); sys.stdin.readline()')
+                with c.subprocess.Popen([sys.executable,'-c',code,str(lock)],
+                                        stdin=c.subprocess.PIPE,stdout=c.subprocess.PIPE,text=True) as holder:
+                    self.assertEqual(holder.stdout.readline().strip(),'held')
+                    try:
+                        with self.assertRaisesRegex(RuntimeError,'another served Lean gate'):
+                            with c.lean_cache_session(root,lib):
+                                self.fail('second writer entered')
+                        self.assertEqual(cache.read_bytes(),old)
+                    finally:
+                        holder.communicate('done\n',timeout=5)
 
     def test_filtered_cli_rejects_no_match_and_failed_proofs(self):
         with tempfile.TemporaryDirectory() as td:
