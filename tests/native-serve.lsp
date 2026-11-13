@@ -19,4 +19,6 @@
 (load "host/ffi.lisp")
 (load "host/adapter.lisp")
 (load "host/native-serve-raw.lisp")
-(sb-ext:exit :code (fn2-nserve-main))
+(load "host/native-seeded-serve-raw.lisp")
+(setf *fn2-nserve-base* *fn2-ss-profile*)
+(sb-ext:exit :code (fn2-nseed-serve-main))
