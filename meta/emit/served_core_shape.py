@@ -120,7 +120,7 @@ def shape_theorem_name(key):
     return f'{name}_core_shape_{n}_{projection}_arg{arg}'
 
 
-def emit_shape_candidates(analyzer, destination, widx, fill_world_bodies):
+def emit_shape_candidates(analyzer, destination, widx, fill_world_bodies, targets=None):
     """Emit conditional statements and proofs; success here is only a proposal.
 
     Single-step unfolding plus dependency lemmas shares proofs across callers.
@@ -136,7 +136,20 @@ def emit_shape_candidates(analyzer, destination, widx, fill_world_bodies):
         'set_option maxHeartbeats 800000',
         'set_option linter.unusedSimpArgs false',
     ]
+    selected = set(analyzer.order) if targets is None else set()
+    def select(key):
+        if key in selected:
+            return
+        if analyzer.summaries.get(key) is None:
+            raise ValueError(f'no shape proposal for {key}')
+        selected.add(key)
+        for dep in analyzer.summaries[key]:
+            select(dep)
+    for key in targets or ():
+        select(key)
     for key in analyzer.order:
+        if key not in selected:
+            continue
         name,n,path,arg = key
         formals,body,*_ = analyzer.definitions[name]
         binders = ' '.join(f'({ident(f)} : Val)' for f in formals)
