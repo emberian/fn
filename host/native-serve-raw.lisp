@@ -34,7 +34,7 @@ sets it before fn2-nserve-main.")
 profile's own). By default the surface sessions' (tests/seeded-store.lsp): the cursor's
 profile less its posting, so the node serves reading over the store it seeds.
 FN2_OWNER_UID names the local control socket's owner (:owner-uid, E's carrier L); the
-core reads a value that is not a u32 as uid 0."
+core rejects a present value that is not a u32; it never falls back to uid 0."
   (let* ((profile (or *fn2-nserve-base* *fn2-ss-profile*))
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
          (address (sb-ext:posix-getenv "FN2_LISTENER_ADDRESS"))

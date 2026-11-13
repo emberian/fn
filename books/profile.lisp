@@ -132,6 +132,10 @@
   (and
    (alistp profile)
    (no-duplicatesp-equal (strip-cars profile))
+   ;; Absent retains the simulator's UID-0 default; a configured owner must
+   ;; never fall back to UID 0 because its value was malformed or too wide.
+   (or (not (assoc-equal :owner-uid profile))
+       (unsigned-byte-p 32 (fn2-profile-get :owner-uid profile)))
    (fn2-profile-positive-fields-p
     '(:c :p :u :t :x :w :o :qa :h :k :aturn
       :ncancel :jread :jwrite :accept-credits :trace-capacity) profile)
@@ -228,6 +232,11 @@
       (not (fn2-profilep (remove1-assoc-equal :path-identity *fn2-profile-tiny*)))
       (not (fn2-profilep (put-assoc-equal :path-identity ".invalid" *fn2-profile-tiny*)))
       (not (fn2-profilep (put-assoc-equal :path-identity "a b" *fn2-profile-tiny*)))
+      (fn2-profilep (put-assoc-equal :owner-uid 0 *fn2-profile-tiny*))
+      (fn2-profilep (put-assoc-equal :owner-uid 4294967295 *fn2-profile-tiny*))
+      (not (fn2-profilep (put-assoc-equal :owner-uid -1 *fn2-profile-tiny*)))
+      (not (fn2-profilep (put-assoc-equal :owner-uid 4294967296 *fn2-profile-tiny*)))
+      (not (fn2-profilep (put-assoc-equal :owner-uid nil *fn2-profile-tiny*)))
       (not (fn2-profilep (put-assoc-equal :path-identity (coerce (make-list 203 :initial-element #\a) 'string)
                                           *fn2-profile-tiny*)))
       (not (fn2-profilep
