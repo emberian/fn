@@ -160,7 +160,7 @@ After certifying `books/node-profile.lisp`:
 ./fn article ops.alerts 1 --port 1119
 ```
 
-Every subcommand supports `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserves outcome classes at the process exit boundary:
+The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client commands support `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserve outcome classes at the process exit boundary:
 - `0` — `accepted`
 - `1` — `refused` (protocol, grammar, CAS head, or authorization refusal decided by ACL2)
 - `2` — local CLI usage, transport connect, or startup bind refusal
