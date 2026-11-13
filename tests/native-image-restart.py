@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Node:
-    def __init__(self, directory, image, mode, label, control_sock=None):
+    def __init__(self, directory, image, mode, label, control_sock=None, env=None):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
@@ -29,6 +29,7 @@ class Node:
         self.proc = subprocess.Popen(
             cmd, cwd=ROOT,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
+            env=env,
         )
         (directory / f"{label}.launcher.pid").write_text(f"{self.proc.pid}\n")
         self.selector = selectors.DefaultSelector()
