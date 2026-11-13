@@ -102,6 +102,8 @@
                    (<= (+ *fn2-auth-result-at* 16) *fn2-idc-stride*)
                    (<= *fn2-authority-req-principal-create-num-fields* 16)
                    (<= *fn2-authority-req-principal-bind-num-fields* 16)
+                   (<= *fn2-authority-req-stream-resolve-num-fields* 16)
+                   (<= *fn2-authority-res-stream-resolve-num-fields* 16)
                    (<= *fn2-authority-reply-num-fields* 16)
                    (<= *fn2-authority-res-principal-bind-num-fields* 16)))
 
@@ -859,9 +861,10 @@
    (:set (sx sx) (xrow x))
    (:do (dcode op noff nlen) (fn2-auth-decode row-fpos row-flen sx row-rx-slot row-rx-gen
                                               :okind *fn2-ctl-kind* :oslot row-ctl :ogen row-ctl-gen)
-    :case (((:frame) (:set (reason *fn2-auth-reason-frame*)) (:goto refuse))))
+    :accept (:ok :frame) :why "a known verb survives malformed request fields")
    (:set (opcode op) (noff noff) (nlen nlen))
-   (:cond ((or (equal op *fn2-auth-op-set*) (equal op *fn2-auth-op-get*)) (:goto grant))
+   (:cond ((eq dcode :frame) (:set (reason *fn2-auth-reason-frame*)) (:goto refuse))
+          ((or (equal op *fn2-auth-op-set*) (equal op *fn2-auth-op-get*)) (:goto grant))
           ((not (equal row-admin 1)) (:set (reason *fn2-auth-reason-access*)) (:goto refuse))
           ((and (equal op *fn2-auth-op-bind*) (equal row-worked 1)) (:set (reason *fn2-auth-reason-access*)) (:goto refuse))
           (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
