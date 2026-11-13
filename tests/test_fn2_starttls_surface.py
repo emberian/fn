@@ -63,7 +63,7 @@ class Peer:
             result.append(line)
         return result
 
-    def upgrade(self, cert, pipeline):
+    def upgrade(self, cert, pipeline, trailing=b''):
         context = ssl.create_default_context(cafile=str(cert))
         self.incoming, self.outgoing = ssl.MemoryBIO(), ssl.MemoryBIO()
         tls = context.wrap_bio(self.incoming, self.outgoing, server_hostname='localhost')
@@ -84,6 +84,10 @@ class Peer:
         for _ in range(1000):
             try:
                 tls.do_handshake()
+                # Final handshake flight and application records share one
+                # transport write, exceeding the deliberately small BIO.
+                if trailing:
+                    assert tls.write(trailing) == len(trailing)
                 self.flush()
                 self.tls = tls
                 return
@@ -111,7 +115,7 @@ def main():
     run_fn('init', str(image), '--size-mb', '8', '--group', 'local.test')
     node = LiveNode(directory, image, 'tls', [
         '--host', '127.0.0.1', '--port', '0', '--tls-certificate', str(cert),
-        '--tls-key', str(key), '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
+        '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])
     try:
         port = int(node.wait_marker(b'LISTENING ').split()[1])
         for pipeline in (False, True):
@@ -119,10 +123,14 @@ def main():
             try:
                 assert b'STARTTLS' in peer.capabilities()
                 assert peer.command(b'GROUP local.test').startswith(b'211 ')
-                peer.upgrade(cert, pipeline)
+                trailing = (b'GROUP local.test\r\n' * 100) if pipeline else b''
+                peer.upgrade(cert, pipeline, trailing)
+                for _ in range(100 if pipeline else 0):
+                    assert peer.line().startswith(b'211 '), 'staged ciphertext must survive RX reuse'
                 assert b'STARTTLS' not in peer.capabilities()
                 assert peer.command(b'STARTTLS').startswith(b'502 ')
-                assert peer.command(b'ARTICLE').startswith(b'412 '), 'TLS must reset group selection'
+                if not pipeline:
+                    assert peer.command(b'ARTICLE').startswith(b'412 '), 'TLS must reset group selection'
                 assert peer.command(b'GROUP local.test').startswith(b'211 ')
             finally:
                 peer.close()
