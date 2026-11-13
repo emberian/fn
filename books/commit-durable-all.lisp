@@ -14464,14 +14464,16 @@
                  (:instance fn2-env-f-row-of-fc (i (mv-nth 0 (fn2-env-f-pairs-witness b)))
                             (j (mv-nth 1 (fn2-env-f-pairs-witness b))))))))
 
-;; View preservation lemmas for admission and harvest helpers.
+;; View preservation lemmas for admission and harvest helpers (local so
+;; commit-durable-all exports no view-by-callee matrix).
 (defmacro fn2-env-view-keep (thm view call)
-  `(fn2-with-column-projections (,view)
-     (defthm ,thm
-       (implies (,view fn2-core fn2-rel-c0)
-                (,view ,call fn2-rel-c0))
-       :hints (("Goal" :do-not-induct t :in-theory (theory 'fn2-column-projection-base))
-               (and stable-under-simplificationp (fn2-column-view-hint '(,view) clause world))))))
+  `(local
+    (fn2-with-column-projections (,view)
+      (defthm ,thm
+        (implies (,view fn2-core fn2-rel-c0)
+                 (,view ,call fn2-rel-c0))
+        :hints (("Goal" :do-not-induct t :in-theory (theory 'fn2-column-projection-base))
+                (and stable-under-simplificationp (fn2-column-view-hint '(,view) clause world)))))))
 
 (fn2-env-view-keep fn2-commit-reserve-pools-fn2-env-fc fn2-env-fc (mv-nth 1 (fn2-commit-reserve-pools left id owner-gen fn2-core)))
 (fn2-env-view-keep fn2-commit-reserve-extent-fn2-env-fc fn2-env-fc (mv-nth 1 (fn2-commit-reserve-extent id fn2-core)))
@@ -15922,12 +15924,7 @@
                  (:instance fn2-core-stop-fn2-env-fc (fn2-core c) (fn2-rel-c0 c))
                  (:instance fn2-env-f-of-fc (a c) (b (fn2-core-stop reason c)))))))
 
-(fn2-with-column-projections (fn2-env-sk)
-(defthm fn2-commit-reserve-extent-fn2-env-sk
-  (implies (fn2-env-sk fn2-core fn2-rel-c0)
-           (fn2-env-sk (mv-nth 1 (fn2-commit-reserve-extent id fn2-core)) fn2-rel-c0))
-  :hints (("Goal" :do-not-induct t :in-theory (theory 'fn2-column-projection-base))
-         (and stable-under-simplificationp (fn2-column-view-hint '(fn2-env-sk) clause world)))))
+(fn2-env-view-keep fn2-commit-reserve-extent-fn2-env-sk fn2-env-sk (mv-nth 1 (fn2-commit-reserve-extent id fn2-core)))
 
 (defthm fn2-env-f-reserve-prep
   (implies (and (fn2-env-f c) (fn2-corep c) (fn2-core-wfp c)
@@ -17623,8 +17620,8 @@
 (fn2-env-view-keep fn2-core-stop-fn2-env-sk fn2-env-sk (fn2-core-stop reason fn2-core))
 (fn2-env-view-keep fn2-exec-wake-fn2-env-sk fn2-env-sk (fn2-exec-wake id fn2-core))
 
-(make-event (value (fn2-column-base-event 'fn2-machine-observe-terminal 'fn2-commit (w state))))
-(make-event (value (fn2-column-base-event 'fn2-exec-record 'fn2-commit (w state))))
+(local (make-event (value (fn2-column-base-event 'fn2-machine-observe-terminal 'fn2-commit (w state)))))
+(local (make-event (value (fn2-column-base-event 'fn2-exec-record 'fn2-commit (w state)))))
 
 (fn2-env-view-keep fn2-machine-observe-terminal-fn2-env-fc fn2-env-fc (fn2-machine-observe-terminal id fn2-core))
 (fn2-env-view-keep fn2-machine-observe-terminal-fn2-env-xt fn2-env-xt (fn2-machine-observe-terminal id fn2-core))
