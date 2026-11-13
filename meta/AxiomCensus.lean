@@ -363,6 +363,14 @@ import Fn2
 #print axioms Fn2.Arms.Combinators.put_eq_ite
 #print axioms Fn2.Arms.Combinators.runArm_eq
 #print axioms Fn2.Arms.Combinators.omitted_child_rejected_arm
+#print axioms Fn2.Arms.Combinators.runArm_tupleStobjs
+#print axioms Fn2.Arms.Combinators.rowReads_tupleStobjs
+#print axioms Fn2.Arms.Combinators.callOp_callee
+#print axioms Fn2.Arms.Combinators.callFn_core_pure_op
+#print axioms Fn2.Arms.Combinators.bindOuts_multi
+#print axioms Fn2.Arms.Combinators.evalArgs_tuple_vars
+#print axioms Fn2.Arms.Combinators.run_cond_true
+#print axioms Fn2.Arms.Combinators.codeIn_eq_memberEqual_truthy
 
 #print axioms Fn2.Instances.CoreWorld.«FN2-CNS-RUN-DRAINING».canonical_body
 #print axioms Fn2.Instances.CoreWorld.«FN2-CNS-ON-READ-RESULT».canonical_body

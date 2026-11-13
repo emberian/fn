@@ -11,23 +11,23 @@ Its `.txt` companion lists every unvalidated root by function name and concrete
 remaining proof obligation. Printing a contract does not count as validation.
 The generated files are reproducible artifacts, excluded from version control.
 
-The checked 2026-11-08 snapshot has **12,039/12,039 canonical exports** and
-**26/263 whole-arm interpretation roots** validated across 14 served kinds.
+The checked 2026-11-13 snapshot has **12,039/12,039 canonical exports** and
+**57/263 whole-arm interpretation roots** validated across 14 served kinds.
 All 263 contracts compile. [The coverage snapshot](BRIDGE-GENERATED-COVERAGE.txt)
-lists the other 237 roots by name and reason; [the statement snapshot](BRIDGE-GENERATED-STATEMENTS.txt)
-quotes all 26 validated contracts and theorem signatures verbatim. Both are bound
+lists the other 206 roots by name and reason; [the statement snapshot](BRIDGE-GENERATED-STATEMENTS.txt)
+quotes all 57 validated contracts and theorem signatures verbatim. Both are bound
 to the canonical packet hash, rather than promising coverage for later declarations.
 
 The final bb2 gate reported `certify summary: 3 built, 0 failed` in
 `build/bridge-final-certify.log`. The record runner also passed all three books in
 `build/acl2/certify-20261108T102032Z-1763634`; the coverage join completed with
-`DONE 0`. All 26 proofs passed their three theorem censuses, and the full `Fn2`
-root and 362-declaration axiom census passed. Fifteen focused Python controls and
+`DONE 0`. All 57 proofs passed their three theorem censuses (`0 sorryAx`, axioms
+`⊆ {propext, Classical.choice, Quot.sound}`). Fifteen focused Python controls and
 the raw Lisp printer controls passed. ACL2 iteration admitted the final 38 helper,
 22 isolated control and 1,658 export forms without refusal.
 
 Remaining red: the generated export book takes 103.137 seconds in the mandated
-gate (about 105 seconds in the record runner), exceeding D26. The 237 remaining
+gate (about 105 seconds in the record runner), exceeding D26. The 206 remaining
 interpretation proofs and closure-wide body-evaluation/primitive-domain proofs
 are not certified by this snapshot. No live durable word is present in this
 assembly, so the incoming consumer `:commit` instance still needs its live gates.
@@ -72,8 +72,12 @@ def contract (id : Val) (budget : Val) (kids : Fin 57 → Val) : Prop :=
     world.fns "FN2-ECHO-RUN-FREE" [id, budget, image kids] = some result
 ```
 
-The shared schemas currently discharge complete `(:idle)` arm declarations and
-complete `(:wake)` handler declarations. Other roots retain their full contracts
+The shared schemas and compositional combinators (`meta/Fn2/Arms/Combinators.lean`
+and `meta/emit/served_proof_gen.py`) currently discharge complete `(:idle)` arm
+declarations, complete `(:wake)` handler declarations, and 31 additional `:CORE`
+and `:CHILDREN` run, observe, and child-subarm roots across pending-write/flush,
+operation-result/child-writeback, branch-join, stop/reclamation, and `:goto`
+subarm composition. Other roots retain their full contracts
 and explicit missing proof obligations. This interpretation count is the third
 bridge equality; canonical identity is **not** a substitute for the first two
 exported-body evaluation equalities or reachable primitive-domain obligations.

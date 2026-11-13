@@ -35,6 +35,60 @@ open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core
 
 set_option autoImplicit false
 
+deriving instance DecidableEq for Except
+deriving instance DecidableEq for Call
+deriving instance DecidableEq for Answers
+deriving instance DecidableEq for Op
+
+mutual
+def termBeq : Term → Term → Bool
+  | .var x, .var y => x == y
+  | .quote x, .quote y => x == y
+  | .app f as, .app g bs => f == g && termListBeq as bs
+  | .lam fs b as, .lam gs c bs => fs == gs && termBeq b c && termListBeq as bs
+  | _, _ => false
+
+def termListBeq : List Term → List Term → Bool
+  | [], [] => true
+  | a :: as, b :: bs => termBeq a b && termListBeq as bs
+  | _, _ => false
+end
+
+mutual
+theorem termBeq_eq : ∀ (t1 t2 : Term), termBeq t1 t2 = true → t1 = t2
+  | .var x, .var y, h => by simp [termBeq] at h; exact congrArg Term.var h
+  | .quote x, .quote y, h => by simp [termBeq] at h; exact congrArg Term.quote h
+  | .app f as, .app g bs, h => by
+    simp only [termBeq, Bool.and_eq_true] at h
+    rw [beq_iff_eq.mp h.1, termListBeq_eq as bs h.2]
+  | .lam fs b as, .lam gs c bs, h => by
+    simp only [termBeq, Bool.and_eq_true] at h
+    rw [beq_iff_eq.mp h.1.1, termBeq_eq b c h.1.2, termListBeq_eq as bs h.2]
+  | .var _, .quote _, h | .var _, .app _ _, h | .var _, .lam _ _ _, h
+  | .quote _, .var _, h | .quote _, .app _ _, h | .quote _, .lam _ _ _, h
+  | .app _ _, .var _, h | .app _ _, .quote _, h | .app _ _, .lam _ _ _, h
+  | .lam _ _ _, .var _, h | .lam _ _ _, .quote _, h | .lam _ _ _, .app _ _, h => by
+    simp [termBeq] at h
+
+theorem termListBeq_eq : ∀ (as bs : List Term), termListBeq as bs = true → as = bs
+  | [], [], _ => rfl
+  | a :: as, b :: bs, h => by
+    simp only [termListBeq, Bool.and_eq_true] at h
+    rw [termBeq_eq a b h.1, termListBeq_eq as bs h.2]
+  | [], _ :: _, h | _ :: _, [], h => by simp [termListBeq] at h
+end
+
+def exceptTermOk (r : Except String Term) (t : Term) : Bool :=
+  match r with
+  | .ok t' => termBeq t' t
+  | .error _ => false
+
+theorem exceptTermOk_eq {r : Except String Term} {t : Term} (h : exceptTermOk r t = true) :
+    r = .ok t := by
+  cases r with
+  | error _ => cases h
+  | ok t' => exact congrArg Except.ok (termBeq_eq t' t h)
+
 /-! ### Computable list-index & nodup witnesses -/
 
 def findIdx? (name : String) : List String → Option Nat
@@ -1462,6 +1516,423 @@ theorem run_goto (w : World) (f : Frame) (fuel : Nat) (st st' : St)
       run w { f with refusal := d.onRefusal } fuel
         { stobjs := st'.stobjs, vars := reads ++ f.base } d.steps := by
   simp [run, hfl, hsub, hid, hslot, hreads, hdecl]
+
+/-! ### Additional world-independent dispatch, binding, and tuple combinators -/
+
+theorem const_coreWorld (w : World) (tuple : List String) (c : String) :
+    const (coreWorld w tuple) c = const w c := rfl
+
+theorem callFn_of_native (w : World) (f : String) (args : List Val) (v : Val)
+    (h : nativeCall f args = some v) :
+    callFn w f args = .ok v := by
+  simp [callFn, h]
+
+theorem callFn_core_plain (w : World) (tuple : List String) (f : String) (args : List Val)
+    (h : f.endsWith "@CORE" = false) :
+    callFn (coreWorld w tuple) f args = callFn w f args := by
+  simp [callFn, coreWorld, coreFns, h]
+
+theorem callFn_core_of_fns (w : World) (tuple : List String) (f : String) (args : List Val) (v : Val)
+    (hend : f.endsWith "@CORE" = false)
+    (hn : nativeCallNames.contains f = false)
+    (hf : w.fns f args = some v) :
+    callFn (coreWorld w tuple) f args = .ok v :=
+  (callFn_core_plain w tuple f args hend).trans (callFn_of_fns w f args v hn hf)
+
+theorem callFn_core_link {n : Nat} (w : World) (tuple : List String)
+    (f fn : String) (pre : List Val) (kids : Fin n → Val) (v : Val)
+    (hlen : tuple.length = n)
+    (hnat : nativeCallNames.contains f = false)
+    (hend : f.endsWith "@CORE" = true)
+    (hnop : w.ops.find? (fun o => adapterName o.name == f) = none)
+    (hstrip : String.ofList (f.toList.take (f.length - 5)) = fn)
+    (hfns : w.fns fn (pre ++ [tupleImage kids]) = some v) :
+    callFn (coreWorld w tuple) f (pre ++ List.ofFn kids) = .ok v := by
+  have hlt : ¬((pre ++ List.ofFn kids).length < tuple.length) := by simp [hlen]
+  have hsub : (pre ++ List.ofFn kids).length - tuple.length = pre.length := by simp [hlen]
+  have htk : (pre ++ List.ofFn kids).take pre.length = pre := by simp
+  have hdr : Val.ofList ((pre ++ List.ofFn kids).drop pre.length) = tupleImage kids := by
+    simp [tupleImage]
+  have hcf : (coreWorld w tuple).fns f (pre ++ List.ofFn kids) = some v := by
+    simp only [coreWorld, coreFns, hend, ↓reduceIte, hnop, hlt, hsub, htk, hdr, hstrip, hfns]
+  exact callFn_of_fns (coreWorld w tuple) f (pre ++ List.ofFn kids) v hnat hcf
+
+theorem collapse_replicate_core {n : Nat} (pre : List Val) (kids : Fin n → Val) :
+    collapse n (List.replicate pre.length none ++ [some "FN2-CORE"]) (pre ++ List.ofFn kids) =
+      some (pre ++ [tupleImage kids]) := by
+  induction pre with
+  | nil =>
+    have htk : (List.ofFn kids).take n = List.ofFn kids := List.take_of_length_le (by simp)
+    have hdr : (List.ofFn kids).drop n = [] := List.drop_eq_nil_of_le (by simp)
+    simp only [List.replicate, List.nil_append, collapse,
+      beq_self_eq_true, ↓reduceIte, List.length_ofFn, Nat.lt_irrefl, htk, hdr,
+      Option.map_some, tupleImage]
+  | cons a as ih => simp [List.replicate_succ, collapse, ih]
+
+theorem callFn_core_pure_op {n : Nat} (w : World) (tuple : List String)
+    (f : String) (o : Op) (pre : List Val) (kids : Fin n → Val) (v : Val)
+    (hlen : tuple.length = n)
+    (hnat : nativeCallNames.contains f = false)
+    (hend : f.endsWith "@CORE" = true)
+    (hop : w.ops.find? (fun o' => adapterName o'.name == f) = some o)
+    (hcin : o.coreIn = List.replicate pre.length none ++ [some "FN2-CORE"])
+    (hcout : o.coreOut = [none])
+    (hfns : w.fns o.name (pre ++ [tupleImage kids]) = some v) :
+    callFn (coreWorld w tuple) f (pre ++ List.ofFn kids) = .ok v := by
+  have hcf : (coreWorld w tuple).fns f (pre ++ List.ofFn kids) = some v := by
+    simp only [coreWorld, coreFns, hend, ↓reduceIte, hop, hcin, hlen,
+      collapse_replicate_core pre kids, hfns, Option.map_some, hcout, spread]
+  exact callFn_of_fns (coreWorld w tuple) f (pre ++ List.ofFn kids) v hnat hcf
+
+theorem findOp_of_find (w : World) (name : String) (o : Op)
+    (hfind : w.ops.find? (·.name == name) = some o) :
+    findOp w name = .ok o := by
+  simp [findOp, hfind]
+
+theorem findOp_coreWorld (w : World) (tuple : List String) (name : String) (o : Op)
+    (hfind : w.ops.find? (·.name == name) = some o) :
+    findOp (coreWorld w tuple) name = .ok (coreOp tuple o) := by
+  unfold findOp coreWorld
+  have hmap : ∀ (os : List Op), os.find? (·.name == name) = some o →
+      (os.map (coreOp tuple)).find? (·.name == name) = some (coreOp tuple o) := by
+    intro os hos
+    induction os with
+    | nil => simp at hos
+    | cons x xs ih =>
+      have hname : (coreOp tuple x).name = x.name := by
+        unfold coreOp; cases x.callee <;> simp; split <;> rfl
+      simp only [List.find?_cons, List.map_cons, hname] at hos ⊢
+      split at hos
+      · simp only [Option.some.injEq] at hos; subst hos; rfl
+      · exact ih hos
+  rw [hmap w.ops hfind]
+
+theorem callOp_callee (w : World) (k : Kind) (st : St) (c : Call)
+    (o : Op) (callee : String) (keys : List (String × Expr)) (args : List Val) (r : Val)
+    (hfind : findOp w c.op = .ok o)
+    (hcal : o.callee = some callee)
+    (hkeys : expandOwner w k c.keys = .ok keys)
+    (hargs : actuals w k st o.formals o.stobjsIn c.args keys = .ok args)
+    (hcall : callFn w callee args = .ok r) :
+    callOp w k st c = .ok (o, r) := by
+  simp [callOp, hfind, hcal, hkeys, hargs, hcall]
+
+theorem keyOrOwner_found (w : World) (k : Kind) (st : St) (fm : String)
+    (keys : List (String × Expr)) (kw : String) (e : Expr) (v : Val)
+    (hf : keys.find? (·.1 == ":" ++ fm) = some (kw, e))
+    (hev : ev w k st e = .ok v) :
+    keyOrOwner w k st fm keys = .ok v := by
+  simp [keyOrOwner, hf, hev]
+
+theorem keyOrOwner_okind (w : World) (k : Kind) (st : St) (keys : List (String × Expr)) (v : Val)
+    (hf : keys.find? (·.1 == ":OKIND") = none) (hv : var st "KIND" = .ok v) :
+    keyOrOwner w k st "OKIND" keys = .ok v := by
+  simp [keyOrOwner, hf, hv]
+
+theorem keyOrOwner_oslot (w : World) (k : Kind) (st : St) (keys : List (String × Expr)) (v : Val)
+    (hf : keys.find? (·.1 == ":OSLOT") = none) (hv : var st "ID" = .ok v) :
+    keyOrOwner w k st "OSLOT" keys = .ok v := by
+  simp [keyOrOwner, hf, hv]
+
+theorem keyOrOwner_ogen (w : World) (k : Kind) (st : St) (keys : List (String × Expr)) (v : Val)
+    (hf : keys.find? (·.1 == ":OGEN") = none) (hv : var st "ROW-GENERATION" = .ok v) :
+    keyOrOwner w k st "OGEN" keys = .ok v := by
+  simp [keyOrOwner, hf, hv]
+
+theorem actuals_nil (w : World) (k : Kind) (st : St) (ss : List (Option String))
+    (keys : List (String × Expr)) :
+    actuals w k st [] ss [] keys = .ok [] := rfl
+
+theorem actuals_stobj (w : World) (k : Kind) (st : St)
+    (fm : String) (fs : List String) (s : String) (ss : List (Option String))
+    (pos : List Expr) (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hs : stobj st s = .ok v)
+    (hr : actuals w k st fs ss pos keys = .ok rest) :
+    actuals w k st (fm :: fs) (some s :: ss) pos keys = .ok (v :: rest) := by
+  simp [actuals, hs, hr]
+
+theorem actuals_pos (w : World) (k : Kind) (st : St)
+    (fm : String) (fs : List String) (ss : List (Option String))
+    (p : Expr) (ps : List Expr) (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hv : ev w k st p = .ok v)
+    (hr : actuals w k st fs ss ps keys = .ok rest) :
+    actuals w k st (fm :: fs) (none :: ss) (p :: ps) keys = .ok (v :: rest) := by
+  simp [actuals, hv, hr]
+
+theorem actuals_key (w : World) (k : Kind) (st : St)
+    (fm : String) (fs : List String) (ss : List (Option String))
+    (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hv : keyOrOwner w k st fm keys = .ok v)
+    (hr : actuals w k st fs ss [] keys = .ok rest) :
+    actuals w k st (fm :: fs) (none :: ss) [] keys = .ok (v :: rest) := by
+  have hact0 : actuals w k st (fm :: fs) (none :: ss) [] keys =
+      (do let y ← keyOrOwner w k st fm keys
+          let rest ← actuals w k st fs ss [] keys
+          pure (y :: rest)) := by
+    conv => lhs; unfold actuals
+    unfold keyOrOwner
+    cases keys.find? (·.1 == ":" ++ fm) with
+    | some kv => obtain ⟨_, _⟩ := kv; rfl
+    | none =>
+      cases (fm == "OKIND") <;> cases (fm == "OSLOT") <;> cases (fm == "OGEN") <;>
+        simp [bind, Except.bind, throw, throwThe, MonadExceptOf.throw]
+  rw [hact0, hv, except_ok_bind, hr]
+  rfl
+
+theorem coreActuals_nil (w : World) (k : Kind) (st : St) (coreVal : Val)
+    (ss : List (Option String)) (keys : List (String × Expr)) :
+    coreActuals w k st coreVal [] ss [] keys = .ok [] := rfl
+
+theorem coreActuals_core (w : World) (k : Kind) (st : St) (coreVal : Val)
+    (fm : String) (fs : List String) (ss : List (Option String))
+    (pos : List Expr) (keys : List (String × Expr)) (rest : List Val)
+    (hr : coreActuals w k st coreVal fs ss pos keys = .ok rest) :
+    coreActuals w k st coreVal (fm :: fs) (some "FN2-CORE" :: ss) pos keys = .ok (coreVal :: rest) := by
+  simp [coreActuals, hr]
+
+theorem coreActuals_stobj (w : World) (k : Kind) (st : St) (coreVal : Val)
+    (fm : String) (fs : List String) (s : String) (ss : List (Option String))
+    (pos : List Expr) (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hne : (s == "FN2-CORE") = false)
+    (hs : stobj st s = .ok v)
+    (hr : coreActuals w k st coreVal fs ss pos keys = .ok rest) :
+    coreActuals w k st coreVal (fm :: fs) (some s :: ss) pos keys = .ok (v :: rest) := by
+  simp [coreActuals, hne, hs, hr]
+
+theorem coreActuals_pos (w : World) (k : Kind) (st : St) (coreVal : Val)
+    (fm : String) (fs : List String) (ss : List (Option String))
+    (p : Expr) (ps : List Expr) (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hv : ev w k st p = .ok v)
+    (hr : coreActuals w k st coreVal fs ss ps keys = .ok rest) :
+    coreActuals w k st coreVal (fm :: fs) (none :: ss) (p :: ps) keys = .ok (v :: rest) := by
+  simp [coreActuals, hv, hr]
+
+theorem coreActuals_key (w : World) (k : Kind) (st : St) (coreVal : Val)
+    (fm : String) (fs : List String) (ss : List (Option String))
+    (keys : List (String × Expr)) (v : Val) (rest : List Val)
+    (hv : keyOrOwner w k st fm keys = .ok v)
+    (hr : coreActuals w k st coreVal fs ss [] keys = .ok rest) :
+    coreActuals w k st coreVal (fm :: fs) (none :: ss) [] keys = .ok (v :: rest) := by
+  simp [coreActuals, hv, hr]
+
+theorem bindOuts_single_stobj (st : St) (s : String) (vars : List String) (res : Val) :
+    bindOuts st [some s] vars res = .ok (setStobj st s res) := rfl
+
+theorem bindOuts_single_val (st : St) (vars : List String) (res : Val) :
+    bindOuts st [none] vars res = .ok (match vars with
+      | v :: _ => { st with vars := (v, res) :: st.vars }
+      | [] => st) := by
+  cases vars <;> rfl
+
+theorem bindOuts_multi {m : Nat} (st : St) (outs : List (Option String))
+    (vars : List String) (res : Val)
+    (hm : 2 ≤ m) (hlen : outs.length = m) (hres : IsListN m res) :
+    bindOuts st outs vars res =
+      bindOuts.go st outs vars ((List.range m).map (fun (j : Nat) => Native.nth (.int j) res)) := by
+  cases outs with
+  | nil => simp at hlen; omega
+  | cons a rest =>
+    cases rest with
+    | nil => simp at hlen; omega
+    | cons b rest' =>
+      simp only [bindOuts, toList_eq_map_nth res hres]
+
+theorem bindOuts_go_nil (st : St) (vars : List String) (rs : List Val) :
+    bindOuts.go st [] vars rs = .ok st := rfl
+
+theorem bindOuts_go_some (st : St) (s : String) (os : List (Option String))
+    (vars : List String) (r : Val) (rs : List Val) :
+    bindOuts.go st (some s :: os) vars (r :: rs) = bindOuts.go (setStobj st s r) os vars rs := rfl
+
+theorem bindOuts_go_none_cons (st : St) (os : List (Option String))
+    (v : String) (vs : List String) (r : Val) (rs : List Val) :
+    bindOuts.go st (none :: os) (v :: vs) (r :: rs) =
+      bindOuts.go { st with vars := (v, r) :: st.vars } os vs rs := rfl
+
+theorem bindOuts_go_none_nil (st : St) (os : List (Option String)) (r : Val) (rs : List Val) :
+    bindOuts.go st (none :: os) [] (r :: rs) = bindOuts.go st os [] rs := rfl
+
+theorem env_get_of_findIdx (env : Env) (ks : List String) (x : String) (idx : Nat) (v : Val)
+    (hks : env.map (·.1) = ks)
+    (hidx : findIdx? x ks = some idx)
+    (hval : (env.map (·.2))[idx]? = some v) :
+    env.get? x = some v := by
+  induction env generalizing ks idx with
+  | nil => subst hks; simp [findIdx?] at hidx
+  | cons p env ih =>
+    obtain ⟨k, w⟩ := p
+    subst hks
+    simp only [List.map_cons, findIdx?] at hidx hval
+    by_cases hk : (k == x) = true
+    · simp only [hk, ↓reduceIte, Option.some.injEq] at hidx
+      subst hidx
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at hval
+      subst hval
+      simp [Env.get?, hk]
+    · have hkf : (k == x) = false := Bool.eq_false_iff.mpr hk
+      simp only [hkf, Bool.false_eq_true, ↓reduceIte, Option.map_eq_some_iff] at hidx
+      obtain ⟨j, hj, rfl⟩ := hidx
+      simp only [List.getElem?_cons_succ] at hval
+      simpa [Env.get?, hkf] using ih (env.map (·.1)) j rfl hj hval
+
+theorem var_of_findIdx (st : St) (ks : List String) (x : String) (idx : Nat) (v : Val)
+    (hks : st.vars.map (·.1) = ks)
+    (hidx : findIdx? x ks = some idx)
+    (hval : (st.vars.map (·.2))[idx]? = some v) :
+    var st x = .ok v := by
+  simp [var, env_get_of_findIdx st.vars ks x idx v hks hidx hval]
+
+theorem env_get_none_of_keys (vars : Env) (ks : List String) (x : String)
+    (hks : vars.map (·.1) = ks)
+    (hmem : ks.contains x = false) :
+    vars.get? x = none := by
+  induction vars generalizing ks with
+  | nil => rfl
+  | cons p vars ih =>
+    obtain ⟨k, w⟩ := p
+    subst hks
+    simp only [List.map_cons, List.contains_cons, Bool.or_eq_false_iff] at hmem
+    have hkf : (k == x) = false := by
+      cases hnk : (x == k)
+      · exact beq_eq_false_iff_ne.mpr (Ne.symm (beq_eq_false_iff_ne.mp hnk))
+      · rw [hmem.1] at hnk; cases hnk
+    simpa [Env.get?, hkf] using ih (vars.map (·.1)) rfl hmem.2
+
+theorem evalArgs_append (fns : Fns) (env : Env) (as bs : List Term) (vas vbs : List Val)
+    (ha : evalArgs fns env as = .ok vas) (hb : evalArgs fns env bs = .ok vbs) :
+    evalArgs fns env (as ++ bs) = .ok (vas ++ vbs) := by
+  induction as generalizing vas with
+  | nil =>
+    simp only [evalArgs, Except.ok.injEq] at ha
+    subst ha; simpa using hb
+  | cons a as ih =>
+    simp only [evalArgs] at ha
+    obtain ⟨v, hv, hr⟩ := bind_ok' ha
+    obtain ⟨vs, hvs, heq⟩ := bind_ok' hr
+    simp only [pure, Except.pure, Except.ok.injEq] at heq; subst heq
+    simp [evalArgs, hv, ih vs hvs]
+
+theorem evalArgs_zip_vars (fns : Fns) (ks : List String) (vs : List Val) (env : Env)
+    (hlen : ks.length = vs.length) (hnd : nodupB ks = true)
+    (hget : ∀ k v, (ks.zip vs).find? (·.1 == k) = some (k, v) → env.get? k = some v) :
+    evalArgs fns env (ks.map Term.var) = .ok vs := by
+  induction ks generalizing vs with
+  | nil =>
+    cases vs with
+    | nil => rfl
+    | cons _ _ => simp at hlen
+  | cons k ks ih =>
+    cases vs with
+    | nil => simp at hlen
+    | cons v vs =>
+      simp only [nodupB, Bool.and_eq_true, Bool.not_eq_true'] at hnd
+      have hk0 : env.get? k = some v := hget k v (by simp)
+      have hrest : evalArgs fns env (ks.map Term.var) = .ok vs := by
+        apply ih vs (by simpa using hlen) hnd.2
+        intro k' v' hf
+        apply hget k' v'
+        have hmem : k' ∈ ks := by
+          have hb := List.find?_some hf
+          have hm := List.mem_of_find?_eq_some hf
+          exact (beq_iff_eq.mp hb) ▸ (List.of_mem_zip hm).1
+        have hne : (k == k') = false := by
+          cases hc : (k == k')
+          · rfl
+          · have heq := beq_iff_eq.mp hc; subst heq
+            have : ks.contains k = true := List.contains_iff_mem.mpr hmem
+            rw [hnd.1] at this; cases this
+        simp [hne, hf]
+      simp [evalArgs, eval_var fns env k v hk0, hrest]
+
+theorem evalArgs_tuple_vars {n : Nat} (fns : Fns) (tuple : List String)
+    (kids : Fin n → Val) (vars : Env) (varNames : List String)
+    (hlen : tuple.length = n) (hnd : nodupB tuple = true)
+    (hv : vars.map (·.1) = varNames)
+    (hdisj : (varNames.any (fun x => tuple.contains x)) = false) :
+    evalArgs fns (vars ++ tupleStobjs tuple kids) (tuple.map Term.var) =
+      .ok (List.ofFn kids) := by
+  apply evalArgs_zip_vars fns tuple (List.ofFn kids) _ (by simp [hlen]) hnd
+  intro k v hf
+  have hmem : k ∈ tuple := by
+    have hb := List.find?_some hf
+    have hm := List.mem_of_find?_eq_some hf
+    exact (beq_iff_eq.mp hb) ▸ (List.of_mem_zip hm).1
+  have hnmem : varNames.contains k = false := by
+    cases hc : varNames.contains k
+    · rfl
+    · have hk_in : k ∈ varNames := List.contains_iff_mem.mp hc
+      have ht_in : tuple.contains k = true := List.contains_iff_mem.mpr hmem
+      have hany : (varNames.any (fun x => tuple.contains x)) = true :=
+        List.any_eq_true.mpr ⟨k, hk_in, ht_in⟩
+      rw [hdisj] at hany; cases hany
+  have hvn : vars.get? k = none := env_get_none_of_keys vars varNames k hv hnmem
+  have hvf : vars.find? (·.1 == k) = none := by
+    cases hfx : vars.find? (·.1 == k) <;> simp_all [Env.get?]
+  simp [Env.get?, List.find?_append, hvf, tupleStobjs, hf]
+
+theorem rowReads_tupleStobjs {n : Nat} (w : World) (k : Kind) (tuple : List String)
+    (kids : Fin n → Val) (id slot : Val) (ownIdx dirIdx : Nat)
+    (hown : ownIdx < n) (hdir : dirIdx < n) (hlen : tuple.length = n)
+    (hf_own : findIdx? k.name tuple = some ownIdx)
+    (hf_dir : findIdx? "FN2-MACHINES" tuple = some dirIdx)
+    (read : String → Val)
+    (hread : ∀ c ∈ k.columns.map (·.1),
+      callFn w (if directoryFields.contains c then "FN2-MACHINES-" ++ c else k.name ++ "-" ++ c)
+        (if directoryFields.contains c then [id, kids ⟨dirIdx, hdir⟩] else [slot, kids ⟨ownIdx, hown⟩]) =
+        .ok (read c)) :
+    rowReads w k (tupleStobjs tuple kids) id slot =
+      .ok (k.columns.map fun (c, _) => ("ROW-" ++ c, read c)) :=
+  rowReads_eq w k (tupleStobjs tuple kids) id slot (kids ⟨ownIdx, hown⟩) (kids ⟨dirIdx, hdir⟩)
+    (find_tupleStobjs tuple kids k.name ownIdx hown hlen hf_own)
+    (find_tupleStobjs tuple kids "FN2-MACHINES" dirIdx hdir hlen hf_dir)
+    read hread
+
+theorem runArm_tupleStobjs {n : Nat} (w : World) (k : Kind) (tuple : List String)
+    (a : Arm) (observe : Bool) (pre : List Val) (kids : Fin n → Val)
+    (reads : Env) (d : ArmDecl) (fuel : Nat) (v : Val)
+    (hcf : k.childForm = true) (htup : k.tuple = tuple) (hlen : tuple.length = n)
+    (hpre : pre.length = (if observe then 10 else 5))
+    (hreads : rowReads w k (tupleStobjs tuple kids) (pre.headD Val.nil) ((pre.drop 1).headD Val.nil) = .ok reads)
+    (hdecl : a.read = .ok d)
+    (hrun : run w
+      { kind := k, observe := observe, refusal := d.onRefusal,
+        base := (if observe then ["ID", "SLOT", "KIND", "ORDINAL", "EVENT", "OUTCOME", "REASON",
+          "COUNT", "AUX0", "AUX1"] else ["ID", "SLOT", "KIND", "ORDINAL", "BUDGET"]).zip pre }
+      fuel { stobjs := tupleStobjs tuple kids,
+             vars := reads ++ (if observe then ["ID", "SLOT", "KIND", "ORDINAL", "EVENT", "OUTCOME", "REASON",
+               "COUNT", "AUX0", "AUX1"] else ["ID", "SLOT", "KIND", "ORDINAL", "BUDGET"]).zip pre }
+      d.steps = .ok (.done v)) :
+    runArm w k a observe (pre ++ List.ofFn kids) fuel = .ok v := by
+  apply runArm_eq w k a observe pre (List.ofFn kids) reads d fuel v hcf hpre (by simp [htup, hlen])
+  · simpa [htup, tupleStobjs] using hreads
+  · exact hdecl
+  · simpa [htup, tupleStobjs] using hrun
+
+theorem run_cond_true (w : World) (f : Frame) (fuel : Nat) (st : St)
+    (c : Expr) (steps : List Step) (more : List (Expr × List Step)) (rest : List Step)
+    (vc : Val) (hc : ev w f.kind st c = .ok vc) (ht : vc.truthy = true) :
+    run w f (fuel + 1) st (.cond ((c, steps) :: more) :: rest) = run w f fuel st steps := by
+  dsimp only [run, List.findM?]
+  rw [hc, except_ok_bind, except_pure_bind, ht]
+  simp only [except_pure_bind]
+
+theorem codeIn_eq_memberEqual_truthy (code : Val) (codes : List Val) :
+    codeIn code codes = (Native.memberEqual code (Val.ofList codes)).truthy := by
+  induction codes with
+  | nil => rfl
+  | cons a cs ih =>
+    simp only [codeIn, List.contains_cons, Val.ofList, Native.memberEqual]
+    by_cases h : (code == a) = true
+    · simp [h, Val.truthy]
+    · have hf : (code == a) = false := Bool.eq_false_iff.mpr h
+      simp [hf, ← ih, codeIn]
+
+theorem codeIn_singleton_eq_equal_truthy (code k : Val) :
+    codeIn code [k] = (Prim.equal code k).truthy := by
+  simp only [codeIn, List.contains_cons, List.contains_nil, Bool.or_false, Prim.equal]
+  by_cases h : code = k
+  · subst h; simp [Val.ofBool, Val.truthy, Val.t]
+  · simp [beq_eq_false_iff_ne.mpr h, Val.ofBool, Val.truthy, Val.nil]
 
 end Fn2.Arms.Combinators
 

@@ -13,6 +13,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent))
 from emit_certificate import *
 from emit_embed import alist_value
+from served_proof_gen import emit_served_proofs, is_nil
 
 BASE = Path(__file__).resolve().parents[2]
 
@@ -396,6 +397,7 @@ def acl2_sources():
 
 def generate(src):
     src=Path(src); out=BASE/'meta/Fn2/Instances/ServedCertificates';out.mkdir(parents=True,exist_ok=True)
+    for stale in out.glob('*.lean'): stale.unlink()
     export=BASE/'meta/emit/served-export.lisp'
     with src.open(newline='') as stream, export.open('w') as acl2:
         p=header(stream); manifest=fields(p[':MANIFEST'])
@@ -412,10 +414,17 @@ def generate(src):
         acl2.write("(fn2-tv-check-arm-inventory '"+show(inventory)+")\n")
         acl2.write(metadata_checks(p))
         acl2.write("(fn2-tv-check-packed-functions '(\n")
-        functions=[]; names=set(); extra_calls={}
+        functions=[]; names=set(); extra_calls={}; fn_defs={}
         for name,row,d in function_records(stream,int(str(p[':FUNCTION-COUNT']))):
             names.add(name)
-            extra_calls[name] = calls_of(decode(d[':LOGICAL-BODY']), set())
+            lbody = decode(d[':LOGICAL-BODY'])
+            fms = [str(v) for v in as_list(decode(d[':FORMALS']))] if ':FORMALS' in d else []
+            sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
+            sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
+            just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')
+            just = None if is_nil(just_dec) else just_dec
+            fn_defs[name] = (fms, lbody, sout, just)
+            extra_calls[name] = calls_of(lbody, set())
             acl2.write('('+name+' . '+packed_text(row)+')\n')
             functions.append({'name':name,'canonical_export':'proposed',
               'record_sha256':hashlib.sha256(canonical_text(row).encode()).hexdigest()})
@@ -440,6 +449,8 @@ def generate(src):
                 rec.update(proof=str(proof.relative_to(BASE)),reason='generated proof has not passed Lean')
             except (ValueError,KeyError) as e: rec['reason']='terminal certificate: '+str(e)
         roots.append(rec)
+    emit_served_proofs(kinds, inventory, layout, consts, emb[':OPERATIONS'], waits,
+                       commit_words(p), fn_defs, widx, fill_world_bodies, out, roots, BASE)
     if len(set(r['name'] for r in roots))!=len(roots): raise ValueError('duplicate arm root')
     report={'schema':1,'package':str(src.relative_to(BASE)) if src.is_relative_to(BASE) else str(src),
       'package_sha256':digest(src),'functions':functions,'roots':roots,
