@@ -60,6 +60,8 @@ class ShapeControls(unittest.TestCase):
         self.assertEqual(source.count('(hcore : isListB 3 «CORE» = true)'),2)
         self.assertIn('«G_core_shape_3_whole_arg0»',source)
         self.assertIn('disch := first | assumption | decide',source)
+        self.assertIn('«CORE» : Fin 3 → Val',source)
+        self.assertIn('Combinators.tupleImage_kidsOfVal',source)
         self.assertNotIn('sorry',source)
         self.assertNotIn('axiom ',source)
 

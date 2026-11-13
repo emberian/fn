@@ -180,6 +180,20 @@ def emit_shape_candidates(analyzer, destination, widx, fill_world_bodies, target
                *(f'hi_{i}' for i in sorted(indices)),*deps]
         lines.append('  simp (disch := first | assumption | decide) only ['+', '.join(simps)+']')
         lines.append(f'#print axioms {ident(shape_theorem_name(key))}')
+        # Specialize the input shape to a tuple image, so callers can rewrite
+        # reconstruction without unfolding the operation's implementation.
+        ibinders = ' '.join(f'({ident(f)} : '+(f'Fin {n} → Val' if i==arg else 'Val')+')'
+                            for i,f in enumerate(formals))
+        iargs = ' '.join(f'(Combinators.tupleImage {ident(f)})' if i==arg else ident(f)
+                         for i,f in enumerate(formals))
+        iexpr = f'({ident(name)} {iargs})'
+        for i in path:
+            iexpr = f'(Native.nth (.int {i}) {iexpr})'
+        lines += [f'theorem {ident(shape_theorem_name(key)+"_reassembled")} {ibinders} :',
+                  f'    Combinators.tupleImage (Combinators.kidsOfVal {n} {iexpr}) = {iexpr} := by',
+                  f'  exact Combinators.tupleImage_kidsOfVal _ (isListN_of_isListB',
+                  f'    ({ident(shape_theorem_name(key))} {iargs} (isListB_tupleImage _)))']
+
     lines += ['end Fn2.Instances.ServedCertificates.ServedCoreShapes','']
     text=fill_world_bodies(as_module('\n'.join(lines),expose=True,
                           import_all=CORE_STRING_BODIES,bodies='scan'),widx)

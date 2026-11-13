@@ -2284,12 +2284,12 @@ class ArmProofBuilder:
                     hcall = (
                         f"(Combinators.callFn_core_pure_op world coreTuple {lean_str(f)} "
                         f"world.ops[{op_idx}]! {pre_lean} {kv} {v_lean} (by decide) "
-                        f"(by decide +kernel) rfl rfl rfl rfl {fns_thm})"
+                        f"(by decide +kernel) (by decide +kernel) rfl rfl rfl {fns_thm})"
                     )
                 else:
                     hcall = (
                         f"(Combinators.callFn_core_link world coreTuple {lean_str(f)} {lean_str(base_fn)} "
-                        f"{pre_lean} {kv} {v_lean} (by decide) (by decide +kernel) rfl "
+                        f"{pre_lean} {kv} {v_lean} (by decide) (by decide +kernel) (by decide +kernel) "
                         f"rfl (by decide +kernel) {fns_thm})"
                     )
                 prf = (
@@ -3363,6 +3363,7 @@ class ArmProofBuilder:
                 raise UnsupportedArmError(f"subarm {sub_name} not available")
             sub_meta = self.subarm_mod[sub_name]
             self.used_subarms.add(sub_name)
+            self.used_core_ops.update(sub_meta["core_ops"])
             self.modified_idxs.update(sub_meta["modified_idxs"])
             ld, lp, hfl, prw, fl_ctx = self.prove_flush(cur_ctx)
             def_lines.extend("  " + x for x in ld)
@@ -3851,6 +3852,7 @@ def emit_kind_subarms(ki, kinfo, fn_defs, kcommon, tuple_analyzer, out_dir, fill
             "node_names": trans_node_names,
             "depth": root_node["depth"],
             "modified_idxs": set(builder.modified_idxs),
+            "core_ops": set(builder.used_core_ops),
             "fn_name": f"{kn}-SUB-{stag}-CHILDREN" if kinfo["child_form"] else f"{kn}-SUB-{stag}",
         }
         multi_ops.update(builder.used_multi_ops)
@@ -4213,7 +4215,9 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
             acl2_unfolds = ", ".join([ident(name)] + [ident(h) for h in helpers])
             row_rw_list = [f"{kcommon_ns}.row_read_{c.replace('-', '_')} id kids hs" for c, _ in kinfo["columns"] if f"{kn}-ROW-{c}" in fn_defs]
             write_rw_list = [f"{kcommon_ns}.{wthm}" for wthm in kcommon["write_lemmas"].values()]
-            extra_core_rws = []
+            from served_core_shape import shape_theorem_name
+            extra_core_rws = [f"ServedCoreShapes.{ident(shape_theorem_name(k)+'_reassembled')}"
+                              for k in sorted(builder.used_core_ops)]
             if "FN2-CORE-STOP" in fn_defs:
                 extra_core_rws.append(f"{kcommon_ns}.core_stop_eq")
             if "FN2-CORE-KIND-STOP" in fn_defs:
@@ -4316,6 +4320,7 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
 
 
 VALIDATED_GENERATED_ROOTS = frozenset({
+    "FN2-UPLOAD-RUN-SEALED",
     "FN2-BOOT-ON-FENCE-RESULT",
     "FN2-BOOT-ON-READ-RESULT",
     "FN2-BOOT-ON-WRITE-RESULT",
