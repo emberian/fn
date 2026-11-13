@@ -1,6 +1,8 @@
 """Mutation controls for the promoted host's static crash-coordinate audit."""
 from pathlib import Path
 import shutil
+import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -31,7 +33,8 @@ class ServedNativeProgramTests(unittest.TestCase):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
         self.assertEqual(report['cuts'], 14)
-        self.assertEqual(report['correspondence_status'], 'unproved')
+        self.assertEqual(report['cut_mapping_status'], 'incomplete')
+        self.assertEqual(report['host_refinement'], 'not_checked')
 
     def test_tls_short_write_must_retain_offset(self):
         self.change('host/tls.lisp', '(incf (fn2-native-tls-output-offset tls) n)',
@@ -111,6 +114,14 @@ class ServedNativeProgramTests(unittest.TestCase):
                     '(fn2-n-complete host (fn2-device-job-slot job) code count 0 nil',
                     '(fn2-n-complete host (fn2-device-job-slot job) :ok 0 0 nil')
         self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_cli_cannot_count_source_audit_as_complete_cut_mapping(self):
+        command = [sys.executable, str(ROOT / 'tools/native_program_check.py'), '--json']
+        full = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        self.assertEqual(full.returncode, 1, full.stdout + full.stderr)
+        self.assertTrue(json.loads(full.stdout)['audit_ok'])
+        source = subprocess.run(command + ['--source-only'], capture_output=True, text=True, timeout=30)
+        self.assertEqual(source.returncode, 0, source.stdout + source.stderr)
 
 
 if __name__ == '__main__':
