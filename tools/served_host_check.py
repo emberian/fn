@@ -112,6 +112,53 @@ def selected(items):
     return out
 
 
+def expression_calls(form):
+    """Calls in expression positions, excluding binding and declaration syntax."""
+    if not isinstance(form, list) or not form:
+        return
+    h = ledger.head(form)
+    if h in ('quote', 'declare', 'defstruct', 'define-condition',
+             'sb-alien:define-alien-routine', 'in-package'):
+        return
+    if h in ('defun', 'defmacro'):
+        children = form[3:]
+    elif h == 'lambda':
+        children = form[2:]
+    elif h in ('defvar', 'defparameter', 'defconstant'):
+        children = form[2:3]
+    elif h in ('let', 'let*'):
+        children = [value for binding in form[1] if isinstance(binding, list)
+                    for value in binding[1:]] + form[2:]
+    elif h == 'multiple-value-bind':
+        children = form[2:]
+    elif h in ('dolist', 'dotimes'):
+        children = form[1][1:] + form[2:]
+    elif h in ('flet', 'labels', 'macrolet'):
+        children = [body for definition in form[1] for body in definition[2:]] + form[2:]
+    elif h == 'cond':
+        children = [part for clause in form[1:] for part in clause]
+    elif h in ('case', 'ecase', 'typecase', 'etypecase'):
+        children = form[1:2] + [part for clause in form[2:] for part in clause[1:]]
+    else:
+        if h:
+            name = h.removeprefix('acl2::').removeprefix('acl2:')
+            if name.startswith(('fn2-', '%fn2-')):
+                yield name
+        if h == 'function' and len(form) == 2 and isinstance(form[1], ledger.Sym):
+            name = str(form[1]).removeprefix('acl2::').removeprefix('acl2:')
+            if name.startswith(('fn2-', '%fn2-')):
+                yield name
+        if h in ('funcall', 'apply') and len(form) > 1:
+            target = form[1]
+            if ledger.head(target) == 'quote' and len(target) == 2:
+                name = str(target[1]).removeprefix('acl2::').removeprefix('acl2:')
+                if name.startswith(('fn2-', '%fn2-')):
+                    yield name
+        children = form[1:] if h else form
+    for child in children:
+        yield from expression_calls(child)
+
+
 def entry_names(root, order):
     """Direct fn2 calls and raw definitions; no broad name-prefix exemptions."""
     calls, helpers, structures = set(), set(), set()
@@ -120,6 +167,11 @@ def entry_names(root, order):
             h = ledger.head(form)
             if h in ('defun', 'defmacro'):
                 helpers.add(str(form[1]))
+            if h == 'define-condition':
+                for slot in form[3]:
+                    for index, option in enumerate(slot[:-1]):
+                        if str(option) in (':reader', ':writer', ':accessor'):
+                            helpers.add(str(slot[index + 1]))
             if h == 'sb-alien:define-alien-routine':
                 spec = form[1]
                 if isinstance(spec, list) and len(spec) == 2:
@@ -135,10 +187,8 @@ def entry_names(root, order):
                     key = str(slot[0] if isinstance(slot, list) else slot)
                     helpers.add(struct + '-' + key)
                 continue
-            for call in walk(form):
-                target = ledger.head(call)
-                if target and target.startswith(('fn2-', '%fn2-')):
-                    calls.add(target)
+        for form in selected(forms(root / name)):
+            calls.update(expression_calls(form))
     return sorted(calls - structures), sorted(helpers)
 
 
