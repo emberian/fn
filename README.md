@@ -8,7 +8,7 @@ Every protocol, framing, storage, accounting, and authorization decision is owne
 
 ## 1. Assurance Posture
 
-- **ACL2 owns every decision (`books/`, 200 books, ~85 KLOC):** Wire framing, non-Lisp-reader protocol parsing, capability/generation pool slices, fair calendar scheduling, BLAKE3-authenticated epoch-fenced journal commits, LSM ordered-run indexing and bounded compaction, durable principals and grants, and exact wire reply bytes are computed exclusively inside ACL2. Neither the Common Lisp host nor the Python CLI recomputes or overrides values decided by `fn2-core`.
+- **ACL2 owns every decision (`books/`, 201 books, ~91 KLOC):** Wire framing, non-Lisp-reader protocol parsing, capability/generation pool slices, fair calendar scheduling, BLAKE3-authenticated epoch-fenced journal commits, LSM ordered-run indexing and bounded compaction, durable principals and grants, and exact wire reply bytes are computed exclusively inside ACL2. Neither the Common Lisp host nor the Python CLI recomputes or overrides values decided by `fn2-core`.
 - **Zero axiomatic shortcuts:** The book closure contains **zero `skip-proofs`**, **zero `defaxiom`**, **zero trust tags (`defttag`)**, and **zero `:program`-mode runtime functions**. External assumptions (such as cryptographic collision resistance) are isolated as `encapsulate` specifications with explicit local witnesses.
 - **Obligations with teeth (`books/owed.lisp`, [`docs/OWED.md`](docs/OWED.md)):** Top-level claims are registered in the guarded world table `fn2-squares` via `defthm-owed` and discharged via `fn2-owed-discharge`. Every obligation requires executable **positive witnesses** (ruling out vacuous antecedents) and **negative / hypothesis-removal teeth** (`fn2-assert-owed-teeth`) demonstrating that weakening a hypothesis or mutating a shared handler falsifies the conclusion. Unproved keystones remain explicitly `:owed` in [`docs/OWED.md`](docs/OWED.md) rather than weakened or elided.
 
@@ -92,9 +92,9 @@ Each state machine declares its phases, row fields, resource holdings (`:holds`)
 
 ---
 
-## 4. What Role Lean 4 Serves (`meta/` — ~17.2 KLOC Handwritten + ~414 KLOC Emitted, Zero `sorryAx`)
+## 4. What Role Lean 4 Serves (`meta/` — ~18.8 KLOC Handwritten + ~413 KLOC Emitted, Zero `sorryAx`)
 
-Rather than translating ACL2 theorems into Lean as unchecked `axiom` declarations (contrast [`docs/design/LEAN-ACL2-SURVEY-20261112.md`](docs/design/LEAN-ACL2-SURVEY-20261112.md)), `meta/` consists of **~17.2 KLOC of handwritten Lean 4** (40 files covering the metatheory, deep ACL2 evaluator, and `Fn2.Arms` operational semantics and combinators) paired with **~414 KLOC of mechanically emitted Lean 4** (326 files in `meta/Fn2/Instances/` and `Fn2/Arms/CoreValidation.lean` generated from the live certified ACL2 world by `meta/emit/`). Every theorem is checked under `meta/AxiomCensus.lean` to depend only on Lean's standard logical foundation (`propext`, `Quot.sound`, `Classical.choice`), with **zero custom axioms and zero `sorryAx`** across 360+ `#print axioms` checks.
+Rather than translating ACL2 theorems into Lean as unchecked `axiom` declarations (contrast [`docs/design/LEAN-ACL2-SURVEY-20261112.md`](docs/design/LEAN-ACL2-SURVEY-20261112.md)), `meta/` consists of **~18.8 KLOC of handwritten Lean 4** (43 files covering the metatheory, deep ACL2 evaluator, and `Fn2.Arms` operational semantics and combinators) paired with **~413 KLOC of mechanically emitted Lean 4** (322 files in `meta/Fn2/Instances/` plus `Fn2/Arms/CoreValidation.lean`, generated from the live certified ACL2 world by `meta/emit/`). Every theorem is checked under `meta/AxiomCensus.lean` to depend only on Lean's standard logical foundation (`propext`, `Quot.sound`, `Classical.choice`), with **zero custom axioms and zero `sorryAx`** across 802 `#print axioms` checks in the Lean tree.
 
 Lean 4 serves three specific roles alongside ACL2:
 
@@ -160,7 +160,7 @@ After certifying `books/node-profile.lisp`:
 ./fn article ops.alerts 1 --port 1119
 ```
 
-Every subcommand supports `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserves outcome classes at the process exit boundary:
+The `principal`, `grant`, `stream`, `groups`, `post`, and `article` client commands support `--json` (plus `$FN_CONTROL_SOCK`, `$FN_PORT`, `$FN_HOST` environment defaults) and preserve outcome classes at the process exit boundary:
 - `0` — `accepted`
 - `1` — `refused` (protocol, grammar, CAS head, or authorization refusal decided by ACL2)
 - `2` — local CLI usage, transport connect, or startup bind refusal
