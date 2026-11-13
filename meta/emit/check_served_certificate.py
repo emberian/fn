@@ -654,15 +654,20 @@ def main():
     if args.only:
         if not args.lean:
             raise ValueError('--only requires --lean')
-        lean_gates(report, args.lib.resolve(), args.timeout, args.j, batch_size=args.batch_size, only=args.only)
         matched = [r for i, r in enumerate(report['roots'])
                    if args.only in r['name'] or args.only == f'Root{i}' or args.only == r.get('kind', '')]
-        passed = sum('lean_gate' in r for r in matched)
+        if not matched:
+            print(f'FILTERED LEAN PROBE ({args.only}): no matching roots')
+            return 1
+        lean_gates(report, args.lib.resolve(), args.timeout, args.j, batch_size=args.batch_size, only=args.only)
+        candidates = [r for r in matched if 'proof' in r]
+        passed = sum('lean_gate' in r for r in candidates)
+        print(f'  {len(candidates)} proof candidates; {len(matched)-len(candidates)} roots without generated proofs')
         print(f'FILTERED LEAN PROBE ({args.only}): {passed}/{len(matched)} roots passed Lean census (report NOT modified)')
         for r in matched:
             if 'lean_gate' not in r and 'proof' in r:
                 print('  FAIL', r['name'], r.get('reason', ''))
-        return
+        return 0 if candidates and passed == len(candidates) else 1
     if args.acl2:
         acl2_gate(report, args.acl2)
     if args.lean:
@@ -678,4 +683,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
