@@ -45,12 +45,14 @@
        (defun fn2-exec-run-services (service fn2-core)
          (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
          (cond ,@(fn2-service-dispatch-arms rows)
-               (t (mv 0 (fn2-exec-clear-service service fn2-core)))))))))
+               (t (let ((fn2-core (fn2-exec-clear-service service fn2-core))) (mv 0 fn2-core)))))))))
 (fn2-core-preserves fn2-exec-run-services (service fn2-core) :position 1 :rows nil :prefix "")
 (defthm fn2-exec-run-services-work-natp
   (natp (mv-nth 0 (fn2-exec-run-services service fn2-core)))
-  :rule-classes :type-prescription)
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-exec-run-services))))
 (defthm fn2-exec-run-services-work-bound
   (<= (mv-nth 0 (fn2-exec-run-services service fn2-core)) *fn2-services-work-max*)
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn2-exec-run-services))))
 (in-theory (disable fn2-exec-run-services fn2-exec-services-ready-p))
