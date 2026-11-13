@@ -470,10 +470,10 @@
  '(("ARTICLE <a@b> extra" "501 syntax error")
    ("GROUP local.empty" "211 0 1 0 local.empty")
    ("ARTICLE <a@b> extra" "501 syntax error")
-   ("XFN-ZARTICLE <a@b> 0000000000000000000000000000000000000000000000000000000000000000" "503 archive projection unavailable")
+   ("XFN-ZARTICLE <a@b> 0000000000000000000000000000000000000000000000000000000000000000" "430 no article with that message-id")
    ("TAKETHIS <t@x>" "502 transit is not permitted on this connection")
    ("POST" "440 posting not permitted")
-   ("XPAT subject 1- *x*" "503 archive projection unavailable")
+   ("XPAT subject 1- *x*" "221 header follows")
    ("GROUP local.empty" "211 0 1 0 local.empty")
    ("BODY" "420 no current article")
    ("DATE x" "501 syntax error")
@@ -511,6 +511,9 @@
    (or (and (equal (len replies) (len lines))
             (equal (fn2-rdu-statuses (butlast replies 1))
                    (fn2-rdu-crlf-each (strip-cadrs *fn2-rdu-nightly-3326*)))
+            ;; XPAT is implemented: the selected empty group has no matches,
+            ;; but must still emit the complete multiline terminator.
+            (equal (nth 6 replies) (fn2-cw-crlf-octets '("221 header follows" ".")))
             (equal (car (last replies)) (fn2-rdu-head-c)))
        (cw "nightly replay ~x0~%" r))))
 (assert-event (fn2-rdu-nightly-replay))
