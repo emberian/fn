@@ -17,6 +17,9 @@
 ; machines, pool, scheduler, ...) is the stopped core's.
 ; FN2-ENV-STEPS-TAKES-FROZEN-AFTER-STOP: for every run whose prefix stopped
 ; the core, the suffix adds no take to the device log.
+; FN2-ENV-INV-PRESERVED-AFTER-STOP: because FN2-ENV-STOPPED-FRAME-P fixes
+; FN2-ENV-ROWS, every step and every suffix from a stopped core preserves
+; FN2-ENV-INV over the run's chronological log (reverse rlog).
 ;
 ; What the statement does not say: operations the device took before the
 ; stop may still land (a write reaches the medium, a send reaches its peer);
@@ -205,3 +208,95 @@
            (equal (fn2-env-takes (mv-nth 0 (fn2-env-steps (append pre post) ids rlog acked c)))
                   (fn2-env-takes (mv-nth 0 (fn2-env-steps pre ids rlog acked c)))))
   :hints (("Goal" :in-theory '(fn2-env-steps-of-append fn2-env-steps-when-stopped))))
+
+;; ---------------------------------------------------------------------------
+;; Durability invariant across the stop boundary: a stopped core leaves
+;; FN2-ENV-ROWS unchanged (only ops, control and extents may change), so every
+;; step and every suffix after a stop preserves FN2-ENV-INV over the run's
+;; chronological log (reverse rlog).
+(defthm fn2-env-rows-of-stopped-frame
+  (implies (fn2-env-stopped-frame-p c0 c)
+           (equal (fn2-env-rows ids c) (fn2-env-rows ids c0)))
+  :hints (("Goal" :induct (fn2-env-rows ids c)
+           :in-theory (enable fn2-env-stopped-frame-p fn2-env-rows
+                              fn2-machine-cb-acks fn2-machine-cb-acks-read-code
+                              fn2-machine-batch-no fn2-machine-batch-no-read-code
+                              fn2-commit-table fn2-machine-idp fn2-machine-kind fn2-machine-slot
+                              fn2-machine-kind-read-code fn2-machine-slot-read-code))))
+
+(local
+ (defthm fn2-sb-append-nil
+   (implies (true-listp x) (equal (append x nil) x))))
+
+(local
+ (defthm fn2-sb-append-revappend
+   (equal (append (revappend x acc) z)
+          (revappend x (append acc z)))
+   :hints (("Goal" :induct (revappend x acc)
+            :in-theory (enable revappend binary-append)))))
+
+(local
+ (defthm fn2-sb-reverse-cons
+   (implies (true-listp rlog)
+            (equal (reverse (cons entry rlog))
+                   (append (reverse rlog) (list entry))))
+   :hints (("Goal" :in-theory (enable reverse revappend binary-append true-listp stringp)))))
+
+(local
+ (defthm fn2-sb-true-listp-revappend
+   (implies (true-listp acc) (true-listp (revappend x acc)))
+   :hints (("Goal" :induct (revappend x acc)
+            :in-theory (enable revappend true-listp)))))
+
+(local
+ (defthm fn2-sb-true-listp-reverse
+   (implies (true-listp rlog) (true-listp (reverse rlog)))
+   :hints (("Goal" :in-theory (enable reverse true-listp stringp)))))
+
+(defthm fn2-env-inv-step-when-stopped
+  (implies (and (equal (fn2-exec-stop c) 1)
+                (true-listp rlog)
+                (fn2-env-inv ids acked (reverse rlog) c))
+           (mv-let (entry after) (fn2-env-step action recoveryp image rlog c)
+             (fn2-env-inv ids (fn2-env-observe ids acked after)
+                          (reverse (if entry (cons entry rlog) rlog)) after)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn2-env-step-frame-when-stopped (c0 c))
+                 (:instance fn2-env-rows-of-stopped-frame
+                            (c0 c) (c (mv-nth 1 (fn2-env-step action recoveryp image rlog c))))
+                 (:instance fn2-env-inv-frame-step
+                            (log (reverse rlog)) (core c)
+                            (core2 (mv-nth 1 (fn2-env-step action recoveryp image rlog c)))
+                            (more (mv-let (entry after) (fn2-env-step action recoveryp image rlog c)
+                                    (declare (ignore after))
+                                    (if entry (list entry) nil)))))
+           :in-theory '(fn2-env-stopped-frame-p-reflexive fn2-sb-reverse-cons
+                        fn2-sb-append-nil fn2-sb-true-listp-reverse
+                        true-listp car-cons cdr-cons (:e true-listp)))))
+
+(defthm fn2-env-inv-steps-when-stopped
+  (implies (and (equal (fn2-exec-stop c) 1)
+                (true-listp rlog)
+                (fn2-env-inv ids acked (reverse rlog) c))
+           (mv-let (rlog2 acked2 c2) (fn2-env-steps actions ids rlog acked c)
+             (fn2-env-inv ids acked2 (reverse rlog2) c2)))
+  :hints (("Goal" :induct (fn2-env-steps actions ids rlog acked c)
+           :in-theory '(fn2-env-steps fn2-env-step-stop-sticky fn2-env-inv-step-when-stopped
+                        fn2-sb-mv-nth-of-cons true-listp car-cons cdr-cons atom (:e zp)))))
+
+(defthm fn2-env-inv-preserved-after-stop
+  (implies (and (true-listp rlog)
+                (mv-let (rlog1 acked1 c1) (fn2-env-steps pre ids rlog acked c)
+                  (and (equal (fn2-exec-stop c1) 1)
+                       (fn2-env-inv ids acked1 (reverse rlog1) c1))))
+           (mv-let (rlog2 acked2 c2) (fn2-env-steps (append pre post) ids rlog acked c)
+             (fn2-env-inv ids acked2 (reverse rlog2) c2)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn2-env-steps-rlog-true-listp (actions pre) (fn2-core c))
+                 (:instance fn2-env-inv-steps-when-stopped
+                            (actions post)
+                            (rlog (mv-let (rlog1 acked1 c1) (fn2-env-steps pre ids rlog acked c)
+                                    (declare (ignore acked1 c1)) rlog1))
+                            (acked (mv-nth 1 (fn2-env-steps pre ids rlog acked c)))
+                            (c (mv-nth 2 (fn2-env-steps pre ids rlog acked c)))))
+           :in-theory '(fn2-env-steps-of-append))))
