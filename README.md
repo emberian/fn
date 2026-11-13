@@ -2,6 +2,9 @@
 
 `fn` is an ACL2-verified persistent event log, NNTP server, and durable stream engine paired with a Lean 4 metatheory and two-kernel translation-validation bridge.
 
+Current integration evidence and unfinished implementation/proof work are tracked in
+[`docs/design/FINISH-20261113.md`](docs/design/FINISH-20261113.md).
+
 Every protocol, framing, storage, accounting, and authorization decision is owned by guard-verified `:logic`-mode ACL2 functions operating over a single-threaded nested stobj (`fn2-core`). A minimal SBCL + C host adapter (`host/`, ~1.9 KLOC) performs only non-blocking socket and file I/O (`epoll`/`kqueue`, `pread`/`pwrite`, `fsync`/`F_FULLFSYNC`, Unix peer credentials, and BLAKE3 FFI) and feeds bounded completion batches into `fn2-turn`.
 
 ---
