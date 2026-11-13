@@ -6,11 +6,17 @@
 ; private to this cut program: physical I/O finished, terminal post not sent.
 ; FN2-SIM-FIND-WRITE selects only active 1, so a crash cannot replay this write.
 
-(defun fn2-sim-native-storagep (slot fn2-sim)
+(defun fn2-sim-native-flightp (slot fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
   (and (natp slot) (< slot (fn2-sim-rows fn2-sim))
        (= (fn2-sim-active slot fn2-sim) 1)
        (= (fn2-sim-cancelled slot fn2-sim) 0)
+       (fn2-action-completionp (fn2-sim-kind slot fn2-sim))
+       (not (equal (fn2-sim-kind slot fn2-sim) *fn2-action-cancel*))))
+
+(defun fn2-sim-native-storagep (slot fn2-sim)
+  (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
+  (and (fn2-sim-native-flightp slot fn2-sim)
        (member-equal (fn2-sim-kind slot fn2-sim)
                      (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*))))
 
@@ -20,7 +26,15 @@
     (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-dead*
           *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-bitrot*
           *fn2-fault-misread* *fn2-fault-miswrite* *fn2-fault-lying-flush*
-          *fn2-fault-tear* *fn2-fault-fail-slow*)))
+          *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-fragment*
+          *fn2-fault-short-send* *fn2-fault-reset* *fn2-fault-half-open* *fn2-fault-nonreading*)))
+
+(defthm fn2-sim-native-fault-not-injected
+  (implies (fn2-sim-native-faultp fault)
+           (not (member-equal fault
+                  (list *fn2-fault-stale* *fn2-fault-forged*
+                        *fn2-fault-overcount* *fn2-fault-malformed*)))))
+(in-theory (disable fn2-sim-native-faultp))
 
 ; Packet fields: slot, generation, kind, event, length, raw code, raw count,
 ; raw auxiliary result, schedule word, the original completion time, and the physical fault.

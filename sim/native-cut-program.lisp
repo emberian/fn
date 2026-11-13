@@ -1,6 +1,8 @@
-; Explicit storage microsteps for native death cuts.  The seeded simulator's
+; Explicit physical microsteps for native death cuts.  The seeded simulator's
 ; atomic completion schedule is unchanged.  This driver exposes the interval
 ; after physical I/O and before its terminal post, retaining the raw result.
+; Completion uses the native release=nil subset. Atomic-equivalence below is
+; deliberately stated for storage; generic send early-release remains separate.
 (in-package "ACL2")
 (include-book "sim")
 
@@ -34,7 +36,7 @@
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
                   :guard (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim)
                               (fn2-own-wfp fn2-own) (unsigned-byte-p 32 word))))
-  (if (not (and (fn2-sim-native-storagep slot fn2-sim) (fn2-sim-native-faultp fault)))
+  (if (not (and (fn2-sim-native-flightp slot fn2-sim) (fn2-sim-native-faultp fault)))
       (mv :unsupported nil fn2-core fn2-sim fn2-own)
     (b* ((gen (fn2-sim-gen slot fn2-sim)) (kind (fn2-sim-kind slot fn2-sim))
          (event (fn2-terminal-event kind)) (len (fn2-sim-range-len slot fn2-sim))
@@ -53,7 +55,7 @@
              (fn2-sim 3 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
              (fn2-own 4 :prefix "-OWN")))
 (verify-guards fn2-sim-native-stage
-  :hints (("Goal" :in-theory (enable fn2-sim-native-storagep))))
+  :hints (("Goal" :in-theory (enable fn2-sim-native-flightp))))
 
 (defun fn2-sim-native-post (packet fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil
@@ -114,7 +116,7 @@
            (equal (fn2-sim-native-cut :finish slot fault word fn2-core fn2-sim fn2-own)
                   (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post fn2-sim-native-packetp fn2-sim-native-storagep fn2-sim-native-faultp fn2-sim-complete fn2-sim-inject)
+           :in-theory (e/d (fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post fn2-sim-native-packetp fn2-sim-native-storagep fn2-sim-native-flightp fn2-sim-complete fn2-sim-inject)
                             (fn2-sim-physical fn2-sim-complete-result fn2-sim-crash)))))
 
 ; The native "take" cut is before acknowledgement: the copied descriptor is
