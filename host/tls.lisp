@@ -28,15 +28,16 @@
  (length sb-alien:unsigned-long) (count (* sb-alien:unsigned-long)))
 
 (defstruct fn2-native-tls
- handle input output (output-offset 0) (output-length 0)
+ handle input output seed (seed-length 0) (seed-offset 0) (output-offset 0) (output-length 0)
  ;; The external library's requested readiness; KICK schedules a bounded
  ;; first call or a call that can consume already-buffered transport data.
  (interest 1) (kick t))
 
-(defun fn2-native-tls-open (config capacity quantum)
+(defun fn2-native-tls-open (config capacity quantum seed-capacity)
  (let ((handle (fn2-tls-%new config capacity)))
   (unless (zerop (sb-sys:sap-int handle))
    (make-fn2-native-tls :handle handle
+     :seed (make-array seed-capacity :element-type '(unsigned-byte 8) :initial-element 0)
      :input (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)
      :output (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)))))
 (defun fn2-native-tls-close (tls)

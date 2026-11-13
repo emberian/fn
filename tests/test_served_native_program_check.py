@@ -36,6 +36,11 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
+    def test_tls_staging_copy_must_advance_exact_count(self):
+        self.change('host/adapter.lisp', '(incf (fn2-nop-tls-seed-offset op) n)',
+                    '(incf (fn2-nop-tls-seed-offset op) (fn2-nop-len op))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_tls_short_write_must_retain_offset(self):
         self.change('host/tls.lisp', '(incf (fn2-native-tls-output-offset tls) n)',
                     '(setf (fn2-native-tls-output-offset tls) 0)')

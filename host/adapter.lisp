@@ -31,7 +31,7 @@
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
-  tls-config (tls-window 0) (tls-quantum 0)
+  tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0)
   ;; Memory device for existing seeded sessions. An image session uses
   ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
   (device (make-hash-table))
@@ -155,7 +155,7 @@
     (return-from fn2-n-tls-ready nil))
    (fn2-n-boundary host "tls-start")
    (setf (fn2-ncap-tls cap)
-         (fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host)))
+         (fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host)))
    (unless (fn2-ncap-tls cap)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil)))
@@ -165,18 +165,33 @@
    (when (eq (fn2-native-tls-flush tls fd host) :failed)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil))
-   ;; Retain the outgoing RX loan until every pipelined byte is in the BIO,
-   ;; including application records following the final handshake record.
+   ;; Copy only this descriptor's validated span, one quantum per turn. The
+   ;; ACL2 profile reserves a class-zero RX-sized transport buffer per live
+   ;; connection. Its lifetime extends past handshake-token reclamation.
    (when (and handshake (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op)))
-      (let ((n (min (- (fn2-nop-len op) (fn2-nop-tls-seed-offset op))
-                    (fn2-nhost-tls-quantum host) (fn2-tls-%input-room handle))))
-       (when (plusp n)
-        (sb-sys:with-pinned-objects (bytes)
-         (let ((fed (fn2-tls-%feed handle
-                       (fn2-n-sap host (+ (fn2-nop-address op) (fn2-nop-tls-seed-offset op))) n)))
-          (unless (= fed n) (error "fn2 TLS: retained-input BIO capacity contract failed"))
-          (setf fed-seed t)
-          (incf (fn2-nop-tls-seed-offset op) fed))))))
+    (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-nop-tls-seed-offset op))
+           (n (min (- (fn2-nop-len op) off) (fn2-nhost-tls-quantum host))))
+     (assert (<= (fn2-nop-len op) (length seed)))
+     (replace seed bytes :start1 off :end1 (+ off n)
+              :start2 (+ (fn2-nop-address op) off) :end2 (+ (fn2-nop-address op) off n))
+     (incf (fn2-nop-tls-seed-offset op) n)
+     (setf (fn2-native-tls-seed-length tls) (fn2-nop-tls-seed-offset op))
+     (when (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op))
+      (setf (fn2-native-tls-kick tls) t)
+      (return-from fn2-n-tls-ready nil))))
+   ;; Feed staging before reading the socket, even after handshake completion.
+   ;; A suffix containing encrypted application records belongs to the next
+   ;; Receive; it no longer borrows the connection's mutable RX range.
+   (when (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
+    (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-native-tls-seed-offset tls))
+           (n (min (- (fn2-native-tls-seed-length tls) off)
+                   (fn2-nhost-tls-quantum host) (fn2-tls-%input-room handle))))
+     (when (plusp n)
+      (sb-sys:with-pinned-objects (seed)
+       (let ((fed (fn2-tls-%feed handle (sb-sys:sap+ (sb-sys:vector-sap seed) off) n)))
+        (unless (= fed n) (error "fn2 TLS: staged-input BIO capacity contract failed"))
+        (setf fed-seed t)
+        (incf (fn2-native-tls-seed-offset tls) fed))))))
    (unless (fn2-nop-tls-finished op)
     (if handshake (fn2-n-boundary host "tls-handshake") (fn2-n-boundary host "tls-record"))
     (multiple-value-bind (code count)
@@ -193,7 +208,7 @@
        ;; discard an application record already held by OpenSSL.
        (when (= code 1)
         (if fed-seed (setf (fn2-native-tls-kick tls) t)
-          (when (or (not handshake) (= (fn2-nop-tls-seed-offset op) (fn2-nop-len op)))
+          (when (= (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
            (case (fn2-native-tls-fill tls fd host)
             (:progress (setf (fn2-native-tls-kick tls) t))
             (:failed (fn2-n-complete host slot :failed 0)
@@ -214,7 +229,7 @@
           (when (not (fn2-native-tls-output-empty-p tls))
            (setf (fn2-native-tls-interest tls) (logior (fn2-native-tls-interest tls) 4)))
           ;; Retained bytes can progress without a new kernel readability edge.
-          (when (and handshake (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op))
+          (when (and (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
                      (plusp (fn2-tls-%input-room handle)))
            (setf (fn2-native-tls-kick tls) t)))))))
 
@@ -646,7 +661,7 @@ the image launcher always opens its persisted device instead."
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
         (handler-case
           (progn
-        (multiple-value-bind (code certificate key window quantum minimum) (fn2-host-tls-settings profile)
+        (multiple-value-bind (code certificate key window quantum minimum seed-capacity) (fn2-host-tls-settings profile)
           (case code
             (:off nil)
             (:ok
@@ -656,7 +671,8 @@ the image launcher always opens its persisted device instead."
              (let ((config (fn2-tls-%config certificate key minimum)))
                (when (zerop (sb-sys:sap-int config)) (error "fn2 native: TLS configuration refused"))
                (setf (fn2-nhost-tls-config host) config
-                     (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum)))
+                     (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
+                     (fn2-nhost-tls-seed-capacity host) seed-capacity)))
             (otherwise (error "fn2 native: TLS profile refused"))))
         (unless device-path (fn2-n-device-put host memory-store))
         (when device-path
