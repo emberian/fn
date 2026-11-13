@@ -183,7 +183,7 @@
    (or (and (<= (length prefix) (length name))
             (equal (subseq name 0 (length prefix)) prefix))
        (fn2-product-reserved-formals (cdr formals))))))
-(defun fn2-product-events (fn child world)
+(defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (let* ((body (getpropc fn 'unnormalized-body nil world))
         (formals (getpropc fn 'formals nil world))
@@ -225,8 +225,11 @@
        (defthm ,(fn2-columns-sym child "-REFINES-CORE")
         (equal (,face ,@formals) (,fn ,@formals))
         :hints (("Goal" :in-theory (enable ,face ,child ,fn))))
+       ,@(fn2-lower-obligation-events fn child face formals
+           `(equal (,face ,@formals) (,fn ,@formals))
+           (fn2-columns-sym child "-REFINES-CORE") teeth)
        (in-theory (disable ,face ,child))
        (table fn2-core-lowered ',fn
-        '(:child ,child :face ,face :refinement ,(fn2-columns-sym child "-REFINES-CORE") :children ,children))))))))
-(defmacro defcore-product-child (fn child)
- `(make-event (value (fn2-product-events ',fn ',child (w state)))))
+        '(:child ,child :face ,face :refinement ,(fn2-columns-sym child "-REFINES-CORE") :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE")))))))))
+(defmacro defcore-product-child (fn child &key teeth)
+ `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))

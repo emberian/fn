@@ -3,6 +3,7 @@
 ; operation registration precedes guard verification and full-result equality.
 (in-package "ACL2")
 (include-book "machine-arms")
+(include-book "owed")
 
 (defun fn2-lower-projections (entries)
   (declare (xargs :verify-guards nil))
@@ -128,7 +129,30 @@
       `(let ((fn2-lower-result ,body)) (mv ,@(fn2-lower-result-parts count 0)))
     body))
 
-(defun fn2-lower-readonly-events (fn child world)
+; Refinement is compiler evidence, not an independent behavioural contract.
+; Keep its proof and evaluating teeth in the promoted obligation store.
+(defun fn2-lower-obligation-events (fn child concrete vars formula theorem teeth)
+ (declare (xargs :verify-guards nil) (ignore child))
+ (let ((teeth (or teeth (list (fn2-columns-sym theorem "-POSITIVE")
+                             (fn2-columns-sym theorem "-NEGATIVE")))))
+  `((defthm-owed ,theorem ,vars ,formula
+      :schema :g1 :claim :compiler :shared ((:function ,fn))
+      :sides (:concrete ,concrete :reference ,fn)
+      :boundary :core-child-extraction :teeth ,teeth
+      :doc "The generated child boundary preserves the original operation's complete result and effects.")
+    (make-event
+      (value (list 'table 'fn2-squares (list 'quote ',theorem)
+                   (list 'quote (fn2-decl-set :proof '(:proved ,theorem)
+                                  (fn2-decl-row '(:square ,theorem) (w state))))))))))
+(defun fn2-lower-obligations (functions world)
+ (declare (xargs :verify-guards nil))
+ (if (atom functions) nil
+  (let ((row (cdr (assoc-eq (car functions) (table-alist 'fn2-core-lowered world)))))
+   (cons (fn2-decl-get :obligation row) (fn2-lower-obligations (cdr functions) world)))))
+(defmacro fn2-check-lowering-teeth (&rest functions)
+ `(make-event (value (cons 'fn2-assert-owed-teeth (fn2-lower-obligations ',functions (w state))))))
+
+(defun fn2-lower-readonly-events (fn child teeth world)
   (declare (xargs :verify-guards nil))
   (mv-let (expansion-problem body opened)
     (fn2-lower-expand (getpropc fn 'unnormalized-body nil world)
@@ -173,9 +197,12 @@
          (defthm ,(fn2-columns-sym child "-REFINES-CORE")
            (equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
            :hints (("Goal" :in-theory (enable ,fn ,child ,@opened))))
+         ,@(fn2-lower-obligation-events fn child child formals
+             `(equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
+             (fn2-columns-sym child "-REFINES-CORE") teeth)
          (in-theory (disable ,child))
          (table fn2-core-lowered ',fn
                 '(:child ,child :refinement ,(fn2-columns-sym child "-REFINES-CORE")
-                  :children ,children)))))))
-(defmacro defcore-readonly-child (fn child)
-  `(make-event (value (fn2-lower-readonly-events ',fn ',child (w state)))))
+                  :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))
+(defmacro defcore-readonly-child (fn child &key teeth)
+  `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))
