@@ -9,9 +9,23 @@
 ;; A child operation can read a registered machine without a :link to it.
 ;; Its table is a machine registry entry, not a defcorechild entry.
 (defun fn2-arms-t-machine-peek (fn2-arms-probe)
-  (declare (xargs :stobjs fn2-arms-probe :guard t))
-  (declare (ignore fn2-arms-probe))
-  :ok)
+  (declare (xargs :stobjs fn2-arms-probe :guard (fn2-arms-probe-wfp fn2-arms-probe)))
+  (mv :ok (if (< 0 (fn2-arms-probe-rows fn2-arms-probe))
+              (nfix (fn2-arms-probe-count 0 fn2-arms-probe)) 0)))
+(defthm fn2-arms-t-machine-peek-value-natp
+ (natp (mv-nth 1 (fn2-arms-t-machine-peek fn2-arms-probe)))
+ :rule-classes :type-prescription)
+(in-theory (disable fn2-arms-t-machine-peek))
+(defun fn2-arms-t-machine-peek-witness ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-arms-probe
+  (mv-let (result fn2-arms-probe)
+   (let* ((fn2-arms-probe (fn2-arms-probe-prepare 1 0 1 fn2-arms-probe))
+          (fn2-arms-probe (fn2-arms-probe-put 0 (count 37))))
+     (mv-let (code value) (fn2-arms-t-machine-peek fn2-arms-probe)
+       (declare (ignore code)) (mv value fn2-arms-probe)))
+   result)))
+(assert-event (equal (fn2-arms-t-machine-peek-witness) 37))
 (defcost fn2-arms-t-machine-peek-core :answers (:ok)
  :child fn2-arms-t-machine-peek :doc "Test: read a sibling machine table without a link.")
 (defmachine fn2-arms-machine-reader
@@ -20,7 +34,8 @@
  :budget (:bytes 4096 :steps 32 :descriptors 0)
  :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free (:idle))
-        (:work (:do (code) (fn2-arms-t-machine-peek-core) :accept (:ok)) (:idle)))
+        (:work (:do (code value) (fn2-arms-t-machine-peek-core) :accept (:ok))
+               (:set (count value)) (:charge :steps *fn2-work-small*)))
  :observes ())
 (assert-event
  (mv-let (err extras) (fn2-arms-extra-children 'fn2-arms-machine-reader (w state))
