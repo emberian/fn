@@ -3041,19 +3041,34 @@
                            (stobj-let ((,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
                              (value) (,(fn2-columns-col-name name (caar columns)) slot ,name) value)))
                    (prog2$ (hard-error ',reader "Invalid internal row read." nil) 0))) nil nil)
+             ;; Corollaries use the ambient theory, not the main goal hints.
+             ;; Keep the reader opaque there so they reuse WIDTH instead of
+             ;; reopening every machine-kind check in the snapshot code.
+             `(in-theory (disable ,reader))
              `(defthm ,(fn2-columns-sym reader "-WIDTH")
                 (implies ,hyps (unsigned-byte-p ,(fn2-columns-width (cadar columns)) ,value))
                 :rule-classes (:rewrite
                   (:type-prescription :corollary (implies ,hyps (natp ,value)))
                   (:linear :corollary (implies ,hyps (< ,value ,(expt 2 (fn2-columns-width (cadar columns))))))
                   (:rewrite :corollary (implies ,hyps (and (rationalp ,value) (acl2-numberp ,value)))))
-                :hints (("Goal" :in-theory (enable ,reader)
-                         ,@(and (fn2-machine-directory-fieldp (caar columns))
-                                `(:use ((:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-NATP")
+                :hints (("Goal"
+                         ,@(if (fn2-machine-directory-fieldp (caar columns))
+                                `(:in-theory (e/d (,reader)
+                                                   (,code ,(fn2-columns-col-name 'fn2-machines (caar columns))))
+                                  :use ((:instance ,(fn2-columns-sym name "-ROW-ACCESS-VALID"))
+                                        (:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-NATP")
                                          (i id) (fn2-machines (fn2-core-machines fn2-core)))
                                         (:instance ,(fn2-columns-sym (fn2-columns-col-name 'fn2-machines (caar columns)) "-BOUND")
-                                         (i id) (fn2-machines (fn2-core-machines fn2-core)))))))))
-             `(in-theory (disable ,reader))
+                                         (i id) (fn2-machines (fn2-core-machines fn2-core)))))
+                              `(:in-theory (e/d (,reader)
+                                             (,code ,(fn2-columns-col-name name (caar columns))))
+                                :use ((:instance ,(fn2-columns-sym name "-ROW-ACCESS-VALID"))
+                                      (:instance ,(fn2-columns-sym (fn2-columns-col-name name (caar columns)) "-NATP")
+                                       (i (fn2-machine-slot id fn2-core))
+                                       (,name (,(fn2-columns-sym name "-TABLE") fn2-core)))
+                                      (:instance ,(fn2-columns-sym (fn2-columns-col-name name (caar columns)) "-BOUND")
+                                       (i (fn2-machine-slot id fn2-core))
+                                       (,name (,(fn2-columns-sym name "-TABLE") fn2-core)))))))))
              (fn2-machine-row-reader-events name (cdr columns) code)))))
 (defun fn2-machine-snapshot-events (name columns)
   (declare (xargs :verify-guards nil))
@@ -3064,6 +3079,21 @@
              (if (not (eq code :ok)) code
                (if (equal (fn2-machine-kind id fn2-core)
                           ,(fn2-columns-pre "*" (fn2-columns-sym name "-KIND*"))) :ok :kind)))) nil nil)
+      ;; Establish the shared child access facts once per kind. Field-width
+      ;; proofs consume this fact without unfolding the full machine directory.
+      (defthm ,(fn2-columns-sym name "-ROW-ACCESS-VALID")
+        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                      (eq (,code id fn2-core) :ok))
+                 (let ((slot (fn2-machine-slot id fn2-core))
+                       (child (,(fn2-columns-sym name "-TABLE") fn2-core)))
+                   (and (natp id) (< id (fn2-machines-rows (fn2-core-machines fn2-core)))
+                        (fn2-machinesp (fn2-core-machines fn2-core))
+                        (fn2-machines-wfp (fn2-core-machines fn2-core))
+                        (natp slot) (< slot (,(fn2-columns-sym name "-ROWS") child))
+                        (,(fn2-columns-sym name "P") child)
+                        (,(fn2-columns-sym name "-WFP") child))))
+        :rule-classes nil
+        :hints (("Goal" :in-theory (enable ,code))))
       ,@(fn2-machine-row-reader-events name columns code))))
 ; Row readers by layer (assembly-rows-*): a section book materializes the
 ; readers of its own layer's kinds only, so its cost does not grow with the
