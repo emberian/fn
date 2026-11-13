@@ -92,5 +92,21 @@ class PostOutcome(unittest.TestCase):
         self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
 
 
+class EndpointValidation(unittest.TestCase):
+    def test_out_of_range_port_is_local_error(self) -> None:
+        for port in ("-1", "0", "65536"):
+            with self.subTest(port=port):
+                proc = subprocess.run(
+                    [str(ROOT / "fn"), "groups", "--port", port, "--json"],
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self.assertEqual(proc.returncode, 2, (proc.stdout, proc.stderr))
+                self.assertEqual(proc.stderr, "")
+                self.assertEqual(json.loads(proc.stdout)["outcome"], "error")
+
+
 if __name__ == "__main__":
     unittest.main()

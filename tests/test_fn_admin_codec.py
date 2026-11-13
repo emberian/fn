@@ -43,6 +43,17 @@ class ReplyDecoding(unittest.TestCase):
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
                 fn_admin.decode_cns_reply(verb, cns_reply(result))
 
+    def test_u32_request_fields_are_checked_before_encoding(self) -> None:
+        cases = (
+            ("read", {"cursor": b"x", "max_items": -1, "max_octets": 1}),
+            ("read", {"cursor": b"x", "max_items": 1, "max_octets": 2**32}),
+            ("wait", {"cursor": b"x", "max_items": 1, "max_octets": 1, "seconds": -1}),
+            ("wait", {"cursor": b"x", "max_items": 1, "max_octets": 1, "seconds": 2**32}),
+        )
+        for verb, fields in cases:
+            with self.subTest(verb=verb, fields=fields), self.assertRaises(ValueError):
+                fn_admin.build_cns_request(verb, **fields)
+
     def test_truncated_authority_results_raise_wire_error(self) -> None:
         for verb in fn_admin.AUTH_OPCODES:
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
@@ -84,14 +95,20 @@ class InvalidReplyOutcome(unittest.TestCase):
 
             def serve() -> None:
                 listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                listener.bind(path)
-                listener.listen(1)
-                ready.set()
-                conn, _ = listener.accept()
-                with conn:
-                    conn.recv(65536)
-                    conn.sendall(reply)
-                listener.close()
+                try:
+                    listener.bind(path)
+                    listener.listen(1)
+                    ready.set()
+                    conn, _ = listener.accept()
+                    with conn:
+                        conn.recv(65536)
+                        try:
+                            conn.sendall(reply)
+                        except BrokenPipeError:
+                            # A local usage error closes without waiting for a reply.
+                            pass
+                finally:
+                    listener.close()
 
             thread = threading.Thread(target=serve)
             thread.start()
@@ -132,6 +149,14 @@ class InvalidReplyOutcome(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
+    def test_negative_limit_is_local_usage_error(self) -> None:
+        proc = self.run_command(
+            cns_reply(b""), "stream", "read", "--cursor", CURSOR.hex(), "--max-items", "-1"
+        )
+        self.assertEqual(proc.returncode, 2, (proc.stdout, proc.stderr))
+        self.assertEqual(proc.stderr, "")
+        self.assertEqual(json.loads(proc.stdout)["outcome"], "error")
 
 
 if __name__ == "__main__":

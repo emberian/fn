@@ -175,6 +175,12 @@ def _octets32_at(buf: bytes, offset: int, what: str) -> tuple[bytes, int]:
     return _take(buf, offset, int.from_bytes(raw, "big"), what)
 
 
+def u32be(value: int, name: str) -> bytes:
+    if not (0 <= value <= 0xFFFFFFFF):
+        raise ValueError(f"{name} must be in 0 .. 2^32-1")
+    return value.to_bytes(4, "big")
+
+
 def be_pos(n: int) -> bytes:
     return n.to_bytes(max(1, (n.bit_length() + 7) // 8), "big")
 
@@ -354,16 +360,16 @@ def build_cns_request(verb: str, **kw) -> bytes:
         body = (
             bytes([code])
             + octets16(kw["cursor"])
-            + kw["max_items"].to_bytes(4, "big")
-            + kw["max_octets"].to_bytes(4, "big")
+            + u32be(kw["max_items"], "max-items")
+            + u32be(kw["max_octets"], "max-octets")
         )
     elif verb == "wait":
         body = (
             bytes([code])
             + octets16(kw["cursor"])
-            + kw["max_items"].to_bytes(4, "big")
-            + kw["max_octets"].to_bytes(4, "big")
-            + kw["seconds"].to_bytes(4, "big")
+            + u32be(kw["max_items"], "max-items")
+            + u32be(kw["max_octets"], "max-octets")
+            + u32be(kw["seconds"], "seconds")
         )
     elif verb == "ack":
         body = bytes([code]) + cursor_propose(kw["cursor"], kw["position"])
@@ -1071,7 +1077,10 @@ def nntp_endpoint(args: argparse.Namespace) -> tuple[str, int]:
     raw_port = args.port if args.port is not None else os.environ.get("FN_PORT")
     if not raw_port:
         raise ValueError("specify --port PORT or set FN_PORT")
-    return host, int(raw_port)
+    port = int(raw_port)
+    if not (1 <= port <= 65535):
+        raise ValueError("NNTP port must be in 1 .. 65535")
+    return host, port
 
 
 def nntp_connect(host: str, port: int) -> tuple[socket.socket, object, str]:
