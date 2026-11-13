@@ -16,4 +16,3 @@
 (fn2-machine-index-events)
 (in-theory (disable fn2-machine-local-id))
 (fn2-machine-directory-events)
-(fn2-commit-operation-child-events)

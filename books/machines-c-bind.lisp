@@ -337,10 +337,6 @@
  (if (and (fn2-id-engine-wfp fn2-id-engine) (< 0 (fn2-id-engine-rows fn2-id-engine)))
      (mv :ok (nfix (fn2-id-engine-published 0 fn2-id-engine)))
    (mv :state 0)))
-(defthm fn2-succ-published-natp
- (natp (mv-nth 1 (fn2-succ-published fn2-id-engine)))
- :rule-classes :type-prescription)
-(in-theory (disable fn2-succ-published))
 
 (defun fn2-succ-drop-txns (k tx b fn2-succ-txns)
  (declare (xargs :stobjs fn2-succ-txns :measure (nfix k) :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (natp tx))))
@@ -450,66 +446,14 @@
 (fn2-fields-preserves fn2-succ-fill-zero-events (k j entry events event fn2-fields) :position nil :raw-rows t
  :hints (("Goal" :in-theory (disable fn2-succ-has))))
 
-; One record at OFF into slot I of TX: (mv code slots-added next fn2-succ-slots fn2-fields).
-; Factored out of fn2-succ-replay-records so the loop's shape proof sees one
-; closed step call instead of 17 inline column puts (D26: 166 s -> <1 s).
-(defun fn2-succ-replay-record-1 (i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-succ-slots fn2-fields fn2-pool)
-  :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
-              (natp i) (natp off) (natp wlen) (< off wlen) (natp tx) (natp b0)
-              (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
-              (<= (+ b0 *fn2-idc-ident* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
-              (unsigned-byte-p 32 wlen) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
-  :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-decode fn2-run-layout-decode fn2-run-layout-size
-                                            fn2-run-layout-fields fn2-succ-replay-event-mask fn2-succ-fill-zero-events
-                                            fn2-fields-rows fn2-succ-slots-rows)))))
- (b* ((fbase (+ b0 *fn2-idc-ident*))
-      ((mv code next fn2-fields) (fn2-format-txn-record-decode fbase wslot wgen off wlen okind oslot ogen fn2-fields fn2-pool))
-      ((unless (and (eq code :ok) (natp next) (< off next))) (mv :format 0 0 fn2-succ-slots fn2-fields))
-      (kind (fn2-fields-value (+ fbase *fn2-format-txn-record-field-record-kind*) fn2-fields))
-      (len (fn2-fields-value (+ fbase *fn2-format-txn-record-field-length*) fn2-fields))
-      ((unless (and (natp len) (<= (+ next len) wlen))) (mv :length 0 0 fn2-succ-slots fn2-fields))
-      (end (+ next len))
-      ((when (equal kind *record-kind-article-acceptance*))
-       (mv :ok 0 end fn2-succ-slots fn2-fields))
-      ((unless (and (natp kind) (< *fn2-commit-txn-schema-record-kind-base* kind)
-                    (<= kind *fn2-commit-txn-schema-record-kind-last*)))
-       (mv :kind 0 0 fn2-succ-slots fn2-fields))
-      (s (+ (* tx *fn2-succ-slots*) i))
-      (entry (+ b0 (* *fn2-succ-block* i)))
-      ((unless (and (< i *fn2-succ-slots*) (< s (fn2-succ-slots-rows fn2-succ-slots))
-                    (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
-       (mv :bounds 0 0 fn2-succ-slots fn2-fields))
-      (sid (- kind *fn2-commit-txn-schema-record-kind-base*))
-      ((mv code dend fn2-fields) (fn2-run-layout-decode sid 0 entry wslot wgen next end okind oslot ogen fn2-fields fn2-pool))
-      ((unless (and (eq code :ok) (equal dend end))) (mv :format 0 0 fn2-succ-slots fn2-fields))
-      (evmask (fn2-succ-replay-event-mask sid))
-      (fn2-fields (if (and (posp evmask) (unsigned-byte-p 60 event))
-                      (fn2-succ-fill-zero-events (nfix (fn2-run-layout-fields sid 0)) 0 entry evmask event fn2-fields)
-                    fn2-fields))
-      (rsize (fn2-run-layout-size sid 0 entry fn2-fields))
-      ((unless (unsigned-byte-p 32 rsize)) (mv :bounds 0 0 fn2-succ-slots fn2-fields))
-      (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-resolved*) (sid sid) (kind *fn2-succ-kind-insert*)
-                                          (set 0) (events 0) (outs 0) (found 0) (vrun 0) (size rsize) (oset 1)
-                                          (sk okind) (ss oslot) (sg ogen) (late 0) (filled 0) (unchanged 0))))
-  (mv :ok 1 end fn2-succ-slots fn2-fields)))
-(fn2-idc-fn-shape fn2-succ-replay-record-1 (i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
- ((fn2-succ-slots 3) (fn2-fields 4)) (fn2-succ-slots fn2-fields fn2-pool) t
- (fn2-format-txn-record-decode fn2-run-layout-decode fn2-run-layout-size fn2-run-layout-fields
-  fn2-succ-replay-event-mask fn2-succ-fill-zero-events))
-(defthm fn2-succ-replay-record-1-natps
- (and (natp (mv-nth 1 (fn2-succ-replay-record-1 i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)))
-      (natp (mv-nth 2 (fn2-succ-replay-record-1 i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))))
- :hints (("Goal" :in-theory (enable fn2-succ-replay-record-1)))
- :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-succ-replay-record-1 i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))))
-                (:type-prescription :corollary (natp (mv-nth 2 (fn2-succ-replay-record-1 i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))))))
-
 ; The workspace's records from OFF (at most K), slot I next, into TX's
 ; slots: (mv code fn2-succ-slots fn2-fields).
 (defun fn2-succ-replay-records (k i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-succ-slots fn2-fields fn2-pool) :measure (nfix k)
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp k))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-replay-record-1 fn2-fields-rows fn2-succ-slots-rows)))))
+  :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-decode fn2-run-layout-decode fn2-run-layout-size
+                                            fn2-run-layout-fields fn2-succ-replay-event-mask fn2-succ-fill-zero-events
+                                            fn2-fields-rows fn2-succ-slots-rows)))))
  (b* (((unless (and (natp i) (natp off) (natp wlen) (natp tx) (natp b0)
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))
                     (<= (+ b0 *fn2-idc-ident* *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))
@@ -517,13 +461,40 @@
        (mv :bounds fn2-succ-slots fn2-fields))
       ((when (<= wlen off)) (mv (if (equal off wlen) :ok :length) fn2-succ-slots fn2-fields))
       ((when (zp k)) (mv :bounds fn2-succ-slots fn2-fields))
-      ((mv code di end fn2-succ-slots fn2-fields)
-       (fn2-succ-replay-record-1 i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-succ-slots fn2-fields)))
-  (fn2-succ-replay-records (- k 1) (+ i di) end event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)))
+      (fbase (+ b0 *fn2-idc-ident*))
+      ((mv code next fn2-fields) (fn2-format-txn-record-decode fbase wslot wgen off wlen okind oslot ogen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (natp next) (< off next))) (mv :format fn2-succ-slots fn2-fields))
+      (kind (fn2-fields-value (+ fbase *fn2-format-txn-record-field-record-kind*) fn2-fields))
+      (len (fn2-fields-value (+ fbase *fn2-format-txn-record-field-length*) fn2-fields))
+      ((unless (and (natp len) (<= (+ next len) wlen))) (mv :length fn2-succ-slots fn2-fields))
+      (end (+ next len))
+      ((when (equal kind *record-kind-article-acceptance*))
+       (fn2-succ-replay-records (- k 1) i end event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool))
+      ((unless (and (natp kind) (< *fn2-commit-txn-schema-record-kind-base* kind)
+                    (<= kind *fn2-commit-txn-schema-record-kind-last*)))
+       (mv :kind fn2-succ-slots fn2-fields))
+      (s (+ (* tx *fn2-succ-slots*) i))
+      (entry (+ b0 (* *fn2-succ-block* i)))
+      ((unless (and (< i *fn2-succ-slots*) (< s (fn2-succ-slots-rows fn2-succ-slots))
+                    (<= (+ entry *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-succ-slots fn2-fields))
+      (sid (- kind *fn2-commit-txn-schema-record-kind-base*))
+      ((mv code dend fn2-fields) (fn2-run-layout-decode sid 0 entry wslot wgen next end okind oslot ogen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (equal dend end))) (mv :format fn2-succ-slots fn2-fields))
+      (evmask (fn2-succ-replay-event-mask sid))
+      (fn2-fields (if (and (posp evmask) (unsigned-byte-p 60 event))
+                      (fn2-succ-fill-zero-events (nfix (fn2-run-layout-fields sid 0)) 0 entry evmask event fn2-fields)
+                    fn2-fields))
+      (rsize (fn2-run-layout-size sid 0 entry fn2-fields))
+      ((unless (unsigned-byte-p 32 rsize)) (mv :bounds fn2-succ-slots fn2-fields))
+      (fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-resolved*) (sid sid) (kind *fn2-succ-kind-insert*)
+                                          (set 0) (events 0) (outs 0) (found 0) (vrun 0) (size rsize) (oset 1)
+                                          (sk okind) (ss oslot) (sg ogen) (late 0) (filled 0) (unchanged 0))))
+  (fn2-succ-replay-records (- k 1) (+ 1 i) end event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)))
 (fn2-idc-fn-shape fn2-succ-replay-records (k i off event wslot wgen wlen tx b0 okind oslot ogen fn2-succ-slots fn2-fields fn2-pool)
  (fn2-succ-slots fn2-fields) (fn2-succ-slots fn2-fields fn2-pool) t
- (fn2-succ-replay-record-1))
+ (fn2-format-txn-record-decode fn2-run-layout-decode fn2-run-layout-size fn2-run-layout-fields
+  fn2-succ-replay-event-mask fn2-succ-fill-zero-events))
 
 ; The first :idle transaction row from TX (K of them); past the last, the row count.
 (defun fn2-succ-replay-free (k tx fn2-succ-txns)
@@ -765,183 +736,42 @@
  (natp (mv-nth 1 (fn2-succ-emit-children tx wslot wgen woff wmax okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-pool fn2-fc)))
  :hints (("Goal" :in-theory (enable fn2-succ-emit-children))) :rule-classes :type-prescription)
 
-(defun fn2-succ-arg-children (tx i j src value fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-arg)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-txns fn2-succ-slots fn2-fields)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-arg tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields)
-      (mv c fn2-succ-txns fn2-succ-slots fn2-fields)))))
-(fn2-idc-fn-shape fn2-succ-arg-children (tx i j src value fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t
- (fn2-idc-stripe fn2-succ-arg fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-arg-octets-children (tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-arg-octets)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-txns fn2-succ-slots fn2-fields)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-arg-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
-      (mv c fn2-succ-txns fn2-succ-slots fn2-fields)))))
-(fn2-idc-fn-shape fn2-succ-arg-octets-children (tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t
- (fn2-idc-stripe fn2-succ-arg-octets fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-arg-octets-late-children (tx i j max fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-arg-octets-late)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-txns fn2-succ-slots fn2-fields)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-arg-octets-late tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
-      (mv c fn2-succ-txns fn2-succ-slots fn2-fields)))))
-(fn2-idc-fn-shape fn2-succ-arg-octets-late-children (tx i j max fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t
- (fn2-idc-stripe fn2-succ-arg-octets-late fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-fill-octets-children (tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-fill-octets)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-slots fn2-fields)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-fill-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
-      (mv c fn2-succ-slots fn2-fields)))))
-(fn2-idc-fn-shape fn2-succ-fill-octets-children (tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- ((fn2-succ-slots 1) (fn2-fields 2))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t
- (fn2-idc-stripe fn2-succ-fill-octets fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-resolve-children (tx budget fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors
-                                  fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors
-                          fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-resolve)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors
-                          fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
-      (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))))
-(fn2-idc-fn-shape fn2-succ-resolve-children (tx budget fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors
-                                             fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc)
- ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-run-cursors 3) (fn2-run-paths 4) (fn2-fields 5))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool fn2-fc) t
- (fn2-idc-stripe fn2-succ-resolve fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-stage-children (tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine
-                                fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine
-                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-stage)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (mv-let (code i fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
-          (fn2-succ-stage tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
-                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-          (mv code (nfix i) fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool))
-      (mv c 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))))
-(fn2-idc-fn-shape fn2-succ-stage-children (tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine
-                                           fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)
- ((fn2-succ-txns 2) (fn2-succ-slots 3) (fn2-id-engine 4) (fn2-overlays 5) (fn2-fields 6) (fn2-pool 7))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc) t
- (fn2-idc-stripe fn2-succ-stage fn2-fc-rows fn2-fc-wfp))
-(defthm fn2-succ-stage-children-natp
- (natp (mv-nth 1 (fn2-succ-stage-children tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine
-                                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)))
- :hints (("Goal" :in-theory (enable fn2-succ-stage-children))) :rule-classes :type-prescription)
-
-(defun fn2-succ-out-children (tx i f fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-out)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state 0)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (mv-let (code val) (fn2-succ-out tx i f b0 fn2-succ-txns fn2-succ-slots fn2-fields)
-          (mv code (nfix val)))
-      (mv c 0)))))
-(defthm fn2-succ-out-children-natp
- (natp (mv-nth 1 (fn2-succ-out-children tx i f fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)))
- :rule-classes :type-prescription)
-(in-theory (disable fn2-succ-out-children))
-
-(defun fn2-succ-bind-children (tx batch event fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine
-                               fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine
-                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-bind)))))
- (if (not (and (fn2-fc-wfp fn2-fc) (fn2-id-decides-wfp fn2-id-decides) (fn2-fields-wfp fn2-fields)))
-     (mv :state fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-   (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
-    (if (eq c :ok)
-        (fn2-succ-bind tx batch event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index
-                       fn2-fields fn2-pool)
-      (mv c fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))))
-(fn2-idc-fn-shape fn2-succ-bind-children (tx batch event fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine
-                                          fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)
- ((fn2-succ-txns 1) (fn2-id-engine 2) (fn2-overlays 3) (fn2-overlay-index 4) (fn2-fields 5) (fn2-pool 6))
- (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc) t
- (fn2-idc-stripe fn2-succ-bind fn2-fc-rows fn2-fc-wfp))
-
-(defun fn2-succ-put3 (tx i sid kind fn2-succ-txns fn2-succ-slots fn2-fields)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :guard t
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-put)))))
- (mv-let (c fn2-succ-txns fn2-succ-slots) (fn2-succ-put tx i sid kind fn2-succ-txns fn2-succ-slots)
-  (mv c fn2-succ-txns fn2-succ-slots fn2-fields)))
-(fn2-idc-fn-shape fn2-succ-put3 (tx i sid kind fn2-succ-txns fn2-succ-slots fn2-fields)
- ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
- (fn2-succ-txns fn2-succ-slots fn2-fields) t
- (fn2-succ-put))
-
 ; ---------------------------------------------------------------------------
 ; Costs (the bases: docs/c-ordered-runs.md §7 C-SUCCESSOR).
-(defcost fn2-successor-put :answers (:bounds :kind :ok :schema :state) :child fn2-succ-put
+(defcost fn2-successor-put :answers (:bounds :kind :ok :schema :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots)
  :doc "Declare one write slot of a transaction (schema and kind).")
-(defcost fn2-successor-arg :answers (:bounds :kind :ok :state) :child fn2-succ-arg-children
+(defcost fn2-successor-arg :answers (:bounds :kind :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one argument of a write slot: a value, the member's commit position, a field of an earlier slot's row, or an earlier slot's freshness.")
-(defcost fn2-successor-arg-octets :answers (:bounds :kind :ok :owner :state) :child fn2-succ-arg-octets-children
+(defcost fn2-successor-arg-octets :answers (:bounds :kind :ok :owner :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Give one octet argument of an insert slot by reference.")
-(defcost fn2-successor-arg-octets-late :answers (:bounds :kind :ok :state) :child fn2-succ-arg-octets-late-children
+(defcost fn2-successor-arg-octets-late :answers (:bounds :kind :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
  :doc "Declare one octet argument of an insert slot given after stage, with its bound.")
-(defcost fn2-successor-fill-octets :answers (:bounds :kind :ok :owner :state) :child fn2-succ-fill-octets-children
+(defcost fn2-successor-fill-octets :answers (:bounds :kind :ok :owner :state)
  :tables (fn2-core-succ-slots fn2-core-fields)
  :doc "Give a staged slot's late octet argument by reference.")
 (defcost fn2-successor-resolve :answers (:bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more :noncanonical
   :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
- :bytes 4096 :child fn2-succ-resolve-children
+ :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One bounded step reading a write slot's key in the installed runs: one run selection or one lookup step of at most 4,096 pool reads.")
 (defcost fn2-successor-stage :answers (:bounds :capacity :changed :done :duplicate :event :evidence :full :inconsistent :invariant
   :length :more :noncanonical :ok :owner :part :payload :range :refused :schema :stale :state
   :truncated :unknown-tag :wide)
- :bytes 4096 :child fn2-succ-stage-children
+ :bytes 4096
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-engine fn2-core-overlays fn2-core-fields fn2-core-pool)
  :doc "Stage every write slot against the tip (one located entry per overlay of its schema), apply its fold step, and hold room (at most one arena per schema written).")
-(defcost fn2-successor-out :answers (:bounds :kind :ok :state) :child fn2-succ-out-children
+(defcost fn2-successor-out :answers (:bounds :kind :ok :state)
  :doc "Read one field of a staged write slot's row.")
 (defcost fn2-successor-bind :answers (:bounds :done :duplicate :full :invariant :length :more :noncanonical :ok :overlap :owner :part
   :payload :schema :spare :stale :state :truncated :unknown-tag :value :wide)
- :bytes 8192 :child fn2-succ-bind-children
- :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-pool)
+ :bytes 8192
+ :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
-(defcost fn2-successor-release :answers (:bounds :ok :state) :child fn2-succ-release
+(defcost fn2-successor-release :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
@@ -951,7 +781,7 @@
  :doc "Emit a staged transaction's write slots as B's transaction records into a workspace.")
 (defcost fn2-successor-stream-member :child fn2-succ-stream-member-children :answers (:ok :done :state :bounds)
  :doc "One fn2-addr write of a published batch (E's stream wake): (mv code stream position next).")
-(defcost fn2-successor-published :answers (:ok :state) :child fn2-succ-published
+(defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
 (defcost fn2-successor-publish :answers (:bounds :ok :state)
  :tables (fn2-core-succ-txns fn2-core-overlays fn2-core-id-engine)
@@ -986,9 +816,6 @@
 (defun fn2-succ-writer-fn-name (sname kind)
   (declare (xargs :verify-guards nil))
   (fn2-columns-sym sname (if (eq kind :insert) "-PUT-ROW" (concatenate 'string "-PUT-" (symbol-name kind)))))
-(defun fn2-succ-writer-child-name (sname kind)
-  (declare (xargs :verify-guards nil))
-  (fn2-columns-sym (fn2-succ-writer-fn-name sname kind) "-CHILDREN"))
 (defun fn2-succ-writer-mac-name (sname kind)
   (declare (xargs :verify-guards nil))
   (fn2-columns-sym sname (if (eq kind :insert) "-PUT" (concatenate 'string "-" (symbol-name kind)))))
@@ -1007,28 +834,25 @@
   (if (atom adescs) nil
     (append (fn2-succ-adesc-formals (car adescs))
             (fn2-succ-adescs-formals (cdr adescs)))))
-(defun fn2-succ-adesc-child-call (adesc)
+(defun fn2-succ-adesc-call (adesc)
   (declare (xargs :verify-guards nil))
   (let ((j (car adesc)) (aname (cadr adesc)) (ftype (caddr adesc)))
     (if (fn2-succ-octets-type-p ftype)
-        `(fn2-succ-arg-octets-children tx slot ,j ,(fn2-succ-arg-sym aname "-SLOT") ,(fn2-succ-arg-sym aname "-GEN")
-                                       ,(fn2-succ-arg-sym aname "-OFF") ,(fn2-succ-arg-sym aname "-LEN")
-                                       okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
-      `(fn2-succ-arg-children tx slot ,j ,(fn2-succ-arg-sym aname "-SRC") ,(fn2-succ-arg-sym aname "")
-                              fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))))
-(defun fn2-succ-adescs-child-calls (adescs)
+        `(fn2-successor-arg-octets tx slot ,j ,(fn2-succ-arg-sym aname "-SLOT") ,(fn2-succ-arg-sym aname "-GEN")
+                                   ,(fn2-succ-arg-sym aname "-OFF") ,(fn2-succ-arg-sym aname "-LEN")
+                                   okind oslot ogen fn2-core)
+      `(fn2-successor-arg tx slot ,j ,(fn2-succ-arg-sym aname "-SRC") ,(fn2-succ-arg-sym aname "") fn2-core))))
+(defun fn2-succ-adescs-calls (adescs)
   (declare (xargs :verify-guards nil))
   (if (atom adescs) nil
-    (cons (fn2-succ-adesc-child-call (car adescs))
-          (fn2-succ-adescs-child-calls (cdr adescs)))))
-(defun fn2-succ-chain-child-calls (calls)
+    (cons (fn2-succ-adesc-call (car adescs))
+          (fn2-succ-adescs-calls (cdr adescs)))))
+(defun fn2-succ-chain-calls (calls)
   (declare (xargs :verify-guards nil))
-  (cond ((atom calls) '(mv :ok fn2-succ-txns fn2-succ-slots fn2-fields))
+  (cond ((atom calls) '(mv :ok fn2-core))
         ((atom (cdr calls)) (car calls))
-        (t `(mv-let (c fn2-succ-txns fn2-succ-slots fn2-fields) ,(car calls)
-              (if (eq c :ok)
-                  ,(fn2-succ-chain-child-calls (cdr calls))
-                (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))))
+        (t `(mv-let (c fn2-core) ,(car calls)
+              (if (eq c :ok) ,(fn2-succ-chain-calls (cdr calls)) (mv c fn2-core))))))
 (defun fn2-succ-take-n (n xs)
   (declare (xargs :verify-guards nil :measure (nfix n)))
   (if (or (zp n) (atom xs)) nil (cons (car xs) (fn2-succ-take-n (- n 1) (cdr xs)))))
@@ -1049,23 +873,21 @@
   (cond ((atom formals) nil)
         ((fn2-succ-tree-mem-p (car formals) x) (cons (car formals) (fn2-succ-keep-vars (cdr formals) x)))
         (t (fn2-succ-keep-vars (cdr formals) x))))
-(defun fn2-succ-child-chunk-events (child-name all-formals chunks idx)
+(defun fn2-succ-chunk-events (fn-name all-formals chunks idx)
   ; (mv helper-events top-calls)
   (declare (xargs :verify-guards nil))
   (if (atom chunks) (mv nil nil)
     (let* ((chunk (car chunks))
-           (hname (packn-pos (list child-name "-S" idx) child-name))
+           (hname (packn-pos (list fn-name "-S" idx) fn-name))
            (hformals (fn2-succ-keep-vars all-formals chunk))
-           (hevents `((defun ,hname (,@hformals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
-                        (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t)
-                                 (ignorable ,@hformals fn2-id-decides fn2-fc))
-                        ,(fn2-succ-chain-child-calls chunk))
-                      (fn2-idc-fn-shape ,hname (,@hformals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
-                        ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
-                        (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t nil)))
-           (hcall `(,hname ,@hformals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)))
+           (hevents `((defun ,hname (,@hformals fn2-core)
+                        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+                        ,(fn2-succ-chain-calls chunk))
+                      (fn2-core-preserves ,hname (,@hformals fn2-core) :position 1 :rows nil)
+                      (in-theory (disable ,hname))))
+           (hcall `(,hname ,@hformals fn2-core)))
       (mv-let (rest-events rest-calls)
-        (fn2-succ-child-chunk-events child-name all-formals (cdr chunks) (+ 1 idx))
+        (fn2-succ-chunk-events fn-name all-formals (cdr chunks) (+ 1 idx))
         (mv (append hevents rest-events) (cons hcall rest-calls))))))
 (defun fn2-succ-collect-fspecs (items)
   (declare (xargs :verify-guards nil))
@@ -1095,13 +917,6 @@
     `(,fn-name ,tx ,slot ,@(fn2-succ-expand-fspecs adescs fspecs)
                ,@(and has-octets (list (car owner) (cadr owner) (caddr owner)))
                ,core-arg)))
-(defun fn2-succ-expand-put-children-macro (child-name adescs has-octets tx slot items)
-  (declare (xargs :verify-guards nil))
-  (let ((owner (cadr (member-eq :owner items)))
-        (fspecs (fn2-succ-collect-fspecs items)))
-    `(,child-name ,tx ,slot ,@(fn2-succ-expand-fspecs adescs fspecs)
-                  ,@(and has-octets (list (car owner) (cadr owner) (caddr owner)))
-                  fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)))
 (defun fn2-succ-schema-specs-fold (sname sid evs assigns-fn fields)
   (declare (xargs :verify-guards nil) (ignore assigns-fn))
   (if (atom evs) nil
@@ -1120,69 +935,52 @@
 (defun fn2-succ-schema-cost-events (specs)
   (declare (xargs :verify-guards nil))
   (if (atom specs) nil
-    (let* ((sname (caar specs)) (sid (cadar specs)) (kind (caddar specs)) (adescs (car (cdddar specs)))
+    (let* ((sname (caar specs)) (kind (caddar specs)) (adescs (car (cdddar specs)))
            (fn-name (fn2-succ-writer-fn-name sname kind))
-           (child-name (fn2-succ-writer-child-name sname kind))
            (mac-name (fn2-succ-writer-mac-name sname kind))
-           (cmac-name (fn2-columns-sym mac-name "-CHILDREN"))
-           (has-octets (fn2-succ-any-octets-p adescs))
-           (formals (append '(tx slot) (fn2-succ-adescs-formals adescs) (and has-octets '(okind oslot ogen))))
-           (calls (cons `(fn2-succ-put3 tx slot ,sid ,kind fn2-succ-txns fn2-succ-slots fn2-fields)
-                        (fn2-succ-adescs-child-calls adescs))))
-      (mv-let (hevents body-calls)
-        (if (<= (len calls) 4)
-            (mv nil calls)
-          (fn2-succ-child-chunk-events child-name formals (fn2-succ-chunk-4 calls 16) 1))
-        (append hevents
-                `((defun ,child-name (,@formals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
-                    (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) :guard t)
-                             (ignorable ,@formals fn2-id-decides fn2-fc))
-                    ,(fn2-succ-chain-child-calls body-calls))
-                  (fn2-idc-fn-shape ,child-name (,@formals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
-                    ((fn2-succ-txns 1) (fn2-succ-slots 2) (fn2-fields 3))
-                    (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc) t nil)
-                  (defcost ,fn-name :child ,child-name
-                    :answers ,(if has-octets '(:bounds :kind :ok :owner :schema :state) '(:bounds :kind :ok :schema :state))
-                    :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
-                    :doc ,(concatenate 'string "Declare and populate a " (symbol-name sname) " write slot."))
-                  (defmacro ,mac-name (tx slot &rest rest)
-                    (fn2-succ-expand-put-macro ',fn-name ',adescs ',has-octets tx slot rest))
-                  (defmacro ,cmac-name (tx slot &rest items)
-                    (fn2-succ-expand-put-children-macro ',child-name ',adescs ',has-octets tx slot items)))
-                (fn2-succ-schema-cost-events (cdr specs)))))))
+           (has-octets (fn2-succ-any-octets-p adescs)))
+      (list* `(defcost ,fn-name
+                :answers ,(if has-octets '(:bounds :kind :ok :owner :schema :state) '(:bounds :kind :ok :schema :state))
+                :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+                :doc ,(concatenate 'string "Declare and populate a " (symbol-name sname) " write slot."))
+             `(defmacro ,mac-name (tx slot &rest rest)
+                (fn2-succ-expand-put-macro ',fn-name ',adescs ',has-octets tx slot rest))
+             (fn2-succ-schema-cost-events (cdr specs))))))
 (defun fn2-succ-schema-defun-events (specs)
   (declare (xargs :verify-guards nil))
   (if (atom specs) nil
-    (let* ((sname (caar specs)) (kind (caddar specs)) (adescs (car (cdddar specs)))
+    (let* ((sname (caar specs)) (sid (cadar specs)) (kind (caddar specs)) (adescs (car (cdddar specs)))
            (fn-name (fn2-succ-writer-fn-name sname kind))
-           (child-name (fn2-succ-writer-child-name sname kind))
            (has-octets (fn2-succ-any-octets-p adescs))
-           (formals (append '(tx slot) (fn2-succ-adescs-formals adescs) (and has-octets '(okind oslot ogen)))))
-      (list* `(fn2-succ-wrap ,fn-name ,formals
-                ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
-                 (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
-                 (fn2-fc (fn2-core-fc fn2-core)))
-                (fn2-succ-txns fn2-succ-slots fn2-fields)
-                (,child-name ,@formals fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))
-             `(in-theory (disable ,fn-name))
-             (fn2-succ-schema-defun-events (cdr specs))))))
+           (formals (append '(tx slot) (fn2-succ-adescs-formals adescs) (and has-octets '(okind oslot ogen))))
+           (calls (cons `(fn2-successor-put tx slot ,sid ,kind fn2-core)
+                        (fn2-succ-adescs-calls adescs))))
+      (mv-let (hevents body-calls)
+        (if (<= (len calls) 4)
+            (mv nil calls)
+          (fn2-succ-chunk-events fn-name formals (fn2-succ-chunk-4 calls 16) 1))
+        (append hevents
+                `((defun ,fn-name (,@formals fn2-core)
+                    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+                    ,(fn2-succ-chain-calls body-calls))
+                  (fn2-core-preserves ,fn-name (,@formals fn2-core) :position 1 :rows nil)
+                  (in-theory (disable ,fn-name)))
+                (fn2-succ-schema-defun-events (cdr specs)))))))
 (make-event (value (cons 'progn (fn2-succ-schema-cost-events (fn2-succ-schema-specs (fn2-decl-rows :schema (w state)))))))
 
 ; Core wrappers, materialized after the core instance (assembly-callbacks-c,
 ; after fn2-identity-core-events). The stripe base of a transaction is the
 ; identity decision's (fn2-idc-stripe); a transaction past the rows is
 ; :bounds before anything is read.
-(defmacro fn2-succ-wrap (name args children outs call &optional (code 'code) prefix hints)
+(defmacro fn2-succ-wrap (name args children outs call &optional (code 'code) prefix)
  `(progn
    (defun ,name (,@args fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                    :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ,children
      (,@prefix ,code ,@outs)
      ,call
      (mv ,@prefix ,code fn2-core)))
-   (fn2-core-preserves ,name (,@args fn2-core) :position ,(+ 1 (len prefix)) :rows nil
-                       ,@(and hints `(:hints ,hints)))))
+   (fn2-core-preserves ,name (,@args fn2-core) :position ,(+ 1 (len prefix)) :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))))
 (defmacro fn2-successor-prepare-events ()
  '(progn
    (fn2-succ-wrap fn2-successor-put (tx i sid kind)
@@ -1193,17 +991,23 @@
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-fields)
-    (fn2-succ-arg-children tx i j src value fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-arg tx i j src value b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-arg-octets (tx i j slot gen off len okind oslot ogen)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-fields)
-    (fn2-succ-arg-octets-children tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-arg-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-arg-octets-late (tx i j max)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-fields)
-    (fn2-succ-arg-octets-late-children tx i j max fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-arg-octets-late tx i j max b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-resolve (tx budget)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
@@ -1211,8 +1015,11 @@
      (fn2-run-cache (fn2-core-run-cache fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
      (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)
-    (fn2-succ-resolve-children tx budget fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
-                               fn2-run-cache fn2-fields fn2-pool fn2-fc)
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok)
+         (fn2-succ-resolve tx budget b0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-run-cursors fn2-run-paths
+                           fn2-run-cache fn2-fields fn2-pool)
+       (mv c fn2-succ-txns fn2-succ-slots fn2-run-cursors fn2-run-paths fn2-fields)))
     answer)
    (in-theory (disable fn2-successor-put fn2-successor-arg fn2-successor-arg-octets fn2-successor-arg-octets-late fn2-successor-resolve))
    (make-event (value (cons 'progn (fn2-succ-schema-defun-events (fn2-succ-schema-specs (fn2-decl-rows :schema (w state)))))))
@@ -1275,15 +1082,19 @@
      (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
      (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)
-    (fn2-succ-stage-children tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-run-installed fn2-id-engine
-                             fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-fc)
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok)
+         (fn2-succ-stage tx b0 fn2-succ-txns fn2-succ-slots fn2-run-installed fn2-id-engine
+                         fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+       (mv c 0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-fields fn2-pool)))
     i (code))
    (defun fn2-successor-out (tx i f fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
                 (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
      (code value)
-     (fn2-succ-out-children tx i f fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc)
+     (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+      (if (eq c :ok) (fn2-succ-out tx i f b0 fn2-succ-txns fn2-succ-slots fn2-fields) (mv c 0)))
      (mv code value)))
    (defun fn2-successor-applied (tx i fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -1295,7 +1106,9 @@
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-slots fn2-fields)
-    (fn2-succ-fill-octets-children tx i j slot gen off len okind oslot ogen fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields fn2-fc))
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok) (fn2-succ-fill-octets tx i j slot gen off len okind oslot ogen b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+       (mv c fn2-succ-slots fn2-fields))))
    (fn2-succ-wrap fn2-successor-emit (tx wslot wgen woff wmax okind oslot ogen)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-fields (fn2-core-fields fn2-core))
@@ -1309,8 +1122,11 @@
      (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
      (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
     (fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
-    (fn2-succ-bind-children tx batch event fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index
-                            fn2-fields fn2-pool fn2-fc))
+    (mv-let (c b0) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+     (if (eq c :ok)
+         (fn2-succ-bind tx batch event b0 fn2-succ-txns fn2-succ-slots fn2-id-engine fn2-overlays fn2-overlay-index
+                        fn2-fields fn2-pool)
+       (mv c fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
    (fn2-succ-wrap fn2-successor-release (tx)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
      (fn2-id-decides (fn2-core-id-decides fn2-core)))
@@ -1401,8 +1217,7 @@
          (fn2-accounts (if (eq code :ok)
                            (fn2-succ-replay-accounts *fn2-succ-slots* 0 tx b0 fn2-succ-slots fn2-fields fn2-accounts)
                          fn2-accounts)))
-     (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-accounts))
-    code nil (("Goal" :in-theory (enable fn2-core-wfp))))
+     (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-accounts)))
    ; B5-4: publish and drop are B's constrained hooks; these are their attachments.
    ; Each proves the hook's frame (commit.lisp *fn2-commit-hook-children*) by its
    ; own contract at those children, which its defcost's :tables cover.
