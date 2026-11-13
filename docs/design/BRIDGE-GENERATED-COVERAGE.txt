@@ -1,9 +1,9 @@
-Generated served bridge coverage — 2026-11-08
+Generated served bridge coverage — 2026-11-13
 Canonical packet SHA256: b3d424b2d85578b2529e317a161f3c0917a7379a65a389374902b2e9be460493
 ACL2 record evidence: {"cache_entry": "/home/build/.cache/fn-certs/5a35e3eb1c2092e0000c34eb97edbee2bc5c9594cb3f3083b2a68ed1329d9fad/88079f3d2ba86854", "certificate_sha256": "6ecf12ace0a7b6d073421bbf704120b1ef492e1d76cb54d2c3e3f3a12d2a5847", "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c"}
 
 Canonical live exports: 12039/12039 validated.
-Whole-arm interpretation: 26/263 validated.
+Whole-arm interpretation: 57/263 validated.
 These counts do not assert exported-body evaluation or primitive-domain adequacy for the entire closure.
 
 Unvalidated whole roots:
@@ -13,32 +13,19 @@ FN2-LISTENER-RUN-ACCEPTING: not generated: pending-write/phase-update certificat
 FN2-LISTENER-RUN-ADMITTING: not generated: branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-LISTENER-RUN-CLOSING: not generated: operation-result and child-writeback certificate, branch-join certificate
 FN2-LISTENER-ON-ACCEPT-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-LISTENER-ON-CLOSE-RESULT: not generated: pending-write/phase-update certificate
 FN2-ECHO-RUN-COMMAND: not generated: operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-ECHO-RUN-REPLY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-ECHO-RUN-CLOSING: not generated: operation-result and child-writeback certificate, branch-join certificate
 FN2-ECHO-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-ECHO-ON-RECEIVE-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate
 FN2-ECHO-ON-SEND-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
-FN2-ECHO-ON-BORROW-RELEASED: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
-FN2-ECHO-ON-CLOSE-RESULT: not generated: pending-write/phase-update certificate
-FN2-SCRIBE-SUB-STOP-CHILDREN: not generated: pending-write/phase-update certificate
-FN2-SCRIBE-SUB-RESULT-CHILDREN: not generated: pending-write/phase-update certificate, branch-join certificate, subarm-composition certificate
 FN2-SCRIBE-RUN-RESERVE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-SCRIBE-RUN-FILL: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-SCRIBE-RUN-PATCH: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-SCRIBE-RUN-WRITE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, subarm-composition certificate
-FN2-SCRIBE-RUN-WRITE-RESULT: not generated: subarm-composition certificate
 FN2-SCRIBE-RUN-FENCE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, subarm-composition certificate
-FN2-SCRIBE-RUN-FENCE-RESULT: not generated: subarm-composition certificate
 FN2-SCRIBE-RUN-RESET: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-SCRIBE-RUN-READ: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, subarm-composition certificate
-FN2-SCRIBE-RUN-READ-RESULT: not generated: subarm-composition certificate
-FN2-SCRIBE-RUN-VERIFY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-SCRIBE-RUN-NEXT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, subarm-composition certificate
-FN2-SCRIBE-ON-WRITE-RESULT: not generated: pending-write/phase-update certificate
-FN2-SCRIBE-ON-FENCE-RESULT: not generated: pending-write/phase-update certificate
-FN2-SCRIBE-ON-READ-RESULT: not generated: pending-write/phase-update certificate
 FN2-COMMIT-SUB-DRAIN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-COMMIT-RUN-COLLECT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-COMMIT-RUN-SEAL: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
@@ -55,7 +42,6 @@ FN2-COMMIT-RUN-DROPPING: not generated: pending-write/phase-update certificate, 
 FN2-COMMIT-ON-WRITE-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-COMMIT-ON-FENCE-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-RECOVERY-MACHINE-SUB-PAYLOAD-BEGIN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-RECOVERY-MACHINE-SUB-PAYLOAD-AMBIGUOUS: not generated: pending-write/phase-update certificate
 FN2-RECOVERY-MACHINE-SUB-PAYLOAD-NEXT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-RECOVERY-MACHINE-SUB-PAYLOAD-OPEN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-RECOVERY-MACHINE-SUB-PAYLOAD-RECORD: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
@@ -74,7 +60,6 @@ FN2-RECOVERY-MACHINE-RUN-READ-RESULT: not generated: pending-write/phase-update 
 FN2-RECOVERY-MACHINE-RUN-VERIFY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-RECOVERY-MACHINE-RUN-SEARCH: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-RECOVERY-MACHINE-RUN-INSTALL: not generated: branch-join certificate, stop/reclamation certificate, subarm-composition certificate
-FN2-RECOVERY-MACHINE-ON-READ-RESULT: not generated: pending-write/phase-update certificate
 FN2-SEALER-RUN-SEALING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-CONN-SUB-INPUT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CONN-SUB-BLOCK-INPUT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
@@ -83,14 +68,12 @@ FN2-CONN-RUN-GREETING: not generated: pending-write/phase-update certificate, op
 FN2-CONN-RUN-COMMAND: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CONN-RUN-ARTICLE-INPUT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CONN-RUN-REPLY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-CONN-RUN-UPGRADING: not generated: stop/reclamation certificate
 FN2-CONN-RUN-CLOSING: not generated: operation-result and child-writeback certificate, branch-join certificate
 FN2-CONN-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CONN-RUN-QUERY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CONN-ON-RECEIVE-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CONN-ON-SEND-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CONN-ON-BORROW-RELEASED: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
-FN2-CONN-ON-CLOSE-RESULT: not generated: pending-write/phase-update certificate
 FN2-UPLOAD-SUB-WORK: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-UPLOAD-RUN-HEAD: not generated: subarm-composition certificate
 FN2-UPLOAD-RUN-IDENTITY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
@@ -105,8 +88,6 @@ FN2-UPLOAD-RUN-STORE-FENCED: not generated: pending-write/phase-update certifica
 FN2-UPLOAD-RUN-SEALED: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-UPLOAD-RUN-ABORTING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-UPLOAD-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-UPLOAD-ON-WRITE-RESULT: not generated: pending-write/phase-update certificate
-FN2-UPLOAD-ON-FENCE-RESULT: not generated: pending-write/phase-update certificate
 FN2-TXN-SUB-GROUP: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-TXN-SUB-REPLY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-TXN-RUN-ADMIT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
@@ -117,7 +98,6 @@ FN2-TXN-RUN-READY: not generated: pending-write/phase-update certificate, operat
 FN2-TXN-RUN-BATCHED: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-TXN-RUN-ACCEPTED: not generated: subarm-composition certificate
 FN2-TXN-RUN-REFUSED: not generated: subarm-composition certificate
-FN2-TXN-RUN-UNCERTAIN: not generated: stop/reclamation certificate
 FN2-TXN-RUN-RELEASING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
 FN2-TXN-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
 FN2-CURSOR-SUB-HAND-CHILDREN: not generated: pending-write/phase-update certificate
@@ -154,7 +134,6 @@ FN2-CURSOR-SUB-RENDER-STEP-CHILDREN: not generated: pending-write/phase-update c
 FN2-CURSOR-SUB-RENDER-WALK-CHILDREN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CURSOR-SUB-RENDER-MATCH-CHILDREN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CURSOR-SUB-RENDER-SINGLE-CHILDREN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
-FN2-CURSOR-SUB-HDR-NEXT-CHILDREN: not generated: pending-write/phase-update certificate
 FN2-CURSOR-SUB-HDR-END-CHILDREN: not generated: operation-result and child-writeback certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CURSOR-SUB-HDR-COPY-CHILDREN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CURSOR-SUB-ART-KEY-CHILDREN: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
@@ -174,22 +153,17 @@ FN2-CURSOR-SUB-RENDER-HDR-CHILDREN: not generated: pending-write/phase-update ce
 FN2-CURSOR-RUN-SELECT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
 FN2-CURSOR-RUN-SEEK: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CURSOR-RUN-RENDER: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
-FN2-CURSOR-RUN-SEND: not generated: pending-write/phase-update certificate, branch-join certificate
 FN2-CURSOR-RUN-FETCH: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CURSOR-RUN-FINISH: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CURSOR-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate
-FN2-CURSOR-ON-READ-RESULT: not generated: pending-write/phase-update certificate
 FN2-CTL-RUN-GREETING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-CTL-RUN-FRAME: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CTL-RUN-DISPATCH: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
-FN2-CTL-RUN-WAITING: not generated: pending-write/phase-update certificate, branch-join certificate
 FN2-CTL-RUN-REPLY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate
 FN2-CTL-RUN-CLOSING: not generated: operation-result and child-writeback certificate, branch-join certificate
 FN2-CTL-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-CTL-ON-RECEIVE-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate
 FN2-CTL-ON-SEND-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
 FN2-CTL-ON-BORROW-RELEASED: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
-FN2-CTL-ON-CLOSE-RESULT: not generated: pending-write/phase-update certificate
 FN2-CNS-SUB-HAND: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-CNS-SUB-ANSWER: not generated: stop/reclamation certificate, subarm-composition certificate
 FN2-CNS-SUB-REFUSE: not generated: pending-write/phase-update certificate, stop/reclamation certificate, subarm-composition certificate
@@ -210,7 +184,6 @@ FN2-CNS-RUN-PARK: not generated: pending-write/phase-update certificate, operati
 FN2-CNS-RUN-COMMIT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CNS-RUN-APPEND: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate, subarm-composition certificate
 FN2-CNS-RUN-DRAINING: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-CNS-ON-READ-RESULT: not generated: pending-write/phase-update certificate
 FN2-AUTH-SUB-ANSWER: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
 FN2-AUTH-SUB-UNCLAIM: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, subarm-composition certificate
 FN2-AUTH-SUB-REFUSE: not generated: pending-write/phase-update certificate, subarm-composition certificate
@@ -230,7 +203,6 @@ FN2-BOOT-RUN-PREPARE: not generated: pending-write/phase-update certificate, ope
 FN2-BOOT-RUN-WRITE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-WRITE-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-READ: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
-FN2-BOOT-RUN-READ-RESULT: not generated: pending-write/phase-update certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-VERIFY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-ADVANCE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-ANCHOR: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
@@ -241,9 +213,6 @@ FN2-BOOT-RUN-EPOCH-FENCE: not generated: pending-write/phase-update certificate,
 FN2-BOOT-RUN-EPOCH-RESULT: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, branch-join certificate, stop/reclamation certificate
 FN2-BOOT-RUN-RELEASE: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
 FN2-BOOT-RUN-READY: not generated: pending-write/phase-update certificate, operation-result and child-writeback certificate, stop/reclamation certificate
-FN2-BOOT-ON-READ-RESULT: not generated: pending-write/phase-update certificate
-FN2-BOOT-ON-WRITE-RESULT: not generated: pending-write/phase-update certificate
-FN2-BOOT-ON-FENCE-RESULT: not generated: pending-write/phase-update certificate
 
 Unresolved exported names:
 
