@@ -75,7 +75,7 @@
         (fn2-et-drain (fn2-exec-rows fn2-core) lists fn2-core fn2-ref-core))
        (reused (and (fn2-et-expired 1 fn2-core)
                     (equal (fn2-ref-queue 0 (nth 2 lists)) '(0 16 1))))
-       ;; Hypothesis-removal control: losing a pending deadline breaks R,
+       ;; Hypothesis-removal control: erasing the expiration bit breaks R,
        ;; even when both intrusive/FIFO queue views remain unchanged.
        ((mv tamper fn2-ref-core) (fn2-et-clear 1 fn2-ref-core))
        (different (not (fn2-representation-relation fn2-core fn2-ref-core lists)))

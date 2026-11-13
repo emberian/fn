@@ -23,7 +23,8 @@
            (fn2-schedp (mv-nth 2 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)))))
 (defthm fn2-sched-arm-delay-ms-sched-rows
   (equal (fn2-sched-rows (mv-nth 2 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)))
-         (fn2-sched-rows fn2-sched)))
+         (fn2-sched-rows fn2-sched))
+  :hints (("Goal" :in-theory (disable fn2-sched-rows))))
 (defthm fn2-sched-arm-delay-ms-control-wfp
   (implies (fn2-control-wfp fn2-control)
            (fn2-control-wfp (mv-nth 3 (fn2-sched-arm-delay-ms machine milliseconds fn2-sched fn2-control)))))
