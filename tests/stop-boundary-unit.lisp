@@ -64,3 +64,43 @@
          (eq (nth 4 r) :open) (eq (nth 5 r) :exhausted))))
 (assert-event (fn2-stop-boundary-positive))
 (assert-event (fn2-stop-boundary-stop-removal))
+
+;; Durability rows and FN2-ENV-INV across a post-stop suffix:
+;; Positive (stopped): FN2-ENV-ROWS and FN2-ENV-INV stay intact across take,
+;; admit, turn, clock and epoch steps; no new batch is acknowledged.
+;; Stop removed (running): the same suffix mutates FN2-ENV-ROWS (admitting the
+;; second batch).
+(defun fn2-sbu-inv-execute (stopp fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((ids (fn2-env-commit-ids *fn2-sbu-profile*))
+       (fn2-core (fn2-init-executor *fn2-sbu-profile* :echo nil fn2-core))
+       ((mv rlog acked fn2-core)
+        (fn2-env-steps '((:epoch 1) (:admit 2 0)) ids nil nil fn2-core))
+       (fn2-core (if stopp (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core) fn2-core))
+       (rows-before (fn2-env-rows ids fn2-core))
+       (inv-before (fn2-env-inv ids acked (reverse rlog) fn2-core))
+       ((mv rlog2 acked2 fn2-core)
+        (fn2-env-steps '((:take) (:admit 2 0) (:turn) (:clock 10 10 0) (:epoch 2))
+                       ids rlog acked fn2-core))
+       (rows-after (fn2-env-rows ids fn2-core))
+       (inv-after (fn2-env-inv ids acked2 (reverse rlog2) fn2-core)))
+    (mv (list (fn2-exec-stop fn2-core) inv-before inv-after
+              (equal rows-after rows-before) acked2)
+        fn2-core)))
+(defun fn2-sbu-inv-case (stopp)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (result fn2-core) (fn2-sbu-inv-execute stopp fn2-core) result)))
+(make-event `(defconst *fn2-sbu-inv-stopped* ',(fn2-sbu-inv-case t)))
+(make-event `(defconst *fn2-sbu-inv-running* ',(fn2-sbu-inv-case nil)))
+
+(defun fn2-stop-boundary-inv-positive ()
+  (declare (xargs :verify-guards nil))
+  (let ((s *fn2-sbu-inv-stopped*))
+    (and (equal (nth 0 s) 1) (nth 1 s) (nth 2 s) (nth 3 s) (null (nth 4 s)))))
+(defun fn2-stop-boundary-inv-stop-removal ()
+  (declare (xargs :verify-guards nil))
+  (let ((r *fn2-sbu-inv-running*))
+    (and (equal (nth 0 r) 0) (not (nth 3 r)))))
+(assert-event (fn2-stop-boundary-inv-positive))
+(assert-event (fn2-stop-boundary-inv-stop-removal))
