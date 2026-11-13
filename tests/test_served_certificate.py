@@ -85,6 +85,34 @@ class CoverageControls(unittest.TestCase):
                     if selector=='MISSING': called.assert_not_called()
                     self.assertEqual(report_path.read_bytes(),original)
 
+    def test_compiler_imports_the_library_whose_artifacts_are_checked(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta').mkdir()
+            lib=root/'checked-lib'
+            result=mock.Mock(returncode=0,stdout='checked')
+            with mock.patch.dict(c.os.environ, {'LEAN_PATH':'/other/old-lib'}), \
+                 mock.patch.object(c.subprocess,'run',return_value=result) as run:
+                c.compile_one('meta/F.lean',lib,5,'test.log',root=root)
+                args,kwargs=run.call_args
+                self.assertEqual(kwargs['env']['LEAN_PATH'],str(lib.resolve())+c.os.pathsep+'/other/old-lib')
+                self.assertEqual(kwargs['cwd'],root/'meta')
+                self.assertIn(str(lib/'F.olean'),args[0])
+
+    def test_full_cli_fails_rejected_candidates_but_allows_partial_coverage(self):
+        with tempfile.TemporaryDirectory() as td:
+            p=Path(td)/'report.json'
+            for succeeds in [False,True]:
+                p.write_text(json.dumps({'roots':[{'name':'R','proof':'R.lean'}, {'name':'OWED'}]}))
+                def gate(report,*args,**kwargs):
+                    if succeeds: report['roots'][0]['lean_gate']={'theorem':'validated'}
+                with mock.patch.object(c.sys,'argv',['check','--report',str(p),'--lean']), \
+                     mock.patch.object(c,'current'),mock.patch.object(c,'reconcile'), \
+                     mock.patch.object(c,'summary',return_value='coverage'), \
+                     mock.patch.object(c,'lean_gates',side_effect=gate), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(c.main(),0 if succeeds else 1)
+                    self.assertEqual(len(json.loads(p.read_text())['roots']),2)
+
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
           'roots':[{'name':'ARM','status':'unvalidated','reason':'not checked'}], 'unresolved':['MISSING']}

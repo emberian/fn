@@ -11,6 +11,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -127,9 +128,11 @@ def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True):
         cmd += ['-o', str(out)]
     log = root / 'build/served-certificate-gates' / logname
     log.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env['LEAN_PATH'] = str(lib.resolve()) + (os.pathsep + env['LEAN_PATH'] if env.get('LEAN_PATH') else '')
     try:
         result = subprocess.run(
-            cmd, cwd=meta_dir, text=True,
+            cmd, cwd=meta_dir, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds,
         )
         log.write_text(result.stdout)
@@ -680,6 +683,15 @@ def main():
     if args.snapshots:
         write_snapshots(report, args.snapshots, stamp=args.stamp)
     print('\n'.join(text.splitlines()[:3]))
+    if args.lean:
+        candidates = [r for r in report['roots'] if 'proof' in r]
+        failures = [r for r in candidates if 'lean_gate' not in r]
+        print(f'LEAN CANDIDATES: {len(candidates)-len(failures)}/{len(candidates)} passed; '
+              f'{len(report["roots"])-len(candidates)} roots without generated proofs')
+        for r in failures:
+            print('  FAIL', r['name'], r.get('reason', ''))
+        return 1 if failures or not candidates else 0
+    return 0
 
 
 if __name__ == '__main__':
