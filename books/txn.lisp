@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
+(include-book "core-lowering")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -272,7 +273,7 @@
   :doc "Start the identity decision for the upload's Message-ID and content digest.")
 (defcost fn2-txn-count :child fn2-txn-count-loop :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of a pool slot.")
-(defcost fn2-txn-count-next :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
+(defcost fn2-txn-count-next :child fn2-txn-count-next-child :answers (:ok :bounds) :bytes *fn2-txn-count-bytes*
   :doc "Count LF octets in up to 2,048 octets of the upload's body.")
 (defcost fn2-txn-next-name :child fn2-txn-next-name-pool :answers (:name :end :run :fault) :faults (:fault) :bytes *fn2-txn-scan-bytes*
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
@@ -291,7 +292,7 @@
 (defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
-(defcost fn2-txn-principal :answers (:ok :state)
+(defcost fn2-txn-principal :child fn2-txn-principal-child :answers (:ok :state)
   :doc "The transaction's effective durable principal: a consumer request's control connection's (its owner or the principal it bound), else the account slot's (D7's id).")
 (defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
@@ -303,7 +304,7 @@
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
-(defcost fn2-txn-groups-limit
+(defcost fn2-txn-groups-limit :child fn2-txn-groups-limit-child
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
 
 (defmachine-arms fn2-txn :declare
@@ -638,6 +639,7 @@
   (<= (fn2-txn-groups-limit fn2-core) *fn2-txn-groups-max*)
   :rule-classes :linear)
 (in-theory (disable fn2-txn-groups-limit))
+(defcore-readonly-child fn2-txn-groups-limit fn2-txn-groups-limit-child)
 (defthm fn2-txn-hash-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash n slot gen off okind oslot ogen fn2-core)))
   :hints (("Goal" :in-theory (e/d (fn2-txn-hash) (unsigned-byte-p)))))
@@ -723,6 +725,7 @@
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp counted) (natp to) (natp lines))))
   (fn2-txn-count-run counted to lines c0 g0 c1 g1 (fn2-upload-chunk-cap c0 fn2-core) okind oslot ogen fn2-core))
 (in-theory (disable fn2-txn-count-next))
+(defcore-readonly-child fn2-txn-count-next fn2-txn-count-next-child)
 
 ;; The write slots of an accepted POST (C-S3): the identity admission (C
 ;; §4a; fn2-txn-put-identity), the article row, and the operation outcome,
@@ -1042,6 +1045,7 @@
 ;; The transaction's continuations (materialized after the upload's).
 (defmacro fn2-txn-events ()
  '(progn
+(defcore-readonly-child fn2-txn-principal fn2-txn-principal-child)
 (defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)
 ))
