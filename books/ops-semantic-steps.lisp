@@ -33,6 +33,7 @@
                                        (fn2-issue-children fn2-ops-semanticp)))))))
 (fn2-oss-issue fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-oss-issue fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
+(fn2-oss-issue fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-read (offset slot gen len))
 (fn2-oss-issue fn2-issue-write (offset slot gen off len fua))
 (fn2-oss-issue fn2-issue-fence ())
@@ -121,7 +122,7 @@
     fn2-op-set-storage fn2-op-set-cancel-target fn2-op-set-wake fn2-op-enqueue fn2-op-finish
     fn2-op-request-cancel fn2-outbox-ack fn2-post-result fn2-post-accept-result fn2-post-clock
     fn2-post-signal fn2-take-clock fn2-take-signal fn2-count-stray fn2-harvest-next
-    fn2-issue-children fn2-issue-receive-children fn2-issue-send-children fn2-issue-read-children
+    fn2-issue-children fn2-issue-receive-children fn2-issue-send-children fn2-issue-tls-start-children fn2-issue-read-children
     fn2-issue-write-children fn2-issue-fence-children fn2-issue-accept-children
     fn2-issue-close-children fn2-issue-cancel-children fn2-issue-entropy-children
     fn2-block-read-children fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
@@ -134,6 +135,7 @@
      :hints (("Goal" :in-theory (e/d (,name) ,(remove-eq name *fn2-oss-ops-writers*))))))
 (fn2-oss-child fn2-issue-receive-children (cap-index cap-nonce slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-send-children (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
+(fn2-oss-child fn2-issue-tls-start-children (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-read-children (offset slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-write-children (offset slot gen off len fua okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-fence-children (okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
@@ -184,7 +186,7 @@
 ;; are A's elements, so the statement is over every argument.
 (defconst *fn2-core-ops-steps*
   ;; (key function arity-of-args values-before-core)
-  '((:receive fn2-issue-receive 9 3) (:send fn2-issue-send 11 3) (:read fn2-issue-read 8 3)
+  '((:receive fn2-issue-receive 9 3) (:send fn2-issue-send 11 3) (:tls-start fn2-issue-tls-start 10 3) (:read fn2-issue-read 8 3)
     (:write fn2-issue-write 10 3) (:fence fn2-issue-fence 4 3) (:accept fn2-issue-accept 6 3)
     (:close fn2-issue-close 6 3) (:cancel fn2-issue-cancel 6 3) (:entropy fn2-issue-entropy 7 3)
     (:arm-wake fn2-issue-arm-wake 2 3) (:harvest fn2-harvest-one 0 10) (:mailbox fn2-exec-mailbox 0 5)

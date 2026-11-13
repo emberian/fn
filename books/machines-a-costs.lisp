@@ -25,6 +25,9 @@
   :doc "Receive into the row's RX range.")
 (defcost fn2-issue-send :child fn2-issue-send-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Send by loan from the row's range.")
+(defcost fn2-issue-tls-start :child fn2-issue-tls-start-children :descriptors 1 :answers t
+ :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
+ :doc "Begin TLS with a loan of the retained ciphertext suffix; terminal harvest releases it.")
 (defcost fn2-issue-write :child fn2-issue-write-children :descriptors 1 :answers t :tables (fn2-core-ops fn2-core-pool) :effects ((:acquire (:operation)))
   :doc "Write from the scribe's window.")
 (defcost fn2-issue-fence :child fn2-issue-fence-children :descriptors 1 :answers t :tables (fn2-core-ops) :effects ((:acquire (:operation)))

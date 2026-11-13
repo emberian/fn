@@ -98,7 +98,8 @@
       (equal kind *fn2-action-entropy*)))
 (defun fn2-op-output-kindp (kind)
   (declare (xargs :guard t))
-  (or (equal kind *fn2-action-send*) (equal kind *fn2-action-write*)))
+  (or (equal kind *fn2-action-send*) (equal kind *fn2-action-write*)
+      (equal kind *fn2-action-tls-start*)))
 
 (defun fn2-op-slotp (slot fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
