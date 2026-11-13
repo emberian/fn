@@ -106,6 +106,13 @@
           ((and pathp (not (fn2-host-listener-pathp path))) (mv :listener-path 0 0 nil))
           (t (mv :ok address port (and pathp path))))))
 
+(defun fn2-host-tls-settings (profile)
+ (declare (xargs :guard t))
+ (cond ((not (fn2-tls-profilep profile)) (mv :tls-profile nil nil 0 0 0))
+       ((not (fn2-tls-requested-p profile)) (mv :off nil nil 0 0 0))
+       (t (mv :ok (fn2-profile-get :tls-certificate profile) (fn2-profile-get :tls-key profile)
+              (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version*))))
+
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
 ; a core it did not just turn.
 (defun fn2-host-stopped-p (fn2-core)
@@ -127,4 +134,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-tls-settings fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-idle-deadline) (w state)))

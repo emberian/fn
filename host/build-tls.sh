@@ -19,9 +19,12 @@ case $(uname -s) in
   *) name=libfn2-tls.so; shared=-shared ;;
 esac
 mkdir -p "$out"
+tmp=$(mktemp -d "$out/.tls.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
 # OpenSSL's pkg-config flags are compiler arguments, not source/config input.
 # shellcheck disable=SC2046,SC2086
 $cc -std=c11 -O2 -Wall -Wextra -Werror -fPIC $shared ${CFLAGS:-} \
   $tls_cflags "$root/host/fn2-tls.c" \
-  $tls_libs -o "$out/$name"
+  $tls_libs -o "$tmp/$name"
+mv -f "$tmp/$name" "$out/$name"
 printf 'built %s/%s\n' "$out" "$name"

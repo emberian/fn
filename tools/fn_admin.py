@@ -863,6 +863,18 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         env["FN2_LISTENER_ADDRESS"] = args.host
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
+    for option, variable in ((args.tls_certificate, "FN2_TLS_CERTIFICATE"),
+                             (args.tls_key, "FN2_TLS_KEY"),
+                             (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
+                             (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
+        if option is not None:
+            env[variable] = str(option)
+    if "FN2_TLS_CERTIFICATE" in env or "FN2_TLS_KEY" in env:
+        try:
+            subprocess.run(["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
+                           cwd=root, check=True, timeout=120)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            raise OSError("native TLS build failed; node was not started") from exc
     if args.peering:
         env["FN2_PEERING"] = "1"
 
@@ -1291,6 +1303,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", help="TCP listener IPv4 address (default: 127.0.0.1)")
     p_serve.add_argument("--control-sock", help="owner-only (0600) FNCT Unix control/consumer/authority socket")
     p_serve.add_argument("--peering", action="store_true", help="enable interim NNTP transit peering verbs")
+    p_serve.add_argument("--tls-certificate", type=lambda p: Path(p).resolve(), help="PEM certificate chain for STARTTLS")
+    p_serve.add_argument("--tls-key", type=lambda p: Path(p).resolve(), help="PEM private key for STARTTLS")
+    p_serve.add_argument("--tls-handshakes", help="maximum concurrent STARTTLS handshakes (default: 16)")
+    p_serve.add_argument("--tls-handshake-ms", help="STARTTLS admission/handshake deadline in milliseconds (default: 10000)")
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")

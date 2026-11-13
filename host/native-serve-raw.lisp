@@ -37,7 +37,17 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (path (sb-ext:posix-getenv "FN2_LISTENER_PATH"))
          (owner (sb-ext:posix-getenv "FN2_OWNER_UID"))
          (groups (sb-ext:posix-getenv "FN2_GROUPS"))
-         (peering (sb-ext:posix-getenv "FN2_PEERING")))
+         (peering (sb-ext:posix-getenv "FN2_PEERING"))
+         (tls-cert (sb-ext:posix-getenv "FN2_TLS_CERTIFICATE"))
+         (tls-key (sb-ext:posix-getenv "FN2_TLS_KEY"))
+         (tls-slots (sb-ext:posix-getenv "FN2_TLS_HANDSHAKES"))
+         (tls-timeout (sb-ext:posix-getenv "FN2_TLS_HANDSHAKE_MS")))
+    (when tls-cert (setf profile (put-assoc-equal :tls-certificate tls-cert profile)))
+    (when tls-key (setf profile (put-assoc-equal :tls-key tls-key profile)))
+    (when tls-slots
+      (setf profile (put-assoc-equal :tls-handshakes (or (ignore-errors (parse-integer tls-slots)) -1) profile)))
+    (when tls-timeout
+      (setf profile (put-assoc-equal :tls-handshake-ms (or (ignore-errors (parse-integer tls-timeout)) -1) profile)))
     (when owner
       (setf profile (put-assoc-equal :owner-uid (or (ignore-errors (parse-integer owner)) -1) profile)))
     (when port

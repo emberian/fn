@@ -30,8 +30,24 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 9)
+        self.assertEqual(report['cuts'], 14)
         self.assertEqual(report['correspondence_status'], 'unproved')
+
+    def test_tls_short_write_must_retain_offset(self):
+        self.change('host/tls.lisp', '(incf (fn2-native-tls-output-offset tls) n)',
+                    '(setf (fn2-native-tls-output-offset tls) 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_receive_must_observe_bio_capacity(self):
+        self.change('host/tls.lisp', '(fn2-native-recv fd (sb-sys:vector-sap buffer) room)',
+                    '(fn2-native-recv fd (sb-sys:vector-sap buffer) (length buffer))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_completion_requires_flushed_output(self):
+        self.change('host/adapter.lisp',
+                    '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))',
+                    '(fn2-nop-tls-finished op)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_new_cut_requires_coordinate(self):
         self.change('host/adapter.lisp', '(fn2-n-boundary host "take")',

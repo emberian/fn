@@ -19,6 +19,11 @@ MODEL_PATHS = ['sim/sim.lisp', 'sim/sim-adapter-base.lisp', 'sim/check-own.lisp'
 # Every literal injection site, including the two distinct network syscall sites.
 # Values name the surrounding model transition, not a native syscall guarantee.
 CUTS = {
+    ('fn2-n-tls-ready', 'tls-start'): 'fn2-sim-physical',
+    ('fn2-n-tls-ready', 'tls-handshake'): 'fn2-sim-physical',
+    ('fn2-n-tls-ready', 'tls-record'): 'fn2-sim-physical',
+    ('fn2-native-tls-flush', 'tls-send'): 'fn2-sim-physical',
+    ('fn2-native-tls-fill', 'tls-receive'): 'fn2-sim-physical',
     ('fn2-n-start-ready', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-start-now', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-storage-submit', 'device-submit'): 'fn2-sim-take-one',
@@ -30,6 +35,8 @@ CUTS = {
     ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
 }
 ORDERS = {
+    'fn2-native-tls-flush': ['fn2-tls-%drain', '@tls-send', 'fn2-native-send'],
+    'fn2-native-tls-fill': ['@tls-receive', 'fn2-native-recv', 'fn2-tls-%feed'],
     'fn2-n-take': ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-host-op-span',
                   '@take', 'fn2-host-outbox-ack', '@ack', 'fn2-n-start-now'],
     'fn2-n-storage-submit': ['fn2-device-request', '@device-submit', 'fn2-device-submit'],
@@ -46,6 +53,17 @@ ORDERS = {
 # These source contracts inspect arguments and result threading, not just names.
 # They deliberately do not substitute for a host/simulator state relation proof.
 CONTRACTS = {
+    'fn2-native-tls-flush': [
+        '(fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap buffer) off) remaining)',
+        '(incf (fn2-native-tls-output-offset tls) n)'],
+    'fn2-native-tls-fill': [
+        '(room (min (length buffer) (fn2-tls-%input-room (fn2-native-tls-handle tls))))',
+        '(fn2-native-recv fd (sb-sys:vector-sap buffer) room)',
+        '(= n (fn2-tls-%feed (fn2-native-tls-handle tls) (sb-sys:vector-sap buffer) n))'],
+    'fn2-n-tls-ready': [
+        '(fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host))',
+        '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls))',
+        '(incf (fn2-nop-tls-seed-offset op) fed)'],
     'fn2-n-take': [
         '(fn2-host-outbox-ack 1 core)',
         '(make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce '
@@ -202,6 +220,9 @@ def check(root=ROOT):
                     if isinstance(c, list) and len(c) == 2}
         if observed != expected_branches or len(branches[0][2:]) != 3:
             findings.append(f'device primitive mapping changed: {observed!r}')
+    for name in ('fn2-native-tls-fill', 'fn2-native-tls-flush', 'fn2-n-tls-ready'):
+        if ledger.calls(defs.get(name, [])) & {'loop', 'do', 'dotimes', 'dolist', name}:
+            findings.append(f'{name}: TLS transport turn contains an unbounded retry/iteration')
     advance_calls = ledger.calls(defs.get('fn2-sim-advance-with-clients', []))
     if 'fn2-sim-crash' not in advance_calls:
         findings.append('simulator advance no longer reaches the crash transition')
