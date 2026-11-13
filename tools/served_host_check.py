@@ -9,6 +9,7 @@ The fn1 definterface/DTN registry is not an interface for this runtime.
 from __future__ import annotations
 
 import argparse
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -75,7 +76,7 @@ def inspect(root=ROOT):
                 h = ledger.head(call)
                 if h and not h.startswith(':') and h.split(':')[-1] in BANNED:
                     findings.append(f'{location}: forbidden reader/evaluator {h}')
-                if h == 'load':
+                if h in ('load', 'cl:load', 'common-lisp:load'):
                     if len(call) != 2 or not isinstance(call[1], str) or isinstance(call[1], ledger.Sym):
                         findings.append(f'{location}: nonliteral or unsupported LOAD')
                     else:
@@ -85,11 +86,37 @@ def inspect(root=ROOT):
     return prefix, order, findings
 
 
+def selected(items):
+    """Resolve the source's explicit SBCL platform features for this load host.
+
+    The reader/eval audit still sees every branch; only runtime binding checks
+    select the platform actually loaded. New feature expressions fail closed.
+    """
+    known = {'linux': sys.platform.startswith('linux'), 'darwin': sys.platform == 'darwin',
+             'x86-64': platform.machine().lower() in ('x86_64', 'amd64')}
+    out, i = [], 0
+    while i < len(items):
+        value = items[i]
+        if isinstance(value, ledger.Sym) and str(value).startswith(('#+', '#-')):
+            flag = str(value)[2:]
+            if flag not in known or i + 1 == len(items):
+                raise ValueError(f'unsupported source feature {value}')
+            enabled = known[flag] == (str(value)[1] == '+')
+            i += 1
+            if not enabled:
+                i += 1
+                continue
+            value = items[i]
+        out.append(selected(value) if isinstance(value, list) else value)
+        i += 1
+    return out
+
+
 def entry_names(root, order):
     """Direct fn2 calls and raw definitions; no broad name-prefix exemptions."""
     calls, helpers, structures = set(), set(), set()
     for name in order:
-        for form in (node for top in forms(root / name) for node in walk(top)):
+        for form in (node for top in selected(forms(root / name)) for node in walk(top)):
             h = ledger.head(form)
             if h in ('defun', 'defmacro'):
                 helpers.add(str(form[1]))
@@ -135,7 +162,7 @@ def load_program(prefix, calls, helpers):
            (error "Undeclared served callee ~s" name)))))
   {raw}
   (dolist (name '({names}))
-   (unless (or (member name '({local})) (fboundp name))
+   (unless (fboundp name)
     (error "Served callee ~s is not bound" name)))
   (format t "~%FN_SERVED_HOST_LOAD_OK~%")
   (sb-ext:exit :code 0))

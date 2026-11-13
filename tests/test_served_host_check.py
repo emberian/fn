@@ -23,7 +23,7 @@ class ServedHostCheck(unittest.TestCase):
 
     def test_full_recursive_graph_rejects_reader_but_not_quoted_data(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = self.tree(directory, '(load "host/child.lisp")')
+            root = self.tree(directory, '(cl:load "host/child.lisp")')
             child = root / 'host/child.lisp'
             child.write_text("(defun helper () '(read x))")
             prefix, order, problems = gate.inspect(root)
@@ -42,6 +42,15 @@ class ServedHostCheck(unittest.TestCase):
             (root / 'host/main.lisp').write_text('(load path)')
             self.assertTrue(gate.inspect(root)[2])
 
+    def test_platform_selection_is_narrow_and_unknown_features_refuse(self):
+        symbol = gate.ledger.Sym
+        rows = [symbol('#+linux'), [symbol('linux-entry')],
+                symbol('#+darwin'), [symbol('darwin-entry')]]
+        expected = 'linux-entry' if sys.platform.startswith('linux') else 'darwin-entry'
+        self.assertEqual(gate.selected(rows), [[symbol(expected)]])
+        with self.assertRaises(ValueError):
+            gate.selected([symbol('#+mystery'), [symbol('unknown')]])
+
     @unittest.skipUnless(shutil.which('sbcl'), 'SBCL required for raw gate controls')
     def test_runtime_check_rejects_unverified_missing_and_unbound_callees(self):
         for cls, helper, bound, ok in (
@@ -49,6 +58,7 @@ class ServedHostCheck(unittest.TestCase):
             (':ideal', False, True, False),
             (':missing', False, True, False),
             (':missing', True, True, True),
+            (':missing', True, False, False),
             (':common-lisp-compliant', False, False, False),
         ):
             with self.subTest(cls=cls, helper=helper, bound=bound):
