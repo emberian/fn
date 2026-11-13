@@ -269,6 +269,9 @@
          (len (fn2-sim-range-len slot fn2-sim))
          (release (and (equal kind *fn2-action-send*) (= (fn2-sim-may-release slot fn2-sim) 1))))
       (cond
+       ; A physical return held by the explicit native cut program must not
+       ; issue physical I/O again through this atomic scheduler entry.
+       ((= active *fn2-sim-native-returned*) (mv nil fn2-core fn2-sim fn2-own))
        ((= active 2)
         (b* (((mv & fn2-core fn2-sim fn2-own)
               (fn2-sim-post 1 slot gen *fn2-event-borrow-released* *fn2-outcome-done*
