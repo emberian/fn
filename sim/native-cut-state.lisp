@@ -5,7 +5,6 @@
 ; Active 3 is the existing early borrow-release continuation.  Active 4 is
 ; private to this cut program: physical I/O finished, terminal post not sent.
 ; FN2-SIM-FIND-WRITE selects only active 1, so a crash cannot replay this write.
-(defconst *fn2-sim-native-returned* 4)
 
 (defun fn2-sim-native-storagep (slot fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
@@ -15,14 +14,23 @@
        (member-equal (fn2-sim-kind slot fn2-sim)
                      (list *fn2-action-read* *fn2-action-write* *fn2-action-fence*))))
 
+(defun fn2-sim-native-faultp (fault)
+  (declare (xargs :guard t))
+  (member-equal fault
+    (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-dead*
+          *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-bitrot*
+          *fn2-fault-misread* *fn2-fault-miswrite* *fn2-fault-lying-flush*
+          *fn2-fault-tear* *fn2-fault-fail-slow*)))
+
 ; Packet fields: slot, generation, kind, event, length, raw code, raw count,
-; raw auxiliary result, schedule word, and the original completion time.
+; raw auxiliary result, schedule word, the original completion time, and the physical fault.
 (defun fn2-sim-native-packetp (packet fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
-  (and (true-listp packet) (= (len packet) 10)
+  (and (true-listp packet) (= (len packet) 11)
        (natp (nth 0 packet)) (< (nth 0 packet) (fn2-sim-rows fn2-sim))
        (unsigned-byte-p 60 (nth 1 packet)) (natp (nth 4 packet))
-       (unsigned-byte-p 32 (nth 8 packet)) (unsigned-byte-p 60 (nth 9 packet))))
+       (unsigned-byte-p 32 (nth 8 packet)) (unsigned-byte-p 60 (nth 9 packet))
+       (fn2-sim-native-faultp (nth 10 packet))))
 
 (local (defthm fn2-native-update-same
   (equal (update-nth i a (update-nth i b xs)) (update-nth i a xs))
