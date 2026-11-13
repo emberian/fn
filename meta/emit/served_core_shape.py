@@ -176,7 +176,7 @@ def emit_shape_candidates(analyzer, destination, widx, fill_world_bodies, target
         deps=[ident(shape_theorem_name(k)) for k in sorted(analyzer.summaries[key])]
         simps=[ident(name),'isListB_ite','isListB_succ_cons','isListB_zero_nil',
                'isListB_upd','Pres.nth_ite','Pres.nth_cons_zero','Pres.nth_cons_succ',
-               'Pres.nth_upd_same','Pres.nth_upd_ne','hcore','ite_self',
+               'Pres.nth_upd_same','Pres.nth_upd_ne','Int.reduceSub','hcore','ite_self',
                *(f'hi_{i}' for i in sorted(indices)),*deps]
         lines.append('  simp (disch := first | assumption | decide) only ['+', '.join(simps)+']')
         lines.append(f'#print axioms {ident(shape_theorem_name(key))}')
