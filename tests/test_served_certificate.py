@@ -1,6 +1,8 @@
 """Controls for the generated coverage boundary; proof gates run separately."""
 import importlib.util
 import json
+import contextlib
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -62,6 +64,26 @@ class CoverageControls(unittest.TestCase):
                 (lib/'Fn2/A.olean').write_text('damaged artifact')
                 c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
                 self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+
+    def test_filtered_cli_rejects_no_match_and_failed_proofs(self):
+        with tempfile.TemporaryDirectory() as td:
+            report_path=Path(td)/'report.json'
+            report_path.write_text(json.dumps({'roots':[
+                {'name':'R0','kind':'K','proof':'proof.lean'},
+                {'name':'R1','kind':'K'}]}))
+            original=report_path.read_bytes()
+            def accepted(report, *args, **kwargs):
+                report['roots'][0]['lean_gate']={'theorem':'validated'}
+            cases=[('MISSING',accepted,1),('R0',lambda *a,**k: None,1),
+                   ('R0',accepted,0),('K',accepted,0),('R1',accepted,1)]
+            for selector,gate,expected in cases:
+                with self.subTest(selector=selector,expected=expected), \
+                     mock.patch.object(c.sys,'argv',['check','--report',str(report_path),'--lean','--only',selector]), \
+                     mock.patch.object(c,'current'), mock.patch.object(c,'lean_gates',side_effect=gate) as called, \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(c.main(),expected)
+                    if selector=='MISSING': called.assert_not_called()
+                    self.assertEqual(report_path.read_bytes(),original)
 
     def test_proposals_never_count(self):
         report={'functions':[{'name':'F','canonical_export':'proposed'}],
