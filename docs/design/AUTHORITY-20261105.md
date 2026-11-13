@@ -111,9 +111,10 @@ Decoded request payloads:
 1 principal-bind    name
 2 grant-set         grantee right scope target enabled expected-head op
 3 grant-get         grantee right scope target
+4 stream-resolve    stream-name
 ```
 
-Types: name/op = nonempty length-prefixed octets, maximum 64; principal/target/head = their typed `(:id ...)` codecs; right/scope = the enums above; enabled = boolean. The opcode is one octet. No Lisp reader.
+Types: stream-name = nonempty length-prefixed group-name octets, maximum 250; name/op = nonempty length-prefixed octets, maximum 64; principal/target/head = their typed `(:id ...)` codecs; right/scope = the enums above; enabled = boolean. The opcode is one octet. No Lisp reader.
 
 Reply payload: opcode, existing status enum, length-prefixed reason word ≤64 octets, then exactly the declared result:
 
@@ -122,6 +123,7 @@ principal-create accepted: (principal)
 principal-bind   accepted: (principal authority-head)
 grant-set        accepted: (grant authority-head receipt)
 grant-get        accepted: (found authority-head [grant grantor enabled previous])
+stream-resolve   accepted: (target)
 ```
 
 The bracketed fields occur iff `found = 1`. `found = 0` is a successful absent lookup, not a grant.
@@ -132,7 +134,7 @@ refused:   access | frame | unknown-principal | unknown-stream |
 uncertain: persistence
 ```
 
-Declare reasons per verb; `principal-bind` and `grant-get` cannot answer uncertain. A failed frame must not default to another verb.
+Declare reasons per verb; `principal-bind`, `grant-get`, and `stream-resolve` cannot answer uncertain. A failed frame must not default to another verb.
 
 Semantics:
 
@@ -204,7 +206,7 @@ Bind the transaction’s principal and reply destination from its owning connect
 (:grant "reader" :read   "dregg.fn.e1.reply")
 ```
 
-Translate `:any` to Mini’s `(:consume :own-consumers 0)`, not universal access. Resolve group names through `fn2-groups`; map `"reader"` to anonymous. Resolve returned principal IDs rather than hard-coding slots.
+Translate `:any` to Mini’s `(:consume :own-consumers 0)`, not universal access. Resolve group names through the read-only `stream-resolve` authority verb (FNCT kind 29, opcode 4), which queries `fn2-groups` in bounded lookup steps. Its request is a length-prefixed stream name (the existing 250-octet group-name limit); its accepted result is the stream ID, and an absent name refuses `unknown-stream`. It does not bind a principal or mutate grants. The CLI must propagate refusal or transport failure without consulting `.groups` sidecars or inventing a default ID; map `"reader"` to anonymous. Resolve returned principal IDs rather than hard-coding slots.
 
 `tests/m2-cuts.lisp` needs administrator, Mini and origin control connections, plus the NNTP reader. Configure funded account/connection rows accordingly. Create/bind principals, issue all seven grants, verify their replies/readbacks, then run the existing scripts.
 

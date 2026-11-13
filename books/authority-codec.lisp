@@ -18,7 +18,8 @@
 ;; length-prefixed octets, nonempty, at most 64 (checked by the verb, which
 ;; answers frame for an empty one).
 (defconst *fn2-authority-requests*
-  `((0 principal-create ((name (:octets16 64))))
+  `((4 stream-resolve ((stream-name (:octets16 250))))
+    (0 principal-create ((name (:octets16 64))))
     (1 principal-bind ((name (:octets16 64))))
     (2 grant-set ((grantee (:id principal)) (right ,*fn2-authority-right-layout*)
                   (scope ,*fn2-authority-scope-layout*) (target (:id stream)) (enabled :bool)
@@ -30,7 +31,8 @@
 ;; after FOUND occurs iff FOUND = 1: a separate layout, so found = 0 is the
 ;; two-field form and never a grant).
 (defconst *fn2-authority-results*
-  '((principal-create ((principal (:id principal))))
+  '((stream-resolve ((target (:id stream))))
+    (principal-create ((principal (:id principal))))
     (principal-bind ((principal (:id principal)) (authority-head (:id grant))))
     (grant-set ((grant (:id grant)) (authority-head (:id grant)) (receipt (:octets16 1024))))
     (grant-get ((found :bool) (authority-head (:id grant))))
