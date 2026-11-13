@@ -88,7 +88,7 @@ class ReplyDecoding(unittest.TestCase):
 
 
 class InvalidReplyOutcome(unittest.TestCase):
-    def run_command(self, reply: bytes, *args: str) -> subprocess.CompletedProcess:
+    def run_command(self, reply: bytes, *args: str, cursor_file: bool = False) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "ctl.sock")
             ready = threading.Event()
@@ -114,7 +114,8 @@ class InvalidReplyOutcome(unittest.TestCase):
             thread.start()
             self.assertTrue(ready.wait(5))
             proc = subprocess.run(
-                [str(ROOT / "fn"), *args, "--control-sock", path, "--json"],
+                [str(ROOT / "fn"), *args, "--control-sock", path, "--json"]
+                + (["--cursor-file", str(Path(directory) / "cursor")] if cursor_file else []),
                 cwd=ROOT,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
@@ -149,6 +150,18 @@ class InvalidReplyOutcome(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
+    def test_accepted_ack_survives_lost_cursor_refresh(self) -> None:
+        receipt = bytes(4) + (6).to_bytes(8, "big")
+        proc = self.run_command(
+            cns_reply(receipt), "stream", "ack", "6", "--cursor", CURSOR.hex(),
+            cursor_file=True,
+        )
+        self.assertEqual(proc.returncode, 0, (proc.stdout, proc.stderr))
+        decoded = json.loads(proc.stdout)
+        self.assertEqual(decoded["outcome"], "accepted")
+        self.assertEqual(decoded["position"], 6)
+        self.assertIn("cursor_refresh_error", decoded)
 
     def test_negative_limit_is_local_usage_error(self) -> None:
         proc = self.run_command(

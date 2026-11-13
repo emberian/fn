@@ -1053,10 +1053,18 @@ def cmd_stream_ack(args: argparse.Namespace) -> int:
             return emit(err, args.json)
         res = sess.cns("ack", cursor=cur, position=args.position)
         if res["outcome"] == "accepted" and args.cursor_file:
-            pos_res = sess.cns("position", consumer=cbytes)
-            if pos_res["outcome"] == "accepted":
-                save_cursor_file(args.cursor_file, pos_res["cursor"])
-                res["cursor"] = pos_res["cursor"]
+            try:
+                pos_res = sess.cns("position", consumer=cbytes)
+            except (WireError, OSError) as exc:
+                # The accepted durable ack is already known; only its optional
+                # cursor-file refresh failed.
+                res["cursor_refresh_error"] = str(exc)
+            else:
+                if pos_res["outcome"] == "accepted":
+                    save_cursor_file(args.cursor_file, pos_res["cursor"])
+                    res["cursor"] = pos_res["cursor"]
+                else:
+                    res["cursor_refresh_error"] = pos_res.get("reason", pos_res["outcome"])
     return emit(res, args.json)
 
 
