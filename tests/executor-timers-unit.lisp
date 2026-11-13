@@ -66,9 +66,15 @@
                      (not (fn2-et-expired 1 fn2-core))
                      (= (fn2-exec-timer-cursor fn2-core) 16)
                      (fn2-exec-services-ready-p fn2-core)))
+       ;; A newly armed deadline lies behind the suspended scan cursor.
+       ;; Advancing the clock before wrap must preserve it for the next pass.
+       ((mv interleave interleave-dl fn2-core) (fn2-et-arm 0 1 fn2-core))
+       ((mv ref-interleave ref-interleave-dl fn2-ref-core) (fn2-et-arm 0 1 fn2-ref-core))
+       (fn2-core (fn2-exec-clock 2050 fn2-core))
+       (fn2-ref-core (fn2-exec-clock 2050 fn2-ref-core))
        ((mv rest-ok lists fn2-core fn2-ref-core)
         (fn2-et-drain (fn2-exec-rows fn2-core) lists fn2-core fn2-ref-core))
-       (later (and (fn2-et-expired 16 fn2-core) (not (fn2-et-expired 1 fn2-core))
+       (later (and (fn2-et-expired 0 fn2-core) (fn2-et-expired 16 fn2-core) (not (fn2-et-expired 1 fn2-core))
                    (equal (fn2-ref-queue 0 (nth 2 lists)) '(0 16))))
        (fn2-core (fn2-exec-clock 3050 fn2-core))
        (fn2-ref-core (fn2-exec-clock 3050 fn2-ref-core))
@@ -80,11 +86,18 @@
        ;; even when both intrusive/FIFO queue views remain unchanged.
        ((mv tamper fn2-ref-core) (fn2-et-clear 1 fn2-ref-core))
        (different (not (fn2-representation-relation fn2-core fn2-ref-core lists)))
+       (fn2-ref-core (fn2-ref-copy-core fn2-core fn2-ref-core))
+       ((mv huge & fn2-core) (fn2-et-arm 2 (expt 2 200) fn2-core))
+       ((mv zero & fn2-core) (fn2-et-arm 2 0 fn2-core))
+       ((mv negative & fn2-core) (fn2-et-arm 2 -1 fn2-core))
+       (refused-unchanged (fn2-representation-relation fn2-core fn2-ref-core lists))
        (fn2-core (fn2-exec-clock (- *fn2-no-deadline* 500) fn2-core))
        ((mv overflow & fn2-core) (fn2-et-arm 2 1 fn2-core)))
     (mv (and (equal (list a0 a16 old cancel reuse tamper) '(:ok :ok :ok :ok :ok :ok))
              (= d0 1050) (= d16 1050) (= old-dl 1050) (= new-dl 3050)
              early early-ok due first-ok bounded rest-ok later reuse-ok reused different
+             (eq interleave :ok) (eq ref-interleave :ok) (= interleave-dl 2050) (= ref-interleave-dl 2050)
+             (equal (list huge zero negative) '(:bounds :bounds :bounds)) refused-unchanged
              (eq overflow :bounds)) fn2-core fn2-ref-core)))
 (defun fn2-et-test ()
   (declare (xargs :verify-guards nil))
