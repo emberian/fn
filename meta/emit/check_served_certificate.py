@@ -11,6 +11,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -127,9 +128,11 @@ def compile_one(source, lib, seconds, logname, root=BASE, write_olean=True):
         cmd += ['-o', str(out)]
     log = root / 'build/served-certificate-gates' / logname
     log.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env['LEAN_PATH'] = str(lib.resolve()) + (os.pathsep + env['LEAN_PATH'] if env.get('LEAN_PATH') else '')
     try:
         result = subprocess.run(
-            cmd, cwd=meta_dir, text=True,
+            cmd, cwd=meta_dir, env=env, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds,
         )
         log.write_text(result.stdout)
