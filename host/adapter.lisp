@@ -165,7 +165,6 @@
     (when (and tcp-ready local-ready) (setf (fn2-nhost-local-first host) (not use-local)))
     (if use-local (fn2-native-accept-local local) (fn2-native-accept (fn2-ncap-fd cap)))))
 
-(defvar *fn2-n-seed-store* nil "The seeded store's storage writes, put on the device at start.")
 ;;; The memory device: an octet at OFFSET (0 where nothing was written).
 (defun fn2-n-device-unit (host unit)
   (or (gethash unit (fn2-nhost-device host))
@@ -515,26 +514,18 @@ take reaches it after the stopping turn (the core refuses them all anyway)."
   (or (cdr (assoc 'fn2-core (user-stobj-alist *the-live-state*)))
       (error "fn2 native: the certified core stobj is absent")))
 
-(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0) (seeds nil)
-                                  device-path create-size)
-  "Initialize the live core with PROFILE, bind its configured listener (:listener-address,
-:listener-port; default 127.0.0.1 and an ephemeral port; and :listener-path, the owner-only
-Unix socket, when named), and return the host. SEEDS, when given, are published into the
-store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session seeds it)."
-  (when (and device-path seeds) (error "fn2 native: image startup cannot use a seeded memory store"))
-  (when device-path (setf profile (fn2-image-profile profile)))
+(defun fn2-n-open-host (profile core &key (control-fd -1) (trace-capacity 0) (kill-at 0)
+                                      device-path create-size memory-store)
+  "Open I/O for an initialized CORE. MEMORY-STORE supplies test-device writes;
+the image launcher always opens its persisted device instead."
+  (when (and device-path memory-store)
+    (error "fn2 native: image startup cannot use a memory fixture"))
   (when (and create-size (not (eq (fn2-image-create-request create-size profile) :ok)))
     (error "fn2 image create: geometry"))
   (multiple-value-bind (bind address port path) (fn2-host-listener-bind profile)
    (unless (eq bind :ok) (error "fn2 native: refused to start: the profile's ~(~a~) is out of range" bind))
-  (let* ((core (fn2-n-live-core))
-         (n (fn2-profile-o profile))
+  (let* ((n (fn2-profile-o profile))
          (ncaps (+ 1 (fn2-profile-c profile) (fn2-profile-accept-credits profile) n)))
-    (fn2-init-executor profile :echo nil core)
-    (when seeds
-      (multiple-value-bind (code store) (funcall 'fn2-cs-seed-all seeds 1 core)
-        (unless (eq code :ok) (error "fn2 native: the store's seed was refused: ~(~a~)" code))
-        (setf *fn2-n-seed-store* store)))
     (multiple-value-bind (lfd lport) (fn2-native-listen port address)
       (let ((host (make-fn2-nhost
                    :core core
@@ -552,7 +543,7 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
         (handler-case
           (progn
-        (unless device-path (fn2-n-device-put host *fn2-n-seed-store*))
+        (unless device-path (fn2-n-device-put host memory-store))
         (when device-path
           (multiple-value-bind (fd size backend) (fn2-device-open device-path :create-size create-size)
             (multiple-value-bind (code cap observed-size observed-backend)
@@ -583,6 +574,15 @@ store before any client (owed-cursor's fn2-cs-seed-all, as the simulator session
                          (fn2-n-iteration host)))
         host)
           (error (condition) (fn2-n-destroy host) (error condition))))))))
+
+(defun fn2-n-make-host (profile &key (control-fd -1) (trace-capacity 0) (kill-at 0)
+                                  device-path create-size)
+  "Initialize the live core and open its configured listeners and device."
+  (when device-path (setf profile (fn2-image-profile profile)))
+  (let ((core (fn2-n-live-core)))
+    (fn2-init-executor profile :echo nil core)
+    (fn2-n-open-host profile core :control-fd control-fd :trace-capacity trace-capacity
+                     :kill-at kill-at :device-path device-path :create-size create-size)))
 
 (defun fn2-n-run (host)
   "Iterate until the core stops (a signal or a stop control posts the sticky signal)."

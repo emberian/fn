@@ -137,7 +137,7 @@ def check(root=ROOT):
         if actual[site] != expected[site]:
             findings.append(f'cut inventory {site}: expected {expected[site]}, found {actual[site]}')
     bridge = ledger.read_forms('(fn2-n-boundary host label)')[0]
-    if bridges != [('fn2-n-make-host', bridge)]:
+    if bridges != [('fn2-n-open-host', bridge)]:
         findings.append('device callback must have exactly one known host-boundary bridge')
     for name in set(CUTS.values()) | {'fn2-sim-crash'}:
         if name not in defs:

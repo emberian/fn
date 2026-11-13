@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (load "host/ffi.lisp")
 (load "host/adapter.lisp")
+(load "host/native-seed-fixture.lisp")
 
 (defvar *fn2-ns-trace* nil)
 
@@ -30,8 +31,8 @@ restart fixture separately exercises persisted genesis and the boot machine."
 
 (defun fn2-ns-serve (&optional (trace-capacity 4000000))
   "Bind 127.0.0.1:0, announce the port, serve until the stop control line."
-  (let ((host (fn2-n-make-host *fn2-ss-profile* :control-fd 0 :trace-capacity trace-capacity
-                                   :seeds *fn2-ss-seeds*)))
+  (let ((host (fn2-n-make-seeded-host *fn2-ss-profile* *fn2-ss-seeds*
+                                   :control-fd 0 :trace-capacity trace-capacity)))
     (unwind-protect
          (progn
           (fn2-ns-install-fixture-image host
