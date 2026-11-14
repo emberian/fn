@@ -26,8 +26,14 @@
         (if (equal (fn2-extents-state extent fn2-extents) *fn2-extent-state-retire-pending*)
             (fn2-extents-next-retired extent fn2-extents) *fn2-alloc-none*) fn2-fields)))
   (mv :entry fn2-fields)))
+; The TYPE contract is over the actual stobj/guard domain, including readonly
+; source carriers. The former destination-only TYPE formula was false for
+; malformed logical sources (ground controls live in the roundtrip fixture).
+; Destination-only WFP and unconditional row effects are retained separately.
 (fn2-fields-preserves fn2-checkpoint-frozen-map-entry
- (extent base token okind oslot ogen fn2-extents fn2-fields) :position 1)
+ (extent base token okind oslot ogen fn2-extents fn2-fields)
+ :hyps ((fn2-extentsp fn2-extents) (fn2-fieldsp fn2-fields) (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields))
+ :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields)))
 
 ; The caller advances one extent per step. :skip is explicit and cannot count
 ; as a ticket. Other ordinals are skipped: physical free-list order need not
@@ -61,4 +67,14 @@
       (fn2-fields (fn2-fields-set-value (+ base *fn2-format-recovery-arena-entry-field-allocation*) counter fn2-fields)))
   (mv :entry fn2-fields)))
 (fn2-fields-preserves fn2-checkpoint-frozen-arena-entry
- (extent ordinal base token okind oslot ogen fn2-checkpoint-construction fn2-extents fn2-fields) :position 1)
+ (extent ordinal
+        base
+        token
+        okind
+        oslot
+        ogen
+        fn2-checkpoint-construction
+        fn2-extents
+        fn2-fields)
+ :hyps ((fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-fieldsp fn2-fields) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields))
+ :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields)))
