@@ -82,10 +82,10 @@
 ; Give level LEVEL a fresh page: a C-owned 64 KiB workspace and its physical
 ; identity, from the caller's allocator reservation. The page's ordinal is
 ; the build's page count at that level, kept in the writer row across pages.
-(defun fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
+(defun fn2-run-build-page-kind (b level slot gen unit epoch counter page-kind fn2-run-builds fn2-run-writers fn2-pool)
  (declare (xargs :stobjs (fn2-run-builds fn2-run-writers fn2-pool)
   :guard (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (natp level) (< level *fn2-run-max-levels*)
+ (b* (((unless (and (unsigned-byte-p 8 page-kind) (natp level) (< level *fn2-run-max-levels*)
                     (< level (fn2-run-builds-height b fn2-run-builds))))
        (mv :bounds fn2-run-builds fn2-run-writers fn2-pool))
       (w (fn2-run-level-writer b level))
@@ -95,7 +95,7 @@
       ((mv code fn2-run-writers fn2-pool)
        (fn2-run-open w slot gen (fn2-run-builds-schema b fn2-run-builds) 1 level
                      (fn2-run-builds-run b fn2-run-builds) ordinal
-                     (if (zp level) *page-kind-run-data* *page-kind-run-index*)
+                     page-kind
                      unit epoch counter (fn2-run-builds-history b fn2-run-builds)
                      (fn2-run-builds-incarnation b fn2-run-builds)
                      (fn2-run-builds-okind b fn2-run-builds) (fn2-run-builds-oslot b fn2-run-builds)
@@ -103,6 +103,13 @@
                      (+ (fn2-run-builds-fields b fn2-run-builds) (* level *fn2-run-writer-fields*))
                      (fn2-run-builds-limit b fn2-run-builds) fn2-run-writers fn2-pool)))
   (mv code fn2-run-builds fn2-run-writers fn2-pool)))
+; Default callers retain the ordinary run page kinds. A directory producer
+; uses the same implementation with its declared :manifest page kind.
+(defun fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
+ (declare (xargs :stobjs (fn2-run-builds fn2-run-writers fn2-pool)
+  :guard (and (fn2-run-buildp b fn2-run-builds fn2-run-writers) (fn2-pool-wfp fn2-pool))))
+ (fn2-run-build-page-kind b level slot gen unit epoch counter
+  (if (zp level) *page-kind-run-data* *page-kind-run-index*) fn2-run-builds fn2-run-writers fn2-pool))
 (fn2-run-builds-preserves fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
  :position 1 :disable nil)
 (fn2-run-writers-preserves fn2-run-build-page (b level slot gen unit epoch counter fn2-run-builds fn2-run-writers fn2-pool)
