@@ -23,7 +23,7 @@
           :map-begin :map-source :descriptor-source
           :barrier-begin :barrier-source :allocation-begin :allocation-source :allocation-submit :allocation-wait :allocation-empty
           :installation-begin :installation-source :installation-submit :installation-wait
-          :retention-begin :retention-source :publish-start :publish-wait :release :thaw :event-rearm :rearm :snapshot-release :done
+          :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :done
           :admission-refused :refused :uncertain)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
@@ -41,7 +41,7 @@
          (:allocation-source :storage-window) (:allocation-submit :storage-window) (:allocation-wait :storage-window) (:allocation-empty :storage-window)
          (:installation-begin :storage-window) (:installation-source :storage-window) (:installation-submit :storage-window) (:installation-wait :storage-window)
          (:retention-begin :storage-window) (:retention-source :storage-window) (:publish-start :storage-window)
-         (:publish-wait :storage-window) (:release :storage-window) (:refused :storage-window) (:uncertain :storage-window))
+         (:publish-wait :storage-window) (:release :storage-window) (:release-complete :storage-window) (:refused :storage-window) (:uncertain :storage-window))
  :budget (:bytes 16384 :steps 32 :descriptors 4)
  :stops (:checkpoint :pool :bounds)
  :capacity (if (posp (fn2-b-checkpoint-capacity profile)) 1 0)
@@ -55,6 +55,6 @@
         (:map-begin) (:map-source) (:descriptor-source)
         (:barrier-begin) (:barrier-source) (:allocation-begin) (:allocation-source) (:allocation-submit) (:allocation-wait) (:allocation-empty)
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
-        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:done)
+        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:done)
         (:admission-refused) (:refused) (:uncertain))
  :observes ((:read-result)))

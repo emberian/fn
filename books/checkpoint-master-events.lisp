@@ -3,10 +3,35 @@
 (in-package "ACL2")
 (include-book "checkpoint-master-arms")
 (fn2-book-layer :c)
+; Reuse the shared declared-child face generator across the actual DSL's
+; leaf books. B lifecycle/commit and C snapshot operations already have core
+; faces, so a core-form generated actor can compose them without a twin or
+; an invented child adapter over the complete core.
+(defun fn2-checkpoint-master-face-ops (tree world)
+ (declare (xargs :verify-guards nil))
+ (if (atom tree) nil
+  (let* ((op (car tree)) (row (and (symbolp op) (fn2-arms-op-row op world)))
+         (child (and row (fn2-decl-get :child row))))
+   (union-eq (and child (function-symbolp child world) (not (function-symbolp op world)) (list op))
+    (union-eq (fn2-checkpoint-master-face-ops (car tree) world)
+              (fn2-checkpoint-master-face-ops (cdr tree) world))))))
+(defun fn2-checkpoint-master-face-events (ops world)
+ (declare (xargs :verify-guards nil))
+ (if (atom ops) nil
+  (append (fn2-arms-op-face-events (car ops) (fn2-decl-get :child (fn2-arms-op-row (car ops) world)) world)
+          (fn2-checkpoint-master-face-events (cdr ops) world))))
+(defmacro fn2-checkpoint-master-faces ()
+ '(make-event
+   (value (cons 'progn
+    (fn2-checkpoint-master-face-events
+     (fn2-checkpoint-master-face-ops
+      (cdr (assoc-eq 'fn2-checkpoint-master (table-alist 'fn2-machine-arm-bodies (w state)))) (w state))
+     (w state))))))
+
 (defmacro fn2-checkpoint-master-events ()
  '(progn
-   (defmachine-arms fn2-checkpoint-master :children)
-   (defmachine-arms fn2-checkpoint-master :wrappers)
+   (fn2-checkpoint-master-faces)
+   (defmachine-arms fn2-checkpoint-master)
    (defun fn2-checkpoint-needed-ready (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (let ((id (fn2-machine-kind-base *fn2-checkpoint-master-kind* fn2-core)))

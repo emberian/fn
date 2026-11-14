@@ -524,3 +524,27 @@ extension to the semantic/payload lower job. The actor observer only wakes the
 source continuation: its smaller ABI cannot reconstruct operation identity.
 The public READ maps only the lower queued `:issued` result to the issue DSL's
 `:ok`; all refusal and uncertain outcomes pass through unchanged.
+
+## Maintenance actor source integration
+
+`checkpoint-master-kind` registers the actual singleton C maintenance owner,
+shared page worker and bank writer before the assembly index is consumed.
+Executor genesis creates the maintenance row and ordinary `fn2-turn` dispatch
+runs it. Its source activation constant remains NIL: recovery selection,
+ordered semantic/physical replay and combined maintenance headroom are still
+qualification requirements. Registering these bodies does not enable FREE.
+
+The maintenance owner admits the nineteen-window source bundle before acquiring
+the C cut, then drives the existing metadata, authenticated event, reservation
+closure, map/arena and descriptor callbacks. All producers bind once and use
+one generated page worker's destination-derived HAND/ACCEPT and completion
+handback. READ is a separate budgeted issue arm. The B lifecycle owns bounded
+construction/source retention, the only copy-to-install transition and thaw;
+B's actual journal owns allocation members and final installation. Publication
+uses its separate three windows. C rearm and snapshot release follow actual
+bank completion, source-window release and B thaw; uncertainty retains state.
+
+The pressure source uses actual blocked retirement progress and cached source
+working-room availability. It does not guarantee journal directory, physical
+construction or publication-window headroom. Source arity, dispatch and gate
+controls are static checks; these actor books have not been admitted or run.
