@@ -17,6 +17,14 @@
     {
       "old": "               ((unless (and (equal (fn2-fields-value (+ cb *fn2-format-ref-field-storage-domain*) fn2-fields) 0)\n                              (equal (fn2-fields-value (+ cb *fn2-format-ref-field-page-kind*) fn2-fields) (fn2-run-layout-page-kind sid (- level 1)))\n                              (equal (fn2-fields-value (+ cb *fn2-format-ref-field-encoded-length*) fn2-fields) len)\n                              (equal (fn2-fields-ref-len hf fn2-fields) 32))) (fn2-checkpoint-semantic-fail :reference))\n",
       "new": "               ((unless (fn2-checkpoint-semantic-page-child-p cb sid level len fn2-fields)) (fn2-checkpoint-semantic-fail :reference))\n"
+    },
+    {
+      "old": "(include-book \"checkpoint-semantic-page\")",
+      "new": "(include-book \"checkpoint-metadata-retention\")\n(include-book \"checkpoint-semantic-page\")"
+    },
+    {
+      "old": "(fn2-checkpoint-semantic-page-child-p cb sid level len fn2-fields)",
+      "new": "(fn2-checkpoint-semantic-page-child-p cb (fn2-run-layout-page-kind sid (- level 1)) len fn2-fields)"
     }
   ]
 }
