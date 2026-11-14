@@ -548,3 +548,11 @@ The pressure source uses actual blocked retirement progress and cached source
 working-room availability. It does not guarantee journal directory, physical
 construction or publication-window headroom. Source arity, dispatch and gate
 controls are static checks; these actor books have not been admitted or run.
+Root1 callbacks retain all required child inputs but return only each operation's
+assigned and nested-callee result carriers. The largest result is STEP's code
+plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
+(17 values). The declaration drives body projection and positional shape
+contracts together. A source control compares that declaration with actual
+assignments and family calls, including a removed-manifest-result mutation.
+This stays below ACL2's 32-value limit without treating readonly inputs as
+outputs; it is a source check, not admission of the generated callbacks.

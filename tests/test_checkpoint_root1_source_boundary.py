@@ -29,6 +29,30 @@ def pure_driver(source):
                for op in operations(source).values())
 
 
+def output_contracts(source):
+    declaration = next(tree for text in forms(source)
+                       if isinstance((tree := read_sexp(text)), list)
+                       and tree[:2] == ["defconst", "*fn2-checkpoint-root1-outputs*"])
+    rows = declaration[2]
+    if rows and rows[0] == "quote":
+        rows = rows[1]
+    return {row[0]: set(row[1:]) for row in rows}
+
+
+def assigned_carriers(op, outputs):
+    assigned = set()
+    for node in nodes(op[3:]):
+        if node and node[0] in ("b*", "let", "let*") and isinstance(node[1], list):
+            for binding in node[1]:
+                if isinstance(binding, list) and binding:
+                    lhs = binding[0]
+                    names = lhs[1:] if isinstance(lhs, list) and lhs and lhs[0] == "mv" else [lhs]
+                    assigned.update(name for name in names if isinstance(name, str) and name.startswith("fn2-"))
+        if node and node[0] == "fn2-checkpoint-root1-call":
+            assigned.update(outputs[node[1]])
+    return assigned
+
+
 class Root1SourceBoundary(unittest.TestCase):
     def test_pure_driver_cannot_publish_a_read(self):
         source = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
@@ -66,6 +90,24 @@ class Root1SourceBoundary(unittest.TestCase):
                       if n and n[0] == "fn2-checkpoint-root1-read-mv"
                       and len(n) == 2 and n[1] == ["if", ["eq", "code", ":issued"], ":ok", "code"]]
         self.assertEqual(len(normalized), 2)
+
+    def test_projection_preserves_every_assigned_and_family_return_carrier(self):
+        source = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
+        outputs = output_contracts(source)
+        for name, op in operations(source).items():
+            self.assertEqual(assigned_carriers(op, outputs), outputs[name], name)
+            self.assertLessEqual(1 + len(outputs[name]), 32, name)
+        self.assertEqual(1 + len(outputs["fn2-checkpoint-root1-step"]), 28)
+        self.assertEqual(3 + len(outputs["fn2-checkpoint-root1-read"]), 17)
+        # A real output from the manifest scan must survive closure dispatch.
+        damaged = {name: set(values) for name, values in outputs.items()}
+        damaged["fn2-checkpoint-root1-closure"].remove("fn2-checkpoint-metadata-manifest")
+        self.assertNotEqual(assigned_carriers(operations(source)["fn2-checkpoint-root1-closure"], damaged),
+                            damaged["fn2-checkpoint-root1-closure"])
+        self.assertIn("fn2-checkpoint-root1-project body outputs", source)
+        self.assertIn("fn2-checkpoint-root1-child-specs outputs 1", source)
+        self.assertIn("fn2-checkpoint-root1-child-specs outputs 3", source)
+        self.assertIn(":effects ((:acquire (:operation)))", source)
 
 
 if __name__ == "__main__":
