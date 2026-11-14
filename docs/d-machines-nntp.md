@@ -1366,6 +1366,22 @@ digest field with B's `fn2-digest-store` (C's seam 1, landed 810a4c376). Injecti
 Path, Injection-Info, generated Message-ID/Date/Injection-Date) changes the **stored** octets, not the
 source; it is the transaction's `prepare` (14.4) and the stored length is its field.
 
+**Stored representation commitment.** Schema 2 `fn2-article` has a separate
+`stored-source :digest`, BLAKE3 of the exact stored representation. `source` remains the
+authored-source identity. The served upload saves `source` before reusing its hasher;
+after forming the generated Message-ID prefix it enters `:stored-hash`. Each turn
+absorbs one span of at most 4,096 octets selected by `fn2-upload-store-span`, the same
+selector used by raw writes and manifest staging. `stored-hashed` resumes the pass
+through the prefix and both chunks. The final digest stays in the owned store page,
+before the block stage, while later block hashes reuse the hasher. Every upload
+reserves this storage window through normal pool admission; raw uploads use one
+4 KiB unit, including explicit-Message-ID uploads that previously needed no page.
+`fn2-txn-put-post-for` carries that page range to `fn2-article-put`; the generated
+schema codec emits and replays it with the article semantic record. Source-only
+implementation and authored `tests/upload-stored-source-unit.lisp` controls await
+composed ACL2 certification and runtime execution; this paragraph claims no
+certified payload-authentication or reclamation theorem.
+
 ### 14.4 The transaction machine `fn2-txn` (`books/txn.lisp`, D5)
 
 ROUND2 §B.2 row 4. Capacity `:t`. Phases:

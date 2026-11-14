@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "read-pins-unit")
 
 (defun fn2-write-pin-test-reserve (fn2-core)

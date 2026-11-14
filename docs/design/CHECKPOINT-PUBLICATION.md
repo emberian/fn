@@ -257,22 +257,24 @@ the package discovery hook loads unrelated surface tests despite a filename filt
 actual held C owner/token, checks the owned page/scratch leases, and calls
 the real shared storage reservation operation before any
 codec sees its physical identity. The job stores that exact extent/epoch/
-allocation, workspace handles, cut from C, private checker stripe and write
-completion cursor. No caller supplies a cut, reservation identity or readiness
+allocation, workspace handles, cut from C, private checker stripe and aggregate
+completion evidence. The shared worker owns the physical write cursor. No caller supplies a cut, reservation identity or readiness
 boolean to this admission. BEGIN enters `:await-roots`: the descriptor identity
 is available before the allocation map seals its construction set. The separate
 ROOTS-READY transition requires completed actual C traversal and all five
 physically completed same-token root carriers before entering `:pack`.
 
-The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
-inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
-verification compares the decoded checkpoint/cut and all five complete root
-references against the built carriers without replacing their provenance.
-Only then can the real pinned block-write issue, and descriptor budget zero
-returns `:yield` before any effect. The pre-finish harvest callback requires the
-exact issued slot/generation, full 4 KiB completion, same held C cut and unchanged
-root/reference identities. It records physical completion and exposes READY;
-it does not commit the allocation, release the C snapshot or assert durability.
+The generated descriptor and common reservation-checked physical-header codecs
+produce a padded 4 KiB descriptor inside its 64 KiB allocation. The source binds
+that actual page once, then the same generated page worker used by every root
+owns sealing, verification, physical issuance and exact harvest. After actual
+completion and ownership handback, descriptor consumption decodes and compares
+the complete checkpoint/cut and five root references against the held source
+job, loads the retained verified hash, and performs owned preparation followed
+by CHECKED/root0 READY in one transition. The old descriptor-only physical
+issue/harvest/checker path is deleted; ledger completion comes from the common
+worker. Source bind/consume budget zero yields unchanged. None of these steps
+commits the allocation, releases C or asserts durability.
 
 The existing B lifecycle producer must consume READY with exact owner/token,
 record allocation and checkpoint installation through its actual batch/fence,
@@ -423,12 +425,32 @@ composition proof. The prior `b6a907eeb` attempt refused allocator declaration
 metadata before submitting the frame book; correcting the ownership rationale
 strings preserved that ratchet.
 
+The isolated actual allocator controls passed at `b911d26d4c66ae24fc760e87a65e22cd144bd20a`:
+eight frozen lifecycle refusals preserve the observed state and epoch; a stale
+owner generation refuses; actual physical pins can acquire and release with
+ownership intact; removing the freeze permits reservation/cancellation and changes
+the state. Both assertions executed in a six-form target load (8.85 ACL2 seconds,
+938,035 prover steps including allocator/frame source). The phase-1 token is a
+synthetic premise, so this tests the primitive gate rather than C-cut acquisition.
+The first isolated attempt lacked its direct B* import and refused before these
+assertions; adding the system dependency fixed the fixture without changing it.
+
 The next installation connection is a bounded producer that packs the actual
 completed construction ledger into the existing commit planner's allocation
 record capacity. It must keep one member's workspace, batch and event until the
 persisted installer consumes that exact member. A separate allocation per ticket
 would violate the planner's reserved ticket count. Allocation installation does
 not establish selectable checkpoint publication or authorize FREE.
+
+## Shared linked page encoding
+
+`checkpoint-linked-header.lisp` now owns the single linked BODY encoder used
+by roles 2, 3 and 5. It derives the tag and terminal bit, checks the current
+actual reservation, and copies a next Ref only from the same-role next ordinal's
+completed verified extent with matching namespace. Terminal Ref fields and digest
+are canonical zero. Producers supply their actual cut and calculated sequence
+counts; this serialization helper cannot stamp coverage or source completion.
+The map job now delegates to it, avoiding separate field-setter implementations.
 
 ## Retirement FIFO reconstruction
 
@@ -441,3 +463,72 @@ restore must walk/mark this chain, require every target retired, nondecreasing
 retirement commits, no cycles and exact coverage/count before rebuilding the
 FIFO through the same allocator retire operation. This preserves real queue
 order without an independent sort. Widths/page counts derive from new codecs.
+
+C and B consumers now use the single B `fn2-checkpoint-production-roots-p`
+body, moved unchanged from the construction state book. The scoped structural
+rewrite preserves comments/strings and is idempotent; its two Python fixtures
+run without evaluating ACL2 decisions. The descriptor budget fixture now checks
+actual BEGIN/pack/bind zero-versus-positive control with explicitly synthetic
+eligible root carriers; it does not witness actual cut/source construction or
+replace the generated worker's IO budget assurance.
+
+## Current integration boundary (2026-11-14)
+
+The boot machine now reads checked descriptors and linked allocation-map pages,
+retains every decoded row in a candidate-bound ledger, and validates the actual
+retirement FIFO one link per step. It still refuses checkpoint startup before
+selected-base evidence and ordered replay exist; map validity is not selection
+or permission to mutate the live allocator. Encoded mixed-state intake controls
+include stale candidate/ordinal, premature completion, cycles, decreasing
+retirement commits and short chains. These ACL2 controls remain unexecuted.
+
+Candidate preparation clears stale anchor mask, bank, installation commit and
+previous identity while retaining the actual builder ownership. Verified boot
+anchor intake establishes new anchor provenance independently. The shared run
+writer now refuses an empty full leaf or index page with existing `:length`,
+instead of allocating empty pages and retrying forever. Six focused source
+controls cover the shared capacity arithmetic and writer refusal, including
+arena-omission and empty-guard-removal mutations. They are not ACL2 admission.
+
+The connected format closure at source `78f29b78317277159d60f9456e01afed347f2e6e`
+passed source admission for `books/checkpoint-map-format`: 13 local books,
+seven unchanged cached dependencies and five source parents, 15 target forms
+through `FN2-CHECKPOINT-ARENA-PAGE-SLOT-FITS`. ACL2 reported 74.51 seconds and
+10,709,063 steps for loading this closure. This admits linked map/arena packing
+and its assertions under the changed geometry and retirement entry width;
+it is not certification, encoder roundtrip, restored allocator or served reuse.
+The detached outer PID26980 and server27006 were absent after explicit stop.
+Logs and state are `/tmp/reclamation-format-union-78*` on Forge.
+
+The remaining implementation work is the real C master/source actor, arena and
+installation evidence intake, selected-base allocator reconstruction, ordered
+allocation/retirement/release replay, and journaled writer exclusion. Anchor
+previous-checkpoint batch hash must not be substituted for the immediate
+predecessor seal. Dynamic foreground maintenance headroom also remains open:
+the minimum profile admission bound does not reserve enough space against later
+growth. Both upload and ordinary journal allocation must respect that policy,
+while checkpoint maintenance consumes its already reserved tickets. FREE remains
+disabled until this chain is implemented and qualified.
+`checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
+before acquisition of the C cut. Its two builders, twelve writers, cursor and
+field stripe are distinct from the resident sealer, which may be frozen in
+mid-build. The stable nonwriter windows remain owned through later root and
+descriptor production. `checkpoint-metadata-driver.lisp` composes the actual
+ordered selector, existing run assembler, authenticated semantic/payload
+walkers and manifest scan. PAGE stops source mutation until the generated
+physical worker returns the exact workspace. READ is a separate per-use,
+one-descriptor operation; its actual retained operation tuple drives harvest.
+Only the completed manifest/ledger scan sets the snapshot COMPLETE field.
+These source declarations and boundary controls are not ACL2 admission,
+runtime checkpoint qualification, recovery installation, or activation.
+The root1 window-release operation consumes the actual same-candidate publisher
+COMPLETE phase, retained builder claim, READY descriptor and positive installed
+commit. It releases one still-owned window per turn through the existing pool
+release operation. The publisher must return borrowed windows without releasing
+them separately. Only the final successful release resets directory state for
+another construction; uncertain writes and ownership failures retain resources.
+Root1 read completion is delivered once by the core's exact prefinish harvest
+extension to the semantic/payload lower job. The actor observer only wakes the
+source continuation: its smaller ABI cannot reconstruct operation identity.
+The public READ maps only the lower queued `:issued` result to the issue DSL's
+`:ok`; all refusal and uncertain outcomes pass through unchanged.

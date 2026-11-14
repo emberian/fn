@@ -1,9 +1,11 @@
 ; The generated packet writer owns every packet lease and its private checker
-; interval. Production activation is unreachable-in-composition until the actual
-; frozen C cut/map/manifest builder and B installation producer hand it a job.
-; There is deliberately no start API accepting a caller's checked candidate.
+; interval. Production requests carry only an actual installed candidate id;
+; B derives its claim/retention and actual worker destination. The C master
+; must derive that id from its actual completed descriptor and remain parked
+; until notification; activation stays feature-off until recovery is qualified.
 (in-package "ACL2")
 (include-book "checkpoint-writer-ops")
+(include-book "checkpoint-lifecycle-state")
 (include-book "machine-arms")
 (fn2-book-layer :b)
 
@@ -11,7 +13,7 @@
  :tables (fn2-core-pool fn2-core-control) :effects :per-use
  :doc "Preflight and acquire all three packet windows atomically, with no same-rank hold-and-wait.")
 (defcost fn2-checkpoint-writer-release :child fn2-checkpoint-writer-release-children :answers t
- :tables (fn2-core-pool fn2-core-control) :effects :per-use
+ :tables (fn2-core-checkpoint-publication fn2-core-pool fn2-core-control) :effects :per-use
  :doc "Release the private packet bundle only after covering fence and physical completion.")
 (defcost fn2-checkpoint-writer-checker :child fn2-checkpoint-writer-checker-children :answers (:ok :bounds)
  :doc "The final private format row and its generated 128-field stripe.")
@@ -19,7 +21,7 @@
  :doc "Observe only the exact operation-tracked publication state.")
 (defcost fn2-checkpoint-writer-begin :child fn2-checkpoint-writer-begin-children :answers t :bytes 96
  :tables (fn2-core-checkpoint-publication fn2-core-checkpoint-bytes fn2-core-digests)
- :doc "Derive the actual installed batch seal and checked boot geometry; first checkpoint only.")
+ :doc "Derive the actual installed batch seal and checked boot geometry and retained published descriptor predecessor.")
 (defcost fn2-checkpoint-writer-context :child fn2-checkpoint-writer-context-children :answers t :bytes 32
  :tables (fn2-core-fc-context fn2-core-digests)
  :doc "Set private checker context only outside a live continuation.")
@@ -39,8 +41,9 @@
 
 (defmachine fn2-checkpoint-writer
  :states (:free :reserve :begin :pack :seal-context :seal
-          :check-context :check :publish :wait :release :done :uncertain)
+          :check-context :check :publish :wait :release :notify :done :uncertain)
  :fields ((pending :u32) (stopped :bool) (candidate :u32)
+          (request-token :u60) (requester-kind :u8) (requester-slot :u32) (requester-gen :u60)
           (first-slot :u32) (first-gen :u60) (second-slot :u32) (second-gen :u60)
           (scratch-slot :u32) (scratch-gen :u60) (which :bool) (encoded-length :u32)
           (checker-row :u32) (field-base :u32))
@@ -53,8 +56,16 @@
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free) (:reserve) (:begin) (:pack)
         (:seal-context) (:seal) (:check-context) (:check) (:publish) (:wait)
-        (:release) (:done) (:uncertain))
+        (:release) (:notify) (:done) (:uncertain))
  :observes ((:write-result) (:fence-result)))
+
+(defcost fn2-checkpoint-writer-start :child fn2-checkpoint-writer-start-children
+ :answers (:bounds :pending :busy :ok)
+ :tables (fn2-checkpoint-writer-table fn2-core-checkpoint-publication)
+ :doc "Validate actual installed construction and derive the live writer target; caller provides candidate identity only.")
+(defcost fn2-checkpoint-writer-notify :child fn2-checkpoint-writer-notify-children
+ :answers (:state :owner :ok)
+ :doc "Observe only exact physical Complete plus released bundle and retained requester claim; grants no cut or release authority.")
 
 (defmachine-arms fn2-checkpoint-writer :declare
  :arms
@@ -72,7 +83,7 @@
             (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
            (:otherwise (:stop :pool)))))
   (:begin :on-refusal ((:stop :checkpoint))
-   (:do (code) (fn2-checkpoint-writer-begin row-candidate row-first-slot row-first-gen row-second-slot row-second-gen
+   (:do (code) (fn2-checkpoint-writer-begin row-candidate row-first-slot row-first-gen row-second-slot row-second-gen row-scratch-slot row-scratch-gen
                                             *fn2-checkpoint-writer-kind* id row-generation))
    (:do (code checker base) (fn2-checkpoint-writer-checker))
    (:set (checker-row checker) (field-base base)) (:next :pack)
@@ -114,18 +125,129 @@
   (:wait :on-refusal ((:stop :checkpoint))
    (:do (code phase) (fn2-checkpoint-writer-phase))
    (:cond ((equal phase *fn2-checkpoint-publication-phase-uncertain*) (:next :uncertain) (:charge :steps *fn2-work-small*))
-          ((equal phase *fn2-checkpoint-publication-phase-complete*) (:next :release) (:charge :steps *fn2-work-small* :runnable t))
-          ((equal row-pending 0) (:next :publish) (:charge :steps *fn2-work-small* :runnable t))
+          ((equal phase *fn2-checkpoint-publication-phase-complete*) (:set (pending 0)) (:next :release) (:charge :steps *fn2-work-small* :runnable t))
+          ((member-equal phase (list *fn2-checkpoint-publication-phase-write-second* *fn2-checkpoint-publication-phase-fence*))
+           (:set (pending 0)) (:next :publish) (:charge :steps *fn2-work-small* :runnable t))
           (t (:idle))))
   (:release :on-refusal ((:stop :pool))
    (:if (equal row-pending 0)
     ((:do (code) (fn2-checkpoint-writer-release row-first-slot row-first-gen row-second-slot row-second-gen
-                                               row-scratch-slot row-scratch-gen *fn2-checkpoint-writer-kind* id row-generation)
+                                               row-scratch-slot row-scratch-gen *fn2-checkpoint-writer-kind* id row-generation row-pending)
       :effects ((:release (:storage-window))))
-     (:next :done) (:charge :steps *fn2-work-small*)) ((:idle))))
+     (:next :notify) (:charge :steps *fn2-work-small* :runnable t)) ((:idle))))
+  (:notify :on-refusal ((:stop :checkpoint))
+   (:do (code requester requestgen) (fn2-checkpoint-writer-notify))
+   ; Read the current generation through the actual assembled dispatcher before
+   ; waking the requester. The frozen ownership claim alone is not a wake token.
+   (:if (and (eq (fn2-machine-generation-read-code requester) :ok)
+             (equal (fn2-machine-generation requester) requestgen))
+    ((:next :done) (:wake-row requester) (:charge :steps *fn2-work-small*))
+    ((:stop :checkpoint))))
   (:done (:idle))
   (:uncertain (:stop :checkpoint)))
  :observes ((:write-result (:wake)) (:fence-result (:wake))))
 
 (defmacro fn2-checkpoint-writer-events ()
- '(progn (defmachine-arms fn2-checkpoint-writer) (defmachine-run fn2-checkpoint-writer)))
+ '(progn
+   (defun fn2-checkpoint-writer-start-children (c fn2-checkpoint-writer fn2-checkpoint-publication
+                                             fn2-checkpoints fn2-checkpoint-refs fn2-extents fn2-alloc-edges
+                                             fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
+    (declare (xargs :stobjs (fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs
+                             fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
+     :guard (and (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+                 (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+                 (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops)
+                 (fn2-machines-wfp fn2-machines) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc)
+                 (fn2-digests-wfp fn2-digests) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle))))
+    (b* (((unless (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
+                       (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
+                       (< 0 (fn2-checkpoint-writer-rows fn2-checkpoint-writer))
+                       (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+                       (< *fn2-checkpoint-writer-kind* (fn2-machines-kind-bases-length fn2-machines))))
+          (mv :bounds *fn2-none* 0 fn2-checkpoint-writer fn2-checkpoint-publication))
+         (token (fn2-checkpoints-builder-token c fn2-checkpoints))
+         (kind (fn2-checkpoints-builder-owner-kind c fn2-checkpoints))
+         (requester (fn2-checkpoints-builder-owner-slot c fn2-checkpoints))
+         (requestgen (fn2-checkpoints-builder-owner-gen c fn2-checkpoints))
+         ((unless (and (fn2-checkpoint-lifecycle-ownerp c token kind requester requestgen fn2-checkpoint-lifecycle)
+                       (equal (fn2-checkpoint-lifecycle-phase 0 fn2-checkpoint-lifecycle) *fn2-checkpoint-lifecycle-phase-publication*)
+                       (fn2-checkpoint-builder-claimp c token kind requester requestgen fn2-checkpoints)
+                       (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
+                       (posp (fn2-checkpoints-installation-commit c fn2-checkpoints))
+                       (or (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 0)
+                           (and (< (fn2-checkpoint-publication-base-checkpoint 0 fn2-checkpoint-publication)
+                                   (fn2-checkpoints-checkpoint c fn2-checkpoints))
+                                (equal (fn2-checkpoint-publication-base-history 0 fn2-checkpoint-publication) (fn2-checkpoints-history c fn2-checkpoints))
+                                (equal (fn2-checkpoint-publication-base-incarnation 0 fn2-checkpoint-publication) (fn2-checkpoints-incarnation c fn2-checkpoints))))
+                       (equal (fn2-alloc-freeze-phase fn2-extents) 2)
+                       (equal (fn2-alloc-freeze-token fn2-extents) token)
+                       (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
+                       (equal (fn2-alloc-freeze-owner-slot fn2-extents) requester)
+                       (equal (fn2-alloc-freeze-owner-gen fn2-extents) requestgen)
+                       (< requester (fn2-machines-rows fn2-machines))
+                       (equal (fn2-machines-kind requester fn2-machines) kind)
+                       (fn2-checkpoint-production-roots-p 0 c token fn2-checkpoint-refs)
+                       (fn2-checkpoint-retainedp 0 c fn2-checkpoints fn2-checkpoint-refs fn2-alloc-edges fn2-extents fn2-ops)))
+          (mv :pending *fn2-none* 0 fn2-checkpoint-writer fn2-checkpoint-publication))
+         ((mv installed &) (fn2-checkpoint-installation-seal-row c fn2-checkpoints fn2-commit-root fn2-fc fn2-digests))
+         ((unless (eq installed :ok)) (mv :pending *fn2-none* 0 fn2-checkpoint-writer fn2-checkpoint-publication))
+         (phase (fn2-checkpoint-writer-phase 0 fn2-checkpoint-writer))
+         (p (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication))
+         ((unless (and (equal (fn2-checkpoint-writer-pending 0 fn2-checkpoint-writer) 0)
+                       (equal (fn2-checkpoint-writer-stopped 0 fn2-checkpoint-writer) 0)
+                       (or (and (equal phase *fn2-checkpoint-writer-state-free*) (equal p *fn2-checkpoint-publication-phase-idle*))
+                           (and (equal phase *fn2-checkpoint-writer-state-done*) (equal p *fn2-checkpoint-publication-phase-complete*)
+                                (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 1)
+                                (equal (fn2-checkpoint-publication-bundle-released 0 fn2-checkpoint-publication) 1)))))
+          (mv :busy *fn2-none* 0 fn2-checkpoint-writer fn2-checkpoint-publication))
+         (target (fn2-machines-kind-basesi *fn2-checkpoint-writer-kind* fn2-machines))
+         (generation (fn2-checkpoint-writer-generation 0 fn2-checkpoint-writer))
+         ((unless (and (natp target) (< target (fn2-machines-rows fn2-machines)) (posp generation)
+                       (equal (fn2-machines-kind target fn2-machines) *fn2-checkpoint-writer-kind*)
+                       (equal (fn2-machines-slot target fn2-machines) 0) (not (equal target requester))))
+          (mv :bounds *fn2-none* 0 fn2-checkpoint-writer fn2-checkpoint-publication))
+         ; Keep active bank and base identity: only this attempt is rearmed.
+         (fn2-checkpoint-publication (fn2-checkpoint-publication-set-phase 0 *fn2-checkpoint-publication-phase-idle* fn2-checkpoint-publication))
+         (fn2-checkpoint-writer (fn2-checkpoint-writer-put 0
+          (phase *fn2-checkpoint-writer-state-reserve*) (candidate c) (request-token token)
+          (requester-kind kind) (requester-slot requester) (requester-gen requestgen)
+          (pending 0) (stopped 0) (which 0) (encoded-length 0) (checker-row 0) (field-base 0)
+          (first-slot 0) (first-gen 0) (second-slot 0) (second-gen 0) (scratch-slot 0) (scratch-gen 0))))
+     (mv :ok target generation fn2-checkpoint-writer fn2-checkpoint-publication)))
+
+   (defun fn2-checkpoint-writer-notify-children (fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-extents fn2-machines)
+    (declare (xargs :stobjs (fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-extents fn2-machines)
+     :guard (and (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
+                 (fn2-checkpoints-wfp fn2-checkpoints) (fn2-extents-wfp fn2-extents) (fn2-machines-wfp fn2-machines))))
+    (b* (((unless (and (< 0 (fn2-checkpoint-writer-rows fn2-checkpoint-writer))
+                       (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+                       (equal (fn2-checkpoint-writer-phase 0 fn2-checkpoint-writer) *fn2-checkpoint-writer-state-notify*)
+                       (equal (fn2-checkpoint-writer-pending 0 fn2-checkpoint-writer) 0)
+                       (equal (fn2-checkpoint-publication-phase 0 fn2-checkpoint-publication) *fn2-checkpoint-publication-phase-complete*)
+                       (equal (fn2-checkpoint-publication-bundle-released 0 fn2-checkpoint-publication) 1)))
+          (mv :state *fn2-none* 0))
+         (c (fn2-checkpoint-writer-candidate 0 fn2-checkpoint-writer))
+         (token (fn2-checkpoint-writer-request-token 0 fn2-checkpoint-writer))
+         (kind (fn2-checkpoint-writer-requester-kind 0 fn2-checkpoint-writer))
+         (requester (fn2-checkpoint-writer-requester-slot 0 fn2-checkpoint-writer))
+         (requestgen (fn2-checkpoint-writer-requester-gen 0 fn2-checkpoint-writer))
+         ((unless (and (equal c (fn2-checkpoint-publication-candidate 0 fn2-checkpoint-publication))
+                       (fn2-checkpoint-builder-claimp c token kind requester requestgen fn2-checkpoints)
+                       (equal (fn2-alloc-freeze-phase fn2-extents) 2) (equal (fn2-alloc-freeze-token fn2-extents) token)
+                       (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
+                       (equal (fn2-alloc-freeze-owner-slot fn2-extents) requester)
+                       (equal (fn2-alloc-freeze-owner-gen fn2-extents) requestgen)
+                       (< requester (fn2-machines-rows fn2-machines)) (equal (fn2-machines-kind requester fn2-machines) kind)))
+          (mv :owner *fn2-none* 0)))
+     (mv :ok requester requestgen)))
+
+   (fn2-checkpoint-publication-preserves fn2-checkpoint-writer-start-children
+ (c fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
+ :hyps ((fn2-checkpoint-lifecyclep fn2-checkpoint-lifecycle) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-checkpoint-writerp fn2-checkpoint-writer) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-machinesp fn2-machines) (fn2-commit-rootp fn2-commit-root) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-machines-wfp fn2-machines) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))
+ :specs (("-CHECKPOINT-WRITER-TYPE" fn2-checkpoint-writerp 3)
+         ("-CHECKPOINT-WRITER-WFP" fn2-checkpoint-writer-wfp 3)
+         ("-CHECKPOINT-WRITER-ROWS" fn2-checkpoint-writer-rows 3 :frame fn2-checkpoint-writer)
+         ("-CHECKPOINT-PUBLICATION-TYPE" fn2-checkpoint-publicationp 4)
+         ("-CHECKPOINT-PUBLICATION-WFP" fn2-checkpoint-publication-wfp 4)
+         ("-CHECKPOINT-PUBLICATION-ROWS" fn2-checkpoint-publication-rows 4 :frame fn2-checkpoint-publication)))
+   (defmachine-arms fn2-checkpoint-writer) (defmachine-run fn2-checkpoint-writer)))

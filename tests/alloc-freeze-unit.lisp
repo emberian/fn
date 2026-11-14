@@ -2,6 +2,7 @@
 ; that the production construction set was closed or a C cut was established.
 (in-package "ACL2")
 (include-book "../books/alloc-freeze")
+(include-book "std/util/bstar" :dir :system)
 (defun fn2-alloc-freeze-control (freeze fn2-extents fn2-alloc-edges)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges) :verify-guards nil))
  (b* ((fn2-extents (fn2-alloc-init 4 fn2-extents))

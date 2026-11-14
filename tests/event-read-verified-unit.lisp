@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "event-proof-source-unit")
 (include-book "../books/event-frontier-source")
 

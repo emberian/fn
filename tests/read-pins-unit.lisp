@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/assembly")
 
 ; The generator's footprint boundary excludes operation-history mutation.

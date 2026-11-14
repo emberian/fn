@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "event-read-verified-unit")
 (include-book "../books/event-build")
 (include-book "../books/checkpoint-build")

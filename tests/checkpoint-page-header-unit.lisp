@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "c-snapshot-unit")
 (include-book "../books/checkpoint-page-header")
 (include-book "../books/checkpoint-construction-owner")

@@ -261,6 +261,10 @@
          (fn2-checkpoints (fn2-checkpoints-set-checkpoint c checkpoint fn2-checkpoints))
          (fn2-checkpoints (fn2-checkpoints-set-history c history fn2-checkpoints))
          (fn2-checkpoints (fn2-checkpoints-set-incarnation c incarnation fn2-checkpoints))
+         ; A reused slot cannot carry anchor/installation authority into a new
+         ; descriptor. The verified boot-anchor intake establishes its own mask.
+         (fn2-checkpoints (fn2-checkpoints-put c (anchor-mask 0) (bank 0)
+                           (installation-commit 0) (previous 0)))
          (fn2-checkpoints (fn2-checkpoints-set-state c *fn2-checkpoint-state-preparing* fn2-checkpoints)))
    (mv :ok fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))))
 

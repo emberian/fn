@@ -1,5 +1,6 @@
 ; Source fixture premises are synthetic; this does not witness persisted control.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-allocation")
 (defun fn2-checkpoint-allocation-control (fn2-extents fn2-checkpoint-construction fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-extents fn2-checkpoint-construction fn2-fields fn2-pool) :verify-guards nil))

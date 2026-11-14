@@ -35,12 +35,12 @@
 
 (defun fn2-checkpoint-metadata-manifest-begin (b wbase crow hbase hslot hgen fields entry-base hash-slot hash-gen limit
                                               fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source
-                                              fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
+                                              fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-checkpoint-source fn2-checkpoint-build
-                          fn2-csnapshot fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
+                          fn2-csnapshot fn2-checkpoints fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
   :guard (and (fn2-checkpoint-metadata-manifest-wfp fn2-checkpoint-metadata-manifest) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata)
               (fn2-checkpoint-source-wfp fn2-checkpoint-source) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
-              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (< 0 (fn2-checkpoint-metadata-manifest-rows fn2-checkpoint-metadata-manifest))
                      (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
@@ -56,6 +56,7 @@
       (owner (fn2-checkpoint-source-owner-slot 0 fn2-checkpoint-source))
       (generation (fn2-checkpoint-source-owner-gen 0 fn2-checkpoint-source))
       ((unless (and (fn2-checkpoint-build-ownerp token kind owner generation fn2-checkpoint-build fn2-csnapshot)
+                     (fn2-checkpoint-builder-ownerp (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build) token kind owner generation fn2-checkpoints)
                      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
                      (unsigned-byte-p 32 b) (unsigned-byte-p 32 fields) (unsigned-byte-p 32 entry-base)
                      (unsigned-byte-p 32 hash-slot) (unsigned-byte-p 60 hash-gen) (not (equal hash-slot hslot))
@@ -298,6 +299,7 @@
       (c (fn2-checkpoint-metadata-manifest-candidate 0 fn2-checkpoint-metadata-manifest))
       (checkpoint (if (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build)) (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build) 0))
       ((unless (and (fn2-checkpoint-build-ownerp token kind owner generation fn2-checkpoint-build fn2-csnapshot)
+                     (fn2-checkpoint-builder-ownerp c token kind owner generation fn2-checkpoints)
                      (equal token (fn2-checkpoint-source-token 0 fn2-checkpoint-source))
                      (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata))
                      (equal (fn2-checkpoint-metadata-manifest-candidate 0 fn2-checkpoint-metadata-manifest) (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))))

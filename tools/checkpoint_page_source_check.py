@@ -131,6 +131,13 @@ def owner_contract(source, worker_source):
         if arm[0] in (":context", ":format", ":issue", ":wait"):
             operations = {node[0] for node in walk(arm) if node and isinstance(node[0], str) and node[0].startswith("fn2-")}
             assert operations <= allowed, "physical phase may not pack, mutate, return or release the workspace"
+    issue_arm = next(arm for arm in arms if arm[0] == ":issue")
+    guarded = [node for node in walk(issue_arm) if node and node[:2] == [":if", ["and", ["natp", "budget"], ["<", "0", "budget"]]]]
+    assert len(guarded) == 1, "the actual effectful arm needs a positive descriptor-budget gate"
+    issue_calls = [node for node in walk(issue_arm) if node and node[0] == "fn2-checkpoint-page-issue-op"]
+    assert issue_calls == [["fn2-checkpoint-page-issue-op", "budget"]], "never replace the actual budget with a positive literal"
+    assert issue_calls[0] in list(walk(guarded[0][2]))
+    assert guarded[0][3] == [[":yield"]], "budget zero must have no effectful branch"
     assert ["defmachine-arms", "fn2-checkpoint-page-worker", ":children"] in all_nodes
     assert ["defmachine-arms", "fn2-checkpoint-page-worker", ":wrappers"] in all_nodes
     for name in ("context", "format-step", "issue"):
@@ -164,6 +171,8 @@ def main():
     for changed in (
         worker_source.replace("(fn2-checkpoint-page-complete-p", "(fn2-checkpoint-page-live-p", 1),
         worker_source.replace("(fn2-checkpoint-page-phase-op))", "(fn2-checkpoint-page-return))", 1),
+        worker_source.replace("(fn2-checkpoint-page-issue-op budget)", "(fn2-checkpoint-page-issue-op 1)", 1),
+        worker_source.replace("(:if (and (natp budget) (< 0 budget))", "(:if t", 1),
     ):
         assert changed != worker_source
         try:
@@ -171,7 +180,7 @@ def main():
         except AssertionError:
             continue
         raise AssertionError("source contract accepted a premature ownership return")
-    print("checkpoint page source contracts: harvest + 5 return/frame contracts + captured guards + 6 actual callee arities + generated owner handoff/physical arm isolation; 6 rejection controls pass (no ACL2 execution)")
+    print("checkpoint page source contracts: harvest + 5 return/frame contracts + captured guards + 6 actual callee arities + generated owner handoff/physical arm isolation; 8 rejection controls pass (no ACL2 execution)")
 
 
 if __name__ == "__main__":

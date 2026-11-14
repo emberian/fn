@@ -3,16 +3,18 @@
 (in-package "ACL2")
 (include-book "commit-alloc")
 (include-book "format-events")
+(include-book "checkpoint-allocation")
 (fn2-book-layer :b)
 
 ; One B-owned lifecycle member may be in flight. The checkpoint worker owns
 ; the workspace and receives the normal commit wakeup; this row serializes
 ; producers and retains uncertainty independently of the commit row's reuse.
 (defcolumns fn2-retirement-control
- ((state (:enum fn2-retirement-state (:idle :waiting :uncertain)))
+ ((state (:enum fn2-retirement-state (:idle :waiting :uncertain :scanning :staged)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (extent :u32) (epoch :u60) (allocation :u60)
-  (slot :u32) (gen :u60) (batch :u60) (event :u60)))
+  (slot :u32) (gen :u60) (batch :u60) (event :u60)
+  (allocation-member :bool) (installation-member :bool) (candidate :u32) (expected :u32) (journal-ticket :u60) (final-ticket :bool) (token :u60) (scan :u32) (count :u32) (bytes :u32) (installed :u32) (install-offset :u32)))
 
 (fn2-extents-preserves fn2-alloc-retire (i epoch counter commit fn2-extents)
  :position 1

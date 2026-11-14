@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-descriptor")
 
 ; Local external-read provenance control. The old metadata facts are synthetic

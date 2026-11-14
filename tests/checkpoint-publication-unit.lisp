@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-publication")
 
 ; Source fixtures awaiting allocation/admission. These drive the same concrete

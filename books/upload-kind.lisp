@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "machines-a")
 (include-book "machines-b")
+(include-book "source-manifest-codec")
 (include-book "conn-kind")
 (include-book "profile")
 (include-book "upload-scan")
@@ -69,17 +70,10 @@
 ;; extent at most, so one manifest names *fn2-am-stored-max* octets (93
 ;; blocks, 380,928 octets) and the profile's article bound, with the
 ;; generated Message-ID field, stays within it (fn2-input-config-profilep).
-(defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
 ; Preserve the current three-block payload/manifest packing independently of
 ; the sixteen-unit physical stride. The unused thirteen units remain owned
 ; by that allocation; a later packing change need not change its identity.
-(defconst *fn2-upload-payload-units* 3)
-(defconst *fn2-upload-payload-bytes* (* *fn2-upload-payload-units* *fn2-commit-unit-bytes*))
-(defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
-(defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
 ;; entries of the largest size one unit holds (the first holds the header too)
-(defconst *fn2-am-entries-per-unit*
-  (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))
 (defconst *fn2-am-stored-max*
   (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-upload-payload-units*))
 (assert-event (equal *fn2-am-stored-max* 380928))
@@ -209,7 +203,7 @@
 (in-theory (disable fn2-upload-capacity))
 
 (defmachine fn2-upload
- :states (:free :head :identity :receiving :validating :discard :store :store-write :store-wrote
+ :states (:free :head :identity :receiving :validating :discard :store :stored-hash :store-write :store-wrote
           :store-fence :store-fenced :sealed :aborting :draining :retired)
  ;; CONN is the owner the source comes from and the word goes to: a
  ;; connection (POST, IHAVE, TAKETHIS) or a consumer request (an append,
@@ -243,7 +237,7 @@
           ;; bounded operation each, and MDRAIN the manifest units the drain
           ;; has settled
           (cext :link) (cepoch :u60) (calloc :u60) (cfree :bool) (mfill :u32) (munit :u8)
-          (mstep :u8) (mdrain :u8))
+          (mstep :u8) (mdrain :u8) (stored-hashed :u60))
  :links ((conn :kind fn2-conn :slot conn :gen conn-gen :back (upload upload-gen)
                :reads (fed feed-mode feed-discard))
          (cns :kind fn2-cns :slot conn :gen conn-gen :back (upload upload-gen)
@@ -253,6 +247,7 @@
          (:receiving :upload-row :chunk-window) (:validating :upload-row :chunk-window)
          (:discard :upload-row :chunk-window)
          (:store :upload-row :chunk-window (:storage-window :while (lease :held)))
+         (:stored-hash :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-write :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-wrote :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store-fence :upload-row :chunk-window (:storage-window :while (lease :held)))
@@ -269,12 +264,12 @@
          :copy (conn conn-gen request rule principal-slot op)
          :clear (filled hashed scan-off visible nfields nlines seen mo ml no nl po pl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
-                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain))
+                 lgen lease ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (c0-slot *fn2-none*) (c1-slot *fn2-none*) (conn *fn2-none*) (txn *fn2-none*) (account-ref *fn2-none*)
            (pext *fn2-none*) (lslot *fn2-none*) (cext *fn2-none*)
            (ofield 12) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:store-write) (:store-wrote)
+ :arms ((:free) (:head) (:identity) (:receiving) (:validating) (:discard) (:store) (:stored-hash) (:store-write) (:store-wrote)
         (:store-fence) (:store-fenced) (:sealed) (:aborting) (:draining) (:retired))
  :observes ((:write-result) (:fence-result) (:borrow-released)))
 
