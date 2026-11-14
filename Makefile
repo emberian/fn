@@ -153,6 +153,7 @@ ACL2_BOOKS = \
   books/ordered \
   books/outcome-class \
   books/overlay \
+  books/origin \
   books/owed \
   books/owed-accounts \
   books/owed-authority \
@@ -310,6 +311,7 @@ ACL2_BOOKS = \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
+  tests/origin-unit \
   tests/owed-authority-unit \
   tests/owed-d-coverage \
   tests/owed-d-unit \

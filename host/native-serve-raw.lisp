@@ -39,6 +39,12 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (groups (sb-ext:posix-getenv "FN2_GROUPS"))
          (storage-fault-model (sb-ext:posix-getenv "FN2_STORAGE_FAULT_MODEL"))
          (peering (sb-ext:posix-getenv "FN2_PEERING")))
+    ;; The raw host passes text only. ACL2 bounds, parses and admits names.
+    ;; Missing values overwrite fixture defaults and fail profile admission.
+    (setf profile (fn2-origin-profile-from-text profile
+                    (sb-ext:posix-getenv "FN2_ORIGIN_LINEAGE")
+                    (sb-ext:posix-getenv "FN2_ORIGIN_DOMAIN")
+                    (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")))
     (when storage-fault-model
       (setf profile (put-assoc-equal :storage-fault-model storage-fault-model profile)))
     (when owner

@@ -22,10 +22,7 @@
 ; digest algorithm the upload computes (BLAKE3).
 (defconst *fn2-identity-profile-source* 1)
 (defconst *fn2-identity-algorithm-blake3* 1)
-; This node's single domain, as B's envelope writes it (commit-format.lisp).
-(defconst *fn2-identity-lineage* 0)
-(defconst *fn2-identity-domain* 0)
-(defconst *fn2-identity-incarnation* 1)
+; Local origin is read from the immutable, boot-bound fn2-origin core child.
 
 ; One observation of a binding of N to C, or of a reason it does not bind.
 (defrunschema fn2-identity-evidence :id 1

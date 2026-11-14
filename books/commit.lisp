@@ -855,9 +855,10 @@
 ; One record header at EVENT into DST from CURSOR: (mv code end fn2-core).
 (defun fn2-commit-txn-header (rkind event base dst dg cursor scratch sg id ogen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code end fn2-fields fn2-pool)
-  (fn2-commit-pack-txn-header rkind event base dst dg cursor scratch sg *fn2-commit-kind* id ogen fn2-fields fn2-pool)
+  (fn2-commit-pack-txn-header rkind event base dst dg cursor scratch sg *fn2-commit-kind* id ogen (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin)
+                    (fn2-origin-incarnation fn2-origin) fn2-fields fn2-pool)
   (mv code (nfix end) fn2-core)))
 (fn2-core-preserves fn2-commit-txn-header (rkind event base dst dg cursor scratch sg id ogen fn2-core) :position 2 :rows nil)
 (defthm fn2-commit-txn-header-natp
@@ -1058,10 +1059,11 @@
       (scratch (fn2-machine-pool-slot id fn2-core)) (sg (fn2-machine-pool-gen id fn2-core))
       (batch (fn2-machine-batch-no id fn2-core)) (first (fn2-machine-first-key id fn2-core))
       (members (fn2-machine-member-count id fn2-core)) (ogen (fn2-machine-generation id fn2-core)))
- (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code end fn2-fields fn2-pool)
   (fn2-commit-pack kind index base slot gen off scratch sg e epoch counter batch first members
-                    *fn2-commit-kind* id ogen fn2-fields fn2-pool)
+                    *fn2-commit-kind* id ogen (fn2-origin-lineage fn2-origin) (fn2-origin-domain fn2-origin)
+                    (fn2-origin-incarnation fn2-origin) fn2-fields fn2-pool)
   (mv code end fn2-core)))))
 (fn2-core-preserves fn2-commit-pack-core (id kind role index off fn2-core) :position 2 :rows nil)
 (defun fn2-commit-context (id role fn2-core)

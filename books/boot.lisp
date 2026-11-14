@@ -17,18 +17,18 @@
 
 ; Stage the generated codec's fields separately from pool I/O, so shape
 ; proofs compose across one field-table operation instead of every setter.
-(defun fn2-boot-field-inputsp (kind index size extents groups owner authority textlen value epoch scratch sgen)
+(defun fn2-boot-field-inputsp (kind index size extents groups owner authority textlen value epoch lineage domain incarnation scratch sgen)
  (declare (xargs :guard t))
- (and (unsigned-byte-p 8 kind) (unsigned-byte-p 32 index) (unsigned-byte-p 60 size)
+ (and (fn2-origin-tuplep lineage domain incarnation) (unsigned-byte-p 8 kind) (unsigned-byte-p 32 index) (unsigned-byte-p 60 size)
       (unsigned-byte-p 32 extents) (unsigned-byte-p 32 groups) (unsigned-byte-p 32 owner)
       (unsigned-byte-p 1 authority) (unsigned-byte-p 32 textlen)
       (unsigned-byte-p 60 value) (unsigned-byte-p 60 epoch)
       (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 sgen)))
-(defun fn2-boot-fields (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
+(defun fn2-boot-fields (kind index size extents groups owner authority textlen value epoch lineage domain incarnation scratch sgen fn2-fields)
  (declare (xargs :stobjs fn2-fields
   :guard (and (fn2-fields-wfp fn2-fields)
               (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
-              (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch scratch sgen))))
+              (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch lineage domain incarnation scratch sgen))))
  (let* (
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-magic*) *fn2-boot-magic* fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-version*) 1 fn2-fields))
@@ -38,6 +38,9 @@
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-extents*) extents fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-groups*) groups fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-owner*) owner fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-incarnation*) incarnation fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-domain*) domain fn2-fields))
+      (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-lineage*) lineage fn2-fields))
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-authority*) authority fn2-fields))
       (fn2-fields (fn2-fields-put (+ 256 *fn2-boot-record-field-identity*)
                     (value 1) (ref-slot scratch) (ref-gen sgen) (ref-off 0) (ref-len textlen)))
@@ -46,24 +49,24 @@
       (fn2-fields (fn2-fields-set-value (+ 256 *fn2-boot-record-field-previous*) (if (posp epoch) (- epoch 1) 0) fn2-fields))
 ) fn2-fields))
 (fn2-fields-preserves fn2-boot-fields
- (kind index size extents groups owner authority textlen value epoch scratch sgen fn2-fields)
+ (kind index size extents groups owner authority textlen value epoch lineage domain incarnation scratch sgen fn2-fields)
  :raw-rows t
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)
         (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
-        (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch scratch sgen))
+        (fn2-boot-field-inputsp kind index size extents groups owner authority textlen value epoch lineage domain incarnation scratch sgen))
  :hints (("Goal" :in-theory (e/d (fn2-boot-fields) (fn2-fieldsp fn2-fields-wfp fn2-fields-rows)))))
 (in-theory (disable fn2-boot-fields fn2-boot-field-inputsp))
 
 ; The generated record codec is the single encoding. The last 32 bytes
 ; are BLAKE3 of the whole padded prefix, including geometry and record role.
 (defun fn2-boot-pack-pool (kind index size extents groups owner authority text value epoch
-                         slot gen scratch sgen okind id ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+                         lineage domain incarnation slot gen scratch sgen okind id ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (<= (+ 256 *fn2-boot-record-num-fields*) (fn2-fields-rows fn2-fields))
                     (stringp text) (<= (length text) 250)
                     (fn2-boot-field-inputsp kind index size extents groups owner authority
-                                           (length text) value epoch scratch sgen)
+                                           (length text) value epoch lineage domain incarnation scratch sgen)
                     (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
                     (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
@@ -74,7 +77,7 @@
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
       ((mv c fn2-pool) (fn2-pool-append-text 0 text scratch sgen okind id ogen fn2-pool))
       ((unless (eq c :ok)) (mv c fn2-fields fn2-digests fn2-b3 fn2-pool))
-      (fn2-fields (fn2-boot-fields kind index size extents groups owner authority (length text) value epoch scratch sgen fn2-fields))
+      (fn2-fields (fn2-boot-fields kind index size extents groups owner authority (length text) value epoch lineage domain incarnation scratch sgen fn2-fields))
       ((mv c end fn2-pool) (fn2-boot-record-encode 256 slot gen 0 okind id ogen fn2-fields fn2-pool))
       ((unless (and (eq c :ok) (natp end) (<= end *fn2-boot-hash-offset*)))
        (mv :bounds fn2-fields fn2-digests fn2-b3 fn2-pool))
@@ -87,7 +90,7 @@
       ((mv c fn2-pool) (fn2-digest-store 32 dst slot gen *fn2-boot-hash-offset* okind id ogen fn2-digests fn2-pool)))
    (mv c fn2-fields fn2-digests fn2-b3 fn2-pool)))
 (fn2-pool-block-shape fn2-boot-pack-pool-shape
- (fn2-boot-pack-pool kind index size extents groups owner authority text value epoch slot gen scratch sgen okind id ogen
+ (fn2-boot-pack-pool kind index size extents groups owner authority text value epoch lineage domain incarnation slot gen scratch sgen okind id ogen
                      fn2-fields fn2-digests fn2-b3 fn2-pool)
  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
       (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
@@ -124,17 +127,21 @@
  '(progn
  (defun fn2-boot-pack (kind index size epoch slot gen scratch sgen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))
+  (stobj-let ((fn2-origin (fn2-core-origin fn2-core))
+              (fn2-boot-config (fn2-core-boot-config fn2-core))
               (fn2-fields (fn2-core-fields fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
               (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
    (code fn2-fields fn2-digests fn2-b3 fn2-pool)
-   (let* ((gs (fn2-boot-config-groups fn2-boot-config))
+   (let* ((lineage (fn2-origin-lineage fn2-origin))
+          (domain (fn2-origin-domain fn2-origin))
+          (incarnation (fn2-origin-incarnation fn2-origin))
+          (gs (fn2-boot-config-groups fn2-boot-config))
           (text (cond ((equal kind 0) (fn2-boot-config-path fn2-boot-config))
                       ((and (equal kind 1) (consp gs) (consp (car gs))) (caar gs)) (t "")))
           (value (if (and (equal kind 1) (consp gs) (consp (car gs))) (cdar gs) 0)))
     (fn2-boot-pack-pool kind index size (fn2-boot-config-extents fn2-boot-config)
       (fn2-boot-config-count fn2-boot-config) (fn2-boot-config-owner fn2-boot-config)
-      (fn2-boot-config-authority fn2-boot-config) text value epoch slot gen scratch sgen *fn2-boot-kind* id ogen
+      (fn2-boot-config-authority fn2-boot-config) text value epoch lineage domain incarnation slot gen scratch sgen *fn2-boot-kind* id ogen
       fn2-fields fn2-digests fn2-b3 fn2-pool))
    (mv code fn2-core)))
  (fn2-core-preserves fn2-boot-pack (kind index size epoch slot gen scratch sgen id ogen fn2-core) :position 1 :rows nil)

@@ -782,6 +782,16 @@ def prepare_native_crypto(root: Path) -> None:
         raise OSError("native BLAKE3 build failed; node was not started") from exc
 
 
+def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:
+    """Carry explicit deployment names verbatim to the ACL2 startup parser."""
+    for option, variable in (("origin_lineage", "FN2_ORIGIN_LINEAGE"),
+                             ("origin_domain", "FN2_ORIGIN_DOMAIN"),
+                             ("origin_incarnation", "FN2_ORIGIN_INCARNATION")):
+        value = getattr(args, option, None)
+        if value is not None:
+            env[variable] = value
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -805,6 +815,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
         FN2_IMAGE_BYTES=size_bytes,
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    apply_origin_options(args, env)
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if groups:
@@ -861,6 +872,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         FN2_LISTENER_PORT=str(args.port),
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    apply_origin_options(args, env)
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if args.host:
@@ -1300,6 +1312,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
     p_serve.add_argument("--storage-fault-model", metavar="MODEL",
                          help="recovery contract: broad (default) or crash-only")
+
+    for origin_parser in (p_init, p_serve):
+        origin_parser.add_argument("--origin-lineage", metavar="ID",
+                                   help="assigned lineage name (required here or FN2_ORIGIN_LINEAGE)")
+        origin_parser.add_argument("--origin-domain", metavar="ID",
+                                   help="assigned commit-domain name (required here or FN2_ORIGIN_DOMAIN)")
+        origin_parser.add_argument("--origin-incarnation", metavar="ID",
+                                   help="history incarnation; must match persisted genesis on restart")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")
     princ_sub = p_princ.add_subparsers(dest="principal_cmd", required=True)
