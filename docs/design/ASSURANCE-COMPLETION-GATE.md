@@ -49,7 +49,11 @@ This gate checks evidence connections; it does not implement missing behavior or
 prove that an advertised guarantee is useful. Structural subject occurrence alone
 does not establish a refinement relation, specification independence or reachability.
 Those require the actual admitted statement, its formal composition proofs, and
-meaningful controls. The gate cannot discover omitted logical dependencies or
+meaningful controls. A coherent replacement of statement, theorem and controls by
+a weaker proposition is not detected by the local claim checker; the required
+specification must be enforced by the pending typed join. Declared `:depends`
+edges are authored claim connections, not an extracted theorem-rune dependency
+closure. The gate cannot discover omitted logical dependencies or
 establish real-device fences, raw FFI correctness, fairness, hardware reliability,
 kernel correctness or adequacy of the supported-object encoding. Those remain
 explicit specification and trust boundaries, never new internal proof assumptions.
