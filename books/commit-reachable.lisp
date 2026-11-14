@@ -174,3 +174,64 @@
                  (:instance fn2-env-f-step-but-turn)
                  (:instance fn2-env-x-step-but-turn)
                  (:instance fn2-env-q-step-but-turn)))))
+
+; Executable data side of initialization. Structural and universal loan facts
+; are supplied by the actual initializer theorems, never skipped by the check.
+(defun fn2-env-reach-initial-data-p (profile fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((ids (fn2-env-commit-ids profile)))
+    (and (fn2-core-profilep profile) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+         (not (fn2-core-stopped-p fn2-core))
+         (fn2-core-pool-semanticp fn2-core)
+         (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (ok) (fn2-ops-semanticp fn2-ops) ok)
+         (fn2-env-dur-inv ids nil nil fn2-core)
+         (fn2-env-j5-rows ids nil fn2-core) (fn2-env-j5e-rows ids fn2-core)
+         (fn2-env-j6p-rows ids fn2-core) (fn2-env-j6l-rows ids fn2-core)
+         (fn2-env-j6s-rows ids fn2-core) (fn2-env-freshness nil fn2-core))))
+
+(defthm fn2-env-reach-initial-data-covers-whole
+  (implies (and (fn2-corep c) (fn2-core-profilep profile)
+                (fn2-env-reach-initial-data-p profile (fn2-init-executor profile :echo nil c)))
+           (and (fn2-env-reach-active-inv profile nil nil (fn2-init-executor profile :echo nil c))
+                (not (fn2-core-stopped-p (fn2-init-executor profile :echo nil c)))))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-history
+                               fn2-env-reach-initial-data-p fn2-env-fl (:e true-listp))
+           :use (fn2-env-reach-structure-init
+                 (:instance fn2-env-reach-lent-ok-init (mode :echo) (scribe-p nil))))))
+
+(defthm fn2-env-reach-epoch-pool-ops
+  (and (equal (fn2-core-pool (fn2-env-begin-epoch epoch c)) (fn2-core-pool c))
+       (equal (fn2-core-ops (fn2-env-begin-epoch epoch c)) (fn2-core-ops c)))
+  :hints (("Goal" :in-theory (e/d (fn2-env-begin-epoch fn2-core-pool fn2-core-ops update-fn2-core-extents nth-update-nth) (fn2-alloc-begin-epoch nth update-nth)))))
+(defthm fn2-env-reach-epoch-unfolds
+  (implies (equal (fn2-env-tag action) :epoch)
+           (equal (fn2-env-step action nil image rlog c)
+                  (mv nil (fn2-env-begin-epoch (fn2-env-arg 1 action) c))))
+  :hints (("Goal" :in-theory '(fn2-env-step))))
+(defthm fn2-env-reach-active-epoch-step
+  (implies (and (fn2-env-reach-active-inv profile acked log c)
+                (equal (fn2-env-tag action) :epoch))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-reach-active-inv profile
+               (fn2-env-observe (fn2-env-commit-ids profile) acked after)
+               (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-structure
+                               fn2-env-reach-history fn2-env-fl fn2-core-pool-semanticp
+                               fn2-env-reach-epoch-pool-ops
+                               fn2-env-observe-true-listp true-listp-append
+                               fn2-env-begin-epoch-preserves-type fn2-env-begin-epoch-preserves-wfp
+                               car-cons cdr-cons mv-nth (:e mv-nth) (:e equal) (:e car) (:e cdr)
+                               (:e zp) (:e binary-+) (:e unary--)
+                               member-equal member-eq (:e member-equal) (:e member-eq))
+           :use ((:instance fn2-env-reach-epoch-unfolds)
+                 (:instance fn2-env-dur-inv-host-step (fn2-core c) (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j5-rows-frame-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j6p-j6l-rows-host-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j6s-rows-host-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-j5e-rows-host-step (ids (fn2-env-commit-ids profile)))
+                 (:instance fn2-env-fresh-lent-host-step)
+                 (:instance fn2-env-commit-slots-p-step-but-turn (p profile) (fn2-core c))
+                 (:instance fn2-env-commit-dir-canonical-p-step-but-turn (p profile))
+                 (:instance fn2-env-f-host-step)
+                 (:instance fn2-env-x-step-but-turn)
+                 (:instance fn2-env-q-step-but-turn)))))
