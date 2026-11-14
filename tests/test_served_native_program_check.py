@@ -52,6 +52,21 @@ class ServedNativeProgramTests(unittest.TestCase):
                     ':start1 offset :end1 (+ offset (length seed))')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
+    def test_tls_record_must_authorize_live_loan(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-record-select slot',
+                    '(unvalidated-record-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_cannot_use_native_mirror_bounds(self):
+        self.change('host/tls.lisp', '(fn2-n-sap host address) count)',
+                    '(fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_record_must_observe_raw_count(self):
+        self.change('host/tls.lisp', 'serial raw moved ledger)',
+                    'serial raw 0 ledger)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_tls_short_write_must_retain_offset(self):
         self.change('host/tls.lisp', '(incf (fn2-native-tls-output-offset tls) n)',
                     '(setf (fn2-native-tls-output-offset tls) 0)')

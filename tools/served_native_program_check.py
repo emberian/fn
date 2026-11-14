@@ -24,7 +24,7 @@ CUTS = {
     ('fn2-native-tls-perform', 'tls-handshake'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-send'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-receive'): 'fn2-sim-physical',
-    ('fn2-n-tls-ready', 'tls-record'): 'fn2-sim-physical',
+    ('fn2-native-tls-authorized-record', 'tls-record'): 'fn2-sim-physical',
     ('fn2-native-tls-flush', 'tls-send'): 'fn2-sim-physical',
     ('fn2-native-tls-fill', 'tls-receive'): 'fn2-sim-physical',
     ('fn2-n-start-ready', 'syscall'): 'fn2-sim-physical',
@@ -38,7 +38,8 @@ CUTS = {
     ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
 }
 ORDERS = {
-    'fn2-n-tls-ready': ['fn2-n-tls-handshake-ready', 'fn2-native-tls-flush', '@tls-record'],
+    'fn2-n-tls-ready': ['fn2-n-tls-handshake-ready', 'fn2-native-tls-flush', 'fn2-native-tls-authorized-record'],
+    'fn2-native-tls-authorized-record': ['fn2-host-tls-record-select', '@tls-record', 'fn2-native-tls-record', 'fn2-tls-record-observe'],
     'fn2-native-tls-handshake-step': ['fn2-tls-transport-next', 'fn2-native-tls-perform', 'fn2-tls-transport-observe'],
     'fn2-native-tls-perform': ['@tls-send', 'fn2-native-send', '@tls-receive', 'fn2-native-recv', '@tls-handshake', 'fn2-tls-%handshake', '@tls-start', 'fn2-tls-%new', '@tls-free', 'fn2-tls-%free'],
     'fn2-native-tls-close': ['fn2-tls-transport-retire', 'fn2-tls-transport-next', 'fn2-native-tls-perform', 'fn2-tls-transport-observe', 'fn2-tls-transport-retire'],
@@ -62,6 +63,10 @@ ORDERS = {
 CONTRACTS = {
     'fn2-n-tls-op-p': [
         '(and cap (fn2-ncap-tls cap) (fn2-tls-transport-selected-p (fn2-nop-cap op) (fn2-ncap-nonce cap) (fn2-native-tls-transport (fn2-ncap-tls cap))) (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))'],
+    'fn2-native-tls-authorized-record': [
+        '(fn2-host-tls-record-select slot (fn2-nop-gen op) (fn2-native-tls-transport tls) (fn2-nhost-core host))',
+        '(fn2-native-tls-record tls (= action 13) (fn2-n-sap host address) count)',
+        '(fn2-tls-record-observe slot (fn2-nop-gen op) serial raw moved ledger)'],
     'fn2-native-tls-stage-span': [
         '(fn2-host-tls-stage-span total offset capacity quantum)'],
     'fn2-native-tls-span': [
@@ -265,7 +270,7 @@ def check(root=ROOT):
                     if isinstance(c, list) and len(c) == 2}
         if observed != expected_branches or len(branches[0][2:]) != 3:
             findings.append(f'device primitive mapping changed: {observed!r}')
-    for name in ('fn2-native-tls-fill', 'fn2-native-tls-flush', 'fn2-n-tls-ready', 'fn2-native-tls-handshake-step', 'fn2-native-tls-perform', 'fn2-native-tls-close'):
+    for name in ('fn2-native-tls-authorized-record', 'fn2-native-tls-fill', 'fn2-native-tls-flush', 'fn2-n-tls-ready', 'fn2-native-tls-handshake-step', 'fn2-native-tls-perform', 'fn2-native-tls-close'):
         if ledger.calls(defs.get(name, [])) & {'loop', 'do', 'dotimes', 'dolist', name}:
             findings.append(f'{name}: TLS transport turn contains an unbounded retry/iteration')
     for primitive in ('fn2-tls-%new', 'fn2-tls-%free'):

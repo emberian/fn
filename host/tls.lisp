@@ -90,6 +90,23 @@
                (fn2-tls-%read (fn2-native-tls-handle tls) address length (sb-alien:addr count)))))
    (values code count))))
 
+(defun fn2-native-tls-authorized-record (host slot tls)
+ ;; The live core, not the native descriptor mirror, authorizes the SAP span.
+ (let ((op (aref (fn2-nhost-ops host) slot)))
+  (multiple-value-bind (code action address count serial ledger)
+      (fn2-host-tls-record-select slot (fn2-nop-gen op)
+        (fn2-native-tls-transport tls) (fn2-nhost-core host))
+   (setf (fn2-native-tls-transport tls) ledger)
+   (unless (eq code :ok) (error "fn2 TLS: live record loan refused: ~S" code))
+   (fn2-n-boundary host "tls-record")
+   (multiple-value-bind (raw moved)
+       (fn2-native-tls-record tls (= action 13) (fn2-n-sap host address) count)
+    (multiple-value-bind (observed ledger)
+        (fn2-tls-record-observe slot (fn2-nop-gen op) serial raw moved ledger)
+     (setf (fn2-native-tls-transport tls) ledger)
+     (unless (eq observed :ok) (error "fn2 TLS: record observation refused: ~S" observed))
+     (values raw moved))))))
+
 (defun fn2-native-tls-output-empty-p (tls)
  (and (= (fn2-native-tls-output-offset tls) (fn2-native-tls-output-length tls))
       (zerop (fn2-tls-%output-pending (fn2-native-tls-handle tls)))))

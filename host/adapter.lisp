@@ -219,11 +219,9 @@
         (setf fed-seed t)
         (incf (fn2-native-tls-seed-offset tls) fed))))))
    (unless (fn2-nop-tls-finished op)
-    (fn2-n-boundary host "tls-record")
     (multiple-value-bind (code count)
         (sb-sys:with-pinned-objects (bytes)
-          (fn2-native-tls-record tls (= kind *fn2-action-send*)
-                                 (fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op)))
+          (fn2-native-tls-authorized-record host slot tls))
      (case code
       (0 (setf (fn2-nop-tls-finished op) t (fn2-nop-tls-count op) count))
       ((1 2)
