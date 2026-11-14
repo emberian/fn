@@ -235,3 +235,43 @@
                  (:instance fn2-env-f-host-step)
                  (:instance fn2-env-x-step-but-turn)
                  (:instance fn2-env-q-step-but-turn)))))
+
+(defthm fn2-env-reach-active-admit-step
+  (implies (and (fn2-env-reach-active-inv profile acked log c)
+                (equal (fn2-env-tag action) :admit)
+                (not (fn2-core-stopped-p (mv-nth 1 (fn2-env-step action nil image rlog c)))))
+           (mv-let (entry after) (fn2-env-step action nil image rlog c)
+             (fn2-env-reach-active-inv profile
+               (fn2-env-observe (fn2-env-commit-ids profile) acked after)
+               (append log (if entry (list entry) nil)) after)))
+  :hints (("Goal" :in-theory '(fn2-env-reach-inv) :use fn2-env-reach-admit-step)))
+
+(defthm fn2-env-reach-collect-structure
+  (implies (and (fn2-env-reach-active-inv profile acked log c)
+                (equal (fn2-commit-row-phase id c) *fn2-commit-state-collect*)
+                (not (fn2-core-stopped-p (mv-nth 4 (fn2-commit-run id budget c)))))
+           (let ((after (mv-nth 4 (fn2-commit-run id budget c))))
+             (and (fn2-env-reach-structure profile after) (fn2-env-fl log after))))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-structure
+                               fn2-env-reach-history
+                               fn2-commit-run-preserves-type fn2-commit-run-preserves-wfp
+                               member-equal (:e member-equal) (:e equal))
+           :use ((:instance fn2-env-commit-slots-p-commit-run (p profile) (fn2-core c))
+                 (:instance fn2-env-commit-dir-canonical-p-commit-run (p profile))
+                 (:instance fn2-env-f-commit-run (fn2-core c))
+                 (:instance fn2-env-x-commit-run (fn2-core c))
+                 (:instance fn2-env-q-commit-run)
+                 (:instance fn2-env-j5-row-of-commit-ids)
+                 (:instance fn2-commit-run-fn2-env-fl (fn2-core c))))))
+(defthm fn2-env-reach-structure-and-data
+  (implies (and (fn2-env-reach-structure profile c)
+                (fn2-env-lent-ok c)
+                (fn2-env-reach-initial-data-p profile c))
+           (and (fn2-env-reach-active-inv profile nil nil c)
+                (not (fn2-core-stopped-p c))))
+  :hints (("Goal" :in-theory '(fn2-env-reach-active-inv fn2-env-reach-history
+                               fn2-env-reach-initial-data-p fn2-env-fl (:e true-listp)))))
+
+(defthm fn2-env-reach-initial-data-nonstopped
+  (implies (fn2-env-reach-initial-data-p profile c) (not (fn2-core-stopped-p c)))
+  :hints (("Goal" :in-theory '(fn2-env-reach-initial-data-p))))
