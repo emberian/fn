@@ -70,7 +70,9 @@
       (fn2-fields (fn2-fields-set-value (+ base *fn2-event-proof-entry-field-allocation*) (fn2-extents-counter extent fn2-extents) fn2-fields))
       (fn2-fields (fn2-fields-put (+ base *fn2-event-proof-entry-field-semantic-seal*)
                     (value 1) (ref-slot scratch) (ref-gen sgen) (ref-off 0) (ref-len 32))))
-  (fn2-event-proof-entry-encode base slot gen off okind oslot ogen fn2-fields fn2-pool)))
+  (mv-let (code next fn2-pool)
+   (fn2-event-proof-entry-encode base slot gen off okind oslot ogen fn2-fields fn2-pool)
+   (mv code next fn2-fields fn2-pool))))
 (fn2-fields-preserves fn2-event-proof-pack-entry
  (token ordinal base slot gen off scratch sgen okind oslot ogen
   fn2-csnapshot fn2-commit-root fn2-extents fn2-alloc-edges fn2-fc fn2-digests fn2-fields fn2-pool)

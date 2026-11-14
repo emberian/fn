@@ -20,7 +20,7 @@
                      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-idle*)
                      (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)))
-       (mv :snapshot fn2-checkpoint-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv :snapshot fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
       ((unless (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
                      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*)
                      (posp checkpoint) (unsigned-byte-p 60 checkpoint)
@@ -29,24 +29,27 @@
                      (eq (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
                      (eq (fn2-pool-workspace-code scratch sgen okind oslot ogen fn2-pool) :ok)
                      (<= 4096 (fn2-pool-cap slot fn2-pool)) (<= 160 (fn2-pool-cap scratch fn2-pool))))
-       (mv :bounds fn2-checkpoint-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv :bounds fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
       ((mv code row base) (fn2-checkpoint-writer-checker-children fn2-fc))
       ((unless (and (eq code :ok) (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
                      (<= (+ base *fn2-format-sealed-batch-num-fields*) (fn2-fields-rows fn2-fields))))
-       (mv :checker fn2-checkpoint-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv :checker fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
       ; Reservation is performed here, before the page codec sees its identity.
       ((mv code extent epoch allocation fn2-checkpoint-construction fn2-extents fn2-control)
        (fn2-checkpoint-construction-reserve token okind oslot ogen 0 0 4096
         fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-control))
       ((unless (member-eq code '(:ok :uncertain)))
-       (mv code fn2-checkpoint-build fn2-checkpoint-construction fn2-extents fn2-control))
+       (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control))
+      (fn2-checkpoints (fn2-checkpoints-put c (state *fn2-checkpoint-state-building*) (checkpoint checkpoint)
+        (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+        (builder-token token) (builder-owner-kind okind) (builder-owner-slot oslot) (builder-owner-gen ogen)))
       (fn2-checkpoint-build (fn2-checkpoint-build-put 0
         (phase (if (eq code :ok) *fn2-checkpoint-build-phase-await-roots* *fn2-checkpoint-build-phase-uncertain*)) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
         (snapshot-token token) (candidate c) (checkpoint checkpoint)
         (cut-commit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)) (cut-event (fn2-csnapshot-cut-event 0 fn2-csnapshot))
         (extent extent) (epoch epoch) (allocation allocation) (slot slot) (gen gen) (scratch scratch) (scratch-gen sgen)
         (checker-row row) (field-base base) (write-cursor 0) (intended-bytes 4096) (completed-bytes 0) (pending 0))))
-  (mv code fn2-checkpoint-build fn2-checkpoint-construction fn2-extents fn2-control)))
+  (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-construction fn2-extents fn2-control)))
 
 ; Reserve the descriptor before the allocation-map closes its construction set.
 ; Only the actual held traversal and physically completed same-token producers
@@ -188,7 +191,7 @@
         (mv code fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
       ((when sealp)
        (mv-let (code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
-        (fn2-checkpoint-prepare c (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build) 1 1 0
+        (fn2-checkpoint-prepare-owned c token kind owner generation (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build) 1 1 0
           (* extent *fn2-storage-extent-units*) epoch allocation *page-kind-checkpoint-descriptor* 4096
           (fn2-fc-context-hash row fn2-fc-context) fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
         (let ((fn2-checkpoint-build (fn2-checkpoint-build-set-phase 0
@@ -313,10 +316,23 @@
       (fn2-checkpoint-build-gen 0 fn2-checkpoint-build))))
 
 (fn2-checkpoint-build-preserves fn2-checkpoint-build-begin
- (checkpoint c token slot gen scratch sgen okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs
-    fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
- :carriers ((fn2-checkpoint-build 1 :prefix "-BUILD") (fn2-checkpoint-construction 2 :prefix "-CONSTRUCTION")
-             (fn2-extents 3 :prefix "-EXTENTS") (fn2-control 4 :prefix "-CONTROL")))
+ (checkpoint c token slot gen scratch sgen okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-fc fn2-checkpoint-construction fn2-extents fn2-pool fn2-control)
+ :hyps ((fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-fcp fn2-fc) (fn2-fc-wfp fn2-fc) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control))
+ :specs (("-CHECKPOINT-BUILD-TYPE" fn2-checkpoint-buildp 1)
+         ("-CHECKPOINT-BUILD-WFP" fn2-checkpoint-build-wfp 1)
+         ("-CHECKPOINT-BUILD-ROWS" fn2-checkpoint-build-rows 1 :frame fn2-checkpoint-build)
+         ("-CHECKPOINTS-TYPE" fn2-checkpointsp 2)
+         ("-CHECKPOINTS-WFP" fn2-checkpoints-wfp 2)
+         ("-CHECKPOINTS-ROWS" fn2-checkpoints-rows 2 :frame fn2-checkpoints)
+         ("-CHECKPOINT-CONSTRUCTION-TYPE" fn2-checkpoint-constructionp 3)
+         ("-CHECKPOINT-CONSTRUCTION-WFP" fn2-checkpoint-construction-wfp 3)
+         ("-CHECKPOINT-CONSTRUCTION-ROWS" fn2-checkpoint-construction-rows 3 :frame fn2-checkpoint-construction)
+         ("-EXTENTS-TYPE" fn2-extentsp 4)
+         ("-EXTENTS-WFP" fn2-extents-wfp 4)
+         ("-EXTENTS-ROWS" fn2-extents-rows 4 :frame fn2-extents)
+         ("-CONTROL-TYPE" fn2-controlp 5)
+         ("-CONTROL-WFP" fn2-control-wfp 5)
+         ("-CONTROL-ROWS" fn2-control-rows 5 :frame fn2-control)))
 (fn2-checkpoint-build-preserves fn2-checkpoint-build-roots-ready
  (fn2-checkpoint-build fn2-csnapshot fn2-checkpoint-refs)
  :carriers ((fn2-checkpoint-build 1 :prefix "-BUILD")))

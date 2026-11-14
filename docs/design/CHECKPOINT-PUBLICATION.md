@@ -364,3 +364,60 @@ into its calculated fixed-width page slot and zeroes its bounded slot padding;
 page jobs still must initialize the whole page and authenticate headers/links.
 Arena ordinal lookup scans physical extents because free-list order is independent
 of ticket order; only the requested ordinal can produce an entry.
+
+## Frozen map and arena source jobs
+
+`checkpoint-map-build.lisp` builds role-2 and role-5 linked pages backwards from
+the actual closed plan. It finds each pre-reserved page by exact role/ordinal,
+zeros at most one sector per source step, and serializes one actual allocation
+row or exact journal ticket per entry step. Every page carries the calculated
+coverage header and a full next Ref copied only from a physically completed
+child's retained verified hash. The common reservation-checked physical header
+codec preserves the body. The source state then binds the page once and enters
+`:bound`, where it has no packing/reset transition while the shared worker owns
+the bytes. The composed source actor still must call TAKE and wake its actual
+worker target, then wait for its ownership handback.
+
+Consumption requires the exact retained completed extent plus the returned source
+workspace, and advances to the previous ordinal. Only completion of ordinal 0
+captures a role-2/5 root and its actual hash/source-complete carrier. No caller
+supplies completion. These are concrete source/callback declarations, not a
+registered coordinator, admitted ownership proof, authenticated selected-base
+restoration or allocator reclamation. Candidate builder claims now bind the reservation to its nonselectable candidate;
+root0 shared worker integration remains the next required ownership connection.
+
+## Candidate construction ownership
+
+Actual descriptor BEGIN now atomically claims its candidate as nonselectable
+`:building` immediately after successful physical reservation, retaining C's
+builder token/owner tuple. Refusal or uncertainty never releases that claim.
+`fn2-checkpoint-builder-ownerp` requires the exact tuple and BUILDING state;
+`fn2-checkpoint-builder-claimp` recognizes the retained tuple across later
+non-FREE states and confers no durability. Source root captures and map freeze
+check actual candidate ownership. Ordinary recovery prepare remains FREE-only.
+Owned preparation requires the exact claim and uses the same serialization/
+expected-hash preparation body, preserving its tuple. A decoded recovery
+candidate clears builder provenance and cannot acquire a construction claim.
+The local claim fixture controls ownership/refusal only, not actual cut or
+physical construction. The composed claim invariant remains unqualified.
+
+
+## Allocator freeze leaf qualification
+
+At source `802da825c8e7b94e684294d20ea622a349b1b043`, the actual allocator
+and `books/alloc-freeze.lisp` loaded under the record ACL2 executable with five
+compatible cached dependencies. The nine target forms include seven literal
+unchanged-stobj frames for begin-epoch, reserve, adopt, allocation commit,
+retirement, cancellation and checkpoint drain while frozen. The source load
+used 8.76 ACL2 seconds and 938,035 prover steps. This is source admission,
+not a certificate-cache record, executed freeze control fixture, or checkpoint
+composition proof. The prior `b6a907eeb` attempt refused allocator declaration
+metadata before submitting the frame book; correcting the ownership rationale
+strings preserved that ratchet.
+
+The next installation connection is a bounded producer that packs the actual
+completed construction ledger into the existing commit planner's allocation
+record capacity. It must keep one member's workspace, batch and event until the
+persisted installer consumes that exact member. A separate allocation per ticket
+would violate the planner's reserved ticket count. Allocation installation does
+not establish selectable checkpoint publication or authorize FREE.
