@@ -26,3 +26,6 @@
 (defcost fn2-checkpoint-events-consume :child fn2-event-build-consume-page :answers t :bytes 32
  :tables (fn2-core-event-build fn2-core-checkpoint-refs fn2-core-checkpoint-bytes)
  :doc "Consume exact completed page and returned workspace; pending retains owner and all workspaces.")
+(defcost fn2-checkpoint-events-rearm :child fn2-event-producer-rearm :answers (:ok :state :retained)
+ :tables (fn2-core-event-build fn2-core-event-read fn2-core-journal-members)
+ :doc "Rearm finished source cursors only after exact successful publication, bundle release and actual B thaw; preserve frontier and root provenance.")
