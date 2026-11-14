@@ -52,7 +52,7 @@
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
 ; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
-; both at fn2-b-ctl-slot), then row 4+w+c for event construction,
+; both at fn2-b-ctl-slot when the profile is at its floor), then
 ; source-retention rows 4+w+c and 5+w+c, event row 6+w+c,
 ; block-read row 7+w+c and final checkpoint row 8+w+c. The block read's check
 ; (fn2-block-read-done-children hashes a block read through a source
@@ -679,7 +679,9 @@
  (bytes len verify lslot lgen boff proof-slot proof-gen hoff cvoff block okind oslot ogen fn2-b3 fn2-digests fn2-pool)
  :hyps ((fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
         (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :carriers ((fn2-b3 1 :prefix "-B3") (fn2-digests 2 :prefix "-DIGESTS"))
+ :specs (("-B3-TYPE" fn2-b3p 1) ("-B3-WFP" fn2-b3-wfp 1) ("-B3-ROWS" fn2-b3-rows 1 :frame fn2-b3)
+         ("-DIGESTS-TYPE" fn2-digestsp 2) ("-DIGESTS-WFP" fn2-digests-wfp 2)
+         ("-DIGESTS-ROWS" fn2-digests-rows 2 :frame fn2-digests))
  :hints (("Goal" :use fn2-block-read-done-from-children-shape
           :in-theory (disable fn2-block-read-done-from-children fn2-digestsp fn2-digests-wfp fn2-digests-rows fn2-b3p fn2-b3-wfp fn2-b3-rows))))
 

@@ -1520,9 +1520,12 @@ reason `:batch-membership`. D's `:ready`, on `:exhausted`, parks with that wait 
 `:exhausted` while the pick finds the partner uncertain (B5-4a), so no later member can commit past
 an unresolved one. Recovery resolves it by classification and replay, never by waiting.
 
-**S8. The format floor.** `:format-slots` defaults to `4 + w`, and that is also its floor, with
-`w = fn2-b-upload-windows` (landed in B5-4a). Every profile therefore has the sealer's checker row.
-A profile that names fewer slots is refused.
+**S8. The format floor.** `:format-slots` defaults to `9 + w + c`, its supported-profile floor,
+where `w = fn2-b-upload-windows` and `c = fn2-b-ctl-rows`. The final five stripes belong to
+semantic retention, streaming payload retention, event construction, block verification and
+checkpoint writing, in that order; control stripes precede them. `fn2-b-field-rows` reserves the
+matching 128-field format stripes plus transaction, sealer and read workspaces. An explicit
+checker, B3/digest or field capacity below its derived floor is refused before admission.
 
 **D's amendments (accepted 2026-10-31).**
 - (1) D's `:ready` runs in this order: resolve, stage, `fn2-successor-out`, write the member records into
