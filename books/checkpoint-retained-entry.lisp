@@ -11,6 +11,7 @@
  ((phase (:enum fn2-checkpoint-retained-entry-phase (:free :held :payload-complete :uncertain)))
   (serial :u60) (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (candidate :u32) (checkpoint :u60) (schema :u60) (field-base :u32)
+  (source-slot :u32) (source-gen :u60)
   (origin (:enum fn2-checkpoint-retained-entry-origin (:snapshot :page)))
   (source-kind :u8) (source-row :u32) (source-rank :u60) (source-position :u60)
   (extent :u32) (epoch :u60) (allocation :u60) (page-kind :u8)

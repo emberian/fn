@@ -34,15 +34,12 @@
 ;; The blocks of TOTAL stored octets, and the manifest's units.
 ;; Stored octets are named through a manifest when they exceed one extent;
 ;; the manifest is one extent at most (one reference per article, one level).
-(defun fn2-am-manifestp (total)
-  (declare (xargs :guard t))
-  (< *fn2-upload-payload-bytes* (nfix total)))
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))
   (<= (fn2-am-units total) *fn2-upload-payload-units*))
 (assert-event (and (fn2-am-fits *fn2-am-stored-max*) (not (fn2-am-fits (+ 1 *fn2-am-stored-max*)))))
 ;; Where the entry after manifest octet OFF starts (the packing rule).
-(in-theory (disable fn2-am-manifestp fn2-am-fits))
+(in-theory (disable fn2-am-fits))
 
 (local (in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-pool-rows)))
 ;; The header at OFF of SLOT GEN: TOTAL stored octets, the source identity at
