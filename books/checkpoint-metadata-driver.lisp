@@ -267,7 +267,7 @@
       ((when (eq code :ready))
        (let ((fn2-checkpoint-root1 (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-source* fn2-checkpoint-root1)))
         (fn2-checkpoint-root1-mv :more)))
-      ((when (eq code :payload-required)) (fn2-checkpoint-root1-mv :payload-start))
+      ((when (eq code :payload-required)) (fn2-checkpoint-root1-mv :more))
       ((unless (eq code :tree-required)) (fn2-checkpoint-root1-mv code))
       ((mv code fn2-checkpoint-semantic)
        (fn2-checkpoint-semantic-begin (fn2-checkpoint-windows-slot 16 fn2-checkpoint-windows) (fn2-checkpoint-windows-generation 16 fn2-checkpoint-windows)
@@ -290,7 +290,7 @@
           (fn2-checkpoint-semantic-step (min budget 4096) fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers
            fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
          (fn2-checkpoint-root1 (if (eq code :complete) (fn2-checkpoint-root1-set-phase 0 *fn2-checkpoint-root1-phase-source* fn2-checkpoint-root1) fn2-checkpoint-root1)))
-     (fn2-checkpoint-root1-mv (case code (:complete :more) (:payload-required :payload-start) (otherwise code)))))
+     (fn2-checkpoint-root1-mv (case code (:complete :more) (:payload-required :more) (otherwise code)))))
    ((equal phase *fn2-checkpoint-root1-phase-payload*)
     (b* (((mv code fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-fields fn2-extents fn2-alloc-edges fn2-b3 fn2-digests)
           (fn2-checkpoint-payload-step (min budget 4096) fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields fn2-extents fn2-alloc-edges fn2-ops fn2-pool fn2-b3 fn2-digests))
