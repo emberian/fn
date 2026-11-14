@@ -117,7 +117,9 @@
           (mv (or problem problem2)
               (cons (list 'lambda (if erase (remove-eq 'fn2-core formals) formals) body) args)
               (union-eq opened opened2))))))
-   ((and readonlyp (assoc-eq (car term) (table-alist 'fn2-core-lowered world))
+   ((and (assoc-eq (car term) (table-alist 'fn2-core-lowered world))
+         (or readonlyp
+             (fn2-decl-get :reverse (cdr (assoc-eq (car term) (table-alist 'fn2-core-lowered world)))))
          (not (fn2-arms-stobjs-of (getpropc (car term) 'stobjs-out nil world))))
     (mv-let (hit problem call) (fn2-lower-reader-leaf term world)
      (declare (ignore hit))
@@ -289,6 +291,14 @@
                    (cdr pending))
            children (cons (car pending) seen) world (1- fuel)))))
 
+(defun fn2-lower-leaf-properties (rows calls property)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (let ((row (cdar rows)))
+   (append (and (fn2-decl-get :reverse row)
+                (member-eq (fn2-decl-get :child row) calls)
+                (list (if (eq property :source) (caar rows) (fn2-decl-get property row))))
+           (fn2-lower-leaf-properties (cdr rows) calls property)))))
 (defun fn2-lower-readonly-events (fn child teeth world)
   (declare (xargs :verify-guards nil))
   (mv-let (expansion-problem body opened)
@@ -350,6 +360,11 @@
          (defthm ,(fn2-columns-sym child "-REFINES-CORE")
            (equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
            :hints (("Goal" :in-theory (e/d (,fn ,child ,@opened) (,@(strip-cars entries))))))
+         (defthm ,(fn2-columns-sym child "-CORE-TO-CHILD")
+           (equal (,fn ,@formals) (,child ,@(fn2-lower-core-args args entries)))
+           :hints (("Goal" :use ((:instance ,(fn2-columns-sym child "-REFINES-CORE")))
+                    :in-theory (disable ,fn ,child))))
+         (in-theory (disable ,(fn2-columns-sym child "-CORE-TO-CHILD")))
          ,@(fn2-lower-shape-events fn child formals args entries (len outs))
          ,@(fn2-lower-obligation-events fn child child formals
              `(equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
@@ -357,6 +372,7 @@
          (in-theory (disable ,child))
          (table fn2-core-lowered ',fn
                 '(:child ,child :refinement ,(fn2-columns-sym child "-REFINES-CORE")
+                  :reverse ,(fn2-columns-sym child "-CORE-TO-CHILD")
                   :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE")))))))))
 (defmacro defcore-readonly-child (fn child &key teeth)
   `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))

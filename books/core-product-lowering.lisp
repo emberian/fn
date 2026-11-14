@@ -72,8 +72,8 @@
  (declare (xargs :verify-guards nil))
  (if (atom stages) tail
   (let ((vars (caar stages)) (call (cadar stages)) (rest (fn2-product-block (cdr stages) tail)))
-   (if (equal (len vars) 1) `(let ((,(car vars) ,call)) ,rest)
-    `(mv-let ,vars ,call ,rest)))))
+   (if (equal (len vars) 1) `(let ((,(car vars) ,call)) (declare (ignorable ,@vars)) ,rest)
+    `(mv-let ,vars ,call (declare (ignorable ,@vars)) ,rest)))))
 (defun fn2-product-return (ir children)
  (declare (xargs :verify-guards nil))
  (mv-let (err xs) (fn2-product-exprs (fn2-product-flat ir children)) (mv err (fn2-arms-mvx xs))))
@@ -221,7 +221,7 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        (defun ,child ,args
-        (declare (xargs :stobjs ,children :guard ,guard :verify-guards t))
+        (declare (ignorable ,@args) (xargs :stobjs ,children :guard ,guard :verify-guards t))
         ,(fn2-product-block stages tail))
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
@@ -231,7 +231,14 @@
                           (equal (getpropc ',face 'stobjs-out nil (w state)) ',outs)))
        (defthm ,(fn2-columns-sym child "-REFINES-CORE")
         (equal (,face ,@formals) (,fn ,@formals))
-        :hints (("Goal" :in-theory (enable ,face ,child ,fn ,@opened))))
+        :hints (("Goal" :in-theory
+          (e/d (,face ,child ,fn ,@opened
+                ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
+                                             (all-fnnames body) :reverse))
+               (,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
+                                             (all-fnnames body) :source)
+                ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
+                                             (all-fnnames body) :refinement))))))
        ,@(fn2-lower-obligation-events fn child face formals
            `(equal (,face ,@formals) (,fn ,@formals))
            (fn2-columns-sym child "-REFINES-CORE") teeth)
