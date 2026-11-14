@@ -212,6 +212,9 @@ ACL2_BOOKS = \
   tests/accounts-unit \
   tests/alloc-random \
   tests/alloc-unit \
+  tests/retirement-unit \
+  tests/read-pins-unit \
+  tests/owed-reclamation-unit \
   tests/authority-client \
   tests/authority-served \
   tests/authority-stream-resolve \
