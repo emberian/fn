@@ -41,6 +41,11 @@
                 (cond ((equal outcome *fn2-outcome-done*) (= count len))
                       ((equal outcome *fn2-outcome-short*) (< count len))
                       (t (<= count len)))))
+          ((equal kind *fn2-action-tls-start*)
+           ; A successful upgrade retained the entire borrowed seed. This is
+           ; a loan-copy count, not an application Receive/accounting count.
+           (and (= aux0 0) (= aux1 0)
+                (if (equal outcome *fn2-outcome-done*) (= count len) (= count 0))))
           ((equal kind *fn2-action-write*)
            (and (= aux0 0) (= aux1 0)
                 (if (equal outcome *fn2-outcome-done*) (= count len) (<= count len))))

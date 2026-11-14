@@ -649,7 +649,7 @@ def emit_world(emb, path, ns, eqn_paths):
 # ACL2's native definitions and their callees; `scan` every `«F»` the file itself names.
 
 DIRECTORY_FIELDS = ("READY-PREV", "READY-NEXT", "WAIT-REASON")
-WB = re.compile(r"^-- BEGIN world bodies \(emit_embed\.py\): (.*)\n(?:import all .*\n)*-- END world bodies$", re.M)
+WB = re.compile(r"^-- BEGIN world bodies \(emit_embed\.py\): (.*)\n(?:(?:import all|public import) .*\n)*-- END world bodies$", re.M)
 
 
 def world_layout(emb):
@@ -677,10 +677,13 @@ def world_bodies(text, layout, pkg):
     rest = text[:m.start()] + text[m.end():]
     mod_of, D, reach = layout["mod_of"], layout["D"], layout["reach"]
     roots, extra = set(), []
+    public_names = False
     for clause in (c.split() for c in spec.split(";")):
         if not clause:
             continue
-        if clause[0] == "kinds":
+        if clause == ["public"]:
+            public_names = True
+        elif clause[0] == "kinds":
             ks = set(clause[1:])
             roots |= {f for f, r in reach.items() if r & ks}
         elif clause[0] == "names":
@@ -710,7 +713,12 @@ def world_bodies(text, layout, pkg):
             stack.extend(D[f])
     used = {mod_of[f] for f in seen}
     lines = [f"-- BEGIN world bodies (emit_embed.py): {spec}"]
-    lines += [f"import all {pkg}.{x}" for x in layout["mods"] if x in used] + [f"import all {x}" for x in extra]
+    modules = [f"{pkg}.{x}" for x in layout["mods"] if x in used] + extra
+    # Public proof statements need the selected names as well as their bodies.
+    # Keep this opt-in; ordinary body-only consumers retain private imports.
+    if public_names:
+        lines += [f"public import {module}" for module in modules]
+    lines += [f"import all {module}" for module in modules]
     lines.append("-- END world bodies")
     return text[:m.start()] + "\n".join(lines) + text[m.end():]
 

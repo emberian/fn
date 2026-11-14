@@ -16,10 +16,9 @@
 (defun fn2-checkpoint-directory-roomp (fn2-extents fn2-commit-root)
  (declare (xargs :stobjs (fn2-extents fn2-commit-root)
   :guard (and (fn2-extents-wfp fn2-extents) (fn2-commit-root-wfp fn2-commit-root))))
- (and (< 0 (fn2-commit-root-rows fn2-commit-root))
-      (let ((last (+ (fn2-commit-root-published 0 fn2-commit-root)
-                     (fn2-checkpoint-directory-budget (fn2-extents-rows fn2-extents)))))
-       (and (unsigned-byte-p 60 last) (< last (fn2-commit-root-rows fn2-commit-root))))))
+ (mv-let (code available)
+  (fn2-commit-directory-headroom (fn2-checkpoint-directory-budget (fn2-extents-rows fn2-extents)) fn2-commit-root)
+  (declare (ignore available)) (eq code :ok)))
 
 (defun fn2-checkpoint-directory-children (c token kind owner gen fn2-csnapshot fn2-checkpoint-root1
                                          fn2-checkpoint-build fn2-checkpoints fn2-checkpoint-future fn2-extents fn2-commit-root fn2-boot-config)
@@ -54,7 +53,7 @@
                (equal (fn2-commit-root-published 0 fn2-commit-root) (fn2-commit-root-installed 0 fn2-commit-root))
                (equal (fn2-commit-root-published 0 fn2-commit-root) (fn2-commit-root-proposed 0 fn2-commit-root))))
      :state
-   (if (fn2-checkpoint-directory-roomp fn2-extents fn2-commit-root fn2-boot-config) :ok :no-space)))
+   (if (fn2-checkpoint-directory-roomp fn2-extents fn2-commit-root) :ok :no-space)))
 (defcost fn2-checkpoint-directory-op :child fn2-checkpoint-directory-children :answers (:ok :no-space :state)
  :tables (fn2-core-csnapshot fn2-core-checkpoint-root1 fn2-core-checkpoint-build fn2-core-checkpoints
           fn2-core-checkpoint-future fn2-core-extents fn2-core-commit-root fn2-core-boot-config)

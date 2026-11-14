@@ -415,16 +415,21 @@
 ; Canonical companion package. The legacy presentation remains available for
 ; existing consumers; certificates consume only this lossless representation.
 ; FN2-TV-* comes from books/translation-validation, admitted before leaving ACL2.
-(defun meta-print-certificate (path roots kind &optional operations)
+; INCLUDE-CONTEXT retains the arm printer's historical convenience roots.
+; NIL requests only the explicit functions and operation callees; meta-closure
+; still follows their logical bodies, guards and measures without truncation.
+(defun meta-print-certificate (path roots kind &optional operations (include-context t))
   (let* ((kd (meta-kind kind))
          (readers (append (meta-column-fns kind (meta-kw :table (cdr kd)))
                           (meta-column-fns 'fn2-machines *fn2-machine-directory-fields*)))
-         (roots (append roots readers
+         (roots (append roots (and include-context readers)
                         (mapcar (lambda (op)
                                   (or (fn2-decl-get :child (fn2-arms-op-row op *meta-w*)) op))
                                 operations)
-                        '(fn2-machine-slot fn2-control-record-stop fn2-machines-rows)
-                        (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")))))
+                        (and include-context
+                             '(fn2-machine-slot fn2-control-record-stop fn2-machines-rows))
+                        (and include-context
+                             (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE"))))))
     (multiple-value-bind (order refused) (meta-closure roots)
       (let ((package
              (list :fn2-certificate :version 1

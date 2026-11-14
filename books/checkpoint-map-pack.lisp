@@ -17,7 +17,9 @@
 
 (defun fn2-checkpoint-map-pack-entry (extent page-ordinal base slot gen token okind oslot ogen fn2-extents fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-extents fn2-fields fn2-pool)
-  :guard (and (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+  :guard (and (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints (("Goal" :use ((:instance fn2-checkpoint-frozen-map-entry-preserves-rows))
+                 :in-theory (disable fn2-fields-rows)))))
  (b* (((unless (and (natp extent) (natp page-ordinal) (natp base)
                      (<= (+ base *fn2-format-allocation-map-entry-num-fields*) (fn2-fields-rows fn2-fields))
                      (equal (floor extent *fn2-checkpoint-map-slots*) page-ordinal)))
@@ -35,7 +37,9 @@
                                        fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool)
   :guard (and (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints (("Goal" :use ((:instance fn2-checkpoint-frozen-arena-entry-preserves-rows))
+                 :in-theory (disable fn2-fields-rows)))))
  (b* (((unless (and (natp ordinal) (natp page-ordinal) (natp base)
                      (<= (+ base *fn2-format-recovery-arena-entry-num-fields*) (fn2-fields-rows fn2-fields))
                      (equal (floor ordinal *fn2-checkpoint-arena-slots*) page-ordinal)))
@@ -65,7 +69,7 @@
         fn2-fields
         fn2-pool)
  :hyps ((fn2-extentsp fn2-extents) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
- :specs (("-GUARD-DOMAIN-FIELDS-TYPE" fn2-fieldsp 1) ("-FIELDS-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields) ("-GUARD-DOMAIN-POOL-TYPE" fn2-poolp 2) ("-POOL-TYPE" fn2-poolp 2) ("-GUARD-DOMAIN-POOL-WFP" fn2-pool-wfp 2) ("-POOL-WFP" fn2-pool-wfp 2) ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool)))
+ :specs (("-GUARD-DOMAIN-FIELDS-TYPE" fn2-fieldsp 1) ("-FIELDS-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields :hints (("Goal" :use ((:instance fn2-checkpoint-frozen-map-entry-preserves-rows)) :in-theory (disable fn2-fields-rows)))) ("-GUARD-DOMAIN-POOL-TYPE" fn2-poolp 2) ("-POOL-TYPE" fn2-poolp 2) ("-GUARD-DOMAIN-POOL-WFP" fn2-pool-wfp 2) ("-POOL-WFP" fn2-pool-wfp 2) ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool :hints (("Goal" :in-theory (disable fn2-pool-rows fn2-checkpoint-map-zero))))))
 
 (fn2-fields-preserves fn2-checkpoint-arena-pack-entry
  (extent ordinal
@@ -82,4 +86,4 @@
         fn2-fields
         fn2-pool)
  :hyps ((fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
- :specs (("-GUARD-DOMAIN-FIELDS-TYPE" fn2-fieldsp 1) ("-FIELDS-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields) ("-GUARD-DOMAIN-POOL-TYPE" fn2-poolp 2) ("-POOL-TYPE" fn2-poolp 2) ("-GUARD-DOMAIN-POOL-WFP" fn2-pool-wfp 2) ("-POOL-WFP" fn2-pool-wfp 2) ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool)))
+ :specs (("-GUARD-DOMAIN-FIELDS-TYPE" fn2-fieldsp 1) ("-FIELDS-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-WFP" fn2-fields-wfp 1) ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields :hints (("Goal" :use ((:instance fn2-checkpoint-frozen-arena-entry-preserves-rows)) :in-theory (disable fn2-fields-rows)))) ("-GUARD-DOMAIN-POOL-TYPE" fn2-poolp 2) ("-POOL-TYPE" fn2-poolp 2) ("-GUARD-DOMAIN-POOL-WFP" fn2-pool-wfp 2) ("-POOL-WFP" fn2-pool-wfp 2) ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool :hints (("Goal" :in-theory (disable fn2-pool-rows fn2-checkpoint-map-zero))))))

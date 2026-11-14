@@ -2,11 +2,12 @@
 ; The payload is C's run-page header in a reserved region, the entries in key
 ; order, then the restart directory; B checks the zero padding after it.
 (in-package "ACL2")
+(include-book "run-geometry")
 (include-book "format-check")
 (include-book "pool-ranges")
 (fn2-book-layer :c)
 
-(defconst *fn2-run-page-size* *fn2-format-page-size*)
+
 ; B's header area, rounded to 32 bytes as the commit pages round it.
 (defconst *fn2-run-header-area* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 (deflayout fn2-run-page-header

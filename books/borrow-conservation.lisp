@@ -43,6 +43,7 @@
                                        (fn2-issue-children fn2-borrows-accountedp fn2-core-wfp)))))))
 (fn2-bc-issue-borrows fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-bc-issue-borrows fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
+(fn2-bc-issue-borrows fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
 (fn2-bc-issue-borrows fn2-issue-read (offset slot gen len))
 (fn2-bc-issue-borrows fn2-issue-write (offset slot gen off len fua))
 (fn2-bc-issue-borrows fn2-issue-fence ())
@@ -171,7 +172,7 @@
 ;; keystone FN2-CORE-BORROW-CONSERVATION (borrow-faces.lisp) adds every
 ;; machine-arm face that writes the pool.
 (defconst *fn2-core-borrow-steps*
-  '(:harvest :receive :send :read :write :fence :accept :close :cancel :entropy :arm-wake
+  '(:harvest :receive :send :tls-start :read :write :fence :accept :close :cancel :entropy :arm-wake
     :reserve :release :reset :pool-write :copy-range :hand :accept-hand :drop-prefix :truncate :loan-write
     :post-result :post-accept-result :post-clock :post-signal :count-stray :outbox-ack :finish :mailbox))
 (defun fn2-core-borrow-step (op a fn2-core)
@@ -189,6 +190,10 @@
              (fn2-issue-send (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a) (nth 6 a)
                              (nth 7 a) (nth 8 a) (nth 9 a) (nth 10 a) fn2-core)
              (declare (ignore code slot gen)) fn2-core))
+    (:tls-start (mv-let (code slot gen fn2-core)
+                  (fn2-issue-tls-start (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a) (nth 4 a) (nth 5 a)
+                                       (nth 6 a) (nth 7 a) (nth 8 a) (nth 9 a) fn2-core)
+                  (declare (ignore code slot gen)) fn2-core))
     (:read (mv-let (code slot gen fn2-core)
              (fn2-issue-read (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
                              (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) fn2-core)
@@ -277,7 +282,7 @@
   (implies (fn2-core-borrow-hyps op core)
            (fn2-core-borrow-conclusion op a core))
   :hints (("Goal" :in-theory (e/d (fn2-core-borrow-hyps fn2-core-borrow-conclusion fn2-core-borrow-step)
-                                  (fn2-harvest-one fn2-issue-receive fn2-issue-send fn2-issue-read
+                                  (fn2-harvest-one fn2-issue-receive fn2-issue-send fn2-issue-tls-start fn2-issue-read
                                    fn2-issue-write fn2-issue-fence fn2-issue-accept fn2-issue-close
                                    fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake fn2-core-wfp
                                    fn2-core-reserve fn2-core-release fn2-core-reset fn2-core-write

@@ -4,7 +4,7 @@
 ; SYNTHETIC HELD/token admission is not an executed C close/drain, journal
 ; completion or successful publication witness.
 (in-package "ACL2")
-(include-book "../books/checkpoint-metadata-resources")
+(include-book "../books/checkpoint-working-reserve")
 ; Finite fixture-only snapshot of every retained window and pool row touched
 ; by TRY27. Refusals must preserve exact metadata, not just free totals.
 (defun fn2-cfu-admission-view (i fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)

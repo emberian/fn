@@ -3,6 +3,7 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
@@ -24,6 +25,10 @@
 (defun fn2-b-barrier-mode (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :commit-barrier-mode 0 profile))
+(defcorechild fn2-core-origin fn2-origin
+ :init (fn2-origin-prepare profile fn2-origin)
+ :profilep (and (fn2-origin-profilep profile) (fn2-origin-physical-profilep profile))
+ :why "Local receipt and envelope origin is bound by persisted genesis before serving.")
 (defcorechild fn2-core-extents fn2-extents
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
@@ -246,6 +251,25 @@
   ; and the event it began at (b54 M3).
   (aborting :u60) (abort-event :u60)
  ))
+; Current representation: row0 is metadata and positive absolute batch IDs
+; occupy rows1..PROPOSED. Count from actual proposals, including in-flight rows;
+; publication lag and hoped-for checkpoint reclamation grant no extra credit.
+(defun fn2-commit-directory-headroom (needed fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (if (not (and (natp needed) (posp (fn2-commit-root-rows fn2-commit-root)))) (mv :state 0)
+  (let* ((proposed (fn2-commit-root-proposed 0 fn2-commit-root))
+         (installed (fn2-commit-root-installed 0 fn2-commit-root))
+         (published (fn2-commit-root-published 0 fn2-commit-root))
+         (capacity (- (fn2-commit-root-rows fn2-commit-root) 1)))
+   (if (not (and (natp published) (natp installed) (natp proposed)
+                  (<= published installed) (<= installed proposed) (<= proposed capacity))) (mv :state 0)
+    (let ((available (- capacity proposed)))
+     (mv (if (<= needed available) :ok :no-space) available))))))
+(defthm fn2-commit-directory-headroom-available-nat
+ (natp (mv-nth 1 (fn2-commit-directory-headroom needed fn2-commit-root)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (enable fn2-commit-directory-headroom))))
+
 (local (in-theory (disable fn2-commit-rootp fn2-commit-root-wfp fn2-commit-root-rows)))
 (defun fn2-commit-root-init-for (profile fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root
@@ -544,6 +568,10 @@
  :tables (fn2-core-extents fn2-core-control)
  :doc "Reserve a physical construction identity before encoding its location-bound bytes; no publication or durability claim.")
 
+(make-event
+ (value (cons 'progn
+   (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children) (w state))
+           (fn2-issued-wrapper-events '(fn2-block-read-children) (w state))))))
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-alloc-edges fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "Pin a stored reference through physical completion and read it into the caller's lease.")
