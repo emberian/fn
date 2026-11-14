@@ -15,6 +15,8 @@
       (fn2-checkpoint-refs (fn2-checkpoint-refs-init 12 fn2-checkpoint-refs))
       (fn2-checkpoint-bytes (fn2-checkpoint-bytes-init 384 fn2-checkpoint-bytes))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-init 1 fn2-checkpoint-restore-semantic))
+      (fn2-checkpoint-restore-semantic (if (eq mode :tag-wrap)
+       (fn2-checkpoint-restore-semantic-set-tag 0 (- (expt 2 60) 1) fn2-checkpoint-restore-semantic) fn2-checkpoint-restore-semantic))
       (fn2-checkpoints (fn2-checkpoints-put 0 (state *fn2-checkpoint-state-checked*) (anchor-mask 1)))
       (fn2-checkpoint-refs (fn2-checkpoint-refs-put 1 (storage-domain 0) (physical-unit *fn2-storage-extent-units*)
        (writer-epoch 4) (allocation 31) (page-kind *page-kind-manifest*) (encoded-length *fn2-format-page-size*)))
@@ -30,7 +32,7 @@
       ((mv code fn2-checkpoint-restore-semantic)
        (fn2-checkpoint-restore-semantic-begin slot gen 7 0 1 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
         fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-pool fn2-checkpoint-restore-semantic)))
-  (mv (and intake
+  (mv (and intake (if (eq mode :tag-wrap) (eq code :tag-exhausted) t)
        (if (and mode (not (eq mode :children)))
         (and (not (eq code :read))
              (equal (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-idle*)
@@ -84,3 +86,5 @@
   (fn2-crsu-replacement-body fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
    fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
 (assert-event (fn2-crsu-replacement-test))
+
+(assert-event (fn2-crsu-test :tag-wrap))

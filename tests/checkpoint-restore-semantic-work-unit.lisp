@@ -68,7 +68,9 @@
         fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-pool fn2-digests))
       (prefix (and intake (eq opened :ok) (eq zeroed :ok) (eq added :ok) (eq closed :ok) (eq padded :ok) (eq headed :ok)))
       ((when (member-eq mode '(:foreign :epoch :overflow)))
-       (mv (and prefix (eq consumed (if (eq mode :overflow) :bounds :reference)) (equal (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic) 0)
+       (mv (and prefix (eq consumed (if (eq mode :overflow) :bounds :reference))
+                (equal (fn2-checkpoint-restore-semantic-pending-count 0 fn2-checkpoint-restore-semantic) 0)
+                (equal (fn2-checkpoint-restore-semantic-pending-head 0 fn2-checkpoint-restore-semantic) *fn2-alloc-none*) (equal (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic) 0)
                 (equal (fn2-checkpoint-restore-semantic-work-tag 5 fn2-checkpoint-restore-semantic-work) 0))
         fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-reader fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
         fn2-fields fn2-pool fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-run-writers fn2-run-restarts fn2-digests fn2-fc))
@@ -80,16 +82,24 @@
       (fn2-checkpoint-restore-map-control (if (eq mode :replacement) (update-fn2-checkpoint-restore-map-control-descriptori 0 1 fn2-checkpoint-restore-map-control) fn2-checkpoint-restore-map-control))
       (fn2-checkpoint-restore-semantic-work (if (eq mode :unit)
        (fn2-checkpoint-restore-semantic-work-set-unit 5 0 fn2-checkpoint-restore-semantic-work) fn2-checkpoint-restore-semantic-work))
+      (fn2-checkpoint-restore-semantic-work (cond
+       ((eq mode :queue-tag) (fn2-checkpoint-restore-semantic-work-set-tag 5 0 fn2-checkpoint-restore-semantic-work))
+       ((eq mode :queue-next) (fn2-checkpoint-restore-semantic-work-set-next 5 5 fn2-checkpoint-restore-semantic-work))
+       (t fn2-checkpoint-restore-semantic-work)))
       ((mv found fn2-checkpoint-restore-semantic fn2-fc fn2-pool)
        (fn2-crsw-find 8 fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control
         fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fc fn2-pool)))
   (mv (and prefix (eq consumed :more)
        (cond ((eq mode :repeat) (eq ended :repeated-reference))
              ((eq mode :count) (eq ended :count))
+             ((member-eq mode '(:queue-tag :queue-next)) (and (eq ended :find) (eq found :queue)))
              ((eq mode :unit) (and (eq ended :find) (eq found :identity)))
              ((eq mode :replacement) (and (eq ended :find) (eq found :source)
                (equal (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic) *fn2-storage-extent-units*)))
              (t (and (eq ended :find) (eq found :read)
+                (equal (fn2-checkpoint-restore-semantic-pending-count 0 fn2-checkpoint-restore-semantic) 0)
+                (equal (fn2-checkpoint-restore-semantic-pending-head 0 fn2-checkpoint-restore-semantic) *fn2-alloc-none*)
+                (equal (fn2-checkpoint-restore-semantic-pending-tail 0 fn2-checkpoint-restore-semantic) *fn2-alloc-none*)
                 (equal (fn2-checkpoint-restore-semantic-unit 0 fn2-checkpoint-restore-semantic) (* 5 *fn2-storage-extent-units*))
                 (equal (fn2-checkpoint-restore-semantic-schema 0 fn2-checkpoint-restore-semantic) 3)
                 (equal (fn2-checkpoint-restore-semantic-run 0 fn2-checkpoint-restore-semantic) 9)
@@ -112,3 +122,6 @@
 
 (assert-event (fn2-crsw-test :overflow))
 (assert-event (fn2-crsw-test :unit))
+
+(assert-event (fn2-crsw-test :queue-tag))
+(assert-event (fn2-crsw-test :queue-next))
