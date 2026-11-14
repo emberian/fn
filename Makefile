@@ -59,6 +59,7 @@ ACL2_BOOKS = \
   books/borrow-faces \
   books/claims \
   books/cns \
+  books/cns-draining-contract \
   books/cns-edges \
   books/cns-kind \
   books/column-contracts \
@@ -221,7 +222,9 @@ ACL2_BOOKS = \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \
+  tests/cns-draining-count-counterexample \
   tests/cns-decode-unit \
+  tests/cns-draining-contract-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \
@@ -256,6 +259,7 @@ ACL2_BOOKS = \
   tests/core-child-registration \
   tests/core-child-unit \
   tests/core-lowering-unit \
+  tests/core-snapshot-support \
   tests/core-update-lowering-unit \
   tests/core-unit \
   tests/crash-model-differential \

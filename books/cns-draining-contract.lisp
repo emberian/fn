@@ -2,7 +2,7 @@
 ; The checking side is list arithmetic: no handler, release, reclaim or timer
 ; operation is called. Schema metadata supplies positions, never decisions.
 (in-package "ACL2")
-(include-book "assembly-attach")
+(include-book "assembly-callbacks-e-cns")
 
 (defun fn2-cns-drain-number-fields (fields index)
   (declare (xargs :verify-guards nil))
@@ -121,6 +121,16 @@
                   (fn2-cns-drain-cell 'fn2-cns-ns-slot slot own)
                   (fn2-cns-drain-cell 'fn2-cns-ns-gen slot own) id gen pool))))))
 
+; One live reservation leaves room for its reusable credit. Retirement can
+; reduce the sum; admission and reusable reclamation preserve it.
+(defun fn2-cns-draining-reservedp (before)
+  (let* ((dir (fn2-cns-drain-child 'fn2-machines before))
+         (active (fn2-cns-drain-cell 'fn2-machines-active-count *fn2-cns-admission-ordinal* dir))
+         (credits (fn2-cns-drain-cell 'fn2-machines-admission-credits *fn2-cns-admission-ordinal* dir))
+         (capacity (fn2-cns-drain-cell 'fn2-machines-connection-count *fn2-cns-admission-ordinal* dir)))
+    (and (natp active) (natp credits) (natp capacity)
+         (<= (+ active credits) capacity))))
+
 (defun fn2-cns-drain-cleared-sched (id sched)
   (let* ((old (fn2-cns-drain-cell 'fn2-sched-deadline id sched))
          (count (fn2-cns-drain-get 'fn2-sched-armed-timers sched))
@@ -197,18 +207,23 @@
          (equal (list bytes steps descriptors runnable after)
                 (list 0 *fn2-work-state* 0 nil expected)))))
 
-; This universal slice has an independent observable conclusion: even a
-; failed lease release cannot alter any timer or scheduler queue. The lease
+; Complete scheduler output/effect refinement, including all sibling rows.
+(defthm fn2-cns-drain-clear-scheduler-by-definition
+  (implies (and (natp id) (< id (fn2-sched-rows sched)))
+    (equal (mv-nth 1 (fn2-sched-clear-deadline id sched))
+           (fn2-cns-drain-cleared-sched id sched)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (enable fn2-sched-clear-deadline fn2-sched-rows
+      fn2-sched-deadline fn2-sched-set-deadline fn2-sched-set-expired
+      update-fn2-sched-deadline$ai update-fn2-sched-expired$ai
+      fn2-sched-armed-timers fn2-sched-earliest-deadline
+      update-fn2-sched-armed-timers update-fn2-sched-earliest-deadline
+      fn2-cns-drain-cleared-sched fn2-cns-drain-put-cell
+      fn2-cns-drain-put fn2-cns-drain-cell fn2-cns-drain-get
+      fn2-cns-drain-index))))
+; Even a failed held-lease release cannot alter any timer/queue. The lease
 ; premise is necessary: the final draining step clears its own timer.
-(defthm-owed fn2-cns-draining-held-scheduler-contract (id budget core)
-  (implies (and (fn2-corep core) (fn2-core-wfp core)
-                (equal (fn2-cns-snapshot-read-code id core) :ok)
-                (equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
-    (equal (fn2-core-sched (mv-nth 4 (fn2-cns-run-draining id budget core)))
-           (fn2-core-sched core)))
-  :schema :invariant :claim :semantic
-  :teeth (fn2-cns-drain-held-witness fn2-cns-drain-without-held-counterexample)
-  :doc "The actual draining callback preserves all scheduler/timer state during its held-lease intermediate step; removing the held-lease premise admits the timer-clearing final step.")
 (defthm fn2-cns-draining-held-keeps-timer
   (implies (and (fn2-corep core) (fn2-core-wfp core)
                 (equal (fn2-cns-snapshot-read-code id core) :ok)
@@ -224,16 +239,59 @@
                  update-fn2-core-pool update-fn2-core-control update-fn2-cns-table)
                 (fn2-cns-snapshot-read-code fn2-core-release-children
                  fn2-control-record-stop)))))
+(defthm fn2-cns-run-draining-held-keeps-timer
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (equal (fn2-cns-snapshot-read-code id core) :ok)
+                (equal (fn2-cns-row-phase id core) *fn2-cns-state-draining*)
+                (equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
+    (equal (fn2-core-sched (mv-nth 4 (fn2-cns-run id budget core)))
+           (fn2-core-sched core)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn2-cns-draining-held-keeps-timer))
+           :in-theory
+           (e/d (fn2-cns-run fn2-machine-contract-check fn2-core-stop
+                 fn2-core-sched update-fn2-core-control)
+                (fn2-cns-run-draining fn2-cns-snapshot-read-code
+                 fn2-cns-row-phase fn2-cns-row-lease fn2-cns-arm-ok-p
+                 fn2-control-record-stop)))))
+(defthm-owed fn2-cns-draining-held-scheduler-contract (id budget core)
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (equal (fn2-cns-snapshot-read-code id core) :ok)
+                (equal (fn2-cns-row-phase id core) *fn2-cns-state-draining*)
+                (equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
+    (equal (fn2-core-sched (mv-nth 4 (fn2-cns-run id budget core)))
+           (fn2-core-sched core)))
+  :schema :invariant :claim :semantic
+  :boundary :unreachable-in-composition
+  :teeth (fn2-cns-drain-held-witness fn2-cns-drain-without-held-counterexample)
+  :doc "unreachable-in-composition (source-audited, reachability proof pending): hand/cancel release held leases before entering draining. This defensive actual-run theorem preserves all scheduler state on a held-lease input; it is not public served-path coverage. Removing the premise admits the timer-clearing final step.")
 (fn2-owed-discharge fn2-cns-draining-held-scheduler-contract
-                    fn2-cns-draining-held-keeps-timer)
+                    fn2-cns-run-draining-held-keeps-timer)
 
-; Full served-domain admission and proof are the destination. The separate
-; universal theorem is intentionally not replaced by fixture success.
-(defthm-owed fn2-cns-draining-independent (id budget core)
+; Refuted draft retained verbatim as a proposition, not an active obligation.
+; Two owned slots plus count<rows does not imply two releases have room:
+; tests/cns-draining-count-counterexample.lisp executes the complete H/not-C.
+(defun-nx fn2-cns-draining-uncounted-claim (id budget core)
   (implies (and (fn2-corep core) (fn2-core-wfp core)
                 (natp budget) (fn2-cns-draining-domainp id core))
     (mv-let (b s d r after) (fn2-cns-run id budget core)
+      (fn2-cns-draining-resultp id core b s d r after))))
+
+; Callers must carry accounting and reservations, not rescan the whole state
+; while serving. Their entry/preservation links remain separate obligations.
+; These full-H/C runtime controls are not yet formula-bound by the current
+; witness generator; the universal claim remains explicitly owed.
+(defthm-owed fn2-cns-draining-counted-independent (id budget core)
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (natp budget) (fn2-cns-draining-domainp id core)
+                (fn2-cns-draining-reservedp core)
+                (fn2-pool-semanticp (fn2-core-pool core)))
+    (mv-let (b s d r after) (fn2-cns-run id budget core)
       (fn2-cns-draining-resultp id core b s d r after)))
   :schema :invariant :claim :semantic
-  :teeth (fn2-cns-drain-positive fn2-cns-drain-negative)
-  :doc "Served CNS draining releases only owned resources, preserves siblings, clears its incarnation timer and returns exactly its reusable credit; held lease is an intermediate step.")
+  :teeth (fn2-cns-drain-positive fn2-cns-drain-without-pool-accounting
+          fn2-cns-drain-without-reservation
+          fn2-cns-drain-refusal-control fn2-cns-drain-negative)
+  :case (:run fn2-cns :draining) :boundary :application-reclamation
+  :doc "Given pool accounting and partition reservations, actual CNS draining releases exactly its owned resources, preserves siblings, clears its incarnation timer and returns reusable credit. Held/draining is defensive unreachable-in-composition input coverage; successful final reclaim is the served case. Universal proof and caller invariant links remain owed.")
