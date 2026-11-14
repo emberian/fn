@@ -33,28 +33,41 @@
 ; expected function invokes checked writers, installers or reclamation.
 (defun fn2-machines-reservation-put (field ord value machines)
   (update-nth field (update-nth ord value (nth field machines)) machines))
+; DEFSTOBJ does not export positional constants for extra fields. Derive
+; positions from the registered representation; the model still computes
+; its effects with ordinary list arithmetic only.
+(make-event
+ (let* ((schema (cdr (assoc-eq 'fn2-machines (fn2-decl-rows :columns (w state)))))
+        (columns (fn2-decl-get :columns schema))
+        (fields (append (strip-cars (fn2-columns-fields 'fn2-machines columns))
+                        '(fn2-machines-rows)
+                        (strip-cars (fn2-decl-get :extra-fields schema)))))
+   (value `(defconst *fn2-machines-reservation-fields* ',fields))))
+(defun fn2-machines-reservation-field-index (field)
+  (position-eq field *fn2-machines-reservation-fields*))
+
 (defun fn2-machines-reclaim-list-expected (id ord retire machines control)
-  (let* ((active (nth ord (nth *fn2-machines-active-count* machines)))
-         (credits (nth ord (nth *fn2-machines-admission-credits* machines)))
+  (let* ((active (nth ord (nth (fn2-machines-reservation-field-index 'fn2-machines-active-count) machines)))
+         (credits (nth ord (nth (fn2-machines-reservation-field-index 'fn2-machines-admission-credits) machines)))
          (machines (if retire machines
-                     (fn2-machines-reservation-put *fn2-machines-free-head* ord id machines)))
+                     (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-free-head) ord id machines)))
          (machines (if retire machines
-                     (fn2-machines-reservation-put *fn2-machines-admission-credits*
+                     (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-admission-credits)
                                                   ord (+ 1 credits) machines)))
-         (machines (fn2-machines-reservation-put *fn2-machines-active-count*
+         (machines (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-active-count)
                                                 ord (- active 1) machines)))
     (list machines control)))
 (defun fn2-machines-install-list-expected (ord target next creditp machines control)
-  (let* ((active (nth ord (nth *fn2-machines-active-count* machines)))
-         (credits (nth ord (nth *fn2-machines-admission-credits* machines)))
-         (machines (fn2-machines-reservation-put *fn2-machines-free-head* ord next machines))
-         (machines (fn2-machines-reservation-put *fn2-machines-active-count*
+  (let* ((active (nth ord (nth (fn2-machines-reservation-field-index 'fn2-machines-active-count) machines)))
+         (credits (nth ord (nth (fn2-machines-reservation-field-index 'fn2-machines-admission-credits) machines)))
+         (machines (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-free-head) ord next machines))
+         (machines (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-active-count)
                                                 ord (+ 1 active) machines))
          (machines (if creditp
-                       (fn2-machines-reservation-put *fn2-machines-admission-credits*
+                       (fn2-machines-reservation-put (fn2-machines-reservation-field-index 'fn2-machines-admission-credits)
                                                     ord (- credits 1) machines)
                      machines)))
-    (list (update-nth *fn2-machines-wake-id* target machines) control)))
+    (list (update-nth (fn2-machines-reservation-field-index 'fn2-machines-wake-id) target machines) control)))
 
 (defthm fn2-machines-wait-reason-reservation-frame
   (equal
