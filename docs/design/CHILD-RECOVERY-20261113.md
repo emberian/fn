@@ -154,8 +154,20 @@ root. Mutable callees remain in the typed expansion pass; recursive and raw-core
 uses refuse. The existing read-after-write fixture now uses this automatic
 family instead of a hand-listed reader derivation, with the same full effects,
 one-evaluation and runtime mutation controls. Warm product92/readers65 forms
-pass. Actual wake-upload is the next production source probe; this extension
-has not yet received its record gate or a current callback certification.
+pass. Automatic family plus selected-field reconstruction laws passed record
+`certify-20261114T013024Z-3508962` at 1d15696da (17 reused, 4 built, 21 books;
+no book over 10 seconds). The shared core-spine and unchanged-writeback facts
+keep the full core predicate opaque during substantive execution refinement.
+A two-child conditional fixture checks both mutation branches and bounds refusal
+with the core fields disabled, matching production's theory boundary.
+
+Actual `fn2-txn-wake-upload` automatic reader/product family admitted in the
+qualified 74f29a868 callback world in 5.97 seconds / 72,023 prover steps. It proves
+whole executable effects under core type, actual-guard correspondence, and the
+unconditional totalized face; guards and both ABIs are checked. This is a source
+probe, not current-tree production certification. The lane now wires this child
+and declares both actual written tables (machines and control); current B callback
+certification and formula-bound production evidence remain pending. No mode switch.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies

@@ -16,7 +16,7 @@
 (in-package "ACL2")
 (include-book "txn-kind")
 (include-book "upload")
-(include-book "core-lowering")
+(include-book "core-product-lowering")
 (fn2-book-layer :d)
 
 ;; The claim walk's chain steps per run: each step compares at most one
@@ -302,7 +302,8 @@
   :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
-(defcost fn2-txn-wake-upload :tables (fn2-core-machines)
+(defcost fn2-txn-wake-upload :child fn2-txn-wake-upload-child
+ :tables (fn2-core-machines fn2-core-control)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 (defcost fn2-txn-groups-limit :child fn2-txn-groups-limit-child
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
@@ -693,6 +694,7 @@
 (fn2-core-preserves fn2-txn-wake-upload (u id gen fn2-core) :rows nil
   :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code))))
 (in-theory (disable fn2-txn-wake-upload))
+(defcore-product-closure fn2-txn-wake-upload fn2-txn-wake-upload-child)
 
 (defun fn2-txn-offer (tx ms mg mo ml c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
