@@ -16,10 +16,14 @@
 
 (defun fn2-reservation-child-control-run (takep mutation fn2-machines fn2-control)
   (declare (xargs :stobjs (fn2-machines fn2-control) :verify-guards nil))
-  (b* ((fn2-machines (update-fn2-machines-connection-counti 0 2 fn2-machines))
-       (fn2-machines (update-fn2-machines-active-counti 0 1 fn2-machines))
+  (b* ((overflow-active (and takep (eq mutation :without-reservation)))
+       (fn2-machines (update-fn2-machines-connection-counti
+                      0 (if overflow-active 4294967295 2) fn2-machines))
+       (fn2-machines (update-fn2-machines-active-counti
+                      0 (if overflow-active 4294967295 1) fn2-machines))
        (fn2-machines (update-fn2-machines-admission-creditsi
-                      0 (if (eq mutation :without-reservation) 4294967295 1) fn2-machines))
+                      0 (if (and (not takep) (eq mutation :without-reservation))
+                            4294967295 1) fn2-machines))
        (fn2-machines (update-fn2-machines-free-headi 0 9 fn2-machines))
        ; A populated unrelated partition makes its frame observable.
        (fn2-machines (update-fn2-machines-connection-counti 1 5 fn2-machines))
@@ -71,3 +75,6 @@
 ; Removing conservation permits the checked credit refund to fail after
 ; the free-head write. Actual reclaim still decreases active: no rollback.
 (assert-event (fn2-reservation-child-control nil :without-reservation))
+; Installation can instead overflow active while credits remain positive.
+; The checked increment refuses; the later credit debit/wake still occur.
+(assert-event (fn2-reservation-child-control t :without-reservation))
