@@ -1930,7 +1930,7 @@
           (let* ((call (cadr step)) (opts (cddr step))
                  (code-var 'fn2-issue-code)
                  (bindings (fn2-arms-kw :bind opts nil))
-                 (result-vars (if bindings bindings '(fn2-issue-op fn2-issue-opgen)))
+                 (result-vars '(fn2-issue-op fn2-issue-opgen))
                  (ok (fn2-arms-kw :ok opts nil)) (refused (fn2-arms-kw :refused opts nil))
                  (budget (fn2-arm-get :budget env)))
             (cond
@@ -1939,7 +1939,7 @@
                    (not (and (true-listp bindings) (equal (len bindings) 2)
                              (fn2-arms-vars-ok bindings)
                              (no-duplicatesp-eq bindings)
-                             (not (member-eq code-var bindings))
+                             (not (intersection-eq bindings (cons code-var result-vars)))
                              (not (intersection-eq bindings (fn2-arm-get :bound env))))))
               (mv (msg "~x0 :bind requires two fresh variable names for operation slot and generation." step) nil acc))
              ((not (and (consp ok) (true-listp refused)))
@@ -1960,7 +1960,11 @@
                              `(mv-let ,(fn2-arms-binders (getpropc (car call2) 'stobjs-out nil (fn2-arm-get :world env))
                                                          (cons code-var result-vars)) ,call2
                                 (declare (ignorable ,@result-vars))
-                                (cond ((eq ,code-var :ok) ,okc)
+                                (cond ((eq ,code-var :ok)
+                                       ,(if bindings
+                                            `(let ((,(car bindings) ,(car result-vars))
+                                                   (,(cadr bindings) ,(cadr result-vars))) ,okc)
+                                          okc))
                                       ((eq ,code-var :exhausted) ,exc)
                                       (t ,otc))))
                             (fn2-decl-set :issues t acc)))))))))))
