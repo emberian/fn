@@ -446,9 +446,14 @@
       (declare (ignore code))
       (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((equal kind *fn2-action-fence*)
-    (mv-let (code fn2-sim-storage)
-      (fn2-storage-fence-complete slot (equal fault *fn2-fault-flush-io*) lying fn2-sim-storage)
-      (mv code 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
+    ; A failed fence may already have persisted its captured image. Keep
+    ; both deterministic endpoints: even word leaves it, odd word lands it.
+    ; Partial/torn fence effects remain a separate simulator obligation.
+    (let ((failed (equal fault *fn2-fault-flush-io*)))
+     (mv-let (code fn2-sim-storage)
+      (fn2-storage-fence-complete slot (and failed (equal (mod word 2) 0)) lying fn2-sim-storage)
+      (mv (if (and failed (eq code :ok)) :io code) 0 0
+          fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
    ((and (equal kind *fn2-action-tls-start*) (equal fault *fn2-fault-reset*))
     (mv :handshake 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))
    (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
