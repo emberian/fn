@@ -2,14 +2,15 @@
 ; never enter persistent headers: every page gets its B reservation first.
 (in-package "ACL2")
 (include-book "checkpoint-construction-owner")
-(include-book "runs-served")
+(include-book "run-entry-rehome")
 (fn2-book-layer :c)
 
 (defcolumns fn2-checkpoint-metadata
  ((phase (:enum fn2-checkpoint-metadata-phase (:idle :feeding :source-drained :uncertain)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (build :u32) (source-row :u32) (position :u32) (entry-base :u32)
-  (ordinal :u60) (extent :u32) (writer :u32)))
+  (ordinal :u60) (extent :u32) (writer :u32)
+  (scratch :u32) (scratch-gen :u60) (held :bool) (copy-field :u32) (copy-offset :u32) (copy-end :u32)))
 
 (defun fn2-checkpoint-metadata-ownerp (fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
  (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
@@ -30,7 +31,9 @@
 ; Bind only the overlay just yielded by the held traversal. Schema and merge
 ; order come from that row, rather than a caller-supplied descriptor. The
 ; existing build-start owns all writer initialization and hash workspace.
-(defun fn2-checkpoint-metadata-overlay-begin (token row b wbase crow hbase hslot hgen fields entry-base limit
+; Referenced octets are rehomed by separately checked source reads and
+; checkpoint-owned scratch writes before the served codec consumes them.
+(defun fn2-checkpoint-metadata-overlay-begin (token row b wbase crow hbase hslot hgen fields entry-base scratch scratch-gen limit
                                             okind oslot ogen fn2-checkpoint-metadata fn2-csnapshot fn2-overlays
                                             fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-overlays fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
@@ -53,6 +56,9 @@
                                      *fn2-run-build-phase-done*)))
                      (member (fn2-overlays-phase row fn2-overlays)
                       (list *fn2-overlay-phase-active* *fn2-overlay-phase-frozen*))
+                     (unsigned-byte-p 32 scratch) (unsigned-byte-p 60 scratch-gen)
+                     (eq (fn2-pool-workspace-code scratch scratch-gen okind oslot ogen fn2-pool) :ok)
+                     (not (equal scratch hslot))
                      (unsigned-byte-p 32 b) (unsigned-byte-p 32 entry-base) (unsigned-byte-p 32 fields)
                      (<= (+ entry-base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))
                      (<= (+ fields *fn2-run-build-fields*) (fn2-fields-rows fn2-fields))
@@ -68,7 +74,7 @@
                    (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata) 0))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0
        (phase *fn2-checkpoint-metadata-phase-feeding*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
-       (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
+       (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
   (mv :ok fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; One page, one 64KiB extent (sixteen 4KiB sectors). Parent-held child Refs
@@ -85,6 +91,7 @@
  (b* (((unless (and (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (member (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata)
                       (list *fn2-checkpoint-metadata-phase-feeding* *fn2-checkpoint-metadata-phase-source-drained*))
+                     (not (equal slot (fn2-checkpoint-metadata-scratch 0 fn2-checkpoint-metadata)))
                      (natp level) (< level *fn2-run-max-levels*)
                      (< level (fn2-run-builds-height (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds))
                      (unsigned-byte-p 60 (+ 1 (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata)))))
@@ -145,11 +152,32 @@
         (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
       ((unless (and (< pos (fn2-overlays-count o fn2-overlays)) (unsigned-byte-p 32 (+ 1 pos))))
        (mv :bounds fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
-      ((mv code & fn2-fields) (fn2-ov-entry o pos eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool))
+      (scratch (fn2-checkpoint-metadata-scratch 0 fn2-checkpoint-metadata))
+      (sgen (fn2-checkpoint-metadata-scratch-gen 0 fn2-checkpoint-metadata))
+      (kind (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata))
+      (owner (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata))
+      (generation (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))
+      ((mv code fn2-pool) (if (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
+       (fn2-pool-reset scratch sgen kind owner generation fn2-pool) (mv :ok fn2-pool)))
       ((unless (eq code :ok))
+       (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+      ((mv code & fn2-fields) (if (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
+       (fn2-ov-entry o pos eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool) (mv :ok 0 fn2-fields)))
+      ((unless (eq code :ok))
+       (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+      (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-held 0 1 fn2-checkpoint-metadata))
+      ((mv code field copied end fn2-fields fn2-pool)
+       (fn2-run-entry-rehome-step (fn2-overlays-schema o fn2-overlays) eb
+        (fn2-checkpoint-metadata-copy-field 0 fn2-checkpoint-metadata)
+        (fn2-checkpoint-metadata-copy-offset 0 fn2-checkpoint-metadata)
+        (fn2-checkpoint-metadata-copy-end 0 fn2-checkpoint-metadata) scratch sgen
+        (fn2-overlays-okind o fn2-overlays) (fn2-overlays-oslot o fn2-overlays) (fn2-overlays-ogen o fn2-overlays)
+        kind owner generation budget fn2-fields fn2-pool))
+      (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0 (copy-field field) (copy-offset copied) (copy-end end)))
+      ((unless (eq code :done))
        (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add b eb fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       (fn2-checkpoint-metadata (if (eq code :ok)
-       (fn2-checkpoint-metadata-set-position 0 (+ 1 pos) fn2-checkpoint-metadata) fn2-checkpoint-metadata)))
+       (fn2-checkpoint-metadata-put 0 (position (+ 1 pos)) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0)) fn2-checkpoint-metadata)))
   (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
