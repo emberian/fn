@@ -89,3 +89,11 @@ assert no new posted result and active state 4, then check persisted bytes after
 crash reset. They exercise withheld adapter completion, not the commit timeout
 path; the commit uncertainty control remains the ENOSPC scenario above. No
 staged state field or OWN proof hint was replaced by the fault patch.
+
+The physical cases are isolated in `tests/storage-effectful-physical.lisp`,
+which includes only `sim/sim`: its 117-book closure avoids loading the executor
+and recovery machinery for the first byte-effect gate. The combined
+`tests/storage-effectful-error.lisp` includes those controls and the commit probe
+(178 books). The first source overlay is only `sim/sim-adapter-base`, `sim/sim`
+and the physical test; the combined gate additionally loads the three commit/
+recovery consumers. Both require compatible cached dependencies and a named slot.
