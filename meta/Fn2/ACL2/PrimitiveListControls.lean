@@ -65,6 +65,34 @@ theorem sibling_corruption_rejected : ¬ PrimitiveCorrespondence clobberedLists 
   subst result
   cases represented
 
+/-- Whole selected guard facts suffice for the actual read/update domains. -/
+theorem guard_branches_positive :
+    (Prim.integerp (.int 3)).truthy = true ∧
+    (Prim.lt (.int 3) (.int 0)).truthy = false ∧
+    listDomain "NTH" [.int 3, pairValue] ∧
+    listDomain "UPDATE-NTH" [.int 3, .int 99, pairValue] :=
+  ⟨rfl, rfl, nth_domain_of_guard_branches _ _ rfl rfl,
+    update_nth_domain_of_guard_branches _ _ _ rfl rfl⟩
+
+/-- Nonnegativity of the completed numeric value alone admits NIL. -/
+theorem integer_guard_required :
+    (Prim.lt Val.nil (.int 0)).truthy = false ∧
+    (Prim.integerp Val.nil).truthy = false ∧
+    ¬ (∃ n : Nat, Val.nil = .int n) := by
+  refine ⟨rfl, rfl, ?_⟩
+  rintro ⟨n, impossible⟩
+  cases impossible
+
+/-- An integer branch alone still admits negative indices. -/
+theorem nonnegative_guard_required :
+    (Prim.integerp (.int (-1))).truthy = true ∧
+    (Prim.lt (.int (-1)) (.int 0)).truthy = true ∧
+    ¬ (∃ n : Nat, Val.int (-1) = .int n) := by
+  refine ⟨rfl, rfl, ?_⟩
+  rintro ⟨n, impossible⟩
+  have h := Val.int.inj impossible
+  omega
+
 #print axioms object_spine_correspondence
 #print axioms nth_correspondence
 #print axioms update_nth_correspondence
@@ -73,5 +101,11 @@ theorem sibling_corruption_rejected : ¬ PrimitiveCorrespondence clobberedLists 
 #print axioms negative_index_domain_required
 #print axioms inserted_representation_required
 #print axioms sibling_corruption_rejected
+#print axioms natural_index_of_guard_branches
+#print axioms nth_domain_of_guard_branches
+#print axioms update_nth_domain_of_guard_branches
+#print axioms guard_branches_positive
+#print axioms integer_guard_required
+#print axioms nonnegative_guard_required
 end Fn2.ACL2.Translation.PrimitiveLists
 end

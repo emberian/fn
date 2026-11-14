@@ -83,6 +83,35 @@ def listDomain (name : String) (args : List Val) : Prop :=
   (name = "UPDATE-NTH" ∧ ∃ index : Nat, ∃ inserted value : Val,
     args = [.int index, inserted, value])
 
+/-- Recover the natural index from the selected INTEGERP/nonnegative branches
+of a translated NATP check. Consumers must supply these reached branch facts;
+this lemma does not assume a guard merely because its source declares one. -/
+theorem natural_index_of_guard_branches (index : Val)
+    (integer : (Prim.integerp index).truthy = true)
+    (nonnegative : (Prim.lt index (.int 0)).truthy = false) :
+    ∃ n : Nat, index = .int n := by
+  cases index with
+  | int i =>
+    have hi : 0 ≤ i := by
+      simp [Prim.lt, Val.toInt, Val.ofBool, Val.truthy, Val.t, Val.nil] at nonnegative
+      omega
+    exact ⟨i.toNat, congrArg Val.int (Int.toNat_of_nonneg hi).symm⟩
+  | _ => simp [Prim.integerp, Val.isInt, Val.ofBool, Val.truthy, Val.t, Val.nil] at integer
+
+theorem nth_domain_of_guard_branches (index value : Val)
+    (integer : (Prim.integerp index).truthy = true)
+    (nonnegative : (Prim.lt index (.int 0)).truthy = false) :
+    listDomain "NTH" [index, value] := by
+  obtain ⟨n, rfl⟩ := natural_index_of_guard_branches index integer nonnegative
+  exact Or.inl ⟨rfl, n, value, rfl⟩
+
+theorem update_nth_domain_of_guard_branches (index inserted value : Val)
+    (integer : (Prim.integerp index).truthy = true)
+    (nonnegative : (Prim.lt index (.int 0)).truthy = false) :
+    listDomain "UPDATE-NTH" [index, inserted, value] := by
+  obtain ⟨n, rfl⟩ := natural_index_of_guard_branches index integer nonnegative
+  exact Or.inr ⟨rfl, n, inserted, value, rfl⟩
+
 theorem list_primitive_correspondence : PrimitiveCorrespondence listObjects listDomain := by
   intro name objects values represented admitted result evaluated
   rcases admitted with ⟨rfl, index, value, rfl⟩ | ⟨rfl, index, inserted, value, rfl⟩
