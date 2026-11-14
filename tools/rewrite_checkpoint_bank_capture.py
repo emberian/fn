@@ -28,6 +28,9 @@ helper+='\n'
 helper=helper.replace(' (if (equal (fn2-checkpoint-publication-bank 0 fn2-checkpoint-publication) 0)\n  (let*', ' (if (not (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0))\n     fn2-checkpoint-publication\n  (if (equal (fn2-checkpoint-publication-bank 0 fn2-checkpoint-publication) 0)\n  (let*', 1)
 helper=helper.replace('))) fn2-checkpoint-publication)))\n', '))) fn2-checkpoint-publication))))\n', 1)
 
+helper=helper.replace(' (if (not (equal (fn2-checkpoint-publication-debt-valid', ' (if (or (zp (fn2-checkpoint-publication-rows fn2-checkpoint-publication))\n         (not (equal (fn2-checkpoint-publication-debt-valid', 1)
+helper=helper.replace('fn2-checkpoint-publication) 0))\n     fn2-checkpoint-publication', 'fn2-checkpoint-publication) 0)))\n     fn2-checkpoint-publication', 1)
+
 
 def rewrite(source):
     parsed=parse(source)

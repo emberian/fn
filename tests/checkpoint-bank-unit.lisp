@@ -66,3 +66,13 @@
   (mv-let (answer fn2-checkpoint-publication)
    (fn2-checkpoint-bank-test-body fn2-checkpoint-publication) answer)))
 (assert-event (fn2-checkpoint-bank-test))
+
+; Empty concrete carriers are in the universal shape contract domain even
+; though real publication requires a row. Capture must not grow such a table.
+(defun fn2-checkpoint-bank-empty-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-checkpoint-publication
+  (let* ((fn2-checkpoint-publication (fn2-checkpoint-publication-init 0 fn2-checkpoint-publication))
+         (fn2-checkpoint-publication (fn2-checkpoint-publication-record-bank fn2-checkpoint-publication)))
+   (equal (fn2-checkpoint-publication-rows fn2-checkpoint-publication) 0))))
+(assert-event (fn2-checkpoint-bank-empty-control))

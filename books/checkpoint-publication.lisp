@@ -232,7 +232,8 @@
  (declare (xargs :stobjs fn2-checkpoint-publication
   :guard (and (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
               (< 0 (fn2-checkpoint-publication-rows fn2-checkpoint-publication)))))
- (if (not (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0))
+ (if (or (zp (fn2-checkpoint-publication-rows fn2-checkpoint-publication))
+         (not (equal (fn2-checkpoint-publication-debt-valid 0 fn2-checkpoint-publication) 0)))
      fn2-checkpoint-publication
   (if (equal (fn2-checkpoint-publication-bank 0 fn2-checkpoint-publication) 0)
   (let* ((fn2-checkpoint-publication
