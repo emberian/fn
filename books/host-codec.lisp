@@ -13,7 +13,7 @@
            fn2-pool-state fn2-pool-out-count fn2-pool-fill
            fn2-pool-ownerp fn2-pool-input-code)))
 
-(defun fn2-host-codec-op (op gen fn2-core)
+(defun fn2-host-active-op (op gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (mv-let (span-code address length) (fn2-host-op-span op gen fn2-core)
   (if (not (eq span-code :ok)) (mv span-code 0 0 0 0 0)
@@ -24,9 +24,6 @@
      ((not (equal gen (fn2-ops-gen op fn2-ops))) (mv :stale 0 0 0))
      ((or (not (equal (fn2-ops-phase op fn2-ops) *fn2-op-phase-submitted*))
           (not (equal (fn2-ops-c0-posted op fn2-ops) 0))) (mv :state 0 0 0))
-     ((not (member-equal (fn2-ops-kind op fn2-ops)
-                         (list *fn2-action-send* *fn2-action-receive*)))
-      (mv :kind 0 0 0))
      (t (mv-let (cap nonce) (fn2-op-capability op fn2-ops)
           (mv :ok (fn2-ops-kind op fn2-ops) cap nonce))))
     (if (eq code :ok) (mv :ok kind cap nonce address length)
@@ -35,6 +32,14 @@
 
 
 
+
+(defun fn2-host-codec-op (op gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (code kind cap nonce address length) (fn2-host-active-op op gen fn2-core)
+  (cond ((not (eq code :ok)) (mv code 0 0 0 0 0))
+        ((not (member-equal kind (list *fn2-action-send* *fn2-action-receive*)))
+         (mv :kind 0 0 0 0 0))
+        (t (mv :ok kind cap nonce address length)))))
 
 ; External application loan entry. Child/private windows use the stack bridge.
 (defun fn2-host-tls-record-next (op gen room pending fn2-tls-transport fn2-tls-record fn2-core)
