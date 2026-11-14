@@ -75,9 +75,9 @@
   fn2-identity-evidence-entry-encode fn2-reads-sid fn2-reads-ek fn2-reads-es fn2-reads-eg))
 
 (fn2-fnct-def-result fn2-peer-export-put-result fn2-peer-export-result
- (cut more nextoff nextlen count ioff ilen)
+ (history incarnation cut more nextoff nextlen count ioff ilen)
  ((version *fn2-peer-export-version*) (interpretation *fn2-peer-export-interpretation*)
-  (coverage *fn2-peer-export-coverage-local*) (cut cut) (stop more)
+  (coverage *fn2-peer-export-coverage-local*) (history history) (incarnation incarnation) (cut cut) (stop more)
   (next :ref nextoff nextlen) (count count) (entries :ref ioff ilen)))
 
 ; The CNS assembly invokes these wrappers after loading its cursor padding

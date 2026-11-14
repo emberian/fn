@@ -138,7 +138,7 @@
     ; published cut: zero plus empty RESUME starts; nonempty RESUME requires
     ; that exact cut. RESUME is the original identity-evidence-entry encoding
     ; (nine key fields plus two values), never a new hash or observation name.
-    (19 :evidence-page ((cut :u64be) (resume (:octets16 400)) (max-items :u16be)) nil)))
+    (19 :evidence-page ((history :u64be) (incarnation :u64be) (cut :u64be) (resume (:octets16 400)) (max-items :u16be)) nil)))
 (defconst *fn2-fnct-bound-codes* '(7 8 10))
 (defun fn2-fnct-codes-ok (rows seen)
   (declare (xargs :verify-guards nil))
@@ -305,7 +305,7 @@
 (defconst *fn2-peer-export-stop-scan-end* 0)
 (defconst *fn2-peer-export-stop-page-bound* 1)
 (defconst *fn2-peer-export-result-layout*
-  '((version :u8) (interpretation :u8) (coverage :u8) (cut :u64be)
+  '((version :u8) (interpretation :u8) (coverage :u8) (history :u64be) (incarnation :u64be) (cut :u64be)
     (stop :u8) (next (:octets16 400)) (count :u16be)
     (entries (:octets16 4096))))
 (defconst *fn2-peer-export-length-layout* '((length :u16be)))
