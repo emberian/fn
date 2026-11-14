@@ -465,7 +465,22 @@
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 
-(defcost fn2-storage-reserve :answers (:ok :no-space :fault) :faults (:fault)
+(defun fn2-storage-reserve-children (fn2-extents fn2-control)
+ (declare (xargs :stobjs (fn2-extents fn2-control)
+                 :guard (and (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control))))
+ (b* (((mv code & e epoch counter fn2-extents) (fn2-alloc-reserve fn2-extents))
+      (fn2-control (if (eq code :links)
+                       (fn2-control-record-stop *fn2-stop-reason-alloc-links* fn2-control)
+                     fn2-control)))
+  (cond ((and (eq code :ok) (unsigned-byte-p 32 e) (not (equal e *fn2-none*))
+              (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))
+         (mv :ok e epoch counter fn2-extents fn2-control))
+        ((eq code :no-space) (mv :no-space 0 0 0 fn2-extents fn2-control))
+        (t (mv :fault 0 0 0 fn2-extents fn2-control)))))
+(fn2-pool-preserves fn2-storage-reserve-children (fn2-extents fn2-control)
+ :carriers ((fn2-extents 4 :prefix "-EXTENTS") (fn2-control 5 :prefix "-CONTROL")))
+
+(defcost fn2-storage-reserve :child fn2-storage-reserve-children :answers (:ok :no-space :fault) :faults (:fault)
  :tables (fn2-core-extents fn2-core-control)
  :doc "Reserve a physical construction identity before encoding its location-bound bytes; no publication or durability claim.")
 
