@@ -166,9 +166,15 @@
       ogen
       fn2-fields
       fn2-pool)
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fields-value fn2-fields-ref-off
+                   fn2-checkpoint-map-page-shapep fn2-checkpoint-restore-zero-range
+                   fn2-checkpoint-restore-allocation-rowp)))
  :hyps ((fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
  :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-checkpoint-map-page-shapep fn2-checkpoint-restore-zero-range fn2-checkpoint-restore-allocation-rowp))))))
 (fn2-fields-preserves fn2-checkpoint-restore-entry
  (role ordinal base slot gen okind oslot ogen fn2-fields fn2-pool)
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fields-value fn2-fields-ref-off
+                   fn2-checkpoint-map-page-shapep fn2-checkpoint-restore-zero-range
+                   fn2-checkpoint-restore-allocation-rowp)))
  :hyps ((fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
  :specs (("-GUARD-DOMAIN-TYPE" fn2-fieldsp 1) ("-GUARD-DOMAIN-WFP" fn2-fields-wfp 1) ("-PRESERVES-WFP" fn2-fields-wfp 1 :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields))) ("-PRESERVES-ROWS" fn2-fields-rows 1 :frame fn2-fields :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-checkpoint-map-page-shapep fn2-checkpoint-restore-zero-range fn2-checkpoint-restore-allocation-rowp))))))
