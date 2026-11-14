@@ -391,6 +391,7 @@ ACL2_BOOKS = \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
+  tests/storage-fence-suffix-unit \
   tests/storage-effectful-physical \
   tests/storage-effectful-error \
   tests/translation-domain-unit \
