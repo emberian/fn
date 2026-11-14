@@ -41,7 +41,12 @@ def check(source):
         assert any(x and x[0] == op for x in walk(consume))
     for phase in [':allocation-wait', ':installation-wait']:
         assert ['and', ['equal','batch','row-batch'], ['equal','event','row-event']] in list(walk(arms[phase])), 'settlement must match the actual retained admission'
-    assert any(x and x[0] == 'fn2-checkpoint-master-ready-op' for x in walk(arms[':installation-begin']))
+    for phase in [':barrier-begin', ':installation-begin']:
+        assert any(x and x[0] == 'fn2-checkpoint-master-ready-op' for x in walk(arms[phase]))
+    assert ['fn2-checkpoint-lifecycle-begin','candidate','row-token','*fn2-checkpoint-master-kind*','id','row-generation'] in list(walk(arms[':barrier-begin']))
+    assert ['fn2-checkpoint-lifecycle-step'] in list(walk(arms[':barrier-source']))
+    assert ['fn2-checkpoint-lifecycle-step'] in list(walk(arms[':retention-source']))
+    assert ['fn2-checkpoint-lifecycle-thaw'] in list(walk(arms[':thaw']))
     assert [':read-result',[':wake']] in form[form.index(':observes')+1]
     return True
 if __name__ == '__main__':
