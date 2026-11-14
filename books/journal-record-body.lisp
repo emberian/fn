@@ -6,11 +6,11 @@
 (fn2-book-layer :c)
 
 (defconst *fn2-journal-record-fields*
- (max *fn2-run-entry-rows*
+ (max *fn2-format-allocation-num-fields* (max *fn2-run-entry-rows*
   (max *fn2-format-record-header-num-fields*
    (max *fn2-format-keyed-mutation-num-fields*
     (max *fn2-format-article-acceptance-num-fields*
-     (max *fn2-format-retirement-num-fields* *fn2-format-checkpoint-installation-num-fields*))))))
+     (max *fn2-format-retirement-num-fields* *fn2-format-checkpoint-installation-num-fields*)))))))
 
 (defun fn2-journal-body-decode (kind base slot gen off end okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
@@ -21,6 +21,8 @@
         (mv :bounds 0 fn2-fields))
        ((equal kind *record-kind-keyed-mutation*)
         (fn2-format-keyed-mutation-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
+       ((equal kind *record-kind-allocation*)
+        (fn2-format-allocation-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
        ((equal kind *record-kind-article-acceptance*)
         (fn2-format-article-acceptance-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool))
        ((equal kind *record-kind-retirement*)
