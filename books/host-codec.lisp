@@ -1,7 +1,7 @@
 ; Codec records use the submitted, unposted incarnation of the actual loan.
 (in-package "ACL2")
 (include-book "host-loan")
-(include-book "tls-record")
+(include-book "tls-stack")
 (local (in-theory (enable fn2-core-wfp)))
 (local
  (in-theory
@@ -52,3 +52,33 @@
       (mv status action
           (if (and (eq status :act) (member-equal action '(12 13))) (+ address offset) address)
           offset count serial fn2-tls-transport fn2-tls-record)))))))
+
+; The core operation authorizes the upper codec; the pending upper action
+; authorizes the lower private span. Application progress stays in the upper op.
+(defun fn2-host-tls-child-next
+ (op gen room pending fn2-compress-transport fn2-tls-transport fn2-tls-record fn2-core)
+ (declare (xargs :stobjs (fn2-compress-transport fn2-tls-transport fn2-tls-record fn2-core)
+  :verify-guards nil
+  :guard (and (fn2-core-wfp fn2-core)
+              (fn2-compress-transport-wfp fn2-compress-transport) (= (fn2-compress-transport-rows fn2-compress-transport) 1)
+              (fn2-tls-transport-wfp fn2-tls-transport) (= (fn2-tls-transport-rows fn2-tls-transport) 1)
+              (fn2-tls-record-wfp fn2-tls-record))))
+ (mv-let (code kind cap nonce address length) (fn2-host-codec-op op gen fn2-core)
+  (declare (ignore kind address length))
+  (mv-let (parent channel base extent parent-serial)
+   (fn2-compress-tls-parent cap nonce op gen fn2-compress-transport)
+   (declare (ignore base))
+   (if (not (and (eq code :ok) (eq parent :ok)))
+       (mv :stale 0 0 0 0 0 fn2-tls-transport fn2-tls-record)
+    (mv-let (bound fn2-tls-record)
+     (fn2-tls-record-start cap nonce op gen extent parent-serial (= channel 3) fn2-tls-record)
+     (if (not (eq bound :ok)) (mv bound 0 0 0 0 0 fn2-tls-transport fn2-tls-record)
+      (mv-let (status action offset count serial fn2-tls-transport fn2-tls-record)
+       (fn2-tls-record-next room pending fn2-tls-transport fn2-tls-record)
+       (if (and (eq status :act) (member-equal action '(12 13)))
+           (mv-let (span private-channel private-offset private-count)
+            (fn2-compress-tls-span cap nonce op gen serial action offset count
+             fn2-compress-transport fn2-tls-transport fn2-tls-record)
+            (mv (if (eq span :ok) :act span) action private-channel private-offset private-count serial
+                fn2-tls-transport fn2-tls-record))
+         (mv status action 0 offset count serial fn2-tls-transport fn2-tls-record)))))))))

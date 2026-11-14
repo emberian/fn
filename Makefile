@@ -71,6 +71,9 @@ ACL2_BOOKS = \
   books/column-contracts \
   books/codec-profile \
   books/codec-transport \
+  books/codec-stack \
+  books/compress-transport-state \
+  books/tls-stack \
   books/columns \
   books/compress-policy \
   books/commit \

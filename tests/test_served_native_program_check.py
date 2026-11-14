@@ -93,8 +93,18 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_record_cannot_use_native_mirror_bounds(self):
-        self.change('host/tls.lisp', '(fn2-n-sap host address) count)',
+        self.change('host/tls.lisp', '(sb-sys:sap+ (sb-sys:vector-sap bytes) address) count)',
                     '(fn2-n-sap host (fn2-nop-address op)) (fn2-nop-len op))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_requires_live_core_and_upper_pending(self):
+        self.change('host/tls.lisp', '(fn2-host-tls-child-next slot',
+                    '(unvalidated-child-select slot')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_child_uses_authorized_private_offset(self):
+        self.change('host/tls.lisp', 'action bytes offset offset count)',
+                    'action bytes 0 offset count)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_record_must_observe_raw_count(self):
@@ -104,8 +114,8 @@ class ServedNativeProgramTests(unittest.TestCase):
 
     def test_tls_short_write_must_retain_offset(self):
         self.change('host/tls.lisp',
-                    '(multiple-value-bind (raw errno)\n              (fn2-native-tls-perform tls action offset count',
-                    '(multiple-value-bind (raw errno)\n              (fn2-native-tls-perform tls action 0 count')
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action offset count',
+                    '(multiple-value-bind (raw errno)\n        (fn2-native-tls-perform tls action 0 count')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_receive_must_observe_bio_capacity(self):

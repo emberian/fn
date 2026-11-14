@@ -25,7 +25,7 @@ CUTS = {
     ('fn2-native-tls-perform', 'tls-handshake'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-send'): 'fn2-sim-physical',
     ('fn2-native-tls-perform', 'tls-receive'): 'fn2-sim-physical',
-    ('fn2-native-tls-record-step', 'tls-record'): 'fn2-sim-physical',
+    ('fn2-native-tls-record-perform', 'tls-record'): 'fn2-sim-physical',
     ('fn2-n-start-ready', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-start-now', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-storage-submit', 'device-submit'): 'fn2-sim-take-one',
@@ -37,7 +37,9 @@ CUTS = {
     ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
 }
 ORDERS = {
-    'fn2-native-tls-record-step': ['fn2-host-tls-record-next', '@tls-record', 'fn2-native-tls-record', 'fn2-native-tls-perform', 'fn2-tls-record-step-observe'],
+    'fn2-native-tls-record-step': ['fn2-host-tls-record-next', 'fn2-native-tls-record-perform', 'fn2-tls-record-step-observe'],
+    'fn2-native-tls-child-step': ['fn2-host-tls-child-next', 'fn2-native-tls-record-perform', 'fn2-tls-record-step-observe'],
+    'fn2-native-tls-record-perform': ['@tls-record', 'fn2-native-tls-record', 'fn2-native-tls-perform'],
     'fn2-n-tls-ready': ['fn2-n-tls-handshake-ready', 'fn2-native-tls-record-step'],
     'fn2-native-tls-handshake-step': ['fn2-tls-transport-next', 'fn2-native-tls-perform', 'fn2-tls-transport-observe'],
     'fn2-native-tls-perform': ['@tls-send', 'fn2-native-send', '@tls-receive', 'fn2-native-recv', '@tls-handshake', 'fn2-tls-%handshake', '@tls-start', 'fn2-tls-%new', '@tls-free', 'fn2-tls-%free'],
@@ -60,10 +62,17 @@ ORDERS = {
 CONTRACTS = {
     'fn2-native-tls-record-step': [
         '(fn2-host-tls-record-next slot (fn2-nop-gen op) (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle) (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))',
-        '(fn2-native-tls-record tls (= action 13) (fn2-n-sap host address) count)',
-        '(fn2-native-tls-perform tls action offset count fd host bytes address)',
+        '(fn2-native-tls-record-perform host tls fd action bytes address offset count)',
         '(fn2-tls-record-step-observe serial raw moved errno transport record)',
         '(setf (fn2-native-tls-transport tls) transport (fn2-nop-tls-record op) record)',
+        '(setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)'],
+    'fn2-native-tls-record-perform': [
+        '(fn2-native-tls-record tls (= action 13) (sb-sys:sap+ (sb-sys:vector-sap bytes) address) count)',
+        '(fn2-native-tls-perform tls action offset count fd host bytes address)'],
+    'fn2-native-tls-child-step': [
+        '(fn2-host-tls-child-next slot (fn2-nop-gen op) (fn2-tls-%input-room handle) (fn2-tls-%output-pending handle) upper (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))',
+        '(fn2-native-tls-record-perform host tls fd action bytes offset offset count)',
+        '(fn2-tls-record-step-observe serial raw moved errno transport record)',
         '(setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)'],
     'fn2-tls-record-plan': [
         '((< oo ol) (mv :act 5 oo (min quantum (- ol oo))))',
@@ -266,7 +275,7 @@ def check(root=ROOT):
                     if isinstance(c, list) and len(c) == 2}
         if observed != expected_branches or len(branches[0][2:]) != 3:
             findings.append(f'device primitive mapping changed: {observed!r}')
-    for name in ('fn2-native-tls-record-step', 'fn2-n-tls-ready', 'fn2-native-tls-handshake-step', 'fn2-native-tls-perform', 'fn2-native-tls-close'):
+    for name in ('fn2-native-tls-child-step', 'fn2-native-tls-record-perform', 'fn2-native-tls-record-step', 'fn2-n-tls-ready', 'fn2-native-tls-handshake-step', 'fn2-native-tls-perform', 'fn2-native-tls-close'):
         if ledger.calls(defs.get(name, [])) & {'loop', 'do', 'dotimes', 'dolist', name}:
             findings.append(f'{name}: TLS transport turn contains an unbounded retry/iteration')
     for primitive in ('fn2-tls-%new', 'fn2-tls-%free'):

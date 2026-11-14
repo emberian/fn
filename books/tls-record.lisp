@@ -45,6 +45,14 @@
   ((not (and (= (fn2-tls-transport-terminal 0 fn2-tls-transport) 3)
               (= (fn2-tls-transport-alive 0 fn2-tls-transport) 1)))
    (mv :failed 0 0 0 0 fn2-tls-transport fn2-tls-record))
+  ((<= #xffffffffffffffe (fn2-tls-transport-serial 0 fn2-tls-transport))
+   ; Exhaustion closes while the final physical serial remains reserved for free.
+   (let* ((completed (if (= (fn2-tls-record-writep 0 fn2-tls-record) 1)
+                         (fn2-tls-record-source-progress 0 fn2-tls-record)
+                       (fn2-tls-record-sink-progress 0 fn2-tls-record)))
+          (fn2-tls-transport (fn2-tls-transport-put 0 (terminal 2)))
+          (fn2-tls-record (fn2-tls-record-put 0 (status 5) (kick 0))))
+    (mv :failed 0 0 completed 0 fn2-tls-transport fn2-tls-record)))
   (t
    (mv-let (status action offset count)
     (fn2-tls-record-plan
