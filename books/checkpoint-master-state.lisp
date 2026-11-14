@@ -23,12 +23,13 @@
           :map-begin :map-source :descriptor-source
           :barrier-begin :barrier-source :allocation-begin :allocation-source :allocation-submit :allocation-wait :allocation-empty
           :installation-begin :installation-source :installation-submit :installation-wait
-          :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :done
+          :retention-begin :retention-source :publish-start :publish-wait :release :release-complete :thaw :event-rearm :rearm :snapshot-release :teardown-begin :teardown-source :teardown-barrier :teardown-retained :done
           :admission-refused :refused :uncertain :loan-uncertain)
  :fields ((pending :u32) (stopped :bool) (token :u60)
           (scan :u32) (highest :u60) (candidate :u32) (candidate-found :bool) (checkpoint :u60)
           (page-slot :u32) (page-gen :u60) (scratch-slot :u32) (scratch-gen :u60) (read-slot :u32) (read-gen :u60)
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
+          (teardown-extent :u32) (teardown-epoch :u60) (teardown-allocation :u60)
           (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60) (attempt-retirement :u60))
  :holds ((:workspaces :storage-window :storage-window)
          (:directory :storage-window :storage-window) (:abort-snapshot :storage-window :storage-window)
@@ -57,6 +58,6 @@
         (:map-begin) (:map-source) (:descriptor-source)
         (:barrier-begin) (:barrier-source) (:allocation-begin) (:allocation-source) (:allocation-submit) (:allocation-wait) (:allocation-empty)
         (:installation-begin) (:installation-source) (:installation-submit) (:installation-wait)
-        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:done)
+        (:retention-begin) (:retention-source) (:publish-start) (:publish-wait) (:release) (:release-complete) (:thaw) (:event-rearm) (:rearm) (:snapshot-release) (:teardown-begin) (:teardown-source) (:teardown-barrier) (:teardown-retained) (:done)
         (:admission-refused) (:refused) (:uncertain) (:loan-uncertain))
  :observes ((:read-result)))

@@ -2,6 +2,7 @@
 ; No second page writer or host/caller completion flag exists in this machine.
 (in-package "ACL2")
 (include-book "checkpoint-master-rearm")
+(include-book "checkpoint-teardown")
 (include-book "checkpoint-metadata-driver")
 (include-book "event-build-kind")
 (fn2-book-layer :c)
@@ -290,7 +291,23 @@
    (:next :snapshot-release) (:charge :steps *fn2-work-small* :runnable t))
   (:snapshot-release :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:do (code) (fn2-csnapshot-release row-token *fn2-checkpoint-master-kind* id row-generation))
-   (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+   (:next :teardown-begin) (:charge :steps *fn2-work-small* :runnable t))
+  (:teardown-begin (:set (scan 0)) (:next :teardown-source) (:charge :steps *fn2-work-small* :runnable t))
+  (:teardown-source :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
+   (:do (code scan extent epoch allocation)
+    (fn2-checkpoint-teardown-inspect-op row-token *fn2-checkpoint-master-kind* id row-generation row-scan)
+    :accept () :case
+    (((:none) (:next :done) (:charge :steps *fn2-work-small* :runnable t))
+     ((:more) (:set (scan scan)) (:charge :steps *fn2-work-stage* :runnable t))
+     ((:eligible) (:set (teardown-extent extent) (teardown-epoch epoch) (teardown-allocation allocation))
+      (:next :teardown-barrier) (:charge :steps *fn2-work-small* :runnable t))
+     ((:retained) (:next :teardown-retained) (:charge :steps *fn2-work-small* :runnable t))
+     (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t)))))
+  ; The ordinary retirement producer has no pre-retirement async publication
+  ; barrier yet. Retain exact handle/cursor and all edges instead of queuing.
+  (:teardown-barrier (:set (stopped 1)) (:stop :checkpoint))
+  ; Reuse waits for authenticated ancestry/archive reachability, not EOF alone.
+  (:teardown-retained (:set (stopped 1)) (:stop :checkpoint))
   (:done (:set (pending 0) (token 0) (retirement-seen row-attempt-retirement)) (:next :idle) (:charge :steps *fn2-work-small* :runnable t))
   (:admission-refused (:idle))
   (:refused (:set (stopped 1)) (:stop :checkpoint))
