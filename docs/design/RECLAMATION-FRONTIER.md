@@ -229,3 +229,30 @@ rows would omit durable data. The builder must account for these exact published
 owners or reconstruct their identities from the retained semantic roots before
 persisting an allocation map. Unrelated in-progress uploads must not become
 checkpoint-durable merely because their reservations exist at the same time.
+
+The actual C cut now waits for PUBLISHED successor owners as well as STAGED and
+BOUND rows. Transaction settlement materializes accepted payload allocations
+before releasing its C successor; the snapshot refuses acquisition on a stopped
+core. `c-snapshot-materialization-unit` retains a real accepted writer outcome,
+checks that the cut stays pending, then follows materialization/release and
+checks the exact held cut. This composed source fixture remains unexecuted.
+
+Descriptor construction now obtains its own B reservation, binds the real held
+C token/cut and owned workspace, uses the existing header/descriptor codecs and
+sealing/checking path, and issues pinned physical writes under descriptor budget.
+Only its exact physical completion marks construction ready. External descriptor
+capture clears construction provenance even for identical bytes. Construction
+ready is not durable installation. Production remains `:roots-pending` until
+actual same-cut root constructors complete: the current served tree has no
+allocation-map/recovery-arena writer or event-proof-directory/frontier producer.
+Standalone Merkle machinery and synthetic root metadata cannot supply them.
+
+At source `76be97bd488cad4327944c5e8bb1244b4ce71093`, after merging the authentic
+`4400cb995db8709967f543340d71f62df4fee028` column proof bridge, the isolated
+`books/format-base` source admission passed: 19 forms in 1.60 seconds and 258,194
+prover steps. Seven byte-identical foundation dependencies were cached and
+compatible under toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+The root closure was `1ac328a0bef3b08fb6cb691d7371e4f33c1acecb2a77eb5e6fe69cfec3e8481c`.
+This checks the shared 16-unit geometry and unchanged Ref layout assertion,
+not runtime storage composition or certification. The session was stopped and
+its 2 GiB compute reservation released.

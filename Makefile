@@ -214,6 +214,8 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/checkpoint-unit \
   tests/checkpoint-member-unit \
+  tests/checkpoint-provenance-unit \
+  tests/checkpoint-build-budget-unit \
   tests/checkpoint-publication-unit \
   tests/checkpoint-geometry-unit \
   tests/retirement-unit \
