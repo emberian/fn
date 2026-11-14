@@ -29,5 +29,12 @@ class StorageExtentRewriteTests(unittest.TestCase):
         self.assertEqual(n, 1)
         self.assertIn(f"(* {STRIDE} (nth 0 loc))", got)
 
+    def test_byte_stride_does_not_change_journal_charge(self):
+        src = "(defun physical (extent role) (+ (* 12288 (nfix extent)) (* 4096 role)))\n(defconst charge 12288)"
+        got, n = rewrite(src, "physical", "(* 12288 (nfix extent))", "(* *fn2-storage-extent-bytes* (nfix extent))")
+        self.assertEqual(n, 1)
+        self.assertIn("(* *fn2-storage-extent-bytes* (nfix extent))", got)
+        self.assertIn("(defconst charge 12288)", got)
+
 if __name__ == "__main__":
     unittest.main()

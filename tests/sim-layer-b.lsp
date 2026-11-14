@@ -94,9 +94,9 @@
             (push (list mode (second c) (fn2-b-result-witness r) (fn2-b-result-recovery-class r)) outcomes))))
       (format t "B5 SCENARIO 16 profile=TINY-4K cases=~D witnessed=detected unwitnessed=no-claim uncredited=no-claim covered=consistent RECOVERY=PASS elapsed-seconds=~,3F~%"
               (length outcomes) (/ (- (get-internal-real-time) started) internal-time-units-per-second)))
-    ;; Recovery time per MiB of scanned arena: the same intact run on 16 and
-    ;; 192 simulated sectors (5 and 64 extents); the difference is 59 empty
-    ;; seal-frame scans of 4 KiB each.
+    ;; Recovery time per MiB of physical arena: the same intact run on 5 and
+    ;; 64 allocation extents. Recovery reads each journal's three roles while
+    ;; physical spacing includes the sixteen-unit allocation stride.
     (flet ((timed (sectors)
              (let ((start (get-internal-real-time)))
                (dotimes (i 5) (fn2-b-one *fn2-profile-tiny* 20261028 1000000 :none 0 2

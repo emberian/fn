@@ -314,7 +314,7 @@
                 (mv hit nil 0 fn2-core fn2-sim fn2-own))
                (dependency-target (eq (fn2-b-write-fault-target seed) :dependency))
                (log-write (and (= kind *fn2-action-write*)
-                               (not (= (mod (fn2-sim-storage-offset slot fn2-sim) 12288) 0))))
+                               (not (= (mod (fn2-sim-storage-offset slot fn2-sim) *fn2-storage-extent-bytes*) 0))))
                ((when (and (not hit) (member-eq scenario '(:partial :eio :enospc)) log-write (not dependency-target)
                            (< (fn2-machine-cb-issued (fn2-sim-owner-slot slot fn2-sim) fn2-core) 2)))
                 ; Let the runnable issuer submit its sibling before harvesting
