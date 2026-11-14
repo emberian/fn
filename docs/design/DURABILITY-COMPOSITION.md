@@ -28,13 +28,22 @@ ACK/durability observation from it.
 1. **Reachable invariant initialization.** Fix ghost IDs from the supported
    profile, with commit-slot coverage and canonical directory. Carry core
    representation, operations semantics, J/J3/frontier, J5/J6, entry and loan
-   facts, F, X, and Q. Existing initialization lemmas establish F/X/Q and
-   directory/slot facts; aggregate initialization and the complete history
-   bundle still need proofs.
+   facts, F, X, and Q. Initialization establishes F/X/Q, directory/slot
+   coverage and universal loan facts. `fn2-pool-init-semantic` proves the
+   complete pool invariant, including exact free-chain coverage. The
+   declaration-derived codec conservation proofs carry that invariant through
+   group/principal genesis to the actual `fn2-init-executor`
+   (`fn2-env-reach-init-pool-semantic`). General initialization of the complete
+   history bundle and its aggregation remain open.
 2. **Host actions and admission.** Extend the device log in action order.
    `fn2-env-dur-inv-step-but-turn` preserves the smaller invariant. Existing
-   J5/J6, freshness/loan and F/X/Q lemmas cover parts of the stronger bundle;
-   their conjunction and required domains must be established together.
+   epoch and admission theorems now preserve the whole reachable bundle and
+   couple the actual `fn2-env-step` state to ACK/log observation. Their
+   nonempty witness starts from the actual initializer, admits two members,
+   and executes collect-to-seal while satisfying the whole invariant before
+   and after. General collect-to-seal currently proves structural and
+   freshness/loan preservation; arbitrary history preservation remains open.
+   Other host actions still need the same complete conjunction.
 3. **Commit issue and completion.** Preserve J5/J6 links across issue, role
    replacement and retirement. A harvested answer must be the first matching
    answer to the relevant operation and generation. Then derive counted-write
@@ -83,3 +92,19 @@ wire are useful separate contracts. Actual native trace production and physical
 effect correctness remain separate obligations; neither a byte-check identity
 nor a same-schedule replay theorem establishes them. Equality against the fixed
 canonical adapter also needs genuine completion and scheduling premises.
+
+## Initialization evidence scope
+
+The new pool initializer and controls passed the record-toolchain gate
+`certify-20261114T015429Z-3534875` in `stride-owed-integrated`. That lane uses
+baseline profile digest `b5098b84e1d92425d6476d06103939a075d957f6d74740dcd364147ec423a687`;
+it is not a certification of the current integration profile. The subsequent
+codec/genesis composition is source-proved on that qualified prefix and has a
+separate assembled record gate. Run `certify-20261114T020934Z-3551094`
+passed `layout-conservation`, then exceeded its 2 GiB cgroup limit during
+`commit-reachable`; the unit book was not reached and no final run manifest
+was produced. This is not a certification of the assembled package. Existing
+top-level owed formulas remain owed.
+A nonempty-group control checks actual arena consumption and pool semantics;
+a broken free-link control preserves row geometry while refuting class
+coverage. Removing the incoming genesis semantic premise does not repair it.
