@@ -140,11 +140,12 @@
       ((mv & fn2-core) (fn2-successor-arg-octets 0 2 4 dslot dgen 0 32 5 1 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 5 :value 100 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 6 :value 3 fn2-core))
-      ;; the location (unit, writer epoch, allocation, kind :raw-source): every one of the row's 11 fields
+      ;; the location (unit, writer epoch, allocation, kind :raw-source): every one of the row's 12 fields
       ((mv & fn2-core) (fn2-successor-arg 0 2 7 :value 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 8 :value 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 9 :value 1 fn2-core))
       ((mv & fn2-core) (fn2-successor-arg 0 2 10 :value 0 fn2-core))
+      ((mv & fn2-core) (fn2-successor-arg-octets 0 2 11 dslot dgen 0 32 5 1 1 fn2-core))
       ((mv r1 fn2-core) (fn2-gu-resolve 40 0 fn2-core))
       ((mv s1 & fn2-core) (fn2-successor-stage 0 fn2-core))
       ((mv b1 fn2-core) (fn2-successor-bind 0 1 42 fn2-core))

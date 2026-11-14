@@ -21,7 +21,10 @@
 ;; chaining value from *fn2-upload-page-hash*, and the source manifest from
 ;; *fn2-upload-page-manifest* (its units, written in order to the manifest's
 ;; extent). Its size is derived from the stored octets (fn2-upload-page-bytes).
-(defconst *fn2-upload-page-stage* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
+;; The full stored digest stays before the stage, after the generated field.
+;; Raw uploads therefore retain the existing one-unit storage workspace.
+(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
+(defconst *fn2-upload-page-stage* (+ *fn2-upload-page-stored-source* 64))
 (defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
 (defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))
 ;; The octets the manifest's header and one entry touch (each encoded with
@@ -85,6 +88,9 @@
   :doc "Encode the manifest's header at the (zeroed) store page's manifest: (mv code mfill).")
 (defcost fn2-upload-stage :answers (:ok :fault) :faults (:fault) :bytes 4096 :tables (fn2-core-pool)
   :doc "Copy the next block of the stored octets into the store page's stage: (mv code len).")
+(defcost fn2-upload-stored-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
+  :doc "Absorb one bounded storage span into the full stored-representation digest, finalizing only on the last block.")
 (defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's BLAKE3 into the store page.")
@@ -499,6 +505,26 @@
             (fn2-upload-hash-span (- fuel 1) row slot gen (+ (nfix off) used) (- left used) id ogen fn2-core)
           (mv :bounds fn2-core))))))
 (fn2-core-preserves fn2-upload-hash-span (fuel row slot gen off left id ogen fn2-core) :position 1 :rows nil)
+;; SOURCE was saved before this pass. Reuse the window hasher before any
+;; independent block hash/CV. Read the bounded span from the same selector
+;; used by staging and raw writes; DONE is first, LAST is final.
+(defun fn2-upload-stored-hash (row slot gen off done blen last ls lg okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
+  (b* (((mv code fn2-core)
+        (if (equal done 0) (fn2-upload-hash-begin row fn2-core) (mv :ok fn2-core)))
+       ((unless (eq code :ok)) (mv :fault fn2-core))
+       ((mv code fn2-core)
+        (if (and (posp blen) (<= blen *fn2-commit-unit-bytes*))
+            (fn2-upload-hash-span 8 row slot gen off blen oslot ogen fn2-core)
+          (mv :bounds fn2-core)))
+       ((unless (eq code :ok)) (mv :fault fn2-core))
+       ((unless last) (mv :ok fn2-core))
+       ((mv code fn2-core) (fn2-upload-hash-end row fn2-core))
+       ((unless (eq code :ok)) (mv :fault fn2-core))
+       ((mv code fn2-core)
+        (fn2-upload-digest-store row ls lg *fn2-upload-page-stored-source* oslot ogen fn2-core)))
+    (mv (if (eq code :ok) :ok :fault) fn2-core)))
+(fn2-core-preserves fn2-upload-stored-hash (row slot gen off done blen last ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
 ;; The staged block's BLAKE3 into the page at *fn2-upload-page-hash* (the
 ;; window's hasher row ROW; after the verdict the source's digest is already
 ;; appended to it): (mv code fn2-core).
@@ -701,7 +727,7 @@
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid fn2-upload-page-zero fn2-upload-page-zero-to fn2-upload-manifest-begin
-                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-block-hash-run fn2-upload-block-hash fn2-upload-block-entry
+                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-stored-hash fn2-upload-block-hash-run fn2-upload-block-hash fn2-upload-block-entry
                     fn2-upload-extent-commit fn2-upload-manifest-extents fn2-upload-manifest-head fn2-upload-extents-run fn2-upload-extents-of
                     fn2-upload-block-cv fn2-upload-manifest-walk fn2-upload-manifest-units fn2-upload-settle-unit
                     fn2-upload-extents-close-run fn2-upload-extents-close))

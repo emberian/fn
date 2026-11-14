@@ -24,7 +24,9 @@
          (source :digest) (bytes :varint) (lines :varint)
          (location-unit (:id physical-unit)) (location-epoch (:id writer-epoch))
          (location-allocation (:id allocation))
-         (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest))))
+         (location-kind (:enum fn2-article-location-kind (:raw-source :source-manifest)))
+         ;; BLAKE3 of actual stored bytes, including an injected Message-ID.
+         (stored-source :digest))
  :merge :latest)
 
 ; Overview, keyed (group, number) from first materialization; the stored
