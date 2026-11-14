@@ -47,7 +47,7 @@ invariant. Do not patch the theorem with a convenient unestablished premise.
 Reproduction is lane commit `319620bed`, `tests/dur-turn-counterexample.lisp`;
 qualified baseline REPL evidence is in
 `forge:/build/lanes/stride-owed-integrated/build/proof-repl/stride-turn-inductive/log`.
-Record certification of this control is pending.
+The control is record-certified in `certify-20261114T001317Z-3423328`.
 
 Other suspected counterexamples remain unexecuted: zero-budget issue, obsolete
 4129 turn bound, and native Accept-prefix equality. Their status must not be

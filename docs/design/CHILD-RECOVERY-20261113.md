@@ -73,7 +73,9 @@ as a call, checks input/output ABI and core actual, and leaves core projection
 symbols closed during refinement so the earlier equality applies. Its fixture
 checks single/multiple-result call retention, real values, full equality and
 teeth. Warm forge 2 Gi source loading passed all 40 reader forms and 40 product
-control forms; record certification is still pending. Multi-result leaf
+control forms. Record `certify-20261114T001322Z-3423416` passed the exact
+21-book reader/product fixture union (17 reused, four built), with no book over
+10 seconds. Multi-result leaf
 shape is an explicit fixture fact, not inferred from output metadata alone.
 Production principal requires bottom-up generated intermediate boundaries;
 no machine-mode switch is implied by the fixture.

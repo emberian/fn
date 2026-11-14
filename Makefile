@@ -263,6 +263,7 @@ ACL2_BOOKS = \
   tests/cursor-unit \
   tests/death-unit \
   tests/declare-unit \
+  tests/dur-turn-counterexample \
   tests/executor-contracts-unit \
   tests/executor-timers-unit \
   tests/executor-unit \

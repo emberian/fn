@@ -31,7 +31,8 @@ No count of books, witnesses, or generated candidates substitutes for this chain
    Follow-up: lane commit `319620bed` preserves an executed counterexample to
    the current turn-invariant statement, with all its antecedents true and the
    consequent false after one actual turn. Qualified baseline REPL evidence is
-   recorded by the lane; record certification is pending. This does not refute
+   recorded by the lane; the control is record-certified in run
+   `certify-20261114T001317Z-3423328`. This does not refute
    the user-facing ACK guarantee on initialized/reachable states.
 
 2. **Turn composition and resource contracts are incomplete.**
