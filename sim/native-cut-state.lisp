@@ -23,7 +23,7 @@
 (defun fn2-sim-native-faultp (fault)
   (declare (xargs :guard t))
   (member-equal fault
-    (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-dead*
+    (list *fn2-fault-none* *fn2-fault-read-io* *fn2-fault-no-space* *fn2-fault-write-io* *fn2-fault-dead*
           *fn2-fault-flush-io* *fn2-fault-short-write* *fn2-fault-bitrot*
           *fn2-fault-misread* *fn2-fault-miswrite* *fn2-fault-lying-flush*
           *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-fragment*

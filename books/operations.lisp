@@ -95,12 +95,7 @@
             (:sequence-offset 12) (:checksum-offset 16) (:payload-offset 20) (:word-bytes 4))
           (fn2-scribe (:chunk-bytes 16))
           (fn2-fnv (:offset-basis 2166136261) (:prime 16777619))
-          (fn2-record (:clock 256) (:advance 257) (:client-drain 258) (:wake 259) (:death 260))
-          (fn2-fault (:fragment 0) (:short-send 1) (:delay 2) (:reset 3) (:half-open 4) (:nonreading 5)
-            (:read-io 6) (:bitrot 7) (:misread 8) (:miswrite 9) (:lying-flush 10) (:tear 11)
-            (:no-space 12) (:dead 13) (:fail-slow 14) (:crash 15) (:monotonic-jump 16)
-            (:realtime-back 17) (:duplicate 18) (:stale 19) (:forged 20) (:overcount 21)
-            (:malformed 22) (:flush-io 23) (:short-write 24) (:release-order 25) (:none 26) (:count 26)))))
+          (fn2-record (:clock 256) (:advance 257) (:client-drain 258) (:wake 259) (:death 260)))))
    (value (fn2-declare '(:operation-set fn2-codes) (list :enums (fn2-code-enums families)) nil
                       (fn2-code-families families)))))
 (defconst *fn2-none* 4294967295)

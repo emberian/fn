@@ -50,7 +50,7 @@ B certification or a new ACL2 theorem. Re-run it in the next composed native gat
 executes that prefix, and reports `:no-space` with zero known progress. The
 underlying byte primitive still refuses a directly injected no-space byte.
 The byte primitive's failed fence remains unchanged; the adapter now selects
-either no persistence (even word) or captured-image persistence (odd word) before
+either no persistence (word 0) or captured-image persistence (word 1) before
 reporting `:io`. It uses the same existing fence operation for both endpoints.
 `books/crash-model` admits broader uncertainty, so the simulator's fault matrix
 does not yet span these new native-boundary fixtures. Do not call an exercised
@@ -70,7 +70,7 @@ infer native power-loss behavior from a SIGKILL campaign or this deterministic m
 certified. It checks zero/two/four-byte physical prefixes against literal expected
 visible bytes, unchanged durable bytes and a separate prior fenced byte. It then
 checks both failed-fence endpoints and the exact visible/durable bytes after
-crash reset. Partial/torn fence persistence is not covered. A second
+crash reset. A selected suffix-persistence control is now added below; arbitrary torn byte strings remain open. A second
 control runs the real commit stepper: two accepted batches, reused rows, effectful
 ENOSPC on the next writes, uncertainty, no new replies and recovery of the prior
 two batches. These are distinct controls, not an independent full ACK proof.
@@ -79,8 +79,8 @@ Next gate, after a named compute slot and matching qualified prefix: source-load
 changed `sim/sim-adapter-base` and its dependents in `proof_repl`, then execute
 `tests/storage-effectful-error.lisp`. Reject a zero-effect mutant for nonzero
 prefixes and an error-as-success mutant. Only after that passes, certify the
-affected simulator closure. Effectful write EIO, partial/torn failed-fence persistence and withheld completion
-still need controls. The two failed-fence endpoints here do not close those gaps.
+affected simulator closure. Effectful write EIO and arbitrary torn failed-fence bytes still need controls.
+The endpoint and suffix cases do not cover those broader fault families.
 
 The staged replay is based on integration root `36ac58cfd`. The byte control now
 uses `fn2-sim-native-stage` and `fn2-sim-native-post` for its actual issued fence.
@@ -116,3 +116,43 @@ The TLS simulator patch `02400e95e` dispatches TlsStart before generic transfer.
 Its OWN observation remains separate from the Write-only hidden-error branch
 and Fence branch changed here. The patches are source-compatible; combined
 execution awaits the frozen root gate and pending borrow repair.
+
+## Partial failed-fence landing (source candidate)
+
+`fn2-storage-fence-complete-from` factors the existing completion operation by
+a starting byte. It reuses `fn2-storage-fence-bytes`, including its captured
+versions and anti-rollback stamp check; no second landing loop is introduced.
+The ordinary `fn2-storage-fence-complete` remains a start-zero wrapper. A nonzero
+start always returns `:io`, including when that suffix is fully persisted.
+
+The adapter preserves fault words 0 and 1 for no/all persistence. Larger words
+select `(word - 1) mod (disk-bytes + 1)` as the suffix start. Three added controls
+use word 3 (start 2) after zero/two/four hidden write bytes. With four bytes written,
+the independent expected durable image is `(0 0 23 24)`; after crash reset the
+visible image must equal it, and the earlier fenced byte remains 91. The existing
+zero-start wrapper and prior accepted commit controls remain part of the gate.
+This changes the storage dependency and therefore needs a newly computed source
+overlay; it is not covered by the earlier frozen 803 physical inventory.
+
+## Separate write-I/O fault family (source candidate)
+
+The extraction commit moves only the `fn2-fault` data family into `sim/faults`,
+using the existing enum/constant producers under `fn2-sim-faults`. It does not
+invoke the action producer or add served action IDs. A copied-tree source control
+shows a subsequent fault edit changes the simulator key but not `assembly-init`.
+The initial removal from `books/operations` still requires one served ancestor
+requalification and must be batched deliberately.
+
+Write EIO is a new class 27; read EIO remains 6, ENOSPC remains 12 and the none
+sentinel remains 26. The indexed domain has size 28. `fn2-sim-real-faultp`
+explicitly excludes none from forcing, probabilistic selection, initialization
+and effect counting. Thus an old numeric none does not become a write error.
+Result range facts now bound the indexed domain by count, rather than incorrectly
+using none as its upper limit. The full named-fault control skips the sentinel.
+
+The new Write EIO path uses the same selected physical prefix as ENOSPC, then
+returns `:io` with zero known progress. Tests cover zero/two/four-byte effects,
+partial/full failed-fence persistence, held successful completion, and the actual
+commit/recovery scenario after prior acceptance. A separate domain control forces
+class 27 and checks exactly one effect count with none's probability/count zero.
+All these ACL2 controls remain unexecuted source candidates.

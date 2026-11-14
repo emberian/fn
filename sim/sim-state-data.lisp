@@ -1,6 +1,7 @@
 ; Simulator state and reproducible fault schedule. All row storage and the
 ; diagnostic ring are preallocated; only init may resize arrays or save metadata.
 (in-package "ACL2")
+(include-book "faults")
 (include-book "../books/profile")
 (include-book "../books/vocab")
 (include-book "network")
@@ -21,7 +22,8 @@
 ; 6 read-io, 7 bitrot, 8 misread, 9 miswrite, 10 lying-flush, 11 tear,
 ; 12 no-space, 13 dead, 14 fail-slow, 15 crash, 16 monotonic-jump,
 ; 17 realtime-back, 18 duplicate, 19 stale, 20 forged, 21 overcount,
-; 22 malformed, 23 flush-io, 24 short-write, 25 release-order.
+; 22 malformed, 23 flush-io, 24 short-write, 25 release-order, 27 write-io.
+; The none sentinel26 is excluded explicitly from fault selection/counting.
 ; Explicit native cut programs may pause after physical I/O and before its
 ; terminal post. The scheduler resumes this phase only through the retained raw-result
 ; continuation, without executing physical I/O again. Existing phases 0..3

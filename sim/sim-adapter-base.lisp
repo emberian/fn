@@ -20,7 +20,7 @@
         ((equal kind *fn2-action-send*)
          (if (equal release 1) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-short-send* ,*fn2-fault-reset* ,*fn2-fault-nonreading* ,*fn2-fault-release-order*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-short-send* ,*fn2-fault-reset* ,*fn2-fault-nonreading*)))
         ((equal kind *fn2-action-read*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-read-io* ,*fn2-fault-bitrot* ,*fn2-fault-misread* ,*fn2-fault-dead* ,*fn2-fault-fail-slow*))
-        ((equal kind *fn2-action-write*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-bitrot* ,*fn2-fault-miswrite* ,*fn2-fault-tear* ,*fn2-fault-no-space* ,*fn2-fault-dead* ,*fn2-fault-fail-slow* ,*fn2-fault-short-write*))
+        ((equal kind *fn2-action-write*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-bitrot* ,*fn2-fault-miswrite* ,*fn2-fault-tear* ,*fn2-fault-no-space* ,*fn2-fault-write-io* ,*fn2-fault-dead* ,*fn2-fault-fail-slow* ,*fn2-fault-short-write*))
         ((equal kind *fn2-action-fence*) `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed* ,*fn2-fault-bitrot* ,*fn2-fault-lying-flush* ,*fn2-fault-tear* ,*fn2-fault-dead* ,*fn2-fault-fail-slow* ,*fn2-fault-flush-io*))
         (t `(,*fn2-fault-delay* ,*fn2-fault-crash* ,*fn2-fault-monotonic-jump* ,*fn2-fault-realtime-back* ,*fn2-fault-duplicate* ,*fn2-fault-stale* ,*fn2-fault-forged* ,*fn2-fault-overcount* ,*fn2-fault-malformed*))))
 (defun fn2-sim-flight-candidate (kind active release word)
@@ -54,10 +54,10 @@
          (release (fn2-sim-may-release slot fn2-sim))
          ((mv word fn2-sim) (fn2-sim-random fn2-sim))
          (forced (fn2-sim-forced-fault fn2-sim))
-         (candidate (if (< forced *fn2-fault-none*) forced
+         (candidate (if (fn2-sim-real-faultp forced) forced
                       (fn2-sim-flight-candidate kind active release word)))
-         (hit (and (< 0 (fn2-sim-fault-budget fn2-sim))
-                   (or (< forced *fn2-fault-none*)
+         (hit (and (fn2-sim-real-faultp candidate) (< 0 (fn2-sim-fault-budget fn2-sim))
+                   (or (fn2-sim-real-faultp forced)
                        (< (mod (floor word *fn2-fault-count*) 256) (fn2-sim-probabilitiesi candidate fn2-sim)))))
          (fn2-sim (update-fn2-sim-forced-fault *fn2-fault-none* fn2-sim))
          (fn2-sim (update-fn2-sim-digest
@@ -71,7 +71,7 @@
 (defthm fn2-sim-choose-flight-fault-result
   (implies (fn2-simp fn2-sim)
     (and (natp (mv-nth 0 (fn2-sim-choose-flight-fault slot fn2-sim)))
-         (<= (mv-nth 0 (fn2-sim-choose-flight-fault slot fn2-sim)) *fn2-fault-none*)))
+         (< (mv-nth 0 (fn2-sim-choose-flight-fault slot fn2-sim)) *fn2-fault-count*)))
   :hints (("Goal" :in-theory (enable fn2-sim-choose-flight-fault fn2-sim-ready))))
 (defthm fn2-sim-choose-flight-fault-rows
   (equal (fn2-sim-rows (mv-nth 1 (fn2-sim-choose-flight-fault slot fn2-sim)))
@@ -330,7 +330,7 @@
   (cond ((and (equal fault *fn2-fault-fragment*) (equal kind *fn2-action-receive*) (< 0 len))
          (+ 1 (mod word len)))
         ((or (and (equal fault *fn2-fault-short-send*) (equal kind *fn2-action-send*))
-             (and (member-equal fault (list *fn2-fault-short-write* *fn2-fault-no-space*))
+             (and (member-equal fault (list *fn2-fault-short-write* *fn2-fault-no-space* *fn2-fault-write-io*))
                   (equal kind *fn2-action-write*)))
          (mod word (+ 1 len)))
         (t (nfix len))))
@@ -386,6 +386,7 @@
                          ((equal fault *fn2-fault-reset*) (eq code :reset))
                          ((equal fault *fn2-fault-read-io*) (and disk-alive (= kind *fn2-action-read*) (eq code :io)))
                          ((equal fault *fn2-fault-no-space*) (and (= kind *fn2-action-write*) (eq code :no-space)))
+                         ((equal fault *fn2-fault-write-io*) (and (= kind *fn2-action-write*) (eq code :io)))
                          ((equal fault *fn2-fault-lying-flush*) (and (= kind *fn2-action-fence*) dirty-fence lying (eq code :ok)))
                          ((equal fault *fn2-fault-flush-io*) (and disk-alive (= kind *fn2-action-fence*) (eq code :io)))
                          (t nil)))
@@ -427,10 +428,10 @@
    ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
     (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
            (redirect (fn2-sim-redirect offset nbytes kind fault))
-           ; ENOSPC reports no known progress, not absence of physical effects.
+           ; Write errors report no known progress, not absence of physical effects.
            ; The selected prefix is transferred before the error is delivered.
            (hidden-write (and (equal kind *fn2-action-write*)
-                              (equal fault *fn2-fault-no-space*))))
+                              (member-equal fault (list *fn2-fault-no-space* *fn2-fault-write-io*)))))
       (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
                   (fn2-ops (fn2-core-ops fn2-core)))
         (code count fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
@@ -441,7 +442,8 @@
           (fn2-sim-transfer kind cap nonce rslot rgen off n okind oslot ogen slot gen
                             offset redirect stamp fua (if hidden-write *fn2-fault-none* fault) word 0
                             fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
-        (mv (if (and hidden-write (eq code :ok)) :no-space code)
+        (mv (if (and hidden-write (eq code :ok))
+                (if (equal fault *fn2-fault-write-io*) :io :no-space) code)
             (if hidden-write 0 count) 0
             fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
    ((or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*))
@@ -460,12 +462,14 @@
       (declare (ignore code))
       (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((equal kind *fn2-action-fence*)
-    ; A failed fence may already have persisted its captured image. Keep
-    ; both deterministic endpoints: even word leaves it, odd word lands it.
-    ; Partial/torn fence effects remain a separate simulator obligation.
-    (let ((failed (equal fault *fn2-fault-flush-io*)))
+    ; Error word 0 leaves the image, 1 lands it, and >=2 selects a
+    ; captured-image suffix. The storage primitive reports Io for every
+    ; partial landing; the full error endpoint is normalized here as well.
+    (let* ((failed (equal fault *fn2-fault-flush-io*))
+           (start (if (and failed (< 1 word))
+                      (mod (- word 1) (+ 1 (fn2-sim-storage-rows fn2-sim-storage))) 0)))
      (mv-let (code fn2-sim-storage)
-      (fn2-storage-fence-complete slot (and failed (equal (mod word 2) 0)) lying fn2-sim-storage)
+      (fn2-storage-fence-complete-from slot (and failed (equal word 0)) lying start fn2-sim-storage)
       (mv (if (and failed (eq code :ok)) :io code) 0 0
           fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
    (t (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))

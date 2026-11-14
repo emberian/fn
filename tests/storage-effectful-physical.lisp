@@ -15,7 +15,7 @@
           (fn2-sim-storage-pending address fn2-sim-storage))
         (fn2-see-bytes (- n 1) (+ 1 (nfix address)) durable fn2-sim-storage))))
 
-(defun fn2-see-physical (prefix persist hold fn2-core fn2-sim fn2-own)
+(defun fn2-see-physical (prefix persist hold fault fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
       (fn2-own (fn2-own-init *fn2-profile-tiny* fn2-own))
@@ -41,7 +41,7 @@
       ((mv ic op & fn2-core) (fn2-issue-write 0 slot gen 0 4 0 1 0 1 0 fn2-core))
       (fn2-own (fn2-own-observe-issue op fn2-core fn2-own))
       ((mv taken fn2-core fn2-sim fn2-own) (fn2-sim-take-prefix 1 0 fn2-core fn2-sim fn2-own))
-      ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-complete op *fn2-fault-no-space* prefix fn2-core fn2-sim fn2-own))
+      ((mv & fn2-core fn2-sim fn2-own) (fn2-sim-complete op fault prefix fn2-core fn2-sim fn2-own))
       (physical
        (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (ok)
         (and (equal (fn2-see-bytes 4 0 nil fn2-sim-storage)
@@ -49,7 +49,8 @@
              (equal (fn2-see-bytes 4 0 t fn2-sim-storage) '(0 0 0 0))
              (equal (fn2-see-bytes 1 4096 t fn2-sim-storage) '(91))) ok))
       (terminal (and (equal (fn2-sim-terminal-outcome op fn2-sim) *fn2-outcome-failed*)
-                     (equal (fn2-sim-terminal-reason op fn2-sim) *fn2-reason-no-space*)
+                     (equal (fn2-sim-terminal-reason op fn2-sim)
+                            (if (equal fault *fn2-fault-write-io*) *fn2-reason-io* *fn2-reason-no-space*))
                      (equal (fn2-sim-terminal-count op fn2-sim) 0)))
       ((mv fc fence & fn2-core) (fn2-issue-fence 1 0 1 0 fn2-core))
       (fn2-own (fn2-own-observe-issue fence fn2-core fn2-own))
@@ -59,7 +60,7 @@
       ; fabricated terminal. The held success must already have persisted.
       ((mv stage packet fn2-core fn2-sim fn2-own)
        (fn2-sim-native-stage fence (if hold *fn2-fault-none* *fn2-fault-flush-io*)
-                             (if persist 1 0) fn2-core fn2-sim fn2-own))
+                             (if (eq persist :partial) 3 (if persist 1 0)) fn2-core fn2-sim fn2-own))
       (staged (and (eq stage :returned)
                    (equal (nth 5 packet) (if hold :ok :io))
                    (equal (nth 6 packet) 0)
@@ -79,9 +80,10 @@
       ((mv landed fn2-sim)
        (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim))) (ok fn2-sim-storage)
         (let* ((fn2-sim-storage (fn2-storage-crash-reset fn2-sim-storage))
-               (want (if persist
-                         (append (take prefix '(21 22 23 24)) (make-list (- 4 prefix) :initial-element 0))
-                       '(0 0 0 0))))
+               (written (append (take prefix '(21 22 23 24))
+                                (make-list (- 4 prefix) :initial-element 0)))
+               (want (cond ((eq persist :partial) (append '(0 0) (nthcdr 2 written)))
+                           (persist written) (t '(0 0 0 0)))))
          (mv (and (equal (fn2-see-bytes 4 0 t fn2-sim-storage) want)
                   (equal (fn2-see-bytes 4 0 nil fn2-sim-storage) want)
                   (equal (fn2-see-bytes 1 4096 t fn2-sim-storage) '(91))) fn2-sim-storage))
@@ -90,7 +92,7 @@
            prior (equal taken 1) physical terminal (equal ft 1) staged delivery landed)
       fn2-core fn2-sim fn2-own)))
 
-(defun fn2-see-prefix (prefix persist hold)
+(defun fn2-see-error-prefix (prefix persist hold fault)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
   (mv-let (ok fn2-core)
@@ -98,10 +100,43 @@
     (mv-let (ok fn2-core fn2-sim)
      (with-local-stobj fn2-own
       (mv-let (ok fn2-core fn2-sim fn2-own)
-       (fn2-see-physical prefix persist hold fn2-core fn2-sim fn2-own)
+       (fn2-see-physical prefix persist hold fault fn2-core fn2-sim fn2-own)
        (mv ok fn2-core fn2-sim)))
      (mv ok fn2-core))) ok)))
 
+(defun fn2-see-prefix (prefix persist hold)
+ (declare (xargs :verify-guards nil))
+ (fn2-see-error-prefix prefix persist hold *fn2-fault-no-space*))
+
 (assert-event (and (fn2-see-prefix 0 nil nil) (fn2-see-prefix 2 nil nil) (fn2-see-prefix 4 nil nil)
                    (fn2-see-prefix 0 t nil) (fn2-see-prefix 2 t nil) (fn2-see-prefix 4 t nil)
-                   (fn2-see-prefix 0 t t) (fn2-see-prefix 2 t t) (fn2-see-prefix 4 t t)))
+                   (fn2-see-prefix 0 t t) (fn2-see-prefix 2 t t) (fn2-see-prefix 4 t t)
+                   (fn2-see-prefix 0 :partial nil) (fn2-see-prefix 2 :partial nil)
+                   (fn2-see-prefix 4 :partial nil)))
+
+(assert-event
+ (and (fn2-see-error-prefix 0 nil nil *fn2-fault-write-io*)
+      (fn2-see-error-prefix 2 nil nil *fn2-fault-write-io*)
+      (fn2-see-error-prefix 4 nil nil *fn2-fault-write-io*)
+      (fn2-see-error-prefix 4 :partial nil *fn2-fault-write-io*)
+      (fn2-see-error-prefix 4 t nil *fn2-fault-write-io*)
+      (fn2-see-error-prefix 4 t t *fn2-fault-write-io*)))
+
+; The preserved none sentinel is not an injectable class even though the new
+; write-I/O class follows it. Force and effect counting must reach that class.
+(defun fn2-see-fault-domain ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-sim
+  (mv-let (ok fn2-sim)
+   (b* ((fn2-sim (fn2-sim-init 1 :broad "write-io-domain" *fn2-profile-tiny* fn2-sim))
+        (none-disabled (equal (fn2-sim-probabilitiesi *fn2-fault-none* fn2-sim) 0))
+        (fn2-sim (fn2-sim-force-fault *fn2-fault-write-io* fn2-sim))
+        ((mv chosen fn2-sim) (fn2-sim-choose-fault fn2-sim))
+        (fn2-sim (fn2-sim-land *fn2-fault-none* fn2-sim))
+        (fn2-sim (fn2-sim-land *fn2-fault-write-io* fn2-sim)))
+    (mv (and none-disabled (equal chosen *fn2-fault-write-io*)
+             (equal (fn2-sim-fault-budget fn2-sim) 127)
+             (equal (fn2-sim-hitsi *fn2-fault-none* fn2-sim) 0)
+             (equal (fn2-sim-hitsi *fn2-fault-write-io* fn2-sim) 1)) fn2-sim))
+   ok)))
+(assert-event (fn2-see-fault-domain))
