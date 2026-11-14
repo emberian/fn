@@ -42,6 +42,13 @@ RULES = [
  ("tests/stop-boundary-unit.lisp", None, "(put-assoc-equal :sim-sectors 16 p)", f"(put-assoc-equal :sim-sectors (* 5 {STRIDE}) p)"),
  ("tests/sim-layer-b.lisp", "fn2-b-case", "(if post (nth 2 post) 8)", f"(if post (nth 2 post) (* 2 {STRIDE}))"),
  ("tests/q1-contracts-b.lisp", "fn2-q1r-post", "(list (fn2-cm-profile :broad t t frontier 0 budget) faults 16)", f"(list (fn2-cm-profile :broad t t frontier 0 budget) faults (* 5 {STRIDE}))"),
+ ("sim/commit-history.lisp", "fn2-b-expected-members", "(* 3 (nfix extent))", f"(* {STRIDE} (nfix extent))"),
+ ("sim/commit-history.lisp", "fn2-b-context", "(* 3 (nfix e))", f"(* {STRIDE} (nfix e))"),
+ ("sim/commit-history.lisp", "fn2-b-seal-refp", "(* 3 (nfix (fn2-b-manifest-extent manifest)))", f"(* {STRIDE} (nfix (fn2-b-manifest-extent manifest)))"),
+ ("sim/commit-history.lisp", "fn2-b-durable-image", "(* 12288 (nfix extent))", "(* *fn2-storage-extent-bytes* (nfix extent))"),
+ ("sim/commit-history.lisp", "fn2-b-project-issues", "(mod (fn2-b-descriptor-offset d) 12288)", "(mod (fn2-b-descriptor-offset d) *fn2-storage-extent-bytes*)"),
+ ("sim/commit-history.lisp", "fn2-b-project-issues", "(* 12288 (fn2-b-manifest-extent m))", "(* *fn2-storage-extent-bytes* (fn2-b-manifest-extent m))"),
+ ("tests/sim-layer-b.lisp", "fn2-b-rounds", "(mod (fn2-sim-storage-offset slot fn2-sim) 12288)", "(mod (fn2-sim-storage-offset slot fn2-sim) *fn2-storage-extent-bytes*)"),
 ]
 
 def rewrite(text, owner, old, new):
