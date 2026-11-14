@@ -81,3 +81,67 @@
    :in-theory (e/d (fn2-ops-issued-count fn2-op-issued-weight fn2-ops-gen fn2-ops-phase)
     (fn2-ops-set-phase nth)))))
 )
+
+; ACK preflight establishes issued history even for duplicate ring entries.
+; Unlike the queued predicate, this invariant survives earlier ACK steps.
+(defun fn2-outbox-issued-prefixp (n index fn2-ops)
+ (declare (xargs :stobjs fn2-ops :verify-guards nil :measure (nfix n)))
+ (if (zp n) t
+  (and (not (member-equal (fn2-ops-phase (fn2-ops-out-sloti index fn2-ops) fn2-ops)
+                          (list *fn2-op-phase-free* *fn2-op-phase-reserved*)))
+       (fn2-outbox-issued-prefixp (- n 1)
+        (fn2-ring-next index (fn2-ops-out-slot-length fn2-ops)) fn2-ops))))
+(defthm fn2-outbox-prefixp-implies-issued
+ (implies (fn2-outbox-prefixp n index fn2-ops)
+          (fn2-outbox-issued-prefixp n index fn2-ops))
+ :hints (("Goal" :induct (fn2-outbox-prefixp n index fn2-ops)
+ :in-theory (e/d (fn2-outbox-prefixp fn2-outbox-issued-prefixp fn2-op-phase-code fn2-op-handle-code)
+                 (fn2-ops-phase fn2-ops-gen fn2-ops-out-sloti fn2-ops-out-geni fn2-ops-out-slot-length fn2-ops-out-gen-length)))))
+(defthm fn2-outbox-issued-prefixp-set-phase
+ (implies (and (natp slot) (fn2-outbox-issued-prefixp n index fn2-ops)
+               (not (member-equal phase (list *fn2-op-phase-free* *fn2-op-phase-reserved*))))
+          (fn2-outbox-issued-prefixp n index (fn2-ops-set-phase slot phase fn2-ops)))
+ :hints (("Goal" :induct (fn2-outbox-issued-prefixp n index fn2-ops)
+ :in-theory (e/d (fn2-outbox-issued-prefixp fn2-ops-phase fn2-ops-out-sloti fn2-ops-out-slot-length)
+                  (fn2-ops-set-phase nth)))))
+(defthm fn2-outbox-issued-prefixp-update-head
+ (equal (fn2-outbox-issued-prefixp n index (update-fn2-ops-out-head value fn2-ops))
+        (fn2-outbox-issued-prefixp n index fn2-ops))
+ :hints (("Goal" :induct (fn2-outbox-issued-prefixp n index fn2-ops)
+ :in-theory (enable fn2-outbox-issued-prefixp))))
+(defthm fn2-outbox-issued-prefixp-update-queued
+ (equal (fn2-outbox-issued-prefixp n index (update-fn2-ops-queued value fn2-ops))
+        (fn2-outbox-issued-prefixp n index fn2-ops))
+ :hints (("Goal" :induct (fn2-outbox-issued-prefixp n index fn2-ops)
+ :in-theory (enable fn2-outbox-issued-prefixp))))
+(defthm fn2-issued-count-update-out-head
+ (equal (fn2-ops-issued-count n (update-fn2-ops-out-head value fn2-ops))
+        (fn2-ops-issued-count n fn2-ops))
+ :hints (("Goal" :in-theory (e/d (update-fn2-ops-out-head) (update-nth fn2-ops-issued-count)))))
+(defthm fn2-issued-count-update-queued
+ (equal (fn2-ops-issued-count n (update-fn2-ops-queued value fn2-ops))
+        (fn2-ops-issued-count n fn2-ops))
+ :hints (("Goal" :in-theory (e/d (update-fn2-ops-queued) (update-nth fn2-ops-issued-count)))))
+(defthm fn2-outbox-issued-head-after-submit
+ (equal (fn2-ops-out-head (update-fn2-ops-queued queued (update-fn2-ops-out-head head fn2-ops))) head)
+ :hints (("Goal" :in-theory (enable fn2-ops-out-head update-fn2-ops-queued update-fn2-ops-out-head))))
+(defthm fn2-outbox-submit-prefix-issued-count
+ (implies (fn2-outbox-issued-prefixp n (fn2-ops-out-head fn2-ops) fn2-ops)
+  (equal (fn2-ops-issued-count rows (fn2-outbox-submit-prefix n fn2-ops))
+         (fn2-ops-issued-count rows fn2-ops)))
+ :hints (("Goal" :induct (fn2-outbox-submit-prefix n fn2-ops)
+ :in-theory (e/d (fn2-outbox-submit-prefix fn2-outbox-issued-prefixp fn2-op-ack-phase fn2-action-completionp
+                  fn2-op-slotp)
+  (fn2-outbox-prefixp-implies-issued fn2-ops-kind fn2-ops-issued-count fn2-opsp fn2-ops-wfp fn2-ops-set-phase fn2-ops-phase fn2-ops-rows
+   fn2-ops-out-head fn2-ops-queued fn2-ops-out-sloti fn2-ops-out-slot-length update-nth update-fn2-ops-out-head update-fn2-ops-queued fn2-ring-next)))))
+(defthm fn2-outbox-ack-issued-count
+ (equal (fn2-ops-issued-count rows (mv-nth 1 (fn2-outbox-ack n fn2-ops)))
+        (fn2-ops-issued-count rows fn2-ops))
+ :hints (("Goal" :in-theory (e/d (fn2-outbox-ack)
+  (fn2-ops-issued-count fn2-outbox-prefixp fn2-outbox-issued-prefixp fn2-outbox-submit-prefix
+   fn2-ops-queued fn2-ops-out-slot-length fn2-ops-out-head)))))
+(make-event
+ (value `(defthm fn2-outbox-ack-issued-total
+  ,(fn2-run-issued-claim 0 'fn2-ops '(mv-nth 1 (fn2-outbox-ack n fn2-ops))))))
+
+(in-theory (disable fn2-outbox-issued-prefixp))
