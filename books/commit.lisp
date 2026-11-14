@@ -827,6 +827,7 @@
 (fn2-core-preserves fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core) :position 3 :rows nil)
 (fn2-retirement-coordinator-events)
 (fn2-checkpoint-allocation-coordinator-events)
+(fn2-checkpoint-installation-coordinator-events)
 ; B-S2 S9: the article's source reference from an admitted workspace's first
 ; :article-acceptance record, for the transaction to bind into fn2-article's
 ; location: (mv code physical-unit writer-epoch allocation encoded-length).

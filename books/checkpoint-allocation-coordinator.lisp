@@ -5,6 +5,22 @@
 (fn2-book-layer :b)
 (defmacro fn2-checkpoint-allocation-coordinator-events ()
  '(progn
+ ; Internal actual planner seam; callers retain their own typed staged control.
+ (defun fn2-lifecycle-admit-packed (slot gen len okind oslot ogen need open-only fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((unless (and (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (posp len)
+                     (posp okind) (unsigned-byte-p 8 okind) (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen)
+                     (posp need) (<= need *fn2-commit-records-room*) (not (fn2-core-stopped-p fn2-core))))
+        (mv :invalid 0 0 fn2-core))
+       ((mv pick id partner) (fn2-commit-pick fn2-core))
+       ((when (or (eq pick :exhausted) (and open-only (not (eq pick :open)))
+                  (not (fn2-commit-settled-room 1 fn2-core)))) (mv :exhausted 0 0 fn2-core))
+       ((unless (fn2-commit-idp id fn2-core)) (mv :invalid 0 0 fn2-core)))
+   (if (eq pick :open) (fn2-commit-txn-open id partner slot gen len okind oslot ogen need fn2-core)
+     (fn2-commit-txn-join id slot gen len okind oslot ogen need fn2-core))))
+ (fn2-core-preserves fn2-lifecycle-admit-packed
+  (slot gen len okind oslot ogen need open-only fn2-core) :position 3 :rows nil)
+
  (defun fn2-checkpoint-allocation-begin (okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (posp okind) (unsigned-byte-p 8 okind)
@@ -38,7 +54,7 @@
     (if (and (< 0 (fn2-retirement-control-rows fn2-retirement-control))
              (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen))
         (fn2-retirement-control-put 0 (state *fn2-retirement-state-scanning*)
-         (allocation-member 1) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
+         (allocation-member 1) (installation-member 0) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
          (slot slot) (gen gen) (scan scan) (count 0) (bytes 0) (installed 0) (install-offset 0) (batch 0) (event 0))
       fn2-retirement-control)
     (mv :ok fn2-core))))
@@ -148,14 +164,9 @@
                       (equal oslot (fn2-alloc-freeze-owner-slot fn2-extents))
                       (equal ogen (fn2-alloc-freeze-owner-gen fn2-extents))) frozen))
        ((unless frozen) (mv :invalid 0 0 fn2-core))
-       ((mv pick id partner) (fn2-commit-pick fn2-core))
-       ((when (or (eq pick :exhausted) (not (fn2-commit-settled-room 1 fn2-core)))) (mv :exhausted 0 0 fn2-core))
-       ((unless (fn2-commit-idp id fn2-core)) (mv :invalid 0 0 fn2-core))
        (need (* count (+ *fn2-commit-txn-header-room* *fn2-format-allocation-max-size*)))
-       ((unless (<= need *fn2-commit-records-room*)) (mv :invalid 0 0 fn2-core))
        ((mv code batch event fn2-core)
-        (if (eq pick :open) (fn2-commit-txn-open id partner slot gen len okind oslot ogen need fn2-core)
-          (fn2-commit-txn-join id slot gen len okind oslot ogen need fn2-core)))
+        (fn2-lifecycle-admit-packed slot gen len okind oslot ogen need nil fn2-core))
        ((unless (eq code :ok)) (mv code batch event fn2-core))
        ((unless (and (unsigned-byte-p 60 batch) (unsigned-byte-p 60 event)))
         (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core)))
@@ -168,3 +179,20 @@
     (mv :ok batch event fn2-core))))
  (fn2-core-preserves fn2-checkpoint-allocation-submit (fn2-core) :position 3 :rows nil)
  ))
+
+; Actual core operations consumed by the checkpoint worker's generated arms.
+(defcost fn2-checkpoint-allocation-begin :answers t
+ :tables (fn2-core-retirement-control fn2-core-extents fn2-core-pool fn2-core-control)
+ :doc "Reserve the single token-bound allocation lifecycle workspace.")
+(defcost fn2-checkpoint-allocation-step :answers t :bytes 4096
+ :tables (fn2-core-retirement-control fn2-core-checkpoint-construction fn2-core-extents fn2-core-fields fn2-core-pool)
+ :doc "Inspect one construction and append at most one framed allocation record.")
+(defcost fn2-checkpoint-allocation-submit :answers t
+ :tables (fn2-core-retirement-control fn2-core-extents fn2-core-checkpoint-construction fn2-core-commit-io fn2-core-commit-root fn2-core-commit-members fn2-core-machines fn2-core-pool fn2-core-control)
+ :doc "Select the real B planner and submit the retained allocation member.")
+(defcost fn2-checkpoint-allocation-finish-empty :answers t
+ :tables (fn2-core-retirement-control fn2-core-extents fn2-core-pool fn2-core-control)
+ :doc "Release only an empty token-current terminal allocation scan.")
+(defcost fn2-retirement-poll :answers t
+ :tables (fn2-core-retirement-control fn2-core-extents fn2-core-commit-settled fn2-core-pool fn2-core-control)
+ :doc "Consume exact lifecycle settlement, retaining workspace on uncertainty.")

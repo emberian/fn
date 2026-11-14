@@ -39,3 +39,30 @@ writer, refusal/uncertainty and stale control mutation fixtures; admit and certi
 the changed closure and discharge preservation/critical evidence obligations.
 Recovery ordering and final publication/FREE remain the parent lane's scope.
 This change does not enable phase2, publication or FREE.
+
+## Final installation member source milestone
+
+`fn2-checkpoint-installation-begin(c, token, owner)` accepts only the B-owned
+CHECKED candidate claim and six exact completed source carriers. Its C caller must
+derive `c` from the actual checked builder/closed plan; B imports no C carriers or
+closure booleans. `checkpoint-production.lisp` supplies the shared root provenance
+predicate moved from C; removal of C's old definition and consumer rewrites are
+coordinated with the checkpoint worker lane.
+
+`-step` scans one actual B ledger row: every owned data construction must already
+be complete and ALLOCATED under its exact identity and token, earlier journal
+identities must be claimed/allocated to their recorded batches, and exactly the
+final unclaimed ticket must have the current ordinal. It derives the ticket count
+from that ledger and rejects later ordinals. The existing member packer derives
+the descriptor/hash from retained candidate carriers. `-submit` uses the shared
+internal B planner seam and requires a new collector, consuming that final ticket.
+The persisted lifecycle branch binds candidate/token/workspace/batch/event and the
+exact claimed final ticket before decode and the existing `fn2-checkpoint-install`.
+Normal exact settlement owns workspace release; publication and FREE remain off.
+
+B `defcost` declarations now expose the actual allocation/final-member/poll core
+operations to generated worker arms. The new final-member fixture prepares actual
+entry controls for the installed-allocation barrier, final ticket admission,
+generic-admission refusal and stale-token/unpersisted installation rejection;
+its production carrier premises are explicitly synthetic. All fixture execution,
+ACL2 guard/preservation admission, certification and critical evidence remain owed.
