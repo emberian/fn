@@ -5,7 +5,7 @@
 (include-book "c-snapshot")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-build
- ((phase (:enum fn2-checkpoint-build-phase (:idle :pack :seal :verify :write :wait-write :ready :uncertain)))
+ ((phase (:enum fn2-checkpoint-build-phase (:idle :await-roots :pack :seal :verify :write :wait-write :ready :uncertain)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (snapshot-token :u60)
   (candidate :u32) (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (extent :u32) (epoch :u60) (allocation :u60)
