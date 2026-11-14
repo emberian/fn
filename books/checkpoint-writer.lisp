@@ -102,13 +102,15 @@
   ; No pack/context transition exists after the verified mask is complete.
   ; The two output leases stay private until exact write/write/fence harvest.
   (:publish :on-refusal ((:stop :checkpoint))
-   (:do (code) (fn2-checkpoint-writer-issue) :effects ((:acquire (:operation)))
+   (:if (and (natp budget) (< 0 budget))
+    ((:do (code) (fn2-checkpoint-writer-issue) :effects ((:acquire (:operation)))
     :accept () :case (((:issued) (:set (pending 1)) (:next :wait)
                       (:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1))
                      ((:exhausted) (:yield))
                      ((:complete) (:next :release) (:charge :steps *fn2-work-small* :runnable t))
                      ((:more) (:next :wait) (:charge :steps *fn2-work-small*))
                      (:otherwise (:next :uncertain) (:charge :steps *fn2-work-small*)))))
+    ((:yield))))
   (:wait :on-refusal ((:stop :checkpoint))
    (:do (code phase) (fn2-checkpoint-writer-phase))
    (:cond ((equal phase *fn2-checkpoint-publication-phase-uncertain*) (:next :uncertain) (:charge :steps *fn2-work-small*))
