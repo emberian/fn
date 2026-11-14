@@ -1,6 +1,7 @@
 ; Narrow internal queue/harvest controls. Synthetic fixtures do not establish
 ; the actual source binding or physical authentication needed for completion.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-semantic-retention")
 (defun fn2-checkpoint-semantic-control (fn2-extents fn2-checkpoint-semantic-work fn2-checkpoint-semantic fn2-digests)
  (declare (xargs :stobjs (fn2-extents fn2-checkpoint-semantic-work fn2-checkpoint-semantic fn2-digests) :verify-guards nil))

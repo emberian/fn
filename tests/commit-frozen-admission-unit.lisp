@@ -2,6 +2,7 @@
 ; The phase2 ledger is an explicit synthetic premise, not served construction.
 ; The included final-producer control separately exercises its real B admission.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-installation-coordinator-unit")
 (defun fn2-cfa-values (layout)
  (declare (xargs :verify-guards nil :measure (len layout)))
