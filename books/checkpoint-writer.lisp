@@ -11,7 +11,7 @@
  :tables (fn2-core-pool fn2-core-control) :effects :per-use
  :doc "Preflight and acquire all three packet windows atomically, with no same-rank hold-and-wait.")
 (defcost fn2-checkpoint-writer-release :child fn2-checkpoint-writer-release-children :answers t
- :tables (fn2-core-pool fn2-core-control) :effects :per-use
+ :tables (fn2-core-checkpoint-publication fn2-core-pool fn2-core-control) :effects :per-use
  :doc "Release the private packet bundle only after covering fence and physical completion.")
 (defcost fn2-checkpoint-writer-checker :child fn2-checkpoint-writer-checker-children :answers (:ok :bounds)
  :doc "The final private format row and its generated 128-field stripe.")
@@ -72,7 +72,7 @@
             (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
            (:otherwise (:stop :pool)))))
   (:begin :on-refusal ((:stop :checkpoint))
-   (:do (code) (fn2-checkpoint-writer-begin row-candidate row-first-slot row-first-gen row-second-slot row-second-gen
+   (:do (code) (fn2-checkpoint-writer-begin row-candidate row-first-slot row-first-gen row-second-slot row-second-gen row-scratch-slot row-scratch-gen
                                             *fn2-checkpoint-writer-kind* id row-generation))
    (:do (code checker base) (fn2-checkpoint-writer-checker))
    (:set (checker-row checker) (field-base base)) (:next :pack)
@@ -114,13 +114,14 @@
   (:wait :on-refusal ((:stop :checkpoint))
    (:do (code phase) (fn2-checkpoint-writer-phase))
    (:cond ((equal phase *fn2-checkpoint-publication-phase-uncertain*) (:next :uncertain) (:charge :steps *fn2-work-small*))
-          ((equal phase *fn2-checkpoint-publication-phase-complete*) (:next :release) (:charge :steps *fn2-work-small* :runnable t))
-          ((equal row-pending 0) (:next :publish) (:charge :steps *fn2-work-small* :runnable t))
+          ((equal phase *fn2-checkpoint-publication-phase-complete*) (:set (pending 0)) (:next :release) (:charge :steps *fn2-work-small* :runnable t))
+          ((member-equal phase (list *fn2-checkpoint-publication-phase-write-second* *fn2-checkpoint-publication-phase-fence*))
+           (:set (pending 0)) (:next :publish) (:charge :steps *fn2-work-small* :runnable t))
           (t (:idle))))
   (:release :on-refusal ((:stop :pool))
    (:if (equal row-pending 0)
     ((:do (code) (fn2-checkpoint-writer-release row-first-slot row-first-gen row-second-slot row-second-gen
-                                               row-scratch-slot row-scratch-gen *fn2-checkpoint-writer-kind* id row-generation)
+                                               row-scratch-slot row-scratch-gen *fn2-checkpoint-writer-kind* id row-generation row-pending)
       :effects ((:release (:storage-window))))
      (:next :done) (:charge :steps *fn2-work-small*)) ((:idle))))
   (:done (:idle))
