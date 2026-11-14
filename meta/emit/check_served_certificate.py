@@ -24,7 +24,7 @@ import threading
 sys.path.insert(0, str(Path(__file__).parent))
 from emit_served_certificate import BASE, digest
 
-LEAN_CACHE_POLICY = 'external-artifacts-declared-local-import-view-v1'
+LEAN_CACHE_POLICY = 'external-artifacts-exact-batch-import-view-v2'
 ALLOWED = {'propext', 'Classical.choice', 'Quot.sound'}
 ROOT_THEOREMS = ('validated', 'accepted_entry_positive', 'omitted_child_rejected')
 
@@ -564,7 +564,7 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
                 checkpoint()
 
         # Phase 2: Check proof cache; group uncached proofs into per-kind batches.
-        uncached_by_kind = {}
+        uncached_by_scope = {}
         solo_items = []
 
         for i in selected_indices:
@@ -609,11 +609,13 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
             if parsed is None:
                 solo_items.append([item])
             else:
-                uncached_by_kind.setdefault(row.get('kind', ''), []).append(item)
+                # A batch may not lend one slice another slice's local imports.
+                scope = tuple(sorted(transitive_dependencies(p_deps, graph)))
+                uncached_by_scope.setdefault((row.get('kind', ''), scope), []).append(item)
 
         batches = list(solo_items)
-        for kind_name in sorted(uncached_by_kind):
-            items = uncached_by_kind[kind_name]
+        for kind_name in sorted(uncached_by_scope):
+            items = uncached_by_scope[kind_name]
             for pos in range(0, len(items), max(1, batch_size)):
                 batches.append(items[pos:pos + max(1, batch_size)])
 
