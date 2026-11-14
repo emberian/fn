@@ -12,14 +12,14 @@
               (equal (fn2-machine-generation ctl fn2-core)
                      (fn2-cns-row-ctl-gen cns fn2-core))))))
 
-(defthm fn2-cns-principal-current-binding
+(defthm fn2-cns-principal-current-binding-by-definition
   (implies (fn2-cns-binding-currentp cns gen fn2-core)
            (equal (fn2-cns-principal cns gen fn2-core)
                   (mv :ok (nfix (fn2-ctl-row-principal
                                   (fn2-cns-row-ctl cns fn2-core) fn2-core)))))
   :hints (("Goal" :in-theory (enable fn2-cns-binding-currentp fn2-cns-principal))))
 
-(defthm fn2-cns-principal-stale-binding
+(defthm fn2-cns-principal-stale-binding-by-definition
   (implies (not (fn2-cns-binding-currentp cns gen fn2-core))
            (equal (fn2-cns-principal cns gen fn2-core) (mv :state 0)))
   :hints (("Goal" :in-theory (enable fn2-cns-binding-currentp fn2-cns-principal))))
@@ -35,7 +35,7 @@
   :hints (("Goal" :in-theory (e/d (fn2-cns-authority-allows)
                                   (fn2-cns-binding-currentp fn2-cns-principal)))))
 
-(defthm fn2-cns-authority-current-admin
+(defthm fn2-cns-authority-current-admin-by-definition
   (implies (and (fn2-auth-served fn2-core)
                 (fn2-cns-binding-currentp cns gen fn2-core)
                 (fn2-cns-admin-p cns fn2-core))
