@@ -88,6 +88,7 @@ ACL2_BOOKS = \
   books/core-children-a \
   books/core-lowering \
   books/core-lenses \
+  books/square-evidence \
   books/core-product-lowering \
   books/core-walk \
   books/crash-model \
@@ -262,6 +263,8 @@ ACL2_BOOKS = \
   tests/core-child-unit \
   tests/core-lowering-unit \
   tests/core-update-lowering-unit \
+  tests/core-snapshot-support \
+  tests/txn-child-extraction-unit \
   tests/core-unit \
   tests/crash-model-differential \
   tests/crash-model-unit \
@@ -370,4 +373,3 @@ ACL2_BOOKS = \
 certify:
 	python3 tools/certify_books.py $(BOOKS)
 
-ACL2_BOOKS += books/square-evidence tests/core-snapshot-support tests/txn-child-extraction-unit

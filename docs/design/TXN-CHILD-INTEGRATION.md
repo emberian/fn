@@ -1,6 +1,7 @@
 # Transaction child callback integration
 
-This candidate starts at `e4f74c279`. It connects the production transaction
+This candidate starts at `e4f74c279` and merges corrected init and shared
+compiler foundation `b7b1f77af`. It connects the production transaction
 operation declarations to the shared lowering compiler and provides
 `books/assembly-callbacks-d-txn-children.lisp`, an alternative callback root
 that actually instantiates `:children` arms, their `:wrappers`, and the machine
@@ -8,7 +9,8 @@ run interface. It must not be included alongside the core-arm callback book.
 The main assembly still selects the core-arm book until the candidate's
 composition and evidence gates pass.
 
-All 35 original txn function bodies and current `core.lisp` are unchanged.
+All 35 original txn function bodies are unchanged; `core.lisp` and
+`profile.lisp` match the corrected `b7b1f77af` foundation exactly.
 The current stop-success and issue-effect changes are therefore retained.
 The compiler prerequisites are the previously source-tested modular reader,
 mutable product and scalar-recursive implementations, plus the fixed-length
