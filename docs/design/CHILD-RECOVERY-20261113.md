@@ -1,8 +1,8 @@
 # Child-form recovery (GPT-6 Astra, 2026-11-13)
 
-The sibling-machine table discovery generator and read-only core lowering
-have narrow forge evidence. The inherited mutable operation extraction remains
-an unvalidated checkpoint. No served machine has switched to child form.
+The shared reader and mutable-product generators have narrow forge evidence.
+The actual principal reader family admits against the qualified callback
+baseline. No served machine has switched to child form.
 
 ## Integrated generator evidence
 
@@ -40,7 +40,8 @@ multi-value leaf, metadata and refusals; 28 forms passed proof_repl.
 `defcore-product-child` additionally compiles primitive state updates through
 an expansion-time typed product. Emitted code uses concrete child stobjs and
 ordered let/mv-let bindings, with exact child and reconstruction-face ABIs,
-verified guards and unconditional equality of the whole scalar/core result.
+verified guards and equality of the whole scalar/core result. The concrete
+execution and logical totalization now have separate named claims (below).
 The two-child fixture includes a complete-state positive and bounds refusal,
 live state, one setter evaluation, and a mutation that retains the scalar and
 touched child while clobbering the unrelated sibling. Nonrecursive core-call
@@ -119,7 +120,30 @@ and preserves a malformed logical core without extending its shape. A
 separate admitted counterexample shows that gratuitous read-only writeback
 extends that core by NIL. Valid-core live source/child and sibling-clobber
 mutation controls pass. Warm product gate passed 70 forms plus eight added
-live-evidence forms; combined record certification is pending.
+live-evidence forms. Combined 50f8e104c + 081dcad4c record passed at
+`certify-20261114T004951Z-3464113`: 17 reused and 4 built books, no book over
+10 seconds.
+
+An outer conditional has a further logical boundary: an untaken write branch
+must preserve even a malformed core. The admitted counterexample returns
+(:off NIL) from the original and (:off (NIL)) from unconditional writeback.
+The generator now emits a distinct executable reconstruction and proves its
+whole-result equality under the actual core type, plus a separate theorem
+under the full operation guard. The executable reconstruction calls neither
+the original operation nor the core recognizer. A guard-verified MBE face uses
+this reconstruction on typed logical cores and the original only on malformed
+logical cores; its executable branch is always the generated reconstruction.
+The unconditional face refinement and guarded MBE correspondence are explicit.
+The compiler registry names all four theorems and the executable endpoint;
+fn2-squares separately records the guarded execution obligation, and the teeth
+check exercises both registered claims.
+
+Warm product loading passed 83 forms and eight follow-up controls; reader
+regression passed 65 forms. Live typed-state tests compare source, actual exec
+and totalized face on both conditional branches, and reject a flipped-condition
+mutation. Ground controls distinguish the malformed-core logical face from the
+unsupported malformed input to the executable reconstruction. This totalization
+continuation still needs its own record gate; it is separate from 081dcad4c.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
