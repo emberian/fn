@@ -627,3 +627,19 @@ and 12,973,186 prover steps. The failing guard itself used 0.06 seconds and
 8,463 steps. Restore-reader loading and all target malformed-source and
 roundtrip controls remained unrun. This clears the earlier source-reader
 admission obstruction, not the end-to-end map recovery obligation.
+
+A subsequent retained source session at `40de976fb`, with the proof-only
+changes committed in `5e59fd022` and `0d1d55fcf`, admitted the actual map/arena
+packers and restore reader. The unchanged roundtrip assertion then passed
+after `94382fa6f` declared two unused reserve outputs: actual allocator
+reserve/commit/retire state was packed and read back, with its original stale,
+corruption and FIFO controls. The fixture runs ACL2 logical controls; it is
+not a host crash/recovery or complete checkpoint-selection witness.
+
+The missing-source-shape ground theorem still refused after 0.33 seconds and
+90,203 prover steps; the corresponding missing-source-type theorem was not
+sent. A proof refusal does not establish either malformed-source witness.
+The restore book's 56.44-second, 13,236,134-step source admission also leaves
+a proof-cost defect. The retained session was explicitly stopped and its
+three recorded lifecycle PIDs were absent. No certificate, full recovery,
+reclamation activation or FREE claim follows from these results.
