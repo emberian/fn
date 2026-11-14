@@ -123,3 +123,26 @@ No ACL2/native/record gate or remote allocation ran for this repair. Global cut
 mapping remains incomplete and host refinement remains unchecked. The next gate is actual general-domain/guard admission followed by
 this mutable unit and the unchanged full atomic equality proof, in a coherent
 allocated source-matched world.
+
+## Current return-domain proof preparation
+
+On integrated `8ef310`, the new proof support stays local to `sim/sim.lisp`.
+A shared local macro generates return-tag contracts for the actual pool,
+network and storage calls. The transfer proof composes those contracts and
+inducts on the existing byte loop; a separate prefix bound and selected-amount
+bound supply the reported-count limit. The physical dispatch then composes
+these facts with the network nonce type. The public return-domain proof keeps
+the dispatch, codec and byte loop opaque. The older Fence proof hint names the
+now-called `fence-complete-from` primitive. These are source-prepared proof
+interfaces, not admitted facts.
+
+All existing function definitions and explicit theorem formulas compare
+identically to that root, including the whole atomic theorem; the receipt is
+`staged-return-domain-support.json`. No additional foundation book changes.
+Strict parse, secrets/diff, and all 31 current focused native source controls
+pass. ACL2 admission, mutable controls and the combined cancel/storage execution
+remain unrun. The current 125-book combined test closure had only nine exact
+compiled qualified cache candidates at the read-only inventory: moving faults
+out of `books/operations` changed 116 closure keys. The older f64 86/38 inventory
+and its 29 matching main-b2 misses cannot qualify this newer root. No parallel
+cold build, install or ACL2 session was started.

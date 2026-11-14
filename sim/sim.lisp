@@ -441,6 +441,117 @@
                                      fn2-sim-terminal-values
                                      fn2-sim-terminal-post)))))
 
+; Scalar contracts for the actual leaf calls. Keep codecs/byte loops opaque
+; when composing the physical return domain; do not reopen ownership tables.
+(local
+ (progn
+  (defmacro fn2-sim-return-tag-fact (name call definitions)
+    `(defthm ,name
+       (natp (fn2-sim-return-code-keyword->code (mv-nth 0 ,call)))
+       :hints (("Goal" :in-theory
+                (enable fn2-sim-return-code-keyword->code ,@definitions)))))
+  (fn2-sim-return-tag-fact fn2-sim-pool-read-return-tag
+    (fn2-pool-read rslot rgen i okind oslot ogen fn2-pool)
+    (fn2-pool-read fn2-pool-readable-code fn2-pool-handle-code))
+  (fn2-sim-return-tag-fact fn2-sim-pool-write-return-tag
+    (fn2-pool-adapter-write rslot rgen slot gen i byte fn2-pool)
+    (fn2-pool-adapter-write fn2-pool-input-code fn2-pool-handle-code))
+  (fn2-sim-return-tag-fact fn2-sim-receive-return-tag
+    (fn2-network-receive-byte cap nonce fn2-sim-network)
+    (fn2-network-receive-byte fn2-network-cap-code fn2-network-queue-get))
+  (fn2-sim-return-tag-fact fn2-sim-send-return-tag
+    (fn2-network-send-byte cap nonce byte fn2-sim-network)
+    (fn2-network-send-byte fn2-network-cap-code fn2-network-queue-put))
+  (fn2-sim-return-tag-fact fn2-sim-disk-read-return-tag
+    (fn2-storage-read-byte offset redirect fault fn2-sim-storage)
+    (fn2-storage-read-byte fn2-storage-status))
+  (fn2-sim-return-tag-fact fn2-sim-disk-write-return-tag
+    (fn2-storage-write-byte offset redirect byte stamp fua fault fn2-sim-storage)
+    (fn2-storage-write-byte fn2-storage-status))
+  (fn2-sim-return-tag-fact fn2-sim-accept-return-tag
+    (fn2-network-accept index fn2-sim-network)
+    (fn2-network-accept))
+  (fn2-sim-return-tag-fact fn2-sim-fence-return-tag
+    (fn2-storage-fence-complete-from slot fail lying start fn2-sim-storage)
+    (fn2-storage-fence-complete-from))
+
+  (defthm fn2-sim-encoded-return-tag-bound
+    (implies (natp (fn2-sim-return-code-keyword->code code))
+             (< (fn2-sim-return-code-keyword->code code)
+                *fn2-sim-return-code-count*))
+    :hints (("Goal" :in-theory (enable fn2-sim-return-code-keyword->code))))
+
+  ; An error reports the completed prefix, including errors on its first byte.
+  ; The transfer is the existing effect implementation, not a receipt model.
+  (defthm fn2-sim-transfer-count-bounded
+    (implies (and (natp len) (natp i) (<= i len))
+             (<= (mv-nth 1
+                   (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen slot gen
+                                     offset redirect stamp fua fault word i
+                                     fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
+                 len))
+    :rule-classes :linear
+    :hints (("Goal"
+             :induct (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen slot gen
+                                      offset redirect stamp fua fault word i
+                                      fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
+             :in-theory (e/d (fn2-sim-transfer)
+                              (fn2-pool-read fn2-pool-adapter-write
+                               fn2-network-receive-byte fn2-network-send-byte
+                               fn2-storage-read-byte fn2-storage-write-byte)))))
+
+  (defthm fn2-sim-transfer-return-tag
+    (natp (fn2-sim-return-code-keyword->code
+            (mv-nth 0
+              (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen slot gen
+                                offset redirect stamp fua fault word i
+                                fn2-pool fn2-sim-network fn2-sim-storage fn2-own))))
+    :hints (("Goal"
+             :induct (fn2-sim-transfer kind cap nonce rslot rgen off len okind oslot ogen slot gen
+                                      offset redirect stamp fua fault word i
+                                      fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
+             :in-theory (e/d (fn2-sim-transfer)
+                              (fn2-sim-return-code-keyword->code
+                               fn2-pool-read fn2-pool-adapter-write
+                               fn2-network-receive-byte fn2-network-send-byte
+                               fn2-storage-read-byte fn2-storage-write-byte)))))
+
+  (defthm fn2-sim-amount-upper-bound
+    (implies (and (natp len) (natp word))
+             (<= (fn2-sim-amount kind len fault word) len))
+    :rule-classes :linear
+    :hints (("Goal" :in-theory (enable fn2-sim-amount))))
+
+  (defthm fn2-sim-accept-nonce-u32
+    (implies (and (fn2-sim-networkp fn2-sim-network)
+                  (fn2-sim-network-wfp fn2-sim-network))
+             (unsigned-byte-p 32 (mv-nth 1 (fn2-network-accept index fn2-sim-network))))
+    :hints (("Goal" :in-theory (enable fn2-network-accept))))
+
+  (defthm fn2-sim-physical-act-return-domain
+    (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                  (fn2-sim-networkp fn2-sim-network) (fn2-sim-network-wfp fn2-sim-network)
+                  (fn2-sim-storagep fn2-sim-storage) (fn2-sim-storage-wfp fn2-sim-storage)
+                  (fn2-ownp fn2-own) (fn2-own-wfp fn2-own)
+                  (unsigned-byte-p 32 len) (natp n) (<= n len)
+                  (natp off) (natp offset) (unsigned-byte-p 32 word)
+                  (unsigned-byte-p 60 stamp) (unsigned-byte-p 60 rgen))
+             (let* ((physical
+                     (fn2-sim-physical-act kind cap nonce rslot rgen off len n okind oslot ogen slot gen
+                                           offset stamp fua fault word lying
+                                           fn2-core fn2-sim-network fn2-sim-storage fn2-own))
+                    (tag (fn2-sim-return-code-keyword->code (mv-nth 0 physical))))
+               (and (unsigned-byte-p 32 (mv-nth 1 physical))
+                    (unsigned-byte-p 32 (mv-nth 2 physical))
+                    (natp tag) (< tag *fn2-sim-return-code-count*))))
+    :hints (("Goal" :in-theory
+             (e/d (fn2-sim-physical-act unsigned-byte-p)
+                  (fn2-sim-transfer fn2-sim-return-code-keyword->code
+                   fn2-network-accept fn2-storage-fence-complete-from
+                   fn2-pool-read fn2-pool-adapter-write
+                   fn2-network-receive-byte fn2-network-send-byte
+                   fn2-storage-read-byte fn2-storage-write-byte)))))))
+
 ; Every physical result accepted by the staged API fits the generated raw
 ; receipt. These facts preserve uncommon refusal codes rather than coercing
 ; them into success/error aliases. Their proofs remain owed until admission.
@@ -456,8 +567,9 @@
                   (unsigned-byte-p 32 (mv-nth 2 physical))
                   (natp tag) (< tag *fn2-sim-return-code-count*))))
   :hints (("Goal" :in-theory
-           (enable fn2-sim-physical fn2-sim-physical-act
-                   fn2-sim-amount fn2-sim-return-code-keyword->code))))
+           (e/d (fn2-sim-physical)
+                (fn2-sim-physical-act fn2-sim-amount
+                 fn2-sim-return-code-keyword->code)))))
 
 ; Scalar effect-domain facts for the actual Fence branch, not an assumed
 ; syscall result. They connect the bounded stored raw packet to PHYSICAL.
@@ -470,7 +582,7 @@
                 (equal (mv-nth 1 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)) 0)
                 (equal (mv-nth 2 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)) 0)))
   :hints (("Goal" :in-theory (enable fn2-sim-physical fn2-sim-physical-act
-                                    fn2-storage-fence-complete fn2-op-input-kindp fn2-op-output-kindp))))
+                                    fn2-storage-fence-complete-from fn2-op-input-kindp fn2-op-output-kindp))))
 
 (defthm fn2-sim-physical-fence-code-tag
   (implies (and (fn2-core-wfp fn2-core) (fn2-sim-ready fn2-sim) (fn2-own-wfp fn2-own)
