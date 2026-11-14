@@ -2,6 +2,7 @@
 ; allocator mutation occurs here. Boot must finish candidate selection, roots,
 ; exact allocator restore, reachability protections and ordered suffix replay.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint")
 (include-book "checkpoint-restore-read")
 (include-book "checkpoint-geometry")

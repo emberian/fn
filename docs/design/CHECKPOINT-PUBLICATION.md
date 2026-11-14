@@ -464,6 +464,43 @@ actual BEGIN/pack/bind zero-versus-positive control with explicitly synthetic
 eligible root carriers; it does not witness actual cut/source construction or
 replace the generated worker's IO budget assurance.
 
+## Current integration boundary (2026-11-14)
+
+The boot machine now reads checked descriptors and linked allocation-map pages,
+retains every decoded row in a candidate-bound ledger, and validates the actual
+retirement FIFO one link per step. It still refuses checkpoint startup before
+selected-base evidence and ordered replay exist; map validity is not selection
+or permission to mutate the live allocator. Encoded mixed-state intake controls
+include stale candidate/ordinal, premature completion, cycles, decreasing
+retirement commits and short chains. These ACL2 controls remain unexecuted.
+
+Candidate preparation clears stale anchor mask, bank, installation commit and
+previous identity while retaining the actual builder ownership. Verified boot
+anchor intake establishes new anchor provenance independently. The shared run
+writer now refuses an empty full leaf or index page with existing `:length`,
+instead of allocating empty pages and retrying forever. Six focused source
+controls cover the shared capacity arithmetic and writer refusal, including
+arena-omission and empty-guard-removal mutations. They are not ACL2 admission.
+
+The connected format closure at source `78f29b78317277159d60f9456e01afed347f2e6e`
+passed source admission for `books/checkpoint-map-format`: 13 local books,
+seven unchanged cached dependencies and five source parents, 15 target forms
+through `FN2-CHECKPOINT-ARENA-PAGE-SLOT-FITS`. ACL2 reported 74.51 seconds and
+10,709,063 steps for loading this closure. This admits linked map/arena packing
+and its assertions under the changed geometry and retirement entry width;
+it is not certification, encoder roundtrip, restored allocator or served reuse.
+The detached outer PID26980 and server27006 were absent after explicit stop.
+Logs and state are `/tmp/reclamation-format-union-78*` on Forge.
+
+The remaining implementation work is the real C master/source actor, arena and
+installation evidence intake, selected-base allocator reconstruction, ordered
+allocation/retirement/release replay, and journaled writer exclusion. Anchor
+previous-checkpoint batch hash must not be substituted for the immediate
+predecessor seal. Dynamic foreground maintenance headroom also remains open:
+the minimum profile admission bound does not reserve enough space against later
+growth. Both upload and ordinary journal allocation must respect that policy,
+while checkpoint maintenance consumes its already reserved tickets. FREE remains
+disabled until this chain is implemented and qualified.
 `checkpoint-metadata-resources.lisp` reserves root1's fixed working windows
 before acquisition of the C cut. Its two builders, twelve writers, cursor and
 field stripe are distinct from the resident sealer, which may be frozen in

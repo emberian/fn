@@ -2,6 +2,7 @@
 ; consumer owns an extent-sized reconstruction ledger and commits a row before
 ; advancing ENTRY-ORDINAL. This carrier never authorizes serving or reuse.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-restore")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-reader
