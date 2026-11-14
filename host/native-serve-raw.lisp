@@ -78,7 +78,7 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
       (unless (eq bind :ok)
         (format t "~%REFUSED ~(~a~)~%" bind) (finish-output)
         (return-from fn2-nserve-main 2)))
-    (unless (fn2-core-profilep (if image (fn2-image-profile profile) profile))
+    (unless (fn2-execution-profilep (if image (fn2-image-profile profile) profile))
       (format t "~%REFUSED profile~%") (finish-output)
       (return-from fn2-nserve-main 2))
     (let ((host (handler-case

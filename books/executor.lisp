@@ -3,6 +3,7 @@
 (include-book "executor-wake")
 (include-book "executor-services")
 (include-book "assembly")
+(include-book "executor-reservation")
 
 ; One transition's largest declared work: a visit and the largest per-run
 ; budget (bytes and steps) over every registered machine kind, read from the
@@ -142,6 +143,7 @@
                   :guard (and (fn2-core-wfp fn2-core) (natp h) (natp k) (natp a)
                               (natp nobs) (natp nvisits) (natp nactions))))
   (or (>= nobs h) (>= nvisits k) (>= nactions a)
+      (not (fn2-turn-descriptor-room-p nactions a))
       (= 1 (fn2-exec-stop fn2-core))
       (not (fn2-turn-work-room-p h k nvisits
              (fn2-exec-turn-bytes fn2-core) (fn2-exec-turn-steps fn2-core)))
@@ -163,6 +165,14 @@
       (fn2-concrete-loop (- fuel 1) h k a (+ nobs (nfix obs))
                            (+ nvisits (nfix visits)) (+ nactions (nfix actions)) fn2-core)))))
 (fn2-core-preserves fn2-concrete-loop (fuel h k a nobs nvisits nactions fn2-core) :position 4 :rows nil)
+
+; Stopping before selection retains the calendar cursor, every queued row,
+; and every continuation. A later turn starts with a fresh descriptor quantum.
+(defthm fn2-concrete-loop-short-residual-preserves-core
+  (implies (not (fn2-turn-descriptor-room-p nactions a))
+           (equal (mv-nth 4 (fn2-concrete-loop fuel h k a nobs nvisits nactions fn2-core))
+                  fn2-core))
+  :hints (("Goal" :in-theory (enable fn2-concrete-loop fn2-concrete-loop-stop-p))))
 
 (defun fn2-concrete-turn (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))

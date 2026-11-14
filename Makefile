@@ -6,6 +6,7 @@ ACL2_BOOKS = \
   books/alloc \
   books/arm-children \
   books/arm-issue-effects \
+  books/executor-reservation \
   books/arms \
   books/run-budget \
   books/article-manifest \
