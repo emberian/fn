@@ -35,11 +35,11 @@
 ; Referenced octets are rehomed by separately checked source reads and
 ; checkpoint-owned scratch writes before the served codec consumes them.
 (defun fn2-checkpoint-metadata-overlay-begin (token row b wbase crow hbase hslot hgen fields entry-base scratch scratch-gen limit
-                                            okind oslot ogen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-metadata-source fn2-overlays
+                                            okind oslot ogen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-overlays
                                             fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-metadata-source fn2-overlays fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-overlays fn2-run-builds fn2-run-writers fn2-fields fn2-pool)
   :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-checkpoint-metadata-source-wfp fn2-checkpoint-metadata-source)
+              (fn2-checkpoint-source-wfp fn2-checkpoint-source)
               (fn2-overlays-wfp fn2-overlays) (fn2-run-builds-wfp fn2-run-builds)
               (fn2-run-writers-wfp fn2-run-writers) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
@@ -47,13 +47,13 @@
                       (list *fn2-checkpoint-metadata-phase-idle* *fn2-checkpoint-metadata-phase-source-drained*))
                      (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
-                     (fn2-checkpoint-metadata-source-selectedp token okind oslot ogen 0 row fn2-checkpoint-metadata-source fn2-csnapshot)
+                     (fn2-checkpoint-source-selectedp token okind oslot ogen 0 row fn2-checkpoint-source fn2-csnapshot)
                      (natp row) (< row (fn2-overlays-rows fn2-overlays))
-                     (equal (fn2-checkpoint-metadata-source-schema 0 fn2-checkpoint-metadata-source) (fn2-overlays-schema row fn2-overlays))
-                     (equal (fn2-checkpoint-metadata-source-order 0 fn2-checkpoint-metadata-source) (fn2-overlays-seq row fn2-overlays))
+                     (equal (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) (fn2-overlays-schema row fn2-overlays))
+                     (equal (fn2-checkpoint-source-order 0 fn2-checkpoint-source) (fn2-overlays-seq row fn2-overlays))
                      (or (not (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)))
                          (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-idle*)
-                         (and (< (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source))
+                         (and (< (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-source-rank 0 fn2-checkpoint-source))
                               (< (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) (fn2-run-builds-rows fn2-run-builds))
                               (equal (fn2-run-builds-phase (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds)
                                      *fn2-run-build-phase-done*)))
@@ -69,27 +69,27 @@
                          (<= (+ fields *fn2-run-build-fields*) entry-base))))
        (mv :snapshot fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-pool)
-       (fn2-run-build-start b (fn2-overlays-schema row fn2-overlays) (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source)
-        wbase crow hbase hslot hgen fields limit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)
-        token okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
+       (fn2-run-build-start b (fn2-overlays-schema row fn2-overlays) (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)
+        wbase crow hbase hslot hgen fields limit 1
+        *fn2-identity-incarnation* okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
       (ordinal (if (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata))
                    (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata) 0))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0
        (phase *fn2-checkpoint-metadata-phase-feeding*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
        (source-kind 0) (source-order (fn2-overlays-seq row fn2-overlays))
-       (run-rank (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source)) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
+       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
   (mv :ok fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; Start the existing left-to-right run cursor at the actual yielded live
 ; resident run. Its old cache identities are used only to read source pages;
 ; every output index is rebuilt by run-build-promote with B identities.
 (defun fn2-checkpoint-metadata-run-begin (token row b wbase crow hbase hslot hgen fields cursor rb scratch scratch-gen limit
-                                            okind oslot ogen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-metadata-source fn2-run-installed
+                                            okind oslot ogen fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-run-installed
                                             fn2-run-builds fn2-run-writers fn2-run-cursors fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-metadata-source fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-cursors fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-source fn2-run-installed fn2-run-builds fn2-run-writers fn2-run-cursors fn2-fields fn2-pool)
   :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-checkpoint-metadata-source-wfp fn2-checkpoint-metadata-source)
+              (fn2-checkpoint-source-wfp fn2-checkpoint-source)
               (fn2-run-installed-wfp fn2-run-installed) (fn2-run-builds-wfp fn2-run-builds)
               (fn2-run-writers-wfp fn2-run-writers) (fn2-run-cursors-wfp fn2-run-cursors) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* ((entry-base (+ (nfix rb) *fn2-run-reader-entry*))
@@ -98,13 +98,13 @@
                       (list *fn2-checkpoint-metadata-phase-idle* *fn2-checkpoint-metadata-phase-source-drained*))
                      (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
                      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
-                     (fn2-checkpoint-metadata-source-selectedp token okind oslot ogen 1 row fn2-checkpoint-metadata-source fn2-csnapshot)
+                     (fn2-checkpoint-source-selectedp token okind oslot ogen 1 row fn2-checkpoint-source fn2-csnapshot)
                      (natp row) (< row (fn2-run-installed-rows fn2-run-installed))
-                     (equal (fn2-checkpoint-metadata-source-schema 0 fn2-checkpoint-metadata-source) (fn2-run-installed-schema row fn2-run-installed))
-                     (equal (fn2-checkpoint-metadata-source-order 0 fn2-checkpoint-metadata-source) (fn2-run-installed-run row fn2-run-installed))
+                     (equal (fn2-checkpoint-source-schema 0 fn2-checkpoint-source) (fn2-run-installed-schema row fn2-run-installed))
+                     (equal (fn2-checkpoint-source-order 0 fn2-checkpoint-source) (fn2-run-installed-run row fn2-run-installed))
                      (or (not (equal token (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)))
                          (equal (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-idle*)
-                         (and (< (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source))
+                         (and (< (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata) (fn2-checkpoint-source-rank 0 fn2-checkpoint-source))
                               (< (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) (fn2-run-builds-rows fn2-run-builds))
                               (equal (fn2-run-builds-phase (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds)
                                      *fn2-run-build-phase-done*)))
@@ -122,9 +122,9 @@
                          (<= (+ fields *fn2-run-build-fields*) rb))))
        (mv :snapshot fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-pool)
-       (fn2-run-build-start b (fn2-run-installed-schema row fn2-run-installed) (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source)
-        wbase crow hbase hslot hgen fields limit (fn2-csnapshot-cut-commit 0 fn2-csnapshot)
-        token okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
+       (fn2-run-build-start b (fn2-run-installed-schema row fn2-run-installed) (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)
+        wbase crow hbase hslot hgen fields limit 1
+        *fn2-identity-incarnation* okind oslot ogen fn2-run-builds fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool))
       ((mv code fn2-run-cursors)
        (fn2-run-cursor-start cursor (fn2-run-installed-schema row fn2-run-installed)
@@ -142,13 +142,13 @@
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0
        (phase *fn2-checkpoint-metadata-phase-feeding*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
        (source-kind 1) (source-order (fn2-run-installed-run row fn2-run-installed))
-       (run-rank (fn2-checkpoint-metadata-source-rank 0 fn2-checkpoint-metadata-source)) (cursor cursor) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
+       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (cursor cursor) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
   (mv :ok fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool)))
 
 ; One page, one 64KiB extent (sixteen 4KiB sectors). Parent-held child Refs
 ; generated by run-build-promote now inherit this exact allocator identity.
 ; Reservation remains retained on every later failure; no rollback is safe.
-(defun fn2-checkpoint-metadata-page (level slot gen fn2-checkpoint-metadata fn2-csnapshot
+(defun fn2-checkpoint-metadata-page-for-build (b level page-kind slot gen fn2-checkpoint-metadata fn2-csnapshot
                                     fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-control
                           fn2-run-builds fn2-run-writers fn2-pool)
@@ -158,13 +158,17 @@
               (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (fn2-checkpoint-metadata-ownerp fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
                      (member (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata)
-                      (list *fn2-checkpoint-metadata-phase-feeding* *fn2-checkpoint-metadata-phase-source-drained*))
+                      (list *fn2-checkpoint-metadata-phase-idle* *fn2-checkpoint-metadata-phase-feeding* *fn2-checkpoint-metadata-phase-source-drained*))
+                     (fn2-run-buildp b fn2-run-builds fn2-run-writers)
+                     (equal (fn2-run-builds-okind b fn2-run-builds) (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata))
+                     (equal (fn2-run-builds-oslot b fn2-run-builds) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata))
+                     (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))
+                     (unsigned-byte-p 8 page-kind)
                      (not (equal slot (fn2-checkpoint-metadata-scratch 0 fn2-checkpoint-metadata)))
                      (natp level) (< level *fn2-run-max-levels*)
-                     (< level (fn2-run-builds-height (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds))
+                     (< level (fn2-run-builds-height b fn2-run-builds))
                      (unsigned-byte-p 60 (+ 1 (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata)))))
        (mv :snapshot fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool))
-      (b (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata))
       (w (fn2-run-level-writer b level))
       ((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-idle*))
        (mv :state fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool))
@@ -179,12 +183,24 @@
               fn2-checkpoint-metadata)))
         (mv code fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
       ((mv code fn2-run-builds fn2-run-writers fn2-pool)
-       (fn2-run-build-page b level slot gen (* extent *fn2-storage-extent-units*) epoch allocation
+       (fn2-run-build-page-kind b level slot gen (* extent *fn2-storage-extent-units*) epoch allocation page-kind
         fn2-run-builds fn2-run-writers fn2-pool))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0 (extent extent) (writer w)
        (ordinal (+ 1 (fn2-checkpoint-metadata-ordinal 0 fn2-checkpoint-metadata)))
        (phase (if (eq code :ok) (fn2-checkpoint-metadata-phase 0 fn2-checkpoint-metadata) *fn2-checkpoint-metadata-phase-uncertain*)))))
   (mv code fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
+
+(defun fn2-checkpoint-metadata-page (level slot gen fn2-checkpoint-metadata fn2-csnapshot
+                                    fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
+  :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control)
+              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))))
+ (if (not (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata)))
+     (mv :bounds fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
+  (fn2-checkpoint-metadata-page-for-build (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata)
+   level (if (zp level) *page-kind-run-data* *page-kind-run-index*) slot gen fn2-checkpoint-metadata fn2-csnapshot
+   fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; Consume a retained decoded entry once, including ownership crossing. Both
 ; source readers use this same continuation; source advancement is blocked
@@ -325,11 +341,22 @@
         (fn2-checkpoint-metadata-scratch-gen 0 fn2-checkpoint-metadata) kind owner generation fn2-pool)
        (mv :ok fn2-pool)))
       ((unless (eq code :ok)) (fn2-checkpoint-metadata-run-mv code))
+      (reading-header (and (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
+                           (equal (fn2-run-cursors-phase c fn2-run-cursors) *fn2-run-cursor-phase-header*)))
       ((mv code fn2-run-cursors fn2-run-paths fn2-fields)
        (if (equal (fn2-checkpoint-metadata-held 0 fn2-checkpoint-metadata) 0)
         (fn2-run-scan-step c (min budget 4096) eb kind owner generation
          fn2-run-cursors fn2-run-paths fn2-run-cache fn2-fields fn2-pool)
         (mv :entry fn2-run-cursors fn2-run-paths fn2-fields)))
+      ((unless (or (not reading-header) (not (eq code :more))
+                    (let ((rb (fn2-run-cursors-rb c fn2-run-cursors)))
+                     (and (fn2-run-readerp rb fn2-fields)
+                          (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-history*) fn2-fields) 1)
+                          (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-incarnation*) fn2-fields) *fn2-identity-incarnation*)
+                          (equal (fn2-run-hdr rb schema) (fn2-run-installed-schema r fn2-run-installed))
+                          (equal (fn2-run-hdr rb run) (fn2-run-installed-run r fn2-run-installed))))))
+       (let ((fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-phase 0 *fn2-checkpoint-metadata-phase-uncertain* fn2-checkpoint-metadata)))
+        (fn2-checkpoint-metadata-run-mv :source-identity)))
       ((when (eq code :end))
        (b* (((unless (equal (fn2-checkpoint-metadata-position 0 fn2-checkpoint-metadata)
                             (fn2-run-installed-entries r fn2-run-installed)))
