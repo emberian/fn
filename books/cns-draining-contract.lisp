@@ -63,6 +63,8 @@
        (equal (fn2-cns-drain-cell 'fn2-pool-owner-slot slot pool) id)
        (equal (fn2-cns-drain-cell 'fn2-pool-owner-gen slot pool) ogen)
        (equal (fn2-cns-drain-cell 'fn2-pool-out-count slot pool) 0)
+       (< (fn2-cns-drain-get 'fn2-pool-retired-count pool)
+          (fn2-cns-drain-get 'fn2-pool-rows pool))
        (let ((class (fn2-cns-drain-cell 'fn2-pool-class slot pool)))
          (and (natp class) (< class (fn2-cns-drain-get 'fn2-pool-nclasses pool))
               (< (fn2-cns-drain-cell 'fn2-pool-class-counts class pool)
@@ -101,6 +103,7 @@
          (equal (fn2-cns-drain-cell 'fn2-cns-phase slot own) *fn2-cns-state-draining*)
          (equal (fn2-cns-drain-cell 'fn2-cns-stopped slot own) 0)
          (equal (fn2-cns-drain-cell 'fn2-cns-pending slot own) 0)
+         (equal (fn2-cns-drain-cell 'fn2-cns-edge slot own) *fn2-none*)
          (member-equal (fn2-cns-drain-cell 'fn2-cns-lease slot own)
                        (list *fn2-cns-lease-none* *fn2-cns-lease-held*))
          (equal (fn2-cns-drain-get 'fn2-control-stop ctl) 0)
@@ -193,6 +196,36 @@
     (and (member-eq stage '(:workspace :name))
          (equal (list bytes steps descriptors runnable after)
                 (list 0 *fn2-work-state* 0 nil expected)))))
+
+; This universal slice has an independent observable conclusion: even a
+; failed lease release cannot alter any timer or scheduler queue. The lease
+; premise is necessary: the final draining step clears its own timer.
+(defthm-owed fn2-cns-draining-held-scheduler-contract (id budget core)
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (equal (fn2-cns-snapshot-read-code id core) :ok)
+                (equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
+    (equal (fn2-core-sched (mv-nth 4 (fn2-cns-run-draining id budget core)))
+           (fn2-core-sched core)))
+  :schema :invariant :claim :semantic
+  :teeth (fn2-cns-drain-held-witness fn2-cns-drain-without-held-counterexample)
+  :doc "The actual draining callback preserves all scheduler/timer state during its held-lease intermediate step; removing the held-lease premise admits the timer-clearing final step.")
+(defthm fn2-cns-draining-held-keeps-timer
+  (implies (and (fn2-corep core) (fn2-core-wfp core)
+                (equal (fn2-cns-snapshot-read-code id core) :ok)
+                (equal (fn2-cns-row-lease id core) *fn2-cns-lease-held*))
+    (equal (fn2-core-sched (mv-nth 4 (fn2-cns-run-draining id budget core)))
+           (fn2-core-sched core)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory
+           (e/d (fn2-cns-run-draining fn2-cns-lease-release
+                 fn2-cns-write+lslot+lgen+lease fn2-core-stop
+                 fn2-machine-refuse-write fn2-core-sched
+                 update-fn2-core-pool update-fn2-core-control update-fn2-cns-table)
+                (fn2-cns-snapshot-read-code fn2-core-release-children
+                 fn2-control-record-stop)))))
+(fn2-owed-discharge fn2-cns-draining-held-scheduler-contract
+                    fn2-cns-draining-held-keeps-timer)
 
 ; Full served-domain admission and proof are the destination. The separate
 ; universal theorem is intentionally not replaced by fixture success.
