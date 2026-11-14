@@ -155,6 +155,21 @@ checker has no closure-wide canonical-body-evaluation or primitive-domain gate.
 `Translation.BodyCorrect` defines an interface; defining it does not instantiate
 it for the served closure. The echo FREE certificate is a scoped precedent.
 
+The new `ACL2/CanonicalEvaluation.lean` foundation evaluates every user call
+through its decoded canonical body, without an arbitrary function-dispatch
+oracle. It requires explicit domains at reached calls and separates primitive
+object correspondence from body evaluation. Its integer bump/twice-bump fixture
+checks concrete emitted dispatch as well as this closed evaluation, including a
+callee-only mutation of the composed caller and a primitive-domain-removal
+counterexample. All seven Lean theorem censuses passed with the allowed axioms.
+`tests/translation-domain-unit.lisp` independently checks the exact admitted
+bodies and integer guards; its record certification passed and published under
+qualified toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`
+in run `certify-20261114T004844Z-3462921`. This is a two-function foundation
+fixture, not a served-root certificate. Binding supported input domains to the
+current served guards, handling canonical symbol identity, and joining every
+required closure obligation remain owned work.
+
 1. **Current package and closure.** Once integration supplies a coherent source
    revision, regenerate registry, canonical packet and LayerA bodies from the
    same current ACL2 world. Qualify `reference`, `translation-validation` and
