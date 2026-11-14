@@ -12,6 +12,12 @@
       (fn2-origin-incarnation fn2-origin))
   (mv lineage domain incarnation)))
 (in-theory (disable fn2-core-origin-values))
+(defun fn2-core-history-values (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-origin (fn2-core-origin fn2-core))) (history incarnation)
+  (mv (fn2-origin-history fn2-origin) (fn2-origin-history-incarnation fn2-origin))
+  (mv history incarnation)))
+(in-theory (disable fn2-core-history-values))
 ; The grant service's owner-declared sources (defwait, machines.lisp): per
 ; registered wait kind, its ready/grant pair constrained with the liveness
 ; and shape facts and attached to defaults that grant nothing; the owner

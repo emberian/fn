@@ -44,7 +44,9 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
     (setf profile (fn2-origin-profile-from-text profile
                     (sb-ext:posix-getenv "FN2_ORIGIN_LINEAGE")
                     (sb-ext:posix-getenv "FN2_ORIGIN_DOMAIN")
-                    (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")))
+                    (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")
+                    (sb-ext:posix-getenv "FN2_HISTORY_ID")
+                    (sb-ext:posix-getenv "FN2_HISTORY_INCARNATION")))
     (when storage-fault-model
       (setf profile (put-assoc-equal :storage-fault-model storage-fault-model profile)))
     (when owner

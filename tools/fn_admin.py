@@ -786,7 +786,9 @@ def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:
     """Carry explicit deployment names verbatim to the ACL2 startup parser."""
     for option, variable in (("origin_lineage", "FN2_ORIGIN_LINEAGE"),
                              ("origin_domain", "FN2_ORIGIN_DOMAIN"),
-                             ("origin_incarnation", "FN2_ORIGIN_INCARNATION")):
+                             ("origin_incarnation", "FN2_ORIGIN_INCARNATION"),
+                             ("history_id", "FN2_HISTORY_ID"),
+                             ("history_incarnation", "FN2_HISTORY_INCARNATION")):
         value = getattr(args, option, None)
         if value is not None:
             env[variable] = value
@@ -1320,6 +1322,9 @@ def build_parser() -> argparse.ArgumentParser:
                                    help="assigned commit-domain name (required here or FN2_ORIGIN_DOMAIN)")
         origin_parser.add_argument("--origin-incarnation", metavar="ID",
                                    help="history incarnation; must match persisted genesis on restart")
+
+        origin_parser.add_argument("--history-id", metavar="ID", help="persisted physical history name")
+        origin_parser.add_argument("--history-incarnation", metavar="ID", help="persisted physical history incarnation")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")
     princ_sub = p_princ.add_subparsers(dest="principal_cmd", required=True)
