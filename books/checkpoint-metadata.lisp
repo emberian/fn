@@ -1,33 +1,8 @@
-; Rebuild held C sources through the served run engine. Resident cache units
-; never enter persistent headers: every page gets its B reservation first.
+; Actual held source ingestion; codecs, ownership crossing and retention
+; share one continuation for overlay and installed-run leaf entries.
 (in-package "ACL2")
-(include-book "checkpoint-construction-owner")
-(include-book "run-entry-rehome")
-(include-book "checkpoint-metadata-source")
+(include-book "checkpoint-metadata-retention")
 (fn2-book-layer :c)
-
-(defcolumns fn2-checkpoint-metadata
- ((phase (:enum fn2-checkpoint-metadata-phase (:idle :feeding :source-drained :uncertain)))
-  (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (source-kind :u8) (source-order :u60) (run-rank :u60) (cursor :u32) (build :u32) (source-row :u32) (position :u60) (entry-base :u32)
-  (ordinal :u60) (extent :u32) (writer :u32)
-  (scratch :u32) (scratch-gen :u60) (held :bool) (copy-field :u32) (copy-offset :u32) (copy-end :u32)))
-
-(defun fn2-checkpoint-metadata-ownerp (fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
- (declare (xargs :stobjs (fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)
-  :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
-              (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers))))
- (and (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
-      (fn2-csnapshot-ownerp (fn2-checkpoint-metadata-token 0 fn2-checkpoint-metadata)
-       (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata)
-       (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata)
-       (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata) fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
-      (let ((b (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata)))
-       (and (fn2-run-buildp b fn2-run-builds fn2-run-writers)
-            (equal (fn2-run-builds-okind b fn2-run-builds) (fn2-checkpoint-metadata-owner-kind 0 fn2-checkpoint-metadata))
-            (equal (fn2-run-builds-oslot b fn2-run-builds) (fn2-checkpoint-metadata-owner-slot 0 fn2-checkpoint-metadata))
-            (equal (fn2-run-builds-ogen b fn2-run-builds) (fn2-checkpoint-metadata-owner-gen 0 fn2-checkpoint-metadata))))))
 
 ; Bind only the overlay just yielded by the held traversal. Schema and merge
 ; order come from that row, rather than a caller-supplied descriptor. The
@@ -78,7 +53,7 @@
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0
        (phase *fn2-checkpoint-metadata-phase-feeding*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
        (source-kind 0) (source-order (fn2-overlays-seq row fn2-overlays))
-       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
+       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (retention-stage 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
   (mv :ok fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; Start the existing left-to-right run cursor at the actual yielded live
@@ -142,7 +117,7 @@
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0
        (phase *fn2-checkpoint-metadata-phase-feeding*) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
        (source-kind 1) (source-order (fn2-run-installed-run row fn2-run-installed))
-       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (cursor cursor) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
+       (run-rank (fn2-checkpoint-source-rank 0 fn2-checkpoint-source)) (cursor cursor) (scratch scratch) (scratch-gen scratch-gen) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (retention-stage 0) (build b) (source-row row) (position 0) (entry-base entry-base) (ordinal ordinal))))
   (mv :ok fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-cursors fn2-pool)))
 
 ; One page, one 64KiB extent (sixteen 4KiB sectors). Parent-held child Refs
@@ -237,10 +212,12 @@
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0 (copy-field field) (copy-offset copied) (copy-end end)))
       ((unless (eq code :done))
        (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
+      ((unless (equal (fn2-checkpoint-metadata-retention-stage 0 fn2-checkpoint-metadata) 1))
+       (mv :retention-required fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-build-add b eb fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       (fn2-checkpoint-metadata (if (eq code :ok)
-       (fn2-checkpoint-metadata-put 0 (position (+ 1 pos)) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0)) fn2-checkpoint-metadata)))
+       (fn2-checkpoint-metadata-put 0 (position (+ 1 pos)) (held 0) (copy-field 0) (copy-offset 0) (copy-end 0) (retention-stage 0)) fn2-checkpoint-metadata)))
   (mv code fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)))
 
 ; Decode and add one actual sorted overlay row. A busy/full page preserves
