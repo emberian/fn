@@ -24,9 +24,9 @@
   :extra-fields
   ((fn2-alloc-freeze-phase :type (unsigned-byte 8) :initially 0 :why "0 open, 1 copying a checkpoint map, 2 installing its exact construction set.")
    (fn2-alloc-freeze-token :type (unsigned-byte 60) :initially 0 :why "Exact retained construction token.")
-   (fn2-alloc-freeze-owner-kind :type (unsigned-byte 8) :initially 0)
-   (fn2-alloc-freeze-owner-slot :type (unsigned-byte 32) :initially 0)
-   (fn2-alloc-freeze-owner-gen :type (unsigned-byte 60) :initially 0)
+   (fn2-alloc-freeze-owner-kind :type (unsigned-byte 8) :initially 0 :why "Machine kind retaining the physical checkpoint construction gate.")
+   (fn2-alloc-freeze-owner-slot :type (unsigned-byte 32) :initially 0 :why "Exact machine row retaining the physical checkpoint construction gate.")
+   (fn2-alloc-freeze-owner-gen :type (unsigned-byte 60) :initially 0 :why "Generation rejects a recycled machine row as checkpoint gate owner.")
    (fn2-alloc-current-epoch :type (unsigned-byte 60) :initially 0 :why "Allocator-wide writer epoch, one per incarnation, not per extent row.")
    (fn2-alloc-next-counter :type (unsigned-byte 60) :initially 0 :why "Allocator-wide allocation counter within the current epoch.")
    (fn2-alloc-epoch-begun :type (unsigned-byte 1) :initially 0 :why "Whether the current writer epoch has begun; allocator-wide.")
