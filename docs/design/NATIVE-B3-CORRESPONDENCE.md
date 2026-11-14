@@ -53,13 +53,38 @@ The unchanged indexed observation, Merkle reconstruction and other-row frame,
 conditional whole-effect theorem, both alias positives and full frame-removal
 witness were admitted. The whole-effect proof took 3,691 steps / 0.04 seconds;
 the two positives took 255 steps each, and frame removal took 437 steps.
-These are author REPL results. The subsequent exact-source record at
-`390c57de0e` passed `certify-20261114T230520Z-536071`: 16 dependency books,
-12 qualified cache inputs and four newly certified books, under toolchain
+These author results are retained under the lane's
+`build/native-contract-author/`.
+
+The exact donor `390c57de0e006e4ab06becf6c278daa04c4d7782` subsequently passed
+record certification `certify-20261114T230520Z-536071`: 16 books, 12 qualified
+compiled dependencies reused and four certified/published, with no triage
+failures, under toolchain
 `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
-Runtime qualification of the newly connected shared-store path remains pending.
-Author and record evidence is retained under the lane's
-`build/native-contract-author/` and `build/native-contract-record/`.
+The source identity is
+`4deace910449b0db0f7c49e8dc37d1ea2a765ac5ad70cbba9ecb0b1533105d42`.
+Merkle's 28.971-second whole-book cost remained a D26 issue; later hint work is
+separate evidence. The donor certification does not cover newer profile or
+operations source changes in the composed root.
+
+Actual native execution then passed on the narrower **25-book qualified donor
+world**, loading `native-b3-correspondence` and the actual zero-prefix provider,
+`format-check`. No source fallback or cold certification ran. Its source
+identity is
+`82a7566fac33e240ab7bd0b3550af1c2062422645cf53c1ca34c19dff0940e2a`.
+Raw BLAKE3, shared-store and C input bytes were checked against current
+`66f61818a11dec05d49d8d383897d1e3d9981b69`. The C library was reused only after
+matching its C-source and compiler receipt. Process startup qualification,
+whole-carrier equality for both actual aliased native node calls, and the
+protected sibling passed; the binding detector reported **10,034
+unchanged-or-declared bindings and eight declared replacements**.
+
+A separate process interposed an actual C-backed zero-prefix call that returned
+the correct count, then changed byte N outside [0,N). Qualification refused it
+with `zero-prefix result or pool frame` before the load-success marker. This
+establishes frame sensitivity of the qualifier, not universal C memory safety.
+The donor-model/current-primitive scope is retained in
+`build/native-contract-runtime/`; it is not a current-root or full-host pass.
 
 The eventual full-host batch must load this contract book in the same current
 world as TLS and `tests/native-device-fault-boundary.lsp`. Earlier e892 native
