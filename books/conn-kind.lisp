@@ -53,7 +53,7 @@
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
-          (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query)))
+          (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
           (upgrade-target (:enum fn2-conn-upgrade-target (:none :tls :compress)))
@@ -97,7 +97,7 @@
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
            (upload *fn2-none*) (query *fn2-none*) (tls-token *fn2-none*) (tls-op *fn2-none*))
  :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query))
- :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:cancel-result)))
+ :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:compress-result) (:cancel-result)))
 
 ; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;
 ; the admission section (assembly-callbacks-a) makes its core face.
