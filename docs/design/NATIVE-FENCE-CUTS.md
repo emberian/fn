@@ -127,8 +127,11 @@ qualified artifacts and certified all six missing implementation books, includin
 the new receipt schema, simulator state and `sim/native-cut-state`. The new
 `tests/native-cut-state-unit` stopped at translation because its isolated include
 set lacked `b*`; its assertions did not execute. The test now uses ordinary
-`let*` with the same bindings, but that correction remains unrun. Triage reports
-one source error and no cascade, limit or kill. `sim/sim-state` took 34.17 s,
+`let*` with the same bindings. On `d6be64b81`, a changed-test-only record gate
+reused all 14 dependencies and certified the test in 0.818 s, with zero triage
+findings. Its mutable-state assertions exercise packet identity, stale-generation
+rejection, distinct raw columns and active 1→4→1 preservation. The earlier run
+reports one source error and no cascade, limit or kill. `sim/sim-state` took 34.17 s,
 an outstanding proof-cost defect. Its synthetic count=3/aux=5 receipt deliberately
 distinguishes columns and is unreachable for an actual physical Fence; this
 control carries no physical-cut qualification.
