@@ -203,3 +203,26 @@
      (fn2-decl-statement-body 'fn2-evidence-opaque-write$owed (w state))) (w state))
   (declare (ignore subject))
   (equal problem :unbound-result-projection)))
+
+; Even a producer that really occurs in C can be irrelevant to C's truth.
+; This passes projection and normalized-mutant inequality; replacing both
+; original occurrences leaves C true, so ORIGINAL mutation must refuse it.
+(defun fn2-evidence-domain-plus-one (x) (+ 1 x))
+(defthm fn2-evidence-dead-producer-equivalence
+ (implies (natp x)
+  (equal (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-clamp x))
+         (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x))))
+ :rule-classes nil)
+(must-fail
+ (progn
+  (defthm-owed fn2-evidence-dead-producer (x)
+   (implies (natp x)
+    (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-clamp x)))
+   :sides (:concrete fn2-evidence-domain-clamp :reference fn2-evidence-domain-identity)
+   :teeth (fn2-evidence-correspondence-runtime-control))
+  (defsquare-evidence fn2-evidence-dead-producer
+   :correspondence fn2-evidence-dead-producer-equivalence
+   :positive ((x '3))
+   :negative (:kind :mutation :at fn2-evidence-domain-clamp
+              :replace fn2-evidence-domain-plus-one :bindings ((x '3)))))))
+(assert-event (not (fn2-decl-row '(:square fn2-evidence-dead-producer) (w state))))
