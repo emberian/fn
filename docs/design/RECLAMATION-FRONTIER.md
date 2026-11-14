@@ -106,3 +106,11 @@ lifecycle records (including checkpoint and physical release evidence), the
 current transaction record allowlist and `fn2-rp-body` do not accept/replay
 them. The release coordinator must join the actual journal persistence and
 recovery path, including checkpoint-root protection, before any call to FREE.
+
+The persistence interval also needs an admission rule: a successful preflight
+must not let a new durable root or custody obligation publish against an
+extent whose release record is becoming durable. A late ephemeral read pin
+can make the final runtime recheck retain the extent, but this alone does not
+justify replaying release in the presence of a newly durable protector.
+Retirement/publication serialization must prohibit that durable reference
+race; recovery must establish backend exclusion for pre-crash physical I/O.
