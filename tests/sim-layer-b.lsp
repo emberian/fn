@@ -49,7 +49,7 @@
       (assert (fn2-b-control-pass r))))
 ;; B5 scenarios 15 (damage vs tail) and 16 (independent witness), tiny profile,
   ;; both barrier modes; every case runs the real recovery and RECOVERY.
-  (labels ((post (kind frontier budget faults) (list (fn2-cm-profile kind t t frontier 0 budget) faults 16))
+  (labels ((post (kind frontier budget faults) (list (fn2-cm-profile kind t t frontier 0 budget) faults (* 5 *fn2-storage-extent-units*)))
            (run15 (mode cut faults)
              (let ((r (fn2-b-one *fn2-profile-tiny* 20261028 cut :none mode 2 (post :broad nil 1 faults))))
                (unless (eq (fn2-b-result-status r) :pass)
@@ -102,7 +102,9 @@
                (dotimes (i 5) (fn2-b-one *fn2-profile-tiny* 20261028 1000000 :none 0 2
                                          (list (fn2-cm-profile :crash-only t t nil 0 0) nil sectors)))
                (/ (- (get-internal-real-time) start) internal-time-units-per-second 5.0))))
-      (let* ((small (timed 16)) (large (timed 192)) (mib (/ (* 59 4096) 1048576.0)))
+      (let* ((small (timed (* 5 *fn2-storage-extent-units*)))
+             (large (timed (* 64 *fn2-storage-extent-units*)))
+             (mib (/ (* 59 *fn2-storage-extent-bytes*) 1048576.0)))
         (format t "B5 RECOVERY TIME arena-scan seconds-per-MiB=~,3F (5-run means: 5 extents ~,3Fs, 64 extents ~,3Fs; simulator, ACL2 hashing)~%"
                 (/ (- large small) mib) small large))))
   (let ((seeds (parse-integer (or (sb-ext:posix-getenv "FN2_B_SEEDS") "10000")))

@@ -9,10 +9,11 @@
 ; own BLAKE3) and its chaining value in the stored octets' BLAKE3 tree (the
 ; subtree of its four chunks at chunk counter 4i; a final block shorter than a
 ; unit is no complete subtree, and its entry carries its own BLAKE3 there).
-; Three consecutive blocks share one extent (an extent is
-; *fn2-commit-write-resources* units), so block i is unit i mod 3 of its
+; Three consecutive blocks share one sixteen-unit allocation (the current
+; payload packing uses *fn2-upload-payload-units* units), so block i is unit i mod 3 of its
 ; extent, and the entry of a block at unit 0 of its extent is the extent's
-; only owner record the article keeps.
+; only owner record the article keeps. The allocation's physical stride is
+; *fn2-storage-extent-units*, independently of that packing policy.
 ;
 ; The manifest is stored in an extent of its own, its units in order; an
 ; entry never straddles two units (one starts in the next unit when fewer
@@ -44,10 +45,10 @@
 ;; the manifest is one extent at most (one reference per article, one level).
 (defun fn2-am-manifestp (total)
   (declare (xargs :guard t))
-  (< *fn2-commit-extent-bytes* (nfix total)))
+  (< *fn2-upload-payload-bytes* (nfix total)))
 (defun fn2-am-fits (total)
   (declare (xargs :guard t))
-  (<= (fn2-am-units total) *fn2-commit-write-resources*))
+  (<= (fn2-am-units total) *fn2-upload-payload-units*))
 (assert-event (and (fn2-am-fits *fn2-am-stored-max*) (not (fn2-am-fits (+ 1 *fn2-am-stored-max*)))))
 ;; Where the entry after manifest octet OFF starts (the packing rule).
 (defun fn2-am-entry-at (off)

@@ -97,7 +97,7 @@
 (defcost fn2-upload-page-zero-to :answers (:ok :more :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-pool)
   :doc "Zero the store page from its fill toward an offset, one unit at most (:more: not yet there).")
-(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-extent-bytes*
+(defcost fn2-upload-extents-of :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-payload-bytes*
   :tables (fn2-core-extents fn2-core-pool fn2-core-fields)
   :doc "Commit (to the article) or settle every extent stored octets occupy: the manifest's and each block's.")
 (defcost fn2-upload-settle-unit :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
@@ -587,9 +587,9 @@
                 (mv code next lo len unit epoch alloc fn2-core)))
              ((unless (and (eq code :ok) (natp next) (natp unit) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
              ((mv code fn2-core)
-              (cond ((not (equal (mod unit *fn2-commit-write-resources*) 0)) (mv :ok fn2-core))
-                    (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
-                    (t (fn2-upload-payload-settle (floor unit *fn2-commit-write-resources*) epoch alloc fn2-core))))
+              (cond ((not (equal (mod unit *fn2-storage-extent-units*) 0)) (mv :ok fn2-core))
+                    (commit (fn2-upload-extent-commit (floor unit *fn2-storage-extent-units*) epoch alloc event fn2-core))
+                    (t (fn2-upload-payload-settle (floor unit *fn2-storage-extent-units*) epoch alloc fn2-core))))
              ((unless (eq code :ok)) (mv code fn2-core)))
           (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) lim mfill
                                        okind oslot ogen fn2-core))))))

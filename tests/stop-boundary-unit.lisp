@@ -7,7 +7,7 @@
 ; B's commit profile (tests/commit-durable-all-unit.lisp's fn2-cda-profile).
 (defconst *fn2-sbu-profile*
   (let* ((p *fn2-profile-tiny*)
-         (p (put-assoc-equal :sim-sectors 16 p))
+         (p (put-assoc-equal :sim-sectors (* 5 *fn2-storage-extent-units*) p))
          (p (put-assoc-equal :extent-slots 5 p))
          (p (put-assoc-equal :pool-classes (append (fn2-profile-pool-classes p) '((8 . 4096))) p)))
     (put-assoc-equal :commit-barrier-mode 0 p)))
