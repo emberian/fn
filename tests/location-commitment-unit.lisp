@@ -3,7 +3,7 @@
 ; Python fixture oracle (tests/surface/blake3_pure.py), not produced by the
 ; ACL2 hasher under test. This finite vector is not collision resistance.
 (in-package "ACL2")
-(include-book "../books/machines-b")
+(include-book "../books/block-integrity")
 (defconst *fn2-lcu-abc-hash*
  '(100 55 179 172 56 70 81 51 255 182 59 117 39 58 141 181
    72 197 88 70 93 121 219 3 253 53 156 108 213 189 157 133))
