@@ -296,13 +296,13 @@
    (fn2-checkpoint-map-root-hash-copy (- left 1) (+ i 1) extent (+ dst 1) fn2-checkpoint-page-verified fn2-checkpoint-bytes))))
 
 (defun fn2-checkpoint-map-consume-page (fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoint-construction fn2-extents
-                                       fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
+                                       fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoint-construction fn2-extents
-                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
+                          fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
   :guard (and (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
               (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified)
-              (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-pool-wfp fn2-pool))))
+              (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (fn2-checkpoint-map-ownerp fn2-checkpoint-map-build fn2-csnapshot fn2-extents)
                      (equal (fn2-checkpoint-map-build-phase 0 fn2-checkpoint-map-build) *fn2-checkpoint-map-build-phase-bound*)))
        (mv :state fn2-checkpoint-map-build fn2-checkpoint-refs fn2-checkpoint-bytes))
@@ -312,6 +312,7 @@
       (owner (fn2-checkpoint-map-build-owner-slot 0 fn2-checkpoint-map-build)) (generation (fn2-checkpoint-map-build-owner-gen 0 fn2-checkpoint-map-build))
       (c (fn2-checkpoint-map-build-candidate 0 fn2-checkpoint-map-build)) (r (+ (* 6 c) role))
       ((unless (and (member-equal role '(2 5))
+        (fn2-checkpoint-builder-ownerp c token kind owner generation fn2-checkpoints)
         (fn2-checkpoint-page-completed-extent-p token kind owner generation role ordinal e fn2-checkpoint-page-verified fn2-checkpoint-construction fn2-extents)
         (equal (fn2-checkpoint-page-verified-epoch e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-epoch 0 fn2-checkpoint-map-build))
         (equal (fn2-checkpoint-page-verified-allocation e fn2-checkpoint-page-verified) (fn2-checkpoint-map-build-allocation 0 fn2-checkpoint-map-build))
@@ -458,8 +459,8 @@
          ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows nil :frame fn2-checkpoint-bytes)))
 
 (fn2-checkpoint-map-build-preserves fn2-checkpoint-map-consume-page
- (fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
- :hyps ((fn2-checkpoint-map-buildp fn2-checkpoint-map-build) (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ (fn2-checkpoint-map-build fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-pool)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-map-buildp fn2-checkpoint-map-build) (fn2-checkpoint-map-build-wfp fn2-checkpoint-map-build) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-pagep fn2-checkpoint-page) (fn2-checkpoint-page-wfp fn2-checkpoint-page) (fn2-checkpoint-page-verifiedp fn2-checkpoint-page-verified) (fn2-checkpoint-page-verified-wfp fn2-checkpoint-page-verified) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
  :specs (("-CHECKPOINT-MAP-BUILD-TYPE" fn2-checkpoint-map-buildp 1)
          ("-CHECKPOINT-MAP-BUILD-WFP" fn2-checkpoint-map-build-wfp 1)
          ("-CHECKPOINT-MAP-BUILD-ROWS" fn2-checkpoint-map-build-rows 1 :frame fn2-checkpoint-map-build)
@@ -500,5 +501,5 @@
 (defcost fn2-checkpoint-map-consume-page-op :child fn2-checkpoint-map-consume-page
  :answers (:state :pending :more :done)
  :tables (fn2-core-checkpoint-map-build fn2-core-csnapshot fn2-core-checkpoint-construction fn2-core-extents
-           fn2-core-checkpoint-page fn2-core-checkpoint-page-verified fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-pool)
+           fn2-core-checkpoint-page fn2-core-checkpoint-page-verified fn2-core-checkpoints fn2-core-checkpoint-refs fn2-core-checkpoint-bytes fn2-core-pool)
  :doc "Consume exact physical completion and handback; advance backward or capture the completed root, never caller readiness.")
