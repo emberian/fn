@@ -77,6 +77,20 @@
            (enable fn2-machines-partition-reservedp fn2-machines-reservation-valuesp
              fn2-machines-reservation-view fn2-machines-active-counti
              fn2-machines-admission-creditsi fn2-machines-connection-counti))))
+(defthm fn2-machines-wait-reason-reservation-counters-frame
+  (and
+   (equal (fn2-machines-active-counti ord
+            (fn2-machines-set-wait-reason id reason machines))
+          (fn2-machines-active-counti ord machines))
+   (equal (fn2-machines-admission-creditsi ord
+            (fn2-machines-set-wait-reason id reason machines))
+          (fn2-machines-admission-creditsi ord machines))
+   (equal (fn2-machines-connection-counti ord
+            (fn2-machines-set-wait-reason id reason machines))
+          (fn2-machines-connection-counti ord machines)))
+  :hints (("Goal" :in-theory
+           (enable fn2-machines-set-wait-reason fn2-machines-active-counti
+                   fn2-machines-admission-creditsi fn2-machines-connection-counti))))
 (defthm fn2-machines-park-taken-reservation-frame
   (equal
    (fn2-machines-partition-reservedp query
