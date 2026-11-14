@@ -41,3 +41,14 @@
                (natp a) (< a 4) (natp b) (< b 4) (not (equal a b)))
   (not (equal (mv-nth 1 (fn2-checkpoint-anchor-offset a size extents groups))
               (mv-nth 1 (fn2-checkpoint-anchor-offset b size extents groups))))))
+
+; Geometry hash v1 preimage: the exact 21 ASCII octets below, immediately
+; followed by this generated codec's canonical encoding. No padding, newline,
+; Lisp printing or terminating NUL enters the hash. Size is bytes; all physical
+; positions are 4096-byte units. Epoch units are the final two units.
+(defconst *fn2-checkpoint-geometry-domain* "fn2/image-geometry/v1")
+(deflayout fn2-checkpoint-geometry-record
+ '((version :u8) (image-bytes :varint) (sector-bytes :varint) (page-bytes :varint)
+   (extent-units :varint) (extents :varint) (groups :varint) (bootstrap :varint)
+   (anchor-0 :varint) (anchor-1 :varint) (anchor-2 :varint) (anchor-3 :varint)
+   (epoch-0 :varint) (epoch-1 :varint) (storage-domain :varint)))
