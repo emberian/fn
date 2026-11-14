@@ -301,3 +301,10 @@ existing ten-second bound in the qualified callback world. The final root took
 prototype helpers. The corresponding txn child declaration is now wired in a
 consumer checkpoint; current B callback certification and production evidence
 remain pending.
+
+The optional summary generator also handles a child returning exactly one stobj
+without scalar results: its logical result is that stobj, not an MV tuple.
+Commit 2dab7a891 fixes that projection and adds a real core-only source, composed
+caller, full-state witness, and concrete wrong-projection countermodel. Exact
+record `certify-20261114T031709Z-3622383` passed the same 22-book pre-B fixture
+closure (20 reused, two built; no book over ten seconds).
