@@ -46,6 +46,41 @@
        (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool)))
   (mv phase slot gen code)))
 
+; A supported article-acceptance member, as in commit-txn-unit: general txn
+; admission opens its collector, unlike the closed-at-once keyed API.
+(defun fn2-retirement-live-layout-values (layout)
+ (declare (xargs :verify-guards nil :measure (len layout)))
+ (if (atom layout) nil
+  (let ((kind (cadar layout)))
+   (cons (cond ((eq kind :digest) (cons 1 (make-list 32 :initial-element 7)))
+               ((and (consp kind) (eq (car kind) :octets)) '(60 97 64 98 62))
+               ((and (consp kind) (eq (car kind) :enum)) 0)
+               (t 1))
+         (fn2-retirement-live-layout-values (cdr layout))))))
+(defconst *fn2-retirement-live-acceptance-body*
+ (fn2-layout-octets *fn2-format-article-acceptance*
+                    (fn2-retirement-live-layout-values *fn2-format-article-acceptance*)))
+(defconst *fn2-retirement-live-open-member*
+ (append (fn2-layout-octets *fn2-format-txn-record*
+           (list *record-kind-article-acceptance* (len *fn2-retirement-live-acceptance-body*)))
+         *fn2-retirement-live-acceptance-body*))
+(defun fn2-retirement-live-fill (bytes at slot gen okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil :measure (len bytes)))
+ (if (atom bytes) (mv :ok fn2-core)
+  (mv-let (code fn2-core) (fn2-core-write slot gen at (car bytes) okind oslot ogen fn2-core)
+   (if (not (eq code :ok)) (mv code fn2-core)
+    (fn2-retirement-live-fill (cdr bytes) (+ 1 at) slot gen okind oslot ogen fn2-core)))))
+(defun fn2-retirement-live-open (okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* (((mv reserved slot gen fn2-core)
+       (fn2-core-reserve (fn2-scribe-window-class fn2-core) okind oslot ogen fn2-core))
+      ((unless (eq reserved :ok)) (mv reserved 0 0 fn2-core))
+      ((mv filled fn2-core)
+       (fn2-retirement-live-fill *fn2-retirement-live-open-member* 0 slot gen okind oslot ogen fn2-core))
+      ((unless (eq filled :ok)) (mv filled 0 0 fn2-core)))
+  ; Retain this owner's ordinary workspace through the writer's completion.
+  (fn2-commit-admit-txn slot gen (len *fn2-retirement-live-open-member*) okind oslot ogen fn2-core)))
+
 (defun fn2-retirement-live-body (fault joinp fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* ((profile (fn2-b-test-profile *fn2-profile-tiny* 0))
@@ -69,10 +104,10 @@
       ((mv extent epoch allocation) (fn2-retirement-live-target old-batch fn2-core))
       ; With no intervening turn, this real member leaves its collector open.
       ; The retirement producer must join it and encode that same batch.
-      ((mv joined & join-batch join-event fn2-core)
+      ((mv joined join-batch join-event fn2-core)
        (if joinp
-           (fn2-commit-admit-keyed 1 0 *fn2-scribe-kind* owner ogen fn2-core)
-         (mv :ok 0 0 0 fn2-core)))
+           (fn2-retirement-live-open *fn2-scribe-kind* owner ogen fn2-core)
+         (mv :ok 0 0 fn2-core)))
       ((mv pick & &) (fn2-commit-pick fn2-core))
       ((unless (and (eq joined :ok) (or (not joinp) (eq pick :join))))
        (mv nil fn2-core fn2-sim fn2-own))
