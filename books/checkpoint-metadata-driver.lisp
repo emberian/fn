@@ -372,13 +372,13 @@
        (b* (((mv code fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-extents fn2-alloc-edges fn2-ops fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
              (fn2-checkpoint-semantic-issue 1 fn2-checkpoint-semantic fn2-checkpoint-semantic-work fn2-checkpoint-metadata fn2-checkpoint-build fn2-csnapshot fn2-run-builds fn2-run-writers
               fn2-boot-config fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints fn2-control fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
-        (fn2-checkpoint-root1-read-mv code)))
+        (fn2-checkpoint-root1-read-mv (if (eq code :issued) :ok code))))
       ((and (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-payload*)
             (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 2))
        (b* (((mv code fn2-checkpoint-payload fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
              (fn2-checkpoint-payload-issue 1 fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields
               fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)))
-        (fn2-checkpoint-root1-read-mv code)))
+        (fn2-checkpoint-root1-read-mv (if (eq code :issued) :ok code))))
       (t (fn2-checkpoint-root1-read-mv :state)))))
    (fn2-checkpoint-root1-preserves fn2-checkpoint-root1-read (budget kind owner gen ,@children)
     :hyps ,(fn2-checkpoint-root1-child-hyps children)
@@ -389,16 +389,3 @@
     :tables ,(fn2-checkpoint-root1-child-tables children) :effects :per-use
     :doc "Issue at most one actual authenticated root1 source read; return its retained exact operation tuple."))))
 (fn2-checkpoint-root1-read-events)
-
-(fn2-checkpoint-root1-operation fn2-checkpoint-root1-harvest (kind owner gen opslot opgen cell evkind outcome reason count aux0 aux1)
- (b* (((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
-                    (fn2-checkpoint-root1-ownerp (fn2-checkpoint-root1-token 0 fn2-checkpoint-root1) kind owner gen fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot)))
-       (fn2-checkpoint-root1-mv :owner))
-      ((mv code fn2-checkpoint-semantic fn2-checkpoint-payload)
-       (if (equal (fn2-checkpoint-root1-read-kind 0 fn2-checkpoint-root1) 1)
-        (b* (((mv code fn2-checkpoint-semantic) (fn2-checkpoint-semantic-harvest opslot opgen cell evkind outcome reason count aux0 aux1 fn2-checkpoint-semantic)))
-         (mv code fn2-checkpoint-semantic fn2-checkpoint-payload))
-        (b* (((mv code fn2-checkpoint-payload) (fn2-checkpoint-payload-harvest opslot opgen cell evkind outcome reason count aux0 aux1
-              fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)))
-         (mv code fn2-checkpoint-semantic fn2-checkpoint-payload)))))
-  (fn2-checkpoint-root1-mv code)))

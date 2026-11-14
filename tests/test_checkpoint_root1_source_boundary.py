@@ -50,6 +50,23 @@ class Root1SourceBoundary(unittest.TestCase):
         self.assertEqual(setters, ["fn2-checkpoint-root1-closure"])
         self.assertIn("fn2-checkpoint-metadata-manifest-scan-step", str(ops[setters[0]]))
 
+    def test_exact_harvest_hooks_and_issue_success_abi(self):
+        resources = (ROOT / "books/checkpoint-metadata-resources.lisp").read_text()
+        driver = (ROOT / "books/checkpoint-metadata-driver.lisp").read_text()
+        children = {tree[1]: tree for text in forms(resources)
+                    if isinstance((tree := read_sexp(text)), list) and tree
+                    and tree[0] == "fn2-sealer-child"}
+        hooks = []
+        for field in ("fn2-core-checkpoint-semantic", "fn2-core-checkpoint-payload"):
+            declaration = children[field]
+            hooks.append(declaration[declaration.index(":harvest") + 1][0])
+        self.assertEqual(hooks, ["fn2-checkpoint-semantic-harvest", "fn2-checkpoint-payload-harvest-children"])
+        self.assertNotIn("fn2-checkpoint-root1-harvest", operations(driver))
+        normalized = [n for text in forms(driver) for n in nodes(read_sexp(text))
+                      if n and n[0] == "fn2-checkpoint-root1-read-mv"
+                      and len(n) == 2 and n[1] == ["if", ["eq", "code", ":issued"], ":ok", "code"]]
+        self.assertEqual(len(normalized), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
