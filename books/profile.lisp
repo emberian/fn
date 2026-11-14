@@ -223,6 +223,7 @@
     (:ncancel . 32) (:jread . 64) (:jwrite . 16) (:accept-credits . 8)
     (:pool-classes . ((512 . 4096) (80 . 65536))) (:identity-runs . 512)
     (:generation-start . 1) (:generation-limit . ,*fn2-u60-max*)
+    (:origin-lineage . 1) (:origin-domain . 1) (:origin-incarnation . 1)
     (:trace-capacity . 768) (:trace . nil) (:path-identity . "fn2.invalid")))
 
 ; Tiny calendar: principal slots 0..3, commit, timer/grant, wake, maintenance.
@@ -233,6 +234,7 @@
     (:ncancel . 2) (:jread . 2) (:jwrite . 2) (:accept-credits . 2)
     (:pool-classes . ((8 . 64) (4 . 256)))
     (:generation-start . 1) (:generation-limit . ,*fn2-u60-max*)
+    (:origin-lineage . 1) (:origin-domain . 1) (:origin-incarnation . 1)
     (:trace-capacity . 48) (:trace . t) (:path-identity . "fn2.invalid")))
 
 (defconst *fn2-profile-tiny-near-limit*
