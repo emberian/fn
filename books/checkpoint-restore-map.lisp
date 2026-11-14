@@ -9,9 +9,10 @@
   (epoch :u60) (allocation :u60) (retirement :u60) (next-retired :u32)
   (visited :bool)))
 (defcolumns fn2-checkpoint-restore-map-control
- ((phase (:enum fn2-checkpoint-restore-map-phase (:idle :collect :complete :uncertain)))
+ ((phase (:enum fn2-checkpoint-restore-map-phase (:idle :collect :complete :uncertain :validate :validated)))
   (candidate :u32) (cursor :u32) (total :u32) (retired-head :u32) (retired-count :u32)
-  (observed-retired :u32) (maximum-epoch :u60)))
+  (observed-retired :u32) (maximum-epoch :u60)
+  (walk-cursor :u32) (walked :u32) (last-retirement :u60)))
 
 ; Consume exactly the reader's retained current row. An ordinal supplied by a
 ; caller cannot skip coverage. The private ledger lets candidate investigation
@@ -139,3 +140,58 @@
         (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control))
  :specs (("-TYPE" fn2-checkpoint-restore-map-controlp 1) ("-WFP" fn2-checkpoint-restore-map-control-wfp 1)
          ("-ROWS" fn2-checkpoint-restore-map-control-rows 1 :frame fn2-checkpoint-restore-map-control)))
+
+; Reconstructible FIFO evidence is checked one retained row per call. Intake
+; counted every retired row, so a nonrepeating chain of exactly that length
+; covers them all. No whole-store scan is hidden in this operation.
+(defun fn2-checkpoint-restore-map-check (fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)
+  :guard (and (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map)
+              (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control))))
+ (b* (((unless (< 0 (fn2-checkpoint-restore-map-control-rows fn2-checkpoint-restore-map-control)))
+       (mv :state fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control))
+      (phase (fn2-checkpoint-restore-map-control-phase 0 fn2-checkpoint-restore-map-control))
+      ((when (equal phase *fn2-checkpoint-restore-map-phase-complete*))
+       (let ((fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-put 0
+               (phase *fn2-checkpoint-restore-map-phase-validate*)
+               (walk-cursor (fn2-checkpoint-restore-map-control-retired-head 0 fn2-checkpoint-restore-map-control))
+               (walked 0) (last-retirement 0))))
+        (mv :more fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)))
+      ((unless (equal phase *fn2-checkpoint-restore-map-phase-validate*))
+       (mv :state fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control))
+      (e (fn2-checkpoint-restore-map-control-walk-cursor 0 fn2-checkpoint-restore-map-control))
+      (seen (fn2-checkpoint-restore-map-control-walked 0 fn2-checkpoint-restore-map-control))
+      (count (fn2-checkpoint-restore-map-control-retired-count 0 fn2-checkpoint-restore-map-control))
+      ((when (equal e *fn2-alloc-none*))
+       (let ((ok (equal seen count)))
+        (mv (if ok :fifo-ready :chain)
+            fn2-checkpoint-restore-map
+            (fn2-checkpoint-restore-map-control-set-phase 0
+             (if ok *fn2-checkpoint-restore-map-phase-validated* *fn2-checkpoint-restore-map-phase-uncertain*)
+             fn2-checkpoint-restore-map-control))))
+      ((unless (and (< e (fn2-checkpoint-restore-map-rows fn2-checkpoint-restore-map))
+                     (< seen count) (unsigned-byte-p 32 (+ seen 1))
+                     (equal (fn2-checkpoint-restore-map-present e fn2-checkpoint-restore-map) 1)
+                     (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-retire-pending*)
+                     (equal (fn2-checkpoint-restore-map-visited e fn2-checkpoint-restore-map) 0)
+                     (<= (fn2-checkpoint-restore-map-control-last-retirement 0 fn2-checkpoint-restore-map-control)
+                         (fn2-checkpoint-restore-map-retirement e fn2-checkpoint-restore-map))))
+       (mv :chain fn2-checkpoint-restore-map
+           (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-uncertain* fn2-checkpoint-restore-map-control)))
+      (fn2-checkpoint-restore-map (fn2-checkpoint-restore-map-set-visited e 1 fn2-checkpoint-restore-map))
+      (fn2-checkpoint-restore-map-control (fn2-checkpoint-restore-map-control-put 0
+        (walk-cursor (fn2-checkpoint-restore-map-next-retired e fn2-checkpoint-restore-map))
+        (walked (+ seen 1)) (last-retirement (fn2-checkpoint-restore-map-retirement e fn2-checkpoint-restore-map)))))
+  (mv :more fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)))
+(defcost fn2-boot-checkpoint-map-check :child fn2-checkpoint-restore-map-check
+ :answers (:state :more :chain :fifo-ready)
+ :tables (fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control)
+ :doc "Visit one retained retirement FIFO link, refusing cycles, missing coverage and decreasing commits; no base selection or live allocator effect.")
+(fn2-checkpoint-restore-map-preserves fn2-checkpoint-restore-map-check
+ (fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control)
+ :hyps ((fn2-checkpoint-restore-mapp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map)
+        (fn2-checkpoint-restore-map-controlp fn2-checkpoint-restore-map-control) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control))
+ :specs (("-MAP-TYPE" fn2-checkpoint-restore-mapp 1) ("-MAP-WFP" fn2-checkpoint-restore-map-wfp 1)
+         ("-MAP-ROWS" fn2-checkpoint-restore-map-rows 1 :frame fn2-checkpoint-restore-map)
+         ("-CONTROL-TYPE" fn2-checkpoint-restore-map-controlp 2) ("-CONTROL-WFP" fn2-checkpoint-restore-map-control-wfp 2)
+         ("-CONTROL-ROWS" fn2-checkpoint-restore-map-control-rows 2 :frame fn2-checkpoint-restore-map-control)))
