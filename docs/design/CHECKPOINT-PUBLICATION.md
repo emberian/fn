@@ -314,7 +314,7 @@ and passes the actual C carrier rather than a caller-supplied ownership flag.
 for allocation maps, recovery arenas and retained event directories. The body
 carries its type/version, exact C cut, total entry count, page/entry ordinals,
 entry count, terminal bit and next full Ref. Header storage is padded to a
-32-byte boundary after the page header. Allocation-map slots are 47 bytes and
+32-byte boundary after the page header. Allocation-map slots are 56 bytes and
 arena slots 27 bytes, their existing codec maxima; entries and unused page
 bytes require zero padding. Page counts include one terminal page for an empty
 sequence. Actual readers must check the exact calculated count/continuity/link
@@ -431,3 +431,15 @@ completed verified extent with matching namespace. Terminal Ref fields and diges
 are canonical zero. Producers supply their actual cut and calculated sequence
 counts; this serialization helper cannot stamp coverage or source completion.
 The map job now delegates to it, avoiding separate field-setter implementations.
+
+## Retirement FIFO reconstruction
+
+Allocation-map entries now carry `next-retired` (maximum entry width 56 bytes).
+For RETIRE-PENDING rows the source copies the actual frozen FIFO successor;
+other states serialize canonical NONE. The linked body header carries the
+actual allocator retired head and total-retired count on role 2, and canonical
+NONE/0 on other roles. No host or caller supplies the chain. Authenticated
+restore must walk/mark this chain, require every target retired, nondecreasing
+retirement commits, no cycles and exact coverage/count before rebuilding the
+FIFO through the same allocator retire operation. This preserves real queue
+order without an independent sort. Widths/page counts derive from new codecs.
