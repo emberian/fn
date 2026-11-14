@@ -9,7 +9,8 @@
  ((phase (:enum fn2-journal-members-phase (:idle :scanning :leaf :done :invalid)))
   (next-event :u60) (end-event :u60) (event :u60)
   (off :u32) (end :u32) (start :u32) (leaf-end :u32)
-  (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)))
+  (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
+  (hash-phase :u8)))
 
 (defun fn2-journal-members-begin (first members off end slot gen okind oslot ogen fn2-journal-members)
  (declare (xargs :stobjs fn2-journal-members :guard (fn2-journal-members-wfp fn2-journal-members)))
@@ -21,7 +22,7 @@
      (mv :bounds fn2-journal-members)
    (let ((fn2-journal-members (fn2-journal-members-put 0
             (phase *fn2-journal-members-phase-scanning*) (next-event first) (end-event (+ first members))
-            (event 0) (off off) (end end) (start off) (leaf-end off)
+            (event 0) (off off) (end end) (start off) (leaf-end off) (hash-phase 0)
             (slot slot) (gen gen) (owner-kind okind) (owner-slot oslot) (owner-gen ogen))))
     (mv :ok fn2-journal-members))))
 (fn2-journal-members-preserves fn2-journal-members-begin
@@ -63,7 +64,7 @@
        ; Do not consume the next member's first header. The ready leaf owns
        ; exactly START..OFF, and its bytes remain held while hashing/persisting.
        (let ((fn2-journal-members (fn2-journal-members-put 0
-                (phase *fn2-journal-members-phase-leaf*) (leaf-end off))))
+                (phase *fn2-journal-members-phase-leaf*) (leaf-end off) (hash-phase 0))))
         (mv :leaf fn2-journal-members fn2-fields))))
   (let ((fn2-journal-members
           (if (= event 0)
@@ -86,7 +87,7 @@
      (mv :state fn2-journal-members)
    (let ((fn2-journal-members (fn2-journal-members-put 0
             (phase *fn2-journal-members-phase-scanning*)
-            (next-event (+ 1 (fn2-journal-members-event 0 fn2-journal-members))) (event 0)
+            (next-event (+ 1 (fn2-journal-members-event 0 fn2-journal-members))) (event 0) (hash-phase 0)
             (start (fn2-journal-members-off 0 fn2-journal-members)))))
     (mv :ok fn2-journal-members))))
 (fn2-journal-members-preserves fn2-journal-members-consumed (fn2-journal-members) :position 1)
