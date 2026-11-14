@@ -133,3 +133,56 @@
        (mv ok fn2-extents fn2-checkpoint-construction)))
      (mv ok fn2-extents))) ok)))
 (assert-event (fn2-map-roundtrip-control-run))
+
+; The rejected original TYPE formula, preserved explicitly for the boundary
+; control. It quantified over arbitrary logical source objects while assuming
+; only the destination's type/shape. It is not a served-domain contract.
+(defun-nx fn2-map-frame-original-type-claim (extent base token okind oslot ogen p f)
+ (implies (and (fn2-fieldsp f) (fn2-fields-wfp f))
+  (fn2-fieldsp (mv-nth 1 (fn2-checkpoint-frozen-map-entry extent base token okind oslot ogen p f)))))
+
+(defun-nx fn2-map-frame-valid-source ()
+ (let* ((p (fn2-alloc-init 1 (create-fn2-extents)))
+        (p (mv-nth 1 (fn2-alloc-begin-epoch 3 p)))
+        (p (mv-nth 5 (fn2-alloc-reserve p)))
+        (p (mv-nth 1 (fn2-alloc-commit-allocation 0 (fn2-extents-epoch 0 p) (fn2-extents-counter 0 p) 1 9 p)))
+        (p (mv-nth 1 (fn2-alloc-retire 0 (fn2-extents-epoch 0 p) (fn2-extents-counter 0 p) 11 p)))
+        (p (update-fn2-alloc-freeze-phase 1 p))
+        (p (update-fn2-alloc-freeze-token 7 p))
+        (p (update-fn2-alloc-freeze-owner-kind 1 p))
+        (p (update-fn2-alloc-freeze-owner-slot 2 p)))
+  (update-fn2-alloc-freeze-owner-gen 3 p)))
+
+; Logical malformed-source controls only: never execute invalid raw objects
+; through a host stobj entry. SHAPE=T removes the next-retired array while
+; retaining the row count; SHAPE=NIL retains its length but inserts NIL.
+; Both cause the actual reader to write NIL into its :u60 destination column.
+(defun-nx fn2-map-frame-invalid-source-control (shape)
+ (let* ((valid (fn2-map-frame-valid-source))
+        (bad (update-nth *fn2-extents-next-retired$ai* (if shape nil (list nil)) valid))
+        (f (fn2-fields-init 8 (create-fn2-fields)))
+        (result (fn2-checkpoint-frozen-map-entry 0 0 7 1 2 3 bad f)))
+  (and (fn2-extentsp valid) (fn2-extents-wfp valid)
+       (fn2-fieldsp f) (fn2-fields-wfp f)
+       (if shape (and (fn2-extentsp bad) (not (fn2-extents-wfp bad)))
+         (and (not (fn2-extentsp bad)) (fn2-extents-wfp bad)))
+       (fn2-alloc-copy-ownerp 7 1 2 3 bad)
+       (eq (mv-nth 0 result) :entry)
+       (equal (fn2-fields-value *fn2-format-allocation-map-entry-field-next-retired* (mv-nth 1 result)) nil)
+       (not (fn2-fieldsp (mv-nth 1 result)))
+       (not (fn2-map-frame-original-type-claim 0 0 7 1 2 3 bad f)))))
+
+; Ground actual-function witnesses, not failed proof searches. These source
+; obligations remain unqualified until the scoped ACL2 gate executes them.
+(defthm fn2-map-frame-missing-source-shape-counterexample
+ (fn2-map-frame-invalid-source-control t)
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn2-map-frame-invalid-source-control
+   fn2-map-frame-original-type-claim fn2-map-frame-valid-source
+   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp))))
+(defthm fn2-map-frame-missing-source-type-counterexample
+ (fn2-map-frame-invalid-source-control nil)
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable fn2-map-frame-invalid-source-control
+   fn2-map-frame-original-type-claim fn2-map-frame-valid-source
+   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp))))
