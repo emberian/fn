@@ -30,7 +30,7 @@
 
 (defcolumns fn2-sim
   ((active :u8) (gen :u60) (kind :u8) (due :u60) (range-slot :u32) (range-gen :u60) (range-off :u32) (range-len :u32) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (cap-index :u32) (cap-nonce :u32) (storage-offset :u60) (fua :bool) (may-release :bool) (cancel-slot :u32) (cancel-gen :u60) (last-gen :u60) (cancelled :bool) (terminal-outcome :u8) (terminal-reason :u8) (terminal-count :u32) (terminal-aux0 :u32) (terminal-aux1 :u32)
-   (return-code (:enum fn2-sim-return-code (:ok :io :bounds :no-space :would-block :closed :reset :stale :busy :admission-refused :handshake :invalid :cancelled :eof)))
+   (return-code (:enum fn2-sim-return-code (:ok :io :bounds :no-space :would-block :closed :reset :stale :busy :admission-refused :handshake :invalid :cancelled :eof :exhausted :state :owner)))
    (return-count :u32) (return-aux :u32) (return-word :u32) (return-time :u60) (return-fault :u8))
   :init-name fn2-sim-columns-init
   :extra-fields

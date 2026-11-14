@@ -328,6 +328,7 @@ ACL2_BOOKS = \
   tests/native-cut-state-unit \
   tests/native-cut-program-unit \
   tests/storage-cancel-unit \
+  tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \

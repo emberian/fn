@@ -1,0 +1,39 @@
+{
+  "comparison_root": "b2c2083e2c99e9edb196b0f67c295df1e3d4b4de",
+  "files": {
+    "sim/native-cut-program.lisp": "a90b3b33c112766c230d595b540365394acd8a4493779e86b2c8d09c99be9f18",
+    "sim/sim-state-data.lisp": "6e729d57a5420beef21d404343e2cff2cf25737406b959fbb3231c9ecfd96c0f",
+    "sim/sim.lisp": "0c1f3b738557621bba6f2478189714d27cc9830df36ae8d769174784ad6681ff",
+    "tests/native-cut-binding-unit.lisp": "667ba0bfd75d441ac2e859b723fbc04100ae27322fd8a5ac1a8732e3ccbeaa75"
+  },
+  "gates": {
+    "acl2_admission": "unrun",
+    "native_real_fd": "unrun",
+    "new_actual_stage_controls": "unrun",
+    "new_test_dry_run": "only tests/native-cut-binding-unit",
+    "record_certification": "unrun",
+    "served_native_source_controls": "26 pass",
+    "source_only_audit": "pass; 17 source cuts, cut mapping incomplete, host refinement not checked",
+    "strict_parse": "pass"
+  },
+  "preserved_statements": {
+    "fn2-sim-native-finish-is-atomic": "5982be31414f1fcbb1ef0928b278abb23a1a1fe8aa268ce06bfc21f5b9e7738f"
+  },
+  "representation": {
+    "appended": [
+      ":exhausted",
+      ":state",
+      ":owner"
+    ],
+    "mechanism": "same defcolumns :enum generator",
+    "original_tags_preserved": 14
+  },
+  "scope": "source identity only; general-domain proofs, guards and new mutable controls unexecuted",
+  "strengthened_helper": "fn2-sim-complete-result-of-return-save: same equality; removed Fence-only hypothesis",
+  "unchanged_guards": {
+    "fn2-sim-complete-result": "8ec45378797747f1d7e7015eaa01f07a4d3b03074ce988a415e1a5f68664b406",
+    "fn2-sim-native-post": "b3b287c2df73ffef22ca5f1f7a0aaf10e9e56b8f1a2e01e6c687221e3803b3c7",
+    "fn2-sim-native-stage": "a8f7c7135aae29aecf8d075ebcf0f39f461ba81732dc5221c52bb13be6fc288b"
+  },
+  "unchanged_nine_control_test_sha256": "79be4160edd7c76fadeb32c57efe084c997003f86028ca204ae59e13091c8d76"
+}
