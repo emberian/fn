@@ -86,6 +86,7 @@ theorem input_domain_required : ¬ domain "FN2-TV-BUMP" [Val.nil] := by
 
 def mutant : Fns
   | "FN2-TV-BUMP", [x] => some x
+  | "FN2-TV-TWICE-BUMP", [.int x] => some (.int ((x+1)+1))
   | _, _ => none
 
 theorem changed_callee_rejected : ¬ CanonicalBodyCorrect program domain primitiveDomain mutant
@@ -98,10 +99,36 @@ theorem changed_callee_rejected : ¬ CanonicalBodyCorrect program domain primiti
   have hv : v = .int 5 := Except.ok.inj (evaluated.symm.trans (bump_body mutant 4))
   simp [mutant, hv] at dispatched
 
+/-- The caller dispatch stays correct while its callee is changed. -/
+theorem changed_composed_callee_rejected : ¬ CanonicalBodyCorrect program domain primitiveDomain mutant
+    "FN2-TV-TWICE-BUMP" (fun _ result => ∃ n : Int, result = .int n) := by
+  intro claimed
+  obtain ⟨definition, v, resolved, _, _, dispatched, evaluated, _⟩ :=
+    claimed [.int 4] ⟨Or.inr rfl, 4, rfl⟩
+  have hd : definition = twiceDefinition := by simpa [program] using resolved.symm
+  subst definition
+  have actual : evalExport 16 twiceDefinition.body mutant [("X",.int 4)] = .ok (.int 4) := rfl
+  have hv : v = .int 4 := Except.ok.inj (evaluated.symm.trans actual)
+  simp [mutant, hv] at dispatched
+
+/-- Removing the primitive-domain premise admits a represented NIL input:
+native completion returns 1 but the canonical integer model refuses it. -/
+def canonicalNil : Object := .symbol [67,79,77,77,79,78,45,76,73,83,80] [78,73,76]
+theorem omitted_primitive_domain_rejected :
+    RelatedArgs (fun o v => o.value? = some v) [canonicalNil, .integer 1] [Val.nil, .int 1] ∧
+    nativeCall "BINARY-+" [Val.nil, .int 1] = some (.int 1) ∧
+    ¬ (∃ result, canonicalPrimitive "BINARY-+" [canonicalNil, .integer 1] = some result ∧
+                 result.value? = some (.int 1)) := by
+  refine ⟨.cons rfl (.cons rfl .nil), rfl, ?_⟩
+  rintro ⟨result, impossible, _⟩
+  cases impossible
+
 #print axioms addition_correspondence
 #print axioms twice_correct
 #print axioms positive
 #print axioms input_domain_required
 #print axioms changed_callee_rejected
+#print axioms changed_composed_callee_rejected
+#print axioms omitted_primitive_domain_rejected
 end Fn2.ACL2.Translation.DomainControls
 end
