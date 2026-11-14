@@ -39,3 +39,33 @@ with an authenticated published record-toolchain cache entry on forge. Sol
 independent source review found no domain or vacuity blocker. The full Mathlib
 consumer of the moved theorem has not been recompiled because its cached
 dependencies are unavailable; the existing rational theorem remains unchanged.
+
+## List primitives for the timer consumer
+
+`PrimitiveLists.list_primitive_correspondence` covers NTH and UPDATE-NTH with
+natural indices and represented arguments. Independent canonical Object
+operations preserve `Object.value?` through reads and writes, including dotted
+tails and NIL padding. The domain does not require proper lists or array bounds;
+those remain the caller's layout/guard obligations. No symbol equality or
+package-alias injectivity is assumed by these structural operations.
+
+The result-support theorems `nth_correspondence` and
+`update_nth_correspondence` allow successive primitive calls to compose without
+reassuming representation of the intermediate value. Controls assert the entire
+padded output, preserve an unrelated element, reject a sibling-clobbering mutant
+that keeps the target value, and expose both a negative-index completion and an
+unrepresented rational insertion. `tests/primitive-list-domain-unit.lisp` is the
+paired actual ACL2 completion/effect fixture.
+
+This family serves the current clear-wait-timer pilot: its scheduler helper uses
+field reads and writes, integer comparisons/decrement, and an exact status
+symbol. These list certificates do not establish that helper's full contract or
+its reached domains. The scoped canonical packet and caller composition remain
+with the bridge owner.
+
+The two new modules passed Lean 4.30.0 author probe
+`/tmp/assurance-primitive-lists-probe2.log`, with all eight axiom censuses limited
+to `propext`, `Quot.sound`, and `Classical.choice`. The first failed probe is
+retained separately; it rejected a string-inequality proof tactic in a negative
+control, repaired without changing the statement. The paired ACL2 record gate
+is pending.
