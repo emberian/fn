@@ -89,4 +89,4 @@
      (value (cons 'progn
        (fn2-assurance-evidence-events (fn2-assurance-root-names requirements) nil
           (+ 1 (* (+ 1 (len requirements))
-                  (expt (+ 1 (len (fn2-decl-rows :square (w state)))) 2))) (w state)))))))))
+                  (expt (+ 1 (len (fn2-decl-rows :square (w state)))) 2))) (w state))))))))

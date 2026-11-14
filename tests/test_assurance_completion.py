@@ -17,6 +17,14 @@ import lisp_source
 
 
 class CompletionScope(unittest.TestCase):
+    def test_checker_books_are_readable_to_certification_planner(self):
+        import certify_books
+        roots = ['books/assurance-completion', 'books/assurance-resource-join',
+                 'tests/owed-reclamation-unit']
+        graph = certify_books.local_closure(roots)
+        self.assertTrue(set(roots) <= graph.keys())
+        self.assertIn('books/owed-reclamation', graph)
+
     def test_actual_canonical_resource_subjects_bind_abi_domain_and_full_records(self):
         from emit_served_certificate import Atom, List, canonical_text
         def encoded(value):
