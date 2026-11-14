@@ -1436,6 +1436,15 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
         acl2 = Acl2(f"proof-repl {name}" + (f" lane {lane}" if lane else ""),
                     directory / "log")
         state["acl2_pgid"] = acl2.pgid
+        step_limit = os.environ.get("FN_REPL_STEP_LIMIT")
+        if step_limit is not None:
+            if not step_limit.isdecimal() or int(step_limit) <= 0:
+                raise ValueError("FN_REPL_STEP_LIMIT must be a positive integer")
+            output, timed_out = acl2.send(
+                f"(set-prover-step-limit {int(step_limit)})", load_timeout)
+            if timed_out or errored(output):
+                raise RuntimeError("ACL2 refused the startup prover step limit: " + output)
+            state["prover_step_limit"] = int(step_limit)
         skip = set(ld)
         per_form = state["load_limit"] or None
         loaded = True
