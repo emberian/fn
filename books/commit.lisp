@@ -813,6 +813,17 @@
   (mv code slot gen fn2-core)))
 (fn2-core-preserves fn2-block-read (pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core)
  :position 3 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+; Shared location commitment check, also used by checkpoint payload reads.
+(defun fn2-block-read-commitment (bytes len lslot lgen boff hoff okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+ (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core)))
+  (code fn2-b3 fn2-digests)
+  (fn2-block-read-commitment-children bytes len lslot lgen boff hoff okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-block-read-commitment (bytes len lslot lgen boff hoff okind oslot ogen fn2-core)
+ :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; B-S2 S10: the read's completion's core face over its child,
 ; fn2-block-read-done-children (machines-b.lisp; S9a).
 (defun fn2-block-read-done (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-core)

@@ -400,21 +400,11 @@
 ;; does not accept a digest decoded from the device bytes being checked.
 (defun fn2-cursor-location-check-of (bytes len hashes index lslot lgen okind oslot ogen fn2-b3 fn2-digests fn2-pool)
  (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
- (b* (((unless (and (natp bytes) (natp len) (equal bytes len))) (mv :io fn2-b3 fn2-digests))
-      ((unless (and (posp len) (<= len *fn2-commit-unit-bytes*)
-                    (natp hashes) (<= hashes *fn2-article-location-hashes-max*)
-                    (equal (mod hashes 32) 0) (natp index) (< index (floor hashes 32))))
-       (mv :bounds fn2-b3 fn2-digests))
-      (row (nfix (- (fn2-b3-rows fn2-b3) 1)))
-      (got (fn2-digest-slot row *fn2-b3-result*))
-      (want (fn2-digest-slot row *fn2-fc-hash*))
-      ((mv code fn2-b3 fn2-digests)
-       (fn2-block-hash-into row lslot lgen *fn2-article-location-hashes-max* len
-                            okind oslot ogen fn2-b3 fn2-digests fn2-pool))
-      ((unless (eq code :ok)) (mv :bounds fn2-b3 fn2-digests))
-      ((mv same fn2-digests)
-       (fn2-block-digest-at got want lslot lgen (* 32 index) okind oslot ogen fn2-digests fn2-pool)))
-  (mv (if same :ok :hash) fn2-b3 fn2-digests)))
+ (if (not (and (natp hashes) (<= hashes *fn2-article-location-hashes-max*)
+               (equal (mod hashes 32) 0) (natp index) (< index (floor hashes 32))))
+     (mv :bounds fn2-b3 fn2-digests)
+   (fn2-block-read-commitment-children bytes len lslot lgen *fn2-article-location-hashes-max* (* 32 index)
+                                     okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
 (defthm fn2-cursor-location-check-of-shape
  (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
                (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
@@ -1350,8 +1340,12 @@
   ;; storage unit, B's block read of each unit into it, and the octets
   ;; dot-stuffed onto TX page by page; the terminator, the lease returned.
   (art-key :on-refusal ((:stop :machine-phase))
-     (:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
-     (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
+     ;; Acquire the bounded lease before retaining C's article read. Never
+     ;; park for pool capacity while holding a published run/cache row.
+     (:if (equal row-lease *fn2-cursor-lease-held*)
+          ((:do (kc) (fn2-read-key (+ 1 (* 2 row-slot)) ':lo *fn2-article-entry-field-article* row-art) :accept (:ok))
+           (:set (step 21)) (:charge :steps *fn2-work-transition* :runnable t))
+          ((:set (step 22)) (:goto art-lease))))
   (art-refuse :on-refusal ((:stop :machine-phase))
      (:if (equal row-hmode 1)
           ;; HDR over an article with no stored octets: an empty value
@@ -1376,7 +1370,7 @@
                                        (+ 2 (* 4 (cond ((equal row-tag *fn2-nntp-command-head*) 1)
                                                        ((equal row-tag *fn2-nntp-command-body*) 2)
                                                        (t 0))))))
-                                (step 22))
+                                (step 27))
                           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                          ((:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
                           (:goto art-refuse))))
@@ -1386,13 +1380,13 @@
   (art-lease :on-refusal ((:stop :machine-phase))
      (:let class (fn2-cursor-lease-class))
      (:cond ((equal row-lease *fn2-cursor-lease-held*)
-             (:set (step 27)) (:charge :steps *fn2-work-transition* :runnable t))
+             (:set (step 20)) (:charge :steps *fn2-work-transition* :runnable t))
             ((null class) (:goto art-refuse))
             (t
            (:do (code ls lg) (fn2-cursor-lease-reserve class) :effects ((:acquire (:storage-window)))
             :case (((:exhausted) (:park :pool class :steps *fn2-work-transition*))
                    (:otherwise (:goto art-refuse))))
-           (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 27))
+           (:set (lslot ls) (lgen lg) (lease *fn2-cursor-lease-held*) (step 20))
            (:charge :steps *fn2-work-transition* :runnable t))))
   ;; Copy the commitment from the still-live published article row before
   ;; releasing that row. A publication race restarts the lookup; copied
