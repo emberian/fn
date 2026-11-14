@@ -298,6 +298,7 @@ ACL2_BOOKS = \
   tests/machine-arms-unit \
   tests/machine-issue-bind-unit \
   tests/tls-profile-unit \
+  tests/tls-transport-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
   tests/core-init-profile-context-unit \
