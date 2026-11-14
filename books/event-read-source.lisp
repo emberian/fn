@@ -26,6 +26,7 @@
               (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests) (fn2-mk-wfp fn2-mk)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* ((row (fn2-b-event-row (fn2-fc-rows fn2-fc))) (base (* 128 row))
+      (leaf (fn2-b-event-leaf-digest (fn2-fc-rows fn2-fc) (fn2-extents-rows fn2-extents)))
       ((unless (and (< 0 (fn2-event-read-rows fn2-event-read))
                      (or (and (equal ordinal 0) (equal (fn2-event-read-phase 0 fn2-event-read) *fn2-event-read-phase-idle*))
                          (and (natp ordinal) (equal ordinal (fn2-event-read-commit 0 fn2-event-read))
@@ -33,6 +34,7 @@
                               (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)))
                      (< row (fn2-fc-rows fn2-fc)) (equal (fn2-fc-phase row fn2-fc) *fn2-fc-phase-idle*)
                      (fn2-mk-ready row fn2-mk fn2-digests)
+                     (fn2-digest-rowp leaf fn2-digests) (unsigned-byte-p 32 leaf)
                      (eq (fn2-pool-workspace-code rslot rgen okind oslot ogen fn2-pool) :ok)
                      (<= 4096 (fn2-pool-cap rslot fn2-pool))
                      (not (equal rslot dslot)) (not (equal rslot scratch))))
@@ -59,7 +61,7 @@
        (epoch (fn2-fields-value (+ base *fn2-event-proof-entry-field-writer-epoch*) fn2-fields))
        (allocation (fn2-fields-value (+ base *fn2-event-proof-entry-field-allocation*) fn2-fields))
        (first first) (members (fn2-fields-value (+ base *fn2-event-proof-entry-field-members*) fn2-fields))
-       (slot rslot) (gen rgen) (checker row) (field-base base) (body-off 0) (body-len 0) (pending 0))))
+       (slot rslot) (gen rgen) (checker row) (field-base base) (leaf-digest leaf) (body-off 0) (body-len 0) (pending 0))))
   (mv :ok fn2-event-read fn2-mk fn2-fields fn2-pool)))
 (fn2-event-read-preserves fn2-event-read-open
  (token ordinal rslot rgen dslot dgen off scratch sgen okind oslot ogen fn2-event-read fn2-csnapshot fn2-commit-root
