@@ -32,7 +32,7 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_actual_graph(self):
         report = checker.check(self.root)
         self.assertTrue(report['audit_ok'], report)
-        self.assertEqual(report['cuts'], 16)
+        self.assertEqual(report['cuts'], 17)
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
@@ -43,8 +43,8 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_cancellation_cannot_restore_plaintext_dispatch(self):
-        self.change('host/adapter.lisp', '(and cap (fn2-ncap-tls-selected cap)',
-                    '(and cap (fn2-ncap-tls cap)')
+        self.change('host/adapter.lisp', '(fn2-tls-transport-selected-p (fn2-nop-cap op)',
+                    '(live-handle-only (fn2-nop-cap op)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_tls_staging_copy_must_advance_exact_count(self):
@@ -78,6 +78,23 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.change('host/adapter.lisp',
                     '(fn2-native-tls-input-length tls) il',
                     '(fn2-native-tls-input-length tls) 0')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_free_cannot_bypass_logical_retirement(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-retire cap-index nonce (fn2-native-tls-transport tls))',
+                    '(values :closing (fn2-native-tls-transport tls))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_pointer_must_come_from_ledger(self):
+        self.change('host/tls.lisp',
+                    '(fn2-tls-transport-handle (fn2-native-tls-transport tls))',
+                    '(private-handle-copy tls)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_allocation_identity_cannot_be_fabricated(self):
+        self.change('host/tls.lisp', '(values (sb-sys:sap-int allocated) 0)',
+                    '(values 4096 0)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_new_cut_requires_coordinate(self):

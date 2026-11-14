@@ -20,3 +20,11 @@
   ;; by sign + magnitude; raw errno/count never substitute for one another.
   (raw-negative :bool) (raw-code :u64 :why "Exact opaque allocation address or signed primitive return magnitude.") (raw-count :u32) (raw-errno :u32))
  :rows-bound 2)
+
+; One generated reader theory, shared by guards and ownership proofs.
+(make-event
+ (let* ((row (fn2-decl-row '(:columns fn2-tls-transport) (w state)))
+        (readers (fn2-columns-projection-readers 'fn2-tls-transport
+                   (fn2-decl-get :columns row))))
+  (value `(deftheory fn2-tls-transport-readers
+            ',(cons 'fn2-tls-transport-rows readers)))))
