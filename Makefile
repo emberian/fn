@@ -207,6 +207,8 @@ ACL2_BOOKS = \
   books/trace \
   books/translation-primitives \
   books/translation-validation \
+  books/attachment-validation \
+  books/cns-attachment-evidence \
   books/tuple \
   books/txn \
   books/txn-kind \
@@ -380,6 +382,8 @@ ACL2_BOOKS = \
   tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
+  tests/attachment-validation-unit \
+  tests/cns-attachment-evidence-unit \
   tests/txn-unit \
   tests/upload-feed-unit \
   tests/upload-scan-unit \
