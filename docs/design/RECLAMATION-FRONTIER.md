@@ -199,3 +199,33 @@ name two generations of one location. Allocation/lifecycle reconstruction must
 follow journal order before payload adoption. A numerical `commit <= cut`
 classification is usable only under authenticated selected-base restoration,
 never as an independent license to ignore a physical identity conflict.
+
+The allocator controls also executed at source
+`0bb1f61be5d739b3a69f4260cbb5dfe752e50310`: `tests/alloc-unit` loaded
+65 forms after source-loading `books/alloc`, in 8.12 seconds and 885,276
+steps. The actual release-intent/protector interleavings passed. The root
+closure was `82ec9fac376d3814242d7b78195fbc71f89b2cb15f4d7334f6a7931a3f86a8da`;
+six unchanged dependencies were exact cached artifacts. This is executed
+allocator control evidence, not certification or composed storage execution.
+Both narrow Forge sessions were stopped and their 2 GiB reservations released.
+
+The source integration now separates physical allocation geometry (64 KiB,
+16 physical units) from journal resources (three writes). This gives an existing
+64 KiB C page one allocation identity, without changing schema limits or
+silently spilling a page into another allocation. Upload payload packing still
+uses three units per allocation; the resulting space overhead is explicit.
+`fn2-block-write` pins the reserved identity before issuing a 4 KiB window from
+an owned workspace, including a source BOFF. Only validated physical completion
+releases that pin; ACK and stale completion do not. `storage-geometry-unit`
+exercises extent 1, unit 31, source BOFF 61440, and independent read/write pins.
+These composed controls are source fixtures, not yet executed. The shared
+`fn2-storage-reserve` now supplies the same allocator operation used by upload
+before checkpoint bytes bind their physical identity; it does not publish them.
+
+A held C snapshot alone does not identify durable allocator rows: an accepted
+article's payload can remain RESERVED until its transaction consumes the
+published settlement and calls `fn2-upload-extents-of`. Filtering all RESERVED
+rows would omit durable data. The builder must account for these exact published
+owners or reconstruct their identities from the retained semantic roots before
+persisting an allocation map. Unrelated in-progress uploads must not become
+checkpoint-durable merely because their reservations exist at the same time.
