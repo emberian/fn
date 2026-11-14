@@ -38,6 +38,7 @@
        (stage-ok (and ready (eq code :ok) (= taken 1) advanced
                       (equal (take 5 packet) (list op gen *fn2-action-fence* *fn2-event-fence-result* 0))
                       (fn2-native-fence-observation native packet)
+                      (fn2-sim-native-packetp packet fn2-sim)
                       (fn2-native-fence-unposted op fn2-core) (= durable 17)
                       (= (fn2-sim-active op fn2-sim) *fn2-sim-native-returned*)))
        (stamp (fn2-sim-stamp fn2-sim))
@@ -48,6 +49,7 @@
                         (byte) (fn2-sim-storage-durable 0 fn2-sim-storage) byte)))
     (mv (and stage-ok resumed (= stamp (fn2-sim-stamp fn2-sim)) (= durable-after 17)
              (= (fn2-sim-active op fn2-sim) 0)
+             (or crashp (not (fn2-native-fence-unposted op fn2-core)))
              (= (fn2-sim-deaths fn2-sim) (if crashp 1 0)))
         fn2-core fn2-sim fn2-own)))
 
@@ -74,7 +76,11 @@
        ((unless (and ready (= (len writes) 3) (= (len fence) 4)
                      (equal (strip-cars writes) '(:take :ack :post))
                      (equal (strip-cars fence) '(:take :ack :physical-return :post))
-                     (= (len (nth 2 fence)) 4)))
+                     (= (len (nth 2 fence)) 4)
+                     (equal (nth 4 (nth 2 writes)) *fn2-event-write-result*)
+                     (equal (nth 5 (nth 2 writes)) *fn2-outcome-done*)
+                     (equal (nth 6 (nth 2 writes)) *fn2-reason-none*)
+                     (equal (nth 7 (nth 2 writes)) 1)))
         (mv nil fn2-core fn2-sim fn2-own))
        ((mv verdict taken caps fn2-core) (fn2-envelope-prefix writes 0 t nil nil fn2-core))
        ((unless (and (eq verdict :pass) (nth 10 (fn2-envelope-get write taken))))

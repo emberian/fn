@@ -64,6 +64,7 @@
           (fn2-n-storage-completions host)
           (fn2-n-post-completions host)
           (setf writes (fn2-n-trace-list host))
+          (assert (= (fn2-native-fence-read-byte device) 17))
           (multiple-value-bind (code op gen c) (fn2-issue-fence 1 0 1 0 core)
             (declare (ignore gen c)) (assert (eq code :ok)) (setf fence-op op))
           (setf phase :fence)
