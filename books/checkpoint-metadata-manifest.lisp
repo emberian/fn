@@ -5,16 +5,12 @@
 ; Actual retained schema10 sources remain semantic inputs and are preserved.
 ; The new directory has no selfentry.
 (in-package "ACL2")
+(include-book "checkpoint-metadata-manifest-state")
 (include-book "checkpoint-metadata-page")
 (include-book "checkpoint-build-state")
 (fn2-book-layer :c)
 
-(defcolumns fn2-checkpoint-metadata-manifest
- ((phase (:enum fn2-checkpoint-metadata-manifest-phase (:idle :adding :finishing :scan :complete :uncertain)))
-  (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
-  (build :u32) (candidate :u32) (entry-base :u32) (hash-slot :u32) (hash-gen :u60)
-  (entries :u60) (root-level :u8) (root-extent :u32)
-  (scan-row :u32) (seen :u60) (intended-bytes :u60) (completed-bytes :u60)))
+
 
 (defun fn2-checkpoint-metadata-manifest-ownerp (fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)
  (declare (xargs :stobjs (fn2-checkpoint-metadata-manifest fn2-csnapshot fn2-run-builds fn2-run-writers)

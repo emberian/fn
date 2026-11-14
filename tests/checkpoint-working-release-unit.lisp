@@ -5,7 +5,7 @@
 ; The cleanup implementation under test is the actual served shared helper.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "../books/checkpoint-metadata-release")
+(include-book "../books/checkpoint-working-release")
 
 ; Retained slot/generation tuples must survive cleanup even when LIVE clears.
 (defun fn2-cwru-identities (i fn2-checkpoint-windows fn2-checkpoint-future-windows)
