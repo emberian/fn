@@ -581,19 +581,13 @@
       (if (and (< target (fn2-sim-rows fn2-sim))
                (= (fn2-sim-gen target fn2-sim) gen)
                (= (fn2-sim-active target fn2-sim) 1)
-               (not (= (fn2-sim-kind target fn2-sim) *fn2-action-close*)))
-          (let* ((fencep (= (fn2-sim-kind target fn2-sim) *fn2-action-fence*))
-                 (fn2-sim (fn2-sim-set-cancelled target 1 fn2-sim))
-                 ; The cancelled target skips physical completion. Discard
-                 ; its snapshot now; its terminal lifecycle remains owed.
-                 (fn2-sim
-                  (if fencep
-                      (stobj-let ((fn2-sim-storage (fn2-sim-disk fn2-sim)))
-                        (code fn2-sim-storage)
-                        (fn2-storage-fence-complete target t nil fn2-sim-storage)
-                        (let ((ignored code)) (declare (ignore ignored)) fn2-sim))
-                    fn2-sim)))
-            (mv t fn2-sim))
+               ; TAKE/ACK registers this flight at the same boundary where
+               ; native START-NOW submits the blocking storage job. Its real
+               ; completion still owns the loan and any captured Fence image.
+               (not (member-equal (fn2-sim-kind target fn2-sim)
+                      (list *fn2-action-close* *fn2-action-read*
+                            *fn2-action-write* *fn2-action-fence*))))
+          (mv t (fn2-sim-set-cancelled target 1 fn2-sim))
         (mv nil fn2-sim)))))
 (fn2-sim-preserves fn2-sim-cancel-target (slot fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
