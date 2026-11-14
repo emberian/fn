@@ -5,6 +5,7 @@
 ; until notification; activation stays feature-off until recovery is qualified.
 (in-package "ACL2")
 (include-book "checkpoint-writer-ops")
+(include-book "checkpoint-lifecycle-state")
 (include-book "machine-arms")
 (fn2-book-layer :b)
 
@@ -150,14 +151,14 @@
  '(progn
    (defun fn2-checkpoint-writer-start-children (c fn2-checkpoint-writer fn2-checkpoint-publication
                                              fn2-checkpoints fn2-checkpoint-refs fn2-extents fn2-alloc-edges
-                                             fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests)
+                                             fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
     (declare (xargs :stobjs (fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs
-                             fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests)
+                             fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
      :guard (and (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication)
                  (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
                  (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops)
                  (fn2-machines-wfp fn2-machines) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc)
-                 (fn2-digests-wfp fn2-digests))))
+                 (fn2-digests-wfp fn2-digests) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle))))
     (b* (((unless (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
                        (<= (* 6 (+ 1 c)) (fn2-checkpoint-refs-rows fn2-checkpoint-refs))
                        (< 0 (fn2-checkpoint-writer-rows fn2-checkpoint-writer))
@@ -168,7 +169,9 @@
          (kind (fn2-checkpoints-builder-owner-kind c fn2-checkpoints))
          (requester (fn2-checkpoints-builder-owner-slot c fn2-checkpoints))
          (requestgen (fn2-checkpoints-builder-owner-gen c fn2-checkpoints))
-         ((unless (and (fn2-checkpoint-builder-claimp c token kind requester requestgen fn2-checkpoints)
+         ((unless (and (fn2-checkpoint-lifecycle-ownerp c token kind requester requestgen fn2-checkpoint-lifecycle)
+                       (equal (fn2-checkpoint-lifecycle-phase 0 fn2-checkpoint-lifecycle) *fn2-checkpoint-lifecycle-phase-publication*)
+                       (fn2-checkpoint-builder-claimp c token kind requester requestgen fn2-checkpoints)
                        (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-installed*)
                        (posp (fn2-checkpoints-installation-commit c fn2-checkpoints))
                        (or (equal (fn2-checkpoint-publication-has-base 0 fn2-checkpoint-publication) 0)
@@ -239,8 +242,8 @@
      (mv :ok requester requestgen)))
 
    (fn2-checkpoint-publication-preserves fn2-checkpoint-writer-start-children
- (c fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests)
- :hyps ((fn2-checkpoint-writerp fn2-checkpoint-writer) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-machinesp fn2-machines) (fn2-commit-rootp fn2-commit-root) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-machines-wfp fn2-machines) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))
+ (c fn2-checkpoint-writer fn2-checkpoint-publication fn2-checkpoints fn2-checkpoint-refs fn2-extents fn2-alloc-edges fn2-ops fn2-machines fn2-commit-root fn2-fc fn2-digests fn2-checkpoint-lifecycle)
+ :hyps ((fn2-checkpoint-lifecyclep fn2-checkpoint-lifecycle) (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle) (fn2-checkpoint-writerp fn2-checkpoint-writer) (fn2-checkpoint-publicationp fn2-checkpoint-publication) (fn2-checkpointsp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-extentsp fn2-extents) (fn2-alloc-edgesp fn2-alloc-edges) (fn2-opsp fn2-ops) (fn2-machinesp fn2-machines) (fn2-commit-rootp fn2-commit-root) (fn2-fcp fn2-fc) (fn2-digestsp fn2-digests) (fn2-checkpoint-writer-wfp fn2-checkpoint-writer) (fn2-checkpoint-publication-wfp fn2-checkpoint-publication) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops) (fn2-machines-wfp fn2-machines) (fn2-commit-root-wfp fn2-commit-root) (fn2-fc-wfp fn2-fc) (fn2-digests-wfp fn2-digests))
  :specs (("-CHECKPOINT-WRITER-TYPE" fn2-checkpoint-writerp 3)
          ("-CHECKPOINT-WRITER-WFP" fn2-checkpoint-writer-wfp 3)
          ("-CHECKPOINT-WRITER-ROWS" fn2-checkpoint-writer-rows 3 :frame fn2-checkpoint-writer)

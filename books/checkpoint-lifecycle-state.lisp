@@ -1,0 +1,16 @@
+; Actual checkpoint completion and retention cursor; never a caller completion flag.
+(in-package "ACL2")
+(include-book "columns")
+(fn2-book-layer :b)
+(defcolumns fn2-checkpoint-lifecycle
+ ((phase (:enum fn2-checkpoint-lifecycle-phase (:idle :construction :roots :installing :promoting :publication :complete)))
+  (candidate :u32) (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
+  (cursor :u32) (role :u8)))
+(defun fn2-checkpoint-lifecycle-ownerp (c token kind slot gen fn2-checkpoint-lifecycle)
+ (declare (xargs :stobjs fn2-checkpoint-lifecycle :guard (fn2-checkpoint-lifecycle-wfp fn2-checkpoint-lifecycle)))
+ (and (< 0 (fn2-checkpoint-lifecycle-rows fn2-checkpoint-lifecycle))
+      (posp token) (equal c (fn2-checkpoint-lifecycle-candidate 0 fn2-checkpoint-lifecycle))
+      (equal token (fn2-checkpoint-lifecycle-token 0 fn2-checkpoint-lifecycle))
+      (equal kind (fn2-checkpoint-lifecycle-owner-kind 0 fn2-checkpoint-lifecycle))
+      (equal slot (fn2-checkpoint-lifecycle-owner-slot 0 fn2-checkpoint-lifecycle))
+      (equal gen (fn2-checkpoint-lifecycle-owner-gen 0 fn2-checkpoint-lifecycle))))

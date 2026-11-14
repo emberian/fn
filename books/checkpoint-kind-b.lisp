@@ -3,6 +3,7 @@
 (include-book "machines-b")
 (include-book "checkpoint-installed")
 (include-book "checkpoint-construction")
+(include-book "checkpoint-lifecycle")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-capacity (profile)
  (declare (xargs :guard t))
@@ -27,4 +28,7 @@
            ((fn2-core-checkpoint-publication fn2-checkpoint-publication)))
  :why "One checkpoint bank writer keeps exact operation identities through physical harvest.")
 
+(defcorechild fn2-core-checkpoint-lifecycle fn2-checkpoint-lifecycle
+ :init (fn2-checkpoint-lifecycle-init 1 fn2-checkpoint-lifecycle) :profilep t
+ :why "One physical completion/retention cursor binds the live checkpoint owner through publication and thaw.")
 (include-book "checkpoint-writer")
