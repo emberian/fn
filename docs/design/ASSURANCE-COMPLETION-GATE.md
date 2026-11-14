@@ -95,3 +95,28 @@ the actual live row guard and checker, including a valid positive control and th
 wrong-formula, witnesses-only, missing-root, unreachable, missing-served-binding,
 missing-dependency and stale-closure refusals. This is local source regression
 evidence, not ACL2 admission or current-closure certification of the new checker.
+
+`python3 tools/assurance_dependencies.py --source-only` extracts the current named
+encapsulates, local witnesses and constrained theorem identities directly from
+`books/assumptions*.lisp`. The current four constrained subjects are
+`FN2-A-CRASH-IMAGE`, `FN2-A-INTEGRITY-EVIDENCE`, `FN2-A-CRYPTO-NATIVE` and
+`FN2-A-NATIVE-SPAN`. Source and typed form digests retain changes and missing
+witnesses; this is a declaration report, not proof support. With `--package PACKET`,
+the same command reconstructs the existing semantic requirement inventory and
+reports exact selected attachment pairs, both canonical record identities, the
+attachment field digest, reachable caller roots, and the existing
+`attachment_refinement:SUBJECT` obligation ID. The actual `FN2-TURN` caller remains
+required alongside arm roots. Missing implementations stay missing, and exit status
+is always incomplete. It never accepts an empty dependency list as proof closure.
+
+The next attachment consumer is the actual CNS tuple declared by
+`books/assembly-dispatch.lisp` and activated by `books/assembly-attach.lisp`:
+run, observation, charge and bound stubs are attached together. Recover_lean owns
+the canonical/Lean correspondence join; composed_build owns the live relational
+stub constraints and attachment admission proofs. They must bind the fresh selected
+pair and its actual constraints to the same qualified world, then consume that
+evidence from the actual CNS caller. Source generator inspection alone cannot
+establish which selection a running process loaded. Durability owns consumption of
+`FN2-A-FENCE-PERSISTS`; the native boundary owner retains raw crypto/span
+correspondence. Actual theorem/rune support extraction remains a separate next step;
+the new report deliberately does not relabel call reachability as that evidence.
