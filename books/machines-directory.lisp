@@ -41,11 +41,16 @@
 ;; (table fn2-machines-directory-any; HINTS: such a proof, see
 ;; fn2-machines-keeps-directory-hints).
 ;; A body over directory writers with -ANY forms: opened alone, they kept shut.
+;; Readers and unrelated child operations stay opaque too. In the ambient
+;; theory a two-range take reopened pool reservation and width checks while
+;; proving only this directory projection (authority's keep took 135 s).
 (defun fn2-machines-keeps-directory-hints (fn world)
   (declare (xargs :verify-guards nil))
-  (let ((any (table-alist 'fn2-machines-directory-any world)))
-    `(("Goal" :in-theory (e/d (,fn fn2-machines-directory-keeps-refl ,@(strip-cdrs any))
-                              (fn2-machines-directory-keeps ,@(strip-cars any)))))))
+  `(("Goal" :in-theory
+     (union-theories '(,fn fn2-machines-directory-keeps-refl mv-nth car-cons cdr-cons
+                       ,@(strip-cdrs (table-alist 'fn2-machines-directory-any world)))
+                     (union-theories (theory 'minimal-theory)
+                                     (executable-counterpart-theory :here))))))
 (defthm fn2-machines-directory-keeps-refl (fn2-machines-directory-keeps x x)
   :hints (("Goal" :in-theory (enable fn2-machines-directory-keeps))))
 (in-theory (disable fn2-machines-directory-keeps-refl))
