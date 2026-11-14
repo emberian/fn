@@ -39,9 +39,77 @@ def harvest_contract(source):
         assert update[0:2] == ["if", "success"] and update[-1] == carrier
 
 
+
+def walk(tree):
+    if isinstance(tree, list):
+        yield tree
+        for child in tree:
+            yield from walk(child)
+
+
+def shape_contract(source):
+    expected = {
+        "begin": ["fn2-checkpoint-page"],
+        "context": ["fn2-checkpoint-page", "fn2-fc-context", "fn2-digests"],
+        "format-step": ["fn2-checkpoint-page", "fn2-checkpoint-page-verified", "fn2-fc", "fn2-b3", "fn2-fields", "fn2-pool", "fn2-digests"],
+        "issue": ["fn2-checkpoint-page", "fn2-pool", "fn2-ops", "fn2-control", "fn2-extents", "fn2-alloc-edges"],
+        "harvest": ["fn2-checkpoint-page", "fn2-checkpoint-page-verified", "fn2-checkpoint-construction"],
+    }
+    parsed = [read_sexp(text) for text in forms(source)]
+    for suffix, outputs in expected.items():
+        name = "fn2-checkpoint-page-" + suffix
+        function = definition(source, name)
+        body = function[-1]
+        assert body[0] == "b*" and len(body) == 3
+        # Inspect actual result expressions; B* multi-value binders are not exits.
+        def exits(tree):
+            if not isinstance(tree, list) or not tree:
+                return
+            if tree[0] == "b*":
+                for _, value in tree[1]:
+                    yield from exits(value)
+                yield from exits(tree[2])
+            else:
+                if tree[0] == "mv":
+                    yield tree
+                for child in tree[1:]:
+                    yield from exits(child)
+        results = list(exits(body))
+        assert results and all(result[2:] == outputs for result in results), name + " result projection mismatch"
+        theorem = next(form for form in parsed if form[:2] == ["fn2-checkpoint-page-preserves", name])
+        specs = theorem[theorem.index(":specs") + 1]
+        for position, carrier in enumerate(outputs, 1):
+            # String theorem suffixes are omitted by lisp_source's plain reader.
+            assert [carrier + "p", str(position)] in specs
+            assert [carrier + "-wfp", str(position)] in specs
+            assert [carrier + "-rows", str(position), ":frame", carrier] in specs
+        inputs = function[3][1]
+        inputs = inputs[inputs.index(":stobjs") + 1]
+        hyps = theorem[theorem.index(":hyps") + 1]
+        assert all([carrier + "p", carrier] in hyps and [carrier + "-wfp", carrier] in hyps for carrier in inputs)
+    format_body = definition(source, "fn2-checkpoint-page-format-step")[-1]
+    bound = set()
+    for binder, value in format_body[1]:
+        if any(node == ["fn2-fc-guard"] for node in walk(binder)):
+            assert {"row", "off", "len", "base"} <= bound, "fc guard macro captures must be explicitly bound"
+            break
+        if isinstance(binder, str):
+            bound.add(binder)
+    else:
+        raise AssertionError("missing literal fc guard")
+    # Match scalar/stobj argument counts against the actual current callees.
+    for book, callee in (("checkpoint-writer-ops.lisp", "fn2-checkpoint-writer-checker-children"),
+                         ("checkpoint-boot.lisp", "fn2-checkpoint-boot-geometry-load"),
+                         ("format-check.lisp", "fn2-format-run"),
+                         ("machines-b.lisp", "fn2-block-write-children")):
+        target = definition((ROOT / "books" / book).read_text(), callee)
+        calls = [node for form in parsed for node in walk(form) if node and node[0] == callee]
+        assert calls and all(len(call) - 1 == len(target[2]) for call in calls), callee + " argument count mismatch"
+
 def main():
     source = BOOK.read_text()
     harvest_contract(source)
+    shape_contract(source)
     mutations = (
         source.replace("(mv :ok fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)", "(mv :unrelated fn2-checkpoint-page fn2-checkpoint-page-verified fn2-checkpoint-construction)", 1),
         source.replace("(equal count 4096)", "t", 1),
@@ -55,7 +123,7 @@ def main():
         except AssertionError:
             continue
         raise AssertionError("source contract accepted a deliberately broken harvest")
-    print("checkpoint page harvest source contract: 1 positive, 4 rejection controls pass (no ACL2 execution)")
+    print("checkpoint page source contracts: harvest + 5 return/frame contracts + captured guards + 4 actual callee arities; 4 rejection controls pass (no ACL2 execution)")
 
 
 if __name__ == "__main__":
