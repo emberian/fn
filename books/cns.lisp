@@ -1072,7 +1072,7 @@
                (:next :read) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
               ((equal row-verb *fn2-cns-verb-register*)
                (:next :commit) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
-              (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))
+              (t (:next :lookup) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
   (:lookup :on-refusal ((:stop :machine-phase))
    (:if (equal row-lease *fn2-cns-lease-held*)
         ((:do (lc) (fn2-cns-lease-release row-lslot row-lgen) :effects ((:release (:storage-window))) :accept (:ok :retired)
