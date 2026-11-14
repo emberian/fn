@@ -38,7 +38,7 @@
       (fn2-checkpoint-construction (fn2-checkpoint-construction-put extent
        (live 1) (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
        (role role) (ordinal ordinal) (epoch epoch) (counter counter)
-       (intended-bytes intended) (completed-bytes 0))))
+       (intended-bytes intended) (completed-bytes 0) (ticket-claimed 0) (ticket-batch 0))))
   (mv :ok extent epoch counter fn2-checkpoint-construction fn2-extents fn2-control)))
 
 (fn2-checkpoint-construction-preserves fn2-checkpoint-construction-reserve
