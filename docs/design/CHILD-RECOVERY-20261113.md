@@ -110,7 +110,17 @@ for accepted and refused writes, observes exactly one read and one write,
 and rejects a stale-read mutation with identical final effects. Live original,
 generated and mutant executions pass; the unrelated sibling remains 91.
 Warm product source passed 52 forms plus eight live-witness forms; reader
-regression passed 65 forms. This continuation still awaits record certification.
+regression passed 65 forms.
+
+Product inputs and outputs now distinguish reads from writes. Inputs retain
+all selected children; returned state and core reconstruction include only
+children at actual core-update sites. The two-child control proves full
+refinement with one write and a read-only sibling, checks the exact ABI,
+and preserves a malformed logical core without extending its shape. A
+separate admitted counterexample shows that gratuitous read-only writeback
+extends that core by NIL. Valid-core live source/child and sibling-clobber
+mutation controls pass. Warm product gate passed 70 forms plus eight added
+live-evidence forms; combined record certification is pending.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
