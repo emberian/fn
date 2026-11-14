@@ -64,6 +64,15 @@ class ServedSemanticInventory(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'fields mismatch'):
             s.function_semantics('ROOT', row, dict(fields, **{':GUARD': obj('T')}))
 
+    def test_recursive_sibling_cross_edge_requires_all_members(self):
+        records = [record('ROOT', body=['B', ['C', 'X']]),
+                   record('B', body=['ROOT', 'X'], justification=':MISSING'),
+                   record('C', body=['B', 'X'], justification=':MISSING')]
+        result = inventory(records)
+        self.assertEqual({o['subject'] for o in result['obligations']
+                          if o['layer'] == 'termination'}, {'ROOT', 'B', 'C'})
+        self.assertIn('C: recursive component has unresolved justification', result['frontiers'])
+
     def test_guard_only_transitive_dependencies(self):
         records = [record('ROOT', guard=['GUARD-HELPER', 'X']),
                    record('GUARD-HELPER', guard=['GUARD-LEAF', 'X']), record('GUARD-LEAF')]

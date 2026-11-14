@@ -95,6 +95,39 @@ def function_semantics(name, row, fields):
             'frontiers': sorted(set(frontiers))}
 
 
+def _recursive_components(graph):
+    """Tarjan components include cross edges to already completed DFS siblings."""
+    indices, low = {}, {}
+    stack, stacked = [], set()
+    components = []
+    def visit(name):
+        indices[name] = low[name] = len(indices)
+        stack.append(name)
+        stacked.add(name)
+        for callee in graph[name]:
+            if callee not in graph:
+                continue
+            if callee not in indices:
+                visit(callee)
+                low[name] = min(low[name], low[callee])
+            elif callee in stacked:
+                low[name] = min(low[name], indices[callee])
+        if low[name] == indices[name]:
+            component = []
+            while True:
+                member = stack.pop()
+                stacked.remove(member)
+                component.append(member)
+                if member == name:
+                    break
+            if len(component) > 1 or name in graph[name]:
+                components.append(component)
+    for name in graph:
+        if name not in indices:
+            visit(name)
+    return components
+
+
 def semantic_inventory(functions, roots, native_boundary):
     """Produce a closed requirement inventory; no input status can mark it proved."""
     by_name = {row['name']:row for row in functions}
@@ -105,7 +138,7 @@ def semantic_inventory(functions, roots, native_boundary):
     inventory = []
     for root in roots:
         visited = set()
-        active = []
+        graph = {}
         missing = set()
         frontiers = []
         obligations = {}
@@ -117,13 +150,6 @@ def semantic_inventory(functions, roots, native_boundary):
                 raise ValueError('conflicting semantic obligation '+key)
         def visit(name):
             if name in SPECIAL or name in NATIVE:
-                return
-            if name in active:
-                for member in active[active.index(name):]:
-                    entry = by_name[member]
-                    require('termination',member,entry['record_sha256'])
-                    if entry['semantic']['metadata_states'].get(':JUSTIFICATION') in ('missing','absent','unsupported'):
-                        frontiers.append(member+': recursive component has unresolved justification')
                 return
             if name in visited:
                 return
@@ -139,7 +165,7 @@ def semantic_inventory(functions, roots, native_boundary):
             record_sha = row['record_sha256']
             if semantic['record_sha256'] != record_sha:
                 raise ValueError('semantic record digest mismatch '+name)
-            active.append(name)
+            graph[name] = set()
             require('canonical_record',name,record_sha)
             for layer in FUNCTION_LAYERS:
                 require(layer,name,record_sha)
@@ -153,16 +179,24 @@ def semantic_inventory(functions, roots, native_boundary):
                     frontiers.append(name+': primitive absent from canonical boundary '+site['callee'])
             for area in ('body','guard'):
                 for callee in semantic['calls'][area]:
+                    graph[name].add(callee)
                     visit(callee)
             selected = semantic['selected_attachment']
             if selected is not None:
                 require('attachment_refinement',name,semantic['fields'][':ATTACHMENT'])
+                graph[name].add(selected)
                 visit(selected)
             for symbol in semantic['justification_symbols']:
                 if symbol in by_name:
+                    graph[name].add(symbol)
                     visit(symbol)
-            active.pop()
         visit(root['name'])
+        for component in _recursive_components(graph):
+            for member in component:
+                entry = by_name[member]
+                require('termination', member, entry['record_sha256'])
+                if entry['semantic']['metadata_states'].get(':JUSTIFICATION') in ('missing', 'absent', 'unsupported'):
+                    frontiers.append(member+': recursive component has unresolved justification')
         root_record = by_name.get(root['name'],{}).get('record_sha256')
         for layer in ROOT_LAYERS:
             require(layer,root['name'],root_record)
