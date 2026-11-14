@@ -54,3 +54,26 @@ The no-I/O admission cancellation ordering is visible in the actual source:
 This is a source-order audit, not an admitted causal/physical-I/O theorem. The
 bounded physical writer, recovery and actual composed interleaving gates remain
 pending the parent's narrow qualification. No production files were edited here.
+
+## Isolated source gate entries
+
+The original leaf body/run/assertion now lives verbatim in
+`tests/retirement-intent-leaf-unit.lisp`, including `books/retirement` directly.
+The composed `retirement-intent-unit` includes that leaf and the simulator/core
+closure; its original submit/poll bodies and three assertions are byte-for-byte
+unchanged. All four original assertions therefore remain in the composed closure.
+
+`tests/retirement-intent-allocator-unit.lisp` uses the same actual allocator
+scenario without fields or record serialization. It calls actual intent
+begin/cancel, alloc-retire, edge-add/drop and relocate. It does not test submit,
+poll, record installation or physical durability and contains no reference model.
+
+The existing certification runner's read-only local-include scanner reports:
+
+- Allocator entry: 7 local source books, including its test root. Dependencies
+  are alloc, columns, declare, operations, owed and tuple.
+- Record-install leaf entry: 28 local source books, including its test root.
+- Composed submit/poll entry: 284 local source books, including its test root.
+
+The qualified system B* book is outside those local-source counts. These are
+source dependency closures, not certificate keys or executed gate results.
