@@ -67,5 +67,11 @@ The two new modules passed Lean 4.30.0 author probe
 `/tmp/assurance-primitive-lists-probe2.log`, with all eight axiom censuses limited
 to `propext`, `Quot.sound`, and `Classical.choice`. The first failed probe is
 retained separately; it rejected a string-inequality proof tactic in a negative
-control, repaired without changing the statement. The paired ACL2 record gate
-is pending.
+control, repaired without changing the statement. The paired ACL2 fixture
+passed exact-source record `certify-20261114T221932Z-490268` at `9da695c5d`: one
+book with no local dependencies, 31 prover steps, 0.115 seconds. Its current
+closure key `f35ecd36e708ee8707ac5f42bfc3b081586d737a397f892a8d0d57a1497dfbfc`
+has an authenticated published record-toolchain entry. Negative-index and
+dotted-tail controls concern ACL2 logical completion, not permission to execute
+an out-of-guard native call. Reached-guard domain construction and actual timer
+consumer binding remain pending.
