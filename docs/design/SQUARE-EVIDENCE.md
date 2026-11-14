@@ -39,8 +39,8 @@ actual subject's result ABI. Hidden producers, dropped/reordered outputs and
 unrelated equivalent endpoints fail closed. The subject's actual arguments,
 body, guard and ABI are bound and checked again on replay.
 
-The generator proves `H => (D and all call guards)` for the entire original
-antecedent H and also requires D at both ground witnesses. A correspondence restricted to a removed
+The generator proves `H => (D and the endpoint/subject guards)` for the entire
+original antecedent H and also requires D at both ground witnesses. A correspondence restricted to a removed
 hypothesis therefore cannot justify a negative witness outside its domain.
 
 Every normalized witness still proves the original C (or its negation for
