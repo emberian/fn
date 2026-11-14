@@ -92,11 +92,17 @@ theorem natural_index_of_guard_branches (index : Val)
     ∃ n : Nat, index = .int n := by
   cases index with
   | int i =>
-    have hi : 0 ≤ i := by
-      simp [Prim.lt, Val.toInt, Val.ofBool, Val.truthy, Val.t, Val.nil] at nonnegative
-      omega
+    have hn : ¬ i < 0 := by
+      intro negative
+      have selected : (Prim.lt (.int i) (.int 0)).truthy = true := by
+        change (Val.ofBool (decide (i < 0))).truthy = true
+        rw [show decide (i < 0) = true by simp [negative]]
+        rfl
+      have impossible : true = false := selected.symm.trans nonnegative
+      cases impossible
+    have hi : 0 ≤ i := by omega
     exact ⟨i.toNat, congrArg Val.int (Int.toNat_of_nonneg hi).symm⟩
-  | _ => simp [Prim.integerp, Val.isInt, Val.ofBool, Val.truthy, Val.t, Val.nil] at integer
+  | _ => simp [Prim.integerp, Val.isInt, Val.ofBool, Val.truthy] at integer
 
 theorem nth_domain_of_guard_branches (index value : Val)
     (integer : (Prim.integerp index).truthy = true)
