@@ -306,6 +306,44 @@
       (equal oslot (fn2-checkpoint-plan-owner-slot 0 fn2-checkpoint-plan))
       (equal ogen (fn2-checkpoint-plan-owner-gen 0 fn2-checkpoint-plan))))
 
+(defun fn2-checkpoint-plan-freeze-children (fn2-checkpoint-plan fn2-csnapshot fn2-checkpoint-build
+                                          fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-commit-root fn2-control)
+ (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-refs
+                          fn2-checkpoint-construction fn2-extents fn2-commit-root fn2-control)
+  :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshot-wfp fn2-csnapshot)
+              (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
+              (fn2-commit-root-wfp fn2-commit-root) (fn2-control-wfp fn2-control))))
+ (b* (((unless (equal (fn2-control-stop fn2-control) 0)) (mv :stopped fn2-extents))
+      ((unless (and (< 0 (fn2-checkpoint-plan-rows fn2-checkpoint-plan))
+                     (< 0 (fn2-checkpoint-build-rows fn2-checkpoint-build))
+                     (< 0 (fn2-commit-root-rows fn2-commit-root)))) (mv :bounds fn2-extents))
+      (token (fn2-checkpoint-plan-token 0 fn2-checkpoint-plan))
+      (kind (fn2-checkpoint-plan-owner-kind 0 fn2-checkpoint-plan))
+      (slot (fn2-checkpoint-plan-owner-slot 0 fn2-checkpoint-plan))
+      (gen (fn2-checkpoint-plan-owner-gen 0 fn2-checkpoint-plan))
+      (c (fn2-checkpoint-plan-candidate 0 fn2-checkpoint-plan))
+      ((unless (and (fn2-checkpoint-plan-closedp token kind slot gen fn2-checkpoint-plan fn2-csnapshot)
+                     (fn2-checkpoint-build-ownerp token kind slot gen fn2-checkpoint-build fn2-csnapshot)
+                     (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
+                     (equal c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
+                     (equal (fn2-alloc-freeze-phase fn2-extents) 0)
+                     (equal (fn2-alloc-freeze-token fn2-extents) token)
+                     (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
+                     (equal (fn2-alloc-freeze-owner-slot fn2-extents) slot)
+                     (equal (fn2-alloc-freeze-owner-gen fn2-extents) gen)
+                     (equal (fn2-commit-root-proposed 0 fn2-commit-root) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+                     (equal (fn2-commit-root-installed 0 fn2-commit-root) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+                     (equal (fn2-commit-root-published 0 fn2-commit-root) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
+                     (equal (if (zp (fn2-commit-root-first-key 0 fn2-commit-root)) 0
+                              (- (fn2-commit-root-first-key 0 fn2-commit-root) 1)) (fn2-csnapshot-cut-event 0 fn2-csnapshot))
+                     (fn2-checkpoint-plan-rootp 1 c token fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents)
+                     (fn2-checkpoint-plan-rootp 3 c token fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents)
+                     (fn2-checkpoint-plan-rootp 4 c token fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents)))
+       (mv :closure fn2-extents))
+      (fn2-extents (update-fn2-alloc-freeze-phase 1 fn2-extents)))
+  (mv :copy fn2-extents)))
+
 (fn2-checkpoint-plan-preserves fn2-checkpoint-plan-begin
  (fn2-checkpoint-plan fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-checkpoint-plan-marks)
  :hyps ((fn2-checkpoint-planp fn2-checkpoint-plan) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-plan-marksp fn2-checkpoint-plan-marks) (fn2-checkpoint-plan-marks-wfp fn2-checkpoint-plan-marks))
@@ -352,3 +390,13 @@
          ("-MARKS-TYPE" fn2-checkpoint-plan-marksp 2)
          ("-MARKS-WFP" fn2-checkpoint-plan-marks-wfp 2)
          ("-MARKS-ROWS" fn2-checkpoint-plan-marks-rows 2 :frame fn2-checkpoint-plan-marks)))
+
+(fn2-extents-preserves fn2-checkpoint-plan-freeze-children
+ (fn2-checkpoint-plan fn2-csnapshot fn2-checkpoint-build fn2-checkpoint-refs fn2-checkpoint-construction fn2-extents fn2-commit-root fn2-control)
+ :hyps ((fn2-checkpoint-planp fn2-checkpoint-plan) (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-buildp fn2-checkpoint-build) (fn2-checkpoint-build-wfp fn2-checkpoint-build) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-commit-rootp fn2-commit-root) (fn2-commit-root-wfp fn2-commit-root) (fn2-controlp fn2-control) (fn2-control-wfp fn2-control))
+ :specs (("-EXTENTS-TYPE" fn2-extentsp 1) ("-EXTENTS-WFP" fn2-extents-wfp 1) ("-EXTENTS-ROWS" fn2-extents-rows 1 :frame fn2-extents)))
+(defcost fn2-checkpoint-plan-freeze :child fn2-checkpoint-plan-freeze-children
+ :answers (:copy :stopped :bounds :closure)
+ :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs
+           fn2-core-checkpoint-construction fn2-core-extents fn2-core-commit-root fn2-core-control)
+ :doc "Enter physical map copy only from actual reservation closure, retained C/B owner and exact settled cut; no installation or thaw.")

@@ -325,7 +325,8 @@ These format and local shape controls do not replace that reader or restoration.
 exact retained `fn2-alloc-copy-ownerp` authority. Allocation entries copy every
 persistent field, including foreign RESERVED rows. Arena entries come only from
 same-token/owner role-6 construction rows whose ordinal and current Reserved
-identity match. Non-ticket rows return `:skip`; changed ticket identities return
+identity match. Non-ticket and nonrequested-ordinal rows return `:skip`; changed requested
+ticket identities return
 `:conflict`. The arena page builder must count only `:entry`, preserve ordinal
 continuity, and compare its final count to the closed reservation plan.
 The passive allocator gate alone does not establish that closure.
@@ -352,3 +353,14 @@ No caller supplies counts, an identity list or a closure flag. The actual alloca
 copy gate remains disabled until its coordinator consumes that state; closure
 is distinct from physical completion of map, arena and descriptor or installation.
 Whole lifecycle/closure assurance and actual generated composition remain owed.
+
+The concrete freeze child now checks reservation closure, the unchanged held
+descriptor owner, the B token retained at phase 0, and exact proposed/installed/
+published commit and event equality with C's cut before entering phase 1. It
+refuses a stopped core and never enters install or thaws. Its generated operation
+is declared but has no production caller while source-root construction remains
+incomplete. `checkpoint-map-pack.lisp` serializes one exact frozen source entry
+into its calculated fixed-width page slot and zeroes its bounded slot padding;
+page jobs still must initialize the whole page and authenticate headers/links.
+Arena ordinal lookup scans physical extents because free-list order is independent
+of ticket order; only the requested ordinal can produce an entry.
