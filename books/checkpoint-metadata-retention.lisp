@@ -6,6 +6,7 @@
 (include-book "checkpoint-source-retention")
 (include-book "checkpoint-build-state")
 (include-book "checkpoint-retained-entry")
+(include-book "source-manifest-codec")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-metadata-retain-entry (fn2-checkpoint-metadata fn2-csnapshot fn2-checkpoint-build
@@ -44,16 +45,16 @@
          (bytes (fn2-fields-value (+ base *fn2-article-entry-field-bytes*) fn2-fields))
          (extent (floor unit *fn2-storage-extent-units*))
          ((unless (and (equal (mod unit *fn2-storage-extent-units*) 0) (fn2-alloc-slotp extent fn2-extents)
-                        (or (and (equal location 0) (<= bytes *fn2-storage-extent-bytes*)) (equal location 1))
+                        (equal location (if (fn2-am-manifestp bytes) 1 0))
                         (member (fn2-extents-state extent fn2-extents) (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))))
           (mv :reference fn2-checkpoint-metadata fn2-extents fn2-alloc-edges))
          ((mv code fn2-extents fn2-alloc-edges)
           (fn2-checkpoint-source-claim c checkpoint extent epoch allocation fn2-extents fn2-alloc-edges fn2-ops fn2-checkpoints))
          ((unless (eq code :ok)) (mv code fn2-checkpoint-metadata fn2-extents fn2-alloc-edges))
-         (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-retention-stage 0 (if (equal location 0) 1 2) fn2-checkpoint-metadata)))
-     ; A source manifest's actual typed block references still require B reads
-     ; and source binding. Root protection alone never closes that traversal.
-     (mv (if (equal location 0) :ready :manifest-required) fn2-checkpoint-metadata fn2-extents fn2-alloc-edges)))
+         (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-retention-stage 0 2 fn2-checkpoint-metadata)))
+     ; Raw and manifest sources both require the actual stored-byte digest
+     ; before integrity closure; direct protection is only reachability.
+     (mv :payload-required fn2-checkpoint-metadata fn2-extents fn2-alloc-edges)))
    ((equal sid 10)
     (b* ((unit (fn2-fields-value (+ base *fn2-manifest-entry-field-root-unit*) fn2-fields))
          (epoch (fn2-fields-value (+ base *fn2-manifest-entry-field-root-epoch*) fn2-fields))
@@ -113,7 +114,9 @@
        (serial (+ 1 (fn2-checkpoint-retained-entry-serial 0 fn2-checkpoint-retained-entry)))
        (token token) (owner-kind kind) (owner-slot owner) (owner-gen generation)
        (candidate (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build)) (checkpoint (fn2-checkpoint-build-checkpoint 0 fn2-checkpoint-build))
-       (schema 2) (field-base base) (origin *fn2-checkpoint-retained-entry-origin-snapshot*)
+       (schema 2) (field-base base)
+       (source-slot (fn2-checkpoint-metadata-scratch 0 fn2-checkpoint-metadata))
+       (source-gen (fn2-checkpoint-metadata-scratch-gen 0 fn2-checkpoint-metadata)) (origin *fn2-checkpoint-retained-entry-origin-snapshot*)
        (source-kind (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata))
        (source-row (fn2-checkpoint-metadata-source-row 0 fn2-checkpoint-metadata))
        (source-rank (fn2-checkpoint-metadata-run-rank 0 fn2-checkpoint-metadata))
@@ -137,6 +140,8 @@
                      (equal (fn2-checkpoint-metadata-position 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-source-position 0 fn2-checkpoint-retained-entry))
                      (equal (fn2-checkpoint-metadata-source-kind 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-source-kind 0 fn2-checkpoint-retained-entry))
                      (equal (fn2-checkpoint-metadata-source-row 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-source-row 0 fn2-checkpoint-retained-entry))
+                     (equal (fn2-checkpoint-metadata-scratch 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-source-slot 0 fn2-checkpoint-retained-entry))
+                     (equal (fn2-checkpoint-metadata-scratch-gen 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-source-gen 0 fn2-checkpoint-retained-entry))
                      (equal (fn2-checkpoint-metadata-entry-base 0 fn2-checkpoint-metadata) (fn2-checkpoint-retained-entry-field-base 0 fn2-checkpoint-retained-entry))))
        (mv :source fn2-checkpoint-retained-entry fn2-checkpoint-metadata))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-set-retention-stage 0 1 fn2-checkpoint-metadata))
