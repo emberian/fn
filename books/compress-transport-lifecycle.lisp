@@ -6,6 +6,8 @@
 (fn2-book-layer :d)
 (defcodec-transport-lifecycle fn2-compress-transport
  :input-quantum-field input-quantum :output-quantum-field output-quantum)
+(defcodec-transport-upgrade fn2-compress-transport fn2-codec-copy-plan
+ :input-quantum-field input-quantum :status-field nil)
 
 (defun fn2-compress-transport-start
  (cap nonce slot generation total capacity iq oq ratio burst fn2-compress-transport)
