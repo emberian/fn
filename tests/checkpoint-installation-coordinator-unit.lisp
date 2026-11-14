@@ -2,6 +2,7 @@
 ; the allocation barrier and planner seam, never witnesses physical construction
 ; or persisted installation. No runtime/admission result is claimed by source.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-allocation-coordinator-unit")
 (defun fn2-cic-roots (role fn2-checkpoint-refs)
  (declare (xargs :stobjs fn2-checkpoint-refs :verify-guards nil :measure (nfix (- 6 (nfix role)))))
