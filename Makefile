@@ -109,6 +109,7 @@ ACL2_BOOKS = \
   books/executor-services \
   books/executor-wake \
   books/fnct-pool \
+  books/peer-export \
   books/fnv \
   books/folds \
   books/folds-served \
@@ -230,6 +231,10 @@ ACL2_BOOKS = \
   tests/check-own-unit \
   tests/claims-unit \
   tests/cns-decode-unit \
+  tests/cns-history-unit \
+  tests/peer-export-codec-unit \
+  tests/peer-export-served-unit \
+  tests/read-scan-resume-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \
