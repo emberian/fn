@@ -200,8 +200,9 @@
    (equal (fn2-cns-draining-observed id budget core)
           (fn2-cns-draining-expected id core)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn2-cns-draining-resultp
-                                     fn2-cns-draining-observed))))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn2-cns-draining-resultp fn2-cns-draining-observed)
+                           (theory 'minimal-theory)))))
 
 ; Cleanup is sequential. A failure of NS preserves the already completed
 ; WS release. No row reclamation or timer clear precedes either refusal.

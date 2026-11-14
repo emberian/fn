@@ -87,9 +87,9 @@
        ((mv code fn2-core) (fn2-cns-clear-wait-timer target fn2-core))
        (after (fn2-test-core-snapshot fn2-core))
        (conclusion
-        (equal (list code after)
-               (list :ok (fn2-cns-drain-put-child 'fn2-sched
-                           (fn2-cns-drain-cleared-sched target sched) before)))))
+        (and (eq code :ok)
+             (equal after (fn2-cns-drain-put-child 'fn2-sched
+                            (fn2-cns-drain-cleared-sched target sched) before)))))
     (mv (and base (if bounded (and bound conclusion)
                     (and (not bound) (not conclusion) (eq code :bounds)
                          (equal before after)))) fn2-core)))
