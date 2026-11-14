@@ -227,6 +227,7 @@ ACL2_BOOKS = \
   tests/blake3-vectors \
   tests/boot-unit \
   tests/borrow-conservation-unit \
+  tests/borrow-release-unit \
   tests/callbacks-unit \
   tests/check-history-unit \
   tests/check-own-unit \

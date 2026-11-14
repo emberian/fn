@@ -709,13 +709,17 @@
   (or (member-equal tag (list *fn2-nntp-command-capabilities* *fn2-nntp-command-help* *fn2-nntp-command-quit*
                               *fn2-nntp-command-mode* *fn2-nntp-command-date* *fn2-nntp-command-authinfo*
                               *fn2-nntp-command-xredeem* *fn2-nntp-command-list* *fn2-nntp-command-post*
-                              *fn2-nntp-command-ihave* *fn2-nntp-command-takethis*))
+                              *fn2-nntp-command-ihave* *fn2-nntp-command-takethis*
+                              *fn2-nntp-command-starttls*))
       (fn2-answer-query-p tag)
       (not (equal (fn2-answer-interim-reply tag) *fn2-nntp-reply-none*))))
 (defun fn2-answer-all-tabled-p (n)
   (declare (xargs :guard (natp n)))
   (or (zp n) (and (fn2-answer-tabled-p (- n 1)) (fn2-answer-all-tabled-p (- n 1)))))
 (assert-event (fn2-answer-all-tabled-p *fn2-nntp-command-none*))
+(assert-event (and (fn2-answer-tabled-p *fn2-nntp-command-starttls*)
+                   (equal (fn2-answer-interim-reply *fn2-nntp-command-starttls*)
+                          *fn2-nntp-reply-none*)))
 
 ;; The answer at a connection's greeting: 201 (posting is not served until
 ;; D5), or the capacity 400 when the row was admitted into the refusal
