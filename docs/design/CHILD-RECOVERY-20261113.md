@@ -97,8 +97,20 @@ Warm fixture passes 65 forms. Baseline source probe `stride-principal-result-sha
 passed all five target forms with 126 exact cached prerequisites; aggregate
 source admission was 31.73 seconds / 174,452 steps (principal 115,113 steps,
 count-next 36,127). This is not current-tree production certification or a
-completed formula-bound evidence package. Record fixture gate is pending;
-no machine-mode switch has occurred.
+completed formula-bound evidence package. Record fixture gate passed at
+`certify-20261114T003422Z-3447172` for exact 3e0f98fee: 17 reused, 4 built,
+21-book union, no book over 10 seconds. No machine-mode switch has occurred.
+
+The mutable continuation reuses proved read-only boundaries after updates.
+Its source-to-child equality is separately proved and disabled by default;
+mutable refinement selects that direction locally and keeps reader bodies
+opaque. Generated temporary bindings permit unused scalar results without
+repeating or dropping the operation. The control proves full output/state
+for accepted and refused writes, observes exactly one read and one write,
+and rejects a stale-read mutation with identical final effects. Live original,
+generated and mutant executions pass; the unrelated sibling remains 91.
+Warm product source passed 52 forms plus eight live-witness forms; reader
+regression passed 65 forms. This continuation still awaits record certification.
 
 Txn has 14 declared operations without child faces in the baseline. Three
 (txn-principal, authority-allows, authority-depend) have handwritten bodies
