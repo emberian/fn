@@ -94,6 +94,24 @@
   (if (and (alistp profile) (assoc-equal :fence-slots profile))
       (fn2-profile-get :fence-slots profile) 1))
 
+; Recovery conclusions depend on the declared storage fault contract.
+; Broad retains uncertainty about corruption beyond an interrupted write.
+; Crash-only additionally excludes that corruption; neither grants a witness.
+(defun fn2-profile-storage-fault-model (profile)
+  (declare (xargs :guard t))
+  (if (and (alistp profile) (assoc-equal :storage-fault-model profile))
+      (fn2-profile-get :storage-fault-model profile) "broad"))
+(defun fn2-profile-storage-fault-modelp (profile)
+  (declare (xargs :guard t))
+  (member-equal (fn2-profile-storage-fault-model profile) '("broad" "crash-only")))
+(defun fn2-profile-recovery-assumptions (profile)
+  (declare (xargs :guard t))
+  ; Recovery's bits: 1 crash-only, 2 persistence fence. Invalid profiles
+  ; are rejected at startup; this total function never grants extra trust.
+  (if (equal (fn2-profile-storage-fault-model profile) "crash-only") 3 2))
+(defthm fn2-profile-recovery-assumptions-bounds
+  (unsigned-byte-p 8 (fn2-profile-recovery-assumptions profile)))
+
 (defun fn2-profile-positive-u32p (x)
   (declare (xargs :guard t))
   (and (posp x) (unsigned-byte-p 32 x)))
@@ -132,6 +150,7 @@
   (and
    (alistp profile)
    (no-duplicatesp-equal (strip-cars profile))
+   (fn2-profile-storage-fault-modelp profile)
    ;; Absent retains the simulator's UID-0 default; a configured owner must
    ;; never fall back to UID 0 because its value was malformed or too wide.
    (or (not (assoc-equal :owner-uid profile))
@@ -249,7 +268,9 @@
  (fn2-assert-compliant-p
   '(fn2-profile-get fn2-profilep fn2-profile-c fn2-profile-p fn2-profile-u
     fn2-profile-t fn2-profile-x fn2-profile-w fn2-profile-o fn2-profile-qa
-    fn2-profile-fence-slots fn2-profile-h fn2-profile-k fn2-profile-aturn
+    fn2-profile-fence-slots fn2-profile-storage-fault-model
+    fn2-profile-storage-fault-modelp fn2-profile-recovery-assumptions
+    fn2-profile-h fn2-profile-k fn2-profile-aturn
     fn2-profile-ncancel
     fn2-profile-jread fn2-profile-jwrite fn2-profile-accept-credits
     fn2-profile-pool-classes fn2-profile-generation-start

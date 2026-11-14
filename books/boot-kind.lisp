@@ -31,6 +31,7 @@
   (fn2-boot-config-count :type (unsigned-byte 32) :initially 0 :why "Number of immutable genesis group records.")
   (fn2-boot-config-extents :type (unsigned-byte 32) :initially 0 :why "The image's arena geometry, checked before recovery.")
   (fn2-boot-config-owner :type (unsigned-byte 32) :initially 0 :why "Persisted initial owner account binding.")
+  (fn2-boot-config-recovery-assumptions :type (unsigned-byte 8) :initially 2 :why "Declared startup storage fault contract; never inferred from image bytes.")
   (fn2-boot-config-authority :type (unsigned-byte 1) :initially 0 :why "Whether genesis includes the principal directory.")))
 
 (defun fn2-boot-config-prepare (profile fn2-boot-config)
@@ -41,6 +42,7 @@
         (owner (fn2-profile-get :owner-account profile)))
   (if (not (fn2-profile-get :image-boot profile)) fn2-boot-config
    (let* ((fn2-boot-config (update-fn2-boot-config-groups groups fn2-boot-config))
+          (fn2-boot-config (update-fn2-boot-config-recovery-assumptions (fn2-profile-recovery-assumptions profile) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-path (fn2-profile-path-identity profile) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-count (if (unsigned-byte-p 32 (len groups)) (len groups) 0) fn2-boot-config))
           (fn2-boot-config (update-fn2-boot-config-extents (if (unsigned-byte-p 32 extents) extents 0) fn2-boot-config))
@@ -51,6 +53,10 @@
  (implies (fn2-boot-configp fn2-boot-config)
           (fn2-boot-configp (fn2-boot-config-prepare profile fn2-boot-config))))
 (defthm fn2-boot-config-prepare-wfp (fn2-boot-config-wfp (fn2-boot-config-prepare profile fn2-boot-config)))
+(defthm fn2-boot-config-prepare-recovery-assumptions
+ (implies (fn2-profile-get :image-boot profile)
+  (equal (fn2-boot-config-recovery-assumptions (fn2-boot-config-prepare profile fn2-boot-config))
+         (fn2-profile-recovery-assumptions profile))))
 (in-theory (disable fn2-boot-config-prepare))
 (defcorechild fn2-core-boot-config fn2-boot-config
  :init (fn2-boot-config-prepare profile fn2-boot-config)
