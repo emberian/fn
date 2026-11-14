@@ -292,6 +292,8 @@ ACL2_BOOKS = \
   tests/merkle-random \
   tests/merkle-unit \
   tests/native-envelope-prefix-unit \
+  tests/envelope-input-unit \
+  tests/envelope-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
