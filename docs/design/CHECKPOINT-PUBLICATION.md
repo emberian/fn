@@ -383,8 +383,9 @@ workspace, and advances to the previous ordinal. Only completion of ordinal 0
 captures a role-2/5 root and its actual hash/source-complete carrier. No caller
 supplies completion. These are concrete source/callback declarations, not a
 registered coordinator, admitted ownership proof, authenticated selected-base
-restoration or allocator reclamation. Candidate builder claims and root0 shared
-worker integration are the next required ownership connection.
+restoration or allocator reclamation. Candidate builder claims now bind the reservation to its nonselectable candidate;
+root0 shared worker integration remains the next required ownership connection.
+
 
 ## Candidate construction ownership
 
@@ -408,3 +409,24 @@ completed verified extent with matching namespace. Terminal Ref fields and diges
 are canonical zero. Producers supply their actual cut and calculated sequence
 counts; this serialization helper cannot stamp coverage or source completion.
 The map job now delegates to it, avoiding separate field-setter implementations.
+
+## Allocator freeze leaf qualification
+
+At source `802da825c8e7b94e684294d20ea622a349b1b043`, the actual allocator
+and `books/alloc-freeze.lisp` loaded under the record ACL2 executable with five
+compatible cached dependencies. The nine target forms include seven literal
+unchanged-stobj frames for begin-epoch, reserve, adopt, allocation commit,
+retirement, cancellation and checkpoint drain while frozen. The source load
+used 8.76 ACL2 seconds and 938,035 prover steps. This is source admission,
+not a certificate-cache record, executed freeze control fixture, or checkpoint
+composition proof. The prior `b6a907eeb` attempt refused allocator declaration
+metadata before submitting the frame book; correcting the ownership rationale
+strings preserved that ratchet.
+
+The next installation connection is a bounded producer that packs the actual
+completed construction ledger into the existing commit planner's allocation
+record capacity. It must keep one member's workspace, batch and event until the
+persisted installer consumes that exact member. A separate allocation per ticket
+would violate the planner's reserved ticket count. Allocation installation does
+not establish selectable checkpoint publication or authorize FREE.
+
