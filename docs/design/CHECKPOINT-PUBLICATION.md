@@ -400,3 +400,11 @@ expected-hash preparation body, preserving its tuple. A decoded recovery
 candidate clears builder provenance and cannot acquire a construction claim.
 The local claim fixture controls ownership/refusal only, not actual cut or
 physical construction. The composed claim invariant remains unqualified.
+
+`checkpoint-linked-header.lisp` now owns the single linked BODY encoder used
+by roles 2, 3 and 5. It derives the tag and terminal bit, checks the current
+actual reservation, and copies a next Ref only from the same-role next ordinal's
+completed verified extent with matching namespace. Terminal Ref fields and digest
+are canonical zero. Producers supply their actual cut and calculated sequence
+counts; this serialization helper cannot stamp coverage or source completion.
+The map job now delegates to it, avoiding separate field-setter implementations.
