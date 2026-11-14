@@ -55,3 +55,11 @@
                 (fn2-run-effects-p descriptors queued-before queued-after))
            (<= queued-after (+ queued-before (nfix residual))))
   :rule-classes (:rewrite :linear))
+
+; Shared proof statement, emitted at child, core and dispatch boundaries.
+; Fixed rows prevent erasing history by shrinking the operation table.
+(defun fn2-run-issued-claim (descriptors before after)
+ (declare (xargs :verify-guards nil))
+ `(and (equal (fn2-ops-rows ,after) (fn2-ops-rows ,before))
+       (equal (fn2-ops-issued-count (fn2-ops-rows ,before) ,after)
+              (+ (fn2-ops-issued-count (fn2-ops-rows ,before) ,before) ,descriptors))))

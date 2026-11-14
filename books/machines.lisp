@@ -3347,6 +3347,18 @@
  (if (atom fns) nil
   (cons `(make-event (value (fn2-machine-ops-frame-event ',(car fns) ',kind (w state))))
         (fn2-machine-ops-frame-events (cdr fns) kind))))
+(defun fn2-machine-core-issued-event (fn kind guard)
+ (declare (xargs :verify-guards nil))
+ (let ((call `(,fn id budget fn2-core)))
+  `(defthm ,(fn2-columns-sym fn "-ISSUED-EFFECT")
+    (implies (and (fn2-corep fn2-core) ,guard)
+     ,(fn2-run-issued-claim `(mv-nth 2 ,call) '(fn2-core-ops fn2-core)
+                            `(fn2-core-ops (mv-nth 4 ,call))))
+    :hints (("Goal" :in-theory (e/d (,fn fn2-core-stop fn2-machine-contract-check
+      fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
+      fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
+      fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
+     (fn2-core-ops fn2-corep fn2-core-wfp fn2-ops-issued-count fn2-op-issued-weight fn2-ops-rows nfix nth)))))))
 (defun fn2-machine-core-result-events (fn kind work-limit world)
   (declare (xargs :verify-guards nil))
   (let* ((call `(,fn id budget fn2-core))
@@ -3377,7 +3389,8 @@
                                              fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
                                            fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
                                            fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
-                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))))))
+                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))
+      ,(fn2-machine-core-issued-event fn kind (getpropc fn 'guard t world))))))
 (defun fn2-machine-success-charge-event (fn charge guard enabled)
   (declare (xargs :verify-guards nil))
   (let ((call `(,fn id budget fn2-core)))
@@ -3926,7 +3939,8 @@
                         :in-theory (e/d (,fn fn2-machine-refuse-phase fn2-core-stop
                                              fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
                                              fn2-machine-refuse-charge fn2-machine-refuse-write
-                                             ,(fn2-columns-sym name "-CHARGE")) (fn2-core-ops))))))))
+                                             ,(fn2-columns-sym name "-CHARGE")) (fn2-core-ops)))))
+      ,(fn2-machine-core-issued-event fn name guard))))
 (defun fn2-machine-stub-one-events (name world)
   (declare (xargs :verify-guards nil))
   (let* ((run-stub (fn2-columns-sym name "-RUN-STUB"))
@@ -4062,7 +4076,9 @@
                         (,obs-stub ,obs-def)
                         (,charge-stub ,charge-def)
                         (,bound-stub ,bound-def)
-                        :hints (("Goal" :use ,(fn2-columns-sym run-def "-SUCCESS-CHARGE"))))
+                        :hints (("Goal" :use (,(fn2-columns-sym run-def "-SUCCESS-CHARGE")
+                                              ,(fn2-columns-sym run-def "-ISSUED-EFFECT"))
+                                  :in-theory (disable fn2-ops-rows fn2-ops-issued-count))))
              ,@(and (fn2-dispatch-heads-p world)
                     `((in-theory (disable ,(fn2-columns-sym run-def "-DISPATCH-HEADS")
                                           ,(fn2-columns-sym run-def (if (fn2-dispatch-run-units-p name world)

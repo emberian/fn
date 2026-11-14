@@ -16,7 +16,8 @@
  (fn2-machine-observe-fn2-echo-stub fn2-machine-observe-fn2-echo)
  (fn2-echo-arm-charge-ok-p-stub fn2-echo-arm-charge-ok-p)
  (fn2-echo-arm-bound-stub fn2-echo-arm-bound)
- :hints (("Goal" :use fn2-echo-run-success-charge)))
+ :hints (("Goal" :use (fn2-echo-run-success-charge fn2-echo-run-issued-effect)
+                 :in-theory (disable fn2-ops-rows fn2-ops-issued-count))))
 
 ; Removing residual safety admits the first countermodel. Removing effects
 ; admits the second even though its numeric and phase-charge claims hold.

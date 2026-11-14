@@ -2,7 +2,7 @@
 ; the queue delta from actual updates; cancellation queues a request and does
 ; not dequeue an earlier request. Host acknowledgment is outside this API.
 (in-package "ACL2")
-(include-book "arm-children")
+(include-book "ops-issued-effects")
 
 (defthm fn2-ops-queued-natural
   (implies (fn2-opsp fn2-ops)
@@ -68,3 +68,12 @@
                    (if (eq (car ,call) :ok) 1 0))))
        :hints (("Goal" :use (:instance fn2-ops-queued-natural (fn2-ops (fn2-core-ops fn2-core)))
                        :in-theory (e/d (,name) (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))))
+
+(defun fn2-issue-core-issued-event (name formals)
+ (declare (xargs :verify-guards nil))
+ (let* ((call (cons name formals)) (out `(fn2-core-ops (mv-nth 3 ,call))))
+  `(defthm ,(fn2-columns-sym name "-ISSUED-TOTAL")
+    (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+     ,(fn2-run-issued-claim `(if (eq (car ,call) :ok) 1 0) '(fn2-core-ops fn2-core) out))
+    :hints (("Goal" :in-theory (e/d (,name)
+     (fn2-core-ops fn2-corep fn2-core-wfp fn2-ops-issued-count fn2-op-issued-weight fn2-ops-rows nfix nth)))))))
