@@ -113,7 +113,7 @@
  (cond ((not (fn2-tls-profilep profile)) (mv :tls-profile nil nil 0 0 0 0 0))
        ((not (fn2-tls-requested-p profile)) (mv :off nil nil 0 0 0 0 0))
        (t (mv :ok (fn2-profile-get :tls-certificate profile) (fn2-profile-get :tls-key profile)
-              (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-tls-seed-capacity profile)
+              (fn2-tls-setting :tls-window 16384 profile) *fn2-tls-io-bytes* *fn2-tls-minimum-version* (fn2-codec-seed-capacity profile)
               (fn2-tls-setting :tls-handshake-turns 65536 profile)))))
 
 ; The sticky stop (fn2-core-stopped-p): the adapter's test before it touches
