@@ -699,3 +699,47 @@
       (equal (fn2-update-auto-outer-child-core-face 9 42 '(((37) 1) ((91) 1)))
              '(:bounds :bounds (((37) 1) ((91) 1)))))
  :rule-classes nil)
+
+; Original preservation contracts select optional summaries. The child facts
+; are proved independently, and caller guards must use them without unfolding.
+(defun fn2-update-invariant-source (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (fn2-update-source 0 42 fn2-core))
+(defthm fn2-update-invariant-source-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (mv-nth 1 (fn2-update-invariant-source fn2-core)))))
+(defthm fn2-update-invariant-source-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (mv-nth 1 (fn2-update-invariant-source fn2-core)))))
+(defcore-product-child fn2-update-invariant-source fn2-update-invariant-child)
+(assert-event
+ (let ((row (cdr (assoc-eq 'fn2-update-invariant-source (table-alist 'fn2-core-lowered (w state))))))
+  (and (equal (fn2-decl-get :child-invariants row)
+               '(fn2-update-invariant-child-output-fn2-update-config-invariants))
+       (equal (fn2-product-guard-callees '(fn2-update-invariant-source) (w state)) nil))))
+(defun fn2-update-invariant-caller (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (first fn2-core) (fn2-update-invariant-source fn2-core)
+  (mv-let (second fn2-core) (fn2-update-invariant-source fn2-core)
+   (mv first second fn2-core))))
+; Names alone must not select summaries: these formulas are unrelated.
+(defthm fn2-update-invariant-caller-preserves-type t :rule-classes nil)
+(defthm fn2-update-invariant-caller-preserves-wfp t :rule-classes nil)
+(assert-event
+ (not (fn2-product-source-invariantp 'fn2-update-invariant-caller
+         'fn2-corep "-PRESERVES-TYPE" (w state))))
+(defcore-product-child fn2-update-invariant-caller fn2-update-invariant-caller-child)
+(defthm fn2-update-invariant-caller-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (equal (fn2-update-invariant-caller-child-core-face '(((37) 1) ((91) 1)))
+             '(:ok :ok (((42) 1) ((91) 1)))))
+ :rule-classes nil)
+
+(defthm fn2-update-invariant-guard-removal
+ (and (not (fn2-update-config-wfp '((37) 2)))
+      (not (fn2-update-config-wfp
+             (mv-nth 1 (fn2-update-invariant-child '((37) 2)))))))
+(assert-event
+ (not (fn2-decl-get :child-invariants
+        (cdr (assoc-eq 'fn2-update-invariant-caller (table-alist 'fn2-core-lowered (w state)))))))

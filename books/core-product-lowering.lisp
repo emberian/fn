@@ -42,12 +42,13 @@
    (append (and (fn2-decl-get :shape-reverse row) (fn2-decl-get property row)
                 (list (fn2-decl-get property row)))
            (fn2-product-callee-properties (cdr calls) property world)))))
- ; Guard checks may open the registered mutable dependency chain to recover
-; its primitive invariant facts. Execution refinement keeps those calls opaque.
+ ; Open only mutable boundaries without proved output invariant summaries.
+; Guard verification reuses summaries at the other boundaries.
 (defun fn2-product-mutable-children (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
   (append (and (fn2-decl-get :shape-reverse (cdar rows))
+               (not (fn2-decl-get :child-invariants (cdar rows)))
                (list (fn2-decl-get :child (cdar rows))))
           (fn2-product-mutable-children (cdr rows)))))
 (defun fn2-product-guard-callees (calls world)
@@ -402,6 +403,30 @@
  (if (atom entries) nil
   (append (fn2-core-lens-read-events (caar entries) written)
           (fn2-product-read-events (cdr entries) written))))
+; Recognize the columns preservation contract by its complete live formula.
+; Eligibility is not a proof: every child summary below is proved anew.
+(defun fn2-product-source-invariantp (fn predicate suffix world)
+ (declare (xargs :verify-guards nil))
+ (let* ((outs (getpropc fn 'stobjs-out nil world))
+        (call (cons fn (getpropc fn 'formals nil world)))
+        (result (if (equal outs '(fn2-core)) call `(mv-nth ',(- (len outs) 1) ,call))))
+  (equal (getpropc (fn2-columns-sym fn suffix) 'theorem nil world)
+    `(implies (if (fn2-corep fn2-core) (fn2-core-wfp fn2-core) 'nil)
+              (,predicate ,result)))))
+(defun fn2-product-output-invariants (child outputs index guard args openings)
+ (declare (xargs :verify-guards nil))
+ (if (atom outputs) nil
+  (let* ((obj (car outputs))
+         (result `(mv-nth ,index (,child ,@args))))
+   (append
+    (and obj
+      (list `(defthm ,(fn2-columns-sym child
+                        (concatenate 'string "-OUTPUT-" (symbol-name obj) "-INVARIANTS"))
+        (implies ,guard
+          (and (,(fn2-columns-sym obj "P") ,result)
+               (,(fn2-columns-sym obj "-WFP") ,result)))
+        :hints (("Goal" :in-theory (enable ,child ,@openings))))))
+    (fn2-product-output-invariants child (cdr outputs) (+ 1 index) guard args openings)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -434,6 +459,12 @@
                 (acons '(fn2-core-wfp fn2-core) (cons 'and (fn2-lower-predicates children "-WFP"))
                  (acons '(fn2-corep fn2-core) (cons 'and (fn2-lower-predicates children "P"))
                   (fn2-lower-projections entries))) world))
+        (invariants
+         (and (fn2-product-source-invariantp fn 'fn2-corep "-PRESERVES-TYPE" world)
+              (fn2-product-source-invariantp fn 'fn2-core-wfp "-PRESERVES-WFP" world)
+              (fn2-product-output-invariants child
+                (append (make-list (- (len outs) 1) :initial-element nil) written)
+                0 guard args (fn2-product-guard-callees (all-fnnames body) world))))
         (problem
          (cond (expansion-problem expansion-problem)
                ((fn2-lower-teeth-problem teeth) :evidence-pair)
@@ -467,6 +498,7 @@
                            (enable ,@(fn2-lower-guard-theory guard body world)
                              ,@(fn2-product-guard-callees (all-fnnames body) world))))))
         ,(fn2-product-block stages tail))
+       ,@invariants
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
              (equal (getpropc ',child 'stobjs-out nil (w state)) ',(append (remove-eq 'fn2-core outs) written))))
@@ -549,7 +581,8 @@
           :typed-refinement ,typed :guarded-refinement ,guarded
           :shape-refinement ,shaped :shape-reverse ,reverse :shape-preserved ,preserves
           :execution-correspondence ,bridge :refinement ,refinement
-          :children ,children :written ,written :obligation ,refinement
+          :children ,children :written ,written :child-invariants ,(strip-cadrs invariants)
+          :obligation ,refinement
           :execution-obligation ,guarded)))))))))
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))
