@@ -30,6 +30,15 @@
          (fn2-ra-count-arms (cdr rows))))))
 ; The declared schema kind is consumed by writers and readers. Directory
 ; index pages remain :manifest; ordinary positive-level pages are :run-index.
+(defun fn2-ra-fields-physical-ref-p (fields)
+ (declare (xargs :verify-guards nil))
+ (and (consp fields) (or (equal (cadar fields) '(:id physical-unit)) (fn2-ra-fields-physical-ref-p (cdr fields)))))
+(defun fn2-ra-physical-ref-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons `(,(fn2-decl-get :id (cdar rows))
+          ,(if (fn2-ra-fields-physical-ref-p (append (fn2-decl-get :key (cdar rows)) (fn2-decl-get :value (cdar rows)))) t nil))
+        (fn2-ra-physical-ref-arms (cdr rows)))))
 (defun fn2-ra-page-kind-arms (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
@@ -189,7 +198,10 @@
  (declare (xargs :verify-guards nil))
  (let ((room '(and (fn2-fields-wfp fn2-fields) (natp base)
                    (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields)))))
- `((defun fn2-run-layout-page-kind (sid lv)
+ `((defun fn2-run-layout-physical-ref-p (sid)
+    (declare (xargs :guard t))
+    (case sid ,@(fn2-ra-physical-ref-arms rows) (otherwise t)))
+   (defun fn2-run-layout-page-kind (sid lv)
     (declare (xargs :guard t) (ignorable lv))
     (case sid ,@(fn2-ra-page-kind-arms rows) (otherwise nil)))
    (defun fn2-run-layout-fields (sid lv)
