@@ -8,6 +8,7 @@
 ; refuse. General shared-subtree DAG traversal remains a separate frontier.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
+(include-book "checkpoint-metadata-retention")
 (include-book "checkpoint-semantic-page")
 (include-book "checkpoint-boot")
 (include-book "recovery")
@@ -547,7 +548,7 @@
                ((unless (<= (+ cb *fn2-format-ref-num-fields*) (fn2-fields-rows fn2-fields))) (fn2-checkpoint-semantic-fail :bounds))
                (unit (fn2-fields-value (+ cb *fn2-format-ref-field-physical-unit*) fn2-fields))
                (hf (+ cb *fn2-format-ref-field-expected-hash*))
-               ((unless (fn2-checkpoint-semantic-page-child-p cb sid level len fn2-fields)) (fn2-checkpoint-semantic-fail :reference))
+               ((unless (fn2-checkpoint-semantic-page-child-p cb (fn2-run-layout-page-kind sid (- level 1)) len fn2-fields)) (fn2-checkpoint-semantic-fail :reference))
                ((mv code fn2-digests) (fn2-rec-fetch 0 hash (fn2-fields-ref-slot hf fn2-fields) (fn2-fields-ref-gen hf fn2-fields)
                                       (fn2-fields-ref-off hf fn2-fields) kind owner generation fn2-pool fn2-digests))
                ((unless (eq code :ok)) (fn2-checkpoint-semantic-fail code))

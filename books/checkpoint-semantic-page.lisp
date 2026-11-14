@@ -2,7 +2,7 @@
 ; window with FN2-FORMAT-RUN. These grant no candidate or allocator authority.
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
-(include-book "checkpoint-metadata-retention")
+(include-book "runs-page")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-semantic-page-header-p (base schema run level fn2-fields)
@@ -14,17 +14,17 @@
       (equal (fn2-run-hdr base level) level)
       (unsigned-byte-p 32 (fn2-run-hdr base entries))))
 
-; LEVEL is the authenticated parent's positive level. The generated schema
-; determines its child's page kind; expected digest bytes stay in the held
+; PAGE-KIND is derived by the caller from its authenticated parent schema
+; and level through the generated dispatcher. Expected digest bytes stay in the held
 ; pool window until the composing caller copies them with FN2-REC-FETCH.
-(defun fn2-checkpoint-semantic-page-child-p (base schema level length fn2-fields)
+(defun fn2-checkpoint-semantic-page-child-p (base page-kind length fn2-fields)
  (declare (xargs :stobjs fn2-fields
   :guard (and (fn2-fields-wfp fn2-fields) (natp base)
               (<= (+ base *fn2-format-ref-num-fields*) (fn2-fields-rows fn2-fields))
-              (posp level))))
+              (unsigned-byte-p 8 page-kind))))
  (and (equal (fn2-fields-value (+ base *fn2-format-ref-field-storage-domain*) fn2-fields) 0)
       (equal (fn2-fields-value (+ base *fn2-format-ref-field-page-kind*) fn2-fields)
-             (fn2-run-layout-page-kind schema (- level 1)))
+             page-kind)
       (equal (fn2-fields-value (+ base *fn2-format-ref-field-encoded-length*) fn2-fields) length)
       (equal (fn2-fields-ref-len (+ base *fn2-format-ref-field-expected-hash*) fn2-fields) 32)))
 
