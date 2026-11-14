@@ -15,6 +15,11 @@ class EventBuildGuardTests(unittest.TestCase):
         self.assertTrue(got.endswith('(mv fn2-a fn2-b))'))
         self.assertEqual(rewrite(got), (got, 0))
 
+    def test_producer_is_the_same_explicit_class(self):
+        got, count = rewrite('(defun fn2-event-producer-step (fn2-a) (declare (xargs :stobjs fn2-a :verify-guards nil)) fn2-a)')
+        self.assertEqual(count, 1)
+        self.assertIn(':guard (and (fn2-a-wfp fn2-a))', got)
+
     def test_existing_guards_are_exact(self):
         src = '(defun fn2-event-build-step (fn2-a) (declare (xargs :stobjs fn2-a :guard (and (fn2-a-wfp fn2-a) (< 0 (fn2-a-rows fn2-a))))) fn2-a)'
         self.assertEqual(rewrite(src), (src, 0))
