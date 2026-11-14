@@ -359,6 +359,7 @@ ACL2_BOOKS = \
   tests/sim-replay-controls \
   tests/squares-unit \
   tests/square-evidence-unit \
+  tests/square-evidence-correspondence-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \
