@@ -421,3 +421,13 @@ record capacity. It must keep one member's workspace, batch and event until the
 persisted installer consumes that exact member. A separate allocation per ticket
 would violate the planner's reserved ticket count. Allocation installation does
 not establish selectable checkpoint publication or authorize FREE.
+
+## Shared linked page encoding
+
+`checkpoint-linked-header.lisp` now owns the single linked BODY encoder used
+by roles 2, 3 and 5. It derives the tag and terminal bit, checks the current
+actual reservation, and copies a next Ref only from the same-role next ordinal's
+completed verified extent with matching namespace. Terminal Ref fields and digest
+are canonical zero. Producers supply their actual cut and calculated sequence
+counts; this serialization helper cannot stamp coverage or source completion.
+The map job now delegates to it, avoiding separate field-setter implementations.
