@@ -69,3 +69,40 @@ attachments are refused. It is not a storage safety witness. The completion
 gate owns the product scope and served-subject check; this lane adds no rival
 completion inventory. Until the coordinator and witnesses exist, this row
 must remain unbound and product completion must fail closed.
+
+## Concrete integration seams
+
+`fn2-alloc-release-code` now owns the actual release decision used by
+`fn2-alloc-release`. It is read-only preflight, not a durability token.
+`fn2-alloc-reclaim-candidate` visits one retired FIFO row and returns its next
+row, writer epoch, allocation counter and retirement commit. A protected head
+does not prevent the coordinator from inspecting its successor on the next
+turn. Both functions use existing concrete allocator metadata; neither is a
+second reference implementation or an enabled reclamation machine.
+
+The proposed served B coordinator enters through `fn2-turn` dispatch and keeps
+one candidate handle, next FIFO row, installed checkpoint identity/cut, and the
+pending journal operation identity across turns. A completed candidate scan
+does not certify that the store is reclaimable. A later pass revisits blocked
+rows. Candidate selection, record construction, persistence, and final release
+are separate states, with the release decision rechecked after persistence.
+
+The physical read pin belongs at `fn2-block-read-children` in
+`books/machines-b.lisp`: it currently validates the physical unit's extent,
+epoch and allocation, then issues asynchronous storage I/O. The logical
+read-row release is not that boundary. Cursor and CNS callers copy physical
+data into their owned pool lease; source-extent protection must last through
+physical read completion/backend exclusion, independently of subsequent pool
+borrow lifetime. The operation slot and generation are the proposed pin
+owner. Outbox acknowledgement cannot release this pin. Pin attachment must
+complete before the issued descriptor becomes visible to the adapter, and
+failure must not leave a descriptor without protection.
+
+Two dependencies prevent enabling final FREE now. First, allocator edge
+capacity and generated core carriers must reserve and carry the per-operation
+physical pin through issue and physical completion. Second, although
+`fn2-format-retirement` and `fn2-format-release-allocation` already encode the
+lifecycle records (including checkpoint and physical release evidence), the
+current transaction record allowlist and `fn2-rp-body` do not accept/replay
+them. The release coordinator must join the actual journal persistence and
+recovery path, including checkpoint-root protection, before any call to FREE.

@@ -441,15 +441,40 @@
                                        *fn2-extent-state-retire-pending* fn2-extents)
                 (fn2-alloc-link-statep (fn2-extents-next-retired i fn2-extents)
                                        *fn2-extent-state-retire-pending* fn2-extents)))))
-(defun fn2-alloc-release (i epoch counter fn2-extents)
+; The coordinator probes before constructing a persisted release record, then
+; RELEASE rechecks after persistence. :OK is eligibility, never evidence that
+; a release was persisted. A new protector between those steps must still win.
+; Share this decision with the mutator so preflight cannot drift from release.
+(defun fn2-alloc-release-code (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
   (let ((code (fn2-alloc-handle-code i epoch counter fn2-extents)))
-    (cond ((not (eq code :ok)) (mv code fn2-extents))
-          ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)) (mv :state fn2-extents))
-          ((fn2-alloc-protector i nil fn2-extents) (mv (fn2-alloc-protector i nil fn2-extents) fn2-extents))
-          ((not (fn2-alloc-releasablep i fn2-extents)) (mv :checkpoint-blocked fn2-extents))
-          ((not (fn2-alloc-free-linksp i fn2-extents)) (mv :links fn2-extents))
-          (t (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))))))
+    (cond ((not (eq code :ok)) code)
+          ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*)) :state)
+          ((fn2-alloc-protector i nil fn2-extents) (fn2-alloc-protector i nil fn2-extents))
+          ((not (fn2-alloc-releasablep i fn2-extents)) :checkpoint-blocked)
+          ((not (fn2-alloc-free-linksp i fn2-extents)) :links)
+          (t :ok))))
+(defun fn2-alloc-release (i epoch counter fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+  (let ((code (fn2-alloc-release-code i epoch counter fn2-extents)))
+    (if (eq code :ok)
+        (let ((fn2-extents (fn2-alloc-free i fn2-extents))) (mv :ok fn2-extents))
+      (mv code fn2-extents))))
+; One FIFO visit, with no mutation or search. The caller retains NEXT across
+; scheduler turns; a changed/non-retired cursor is refused and must restart
+; from the live retired head. Returned identity is the one to put in a release
+; record, not authority to free later. RELEASE rechecks that identity and pins.
+(defun fn2-alloc-reclaim-candidate (i fn2-extents)
+  (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
+  (cond ((equal i *fn2-alloc-none*) (mv :done *fn2-alloc-none* 0 0 0))
+        ((not (fn2-alloc-slotp i fn2-extents)) (mv :bounds *fn2-alloc-none* 0 0 0))
+        ((not (= (fn2-extents-state i fn2-extents) *fn2-extent-state-retire-pending*))
+         (mv :state *fn2-alloc-none* 0 0 0))
+        (t (let ((epoch (fn2-extents-epoch i fn2-extents))
+                 (counter (fn2-extents-counter i fn2-extents)))
+             (mv (fn2-alloc-release-code i epoch counter fn2-extents)
+                 (fn2-extents-next-retired i fn2-extents)
+                 epoch counter (fn2-extents-retirement i fn2-extents))))))
 ; Cancellation discharges its own reservation; every other protection survives.
 (defun fn2-alloc-cancel-reservation (i epoch counter fn2-extents)
   (declare (xargs :stobjs fn2-extents :guard (fn2-extents-wfp fn2-extents)))
