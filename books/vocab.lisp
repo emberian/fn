@@ -632,6 +632,12 @@
                            (= evkind *fn2-event-entropy-result*))
                        (<= count (fn2-ops-range-len slot fn2-ops)))))))
 
+; Posting and harvesting share the same bounded lifecycle admission.
+(defun fn2-completion-phasep (cell phase)
+ (declare (xargs :guard t))
+ (or (and (equal cell 0) (equal phase *fn2-op-phase-submitted*))
+     (and (equal cell 1) (member-equal phase (list *fn2-op-phase-submitted* *fn2-op-phase-release-pending*)) t)))
+
 (defun fn2-post-eligiblep (cell slot gen fn2-ops)
   (declare (xargs :stobjs fn2-ops :guard (fn2-ops-wfp fn2-ops)))
   (and (unsigned-byte-p 1 cell) (eq (fn2-op-handle-code slot gen fn2-ops) :ok)
@@ -757,6 +763,7 @@
         (let* ((index (fn2-ops-posted-fifoi head fn2-ops))
                (slot (floor index 2)) (cell (mod index 2)))
           (if (and (unsigned-byte-p 1 cell) (fn2-op-slotp slot fn2-ops)
+                   (fn2-completion-phasep cell (fn2-ops-phase slot fn2-ops))
                    (if (= cell 0)
                        (and (= (fn2-ops-c0-posted slot fn2-ops) 1) (= (fn2-ops-c0-harvested slot fn2-ops) 0))
                      (and (= (fn2-ops-c1-posted slot fn2-ops) 1) (= (fn2-ops-c1-harvested slot fn2-ops) 0))))
