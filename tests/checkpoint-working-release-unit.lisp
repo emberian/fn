@@ -67,8 +67,11 @@
       (fn2-control (fn2-control-columns-init 0 fn2-control))
       (capacity (max *fn2-run-page-size* (fn2-checkpoint-future-window-length 0)))
       (fn2-pool (fn2-pool-init (list (cons 27 capacity)) 1 100 fn2-pool))
+      ; SYNTHETIC HELD admission premise, not an executed close/drain witness.
+      (fn2-csnapshot (fn2-csnapshot-put 0 (phase *fn2-csnapshot-phase-held*)
+       (token 7) (owner-kind 1) (owner-slot 2) (owner-gen 3)))
       ((mv admitted fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
-       (fn2-checkpoint-root1-reserve 4 1 2 3 fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool))
+       (fn2-checkpoint-root1-reserve 4 7 1 2 3 fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool))
       ; SYNTHETIC AUTHORIZATION PHASE/TOKEN PREMISE. No permission is derived here.
       (token (if completep 7 0))
       (fn2-checkpoint-root1 (fn2-checkpoint-root1-put 0
