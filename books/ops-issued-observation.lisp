@@ -43,6 +43,6 @@
                          (fn2-issued-extra-writers (fn2-decl-get :extra-fields schema)))))
   (value (cons 'progn (fn2-issued-payload-frame-events
    '((fn2-count-stray nil) (fn2-post-result nil) (fn2-post-accept-result nil)
-     (fn2-op-request-cancel 1) (fn2-post-clock nil) (fn2-take-clock 4)
+     (fn2-op-request-cancel 1) (fn2-op-set-wake 1) (fn2-post-clock nil) (fn2-take-clock 4)
      (fn2-post-signal nil) (fn2-take-signal 1) (fn2-ops-latch-peer nil))
    writers (w state))))))
