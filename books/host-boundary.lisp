@@ -119,6 +119,42 @@
 (defun fn2-host-stop-details (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (mv (fn2-core-stop-kind fn2-core) (fn2-core-stop-detail fn2-core)))
+
+; Decode this stop from the declaration that also generates the boot arms.
+(make-event
+ (let ((detail (position-eq :recovery (fn2-machine-declared 'fn2-boot :stops (w state)))))
+  (if (natp detail)
+      (value `(defconst *fn2-host-boot-recovery-detail* ,detail))
+    (er soft 'fn2-host-boot-refusal "Boot has no declared :recovery stop."))))
+
+(defun fn2-host-boot-refusal-class
+ (stopped reason kind detail snapshot phase rclass dirty ambiguous assume witness)
+ (declare (xargs :guard t))
+ (if (and (equal stopped t)
+          (equal reason *fn2-stop-reason-kind*)
+          (equal kind *fn2-boot-kind*)
+          (equal detail *fn2-host-boot-recovery-detail*)
+          (eq snapshot :ok)
+          (equal phase *fn2-recovery-machine-state-done*)
+          (equal rclass *fn2-rec-class-unknown*)
+          (equal dirty 1) (equal ambiguous 0)
+          (equal assume *fn2-rec-assume-fence*)
+          (equal witness 0))
+     :broad-dirty-tail-unknown
+   :other-stop))
+(in-theory (disable fn2-host-boot-refusal-class))
+
+(defun fn2-host-boot-refusal (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (let* ((id (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
+        (snapshot (fn2-recovery-machine-snapshot-read-code id fn2-core)))
+  (if (not (eq snapshot :ok)) :other-stop
+   (fn2-host-boot-refusal-class
+    (fn2-core-stopped-p fn2-core) (fn2-core-stop-reason fn2-core)
+    (fn2-core-stop-kind fn2-core) (fn2-core-stop-detail fn2-core)
+    snapshot (fn2-machine-phase id fn2-core) (fn2-machine-rc-class id fn2-core)
+    (fn2-machine-rc-dirty id fn2-core) (fn2-machine-rc-ambiguous id fn2-core)
+    (fn2-machine-rc-assume id fn2-core) (fn2-machine-rc-witness id fn2-core)))))
 (defun fn2-host-idle-deadline (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (fn2-core-idle-deadline fn2-core))
@@ -128,4 +164,4 @@
   '(fn2-host-post-result fn2-host-post-accept-result fn2-host-post-clock fn2-host-post-signal
     fn2-host-count-stray fn2-host-stray fn2-host-outbox-ack fn2-host-op-finish
     fn2-host-outbox-queued fn2-host-outbox-peek fn2-host-action
-    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-idle-deadline) (w state)))
+    fn2-host-op-span fn2-host-result fn2-host-listener-pathp fn2-host-listener-bind fn2-host-stopped-p fn2-host-stop-reason fn2-host-stop-details fn2-host-boot-refusal-class fn2-host-boot-refusal fn2-host-idle-deadline) (w state)))

@@ -120,8 +120,10 @@ def fault_contract_controls(directory, source, articles):
     node = restart.Node(directory, broad, "serve", "broad-refusal",
                         env=environment(fault_model="broad"))
     try:
+        diagnosis = node.marker(b"BOOT-REFUSAL ")
+        assert diagnosis.split()[1] == b":BROAD-DIRTY-TAIL-UNKNOWN", diagnosis
         refusal = node.marker(b"REFUSED ")
-        assert refusal.startswith(b"REFUSED fn2 image boot stopped: 40"), refusal
+        assert refusal.startswith(b"REFUSED fn2 image boot stopped:"), refusal
         assert node.proc.wait(timeout=30) == 2
     finally:
         node.close()
@@ -139,6 +141,7 @@ def fault_contract_controls(directory, source, articles):
     assert "STORAGE-FAULT-MODEL crash-only" in (directory / "crash-only-recovery.log").read_text()
     (directory / "fault-contract-controls.json").write_text(json.dumps(dict(
         source_image=str(source), broad_refusal=refusal.decode(),
+        broad_diagnosis=diagnosis.decode(),
         crash_only_recovered=True, candidate_recovered=present,
         original_candidate_acknowledgment="not recorded by the original failing pilot"), indent=2) + "\n")
     print("FAULT CONTRACT CONTROLS PASS: same image refuses broad and recovers crash-only", flush=True)
