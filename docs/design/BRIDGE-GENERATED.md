@@ -253,3 +253,87 @@ negative controls. Its guard primitive domain is deliberately separate from the
 arithmetic body fixture, so these controls do not claim a composed semantic root
 or primitive correspondence. Production emitters must bind guard and body tables
 to the same freshly qualified canonical records before using these predicates.
+
+The connected CNS slice is planned against source `6e07e62f3` (B), not the
+recovered packet. Its entry is the actual served `FN2-CNS-RUN-DRAINING` function
+and its complete result tuple, including the returned core. The source at
+`books/cns.lisp:1304` has three different outcomes to retain: a held-lease step,
+a complete drain/retirement, and refusal/stop. A successful no-lease path releases
+WS through `fn2-core-release`, releases NS through `fn2-cns-release-ns`, resets
+ownership fields, selects free/retired, clears the timer, then reclaims and charges.
+No new packet or current closure cardinality has been established by this plan.
+
+The concrete dependency blocks and proof connections are:
+
+| Source boundary | Required connection |
+| --- | --- |
+| Generated arm snapshot/phase dispatch | Exact current formals/guard/body, snapshot read code, kind/phase selection and actual served caller-to-arm equation. |
+| `fn2-cns-lease-release` | Generated child wrapper to `fn2-core-release-children`, accepted `:ok`/`:retired` cases and rejection branch; keep the held-lease intermediate state distinct from full reclamation. |
+| `fn2-core-release`, `fn2-cns-release-ns` | Current core/pool/control projections and result reconstruction; NS delegates to core release. Preserve ownership arguments and distinguish first/second release refusal and their accumulated state. |
+| Row setters and `fn2-machine-free-head`/`fn2-machine-gen-limit` | Table indices, u32/u60 bounds, concrete tuple shape, generation increment/retire split and frames for other rows/children. |
+| `fn2-cns-clear-wait-timer` | Generated wrapper to `fn2-sched-clear-deadline`; prove row index admission, target deadline/expired changes, armed count and sibling frame. |
+| `fn2-cns-reclaim` | Generated wrapper to `fn2-machines-reclaim`; valid ordinal, positive active count and credit capacity for nonretired reclaim, plus explicit stop behavior outside those premises. |
+| Guard/helper/MBE closure | Preserve both logical and executable sides. A MEMBER-EQ-EXEC adequacy certificate does not prove logical MEMBER-EQUAL correspondence; relate them on the admitted symbol/proper-list domain. |
+
+The input-domain predicate must be named and generated from the actual canonical
+arm guard plus the supported core representation. Its executable-state component
+starts from `fn2-core-wfp` and the particular selected live CNS row, rather than
+whole-state validation added to the runtime path. Prove that the real composed
+caller supplies it; then carry it across each child operation with current named
+preservation theorems and branch-specific ownership/index facts. Timer admission
+must connect machine ID to scheduler capacity, and reclaim admission must connect
+the selected live row to its partition's active count. Do not assume either fact
+merely because the table has a structurally well-formed representation. Fault
+branches remain part of the root contract; a stronger successful-drain subdomain
+is a separately named theorem, not the full-root denominator.
+
+Once B is qualified, the next generation and proof sequence is fixed:
+
+1. Convergence prints fresh canonical packets with a derived-source receipt.
+   Run the existing `--inspect` preflight, retaining unsupported attachments or
+   recursion as failures. Reuse `function_semantics`/`semantic_inventory` on the
+   exact served rows to enumerate body, guard, selected attachment and measure
+   obligations. Compare the core and served root's raw records; never silently
+   replace one graph with the other's smaller body-only closure.
+2. Extend the existing core body/lambda emitter to consume the shared closed
+   evaluation API. Reuse current body equations and checked recursion helpers,
+   retaining its existing actual `LayerAWorld` dispatch binding. `CoreWorld` is
+   a proof namespace: its `fns` already aliases `LayerAWorld.fns`, its dispatch
+   equations name actual `LayerAWorld` functions, and canonical-body proofs
+   unfold those functions. Extend these equations with closed evaluation and
+   domain evidence; do not create a second function world or emitter.
+3. Emit canonical definition and guard tables from the same exact raw records.
+   Compose `CanonicalBodyCorrect` and `DomainRespectsGuards` through the blocks
+   above. Instantiate primitive domains at reached sites, including arithmetic
+   in guards, and prove supported Object/Val arguments and returned state. The
+   EXPT and recursive-member pilots are reusable lemmas, not completed sites.
+   Package-qualified symbol injectivity and attachment/MBE equivalence stay
+   explicit prerequisites; `.value?` alone is not an injective symbol model.
+4. Bind every ACL2 body equation and preservation theorem to its live translated
+   formula and current qualified record. Have the checker regenerate expected
+   typed Lean wrappers from the packet and root domain. Reject missing records,
+   mismatched subjects and stale source hashes before counting a root; a theorem
+   named `complete` with the wrong proposition must fail the wrapper.
+5. Join the independent CNS contract owned by the Q1 semantics lane to that same
+   returned core and result tuple. A protected sibling timer, old-incarnation
+   target timer, generation retirement, and release refusals provide reachable
+   witnesses and mutations. Clearing a timer sets earliest to no-deadline only
+   when the new armed count is zero; otherwise the implementation retains it.
+   Do not invent a stronger minimum-recomputation postcondition.
+
+The shared foundation lane owns these emitter/API/strict-checker connections.
+Primitive and recursion lanes own separate reusable lemmas; the independent CNS
+contract lane owns application meaning. The finish condition is one connected
+served-root theorem with all these obligations discharged, followed by the same
+construction for every remaining served root, not a sum of library proof counts.
+
+The first production-connection mutation belongs to the shared foundation lane:
+keep the canonical packet, domain and independent expected postcondition fixed,
+but change the selected served timer-clear result to retain the target timer.
+The generated typed wrapper must reject the actual LayerAWorld/body join, while
+the Q1 witness must separately reject the timer postcondition. Also remove the
+callee-domain premise at the timer boundary and supply an out-of-range machine ID:
+the resulting `:bounds` outcome is a concrete counterexample to unconditional
+successful clearance. Neither a changed JSON status nor a parse failure counts
+as these semantic mutation controls. The Q1 lane owns the independent witness;
+the shared foundation lane owns the emitted-function mutation and strict wrapper.
