@@ -7,14 +7,15 @@
 (fn2-book-layer :c)
 (defcolumns fn2-checkpoint-restore-semantic
  ((phase (:enum fn2-checkpoint-restore-semantic-phase (:idle :read :verify :header :entries :uncertain)))
-  (candidate :u32) (unit :u60) (epoch :u60) (allocation :u60)
+  (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
+  (source-history :u60) (source-incarnation :u60) (unit :u60) (epoch :u60) (allocation :u60)
   (cursor :u32) (checker-row :u32) (field-base :u32) (checker-phase :u8) (checker-pos :u32)
   (checker-zero :u32) (checker-pad :u32) (checker-pad-end :u32) (checker-geom :u32) (checker-previous-seal-offset :u32)
   (slot :u32) (gen :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (schema :u60) (run :u60) (level :u8) (entries :u32))
  :extra-fields
- ((fn2-checkpoint-restore-semantic-hash :type (array (unsigned-byte 8) (32)) :initially 0
-   :why "Exact descriptor root1 expected hash retained before physical reads; no caller digest input.")))
+ ((fn2-checkpoint-restore-semantic-hash :type (array (unsigned-byte 8) (64)) :initially 0
+   :why "Root1 expected hash and exact source descriptor hash retained across physical reads.")))
 
 (defun fn2-checkpoint-restore-semantic-root-hash (i src fn2-checkpoint-bytes fn2-checkpoint-restore-semantic)
  (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-checkpoint-restore-semantic)
@@ -25,6 +26,28 @@
   (let ((fn2-checkpoint-restore-semantic (update-fn2-checkpoint-restore-semantic-hashi i
          (fn2-checkpoint-bytes-value (+ src i) fn2-checkpoint-bytes) fn2-checkpoint-restore-semantic)))
    (fn2-checkpoint-restore-semantic-root-hash (+ i 1) src fn2-checkpoint-bytes fn2-checkpoint-restore-semantic))))
+
+; Exact in-flight descriptor identity; neither a slot nor a replacement map
+; can redirect an already admitted semantic page reader.
+(defun fn2-checkpoint-restore-semantic-source-equal (i fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+  :measure (nfix (- 32 (nfix i)))
+  :guard (and (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control)
+              (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic) (natp i) (<= i 32))))
+ (or (>= (nfix i) 32)
+  (and (equal (fn2-checkpoint-restore-map-control-descriptori i fn2-checkpoint-restore-map-control)
+              (fn2-checkpoint-restore-semantic-hashi (+ 32 i) fn2-checkpoint-restore-semantic))
+       (fn2-checkpoint-restore-semantic-source-equal (+ i 1) fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))))
+
+(defun fn2-checkpoint-restore-semantic-source-copy (i fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+ (declare (xargs :stobjs (fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+  :measure (nfix (- 32 (nfix i)))
+  :guard (and (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control)
+              (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic) (natp i) (<= i 32))))
+ (if (>= (nfix i) 32) fn2-checkpoint-restore-semantic
+  (let ((fn2-checkpoint-restore-semantic (update-fn2-checkpoint-restore-semantic-hashi (+ 32 i)
+         (fn2-checkpoint-restore-map-control-descriptori i fn2-checkpoint-restore-map-control) fn2-checkpoint-restore-semantic)))
+   (fn2-checkpoint-restore-semantic-source-copy (+ i 1) fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))))
 
 (defun fn2-checkpoint-restore-semantic-begin (slot gen kind owner generation fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
                                             fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-pool fn2-checkpoint-restore-semantic)
@@ -55,8 +78,15 @@
                      (<= *fn2-format-page-size* (fn2-pool-cap slot fn2-pool))))
        (mv :window fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-root-hash 0 (* 32 r) fn2-checkpoint-bytes fn2-checkpoint-restore-semantic))
+      (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-source-copy 0 fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0
-       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c) (unit unit)
+       (phase *fn2-checkpoint-restore-semantic-phase-read*) (candidate c)
+       (source-checkpoint (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
+       (source-cut-commit (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))
+       (source-cut-event (fn2-checkpoint-restore-map-control-source-cut-event 0 fn2-checkpoint-restore-map-control))
+       (source-history (fn2-checkpoint-restore-map-control-source-history 0 fn2-checkpoint-restore-map-control))
+       (source-incarnation (fn2-checkpoint-restore-map-control-source-incarnation 0 fn2-checkpoint-restore-map-control))
+       (unit unit)
        (epoch (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs)) (allocation (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs))
        (cursor 0) (slot slot) (gen gen) (owner-kind kind) (owner-slot owner) (owner-gen generation))))
   (mv :read fn2-checkpoint-restore-semantic)))
@@ -99,6 +129,12 @@
                      (list *fn2-checkpoint-restore-semantic-phase-read* *fn2-checkpoint-restore-semantic-phase-verify*))
                     (equal (fn2-checkpoint-restore-semantic-candidate 0 fn2-checkpoint-restore-semantic)
                            (fn2-checkpoint-restore-map-control-candidate 0 fn2-checkpoint-restore-map-control))
+                    (fn2-checkpoint-restore-semantic-source-equal 0 fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic)
+                    (equal (fn2-checkpoint-restore-semantic-source-checkpoint 0 fn2-checkpoint-restore-semantic) (fn2-checkpoint-restore-map-control-source-checkpoint 0 fn2-checkpoint-restore-map-control))
+                    (equal (fn2-checkpoint-restore-semantic-source-cut-commit 0 fn2-checkpoint-restore-semantic) (fn2-checkpoint-restore-map-control-source-cut-commit 0 fn2-checkpoint-restore-map-control))
+                    (equal (fn2-checkpoint-restore-semantic-source-cut-event 0 fn2-checkpoint-restore-semantic) (fn2-checkpoint-restore-map-control-source-cut-event 0 fn2-checkpoint-restore-map-control))
+                    (equal (fn2-checkpoint-restore-semantic-source-history 0 fn2-checkpoint-restore-semantic) (fn2-checkpoint-restore-map-control-source-history 0 fn2-checkpoint-restore-map-control))
+                    (equal (fn2-checkpoint-restore-semantic-source-incarnation 0 fn2-checkpoint-restore-semantic) (fn2-checkpoint-restore-map-control-source-incarnation 0 fn2-checkpoint-restore-map-control))
                     (natp row) (< row (fn2-fc-rows fn2-fc)) (< row (fn2-fc-context-rows fn2-fc-context))
                     (fn2-run-readerp base fn2-fields) (posp budget) (<= budget 4096)
                     (or (equal (fn2-checkpoint-restore-semantic-phase 0 fn2-checkpoint-restore-semantic) *fn2-checkpoint-restore-semantic-phase-read*)
@@ -176,3 +212,6 @@
    (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context)
    (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))
  ((fn2-checkpoint-restore-semantic 1) (fn2-fc 2) (fn2-fc-context 3) (fn2-b3 4) (fn2-fields 5) (fn2-pool 6) (fn2-digests 7)))
+
+(fn2-checkpoint-restore-semantic-preserves fn2-checkpoint-restore-semantic-source-copy
+ (i fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic))
