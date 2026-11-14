@@ -570,6 +570,11 @@ the image launcher always opens its persisted device instead."
                 (loop for status = (fn2-boot-status core)
                       until (eq status :ready)
                       do (when (eq status :failed)
+                           (multiple-value-bind (kind detail) (fn2-host-stop-details core)
+                             (format t "~%BOOT-REFUSAL ~s stop=~d kind=~d detail=~d~%"
+                                     (fn2-host-boot-refusal core)
+                                     (fn2-host-stop-reason core) kind detail)
+                             (finish-output))
                            (error "fn2 image boot stopped: ~d" (fn2-host-stop-reason core)))
                          (fn2-n-iteration host)))
         host)
