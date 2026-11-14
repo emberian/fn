@@ -2,6 +2,20 @@
 ; only in the generator: emitted code passes concrete child stobjs directly.
 (in-package "ACL2")
 (include-book "core-lowering")
+ ; Logical reconstruction domain; never tested on the executable path.
+(defun fn2-product-spinep (n x) (and (true-listp x) (equal (len x) n)))
+(defthm fn2-product-update-nth-true-listp
+ (implies (true-listp xs) (true-listp (update-nth i value xs)))
+ :hints (("Goal" :induct (update-nth i value xs) :in-theory (enable update-nth))))
+(defthm fn2-product-update-nth-spine
+ (implies (and (fn2-product-spinep n xs) (natp i) (< i n))
+          (fn2-product-spinep n (update-nth i value xs)))
+ :hints (("Goal" :in-theory (e/d (fn2-product-spinep) (update-nth)))))
+(defthm fn2-product-spine-consp
+ (implies (and (fn2-product-spinep n x) (posp n)) (consp x))
+ :hints (("Goal" :in-theory (enable fn2-product-spinep)))
+ :rule-classes :forward-chaining)
+(in-theory (disable fn2-product-spinep))
 (defun fn2-product-value (x) (list :value x))
 (defun fn2-product-child (x) (list :child x))
 (defun fn2-product-name (n)
@@ -251,11 +265,12 @@
  (and (not (getpropc 'fn2-product-core-shape 'theorem nil world))
   `((defthm fn2-product-core-shape
      (implies (fn2-corep fn2-core)
-      (and (true-listp fn2-core)
+      (and (fn2-product-spinep ,(len (fn2-core-child-registry world)) fn2-core)
+           (true-listp fn2-core)
            (equal (len fn2-core) ,(len (fn2-core-child-registry world)))
            ,@(and (consp (fn2-core-child-registry world)) '((consp fn2-core)))))
      :hints (("Goal" :in-theory
-       (e/d (fn2-corep)
+       (e/d (fn2-corep fn2-product-spinep)
             (,@(strip-cars (fn2-lower-predicates
                  (fn2-core-child-types (fn2-core-child-registry world)) "P"))))))))))
 (defun fn2-product-cross-writeback-facts (field entries world)
@@ -268,11 +283,11 @@
    (append
     (and (not (eq field other)) (not (getpropc name 'theorem nil world))
      `((defthm ,name
-        (implies (fn2-corep fn2-core)
+        (implies (fn2-product-spinep ,(len (fn2-core-child-registry world)) fn2-core)
          (equal (,writer (,field fn2-core) (,other-writer value fn2-core))
                 (,other-writer value fn2-core)))
         :hints (("Goal" :in-theory
-          (e/d (,field ,writer ,other-writer)
+          (e/d (fn2-product-spinep ,field ,writer ,other-writer)
                (fn2-corep nth update-nth
                 ,@(strip-cars (fn2-lower-predicates
                     (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
@@ -285,10 +300,10 @@
    (append
     (and (not (getpropc name 'theorem nil world))
      `((defthm ,name
-        (implies (fn2-corep fn2-core)
+        (implies (fn2-product-spinep ,(len (fn2-core-child-registry world)) fn2-core)
                  (equal (,writer (,field fn2-core) fn2-core) fn2-core))
         :hints (("Goal" :in-theory
-          (e/d (,field ,writer)
+          (e/d (fn2-product-spinep ,field ,writer)
                (fn2-corep nth update-nth
                 ,@(strip-cars (fn2-lower-predicates
                     (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
@@ -304,6 +319,20 @@
         (getpropc (car calls) 'unnormalized-body nil world)
         (list (car calls)))
    (fn2-product-proof-leaves (cdr calls) opened fields world))))
+(defun fn2-product-spine-facts (entries world)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((writer (fn2-product-writer (caar entries)))
+         (name (fn2-columns-sym writer "-LOWERING-SPINE"))
+         (count (len (fn2-core-child-registry world))))
+   (append
+    (and (not (getpropc name 'theorem nil world))
+     `((defthm ,name
+        (implies (fn2-product-spinep ,count fn2-core)
+                 (fn2-product-spinep ,count (,writer value fn2-core)))
+        :hints (("Goal" :in-theory
+          (e/d (,writer) (fn2-product-spinep nth update-nth)))))))
+    (fn2-product-spine-facts (cdr entries) world)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -322,6 +351,10 @@
         (face (fn2-columns-sym child "-CORE-FACE"))
         (execution (fn2-columns-sym child "-EXEC-CORE-FACE"))
         (typed (fn2-columns-sym child "-TYPED-EXECUTION-REFINES-CORE"))
+        (shaped (fn2-columns-sym child "-SPINE-EXECUTION-REFINES-CORE"))
+        (reverse (fn2-columns-sym child "-CORE-TO-EXECUTION"))
+        (preserves (fn2-columns-sym child "-CORE-SPINE-PRESERVED"))
+        (count (len (fn2-core-child-registry world)))
         (guarded (fn2-columns-sym child "-GUARDED-EXECUTION-REFINES-CORE"))
         (bridge (fn2-columns-sym child "-EXECUTION-CORRESPONDENCE"))
         (refinement (fn2-columns-sym child "-REFINES-CORE"))
@@ -352,6 +385,7 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        ,@(fn2-product-core-shape-events world)
+       ,@(fn2-product-spine-facts (fn2-product-written-entries entries (all-fnnames body)) world)
        ,@(fn2-product-shadow-facts (fn2-product-written-entries entries (all-fnnames body)) world)
        ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body))
                                      (fn2-product-written-entries entries (all-fnnames body)) world)
@@ -369,8 +403,8 @@
                           (equal (getpropc ',execution 'stobjs-out nil (w state)) ',outs)))
        ;; This is the substantive extraction proof. The executable wrapper is
        ;; independent of the original operation and contains no type recheck.
-       (defthm ,typed
-        (implies (fn2-corep fn2-core)
+       (defthm ,shaped
+        (implies (fn2-product-spinep ,count fn2-core)
                  (equal (,execution ,@formals) (,fn ,@formals)))
         :hints (("Goal" :in-theory
           (e/d (,execution ,child ,fn ,@opened
@@ -385,6 +419,26 @@
                                              (all-fnnames body) :refinement)
                 ,@(strip-cars (fn2-lower-predicates
                      (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))
+       (defthm ,typed
+        (implies (fn2-corep fn2-core)
+                 (equal (,execution ,@formals) (,fn ,@formals)))
+        :hints (("Goal" :use ((:instance ,shaped))
+                 :in-theory (disable ,execution ,child ,fn ,shaped fn2-corep))))
+       (defthm ,reverse
+        (implies (fn2-product-spinep ,count fn2-core)
+                 (equal (,fn ,@formals) (,execution ,@formals)))
+        :hints (("Goal" :use ((:instance ,shaped))
+                 :in-theory (disable ,execution ,child ,fn ,shaped))))
+       (in-theory (disable ,shaped ,reverse))
+       (defthm ,preserves
+        (implies (fn2-product-spinep ,count fn2-core)
+          (fn2-product-spinep ,count
+            ,(if (equal (len outs) 1) `(,fn ,@formals)
+               `(mv-nth ,(1- (len outs)) (,fn ,@formals)))))
+        :hints (("Goal" :in-theory
+          (e/d (,reverse ,execution)
+               (,fn ,child ,shaped ,@(strip-cars entries)
+                ,@(strip-cars (fn2-product-writers entries)))))))
        (defthm ,guarded ,execution-formula
         :hints (("Goal" :use ((:instance ,typed))
                  :in-theory (disable ,execution ,child ,fn ,typed))))
@@ -416,6 +470,7 @@
        (table fn2-core-lowered ',fn
         '(:child ,child :face ,face :execution ,execution
           :typed-refinement ,typed :guarded-refinement ,guarded
+          :shape-refinement ,shaped :shape-reverse ,reverse :shape-preserved ,preserves
           :execution-correspondence ,bridge :refinement ,refinement
           :children ,children :written ,written :obligation ,refinement
           :execution-obligation ,guarded)))))))))

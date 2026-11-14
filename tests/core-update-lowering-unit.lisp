@@ -602,3 +602,37 @@
    (e/d (fn2-update-reverse-order-child-exec-core-face fn2-update-reverse-order-child)
         ((:executable-counterpart fn2-update-reverse-order-child-exec-core-face)))))
  :rule-classes nil)
+
+; The compositional lemma covers a proper core spine even when a child's
+; logical contents violate its type. This is not an executable guard claim.
+(defthm fn2-update-spine-with-invalid-child-control
+ (let ((core '(((999) 1) ((91) 1))))
+  (and (fn2-product-spinep 2 core)
+       (not (fn2-corep core))
+       (equal (fn2-update-source 0 42 core) '(:ok (((42) 1) ((91) 1))))
+       (equal (fn2-update-child-exec-core-face 0 42 core)
+              (fn2-update-source 0 42 core))))
+ :hints (("Goal" :in-theory
+    (e/d (fn2-product-spinep fn2-update-source fn2-update-child-exec-core-face fn2-update-child
+          fn2-update-config-set-value update-fn2-update-config-value$ai)
+         ((:executable-counterpart fn2-update-child-exec-core-face)
+          (:executable-counterpart fn2-update-config-set-value)
+          (:executable-counterpart update-fn2-update-config-value$ai)))))
+ :rule-classes nil)
+(defthm fn2-update-spine-hypothesis-removal-control
+ (and (not (fn2-product-spinep 2 nil))
+      (equal (fn2-conditional-source nil 0 42 nil) '(:off nil))
+      (equal (fn2-conditional-child-exec-core-face nil 0 42 nil) '(:off (nil)))
+      (not (equal (fn2-conditional-source nil 0 42 nil)
+                  (fn2-conditional-child-exec-core-face nil 0 42 nil))))
+ :hints (("Goal" :in-theory
+    (e/d (fn2-product-spinep fn2-conditional-source fn2-conditional-child-exec-core-face fn2-conditional-child)
+         ((:executable-counterpart fn2-conditional-child-exec-core-face)))))
+ :rule-classes nil)
+(assert-event
+ (let ((row (cdr (assoc-eq 'fn2-update-source (table-alist 'fn2-core-lowered (w state))))))
+  (and (eq (fn2-decl-get :shape-refinement row) 'fn2-update-child-spine-execution-refines-core)
+       (eq (fn2-decl-get :shape-reverse row) 'fn2-update-child-core-to-execution)
+       (eq (fn2-decl-get :shape-preserved row) 'fn2-update-child-core-spine-preserved)
+       (equal (fn2-update-call-count 'fn2-product-spinep
+               (getpropc 'fn2-update-child-exec-core-face 'unnormalized-body nil (w state))) 0))))
