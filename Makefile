@@ -328,6 +328,7 @@ ACL2_BOOKS = \
   tests/pool-ranges-unit \
   tests/pool-unit \
   tests/port-unit \
+  tests/primitive-list-domain-unit \
   tests/primitive-power-domain-unit \
   tests/q1-contracts \
   tests/q1-contracts-b \
