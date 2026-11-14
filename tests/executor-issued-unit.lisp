@@ -1,0 +1,37 @@
+; The same history proof generator against the bounded real three-kind core.
+(in-package "ACL2")
+(include-book "machine-budget-turn-unit")
+(include-book "../books/executor-issued-events")
+(fn2-executor-issued-events)
+
+; The public-turn FREE-posted control also checks exact operation history;
+; retry controls live in the same fixture.
+(assert-event (equal (fn2-budget-harvest-refusal) '(t :stop 1 0 0 0 t t t)))
+
+(defun fn2-issued-turn-witness-run (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((profile *fn2-profile-tiny*)
+      (fn2-core (fn2-core-init profile fn2-core))
+      (id (fn2-machine-free-head *fn2-echo-admission-ordinal* fn2-core))
+      ((mv code fn2-core) (fn2-machine-admit-fn2-echo 7 9 1 fn2-core))
+      ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+      (fn2-core (fn2-exec-wake wake fn2-core))
+      (hyps (and (eq code :ok) (equal wake id)
+             (fn2-execution-profilep profile)
+             (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+             (fn2-machine-idp id fn2-core)
+             (equal (fn2-machine-kind id fn2-core) *fn2-echo-kind*)
+             (fn2-exec-runnable-p fn2-core) (fn2-exec-credit-p fn2-core)))
+      (before (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (history)
+                (fn2-ops-issued-count (fn2-ops-rows fn2-ops) fn2-ops) history))
+      (limit (fn2-exec-aturn fn2-core))
+      ((mv & & & actions fn2-core) (fn2-turn fn2-core))
+      (after (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (history)
+               (fn2-ops-issued-count (fn2-ops-rows fn2-ops) fn2-ops) history)))
+  (mv (and hyps (< 0 actions) (equal (- after before) actions)
+           (<= (- after before) limit) (fn2-core-wfp fn2-core)) fn2-core)))
+(defun fn2-issued-turn-witness ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core) (fn2-issued-turn-witness-run fn2-core) answer)))
+(assert-event (fn2-issued-turn-witness))
