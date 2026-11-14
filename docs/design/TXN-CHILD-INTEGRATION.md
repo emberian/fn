@@ -110,3 +110,28 @@ It passed in 1.73 seconds / 2,782 prover steps and stopped its REPL. This is a
 focused proof-interface control, not certification of the changed source closure.
 The minimal prerequisite source is `4400cb995`; current-prefix qualification
 and production callback admission remain pending.
+
+## Split-helper composition repair
+
+The `4400cb995` prerequisite passed current initializer (35-book) and
+`assembly-init` (103-book) record gates. The downstream cursor then exposed a
+missing interface: automatically split `:do` chain helpers were disabled but
+had none of the numeric or effect contracts emitted for public arms.
+
+`871d71381` and `a741056ee` add the shared contract trio to non-observe helpers.
+A suffix proves its static descriptor bound; public arms retain the original
+caller-budget theorem. Runtime bodies and guards are unchanged. The latter
+commit also places the unchanged charge-maximum helper before its new caller.
+
+A local probe in the authenticated `99e30d184` shared world admitted the actual
+cursor range helper's quantities, descriptor effect and issued-history effect,
+then the unchanged original range caller's contracts. The subarm block took
+6.55 seconds / 345,308 steps; including the original cursor source prefix, the
+probe took 67.80 seconds / 8,652,448 steps. ACL2 confirmed the local encapsulate
+left the logical world unchanged. An earlier probe stopped before any helper
+proof because its staging assertion incorrectly expected work 257; the compiler
+actually derives 280. Correcting that check changed no theorem or guard.
+
+Exact changed-source record certification, the full child callback and production
+extraction evidence remain pending. The listener issued-history proof was a
+separate correlated-index interface repair owned by the budget lane.
