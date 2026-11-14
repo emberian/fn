@@ -119,20 +119,6 @@
 
 
 
-; A raw SSL result records its actual plaintext effect before terminal policy.
-; WANT/error classifications do not erase a count reported by the primitive.
-(defun fn2-tls-record-observe (op gen serial raw-code count fn2-tls-transport)
- (declare (xargs :stobjs fn2-tls-transport
-  :guard (and (fn2-tls-transport-wfp fn2-tls-transport)
-              (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
- (let ((action (fn2-tls-transport-pending 0 fn2-tls-transport)))
-  (if (not (member-equal action '(12 13))) (mv :state fn2-tls-transport)
-   (fn2-tls-transport-observe-spans
-    (fn2-tls-transport-cap 0 fn2-tls-transport)
-    (fn2-tls-transport-nonce 0 fn2-tls-transport) op gen serial raw-code
-    (if (= action 13) count 0) (if (= action 12) count 0) 0
-    fn2-tls-transport))))
-
 (defun fn2-tls-transport-status-kick (status)
  (declare (xargs :guard t))
  (eq status :closing))
