@@ -219,7 +219,7 @@
  (if (atom vars) nil
   (cons (list (car vars) (car terms))
         (fn2-lower-instance-bindings (cdr vars) (cdr terms)))))
-(defun fn2-lower-shape-events (fn child formals args entries count)
+(defun fn2-lower-shape-events (fn child formals args entries count opaque)
  (declare (xargs :verify-guards nil))
  (if (< count 2) nil
   (let* ((child-call (cons child args)) (source-call (cons fn formals))
@@ -228,7 +228,7 @@
          (refinement (fn2-columns-sym child "-REFINES-CORE")))
    `((defthm ,child-shape
        (equal (list ,@(fn2-lower-shape-parts child-call count 0)) ,child-call)
-       :hints (("Goal" :in-theory (enable ,child))))
+       :hints (("Goal" :in-theory (e/d (,child) ,opaque))))
      (defthm ,source-shape
        (equal (list ,@(fn2-lower-shape-parts source-call count 0)) ,source-call)
        :hints (("Goal"
@@ -362,6 +362,16 @@
                 (member-eq (fn2-decl-get :child row) calls)
                 (list (if (eq property :source) (caar rows) (fn2-decl-get property row))))
            (fn2-lower-leaf-properties (cdr rows) calls property)))))
+; Preserve shared data boundaries while proving representation equality.
+(defun fn2-lower-proof-leaves (calls opened fields world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) nil
+  (append
+   (and (not (member-eq (car calls) opened))
+        (not (member-eq (car calls) fields))
+        (getpropc (car calls) 'unnormalized-body nil world)
+        (list (car calls)))
+   (fn2-lower-proof-leaves (cdr calls) opened fields world))))
 (defun fn2-lower-readonly-events (fn child teeth world)
   (declare (xargs :verify-guards nil))
   (mv-let (expansion-problem body opened)
@@ -416,13 +426,18 @@
                       ',(append (remove-eq 'fn2-core ins) children))))
          (defthm ,(fn2-columns-sym child "-REFINES-CORE")
            (equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
-           :hints (("Goal" :in-theory (e/d (,fn ,child ,@opened) (,@(strip-cars entries))))))
+           :hints (("Goal" :in-theory
+             (e/d (,fn ,child ,@opened)
+                  (,@(strip-cars entries)
+                   ,@(fn2-lower-proof-leaves (all-fnnames body) opened
+                                              (strip-cars entries) world))))))
          (defthm ,(fn2-columns-sym child "-CORE-TO-CHILD")
            (equal (,fn ,@formals) (,child ,@(fn2-lower-core-args args entries)))
            :hints (("Goal" :use ((:instance ,(fn2-columns-sym child "-REFINES-CORE")))
                     :in-theory (disable ,fn ,child))))
          (in-theory (disable ,(fn2-columns-sym child "-CORE-TO-CHILD")))
-         ,@(fn2-lower-shape-events fn child formals args entries (len outs))
+         ,@(fn2-lower-shape-events fn child formals args entries (len outs)
+             (fn2-lower-proof-leaves (all-fnnames body) opened (strip-cars entries) world))
          ,@(fn2-lower-obligation-events fn child child formals
              `(equal (,child ,@(fn2-lower-core-args args entries)) (,fn ,@formals))
              (fn2-columns-sym child "-REFINES-CORE") teeth)
@@ -434,7 +449,7 @@
 (defmacro defcore-readonly-child (fn child &key teeth)
   `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))
 
-; Plan the nonrecursive dependency DAG before emitting any events. NIL is
+; Plan the dependency DAG (excluding qualified singleton self edges). NIL is
 ; reader-only, T traverses writers for reader leaves, :ALL also emits writers.
 ; A refusal leaves no partially generated family in the world.
 (mutual-recursion

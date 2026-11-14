@@ -369,5 +369,17 @@ The staged recursive generator record passed `certify-20261114T041821Z-3686609`:
 All4 newly certified pairs were verified in the forge cache at frozen sources.
 The automatic family follow-up passed all155 fixture forms in7.29s, discovering
 the toggle child from the recursive source without a manual child declaration.
-Its exact record gate is pending. Production mode remains disabled; actual
+Its exact22-book record `certify-20261114T042100Z-3689521` passed
+(18 reused,4 new; maximum7.845s), with all4 pairs verified in forge cache. Production mode remains disabled; actual
 xref callback extraction and formula-bound production evidence remain ahead.
+
+Actual B xref source extraction now passes its automatic five-node family
+against the128 certified dependencies of B's unchanged d-txn callback. New
+reader proof hints keep shared primitive bodies opaque in both the whole-result
+equality and finite result-shape proof. `fn2-successor-out` dropped from a10s
+refinement timeout with1,178 cases to the complete generated package in0.60s
+(1,959 steps). Recursive xref-pairs passed2.53s and enclosing xref3.65s; recursive
+fill-ov-lines also passed. These were emitted from the exact shared generator
+source in a fresh world, with no ad-hoc theory changes. All source operations
+in the txn extraction frontier now have scoped extraction proofs; this is not
+composed current-tree certification or an authorization-policy claim.

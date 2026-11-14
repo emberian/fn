@@ -382,15 +382,7 @@
     (fn2-product-cross-writeback-facts field all world)
     (fn2-product-commute-facts field (cdr entries) world)
     (fn2-product-writeback-facts (cdr entries) all world)))))
-(defun fn2-product-proof-leaves (calls opened fields world)
- (declare (xargs :verify-guards nil))
- (if (atom calls) nil
-  (append
-   (and (not (member-eq (car calls) opened))
-        (not (member-eq (car calls) fields))
-        (getpropc (car calls) 'unnormalized-body nil world)
-        (list (car calls)))
-   (fn2-product-proof-leaves (cdr calls) opened fields world))))
+
 (defun fn2-product-spine-facts (entries world)
  (declare (xargs :verify-guards nil))
  (if (atom entries) nil
@@ -504,7 +496,7 @@
                 (append (make-list (- (len outs) 1) :initial-element nil) written)
                 0 guard args (fn2-product-guard-callees (all-fnnames body) world)
                 (equal (+ (- (len outs) 1) (len written)) 1)
-                (fn2-product-proof-leaves (all-fnnames body) opened
+                (fn2-lower-proof-leaves (all-fnnames body) opened
                  (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world))))
         (problem
          (cond (expansion-problem expansion-problem)
@@ -570,7 +562,7 @@
                                              (all-fnnames body) :reverse))
                (fn2-corep ,@(strip-cars entries) ,@(strip-cars (fn2-product-writers entries))
                 ,@(fn2-product-callee-properties (all-fnnames body) :shape-refinement world)
-                ,@(remove-eq fn (fn2-product-proof-leaves (all-fnnames body) opened
+                ,@(remove-eq fn (fn2-lower-proof-leaves (all-fnnames body) opened
                      (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world))
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :source)
