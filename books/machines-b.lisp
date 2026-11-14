@@ -376,13 +376,13 @@
 ; name the unit's extent (:stale otherwise); the read is one storage job, and
 ; its result arrives as the caller's :read-result. (mv code slot gen ...),
 ; as fn2-issue-read's.
-(defun fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen okind oslot ogen principal
+(defun fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
- (b* (((unless (and (booleanp writep) (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
+ (b* (((unless (and (booleanp writep) (unsigned-byte-p 32 boff) (natp pu) (natp off) (posp len) (<= (+ off len) *fn2-commit-unit-bytes*)
                     (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 alloc)))
        (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges))
       (extent (floor pu *fn2-storage-extent-units*))
@@ -409,7 +409,7 @@
         (mv :bounds 0 0 fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
       ((mv code slot gen fn2-pool fn2-ops fn2-control)
        (if writep
-           (fn2-issue-write-children (* pu *fn2-commit-unit-bytes*) lslot lgen 0 len 0
+           (fn2-issue-write-children (* pu *fn2-commit-unit-bytes*) lslot lgen boff len 0
                                     okind oslot ogen principal fn2-pool fn2-ops fn2-control)
          (fn2-issue-read-children (+ (* pu *fn2-commit-unit-bytes*) off) lslot lgen len okind oslot ogen principal
                                   fn2-pool fn2-ops fn2-control)))
@@ -428,7 +428,7 @@
                      (fn2-control-record-stop *fn2-stop-reason-issue-storage* fn2-control))))
   (mv (if (eq code :exhausted) :exhausted :bounds) slot gen
       fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)))
-(fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen okind oslot ogen principal
+(fn2-pool-preserves fn2-pinned-block-io-children (writep pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
@@ -440,22 +440,22 @@
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
- (fn2-pinned-block-io-children nil pu epoch alloc off len lslot lgen okind oslot ogen principal
+ (fn2-pinned-block-io-children nil pu epoch alloc off len lslot lgen 0 okind oslot ogen principal
                               fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
 (fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
 
-(defun fn2-block-write-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+(defun fn2-block-write-children (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                    fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
  (declare (xargs :stobjs (fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
                  :guard (and (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges)
                              (fn2-pool-wfp fn2-pool) (fn2-ops-wfp fn2-ops)
                              (fn2-control-wfp fn2-control))))
- (fn2-pinned-block-io-children t pu epoch alloc off len lslot lgen okind oslot ogen principal
+ (fn2-pinned-block-io-children t pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                               fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
-(fn2-pool-preserves fn2-block-write-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
+(fn2-pool-preserves fn2-block-write-children (pu epoch alloc off len lslot lgen boff okind oslot ogen principal
                                              fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")
              (fn2-extents 6 :prefix "-EXTENTS") (fn2-alloc-edges 7 :prefix "-EDGES")))
