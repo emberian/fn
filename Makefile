@@ -286,6 +286,7 @@ ACL2_BOOKS = \
   tests/groups-unit \
   tests/host-unit \
   tests/identity-core-unit \
+  tests/identity-served-unit \
   tests/layout-roundtrip \
   tests/layout-teeth-unit \
   tests/layout-unit \
@@ -293,6 +294,8 @@ ACL2_BOOKS = \
   tests/m2-cuts \
   tests/machine-arms-probe-fixture \
   tests/machine-arms-unit \
+  tests/machine-issue-bind-unit \
+  tests/tls-profile-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
   tests/core-init-profile-context-unit \
@@ -316,6 +319,7 @@ ACL2_BOOKS = \
   tests/owed-unit \
   tests/parser-boundary-unit \
   tests/peer-witnesses \
+  tests/peer-replay-unit \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
   tests/pool-unit \

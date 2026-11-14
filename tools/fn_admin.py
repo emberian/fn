@@ -782,6 +782,19 @@ def prepare_native_crypto(root: Path) -> None:
         raise OSError("native BLAKE3 build failed; node was not started") from exc
 
 
+def prepare_native_tls(root: Path, env: dict[str, str]) -> None:
+    """Prepare the native dependency whenever startup receives TLS settings."""
+    if "FN2_TLS_CERTIFICATE" not in env and "FN2_TLS_KEY" not in env:
+        return
+    try:
+        subprocess.run(
+            ["sh", str(root / "host" / "build-tls.sh"), str(root / "build" / "lib")],
+            cwd=root, check=True, timeout=120,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise OSError("native TLS build failed; node was not started") from exc
+
+
 def cmd_init(args: argparse.Namespace, root: Path) -> int:
     image = args.image.resolve()
     if image.exists():
@@ -810,6 +823,7 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
 
+    prepare_native_tls(root, env)
     with open(root / "tools" / "image-node.lsp", "rb") as script:
         rc = subprocess.call([str(root / "tools" / "acl2")], cwd=root, stdin=script, env=env)
     if rc == 0:
@@ -867,6 +881,15 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         env["FN2_LISTENER_ADDRESS"] = args.host
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
+    for option, variable in ((args.tls_certificate, "FN2_TLS_CERTIFICATE"),
+                             (args.tls_key, "FN2_TLS_KEY"),
+                             (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
+                             (args.tls_window, "FN2_TLS_WINDOW"),
+                             (args.tls_handshake_turns, "FN2_TLS_HANDSHAKE_TURNS"),
+                             (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
+        if option is not None:
+            env[variable] = str(option)
+    prepare_native_tls(root, env)
     if args.peering:
         env["FN2_PEERING"] = "1"
 
@@ -1297,6 +1320,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", help="TCP listener IPv4 address (default: 127.0.0.1)")
     p_serve.add_argument("--control-sock", help="owner-only (0600) FNCT Unix control/consumer/authority socket")
     p_serve.add_argument("--peering", action="store_true", help="enable interim NNTP transit peering verbs")
+    p_serve.add_argument("--tls-certificate", type=lambda p: Path(p).resolve(), help="PEM certificate chain for STARTTLS")
+    p_serve.add_argument("--tls-key", type=lambda p: Path(p).resolve(), help="unencrypted PEM private key for STARTTLS")
+    p_serve.add_argument("--tls-handshake-turns", help="maximum transport turns per handshake (default: 65536)")
+    p_serve.add_argument("--tls-window", help="TLS transport BIO capacity in bytes (default: 16384)")
+    p_serve.add_argument("--tls-handshakes", help="maximum concurrent STARTTLS handshakes (default: 16)")
+    p_serve.add_argument("--tls-handshake-ms", help="STARTTLS admission/handshake deadline in milliseconds (default: 10000)")
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
     p_serve.add_argument("--storage-fault-model", metavar="MODEL",
                          help="recovery contract: broad (default) or crash-only")
