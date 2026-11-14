@@ -28,6 +28,15 @@
            (if (and (integerp lv) (< 0 lv)) ,(fn2-codec-constant (cadr layouts) "-NUM-FIELDS")
              ,(fn2-codec-constant (car layouts) "-NUM-FIELDS")))
          (fn2-ra-count-arms (cdr rows))))))
+; The declared schema kind is consumed by writers and readers. Directory
+; index pages remain :manifest; ordinary positive-level pages are :run-index.
+(defun fn2-ra-page-kind-arms (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) nil
+  (cons `(,(fn2-decl-get :id (cdar rows))
+          ,(if (eq (fn2-decl-get :page-kind (cdar rows)) :manifest) '*page-kind-manifest*
+             '(if (and (integerp lv) (< 0 lv)) *page-kind-run-index* *page-kind-run-data*)))
+        (fn2-ra-page-kind-arms (cdr rows)))))
 (defun fn2-ra-key-arms (rows)
  (declare (xargs :verify-guards nil))
  (if (atom rows) nil
@@ -180,7 +189,10 @@
  (declare (xargs :verify-guards nil))
  (let ((room '(and (fn2-fields-wfp fn2-fields) (natp base)
                    (<= (+ base *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields)))))
- `((defun fn2-run-layout-fields (sid lv)
+ `((defun fn2-run-layout-page-kind (sid lv)
+    (declare (xargs :guard t) (ignorable lv))
+    (case sid ,@(fn2-ra-page-kind-arms rows) (otherwise nil)))
+   (defun fn2-run-layout-fields (sid lv)
     (declare (xargs :guard t) (ignorable lv))
     (case sid ,@(fn2-ra-count-arms rows) (otherwise 0)))
    (defun fn2-run-layout-keys (sid)
@@ -566,6 +578,10 @@
      :guard (and (fn2-ra-step-guard) (fn2-run-paths-wfp fn2-run-paths))
      :guard-hints (("Goal" :in-theory (disable fn2-run-read-header fn2-run-cursor-save fn2-run-path-note fn2-run-header-value fn2-fields-rows)))))
     (b* (((mv code fn2-fields) (fn2-run-read-header slot gen rb ok os og fn2-fields fn2-pool))
+         (code (if (and (eq code :ok)
+                        (not (equal (fn2-fields-value (+ rb *fn2-format-page-header-field-page-kind*) fn2-fields)
+                                    (fn2-run-layout-page-kind (fn2-run-cursors-schema c fn2-run-cursors) level))))
+                   :page-kind code))
          ((mv code fn2-run-paths)
           (if (eq code :ok)
               (fn2-run-path-note c level slot gen unit counter (fn2-run-hdr rb entries) fn2-run-paths)

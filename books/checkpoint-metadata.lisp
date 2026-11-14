@@ -196,10 +196,12 @@
   :guard (and (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot)
               (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents) (fn2-control-wfp fn2-control)
               (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool))))
- (if (not (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata)))
+ (if (not (and (< 0 (fn2-checkpoint-metadata-rows fn2-checkpoint-metadata))
+               (fn2-run-buildp (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds fn2-run-writers)))
      (mv :bounds fn2-checkpoint-metadata fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)
   (fn2-checkpoint-metadata-page-for-build (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata)
-   level (if (zp level) *page-kind-run-data* *page-kind-run-index*) slot gen fn2-checkpoint-metadata fn2-csnapshot
+   level (fn2-run-layout-page-kind (fn2-run-builds-schema (fn2-checkpoint-metadata-build 0 fn2-checkpoint-metadata) fn2-run-builds) level)
+   slot gen fn2-checkpoint-metadata fn2-csnapshot
    fn2-checkpoint-construction fn2-extents fn2-control fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; Consume a retained decoded entry once, including ownership crossing. Both
