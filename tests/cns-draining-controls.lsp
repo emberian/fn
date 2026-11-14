@@ -3,6 +3,7 @@
 ; The raw adversary is ephemeral and restores every changed definition.
 (in-package "ACL2")
 (include-book "tests/cns-draining-count-counterexample")
+(include-book "tests/cns-draining-q1-unit")
 (set-guard-checking nil)
 :q
 (handler-case

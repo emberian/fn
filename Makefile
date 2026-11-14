@@ -229,6 +229,7 @@ ACL2_BOOKS = \
   tests/cns-draining-count-counterexample \
   tests/cns-decode-unit \
   tests/cns-draining-contract-unit \
+  tests/cns-draining-q1-unit \
   tests/cns-edges-unit \
   tests/columns-cost-unit \
   tests/columns-cost-unit-10 \

@@ -278,6 +278,11 @@
          (face-call (cons face (getpropc face 'formals nil world))))
     (if (or (not (getpropc child 'unnormalized-body nil world))
             (not (getpropc face 'unnormalized-body nil world))
+            (not (equal (cdr child-call)
+                        '(waiter ctl ctl-gen request fpos flen fkind tx-slot tx-gen
+                          ordinal kind fn2-cns fn2-machines fn2-pool fn2-control)))
+            (not (equal (cdr face-call)
+                        '(waiter ctl ctl-gen request fpos flen fkind tx-slot tx-gen fn2-core)))
             (not (equal (getpropc child 'stobjs-out nil world)
                         '(nil nil nil fn2-cns fn2-machines fn2-pool fn2-control)))
             (not (equal (getpropc face 'stobjs-out nil world) '(nil nil nil fn2-core))))
