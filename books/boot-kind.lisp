@@ -4,6 +4,7 @@
 (include-book "machines-b")
 (include-book "machine-arms")
 (include-book "checkpoint-geometry")
+(include-book "checkpoint-restore-reader")
 (fn2-book-layer :b)
 
 (deflayout fn2-boot-record
@@ -73,6 +74,11 @@
  :init (fn2-boot-config-prepare profile fn2-boot-config)
  :profilep (unsigned-byte-p 32 (len (fn2-profile-get :groups profile)))
  :why "Immutable genesis verification advances a trusted configuration cursor before serving.")
+
+(defcorechild fn2-core-checkpoint-restore-reader fn2-checkpoint-restore-reader
+ :init (fn2-checkpoint-restore-reader-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-reader)
+ :profilep t
+ :why "Boot holds one authenticated checkpoint page and exact entry cursor while rebuilding candidate roots; this child grants no serving authority.")
 
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance

@@ -74,6 +74,26 @@
        (mv :link fn2-fields)))
   (mv :ok fn2-fields)))
 
+(defun fn2-checkpoint-restore-allocation-rowp (base fn2-fields)
+ (declare (xargs :stobjs fn2-fields
+  :guard (and (fn2-fields-wfp fn2-fields) (natp base)
+              (<= (+ base *fn2-format-allocation-map-entry-num-fields*) (fn2-fields-rows fn2-fields)))))
+ (let ((state (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-state*) fn2-fields))
+       (owner-kind (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-owner-kind*) fn2-fields))
+       (owner (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-owner*) fn2-fields))
+       (epoch (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-writer-epoch*) fn2-fields))
+       (allocation (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-allocation*) fn2-fields))
+       (retirement (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-retirement-commit*) fn2-fields))
+       (next (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-next-retired*) fn2-fields)))
+  (and (unsigned-byte-p 32 next)
+       (if (equal state *fn2-extent-state-retire-pending*) (posp retirement)
+        (and (equal next *fn2-alloc-none*) (equal retirement 0)))
+       (case state
+        (0 (and (equal owner-kind 0) (equal owner 0) (equal epoch 0) (equal allocation 0)))
+        (1 (and (equal owner-kind 0) (equal owner 0)))
+        ((2 3) t)
+        (otherwise nil)))))
+
 ; Exactly one fixed-width entry. All eight allocation fields survive unchanged
 ; in FN2-FIELDS, including foreign RESERVED owners and retirement commits.
 ; The consumer must copy/install the row before reusing the field workspace.
@@ -94,10 +114,8 @@
       ((unless (and (eq code :ok) (natp end) (<= off end) (<= end (+ off width)))) (mv :format fn2-fields))
       (code (fn2-checkpoint-restore-zero-range (- (+ off width) end) end slot gen okind oslot ogen fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-fields))
-      ((unless (or (not (equal role 2))
-        (equal (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-state*) fn2-fields) *fn2-extent-state-retire-pending*)
-        (equal (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-next-retired*) fn2-fields) *fn2-alloc-none*)))
-       (mv :retirement fn2-fields))
+      ((unless (or (not (equal role 2)) (fn2-checkpoint-restore-allocation-rowp base fn2-fields)))
+       (mv :state fn2-fields))
       ((unless (if (equal role 2)
         (equal (fn2-fields-value (+ base *fn2-format-allocation-map-entry-field-extent*) fn2-fields) ordinal)
         (equal (mod (fn2-fields-value (+ base *fn2-format-recovery-arena-entry-field-extent-physical-unit*) fn2-fields)
