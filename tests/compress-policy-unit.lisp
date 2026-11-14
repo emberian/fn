@@ -56,3 +56,11 @@
  (and (equal status :need-output) (equal credit 0)
       (equal (mv-let (status input output) (fn2-compress-plan 8 256 128 256 credit) (declare (ignore input output)) status) :limit))))
 (fn2-assert-owed-teeth fn2-compress-plan-bounded fn2-compress-observe-credit-bounded)
+
+; Tiny decoder windows remain valid; only encoder staging needs seven octets.
+(assert-event (not (fn2-compress-profilep
+ (put-assoc-equal :compress-output-quantum 6 *fn2-compress-profile-probe*))))
+(assert-event (fn2-compress-profilep
+ (put-assoc-equal :compress-output-quantum 7 *fn2-compress-profile-probe*)))
+(assert-event (mv-let (code input output) (fn2-compress-plan 128 1 128 256 1)
+ (declare (ignore input)) (and (equal code :transform) (equal output 1))))

@@ -7,12 +7,17 @@
 (include-book "owed-discharge")
 (fn2-book-layer :a)
 
+(defconst *fn2-compress-min-output-window* 7)
+
 (defun fn2-compress-profilep (profile)
  (declare (xargs :guard t))
  (and (booleanp (fn2-profile-get :compress-enabled profile))
   (or (not (fn2-profile-get :compress-enabled profile))
    (and (fn2-profile-positive-u32p (fn2-profile-get :compress-input-quantum profile))
         (fn2-profile-positive-u32p (fn2-profile-get :compress-output-quantum profile))
+        ;; The encoder always supplies a full private output window. zlib
+        ;; requires avail_out >6 for resumable Z_SYNC_FLUSH completion.
+        (<= *fn2-compress-min-output-window* (fn2-profile-get :compress-output-quantum profile))
         (fn2-profile-positive-u32p (fn2-profile-get :compress-expansion-ratio profile))
         (fn2-profile-positive-u32p (fn2-profile-get :compress-expansion-burst profile))
         (<= (fn2-profile-get :compress-output-quantum profile)

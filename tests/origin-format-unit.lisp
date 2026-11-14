@@ -20,7 +20,7 @@
        (fn2-boot-pack-pool 0 0 33554432 16 1 1 1 "" 0 0
                           lineage domain incarnation history history-incarnation
                           slot gen scratch sg 1 0 1 fn2-fields fn2-digests fn2-b3 fn2-pool)))
-  (mv (list a b code (fn2-ofu-read 32 0 slot gen fn2-pool)) fn2-fields fn2-digests fn2-b3 fn2-pool)))
+  (mv (list a b code (fn2-ofu-read 4096 0 slot gen fn2-pool)) fn2-fields fn2-digests fn2-b3 fn2-pool)))
 (defun fn2-ofu-run (lineage domain incarnation history history-incarnation)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-fields
@@ -36,10 +36,32 @@
          (mv answer fn2-fields fn2-digests fn2-b3)))
        (mv answer fn2-fields fn2-digests)))
      (mv answer fn2-fields))) answer)))
+; Independent little-endian/varint prefix plus zero padding and BLAKE3 trailer.
+; The literal trailer was computed from this literal prefix with
+; tests.surface.blake3_pure, checked against its published BLAKE3 vectors.
+; No encoder output supplies the expected bytes.
+(defconst *fn2-ofu-expected-image*
+ (append '(70 50 66 84 2 0 0 128 128 128 16 16 1 17 23 5 101 7
+           1 0 0 0 1 0 0 0 0 0 0 0 0 0)
+         (make-list 4032 :initial-element 0)
+         '(245 150 125 77 220 189 239 131 114 213 247 106 37 209 208 125
+           36 125 81 199 17 225 141 118 107 137 233 2 98 174 225 117)))
+(defun fn2-ofu-distinct-names (cases canonical)
+ (declare (xargs :verify-guards nil))
+ (if (endp cases) t
+  (let* ((names (car cases))
+         (actual (fn2-ofu-run (nth 0 names) (nth 1 names) (nth 2 names)
+                             (nth 3 names) (nth 4 names)))
+         (image (nth 3 actual)))
+   (and (equal (take 3 actual) '(:ok :ok :ok))
+        (equal (len image) 4096)
+        (not (equal image canonical))
+        (not (equal (nthcdr 4064 image) (nthcdr 4064 canonical)))
+        (fn2-ofu-distinct-names (cdr cases) canonical)))))
 (assert-event
- (equal (fn2-ofu-run 17 23 5 101 7)
-  '(:ok :ok :ok (70 50 66 84 2 0 0 128 128 128 16 16 1 17 23 5 101 7
-                 1 0 0 0 1 0 0 0 0 0 0 0 0 0))))
-; A changed origin cannot leave the canonical persisted prefix unchanged.
-(assert-event
- (not (equal (fn2-ofu-run 17 23 5 101 7) (fn2-ofu-run 18 23 5 101 7))))
+ (let ((actual (fn2-ofu-run 17 23 5 101 7)))
+  (and (equal actual (list :ok :ok :ok *fn2-ofu-expected-image*))
+       (fn2-ofu-distinct-names
+        '((18 23 5 101 7) (17 24 5 101 7) (17 23 6 101 7)
+          (17 23 5 102 7) (17 23 5 101 8))
+        (nth 3 actual)))))

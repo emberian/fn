@@ -69,6 +69,7 @@ ACL2_BOOKS = \
   books/cns-edges \
   books/cns-kind \
   books/column-contracts \
+  books/codec-profile \
   books/codec-transport \
   books/columns \
   books/compress-policy \
@@ -241,6 +242,7 @@ ACL2_BOOKS = \
   tests/columns-cost-unit-10 \
   tests/columns-cost-unit-20 \
   tests/columns-unit \
+  tests/codec-profile-unit \
   tests/codec-transport-unit \
   tests/compress-policy-unit \
   tests/commit-ceiling-unit \
@@ -309,6 +311,7 @@ ACL2_BOOKS = \
   tests/tls-profile-unit \
   tests/tls-transport-unit \
   tests/tls-sim-upgrade-unit \
+  tests/tls-envelope-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
   tests/core-init-profile-context-unit \
@@ -324,6 +327,7 @@ ACL2_BOOKS = \
   tests/native-boot-refusal-unit \
   tests/native-cut-state-unit \
   tests/native-cut-program-unit \
+  tests/storage-cancel-unit \
   tests/native-cut-binding-unit \
   tests/native-envelope-prefix-unit \
   tests/envelope-input-unit \
@@ -383,6 +387,7 @@ ACL2_BOOKS = \
   tests/sim-replay-controls \
   tests/squares-unit \
   tests/square-evidence-unit \
+  tests/square-evidence-correspondence-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \

@@ -44,17 +44,23 @@ def main():
                         assert used or out
                 assert result == payload
             finally: dll.fn2_deflate_free(s)
-        s = dll.fn2_deflate_new(); assert s
-        try:
-            pending, wire_out = payload, bytearray()
-            while True:
-                status, used, out = step(s, 1, pending, 29)
-                assert status == 0
-                pending = pending[used:]; wire_out.extend(out)
-                if not pending and len(out) < 29: break
-                assert used or out
-            assert zlib.decompressobj(-15).decompress(wire_out) == payload
-        finally: dll.fn2_deflate_free(s)
+        for encoder_capacity in (7, 29):
+            s = dll.fn2_deflate_new(); assert s
+            try:
+                peer = zlib.decompressobj(-15)
+                for message in (payload, b"second command after the first sync flush\r\n"):
+                    pending, wire_out = message, bytearray()
+                    while True:
+                        status, used, out = step(s, 1, pending, encoder_capacity)
+                        assert status == 0
+                        pending = pending[used:]; wire_out.extend(out)
+                        if not pending and len(out) < encoder_capacity: break
+                        assert used or out
+                    assert peer.decompress(wire_out) == message
+                # The receive stream is independent of both completed send turns.
+                status, used, out = step(s, 0, wire, len(payload) + 1)
+                assert status == 0 and used == len(wire) and out == payload
+            finally: dll.fn2_deflate_free(s)
         for wire_bad, expected in [(b"\x07", -1), (zlib.compress(payload, wbits=-15), 1)]:
             s = dll.fn2_deflate_new()
             try:
@@ -67,7 +73,7 @@ def main():
             status, used, out = step(s, 0, wire, 11)
             assert status == 0 and len(out) == 11 and used < len(wire)
         finally: dll.fn2_deflate_free(s)
-    print("PASS raw DEFLATE: fragmentation, backpressure, roundtrip, malformed, BFINAL, output budget")
+    print("PASS raw DEFLATE: fragmentation, backpressure, persistent duplex roundtrip, malformed, BFINAL, output budget")
 
 
 if __name__ == "__main__": main()

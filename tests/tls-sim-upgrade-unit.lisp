@@ -40,10 +40,10 @@
       ((mv outcome reason observed a0 a1)
        (fn2-sim-terminal-values *fn2-action-tls-start* code count aux 3 nil nil)))
   (mv (and (equal code (if (equal fault *fn2-fault-reset*) :handshake :ok))
-           (equal count 0) (equal aux 0)
+           (equal count (if (equal fault *fn2-fault-reset*) 0 3)) (equal aux 0)
            (equal outcome (if (equal fault *fn2-fault-reset*) *fn2-outcome-failed* *fn2-outcome-done*))
            (equal reason (if (equal fault *fn2-fault-reset*) *fn2-reason-handshake* *fn2-reason-none*))
-           (equal observed 0) (equal a0 0) (equal a1 0)
+           (equal observed (if (equal fault *fn2-fault-reset*) 0 3)) (equal a0 0) (equal a1 0)
            (equal disk-before (fn2-sim-storage-copy fn2-sim-storage))
            (equal net-before (fn2-sim-network-copy fn2-sim-network))
            (if corrupt

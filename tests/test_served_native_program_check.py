@@ -36,6 +36,41 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
+    def test_native_digest_word_offset_cannot_change(self):
+        self.change('host/b3-native.lisp', '(sb-sys:sap-ref-32 sap 28) dg)',
+                    '(sb-sys:sap-ref-32 sap 24) dg)')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-store' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_captured_word_cannot_overwrite_previous_word(self):
+        self.change('host/b3-native.lisp',
+                    '(setf (sb-sys:sap-ref-32 sap 4) (fn2-digests-w1 src dg))',
+                    '(setf (sb-sys:sap-ref-32 sap 0) (fn2-digests-w1 src dg))')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-load' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_digest_store_cannot_add_an_unmodeled_write(self):
+        self.change('host/b3-native.lisp',
+                    '(declare (type sb-sys:system-area-pointer sap))\n (fn2-digest-store-words',
+                    '(declare (type sb-sys:system-area-pointer sap))\n'
+                    ' (fn2-digests-set-w0 0 99 dg)\n (fn2-digest-store-words')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_native_node_cannot_swap_captured_inputs(self):
+        self.change('host/b3-native.lisp',
+                    '(fn2-b3-native-load left (sb-alien:alien-sap l) dg)',
+                    '(fn2-b3-native-load right (sb-alien:alien-sap l) dg)')
+        self.assertTrue(any('native ABI/effect wiring changed: fn2-b3-native-node' in f
+                            for f in checker.check(self.root)['findings']))
+
+    def test_native_node_cannot_bypass_shared_store(self):
+        self.change('host/b3-native.lisp',
+                    '(fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))\n'
+                    '   (fn2-b3-native-store dst (sb-alien:alien-sap out) dg)',
+                    '(fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))\n'
+                    '   (fn2-digests-set-w0 dst 0 dg)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_handshake_budget_must_precede_transport_work(self):
         self.change('host/tls.lisp',
                     '(fn2-tls-transport-next (fn2-tls-%input-room handle)',
