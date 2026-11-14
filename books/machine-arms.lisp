@@ -1633,6 +1633,10 @@
         ((member-eq (car vars) sym-vars) (fn2-arms-nfix-bindings (cdr vars) sym-vars))
         (t (cons `(,(car vars) (nfix ,(car vars)))
                  (fn2-arms-nfix-bindings (cdr vars) sym-vars)))))
+(defun fn2-arms-max-dim (charges i)
+  (declare (xargs :verify-guards nil))
+  (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
+
 (defun fn2-arms-chain-events (helper bvars kind ccode cacc env)
   (declare (xargs :verify-guards nil))
   (let* ((world (fn2-arm-get :world env))
@@ -2180,10 +2184,6 @@
       (mv-let (from refusal steps) (fn2-arms-options (cddr entry))
         (if (eq (car entry) :from) (mv (cadr entry) refusal steps) (mv from (fn2-arms-norm-refusal (cadr entry)) steps)))
     (mv nil nil entry)))
-(defun fn2-arms-max-dim (charges i)
-  (declare (xargs :verify-guards nil))
-  (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
-
 (defun fn2-arms-budget-admission (body descriptors tuple)
   ;; Reserve the whole path's inferred descriptor maximum before any effects.
   ;; A short residual budget preserves the continuation and all children; the
