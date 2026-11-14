@@ -5,6 +5,9 @@ distinguish admitted local proofs, registered obligations, finite checks, and
 unproved implementation correspondence. Certification is not a proof of every
 proposition mentioned in the certified book. Draft lane results are separate.
 
+The [completion plan](ASSURANCE-PLAN-20261113.md) records proof dependencies,
+concrete pilot gates, shared interfaces and the subsequent swarm partition.
+
 ## Completion criterion
 
 For each advertised guarantee, identify the actual served entrypoint, exact
@@ -25,6 +28,11 @@ No count of books, witnesses, or generated candidates substitutes for this chain
    coverage required by supporting lemmas. Audit inductiveness and reachable
    states; a stronger preserved invariant may be needed to prove the original
    externally visible guarantee, rather than more tactics on the same statement.
+   Follow-up: lane commit `319620bed` preserves an executed counterexample to
+   the current turn-invariant statement, with all its antecedents true and the
+   consequent false after one actual turn. Qualified baseline REPL evidence is
+   recorded by the lane; record certification is pending. This does not refute
+   the user-facing ACK guarantee on initialized/reachable states.
 
 2. **Turn composition and resource contracts are incomplete.**
    `books/reference.lisp:310` and `books/executor.lisp:328,364,370` remain owed.
