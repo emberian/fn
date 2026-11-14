@@ -28,7 +28,7 @@
  (value `(defun fn2-boot-geometry-fields (size extents groups fn2-fields)
   (declare (xargs :stobjs fn2-fields
    :guard (and (fn2-fields-wfp fn2-fields) (fn2-checkpoint-image-sizep size extents groups)
-               (<= (+ 256 *fn2-checkpoint-geometry-record-num-fields*) (fn2-fields-rows fn2-fields))))
+               (<= (+ 256 *fn2-checkpoint-geometry-record-num-fields*) (fn2-fields-rows fn2-fields)))))
   (let* ,(fn2-boot-geometry-bindings
     '((*fn2-checkpoint-geometry-record-field-version* 1)
       (*fn2-checkpoint-geometry-record-field-image-bytes* size)
@@ -51,7 +51,7 @@
   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
               (fn2-digests-wfp fn2-digests) (fn2-b3-wfp fn2-b3))))
  (b* (((unless (and (fn2-checkpoint-image-sizep size extents groups)
-                     (<= (+ 256 *fn2-checkpoint-geometry-record-num-fields*) (fn2-fields-rows fn2-fields)))))
+                     (<= (+ 256 *fn2-checkpoint-geometry-record-num-fields*) (fn2-fields-rows fn2-fields))))
        (mv :geometry 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
       ((mv code fn2-pool) (fn2-pool-reset slot gen *fn2-boot-kind* id ogen fn2-pool))
       ((unless (eq code :ok)) (mv code 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
