@@ -51,8 +51,9 @@
    (fn2-checkpoint-restore-reader-load-hash (+ i 1) hash fn2-checkpoint-restore-reader fn2-digests))))
 
 ; This begins a candidate-root investigation, not a selected-base claim.
-; CHECKED with nonzero anchor-mask and no builder token comes from the actual
-; boot anchor→descriptor checker, rather than a live publisher's candidate.
+; Under the boot barrier, CHECKED with an anchor-mask and no builder token
+; routes the actual anchor→descriptor candidate. The core entrypoint also
+; binds the boot phase/index; these fields alone are not a provenance proof.
 (defun fn2-checkpoint-restore-reader-begin (c role slot gen row base okind oslot ogen
                                           fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents
                                           fn2-pool fn2-checkpoint-restore-reader)
