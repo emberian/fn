@@ -57,9 +57,10 @@
     (mv-let (ok fn2-pool) (fn2-envelope-input-test-run fn2-pool) ok)))
 (assert-event (fn2-envelope-input-test))
 
-; Remove only INPUT-EFFECT-P from the exact-prefix contract. Failed Read
-; carries no replayed bytes even if the record contains two octets. All
-; remaining antecedents hold, but the proposed replacement byte is wrong.
+; Remove only the successful-validation hypothesis from the exact-prefix
+; contract. A short Read claims three bytes but supplies two: its kind/status
+; is permitted by the outer relation, while this physical-effect record is
+; refused here. Every other antecedent holds and the proposed byte is wrong.
 (defun fn2-envelope-input-negative-run (fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil))
   (b* ((fn2-pool (fn2-pool-init '((1 . 64)) 5 20 fn2-pool))
@@ -72,10 +73,10 @@
        (address (+ (fn2-pool-base slot fn2-pool) off))
        (before (fn2-pool-datai address fn2-pool))
        ((mv code fn2-pool)
-        (fn2-envelope-input *fn2-action-read* *fn2-outcome-failed* 2 '(70 71)
+        (fn2-envelope-input *fn2-action-read* *fn2-outcome-short* 3 '(70 71)
           off slot gen 7 9 fn2-pool)))
-    (mv (and (natp address) (eq code :ok)
-             (not (fn2-envelope-input-effect-p *fn2-action-read* *fn2-outcome-failed*))
+    (mv (and (natp address) (eq code :receive-count)
+             (fn2-envelope-input-effect-p *fn2-action-read* *fn2-outcome-short*)
              (equal (fn2-pool-datai address fn2-pool) before)
              (not (equal (fn2-pool-datai address fn2-pool)
                          (fn2-envelope-prefix-byte address address '(70 71) before))))
