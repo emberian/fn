@@ -54,7 +54,7 @@ authority-allows, principal, authority-depend, group-of, wake-upload and
 groups-limit. Eleven return core and expose both unconditional face and guarded
 execution squares; three are read-only and expose whole-result equality.
 Thus at least 25 root square evidence pairs are required. The wake candidate
-supplies two pairs whose proofs remain unrun; the other 23 root pairs still
+and groups-limit candidates supply three pairs whose proofs remain unrun; the other 22 root pairs still
 need meaningful success/refusal states and designated mutations. Transitive
 generated helper squares must also be audited in the actual resulting ledger.
 An extraction equality alone does not establish authorization policy adequacy.
@@ -67,20 +67,22 @@ Named-file secrets scan and diff whitespace checks pass.
 
 ## Shared operation frontier discovered from actual arms
 
-A structural walk of every txn `:do` identifies eight further dependencies
+A structural walk of every txn `:do` identifies nine further dependencies
 without child mappings in the integrated base: commit-admit-txn,
 identity-decide, successor-bind/release/resolve/stage, upload-extents-of and
-upload-post-owner. These are now named in their original `defcost` declarations
+upload-post-owner, and generated machine-reclaim-fn2-txn. These are now named in their original `defcost` declarations
 and derived through the same product family before child arms are emitted.
 No consumed cost row is mutated: declaration sealing remains authoritative.
 The family planner uses declared names for new boundaries and reuses an
 already-proved matching boundary when a previous dependency generated it.
-All original definitions in the four owning books remain unchanged.
+All original operation bodies in the owning books remain unchanged. Both kind-reclaim
+generator templates now declare the child name; the ordinal-baked txn wrapper
+is derived by the product compiler, not aliased to the generic reclaim ABI.
 
 The earlier 25-square count covers only the fourteen local operations, not
-this additional shared frontier. These eight operations need their own actual
+this additional shared frontier. These nine operations need their own actual
 result/effect evidence; the final resulting ledger is the authority for the
-complete count. Generated reclaim/link operations and table-effect consistency
+complete count. Generated link operations and table-effect consistency
 must also pass the actual child-arm callback gate. The frontier is not closed
 by the presence of declarations or by the old generator fixture records.
 
