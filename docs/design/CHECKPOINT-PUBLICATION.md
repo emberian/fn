@@ -51,8 +51,11 @@ No preparation, decode or journal-install return authorizes discarding roots.
 BEGIN copies installation seal, predecessor checkpoint and geometry digest bytes
 into owned state, PACK builds each anchor using the generated codec, and
 CHECK-PACKET runs the actual anchor checker and checks the full descriptor and
-seal evidence. Caller code must seal the produced anchor with the existing
-`:anchor t` checker before CHECK-PACKET succeeds. No verification boolean is
+seal evidence. `fn2-checkpoint-publication-seal-step` runs the existing `:anchor t`
+checker on that same owned output lease through bounded resumptions before
+CHECK-PACKET can run `:anchor nil` and set a verified bit. Packet stages and a
+stored checker row/base/packet identity bind both continuations; a fresh phase
+requires an idle checker, and PACK refuses any live checker interval. No verification boolean is
 accepted. Two separately owned immutable output leases survive through the fence.
 
 STEP issues the first write, waits for its exact slot/generation at validated
@@ -127,8 +130,9 @@ initialization does not fulfill that condition.
 and a cut-removal control through the actual allocator API.
 `tests/checkpoint-publication-unit.lisp` prepares stale-generation and short-write
 harvest controls plus old/new geometry controls. These are source only, not
-executed. Lisp structural parsing and named-file secrets scans are the
-only checks run for this checkpoint source milestone. Admission, guard proofs,
+executed. Actual SBCL READ with `*read-eval* nil`, Lisp structural parsing and
+named-file secrets scans pass for these source milestones. Reader checks do not
+evaluate the source forms. Admission, guard proofs,
 physical-page positive/corruption/truncation controls, full installation and
 anchor crash cuts, dependency protection, restored-map coverage and composed
 served lifetime/progress witnesses remain outstanding. The product reclamation
