@@ -111,12 +111,7 @@
  (declare (xargs :stobjs fn2-tls-transport :verify-guards nil
   :guard (and (fn2-tls-transport-wfp fn2-tls-transport) (= (fn2-tls-transport-rows fn2-tls-transport) 1))))
  ;; Malformed/stale returns change neither the pending action nor its ledger.
- (if (not (and (equal cap (fn2-tls-transport-cap 0 fn2-tls-transport))
-          (equal nonce (fn2-tls-transport-nonce 0 fn2-tls-transport))
-               (equal slot (fn2-tls-transport-slot 0 fn2-tls-transport))
-               (equal generation (fn2-tls-transport-generation 0 fn2-tls-transport))
-               (equal serial (fn2-tls-transport-serial 0 fn2-tls-transport))
-               (< 0 (fn2-tls-transport-pending 0 fn2-tls-transport))
+ (if (not (and (fn2-tls-transport-match-p cap nonce slot generation serial fn2-tls-transport)
                (integerp code) (unsigned-byte-p 64 (abs code))
                (unsigned-byte-p 32 count) (unsigned-byte-p 32 errno)))
      (mv :stale nil fn2-tls-transport)
@@ -156,7 +151,7 @@
  (mv :closing t fn2-tls-transport))))
     ((and (member-equal action '(5 6)) (< code 0) (member-equal errno '(4 11 35)))
      (mv :blocked nil fn2-tls-transport))
-    ((not (and (natp code) (<= code requested) (= count 0)
+    ((not (and (fn2-codec-transfer-counts-p code 0 requested 0) (= count 0)
                (unsigned-byte-p 32 (+ offset code))
                (or (not (member-equal action '(1 5 6))) (< 0 code))))
      (let ((fn2-tls-transport (fn2-tls-transport-put 0 (terminal 2))))
