@@ -75,6 +75,7 @@
                   (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-frame-kind*) fn2-fields)
                          (if sealframe *frame-kind-seal* *frame-kind-records*))
                   (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-ordinal*) fn2-fields) (if sealframe 1 0))
+                  (equal (fn2-fields-value (+ base *fn2-format-frame-header-field-fragment-offset*) fn2-fields) 0)
                   (or sealframe (fn2-digest-equal (fn2-digest-slot row *fn2-fc-result*) hash fn2-digests))))
       ((mv begun fn2-journal-members)
        (if (and valid (not sealframe))

@@ -730,9 +730,18 @@ is tagged `:semantic-member-frontier`, binds the directory Ref and cut, and has
 are zero. Keeping it outside the keyed mutation's dependency page avoids a
 record-hash/frontier/dependency-hash cycle.
 
-These source constructors remain unqualified: shared page construction,
-producer terminal promotion, restore and actual-entry positive physical-read
-qualification must be connected before checkpoint admission. Packed bytes,
+`event-build.lisp` starts only from the actual candidate builder claim and
+this authenticated source terminal. It claims each retained journal allocation
+for the candidate, constructs directory pages backwards through the shared
+registered-page header/worker, then serializes the actual frontier. A bound
+source has no packing transition. Only exact retained physical completion and
+workspace ownership return advance page coverage or capture a root; root byte
+counts include every descendant write. Allocation exhaustion returns a distinct
+refusal with ownership retained.
+
+These source constructors remain unqualified: actual source-actor dispatch,
+shared ownership-transfer worker composition, restore and executed positive
+physical-read/page qualification must be connected before checkpoint admission. Packed bytes,
 physical write completion and a caller-selected count alone do not establish
 event-source completion or checkpoint durability.
 

@@ -304,6 +304,7 @@ ACL2_BOOKS = \
   tests/event-proof-format-unit \
   tests/event-proof-source-unit \
   tests/event-read-verified-unit \
+  tests/event-build-unit \
   tests/checkpoint-page-header-unit \
   tests/host-unit \
   tests/identity-core-unit \
