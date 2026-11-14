@@ -183,7 +183,7 @@ def check_tree(tree: object, where: str = "form", *,
                     if isinstance(binding, list) and len(binding) == 2:
                         pattern = binding[0]
                         if head == "b*" and isinstance(pattern, list) and pattern:
-                            if pattern[0] in {"when", "unless"}:
+                            if operator_name(pattern) in {"when", "unless"}:
                                 for child in pattern[1:]:
                                     visit(child, f"{path}/test[{i}]", template_depth, local_sizes)
                         rhs_sizes = sizes if head == "let" else local_sizes
@@ -194,7 +194,7 @@ def check_tree(tree: object, where: str = "form", *,
                             if length is not None:
                                 local_sizes[symbol_key(pattern)] = length
                         elif (not template_depth and head == "b*" and isinstance(pattern, list) and pattern
-                              and pattern[0] == "mv"):
+                              and operator_name(pattern) == "mv"):
                             # These bind results, not list-valued constants.
                             for name in pattern[1:]:
                                 if isinstance(name, str):
