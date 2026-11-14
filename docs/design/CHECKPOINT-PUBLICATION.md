@@ -302,3 +302,10 @@ an arbitrary-length resident handle list. It does not yet seal the construction
 set, freeze foreign allocator mutations, project reservations into durable map
 ownership, issue arena tickets to B, or reclaim ledger rows. Those lifecycle
 steps and actual write-harvest completion precede root2/root5 readiness.
+
+The physical construction columns remain in B and include only the allocator.
+The C-aware reservation admission is in `checkpoint-construction-owner.lisp`;
+descriptor state/codec/job and their construction registration are C-layer
+orchestration over B leaf APIs. `checkpoint-kind-b.lisp` registers physical
+B children without including C. This preserves the C-to-B dependency direction
+and passes the actual C carrier rather than a caller-supplied ownership flag.
