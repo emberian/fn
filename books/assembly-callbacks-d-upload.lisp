@@ -126,6 +126,7 @@
                            ((:set (pext e) (pepoch ep) (palloc al) (pdone 0) (sready 0) (ilen 0) (mfill 0) (munit 0)
                                   (cfree 0) (mstep 0) (mdrain 0))
                             (:next :store-write) (:charge :steps *fn2-work-transition* :runnable t))))
+                     ((:frozen) (:yield))
                      ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                       (:charge :steps *fn2-work-transition* :runnable t)))))))
   ;; :store-write: the next write (a piece of one extent's octets, a block,
@@ -160,7 +161,8 @@
             :accept ()
             :case (((:ok) (:set (cext e) (cepoch ep) (calloc al) (cfree 1))
                     (:charge :steps *fn2-work-transition* :runnable t))
-                   ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
+                   ((:frozen) (:yield))
+                     ((:no-space) (:set (word *fn2-upload-word-unaffordable*)) (:next :sealed)
                     (:charge :steps *fn2-work-transition* :runnable t)))))
           ((< row-pdone total)
            (:do (gcode glen) (fn2-upload-stage row-lslot row-lgen row-ilen row-c0-slot row-c0-gen row-c1-slot row-c1-gen
@@ -261,7 +263,8 @@
   ;; returns the store page, then releases the second chunk, then the first,
   ;; then the row.
   (:draining :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
-   (:cond ((and (equal row-lease *fn2-upload-lease-held*)
+   (:let physical-frozen (fn2-storage-frozen))
+   (:cond (physical-frozen (:yield)) ((and (equal row-lease *fn2-upload-lease-held*)
                 (< row-mdrain (fn2-upload-manifest-units (+ row-ilen row-hashed) row-mfill)))
            (:let hrow (fn2-upload-hasher id))
            (:do (pcode) (fn2-upload-settle-unit (* 128 hrow) (+ row-ilen row-hashed) row-lslot row-lgen row-mfill

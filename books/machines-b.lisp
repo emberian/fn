@@ -470,12 +470,15 @@
   (cond ((and (eq code :ok) (unsigned-byte-p 32 e) (not (equal e *fn2-none*))
               (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 counter))
          (mv :ok e epoch counter fn2-extents fn2-control))
-        ((eq code :no-space) (mv :no-space 0 0 0 fn2-extents fn2-control))
+        ((member-eq code '(:no-space :frozen)) (mv code 0 0 0 fn2-extents fn2-control))
         (t (mv :fault 0 0 0 fn2-extents fn2-control)))))
 (fn2-pool-preserves fn2-storage-reserve-children (fn2-extents fn2-control)
  :carriers ((fn2-extents 4 :prefix "-EXTENTS") (fn2-control 5 :prefix "-CONTROL")))
 
-(defcost fn2-storage-reserve :child fn2-storage-reserve-children :answers (:ok :no-space :fault) :faults (:fault)
+(defcost fn2-storage-frozen :child fn2-alloc-frozenp
+ :doc "Whether physical lifecycle mutations are held by checkpoint construction.")
+
+(defcost fn2-storage-reserve :child fn2-storage-reserve-children :answers (:ok :no-space :frozen :fault) :faults (:fault)
  :tables (fn2-core-extents fn2-core-control)
  :doc "Reserve a physical construction identity before encoding its location-bound bytes; no publication or durability claim.")
 
