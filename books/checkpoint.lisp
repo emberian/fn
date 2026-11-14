@@ -68,7 +68,7 @@
               (fn2-checkpoint-refs-set-edge r edge fn2-checkpoint-refs) fn2-checkpoint-refs))
             (fn2-checkpoint-refs (if (eq code :ok)
               (fn2-checkpoint-refs-set-retained r 1 fn2-checkpoint-refs) fn2-checkpoint-refs)))
-      (mv code fn2-checkpoint-refs fn2-extents fn2-alloc-edges)))))))))
+      (mv code fn2-checkpoint-refs fn2-extents fn2-alloc-edges))))))))
 
 ; Check six owned edges, not the extent table. Cached flags alone never grant
 ; permission; the named concrete edges must still match at publication.
@@ -104,7 +104,7 @@
        ((not (fn2-alloc-slotp extent fn2-extents)) :bounds)
        ((not (eq (fn2-alloc-handle-code extent epoch allocation fn2-extents) :ok)) :conflict)
        ((member-equal (fn2-extents-state extent fn2-extents)
-                      (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*))) :current)
+                      (list *fn2-extent-state-allocated* *fn2-extent-state-retire-pending*)) :current)
        (t :conflict)))
 
 (defthm fn2-checkpoint-historical-location-by-definition
