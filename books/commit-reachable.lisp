@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "commit-durable-all")
 (include-book "pool-initialization")
+(include-book "layout-conservation")
 
 (defun-nx fn2-env-reach-structure (profile c)
   (and (fn2-core-profilep profile) (fn2-corep c) (fn2-core-wfp c)
@@ -307,3 +308,166 @@
               (gen-limit (fn2-profile-generation-limit profile))))
       :in-theory (e/d (fn2-core-pool-semanticp)
         (fn2-core-init fn2-pool-init fn2-pool-semanticp fn2-core-profilep fn2-profilep)))))))
+
+; The group/principal genesis writes preserve pool semantics through the
+; actual generated schema encoder dispatcher. Other init steps use frames.
+(make-event
+ (let ((names (remove-duplicates-equal
+               (fn2-codec-conservation-schema-layouts (fn2-decl-rows :schema (w state))))))
+  (value (cons 'progn
+   (append (fn2-codec-conservation-layout-events names (table-alist 'fn2-layouts (w state)))
+    `((defthm fn2-run-layout-encode-pool-semantic
+       (implies (fn2-pool-semanticp fn2-pool)
+        (fn2-pool-semanticp (mv-nth 2 (fn2-run-layout-encode sid lv base slot gen off okind oslot ogen fn2-fields fn2-pool))))
+       :hints (("Goal" :in-theory (union-theories
+                 '(fn2-run-layout-encode mv-nth car-cons cdr-cons ,@(fn2-codec-conservation-export-runes names))
+                 (theory 'minimal-theory)))))))))))
+(defthm fn2-grp-write-name-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 1 (fn2-grp-write-name i name slot gen fn2-pool))))
+ :hints (("Goal" :induct (fn2-grp-write-name i name slot gen fn2-pool)
+          :in-theory (e/d (fn2-grp-write-name)
+                          (fn2-pool-semanticp fn2-pool-write)))))
+(defthm fn2-idc-scratch-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 2 (fn2-idc-scratch fn2-id-engine fn2-pool))))
+ :hints (("Goal" :in-theory (e/d (fn2-idc-scratch)
+              (fn2-pool-semanticp fn2-pool-reserve fn2-pool-class-for)))))
+(defthm fn2-ov-start-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 2 (fn2-ov-start o schema slot gen ibase icap okind oslot ogen cov
+                                          fn2-overlays fn2-overlay-index fn2-pool))))
+ :hints (("Goal" :in-theory (e/d (fn2-ov-start)
+              (fn2-pool-semanticp fn2-pool-reset fn2-pool-slot-cap)))))
+
+(defthm fn2-ov-write-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 3 (fn2-ov-write o pos ebase repl fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
+ :hints (("Goal" 
+          :in-theory (e/d (fn2-ov-write) (fn2-pool-semanticp fn2-run-layout-encode fn2-pool-reserve fn2-pool-reset fn2-pool-write fn2-idc-scratch fn2-ov-start fn2-grp-write-name fn2-ov-insert fn2-grp-insert-one fn2-grp-insert-all fn2-grp-genesis)))))
+(defthm fn2-ov-insert-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 4 (fn2-ov-insert o ebase eb fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
+ :hints (("Goal" 
+          :in-theory (e/d (fn2-ov-insert) (fn2-pool-semanticp fn2-run-layout-encode fn2-pool-reserve fn2-pool-reset fn2-pool-write fn2-idc-scratch fn2-ov-start fn2-grp-write-name fn2-ov-write fn2-grp-insert-one fn2-grp-insert-all fn2-grp-genesis)))))
+(defthm fn2-grp-insert-one-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 4 (fn2-grp-insert-one max name group o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
+ :hints (("Goal" 
+          :in-theory (e/d (fn2-grp-insert-one) (fn2-pool-semanticp fn2-run-layout-encode fn2-pool-reserve fn2-pool-reset fn2-pool-write fn2-idc-scratch fn2-ov-start fn2-grp-write-name fn2-ov-write fn2-ov-insert fn2-grp-insert-all fn2-grp-genesis)))))
+(defthm fn2-grp-insert-all-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 4 (fn2-grp-insert-all max groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
+ :hints (("Goal" :induct (fn2-grp-insert-all max groups o e eb fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
+          :in-theory (e/d (fn2-grp-insert-all) (fn2-pool-semanticp fn2-run-layout-encode fn2-pool-reserve fn2-pool-reset fn2-pool-write fn2-idc-scratch fn2-ov-start fn2-grp-write-name fn2-ov-write fn2-ov-insert fn2-grp-insert-one fn2-grp-genesis)))))
+(defthm fn2-grp-genesis-pool-semantic
+ (implies (fn2-pool-semanticp fn2-pool)
+  (fn2-pool-semanticp (mv-nth 5 (fn2-grp-genesis sid max groups b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
+ :hints (("Goal" :in-theory (union-theories
+           '(fn2-grp-genesis mv-nth car-cons cdr-cons
+             fn2-grp-insert-all-pool-semantic fn2-idc-scratch-pool-semantic
+             fn2-ov-start-pool-semantic fn2-pool-reserve-conservation)
+           (theory 'minimal-theory)))))
+
+(make-event
+ `(defthm fn2-groups-genesis-pool-semantic
+   (implies (fn2-core-pool-semanticp c)
+    (fn2-core-pool-semanticp (mv-nth 1 (fn2-groups-genesis profile c))))
+   :hints (("Goal" :in-theory (union-theories
+             '(fn2-groups-genesis fn2-core-pool-semanticp fn2-grp-genesis-pool-semantic
+               mv-nth car-cons cdr-cons (:e zp) (:e binary-+) nth-update-nth (:e equal) (:e nfix)
+               ,@(fn2-env-updater-names (strip-cars *fn2-core-children*))
+               ,@(strip-cars *fn2-core-children*))
+             (theory 'minimal-theory))))))
+(defthm fn2-principals-bind-genesis-pool-frame
+ (equal (fn2-core-pool (mv-nth 2 (fn2-principals-bind-genesis profile c))) (fn2-core-pool c))
+ :hints (("Goal" :in-theory (union-theories
+           '(fn2-principals-bind-genesis fn2-core-pool update-fn2-core-accounts
+             nth-update-nth mv-nth car-cons cdr-cons (:e zp) (:e binary-+) (:e equal) (:e nfix))
+           (theory 'minimal-theory)))))
+(make-event
+ `(defthm fn2-principals-genesis-pool-semantic
+   (implies (fn2-core-pool-semanticp c)
+    (fn2-core-pool-semanticp (mv-nth 1 (fn2-principals-genesis profile c))))
+   :hints (("Goal" :use fn2-principals-bind-genesis-pool-frame :in-theory (union-theories
+             '(fn2-principals-genesis fn2-core-pool-semanticp fn2-grp-genesis-pool-semantic
+               mv-nth car-cons cdr-cons (:e zp) (:e binary-+) nth-update-nth (:e equal) (:e nfix)
+               ,@(fn2-env-updater-names (strip-cars *fn2-core-children*))
+               ,@(strip-cars *fn2-core-children*))
+             (theory 'minimal-theory))))))
+(make-event
+ `(defthm fn2-sealer-genesis-pool-semantic
+   (implies (fn2-core-pool-semanticp c)
+    (fn2-core-pool-semanticp (mv-nth 1 (fn2-sealer-genesis profile c))))
+   :hints (("Goal" :in-theory (union-theories
+             '(fn2-sealer-genesis fn2-core-pool-semanticp
+               mv-nth car-cons cdr-cons (:e zp) (:e binary-+) nth-update-nth (:e equal) (:e nfix)
+               ,@(fn2-env-updater-names (strip-cars *fn2-core-children*))
+               ,@(strip-cars *fn2-core-children*))
+             (theory 'minimal-theory))))))
+(make-event
+ `(defthm fn2-sealer-start-row-pool-semantic
+   (implies (fn2-core-pool-semanticp c)
+    (fn2-core-pool-semanticp (mv-nth 1 (fn2-sealer-start-row ready c))))
+   :hints (("Goal" :in-theory (union-theories
+             '(fn2-sealer-start-row fn2-core-pool-semanticp fn2-machine-refuse-write fn2-core-stop
+               mv-nth car-cons cdr-cons nth-update-nth (:e equal) (:e nfix) (:e zp) (:e binary-+)
+               ,@(fn2-env-updater-names (strip-cars *fn2-core-children*))
+               ,@(strip-cars *fn2-core-children*))
+             (theory 'minimal-theory))))))
+(defthm fn2-engine-genesis-pool-semantic
+ (implies (fn2-core-pool-semanticp c)
+  (fn2-core-pool-semanticp (mv-nth 1 (fn2-engine-genesis profile c))))
+ :hints (("Goal" :in-theory (union-theories
+           '(fn2-engine-genesis (:type-prescription fn2-groups-genesis) (:type-prescription fn2-principals-genesis)
+             (:type-prescription fn2-sealer-genesis) (:type-prescription fn2-sealer-start-row)
+             fn2-groups-genesis-pool-semantic fn2-principals-genesis-pool-semantic
+             fn2-sealer-genesis-pool-semantic fn2-sealer-start-row-pool-semantic mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
+           (theory 'minimal-theory)))))
+(defthm fn2-init-engine-pool-semantic
+ (implies (fn2-core-pool-semanticp c)
+  (fn2-core-pool-semanticp (fn2-init-engine profile c)))
+ :hints (("Goal" :in-theory (union-theories
+           '(fn2-init-engine (:type-prescription fn2-engine-genesis) fn2-engine-genesis-pool-semantic fn2-env-core-stop-semanticp mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
+           (theory 'minimal-theory)))))
+
+(defun fn2-env-reach-pool-frame-events (fns world)
+ (declare (xargs :verify-guards nil))
+ (if (atom fns) nil
+  (let* ((fn (car fns)) (entry (fn2-arm-frame-known fn 'fn2-commit world))
+         (free (fn2-arm-frame-entry-kids entry world))
+         (pool (fn2-arm-frame-child-index 'fn2-core-pool world))
+         (out (fn2-arm-frame-out-term fn (cons fn (formals fn world)) world))
+         (lemma (fn2-arm-frame-lemma fn entry "-ARM-KIDS" 'fn2-commit world)))
+   (if (or (not entry) (member-equal pool free) (not (getpropc lemma 'theorem nil world)))
+    '((assert-event nil))
+    (cons
+     `(defthm ,(fn2-columns-sym fn "-REACH-POOL-SEMANTIC")
+       (implies (fn2-core-pool-semanticp fn2-core) (fn2-core-pool-semanticp ,out))
+       :hints (("Goal" :in-theory (union-theories '(fn2-core-pool-semanticp fn2-core-pool)
+                                                 (theory 'fn2-arm-frame-base))
+        :use ((:instance ,lemma (fn2-arm-free ',free) (fn2-arm-c0 fn2-core))
+              (:instance fn2-arm-kids-nth (i 0) (k ,pool) (free ',free) (a fn2-core) (b ,out))))))
+     (fn2-env-reach-pool-frame-events (cdr fns) world))))))
+(make-event
+ (value (cons 'progn (fn2-env-reach-pool-frame-events
+   '(fn2-listener-set-mode-all fn2-listener-set-target-all fn2-listener-set-principals
+     fn2-scribe-start fn2-machine-take-wake fn2-exec-wake fn2-exec-genesis-row) (w state)))))
+(defthm fn2-exec-genesis-reach-pool-semantic
+ (implies (fn2-core-pool-semanticp fn2-core)
+  (fn2-core-pool-semanticp (fn2-exec-genesis left id fn2-core)))
+ :hints (("Goal" :induct (fn2-exec-genesis left id fn2-core)
+          :in-theory (union-theories '(fn2-exec-genesis fn2-exec-genesis-row-reach-pool-semantic)
+                                     (theory 'minimal-theory)))))
+(defthm fn2-env-reach-init-pool-semantic
+ (implies (and (fn2-corep c) (fn2-core-profilep profile))
+  (fn2-core-pool-semanticp (fn2-init-executor profile mode scribe-p c)))
+ :hints (("Goal" :in-theory (union-theories
+           '(fn2-init-executor fn2-env-reach-core-init-pool-semantic fn2-init-engine-pool-semantic
+             fn2-listener-set-mode-all-reach-pool-semantic fn2-listener-set-target-all-reach-pool-semantic
+             fn2-listener-set-principals-reach-pool-semantic fn2-scribe-start-reach-pool-semantic
+             fn2-machine-take-wake-reach-pool-semantic fn2-exec-wake-reach-pool-semantic
+             fn2-exec-genesis-reach-pool-semantic
+             (:type-prescription fn2-machine-take-wake) mv-nth car-cons cdr-cons (:e zp) (:e binary-+))
+           (theory 'minimal-theory)))))
+
