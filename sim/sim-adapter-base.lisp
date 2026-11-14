@@ -446,12 +446,14 @@
       (declare (ignore code))
       (mv :ok 0 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own)))
    ((equal kind *fn2-action-fence*)
-    ; A failed fence may already have persisted its captured image. Keep
-    ; both deterministic endpoints: even word leaves it, odd word lands it.
-    ; Partial/torn fence effects remain a separate simulator obligation.
-    (let ((failed (equal fault *fn2-fault-flush-io*)))
+    ; Error word 0 leaves the image, 1 lands it, and >=2 selects a
+    ; captured-image suffix. The storage primitive reports Io for every
+    ; partial landing; the full error endpoint is normalized here as well.
+    (let* ((failed (equal fault *fn2-fault-flush-io*))
+           (start (if (and failed (< 1 word))
+                      (mod (- word 1) (+ 1 (fn2-sim-storage-rows fn2-sim-storage))) 0)))
      (mv-let (code fn2-sim-storage)
-      (fn2-storage-fence-complete slot (and failed (equal (mod word 2) 0)) lying fn2-sim-storage)
+      (fn2-storage-fence-complete-from slot (and failed (equal word 0)) lying start fn2-sim-storage)
       (mv (if (and failed (eq code :ok)) :io code) 0 0
           fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
    ((and (equal kind *fn2-action-tls-start*) (equal fault *fn2-fault-reset*))
