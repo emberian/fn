@@ -15,12 +15,21 @@
 enum { FN2_TLS_OK, FN2_TLS_READ, FN2_TLS_WRITE, FN2_TLS_CLOSED, FN2_TLS_FAILED };
 struct fn2_tls { SSL *ssl; BIO *wire; };
 
+/* Configuration must never prompt on the node's stdin. Encrypted keys need
+ * an explicit future secret-provider interface; this profile refuses them. */
+static int fn2_tls_no_passphrase(char *buffer, int size, int writing, void *data)
+{
+    (void)buffer; (void)size; (void)writing; (void)data;
+    return 0;
+}
+
 void *fn2_tls_config(const char *certificate, const char *key, int minimum_version)
 {
     SSL_CTX *ctx;
     ERR_clear_error();
     ctx = SSL_CTX_new(TLS_server_method());
     if (!ctx) return NULL;
+    SSL_CTX_set_default_passwd_cb(ctx, fn2_tls_no_passphrase);
     if (!SSL_CTX_set_min_proto_version(ctx, minimum_version) ||
         SSL_CTX_use_certificate_chain_file(ctx, certificate) != 1 ||
         SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM) != 1 ||

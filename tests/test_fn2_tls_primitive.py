@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import ssl
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -23,6 +24,7 @@ class TlsPrimitive(unittest.TestCase):
                         "ec_paramgen_curve:prime256v1", "-nodes", "-days", "1",
                         "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(cert)],
                        check=True, capture_output=True, timeout=15)
+        cls.certificate, cls.key = cert, key
         cls.lib = c.CDLL(os.environ["FN2_TLS_LIBRARY"])
         declarations = {
             "config": ([c.c_char_p, c.c_char_p, c.c_int], c.c_void_p),
@@ -108,13 +110,18 @@ class TlsPrimitive(unittest.TestCase):
             if got == request:
                 break
         self.assertEqual(got, request)
-        reply = b"101 Capabilities\r\nVERSION 2\r\n.\r\n"
+        reply = b"101 Capabilities\r\n" + b"X-TEST\r\n" * 200 + b".\r\n"
         received = b""
         wrote = False
+        blocked_write = False
+        retry_buffers = []
         for _ in range(1000):
             if not wrote:
-                code = self.lib.fn2_tls_write(self.server, reply, len(reply), c.byref(count))
+                # Model SBCL moving an immutable pool loan between pin scopes.
+                retry_buffers.append(c.create_string_buffer(reply))
+                code = self.lib.fn2_tls_write(self.server, retry_buffers[-1], len(reply), c.byref(count))
                 self.assertIn(code, (0, 1, 2))
+                blocked_write |= code == 2
                 if code == 0:
                     self.assertEqual(count.value, len(reply))
                     wrote = True
@@ -126,6 +133,8 @@ class TlsPrimitive(unittest.TestCase):
             if received == reply:
                 break
         self.assertEqual(received, reply)
+        self.assertTrue(blocked_write, "moving-buffer control must reach a write retry")
+        self.assertGreater(len({c.addressof(buffer) for buffer in retry_buffers}), 1)
 
     def test_input_backpressure_and_malformed_handshake(self):
         data = b"not TLS" * 200
@@ -134,6 +143,24 @@ class TlsPrimitive(unittest.TestCase):
         self.assertEqual(self.lib.fn2_tls_input_room(self.server), 0)
         self.assertEqual(self.lib.fn2_tls_feed(self.server, data, len(data)), 0)
         self.assertEqual(self.lib.fn2_tls_handshake(self.server), 4)
+
+    def test_encrypted_key_refuses_without_prompting(self):
+        encrypted = Path(self.tmp.name) / "encrypted.key"
+        subprocess.run(["openssl", "pkey", "-in", str(self.key), "-aes-256-cbc",
+                        "-passout", "stdin", "-out", str(encrypted)],
+                       input=os.urandom(16).hex().encode() + b"\n",
+                       check=True, capture_output=True, timeout=5)
+        program = """import ctypes as c, os, sys
+lib=c.CDLL(sys.argv[1])
+lib.fn2_tls_config.argtypes=[c.c_char_p,c.c_char_p,c.c_int]
+lib.fn2_tls_config.restype=c.c_void_p
+raise SystemExit(bool(lib.fn2_tls_config(os.fsencode(sys.argv[2]),os.fsencode(sys.argv[3]),0x0303)))
+"""
+        result = subprocess.run([sys.executable, "-c", program, os.environ["FN2_TLS_LIBRARY"],
+                                 str(self.certificate), str(encrypted)],
+                                input=b"\n", capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, b"", "configuration must not invoke an interactive password UI")
 
     def test_invalid_config_and_empty_capacity_refuse(self):
         self.assertFalse(self.lib.fn2_tls_config(b"/missing/fn2-cert", b"/missing/fn2-key", 0x0303))
