@@ -102,7 +102,7 @@ theorem natural_index_of_guard_branches (index : Val)
       cases impossible
     have hi : 0 ≤ i := by omega
     exact ⟨i.toNat, congrArg Val.int (Int.toNat_of_nonneg hi).symm⟩
-  | _ => simp [Prim.integerp, Val.isInt, Val.ofBool, Val.truthy] at integer
+  | _ => simp [Prim.integerp, Val.isInt, Val.ofBool, Val.truthy, Val.nil] at integer
 
 theorem nth_domain_of_guard_branches (index value : Val)
     (integer : (Prim.integerp index).truthy = true)
