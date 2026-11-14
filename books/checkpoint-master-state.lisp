@@ -16,7 +16,7 @@
  :doc "Wake the actual parked maintenance owner from real checkpoint pressure and available pre-cut working resources.")
 
 (defmachine fn2-checkpoint-master
- :states (:idle :disabled :catalog :reserve :workspaces :snapshot-begin :snapshot-poll :descriptor-begin
+ :states (:idle :disabled :catalog :reserve :workspaces :snapshot-begin :snapshot-poll :directory :abort-snapshot :abort-working :abort-complete :descriptor-begin
           :root1-begin :root1-source :root1-read :events-begin :events-source :events-read
           :page-bind :page-take :page-wait :page-accept-return :page-consume
           :plan-begin :plan-count :plan-size :plan-reserve :plan-validate :freeze
@@ -31,6 +31,8 @@
           (source :u8) (field-base :u32) (map-role :u8) (target :u32) (target-gen :u60)
           (batch :u60) (event :u60) (covered :u60) (retirement-seen :u60))
  :holds ((:workspaces :storage-window :storage-window) (:snapshot-begin :storage-window :storage-window) (:snapshot-poll :storage-window :storage-window)
+         (:directory :storage-window :storage-window) (:abort-snapshot :storage-window :storage-window)
+         (:abort-working :storage-window :storage-window) (:abort-complete :storage-window :storage-window)
          (:descriptor-begin :storage-window :storage-window) (:root1-begin :storage-window :storage-window) (:root1-source :storage-window :storage-window)
          (:root1-read :storage-window :storage-window) (:events-begin :storage-window :storage-window) (:events-source :storage-window :storage-window) (:events-read :storage-window :storage-window)
          (:page-bind :storage-window :storage-window) (:page-take :storage-window :storage-window) (:page-wait :storage-window) (:page-accept-return :storage-window) (:page-consume :storage-window :storage-window)
@@ -48,7 +50,7 @@
  :initial ((generation fn2-commit-initial-generation) (phase *fn2-checkpoint-master-state-idle*)
            (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :genesis ((:charge :steps *fn2-work-small* :runnable t))
- :arms ((:idle) (:disabled) (:catalog) (:reserve) (:workspaces) (:snapshot-begin) (:snapshot-poll) (:descriptor-begin)
+ :arms ((:idle) (:disabled) (:catalog) (:reserve) (:workspaces) (:snapshot-begin) (:snapshot-poll) (:directory) (:abort-snapshot) (:abort-working) (:abort-complete) (:descriptor-begin)
         (:root1-begin) (:root1-source) (:root1-read) (:events-begin) (:events-source) (:events-read)
         (:page-bind) (:page-take) (:page-wait) (:page-accept-return) (:page-consume)
         (:plan-begin) (:plan-count) (:plan-size) (:plan-reserve) (:plan-validate) (:freeze)

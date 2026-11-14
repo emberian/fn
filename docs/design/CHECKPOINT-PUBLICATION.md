@@ -589,3 +589,20 @@ three leases and returns them after its covering fence. Central cleanup frees
 future8 before root19 and reports the abstract bundle released only after all
 27 are gone. Journal/staging consumer integration and the D0 bundle/loan
 composition remain in progress; these source changes are not a liveness proof.
+The pre-construction directory check runs only at the settled held C cut,
+before descriptor BEGIN. Its resident commit budget is derived as one final
+installation plus the ceiling of actual extent rows divided by the actual
+allocation-record capacity per batch. This covers any physically feasible
+construction's allocation records, but can conservatively refuse a smaller
+snapshot near directory exhaustion; it is not physical free-space headroom.
+The same hint in the pressure source prevents immediate abort/retry churn.
+Startup's actual completed-fence layout binding is required before admission.
+
+A refused pre-construction directory check releases the exact C snapshot token
+first, then calls the sole shared working-release body over future8 and root19,
+one actual owned lease per step. Its authority comes from the actual master
+abort phase, FREE candidate, IDLE descriptor builder and untouched zero-token,
+no-loan bundle. It cannot cancel allocations or release persistent edges, and
+cannot authorize cleanup after descriptor BEGIN. Normal publication and this
+abort share the physical release loop with separate permission guards.
+These actor guards and controls remain source-only and unadmitted.
