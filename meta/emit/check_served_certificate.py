@@ -481,6 +481,10 @@ def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
             return lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint, tool)
 
 
+def proof_batch_scope(row, deps, graph):
+    return row.get('kind', ''), tuple(sorted(transitive_dependencies(deps, graph)))
+
+
 def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint, tool):
     # The caller starts this process under swarm-build/lake env. Install each
     # changed dependency into this lane's own library, never another lane's.
@@ -610,8 +614,8 @@ def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache,
                 solo_items.append([item])
             else:
                 # A batch may not lend one slice another slice's local imports.
-                scope = tuple(sorted(transitive_dependencies(p_deps, graph)))
-                uncached_by_scope.setdefault((row.get('kind', ''), scope), []).append(item)
+                scope = proof_batch_scope(row, p_deps, graph)
+                uncached_by_scope.setdefault(scope, []).append(item)
 
         batches = list(solo_items)
         for kind_name in sorted(uncached_by_scope):

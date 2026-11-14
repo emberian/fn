@@ -368,14 +368,17 @@ class CoverageControls(unittest.TestCase):
               'import Fn2.Arms.Wrapper\nnamespace Fn2.Arms.Served.Root0\ndef contract := True\nend Fn2.Arms.Served.Root0\n'
               'namespace Fn2.Arms.Served.Root1\ndef contract := True\nend Fn2.Arms.Served.Root1\n'
               'namespace Fn2.Arms.Served.Root2\ndef contract := True\nend Fn2.Arms.Served.Root2\n', expose=True))
-            for ri in range(3):
-                pp=root/f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean'
-                pp.write_text(e.as_module(
-                  f'import Fn2.Instances.ServedCertificates.Kind0Contracts\nnamespace Fn2.Arms.Served.Root{ri}Proof\n'
+            def proof_source(ri, extra_import='', marker=''):
+                return e.as_module(
+                  f'import Fn2.Instances.ServedCertificates.Kind0Contracts\n{extra_import}'
+                  f'namespace Fn2.Arms.Served.Root{ri}Proof\n{marker}\n'
                   f'theorem validated : True := trivial\n'
                   f'theorem accepted_entry_positive : True := trivial\n'
                   f'theorem omitted_child_rejected : True := trivial\n'
-                  f'end Fn2.Arms.Served.Root{ri}Proof\n', expose=True))
+                  f'end Fn2.Arms.Served.Root{ri}Proof\n', expose=True)
+            for ri in range(3):
+                pp=root/f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean'
+                pp.write_text(proof_source(ri))
 
             calls=[]
             fail_root=set()
@@ -452,9 +455,22 @@ class CoverageControls(unittest.TestCase):
                 fail_root.clear()
                 (root/'meta/Fn2/M.lean').write_text('def m := 1')
                 p0=root/'meta/Fn2/Instances/ServedCertificates/Root0Proof.lean'
-                p0.write_text(p0.read_text()+'\n-- external-needs-M\n')
+                p0.write_text(proof_source(0,marker='-- external-needs-M'))
                 p1=root/'meta/Fn2/Instances/ServedCertificates/Root1Proof.lean'
-                p1.write_text(p1.read_text().replace('public import ', 'public import Fn2.M\npublic import ',1))
+                p1.write_text(proof_source(1,extra_import='import Fn2.M\n'))
+                self.assertIsNotNone(c.parse_module_slice(p0.read_text()))
+                self.assertIsNotNone(c.parse_module_slice(p1.read_text()))
+                cache_path=root/'build/served-lean-cache.json'
+                before_broken=cache_path.read_text()
+                calls.clear()
+                # Mutation control: restoring the old kind-only grouping lends M
+                # to A and incorrectly accepts it. Both inputs must really batch.
+                with mock.patch.object(c,'proof_batch_scope',return_value=('K0',())):
+                    broken=make_report()
+                    c.lean_gates(broken,lib,30,2,root=root,batch_size=4)
+                self.assertEqual(broken['roots'][0]['status'],'validated')
+                self.assertEqual(len([n for n,wo in calls if not wo and n.startswith('batch-proof-')]),1)
+                cache_path.write_text(before_broken)
                 calls.clear(); rep4=make_report()
                 c.lean_gates(rep4,lib,30,2,root=root,batch_size=4)
                 self.assertEqual([r['status'] for r in rep4['roots']],['unvalidated','validated','validated'])
