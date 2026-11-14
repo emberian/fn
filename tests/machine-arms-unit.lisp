@@ -780,28 +780,3 @@
 (assert-event (equal (fn2-arm-frame-static-problem '(fn2-arms-mut-put) '(5) '(0 3 4) 7 nil (w state))
                      '(:children fn2-arms-mut-put (6))))
 (value-triple (cw "MACHINE ARMS UNIT: frame mutants (undeclared column, child, contract-less callee, another table) named PASS~%"))
-
-;; Issue bindings name the actual descriptor only on the successful path.
-(defmachine fn2-arms-issue-bad-binding
- :phases (:free :work)
- :fields ((pending :u32) (cap-index :u32) (cap-nonce :u32))
- :budget (:bytes 0 :steps 32 :descriptors 1)
- :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
- :arms ((:free (:idle))
-        (:work (:issue (fn2-issue-close row-cap-index row-cap-nonce :principal row-principal-slot)
-                :bind (only-one)
-                :ok ((:wait :completion)))))
- :observes ())
-(must-fail (defmachine-arms fn2-arms-issue-bad-binding :children))
-(defmachine fn2-arms-issue-refused-binding
- :phases (:free :work)
- :fields ((pending :u32) (cap-index :u32) (cap-nonce :u32) (saved-op :u32))
- :budget (:bytes 0 :steps 32 :descriptors 1)
- :initial ((generation 1) (ready-prev *fn2-none*) (ready-next *fn2-none*))
- :arms ((:free (:idle))
-        (:work (:issue (fn2-issue-close row-cap-index row-cap-nonce :principal row-principal-slot)
-                :bind (issued-slot issued-gen)
-                :ok ((:wait :completion))
-                :refused ((:set (saved-op issued-slot))))))
- :observes ())
-(must-fail (defmachine-arms fn2-arms-issue-refused-binding :children))

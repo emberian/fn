@@ -126,7 +126,7 @@ def main():
                 trailing = (b'GROUP local.test\r\n' * 100) if pipeline else b''
                 peer.upgrade(cert, pipeline, trailing)
                 for _ in range(100 if pipeline else 0):
-                    assert peer.line().startswith(b'211 '), 'staged ciphertext must survive RX reuse'
+                    assert peer.line().startswith(b'211 '), 'buffered ciphertext must survive RX reuse'
                 assert b'STARTTLS' not in peer.capabilities()
                 assert peer.command(b'STARTTLS').startswith(b'502 ')
                 if not pipeline:
