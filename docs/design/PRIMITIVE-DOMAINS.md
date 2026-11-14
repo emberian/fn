@@ -75,3 +75,20 @@ has an authenticated published record-toolchain entry. Negative-index and
 dotted-tail controls concern ACL2 logical completion, not permission to execute
 an out-of-guard native call. Reached-guard domain construction and actual timer
 consumer binding remain pending.
+
+## Reached guard branches
+
+`natural_index_of_guard_branches` now derives a natural-index representation
+from the observed native INTEGERP truth and a false negative comparison. The
+NTH and UPDATE-NTH domain constructors use that witness directly. Neither
+constructor grants a guard from a declaration: the consumer must prove that
+these branch observations hold for its reached index.
+
+The positive control supplies both branch facts and both call domains. Separate
+hypothesis-removal controls show why NIL's numeric completion cannot replace
+INTEGERP, and why an integer premise alone permits negative indices. The exact
+modules passed author probe `/tmp/assurance-list-guard-probe3.log` with all
+fourteen axiom censuses limited to `propext`, `Quot.sound`, and `Classical.choice`.
+Earlier failed tactic probes are retained separately. This makes the domain
+constructors available for the scoped timer proof; it does not itself bind an
+actual exported timer call site or prove its full contract.
