@@ -413,7 +413,18 @@
   (equal (getpropc (fn2-columns-sym fn suffix) 'theorem nil world)
     `(implies (if (fn2-corep fn2-core) (fn2-core-wfp fn2-core) 'nil)
               (,predicate ,result)))))
-(defun fn2-product-output-invariants (child outputs index guard args openings single opaque)
+; Normalize the finite result product once in a proof-only predicate. Separate
+; projection proofs would otherwise repeat the complete operation body.
+(defun fn2-product-output-conditions (outputs index single)
+ (declare (xargs :verify-guards nil))
+ (if (atom outputs) nil
+  (append
+   (and (car outputs)
+     (let ((result (if single 'result `(mv-nth ,index result))) (obj (car outputs)))
+      (list `(,(fn2-columns-sym obj "P") ,result)
+            `(,(fn2-columns-sym obj "-WFP") ,result))))
+   (fn2-product-output-conditions (cdr outputs) (+ 1 index) single))))
+(defun fn2-product-output-corollaries (child outputs index guard args single predicate theorem)
  (declare (xargs :verify-guards nil))
  (if (atom outputs) nil
   (let* ((obj (car outputs))
@@ -425,8 +436,27 @@
         (implies ,guard
           (and (,(fn2-columns-sym obj "P") ,result)
                (,(fn2-columns-sym obj "-WFP") ,result)))
-        :hints (("Goal" :in-theory (e/d (,child ,@openings) ,opaque))))))
-    (fn2-product-output-invariants child (cdr outputs) (+ 1 index) guard args openings single opaque)))))
+        :hints (("Goal" :use ((:instance ,theorem))
+                 :in-theory (e/d (,predicate) (,child)))))))
+    (fn2-product-output-corollaries child (cdr outputs) (+ 1 index) guard args single predicate theorem)))))
+(defun fn2-product-output-invariants (child outputs index guard args openings single opaque)
+ (declare (xargs :verify-guards nil))
+ (and (remove-eq nil outputs)
+  (let ((predicate (fn2-columns-sym child "-OUTPUT-INVARIANTP"))
+        (theorem (fn2-columns-sym child "-OUTPUTS-PRESERVED")))
+   (append
+    `((defun-nx ,predicate (result)
+        (and ,@(fn2-product-output-conditions outputs index single)))
+      (defthm ,theorem (implies ,guard (,predicate (,child ,@args)))
+        :hints (("Goal" :in-theory (e/d (,predicate ,child ,@openings) ,opaque)))
+        :rule-classes nil))
+    (fn2-product-output-corollaries child outputs index guard args single predicate theorem)
+    `((in-theory (disable ,predicate)))))))
+(defun fn2-product-invariant-theorems (events)
+ (declare (xargs :verify-guards nil))
+ (if (atom events) nil
+  (append (and (eq (caar events) 'defthm) (list (cadar events)))
+          (fn2-product-invariant-theorems (cdr events)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -584,7 +614,7 @@
           :typed-refinement ,typed :guarded-refinement ,guarded
           :shape-refinement ,shaped :shape-reverse ,reverse :shape-preserved ,preserves
           :execution-correspondence ,bridge :refinement ,refinement
-          :children ,children :written ,written :child-invariants ,(strip-cadrs invariants)
+          :children ,children :written ,written :child-invariants ,(fn2-product-invariant-theorems invariants)
           :obligation ,refinement
           :execution-obligation ,guarded)))))))))
 (defmacro defcore-product-child (fn child &key teeth)

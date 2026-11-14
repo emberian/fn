@@ -715,7 +715,8 @@
 (assert-event
  (let ((row (cdr (assoc-eq 'fn2-update-invariant-source (table-alist 'fn2-core-lowered (w state))))))
   (and (equal (fn2-decl-get :child-invariants row)
-               '(fn2-update-invariant-child-output-fn2-update-config-invariants))
+               '(fn2-update-invariant-child-outputs-preserved
+                 fn2-update-invariant-child-output-fn2-update-config-invariants))
        (equal (fn2-product-guard-callees '(fn2-update-invariant-source) (w state)) nil))))
 (defun fn2-update-invariant-caller (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
