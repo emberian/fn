@@ -513,3 +513,9 @@ one-descriptor operation; its actual retained operation tuple drives harvest.
 Only the completed manifest/ledger scan sets the snapshot COMPLETE field.
 These source declarations and boundary controls are not ACL2 admission,
 runtime checkpoint qualification, recovery installation, or activation.
+The root1 window-release operation consumes the actual same-candidate publisher
+COMPLETE phase, retained builder claim, READY descriptor and positive installed
+commit. It releases one still-owned window per turn through the existing pool
+release operation. The publisher must return borrowed windows without releasing
+them separately. Only the final successful release resets directory state for
+another construction; uncertain writes and ownership failures retain resources.
