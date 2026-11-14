@@ -34,7 +34,7 @@
  :why "Retained exact construction identities for every checkpoint page and pre-reserved journal ticket.")
 
 (defcorechild fn2-core-retirement-control fn2-retirement-control
- :init (fn2-retirement-control-init 1 fn2-retirement-control) :profilep t
+ :init (fn2-retirement-control-init (+ 1 *fn2-checkpoint-allocation-records-per-ticket*) fn2-retirement-control) :profilep t
  :why "One lifecycle producer, retained workspace and exact settlement identity across yields.")
 (defun fn2-b-checkpoint-capacity (profile)
  (declare (xargs :guard t))
