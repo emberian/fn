@@ -12,9 +12,9 @@
 
 (defcost fn2-csnapshot-state :tables (fn2-core-csnapshot)
  :doc "Read resident snapshot exclusion state.")
-(defcost fn2-csnapshot-begin :answers (:ok :busy :bounds :exhausted) :tables (fn2-core-csnapshot)
+(defcost fn2-csnapshot-begin :answers (:ok :busy :bounds :exhausted :stopped) :tables (fn2-core-csnapshot)
  :doc "Close new C staging while admitted work drains.")
-(defcost fn2-csnapshot-poll :answers (:owner :bounds :more :held) :tables (fn2-core-csnapshot)
+(defcost fn2-csnapshot-poll :answers (:owner :bounds :more :held :stopped) :tables (fn2-core-csnapshot)
  :doc "Inspect one draining transaction, then retain the actual settled commit/event cut.")
 (defcost fn2-csnapshot-next :answers (:owner :bounds :more :overlay :run :done) :tables (fn2-core-csnapshot)
  :doc "Enumerate one retained source row; DONE covers every overlay and installed run row.")
@@ -53,6 +53,7 @@
      *fn2-csnapshot-phase-idle*) (mv phase fn2-core)))
 
  (fn2-csnapshot-op fn2-csnapshot-begin (okind oslot ogen) 2
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 fn2-core)
   (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core)))
    (code token fn2-csnapshot)
    (cond ((not (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
@@ -67,14 +68,19 @@
                       (token token) (owner-kind okind) (owner-slot oslot) (owner-gen ogen)
                       (scan 0) (blocked 0) (source 0) (row 0) (complete 0))))
               (mv :ok token fn2-csnapshot))))
-   (mv code token fn2-core)))
+   (mv code token fn2-core))))
 
 
 
  ; One transaction per poll. No new OPEN transaction may stage after BEGIN;
- ; STAGED/BOUND ones still finish through the ordinary B writer. OPEN rows
- ; are unadmitted work and cannot alter the held visible view.
+ ; STAGED/BOUND ones still finish through the ordinary B writer. PUBLISHED
+ ; owners must finish their accepted-result materialization and release too:
+ ; txn :batched commits payload reservations before :reply releases its C row.
+ ; OPEN rows are unadmitted work and cannot alter the held visible view.
+ ; A disconnected upload retains/wakes its child txn until that drain ends.
+ ; A stopped owner/core is recovery work, never a valid acquired snapshot.
  (fn2-csnapshot-op fn2-csnapshot-poll (token okind oslot ogen) 3
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 fn2-core)
   (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
               (fn2-succ-txns (fn2-core-succ-txns fn2-core))
               (fn2-commit-root (fn2-core-commit-root fn2-core)))
@@ -90,7 +96,8 @@
           (let* ((r (fn2-csnapshot-scan 0 fn2-csnapshot))
                  (phase (fn2-succ-txns-phase r fn2-succ-txns))
                  (blocked (or (= (fn2-csnapshot-blocked 0 fn2-csnapshot) 1)
-                              (= phase *fn2-succ-phase-staged*) (= phase *fn2-succ-phase-bound*)))
+                              (= phase *fn2-succ-phase-staged*) (= phase *fn2-succ-phase-bound*)
+                              (= phase *fn2-succ-phase-published*)))
                  (fn2-csnapshot (fn2-csnapshot-put 0 (scan (+ 1 r)) (blocked (if blocked 1 0)))))
            (mv :more 0 0 fn2-csnapshot))))
          ((or (= (fn2-csnapshot-blocked 0 fn2-csnapshot) 1)
@@ -107,7 +114,7 @@
                    (fn2-csnapshot (fn2-csnapshot-put 0 (phase *fn2-csnapshot-phase-held*)
                                     (cut-commit cut) (cut-event event) (source 0) (row 0) (complete 0))))
               (mv :held cut event fn2-csnapshot))))
-   (mv code cut event fn2-core)))
+   (mv code cut event fn2-core))))
 
  ; Enumerate the complete resident source set without silently truncating it.
  ; Overlay SEQ and run RUN preserve the served merge precedence. A source is
