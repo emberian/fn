@@ -179,10 +179,20 @@
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn2-map-frame-invalid-source-control
    fn2-map-frame-original-type-claim fn2-map-frame-valid-source
-   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp))))
+   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp
+   ; The witness is ground. Reduce the actual constructors instead of letting
+   ; opaque initialization terms create spurious allocator branches.
+   fn2-alloc-init-links fn2-alloc-columns-init fn2-fields-init
+   create-fn2-extents create-fn2-fields
+   fn2-extentsp fn2-extents-wfp fn2-fieldsp fn2-fields-wfp))))
 (defthm fn2-map-frame-missing-source-type-counterexample
  (fn2-map-frame-invalid-source-control nil)
  :rule-classes nil
  :hints (("Goal" :in-theory (enable fn2-map-frame-invalid-source-control
    fn2-map-frame-original-type-claim fn2-map-frame-valid-source
-   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp))))
+   fn2-checkpoint-frozen-map-entry fn2-alloc-copy-ownerp fn2-alloc-slotp
+   ; The witness is ground. Reduce the actual constructors instead of letting
+   ; opaque initialization terms create spurious allocator branches.
+   fn2-alloc-init-links fn2-alloc-columns-init fn2-fields-init
+   create-fn2-extents create-fn2-fields
+   fn2-extentsp fn2-extents-wfp fn2-fieldsp fn2-fields-wfp))))
