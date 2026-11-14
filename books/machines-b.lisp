@@ -10,6 +10,7 @@
 (include-book "format-check")
 (include-book "recovery")
 (include-book "commit-members")
+(include-book "merkle")
 (fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
  (declare (xargs :guard t))
@@ -51,8 +52,8 @@
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
 ; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
-; both at fn2-b-ctl-slot), then row 4+w+c for block reads and the
-; final row 5+w+c for the checkpoint writer's private checker. The block read's check
+; both at fn2-b-ctl-slot), then row 4+w+c for event construction,
+; row 5+w+c for block reads and final row 6+w+c for checkpoint writing. The block read's check
 ; (fn2-block-read-done-children hashes a block read through a source
 ; manifest there, within one call, so one row serves every cursor row;
 ; b-durability.md S9a); the count is derived, so every profile has every
@@ -70,10 +71,16 @@
  (+ 4 (fn2-b-upload-windows profile) (nfix s)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 6 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 7 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
+(defun fn2-b-event-row (rows)
+ (declare (xargs :guard t))
+ (nfix (- (nfix rows) 3)))
+(defun fn2-b-ctl-runtime-row (s connections rows)
+ (declare (xargs :guard t))
+ (+ (nfix (- (nfix rows) (nfix connections) 3)) (nfix s)))
 (defun fn2-b-block-read-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 2)))
@@ -101,10 +108,22 @@
  :profilep (and (unsigned-byte-p 32 (fn2-b-format-slots profile))
                 (<= (fn2-b-format-floor profile) (fn2-b-format-slots profile)))
  :why "Commit work survives scheduler yields.")
+(defcorechild fn2-core-mk fn2-mk
+ :init (fn2-mk-table-init (fn2-b-format-slots profile) fn2-mk)
+ :profilep (and (unsigned-byte-p 32 (fn2-b-format-slots profile))
+                (<= (fn2-b-format-floor profile) (fn2-b-format-slots profile)))
+ :why "Event frontier peaks survive bounded hashing and checkpoint construction yields.")
+; Outputs follow the immutable commit/recovery digests, outside MK workspaces.
+(defun fn2-b-event-leaf-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ (* *fn2-digest-stride* format-rows) 1 extents (fn2-rec-digest-rows extents)))
+(defun fn2-b-event-root-digest (format-rows extents)
+ (declare (xargs :guard (and (natp format-rows) (natp extents))))
+ (+ 1 (fn2-b-event-leaf-digest format-rows extents)))
 (defun fn2-b-digest-minimum (profile)
  (declare (xargs :guard t))
  (+ (* *fn2-digest-stride* (nfix (fn2-b-format-slots profile)))
-    1 (nfix (fn2-b-capacity :extent-slots 16 profile))
+    3 (nfix (fn2-b-capacity :extent-slots 16 profile))
     (fn2-rec-digest-rows (nfix (fn2-b-capacity :extent-slots 16 profile)))))
 (defthm fn2-b-digest-minimum-natural
  (natp (fn2-b-digest-minimum profile)) :rule-classes :type-prescription)
