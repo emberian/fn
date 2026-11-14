@@ -586,3 +586,23 @@ no-loan bundle. It cannot cancel allocations or release persistent edges, and
 cannot authorize cleanup after descriptor BEGIN. Normal publication and this
 abort share the physical release loop with separate permission guards.
 These actor guards and controls remain source-only and unadmitted.
+The subsequent 20-book map roundtrip probe at `60d49ddff` refused at
+`FN2-CHECKPOINT-FROZEN-MAP-ENTRY-PRESERVES-TYPE`, before the packer/reader and
+target assertions ran. The generated TYPE formula assumed only destination
+shape and omitted the readonly allocator's domain. The repair preserves that
+original formula in explicit malformed-logical-source controls, names the
+replacement's actual guard domain, and retains the stronger valid WFP and
+unconditional row effects. Operation bodies are unchanged. The controls and
+replacement contracts are source obligations awaiting the revised narrow gate;
+a failed proof search alone is not their counterexample evidence. The refused
+probe used 108.16 seconds; recorded PIDs 121267/121292/121293 were absent after
+cleanup, and its allocation was released.
+
+Working-memory admission now reserves root19 plus future8 as actual leases in
+one per-class preflight/acquisition before the C cut. The future bundle contains
+one maximum-sized staging window, four serialized journal windows, and three
+anchor windows. The anchor writer waits for journal handback, borrows its exact
+three leases and returns them after its covering fence. Central cleanup frees
+future8 before root19 and reports the abstract bundle released only after all
+27 are gone. Journal/staging consumer integration and the D0 bundle/loan
+composition remain in progress; these source changes are not a liveness proof.
