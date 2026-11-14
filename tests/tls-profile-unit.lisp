@@ -7,10 +7,10 @@
    (:tls-window . 512) (:tls-handshakes . 1) (:tls-handshake-ms . 1000)))
 (assert-event (fn2-tls-profilep *fn2-tls-profile-probe*))
 (assert-event (equal (fn2-tls-admission-capacity *fn2-tls-profile-probe*) 1))
-(assert-event (equal (fn2-tls-seed-capacity *fn2-tls-profile-probe*) 4096))
-(assert-event (equal (fn2-tls-seed-reservation-bytes *fn2-tls-profile-probe*) 12288))
+(assert-event (equal (fn2-codec-seed-capacity *fn2-tls-profile-probe*) 4096))
+(assert-event (equal (fn2-codec-seed-reservation-bytes *fn2-tls-profile-probe*) 12288))
 ; BIO capacity is independent of the retained RX span, with no truncation cap.
-(assert-event (> (fn2-tls-seed-capacity *fn2-tls-profile-probe*)
+(assert-event (> (fn2-codec-seed-capacity *fn2-tls-profile-probe*)
                  (fn2-tls-setting :tls-window 16384 *fn2-tls-profile-probe*)))
 (assert-event (equal (fn2-tls-admission-capacity nil) 0))
 (assert-event (not (fn2-tls-profilep '((:tls-certificate . "fixture.pem")))))
