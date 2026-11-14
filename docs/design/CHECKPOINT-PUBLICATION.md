@@ -690,3 +690,21 @@ are not retired by this operation. Cold boot must reconstruct both authenticated
 bank occupants and retained installation evidence before teardown is authorized;
 runtime fields do not establish cold authority. Master debt-drain scheduling and
 catalog reuse remain unimplemented. Activation and FREE remain disabled.
+
+The master now reaches a bounded displaced-candidate inspection after normal
+C snapshot release. Each call checks one actual physical row under the retained
+latest lifecycle/candidate owner, published descriptor identity and exact old
+debt identity. An owned role0..5 construction may be eligible only with its exact
+victim source edge, its counted exact six-root edges and no nonvictim durable
+protector. Physical read/I/O pins remain untouched; role6 journal tickets,
+borrowed sources and shared/archive-protected extents are not retirement input.
+The candidate and B lifecycle provenance remain retained across this traversal.
+
+Inspection is not retirement permission. The current ordinary retirement
+producer queues a journal member without an allocator barrier against new
+durable references during the wait. Until that shared intent chain is present,
+the master retains the eligible handle/cursor at an explicit fail-closed barrier
+state and performs no submit. EOF likewise retains debt and catalog state:
+archive/ancestry reachability must be settled before root/source teardown or
+catalog reuse. The source actor and primitive controls remain unadmitted;
+activation and allocator FREE remain disabled.
