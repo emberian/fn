@@ -49,7 +49,9 @@ B certification or a new ACL2 theorem. Re-run it in the next composed native gat
 `sim/sim-adapter-base` now selects a no-space write prefix with the fault word,
 executes that prefix, and reports `:no-space` with zero known progress. The
 underlying byte primitive still refuses a directly injected no-space byte.
-`sim/storage`'s failed fence still preserves the entire durable image.
+The byte primitive's failed fence remains unchanged; the adapter now selects
+either no persistence (even word) or captured-image persistence (odd word) before
+reporting `:io`. It uses the same existing fence operation for both endpoints.
 `books/crash-model` admits broader uncertainty, so the simulator's fault matrix
 does not yet span these new native-boundary fixtures. Do not call an exercised
 no-space/fence-error counter evidence that unreported physical effects were tested.
@@ -66,7 +68,9 @@ infer native power-loss behavior from a SIGKILL campaign or this deterministic m
 
 `tests/storage-effectful-error.lisp` is a source probe, not yet executed or
 certified. It checks zero/two/four-byte physical prefixes against literal expected
-visible bytes, unchanged durable bytes and a separate prior fenced byte. A second
+visible bytes, unchanged durable bytes and a separate prior fenced byte. It then
+checks both failed-fence endpoints and the exact visible/durable bytes after
+crash reset. Partial/torn fence persistence is not covered. A second
 control runs the real commit stepper: two accepted batches, reused rows, effectful
 ENOSPC on the next writes, uncertainty, no new replies and recovery of the prior
 two batches. These are distinct controls, not an independent full ACK proof.
@@ -75,5 +79,5 @@ Next gate, after a named compute slot and matching qualified prefix: source-load
 changed `sim/sim-adapter-base` and its dependents in `proof_repl`, then execute
 `tests/storage-effectful-error.lisp`. Reject a zero-effect mutant for nonzero
 prefixes and an error-as-success mutant. Only after that passes, certify the
-affected simulator closure. EIO, failed-fence persistence and withheld completion
-still need the staged physical/completion adapter; they are not covered here.
+affected simulator closure. Effectful write EIO, partial/torn failed-fence persistence and withheld completion
+still need controls. The two failed-fence endpoints here do not close those gaps.
