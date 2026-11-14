@@ -1,6 +1,7 @@
 ; Source fixture; execution requires the composed qualified world. This tests
 ; the real fixed-slot codec/reader, not a second allocator recovery model.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "c-snapshot-unit")
 (include-book "../books/checkpoint-restore")
 (include-book "../books/checkpoint-map-pack")
@@ -55,3 +56,18 @@
  (with-local-stobj fn2-core
   (mv-let (answer fn2-core) (fn2-cru-body fn2-core) answer)))
 (assert-event (fn2-cru-test))
+
+; Admission must account for every physical anchor even if a profile requests
+; fewer active publication candidates. Failure precedes window acquisition.
+(defun fn2-cru-small-profile ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core)
+   (b* ((profile (put-assoc-equal :checkpoint-candidates 3 (fn2-image-profile *fn2-csu-profile*)))
+        (fn2-core (fn2-core-init profile fn2-core))
+        (id (fn2-machine-kind-base *fn2-boot-kind* fn2-core))
+        ((mv code fn2-core) (fn2-boot-start nil 33554432 fn2-core)))
+    (mv (and (eq code :geometry)
+             (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-free*)) fn2-core))
+   answer)))
+(assert-event (fn2-cru-small-profile))

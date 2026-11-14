@@ -126,6 +126,11 @@
                     (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-free*)
                     (unsigned-byte-p 60 size) (equal (mod size 4096) 0)))
        (mv :geometry fn2-core))
+      ; Four physical anchors are a format fact, not a tunable candidate
+      ; truncation. Reject an undersized boot profile before taking windows.
+      ((unless (stobj-let ((fn2-checkpoints (fn2-core-checkpoints fn2-core))) (ok)
+                  (<= 4 (fn2-checkpoints-rows fn2-checkpoints)) ok))
+       (mv :geometry fn2-core))
       ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
                         (mv (* *fn2-storage-extent-bytes* (nfix (fn2-boot-config-extents fn2-boot-config)))
                             (fn2-boot-config-count fn2-boot-config)) (mv base total)))
