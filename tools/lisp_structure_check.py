@@ -16,11 +16,17 @@ import lisp_source
 def check_tree(tree: object, where: str = "form") -> list[str]:
     errors: list[str] = []
 
-    def visit(node: object, path: str) -> None:
+    def visit(node: object, path: str, template_depth: int = 0) -> None:
         if not isinstance(node, list) or not node:
             return
         head = node[0].lower() if isinstance(node[0], str) else None
         if head == "quote":
+            return
+        if head == "quasiquote" and len(node) == 2:
+            visit(node[1], f"{path}/template", template_depth + 1)
+            return
+        if head in ("unquote", "unquote-splicing") and template_depth and len(node) == 2:
+            visit(node[1], f"{path}/generator", template_depth - 1)
             return
         if head in {"defun", "defmacro"}:
             for i, child in enumerate(node[3:], 3):
@@ -31,41 +37,52 @@ def check_tree(tree: object, where: str = "form") -> list[str]:
                         and isinstance(child, list) and len(child) == 2
                         and child[0] == "quote" and isinstance(child[1], list)
                         and child[1] and child[1][0] == "progn"):
-                    visit(child[1], f"{path}/{head}-emitted-progn")
+                    visit(child[1], f"{path}/{head}-emitted-progn", template_depth)
                 else:
-                    visit(child, f"{path}/{head}[{i}]")
+                    visit(child, f"{path}/{head}[{i}]", template_depth)
             return
         if head == "if" and len(node) != 4:
             errors.append(f"{path}: IF needs test, then and else; got {len(node) - 1} arguments")
         if head == "cond":
             for i, clause in enumerate(node[1:], 1):
-                if not isinstance(clause, list) or len(clause) != 2:
+                if (template_depth and isinstance(clause, list) and clause
+                        and clause[0] in ("unquote", "unquote-splicing")):
+                    visit(clause, f"{path}/clause-generator[{i}]", template_depth)
+                elif not isinstance(clause, list) or len(clause) != 2:
                     errors.append(f"{path}: COND clause {i} needs test and expression")
         if head in {"b*", "let", "let*"}:
             if len(node) != 3:
                 errors.append(f"{path}: {head.upper()} needs bindings and one body")
-            if len(node) < 2 or not isinstance(node[1], list):
+            bindings = node[1] if len(node) > 1 else None
+            if (template_depth and isinstance(bindings, list) and bindings
+                    and bindings[0] in ("unquote", "unquote-splicing")):
+                # The generator determines the binding list only at expansion.
+                # Its expression still gets normal structural validation.
+                visit(bindings, f"{path}/bindings-generator", template_depth)
+            elif not isinstance(bindings, list):
                 errors.append(f"{path}: {head.upper()} needs a binding list")
             else:
-                for i, binding in enumerate(node[1]):
+                for i, binding in enumerate(bindings):
+                    if (template_depth and isinstance(binding, list) and binding
+                            and binding[0] in ("unquote", "unquote-splicing")):
+                        visit(binding, f"{path}/binding-generator[{i}]", template_depth)
+                        continue
                     if not isinstance(binding, list) or len(binding) != 2:
                         errors.append(f"{path}: {head.upper()} binding {i} needs pattern and expression")
                     elif head != "b*" and not isinstance(binding[0], str):
                         errors.append(f"{path}: {head.upper()} binding {i} needs a symbol")
-                    # Binding patterns are not expressions. This avoids treating
-                    # destructuring names or return tests as function bodies.
                     if isinstance(binding, list) and len(binding) == 2:
                         pattern = binding[0]
                         if head == "b*" and isinstance(pattern, list) and pattern:
                             if pattern[0] in {"when", "unless"}:
                                 for child in pattern[1:]:
-                                    visit(child, f"{path}/test[{i}]")
-                        visit(binding[1], f"{path}/binding[{i}]")
+                                    visit(child, f"{path}/test[{i}]", template_depth)
+                        visit(binding[1], f"{path}/binding[{i}]", template_depth)
             for i, child in enumerate(node[2:], 2):
-                visit(child, f"{path}/body[{i}]")
+                visit(child, f"{path}/body[{i}]", template_depth)
             return
         for i, child in enumerate(node):
-            visit(child, f"{path}[{i}]")
+            visit(child, f"{path}[{i}]", template_depth)
 
     visit(tree, where)
     return errors
