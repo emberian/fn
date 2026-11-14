@@ -254,13 +254,15 @@ the package discovery hook loads unrelated surface tests despite a filename filt
 
 `checkpoint-build-state.lisp`, `checkpoint-descriptor.lisp` and
 `checkpoint-build.lisp` now hold the concrete descriptor job. BEGIN checks the
-actual held C owner/token and completed source traversal, requires all five
-root constructor carriers for that same token, checks the owned page/scratch
-leases, and calls the real shared storage reservation operation before any
+actual held C owner/token, checks the owned page/scratch leases, and calls
+the real shared storage reservation operation before any
 codec sees its physical identity. The job stores that exact extent/epoch/
 allocation, workspace handles, cut from C, private checker stripe and write
 completion cursor. No caller supplies a cut, reservation identity or readiness
-boolean to this admission.
+boolean to this admission. BEGIN enters `:await-roots`: the descriptor identity
+is available before the allocation map seals its construction set. The separate
+ROOTS-READY transition requires completed actual C traversal and all five
+physically completed same-token root carriers before entering `:pack`.
 
 The generated descriptor/page-header codecs produce a padded 4 KiB descriptor
 inside its 64 KiB allocation. Actual page sealing supplies its expected hash;
@@ -280,7 +282,7 @@ closure still precede promotion and allocator-cut advancement.
 The five root carriers now have construction token, source-complete and intended/
 completed-byte fields. Their real metadata/map/proof/frontier/arena constructors
 remain required; no generic setter authorizes those flags. Until those producers
-connect, production BEGIN refuses `:roots-pending`. A decoded descriptor clears
+connect, ROOTS-READY refuses `:roots-pending`. A decoded descriptor clears
 construction provenance, so a read candidate cannot inherit prior readiness.
 This is source implementation and shape-contract work, not admission, completed
 root construction, certification or a served reclaim path.
