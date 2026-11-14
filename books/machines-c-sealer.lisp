@@ -29,7 +29,7 @@
       (unsigned-byte-p 32 (fn2-ribbon-slots (nfix (fn2-b-capacity :identity-overlay-entries 256 profile))))))
 (in-theory (disable fn2-sealer-windows))
 
-(defmacro fn2-sealer-child (field stobj init why)
+(defmacro fn2-sealer-child (field stobj init why &key harvest)
  (let ((fn (fn2-columns-sym stobj "-INIT-FOR")))
   `(progn
     (defun ,fn (profile ,stobj)
@@ -45,7 +45,8 @@
      (implies (fn2-sealer-profilep profile) (,(fn2-columns-sym stobj "-WFP") (,fn profile ,stobj)))
      :hints (("Goal" :in-theory (enable fn2-sealer-profilep))))
     (in-theory (disable ,fn))
-    (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-sealer-profilep profile) :why ,why))))
+    (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-sealer-profilep profile)
+     ,@(and harvest (list :harvest harvest)) :why ,why))))
 (in-theory (disable fn2-sealer-profilep))
 (fn2-sealer-child fn2-core-seals fn2-seals (fn2-seals-init 1 fn2-seals)
  "The sealer's one seal row: its phase, the overlay, the next entry, the run, and its resources (C1c).")

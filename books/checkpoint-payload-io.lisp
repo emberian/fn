@@ -121,3 +121,30 @@
  :specs (("-CHECKPOINT-PAYLOAD-TYPE" fn2-checkpoint-payloadp 1)
          ("-CHECKPOINT-PAYLOAD-WFP" fn2-checkpoint-payload-wfp 1)
          ("-CHECKPOINT-PAYLOAD-ROWS" fn2-checkpoint-payload-rows 1 :frame fn2-checkpoint-payload)))
+
+; defcorechild's prefinish extension returns every enlisted child. Only the
+; actual payload harvest mutates state; the provenance children pass through
+; unchanged. No operation identity is reconstructed from an actor observer.
+(defun fn2-checkpoint-payload-harvest-children (opslot opgen cell evkind outcome reason count aux0 aux1
+                                              fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)
+ (declare (xargs :stobjs (fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)
+  :guard (and (fn2-checkpoint-payload-wfp fn2-checkpoint-payload) (fn2-checkpoint-retained-entry-wfp fn2-checkpoint-retained-entry)
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-fields-wfp fn2-fields))))
+ (b* (((mv code fn2-checkpoint-payload)
+       (fn2-checkpoint-payload-harvest opslot opgen cell evkind outcome reason count aux0 aux1
+        fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)))
+  (mv code fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)))
+(fn2-checkpoint-payload-preserves fn2-checkpoint-payload-harvest-children
+ (opslot opgen cell evkind outcome reason count aux0 aux1 fn2-checkpoint-payload fn2-checkpoint-retained-entry fn2-csnapshot fn2-checkpoints fn2-fields)
+ :hyps ((fn2-checkpoint-payload-wfp fn2-checkpoint-payload) (fn2-checkpoint-retained-entry-wfp fn2-checkpoint-retained-entry)
+        (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-fields-wfp fn2-fields))
+ :specs (("-PAYLOAD-TYPE" fn2-checkpoint-payloadp 1) ("-PAYLOAD-WFP" fn2-checkpoint-payload-wfp 1)
+         ("-PAYLOAD-ROWS" fn2-checkpoint-payload-rows 1 :frame fn2-checkpoint-payload)
+         ("-RETAINED-ENTRY-TYPE" fn2-checkpoint-retained-entryp 2) ("-RETAINED-ENTRY-WFP" fn2-checkpoint-retained-entry-wfp 2)
+         ("-RETAINED-ENTRY-ROWS" fn2-checkpoint-retained-entry-rows 2 :frame fn2-checkpoint-retained-entry)
+         ("-CSNAPSHOT-TYPE" fn2-csnapshotp 3) ("-CSNAPSHOT-WFP" fn2-csnapshot-wfp 3)
+         ("-CSNAPSHOT-ROWS" fn2-csnapshot-rows 3 :frame fn2-csnapshot)
+         ("-CHECKPOINTS-TYPE" fn2-checkpointsp 4) ("-CHECKPOINTS-WFP" fn2-checkpoints-wfp 4)
+         ("-CHECKPOINTS-ROWS" fn2-checkpoints-rows 4 :frame fn2-checkpoints)
+         ("-FIELDS-TYPE" fn2-fieldsp 5) ("-FIELDS-WFP" fn2-fields-wfp 5)
+         ("-FIELDS-ROWS" fn2-fields-rows 5 :frame fn2-fields)))
