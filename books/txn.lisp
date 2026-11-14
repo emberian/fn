@@ -952,7 +952,7 @@
 (in-theory (disable fn2-txn-xref))
 
 ;; The article's location is its upload's payload extent: the extent's first
-;; unit (an extent is *fn2-commit-write-resources* units) and its handle; its
+;; unit (an extent is *fn2-storage-extent-units* units) and its handle; its
 ;; length the stored octets' (the injected field's ILEN and the source's HASHED).
 (defun fn2-txn-put-post-for (tx ms mg mo ml c0 g0 c1 g1 scanned hashed ilen h principal lines pext pepoch palloc
                                 op okind oslot ogen fn2-core)
@@ -976,7 +976,7 @@
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv c fn2-core)
         (fn2-txn-put-post tx ms mg mo ml c0 g0 scanned (+ hashed ilen) lines
-                          (* *fn2-commit-write-resources* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
+                          (* *fn2-storage-extent-units* (nfix pext)) pepoch palloc okind oslot ogen h principal op fn2-core))
        ((unless (eq c :ok)) (mv c fn2-core))
        ((mv ov-off ov-len fn2-core)
         (fn2-txn-synth-ov ms mg mo ml scanned scanned (+ hashed ilen) lines c0 g0 okind oslot ogen fn2-core)))

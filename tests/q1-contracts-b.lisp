@@ -85,7 +85,7 @@
 ; Scenarios 15 and 16's fault profile: :broad, with FRONTIER credited or not.
 (defun fn2-q1r-post (frontier budget faults)
   (declare (xargs :verify-guards nil))
-  (list (fn2-cm-profile :broad t t frontier 0 budget) faults 16))
+  (list (fn2-cm-profile :broad t t frontier 0 budget) faults (* 5 *fn2-storage-extent-units*)))
 (defun fn2-recovery-served (mode frontier budget faults)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core

@@ -147,7 +147,7 @@
               (unsigned-byte-p 32 p) (natp role) (< role 3) (unsigned-byte-p 60 epoch)
               (unsigned-byte-p 60 allocation) (unsigned-byte-p 60 commit)
               (unsigned-byte-p 32 page-hash) (unsigned-byte-p 32 previous) (unsigned-byte-p 32 geometry))))
- (let* ((fn2-fc-context (fn2-fc-context-set-location row (+ (* 3 p) role) fn2-fc-context))
+ (let* ((fn2-fc-context (fn2-fc-context-set-location row (+ (* *fn2-storage-extent-units* p) role) fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-allocation row allocation fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-history row 1 fn2-fc-context))
         (fn2-fc-context (fn2-fc-context-set-incarnation row 1 fn2-fc-context))

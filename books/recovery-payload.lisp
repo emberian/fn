@@ -163,9 +163,9 @@
 ;; EVENT), named by chained commit COMMIT: (mv code hi fn2-core).
 (defun fn2-recovery-claim-article (unit epoch alloc event commit fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (not (and (natp unit) (equal (mod unit *fn2-commit-write-resources*) 0)))
+  (if (not (and (natp unit) (equal (mod unit *fn2-storage-extent-units*) 0)))
       (mv :invalid 0 fn2-core)
-    (fn2-recovery-claim (floor unit *fn2-commit-write-resources*) epoch alloc *fn2-txn-kind* event commit fn2-core)))
+    (fn2-recovery-claim (floor unit *fn2-storage-extent-units*) epoch alloc *fn2-txn-kind* event commit fn2-core)))
 (fn2-core-preserves fn2-recovery-claim-article (unit epoch alloc event commit fn2-core) :position 2 :rows nil)
 (defthm fn2-recovery-claim-article-hi-natp
   (natp (mv-nth 1 (fn2-recovery-claim-article unit epoch alloc event commit fn2-core)))
@@ -196,9 +196,9 @@
                                 (equal len (min *fn2-am-block-bytes* (- total lo)))))
                    (mv :invalid hi ep fn2-core))
                   ((mv code hi ep fn2-core)
-                   (if (equal (mod unit *fn2-commit-write-resources*) 0)
+                   (if (equal (mod unit *fn2-storage-extent-units*) 0)
                        (mv-let (code h fn2-core)
-                         (fn2-recovery-claim (floor unit *fn2-commit-write-resources*) epoch alloc *fn2-txn-kind* event commit fn2-core)
+                         (fn2-recovery-claim (floor unit *fn2-storage-extent-units*) epoch alloc *fn2-txn-kind* event commit fn2-core)
                          (mv code (max hi (nfix h)) (max ep epoch) fn2-core))
                      (mv :ok hi ep fn2-core)))
                   ((unless (eq code :ok)) (mv (if (eq code :conflict) :conflict :invalid) hi ep fn2-core)))

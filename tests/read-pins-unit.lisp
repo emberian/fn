@@ -66,7 +66,7 @@
       ((mv pool slot gen fn2-core) (fn2-core-reserve 0 1 0 1 fn2-core))
       ((unless (eq pool :ok)) (mv nil fn2-core))
       ((mv issued op og fn2-core)
-       (fn2-block-read (* extent *fn2-commit-write-resources*) epoch allocation 0 1 slot gen 1 0 1 0 fn2-core))
+       (fn2-block-read (* extent *fn2-storage-extent-units*) epoch allocation 0 1 slot gen 1 0 1 0 fn2-core))
       ((unless (eq issued :ok)) (mv nil fn2-core))
       ((mv retired fn2-core) (fn2-read-pin-test-retire extent epoch allocation fn2-core))
       ((unless retired) (mv nil fn2-core))
