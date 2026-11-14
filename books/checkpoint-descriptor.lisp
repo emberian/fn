@@ -3,8 +3,9 @@
 (in-package "ACL2")
 (include-book "checkpoint-build-state")
 (include-book "checkpoint-publication")
+(include-book "checkpoint-page-header")
 (fn2-book-layer :c)
-(defconst *fn2-checkpoint-descriptor-header* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
+(defconst *fn2-checkpoint-descriptor-header* *fn2-checkpoint-page-header-area*)
 
 (defun fn2-checkpoint-descriptor-root (role c base scratch sgen okind oslot ogen
                                      fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
@@ -44,9 +45,9 @@
     (fn2-checkpoint-descriptor-roots (+ 1 role) c base scratch sgen okind oslot ogen fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)))))
 
 (defun fn2-checkpoint-descriptor-pack-page (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen
-                                          fn2-csnapshot fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-csnapshot fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
-  :guard (and (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents)
+                                          fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+  :guard (and (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extents-wfp fn2-extents)
               (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
               (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
  (b* (((unless (and (fn2-csnapshot-ownerp token okind oslot ogen fn2-csnapshot)
@@ -63,7 +64,7 @@
                      (eq (fn2-alloc-handle-code extent epoch allocation fn2-extents) :ok)
                      (equal (fn2-extents-state extent fn2-extents) *fn2-extent-state-reserved*)))
        (mv :identity fn2-fields fn2-pool))
-      ((unless (fn2-checkpoint-built-roots-p 1 c token fn2-checkpoint-refs))
+      ((unless (fn2-checkpoint-production-roots-p 1 c token fn2-checkpoint-refs))
        (mv :roots-pending fn2-fields fn2-pool))
       ((mv code fn2-pool) (fn2-pool-reset slot gen okind oslot ogen fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-fields fn2-pool))
@@ -80,22 +81,12 @@
       ((mv code end fn2-pool) (fn2-format-checkpoint-descriptor-encode base slot gen *fn2-checkpoint-descriptor-header* okind oslot ogen fn2-fields fn2-pool))
       ((unless (and (eq code :ok) (equal end (+ *fn2-checkpoint-descriptor-header* payload)) (<= end 4096)))
        (mv :format fn2-fields fn2-pool))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-magic*) *fn2-format-page-magic* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-version*) *fn2-format-version* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-page-kind*) *page-kind-checkpoint-descriptor* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-history*) 1 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-incarnation*) 1 fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-physical-unit*) (* extent *fn2-storage-extent-units*) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-writer-epoch*) epoch fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-allocation*) allocation fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-header-length*) *fn2-checkpoint-descriptor-header* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ base *fn2-format-page-header-field-payload-length*) payload fn2-fields))
-      ((mv code end fn2-pool) (fn2-format-page-header-encode base slot gen 0 okind oslot ogen fn2-fields fn2-pool)))
-  (mv (if (and (eq code :ok) (> end *fn2-checkpoint-descriptor-header*)) :format code) fn2-fields fn2-pool)))
-(fn2-fields-preserves fn2-checkpoint-descriptor-pack-page
- (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen
-    fn2-csnapshot fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
- :carriers ((fn2-fields 1 :prefix "-FIELDS") (fn2-pool 2 :prefix "-POOL")))
+      ((mv code fn2-fields fn2-pool)
+       (fn2-checkpoint-page-pack-header token okind oslot ogen 0 0 extent epoch allocation
+        *page-kind-checkpoint-descriptor* 1 1 4096 payload base slot gen
+        fn2-checkpoint-construction fn2-extents fn2-fields fn2-pool)))
+  (mv code fn2-fields fn2-pool)))
+
 
 ; Verification of a built descriptor never overwrites its root provenance with
 ; decoded external refs. Compare every field and hash against the actual built
@@ -123,3 +114,13 @@
                                          slot gen okind oslot ogen fn2-pool fn2-checkpoint-bytes)
         (fn2-checkpoint-descriptor-matches-roots-p (+ 1 role) c base slot gen okind oslot ogen
                                                   fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)))))
+
+(fn2-fields-preserves fn2-checkpoint-descriptor-pack-page
+ (checkpoint c token extent epoch allocation base slot gen scratch sgen okind oslot ogen fn2-csnapshot fn2-checkpoint-construction fn2-extents fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fields fn2-pool)
+ :hyps ((fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoint-constructionp fn2-checkpoint-construction) (fn2-checkpoint-construction-wfp fn2-checkpoint-construction) (fn2-extentsp fn2-extents) (fn2-extents-wfp fn2-extents) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+ :specs (("-FIELDS-TYPE" fn2-fieldsp 1)
+         ("-FIELDS-WFP" fn2-fields-wfp 1)
+         ("-FIELDS-ROWS" fn2-fields-rows 1 :frame fn2-fields)
+         ("-POOL-TYPE" fn2-poolp 2)
+         ("-POOL-WFP" fn2-pool-wfp 2)
+         ("-POOL-ROWS" fn2-pool-rows 2 :frame fn2-pool)))
