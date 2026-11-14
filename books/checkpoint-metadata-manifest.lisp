@@ -63,7 +63,7 @@
                      (or (<= (+ entry-base *fn2-run-entry-rows*) fields) (<= (+ fields *fn2-run-build-fields*) entry-base))))
        (mv :bounds fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
       ((mv code fn2-run-builds fn2-run-writers fn2-pool)
-       (fn2-run-build-start b 10 token wbase crow hbase hslot hgen fields limit 1 *fn2-identity-incarnation*
+       (fn2-run-build-start b 10 token wbase crow hbase hslot hgen fields limit (fn2-checkpoint-build-history 0 fn2-checkpoint-build) (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build)
         kind owner generation fn2-run-builds fn2-run-writers fn2-pool))
       ((unless (eq code :ok)) (mv code fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool))
       (fn2-checkpoint-metadata-manifest (fn2-checkpoint-metadata-manifest-put 0
@@ -72,7 +72,7 @@
        (hash-slot hash-slot) (hash-gen hash-gen) (entries 0) (scan-row 0) (seen 0) (intended-bytes 0) (completed-bytes 0)))
       (fn2-checkpoint-metadata (fn2-checkpoint-metadata-put 0 (phase *fn2-checkpoint-metadata-phase-idle*)
        (token token) (owner-kind kind) (owner-slot owner) (owner-gen generation) (build b) (ordinal 0)
-       (scratch hash-slot) (scratch-gen hash-gen) (held 0) (run-rank 0))))
+       (scratch hash-slot) (scratch-gen hash-gen) (held 0) (run-rank 0) (history (fn2-checkpoint-build-history 0 fn2-checkpoint-build)) (history-incarnation (fn2-checkpoint-build-history-incarnation 0 fn2-checkpoint-build)))))
   (mv :ok fn2-checkpoint-metadata-manifest fn2-checkpoint-metadata fn2-run-builds fn2-run-writers fn2-pool)))
 
 ; The first32 bytes are the actual retained root hash. The second32 are the
