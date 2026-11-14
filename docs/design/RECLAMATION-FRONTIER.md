@@ -164,3 +164,13 @@ Before reuse, recovery's historical-location adoption must become checkpoint
 aware: old and reused identities cannot be adopted as simultaneously live.
 Checkpoint publication/root selection and a journaled writer-epoch transition
 remain prerequisites. A release record decoder alone cannot close these gaps.
+
+The first narrow allocator admission passed on the record toolchain at source
+`a237c839d62e9b6b98558dfa28680acb63d11906`: all 84 forms of `books/alloc`,
+including the new column guards and release-intent operations, loaded from
+source in 7.78 seconds (885,173 prover steps). All five dependencies came from
+the exact compatible cache; no core world was loaded. The allocator closure
+key was `406d09970bb5cfbe71fa442f7814aa75b2af038fdb3642981ece0ab9da986634`.
+This is source admission, not a certificate or an executed integration fixture.
+Checkpoint selection/restoration, lifecycle replay through reuse, and physical
+completion composition remain prerequisites for enabling FREE.
