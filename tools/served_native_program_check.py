@@ -15,19 +15,19 @@ from served_host_check import inspect, walk
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_PATHS = ['sim/sim.lisp', 'sim/sim-adapter-base.lisp', 'sim/check-own.lisp',
-               'books/host-boundary.lisp', 'books/host-ops.lisp']
+               'books/host-boundary.lisp', 'books/host-ops.lisp', 'sim/storage.lisp']
 # Every literal injection site, including the two distinct network syscall sites.
 # Values name the surrounding model transition, not a native syscall guarantee.
 CUTS = {
     ('fn2-n-start-ready', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-start-now', 'syscall'): 'fn2-sim-physical',
     ('fn2-n-storage-submit', 'device-submit'): 'fn2-sim-take-one',
-    ('fn2-n-storage-completions', 'device-return'): 'fn2-sim-complete-result',
+    ('fn2-n-storage-completions', 'device-return'): 'fn2-sim-physical',
     ('fn2-n-take', 'take'): 'fn2-sim-take-one',
     ('fn2-n-take', 'ack'): 'fn2-sim-take-one',
     ('fn2-n-post-completions', 'post'): 'fn2-sim-terminal-post',
     ('fn2-device-worker', 'device-syscall'): 'fn2-sim-physical',
-    ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
+    ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-physical',
 }
 ORDERS = {
     'fn2-n-take': ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-host-op-span',
@@ -205,7 +205,10 @@ def check(root=ROOT):
     advance_calls = ledger.calls(defs.get('fn2-sim-advance-with-clients', []))
     if 'fn2-sim-crash' not in advance_calls:
         findings.append('simulator advance no longer reaches the crash transition')
-    return {'scope': 'served source cut inventory, ABI contracts and AST order; not control-flow/refinement proof',
+    from served_storage_cut_check import check as storage_cut_check
+    storage_cut = storage_cut_check(defs)
+    findings.extend(storage_cut['findings'])
+    return {'storage_return_cut_family': storage_cut, 'scope': 'served source cut inventory, ABI contracts and AST order; not control-flow/refinement proof',
             'cuts': len(sites), 'model_crash': 'fn2-sim-crash', 'findings': findings,
             'audit_ok': not findings, 'cut_mapping_status': 'incomplete',
             'host_refinement': 'not_checked'}
