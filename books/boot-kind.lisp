@@ -91,6 +91,15 @@
  :profilep t
  :why "Exact intake cursor and bounded FIFO investigation remain bound to their actual anchor candidate.")
 
+(defcorechild fn2-core-checkpoint-restore-reach fn2-checkpoint-restore-reach
+ :init (fn2-checkpoint-restore-reach-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-reach)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "One tagged identity and typed protection union per extent, shared by every cold root and payload alias.")
+(defcorechild fn2-core-checkpoint-restore-reach-control fn2-checkpoint-restore-reach-control
+ :init (fn2-checkpoint-restore-reach-control-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-reach-control)
+ :profilep t
+ :why "A nonwrapping investigation generation binds every cold reach to the same authenticated descriptor and map intake.")
+
 (defcorechild fn2-core-checkpoint-restore-arena fn2-checkpoint-restore-arena
  :init (fn2-checkpoint-restore-arena-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
