@@ -286,6 +286,7 @@ ACL2_BOOKS = \
   tests/grammar-gen \
   tests/grammar-unit \
   tests/groups-unit \
+  tests/c-snapshot-unit \
   tests/host-unit \
   tests/identity-core-unit \
   tests/layout-roundtrip \
