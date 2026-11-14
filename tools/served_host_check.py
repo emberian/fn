@@ -36,6 +36,42 @@ NATIVE_REPLACEMENTS = (
     ('fn2-b3-output', 'fn2-b3-native-output'),
     ('fn2-mk-node', 'fn2-b3-native-node'),
 )
+# Source wiring only: the C/FFI primitive semantics remain an assumption.
+# The shared store's ACL2 effect proof does not cover extra raw writes or
+# reordered captures in these adapters, so changes require a new contract.
+RAW_CRYPTO_ABI = {
+    'fn2-b3-native-load': '''
+      (defun fn2-b3-native-load (src sap dg)
+       (declare (type sb-sys:system-area-pointer sap))
+       (setf (sb-sys:sap-ref-32 sap 0) (fn2-digests-w0 src dg))
+       (setf (sb-sys:sap-ref-32 sap 4) (fn2-digests-w1 src dg))
+       (setf (sb-sys:sap-ref-32 sap 8) (fn2-digests-w2 src dg))
+       (setf (sb-sys:sap-ref-32 sap 12) (fn2-digests-w3 src dg))
+       (setf (sb-sys:sap-ref-32 sap 16) (fn2-digests-w4 src dg))
+       (setf (sb-sys:sap-ref-32 sap 20) (fn2-digests-w5 src dg))
+       (setf (sb-sys:sap-ref-32 sap 24) (fn2-digests-w6 src dg))
+       (setf (sb-sys:sap-ref-32 sap 28) (fn2-digests-w7 src dg)) t)''',
+    'fn2-b3-native-store': '''
+      (defun fn2-b3-native-store (dst sap dg)
+       (declare (type sb-sys:system-area-pointer sap))
+       (fn2-digest-store-words dst
+        (sb-sys:sap-ref-32 sap 0) (sb-sys:sap-ref-32 sap 4)
+        (sb-sys:sap-ref-32 sap 8) (sb-sys:sap-ref-32 sap 12)
+        (sb-sys:sap-ref-32 sap 16) (sb-sys:sap-ref-32 sap 20)
+        (sb-sys:sap-ref-32 sap 24) (sb-sys:sap-ref-32 sap 28) dg))''',
+    'fn2-b3-native-node': '''
+      (defun fn2-b3-native-node (dst left right dg)
+       (if (and (fn2-b3-native-rowp dst dg) (fn2-b3-native-rowp left dg)
+                (fn2-b3-native-rowp right dg))
+        (sb-alien:with-alien ((l (array sb-alien:unsigned-int 8))
+                             (r (array sb-alien:unsigned-int 8))
+                             (out (array sb-alien:unsigned-int 8)))
+         (fn2-b3-native-load left (sb-alien:alien-sap l) dg)
+         (fn2-b3-native-load right (sb-alien:alien-sap r) dg)
+         (fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))
+         (fn2-b3-native-store dst (sb-alien:alien-sap out) dg))
+        (funcall (fn2-b3-native-reference 'fn2-mk-node) dst left right dg)))''',
+}
 
 
 def walk(form):
@@ -98,6 +134,12 @@ def inspect(root=ROOT):
                         visit(root / call[1])
 
     scan(ledger.read_forms(prefix), 'tools/image-node.lsp')
+    if 'host/b3-native.lisp' in order:
+        definitions = forms(root / 'host/b3-native.lisp')
+        for name, expected in RAW_CRYPTO_ABI.items():
+            matches = [f for f in definitions if ledger.head(f) == 'defun' and str(f[1]) == name]
+            if matches != [ledger.read_forms(expected)[0]]:
+                findings.append(f'host/b3-native.lisp: native ABI/effect wiring changed: {name}')
     return prefix, order, findings
 
 
