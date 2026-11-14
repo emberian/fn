@@ -4,8 +4,7 @@
 (fn2-book-layer :a)
 
 (defcodec-transport fn2-tls-transport
- ((seed-total :u32) (seed-capacity :u32) (quantum :u32)
-  (window :u32) (copied :u32) (fed :u32)
+ ((quantum :u32) (window :u32)
   ;; SSL status: 0 complete, 1 WANT_READ, 2 WANT_WRITE, 5 must-call.
   (ssl-status :u8))
  :rows-bound 2)
