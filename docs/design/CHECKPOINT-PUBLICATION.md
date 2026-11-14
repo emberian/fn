@@ -329,3 +329,26 @@ identity match. Non-ticket rows return `:skip`; changed ticket identities return
 `:conflict`. The arena page builder must count only `:entry`, preserve ordinal
 continuity, and compare its final count to the closed reservation plan.
 The passive allocator gate alone does not establish that closure.
+
+## Reservation closure before map copy
+
+`checkpoint-plan.lisp` admits only the actual held descriptor job after roots
+1, 3 and 4 have physically completed with matching construction identities.
+It counts one ledger extent per step, including every completed descendant
+and the already reserved descriptor. It calculates map pages from the actual
+allocator row count. Arena/ticket demand reaches a monotone fixed point using
+the actual commit allocation-record packing capacity; the arena pages themselves
+need allocation records, while journal tickets allocate themselves through the
+existing commit installer. Checkpoint installation gets its separate final ticket.
+Each size step yields; insufficient actual free space retains the job as uncertain.
+
+The planner then reserves every map page, arena page and journal ticket through
+the same actual owner-checked adapter, one extent per step. A second bounded
+scan checks exact Reserved identities, completed prior sources, role counts and
+per-role ordinal uniqueness. Its extent-sized mark table detects duplicates.
+It exposes reservation-closed state only after the complete scan. BEGIN resets
+the actual journal-ticket scan/next controls, and reservation clears ticket claims.
+No caller supplies counts, an identity list or a closure flag. The actual allocator
+copy gate remains disabled until its coordinator consumes that state; closure
+is distinct from physical completion of map, arena and descriptor or installation.
+Whole lifecycle/closure assurance and actual generated composition remain owed.
