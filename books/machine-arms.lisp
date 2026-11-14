@@ -2176,6 +2176,16 @@
 (defun fn2-arms-max-dim (charges i)
   (declare (xargs :verify-guards nil))
   (if (atom charges) 0 (max (nfix (nth i (car charges))) (fn2-arms-max-dim (cdr charges) i))))
+
+(defun fn2-arms-budget-admission (body descriptors tuple)
+  ;; Reserve the whole path's inferred descriptor maximum before any effects.
+  ;; A short residual budget preserves the continuation and all children; the
+  ;; runnable result retries it with the next turn's replenished budget.
+  (declare (xargs :verify-guards nil))
+  (if (zp descriptors) body
+    `(if (< (nfix budget) ,descriptors)
+         (mv 0 *fn2-work-empty* 0 t ,@tuple)
+       ,body)))
 (defun fn2-arms-fn-name (kind infix tag)
   (declare (xargs :verify-guards nil))
   (fn2-arms-sym kind (concatenate 'string infix (symbol-name tag))))
@@ -2192,9 +2202,17 @@
   (declare (xargs :verify-guards nil) (ignorable world))
   (let* ((charges (fn2-arm-get :charges acc))
          (cost (if observe '(:steps *fn2-work-transition*)
-                 (list :bytes (fn2-arms-max-dim charges 0) :steps (fn2-arms-max-dim charges 1)
+                 (list :bytes (fn2-arms-max-dim charges 0)
+                       :steps (max (fn2-arms-max-dim charges 1)
+                                   (if (< 0 (fn2-arms-max-dim charges 2)) *fn2-work-empty* 0))
                        :descriptors (fn2-arms-max-dim charges 2))))
-         (paths (remove-duplicates-equal (fn2-arm-get :paths acc)))
+         ;; Admission can yield before the arm takes any path. Its zero-effect
+         ;; staying path belongs in both the resource trace and next-phase
+         ;; certificate, or the outer run would reject the preserved phase.
+         (paths (remove-duplicates-equal
+                 (append (and (not observe) (< 0 (fn2-arms-max-dim charges 2))
+                              (list (list (if tag (list tag) :any) :stay nil nil nil nil)))
+                         (fn2-arm-get :paths acc))))
          ;; an arm's or handler's phases are its paths' (G3, D F11); a
          ;; sub-arm's own contract keeps every leaf
          (next (cond (tag (fn2-arms-path-ends paths (and (not observe) tag)))
@@ -2220,8 +2238,10 @@
                          (mv *fn2-none* fn2-core))
                     '(let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core)))
                        (mv 0 *fn2-work-empty* 0 nil fn2-core))))
+         (admitted (if observe body
+                     (fn2-arms-budget-admission body (fn2-arms-max-dim (fn2-arm-get :charges acc) 2) '(fn2-core))))
          (wrapped `(if (eq (,(fn2-arms-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
-                       ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body)
+                       ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,admitted) admitted)
                      ,refused)))
     (append writes (list (fn2-operation-events (list :machine kind) name 'fn2-core args
             (append (make-list pos :initial-element :value) '(fn2-core)) nil :callbacks
@@ -2236,11 +2256,13 @@
   (declare (xargs :verify-guards nil))
   (let* ((tuple (fn2-arms-kind-tuple kind world))
          (reads (fn2-arm-get :reads acc))
-         (bindings (fn2-arms-child-bindings kind reads (fn2-machine-property kind :columns world))))
+         (bindings (fn2-arms-child-bindings kind reads (fn2-machine-property kind :columns world)))
+         (admitted (if observe body
+                     (fn2-arms-budget-admission body (fn2-arms-max-dim (fn2-arm-get :charges acc) 2) tuple))))
     `((fn2-arms-child-emit ,(fn2-arms-child-name name)
         (id slot kind ordinal ,@(if observe (cdr *fn2-arms-observe-args*) '(budget)))
         ,(if observe 1 4) ,kind ,tuple
-        ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,body) body)
+        ,(if bindings `(let ,bindings (declare (ignorable ,@reads)) ,admitted) admitted)
         nil nil
         ,(append (fn2-arm-get :chain-callees acc) (fn2-arms-child-callees (fn2-arm-get :uses acc) world))
         ,(append (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
