@@ -11,6 +11,8 @@
 (include-book "recovery")
 (include-book "commit-members")
 (include-book "merkle")
+(include-book "event-read-state")
+(include-book "journal-members-state")
 (fn2-book-layer :b)
 (defun fn2-b-capacity (key default profile)
  (declare (xargs :guard t))
@@ -106,6 +108,13 @@
  :profilep (and (unsigned-byte-p 32 (fn2-b-format-slots profile))
                 (<= (fn2-b-format-floor profile) (fn2-b-format-slots profile)))
  :why "Commit work survives scheduler yields.")
+(defcorechild fn2-core-journal-members fn2-journal-members
+ :init (fn2-journal-members-init 1 fn2-journal-members) :profilep t
+ :why "Verified immutable journal member range remains retained across incremental frontier steps.")
+(defcorechild fn2-core-event-read fn2-event-read
+ :init (fn2-event-read-init 1 fn2-event-read) :profilep t
+ :harvest (fn2-event-read-harvest ((fn2-core-event-read fn2-event-read)))
+ :why "One retained exact journal read identity advances only at physical completion.")
 (defcorechild fn2-core-mk fn2-mk
  :init (fn2-mk-table-init (fn2-b-format-slots profile) fn2-mk)
  :profilep (and (unsigned-byte-p 32 (fn2-b-format-slots profile))
