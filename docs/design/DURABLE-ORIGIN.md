@@ -24,7 +24,15 @@ payload/replay header reader requires exact equality with that child before a
 record can be consumed. Message-ID namespace and original imported receipt
 fields remain separate and unchanged.
 
-Current source is unqualified. Required gates: parser/child admission;
+The six-book parser/immutable-child closure at `32094fae8` is certified on
+qualified toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Evidence on forge under `/build/fn-durable-origin320-20261114/build/acl2/`:
+`certify-20261114T223624Z-507331` (origin) and
+`certify-20261114T223625Z-507367` (parser/child fixture). The first attempt
+exposed a profile-construction guard obligation; an explicit local alist
+preservation lemma discharged it without weakening the guard.
+
+Composed source remains unqualified. Required gates:
 bootstrap same-origin restart and changed-origin refusal; two initialized nodes
 with distinct configured origins producing distinct receipts at the same local
 position; origin persistence/first-accept crash cuts; current host/interface and
