@@ -81,6 +81,7 @@
              (ready 1) (candidate c) (tag (fn2-cpe tag)) (ordinal (fn2-cpe ordinal))
              (extent (fn2-cpe extent)) (epoch (fn2-cpe epoch)) (allocation (fn2-cpe allocation))
              (commit (fn2-cpe commit)) (event (fn2-cpe event))
+             (first (fn2-cpe first)) (last (fn2-cpe last))
              (checkpoint (fn2-checkpoints-checkpoint c fn2-checkpoints))
              (cut-commit (fn2-checkpoints-cut-commit c fn2-checkpoints)) (cut-event (fn2-checkpoints-cut-event c fn2-checkpoints))
              (descriptor-domain (fn2-checkpoint-refs-storage-domain r fn2-checkpoint-refs))
