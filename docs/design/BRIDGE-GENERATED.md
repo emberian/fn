@@ -251,3 +251,19 @@ preexisting partition reservation invariant. Do not assume that timer clearance
 establishes ownership or a positive partition active count. The required artifact
 is a typed current helper certificate consumed by the actual root continuation;
 another isolated successful fixture cannot substitute for it.
+
+The timer producer is now `meta/emit/print-cns-timer-certificate.lsp`. After the
+current `assembly-callbacks-e-cns` and `translation-validation` prefixes qualify,
+run `tools/acl2 --timeout 180 < meta/emit/print-cns-timer-certificate.lsp` in the
+owned derived source tree and require its `FN2-META-CERTIFICATE PASS` marker.
+Record that tree's identity and packet digest. The printer's optional context
+flag is false here, so it adds no unrelated arm readers; the existing closure
+walker still includes every reached logical body, guard and measure dependency.
+Inspect with `python3 meta/emit/emit_core_certificate.py --inspect --root
+FN2-CNS-CLEAR-WAIT-TIMER meta/emit/cns-timer-certificate.sexp` (one shell line).
+That command reports only body-proof selection and retains existing refusal
+checks; it does not discharge guard or primitive obligations. Explicit root
+selection currently requires inspection mode, preventing accidental default arm
+emission. A raw-printer fixture checks both the smaller root set and retained
+guard/measure dependencies, while six inspection controls preserve refusal and
+no-write behavior. These source controls are not evidence from a live ACL2 world.
