@@ -77,6 +77,11 @@
       ((unless (and (eq epoch :ok) (eq admitted :ok) (eq begun :ok) (eq held :held)
                     (= cut batch) (= events event) (= batch 1) (= event 1)
                     (eq page :ok) (eq scratch-code :ok))) (mv nil fn2-core fn2-sim fn2-own))
+      ; The pool writes at or below FILL. Establish this first page window
+      ; before encoding its fixed-offset entry; capacity alone is insufficient.
+      ((mv zeroed fn2-core)
+       (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+        (fn2-run-zero 4096 slot gen 0 7 0 1 fn2-pool) (mv code fn2-core)))
       ((mv packed end fn2-core) (fn2-eps-pack token 0 *fn2-checkpoint-map-entries-start* slot gen scratch sgen 1 fn2-core))
       ((mv decoded fn2-core)
        (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core))
@@ -108,7 +113,7 @@
          (fn2-alloc-edge-drop (+ 7 (* 2 e)) batch e (fn2-extents-epoch e fn2-extents)
            (fn2-extents-counter e fn2-extents) :installed-root fn2-extents fn2-alloc-edges)) (mv code fn2-core)))
       ((mv unprotected & fn2-core) (fn2-eps-pack token 0 *fn2-checkpoint-map-entries-start* slot gen scratch sgen 1 fn2-core)))
-  (mv (and (eq packed :ok) decoded (eq stale :snapshot) (eq shifted :bounds)
+  (mv (and (eq zeroed :ok) (eq packed :ok) decoded (eq stale :snapshot) (eq shifted :bounds)
            read-controlled (eq dropped :ok) (eq unprotected :source)) fn2-core fn2-sim fn2-own)))
 (defun fn2-eps-test ()
  (declare (xargs :verify-guards nil))
