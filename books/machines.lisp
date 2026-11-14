@@ -4551,7 +4551,8 @@
                   (:acquire ,(strip-cars specs) :for ,kind))
         :target (,kind :free ,(fn2-arm-get :phase adm))
         :doc ,(concatenate 'string "Admit an accepted connection as a " (symbol-name kind) " row."))
-      (defcost ,reclaim :tables (fn2-core-machines) :effects ((:release (:connection-row)))
+      (defcost ,reclaim :child ,(fn2-columns-sym reclaim "-CHILD")
+        :tables (fn2-core-machines) :effects ((:release (:connection-row)))
         :doc ,(concatenate 'string "Return a drained " (symbol-name kind) " row to its partition.")))))
 ;; As fn2-machine-range-reserves, for a take: a refused reservation releases
 ;; what it reserved, parks the taker and answers :pool.
@@ -4679,7 +4680,8 @@
                   ,@(and specs `((:acquire ,(remove-duplicates-eq (strip-cars specs)) :for ,kind))))
         :target (,kind :free ,(fn2-arm-get :phase tk))
         :doc ,(concatenate 'string "Take a " (symbol-name kind) " row and its ranges, or park the taker."))
-      (defcost ,reclaim :tables (fn2-core-machines) :effects ((:release (,rowkind)))
+      (defcost ,reclaim :child ,(fn2-columns-sym reclaim "-CHILD")
+        :tables (fn2-core-machines) :effects ((:release (,rowkind)))
         :doc ,(concatenate 'string "Return a drained " (symbol-name kind) " row to its partition.")))))
 (defun fn2-machine-taken-all-events (kinds o world)
   (declare (xargs :verify-guards nil))
