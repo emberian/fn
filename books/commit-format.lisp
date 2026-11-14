@@ -6,7 +6,7 @@
 (defconst *fn2-commit-unit-bytes* *fn2-format-sector-size*)
 (defconst *fn2-commit-write-resources* 3)
 (defconst *fn2-commit-pools* 4)
-(defconst *fn2-commit-extent-bytes* (* *fn2-commit-write-resources* *fn2-commit-unit-bytes*))
+(defconst *fn2-commit-extent-bytes* *fn2-storage-extent-bytes*)
 (defconst *fn2-commit-digest-bytes* 32)
 (defconst *fn2-commit-page-payload* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 (defconst *fn2-commit-frame-trailer* (- *fn2-commit-unit-bytes* *fn2-format-frame-trailer-max-size*))
