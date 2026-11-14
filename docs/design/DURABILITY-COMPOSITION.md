@@ -103,7 +103,10 @@ codec/genesis composition is source-proved on that qualified prefix and has a
 separate assembled record gate. Run `certify-20261114T020934Z-3551094`
 passed `layout-conservation`, then exceeded its 2 GiB cgroup limit during
 `commit-reachable`; the unit book was not reached and no final run manifest
-was produced. This is not a certification of the assembled package. Existing
+was produced. The 4 GiB retry `certify-20261114T023431Z-3577911`
+subsequently certified `layout-conservation`, `commit-reachable`, and
+`commit-reachable-unit` with zero triage failures. This assembled record still
+covers the older baseline, not the current integration profile. Existing
 top-level owed formulas remain owed.
 A nonempty-group control checks actual arena consumption and pool semantics;
 a broken free-link control preserves row geometry while refuting class
