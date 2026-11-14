@@ -34,7 +34,42 @@ calling FINISH outside its valid domain. This control addresses the old
 helper's unrestricted domain; it does not claim that the constructed row is
 reachable through the supported admission transition.
 
-Source repair and controls are prepared; the narrow author gate is pending.
-The frozen b2 callback-A predecessor audit reports 116 qualified dependencies
-and no missing entries under the recorded toolchain. No whole closure replay
-is needed to check the removed dead definition and surviving A continuations.
+The author gate passed against the exact frozen b2 predecessor world: 116
+qualified books/FASLs, no misses, artifact set
+`c123121efdcc62b18329169ffc7d172b13702b8d18507fba309dfca6e37e9b66`,
+toolchain `8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Assembly-rows-other-2 key:
+`41d912fb6db7eac9553b57b5717b5ba21e9a814bdaa3f28978bd655985d7a7f3`.
+The 14 retained A macro forms were byte-identical to b2. This prototype
+removed the inherited cost row's value locally; current source deletes its
+declaration. No runtime function was redefined.
+
+Admission prerequisites passed in 3.17 seconds/16,975 steps. The initial
+inventory helper used EQ on unrestricted atoms and failed its own guard;
+EQUAL repairs that fixture defect. All six corrected control forms passed,
+including the complete old-guard counterexample. The first ten surviving A
+forms passed. The aggregate listener macro reached the 20-second time cap;
+its whole event rolled back. Its exact generated PROGN was then split into
+53 events, each with the original 20-second/two-million-step cap, and all
+passed in 22.58 seconds/841,125 steps. No proof statement changed. Listener
+run, echo wrappers, and echo run then passed in 16.49/7.33/20.52 seconds
+(the last includes 17.72 seconds proving), with 1,654,366/364,820/1,795,874
+steps respectively. The final live caller/registry/generated-dispatch and
+actual dispatcher guard-compliance assertion passed in 0.1 seconds.
+
+Scope was a detached 2 GiB cgroup (kernel `memory.max=2147483648`), outer
+600 seconds, session `callback-guard-b2`. The first fixture refusal was
+retained in the supervisor's original return code 1; corrected later RPC
+receipts above passed individually. Stop returned zero; outer/server/ACL2
+PIDs 579935/580000/580004 were confirmed absent. No compute remains held.
+Forge logs: `/tmp/finish-callback-guard.log`,
+`/tmp/finish-callback-guard-controls-retry.log`,
+`/tmp/finish-callback-listener-events.log`,
+`/tmp/finish-callback-remaining.log`, `/tmp/finish-callback-inventory.log`.
+Payload hashes and exact source comparison receipt are in
+`/tmp/finish-callback-guard/receipt.json`.
+
+This is an author gate, not current-source certification. New source changes
+ancestor keys, including the deleted cost/macro declarations; the current
+closure must be inventoried before a coordinated record run. No scribe,
+full cursor, or application closure was replayed in this author gate.
