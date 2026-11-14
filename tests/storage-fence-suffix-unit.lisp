@@ -1,6 +1,7 @@
 ; Small helper gate: selected suffixes, not arbitrary subsets or hardware disks.
 (in-package "ACL2")
 (include-book "../sim/storage")
+(include-book "std/util/bstar" :dir :system)
 
 (defun fn2-sfu-four (durable fn2-sim-storage)
  (declare (xargs :stobjs fn2-sim-storage :verify-guards nil))
