@@ -63,7 +63,7 @@ The pending executable controls are:
 - `tests/envelope-prefix-unit.lisp`: issued Fence, raw-return prefix/resume,
   duplicate/stale incarnation/wrong post/raw-syscall mutations.
 
-Source validation passes 27 focused Python controls, strict source reading,
+Source validation passes 28 focused Python controls, strict source reading,
 secrets and diff checks. ACL2 admission/certification, raw-host load and the new
 model/native controls have not run on this source. Remaining obligations include
 raw packet roundtrip/shape/guard proofs, whole-state atomic/staged equality,
@@ -71,3 +71,15 @@ initialized incarnation and effect/crash preservation, native FIFO snapshot
 coverage, FFI/OS contracts, reads/writes/errors/cancellation/concurrent workers,
 and universal trace correspondence. Native SIGKILL controls do not establish
 power-loss persistence assumptions.
+
+
+Qualification has begun on Forge under the shared 2 GiB cap. The generated
+schema, state operations and strengthened packet predicate admitted against
+qualified cached dependencies. Loading the old physical dependency on the whole
+assembled checker hit the cap (MemoryPeak 2 GiB, OOM kill); this is prover-world
+loading, not node resource behavior. The physical leaf now names only its actual
+pool/OWN dependencies, with the same served `assembly-init` in the adapter. Six
+unchanged core OWN projections moved to `check-core`; the full checker imports
+that book. The transfer leaf admits in 4.90 s/1,165,525 steps; subsequent adapter
+and raw-stage qualification is still in progress. No record certification or
+executable cut-control success is inferred from those admitted leaves.

@@ -50,6 +50,7 @@ CONTEXT_PATHS = {'physical call between callbacks, before completion publication
  'returned stage excludes crash-flight write replay': [4, 3, 1, 9],
  'all raw result and scheduling scalars stored without normalization': [4],
  'same incarnation and retained raw scalars reconstructed for post': [4],
+ 'Fence post cannot substitute a different retained physical result': [4, 1, 1, 3],
  'retained raw result reaches shared terminal normalization exactly': [4, 3]}
 
 
@@ -268,6 +269,10 @@ def check(defs, mappings=None):
         (fn2-sim-return-word slot fn2-sim) (fn2-sim-return-time slot fn2-sim)
         (fn2-sim-return-fault slot fn2-sim))""",
         'same incarnation and retained raw scalars reconstructed for post')
+    require('fn2-sim-native-post', """
+      (or (not (equal (nth 2 packet) *fn2-action-fence*))
+          (equal packet (fn2-sim-saved-return (nth 0 packet) fn2-sim)))""",
+        'Fence post cannot substitute a different retained physical result')
     require('fn2-sim-native-post', """
       (let ((fn2-sim (fn2-sim-set-active (nth 0 packet) 1 fn2-sim)))
        (fn2-sim-complete-result (nth 0 packet) (nth 1 packet) (nth 2 packet)

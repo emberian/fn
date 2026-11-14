@@ -6,7 +6,12 @@
 (include-book "network")
 (include-book "storage")
 (include-book "prng")
-(include-book "check")
+(include-book "check-own")
+(include-book "std/util/bstar" :dir :system)
+
+; Compose the pool's admitted shape contracts rather than reopening every
+; ownership/lease branch during the recursive transfer's preservation proof.
+(local (in-theory (disable fn2-pool-adapter-write fn2-pool-read fn2-pool-rows)))
 
 (defthm fn2-sim-pool-read-byte-u8
   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))

@@ -1,6 +1,7 @@
 ; Real issued storage operations through the explicit native cut program.
 (in-package "ACL2")
 (include-book "../sim/native-cut-program")
+(include-book "../sim/check-core")
 
 (defun fn2-native-cut-fixture (takep fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))

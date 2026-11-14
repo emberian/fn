@@ -3,8 +3,10 @@
 (in-package "ACL2")
 (include-book "sim-state")
 (include-book "sim-transfer")
+(include-book "../books/assembly-init")
 
 (in-theory (disable fn2-core-wfp fn2-sim-ready))
+(local (in-theory (disable (tau-system))))
 
 ; Select from the chosen flight's classes, not the world's entire menu.
 (defun fn2-sim-flight-classes (kind active release)
@@ -82,6 +84,18 @@
  (defthm fn2-sim-update-ops-wfp
    (implies (and (fn2-core-wfp core) (fn2-ops-wfp ops))
             (fn2-core-wfp (update-fn2-core-ops ops core)))
+   :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+(local
+ (defthm fn2-sim-core-ops-wfp-forward
+   (implies (fn2-core-wfp fn2-core)
+            (fn2-ops-wfp (fn2-core-ops fn2-core)))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+(local
+ (defthm fn2-sim-core-pool-wfp-forward
+   (implies (fn2-core-wfp fn2-core)
+            (fn2-pool-wfp (fn2-core-pool fn2-core)))
+   :rule-classes (:rewrite :forward-chaining)
    :hints (("Goal" :in-theory (enable fn2-core-wfp)))))
 (local (in-theory (disable fn2-storage-fence-admission fn2-outbox-peek)))
 
@@ -268,8 +282,10 @@
           (mv (eq ack :ok) fn2-ops fn2-sim fn2-own))))
     (mv found fn2-core fn2-sim fn2-own))))
 (fn2-sim-preserves fn2-sim-take-one (fn2-core fn2-sim fn2-own) :part nil
-  :carriers ((fn2-core 1 :prefix "-CORE" :hints (("Goal" :in-theory (enable fn2-core-wfp)))) (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY" :hints (("Goal" :in-theory (enable fn2-sim-ready)))) (fn2-own 3 :prefix "-OWN"))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-sim-ready))))
+  :carriers ((fn2-core 1 :prefix "-CORE")
+             (fn2-sim 2 :invariant fn2-sim-ready :prefix "-SIM" :suffix "-READY")
+             (fn2-own 3 :prefix "-OWN"))
+  :hints (("Goal" :in-theory (e/d (fn2-sim-take-one) (fn2-core-wfp fn2-sim-ready)))))
 
 (defun fn2-sim-take-prefix (left taken fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :measure (nfix left)

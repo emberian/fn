@@ -179,6 +179,12 @@ class ServedNativeProgramTests(unittest.TestCase):
                     '0 (fn2-device-job-errno job))))')
         self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
 
+    def test_model_fence_post_cannot_substitute_retained_result(self):
+        self.change('sim/sim.lisp',
+                    '(equal packet (fn2-sim-saved-return (nth 0 packet) fn2-sim))',
+                    't')
+        self.assertFalse(checker.check(self.root)['storage_return_cut_family']['source_ok'])
+
     def test_cli_cannot_count_source_audit_as_complete_cut_mapping(self):
         command = [sys.executable, str(ROOT / 'tools/native_program_check.py'), '--json']
         full = subprocess.run(command, capture_output=True, text=True, timeout=30)
