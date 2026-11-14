@@ -298,6 +298,7 @@ ACL2_BOOKS = \
   tests/machine-arms-unit \
   tests/machine-budget-unit \
   tests/machine-budget-core-fixture \
+  tests/core-init-profile-context-unit \
   tests/machine-success-charge-context-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
