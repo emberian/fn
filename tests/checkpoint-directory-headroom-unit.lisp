@@ -1,0 +1,42 @@
+; Source controls for the actual B headroom helper and C room predicate.
+; No ring/rebase is active; all credits are current absolute resident rows.
+(in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
+(include-book "../books/checkpoint-master-abort")
+(defun fn2-cdh-body (fn2-extents fn2-commit-root)
+ (declare (xargs :stobjs (fn2-extents fn2-commit-root) :verify-guards nil))
+ (b* ((fn2-extents (fn2-alloc-init 5 fn2-extents))
+      (fn2-commit-root (fn2-commit-root-init 6 fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-put 0 (published 1) (installed 2) (proposed 3)))
+      ((mv full positive) (fn2-commit-directory-headroom 2 fn2-commit-root))
+      ((mv too-many occupied) (fn2-commit-directory-headroom 3 fn2-commit-root))
+      ((mv bad negative) (fn2-commit-directory-headroom -1 fn2-commit-root))
+      ; This satisfies the whole valid-frontier antecedent. Dropping actual
+      ; proposed occupancy and counting from PUBLISHED would falsely grant3.
+      (witness (and (fn2-commit-root-wfp fn2-commit-root)
+                    (<= (fn2-commit-root-published 0 fn2-commit-root) (fn2-commit-root-installed 0 fn2-commit-root))
+                    (<= (fn2-commit-root-installed 0 fn2-commit-root) (fn2-commit-root-proposed 0 fn2-commit-root))
+                    (= (fn2-commit-root-rows fn2-commit-root) 6)
+                    (<= 3 (- 5 (fn2-commit-root-published 0 fn2-commit-root)))
+                    (eq full :ok) (= positive 2) (eq too-many :no-space) (= occupied 2)))
+      (fn2-commit-root (fn2-commit-root-put 0 (proposed 4)))
+      ; The real C predicate needs ceil(E/25)+1=2 further batches. Its old
+      ; published-based arithmetic would admit them despite only1 free row.
+      (blocked (not (fn2-checkpoint-directory-roomp fn2-extents fn2-commit-root)))
+      (fn2-commit-root (fn2-commit-root-put 0 (published 5) (installed 5) (proposed 5)))
+      ((mv zero no-credit) (fn2-commit-directory-headroom 0 fn2-commit-root))
+      ((mv exhausted still-none) (fn2-commit-directory-headroom 1 fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-put 0 (published 5) (installed 4)))
+      ((mv unordered invalid-credit) (fn2-commit-directory-headroom 0 fn2-commit-root))
+      (fn2-commit-root (fn2-commit-root-init 0 fn2-commit-root))
+      ((mv missing-row missing-credit) (fn2-commit-directory-headroom 0 fn2-commit-root)))
+  (mv (and witness (eq bad :state) (= negative 0) blocked
+           (eq zero :ok) (= no-credit 0) (eq exhausted :no-space) (= still-none 0)
+           (eq unordered :state) (= invalid-credit 0) (eq missing-row :state) (= missing-credit 0)) fn2-extents fn2-commit-root)))
+(defun fn2-cdh-run ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-extents
+  (mv-let (ok fn2-extents)
+   (with-local-stobj fn2-commit-root
+    (mv-let (ok fn2-extents fn2-commit-root) (fn2-cdh-body fn2-extents fn2-commit-root) (mv ok fn2-extents))) ok)))
+(assert-event (fn2-cdh-run))
