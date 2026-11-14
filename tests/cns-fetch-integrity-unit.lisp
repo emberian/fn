@@ -7,6 +7,12 @@
 (include-book "../books/owed-cursor")
 (include-book "../books/assembly-attach")
 (include-book "fnct-client")
+(assert-event
+ (and (equal (fn2-cns-item-binding-answer :found *fn2-fnct-item-record* nil :ok :ok 32 0) :lease)
+      (equal (fn2-cns-item-binding-answer :found *fn2-fnct-item-record* t :ok :stale 32 0) :retry)
+      (equal (fn2-cns-item-binding-answer :found *fn2-fnct-item-record* t :ok :ok 31 0) :fault)
+      (equal (fn2-cns-item-binding-answer :found *fn2-fnct-item-record* t :ok :ok 32 32) :fault)
+      (equal (fn2-cns-item-binding-answer :found *fn2-fnct-item-record* t :ok :ok 32 0) :found)))
 (defconst *fn2-cfi-profile*
  (put-assoc-equal :cns 1 (put-assoc-equal :control-connections 2
   (put-assoc-equal :extent-slots 128 *fn2-cursor-profile*))))
