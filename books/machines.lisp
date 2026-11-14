@@ -3399,10 +3399,15 @@
                      (fn2-core-success-p (mv-nth 4 ,call)))
                 (,charge (fn2-machine-phase id fn2-core)
                          (car ,call) (mv-nth 1 ,call) (mv-nth 2 ,call)))
-       :hints (("Goal" :in-theory (enable ,fn ,@enabled fn2-core-success-p
-                                          fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
-                                          fn2-control-record-stop fn2-control-stop
-                                          update-fn2-control-stop update-fn2-control-stop-reason))))))
+       ; Prove against the core's stop representation, even when a later
+       ; consumer has installed its executor-facing presentation rewrite.
+       ; REMOVE-EQUAL also works before that consumer's rune exists.
+       :hints (("Goal" :in-theory
+                (remove-equal '(:rewrite fn2-core-stopped-p-is-exec-stop)
+                 (enable ,fn ,@enabled fn2-core-success-p
+                         fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
+                         fn2-control-record-stop fn2-control-stop
+                         update-fn2-control-stop update-fn2-control-stop-reason)))))))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
   (let* ((run (fn2-columns-sym name "-RUN"))
