@@ -105,14 +105,18 @@ OWN projections moved to `check-core`. The narrowed transfer leaf admits in
 then loaded exact cached host-boundary dependencies for actual packet replay.
 
 The earlier positive whole-formula witness's all-function-theory hint did not
-finish within the proof tool's 45.1 s hard sentinel limit; the tool killed its
-own retained session. This is a proof-cost failure, not a counterexample or an
-OOM result. That broad hint has now been replaced with explicit concrete-fixture
-executable counterparts and opaque admitted implementation abstractions. The
-witness formula is unchanged; the new hints have not executed yet. The
-hypothesis-removal witness was not reached in the earlier world. Its deliberate
-active=0 mutation tests the theorem's pending-flight premise; it contributes no
-evidence that this branch is reachable in the composed scheduler.
+finish within the proof tool's 45.1 s hard sentinel limit. On the later current
+world, the bounded counterpart hint refused in 0.37 s because stobj constructors
+remained hidden. Expanding the actual finite 63-constructor call graph removed
+that layer, but the fixture itself then hit `NON-EXEC` in 0.57 s. Neither result
+is a counterexample. A final fixture-definition probe raced the session deadline
+and did not execute. The pending source route computes the exact whole
+antecedent through private live stobjs, then proves its logical identity to the
+original witness using the admitted whole-state atomic theorem. The helper,
+identity lemma and revised positive hint remain untested. The witness function
+body and positive formula are unchanged. The hypothesis-removal witness remains
+unexecuted; its deliberate active=0/submitted mutation is explicitly
+unreachable-in-composition and tests only the pending-flight premise.
 
 The shared fixed-array type repair `4400cb995` passes the actual 35-book
 constructor record gate, including the unchanged `FN2-MACHINE-POOL-HAS-P` guard
@@ -137,16 +141,26 @@ distinguishes columns and is unreachable for an actual physical Fence; this
 control carries no physical-cut qualification.
 
 The later shared current-world batch restored the captured core103 plus model
-theory and checked compiled prerequisite presence. `books/terminal-values` then
-admitted from source in 0.867 s. The next book, `sim/check-own`, hit its 60 s
-encapsulate limit: 50.60 s was spent proving `FN2-OWN-INIT`'s guard while opening
-the full profile schema. No physical-stage or equality proof was reached.
-`836110e42` keeps the initializer body and guard unchanged, projects only the
-needed pool fields locally, and uses the existing operation/QA field bounds.
-The changed-leaf probe could not execute because the shared session had expired.
-This is a setup failure, and that guard repair remains untested. The shared
-prototype is explicitly base `99e30d184` plus the named `sim/check-own.lisp`
-override; it is not an untouched `99e30d184` world or current-dev qualification.
+theory and checked compiled prerequisite presence. `books/terminal-values`
+admitted from source. `836110e42` reduced the OWN initializer guard from 50.60 s
+to 0.07 s without changing its body or guard. `cdc0a8e44` then kept generated
+pool/operation column readers paired with their row bounds, deriving the local
+proof theory from the existing declarations. The issue-observer guard fell from
+50.43 s to 0.19 s, and the complete OWN book passed in 18.00 s. All function
+definitions in that second repair are byte-identical.
+
+In the same derived base-`99e30d184` plus named OWN-override world, transfer
+passed, physical-adapter source admission passed in 174.85 s, and the complete
+simulator source/guard load passed in 169.138 s. Its 107 original events retained
+one original LOCAL scope with individual proof budgets; an explicit control
+confirmed the two private lemmas did not leak. The initial 90 s simulator
+refusal was a cumulative loader limit, not an unproved event. The native cut
+program then admitted, including its unchanged whole-state atomic-equivalence
+theorem. All nine mutable operation-cut controls executed successfully in
+0.12 s. These are current derived-source admissions and finite simulator
+executions, not record certification, the five scheduled ENVELOPE controls, or
+native real-fd execution. The bounded shared session ended and its allocation
+was released.
 
 The real-fd readback establishes current OS-visible byte contents. It is not a
 power-loss durability witness. Relating a successful native Fence to preserved

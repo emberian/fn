@@ -123,21 +123,68 @@
              (equal (fn2-sim-native-cut :finish op *fn2-fault-none* 0 c s o)
                     (fn2-sim-complete op *fn2-fault-none* 0 c s o)))))))
 
+; This executable entry computes exactly the whole antecedent of the
+; immutable witness with private live stobjs. The equality below is owed:
+; raw execution alone cannot establish the immutable witness formula.
+(defun fn2-native-cut-atomic-domain-control (remove-pending)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (with-local-stobj fn2-sim
+        (mv-let (ok fn2-core fn2-sim)
+          (with-local-stobj fn2-own
+            (mv-let (ok fn2-core fn2-sim fn2-own)
+              (b* (((mv ready op fn2-core fn2-sim fn2-own)
+                    (fn2-native-cut-fixture t fn2-core fn2-sim fn2-own))
+                   (fn2-sim (if remove-pending
+                                (fn2-sim-set-active op 0 fn2-sim) fn2-sim)))
+                (mv (and ready
+                          (fn2-corep fn2-core)
+                          (fn2-simp fn2-sim)
+                          (fn2-ownp fn2-own)
+                          (fn2-core-wfp fn2-core)
+                          (fn2-sim-ready fn2-sim)
+                          (fn2-own-wfp fn2-own)
+                          (unsigned-byte-p 32 0)
+                          (fn2-sim-native-faultp *fn2-fault-none*)
+                          (if remove-pending
+                              (not (fn2-sim-native-storagep op fn2-sim))
+                            (fn2-sim-native-storagep op fn2-sim)))
+                    fn2-core fn2-sim fn2-own))
+              (mv ok fn2-core fn2-sim)))
+          (mv ok fn2-core)))
+      ok)))
+
+(defthm fn2-native-cut-atomic-domain-positive
+  (fn2-native-cut-atomic-domain-control nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (e/d ((:executable-counterpart fn2-native-cut-atomic-domain-control))
+         ((:definition fn2-native-cut-atomic-domain-control))))))
+
+; Keep constructors and the fixture symbolic on both sides. The admitted
+; full-state atomic theorem discharges C under the identical H conjuncts.
+(defthm fn2-native-cut-positive-domain-equality
+  (equal (fn2-native-cut-atomic-witness nil)
+         (fn2-native-cut-atomic-domain-control nil))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (e/d ((:definition fn2-native-cut-atomic-witness)
+          (:definition fn2-native-cut-atomic-domain-control))
+         ((:executable-counterpart fn2-native-cut-atomic-domain-control)
+          fn2-native-cut-fixture create-fn2-core create-fn2-sim create-fn2-own
+          fn2-sim-native-storagep fn2-sim-native-faultp
+          fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post
+          fn2-sim-physical fn2-sim-complete fn2-sim-complete-result)))))
+
 (defthm fn2-native-cut-atomic-positive-witness
   (fn2-native-cut-atomic-witness nil)
   :rule-classes nil
   :hints (("Goal"
-    ; Evaluate the declared concrete fixture while the admitted storage
-    ; equality rewrites its two executions. Keep implementation bodies opaque.
-    :in-theory
-    (e/d ((:definition fn2-native-cut-atomic-witness)
-          (:executable-counterpart fn2-native-cut-fixture)
-          (:executable-counterpart create-fn2-core)
-          (:executable-counterpart create-fn2-sim)
-          (:executable-counterpart create-fn2-own))
-         ((:definition fn2-native-cut-fixture)
-          fn2-sim-native-cut fn2-sim-native-stage fn2-sim-native-post
-          fn2-sim-physical fn2-sim-complete fn2-sim-complete-result)))))
+    :use (fn2-native-cut-atomic-domain-positive
+          fn2-native-cut-positive-domain-equality)
+    :in-theory (disable fn2-native-cut-atomic-witness
+                        fn2-native-cut-atomic-domain-control))))
 (defthm fn2-native-cut-atomic-pending-hypothesis-removal
   (fn2-native-cut-atomic-witness t)
   :rule-classes nil
