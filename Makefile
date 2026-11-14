@@ -214,6 +214,7 @@ ACL2_BOOKS = \
   tests/alloc-unit \
   tests/retirement-unit \
   tests/retirement-replay-unit \
+  tests/retirement-live-unit \
   tests/read-pins-unit \
   tests/owed-reclamation-unit \
   tests/authority-client \

@@ -773,6 +773,7 @@
   (if (eq pick :open) (fn2-commit-txn-open id partner slot gen len okind oslot ogen need fn2-core)
    (fn2-commit-txn-join id slot gen len okind oslot ogen need fn2-core))))
 (fn2-core-preserves fn2-commit-admit-txn (slot gen len okind oslot ogen fn2-core) :position 3 :rows nil)
+(fn2-retirement-coordinator-events)
 ; B-S2 S9: the article's source reference from an admitted workspace's first
 ; :article-acceptance record, for the transaction to bind into fn2-article's
 ; location: (mv code physical-unit writer-epoch allocation encoded-length).
@@ -1368,6 +1369,7 @@
 ; publish, settlement, drop, notify and drain, then the kind's run.
 (defun fn2-commit-event-forms-2b ()
  (list* 'progn (fn2-commit-local-theory) (fn2-commit-local-forward) (fn2-commit-local-idp) '(
+(fn2-retirement-install-events)
 (defun fn2-commit-root-swap (id publish fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv nil fn2-core)

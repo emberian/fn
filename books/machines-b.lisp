@@ -6,6 +6,7 @@
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "read-pins")
+(include-book "retirement-coordinator")
 (include-book "format-check")
 (include-book "recovery")
 (include-book "commit-members")
@@ -23,6 +24,9 @@
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
  :why "Commit work survives scheduler yields.")
+(defcorechild fn2-core-retirement-control fn2-retirement-control
+ :init (fn2-retirement-control-init 1 fn2-retirement-control) :profilep t
+ :why "One lifecycle producer, retained workspace and exact settlement identity across yields.")
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
  (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))) (nfix (fn2-profile-o profile))))
@@ -247,6 +251,7 @@
           (cb-failed :bool) (outcome :u8) (cb-reason :u8)
           (cb-fence-live :bool) (cb-fence-ok :bool) (cb-deps-ok :bool)
           (cb-log-ok :bool) (cb-published :bool) (cb-acks :u32)
+          (cb-life-member :u32) (cb-life-off :u32)
           (cb-seal-len :u32) (cb-wrote :bool) (cb-open :bool) (dep-bytes :u32) (rec-bytes :u32))
 
  ;; b-durability 11: the journal IO is the row's own commit-io rows (no shared
