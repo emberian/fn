@@ -320,3 +320,12 @@ bytes require zero padding. Page counts include one terminal page for an empty
 sequence. Actual readers must check the exact calculated count/continuity/link
 shape, decode every slot and verify padding, then authenticate the linked child.
 These format and local shape controls do not replace that reader or restoration.
+
+`checkpoint-map-read.lisp` reads one actual extent per call behind the allocator's
+exact retained `fn2-alloc-copy-ownerp` authority. Allocation entries copy every
+persistent field, including foreign RESERVED rows. Arena entries come only from
+same-token/owner role-6 construction rows whose ordinal and current Reserved
+identity match. Non-ticket rows return `:skip`; changed ticket identities return
+`:conflict`. The arena page builder must count only `:entry`, preserve ordinal
+continuity, and compare its final count to the closed reservation plan.
+The passive allocator gate alone does not establish that closure.
