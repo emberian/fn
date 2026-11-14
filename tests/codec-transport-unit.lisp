@@ -13,6 +13,7 @@
 (assert-event (not (fn2-codec-transfer-counts-p -1 0 4 8)))
 
 (defcodec-transport fn2-codec-probe ((mode :u8) (quantum :u32)))
+(defcodec-transport-operations fn2-codec-probe)
 (defun fn2-codec-probe-control (fn2-codec-probe)
  (declare (xargs :stobjs fn2-codec-probe :verify-guards nil))
  (let* ((fn2-codec-probe (fn2-codec-probe-init 1 fn2-codec-probe))
