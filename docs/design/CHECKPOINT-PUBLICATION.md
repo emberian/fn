@@ -617,3 +617,13 @@ and then wait for that same transaction. The master now drains first without
 holding working leases, and never parks on a pool wait while C is held.
 Retirement debt is captured at HELD and marked seen only after successful
 publication; a transient failed TRY therefore remains eligible when room returns.
+
+The revised map roundtrip probe at `c524dc32e` source-admitted the repaired
+readonly map-entry contracts, then refused the actual map packer's guard:
+the encoder's field-capacity bound was not carried through the reader's
+unchanged-row-count theorem. The 20-book attempt used eight cached parents
+and eleven explicit source parents; total ACL2 loading cost was 94.91 seconds
+and 12,973,186 prover steps. The failing guard itself used 0.06 seconds and
+8,463 steps. Restore-reader loading and all target malformed-source and
+roundtrip controls remained unrun. This clears the earlier source-reader
+admission obstruction, not the end-to-end map recovery obligation.
