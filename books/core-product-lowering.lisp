@@ -191,6 +191,69 @@
    (or (and (<= (length prefix) (length name))
             (equal (subseq name 0 (length prefix)) prefix))
        (fn2-product-reserved-formals (cdr formals))))))
+; An unchanged write is an identity only when the selected core cell exists.
+; Keep this list argument separate from the substantive operation proof.
+(defthm fn2-product-update-nth-current
+ (implies (and (natp n) (< n (len xs)))
+          (equal (update-nth n (nth n xs) xs) xs))
+ :hints (("Goal" :induct (nth n xs) :in-theory (enable nth update-nth))))
+(defun fn2-product-two-induct (n m xs)
+ (if (and (posp n) (posp m) (consp xs))
+     (fn2-product-two-induct (1- n) (1- m) (cdr xs)) (list n m xs)))
+(defthm fn2-product-writeback-other
+ (implies (and (natp n) (natp m) (< n (len xs)) (not (equal n m)))
+  (equal (update-nth n (nth n xs) (update-nth m value xs))
+         (update-nth m value xs)))
+ :hints (("Goal" :induct (fn2-product-two-induct n m xs)
+          :expand ((update-nth m value xs)) :in-theory (enable nth update-nth))))
+(defun fn2-product-core-shape-events (world)
+ (declare (xargs :verify-guards nil))
+ (and (not (getpropc 'fn2-product-core-shape 'theorem nil world))
+  `((defthm fn2-product-core-shape
+     (implies (fn2-corep fn2-core)
+      (and (true-listp fn2-core)
+           (equal (len fn2-core) ,(len (fn2-core-child-registry world)))
+           ,@(and (consp (fn2-core-child-registry world)) '((consp fn2-core)))))
+     :hints (("Goal" :in-theory
+       (e/d (fn2-corep)
+            (,@(strip-cars (fn2-lower-predicates
+                 (fn2-core-child-types (fn2-core-child-registry world)) "P"))))))))))
+(defun fn2-product-cross-writeback-facts (field entries world)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((other (caar entries)) (writer (fn2-product-writer field))
+         (other-writer (fn2-product-writer other))
+         (name (fn2-columns-sym field
+                 (concatenate 'string "-LOWERING-WRITEBACK-AFTER-" (symbol-name other)))))
+   (append
+    (and (not (eq field other)) (not (getpropc name 'theorem nil world))
+     `((defthm ,name
+        (implies (fn2-corep fn2-core)
+         (equal (,writer (,field fn2-core) (,other-writer value fn2-core))
+                (,other-writer value fn2-core)))
+        :hints (("Goal" :in-theory
+          (e/d (fn2-corep ,field ,writer ,other-writer)
+               (nth update-nth
+                ,@(strip-cars (fn2-lower-predicates
+                    (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
+    (fn2-product-cross-writeback-facts field (cdr entries) world)))))
+(defun fn2-product-writeback-facts (entries all world)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((field (caar entries)) (writer (fn2-product-writer field))
+         (name (fn2-columns-sym field "-LOWERING-WRITEBACK-IDENTITY")))
+   (append
+    (and (not (getpropc name 'theorem nil world))
+     `((defthm ,name
+        (implies (fn2-corep fn2-core)
+                 (equal (,writer (,field fn2-core) fn2-core) fn2-core))
+        :hints (("Goal" :in-theory
+          (e/d (fn2-corep ,field ,writer)
+               (nth update-nth
+                ,@(strip-cars (fn2-lower-predicates
+                    (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
+    (fn2-product-cross-writeback-facts field all world)
+    (fn2-product-writeback-facts (cdr entries) all world)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -238,6 +301,9 @@
     (if (or problem err err2)
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
+       ,@(fn2-product-core-shape-events world)
+       ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body))
+                                     (fn2-product-written-entries entries (all-fnnames body)) world)
        (defun ,child ,args
         (declare (ignorable ,@args)
                  (xargs :stobjs ,children :guard ,guard :verify-guards t
@@ -256,10 +322,11 @@
         (implies (fn2-corep fn2-core)
                  (equal (,execution ,@formals) (,fn ,@formals)))
         :hints (("Goal" :in-theory
-          (e/d (,execution ,child ,fn fn2-corep ,@opened
+          (e/d (,execution ,child ,fn ,@opened
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :reverse))
-               (,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
+               (fn2-corep
+                ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :source)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :refinement)

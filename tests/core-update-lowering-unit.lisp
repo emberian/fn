@@ -516,3 +516,44 @@
  (declare (xargs :verify-guards nil))
  (and (fn2-conditional-live nil t) (fn2-conditional-live t t)))
 (fn2-check-lowering-teeth fn2-conditional-source)
+
+; Production core fields are opaque. A branch may write only one of the
+; declared output children; reconstruction must not disturb the other one.
+(defun fn2-update-branch-children (flag i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (if flag (fn2-update-source i value fn2-core)
+  (stobj-let ((fn2-update-sibling (fn2-core-sibling fn2-core))) (code fn2-update-sibling)
+   (if (< i (fn2-update-sibling-rows fn2-update-sibling))
+       (let ((fn2-update-sibling (fn2-update-sibling-set-value i value fn2-update-sibling)))
+         (mv :sibling fn2-update-sibling))
+     (mv :bounds fn2-update-sibling))
+   (mv code fn2-core))))
+(encapsulate ()
+ (local (in-theory (disable fn2-corep fn2-core-config fn2-core-sibling
+                            update-fn2-core-config update-fn2-core-sibling)))
+ (defcore-product-closure fn2-update-branch-children fn2-update-branch-children-child))
+(defthm fn2-update-branch-children-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-branch-children-child-exec-core-face t 0 42 '(((37) 1) ((91) 1)))
+             '(:ok (((42) 1) ((91) 1))))
+      (equal (fn2-update-branch-children-child-exec-core-face nil 0 42 '(((37) 1) ((91) 1)))
+             '(:sibling (((37) 1) ((42) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-branch-children-child-exec-core-face fn2-update-branch-children-child)
+        ((:executable-counterpart fn2-update-branch-children-child-exec-core-face)))))
+ :rule-classes nil)
+(defthm fn2-update-branch-children-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-branch-children-child-exec-core-face t 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds (((37) 1) ((91) 1))))
+      (equal (fn2-update-branch-children-child-exec-core-face nil 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds (((37) 1) ((91) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-branch-children-child-exec-core-face fn2-update-branch-children-child)
+        ((:executable-counterpart fn2-update-branch-children-child-exec-core-face)))))
+ :rule-classes nil)
