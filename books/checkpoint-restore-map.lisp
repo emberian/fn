@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-restore-reader")
+(include-book "checkpoint-restore-reach-state")
 (fn2-book-layer :b)
 (defcolumns fn2-checkpoint-restore-map
  ((present :bool) (state :u8) (owner-kind :u8) (owner :u60)
@@ -10,7 +11,7 @@
   (visited :bool)))
 (defcolumns fn2-checkpoint-restore-map-control
  ((phase (:enum fn2-checkpoint-restore-map-phase (:idle :collect :complete :uncertain :validate :validated)))
-  (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
+  (reach-generation :u60) (candidate :u32) (source-checkpoint :u60) (source-cut-commit :u60) (source-cut-event :u60)
   (source-history :u60) (source-incarnation :u60) (cursor :u32) (total :u32) (retired-head :u32) (retired-count :u32)
   (observed-retired :u32) (maximum-epoch :u60)
   (walk-cursor :u32) (walked :u32) (last-retirement :u60))
@@ -147,11 +148,7 @@
   (mv :coverage fn2-checkpoint-restore-map-control)
   (mv :map-ready (fn2-checkpoint-restore-map-control-set-phase 0 *fn2-checkpoint-restore-map-phase-complete* fn2-checkpoint-restore-map-control))))
 
-(defcost fn2-boot-checkpoint-map-consume :child fn2-checkpoint-restore-map-consume
- :answers (:entry :state :coverage :fields :identity :retirement :bounds :format :extent :padding)
- :bytes *fn2-checkpoint-map-entry-width*
- :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control fn2-core-fields fn2-core-pool)
- :doc "Retain exactly the actual authenticated map entry before advancing its reader; never select or mutate the live allocator.")
+
 (defcost fn2-boot-checkpoint-map-finish :child fn2-checkpoint-restore-map-finish
  :answers (:coverage :map-ready)
  :tables (fn2-core-checkpoint-restore-reader fn2-core-checkpoint-restore-map fn2-core-checkpoint-restore-map-control)
