@@ -169,7 +169,7 @@
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (natp h) (natp k) (natp a)
                               (natp nobs) (natp nvisits) (natp nactions))))
-  (or (>= nobs h) (>= nvisits k) (>= nactions a)
+  (or (>= nvisits k) (>= nactions a)
       (not (fn2-turn-descriptor-room-p nactions a))
       (= 1 (fn2-exec-stop fn2-core))
       (not (fn2-turn-work-room-p h k nvisits
