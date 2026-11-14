@@ -126,6 +126,7 @@ ACL2_BOOKS = \
   books/log-model \
   books/machine-arms \
   books/machine-dispatch \
+  books/machine-reservations \
   books/machines \
   books/machines-a \
   books/machines-a-access \
@@ -302,6 +303,7 @@ ACL2_BOOKS = \
   tests/core-init-profile-context-unit \
   tests/machine-success-charge-context-unit \
   tests/machine-child-tables-unit \
+  tests/machine-reservations-unit \
   tests/machines-a-unit \
   tests/merkle-random \
   tests/merkle-unit \

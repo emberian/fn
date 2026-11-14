@@ -309,3 +309,28 @@ Root owns timely integration and targeted composition gates. Source implementati
 proceeds concurrently; expensive proof jobs require named allocations. No lane
 may replace a missing served feature with a model-only completion claim. The
 authorization review block remains explicit and is not reassigned around review.
+
+### CNS partition component checkpoint
+
+`machine-reservations` now relates the actual child reclaim and credit-backed
+install operations to complete independent list results, preserving the local
+`active + credits <= capacity` invariant and unrelated partition views.
+At `5b212d298`, a fresh source gate over the exact current-261 child dependency
+set admitted the component and executed six complete machine/control controls:
+both positives, both sibling-output mutations, and both reservation removals.
+The removals preserve typed/WFP state and observe the actual checked-write stop;
+these child fixtures do not establish reachable whole-core entry.
+
+The source gate loaded 16 qualified cached dependencies, then only the new
+component, schema-only snapshot helper and unit book (7.99 ACL2 seconds).
+No new book is record-certified by this gate. Its full ACL2 log is
+`forge:/build/lanes/assurance-q1-child-controls-5b212d298/build/proof-repl/cns-child-controls-current/log`.
+The session and named 2 GiB allocation were released.
+
+Actual core initialization, public CNS take preservation and the original
+counted `fn2-cns-run` output/effect theorem remain source candidates in
+`machine-reservations-entry` and `cns-draining-composition`. Their next gate
+needs the shared current core/callback prefix; the original obligation remains
+owed, and the WFP-only pool/reservation counterexamples remain active. The
+current evidence API still cannot transfer an equivalent endpoint equality
+back to the original opaque conclusion.
