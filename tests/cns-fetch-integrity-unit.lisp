@@ -36,6 +36,11 @@
 (defun fn2-cfi-case (substitute fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (b* ((fn2-core (fn2-init-executor *fn2-cfi-profile* :echo nil fn2-core))
+      (workspace-ok
+       (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (ok)
+        (let ((class (fn2-cns-lease-class-of fn2-pool)))
+         (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
+              (<= *fn2-cns-item-workspace-bytes* (fn2-pool-class-sizesi class fn2-pool)))) ok))
       ((mv epoch fn2-core)
        (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
         (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-core)))
@@ -43,7 +48,7 @@
       ((mv posted clients store fn2-core)
        (fn2-cw-loop 20000 0 0 (fn2-cw-clients (list (list post (list (len post))))) nil fn2-core))
       (entry (fn2-cfi-find *fn2-cfi-a* store))
-      ((unless (and (eq epoch :ok) (eq posted :quiet) entry
+      ((unless (and workspace-ok (eq epoch :ok) (eq posted :quiet) entry
                     (equal (fn2-cw-results clients)
                       (list (list (fn2-cw-crlf-octets
                         '("200 fn-nntp experimental server ready" "340 send article to be posted"
