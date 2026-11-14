@@ -167,6 +167,7 @@ ACL2_BOOKS = \
   books/pool \
   books/pool-block \
   books/pool-ranges \
+  books/pool-release-admission \
   books/port \
   books/profile \
   books/q1 \
@@ -309,6 +310,7 @@ ACL2_BOOKS = \
   tests/peer-witnesses \
   tests/pointwise-contracts-unit \
   tests/pool-ranges-unit \
+  tests/pool-release-admission-unit \
   tests/pool-unit \
   tests/port-unit \
   tests/q1-contracts \
