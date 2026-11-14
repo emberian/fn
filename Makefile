@@ -307,6 +307,8 @@ ACL2_BOOKS = \
   tests/merkle-random \
   tests/merkle-unit \
   tests/native-boot-refusal-unit \
+  tests/native-cut-state-unit \
+  tests/native-cut-program-unit \
   tests/native-envelope-prefix-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
