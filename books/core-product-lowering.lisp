@@ -206,6 +206,31 @@
          (update-nth m value xs)))
  :hints (("Goal" :induct (fn2-product-two-induct n m xs)
           :expand ((update-nth m value xs)) :in-theory (enable nth update-nth))))
+(defun fn2-product-two-index-induct (n m xs)
+ (if (and (posp n) (posp m))
+     (fn2-product-two-index-induct (1- n) (1- m) (cdr xs)) (list n m xs)))
+(defthm fn2-product-update-nth-commute
+ (implies (and (natp n) (natp m) (not (equal n m)))
+  (equal (update-nth n a (update-nth m b xs))
+         (update-nth m b (update-nth n a xs))))
+ :hints (("Goal" :induct (fn2-product-two-index-induct n m xs)
+          :expand ((update-nth m b xs) (update-nth n a xs))
+          :in-theory (enable update-nth))))
+; Only one orientation per selected pair, in registry order, prevents loops.
+(defun fn2-product-commute-facts (field entries world)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((writer (fn2-product-writer field))
+         (other (fn2-product-writer (caar entries)))
+         (name (fn2-columns-sym writer
+                 (concatenate 'string "-LOWERING-COMMUTES-" (symbol-name other)))))
+   (append
+    (and (not (getpropc name 'theorem nil world))
+     `((defthm ,name
+        (equal (,writer a (,other b fn2-core))
+               (,other b (,writer a fn2-core)))
+        :hints (("Goal" :in-theory (e/d (,writer ,other) (nth update-nth)))))))
+    (fn2-product-commute-facts field (cdr entries) world)))))
 (defun fn2-product-core-shape-events (world)
  (declare (xargs :verify-guards nil))
  (and (not (getpropc 'fn2-product-core-shape 'theorem nil world))
@@ -232,8 +257,8 @@
          (equal (,writer (,field fn2-core) (,other-writer value fn2-core))
                 (,other-writer value fn2-core)))
         :hints (("Goal" :in-theory
-          (e/d (fn2-corep ,field ,writer ,other-writer)
-               (nth update-nth
+          (e/d (,field ,writer ,other-writer)
+               (fn2-corep nth update-nth
                 ,@(strip-cars (fn2-lower-predicates
                     (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
     (fn2-product-cross-writeback-facts field (cdr entries) world)))))
@@ -248,11 +273,12 @@
         (implies (fn2-corep fn2-core)
                  (equal (,writer (,field fn2-core) fn2-core) fn2-core))
         :hints (("Goal" :in-theory
-          (e/d (fn2-corep ,field ,writer)
-               (nth update-nth
+          (e/d (,field ,writer)
+               (fn2-corep nth update-nth
                 ,@(strip-cars (fn2-lower-predicates
                     (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))))
     (fn2-product-cross-writeback-facts field all world)
+    (fn2-product-commute-facts field (cdr entries) world)
     (fn2-product-writeback-facts (cdr entries) all world)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))

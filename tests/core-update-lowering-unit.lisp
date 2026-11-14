@@ -557,3 +557,43 @@
    (e/d (fn2-update-branch-children-child-exec-core-face fn2-update-branch-children-child)
         ((:executable-counterpart fn2-update-branch-children-child-exec-core-face)))))
  :rule-classes nil)
+
+; The source writes in the opposite order from the declared child product.
+; Both results and distinct new values must survive reconstruction.
+(defun fn2-update-reverse-order (i value fn2-core)
+ (declare (xargs :stobjs fn2-core
+                 :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))
+ (mv-let (first fn2-core) (fn2-update-branch-children nil i 43 fn2-core)
+  (mv-let (second fn2-core) (fn2-update-source i value fn2-core)
+   (mv first second fn2-core))))
+(encapsulate ()
+ ; These are the corresponding rows of production core's read-over-write matrix.
+ (local (defthm fn2-update-config-read-after-sibling-write
+          (equal (fn2-core-config (update-fn2-core-sibling value core))
+                 (fn2-core-config core))))
+ (local (defthm fn2-update-sibling-read-after-config-write
+          (equal (fn2-core-sibling (update-fn2-core-config value core))
+                 (fn2-core-sibling core))))
+ (local (in-theory (disable fn2-corep fn2-core-config fn2-core-sibling
+                            update-fn2-core-config update-fn2-core-sibling)))
+ (defcore-product-closure fn2-update-reverse-order fn2-update-reverse-order-child))
+(defthm fn2-update-reverse-order-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 0) (unsigned-byte-p 8 42)
+      (equal (fn2-update-reverse-order-child-exec-core-face 0 42 '(((37) 1) ((91) 1)))
+             '(:sibling :ok (((42) 1) ((43) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-reverse-order-child-exec-core-face fn2-update-reverse-order-child)
+        ((:executable-counterpart fn2-update-reverse-order-child-exec-core-face)))))
+ :rule-classes nil)
+(defthm fn2-update-reverse-order-refusal
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (natp 9) (unsigned-byte-p 8 42)
+      (equal (fn2-update-reverse-order-child-exec-core-face 9 42 '(((37) 1) ((91) 1)))
+             '(:bounds :bounds (((37) 1) ((91) 1)))))
+ :hints (("Goal" :in-theory
+   (e/d (fn2-update-reverse-order-child-exec-core-face fn2-update-reverse-order-child)
+        ((:executable-counterpart fn2-update-reverse-order-child-exec-core-face)))))
+ :rule-classes nil)
