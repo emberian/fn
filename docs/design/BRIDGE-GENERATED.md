@@ -226,3 +226,28 @@ fuel lemmas and body-emitter helpers; family work supplies declarations/template
 Then extend to the guarded arithmetic families and recursive components. This
 sequence does not reduce the destination: all served roots and their executable
 dependencies remain required.
+
+`canonical_call_correct` now composes a callee's `CanonicalBodyCorrect` at the
+actual evaluated arguments and returns one shared result with closed evaluation,
+the actual emitted interpreter equation, and the callee postcondition.
+`canonical_lambda_correct` carries that same result through the translated
+lambda continuation with an explicit arity premise. Qualified Lean author checks
+compile these rules and a two-call control whose first result establishes the
+second call's domain. Native dispatch shadowing and a missing lambda formal are
+concrete negative controls; all three theorem censuses use only the allowed
+`propext`, `Classical.choice`, and `Quot.sound` axioms. This is composition support,
+not a current CNS body certificate.
+
+The next executable instantiation is the fresh canonical
+`FN2-CNS-CLEAR-WAIT-TIMER` record. Reuse the existing core emitter's exact record
+reader and actual LayerAWorld dispatch, obtain its definition/guard/helper closure
+from the current qualified callback packet, and prove its `CanonicalBodyCorrect` with the whole
+result `(:ok, cleared-core)`. Its independent ACL2 postcondition requires
+`fn2-corep`, `fn2-core-wfp`, natural ID, and ID below scheduler rows; retain each
+premise and the complete core frame. Apply `canonical_call_correct` at the actual
+arm call, then use `canonical_lambda_correct` for its result destructuring and
+continuation. Establish reclamation's domain from the returned core plus the
+preexisting partition reservation invariant. Do not assume that timer clearance
+establishes ownership or a positive partition active count. The required artifact
+is a typed current helper certificate consumed by the actual root continuation;
+another isolated successful fixture cannot substitute for it.
