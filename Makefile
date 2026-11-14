@@ -300,6 +300,7 @@ ACL2_BOOKS = \
   tests/c-snapshot-unit \
   tests/c-snapshot-materialization-unit \
   tests/journal-members-unit \
+  tests/journal-allocation-codec-unit \
   tests/event-frontier-unit \
   tests/event-proof-format-unit \
   tests/event-proof-source-unit \
