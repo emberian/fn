@@ -498,6 +498,8 @@
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-groups-genesis (profile fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (if (equal (mv-nth 0 (fn2-csnapshot-state fn2-core)) *fn2-csnapshot-phase-held*)
+        (mv :full fn2-core)
     (stobj-let ((fn2-id-engine (fn2-core-id-engine fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
                 (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-overlay-index (fn2-core-overlay-index fn2-core))
                 (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
@@ -506,7 +508,7 @@
       (if (eq c :ok)
           (fn2-grp-genesis *fn2-groups-sid* *fn2-groups-name-max* (fn2-profile-get :groups profile) b0 fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)
         (mv c fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool)))
-     (mv code fn2-core)))
+     (mv code fn2-core))))
    (fn2-core-preserves fn2-groups-genesis (profile fn2-core)
     :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    ;; The principal directory's exact lookup (principal-create's repeat,

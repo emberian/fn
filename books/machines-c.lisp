@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "range-served")
 (include-book "machines-b")
+(include-book "c-snapshot")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -91,6 +92,8 @@
     (in-theory (disable ,fn))
     (defcorechild ,field ,stobj :init (,fn profile ,stobj) :profilep (fn2-idc-profilep profile) :why ,why))))
 (in-theory (disable fn2-idc-profilep))
+(fn2-idc-child fn2-core-csnapshot fn2-csnapshot (fn2-csnapshot-init 1 fn2-csnapshot)
+ "One exact-owner resident metadata cut excludes staging and materialization until released.")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
  "One identity decision per transaction survives the transaction's yields (C-S1).")
 (fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile) fn2-overlays)
