@@ -8,6 +8,8 @@ side effects. This is a boundary test, not a proof that a particular disk obeys
 against replaced syscall leaves. Its independent byte oracle keeps visible and
 persisted arrays separate. No production file, socket, or device is opened.
 
+The scripted I/O-error cases belong to the broader fault domain, not the
+crash-only assumption that excludes such corruption/failure behavior.
 The fixture establishes an earlier fully written and fenced range, then checks:
 
 - EIO and ENOSPC with zero, partial, and complete unreported write effects;
@@ -33,8 +35,14 @@ The companion `tests/native-device-fault-boundary.lsp` loads certified
 It requires error outcomes and zero known progress despite changed bytes; short
 writes must be failed/uncertain with their known count. A physically completed but
 withheld fence leaves the adapter waiting. Empty repeat polling cannot duplicate
-completion. This companion still requires qualification in an authenticated
-cached world; a successful raw SBCL fixture does not substitute for that gate.
+completion. This companion passed in authenticated A world
+`a5212f4c2fca5a3c1a01ac5e5a5313c6470331fb`: all 155 host-boundary closure
+books were installed from qualified toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`,
+with no missing or newly certified books. The gate ran inside a 2 GiB scope and
+exited zero. The local receipt is `build/storage-fault-evidence/receipt.json`.
+This is an executed raw boundary control over that qualified prefix, not current
+B certification or a new ACL2 theorem. Re-run it in the next composed native gate.
 
 ## Remaining connection
 
