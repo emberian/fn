@@ -454,3 +454,11 @@ extension to the semantic/payload lower job. The actor observer only wakes the
 source continuation: its smaller ABI cannot reconstruct operation identity.
 The public READ maps only the lower queued `:issued` result to the issue DSL's
 `:ok`; all refusal and uncertain outcomes pass through unchanged.
+Root1 callbacks retain all required child inputs but return only each operation's
+assigned and nested-callee result carriers. The largest result is STEP's code
+plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
+(17 values). The declaration drives body projection and positional shape
+contracts together. A source control compares that declaration with actual
+assignments and family calls, including a removed-manifest-result mutation.
+This stays below ACL2's 32-value limit without treating readonly inputs as
+outputs; it is a source check, not admission of the generated callbacks.
