@@ -53,9 +53,13 @@ The unchanged indexed observation, Merkle reconstruction and other-row frame,
 conditional whole-effect theorem, both alias positives and full frame-removal
 witness were admitted. The whole-effect proof took 3,691 steps / 0.04 seconds;
 the two positives took 255 steps each, and frame removal took 437 steps.
-These are author REPL results, **not record certification**. Runtime
-qualification of the newly connected shared-store path also remains pending.
-Evidence is retained under the lane's `build/native-contract-author/`.
+These are author REPL results. The subsequent exact-source record at
+`390c57de0e` passed `certify-20261114T230520Z-536071`: 16 dependency books,
+12 qualified cache inputs and four newly certified books, under toolchain
+`8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c`.
+Runtime qualification of the newly connected shared-store path remains pending.
+Author and record evidence is retained under the lane's
+`build/native-contract-author/` and `build/native-contract-record/`.
 
 The eventual full-host batch must load this contract book in the same current
 world as TLS and `tests/native-device-fault-boundary.lsp`. Earlier e892 native
