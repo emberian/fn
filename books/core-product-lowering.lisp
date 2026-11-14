@@ -413,11 +413,11 @@
   (equal (getpropc (fn2-columns-sym fn suffix) 'theorem nil world)
     `(implies (if (fn2-corep fn2-core) (fn2-core-wfp fn2-core) 'nil)
               (,predicate ,result)))))
-(defun fn2-product-output-invariants (child outputs index guard args openings)
+(defun fn2-product-output-invariants (child outputs index guard args openings single)
  (declare (xargs :verify-guards nil))
  (if (atom outputs) nil
   (let* ((obj (car outputs))
-         (result `(mv-nth ,index (,child ,@args))))
+         (result (if single `(,child ,@args) `(mv-nth ,index (,child ,@args)))))
    (append
     (and obj
       (list `(defthm ,(fn2-columns-sym child
@@ -426,7 +426,7 @@
           (and (,(fn2-columns-sym obj "P") ,result)
                (,(fn2-columns-sym obj "-WFP") ,result)))
         :hints (("Goal" :in-theory (enable ,child ,@openings))))))
-    (fn2-product-output-invariants child (cdr outputs) (+ 1 index) guard args openings)))))
+    (fn2-product-output-invariants child (cdr outputs) (+ 1 index) guard args openings single)))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -464,7 +464,8 @@
               (fn2-product-source-invariantp fn 'fn2-core-wfp "-PRESERVES-WFP" world)
               (fn2-product-output-invariants child
                 (append (make-list (- (len outs) 1) :initial-element nil) written)
-                0 guard args (fn2-product-guard-callees (all-fnnames body) world))))
+                0 guard args (fn2-product-guard-callees (all-fnnames body) world)
+                (equal (+ (- (len outs) 1) (len written)) 1))))
         (problem
          (cond (expansion-problem expansion-problem)
                ((fn2-lower-teeth-problem teeth) :evidence-pair)

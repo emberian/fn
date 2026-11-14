@@ -743,3 +743,39 @@
 (assert-event
  (not (fn2-decl-get :child-invariants
         (cdr (assoc-eq 'fn2-update-invariant-caller (table-alist 'fn2-core-lowered (w state)))))))
+
+; A one-child, no-scalar product returns that stobj directly, not an MV tuple.
+(defun fn2-update-single-source (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (mv-let (code fn2-core) (fn2-update-invariant-source fn2-core)
+  (declare (ignore code)) fn2-core))
+(defthm fn2-update-single-source-preserves-type
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-corep (fn2-update-single-source fn2-core))))
+(defthm fn2-update-single-source-preserves-wfp
+ (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+          (fn2-core-wfp (fn2-update-single-source fn2-core))))
+(defcore-product-child fn2-update-single-source fn2-update-single-child)
+(assert-event
+ (and (equal (getpropc 'fn2-update-single-child 'stobjs-out nil (w state)) '(fn2-update-config))
+      (consp (fn2-decl-get :child-invariants
+        (cdr (assoc-eq 'fn2-update-single-source (table-alist 'fn2-core-lowered (w state))))))))
+(defthm fn2-update-single-positive-and-wrong-projection-control
+ (and (fn2-update-configp '((37) 1))
+      (fn2-update-config-wfp '((37) 1))
+      (equal (fn2-update-single-child '((37) 1)) '((42) 1))
+      (fn2-update-configp (fn2-update-single-child '((37) 1)))
+      (fn2-update-config-wfp (fn2-update-single-child '((37) 1)))
+      (not (fn2-update-configp (mv-nth 0 (fn2-update-single-child '((37) 1))))))
+ :rule-classes nil)
+(defun fn2-update-single-caller (fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (let ((fn2-core (fn2-update-single-source fn2-core)))
+  (fn2-update-single-source fn2-core)))
+(defcore-product-child fn2-update-single-caller fn2-update-single-caller-child)
+(defthm fn2-update-single-whole-core-positive
+ (and (fn2-corep '(((37) 1) ((91) 1)))
+      (fn2-core-wfp '(((37) 1) ((91) 1)))
+      (equal (fn2-update-single-caller-child-core-face '(((37) 1) ((91) 1)))
+             '(((42) 1) ((91) 1))))
+ :rule-classes nil)
