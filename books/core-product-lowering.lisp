@@ -20,6 +20,14 @@
   (append (and (or (member-eq (caar entries) calls)
                    (member-eq (fn2-product-writer (caar entries)) calls)) (list (car entries)))
           (fn2-product-entries (cdr entries) calls))))
+; Reading a child must not make it an output. Writing an unchanged projection
+; back into a malformed logical core can extend its shape, so reconstruction
+; follows actual core update sites even though inputs include every read.
+(defun fn2-product-written-entries (entries calls)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (append (and (member-eq (fn2-product-writer (caar entries)) calls) (list (car entries)))
+          (fn2-product-written-entries (cdr entries) calls))))
 (mutual-recursion
  (defun fn2-product-expr (ir)
   (declare (xargs :verify-guards nil))
@@ -164,7 +172,7 @@
  (if (atom formals) nil
   (cons (cons (car formals) (if (eq (car formals) 'fn2-core) '(:core) (fn2-product-value (car formals))))
         (fn2-product-env (cdr formals)))))
-(defun fn2-product-wrapper (fn child face entries world)
+(defun fn2-product-wrapper (fn child face entries written world)
  (declare (xargs :verify-guards nil))
  (let* ((formals (getpropc fn 'formals nil world))
         (values (fn2-arms-result-vars (1- (len (getpropc fn 'stobjs-out nil world)))))
@@ -173,7 +181,7 @@
     (declare (xargs :stobjs fn2-core :guard ,(getpropc fn 'guard t world)
                     :verify-guards t :guard-hints (("Goal" :in-theory (enable ,child)))))
     (stobj-let ,(fn2-arms-core-stobj-lets children world)
-      (,@values ,@children)
+      (,@values ,@written)
       (,child ,@(remove-eq 'fn2-core formals) ,@children)
       ,(fn2-arms-mvx (append values '(fn2-core)))))))
 (defun fn2-product-reserved-formals (formals)
@@ -196,6 +204,7 @@
         (outs (getpropc fn 'stobjs-out nil world))
         (entries (and (pseudo-termp body) (fn2-product-entries (fn2-core-child-registry world) (all-fnnames body))))
         (children (fn2-core-child-types entries))
+        (written (fn2-core-child-types (fn2-product-written-entries entries (all-fnnames body))))
         (args (append (remove-eq 'fn2-core formals) children))
         (face (fn2-columns-sym child "-CORE-FACE"))
         (guard (fn2-lower-substitute (getpropc fn 'guard t world)
@@ -210,13 +219,14 @@
                           (eq (car (last formals)) 'fn2-core))) :input-shape)
                ((not (and (equal (remove-eq nil outs) '(fn2-core))
                           (eq (car (last outs)) 'fn2-core))) :output-shape)
+               ((and (null written) (equal (len outs) 1)) :empty-result)
                ((getpropc fn 'recursivep nil world) :recursive)
                ((or (function-symbolp child world) (function-symbolp face world)) :already-defined)
                ((member-eq 'fn2-core (fn2-lower-vars guard)) :unlowered-guard)
                (t nil))))
-  (mv-let (err stages ir next) (fn2-product-compile body (fn2-product-env formals) entries children world 0 10000)
+  (mv-let (err stages ir next) (fn2-product-compile body (fn2-product-env formals) entries written world 0 10000)
    (declare (ignore next))
-   (mv-let (err2 tail) (fn2-product-return ir children)
+   (mv-let (err2 tail) (fn2-product-return ir written)
     (if (or problem err err2)
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
@@ -225,8 +235,8 @@
         ,(fn2-product-block stages tail))
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
-             (equal (getpropc ',child 'stobjs-out nil (w state)) ',(append (remove-eq 'fn2-core outs) children))))
-       ,(fn2-product-wrapper fn child face entries world)
+             (equal (getpropc ',child 'stobjs-out nil (w state)) ',(append (remove-eq 'fn2-core outs) written))))
+       ,(fn2-product-wrapper fn child face entries written world)
        (assert-event (and (equal (getpropc ',face 'stobjs-in nil (w state)) ',ins)
                           (equal (getpropc ',face 'stobjs-out nil (w state)) ',outs)))
        (defthm ,(fn2-columns-sym child "-REFINES-CORE")
@@ -244,6 +254,6 @@
            (fn2-columns-sym child "-REFINES-CORE") teeth)
        (in-theory (disable ,face ,child))
        (table fn2-core-lowered ',fn
-        '(:child ,child :face ,face :refinement ,(fn2-columns-sym child "-REFINES-CORE") :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))))
+        '(:child ,child :face ,face :refinement ,(fn2-columns-sym child "-REFINES-CORE") :children ,children :written ,written :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))))
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))
