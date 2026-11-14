@@ -275,3 +275,21 @@ controls, and rejected forged output ABI/unverified children. Exact record
 (17 reused, five built, no book over ten seconds) on the authenticated pre-B
 74f29 substrate. The production core.lisp adoption of the shared generator and
 current B callback consumers are outside that gate. No served mode is enabled.
+
+Mutable guard composition now has a separate proof boundary in 7381f0ff8.
+The generator matches complete live source type/WFP preservation formulas,
+then independently proves the lowered child's output type/WFP summaries.
+Summarized callees remain opaque in caller guards; unqualified ones retain
+the existing controlled opening. The 126-form fixture passed in 4.01 seconds,
+including a whole-state positive, a removed-guard counterexample, and refusal
+to treat unrelated same-named theorems as source preservation contracts.
+Record `certify-20261114T030946Z-3614178` passed the same authenticated pre-B
+22-book closure (20 reused, two built).
+
+In the qualified callback world, the actual put-evidence plan has 25 bottom-up
+dependencies. Eight initial packages passed separately within ten seconds.
+The candidates-put-admit wrapper then exhausted its ten-second guard budget
+while reopening its already-proved callees (878,524 steps). A source prototype
+with independently proved output summaries completed its whole extraction
+package in 1.34 seconds / 15,582 steps. This motivates the committed boundary;
+the entire production dependency family still requires its own composed run.
