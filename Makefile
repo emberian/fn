@@ -193,6 +193,7 @@ ACL2_BOOKS = \
   books/sched \
   books/sched-timers \
   books/sealer \
+  books/square-evidence \
   books/squares \
   books/stobj-scope \
   books/stop-boundary \
@@ -351,6 +352,7 @@ ACL2_BOOKS = \
   tests/sim-layer-e \
   tests/sim-replay-controls \
   tests/squares-unit \
+  tests/square-evidence-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
   tests/storage-fault-policy-unit \

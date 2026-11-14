@@ -1,5 +1,5 @@
 ; Formula-bound witnesses share the obligation store.  They establish one
-; executable instance and one sensitivity control, never a universal proof.
+; concrete instance and one sensitivity control, never a universal proof.
 (in-package "ACL2")
 (include-book "owed")
 
@@ -85,7 +85,8 @@
             ((not (and (eq (car lhs) (fn2-decl-get :concrete (fn2-decl-get :sides row)))
                        (eq (car rhs) (fn2-decl-get :reference (fn2-decl-get :sides row))))) :endpoint-binding)
             ((and (not recheck)
-                  (or (function-symbolp pos-name world) (function-symbolp neg-name world))) :name-collision)
+                  (or (getpropc pos-name 'theorem nil world)
+                      (getpropc neg-name 'theorem nil world))) :name-collision)
             ((eq mode :mutation)
              (cond ((not (eq at (car lhs))) :wrong-mutation-endpoint)
                    ((or (eq mutant at) (not (fn2-evidence-callp mut-call world))) :mutant)
@@ -98,19 +99,20 @@
      (if problem
          `(make-event (er soft 'defsquare-evidence "Cannot bind ~x0: ~x1." ',name ',problem))
        (if recheck
-           `(progn (assert-event (equal ,pos-body t))
-                   (assert-event (equal ,neg-body t)))
+           `(progn (thm ,pos-body) (thm ,neg-body))
         `(progn
-          (defun-nx ,pos-name () ,pos-body)
-          (defun-nx ,neg-name () ,neg-body)
-          (assert-event (equal (,pos-name) t))
-          (assert-event (equal (,neg-name) t))
+          (defthm ,pos-name ,pos-body :rule-classes nil)
+          (defthm ,neg-name ,neg-body :rule-classes nil)
           (make-event
            (value
             (list 'table 'fn2-squares (list 'quote ',name)
              (list 'quote
               (fn2-decl-set :evidence
-               '(:kind :formula-bound :formula ,formula
+               (fn2-decl-set :positive-theorem
+                (getpropc ',pos-name 'theorem nil (w state))
+                (fn2-decl-set :negative-theorem
+                 (getpropc ',neg-name 'theorem nil (w state))
+                 '(:kind :formula-ground-proofs :formula ,formula
                  :translated ,(fn2-decl-get :translated row)
                  :positive ,pos-name :negative ,neg-name
                  :positive-body ,pos-body :negative-body ,neg-body
@@ -118,7 +120,7 @@
                  :functions (,(fn2-evidence-function-binding (car lhs) world)
                              ,(fn2-evidence-function-binding (car rhs) world)
                              ,@(and (eq mode :mutation)
-                                    (list (fn2-evidence-function-binding mutant world)))))
+                                    (list (fn2-evidence-function-binding mutant world)))))))
                (fn2-decl-row '(:square ,name) (w state))))))))))))))
 
 (defmacro defsquare-evidence (name &key positive negative)
@@ -132,13 +134,27 @@
 (defmacro fn2-assert-square-evidence (name)
  `(make-event
    (let* ((row (fn2-decl-row '(:square ,name) (w state)))
-          (e (fn2-decl-get :evidence row)))
-    (if (not (and (eq (fn2-decl-get :kind e) :formula-bound)
+          (e (fn2-decl-get :evidence row))
+          (negative (fn2-decl-get :negative-control e))
+          (sides (fn2-decl-get :sides row))
+          (pos-name (fn2-evidence-name ',name "$BOUND-POSITIVE"))
+          (neg-name (fn2-evidence-name ',name "$BOUND-NEGATIVE")))
+    (if (not (and (eq (fn2-decl-get :kind e) :formula-ground-proofs)
                   (equal (fn2-decl-get :formula e) (fn2-decl-get :formula row))
                   (equal (fn2-decl-get :translated e) (fn2-decl-get :translated row))
+                  (equal (fn2-decl-get :positive e) pos-name)
+                  (equal (fn2-decl-get :negative e) neg-name)
+                  (getpropc pos-name 'theorem nil (w state))
+                  (getpropc neg-name 'theorem nil (w state))
+                  (equal (fn2-decl-get :positive-theorem e) (getpropc pos-name 'theorem nil (w state)))
+                  (equal (fn2-decl-get :negative-theorem e) (getpropc neg-name 'theorem nil (w state)))
+                  (equal (strip-cars (fn2-decl-get :functions e))
+                         (append (list (fn2-decl-get :concrete sides) (fn2-decl-get :reference sides))
+                                 (and (eq (fn2-decl-get :kind negative) :mutation)
+                                      (list (fn2-decl-get :replace negative)))))
                   (fn2-evidence-functions-currentp (fn2-decl-get :functions e) (w state))))
         (er soft 'fn2-assert-square-evidence "Missing or stale formula evidence: ~x0." ',name)
-     ; Re-derive and evaluate both complete assertions.  Stored function names,
-     ; bodies or a claimed PASS flag are never evidence by themselves.
+     ; Re-derive and prove both complete assertions.  Stored names, bodies or
+     ; a claimed PASS flag are never evidence by themselves.
      (value (fn2-square-evidence-events ',name (fn2-decl-get :positive-bindings e)
                                        (fn2-decl-get :negative-control e) t (w state)))))))
