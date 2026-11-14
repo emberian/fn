@@ -6,6 +6,7 @@
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-restore-reader")
 (include-book "checkpoint-restore-map")
+(include-book "checkpoint-restore-arena")
 (fn2-book-layer :b)
 
 (deflayout fn2-boot-record
@@ -30,6 +31,7 @@
  ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
   (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
   (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
+  (fn2-boot-config-arena-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor authenticated arena tuple/uniqueness evidence only; never selected-base authority.")
   (fn2-boot-config-map-fifo-mask :type (unsigned-byte 8) :initially 0 :why "Per-anchor allocation-map/FIFO investigation evidence only; never a selected-base or serving bit.")
   (fn2-boot-config-anchor-evidence :type (array (unsigned-byte 8) (384)) :initially 0 :why "Three checked digests per physical anchor slot: batch, predecessor, anchor hash; retained across rx window reuse.")
   (fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
@@ -91,13 +93,26 @@
  :profilep t
  :why "Exact intake cursor and bounded FIFO investigation remain bound to their actual anchor candidate.")
 
+(defcorechild fn2-core-checkpoint-restore-arena fn2-checkpoint-restore-arena
+ :init (fn2-checkpoint-restore-arena-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Exact ordered journal scan targets are distinct extents in the authenticated candidate map.")
+(defcorechild fn2-core-checkpoint-restore-arena-marks fn2-checkpoint-restore-arena-marks
+ :init (fn2-checkpoint-restore-arena-marks-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-restore-arena-marks)
+ :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
+ :why "Generation-tagged extent uniqueness rejects repeated arena tickets without whole-ledger clearing.")
+(defcorechild fn2-core-checkpoint-restore-arena-control fn2-checkpoint-restore-arena-control
+ :init (fn2-checkpoint-restore-arena-control-init (if (fn2-profile-get :image-boot profile) 1 0) fn2-checkpoint-restore-arena-control)
+ :profilep t
+ :why "One candidate-bound ordered arena intake cursor; no live allocator authority.")
+
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
           :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
-          (checkpoint-index :u8) (checkpoint-length :u32) (checkpoint-seen :bool) (root-slot :u32) (root-gen :u60) (root-cursor :u32) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
+          (checkpoint-index :u8) (checkpoint-length :u32) (checkpoint-seen :bool) (root-role :u8) (root-slot :u32) (root-gen :u60) (root-cursor :u32) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
           (event-ready :bool) (outcome :u8) (count :u32) (release-index :u32))
  :holds ((:prepare :storage-window) (:write :storage-window) (:write-result :storage-window)
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
