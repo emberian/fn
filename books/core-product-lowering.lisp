@@ -231,6 +231,21 @@
                (,other b (,writer a fn2-core)))
         :hints (("Goal" :in-theory (e/d (,writer ,other) (nth update-nth)))))))
     (fn2-product-commute-facts field (cdr entries) world)))))
+(defthm fn2-product-update-nth-shadow
+ (implies (natp n)
+  (equal (update-nth n a (update-nth n b xs)) (update-nth n a xs)))
+ :hints (("Goal" :induct (update-nth n a xs) :in-theory (enable update-nth))))
+(defun fn2-product-shadow-facts (entries world)
+ (declare (xargs :verify-guards nil))
+ (if (atom entries) nil
+  (let* ((writer (fn2-product-writer (caar entries)))
+         (name (fn2-columns-sym writer "-LOWERING-SHADOW")))
+   (append
+    (and (not (getpropc name 'theorem nil world))
+     `((defthm ,name
+        (equal (,writer a (,writer b fn2-core)) (,writer a fn2-core))
+        :hints (("Goal" :in-theory (e/d (,writer) (nth update-nth)))))))
+    (fn2-product-shadow-facts (cdr entries) world)))))
 (defun fn2-product-core-shape-events (world)
  (declare (xargs :verify-guards nil))
  (and (not (getpropc 'fn2-product-core-shape 'theorem nil world))
@@ -280,6 +295,15 @@
     (fn2-product-cross-writeback-facts field all world)
     (fn2-product-commute-facts field (cdr entries) world)
     (fn2-product-writeback-facts (cdr entries) all world)))))
+(defun fn2-product-proof-leaves (calls opened fields world)
+ (declare (xargs :verify-guards nil))
+ (if (atom calls) nil
+  (append
+   (and (not (member-eq (car calls) opened))
+        (not (member-eq (car calls) fields))
+        (getpropc (car calls) 'unnormalized-body nil world)
+        (list (car calls)))
+   (fn2-product-proof-leaves (cdr calls) opened fields world))))
 (defun fn2-product-events (fn child teeth world)
  (declare (xargs :verify-guards nil))
  (mv-let (expansion-problem body opened)
@@ -328,6 +352,7 @@
         `(make-event (er soft 'defcore-product-child "Cannot lower ~x0: ~x1." ',fn ',(or problem err err2)))
      `(progn
        ,@(fn2-product-core-shape-events world)
+       ,@(fn2-product-shadow-facts (fn2-product-written-entries entries (all-fnnames body)) world)
        ,@(fn2-product-writeback-facts (fn2-product-written-entries entries (all-fnnames body))
                                      (fn2-product-written-entries entries (all-fnnames body)) world)
        (defun ,child ,args
@@ -352,6 +377,8 @@
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :reverse))
                (fn2-corep
+                ,@(fn2-product-proof-leaves (all-fnnames body) opened
+                     (append (strip-cars entries) (strip-cars (fn2-product-writers entries))) world)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :source)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)

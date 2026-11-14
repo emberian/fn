@@ -163,7 +163,12 @@
                  :guard-hints (("Goal" :in-theory (enable fn2-update-source)))))
  (mv-let (code fn2-core) (fn2-update-source i value fn2-core)
   (if (eq code :ok) (fn2-update-source second 43 fn2-core) (mv code fn2-core))))
-(defcore-product-child fn2-update-composed fn2-update-composed-child)
+(encapsulate ()
+ ; Match production's projection law while keeping representation definitions opaque.
+ (local (defthm fn2-update-config-read-after-write
+          (equal (fn2-core-config (update-fn2-core-config value core)) value)))
+ (local (in-theory (disable fn2-corep fn2-core-config update-fn2-core-config)))
+ (defcore-product-child fn2-update-composed fn2-update-composed-child))
 (defthm fn2-update-composed-positive-witness
  (let ((core '(((37 38) 2) ((91) 1))))
   (and (fn2-corep core) (fn2-core-wfp core) (natp 0) (natp 1) (unsigned-byte-p 8 42)
