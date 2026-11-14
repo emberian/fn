@@ -116,11 +116,21 @@
       (sid (fn2-checkpoint-restore-semantic-schema 0 fn2-checkpoint-restore-semantic))
       (level (fn2-checkpoint-restore-semantic-level 0 fn2-checkpoint-restore-semantic))
       (eb (+ base *fn2-run-reader-entry*))
+      ; Preflight every scalar update before queue mutation. A refusal leaves
+      ; both retained entry cursor and physical work ledger unchanged.
+      (cb (+ eb (nfix (fn2-run-layout-keys sid))))
+      ((unless (or (zp level) (< (+ cb *fn2-format-ref-num-fields*) (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests))
+      (added (if (posp level) (fn2-fields-value (+ cb *fn2-format-ref-num-fields*) fn2-fields) 1))
+      (seen (+ added (fn2-checkpoint-restore-semantic-seen 0 fn2-checkpoint-restore-semantic)))
+      (cursor (+ 1 (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic)))
+      ((unless (and (unsigned-byte-p 60 added) (unsigned-byte-p 60 seen) (unsigned-byte-p 32 cursor)))
+       (mv :bounds fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests))
       ((when (and (equal level 0) (equal sid 2)))
        ; The actual payload consumer must authenticate its physical closure
        ; before this retained leaf is counted or its cursor can advance.
        (mv :payload-required fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests))
-      ((mv code added fn2-checkpoint-restore-semantic-work fn2-digests)
+      ((mv code & fn2-checkpoint-restore-semantic-work fn2-digests)
        (cond
         ((posp level)
          (b* ((cb (+ eb (fn2-run-layout-keys sid)))
@@ -159,10 +169,6 @@
           (mv code 1 fn2-checkpoint-restore-semantic-work fn2-digests)))
         (t (mv (if (fn2-run-layout-physical-ref-p sid) :unsupported-reference :queued) 1 fn2-checkpoint-restore-semantic-work fn2-digests))))
       ((unless (eq code :queued)) (mv code fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests))
-      (seen (+ added (fn2-checkpoint-restore-semantic-seen 0 fn2-checkpoint-restore-semantic)))
-      (cursor (+ 1 (fn2-checkpoint-restore-semantic-cursor 0 fn2-checkpoint-restore-semantic)))
-      ((unless (and (unsigned-byte-p 60 seen) (unsigned-byte-p 32 cursor)))
-       (mv :bounds fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests))
       (fn2-checkpoint-restore-semantic (fn2-checkpoint-restore-semantic-put 0 (seen seen) (cursor cursor))))
   (mv :more fn2-checkpoint-restore-semantic fn2-checkpoint-restore-semantic-work fn2-fields fn2-digests)))
 
@@ -217,6 +223,7 @@
       (slot (fn2-checkpoint-restore-semantic-slot 0 fn2-checkpoint-restore-semantic))
       (gen (fn2-checkpoint-restore-semantic-gen 0 fn2-checkpoint-restore-semantic))
       ((unless (and (< row (fn2-fc-rows fn2-fc))
+                    (equal (fn2-checkpoint-restore-semantic-work-unit e fn2-checkpoint-restore-semantic-work) (* e *fn2-storage-extent-units*))
                     (equal (fn2-checkpoint-restore-map-present e fn2-checkpoint-restore-map) 1)
                     (equal (fn2-checkpoint-restore-map-state e fn2-checkpoint-restore-map) *fn2-extent-state-reserved*)
                     (equal (fn2-checkpoint-restore-map-epoch e fn2-checkpoint-restore-map) (fn2-checkpoint-restore-semantic-work-epoch e fn2-checkpoint-restore-semantic-work))
@@ -266,5 +273,13 @@
   (fn2-fc-wfp fn2-fc) (fn2-pool-wfp fn2-pool)))
  ((fn2-checkpoint-restore-semantic 1) (fn2-fc 2) (fn2-pool 3)))
 
+; The initial unconditional claim was rejected during source review: this
+; internal helper is specified on its actual typed source/index guard domain.
 (fn2-checkpoint-restore-semantic-preserves fn2-checkpoint-restore-semantic-work-hash-copy
- (i e fn2-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic))
+ (i e fn2-checkpoint-restore-semantic-work fn2-checkpoint-restore-semantic)
+ :hyps ((fn2-checkpoint-restore-semanticp fn2-checkpoint-restore-semantic)
+        (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic)
+        (fn2-checkpoint-restore-semantic-workp fn2-checkpoint-restore-semantic-work)
+        (fn2-checkpoint-restore-semantic-work-wfp fn2-checkpoint-restore-semantic-work)
+        (natp e) (< e (fn2-checkpoint-restore-semantic-work-rows fn2-checkpoint-restore-semantic-work))
+        (natp i) (<= i 32)))
