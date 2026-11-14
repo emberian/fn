@@ -2,6 +2,7 @@
 ; direct application controls do not import the reference/Q1 world.
 (in-package "ACL2")
 (include-book "../books/cns-draining-composition")
+(include-book "../books/cns-draining-invariant-entry")
 (include-book "cns-draining-count-counterexample")
 
 (make-event
