@@ -1,0 +1,56 @@
+(in-package "ACL2")
+(include-book "read-pins-unit")
+
+; Build the journal bytes with the actual member codec and commit header
+; producer. This is a fixture, not a second journal writer or replay model.
+(defun fn2-retirement-replay-bytes (extent epoch allocation commit ws wg slot gen id ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core)))
+  (ok end fn2-fields fn2-pool)
+  (b* (((mv packed wend fn2-fields fn2-pool)
+        (fn2-retirement-pack-member extent epoch allocation commit 0 ws wg 0
+          *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool))
+       ((unless (eq packed :ok)) (mv nil 0 fn2-fields fn2-pool))
+       ((mv frame body fn2-fields)
+        (fn2-format-txn-record-decode 0 ws wg 0 wend *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool))
+       ((unless (eq frame :ok)) (mv nil 0 fn2-fields fn2-pool))
+       (bytes (fn2-fields-value *fn2-format-txn-record-field-length* fn2-fields))
+       ((mv header next fn2-fields fn2-pool)
+        (fn2-commit-pack-txn-header *record-kind-retirement* 1 0 slot gen 0 ws wg
+          *fn2-recovery-machine-kind* id ogen fn2-fields fn2-pool))
+       ((unless (eq header :ok)) (mv nil 0 fn2-fields fn2-pool))
+       ((mv copied fn2-pool)
+        (fn2-pool-copy-range ws wg body slot gen next bytes
+          *fn2-recovery-machine-kind* id ogen fn2-pool)))
+   (mv (eq copied :ok) (+ next bytes) fn2-fields fn2-pool))
+  (mv ok end fn2-core)))
+
+(defun fn2-retirement-replay-test-body (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((fn2-core (fn2-core-init *fn2-profile-tiny* fn2-core))
+      ((mv allocated extent epoch allocation fn2-core) (fn2-read-pin-test-allocate fn2-core))
+      ((unless allocated) (mv nil fn2-core))
+      (id (fn2-machine-kind-base *fn2-recovery-machine-kind* fn2-core))
+      (ogen (fn2-machine-generation id fn2-core))
+      ((mv a ws wg fn2-core) (fn2-core-reserve 0 *fn2-recovery-machine-kind* id ogen fn2-core))
+      ((mv b slot gen fn2-core) (fn2-core-reserve 0 *fn2-recovery-machine-kind* id ogen fn2-core))
+      ((unless (and (eq a :ok) (eq b :ok))) (mv nil fn2-core))
+      ((mv built end fn2-core)
+       (fn2-retirement-replay-bytes extent epoch allocation 2 ws wg slot gen id ogen fn2-core))
+      ((unless built) (mv nil fn2-core))
+      ; Wrong containing batch is rejected by the actual replay entry.
+      ((mv wrong & & & fn2-core)
+       (fn2-recovery-replay-record 3 0 end ws wg 0 0 slot gen id ogen fn2-core))
+      ((mv before invariant) (fn2-read-pin-test-release-code extent epoch allocation fn2-core))
+      ((unless (and (eq wrong :invalid) invariant (eq before :state))) (mv nil fn2-core))
+      ((mv applied next wlen & fn2-core)
+       (fn2-recovery-replay-record 2 0 end ws wg 0 0 slot gen id ogen fn2-core))
+      ((mv after invariant) (fn2-read-pin-test-release-code extent epoch allocation fn2-core)))
+  (mv (and (eq applied :skip) (= next end) (= wlen 0) invariant
+           (eq after :checkpoint-blocked)) fn2-core)))
+(defun fn2-retirement-replay-test ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core
+  (mv-let (answer fn2-core) (fn2-retirement-replay-test-body fn2-core) answer)))
+(assert-event (fn2-retirement-replay-test))

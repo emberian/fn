@@ -825,7 +825,7 @@
                (:goto replay-release))))))
   (replay-record :on-refusal ((:stop :recovery-bounds))
    (:do (code next wlen ev)
-        (fn2-recovery-replay-record row-rc-roff row-rc-rend row-rc-wslot row-rc-wgen row-rc-wlen row-rc-wevent
+        (fn2-recovery-replay-record row-rc-commit row-rc-roff row-rc-rend row-rc-wslot row-rc-wgen row-rc-wlen row-rc-wevent
                                     row-pool-slot row-pool-gen id row-generation)
     :accept ()
     :case (((:end) (:set (rc-stage 2)) (:charge :steps *fn2-work-stage* :runnable t))

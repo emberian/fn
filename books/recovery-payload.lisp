@@ -9,6 +9,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-s")
 (include-book "assembly-callbacks-d")
+(include-book "retirement")
 (fn2-book-layer :d)
 ; B's recovery theory (recovery-machine.lisp): the core's child type and WFP rules.
 (make-event (value (fn2-recovery-local-theory)))
@@ -18,7 +19,8 @@
 (defconst *fn2-rp-room*
   (max (max *fn2-format-record-header-num-fields* *fn2-format-keyed-mutation-num-fields*)
        (max (max *fn2-format-article-acceptance-num-fields* *fn2-run-entry-rows*)
-            (max *fn2-am-header-fields* *fn2-am-entry-fields*))))
+            (max *fn2-format-retirement-num-fields*
+                 (max *fn2-am-header-fields* *fn2-am-entry-fields*)))))
 (defmacro fn2-rp-roomp ()
   '(<= (+ *fn2-rec-field-base* *fn2-rp-room*) (fn2-fields-rows fn2-fields)))
 (defconst *fn2-rp-article-kind* (+ *fn2-commit-txn-schema-record-kind-base* *fn2-txn-article-sid*))
@@ -72,6 +74,8 @@
              (fn2-format-keyed-mutation-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
             ((equal kind *record-kind-article-acceptance*)
              (fn2-format-article-acceptance-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
+            ((equal kind *record-kind-retirement*)
+             (fn2-format-retirement-decode base slot gen off rend okind id ogen fn2-fields fn2-pool))
             ((and (natp kind) (<= *record-kind-identity-evidence* kind) (<= kind *fn2-commit-txn-schema-record-kind-last*))
              (fn2-run-layout-decode (- kind *fn2-commit-txn-schema-record-kind-base*) 0 base slot gen off rend
                                     okind id ogen fn2-fields fn2-pool))
@@ -277,11 +281,21 @@
 ;; nothing read past it); :skip (a keyed mutation, a member no layer
 ;; replays); :invalid (a record that does not decode: the stream decoded at
 ;; the payload pass, so its unit read back otherwise); :bounds.
-(defun fn2-recovery-replay-record (roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)
+(defun fn2-rp-retirement-install (commit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-fields (fn2-core-fields fn2-core))
+             (fn2-extents (fn2-core-extents fn2-core)))
+  (code fn2-extents)
+  (fn2-retirement-install commit *fn2-rec-field-base* fn2-fields fn2-extents)
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-rp-retirement-install (commit fn2-core) :position 1 :rows nil)
+
+(defun fn2-recovery-replay-record (commit roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                   :guard-hints (("Goal" :in-theory (disable fn2-format-txn-record-encode fn2-format-txn-record-size)))))
   (b* (((unless (fn2-rp-room-ok fn2-core)) (mv :bounds 0 0 0 fn2-core))
-       ((unless (and (natp roff) (natp rend) (<= rend *fn2-commit-unit-bytes*) (natp wlen) (<= wlen *fn2-commit-unit-bytes*)
+       ((unless (and (posp commit) (unsigned-byte-p 60 commit)
+                     (natp roff) (natp rend) (<= rend *fn2-commit-unit-bytes*) (natp wlen) (<= wlen *fn2-commit-unit-bytes*)
                      (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen)))
         (mv :invalid 0 0 0 fn2-core))
        ((when (<= rend roff)) (mv :end roff wlen wevent fn2-core))
@@ -295,18 +309,23 @@
        ((unless (and (eq code :ok) (< roff next) (<= next rend))) (mv :invalid 0 0 0 fn2-core))
        ((mv code bnext fn2-core) (fn2-rp-body kind next rend slot gen id ogen fn2-core))
        ((unless (and (eq code :ok) (<= next bnext) (<= bnext rend))) (mv :invalid 0 0 0 fn2-core))
-       ((when (and (< 0 wlen) (or (equal kind *record-kind-keyed-mutation*) (not (equal event wevent)))))
+       ((when (and (< 0 wlen) (or (equal kind *record-kind-keyed-mutation*)
+                                 (equal kind *record-kind-retirement*) (not (equal event wevent)))))
         (mv :boundary roff wlen wevent fn2-core))
        ((when (equal kind *record-kind-keyed-mutation*)) (mv :skip bnext 0 0 fn2-core))
+       ; Adoption precedes ordered replay. Lifecycle records never become C members.
+       ((when (equal kind *record-kind-retirement*))
+        (mv-let (installed fn2-core) (fn2-rp-retirement-install commit fn2-core)
+         (mv (if (eq installed :ok) :skip :invalid) bnext 0 0 fn2-core)))
        ((unless (member kind *fn2-commit-txn-record-kinds*)) (mv :invalid 0 0 0 fn2-core))
        (blen (- bnext next))
        ((mv code wnext fn2-core) (fn2-rp-frame-copy kind blen next wlen wslot wgen slot gen id ogen fn2-core))
        ((unless (eq code :ok)) (mv :bounds 0 0 0 fn2-core)))
     (mv :appended bnext (nfix wnext) event fn2-core)))
-(fn2-core-preserves fn2-recovery-replay-record (roff rend wslot wgen wlen wevent slot gen id ogen fn2-core) :position 4 :rows nil)
+(fn2-core-preserves fn2-recovery-replay-record (commit roff rend wslot wgen wlen wevent slot gen id ogen fn2-core) :position 4 :rows nil)
 (defthm fn2-recovery-replay-record-naturals
-  (and (natp (mv-nth 1 (fn2-recovery-replay-record roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)))
-       (natp (mv-nth 2 (fn2-recovery-replay-record roff rend wslot wgen wlen wevent slot gen id ogen fn2-core))))
+  (and (natp (mv-nth 1 (fn2-recovery-replay-record commit roff rend wslot wgen wlen wevent slot gen id ogen fn2-core)))
+       (natp (mv-nth 2 (fn2-recovery-replay-record commit roff rend wslot wgen wlen wevent slot gen id ogen fn2-core))))
   :hints (("Goal" :in-theory (enable fn2-recovery-replay-record))))
 (in-theory (disable fn2-recovery-replay-record))
 
@@ -320,5 +339,5 @@
   :tables (fn2-core-pool fn2-core-fields fn2-core-rec-cand)
   :doc "Recovery's payload pass: claim the block extents one source manifest unit names.")
 (defcost fn2-recovery-replay-record :answers (:end :appended :boundary :skip :invalid :bounds) :bytes 4096
-  :tables (fn2-core-pool fn2-core-fields)
-  :doc "M7's replay: one record of a chained commit's stream rebuilt into its member's workspace as admission took it.")
+  :tables (fn2-core-pool fn2-core-fields fn2-core-extents)
+  :doc "One ordered record: rebuild a C member workspace or install a B retirement bound to the containing commit, after allocator adoption.")
