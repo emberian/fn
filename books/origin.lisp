@@ -28,14 +28,14 @@
 ; At most nineteen decimal digits can represent a u60 name. Bound the input
 ; before traversal; never use the Lisp reader or a host arithmetic decision.
 (defun fn2-origin-decimal-aux (text index value)
- (declare (xargs :measure (nfix (- (length text) index))
+ (declare (xargs :measure (nfix (- (length text) (nfix index)))
   :guard (and (stringp text) (natp index) (<= index (length text))
               (natp value))))
- (if (= index (length text))
+ (if (>= (nfix index) (length text))
      (if (and (posp value) (unsigned-byte-p 60 value)) value nil)
-   (let ((digit (- (char-code (char text index)) 48)))
+   (let ((digit (- (char-code (char text (nfix index))) 48)))
     (if (and (<= 0 digit) (<= digit 9))
-        (fn2-origin-decimal-aux text (+ 1 index) (+ (* 10 value) digit))
+        (fn2-origin-decimal-aux text (+ 1 (nfix index)) (+ (* 10 value) digit))
       nil))))
 (defun fn2-origin-decimal (text)
  (declare (xargs :guard t))
