@@ -1,6 +1,7 @@
 ; Fixed-slot serialization from the actual frozen allocator sources. The
 ; composing page job still owns page initialization, headers and completion.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-map-read")
 (fn2-book-layer :b)
 (defun fn2-checkpoint-map-zero (left at slot gen okind oslot ogen fn2-pool)
