@@ -2,7 +2,8 @@
 (in-package "ACL2")
 (include-book "checkpoint-planning-state")
 (include-book "checkpoint-build-state")
-(include-book "checkpoint-metadata-page")
+(include-book "checkpoint-construction")
+(include-book "run-geometry")
 (fn2-book-layer :c)
 
 ; Phase3 has already been entered by the owner-scoped B barrier. Bind only
@@ -86,60 +87,6 @@
       (fn2-checkpoint-recipe-order (fn2-checkpoint-recipe-order-set-extent n e fn2-checkpoint-recipe-order))
       (fn2-checkpoint-planning (fn2-checkpoint-planning-put 0 (next-free next) (count (+ n 1)))))
   (mv :ok e epoch counter fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order)))
-
-; Record/check the actual sealed builder output. No physical-completed marker
-; or B reservation is created by this sink. Parent promotion uses the same
-; run-build-promote after this preview gate, retaining the actual seal hash.
-(defun fn2-checkpoint-planning-seal (c token kind owner gen b level fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers fn2-digests)
- (declare (xargs :stobjs (fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers fn2-digests) :guard (and (fn2-checkpoint-planning-wfp fn2-checkpoint-planning) (fn2-checkpoint-recipe-wfp fn2-checkpoint-recipe) (fn2-checkpoint-metadata-wfp fn2-checkpoint-metadata) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-extents-wfp fn2-extents) (fn2-run-builds-wfp fn2-run-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-digests-wfp fn2-digests))))
- (b* (((unless (and (fn2-checkpoint-planning-ownerp c token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents)
-                    (fn2-checkpoint-metadata-writerp b level fn2-checkpoint-metadata fn2-csnapshot fn2-run-builds fn2-run-writers)))
-       (mv :owner fn2-checkpoint-planning fn2-checkpoint-recipe))
-      (phase (fn2-checkpoint-planning-phase 0 fn2-checkpoint-planning))
-      (w (fn2-run-level-writer b level))
-      (e (floor (fn2-run-writers-unit w fn2-run-writers) *fn2-storage-extent-units*))
-      (h (+ (fn2-run-builds-hbase b fn2-run-builds) level))
-      ((unless (and (member phase (list *fn2-checkpoint-planning-phase-preview* *fn2-checkpoint-planning-phase-materialize*))
-                    (< e (fn2-checkpoint-recipe-rows fn2-checkpoint-recipe)) (fn2-digest-rowp h fn2-digests)
-                    (equal (fn2-checkpoint-recipe-used e fn2-checkpoint-recipe) 1)
-                    (equal (fn2-checkpoint-recipe-extent e fn2-checkpoint-recipe) e)
-                    (equal (fn2-checkpoint-recipe-epoch e fn2-checkpoint-recipe) (fn2-run-writers-epoch w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-allocation e fn2-checkpoint-recipe) (fn2-run-writers-counter w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-kind e fn2-checkpoint-recipe) (fn2-run-writers-page-kind w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-level e fn2-checkpoint-recipe) level)))
-       (mv :layout fn2-checkpoint-planning fn2-checkpoint-recipe))
-      ((when (equal phase *fn2-checkpoint-planning-phase-materialize*))
-       (mv (if (and (equal (fn2-checkpoint-recipe-sealed e fn2-checkpoint-recipe) 1)
-                    (equal (fn2-checkpoint-recipe-cursor e fn2-checkpoint-recipe) (fn2-run-writers-cursor w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-entries e fn2-checkpoint-recipe) (fn2-run-writers-entries w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-restarts e fn2-checkpoint-recipe) (fn2-run-writers-restarts w fn2-run-writers))
-                    (equal (fn2-checkpoint-recipe-word0 e fn2-checkpoint-recipe) (fn2-digest-word h 0 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word1 e fn2-checkpoint-recipe) (fn2-digest-word h 1 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word2 e fn2-checkpoint-recipe) (fn2-digest-word h 2 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word3 e fn2-checkpoint-recipe) (fn2-digest-word h 3 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word4 e fn2-checkpoint-recipe) (fn2-digest-word h 4 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word5 e fn2-checkpoint-recipe) (fn2-digest-word h 5 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word6 e fn2-checkpoint-recipe) (fn2-digest-word h 6 fn2-digests))
-                    (equal (fn2-checkpoint-recipe-word7 e fn2-checkpoint-recipe) (fn2-digest-word h 7 fn2-digests))
-                   ) :ok :layout) fn2-checkpoint-planning fn2-checkpoint-recipe))
-      ((unless (and (equal (fn2-checkpoint-recipe-sealed e fn2-checkpoint-recipe) 0)
-                    (< (fn2-checkpoint-planning-sealed 0 fn2-checkpoint-planning) (fn2-checkpoint-planning-count 0 fn2-checkpoint-planning))
-                    (unsigned-byte-p 32 (+ 1 (fn2-checkpoint-planning-sealed 0 fn2-checkpoint-planning)))))
-       (mv :state fn2-checkpoint-planning fn2-checkpoint-recipe))
-      (fn2-checkpoint-recipe (fn2-checkpoint-recipe-put e (sealed 1)
-       (cursor (fn2-run-writers-cursor w fn2-run-writers)) (entries (fn2-run-writers-entries w fn2-run-writers))
-       (restarts (fn2-run-writers-restarts w fn2-run-writers))
-       (word0 (fn2-digest-word h 0 fn2-digests))
-       (word1 (fn2-digest-word h 1 fn2-digests))
-       (word2 (fn2-digest-word h 2 fn2-digests))
-       (word3 (fn2-digest-word h 3 fn2-digests))
-       (word4 (fn2-digest-word h 4 fn2-digests))
-       (word5 (fn2-digest-word h 5 fn2-digests))
-       (word6 (fn2-digest-word h 6 fn2-digests))
-       (word7 (fn2-digest-word h 7 fn2-digests))
-      ))
-      (fn2-checkpoint-planning (fn2-checkpoint-planning-set-sealed 0 (+ 1 (fn2-checkpoint-planning-sealed 0 fn2-checkpoint-planning)) fn2-checkpoint-planning)))
-  (mv :ok fn2-checkpoint-planning fn2-checkpoint-recipe)))
 
 ; The second pass cannot start against a stale allocator frontier, and cannot
 ; run before every planned page was sealed by the actual builder.
@@ -230,9 +177,6 @@
 (fn2-checkpoint-planning-preserves fn2-checkpoint-planning-preview
  (c token kind owner gen role ordinal intended page-kind level fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-recipe-order fn2-csnapshot fn2-extents)
  :carriers ((fn2-checkpoint-planning 4 :prefix "-PLANNING") (fn2-checkpoint-recipe 5 :prefix "-RECIPE") (fn2-checkpoint-recipe-order 6 :prefix "-ORDER")))
-(fn2-checkpoint-planning-preserves fn2-checkpoint-planning-seal
- (c token kind owner gen b level fn2-checkpoint-planning fn2-checkpoint-recipe fn2-checkpoint-metadata fn2-csnapshot fn2-extents fn2-run-builds fn2-run-writers fn2-digests)
- :carriers ((fn2-checkpoint-planning 1 :prefix "-PLANNING") (fn2-checkpoint-recipe 2 :prefix "-RECIPE")))
 (fn2-checkpoint-planning-preserves fn2-checkpoint-planning-materialize
  (c token kind owner gen fn2-checkpoint-planning fn2-csnapshot fn2-extents) :position 1)
 (fn2-checkpoint-planning-preserves fn2-checkpoint-planning-note-reserved
