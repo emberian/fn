@@ -27,6 +27,15 @@
 (defcost fn2-csnapshot-release :answers (:owner :ok) :tables (fn2-core-csnapshot)
  :doc "Release an exact owner/token resident cut; ambiguous persistence must retain it.")
 
+(defun fn2-csnapshot-ownerp (token okind oslot ogen fn2-csnapshot)
+  (declare (xargs :stobjs fn2-csnapshot :guard (fn2-csnapshot-wfp fn2-csnapshot)))
+  (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
+       (not (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
+       (equal token (fn2-csnapshot-token 0 fn2-csnapshot))
+       (equal okind (fn2-csnapshot-owner-kind 0 fn2-csnapshot))
+       (equal oslot (fn2-csnapshot-owner-slot 0 fn2-csnapshot))
+       (equal ogen (fn2-csnapshot-owner-gen 0 fn2-csnapshot))))
+
 (defmacro fn2-csnapshot-op (name args position body)
  `(progn
    (defun ,name (,@args fn2-core)
@@ -60,14 +69,7 @@
               (mv :ok token fn2-csnapshot))))
    (mv code token fn2-core)))
 
- (defun fn2-csnapshot-ownerp (token okind oslot ogen fn2-csnapshot)
-  (declare (xargs :stobjs fn2-csnapshot :guard (fn2-csnapshot-wfp fn2-csnapshot)))
-  (and (< 0 (fn2-csnapshot-rows fn2-csnapshot))
-       (not (= (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*))
-       (equal token (fn2-csnapshot-token 0 fn2-csnapshot))
-       (equal okind (fn2-csnapshot-owner-kind 0 fn2-csnapshot))
-       (equal oslot (fn2-csnapshot-owner-slot 0 fn2-csnapshot))
-       (equal ogen (fn2-csnapshot-owner-gen 0 fn2-csnapshot))))
+
 
  ; One transaction per poll. No new OPEN transaction may stage after BEGIN;
  ; STAGED/BOUND ones still finish through the ordinary B writer. OPEN rows
