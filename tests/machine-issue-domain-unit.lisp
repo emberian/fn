@@ -5,7 +5,7 @@
 
 (defun fn2-issue-domain-mentions (symbol tree)
  (declare (xargs :guard t))
- (if (atom tree) (eq symbol tree)
+ (if (atom tree) (equal symbol tree)
   (or (fn2-issue-domain-mentions symbol (car tree))
       (fn2-issue-domain-mentions symbol (cdr tree)))))
 (defun fn2-issue-domain-callers (symbol world)
