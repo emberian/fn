@@ -7,6 +7,26 @@
 (local (defthm fn2-issued-car-as-nth
  (equal (car x) (nth 0 x)) :rule-classes nil))
 
+(local (defthm fn2-issued-car-of-update-nth
+ (equal (car (update-nth k v x)) (if (zp k) v (car x)))))
+
+; History reads only the generation and phase columns. One footprint rule
+; covers every scalar/payload writer instead of a reader-by-writer matrix.
+(defthm fn2-ops-issued-count-scalar-frame
+ (implies (and (not (equal (nfix k) *fn2-ops-gen$ai*))
+               (not (equal (nfix k) *fn2-ops-phase$ai*)))
+  (equal (fn2-ops-issued-count n (update-nth k v fn2-ops))
+         (fn2-ops-issued-count n fn2-ops)))
+ :hints (("Goal" :induct (fn2-ops-issued-count n fn2-ops)
+   :in-theory (e/d (fn2-ops-issued-count fn2-ops-gen fn2-ops-phase)
+                   (fn2-op-issued-weight update-nth)))))
+(defthm fn2-ops-issued-count-array-frame
+ (implies (and (not (equal (nfix k) *fn2-ops-gen$ai*))
+               (not (equal (nfix k) *fn2-ops-phase$ai*)))
+  (equal (fn2-ops-issued-count n (update-nth-array k i v fn2-ops))
+         (fn2-ops-issued-count n fn2-ops)))
+ :hints (("Goal" :in-theory (e/d (update-nth-array) (fn2-ops-issued-count update-nth)))))
+
 (defthm fn2-op-recycle-issued-weight
  (implies (and (fn2-opsp fn2-ops) (fn2-ops-wfp fn2-ops)
                (natp i) (< i (fn2-ops-rows fn2-ops)))
