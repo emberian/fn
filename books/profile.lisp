@@ -202,6 +202,13 @@
                     (fn2-profile-generation-limit profile))))
   :rule-classes (:rewrite :forward-chaining))
 
+(defthm fn2-profile-trace-boolean
+  (implies (fn2-profilep profile)
+           (booleanp (fn2-profile-trace profile)))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn2-profilep) (theory 'minimal-theory))))
+  :rule-classes (:rewrite :forward-chaining))
+
 (in-theory (disable fn2-profilep))
 
 ; 512 4-KiB slots: separate RX and TX for every one of 256 connections.
