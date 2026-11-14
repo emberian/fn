@@ -170,7 +170,8 @@
  (fn2-checkpoint-restore-semantic-page budget row base fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
  fn2-checkpoint-restore-map fn2-checkpoint-restore-map-control fn2-checkpoint-restore-semantic
  fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
+ (and (fn2-checkpoint-restore-semanticp fn2-checkpoint-restore-semantic) (fn2-fcp fn2-fc) (fn2-fc-contextp fn2-fc-context) (fn2-b3p fn2-b3) (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool) (fn2-digestsp fn2-digests)
+      (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes)
    (fn2-checkpoint-restore-map-wfp fn2-checkpoint-restore-map) (fn2-checkpoint-restore-map-control-wfp fn2-checkpoint-restore-map-control)
    (fn2-checkpoint-restore-semantic-wfp fn2-checkpoint-restore-semantic) (fn2-fc-wfp fn2-fc) (fn2-fc-context-wfp fn2-fc-context)
    (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))
