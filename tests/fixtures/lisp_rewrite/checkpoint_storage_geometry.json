@@ -1,0 +1,37 @@
+[
+  {
+    "path": "books/checkpoint.lisp",
+    "before": "; floor(unit,3)\n(floor unit 3)\n(* 3 row)\n\"(floor unit 3)\"\n",
+    "after": "; floor(unit,3)\n(floor unit *fn2-storage-extent-units*)\n(* 3 row)\n\"(floor unit 3)\"\n"
+  },
+  {
+    "path": "books/checkpoint-geometry.lisp",
+    "before": "(defconst *fn2-checkpoint-unit-bytes* 4096)\n(+ (* 3 extents) groups 8)\n(* 12288 extents)\n(:charge :bytes 12288)\n(+ 4096 offset)\n(- size 8192)\n",
+    "after": "(defconst *fn2-checkpoint-unit-bytes* *fn2-format-sector-size*)\n(+ (* *fn2-storage-extent-units* extents) groups 8)\n(* *fn2-storage-extent-bytes* extents)\n(:charge :bytes 12288)\n(+ *fn2-checkpoint-unit-bytes* offset)\n(- size (* 2 *fn2-checkpoint-unit-bytes*))\n"
+  },
+  {
+    "path": "books/boot.lisp",
+    "before": "'((*fn2-checkpoint-geometry-record-field-page-bytes* 4096) (*fn2-checkpoint-geometry-record-field-extent-units* 3))\n(fn2-fields-set-value (+ 256 *fn2-format-bootstrap-field-page-size*) 4096 fn2-fields)\n(:charge :bytes 12288)\n'((*fn2-checkpoint-geometry-record-field-sector-bytes* 4096))\n(floor size 4096)\n",
+    "after": "'((*fn2-checkpoint-geometry-record-field-page-bytes* *fn2-format-page-size*) (*fn2-checkpoint-geometry-record-field-extent-units* *fn2-storage-extent-units*))\n(fn2-fields-set-value (+ 256 *fn2-format-bootstrap-field-page-size*) *fn2-format-page-size* fn2-fields)\n(:charge :bytes 12288)\n'((*fn2-checkpoint-geometry-record-field-sector-bytes* *fn2-format-sector-size*))\n(floor size *fn2-format-sector-size*)\n"
+  },
+  {
+    "path": "books/executor.lisp",
+    "before": "(mv (* 12288 (nfix extents)) total)\n(/ base 12288)\n(* 3 row)\n",
+    "after": "(mv (* *fn2-storage-extent-bytes* (nfix extents)) total)\n(floor base *fn2-storage-extent-bytes*)\n(* 3 row)\n"
+  },
+  {
+    "path": "tests/checkpoint-publication-unit.lisp",
+    "before": "(and (fn2-checkpoint-image-sizep (* 4096 12) 1 1) (equal (fn2-checkpoint-bootstrap-unit 1 1) 5) (equal (fn2-checkpoint-anchor-unit 0 1 1) 6) (equal (fn2-checkpoint-anchor-unit 3 1 1) 9))\n(not (fn2-checkpoint-image-sizep (* 4096 12) 1 1))\n",
+    "after": "(and (fn2-checkpoint-image-sizep (* 4096 25) 1 1) (equal (fn2-checkpoint-bootstrap-unit 1 1) 18) (equal (fn2-checkpoint-anchor-unit 0 1 1) 19) (equal (fn2-checkpoint-anchor-unit 3 1 1) 22))\n(not (fn2-checkpoint-image-sizep (* 4096 12) 1 1))\n"
+  },
+  {
+    "path": "tests/checkpoint-geometry-unit.lisp",
+    "before": "(fn2-boot-geometry-fields (* 4096 12) 1 1 fn2-fields)\n",
+    "after": "(fn2-boot-geometry-fields (* 4096 25) 1 1 fn2-fields)\n"
+  },
+  {
+    "path": "books/commit.lisp",
+    "before": "(* 3 row)\n(* 12288 extents)\n(floor unit 3)\n",
+    "after": "(* 3 row)\n(* 12288 extents)\n(floor unit 3)\n"
+  }
+]

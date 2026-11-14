@@ -26,7 +26,7 @@ the current native backend serves domain 0, matching B's format writers. The cur
 cached flags alone do not establish protection. These six root-page edges
 are only the direct roots. Their complete dependency closures must be retained
 before promotion; six protected pages do not imply protected descendants.
-The physical profile uses three units per extent, as the existing B readers do.
+The physical profile uses the shared 64 KiB storage extent (16 physical units), independently of the three journal I/O resources.
 
 `fn2-checkpoint-install` consumes the existing decoded checkpoint-installation
 record and the verified containing commit supplied by the journal installer.
@@ -84,9 +84,9 @@ only two epoch slots at `image-size - 8192` and `image-size - 4096`. These use
 checkpoint slots.
 
 `books/checkpoint-geometry.lisp` defines the new shared layout in physical units:
-`[3*extents arena][genesis + groups][bootstrap][four checkpoint anchors]`
+`[storage-extent-units*extents arena][genesis + groups][bootstrap][four checkpoint anchors]`
 `[optional slack][two epoch records]`. Its minimum is
-`4096 * (3*extents + groups + 8)`. Bootstrap is unit `3*extents + groups + 1`;
+`4096 * (16*extents + groups + 8)`. Bootstrap is unit `16*extents + groups + 1`;
 anchors are the next four units. The helper refuses the old minimum and states
 nonoverlap/distinctness theorems. These are source statements, not admitted facts.
 Boot init/read, image admission and recovery must adopt this geometry together;
@@ -165,7 +165,7 @@ Geometry hash v1 is BLAKE3 of the exact 21 ASCII bytes
 `fn2/image-geometry/v1` followed immediately by the generated
 `fn2-checkpoint-geometry-record` encoding. No newline, NUL, padding, Lisp
 printing or host serialization enters the preimage. That record names version,
-image byte size, 4096-byte sector/page sizes, three-unit extents, extent/group
+image byte size, 4096-byte sectors, 65536-byte pages, sixteen-unit extents, extent/group
 counts, bootstrap and four anchor unit addresses, the final two epoch unit
 addresses and storage domain 0. All integer encodings come from the generated
 codec. This is a specified geometry frame, not the genesis record checksum.
@@ -235,7 +235,17 @@ unreachable worker is claimed. I/O completion still does not promote a checkpoin
 drop recovery roots, advance the allocator cut or release an extent.
 
 The C snapshot seam must expose logical entries or owned resident source windows.
-Current generated C run pages are 64 KiB, while B extents have three 4 KiB units;
-no adapter may treat one resident unit identity or one extent identity as owning
-that entire spanning page. A real generated page profile or an owned fragment
-manifest/reconstruction boundary is required before building durable root refs.
+Physical storage extents now align with existing 64 KiB C run pages: one
+allocation identity owns all sixteen physical units. The bounded adapter still
+transfers at most 4 KiB per operation. Journal batches retain three I/O resources;
+the initial unused journal extent space is an explicit efficiency cost. No
+fragmentation/indirection format or smaller metadata-record ceiling is introduced.
+Resident cache identities still cannot substitute for actual physical references;
+page headers and child Refs must be built with the allocator-provided identity.
+
+The checkpoint/boot physical-stride class was changed with
+`tools/rewrite_checkpoint_storage_geometry.py`, using the shared structural Lisp
+rewriter. Fixtures check comments/strings, unchanged commit-resource indices and
+byte-work budgets, exact geometry probes, malformed input refusal and idempotence.
+Run its narrow controls directly with `python3 tests/test_checkpoint_geometry_rewrite.py`;
+the package discovery hook loads unrelated surface tests despite a filename filter.

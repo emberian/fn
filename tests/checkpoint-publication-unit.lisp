@@ -40,7 +40,10 @@
 ; reservation. All four anchors are distinct and before the epoch pair.
 (assert-event (mv-let (code off) (fn2-checkpoint-anchor-offset 0 (* 4096 7) 1 1)
                 (and (eq code :geometry) (equal off 0))))
-(assert-event (and (fn2-checkpoint-image-sizep (* 4096 12) 1 1)
-                   (equal (fn2-checkpoint-bootstrap-unit 1 1) 5)
-                   (equal (fn2-checkpoint-anchor-unit 0 1 1) 6)
-                   (equal (fn2-checkpoint-anchor-unit 3 1 1) 9)))
+(assert-event (and (fn2-checkpoint-image-sizep (* 4096 25) 1 1)
+                   (equal (fn2-checkpoint-bootstrap-unit 1 1) 18)
+                   (equal (fn2-checkpoint-anchor-unit 0 1 1) 19)
+                   (equal (fn2-checkpoint-anchor-unit 3 1 1) 22)))
+
+; Former three-unit physical geometry cannot admit the new allocation stride.
+(assert-event (not (fn2-checkpoint-image-sizep (* 4096 12) 1 1)))

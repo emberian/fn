@@ -65,14 +65,14 @@
          ((equal (fn2-checkpoint-refs-retained r fn2-checkpoint-refs) 1)
        (mv (if (and (equal edge (fn2-checkpoint-refs-edge r fn2-checkpoint-refs))
                      (fn2-alloc-edge-slotp edge fn2-alloc-edges)
-                     (fn2-alloc-edge-matchesp edge holder (floor unit 3) epoch allocation
+                     (fn2-alloc-edge-matchesp edge holder (floor unit *fn2-storage-extent-units*) epoch allocation
                                              :selectable-checkpoint fn2-alloc-edges)) :ok :edge-holder)
            fn2-checkpoint-refs fn2-extents fn2-alloc-edges))
          (t
-    ; This physical profile stores three units per allocator extent.
+    ; Physical ownership follows the shared storage extent stride.
     ; Descriptor unit addresses must therefore identify their containing extent.
     (mv-let (code fn2-extents fn2-alloc-edges)
-     (fn2-alloc-edge-add edge holder (floor unit 3) epoch allocation
+     (fn2-alloc-edge-add edge holder (floor unit *fn2-storage-extent-units*) epoch allocation
                          :selectable-checkpoint fn2-extents fn2-alloc-edges)
      (let* ((fn2-checkpoint-refs (if (eq code :ok)
               (fn2-checkpoint-refs-set-edge r edge fn2-checkpoint-refs) fn2-checkpoint-refs))
@@ -99,7 +99,7 @@
         (fn2-alloc-edge-slotp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs) fn2-alloc-edges)
         (fn2-alloc-edge-matchesp (fn2-checkpoint-refs-edge r fn2-checkpoint-refs)
           (fn2-checkpoints-checkpoint c fn2-checkpoints)
-          (floor (fn2-checkpoint-refs-physical-unit r fn2-checkpoint-refs) 3)
+          (floor (fn2-checkpoint-refs-physical-unit r fn2-checkpoint-refs) *fn2-storage-extent-units*)
           (fn2-checkpoint-refs-writer-epoch r fn2-checkpoint-refs)
           (fn2-checkpoint-refs-allocation r fn2-checkpoint-refs)
           :selectable-checkpoint fn2-alloc-edges)
