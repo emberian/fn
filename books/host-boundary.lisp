@@ -8,6 +8,8 @@
 (include-book "assembly-attach")
 (include-book "terminal-values")
 (include-book "host-ops")
+; Native TLS calls the guarded transport controller and its ownership ledger.
+(include-book "tls-transport-reservation")
 
 (local (in-theory (enable fn2-core-wfp)))
 

@@ -7,7 +7,7 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if !defined(OPENSSL_VERSION_MAJOR) || OPENSSL_VERSION_MAJOR != 3
 #error "fn2 TLS primitive requires OpenSSL 3"
 #endif
 
