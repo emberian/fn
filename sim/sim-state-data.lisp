@@ -1,6 +1,7 @@
 ; Simulator state and reproducible fault schedule. All row storage and the
 ; diagnostic ring are preallocated; only init may resize arrays or save metadata.
 (in-package "ACL2")
+(include-book "faults")
 (include-book "../books/profile")
 (include-book "../books/vocab")
 (include-book "network")

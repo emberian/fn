@@ -3,6 +3,7 @@
 ; of the outstanding table. Early BorrowReleased saves the terminal payload:
 ; the later terminal never reads bytes whose ownership was already returned.
 (in-package "ACL2")
+(include-book "faults")
 (include-book "network")
 (include-book "storage")
 (include-book "prng")
