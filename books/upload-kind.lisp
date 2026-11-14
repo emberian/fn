@@ -73,8 +73,6 @@
 ; Preserve the current three-block payload/manifest packing independently of
 ; the sixteen-unit physical stride. The unused thirteen units remain owned
 ; by that allocation; a later packing change need not change its identity.
-(defconst *fn2-upload-payload-units* 3)
-(defconst *fn2-upload-payload-bytes* (* *fn2-upload-payload-units* *fn2-commit-unit-bytes*))
 ;; entries of the largest size one unit holds (the first holds the header too)
 (defconst *fn2-am-stored-max*
   (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-upload-payload-units*))

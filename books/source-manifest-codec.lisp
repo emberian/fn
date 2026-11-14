@@ -7,6 +7,14 @@
 
 (defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)
 
+(defconst *fn2-upload-payload-units* 3)
+(defconst *fn2-upload-payload-bytes* (* *fn2-upload-payload-units* *fn2-commit-unit-bytes*))
+
+(defun fn2-am-manifestp (total)
+  (declare (xargs :guard t))
+  (< *fn2-upload-payload-bytes* (nfix total)))
+(in-theory (disable fn2-am-manifestp))
+
 (defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))
 
 (defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))
