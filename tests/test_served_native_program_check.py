@@ -36,6 +36,17 @@ class ServedNativeProgramTests(unittest.TestCase):
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
         self.assertEqual(report['host_refinement'], 'not_checked')
 
+    def test_handshake_budget_must_precede_transport_work(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-host-tls-next-turn (fn2-native-tls-turns-left tls))',
+                    '(values :ok (fn2-native-tls-turns-left tls))')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_tls_cancellation_cannot_restore_plaintext_dispatch(self):
+        self.change('host/adapter.lisp', '(and cap (fn2-ncap-tls-selected cap)',
+                    '(and cap (fn2-ncap-tls cap)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_tls_staging_copy_must_advance_exact_count(self):
         self.change('host/adapter.lisp', '(incf (fn2-nop-tls-seed-offset op) n)',
                     '(incf (fn2-nop-tls-seed-offset op) (fn2-nop-len op))')

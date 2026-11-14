@@ -28,15 +28,15 @@
  (length sb-alien:unsigned-long) (count (* sb-alien:unsigned-long)))
 
 (defstruct fn2-native-tls
- handle input output seed (seed-length 0) (seed-offset 0) (output-offset 0) (output-length 0)
+ handle input output seed (turns-left 0) (seed-length 0) (seed-offset 0) (output-offset 0) (output-length 0)
  ;; The external library's requested readiness; KICK schedules a bounded
  ;; first call or a call that can consume already-buffered transport data.
  (interest 1) (kick t))
 
-(defun fn2-native-tls-open (config capacity quantum seed-capacity)
+(defun fn2-native-tls-open (config capacity quantum seed-capacity turns)
  (let ((handle (fn2-tls-%new config capacity)))
   (unless (zerop (sb-sys:sap-int handle))
-   (make-fn2-native-tls :handle handle
+   (make-fn2-native-tls :handle handle :turns-left turns
      :seed (make-array seed-capacity :element-type '(unsigned-byte 8) :initial-element 0)
      :input (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)
      :output (make-array quantum :element-type '(unsigned-byte 8) :initial-element 0)))))
@@ -44,6 +44,16 @@
  (when (and tls (fn2-native-tls-handle tls))
   (fn2-tls-%free (fn2-native-tls-handle tls))
   (setf (fn2-native-tls-handle tls) nil)))
+
+(defun fn2-native-tls-span (total offset room quantum)
+ (multiple-value-bind (code count) (fn2-host-tls-span total offset room quantum)
+  (unless (eq code :ok) (error "fn2 TLS: transport span observation refused"))
+  count))
+
+(defun fn2-native-tls-stage-span (total offset capacity quantum)
+ (multiple-value-bind (code count) (fn2-host-tls-stage-span total offset capacity quantum)
+  (unless (eq code :ok) (error "fn2 TLS: staging span observation refused"))
+  count))
 
 (defun fn2-native-tls-record (tls writep address length)
  (sb-alien:with-alien ((count sb-alien:unsigned-long))
@@ -66,7 +76,7 @@
      (when (minusp n) (return-from fn2-native-tls-flush :failed))
      (setf (fn2-native-tls-output-offset tls) 0 (fn2-native-tls-output-length tls) n)))
    (let* ((off (fn2-native-tls-output-offset tls))
-          (remaining (- (fn2-native-tls-output-length tls) off)))
+          (remaining (fn2-native-tls-span (fn2-native-tls-output-length tls) off (length buffer) (length buffer))))
     (when (zerop remaining) (return-from fn2-native-tls-flush :empty))
     (fn2-n-boundary host "tls-send")
     (multiple-value-bind (n errno) (fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap buffer) off) remaining)
@@ -77,7 +87,7 @@
 (defun fn2-native-tls-fill (tls fd host)
  "One bounded socket read, then feed exactly those bytes into available BIO space."
  (let* ((buffer (fn2-native-tls-input tls))
-        (room (min (length buffer) (fn2-tls-%input-room (fn2-native-tls-handle tls)))))
+        (room (fn2-native-tls-span (length buffer) 0 (fn2-tls-%input-room (fn2-native-tls-handle tls)) (length buffer))))
   (when (zerop room) (return-from fn2-native-tls-fill :blocked))
   (sb-sys:with-pinned-objects (buffer)
    (fn2-n-boundary host "tls-receive")

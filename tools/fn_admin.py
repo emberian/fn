@@ -867,6 +867,7 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
                              (args.tls_key, "FN2_TLS_KEY"),
                              (args.tls_handshakes, "FN2_TLS_HANDSHAKES"),
                              (args.tls_window, "FN2_TLS_WINDOW"),
+                             (args.tls_handshake_turns, "FN2_TLS_HANDSHAKE_TURNS"),
                              (args.tls_handshake_ms, "FN2_TLS_HANDSHAKE_MS")):
         if option is not None:
             env[variable] = str(option)
@@ -1306,6 +1307,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--peering", action="store_true", help="enable interim NNTP transit peering verbs")
     p_serve.add_argument("--tls-certificate", type=lambda p: Path(p).resolve(), help="PEM certificate chain for STARTTLS")
     p_serve.add_argument("--tls-key", type=lambda p: Path(p).resolve(), help="PEM private key for STARTTLS")
+    p_serve.add_argument("--tls-handshake-turns", help="maximum transport turns per handshake (default: 65536)")
     p_serve.add_argument("--tls-window", help="TLS transport BIO capacity in bytes (default: 16384)")
     p_serve.add_argument("--tls-handshakes", help="maximum concurrent STARTTLS handshakes (default: 16)")
     p_serve.add_argument("--tls-handshake-ms", help="STARTTLS admission/handshake deadline in milliseconds (default: 10000)")

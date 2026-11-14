@@ -27,11 +27,11 @@
 ;; capability, so the listener machine is the same for both); connections from 1.
 (defstruct fn2-ncap
   (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
-  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls)
+  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls (tls-selected nil))
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
-  tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0)
+  tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
   ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
   (device (make-hash-table))
@@ -130,7 +130,7 @@
 
 (defun fn2-n-tls-op-p (op cap)
  (or (= (fn2-nop-kind op) *fn2-action-tls-start*)
-     (and cap (fn2-ncap-tls cap)
+     (and cap (fn2-ncap-tls-selected cap)
           (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))))
 (defun fn2-n-op-interest (op cap)
  (if (fn2-n-tls-op-p op cap)
@@ -150,18 +150,25 @@
  (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op))
         (handshake (= kind *fn2-action-tls-start*)))
   (unless (fn2-ncap-tls cap)
-   (unless (and handshake (fn2-nhost-tls-config host))
+   (unless (and handshake (fn2-nhost-tls-config host) (not (fn2-ncap-tls-selected cap)))
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil))
    (fn2-n-boundary host "tls-start")
+   (setf (fn2-ncap-tls-selected cap) t)
    (setf (fn2-ncap-tls cap)
-         (fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host)))
+         (fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host) (fn2-nhost-tls-turns host)))
    (unless (fn2-ncap-tls cap)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil)))
   (let* ((tls (fn2-ncap-tls cap)) (handle (fn2-native-tls-handle tls))
          (fd (fn2-ncap-fd cap)) (bytes (fn2-nhost-bytes host)) (fed-seed nil))
    (setf (fn2-nop-tls-started op) t (fn2-native-tls-kick tls) nil)
+   (when handshake
+    (multiple-value-bind (code remaining) (fn2-host-tls-next-turn (fn2-native-tls-turns-left tls))
+     (setf (fn2-native-tls-turns-left tls) remaining)
+     (unless (eq code :ok)
+      (fn2-n-complete host slot :failed 0)
+      (return-from fn2-n-tls-ready nil))))
    (when (eq (fn2-native-tls-flush tls fd host) :failed)
     (fn2-n-complete host slot :failed 0)
     (return-from fn2-n-tls-ready nil))
@@ -170,8 +177,7 @@
    ;; connection. Its lifetime extends past handshake-token reclamation.
    (when (and handshake (< (fn2-nop-tls-seed-offset op) (fn2-nop-len op)))
     (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-nop-tls-seed-offset op))
-           (n (min (- (fn2-nop-len op) off) (fn2-nhost-tls-quantum host))))
-     (assert (<= (fn2-nop-len op) (length seed)))
+           (n (fn2-native-tls-stage-span (fn2-nop-len op) off (length seed) (fn2-nhost-tls-quantum host))))
      (replace seed bytes :start1 off :end1 (+ off n)
               :start2 (+ (fn2-nop-address op) off) :end2 (+ (fn2-nop-address op) off n))
      (incf (fn2-nop-tls-seed-offset op) n)
@@ -184,8 +190,8 @@
    ;; Receive; it no longer borrows the connection's mutable RX range.
    (when (< (fn2-native-tls-seed-offset tls) (fn2-native-tls-seed-length tls))
     (let* ((seed (fn2-native-tls-seed tls)) (off (fn2-native-tls-seed-offset tls))
-           (n (min (- (fn2-native-tls-seed-length tls) off)
-                   (fn2-nhost-tls-quantum host) (fn2-tls-%input-room handle))))
+           (n (fn2-native-tls-span (fn2-native-tls-seed-length tls) off
+                   (fn2-tls-%input-room handle) (fn2-nhost-tls-quantum host))))
      (when (plusp n)
       (sb-sys:with-pinned-objects (seed)
        (let ((fed (fn2-tls-%feed handle (sb-sys:sap+ (sb-sys:vector-sap seed) off) n)))
@@ -359,9 +365,14 @@
                   (eql (fn2-nop-gen other) (fn2-nop-target-gen op))
                   (or (= (fn2-nop-state other) +fn2-n-waiting+) (= (fn2-nop-state other) +fn2-n-closed-waiting+)))
              (progn
-                    (when (= (fn2-nop-kind other) *fn2-action-tls-start*)
-                      (let ((cap (fn2-n-cap host other)))
-                        (when cap (fn2-native-tls-close (fn2-ncap-tls cap)) (setf (fn2-ncap-tls cap) nil))))
+                    ;; A cancelled SSL read/write may retain library retry
+                    ;; state. Destroy it before releasing the loan; remember
+                    ;; TLS selection so later I/O cannot fall back to plaintext.
+                    (let ((cap (fn2-n-cap host other)))
+                      (when (and cap (fn2-n-tls-op-p other cap))
+                        (setf (fn2-ncap-tls-selected cap) t)
+                        (fn2-native-tls-close (fn2-ncap-tls cap))
+                        (setf (fn2-ncap-tls cap) nil)))
                     (fn2-n-complete host target :cancelled 0)
                     (fn2-n-complete host slot :ok 0 0 t))
            (fn2-n-complete host slot :ok 0 0 nil))))
@@ -661,7 +672,7 @@ the image launcher always opens its persisted device instead."
         (setf (fn2-ncap-fd (aref (fn2-nhost-caps host) 0)) lfd)
         (handler-case
           (progn
-        (multiple-value-bind (code certificate key window quantum minimum seed-capacity) (fn2-host-tls-settings profile)
+        (multiple-value-bind (code certificate key window quantum minimum seed-capacity turns) (fn2-host-tls-settings profile)
           (case code
             (:off nil)
             (:ok
@@ -672,7 +683,7 @@ the image launcher always opens its persisted device instead."
                (when (zerop (sb-sys:sap-int config)) (error "fn2 native: TLS configuration refused"))
                (setf (fn2-nhost-tls-config host) config
                      (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
-                     (fn2-nhost-tls-seed-capacity host) seed-capacity)))
+                     (fn2-nhost-tls-seed-capacity host) seed-capacity (fn2-nhost-tls-turns host) turns)))
             (otherwise (error "fn2 native: TLS profile refused"))))
         (unless device-path (fn2-n-device-put host memory-store))
         (when device-path

@@ -35,6 +35,7 @@ CUTS = {
     ('fn2-device-worker', 'device-syscall-return'): 'fn2-sim-complete-result',
 }
 ORDERS = {
+    'fn2-n-tls-ready': ['fn2-host-tls-next-turn', 'fn2-native-tls-flush', '@tls-handshake', '@tls-record'],
     'fn2-native-tls-flush': ['fn2-tls-%drain', '@tls-send', 'fn2-native-send'],
     'fn2-native-tls-fill': ['@tls-receive', 'fn2-native-recv', 'fn2-tls-%feed'],
     'fn2-n-take': ['fn2-host-outbox-peek', 'fn2-host-action', 'fn2-host-op-span',
@@ -53,15 +54,24 @@ ORDERS = {
 # These source contracts inspect arguments and result threading, not just names.
 # They deliberately do not substitute for a host/simulator state relation proof.
 CONTRACTS = {
+    'fn2-n-tls-op-p': [
+        '(and cap (fn2-ncap-tls-selected cap) (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))'],
+    'fn2-native-tls-stage-span': [
+        '(fn2-host-tls-stage-span total offset capacity quantum)'],
+    'fn2-native-tls-span': [
+        '(fn2-host-tls-span total offset room quantum)'],
     'fn2-native-tls-flush': [
         '(fn2-native-send fd (sb-sys:sap+ (sb-sys:vector-sap buffer) off) remaining)',
         '(incf (fn2-native-tls-output-offset tls) n)'],
     'fn2-native-tls-fill': [
-        '(room (min (length buffer) (fn2-tls-%input-room (fn2-native-tls-handle tls))))',
+        '(room (fn2-native-tls-span (length buffer) 0 (fn2-tls-%input-room (fn2-native-tls-handle tls)) (length buffer)))',
         '(fn2-native-recv fd (sb-sys:vector-sap buffer) room)',
         '(= n (fn2-tls-%feed (fn2-native-tls-handle tls) (sb-sys:vector-sap buffer) n))'],
     'fn2-n-tls-ready': [
-        '(fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host))',
+        '(fn2-host-tls-next-turn (fn2-native-tls-turns-left tls))',
+        '(setf (fn2-native-tls-turns-left tls) remaining)',
+        '(unless (eq code :ok) (fn2-n-complete host slot :failed 0) (return-from fn2-n-tls-ready nil))',
+        '(fn2-native-tls-open (fn2-nhost-tls-config host) (fn2-nhost-tls-window host) (fn2-nhost-tls-quantum host) (fn2-nhost-tls-seed-capacity host) (fn2-nhost-tls-turns host))',
         '(and (fn2-nop-tls-finished op) (fn2-native-tls-output-empty-p tls) (or (not handshake) (= (fn2-nop-tls-seed-offset op) (fn2-nop-len op))))',
         '(incf (fn2-nop-tls-seed-offset op) n)',
         '(incf (fn2-native-tls-seed-offset tls) fed)'],

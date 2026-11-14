@@ -42,6 +42,7 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (tls-key (sb-ext:posix-getenv "FN2_TLS_KEY"))
          (tls-slots (sb-ext:posix-getenv "FN2_TLS_HANDSHAKES"))
          (tls-window (sb-ext:posix-getenv "FN2_TLS_WINDOW"))
+         (tls-turns (sb-ext:posix-getenv "FN2_TLS_HANDSHAKE_TURNS"))
          (tls-timeout (sb-ext:posix-getenv "FN2_TLS_HANDSHAKE_MS")))
     (when tls-cert (setf profile (put-assoc-equal :tls-certificate tls-cert profile)))
     (when tls-key (setf profile (put-assoc-equal :tls-key tls-key profile)))
@@ -49,6 +50,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
       (setf profile (put-assoc-equal :tls-handshakes (or (ignore-errors (parse-integer tls-slots)) -1) profile)))
     (when tls-window
       (setf profile (put-assoc-equal :tls-window (or (ignore-errors (parse-integer tls-window)) -1) profile)))
+    (when tls-turns
+      (setf profile (put-assoc-equal :tls-handshake-turns (or (ignore-errors (parse-integer tls-turns)) -1) profile)))
     (when tls-timeout
       (setf profile (put-assoc-equal :tls-handshake-ms (or (ignore-errors (parse-integer tls-timeout)) -1) profile)))
     (when owner
