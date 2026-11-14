@@ -6,6 +6,7 @@
 (include-book "checkpoint-payload")
 (include-book "checkpoint-semantic-retention")
 (include-book "machines-c-sealer")
+(include-book "checkpoint-future-resources")
 (fn2-book-layer :c)
 
 (defconst *fn2-checkpoint-source-build* 1)
@@ -79,21 +80,47 @@
        (fn2-checkpoint-root1 (fn2-checkpoint-root1-set-reserved 0 (+ i 1) fn2-checkpoint-root1)))
    (fn2-checkpoint-windows-reserve-loop (+ i 1) kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))))
 
-(defun fn2-checkpoint-root1-reserve (kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-pool)
- (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-pool)
+; All27 leases share one per-class preflight and one non-yielding acquisition.
+; Future workers borrow actual protected leases; a free-count promise alone is
+; insufficient because ordinary readers may still allocate while C is held.
+(defun fn2-checkpoint-admission-roomp (i fn2-pool)
+ (declare (xargs :stobjs fn2-pool :guard (and (natp i) (<= i 27)) :measure (nfix (- 27 i))))
+ (if (>= i 27) t
+  (let ((class (fn2-pool-class-for
+                (if (< i *fn2-checkpoint-window-count*) (fn2-checkpoint-window-length i)
+                 (fn2-checkpoint-future-window-length (- i *fn2-checkpoint-window-count*))) fn2-pool)))
+   (and (natp class) (< class (fn2-pool-nclasses fn2-pool))
+        (<= (+ (fn2-checkpoint-window-class-demand 0 class fn2-pool)
+               (fn2-checkpoint-future-class-demand 0 class fn2-pool)) (fn2-pool-free-count class fn2-pool))
+        (fn2-checkpoint-admission-roomp (+ i 1) fn2-pool)))))
+
+(defun fn2-checkpoint-root1-reserve (c kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
+ (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
   :guard (and (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
+              (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows)
               (fn2-csnapshot-wfp fn2-csnapshot) (fn2-pool-wfp fn2-pool))))
- (b* (((unless (and (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
+ (b* (((unless (and (unsigned-byte-p 32 c) (< 0 (fn2-checkpoint-root1-rows fn2-checkpoint-root1))
                     (<= *fn2-checkpoint-window-count* (fn2-checkpoint-windows-rows fn2-checkpoint-windows))
                     (< 0 (fn2-csnapshot-rows fn2-csnapshot))
                     (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-idle*)
                     (equal (fn2-checkpoint-root1-phase 0 fn2-checkpoint-root1) *fn2-checkpoint-root1-phase-idle*)
                     (equal (fn2-checkpoint-root1-reserved 0 fn2-checkpoint-root1) 0)
+                    (< 0 (fn2-checkpoint-future-rows fn2-checkpoint-future))
+                    (<= 8 (fn2-checkpoint-future-windows-rows fn2-checkpoint-future-windows))
+                    (equal (fn2-checkpoint-future-phase 0 fn2-checkpoint-future) *fn2-checkpoint-future-phase-idle*)
+                    (equal (fn2-checkpoint-future-reserved 0 fn2-checkpoint-future) 0)
                     (fn2-pool-mrefp kind owner generation)))
-       (mv :owner fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))
-      ((unless (fn2-checkpoint-window-roomp 0 fn2-pool)) (mv :exhausted fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool))
-      (fn2-checkpoint-root1 (fn2-checkpoint-root1-put 0 (owner-kind kind) (owner-slot owner) (owner-gen generation))))
-  (fn2-checkpoint-windows-reserve-loop 0 kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
+       (mv :owner fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+      ((unless (fn2-checkpoint-admission-roomp 0 fn2-pool))
+       (mv :exhausted fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+      ((mv code fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)
+       (fn2-checkpoint-future-reserve c kind owner generation fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+      ((unless (eq code :ok))
+       (mv :partial fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool))
+      (fn2-checkpoint-root1 (fn2-checkpoint-root1-put 0 (owner-kind kind) (owner-slot owner) (owner-gen generation)))
+      ((mv code fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
+       (fn2-checkpoint-windows-reserve-loop 0 kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)))
+  (mv (if (eq code :ok) :ok :partial) fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-pool)))
 
 (defun fn2-checkpoint-root1-workspaces (kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
  (declare (xargs :stobjs (fn2-checkpoint-root1 fn2-checkpoint-windows fn2-pool)
@@ -123,21 +150,15 @@
   (mv :ok page pgen scratch sgen read rgen)))
 
 (fn2-checkpoint-root1-preserves fn2-checkpoint-root1-reserve
- (kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-csnapshot fn2-pool)
- :hyps ((fn2-checkpoint-root1p fn2-checkpoint-root1) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1)
-        (fn2-checkpoint-windowsp fn2-checkpoint-windows) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows)
-        (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot)
-        (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
- :specs (("-CHECKPOINT-ROOT1-TYPE" fn2-checkpoint-root1p 1)
-         ("-CHECKPOINT-ROOT1-WFP" fn2-checkpoint-root1-wfp 1)
-         ("-CHECKPOINT-ROOT1-ROWS" fn2-checkpoint-root1-rows 1 :frame fn2-checkpoint-root1)
-         ("-CHECKPOINT-WINDOWS-TYPE" fn2-checkpoint-windowsp 2)
-         ("-CHECKPOINT-WINDOWS-WFP" fn2-checkpoint-windows-wfp 2)
-         ("-CHECKPOINT-WINDOWS-ROWS" fn2-checkpoint-windows-rows 2 :frame fn2-checkpoint-windows)
-         ("-POOL-TYPE" fn2-poolp 3)
-         ("-POOL-WFP" fn2-pool-wfp 3)
-         ("-POOL-ROWS" fn2-pool-rows 3 :frame fn2-pool)
-         ("-POOL-DATA" fn2-pool-data-length 3 :frame fn2-pool)))
+ (c kind owner generation fn2-checkpoint-root1 fn2-checkpoint-windows fn2-checkpoint-future fn2-checkpoint-future-windows fn2-csnapshot fn2-pool)
+ :hyps ((fn2-checkpoint-root1p fn2-checkpoint-root1) (fn2-checkpoint-root1-wfp fn2-checkpoint-root1) (fn2-checkpoint-windowsp fn2-checkpoint-windows) (fn2-checkpoint-windows-wfp fn2-checkpoint-windows) (fn2-checkpoint-futurep fn2-checkpoint-future) (fn2-checkpoint-future-wfp fn2-checkpoint-future) (fn2-checkpoint-future-windowsp fn2-checkpoint-future-windows) (fn2-checkpoint-future-windows-wfp fn2-checkpoint-future-windows) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool) (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot))
+ :specs (
+  ("-CHECKPOINT-ROOT1-TYPE" fn2-checkpoint-root1p 1) ("-CHECKPOINT-ROOT1-WFP" fn2-checkpoint-root1-wfp 1) ("-CHECKPOINT-ROOT1-ROWS" fn2-checkpoint-root1-rows 1 :frame fn2-checkpoint-root1)
+  ("-CHECKPOINT-WINDOWS-TYPE" fn2-checkpoint-windowsp 2) ("-CHECKPOINT-WINDOWS-WFP" fn2-checkpoint-windows-wfp 2) ("-CHECKPOINT-WINDOWS-ROWS" fn2-checkpoint-windows-rows 2 :frame fn2-checkpoint-windows)
+  ("-CHECKPOINT-FUTURE-TYPE" fn2-checkpoint-futurep 3) ("-CHECKPOINT-FUTURE-WFP" fn2-checkpoint-future-wfp 3) ("-CHECKPOINT-FUTURE-ROWS" fn2-checkpoint-future-rows 3 :frame fn2-checkpoint-future)
+  ("-CHECKPOINT-FUTURE-WINDOWS-TYPE" fn2-checkpoint-future-windowsp 4) ("-CHECKPOINT-FUTURE-WINDOWS-WFP" fn2-checkpoint-future-windows-wfp 4) ("-CHECKPOINT-FUTURE-WINDOWS-ROWS" fn2-checkpoint-future-windows-rows 4 :frame fn2-checkpoint-future-windows)
+  ("-POOL-TYPE" fn2-poolp 5) ("-POOL-WFP" fn2-pool-wfp 5) ("-POOL-ROWS" fn2-pool-rows 5 :frame fn2-pool)
+  ("-POOL-DATA" fn2-pool-data-length 5 :frame fn2-pool)))
 
 (fn2-sealer-child fn2-core-checkpoint-root1 fn2-checkpoint-root1 (fn2-checkpoint-root1-init 1 fn2-checkpoint-root1)
  "The actual root1 source continuation and admitted window ownership survive yields.")
@@ -165,9 +186,9 @@
  "One exact semantic traversal row per allocator extent, with no arbitrary data cap.")
 
 (defcost fn2-checkpoint-root1-reserve-op :child fn2-checkpoint-root1-reserve :answers t
- :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-csnapshot fn2-core-pool)
+ :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-checkpoint-future fn2-core-checkpoint-future-windows fn2-core-csnapshot fn2-core-pool)
  :effects :per-use
- :doc "Atomically admit the complete fixed root1 working bundle before closing the C cut.")
+ :doc "Atomically admit all27 root, staging, journal and anchor leases before closing the C cut.")
 (defcost fn2-checkpoint-root1-workspaces-op :child fn2-checkpoint-root1-workspaces :answers t
  :tables (fn2-core-checkpoint-root1 fn2-core-checkpoint-windows fn2-core-pool)
  :doc "Derive the stable descriptor/page/scratch/read tuple from actual admitted root1 ownership.")
