@@ -2,6 +2,7 @@
 ; carriers; none accepts a caller readiness, cut or completed-page assertion.
 (in-package "ACL2")
 (include-book "checkpoint-master-state")
+(include-book "retirement")
 (fn2-book-layer :c)
 
 (defun fn2-checkpoint-catalog-step (scan highest candidate found fn2-checkpoints)
@@ -51,3 +52,40 @@
  :tables (fn2-core-checkpoint-plan fn2-core-csnapshot fn2-core-checkpoint-build fn2-core-checkpoint-refs
           fn2-core-checkpoint-construction fn2-core-extents fn2-core-checkpoint-plan-marks)
  :doc "Validate one actual reservation identity and ordinal before the physical copy gate.")
+
+(defun fn2-checkpoint-master-ready-children (token okind oslot ogen fn2-checkpoint-plan fn2-checkpoint-build
+                                            fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+ (declare (xargs :stobjs (fn2-checkpoint-plan fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+  :guard (and (fn2-checkpoint-plan-wfp fn2-checkpoint-plan) (fn2-checkpoint-build-wfp fn2-checkpoint-build)
+              (fn2-csnapshot-wfp fn2-csnapshot) (fn2-checkpoints-wfp fn2-checkpoints)
+              (fn2-checkpoint-refs-wfp fn2-checkpoint-refs))))
+ (mv-let (code checkpoint c extent epoch allocation slot gen)
+  (fn2-checkpoint-build-ready token okind oslot ogen fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs)
+  (declare (ignore checkpoint extent epoch allocation slot gen))
+  (if (and (eq code :ready)
+           (fn2-checkpoint-plan-closedp token okind oslot ogen fn2-checkpoint-plan fn2-csnapshot)
+           (equal c (fn2-checkpoint-plan-candidate 0 fn2-checkpoint-plan)))
+      (mv :ready c) (mv :pending 0))))
+(defcost fn2-checkpoint-master-ready-op :child fn2-checkpoint-master-ready-children :answers (:ready :pending)
+ :tables (fn2-core-checkpoint-plan fn2-core-checkpoint-build fn2-core-csnapshot fn2-core-checkpoints fn2-core-checkpoint-refs)
+ :doc "Derive final B admission's candidate from actual closed C construction and physically ready descriptor state.")
+
+(defun fn2-checkpoint-master-allocation-count-children (token okind oslot ogen fn2-retirement-control fn2-extents)
+ (declare (xargs :stobjs (fn2-retirement-control fn2-extents)
+  :guard (and (fn2-retirement-control-wfp fn2-retirement-control) (fn2-extents-wfp fn2-extents))))
+ (if (and (< 0 (fn2-retirement-control-rows fn2-retirement-control))
+          (equal (fn2-retirement-control-state 0 fn2-retirement-control) *fn2-retirement-state-staged*)
+          (equal (fn2-retirement-control-allocation-member 0 fn2-retirement-control) 1)
+          (equal (fn2-retirement-control-token 0 fn2-retirement-control) token)
+          (equal (fn2-retirement-control-owner-kind 0 fn2-retirement-control) okind)
+          (equal (fn2-retirement-control-owner-slot 0 fn2-retirement-control) oslot)
+          (equal (fn2-retirement-control-owner-gen 0 fn2-retirement-control) ogen)
+          (equal (fn2-alloc-freeze-phase fn2-extents) 2)
+          (equal (fn2-alloc-freeze-token fn2-extents) token)
+          (equal (fn2-alloc-freeze-owner-kind fn2-extents) okind)
+          (equal (fn2-alloc-freeze-owner-slot fn2-extents) oslot)
+          (equal (fn2-alloc-freeze-owner-gen fn2-extents) ogen))
+     (mv :ok (fn2-retirement-control-count 0 fn2-retirement-control)) (mv :state 0)))
+(defcost fn2-checkpoint-master-allocation-count-op :child fn2-checkpoint-master-allocation-count-children
+ :answers (:ok :state) :tables (fn2-core-retirement-control fn2-core-extents)
+ :doc "Read exact owner/token staged allocation count; only an actual empty scan may bypass allocation admission.")
