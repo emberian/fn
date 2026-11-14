@@ -28,9 +28,3 @@
  :why "One checkpoint bank writer keeps exact operation identities through physical harvest.")
 
 (include-book "checkpoint-writer")
-
-
-(defcorechild fn2-core-checkpoint-construction fn2-checkpoint-construction
- :init (fn2-checkpoint-construction-init (fn2-b-capacity :extent-slots 16 profile) fn2-checkpoint-construction)
- :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
- :why "Retained exact construction identities for every checkpoint page and pre-reserved journal ticket.")

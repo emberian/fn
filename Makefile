@@ -215,6 +215,7 @@ ACL2_BOOKS = \
   tests/alloc-freeze-unit \
   tests/checkpoint-unit \
   tests/checkpoint-member-unit \
+  tests/checkpoint-tickets-unit \
   tests/checkpoint-provenance-unit \
   tests/checkpoint-build-budget-unit \
   tests/checkpoint-publication-unit \
