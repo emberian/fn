@@ -488,7 +488,7 @@ SQUARE_DATUM = [(":TEMPLATE", "template"), (":OWNER", "owner"), (":ORIGIN", "ori
 
 
 def square_row(name, row, sym):
-    # :formula is the untranslated source of :translated (owed.lisp): omitted by name, the term is carried
+    # :formula is untrusted author/display metadata. Carry only the live-world-bound :translated term.
     d = row_dict(name, row, [k for k, _ in SQUARE_DATUM] + [":SCHEMA", ":VARS", ":DOC", ":TRANSLATED"],
                  [":FORMULA"], f"square {name}")
     fields = [f"name := {sym(name)}", f"schema := {sym(d[':SCHEMA'])}"]
