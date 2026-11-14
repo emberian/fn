@@ -2,6 +2,7 @@
 ; checkpoint owner still owns actor dispatch, abort exclusion and installation.
 (in-package "ACL2")
 (include-book "checkpoint-kind")
+(include-book "checkpoint-page-kind")
 (include-book "event-build")
 (fn2-book-layer :c)
 (defcorechild fn2-core-event-build fn2-event-build
