@@ -3,9 +3,9 @@
 ; durable allocation and checkpoint installation transition.
 (in-package "ACL2")
 (include-book "checkpoint-descriptor")
-(include-book "checkpoint-construction")
+(include-book "checkpoint-construction-owner")
 (include-book "checkpoint-writer-ops")
-(fn2-book-layer :b)
+(fn2-book-layer :c)
 
 (defun fn2-checkpoint-build-begin (checkpoint c token slot gen scratch sgen okind oslot ogen
                                  fn2-checkpoint-build fn2-csnapshot fn2-checkpoints fn2-checkpoint-refs

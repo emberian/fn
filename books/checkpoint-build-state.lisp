@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-member")
 (include-book "c-snapshot")
-(fn2-book-layer :b)
+(fn2-book-layer :c)
 (defcolumns fn2-checkpoint-build
  ((phase (:enum fn2-checkpoint-build-phase (:idle :await-roots :pack :seal :verify :write :wait-write :ready :uncertain)))
   (owner-kind :u8) (owner-slot :u32) (owner-gen :u60) (snapshot-token :u60)
