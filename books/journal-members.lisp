@@ -3,7 +3,7 @@
 ; this scanner enforces its declared member range and canonical boundaries.
 (in-package "ACL2")
 (include-book "journal-record-body")
-(fn2-book-layer :b)
+(fn2-book-layer :c)
 
 (include-book "journal-members-state")
 

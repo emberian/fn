@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "journal-members")
 (include-book "merkle")
-(fn2-book-layer :b)
+(fn2-book-layer :c)
 
 ; The producer owns ROW's hasher/frontier stripe and LEAF's result row until
 ; this member completes. It retains the scanner's exact immutable pool range
