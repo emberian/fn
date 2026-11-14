@@ -47,11 +47,41 @@ def check(source):
     assert ['fn2-checkpoint-lifecycle-step'] in list(walk(arms[':barrier-source']))
     assert ['fn2-checkpoint-lifecycle-step'] in list(walk(arms[':retention-source']))
     assert ['fn2-checkpoint-lifecycle-thaw'] in list(walk(arms[':thaw']))
+    assert ['fn2-checkpoint-events-rearm'] in list(walk(arms[':event-rearm']))
+    parked = {tag for tag,arm in arms.items() if arm[1:] == [[':idle']]}
+    assert parked == {':disabled', ':admission-refused'}, 'no productive phase may be a parked placeholder'
+    assert ['fn2-checkpoint-master-release-complete-op','row-token','*fn2-checkpoint-master-kind*','id','row-generation'] in list(walk(arms[':release-complete']))
     assert [':read-result',[':wake']] in form[form.index(':observes')+1]
     return True
+def check_creation(index, callbacks, state_source):
+    index_forms = [s.strip() for s in forms(index)]
+    declaration = '(include-book "checkpoint-master-kind")'
+    assert declaration in index_forms
+    assert index_forms.index(declaration) < index_forms.index('(fn2-machine-index-events)')
+    callback_forms = [read_sexp(s) for s in forms(callbacks)]
+    for name in ['fn2-checkpoint-page-worker-events', 'fn2-checkpoint-writer-events', 'fn2-event-producer-rearm-events', 'fn2-checkpoint-master-events']:
+        assert [name] in callback_forms
+    assert callback_forms.index(['fn2-checkpoint-writer-events']) < callback_forms.index(['fn2-event-producer-rearm-events']) < callback_forms.index(['fn2-checkpoint-master-events'])
+    state_forms = [read_sexp(s) for s in forms(state_source)]
+    assert ['defconst', '*fn2-checkpoint-activation-qualified*', 'nil'] in state_forms
+    state = next(x for x in state_forms if x[:2] == ['defmachine','fn2-checkpoint-master'])
+    assert state[state.index(':genesis')+1] == [[':charge',':steps','*fn2-work-small*',':runnable','t']]
+    return True
+
 if __name__ == '__main__':
     source = (ROOT/'books/checkpoint-master-arms.lisp').read_text()
     check(source)
+    index = (ROOT/'books/assembly-index.lisp').read_text()
+    callbacks = (ROOT/'books/assembly-callbacks-c.lisp').read_text()
+    state = (ROOT/'books/checkpoint-master-state.lisp').read_text()
+    check_creation(index, callbacks, state)
+    for bad in [state.replace('(defconst *fn2-checkpoint-activation-qualified* nil)', '(defconst *fn2-checkpoint-activation-qualified* t)'), state.replace(':runnable t', ':runnable nil')]:
+        try:
+            check_creation(index, callbacks, bad)
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError('mutation escaped creation/gate contract')
     mutations = [source.replace('(< 0 budget)','(<= 0 budget)',1),
                  source.replace('(:wake-row target)','(:wake-row id)',1),
                  source.replace('fn2-checkpoint-build-consume-op','fn2-checkpoint-build-ready-op',1),
@@ -64,4 +94,4 @@ if __name__ == '__main__':
             pass
         else:
             raise AssertionError('mutation escaped dispatch contract')
-    print('checkpoint master source controls: 5 rejected mutations; no runtime claim')
+    print('checkpoint master source controls: 7 rejected mutations; no runtime claim')
