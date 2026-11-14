@@ -43,16 +43,21 @@ def function_records(stream, count):
     if len(names) != count:
         raise ValueError(f'function count {len(names)} differs from header {count}')
 
-def proposal_body(body, formals, attachment):
+def proposal_body(name, body, formals, attachment):
     """Match print-world's executable body for proof search only.
 
     Keep the canonical logical-body record intact: the live ACL2 check and
     attachment obligations still apply independently of this proposed call.
     """
     if str(body) == ':MISSING' and not is_nil(attachment):
-        if not isinstance(attachment, Atom) or str(attachment).startswith(':'):
-            raise ValueError('attachment must name a function')
-        return List([attachment, *(Atom(v) for v in formals)])
+        # fn2-tv-attachment exports the assoc pair (constrained . selected),
+        # unlike print-world's executable metadata, which exports just selected.
+        if (not isinstance(attachment, List) or len(attachment) != 3
+                or str(attachment[1]) != '.' or str(attachment[0]) != name
+                or not isinstance(attachment[2], Atom)
+                or str(attachment[2]).startswith(':') or is_nil(attachment[2])):
+            raise ValueError('attachment must bind this function to a selected function')
+        return List([attachment[2], *(Atom(v) for v in formals)])
     return body
 
 def packed_text(x):
@@ -468,7 +473,7 @@ def generate(src):
                 lbody = decode(d[':LOGICAL-BODY'])
                 fms = [str(v) for v in as_list(decode(d[':FORMALS']))] if ':FORMALS' in d else []
                 att = decode(d[':ATTACHMENT']) if ':ATTACHMENT' in d else Atom('NIL')
-                lbody = proposal_body(lbody, fms, att)
+                lbody = proposal_body(name, lbody, fms, att)
                 sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
                 sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
                 just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')

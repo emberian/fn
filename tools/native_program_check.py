@@ -3,8 +3,10 @@
 
 With tools/image-node.lsp present, audit the served source's cut inventory,
 argument/result contracts and AST ordering. The JSON explicitly reports
-correspondence_status=unproved: audit success is not host/model refinement
-coverage. Native process-death campaigns and model certification are separate.
+cut_mapping_status=incomplete: source audit success does not replace the legacy
+comparison against model trace positions. Default exit status remains nonzero
+until that mapping is complete. --source-only runs the scoped source audit.
+Host refinement, native campaigns and model certification are separate.
 
 Legacy-tree behavior below:
 
@@ -1009,6 +1011,8 @@ def verify_held_commit_crash_points(owner_text=None, held_text=None, feed_text=N
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--source-only", action="store_true",
+                    help="run only the promoted-host inventory/ABI source audit; not the full cut-mapping gate")
     ap.add_argument("--balance", nargs="+", metavar="FILE",
                     help="only check that each FILE's parentheses balance "
                          "(the reader check a lane runs before a submit)")
@@ -1036,9 +1040,11 @@ def main(argv=None) -> int:
             print(f"served native program check: {report['cuts']} cut sites, "
                   f"{len(report['findings'])} findings")
             print(report['scope'])
+            print(f"model cut mapping: {report['cut_mapping_status']}; "
+                  f"host refinement: {report['host_refinement']}")
             for finding in report['findings']:
                 print(finding)
-        return 0 if report['audit_ok'] else 1
+        return 0 if report['audit_ok'] and (args.source_only or report['cut_mapping_status'] == 'complete') else 1
     try:
         report = check()
     except Unbalanced as error:
