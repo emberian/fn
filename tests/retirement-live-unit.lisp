@@ -35,7 +35,18 @@
   (mv (fn2-extents-state extent fn2-extents) (fn2-extents-retirement extent fn2-extents))
   (mv phase retired)))
 
-(defun fn2-retirement-live-body (fault fn2-core fn2-sim fn2-own)
+(defun fn2-retirement-live-workspace (okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (stobj-let ((fn2-retirement-control (fn2-core-retirement-control fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core)))
+  (phase slot gen code)
+  (let ((slot (fn2-retirement-control-slot 0 fn2-retirement-control))
+        (gen (fn2-retirement-control-gen 0 fn2-retirement-control)))
+   (mv (fn2-retirement-control-state 0 fn2-retirement-control) slot gen
+       (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool)))
+  (mv phase slot gen code)))
+
+(defun fn2-retirement-live-body (fault joinp fn2-core fn2-sim fn2-own)
  (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
  (b* ((profile (fn2-b-test-profile *fn2-profile-tiny* 0))
       (fn2-core (fn2-core-init profile fn2-core))
@@ -56,9 +67,22 @@
       ; Leave the earlier settlement queued under the same owner. Retirement
       ; polling must not consume it, even while its own member is pending.
       ((mv extent epoch allocation) (fn2-retirement-live-target old-batch fn2-core))
+      ; With no intervening turn, this real member leaves its collector open.
+      ; The retirement producer must join it and encode that same batch.
+      ((mv joined & join-batch join-event fn2-core)
+       (if joinp
+           (fn2-commit-admit-keyed 1 0 *fn2-scribe-kind* owner ogen fn2-core)
+         (mv :ok 0 0 0 fn2-core)))
+      ((mv pick & &) (fn2-commit-pick fn2-core))
+      ((unless (and (eq joined :ok) (or (not joinp) (eq pick :join))))
+       (mv nil fn2-core fn2-sim fn2-own))
       ((mv submitted batch event fn2-core)
        (fn2-retirement-submit extent epoch allocation *fn2-scribe-kind* owner ogen fn2-core))
-      ((unless (and (eq submitted :ok) (posp batch) (posp event))) (mv nil fn2-core fn2-sim fn2-own))
+      ((unless (and (eq submitted :ok) (posp batch) (posp event)
+                    (or (not joinp) (and (= batch join-batch) (= event (+ 1 join-event))))))
+       (mv nil fn2-core fn2-sim fn2-own))
+      ((mv held-phase held-slot held-gen held-code)
+       (fn2-retirement-live-workspace *fn2-scribe-kind* owner ogen fn2-core))
       ((mv pending & & fn2-core) (fn2-retirement-poll *fn2-scribe-kind* owner ogen fn2-core))
       ((mv busy & & fn2-core)
        (fn2-retirement-submit extent epoch allocation *fn2-scribe-kind* owner ogen fn2-core))
@@ -69,7 +93,8 @@
       ; A caller cannot invoke persisted installation during collection.
       ((mv early & & fn2-core)
        (fn2-commit-lifecycle-step active 0 0 fn2-core))
-      ((unless (and (eq pending :pending) (eq busy :busy) (eq before :state)
+      ((unless (and (= held-phase *fn2-retirement-state-waiting*) (eq held-code :ok)
+                    (eq pending :pending) (eq busy :busy) (eq before :state)
                     (= before-state *fn2-extent-state-allocated*)
                     (= (fn2-machine-batch-no active fn2-core) batch)
                     invariant (eq early :invalid)))
@@ -77,6 +102,8 @@
       ((mv fn2-core fn2-sim fn2-own) (fn2-retirement-live-drive 600 fault fn2-core fn2-sim fn2-own))
       ((mv settled got-batch got-event fn2-core)
        (fn2-retirement-poll *fn2-scribe-kind* owner ogen fn2-core))
+      ((mv retained-phase retained-slot retained-gen retained-code)
+       (fn2-retirement-live-workspace *fn2-scribe-kind* owner ogen fn2-core))
       ((mv old-code got-old-batch & old-outcome fn2-core)
        (fn2-commit-take *fn2-scribe-kind* owner ogen fn2-core))
       ((mv after invariant) (fn2-read-pin-test-release-code extent epoch allocation fn2-core))
@@ -89,10 +116,13 @@
                     (= after-state *fn2-extent-state-retire-pending*) (= retirement batch)
                     (not (fn2-core-stopped-p fn2-core)))
              (and (eq settled :uncertain) (eq after :state)
+                  (member-equal retained-phase (list *fn2-retirement-state-waiting*
+                                                     *fn2-retirement-state-uncertain*))
+                  (= retained-slot held-slot) (= retained-gen held-gen) (eq retained-code :ok)
                   (= after-state *fn2-extent-state-allocated*))))
       fn2-core fn2-sim fn2-own)))
 
-(defun fn2-retirement-live-test (fault)
+(defun fn2-retirement-live-test (fault joinp)
  (declare (xargs :verify-guards nil))
  (with-local-stobj fn2-core
   (mv-let (answer fn2-core)
@@ -100,12 +130,14 @@
     (mv-let (answer fn2-core fn2-sim)
      (with-local-stobj fn2-own
       (mv-let (answer fn2-core fn2-sim fn2-own)
-       (fn2-retirement-live-body fault fn2-core fn2-sim fn2-own)
+       (fn2-retirement-live-body fault joinp fn2-core fn2-sim fn2-own)
        (mv answer fn2-core fn2-sim)))
      (mv answer fn2-core)))
    answer)))
-(assert-event (fn2-retirement-live-test 26))
-(assert-event (fn2-retirement-live-test 12))
+(assert-event (fn2-retirement-live-test 26 nil))
+(assert-event (fn2-retirement-live-test 12 nil))
+(assert-event (fn2-retirement-live-test 26 t))
+(assert-event (fn2-retirement-live-test 12 t))
 
 ; Exact settlement consumption preserves an earlier unrelated outcome owned
 ; by the same checkpoint coordinator, both before and after ours settles.
