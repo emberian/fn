@@ -69,6 +69,69 @@
         (mv nil domain (caddr equation) theorem)
       (mv :correspondence-conclusion ''t nil theorem))))))
 
+; Only beta-reduce translated first-order lambdas. No function definitions,
+; tests or arithmetic are evaluated. Normalizing body and arguments before
+; substitution cannot create a new lambda application in first-order ACL2.
+(mutual-recursion
+ (defun fn2-evidence-beta (term)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom term) term) ((eq (car term) 'quote) term)
+        ((consp (car term))
+         (sublis-var (pairlis$ (cadar term) (fn2-evidence-beta-list (cdr term)))
+                     (fn2-evidence-beta (caddar term))))
+        (t (cons (car term) (fn2-evidence-beta-list (cdr term))))))
+ (defun fn2-evidence-beta-list (terms)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+   (cons (fn2-evidence-beta (car terms)) (fn2-evidence-beta-list (cdr terms))))))
+(mutual-recursion
+ (defun fn2-evidence-occurs (subject term)
+  (declare (xargs :verify-guards nil))
+  (and (consp term) (not (eq (car term) 'quote))
+       (or (equal subject term) (fn2-evidence-occurs-list subject (cdr term)))))
+ (defun fn2-evidence-occurs-list (subject terms)
+  (declare (xargs :verify-guards nil))
+  (and (consp terms)
+       (or (fn2-evidence-occurs subject (car terms))
+           (fn2-evidence-occurs-list subject (cdr terms))))))
+(mutual-recursion
+ (defun fn2-evidence-replace (subject replacement term)
+  (declare (xargs :verify-guards nil))
+  (cond ((atom term) term) ((eq (car term) 'quote) term)
+        ((equal subject term) replacement)
+        (t (cons (car term) (fn2-evidence-replace-list subject replacement (cdr term))))))
+ (defun fn2-evidence-replace-list (subject replacement terms)
+  (declare (xargs :verify-guards nil))
+  (if (atom terms) nil
+   (cons (fn2-evidence-replace subject replacement (car terms))
+         (fn2-evidence-replace-list subject replacement (cdr terms))))))
+
+; A wrapper may only return ALL outputs of one actual call, once each and
+; in order. The subject and arguments must also occur in the original C.
+(defun fn2-evidence-tuple-projection (term index subject)
+ (declare (xargs :verify-guards nil))
+ (if (equal term ''nil) (mv nil index subject)
+  (let ((item (cadr term)))
+   (if (and (consp term) (eq (car term) 'cons) (equal (len term) 3)
+            (consp item) (eq (car item) 'mv-nth) (equal (len item) 3)
+            (equal (cadr item) (list 'quote index))
+            (or (not subject) (equal subject (caddr item))))
+       (fn2-evidence-tuple-projection (caddr term) (+ 1 index) (caddr item))
+     (mv :unsupported-result-projection index subject)))))
+(defun fn2-evidence-projection-subject (lhs conclusion world)
+ (declare (xargs :verify-guards nil))
+ (let* ((original (fn2-evidence-beta conclusion))
+        (body (fn2-decl-statement-body (car lhs) world))
+        (body (sublis-var (pairlis$ (getpropc (car lhs) 'formals nil world) (cdr lhs)) body)))
+  (if (fn2-evidence-occurs lhs original) (mv nil lhs)
+   (mv-let (problem count subject)
+     (fn2-evidence-tuple-projection (fn2-evidence-beta body) 0 nil)
+    (if (and (not problem) (posp count) (fn2-evidence-callp subject world)
+             (equal count (len (getpropc (car subject) 'stobjs-out nil world)))
+             (fn2-evidence-occurs subject original))
+        (mv nil subject)
+      (mv :unbound-result-projection nil))))))
+
 (defun fn2-square-evidence-events-with-correspondence
  (name positive negative correspondence recheck world)
  (declare (xargs :verify-guards nil))
@@ -85,22 +148,34 @@
   (mv-let (hyp conclusion) (fn2-evidence-parts formula)
    (mv-let (normalization-problem normalization-domain normalized correspondence-body)
     (fn2-evidence-normalization conclusion correspondence world)
+   (mv-let (projection-problem subject)
+    (if correspondence
+        (fn2-evidence-projection-subject (cadr normalized) conclusion world)
+      (mv nil (cadr normalized)))
    (let* ((lhs (cadr normalized)) (rhs (caddr normalized))
           (hypotheses (fn2-evidence-hypotheses hyp))
           (mut-call (cons mutant (cdr lhs)))
           (domain `(and ,(fn2-evidence-call-guard lhs world)
-                        ,(fn2-evidence-call-guard rhs world)))
+                        ,(fn2-evidence-call-guard rhs world)
+                        ,(fn2-evidence-call-guard subject world)))
+          (mutated-conclusion
+           (if correspondence
+               (fn2-evidence-replace subject mut-call (fn2-evidence-beta conclusion))
+             `(equal ,mut-call ,rhs)))
           (pos-body `(let ,positive (and ,domain ,normalization-domain ,hyp ,conclusion ,normalized)))
           (neg-body
            (if (eq mode :mutation)
                `(let ,neg-bindings
                   (and ,domain ,(fn2-evidence-call-guard mut-call world)
                        ,normalization-domain ,hyp ,conclusion ,normalized
+                       (not ,mutated-conclusion)
                        (not (equal ,mut-call ,rhs))))
              `(let ,neg-bindings
                 (and ,domain ,normalization-domain ,@(remove-equal removed hypotheses)
                      (not ,removed) (not ,conclusion) (not ,normalized)))))
-          (domain-event `(thm (implies ,hyp ,normalization-domain)))
+          (domain-event
+           `(thm (implies ,hyp ,(if correspondence `(and ,normalization-domain ,domain)
+                                  normalization-domain))))
           (pos-hints (and correspondence
                          `(("Goal" :use ((:instance ,correspondence ,@positive))))))
           (neg-hints (and correspondence
@@ -110,6 +185,7 @@
             ((not (and row (fn2-decl-get :statement row))) :unknown-statement)
             ((not (equal formula (fn2-decl-get :translated row))) :stale-statement)
             (normalization-problem normalization-problem)
+            (projection-problem projection-problem)
             ((not (subsetp-eq (union-eq (all-vars normalization-domain)
                                        (all-vars normalized)) vars)) :correspondence-variables)
             ((and (not recheck) (fn2-decl-get :evidence row)) :already-bound)
@@ -157,14 +233,17 @@
                  :translated ,(fn2-decl-get :translated row)
                  :correspondence ,correspondence :correspondence-body ,correspondence-body
                  :normalization-domain ,normalization-domain :normalized-conclusion ,normalized
+                 :subject-call ,subject
                  :positive ,pos-name :negative ,neg-name
                  :positive-body ,pos-body :negative-body ,neg-body
                  :positive-bindings ,positive :negative-control ,negative
                  :functions (,(fn2-evidence-function-binding (car lhs) world)
                              ,(fn2-evidence-function-binding (car rhs) world)
+                             ,@(and correspondence
+                                    (list (fn2-evidence-function-binding (car subject) world)))
                              ,@(and (eq mode :mutation)
                                     (list (fn2-evidence-function-binding mutant world)))))))
-               (fn2-decl-row '(:square ,name) (w state)))))))))))))))
+               (fn2-decl-row '(:square ,name) (w state))))))))))))))))
 
 ; Preserve the five-argument API used by constructor/snapshot consumers.
 (defun fn2-square-evidence-events (name positive negative recheck world)
@@ -188,7 +267,13 @@
   (and (not problem)
        (equal (fn2-decl-get :correspondence-body e) theorem)
        (equal (fn2-decl-get :normalization-domain e) domain)
-       (equal (fn2-decl-get :normalized-conclusion e) normalized))))
+       (equal (fn2-decl-get :normalized-conclusion e) normalized)
+       (mv-let (projection-problem subject)
+         (if (fn2-decl-get :correspondence e)
+             (fn2-evidence-projection-subject (cadr normalized) conclusion world)
+           (mv nil (cadr normalized)))
+        (and (not projection-problem)
+             (equal (fn2-decl-get :subject-call e) subject))))))
 (defmacro fn2-assert-square-evidence (name)
  `(make-event
    (let* ((row (fn2-decl-row '(:square ,name) (w state)))
@@ -217,6 +302,7 @@
                   (equal (fn2-decl-get :negative-theorem e) (getpropc neg-name 'theorem nil (w state)))
                   (equal (strip-cars (fn2-decl-get :functions e))
                          (append (list (fn2-decl-get :concrete sides) (fn2-decl-get :reference sides))
+                                 (and correspondence (list (car (fn2-decl-get :subject-call e))))
                                  (and (eq (fn2-decl-get :kind negative) :mutation)
                                       (list (fn2-decl-get :replace negative)))))
                   (fn2-evidence-functions-currentp (fn2-decl-get :functions e) (w state))))

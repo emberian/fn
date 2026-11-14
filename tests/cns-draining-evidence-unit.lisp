@@ -43,7 +43,7 @@
                :in-theory
                (union-theories '(fn2-cns-draining-observed-guarded
                                  fn2-cns-draining-observed)
-                               (theory 'minimal-theory))))))))))
+                               (theory 'minimal-theory)))))))))
 
 ; Add endpoint locators to the SAME original row; do not alter H/C or :proof.
 (make-event

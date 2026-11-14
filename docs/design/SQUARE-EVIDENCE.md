@@ -31,13 +31,24 @@ reference-call))`, optionally under `implies(D, ...)`. Its left side must
 structurally equal the original live conclusion C, including any translated
 `mv-let` lambdas. The endpoint calls come from that theorem, never a supplied
 replacement formula. The original row's `:sides` must name their functions.
-The generator proves `H => D` for the entire original antecedent H and also
-requires D at both ground witnesses. A correspondence restricted to a removed
+Equivalence alone is insufficient: the concrete endpoint must either occur
+as an actual call in C or expose every output of that call as a list, exactly
+once and in order. The wrapper's admitted body is beta-reduced without
+unfolding or evaluating other functions. Its tuple width must equal the
+actual subject's result ABI. Hidden producers, dropped/reordered outputs and
+unrelated equivalent endpoints fail closed. The subject's actual arguments,
+body, guard and ABI are bound and checked again on replay.
+
+The generator proves `H => (D and all call guards)` for the entire original
+antecedent H and also requires D at both ground witnesses. A correspondence restricted to a removed
 hypothesis therefore cannot justify a negative witness outside its domain.
 
 Every normalized witness still proves the original C (or its negation for
 hypothesis removal), as well as the corresponding endpoint equality. This
 does not replace the original statement or discharge its universal obligation.
+For mutation, it additionally falsifies the original C with the actual
+subject call replaced by the mutant result, so changing an unrelated view
+cannot masquerade as sensitivity of the original computation.
 The correspondence theorem's exact body, normalization domain and endpoint
 equation are checked again during replay. Whole-formula logical equivalence
 does not authorize changing H or choosing another C.
@@ -75,6 +86,9 @@ actual mutable operation with a full-result `mv-let` predicate and a sibling
 clobber mutant. It refuses redirected correspondence theorems, a domain that
 holds only at the chosen examples, and a removal witness outside the theorem's
 domain. Coherent theorem-name/body metadata tampering cannot redirect C.
+An admitted equivalence to unrelated constant endpoints is rejected even
+when the original conclusion is universally true; partial-result wrappers
+are rejected even when their remaining scalar output is correct.
 The independent redirected-formula control keeps the original statement and
 its translation while replacing author metadata with a different hypothesis
 and shifted reference call. False redirected witnesses are refused; genuine

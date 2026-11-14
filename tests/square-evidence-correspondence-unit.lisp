@@ -130,24 +130,24 @@
 ; sensitivity control outside that domain, even if its positive domain holds.
 (defun fn2-evidence-domain-clamp (x) (if (natp x) x 0))
 (defun fn2-evidence-domain-identity (x) x)
-(defun fn2-evidence-domain-resultp (x)
- (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x)))
+(defun fn2-evidence-domain-resultp (observed x)
+ (equal observed (fn2-evidence-domain-identity x)))
 (defthm fn2-evidence-domain-resultp-unfolds
- (equal (fn2-evidence-domain-resultp x)
+ (equal (fn2-evidence-domain-resultp (fn2-evidence-domain-clamp x) x)
         (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x)))
  :rule-classes nil)
 (defthm fn2-evidence-domain-only-unfolds
  (implies (natp x)
-  (equal (fn2-evidence-domain-resultp x)
+  (equal (fn2-evidence-domain-resultp (fn2-evidence-domain-clamp x) x)
          (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x))))
  :rule-classes nil)
 (defthm fn2-evidence-domain-extra-variable-unfolds
  (implies (natp extra)
-  (equal (fn2-evidence-domain-resultp x)
+  (equal (fn2-evidence-domain-resultp (fn2-evidence-domain-clamp x) x)
          (equal (fn2-evidence-domain-clamp x) (fn2-evidence-domain-identity x))))
  :rule-classes nil)
 (defthm-owed fn2-evidence-opaque-domain (x)
- (implies (natp x) (fn2-evidence-domain-resultp x))
+ (implies (natp x) (fn2-evidence-domain-resultp (fn2-evidence-domain-clamp x) x))
  :sides (:concrete fn2-evidence-domain-clamp :reference fn2-evidence-domain-identity)
  :teeth (fn2-evidence-correspondence-runtime-control))
 (must-fail
@@ -165,3 +165,41 @@
  :positive ((x '3))
  :negative (:kind :hypothesis-removal :remove (natp x) :bindings ((x '-1))))
 (fn2-assert-square-evidence fn2-evidence-opaque-domain)
+
+; A logically valid equivalence is insufficient for a sensitivity subject.
+; These unrelated endpoints can manufacture a changing mutant while the
+; original conclusion is tautologically true. No row/evidence may survive.
+(defun fn2-evidence-unrelated-zero (value cell) (declare (ignore value cell)) 0)
+(defun fn2-evidence-unrelated-reference (value cell) (declare (ignore value cell)) 0)
+(defun fn2-evidence-unrelated-one (value cell) (declare (ignore value cell)) 1)
+(defthm fn2-evidence-unrelated-equivalence
+ (equal
+  (equal (fn2-evidence-write-observed value cell) (fn2-evidence-write-observed value cell))
+  (equal (fn2-evidence-unrelated-zero value cell) (fn2-evidence-unrelated-reference value cell)))
+ :rule-classes nil)
+(must-fail
+ (progn
+  (defthm-owed fn2-evidence-unrelated-subject (value cell)
+   (implies (and (fn2-evidence-cellp cell) (unsigned-byte-p 8 value))
+    (equal (fn2-evidence-write-observed value cell) (fn2-evidence-write-observed value cell)))
+   :sides (:concrete fn2-evidence-unrelated-zero :reference fn2-evidence-unrelated-reference)
+   :teeth (fn2-evidence-correspondence-runtime-control))
+  (defsquare-evidence fn2-evidence-unrelated-subject
+   :correspondence fn2-evidence-unrelated-equivalence
+   :positive ((value '42) (cell '(0 91)))
+   :negative (:kind :mutation :at fn2-evidence-unrelated-zero
+              :replace fn2-evidence-unrelated-one :bindings ((value '42) (cell '(0 91)))))))
+(assert-event (not (fn2-decl-row '(:square fn2-evidence-unrelated-subject) (w state))))
+
+; A view cannot silently omit the state carrier, even with a valid equality.
+(defun-nx fn2-evidence-write-partial (value cell)
+ (mv-let (code after) (fn2-evidence-write value cell)
+  (declare (ignore after)) (list code)))
+(assert-event
+ (mv-let (problem subject)
+   (fn2-evidence-projection-subject
+    '(fn2-evidence-write-partial value cell)
+    (fn2-evidence-beta
+     (fn2-decl-statement-body 'fn2-evidence-opaque-write$owed (w state))) (w state))
+  (declare (ignore subject))
+  (equal problem :unbound-result-projection)))
