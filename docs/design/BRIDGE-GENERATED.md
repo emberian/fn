@@ -247,7 +247,11 @@ from the frozen `6e07e62f3` source for this check.
 
 `tests/member-exec-domain-unit` checks the live ACL2 logical bodies, formals,
 guard, admitted measure, decrease, domain preservation, and positive witness.
-Its qualified probe and record certification remain pending. This pilot does not
+Its qualified source probe admitted all six forms (242 steps). Single-book record
+`certify-20261114T020835Z-3549888` passed in 0.115 seconds with a qualified published
+cache entry at closure key
+`74a7e7f4d487615f9893005e30de487577504aea47b4cbf2345bc0168fef9d35`.
+This pilot does not
 establish fresh served-packet coverage, complete guard reflection, or canonical
 object/primitive and symbol-package correspondence. Those remain separate bridge
 obligations.
