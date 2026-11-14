@@ -49,7 +49,8 @@
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
 ; slot's 128-row field stripe and hashes the BLAKE3 trailer in its b3 row,
-; both at fn2-b-ctl-slot), and the top row, 4+w+c, the block read's check
+; both at fn2-b-ctl-slot), then row 4+w+c for block reads and the
+; final row 5+w+c for the checkpoint writer's private checker. The block read's check
 ; (fn2-block-read-done-children hashes a block read through a source
 ; manifest there, within one call, so one row serves every cursor row;
 ; b-durability.md S9a); the count is derived, so every profile has every
@@ -67,10 +68,19 @@
  (+ 4 (fn2-b-upload-windows profile) (nfix s)))
 (defun fn2-b-format-floor (profile)
  (declare (xargs :guard t))
- (+ 5 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
+ (+ 6 (fn2-b-upload-windows profile) (fn2-b-ctl-rows profile)))
 (defun fn2-b-format-slots (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :format-slots (fn2-b-format-floor profile) profile))
+(defun fn2-b-block-read-row (rows)
+ (declare (xargs :guard t))
+ (nfix (- (nfix rows) 2)))
+(defun fn2-b-checkpoint-row (rows)
+ (declare (xargs :guard t))
+ (nfix (- (nfix rows) 1)))
+(defun fn2-b-checkpoint-slot (profile)
+ (declare (xargs :guard t))
+ (fn2-b-checkpoint-row (fn2-b-format-slots profile)))
 (defthm fn2-b-ctl-slot-below-floor
  (implies (< (nfix s) (fn2-b-ctl-rows profile)) (< (fn2-b-ctl-slot s profile) (fn2-b-format-floor profile))))
 (in-theory (disable fn2-b-upload-windows fn2-b-ctl-rows fn2-b-ctl-slot fn2-b-format-floor fn2-b-format-slots))
@@ -528,7 +538,7 @@
 ; LSLOT LGEN holds at HOFF (the block's own BLAKE3) and CVOFF (its chaining
 ; value at chunk counter 4 BLOCK; a block shorter than a unit carries its
 ; BLAKE3 there again, article-manifest.lisp): the LEN octets at BOFF of the
-; lease are hashed in the format table's top row (fn2-b-format-floor), the
+; lease are hashed in the format table's penultimate row (fn2-b-block-read-row), the
 ; read-side check's, initialized, fed and finalized within this one call,
 ; so one row serves every cursor row; either digest unequal answers :hash.
 ; :bounds: the row or the lease range is not there (the core contradicts
@@ -538,7 +548,7 @@
  (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
  (b* (((unless (and (natp bytes) (natp len) (equal bytes len))) (mv :io fn2-b3 fn2-digests))
       ((unless (equal verify 1)) (mv :ok fn2-b3 fn2-digests))
-      (row (nfix (- (fn2-b3-rows fn2-b3) 1)))
+      (row (fn2-b-block-read-row (fn2-b3-rows fn2-b3)))
       (got (fn2-digest-slot row *fn2-b3-result*))
       (want (fn2-digest-slot row *fn2-fc-hash*))
       (cv (fn2-digest-slot row *fn2-fc-geometry*))
