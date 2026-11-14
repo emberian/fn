@@ -1,0 +1,16 @@
+; One actual layer-A dispatcher and executor, from the production emitters.
+(in-package "ACL2")
+(include-book "machine-budget-core-fixture")
+(include-book "../books/machine-dispatch")
+(include-book "../books/executor-access-events")
+(include-book "../books/executor-wake-events")
+(include-book "../books/executor-services-events")
+(include-book "../books/executor-reservation-events")
+(include-book "../books/executor-loop-events")
+
+(fn2-machine-dispatch-events)
+(fn2-executor-access-events)
+(fn2-executor-wake-events)
+(fn2-executor-services-events)
+(fn2-executor-reservation-events)
+(fn2-executor-loop-events)
