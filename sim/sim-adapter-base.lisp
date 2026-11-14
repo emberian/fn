@@ -310,7 +310,8 @@
   (cond ((and (equal fault *fn2-fault-fragment*) (equal kind *fn2-action-receive*) (< 0 len))
          (+ 1 (mod word len)))
         ((or (and (equal fault *fn2-fault-short-send*) (equal kind *fn2-action-send*))
-             (and (equal fault *fn2-fault-short-write*) (equal kind *fn2-action-write*)))
+             (and (member-equal fault (list *fn2-fault-short-write* *fn2-fault-no-space*))
+                  (equal kind *fn2-action-write*)))
          (mod word (+ 1 len)))
         (t (nfix len))))
 (defthm fn2-sim-amount-natural
@@ -395,7 +396,11 @@
   (cond
    ((or (fn2-op-input-kindp kind) (fn2-op-output-kindp kind))
     (let* ((nbytes (fn2-sim-storage-rows fn2-sim-storage))
-           (redirect (fn2-sim-redirect offset nbytes kind fault)))
+           (redirect (fn2-sim-redirect offset nbytes kind fault))
+           ; ENOSPC reports no known progress, not absence of physical effects.
+           ; The selected prefix is transferred before the error is delivered.
+           (hidden-write (and (equal kind *fn2-action-write*)
+                              (equal fault *fn2-fault-no-space*))))
       (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
                   (fn2-ops (fn2-core-ops fn2-core)))
         (code count fn2-pool fn2-sim-network fn2-sim-storage fn2-own)
@@ -404,9 +409,11 @@
                             fn2-pool fn2-ops fn2-own)
                         fn2-own)))
           (fn2-sim-transfer kind cap nonce rslot rgen off n okind oslot ogen slot gen
-                            offset redirect stamp fua fault word 0
+                            offset redirect stamp fua (if hidden-write *fn2-fault-none* fault) word 0
                             fn2-pool fn2-sim-network fn2-sim-storage fn2-own))
-        (mv code count 0 fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
+        (mv (if (and hidden-write (eq code :ok)) :no-space code)
+            (if hidden-write 0 count) 0
+            fn2-core fn2-sim-network fn2-sim-storage fn2-own))))
    ((or (equal kind *fn2-action-accept*) (equal kind *fn2-action-connect*))
     (let ((index (if (< 0 (fn2-sim-network-rows fn2-sim-network))
                      (mod word (fn2-sim-network-rows fn2-sim-network)) 0)))
