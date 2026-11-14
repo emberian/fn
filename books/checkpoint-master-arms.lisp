@@ -8,10 +8,13 @@
 
 (defmachine-arms fn2-checkpoint-master :declare
  :arms
- ((:idle
+ ((:idle :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
    (:if *fn2-checkpoint-activation-qualified*
-    ((:set (scan 0) (highest 0) (candidate 0) (candidate-found 0))
-     (:next :catalog) (:charge :steps *fn2-work-small* :runnable t))
+    ((:do (code needed retirement) (fn2-checkpoint-master-pressure-op row-retirement-seen))
+     (:if needed
+      ((:set (scan 0) (highest 0) (candidate 0) (candidate-found 0) (retirement-seen retirement))
+       (:next :catalog) (:charge :steps *fn2-work-small* :runnable t))
+      ((:park :checkpoint-needed))))
     ((:next :disabled) (:charge :steps *fn2-work-small*))))
   (:disabled (:idle))
   (:catalog :on-refusal ((:next :admission-refused) (:charge :steps *fn2-work-small* :runnable t))
