@@ -235,3 +235,31 @@ bridge reviews timed out and received no clearance. An absent response is not a
 clean review, and no finding is attributed to Kimi without an actual response.
 Validate alleged defects against source before assigning fixes, retain rejected
 suspicions, and distinguish known unfinished work from newly discovered defects.
+
+## Authorization lane: live principal binding and delivered-item admission
+
+`assurance-authorization` owns a narrow structural-state claim at the actual
+`fn2-cns-authority-allows` operation: with authority served, a stale request
+generation or stale linked control generation refuses before administrator bypass
+and leaves the complete core unchanged. `books/authority-incarnation.lisp` and
+`tests/authority-incarnation-unit.lisp` are unqualified drafts until a cached-prefix
+probe and record-toolchain certification admit them. The fixture admits actual
+control/request rows, mutates references explicitly, and compares complete ordinary
+snapshots; it does not establish a reachable close/reopen history. Authentication
+and kernel owner-UID trust remain outside this structural claim.
+
+The higher-impact open target is K7's delivered-item admission. Source tracing
+finds current consume checks at CNS `:check`, but `:page` calls
+`fn2-cns-item-next` without a read-grant check before fetching/putting the item.
+The adopted authority design requires an article's own stream to authorize each
+item; a principal's `addr` entry selects it and does not authorize it. Existing
+`owed-authority` explicitly excludes delivered read/wait items, and K7 remains
+owed. This is an identified coverage/implementation gap, not yet an executed
+unauthorized-delivery witness. `tests/authority-read-control.lisp` constructs
+consume and append grants plus an explicitly disabled read grant, then uses an
+actual issued cursor on a fresh bound connection; its enabled-read twin is the
+control. Next: execute both under an authentic qualified assembly, require all
+setup replies and actual payload evidence, then connect current per-item read
+admission and final carrier-handoff validation in the CNS generator. No stale
+admin bypass was found: `fn2-cns-admin-p` lacks generation checks by itself, but
+its only caller checks `fn2-cns-principal` first against the same core.
