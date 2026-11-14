@@ -1,6 +1,7 @@
 ; Local candidate-claim/prepare controls only. Synthetic BUILDING eligibility
 ; does not witness actual C cut, descriptor BEGIN or physical construction.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint")
 (defun fn2-checkpoint-builder-claim-test-body (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests) :verify-guards nil))

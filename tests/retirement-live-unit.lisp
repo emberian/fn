@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../sim/commit-proof-step")
 (include-book "read-pins-unit")
 

@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "journal-members-unit")
 (include-book "../books/event-frontier")
 

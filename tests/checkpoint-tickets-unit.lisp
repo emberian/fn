@@ -1,6 +1,7 @@
 ; Exact-ticket primitive controls. The synthetic closed-job token is an
 ; explicit fixture premise, not proof of the actual construction/C-cut closure.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-tickets")
 (defun fn2-ticket-control (fn2-extents fn2-checkpoint-construction)
  (declare (xargs :stobjs (fn2-extents fn2-checkpoint-construction) :verify-guards nil))

@@ -1,4 +1,5 @@
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "../books/checkpoint-build")
 
 ; Synthetic eligible job metadata isolates the leaf descriptor-budget gate.
