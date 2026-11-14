@@ -81,3 +81,13 @@
  (implies (and (unsigned-byte-p 32 expected)
                (equal (fn2-run-hdr base entries) expected))
           (unsigned-byte-p 32 (fn2-run-hdr base entries))))
+
+; The caller supplies its generated schema dispatch result, never a stored
+; field as expected kind. This theorem exposes exactly the former live check.
+(defthm fn2-checkpoint-semantic-page-child-p-by-definition
+ (equal (fn2-checkpoint-semantic-page-child-p base page-kind length fn2-fields)
+  (and (equal (fn2-fields-value (+ base *fn2-format-ref-field-storage-domain*) fn2-fields) 0)
+       (equal (fn2-fields-value (+ base *fn2-format-ref-field-page-kind*) fn2-fields) page-kind)
+       (equal (fn2-fields-value (+ base *fn2-format-ref-field-encoded-length*) fn2-fields) length)
+       (equal (fn2-fields-ref-len (+ base *fn2-format-ref-field-expected-hash*) fn2-fields) 32)))
+ :hints (("Goal" :in-theory (enable fn2-checkpoint-semantic-page-child-p))))
