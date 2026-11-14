@@ -76,7 +76,7 @@
 
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
@@ -86,7 +86,7 @@
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
          (:advance :storage-window) (:anchor :storage-window)
          (:bootstrap :storage-window) (:bootstrap-verify :storage-window)
-         (:checkpoint-anchor :storage-window) (:checkpoint-check :storage-window) (:recover :storage-window)
+         (:checkpoint-anchor :storage-window) (:checkpoint-check :storage-window) (:checkpoint-descriptor :storage-window) (:checkpoint-verify :storage-window) (:recover :storage-window)
          (:recover-wait :storage-window) (:epoch :storage-window) (:epoch-fence :storage-window)
          (:epoch-result :storage-window))
  :budget (:bytes 32768 :steps 32 :descriptors 4)
@@ -94,5 +94,5 @@
  :capacity (if (fn2-profile-get :image-boot profile) 1 0)
  :initial ((generation fn2-commit-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*))
  :arms ((:free) (:prepare) (:write) (:write-result) (:read) (:read-result) (:verify) (:advance)
-        (:anchor) (:bootstrap) (:bootstrap-verify) (:checkpoint-anchor) (:checkpoint-check) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
+        (:anchor) (:bootstrap) (:bootstrap-verify) (:checkpoint-anchor) (:checkpoint-check) (:checkpoint-descriptor) (:checkpoint-verify) (:recover) (:recover-wait) (:epoch) (:epoch-fence) (:epoch-result) (:release) (:ready) (:failed))
  :observes ((:read-result) (:write-result) (:fence-result)))

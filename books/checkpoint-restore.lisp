@@ -59,8 +59,7 @@
          (posp (fn2-fields-value (+ base *fn2-format-anchor-field-checkpoint*) fn2-fields))
          (equal (fn2-fields-value (+ base f) fn2-fields) *fn2-checkpoint-served-storage-domain*)
          (equal (fn2-fields-value (+ base f 4) fn2-fields) *page-kind-checkpoint-descriptor*)
-         (posp (fn2-fields-value (+ base f 5) fn2-fields))
-         (<= (fn2-fields-value (+ base f 5) fn2-fields) *fn2-format-page-size*)
+         (equal (fn2-fields-value (+ base f 5) fn2-fields) *fn2-format-sector-size*)
          (equal (mod (fn2-fields-value (+ base f 1) fn2-fields) *fn2-storage-extent-units*) 0)))
        (mv :descriptor fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests))
       ((mv code fn2-checkpoint-refs fn2-checkpoint-bytes)
@@ -101,3 +100,19 @@
        (mv :bounds 0 0 0))
       (n *fn2-format-sector-size*))
   (mv :read (+ (* unit *fn2-format-sector-size*) cursor) n (+ cursor n))))
+
+; Load one immutable expected digest into checker-owned input storage. The
+; stripe's FC-HASH region is outside its hash-engine mutable result/frontier.
+(defun fn2-checkpoint-restore-load-hash (i r hash fn2-checkpoint-bytes fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoint-bytes fn2-digests) :measure (nfix (- 8 (nfix i)))
+  :guard (and (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (natp r)
+              (<= (* 32 (+ r 1)) (fn2-checkpoint-bytes-rows fn2-checkpoint-bytes))
+              (fn2-digest-rowp hash fn2-digests) (natp i) (<= i 8))))
+ (if (or (not (natp i)) (>= i 8)) fn2-digests
+  (let* ((at (+ (* 32 r) (* 4 i)))
+         (word (+ (fn2-checkpoint-bytes-value at fn2-checkpoint-bytes)
+                  (* 256 (fn2-checkpoint-bytes-value (+ at 1) fn2-checkpoint-bytes))
+                  (* 65536 (fn2-checkpoint-bytes-value (+ at 2) fn2-checkpoint-bytes))
+                  (* 16777216 (fn2-checkpoint-bytes-value (+ at 3) fn2-checkpoint-bytes))))
+         (fn2-digests (fn2-digest-set-word hash i word fn2-digests)))
+   (fn2-checkpoint-restore-load-hash (+ i 1) r hash fn2-checkpoint-bytes fn2-digests))))
