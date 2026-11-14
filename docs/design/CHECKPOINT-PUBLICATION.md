@@ -286,3 +286,19 @@ connect, ROOTS-READY refuses `:roots-pending`. A decoded descriptor clears
 construction provenance, so a read candidate cannot inherit prior readiness.
 This is source implementation and shape-contract work, not admission, completed
 root construction, certification or a served reclaim path.
+
+## Physical construction ledger
+
+`checkpoint-construction.lisp` retains one record per actual allocator extent.
+Its reservation operation verifies the held C owner/token and atomically calls
+the shared B allocator, then stores the returned epoch/counter, root role, page
+ordinal and intended physical byte count. Descriptor BEGIN uses this operation.
+Roles 0 through 5 identify descriptor/root descendants; role 6 identifies a
+pre-reserved journal-arena ticket. There is no caller-supplied handle registration
+or completion setter. Uncertain reservation identity is retained by the job.
+
+This ledger permits bounded extent-by-extent map construction without keeping
+an arbitrary-length resident handle list. It does not yet seal the construction
+set, freeze foreign allocator mutations, project reservations into durable map
+ownership, issue arena tickets to B, or reclaim ledger rows. Those lifecycle
+steps and actual write-harvest completion precede root2/root5 readiness.
