@@ -114,7 +114,9 @@ and did not execute. The pending source route computes the exact whole
 antecedent through private live stobjs, then proves its logical identity to the
 original witness using the admitted whole-state atomic theorem. The helper,
 identity lemma and revised positive hint remain untested. The witness function
-body and positive formula are unchanged. The hypothesis-removal witness remains
+body and positive formula are unchanged; an AST control also confirms all ten
+helper-domain conjuncts match the original antecedent after variable renaming.
+This source control is not proof admission. The hypothesis-removal witness remains
 unexecuted; its deliberate active=0/submitted mutation is explicitly
 unreachable-in-composition and tests only the pending-flight premise.
 
@@ -156,7 +158,7 @@ one original LOCAL scope with individual proof budgets; an explicit control
 confirmed the two private lemmas did not leak. The initial 90 s simulator
 refusal was a cumulative loader limit, not an unproved event. The native cut
 program then admitted, including its unchanged whole-state atomic-equivalence
-theorem. All nine mutable operation-cut controls executed successfully in
+theorem (3.88 s, 137,724 steps). All nine mutable operation-cut controls executed successfully in
 0.12 s. These are current derived-source admissions and finite simulator
 executions, not record certification, the five scheduled ENVELOPE controls, or
 native real-fd execution. The bounded shared session ended and its allocation
