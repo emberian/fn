@@ -10,11 +10,11 @@
 (fn2-book-layer :b)
 
 (defcost fn2-checkpoint-writer-reserve :child fn2-checkpoint-writer-reserve-children :answers t
- :tables (fn2-core-pool fn2-core-control) :effects :per-use
- :doc "Preflight and acquire all three packet windows atomically, with no same-rank hold-and-wait.")
+ :tables (fn2-core-pool fn2-core-control fn2-core-checkpoint-future-windows) :effects :per-use
+ :doc "Borrow the three pre-admitted packet leases after exact journal handback; no pool allocation while C is held.")
 (defcost fn2-checkpoint-writer-release :child fn2-checkpoint-writer-release-children :answers t
- :tables (fn2-core-checkpoint-publication fn2-core-pool fn2-core-control) :effects :per-use
- :doc "Release the private packet bundle only after covering fence and physical completion.")
+ :tables (fn2-core-checkpoint-publication fn2-core-pool fn2-core-control fn2-core-checkpoint-future-windows) :effects :per-use
+ :doc "Return the exact future packet loans after covering fence and physical completion; central cleanup frees them.")
 (defcost fn2-checkpoint-writer-checker :child fn2-checkpoint-writer-checker-children :answers (:ok :bounds)
  :doc "The final private format row and its generated 128-field stripe.")
 (defcost fn2-checkpoint-writer-phase :child fn2-checkpoint-writer-phase-children :answers (:ok :bounds)
@@ -72,12 +72,12 @@
  ((:free (:idle))
   (:reserve :on-refusal ((:stop :pool))
    (:do (code s0 g0 s1 g1 ss gs)
-        (fn2-checkpoint-writer-reserve *fn2-checkpoint-writer-kind* id row-generation)
+        (fn2-checkpoint-writer-reserve row-candidate row-request-token row-requester-kind row-requester-slot row-requester-gen *fn2-checkpoint-writer-kind* id row-generation)
     :effects ((:acquire (:storage-window))) :accept ()
     :case (((:ok) (:set (first-slot s0) (first-gen g0) (second-slot s1) (second-gen g1)
                         (scratch-slot ss) (scratch-gen gs) (which 0)) (:next :begin)
             (:charge :steps *fn2-work-small* :runnable t))
-           ((:exhausted) (:yield))
+           ((:pending) (:yield))
            ((:partial) (:set (first-slot s0) (first-gen g0) (second-slot s1) (second-gen g1)
                              (scratch-slot ss) (scratch-gen gs))
             (:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
@@ -131,7 +131,7 @@
           (t (:idle))))
   (:release :on-refusal ((:stop :pool))
    (:if (equal row-pending 0)
-    ((:do (code) (fn2-checkpoint-writer-release row-first-slot row-first-gen row-second-slot row-second-gen
+    ((:do (code) (fn2-checkpoint-writer-release row-candidate row-request-token row-requester-kind row-requester-slot row-requester-gen row-first-slot row-first-gen row-second-slot row-second-gen
                                                row-scratch-slot row-scratch-gen *fn2-checkpoint-writer-kind* id row-generation row-pending)
       :effects ((:release (:storage-window))))
      (:next :notify) (:charge :steps *fn2-work-small* :runnable t)) ((:idle))))

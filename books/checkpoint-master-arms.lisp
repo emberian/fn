@@ -26,7 +26,7 @@
      ((:ready) (:set (candidate candidate) (checkpoint checkpoint)) (:next :reserve)
        (:charge :steps *fn2-work-stage* :runnable t)))))
   (:reserve :on-refusal ((:next :admission-refused) (:charge :steps *fn2-work-small* :runnable t))
-   (:do (code) (fn2-checkpoint-root1-reserve-op *fn2-checkpoint-master-kind* id row-generation)
+   (:do (code) (fn2-checkpoint-root1-reserve-op row-candidate *fn2-checkpoint-master-kind* id row-generation)
     :effects ((:acquire (:storage-window))))
    (:next :workspaces) (:charge :steps *fn2-work-stage* :runnable t))
   (:workspaces :on-refusal ((:next :uncertain) (:charge :steps *fn2-work-small* :runnable t))
