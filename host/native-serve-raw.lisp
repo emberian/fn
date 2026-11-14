@@ -37,7 +37,10 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
          (path (sb-ext:posix-getenv "FN2_LISTENER_PATH"))
          (owner (sb-ext:posix-getenv "FN2_OWNER_UID"))
          (groups (sb-ext:posix-getenv "FN2_GROUPS"))
+         (storage-fault-model (sb-ext:posix-getenv "FN2_STORAGE_FAULT_MODEL"))
          (peering (sb-ext:posix-getenv "FN2_PEERING")))
+    (when storage-fault-model
+      (setf profile (put-assoc-equal :storage-fault-model storage-fault-model profile)))
     (when owner
       (setf profile (put-assoc-equal :owner-uid (or (ignore-errors (parse-integer owner)) -1) profile)))
     (when port
@@ -92,6 +95,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
     (unless (fn2-core-profilep (if image (fn2-image-profile profile) profile))
       (format t "~%REFUSED profile~%") (finish-output)
       (return-from fn2-nserve-main 2))
+    (format t "STORAGE-FAULT-MODEL ~a~%" (fn2-profile-storage-fault-model profile))
+    (finish-output)
     (let ((host (handler-case
                  (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at
                                   :device-path image :create-size image-bytes)

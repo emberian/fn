@@ -805,6 +805,8 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
         FN2_IMAGE_BYTES=size_bytes,
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    if args.storage_fault_model is not None:
+        env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if groups:
         env["FN2_GROUPS"] = "\n".join(groups)
 
@@ -859,6 +861,8 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         FN2_LISTENER_PORT=str(args.port),
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
+    if args.storage_fault_model is not None:
+        env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if args.host:
         env["FN2_LISTENER_ADDRESS"] = args.host
     if groups:
@@ -1284,6 +1288,8 @@ def build_parser() -> argparse.ArgumentParser:
     sz.add_argument("--size-mb", type=int, help="image size in MiB (default: 32)")
     sz.add_argument("--size", type=int, default=33554432, help="exact image size in bytes (multiple of 4096)")
     p_init.add_argument("--group", action="append", help="genesis newsgroup/stream name (repeatable; default: local.test)")
+    p_init.add_argument("--storage-fault-model", metavar="MODEL",
+                        help="recovery contract: broad (default) or crash-only")
 
     p_serve = sub.add_parser("serve", help="recover image, fence epoch, and serve TCP NNTP + local FNCT socket")
     p_serve.add_argument("image", type=Path)
@@ -1292,6 +1298,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--control-sock", help="owner-only (0600) FNCT Unix control/consumer/authority socket")
     p_serve.add_argument("--peering", action="store_true", help="enable interim NNTP transit peering verbs")
     p_serve.add_argument("--group", action="append", help="expected genesis group list (default: loaded from <image>.groups)")
+    p_serve.add_argument("--storage-fault-model", metavar="MODEL",
+                         help="recovery contract: broad (default) or crash-only")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")
     princ_sub = p_princ.add_subparsers(dest="principal_cmd", required=True)
