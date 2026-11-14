@@ -7,7 +7,9 @@
 (fn2-book-layer :c)
 
 (defcorechild fn2-core-checkpoint-build fn2-checkpoint-build
- :init (fn2-checkpoint-build-init 1 fn2-checkpoint-build) :profilep t
+ :init (fn2-checkpoint-build-init 1 fn2-checkpoint-build)
+ :profilep (or (zp (fn2-b-checkpoint-capacity profile))
+               (fn2-checkpoint-minimum-capacityp (fn2-b-capacity :extent-slots 16 profile)))
  :harvest (fn2-checkpoint-build-harvest
            ((fn2-core-checkpoint-build fn2-checkpoint-build)
             (fn2-core-checkpoint-refs fn2-checkpoint-refs)

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-build-state")
 (include-book "checkpoint-construction-owner")
-(include-book "checkpoint-map-format")
+(include-book "checkpoint-capacity")
 (fn2-book-layer :c)
 (defcolumns fn2-checkpoint-plan
  ((phase (:enum fn2-checkpoint-plan-phase (:idle :count :size :reserve :validate :closed :uncertain)))
@@ -138,12 +138,6 @@
         (base-pages (+ (if own 1 0) (fn2-checkpoint-plan-base-pages 0 fn2-checkpoint-plan)))
         (descriptors (+ (if (and own (equal role 0)) 1 0) (fn2-checkpoint-plan-descriptors 0 fn2-checkpoint-plan))))))
   (mv :more fn2-checkpoint-plan fn2-checkpoint-plan-marks)))
-
-(defun fn2-checkpoint-ticket-demand (base-pages map-pages tickets)
- (declare (xargs :guard (and (natp base-pages) (natp map-pages) (natp tickets))))
- (+ 1 (ceiling (+ (nfix base-pages) (nfix map-pages)
-                   (fn2-checkpoint-map-page-count (nfix tickets) *fn2-checkpoint-arena-slots*))
-                *fn2-checkpoint-allocation-records-per-ticket*)))
 
 (defun fn2-checkpoint-plan-size-step (fn2-checkpoint-plan fn2-csnapshot fn2-extents)
  (declare (xargs :stobjs (fn2-checkpoint-plan fn2-csnapshot fn2-extents)
