@@ -28,6 +28,7 @@
  ((fn2-boot-config-checkpoint-layout-ready :type (unsigned-byte 1) :initially 0 :why "Set only after checked bootstrap/empty anchor scan and the final startup fence.")
   (fn2-boot-config-image-size :type (unsigned-byte 60) :initially 0 :why "Actual image size checked by ACL2 startup geometry.")
   (fn2-boot-config-geometry :type (array (unsigned-byte 8) (32)) :initially 0 :why "Owned bootstrap geometry hash; not checker scratch.")
+  (fn2-boot-config-anchor-evidence :type (array (unsigned-byte 8) (384)) :initially 0 :why "Three checked digests per physical anchor slot: batch, predecessor, anchor hash; retained across rx window reuse.")
   (fn2-boot-config-groups :type t :initially nil :why "Unconsumed trusted startup group configuration; one group per boot visit."
    :resident (* *fn2-boot-group-entry-bytes* (fn2-boot-config-count fn2-boot-config)))
   (fn2-boot-config-path :type t :initially nil :why "Trusted startup path identity, checked against the immutable image record."
@@ -79,7 +80,7 @@
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
-          (checkpoint-index :u8) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
+          (checkpoint-index :u8) (checkpoint-length :u32) (checkpoint-seen :bool) (epoch0 :u60) (epoch1 :u60) (next-epoch :u60) (anchor-slot :bool)
           (event-ready :bool) (outcome :u8) (count :u32) (release-index :u32))
  :holds ((:prepare :storage-window) (:write :storage-window) (:write-result :storage-window)
          (:read :storage-window) (:read-result :storage-window) (:verify :storage-window)
