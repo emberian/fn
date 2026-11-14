@@ -226,3 +226,17 @@ fuel lemmas and body-emitter helpers; family work supplies declarations/template
 Then extend to the guarded arithmetic families and recursive components. This
 sequence does not reduce the destination: all served roots and their executable
 dependencies remain required.
+
+The generated served report now contains a `semantic_inventory` of required
+obligations, always marked pending. It binds raw canonical records and fields,
+walks logical bodies, guards and selected attachments, and names primitive sites
+separately. Recursive components require termination evidence; an undecoded
+justification remains a frontier, even when its known function symbols supply
+conservative dependency hints. Missing metadata and unresolved callees remain
+frontiers. This inventory accepts no proof-status flags and does not increase any
+validated denominator. A strict checker must regenerate it from the canonical
+packet and check typed Lean wrappers and current ACL2 body records; consuming the
+JSON as evidence would bypass that obligation. Ten focused inventory controls
+cover these boundaries, including altered constructor subjects/fields and forged
+completion flags; the existing 25 checker controls also pass. No new current-world
+packet or semantic proof is claimed by this tooling change.
