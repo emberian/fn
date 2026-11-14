@@ -586,8 +586,11 @@ Admission uses the live request/connection generation and the existing owner
 administration flag; a connection bound to an ordinary principal is refused.
 No new peer grant or exception to a principal's read grants is implied.
 
-The request is `cut:u64be`, `resume:octets16[400]`, `max-items:u16be` after code 19.
-An empty resume and zero cut start at the actual C published frontier. A supplied
+The request is `history:u64be`, `incarnation:u64be`, `cut:u64be`,
+`resume:octets16[400]`, `max-items:u16be` after code 19. An empty resume, zero
+cut and zero history pair start at the actual C published frontier. All other
+requests must match the physical history pair read from the boot-derived core;
+a mismatched pair refuses with `scope`. A supplied
 nonzero cut must equal that frontier. A nonempty resume requires a nonzero cut
 and exactly one generated `identity-evidence-entry` encoding. Its nine key
 fields determine the exclusive continuation; no evidence identity is minted.
@@ -595,7 +598,8 @@ The server bounds each scan step and yields. Page capacity and the requested
 item count bound each reply; neither bounds stored history.
 
 A successful kind 28 result contains version 1, interpretation 1, coverage 0,
-cut, stop, next, count and entries. Coverage 0 means **local observations only**;
+physical history, physical incarnation, cut, stop, next, count and entries.
+The next request echoes that physical pair. Coverage 0 means **local observations only**;
 it never attests complete peer evidence. Stop 0 means this schema scan ended;
 stop 1 means a page bound stopped it. Entries are two-byte lengths followed by
 full original schema entries: namespace, exact name, subject profile, algorithm,
@@ -616,11 +620,14 @@ The remaining interfaces for full catch-up are the authenticated XFNC carrier
 and evidence-stream grant, a commit-ordered producer/index, a retained history
 identity and chain at the cut, dependency/coverage representation, and an importer
 that preserves original evidence/receipt identities without selecting foreign
-acceptances locally. The current producer also uses lineage/domain/incarnation
-`0/0/1` in both `identity.lisp` and `commit-format.lisp`. Export preserves those
-values; it does not make independent nodes' identical local positions globally
-distinct. Cross-node import requires a durable origin allocation and its bootstrap
-and recovery binding before those receipt identities can be compared across nodes.
+acceptances locally. The composed origin producer reads its acceptance origin
+triple from the immutable core child, with explicit deployment names persisted
+and matched at bootstrap/recovery. Export preserves those original values.
+The physical history pair scopes this server's cursor, independently of an
+observation's acceptance-origin triple. Configuration alone does not prove that
+independent deployments chose globally unique names; cross-node import still
+needs a defined naming and trust contract. Origin, cursor and export source
+composition requires its own admission and actual-node gates.
 The checkpoint directory work supplies no perpetual-history API yet; resident
 batch rows must not be treated as one.
 
