@@ -27,7 +27,7 @@
 
 ;; CAPABILITIES' always-on labels (RFC 3977 section 5.2; specs/nntp.md:3-23).
 ;; The conditional labels (POST from D5; IHAVE and STREAMING with the peer
-;; bit; STARTTLS from E1; AUTHINFO and SASL from E2; COMPRESS DEFLATE after
+;; bit; AUTHINFO and SASL from E2; COMPRESS DEFLATE after
 ;; authentication, from E2) render nothing until their quest (section 11).
 (defconst *fn2-answer-capabilities-text*
   (fn2-answer-crlf-lines

@@ -155,7 +155,7 @@
    :replies (
      (:continue :code 382 :class :accepted :layer :auth :text "382 continue with TLS negotiation")
      (:syntax :code 501 :class :refused :layer :auth :text "501 syntax error")
-     (:active :code 502 :class :refused :layer :auth :text "502 a TLS layer is already active")
+     (:active :code 502 :class :refused :layer :auth :text "502 TLS negotiation is unavailable in this state")
      (:cannot :code 580 :class :refused :layer :auth :text "580 can not initiate TLS negotiation")))
   (xredeem :keyword "XREDEEM"
    :spec "specs/nntp.md:1784-1914"
