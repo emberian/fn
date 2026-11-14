@@ -45,3 +45,32 @@
  (equal (fn2-pool-init-multiclass-witness)
         (list t t (list *fn2-none* 0 64) '(0 2 128) '(2 1 256)
               '(0 128 256) (list 1 *fn2-none* *fn2-none*) 3 3 9 0 512)))
+; Removing only generation ordering breaks the whole semantic conclusion.
+(defun fn2-pool-init-generation-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-pool
+  (mv-let (answer fn2-pool)
+   (let* ((classes '((2 . 64)))
+          (hyps (and (fn2-poolp fn2-pool) (fn2-pool-profilep classes)
+                     (unsigned-byte-p 60 10) (unsigned-byte-p 60 9) (not (<= 10 9))))
+          (fn2-pool (fn2-pool-init classes 10 9 fn2-pool)))
+    (mv (and hyps (not (fn2-pool-semanticp fn2-pool))) fn2-pool))
+   answer)))
+; Evaluate the logical hypothesis-removal witness outside the runtime guard.
+(assert-event (with-guard-checking :none (fn2-pool-init-generation-control)))
+; A lost free successor leaves row geometry valid but loses class coverage.
+(defun fn2-pool-init-chain-control ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-pool
+  (mv-let (answer fn2-pool)
+   (let* ((classes '((0 . 64) (2 . 128) (1 . 256)))
+          (hyps (and (fn2-poolp fn2-pool) (fn2-pool-profilep classes)
+                     (unsigned-byte-p 60 7) (unsigned-byte-p 60 9) (<= 7 9)))
+          (fn2-pool (fn2-pool-init classes 7 9 fn2-pool))
+          (before (fn2-pool-semanticp fn2-pool))
+          (fn2-pool (fn2-pool-set-next-free 0 *fn2-none* fn2-pool)))
+    (mv (and hyps before (fn2-pool-row-invariantp 3 fn2-pool)
+             (not (fn2-pool-class-accountsp 3 fn2-pool))
+             (not (fn2-pool-semanticp fn2-pool))) fn2-pool))
+   answer)))
+(assert-event (fn2-pool-init-chain-control))
