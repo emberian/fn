@@ -17,7 +17,7 @@
                  fn2-machine-kind fn2-machine-kind-read-code
                  fn2-machine-slot fn2-machine-slot-read-code
                  fn2-machines-kind fn2-machines-slot fn2-machines-rows
-                 fn2-cns-phase fn2-cns-rows
+                 fn2-cns-phase fn2-cns-rows fn2-core-machines fn2-cns-table
                  fn2-cns-drain-child fn2-cns-drain-child-index
                  fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index)
                 (fn2-corep fn2-core-wfp fn2-pool-semanticp
@@ -44,6 +44,7 @@
                  fn2-machine-slot fn2-machine-slot-read-code
                  fn2-machines-kind fn2-machines-slot fn2-machines-rows
                  fn2-cns-phase fn2-cns-rows fn2-core-stop-reason
+                 fn2-core-machines fn2-cns-table fn2-core-control
                  fn2-cns-drain-child fn2-cns-drain-child-index
                  fn2-cns-drain-cell fn2-cns-drain-get fn2-cns-drain-index
                  fn2-cns-drain-put-child fn2-cns-drain-put-cells
