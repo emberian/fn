@@ -130,3 +130,104 @@
            (fn2-pool-carve-classes fn2-pool-initial-row-model fn2-pool-row-snapshot
             nth update-nth fn2-pool-columns-init))
            :use ((:instance fn2-pool-initial-row-model-covered (class 0) (slot 0) (base 0) (gen gen-start))))))
+
+(make-event
+ (let ((cols (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-pool) (w state)))))
+  (value
+   `(defthm fn2-pool-carve-slots-nth-metadata
+      (implies (and (natp k) (<= ,(len cols) k))
+               (equal (nth k (fn2-pool-carve-slots left slot base cap class gen p)) (nth k p)))
+      :hints (("Goal" :induct (fn2-pool-carve-slots left slot base cap class gen p)
+               :in-theory (e/d (fn2-pool-carve-slots)
+                               (fn2-pool-rows ,@(fn2-pool-init-column-runes cols) nth update-nth))))))))
+(defun fn2-pool-initial-class-model (classes class slot j)
+  (declare (xargs :verify-guards nil))
+  (if (or (atom classes) (< j class)) nil
+    (if (equal j class)
+        (list (if (posp (caar classes)) slot *fn2-none*) (caar classes) (cdar classes))
+      (fn2-pool-initial-class-model (cdr classes) (+ 1 class) (+ slot (caar classes)) j))))
+(defun fn2-pool-class-snapshot (j fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil))
+  (list (fn2-pool-class-headsi j fn2-pool) (fn2-pool-class-countsi j fn2-pool)
+        (fn2-pool-class-sizesi j fn2-pool)))
+(defthm fn2-pool-carve-slots-class-snapshot
+  (equal (fn2-pool-class-snapshot j (fn2-pool-carve-slots left slot base cap class gen p))
+         (fn2-pool-class-snapshot j p))
+  :hints (("Goal" :in-theory (e/d (fn2-pool-class-snapshot fn2-pool-class-headsi
+                                  fn2-pool-class-countsi fn2-pool-class-sizesi)
+                                 (fn2-pool-carve-slots nth update-nth)))))
+(defthm fn2-pool-class-write-snapshot
+  (implies (and (natp j) (natp class))
+           (equal (fn2-pool-class-snapshot j
+                     (update-fn2-pool-class-sizesi class cap
+                       (update-fn2-pool-class-countsi class count
+                         (update-fn2-pool-class-headsi class head p))))
+                  (if (equal j class) (list head count cap) (fn2-pool-class-snapshot j p))))
+  :hints (("Goal" :cases ((equal j class))
+           :in-theory (e/d (fn2-pool-class-snapshot fn2-pool-class-headsi fn2-pool-class-countsi
+                            fn2-pool-class-sizesi update-fn2-pool-class-headsi
+                            update-fn2-pool-class-countsi update-fn2-pool-class-sizesi nth-update-nth)
+                           (nth update-nth)))))
+(defthm fn2-pool-initial-class-model-before
+  (implies (< j class) (equal (fn2-pool-initial-class-model classes class slot j) nil))
+  :hints (("Goal" :in-theory (enable fn2-pool-initial-class-model))))
+(defthm fn2-pool-initial-class-model-empty
+  (implies (equal (len classes) 0) (equal (fn2-pool-initial-class-model classes class slot j) nil))
+  :hints (("Goal" :cases ((consp classes)) :in-theory (enable fn2-pool-initial-class-model len))))
+(defthm fn2-pool-carve-classes-class-snapshot
+  (implies (and (fn2-profile-classes-p classes) (natp class) (natp slot) (natp j)
+                (<= (+ class (len classes)) 16)
+                (<= (+ slot (fn2-profile-pool-slots classes)) (fn2-pool-rows p)))
+           (equal (fn2-pool-class-snapshot j (fn2-pool-carve-classes classes class slot base gen p))
+                  (or (fn2-pool-initial-class-model classes class slot j) (fn2-pool-class-snapshot j p))))
+  :hints (("Goal" :induct (fn2-pool-carve-classes classes class slot base gen p)
+           :in-theory (e/d (fn2-pool-carve-classes fn2-pool-initial-class-model
+                            fn2-profile-classes-p fn2-profile-pool-slots)
+                           (fn2-pool-carve-slots fn2-pool-class-snapshot fn2-pool-rows
+                            update-fn2-pool-class-headsi update-fn2-pool-class-countsi update-fn2-pool-class-sizesi
+                            nth update-nth)))))
+
+(defthm fn2-pool-initial-class-model-covered
+  (implies (and (fn2-profile-classes-p classes) (natp j) (natp class)
+                (<= class j) (< j (+ class (len classes))))
+           (consp (fn2-pool-initial-class-model classes class slot j)))
+  :hints (("Goal" :induct (fn2-pool-initial-class-model classes class slot j)
+           :in-theory (enable fn2-pool-initial-class-model fn2-profile-classes-p len))))
+(defthm fn2-pool-init-class-snapshot
+  (implies (and (fn2-pool-profilep classes) (natp j) (< j (len classes)))
+           (equal (fn2-pool-class-snapshot j (fn2-pool-init classes gen-start gen-limit p))
+                  (fn2-pool-initial-class-model classes 0 0 j)))
+  :hints (("Goal" :in-theory (e/d
+           (fn2-pool-init fn2-pool-profilep fn2-pool-carve-classes-class-snapshot
+            fn2-pool-rows resize-fn2-pool-data update-fn2-pool-nclasses
+            update-fn2-pool-gen-limit update-fn2-pool-retired-count nth-update-nth)
+           (fn2-pool-carve-classes fn2-pool-initial-class-model fn2-pool-class-snapshot
+            nth update-nth fn2-pool-columns-init))
+           :use ((:instance fn2-pool-initial-class-model-covered (class 0) (slot 0))))))
+
+(make-event
+ (let ((cols (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-pool) (w state)))))
+  (value
+   `(defthm fn2-pool-carve-classes-nth-metadata
+      (implies (and (natp k) (<= ,(len cols) k)
+                    (not (member-equal k (list *fn2-pool-class-headsi* *fn2-pool-class-countsi* *fn2-pool-class-sizesi*))))
+               (equal (nth k (fn2-pool-carve-classes classes class slot base gen p)) (nth k p)))
+      :hints (("Goal" :induct (fn2-pool-carve-classes classes class slot base gen p)
+               :in-theory (e/d (fn2-pool-carve-classes member-equal
+                                update-fn2-pool-class-headsi update-fn2-pool-class-countsi
+                                update-fn2-pool-class-sizesi nth-update-nth)
+                               (fn2-pool-carve-slots nth update-nth))))))))
+(defthm fn2-pool-init-scalars
+  (implies (fn2-pool-profilep classes)
+    (let ((after (fn2-pool-init classes gen-start gen-limit p)))
+      (and (equal (fn2-pool-nslots after) (fn2-profile-pool-slots classes))
+           (equal (fn2-pool-nclasses after) (len classes))
+           (equal (fn2-pool-gen-limit after) gen-limit)
+           (equal (fn2-pool-retired-count after) 0)
+           (equal (fn2-pool-capacity-bytes after) (fn2-profile-pool-bytes classes)))))
+  :hints (("Goal" :in-theory (e/d
+           (fn2-pool-init fn2-pool-profilep fn2-pool-nslots fn2-pool-capacity-bytes
+            fn2-pool-rows fn2-pool-nclasses fn2-pool-gen-limit fn2-pool-retired-count fn2-pool-data-length
+            resize-fn2-pool-data update-fn2-pool-nclasses update-fn2-pool-gen-limit
+            update-fn2-pool-retired-count nth-update-nth)
+           (fn2-pool-carve-classes fn2-pool-columns-init nth update-nth)))))
