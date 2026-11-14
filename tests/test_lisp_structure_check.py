@@ -32,6 +32,13 @@ class LispStructureCheck(unittest.TestCase):
         self.assertEqual(check_source("(defmacro events () '(progn (defun f (x) (if x t nil))))"), [])
         self.assertEqual(check_source("(defconst *data* '(progn (if x t))) (defun data () '(progn (if x t)))"), [])
 
+    def test_dynamic_template_bindings_validate_the_generator(self):
+        self.assertEqual(check_source("(defmacro m () `(let* ,(bindings x) (if a b c)))"), [])
+        self.assertEqual(check_source("(defmacro m () `(let* (,@(bindings x) (a b)) a))"), [])
+        self.assertTrue(check_source("(defmacro m () `(let* ,(if x y) a))"))
+        self.assertTrue(check_source("(defmacro m () `(let* (,@(if x y)) a))"))
+        self.assertTrue(check_source("(defmacro m () `(let* ((a b c)) a))"))
+
     def test_real_cond_sibling_nesting_is_rejected(self):
         self.assertTrue(check_source("(cond (first (if a b c) (second d)) (t e))"))
 
