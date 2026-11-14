@@ -23,9 +23,15 @@
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
  :why "Commit work survives scheduler yields.")
+(defun fn2-b-checkpoint-capacity (profile)
+ (declare (xargs :guard t))
+ (nfix (fn2-b-capacity :checkpoint-candidates 4 profile)))
+; Dedicated regions: six commit I/O edges, two roots per extent, one pin per
+; operation, then six retained physical references per active checkpoint.
 (defun fn2-b-alloc-edge-floor (profile)
  (declare (xargs :guard t))
- (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))) (nfix (fn2-profile-o profile))))
+ (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile)))
+    (nfix (fn2-profile-o profile)) (* 6 (fn2-b-checkpoint-capacity profile))))
 (defcorechild fn2-core-alloc-edges fn2-alloc-edges
  :init (fn2-alloc-edges-init (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile) fn2-alloc-edges)
  :profilep (and
@@ -34,7 +40,7 @@
       (fn2-b-capacity :alloc-edge-slots (fn2-b-alloc-edge-floor profile) profile)))
  :harvest (fn2-b-read-pin-harvest
            ((fn2-core-extents fn2-extents) (fn2-core-alloc-edges fn2-alloc-edges)))
- :why "Commit edges and one physical read pin per operation survive yields.")
+ :why "Disjoint commit, root, operation-pin and checkpoint-reference edges survive yields.")
 ; Format checker rows (b-durability.md §11): 0-1 the commit kind's, 2
 ; recovery's, 3 .. 2+w D's large-upload windows, 3+w C's sealer, then
 ; 4+w .. 3+w+c E's control connections (fn2-ctl row S decodes FNCT into its
