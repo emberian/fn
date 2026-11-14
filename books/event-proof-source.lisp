@@ -54,6 +54,7 @@
                      (equal (fn2-extents-owner-kind extent fn2-extents) *fn2-commit-kind*)
                      (equal (fn2-extents-owner-id extent fn2-extents) commit)
                      (equal (fn2-extents-release-pending extent fn2-extents) 0)
+                     (fn2-alloc-edge-slotp (+ 7 (* 2 extent)) fn2-alloc-edges)
                      (fn2-alloc-edge-matchesp (+ 7 (* 2 extent)) commit extent
                        (fn2-extents-epoch extent fn2-extents) (fn2-extents-counter extent fn2-extents)
                        :installed-root fn2-alloc-edges)
