@@ -8,6 +8,7 @@
  ((phase (:enum fn2-checkpoint-page-phase (:idle :context :seal :verify :write :wait-write :complete :uncertain)))
   (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (io-owner-kind :u8) (io-owner-slot :u32) (io-owner-gen :u60) (transferred :bool)
+  (handoff (:enum fn2-checkpoint-page-handoff (:source :to-worker :worker :to-source)))
   (role :u8) (ordinal :u60) (extent :u32) (epoch :u60) (allocation :u60)
   (slot :u32) (gen :u60) (page-kind :u60) (history :u60) (incarnation :u60)
   (encoded-length :u32) (intended-bytes :u32) (write-cursor :u32)
