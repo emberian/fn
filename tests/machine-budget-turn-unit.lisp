@@ -95,3 +95,32 @@
  (with-local-stobj fn2-core (mv-let (answer fn2-core)
   (fn2-budget-clock-progress-run fn2-core) answer)))
 (assert-event (fn2-budget-clock-progress))
+
+; The original whole-turn counterexample satisfied both structural guards:
+; a FREE row carried a posted terminal cell. Before phase preflight, harvesting
+; fabricated one issued incarnation while the public turn reported zero actions.
+; Keep that exact malformed-state case beside the zero-budget/H1 controls.
+(defun fn2-budget-harvest-refusal-run (fn2-core)
+ (declare (xargs :stobjs fn2-core :verify-guards nil))
+ (b* ((profile *fn2-profile-tiny*)
+      (fn2-core (fn2-core-init profile fn2-core))
+      (fn2-core (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+       (let* ((fn2-ops (fn2-ops-put 0 (c0-posted 1)))
+              (fn2-ops (update-fn2-ops-post-count 1 fn2-ops))) fn2-ops) fn2-core))
+      (hyps (and (fn2-execution-profilep profile) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
+      (before (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (value)
+                (fn2-ops-copy fn2-ops) value))
+      (issued-before (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (value)
+                       (fn2-ops-issued-count (fn2-ops-rows fn2-ops) fn2-ops) value))
+      ((mv status obs visits actions fn2-core) (fn2-turn fn2-core))
+      (after (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (value)
+               (fn2-ops-copy fn2-ops) value))
+      (issued-after (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (value)
+                      (fn2-ops-issued-count (fn2-ops-rows fn2-ops) fn2-ops) value)))
+  (mv (list hyps status obs visits actions (- issued-after issued-before)
+            (equal before after) (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) fn2-core)))
+(defun fn2-budget-harvest-refusal ()
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-core (mv-let (answer fn2-core)
+   (fn2-budget-harvest-refusal-run fn2-core) answer)))
+(assert-event (equal (fn2-budget-harvest-refusal) '(t :stop 1 0 0 0 t t t)))
