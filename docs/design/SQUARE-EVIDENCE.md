@@ -58,3 +58,7 @@ its translation while replacing author metadata with a different hypothesis
 and shifted reference call. False redirected witnesses are refused; genuine
 original witnesses remain bound to the original statement. The OWED renderer
 uses the same live claim lookup, with its implementation in `owed-report.lisp`.
+After fixture certification, `tools/acl2 --timeout 60 <
+tests/square-evidence-export.lsp` writes and reads the actual report, checking
+that redirected display metadata cannot replace its statement. File output
+runs outside book events; no trust tag is needed.
