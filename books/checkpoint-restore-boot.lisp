@@ -49,6 +49,7 @@
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-finish 'fn2-checkpoint-restore-map-finish (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-map-check 'fn2-checkpoint-restore-map-check (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-consume 'fn2-checkpoint-restore-arena-consume (w state))
+     (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-target 'fn2-checkpoint-restore-arena-target (w state))
      (fn2-arms-op-face-events 'fn2-boot-checkpoint-arena-finish 'fn2-checkpoint-restore-arena-finish (w state)))))))
 
 (defmacro fn2-boot-checkpoint-root-operations ()

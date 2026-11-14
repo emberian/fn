@@ -6,6 +6,7 @@
 (include-book "checkpoint-geometry")
 (include-book "checkpoint-restore-reader")
 (include-book "checkpoint-restore-map")
+(include-book "checkpoint-recovery-evidence-state")
 (include-book "checkpoint-restore-arena")
 (fn2-book-layer :b)
 
@@ -106,9 +107,13 @@
  :profilep t
  :why "One candidate-bound ordered arena intake cursor; no live allocator authority.")
 
+(defcorechild fn2-core-checkpoint-recovery-evidence fn2-checkpoint-recovery-evidence
+ :init (fn2-checkpoint-recovery-evidence-init 5 fn2-checkpoint-recovery-evidence) :profilep t
+ :why "One bounded cold journal investigation and evidence for each of the four physical anchors; no base selection.")
+
 (defmachine fn2-boot
  :states (:free :prepare :write :write-result :read :read-result :verify :advance
-          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
+          :anchor :bootstrap :bootstrap-verify :checkpoint-anchor :checkpoint-check :checkpoint-descriptor :checkpoint-verify :checkpoint-root-candidate :checkpoint-root-reserve :checkpoint-root-begin :checkpoint-root-load :checkpoint-root-copy :checkpoint-root-verify :checkpoint-root-dispatch :checkpoint-root-padding :checkpoint-root-next :checkpoint-root-finish :checkpoint-root-fifo :checkpoint-evidence-begin :checkpoint-evidence-target :checkpoint-evidence-load :checkpoint-evidence-copy :checkpoint-evidence-check :checkpoint-evidence-record :checkpoint-evidence-next :recover :recover-wait :epoch :epoch-fence :epoch-result :release :ready :failed)
  :fields ((pending :u32) (stopped :bool) (pool-slot :u32) (pool-gen :u60)
           (rx-slot :u32) (rx-gen :u60) (create :bool) (image-size :u60)
           (base :u60) (total :u32) (index :u32) (stage :u8) (offset :u60)
