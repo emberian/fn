@@ -653,3 +653,23 @@ used 0.21 seconds and 17,516 prover steps after the source-parent load.
 It does not authenticate a cold candidate by itself: the composing binder
 must retain and check the authenticated descriptor and allocation-map
 identity, including replacement of a descriptor in the same candidate slot.
+
+The runtime publication child now retains two fence-owned bank occupants and
+one displaced-candidate debt. Each identity includes the catalog row, checkpoint,
+history, incarnation and all 32 bytes of the descriptor Ref's expected hash.
+The existing BEGIN snapshots those hash words from the actual installed
+candidate; only the matching successful covering Fence transfers that attempt
+into its bank. Replacing an occupied bank first retains its complete old
+identity as debt. Unrelated, failed and ambiguous completions preserve the old
+occupants and attempted identity; no completion may overwrite existing debt.
+Both lower publication BEGIN and actual writer rearm refuse outstanding debt.
+
+This is the first candidate-lifetime connection, not candidate recycling.
+There is deliberately no debt-clear operation. The next bounded post-C-release
+teardown must exclude both banks, persist retirements of exact owned construction
+allocations through the existing journal producer, remove only this candidate's
+root/source edges, and preserve other candidates and read pins. Borrowed sources
+are not retired by this operation. Cold boot must reconstruct both authenticated
+bank occupants and retained installation evidence before teardown is authorized;
+runtime fields do not establish cold authority. Master debt-drain scheduling and
+catalog reuse remain unimplemented. Activation and FREE remain disabled.

@@ -367,6 +367,7 @@
                      (equal (fn2-checkpoint-build-phase 0 fn2-checkpoint-build) *fn2-checkpoint-build-phase-await-roots*)
                      (equal c (fn2-checkpoint-build-candidate 0 fn2-checkpoint-build))
                      (equal (fn2-alloc-freeze-phase fn2-extents) 0)
+                     (equal (fn2-alloc-retirement-intent-batch fn2-extents) 0)
                      (equal (fn2-alloc-freeze-token fn2-extents) token)
                      (equal (fn2-alloc-freeze-owner-kind fn2-extents) kind)
                      (equal (fn2-alloc-freeze-owner-slot fn2-extents) slot)
