@@ -337,3 +337,18 @@ the resulting `:bounds` outcome is a concrete counterexample to unconditional
 successful clearance. Neither a changed JSON status nor a parse failure counts
 as these semantic mutation controls. The Q1 lane owns the independent witness;
 the shared foundation lane owns the emitted-function mutation and strict wrapper.
+
+The independent contract's concrete interface is
+`books/cns-draining-contract.lisp`: `fn2-cns-draining-domainp`,
+`fn2-cns-draining-resultp (id before b s d r after)`, and
+`fn2-cns-draining-expected`; controls live in
+`tests/cns-draining-contract-unit.lisp`. Its public subject is `fn2-cns-run`, so
+the bridge must retain the selected-dispatch equation from that function to
+`fn2-cns-run-draining`. The held-lease/draining combination is currently marked
+`unreachable-in-composition` by the contract owner: source tracing finds that
+hand/cancel release held leases before entering draining, with a reachability
+proof still pending. Treat that theorem as defensive logical-input coverage.
+The reachable witness instead allocates through the generated take operation
+and follows decode → cancel → draining, with a protected sibling timer. This
+restriction does not remove the defensive branch from canonical body equivalence
+on the function's full guard domain.
