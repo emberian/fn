@@ -482,6 +482,34 @@
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests)))))
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows))))
 (in-theory (disable fn2-block-cv-into))
+ ;; A location commitment from a published article/metadata row. BOFF is
+;; the returned unit and HSLOT/HGEN/HOFF the retained expected digest.
+;; These can be separate workspaces. Callers own the binding and separation of those spans.
+(defun fn2-block-read-commitment-children (bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-b3 fn2-digests fn2-pool) :guard (fn2-pool-wfp fn2-pool)))
+ (b* (((unless (and (natp bytes) (natp len) (equal bytes len))) (mv :io fn2-b3 fn2-digests))
+      ((unless (and (posp len) (<= len *fn2-commit-unit-bytes*)
+                    (natp boff) (natp hoff)))
+       (mv :bounds fn2-b3 fn2-digests))
+      (row (nfix (- (fn2-b3-rows fn2-b3) 1)))
+      (got (fn2-digest-slot row *fn2-b3-result*))
+      (want (fn2-digest-slot row *fn2-fc-hash*))
+      ((mv code fn2-b3 fn2-digests)
+       (fn2-block-hash-into row lslot lgen boff len
+                            okind oslot ogen fn2-b3 fn2-digests fn2-pool))
+      ((unless (eq code :ok)) (mv :bounds fn2-b3 fn2-digests))
+      ((mv same fn2-digests)
+       (fn2-block-digest-at got want hslot hgen hoff okind oslot ogen fn2-digests fn2-pool)))
+  (mv (if same :ok :hash) fn2-b3 fn2-digests)))
+(defthm fn2-block-read-commitment-children-shape
+ (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+               (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+  (b* (((mv & b d) (fn2-block-read-commitment-children bytes len lslot lgen boff hslot hgen hoff okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
+   (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
+        (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
+        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3)))))))
+(in-theory (disable fn2-block-read-commitment-children))
+
 ; B-S2 S10: the read's completion. Every requested octet arrived (BYTES =
 ; LEN; :io otherwise). A block named through a source manifest (VERIFY 1)
 ; is then checked against its entry, whose two digests the caller's lease
@@ -527,6 +555,10 @@
  :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
                                     fn2-b3p fn2-b3-wfp fn2-b3-rows fn2-digest-rowp))))
 (in-theory (disable fn2-block-read-done-children))
+;; One unit hash, unlike READ-DONE's hash plus subtree-CV pass.
+(defcost fn2-block-read-commitment :child fn2-block-read-commitment-children :answers (:ok :io :hash :bounds)
+ :bytes *fn2-commit-unit-bytes* :tables (fn2-core-b3 fn2-core-digests)
+ :doc "Check a returned location unit against its retained published commitment at explicit workspace offsets.")
 (defcost fn2-block-read-done :child fn2-block-read-done-children :answers (:ok :io :hash :bounds) :bytes 8192
  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
  :doc "B-S2 S10: the read's completion; a block named through a source manifest checked against its entry's BLAKE3 and chaining value (S9a).")
