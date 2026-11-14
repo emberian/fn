@@ -6,6 +6,9 @@ Lean evidence is a successful compiler invocation plus the named theorem's
 axiom census. Neither emitter output nor a pre-existing .olean is counted.
 """
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack, contextmanager
+import fcntl
+import tempfile
 from datetime import date
 from pathlib import Path
 import argparse
@@ -176,7 +179,52 @@ def dep_signature(deps, done, lib):
     return ''.join(parts)
 
 
-def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None):
+def atomic_cache_checkpoint(path, cache):
+    """Replace a cache atomically; caller holds the gate's writer lock."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=path.parent,
+                                         prefix=path.name + '.', suffix='.tmp',
+                                         delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump(cache, stream, indent=2)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+@contextmanager
+def lean_cache_session(root, lib=None):
+    """One writer owns cache and library mutation until all its workers exit."""
+    path = root / 'build/served-lean-cache.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    locks = [path.with_suffix('.lock')]
+    if lib is not None:
+        lib = lib.resolve()
+        lib.mkdir(parents=True, exist_ok=True)
+        locks.append(lib / '.served-lean-library.lock')
+    # Keep lock inodes: unlinking one would let a second writer lock a new file.
+    with ExitStack() as stack:
+        for lock_path in sorted(locks):
+            lock = stack.enter_context(lock_path.open('a+b'))
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise RuntimeError('another served Lean gate owns ' + str(lock_path)) from None
+        cache = json.loads(path.read_text()) if path.exists() else {}
+        checkpoint = lambda: atomic_cache_checkpoint(path, cache)
+        try:
+            yield cache, checkpoint
+        finally:
+            checkpoint()
+
+
+def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None, checkpoint=None):
     """Recheck every local import, then reuse only this checker's bound cache.
     An olean copied from a warm lane is not evidence for changed dependencies.
     """
@@ -196,10 +244,10 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None)
     for r in roots:
         visit(r)
 
-    own_save = cache is None
-    cache_path = root / 'build/served-lean-cache.json'
     if cache is None:
-        cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+        with lean_cache_session(root, lib) as (owned_cache, save):
+            return compile_closure(roots, lib, seconds, jobs, root=root,
+                                   cache=owned_cache, tool=tool, checkpoint=save)
     if tool is None:
         tool = toolchain_fingerprint(root)
 
@@ -231,23 +279,23 @@ def compile_closure(roots, lib, seconds, jobs, root=BASE, cache=None, tool=None)
                 }
                 return n, key, rec, None
 
-            with ThreadPoolExecutor(max_workers=jobs) as pool:
-                results = list(pool.map(build, ready))
             errors = []
-            for n, key, record, error in results:
-                if error:
-                    cache.pop(n, None)
-                    errors.append(error)
-                else:
-                    cache[n] = record
-                    done[n] = key
-                    pending.remove(n)
+            with ThreadPoolExecutor(max_workers=jobs) as pool:
+                for n, key, record, error in pool.map(build, ready):
+                    if error:
+                        cache.pop(n, None)
+                        errors.append(error)
+                    else:
+                        cache[n] = record
+                        done[n] = key
+                        pending.remove(n)
+                    if checkpoint is not None:
+                        checkpoint()
             if errors:
                 raise RuntimeError('Lean dependency refused: ' + ', '.join(errors))
     finally:
-        if own_save:
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps(cache, indent=2) + '\n')
+        if checkpoint is not None:
+            checkpoint()
     return done
 
 
@@ -262,10 +310,13 @@ def root_census_ok(output, root_idx):
 
 
 def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
+    with lean_cache_session(root, lib) as (cache, checkpoint):
+        return lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint)
+
+
+def lean_gates_locked(report, lib, seconds, jobs, root, batch_size, only, cache, checkpoint):
     # The caller starts this process under swarm-build/lake env. Install each
     # changed dependency into this lane's own library, never another lane's.
-    cache_path = root / 'build/served-lean-cache.json'
-    cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
     cache_lock = threading.Lock()
     tool = toolchain_fingerprint(root)
 
@@ -294,7 +345,7 @@ def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
             base_closure.add('Fn2.Instances.ServedCommit')
 
     try:
-        done = compile_closure(sorted(base_closure | extra), lib, seconds, jobs, root=root, cache=cache, tool=tool)
+        done = compile_closure(sorted(base_closure | extra), lib, seconds, jobs, root=root, cache=cache, tool=tool, checkpoint=checkpoint)
 
         if not only and report.get('commit_words', 0):
             sc_rec = cache.get('Fn2.Instances.ServedCommit', {})
@@ -360,6 +411,7 @@ def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
                         cache['contract:' + c_mod] = rec
                 else:
                     cache.pop('contract:' + c_mod, None)
+                checkpoint()
 
         # Phase 2: Check proof cache; group uncached proofs into per-kind batches.
         uncached_by_kind = {}
@@ -435,6 +487,13 @@ def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
                     cache.pop(f'proof:{i}', None)
 
         def run_batch(group):
+            try:
+                return run_batch_inner(group)
+            finally:
+                with cache_lock:
+                    checkpoint()
+
+        def run_batch_inner(group):
             if not group:
                 return
             if len(group) == 1 or any(it[3] is None for it in group):
@@ -512,8 +571,8 @@ def lean_gates(report, lib, seconds, jobs, root=BASE, batch_size=4, only=None):
 
         report['gates']['lean'] = {'compiler': subprocess.check_output(['lean', '--version'], text=True).strip()}
     finally:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(cache, indent=2) + '\n')
+        with cache_lock:
+            checkpoint()
 
 
 def acl2_gate(report, launcher):
