@@ -358,3 +358,25 @@
       (fn2-checkpoints (fn2-checkpoints-set-installation-commit c install-commit fn2-checkpoints))
       (fn2-checkpoints (fn2-checkpoints-set-state c *fn2-checkpoint-state-installed* fn2-checkpoints)))
   (mv :ok fn2-checkpoints)))
+
+; Leaf contracts consumed by the generated core faces. They preserve concrete
+; table shape only; these are not checkpoint/durability keystones.
+(fn2-checkpoints-preserves fn2-checkpoint-prepare
+ (c checkpoint history incarnation domain unit epoch allocation kind len hash
+    fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES")
+            (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")))
+(fn2-checkpoint-refs-preserves fn2-checkpoint-retain
+ (c role edge fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
+ :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
+            (fn2-extents 2 :prefix "-EXTENTS") (fn2-alloc-edges 3 :prefix "-EDGES")))
+(fn2-checkpoints-preserves fn2-checkpoint-install
+ (c install-commit base slot gen okind oslot ogen fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+    fn2-fields fn2-pool fn2-alloc-edges fn2-extents fn2-ops) :position 1)
+(fn2-checkpoints-preserves fn2-checkpoint-check-step
+ (c row slot gen off len base okind oslot ogen budget fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+    fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
+ :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES")
+            (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")
+            (fn2-fc 4 :prefix "-CHECKER") (fn2-b3 5 :prefix "-HASHER")
+            (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))

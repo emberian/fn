@@ -184,3 +184,17 @@ These boot/executor changes are source only and await qualification together.
 No existing image is read, rewritten, migrated or deployed by this work.
 `tests/checkpoint-geometry-unit.lisp` supplies an exact all-fields generated-codec
 roundtrip and truncation control, awaiting admission/execution.
+
+`books/checkpoint-boot.lisp` now binds publication layout from the actual checked
+boot-config state and loads its owned geometry hash into a worker-owned digest
+row. Neither operation accepts a readiness flag or geometry hash from a caller.
+Current boot's explicit empty-anchor restriction justifies an initial absent
+base; supporting a selected nonempty base must change both startup and this
+binding. The live checkpoint batch seal is separately derived from the installed
+commit directory. Private packet leases and predecessor evidence still need the
+actual generated worker and recovery selection before any promotion operation.
+
+Candidate preparation/retention/check/install and publication begin/pack/seal/
+check/issue now declare exact multi-child WFP/row preservation contracts for
+core composition. These source contracts are shape statements, not admitted
+proofs or lifetime/durability guarantees.
