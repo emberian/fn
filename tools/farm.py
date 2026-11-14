@@ -1489,7 +1489,15 @@ def fetch(host: str, identifier: str, root: Path,
         local.mkdir(parents=True, exist_ok=True)
         fetch_evidence_dir(host, remote, directory, local)
         fetched_manifests.extend(certs.load_manifests(root, local / "manifest.json"))
-    for directory in certs.BOOK_DIRECTORIES:
+    names = [name for name in certs.certified_books(fetched_manifests, str(remote))
+             if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
+    # Explicit roots may live outside the historical default scan. Collect
+    # their pairs too, before publish verifies them against the fetched evidence.
+    directories = set(certs.BOOK_DIRECTORIES)
+    directories.update(str(Path(name).parent) for name in names)
+    for directory in sorted(directories):
+        if any(parent.as_posix() in directories for parent in Path(directory).parents):
+            continue  # An ancestor's recursive transfer already covers it.
         run(["rsync", "-a", "--update", "--include=*/", "--include=*.cert",
              "--include=*.port", "--include=*.fasl", "--exclude=*",
              f"{host}:{remote}/{directory}/", f"{root}/{directory}/"], check=False)
@@ -1512,8 +1520,6 @@ def fetch(host: str, identifier: str, root: Path,
     if not fetched_manifests:
         print(f"{identifier}: no certification manifest came back for this run; "
               "nothing to publish into the local cache", file=sys.stderr)
-    names = [name for name in certs.certified_books(fetched_manifests, str(remote))
-             if isinstance(name, str) and BOOK_NAME.fullmatch(name)]
     report = certs.publish(root, certs.cache_directory(), fetched_manifests,
                            names=names, origin=str(remote), origin_host=host,
                            origin_kind="run")
