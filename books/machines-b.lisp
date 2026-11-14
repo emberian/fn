@@ -246,6 +246,25 @@
   ; and the event it began at (b54 M3).
   (aborting :u60) (abort-event :u60)
  ))
+; Current representation: row0 is metadata and positive absolute batch IDs
+; occupy rows1..PROPOSED. Count from actual proposals, including in-flight rows;
+; publication lag and hoped-for checkpoint reclamation grant no extra credit.
+(defun fn2-commit-directory-headroom (needed fn2-commit-root)
+ (declare (xargs :stobjs fn2-commit-root :guard (fn2-commit-root-wfp fn2-commit-root)))
+ (if (not (and (natp needed) (posp (fn2-commit-root-rows fn2-commit-root)))) (mv :state 0)
+  (let* ((proposed (fn2-commit-root-proposed 0 fn2-commit-root))
+         (installed (fn2-commit-root-installed 0 fn2-commit-root))
+         (published (fn2-commit-root-published 0 fn2-commit-root))
+         (capacity (- (fn2-commit-root-rows fn2-commit-root) 1)))
+   (if (not (and (natp published) (natp installed) (natp proposed)
+                  (<= published installed) (<= installed proposed) (<= proposed capacity))) (mv :state 0)
+    (let ((available (- capacity proposed)))
+     (mv (if (<= needed available) :ok :no-space) available))))))
+(defthm fn2-commit-directory-headroom-available-nat
+ (natp (mv-nth 1 (fn2-commit-directory-headroom needed fn2-commit-root)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :in-theory (enable fn2-commit-directory-headroom))))
+
 (local (in-theory (disable fn2-commit-rootp fn2-commit-root-wfp fn2-commit-root-rows)))
 (defun fn2-commit-root-init-for (profile fn2-commit-root)
  (declare (xargs :stobjs fn2-commit-root
