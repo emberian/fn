@@ -10,16 +10,8 @@
 (include-book "checkpoint-recovery-census-state")
 (include-book "checkpoint-restore-arena")
 (include-book "checkpoint-restore-semantic-state")
+(include-book "boot-format")
 (fn2-book-layer :b)
-
-(deflayout fn2-boot-record
- '((magic :u32) (version :u8) (kind :u8) (index :varint)
-   (image-size :varint) (extents :varint) (groups :varint)
-   (owner :u32) (authority :u8) (identity (:octets 250))
-   (value :varint) (epoch :varint) (previous :varint)))
-(defconst *fn2-boot-magic* #x54423246)
-(defconst *fn2-boot-unit* 4096)
-(defconst *fn2-boot-hash-offset* 4064)
 
 ; Only startup configuration has a list cursor. It advances one group per
 ; visit, is cleared before ready, and never contains parsed device data.

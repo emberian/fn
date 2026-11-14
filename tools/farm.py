@@ -2165,6 +2165,9 @@ def main(argv: list[str] | None = None) -> int:
                              "--affected-by, these books are also its roots")
     parser.add_argument("--timeout-seconds", type=int, default=1800,
                         help="per-ACL2-invocation timeout on the host")
+    parser.add_argument("--budget-seconds", type=int, default=None,
+                        help="submit: total certification runner budget in seconds; "
+                             "distinct from the per-invocation timeout")
     parser.add_argument("--wait-seconds", type=int, default=DEFAULT_WAIT_SECONDS,
                         help="how long `wait` blocks before giving up")
     parser.add_argument("--poll-seconds", type=int, default=POLL_SECONDS)
@@ -2198,6 +2201,9 @@ def main(argv: list[str] | None = None) -> int:
                              "to the box's cache, and `wait` neither sweeps nor "
                              "mirrors nor publishes locally (the run record says so)")
     arguments = parser.parse_args(argv)
+    if arguments.budget_seconds is not None:
+        if arguments.action != "submit" or arguments.budget_seconds <= 0:
+            parser.error("--budget-seconds requires submit and a positive number")
     root = Path(arguments.root).resolve()
     if arguments.recertify_from:
         if arguments.action != "submit":
@@ -2264,6 +2270,7 @@ def main(argv: list[str] | None = None) -> int:
                                 arguments.closure, arguments.cache,
                                 arguments.acl2,
                                 no_publish=arguments.no_publish,
+                                budget_seconds=arguments.budget_seconds,
                                 require_origin=arguments.require_origin,
                                 recertify=list(arguments.recertify),
                                 images=arguments.images
