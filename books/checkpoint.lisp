@@ -12,10 +12,27 @@
 ; directory, event frontier and recovery arena. Hash bytes live in a disjoint
 ; concrete table, not in the reusable checker scratch rows.
 (defcolumns fn2-checkpoints
- ((state (:enum fn2-checkpoint-state (:free :preparing :checked :installed :promoting :promoted :uncertain)))
+ ((state (:enum fn2-checkpoint-state (:free :preparing :checked :installed :promoting :promoted :uncertain :building)))
   (checkpoint :u60) (cut-commit :u60) (cut-event :u60)
   (history :u60) (incarnation :u60) (installation-commit :u60)
-  (previous :u60) (bank :u8) (anchor-mask :u8)))
+  (previous :u60) (bank :u8) (anchor-mask :u8)
+  (builder-token :u60) (builder-owner-kind :u8) (builder-owner-slot :u32) (builder-owner-gen :u60)))
+
+; Only the actual descriptor BEGIN installs this claim after real reservation.
+; It remains nonselectable and cannot be released by a generic caller.
+(defun fn2-checkpoint-builder-claimp (c token okind oslot ogen fn2-checkpoints)
+ (declare (xargs :stobjs fn2-checkpoints :guard (fn2-checkpoints-wfp fn2-checkpoints)))
+ (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints)) (posp token)
+      (not (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*))
+      (equal (fn2-checkpoints-builder-token c fn2-checkpoints) token)
+      (equal (fn2-checkpoints-builder-owner-kind c fn2-checkpoints) okind)
+      (equal (fn2-checkpoints-builder-owner-slot c fn2-checkpoints) oslot)
+      (equal (fn2-checkpoints-builder-owner-gen c fn2-checkpoints) ogen)))
+(defun fn2-checkpoint-builder-ownerp (c token okind oslot ogen fn2-checkpoints)
+ (declare (xargs :stobjs fn2-checkpoints :guard (fn2-checkpoints-wfp fn2-checkpoints)))
+ (and (fn2-checkpoint-builder-claimp c token okind oslot ogen fn2-checkpoints)
+      (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-building*)))
+
 (defcolumns fn2-checkpoint-refs
  ((storage-domain :u60) (physical-unit :u60) (writer-epoch :u60)
   (allocation :u60) (page-kind :u60) (encoded-length :u60)
@@ -219,13 +236,12 @@
 
 ; A locator is only a candidate. Neither preparation nor a valid descriptor
 ; grants publication, retirement coverage, or permission to drop an old root.
-(defun fn2-checkpoint-prepare (c checkpoint history incarnation domain unit epoch allocation kind len hash
+(defun fn2-checkpoint-prepare-body (c checkpoint history incarnation domain unit epoch allocation kind len hash
                              fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
  (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
   :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
               (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digests-wfp fn2-digests))))
  (if (not (and (fn2-checkpoint-slotp c fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
-               (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*)
                (posp checkpoint) (unsigned-byte-p 60 checkpoint)
                (unsigned-byte-p 60 history) (unsigned-byte-p 60 incarnation)
                (equal domain *fn2-checkpoint-served-storage-domain*) (unsigned-byte-p 60 unit)
@@ -247,6 +263,29 @@
          (fn2-checkpoints (fn2-checkpoints-set-incarnation c incarnation fn2-checkpoints))
          (fn2-checkpoints (fn2-checkpoints-set-state c *fn2-checkpoint-state-preparing* fn2-checkpoints)))
    (mv :ok fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))))
+
+; Recovery/public preparation can never steal a live builder candidate.
+(defun fn2-checkpoint-prepare (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digests-wfp fn2-digests))))
+ (if (not (and (natp c) (< c (fn2-checkpoints-rows fn2-checkpoints))
+               (equal (fn2-checkpoints-state c fn2-checkpoints) *fn2-checkpoint-state-free*)))
+  (mv :bounds fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+  (b* (((mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+        (fn2-checkpoint-prepare-body c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests))
+       (fn2-checkpoints (if (eq code :ok)
+        (fn2-checkpoints-put c (builder-token 0) (builder-owner-kind 0) (builder-owner-slot 0) (builder-owner-gen 0)) fn2-checkpoints)))
+   (mv code fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes))))
+
+(defun fn2-checkpoint-prepare-owned (c token okind oslot ogen checkpoint history incarnation domain unit epoch allocation kind len hash
+                                   fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ (declare (xargs :stobjs (fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+  :guard (and (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs)
+              (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digests-wfp fn2-digests))))
+ (if (not (fn2-checkpoint-builder-ownerp c token okind oslot ogen fn2-checkpoints))
+  (mv :owner fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes)
+  (fn2-checkpoint-prepare-body c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)))
 
 (defun fn2-checkpoint-hash-matchesp (i dst hash fn2-digests fn2-checkpoint-bytes)
  (declare (xargs :stobjs (fn2-digests fn2-checkpoint-bytes)
@@ -377,11 +416,7 @@
 
 ; Leaf contracts consumed by the generated core faces. They preserve concrete
 ; table shape only; these are not checkpoint/durability keystones.
-(fn2-checkpoints-preserves fn2-checkpoint-prepare
- (c checkpoint history incarnation domain unit epoch allocation kind len hash
-    fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
- :carriers ((fn2-checkpoints 1 :prefix "-CANDIDATES")
-            (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")))
+
 (fn2-checkpoint-refs-preserves fn2-checkpoint-retain
  (c role edge fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-extents fn2-alloc-edges fn2-ops)
  :carriers ((fn2-checkpoint-refs 1 :prefix "-REFS")
@@ -396,3 +431,42 @@
             (fn2-checkpoint-refs 2 :prefix "-REFS") (fn2-checkpoint-bytes 3 :prefix "-BYTES")
             (fn2-fc 4 :prefix "-CHECKER") (fn2-b3 5 :prefix "-HASHER")
             (fn2-fields 6 :prefix "-FIELDS") (fn2-pool 7 :prefix "-POOL") (fn2-digests 8 :prefix "-DIGESTS")))
+
+(fn2-checkpoints-preserves fn2-checkpoint-prepare-body
+ (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :specs (("-CHECKPOINTS-TYPE" fn2-checkpointsp 1)
+         ("-CHECKPOINTS-WFP" fn2-checkpoints-wfp 1)
+         ("-CHECKPOINTS-ROWS" fn2-checkpoints-rows 1 :frame fn2-checkpoints)
+         ("-CHECKPOINT-REFS-TYPE" fn2-checkpoint-refsp 2)
+         ("-CHECKPOINT-REFS-WFP" fn2-checkpoint-refs-wfp 2)
+         ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
+         ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
+         ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))
+
+(fn2-checkpoints-preserves fn2-checkpoint-prepare
+ (c checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :specs (("-CHECKPOINTS-TYPE" fn2-checkpointsp 1)
+         ("-CHECKPOINTS-WFP" fn2-checkpoints-wfp 1)
+         ("-CHECKPOINTS-ROWS" fn2-checkpoints-rows 1 :frame fn2-checkpoints)
+         ("-CHECKPOINT-REFS-TYPE" fn2-checkpoint-refsp 2)
+         ("-CHECKPOINT-REFS-WFP" fn2-checkpoint-refs-wfp 2)
+         ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
+         ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
+         ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))
+
+(fn2-checkpoints-preserves fn2-checkpoint-prepare-owned
+ (c token okind oslot ogen checkpoint history incarnation domain unit epoch allocation kind len hash fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes fn2-digests)
+ :hyps ((fn2-checkpointsp fn2-checkpoints) (fn2-checkpoints-wfp fn2-checkpoints) (fn2-checkpoint-refsp fn2-checkpoint-refs) (fn2-checkpoint-refs-wfp fn2-checkpoint-refs) (fn2-checkpoint-bytesp fn2-checkpoint-bytes) (fn2-checkpoint-bytes-wfp fn2-checkpoint-bytes) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests))
+ :specs (("-CHECKPOINTS-TYPE" fn2-checkpointsp 1)
+         ("-CHECKPOINTS-WFP" fn2-checkpoints-wfp 1)
+         ("-CHECKPOINTS-ROWS" fn2-checkpoints-rows 1 :frame fn2-checkpoints)
+         ("-CHECKPOINT-REFS-TYPE" fn2-checkpoint-refsp 2)
+         ("-CHECKPOINT-REFS-WFP" fn2-checkpoint-refs-wfp 2)
+         ("-CHECKPOINT-REFS-ROWS" fn2-checkpoint-refs-rows 2 :frame fn2-checkpoint-refs)
+         ("-CHECKPOINT-BYTES-TYPE" fn2-checkpoint-bytesp 3)
+         ("-CHECKPOINT-BYTES-WFP" fn2-checkpoint-bytes-wfp 3)
+         ("-CHECKPOINT-BYTES-ROWS" fn2-checkpoint-bytes-rows 3 :frame fn2-checkpoint-bytes)))

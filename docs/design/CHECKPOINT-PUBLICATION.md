@@ -385,3 +385,18 @@ supplies completion. These are concrete source/callback declarations, not a
 registered coordinator, admitted ownership proof, authenticated selected-base
 restoration or allocator reclamation. Candidate builder claims and root0 shared
 worker integration are the next required ownership connection.
+
+## Candidate construction ownership
+
+Actual descriptor BEGIN now atomically claims its candidate as nonselectable
+`:building` immediately after successful physical reservation, retaining C's
+builder token/owner tuple. Refusal or uncertainty never releases that claim.
+`fn2-checkpoint-builder-ownerp` requires the exact tuple and BUILDING state;
+`fn2-checkpoint-builder-claimp` recognizes the retained tuple across later
+non-FREE states and confers no durability. Source root captures and map freeze
+check actual candidate ownership. Ordinary recovery prepare remains FREE-only.
+Owned preparation requires the exact claim and uses the same serialization/
+expected-hash preparation body, preserving its tuple. A decoded recovery
+candidate clears builder provenance and cannot acquire a construction claim.
+The local claim fixture controls ownership/refusal only, not actual cut or
+physical construction. The composed claim invariant remains unqualified.
