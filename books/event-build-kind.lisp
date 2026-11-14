@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-kind")
 (include-book "checkpoint-page-kind")
-(include-book "event-producer")
+(include-book "event-rearm")
 (fn2-book-layer :c)
 (defcorechild fn2-core-event-build fn2-event-build
  :init (fn2-event-build-init 1 fn2-event-build) :profilep t
