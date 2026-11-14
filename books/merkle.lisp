@@ -1,6 +1,7 @@
 ; RFC 6962 tree shape with BLAKE3-256. Digests and proof nodes are rows.
 (in-package "ACL2")
 (include-book "blake3")
+(include-book "digest-store")
 (include-book "assumptions-integrity")
 (fn2-book-layer :b)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
@@ -22,7 +23,7 @@
 (defun fn2-mk-node-first (dst left right fn2-digests)
  (declare (xargs :stobjs (fn2-digests) :verify-guards nil :guard (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests))))
  (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-compress-core (nth 0 *fn2-b3-iv*) (nth 1 *fn2-b3-iv*) (nth 2 *fn2-b3-iv*) (nth 3 *fn2-b3-iv*) (nth 4 *fn2-b3-iv*) (nth 5 *fn2-b3-iv*) (nth 6 *fn2-b3-iv*) (nth 7 *fn2-b3-iv*) (fn-b3-word (+ (ash (fn2-digests-w0 left fn2-digests) 8) 1)) (fn-b3-word (+ (ash (fn2-digests-w1 left fn2-digests) 8) (ash (fn2-digests-w0 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w2 left fn2-digests) 8) (ash (fn2-digests-w1 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w3 left fn2-digests) 8) (ash (fn2-digests-w2 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w4 left fn2-digests) 8) (ash (fn2-digests-w3 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w5 left fn2-digests) 8) (ash (fn2-digests-w4 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w6 left fn2-digests) 8) (ash (fn2-digests-w5 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w7 left fn2-digests) 8) (ash (fn2-digests-w6 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w0 right fn2-digests) 8) (ash (fn2-digests-w7 left fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w1 right fn2-digests) 8) (ash (fn2-digests-w0 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w2 right fn2-digests) 8) (ash (fn2-digests-w1 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w3 right fn2-digests) 8) (ash (fn2-digests-w2 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w4 right fn2-digests) 8) (ash (fn2-digests-w3 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w5 right fn2-digests) 8) (ash (fn2-digests-w4 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w6 right fn2-digests) 8) (ash (fn2-digests-w5 right fn2-digests) -24))) (fn-b3-word (+ (ash (fn2-digests-w7 right fn2-digests) 8) (ash (fn2-digests-w6 right fn2-digests) -24))) 0 64 1)
- (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests)))
+ (fn2-digest-store-words dst c0 c1 c2 c3 c4 c5 c6 c7 fn2-digests)))
 (defthm fn2-mk-node-first-shape
  (implies (and (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests)) (fn2-digestsp fn2-digests))
   (and (fn2-digestsp (fn2-mk-node-first dst left right fn2-digests)) (fn2-digests-wfp (fn2-mk-node-first dst left right fn2-digests)) (equal (fn2-digests-rows (fn2-mk-node-first dst left right fn2-digests)) (fn2-digests-rows fn2-digests)))))
@@ -31,12 +32,33 @@
 (defun fn2-mk-node (dst left right fn2-digests)
  (declare (xargs :stobjs (fn2-digests) :verify-guards nil :guard (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests))))
  (let* ((last (ash (fn2-digests-w7 right fn2-digests) -24)) (fn2-digests (fn2-mk-node-first dst left right fn2-digests))) (mv-let (c0 c1 c2 c3 c4 c5 c6 c7) (fn-b3-compress-core (fn2-digests-w0 dst fn2-digests) (fn2-digests-w1 dst fn2-digests) (fn2-digests-w2 dst fn2-digests) (fn2-digests-w3 dst fn2-digests) (fn2-digests-w4 dst fn2-digests) (fn2-digests-w5 dst fn2-digests) (fn2-digests-w6 dst fn2-digests) (fn2-digests-w7 dst fn2-digests) last 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 10)
- (let* ((fn2-digests (fn2-digests-set-w0 dst c0 fn2-digests)) (fn2-digests (fn2-digests-set-w1 dst c1 fn2-digests)) (fn2-digests (fn2-digests-set-w2 dst c2 fn2-digests)) (fn2-digests (fn2-digests-set-w3 dst c3 fn2-digests)) (fn2-digests (fn2-digests-set-w4 dst c4 fn2-digests)) (fn2-digests (fn2-digests-set-w5 dst c5 fn2-digests)) (fn2-digests (fn2-digests-set-w6 dst c6 fn2-digests)) (fn2-digests (fn2-digests-set-w7 dst c7 fn2-digests))) fn2-digests))))
+ (fn2-digest-store-words dst c0 c1 c2 c3 c4 c5 c6 c7 fn2-digests))))
 (defthm fn2-mk-node-shape
  (implies (and (and (fn2-digest-rowp dst fn2-digests) (fn2-digest-rowp left fn2-digests) (fn2-digest-rowp right fn2-digests)) (fn2-digestsp fn2-digests))
   (and (fn2-digestsp (fn2-mk-node dst left right fn2-digests)) (fn2-digests-wfp (fn2-mk-node dst left right fn2-digests)) (equal (fn2-digests-rows (fn2-mk-node dst left right fn2-digests)) (fn2-digests-rows fn2-digests)))))
 (verify-guards fn2-mk-node)
 (in-theory (disable fn2-mk-node))
+(defthm fn2-mk-node-reconstruct-from-result
+ (equal
+  (fn2-digest-store-words dst
+   (nth 0 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 1 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 2 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 3 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 4 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 5 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 6 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   (nth 7 (fn2-digests-row-snapshot dst (fn2-mk-node dst left right fn2-digests)))
+   fn2-digests)
+  (fn2-mk-node dst left right fn2-digests))
+ :hints (("Goal" :in-theory (e/d (fn2-mk-node fn2-mk-node-first)
+                                (fn-b3-compress-core fn2-digest-store-words)))))
+(defthm fn2-mk-node-other-row-frame
+ (implies (not (equal (nfix i) (nfix dst)))
+  (equal (nth i (nth field (fn2-mk-node dst left right fn2-digests)))
+         (nth i (nth field fn2-digests))))
+ :hints (("Goal" :in-theory (e/d (fn2-mk-node fn2-mk-node-first)
+                                (fn-b3-compress-core fn2-digest-store-words nth update-nth nfix)))))
 (defun fn2-mk-init (row fn2-mk)
  (declare (xargs :stobjs fn2-mk :guard (and (fn2-mk-wfp fn2-mk) (natp row) (< row (fn2-mk-rows fn2-mk)))))
  (let* ((fn2-mk (fn2-mk-set-size row 0 fn2-mk))
@@ -147,9 +169,12 @@
  (fn2-mk (fn2-mk-set-ps row (mod (floor (nfix s) 2) 1152921504606846976) fn2-mk))
  (fn2-mk (fn2-mk-set-next row (+ 1 i) fn2-mk)))
  (if (equal (+ i 1) count) (fn2-mk-proof-end row fn2-digests fn2-mk) (mv :more fn2-digests fn2-mk))))
+; Scalar normalization and parity choose a path; the child contracts carry
+; the shapes. Do not split those scalar definitions again for each claim.
 (defthm fn2-mk-proof-step-shape
  (implies (and (fn2-mk-ready row fn2-mk fn2-digests) (fn2-digestsp fn2-digests) (fn2-mkp fn2-mk))
-  (and (fn2-digestsp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk)))))
+  (and (fn2-digestsp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-proof-step row fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk))))
+ :hints (("Goal" :in-theory (disable nfix oddp))))
 (verify-guards fn2-mk-proof-step)
 (in-theory (disable fn2-mk-proof-step))
 (defun fn2-mk-proof-setup (row phase base count old new index f s old-root new-root leaf fn2-digests fn2-mk)
@@ -212,8 +237,10 @@
 (defthm fn2-mk-verify-consistency-shape
  (implies (and (and (fn2-mk-ready row fn2-mk fn2-digests) (fn2-digest-rowp old-root fn2-digests) (fn2-digest-rowp new-root fn2-digests) (unsigned-byte-p 60 old) (unsigned-byte-p 60 new) (unsigned-byte-p 32 base) (unsigned-byte-p 32 count)
  (<= (* *fn2-digest-stride* (fn2-mk-rows fn2-mk)) old-root) (<= (* *fn2-digest-stride* (fn2-mk-rows fn2-mk)) new-root)) (fn2-digestsp fn2-digests) (fn2-mkp fn2-mk))
-  (and (fn2-digestsp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk)))))
-(verify-guards fn2-mk-verify-consistency)
+  (and (fn2-digestsp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-wfp (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-digests-rows (mv-nth 1 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-digests-rows fn2-digests)) (fn2-mkp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-wfp (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (equal (fn2-mk-rows (mv-nth 2 (fn2-mk-verify-consistency row old new base count old-root new-root fn2-digests fn2-mk))) (fn2-mk-rows fn2-mk))))
+ :hints (("Goal" :in-theory (disable nfix))))
+(verify-guards fn2-mk-verify-consistency
+ :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-mk-verify-consistency))
 (defconst *fn2-mk-leaf-prefix* (coerce (list (code-char 0)) 'string))
 (defun fn2-mk-leaf-start (row fn2-digests fn2-b3)

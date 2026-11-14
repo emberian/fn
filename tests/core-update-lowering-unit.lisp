@@ -167,9 +167,13 @@
        (equal (fn2-update-composed-child-core-face 9 0 42 core)
               '(:bounds (((42 38) 2) ((91) 1))))))
  :rule-classes nil)
+; Composition delegates each operation site to the retained child boundary.
+; Its one-setter body is checked above; no caller duplicates that primitive.
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 2)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-composed-child 'unnormalized-body nil (w state))) 0)))
 (defun fn2-update-composed-init (fn2-core)
  (declare (xargs :stobjs fn2-core :verify-guards nil))
  (let ((fn2-core (fn2-update-fixture-init fn2-core)))
@@ -257,8 +261,10 @@
                 (:executable-counterpart fn2-update-read)))))
  :rule-classes nil)
 (assert-event
- (equal (fn2-update-call-count 'fn2-update-config-set-value
-          (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1))
+ (and (equal (fn2-update-call-count 'fn2-update-child
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 1)
+      (equal (fn2-update-call-count 'fn2-update-config-set-value
+               (getpropc 'fn2-update-read-after-child 'unnormalized-body nil (w state))) 0)))
 ;; Mutating evaluation order keeps the same effects but returns stale data.
 (defun fn2-update-read-before-mutant (i value fn2-core)
  (declare (xargs :stobjs fn2-core :guard (and (natp i) (unsigned-byte-p 8 value) (fn2-core-wfp fn2-core))))

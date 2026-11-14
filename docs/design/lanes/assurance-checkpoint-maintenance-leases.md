@@ -85,3 +85,25 @@ All four isolated coordinator/recovery fixtures and both new consumer macro
 books now import B* directly. The existing structural rewrite tool's four text
 fixtures pass, and its six-file explicit-import check reports zero missing
 imports. These are Python source-tool controls, not ACL2/runtime execution.
+
+## HELD consumer admission, 2026-11-14
+
+The exact 30368c191 HELD32 attempt stopped with exit 75 in dependency
+`books/checkpoint`; no `checkpoint-future-resources-unit` forms were sent.
+All 17 unchanged qualified dependencies installed with zero misses. Fourteen
+changed parents were explicitly source-loaded; no certification was launched.
+The refused event was `FN2-CHECKPOINT-REF-CLEAR-BUILD-PRESERVES-TYPE`, 347
+prover steps. Its arbitrary logical row argument reached four raw setters
+without the index check required to preserve concrete column shape.
+
+Source repair 7628b96e1 preserves the original generated TYPE/WFP/ROWS claims
+and valid-index behavior: invalid indices return the unchanged carrier.
+`tests/checkpoint-clear-build-unit` adds actual upper-bound/negative-index
+unchanged-view and valid four-field clearing controls. These controls and the
+repaired admission remain unrun. The original HELD controls are unchanged.
+
+Total source-loading cost was 120.71 seconds / 14,122,367 prover steps; this
+is dependency proof cost, not the 347-step refusal. Cost reduction remains
+open before repeating that prefix. The detached attempt stopped its own
+server; outer 540924, server 540998 and ACL2 process group 540999 were all
+absent on the exact PID audit. Its named 2 GiB reservation was released.

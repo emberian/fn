@@ -76,7 +76,7 @@
 
 (defun fn2-sim-force-fault (fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard (fn2-sim-ready fn2-sim)))
-  (update-fn2-sim-forced-fault (if (and (natp fault) (< fault *fn2-fault-none*)) fault *fn2-fault-none*) fn2-sim))
+  (update-fn2-sim-forced-fault (if (fn2-sim-real-faultp fault) fault *fn2-fault-none*) fn2-sim))
 (fn2-sim-preserves fn2-sim-force-fault (fault fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp nil) ("-READY" fn2-sim-ready nil) ("-WFP" fn2-sim-wfp nil)))
@@ -116,10 +116,10 @@
                                         :in-theory (disable fn2-sim-random-state-type fn2-sim-random-ready)))))
   (mv-let (word fn2-sim) (fn2-sim-random fn2-sim)
     (let* ((forced (fn2-sim-forced-fault fn2-sim))
-           (candidate (if (< forced *fn2-fault-none*) forced (mod word *fn2-fault-count*)))
+           (candidate (if (fn2-sim-real-faultp forced) forced (mod word *fn2-fault-count*)))
            (coin (mod (floor word *fn2-fault-count*) 256))
-           (hit (and (< 0 (fn2-sim-fault-budget fn2-sim))
-                     (or (< forced *fn2-fault-none*) (< coin (fn2-sim-probabilitiesi candidate fn2-sim)))))
+           (hit (and (fn2-sim-real-faultp candidate) (< 0 (fn2-sim-fault-budget fn2-sim))
+                     (or (fn2-sim-real-faultp forced) (< coin (fn2-sim-probabilitiesi candidate fn2-sim)))))
            (fn2-sim (update-fn2-sim-forced-fault *fn2-fault-none* fn2-sim))
            (fn2-sim (update-fn2-sim-digest
                        (fn2-sim-fold (fn2-sim-digest fn2-sim)
@@ -131,7 +131,7 @@
 ; Coverage is recorded at the effect, never at random selection.
 (defun fn2-sim-land (fault fn2-sim)
   (declare (xargs :stobjs fn2-sim :guard t))
-  (if (and (natp fault) (< fault *fn2-fault-none*))
+  (if (fn2-sim-real-faultp fault)
       (update-fn2-sim-hitsi fault (min #xffffffff (+ 1 (fn2-sim-hitsi fault fn2-sim))) fn2-sim)
     fn2-sim))
 (fn2-sim-preserves fn2-sim-land (fault fn2-sim) :forward t
@@ -147,7 +147,7 @@
 (defthm fn2-sim-choose-fault-result
   (implies (fn2-simp fn2-sim)
            (and (natp (mv-nth 0 (fn2-sim-choose-fault fn2-sim)))
-                (<= (mv-nth 0 (fn2-sim-choose-fault fn2-sim)) *fn2-fault-none*))))
+                (< (mv-nth 0 (fn2-sim-choose-fault fn2-sim)) *fn2-fault-count*))))
 (fn2-sim-preserves fn2-sim-choose-fault (fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1)))
@@ -299,6 +299,8 @@
                   :measure (nfix (- (nfix (fn2-sim-rows fn2-sim)) (nfix slot)))))
   (if (or (not (natp slot)) (>= slot (nfix (fn2-sim-rows fn2-sim)))) fn2-sim
     (let* (
+           (fn2-sim (fn2-sim-put slot (return-code 0) (return-count 0) (return-aux 0)
+                                  (return-word 0) (return-time 0) (return-fault 0)))
            (fn2-sim (fn2-sim-set-active slot 0 fn2-sim))
            (fn2-sim (fn2-sim-set-gen slot 0 fn2-sim))
            (fn2-sim (fn2-sim-set-kind slot 0 fn2-sim))
@@ -342,7 +344,7 @@
                                         :in-theory (disable fn2-sim-random-state-type fn2-sim-random-ready)))))
   (if (or (not (natp i)) (>= i *fn2-fault-count*)) fn2-sim
     (mv-let (word fn2-sim) (fn2-sim-random fn2-sim)
-      (let* ((enabled (and (not (eq profile-name :none))
+      (let* ((enabled (and (fn2-sim-real-faultp i) (not (eq profile-name :none))
                            (or (not (eq profile-name :crash-only))
                                (member-equal i (list *fn2-fault-fragment* *fn2-fault-short-send* *fn2-fault-delay* *fn2-fault-tear* *fn2-fault-fail-slow* *fn2-fault-crash* *fn2-fault-release-order*)))))
              (fn2-sim (update-fn2-sim-probabilitiesi i (if enabled (+ 1 (mod word 64)) 0) fn2-sim))

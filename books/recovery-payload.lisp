@@ -33,14 +33,21 @@
 ;; row ID OGEN), the stream ending at REND: (mv code next kind event fn2-core).
 (defun fn2-rp-header (roff rend slot gen id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+  (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
     (code next kind version event fn2-fields)
     (if (and (fn2-rp-roomp) (unsigned-byte-p 32 roff) (unsigned-byte-p 32 rend)
              (unsigned-byte-p 32 id) (unsigned-byte-p 60 ogen))
         (mv-let (code next fn2-fields)
           (fn2-format-record-header-decode *fn2-rec-field-base* slot gen roff rend *fn2-recovery-machine-kind* id ogen
                                            fn2-fields fn2-pool)
-          (mv code next
+          (mv (if (and (eq code :ok)
+                        (equal (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-lineage*) fn2-fields)
+                               (fn2-origin-lineage fn2-origin))
+                        (equal (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-domain*) fn2-fields)
+                               (fn2-origin-domain fn2-origin))
+                        (equal (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-incarnation*) fn2-fields)
+                               (fn2-origin-incarnation fn2-origin))) :ok :origin)
+              next
               (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-record-kind*) fn2-fields)
               (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-schema-version*) fn2-fields)
               (fn2-fields-value (+ *fn2-rec-field-base* *fn2-format-record-header-field-event*) fn2-fields)

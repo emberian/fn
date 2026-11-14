@@ -643,3 +643,13 @@ The restore book's 56.44-second, 13,236,134-step source admission also leaves
 a proof-cost defect. The retained session was explicitly stopped and its
 three recorded lifecycle PIDs were absent. No certificate, full recovery,
 reclamation activation or FREE claim follows from these results.
+
+The shared semantic-page decoder was source-admitted in the 24-book `e7c67652f`
+closure with the proof-only row-frame hint committed in `d9959fe21`. This
+covers the actual header/child-Ref predicates, header reader guards, carrier
+frames, reader-context preservation, exact decoded-field/code observations,
+and retained entry-count implication. The seven remaining contract forms
+used 0.21 seconds and 17,516 prover steps after the source-parent load.
+It does not authenticate a cold candidate by itself: the composing binder
+must retain and check the authenticated descriptor and allocation-map
+identity, including replacement of a descriptor in the same candidate slot.

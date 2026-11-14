@@ -3,7 +3,9 @@
 
 This checks readable source, literal repository-contained LOADs, absence of
 Lisp-reader/evaluator calls, and that the actual startup prefix loads without
-starting the server. It does not prove that raw host code makes no decisions.
+starting the server. The load gate also checks actual ACL2 function bindings
+across raw startup; only the declared native replacements may change. This is
+an assumption census, not a proof of the native implementations' behavior.
 The fn1 definterface/DTN registry is not an interface for this runtime.
 """
 from __future__ import annotations
@@ -21,6 +23,55 @@ import lisp_source
 ROOT = Path(__file__).resolve().parents[1]
 BANNED = {'read', 'read-preserving-whitespace', 'read-from-string', 'eval',
           'read-delimited-list', 'read-eval'}
+# Deliberately independent of the mutable host's *fn2-b3-native-entries*.
+# These implementations remain trusted (fn2-a-crypto-native/fn2-a-native-span);
+# checking their function identities does not establish output/effect refinement.
+NATIVE_REPLACEMENTS = (
+    ('fn2-b3-fragment-into', 'fn2-b3-native-fragment'),
+    ('fn2-fc-zero-prefix', 'fn2-b3-native-zero-prefix'),
+    ('fn2-b3-subtree-cv-into', 'fn2-b3-native-subtree'),
+    ('fn2-b3-chunk-output-into', 'fn2-b3-native-chunk'),
+    ('fn2-b3-parent-cv', 'fn2-b3-native-parent-cv'),
+    ('fn2-b3-parent-root', 'fn2-b3-native-parent-root'),
+    ('fn2-b3-output', 'fn2-b3-native-output'),
+    ('fn2-mk-node', 'fn2-b3-native-node'),
+)
+# Source wiring only: the C/FFI primitive semantics remain an assumption.
+# The shared store's ACL2 effect proof does not cover extra raw writes or
+# reordered captures in these adapters, so changes require a new contract.
+RAW_CRYPTO_ABI = {
+    'fn2-b3-native-load': '''
+      (defun fn2-b3-native-load (src sap dg)
+       (declare (type sb-sys:system-area-pointer sap))
+       (setf (sb-sys:sap-ref-32 sap 0) (fn2-digests-w0 src dg))
+       (setf (sb-sys:sap-ref-32 sap 4) (fn2-digests-w1 src dg))
+       (setf (sb-sys:sap-ref-32 sap 8) (fn2-digests-w2 src dg))
+       (setf (sb-sys:sap-ref-32 sap 12) (fn2-digests-w3 src dg))
+       (setf (sb-sys:sap-ref-32 sap 16) (fn2-digests-w4 src dg))
+       (setf (sb-sys:sap-ref-32 sap 20) (fn2-digests-w5 src dg))
+       (setf (sb-sys:sap-ref-32 sap 24) (fn2-digests-w6 src dg))
+       (setf (sb-sys:sap-ref-32 sap 28) (fn2-digests-w7 src dg)) t)''',
+    'fn2-b3-native-store': '''
+      (defun fn2-b3-native-store (dst sap dg)
+       (declare (type sb-sys:system-area-pointer sap))
+       (fn2-digest-store-words dst
+        (sb-sys:sap-ref-32 sap 0) (sb-sys:sap-ref-32 sap 4)
+        (sb-sys:sap-ref-32 sap 8) (sb-sys:sap-ref-32 sap 12)
+        (sb-sys:sap-ref-32 sap 16) (sb-sys:sap-ref-32 sap 20)
+        (sb-sys:sap-ref-32 sap 24) (sb-sys:sap-ref-32 sap 28) dg))''',
+    'fn2-b3-native-node': '''
+      (defun fn2-b3-native-node (dst left right dg)
+       (if (and (fn2-b3-native-rowp dst dg) (fn2-b3-native-rowp left dg)
+                (fn2-b3-native-rowp right dg))
+        (sb-alien:with-alien ((l (array sb-alien:unsigned-int 8))
+                             (r (array sb-alien:unsigned-int 8))
+                             (out (array sb-alien:unsigned-int 8)))
+         (fn2-b3-native-load left (sb-alien:alien-sap l) dg)
+         (fn2-b3-native-load right (sb-alien:alien-sap r) dg)
+         (fn2-b3-%node (sb-alien:alien-sap l) (sb-alien:alien-sap r) (sb-alien:alien-sap out))
+         (fn2-b3-native-store dst (sb-alien:alien-sap out) dg))
+        (funcall (fn2-b3-native-reference 'fn2-mk-node) dst left right dg)))''',
+}
 
 
 def walk(form):
@@ -83,6 +134,12 @@ def inspect(root=ROOT):
                         visit(root / call[1])
 
     scan(ledger.read_forms(prefix), 'tools/image-node.lsp')
+    if 'host/b3-native.lisp' in order:
+        definitions = forms(root / 'host/b3-native.lisp')
+        for name, expected in RAW_CRYPTO_ABI.items():
+            matches = [f for f in definitions if ledger.head(f) == 'defun' and str(f[1]) == name]
+            if matches != [ledger.read_forms(expected)[0]]:
+                findings.append(f'host/b3-native.lisp: native ABI/effect wiring changed: {name}')
     return prefix, order, findings
 
 
@@ -192,16 +249,32 @@ def entry_names(root, order):
     return sorted(calls - structures), sorted(helpers)
 
 
-def load_program(prefix, calls, helpers):
+def load_program(prefix, calls, helpers, replacements=()):
     logical, raw = prefix.split(':q', 1)
     names = ' '.join(calls)
     local = ' '.join(helpers)
+    replacement_map = ' '.join(f'({name} . {native})' for name, native in replacements)
     # Capture and validate the ACL2 status BEFORE native BLAKE3 replacements
     # are installed. Raw helpers are exactly the definitions in the load graph.
     return logical + f"""
 :q
 (handler-case
- (progn
+ (let ((bindings nil) (seen (make-hash-table :test #'eq))
+       (replacements '({replacement_map})))
+  ;; Snapshot the live world's function objects, including transitive callees
+  ;; absent from the raw source call inventory. Do not infer identity from guards.
+  (do-all-symbols (name)
+   (unless (gethash name seen)
+    (setf (gethash name seen) t)
+    (unless (or (special-operator-p name)
+                (eq (getpropc name 'symbol-class :missing (w *the-live-state*)) :missing))
+     (push (cons name (if (fboundp name) (fdefinition name) :unbound)) bindings))))
+  (dolist (pair replacements)
+   (unless (and (assoc (car pair) bindings)
+                (not (eq (cdr (assoc (car pair) bindings)) :unbound))
+                (eq (getpropc (car pair) 'symbol-class :missing (w *the-live-state*))
+                    :common-lisp-compliant))
+    (error "Declared native target ~s lacks a guarded ACL2 binding" (car pair))))
   (dolist (name '({names}))
    (let* ((world (w *the-live-state*))
           (class (getpropc name 'symbol-class :missing world)))
@@ -211,9 +284,21 @@ def load_program(prefix, calls, helpers):
           ((not (member name '({local})))
            (error "Undeclared served callee ~s" name)))))
   {raw}
+  (dolist (pair bindings)
+   (let* ((name (car pair)) (replacement (assoc name replacements)))
+    (unless (if (and (not replacement) (eq (cdr pair) :unbound))
+                (not (fboundp name))
+                (and (fboundp name)
+                     (if replacement
+                         (and (fboundp (cdr replacement))
+                              (eq (fdefinition name) (fdefinition (cdr replacement))))
+                         (eq (fdefinition name) (cdr pair)))))
+     (error "Undeclared or mismatched raw replacement of ACL2 function ~s" name))))
   (dolist (name '({names}))
    (unless (fboundp name)
     (error "Served callee ~s is not bound" name)))
+  (format t "~%FN_SERVED_HOST_BINDINGS_OK ~d unchanged-or-declared, ~d native assumptions~%"
+          (length bindings) (length replacements))
   (format t "~%FN_SERVED_HOST_LOAD_OK~%")
   (sb-ext:exit :code 0))
  (error (condition)
@@ -224,7 +309,7 @@ def load_program(prefix, calls, helpers):
 
 def load_prefix(prefix, root, order, timeout):
     calls, helpers = entry_names(root, order)
-    program = load_program(prefix, calls, helpers)
+    program = load_program(prefix, calls, helpers, NATIVE_REPLACEMENTS)
     with tempfile.TemporaryFile(mode='w+') as log:
         try:
             result = subprocess.run([str(root / 'tools/acl2'), '--timeout', str(timeout)],
@@ -237,7 +322,8 @@ def load_prefix(prefix, root, order, timeout):
     if result.returncode or 'FN_SERVED_HOST_LOAD_OK' not in output.splitlines():
         return 1, '\n'.join(output.splitlines()[-60:])
     return 0, (f'certified node prefix and {len(calls)} guarded/host callees loaded; '
-               'no listener started')
+               f'ACL2 bindings preserved except {len(NATIVE_REPLACEMENTS)} declared '
+               'native replacements (fn2-a-crypto-native/fn2-a-native-span); no listener started')
 
 
 def main(argv=None):

@@ -131,9 +131,21 @@ cd meta && lake build && lake env lean AxiomCensus.lean
 
 ### Operating a Live Node (`./fn`)
 
-After certifying `books/node-profile.lisp` and `books/merkle.lisp`:
+After certifying `books/node-profile.lisp` and `books/merkle.lisp`, configure the
+five allocated positive u60 names below. Use the same values for initialization
+and every restart. Independent histories need separately allocated origins;
+these names do not establish uniqueness or writer authority by themselves. See
+[durable origin](docs/design/DURABLE-ORIGIN.md) for the identity model and current
+qualification gaps.
 
 ```sh
+# Set these to your allocated names; no shared operational defaults exist.
+export FN2_ORIGIN_LINEAGE="${ALLOCATED_LINEAGE:?set allocated lineage}"
+export FN2_ORIGIN_DOMAIN="${ALLOCATED_DOMAIN:?set allocated commit domain}"
+export FN2_ORIGIN_INCARNATION="${ALLOCATED_INCARNATION:?set allocated incarnation}"
+export FN2_HISTORY_ID="${ALLOCATED_HISTORY:?set allocated physical history}"
+export FN2_HISTORY_INCARNATION="${ALLOCATED_HISTORY_INCARNATION:?set physical incarnation}"
+
 # 1. Initialize a preallocated store image (O_EXCL; never truncates an existing file)
 ./fn init build/node.img --size-mb 32 --group ops.alerts --group ops.audit
 
