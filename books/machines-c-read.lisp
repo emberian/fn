@@ -749,9 +749,21 @@
  (fn2-range-key-least j nk sid (+ (nfix b0) *fn2-read-lo*) wslot wgen fn2-fields))
 (fn2-rd-shape fn2-rd-key-least (j nk sid b0 wslot wgen fn2-fields) ((fn2-fields 1)) (fn2-fields) (fn2-range-key-least))
 
-; Start read row X's whole-schema scan of SID from its least key; the
-; resume key's octets live in WSLOT/WGEN, written and read under WK WS WG.
-(defun fn2-rd-scan (x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+; Validate every supplied resume key field against its schema. Callers must
+; populate all fields: zero is a legitimate scalar, not an unset marker.
+(defun fn2-rd-scan-key-ok (j nk sid base fn2-fields)
+ (declare (xargs :stobjs fn2-fields :guard t :measure (nfix (- (nfix nk) (nfix j)))))
+ (if (not (and (natp j) (natp nk) (< j nk))) t
+   (and (fn2-fields-wfp fn2-fields) (natp base) (< (+ base j) (fn2-fields-rows fn2-fields))
+        (fn2-run-layout-value-ok sid j
+          (if (fn2-run-layout-octets-max sid j)
+              (fn2-fields-ref-len (+ base j) fn2-fields)
+            (fn2-fields-value (+ base j) fn2-fields)))
+        (fn2-rd-scan-key-ok (+ 1 j) nk sid base fn2-fields))))
+(in-theory (disable fn2-rd-scan-key-ok))
+; Start from the least key, or strictly after the supplied complete lo key.
+; Both paths use the same range sources, delivery and resume-key storage.
+(defun fn2-rd-scan-start (after x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
  (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields) :guard t
   :guard-hints (("Goal" :in-theory (e/d (fn2-rd-range-args-ok) (fn2-rd-range-start fn2-rd-key-least fn2-reads-rows
                                                                  fn2-fields-rows fn2-ranges-rows fn2-range-sources-rows))))))
@@ -763,19 +775,42 @@
                     (unsigned-byte-p 32 wslot) (unsigned-byte-p 60 wgen) (unsigned-byte-p 8 wk) (unsigned-byte-p 32 ws)
                     (unsigned-byte-p 60 wg) (posp (fn2-run-layout-keys sid))))
        (mv :bounds fn2-reads fn2-ranges fn2-range-sources fn2-fields))
-      ((mv code fn2-fields) (fn2-rd-key-least 0 (fn2-run-layout-keys sid) sid b0 wslot wgen fn2-fields))
+      ((unless (or (not after)
+                   (and (equal (fn2-reads-qset x fn2-reads) 1)
+                        (equal (fn2-reads-qk x fn2-reads) wk)
+                        (equal (fn2-reads-qs x fn2-reads) ws)
+                        (equal (fn2-reads-qg x fn2-reads) wg)
+                        (fn2-rd-scan-key-ok 0 (fn2-run-layout-keys sid) sid (+ b0 *fn2-read-lo*) fn2-fields))))
+       (mv :bounds fn2-reads fn2-ranges fn2-range-sources fn2-fields))
+      ((mv code fn2-fields) (if after (mv :ok fn2-fields)
+                               (fn2-rd-key-least 0 (fn2-run-layout-keys sid) sid b0 wslot wgen fn2-fields)))
       ((unless (and (eq code :ok) (< x (fn2-reads-rows fn2-reads))))
        (mv (if (eq code :ok) :bounds code) fn2-reads fn2-ranges fn2-range-sources fn2-fields))
       (fn2-reads (fn2-reads-put x (op *fn2-read-op-scan*) (sid sid) (entry 0) (qset 1) (qk wk) (qs ws) (qg wg)
-                                (wslot wslot) (wgen wgen) (excl 0) (found 0) (selected 0) (evidence 0)))
+                                (wslot wslot) (wgen wgen) (excl (if after 1 0)) (found 0) (selected 0) (evidence 0)))
       ((mv code fn2-ranges fn2-range-sources)
        (fn2-rd-range-start x sid *fn2-range-no-position* 0 b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays
                            fn2-run-installed)))
   (mv code fn2-reads fn2-ranges fn2-range-sources fn2-fields)))
+(fn2-rd-shape fn2-rd-scan-start (after x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ ((fn2-reads 1) (fn2-ranges 2) (fn2-range-sources 3) (fn2-fields 4))
+ (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ ((:keep fn2-rd-range-args-ok) fn2-rd-range-start fn2-rd-key-least fn2-rd-scan-key-ok (:keep fn2-reads-rows)))
+(defun fn2-rd-scan (x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields) :guard t))
+ (fn2-rd-scan-start nil x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields))
 (fn2-rd-shape fn2-rd-scan (x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
  ((fn2-reads 1) (fn2-ranges 2) (fn2-range-sources 3) (fn2-fields 4))
  (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
- ((:keep fn2-rd-range-args-ok) fn2-rd-range-start fn2-rd-key-least (:keep fn2-reads-rows)))
+ (fn2-rd-scan-start))
+(defun fn2-rd-scan-from (x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ (declare (xargs :stobjs (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields) :guard t))
+ (fn2-rd-scan-start t x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields))
+(fn2-rd-shape fn2-rd-scan-from (x sid wslot wgen wk ws wg b0 tn fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ ((fn2-reads 1) (fn2-ranges 2) (fn2-range-sources 3) (fn2-fields 4))
+ (fn2-reads fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed fn2-fields)
+ (fn2-rd-scan-start))
+
 
 ; One step of read row X's scan: :entry, :end, :more, :miss, or a refusal;
 ; :state when the row holds no scan.
@@ -918,6 +953,9 @@
 (defcost fn2-read-octets :child fn2-read-octets-children :answers (:bounds :ok :owner :stale :state)
  :bytes 4096 :tables (fn2-core-pool)
  :doc "Copy at most 4,096 octets of the delivered entry's octet field into a workspace.")
+(defcost fn2-read-scan-from :child fn2-read-scan-from-children :answers (:bounds :ok :sources :state)
+ :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
+ :doc "Start a read row's whole-schema ordered scan strictly after the complete supplied lo key, the schema's overlays and live runs into at most eight sources.")
 (defcost fn2-read-scan :child fn2-read-scan-children :answers (:bounds :ok :sources :state)
  :bytes 256 :tables (fn2-core-reads fn2-core-ranges fn2-core-range-sources fn2-core-fields)
  :doc "Start a read row's whole-schema ordered scan: the least key, the schema's overlays and live runs into at most eight sources.")
@@ -1024,6 +1062,18 @@
   :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges) (fn2-seeks-wfp
    fn2-seeks) (fn2-succ-txns-wfp fn2-succ-txns))))
  (fn2-rd-release x (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-seeks fn2-succ-txns))
+(defun fn2-read-scan-from-children (x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
+  fn2-overlays fn2-run-installed fn2-fields fn2-fc)
+ (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed
+   fn2-fields fn2-fc)
+  :guard (and (fn2-reads-wfp fn2-reads) (fn2-id-decides-wfp fn2-id-decides) (fn2-ranges-wfp fn2-ranges)
+   (fn2-range-sources-wfp fn2-range-sources) (fn2-overlays-wfp fn2-overlays) (fn2-run-installed-wfp fn2-run-installed)
+   (fn2-fields-wfp fn2-fields) (fn2-fc-wfp fn2-fc))))
+ (mv-let (c b0) (fn2-read-stripe x (fn2-fc-rows fn2-fc) fn2-reads fn2-id-decides fn2-fields)
+  (if (eq c :ok)
+      (fn2-rd-scan-from x sid wslot wgen wk ws wg b0 (fn2-id-decides-rows fn2-id-decides) fn2-reads fn2-ranges fn2-range-sources
+                   fn2-overlays fn2-run-installed fn2-fields)
+    (mv c fn2-reads fn2-ranges fn2-range-sources fn2-fields))))
 (defun fn2-read-scan-children (x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
   fn2-overlays fn2-run-installed fn2-fields fn2-fc)
  (declare (xargs :stobjs (fn2-reads fn2-id-decides fn2-ranges fn2-range-sources fn2-overlays fn2-run-installed
@@ -1100,11 +1150,11 @@
        (fn2-read-children-facts
         '(fn2-read-key-children fn2-read-key-octets-children fn2-read-lookup-children fn2-read-range-children
           fn2-read-next-children fn2-read-seek-children fn2-read-seek-step-children fn2-read-octets-children
-          fn2-read-release-children fn2-read-scan-children fn2-read-scan-next-children fn2-read-identity-children)
+          fn2-read-release-children fn2-read-scan-from-children fn2-read-scan-children fn2-read-scan-next-children fn2-read-identity-children)
         (w state))))
 (in-theory (disable fn2-read-key-children fn2-read-key-octets-children fn2-read-lookup-children fn2-read-range-children
                     fn2-read-next-children fn2-read-seek-children fn2-read-seek-step-children fn2-read-octets-children
-                    fn2-read-release-children fn2-read-scan-children fn2-read-scan-next-children
+                    fn2-read-release-children fn2-read-scan-from-children fn2-read-scan-children fn2-read-scan-next-children
                     fn2-read-identity-children fn2-read-value-children))
 
 (defmacro fn2-read-core-events ()
@@ -1223,6 +1273,16 @@
    (defun fn2-read-frontier (fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (fn2-successor-published fn2-core))
+   (defun fn2-read-scan-from (x sid wslot wgen wk ws wg fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                (fn2-ranges (fn2-core-ranges fn2-core)) (fn2-range-sources (fn2-core-range-sources fn2-core))
+                (fn2-overlays (fn2-core-overlays fn2-core)) (fn2-run-installed (fn2-core-run-installed fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core)) (fn2-fc (fn2-core-fc fn2-core)))
+     (code fn2-reads fn2-ranges fn2-range-sources fn2-fields)
+     (fn2-read-scan-from-children x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
+       fn2-overlays fn2-run-installed fn2-fields fn2-fc)
+     (mv code fn2-core)))
    (defun fn2-read-scan (x sid wslot wgen wk ws wg fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ((fn2-reads (fn2-core-reads fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
@@ -1233,6 +1293,8 @@
      (fn2-read-scan-children x sid wslot wgen wk ws wg fn2-reads fn2-id-decides fn2-ranges fn2-range-sources
        fn2-overlays fn2-run-installed fn2-fields fn2-fc)
      (mv code fn2-core)))
+   (fn2-core-preserves fn2-read-scan-from (x sid wslot wgen wk ws wg fn2-core) :position 1 :rows nil
+    :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (fn2-core-preserves fn2-read-scan (x sid wslot wgen wk ws wg fn2-core) :position 1 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (defun fn2-read-scan-next (x budget fn2-core)
@@ -1265,9 +1327,9 @@
    (fn2-core-preserves fn2-read-identity (x mslot mgen moff mlen okind oslot ogen budget fn2-core) :position 3 :rows nil
     :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-read-key fn2-read-key-octets fn2-read-lookup fn2-read-range fn2-read-next fn2-read-seek
-                       fn2-read-seek-step fn2-read-value fn2-read-octets fn2-read-release fn2-read-scan fn2-read-scan-next
+                       fn2-read-seek-step fn2-read-value fn2-read-octets fn2-read-release fn2-read-scan-from fn2-read-scan fn2-read-scan-next
                        fn2-read-identity))
    (assert-event (fn2-assert-compliant-p '(fn2-read-key fn2-read-key-octets fn2-read-lookup fn2-read-range fn2-read-next
                                            fn2-read-seek fn2-read-seek-step fn2-read-value fn2-read-octets fn2-read-release
-                                           fn2-read-scan fn2-read-scan-next fn2-read-identity)
+                                           fn2-read-scan-from fn2-read-scan fn2-read-scan-next fn2-read-identity)
                                          (w state)))))
