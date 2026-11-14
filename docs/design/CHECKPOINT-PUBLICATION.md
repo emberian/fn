@@ -537,3 +537,11 @@ changes only the physical freeze phase, retaining the C owner token for normal
 snapshot release. It does not advance checkpoint coverage or permit FREE.
 These source operations and their shape obligations remain unadmitted; the
 master is connecting them and primitive controls are being prepared.
+Root1 callbacks retain all required child inputs but return only each operation's
+assigned and nested-callee result carriers. The largest result is STEP's code
+plus 27 carriers (28 values); READ returns its three scalars plus 14 carriers
+(17 values). The declaration drives body projection and positional shape
+contracts together. A source control compares that declaration with actual
+assignments and family calls, including a removed-manifest-result mutation.
+This stays below ACL2's 32-value limit without treating readonly inputs as
+outputs; it is a source check, not admission of the generated callbacks.
