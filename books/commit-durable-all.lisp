@@ -13879,7 +13879,7 @@
          (equal (fn2-core-alloc-edges (fn2-core-init profile c))
                 (fn2-alloc-edges-init
                  (fn2-b-capacity :alloc-edge-slots
-                                 (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))))
+                                 (fn2-b-alloc-edge-floor profile)
                                  profile)
                  (fn2-core-alloc-edges c)))
          (equal (fn2-core-ops (fn2-core-init profile c))
@@ -14162,11 +14162,11 @@
    (implies (fn2-core-profilep profile)
             (let ((en (fn2-b-capacity :extent-slots 16 profile))
                   (an (fn2-b-capacity :alloc-edge-slots
-                                      (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))))
+                                      (fn2-b-alloc-edge-floor profile)
                                       profile)))
               (and (unsigned-byte-p 32 en)
                    (unsigned-byte-p 32 an)
-                   (<= (+ 6 (* 2 (nfix en))) an))))
+                   (<= (fn2-b-alloc-edge-floor profile) an))))
    :rule-classes nil
    :hints (("Goal" :in-theory '(fn2-core-profilep)))))
 
@@ -14174,17 +14174,17 @@
   (implies (fn2-core-profilep profile)
            (let ((en (fn2-b-capacity :extent-slots 16 profile))
                  (an (fn2-b-capacity :alloc-edge-slots
-                                     (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))))
+                                     (fn2-b-alloc-edge-floor profile)
                                      profile)))
              (and (natp en) (natp an) (<= 6 an))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(natp nfix) (theory 'ground-zero))
+  :hints (("Goal" :in-theory (union-theories '(natp nfix fn2-b-alloc-edge-floor) (theory 'ground-zero))
            :use ((:instance fn2-env-core-profilep-alloc-conjuncts)
                  (:instance fn2-env-ubp-implies-natp (b 32) (x (fn2-b-capacity :extent-slots 16 profile)))
                  (:instance fn2-env-ubp-implies-natp
                             (b 32)
                             (x (fn2-b-capacity :alloc-edge-slots
-                                               (+ 6 (* 2 (nfix (fn2-b-capacity :extent-slots 16 profile))))
+                                               (fn2-b-alloc-edge-floor profile)
                                                profile)))))))
 
 (defthm fn2-env-xa-core-init
