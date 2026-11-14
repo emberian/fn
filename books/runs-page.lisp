@@ -195,6 +195,18 @@
             (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-closing* fn2-run-writers)))
       (mv :ok fn2-run-writers))
   (mv :state fn2-run-writers)))
+; A full page containing no entry cannot make progress by being closed.
+; Preserve that page and the unconsumed entry; only a nonempty full page
+; can advance to close/seal and then retry the same entry on its successor.
+(defun fn2-run-close-full (w fn2-run-writers)
+ (declare (xargs :stobjs fn2-run-writers
+  :guard (and (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers)))))
+ (if (zp (fn2-run-writers-entries w fn2-run-writers))
+     (mv :length fn2-run-writers)
+  (mv-let (code fn2-run-writers) (fn2-run-close w fn2-run-writers)
+   (mv (if (eq code :ok) :more code) fn2-run-writers))))
+(fn2-run-writers-preserves fn2-run-close-full (w fn2-run-writers) :position 1 :raw-rows t
+ :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-close (w fn2-run-writers) :position 1 :raw-rows t
  :hyps ((fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers) (natp w) (< w (fn2-run-writers-rows fn2-run-writers))))
 (fn2-run-writers-preserves fn2-run-open (w slot gen schema version level run ordinal page-kind unit epoch counter history incarnation okind oslot ogen fields limit fn2-run-writers fn2-pool) :position 1 :raw-rows t :disable nil

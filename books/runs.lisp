@@ -284,7 +284,7 @@
  (declare (xargs :stobjs fn2-run-writers :guard (fn2-run-writers-wfp fn2-run-writers)))
  (b* (((unless (and (natp w) (< (+ 1 w) (fn2-run-writers-rows fn2-run-writers)))) (mv :bounds fn2-run-writers))
       ((when (eq code :full))
-       (mv-let (code fn2-run-writers) (fn2-run-close (+ 1 w) fn2-run-writers) (mv (if (eq code :ok) :more code) fn2-run-writers)))
+       (fn2-run-close-full (+ 1 w) fn2-run-writers))
       ((unless (eq code :ok)) (mv code fn2-run-writers))
       (ordinal (+ 1 (fn2-run-writers-ordinal w fn2-run-writers)))
       ((unless (unsigned-byte-p 60 ordinal)) (mv :bounds fn2-run-writers))
