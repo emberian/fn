@@ -207,6 +207,14 @@
         (written (fn2-core-child-types (fn2-product-written-entries entries (all-fnnames body))))
         (args (append (remove-eq 'fn2-core formals) children))
         (face (fn2-columns-sym child "-CORE-FACE"))
+        (execution (fn2-columns-sym child "-EXEC-CORE-FACE"))
+        (typed (fn2-columns-sym child "-TYPED-EXECUTION-REFINES-CORE"))
+        (guarded (fn2-columns-sym child "-GUARDED-EXECUTION-REFINES-CORE"))
+        (bridge (fn2-columns-sym child "-EXECUTION-CORRESPONDENCE"))
+        (refinement (fn2-columns-sym child "-REFINES-CORE"))
+        (source-guard (getpropc fn 'guard t world))
+        (execution-formula `(implies (and (fn2-corep fn2-core) ,source-guard)
+                              (equal (,execution ,@formals) (,fn ,@formals))))
         (guard (fn2-lower-substitute (getpropc fn 'guard t world)
                 (acons '(fn2-core-wfp fn2-core) (cons 'and (fn2-lower-predicates children "-WFP"))
                  (acons '(fn2-corep fn2-core) (cons 'and (fn2-lower-predicates children "P"))
@@ -236,24 +244,57 @@
        (assert-event
         (and (equal (getpropc ',child 'stobjs-in nil (w state)) ',(append (remove-eq 'fn2-core ins) children))
              (equal (getpropc ',child 'stobjs-out nil (w state)) ',(append (remove-eq 'fn2-core outs) written))))
-       ,(fn2-product-wrapper fn child face entries written world)
-       (assert-event (and (equal (getpropc ',face 'stobjs-in nil (w state)) ',ins)
-                          (equal (getpropc ',face 'stobjs-out nil (w state)) ',outs)))
-       (defthm ,(fn2-columns-sym child "-REFINES-CORE")
-        (equal (,face ,@formals) (,fn ,@formals))
+       ,(fn2-product-wrapper fn child execution entries written world)
+       (assert-event (and (equal (getpropc ',execution 'stobjs-in nil (w state)) ',ins)
+                          (equal (getpropc ',execution 'stobjs-out nil (w state)) ',outs)))
+       ;; This is the substantive extraction proof. The executable wrapper is
+       ;; independent of the original operation and contains no type recheck.
+       (defthm ,typed
+        (implies (fn2-corep fn2-core)
+                 (equal (,execution ,@formals) (,fn ,@formals)))
         :hints (("Goal" :in-theory
-          (e/d (,face ,child ,fn ,@opened
+          (e/d (,execution ,child ,fn fn2-corep ,@opened
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :reverse))
                (,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
                                              (all-fnnames body) :source)
                 ,@(fn2-lower-leaf-properties (table-alist 'fn2-core-lowered world)
-                                             (all-fnnames body) :refinement))))))
+                                             (all-fnnames body) :refinement)
+                ,@(strip-cars (fn2-lower-predicates
+                     (fn2-core-child-types (fn2-core-child-registry world)) "P")))))))
+       (defthm ,guarded ,execution-formula
+        :hints (("Goal" :use ((:instance ,typed))
+                 :in-theory (disable ,execution ,child ,fn ,typed))))
+       (in-theory (disable ,typed ,guarded))
+       ;; Only the logical totalization handles malformed core values. MBE's
+       ;; executable branch is the generated reconstruction, with no corep walk.
+       (defun ,face ,formals
+        (declare (xargs :stobjs fn2-core :guard ,source-guard :verify-guards t
+                        :guard-hints (("Goal" :in-theory (disable ,execution ,fn fn2-corep)))))
+        (mbe :logic (if (fn2-corep fn2-core) (,execution ,@formals) (,fn ,@formals))
+             :exec (,execution ,@formals)))
+       (assert-event (and (equal (getpropc ',face 'stobjs-in nil (w state)) ',ins)
+                          (equal (getpropc ',face 'stobjs-out nil (w state)) ',outs)))
+       (defthm ,bridge
+        (implies (and (fn2-corep fn2-core) ,source-guard)
+                 (equal (,face ,@formals) (,execution ,@formals)))
+        :hints (("Goal" :in-theory (e/d (,face) (,execution ,fn))))
+        :rule-classes nil)
+       (defthm ,refinement
+        (equal (,face ,@formals) (,fn ,@formals))
+        :hints (("Goal" :use ((:instance ,typed))
+                 :in-theory (e/d (,face) (,execution ,fn ,typed)))))
        ,@(fn2-lower-obligation-events fn child face formals
-           `(equal (,face ,@formals) (,fn ,@formals))
-           (fn2-columns-sym child "-REFINES-CORE") teeth)
-       (in-theory (disable ,face ,child))
+           `(equal (,face ,@formals) (,fn ,@formals)) refinement teeth)
+       ,@(fn2-lower-obligation-events fn child execution formals execution-formula guarded
+           (or teeth (list (fn2-columns-sym refinement "-POSITIVE")
+                           (fn2-columns-sym refinement "-NEGATIVE"))))
+       (in-theory (disable ,face ,execution ,child))
        (table fn2-core-lowered ',fn
-        '(:child ,child :face ,face :refinement ,(fn2-columns-sym child "-REFINES-CORE") :children ,children :written ,written :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))))
+        '(:child ,child :face ,face :execution ,execution
+          :typed-refinement ,typed :guarded-refinement ,guarded
+          :execution-correspondence ,bridge :refinement ,refinement
+          :children ,children :written ,written :obligation ,refinement
+          :execution-obligation ,guarded)))))))))
 (defmacro defcore-product-child (fn child &key teeth)
  `(make-event (value (fn2-product-events ',fn ',child ',teeth (w state)))))

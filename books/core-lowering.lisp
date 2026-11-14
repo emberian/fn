@@ -217,7 +217,10 @@
  (declare (xargs :verify-guards nil))
  (if (atom functions) nil
   (let ((row (cdr (assoc-eq (car functions) (table-alist 'fn2-core-lowered world)))))
-   (cons (fn2-decl-get :obligation row) (fn2-lower-obligations (cdr functions) world)))))
+   (append (list (fn2-decl-get :obligation row))
+           (and (fn2-decl-get :execution-obligation row)
+                (list (fn2-decl-get :execution-obligation row)))
+           (fn2-lower-obligations (cdr functions) world)))))
 (defmacro fn2-check-lowering-teeth (&rest functions)
  `(make-event (value (cons 'fn2-assert-owed-teeth (fn2-lower-obligations ',functions (w state))))))
 
