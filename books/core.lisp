@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "pool-ranges")
 (include-book "vocab")
+(include-book "borrow-release")
 (include-book "std/util/bstar" :dir :system)
 
 (include-book "sched")
@@ -359,10 +360,7 @@
                  (fn2-pool-complete-in slot gen opslot opgen
                    (if (or (equal outcome *fn2-outcome-failed*)
                            (equal outcome *fn2-outcome-cancelled*)) 0 count) fn2-pool))
-                ((or (equal evkind *fn2-event-borrow-released*)
-                     (and (equal rh 0) (equal rp 0)
-                          (or (equal evkind *fn2-event-write-result*)
-                              (and (equal evkind *fn2-event-send-result*) (equal aux0 0)))))
+                ((fn2-terminal-releases-borrow-p (fn2-ops-kind opslot fn2-ops) evkind aux0 rp rh)
                  (fn2-pool-release-out slot gen fn2-pool))
                 (t (mv :ok fn2-pool))))
          ((unless (eq code :ok))

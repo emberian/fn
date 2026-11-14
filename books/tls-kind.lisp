@@ -3,6 +3,7 @@
 ;; releases a still-live external loan.
 (in-package "ACL2")
 (include-book "machines-a")
+(include-book "codec-profile")
 (include-book "core-children")
 (include-book "machine-arms")
 (fn2-book-layer :d)
@@ -73,14 +74,6 @@
  (declare (xargs :guard t))
  (or (not (null (fn2-profile-get :tls-certificate profile)))
      (not (null (fn2-profile-get :tls-key profile)))))
-(defun fn2-tls-seed-capacity (profile)
- (declare (xargs :guard t))
- ;; The connection generator admits RX from class zero (machines.lisp).
- (let ((classes (fn2-profile-pool-classes profile)))
-  (if (and (consp classes) (consp (car classes))) (nfix (cdar classes)) 0)))
-(defun fn2-tls-seed-reservation-bytes (profile)
- (declare (xargs :guard t))
- (* (nfix (fn2-profile-c profile)) (fn2-tls-seed-capacity profile)))
 (defun fn2-tls-profilep (profile)
   (declare (xargs :guard t))
   (let ((slots (fn2-tls-setting :tls-handshakes 16 profile))

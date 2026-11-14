@@ -1,6 +1,8 @@
 /* Bounded raw RFC1951 carrier. Admission, extent and cumulative application
  * budgets belong to ACL2. Each call consumes only the supplied windows; the
- * caller retains unconsumed input and resumes after output backpressure. */
+ * caller retains unconsumed input and resumes after output backpressure.
+ * Encode precondition: ACL2 selects a FULL output window of at least seven
+ * bytes (zlib Z_SYNC_FLUSH contract); decode supports one-byte windows. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <zlib.h>

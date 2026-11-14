@@ -3,6 +3,7 @@
 (include-book "machines")
 (include-book "core-children")
 (include-book "profile")
+(include-book "origin")
 (include-book "sched")
 (include-book "commit-alloc")
 (include-book "format-check")
@@ -18,6 +19,10 @@
 (defun fn2-b-barrier-mode (profile)
  (declare (xargs :guard t))
  (fn2-b-capacity :commit-barrier-mode 0 profile))
+(defcorechild fn2-core-origin fn2-origin
+ :init (fn2-origin-prepare profile fn2-origin)
+ :profilep (and (fn2-origin-profilep profile) (fn2-origin-physical-profilep profile))
+ :why "Local receipt and envelope origin is bound by persisted genesis before serving.")
 (defcorechild fn2-core-extents fn2-extents
  :init (fn2-alloc-init (fn2-b-capacity :extent-slots 16 profile) fn2-extents)
  :profilep (unsigned-byte-p 32 (fn2-b-capacity :extent-slots 16 profile))
@@ -370,6 +375,10 @@
 (fn2-pool-preserves fn2-block-read-children (pu epoch alloc off len lslot lgen okind oslot ogen principal
                                              fn2-extents fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+(make-event
+ (value (cons 'progn
+   (append (fn2-issue-wrapper-effect-events '(fn2-block-read-children) (w state))
+           (fn2-issued-wrapper-events '(fn2-block-read-children) (w state))))))
 (defcost fn2-block-read :child fn2-block-read-children :answers (:ok :exhausted :stale :bounds)
  :tables (fn2-core-extents fn2-core-pool fn2-core-ops fn2-core-control)
  :descriptors 1 :doc "B-S2 S10: read a stored reference's range into the caller's lease (D6 3/n).")
