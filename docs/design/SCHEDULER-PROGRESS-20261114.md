@@ -17,12 +17,12 @@ execution evidence, not current-B record certification. The node default H=16
 is not implicated by this particular witness. Clock generation eventually
 exhausts its u60 range, so no infinite nonstopped execution is claimed.
 
-The repair target is a conditional progress guarantee for the actual loop:
+The repair supplies a conditional progress guarantee for the actual loop:
 when observation admission is exhausted but visit, action and work capacity
 remain and internal work is eligible, execute a calendar visit. The existing
 `allow-observation` argument already separates observation admission from
-calendar selection. Mirror the policy in reference scheduling, Q1 case
-selection and TRACE controls; retain all quantitative limits and pending
+calendar selection. Reference scheduling, Q1 case selection and TRACE
+controls mirror the policy while retaining quantitative limits and pending
 observations. A missing fresh quantum is an explicit negative control.
 
 Observation-class fairness is separate: posted completions precede clock,
@@ -40,7 +40,7 @@ receive the same observation-admission bit. This includes the after-H case
 where a signal remains pending while the calendar is visited. Existing
 observation priority is unchanged.
 
-`books/executor-progress.lisp` proposes a conditional theorem over the real
+`books/executor-progress.lisp` states a conditional theorem over the real
 `fn2-concrete-loop`: positive fuel, natural counters, exhausted observation
 allowance, eligible work, and a false actual stop predicate imply an increased
 calendar-visit count. An empty calendar entry counts as a visit. This is not
@@ -48,7 +48,7 @@ a per-row fairness theorem, and the theorem does not itself prove that a
 fresh turn reaches the observation boundary. Actual initialization/clock
 fixtures connect that boundary to execution for the supported H=1 profile.
 
-Prepared controls:
+Controls:
 
 - `tests/executor-progress-unit.lisp`: H=1 clock turn, H=2/no-clock controls,
   whole conditional antecedent after one actual clock transition, and a
@@ -61,7 +61,8 @@ Prepared controls:
   leave the signal pending, and never label it as consumed.
 
 The repair source proof and runtime controls have now passed their qualified
-pilots below; independent TRACE and record certification remain pending.
+pilots below, including the full B independent TRACE composition. Record
+certification of this theorem and the full reference closure remains pending.
 Q1 continuation already omits work-room capacity and is not claimed here to
 be an exact characterization of the concrete stop predicate. Completing that
 composition contract remains separate from this policy correction.
@@ -92,6 +93,41 @@ Evidence is on forge: `/tmp/assurance-progress-repair-pilot.log` (source
 proof), `/tmp/assurance-progress-raw-pilot.log` and
 `/tmp/assurance-progress-raw-acl2.log` (runtime control), all successful jobs
 exited 0. The failed full source runtime load is
-`/tmp/assurance-progress-runtime-pilot.log` (143, OOM). Independent TRACE and
-record certification remain pending; cached reference plus attachments has
-also exceeded 2 GiB in the Q1 lane and needs a larger named gate slot.
+`/tmp/assurance-progress-runtime-pilot.log` (143, OOM). The later B gate below
+used an explicitly allocated 4 GiB slot for the complete source composition.
+
+Native readiness fairness is also separate. `fn2-n-ready` scans operation
+slots from low to high and serves at most one waiting operation per
+capability in an iteration. Capability readiness therefore does not imply
+fair visitation among operations sharing it. TLS readiness/kick migration
+must address that arbitration explicitly; neither this calendar theorem nor
+an environmental socket-readiness premise supplies the missing guarantee.
+
+## Full repaired-B source composition
+
+A fresh private tree at `6e07e62f3` plus this lane's exact executor, reference,
+Q1 and TRACE patch passed `tests/executor-progress-trace`. The qualified
+unchanged dependency set comprised 156 books. Changed executor, actual
+assembly attachments, host boundary, unit fixtures, reference, Q1 and TRACE
+were loaded from source in dependency order; no old upper facts or raw
+function substitutions were used. This is patched-B source execution, not
+the frozen B certificate identity or a new full-closure certificate.
+
+All unit assertions passed. The independent clock-plus-signal case returned
+`(T NIL NIL NIL 1 8 1 8 NIL T ...)`: supported profile; no before/step/after
+differences; concrete/reference each consumed one observation and made eight
+visits; core not stopped; signal still pending. The case tally reached the
+real listener `:accepting` transition, three empty principal visits and four
+service visits, with one clock label and no signal label.
+
+Log: `forge:/tmp/assurance-progress-trace-pilot.log`; runner exit 0, session
+explicitly stopped. Source admission cost was 174.30 seconds and 6,125,184
+prover steps. The shared 4 GiB slot was released to the CNS Q1 lane.
+
+The budget lane separately carried the policy into the single shared loop
+emitter (`e0cede4b0`) and record-certified its integrated descriptor-reserve,
+actual-turn and H=1 issued-action fixture (44-book closure, 41 reused, 3 new;
+`run033917Z-82cc`, `cert033953Z-3646662`). That does not certify this lane's
+conditional theorem or full independent reference/TRACE closure. Those
+record gates remain outstanding for convergence; no duplicate executor
+implementation should survive integration.
