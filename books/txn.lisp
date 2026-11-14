@@ -280,7 +280,7 @@
   :doc "Scan chunk 0 for the next group name of Newsgroups.")
 (defcost fn2-txn-add-group :child fn2-txn-add-group-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool) :bytes 512
   :doc "Declare the group's count accept, overview row (its line late), and addressing entry; keep its name for the Xref field.")
-(defcost fn2-txn-xref :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
+(defcost fn2-txn-xref :child fn2-txn-xref-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool fn2-core-control)
   :bytes *fn2-txn-xref-bytes*
   :doc "Append the Xref field (the path identity, each group's name and staged number) to the overview line and give it to every overview slot.")
 (defcost fn2-txn-put-post-for :child fn2-txn-put-post-for-child :answers t :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields fn2-core-pool)
@@ -1058,6 +1058,7 @@
 (defcore-product-closure fn2-txn-prebind fn2-txn-prebind-child)
 (defcore-product-closure fn2-authority-allows fn2-authority-allows-child)
 (defcore-product-closure fn2-authority-depend fn2-authority-depend-child)
+(defcore-product-closure fn2-txn-xref fn2-txn-xref-child)
 (defcore-readonly-closure fn2-txn-principal fn2-txn-principal-child)
 (defmachine-arms fn2-txn)
 (defmachine-run fn2-txn)

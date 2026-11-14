@@ -383,3 +383,12 @@ fill-ov-lines also passed. These were emitted from the exact shared generator
 source in a fresh world, with no ad-hoc theory changes. All source operations
 in the txn extraction frontier now have scoped extraction proofs; this is not
 composed current-tree certification or an authorization-policy claim.
+
+The xref operation declaration now names its generated child and derives its
+five-node dependency closure beside the other txn consumers. Every core-valued
+operation in this lane's txn declaration frontier now has a child declaration.
+This consumer edit is WIP: it has source proof evidence against B's unchanged
+xref implementation, but current integrated callback certification and full
+formula-bound evidence are still pending. Child mode is not enabled. The
+membership-index lane owns the separate add-group semantics change; its new
+source must be checked rather than inheriting the older source evidence.
