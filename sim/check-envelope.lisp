@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "../books/host-boundary")
 (include-book "envelope-input")
+(include-book "../books/device-boundary")
 
 ; ------------------------------------------------------------------------
 ; The allowed relation: the cell words an adapter may post for an op of
@@ -80,6 +81,56 @@
   (let ((c (fn2-envelope-get (cons index nonce) caps)))
     (and c (not (nth 5 c)))))
 
+; Fence return pilot: the simulator's raw eleven-field packet is retained
+; before terminal publication. Schedule/fault coordinates are opaque here;
+; storage-state effects belong to the simulator, not this core-only replay.
+; TAKEN field 13 holds the pending packet. Legacy traces may omit this event.
+(defun fn2-envelope-physical-return (packet taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let* ((slot (nth 0 packet)) (tk (fn2-envelope-get slot taken)))
+    (cond
+      ((not (and (true-listp packet) (equal (len packet) 11)
+                 tk (nth 9 tk) (not (nth 10 tk))
+                 (equal (nth 1 packet) (nth 0 tk))
+                 (equal (nth 2 packet) (nth 1 tk))
+                 (equal (nth 2 packet) *fn2-action-fence*)
+                 (equal (nth 3 packet) *fn2-event-fence-result*)
+                 (equal (nth 4 packet) (nth 7 tk))
+                 (equal (nth 4 packet) 0)
+                 (member-eq (nth 5 packet) '(:ok :failed :no-space))
+                 (equal (nth 6 packet) 0) (equal (nth 7 packet) 0)
+                 (unsigned-byte-p 32 (nth 8 packet))
+                 (unsigned-byte-p 60 (nth 9 packet))))
+       (mv :physical-return-descriptor taken caps fn2-core))
+      ((nth 13 tk) (mv :physical-return-twice taken caps fn2-core))
+      (t (mv nil (put-assoc-equal slot (update-nth 13 packet tk) taken)
+             caps fn2-core)))))
+
+; Native events also carry the unmodified syscall result and errno. Decode
+; with the same book the host calls; never reproduce the errno policy here.
+(defun fn2-envelope-physical-event (e taken caps fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (let ((packet (nth 1 e)))
+    (cond ((and (true-listp e) (equal (len e) 2))
+           (fn2-envelope-physical-return packet taken caps fn2-core))
+          ((and (true-listp e) (equal (len e) 4))
+           (mv-let (code count) (fn2-device-io-observation (nth 2 e) (nth 3 e))
+             (if (and (equal code (nth 5 packet)) (equal count (nth 6 packet)))
+                 (fn2-envelope-physical-return packet taken caps fn2-core)
+               (mv :physical-return-raw taken caps fn2-core))))
+          (t (mv :physical-return-shape taken caps fn2-core)))))
+
+(defun fn2-envelope-return-matches-post-p (packet e)
+  (declare (xargs :verify-guards nil))
+  (mv-let (outcome reason count aux0 aux1)
+    (fn2-host-result (nth 2 packet) (nth 5 packet) (nth 6 packet)
+                     (nth 7 packet) (nth 4 packet) nil)
+    (and (equal (nth 2 e) (nth 0 packet))
+         (equal (nth 3 e) (nth 1 packet))
+         (equal (nth 4 e) (nth 3 packet))
+         (equal (list (nth 5 e) (nth 6 e) (nth 7 e) (nth 8 e) (nth 9 e))
+                (list outcome reason count aux0 aux1)))))
+
 ; One post. Result (mv failure taken caps fn2-core); FAILURE nil when legal.
 ; BYTES-P also compares a Send's recorded octets with the replay's range.
 (defun fn2-envelope-post (e bytes-p taken caps fn2-core)
@@ -95,6 +146,9 @@
                              (not (nth 12 tk)) (implies (nth 10 tk) (equal (nth 11 tk) 1))))))
         (mv :release-unauthorized taken caps fn2-core))
        ((when (and (equal cell 0) (nth 10 tk))) (mv :post-twice taken caps fn2-core))
+       ((when (and (equal cell 0) (nth 13 tk)
+                   (not (fn2-envelope-return-matches-post-p (nth 13 tk) e))))
+        (mv :physical-return-post taken caps fn2-core))
        (kind (nth 1 tk)) (cap (nth 2 tk)) (nonce (nth 3 tk))
        (rslot (nth 4 tk)) (rgen (nth 5 tk)) (off (nth 6 tk)) (len (nth 7 tk)) (may-release (nth 8 tk))
        ((unless (if (equal cell 0) (equal event (fn2-terminal-event kind))
@@ -139,7 +193,7 @@
                    (fn2-host-post-result 0 slot gen event outcome reason count aux0 aux1 fn2-core)))
        ((unless (equal stray (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (n) (fn2-ops-stray fn2-ops) n)))
         (mv :post-refused taken caps fn2-core))
-       (taken (put-assoc-equal slot (update-nth 11 aux0 (update-nth 10 t tk)) taken))
+       (taken (put-assoc-equal slot (update-nth 13 nil (update-nth 11 aux0 (update-nth 10 t tk))) taken))
        (key (cons cap nonce))
        (c (fn2-envelope-get key caps))
        (caps (cond
@@ -187,6 +241,7 @@
                               (put-assoc-equal slot (update-nth 9 t tk) taken) caps fn2-core))))))
             (:finish (mv-let (code fn2-core) (fn2-host-op-finish (nth 1 e) (nth 2 e) fn2-core)
                        (mv (if (eq code :ok) nil :finish-refused) taken caps fn2-core)))
+            (:physical-return (fn2-envelope-physical-event e taken caps fn2-core))
             (:post (fn2-envelope-post e bytes-p taken caps fn2-core))
             (otherwise (mv :unknown-entry taken caps fn2-core)))))
 (in-theory (disable fn2-envelope-step))

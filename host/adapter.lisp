@@ -207,9 +207,19 @@
         (unless job (return))
         (let ((op (aref (fn2-nhost-ops host) (fn2-device-job-slot job))))
           (assert (= (fn2-nop-gen op) (fn2-device-job-gen job)))
-          (fn2-n-boundary host "device-return")
           (multiple-value-bind (code count)
               (fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))
+            ;; Preserve the actual syscall result before the return death cut.
+            ;; Schedule-only model coordinates have neutral native values; the
+            ;; replay checks the decoder and operation incarnation, not time.
+            (when (eq (fn2-device-job-kind job) :fence)
+              (fn2-n-record host
+                (list :physical-return
+                  (list (fn2-device-job-slot job) (fn2-device-job-gen job)
+                    (fn2-nop-kind op) (fn2-terminal-event (fn2-nop-kind op)) (fn2-nop-len op)
+                    code count 0 0 0 *fn2-fault-none*)
+                  (fn2-device-job-result job) (fn2-device-job-errno job))))
+            (fn2-n-boundary host "device-return")
             (fn2-n-complete host (fn2-device-job-slot job) code count 0 nil
               (and (eq (fn2-device-job-kind job) :read)
                    (fn2-n-octets host (fn2-device-job-address job) count))))
