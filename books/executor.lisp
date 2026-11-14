@@ -95,7 +95,8 @@
   :hints (("Goal" :in-theory (disable fn2-exec-grant-p fn2-exec-system-row fn2-exec-queued))))
 
 ; Observation order is the posted FIFO, then the coalesced clock mailbox,
-; then sticky signals. Each turn stops at the first exhausted budget.
+; then sticky signals. Observation exhaustion closes observation admission;
+; calendar visits continue within the visit, action and work budgets.
 ; Every empty calendar entry still consumes one visit.
 (defun fn2-transition (allow-observation action-budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -141,7 +142,8 @@
   (declare (xargs :stobjs fn2-core
                   :guard (and (fn2-core-wfp fn2-core) (natp h) (natp k) (natp a)
                               (natp nobs) (natp nvisits) (natp nactions))))
-  (or (>= nobs h) (>= nvisits k) (>= nactions a)
+  ; Exhausting observation allowance still permits calendar visits.
+  (or (>= nvisits k) (>= nactions a)
       (= 1 (fn2-exec-stop fn2-core))
       (not (fn2-turn-work-room-p h k nvisits
              (fn2-exec-turn-bytes fn2-core) (fn2-exec-turn-steps fn2-core)))

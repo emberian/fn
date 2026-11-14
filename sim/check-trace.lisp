@@ -88,7 +88,7 @@
        (rstop (fn2-ref-loop-stop-p rh rk ra robs rvisits ractions rbytes rsteps lists fn2-ref-core))
        ((when (and cstop rstop))
         (mv nil cases certified nobs nvisits nactions robs rvisits ractions lists fn2-core fn2-ref-core))
-       (label (fn2-q1-label lists fn2-core))
+       (label (fn2-q1-label (< nobs h) lists fn2-core))
        ((when (or cstop rstop))
         (mv (list :continue label (if cstop :concrete-stops :reference-stops))
             cases certified nobs nvisits nactions robs rvisits ractions lists fn2-core fn2-ref-core))
