@@ -309,3 +309,14 @@ descriptor state/codec/job and their construction registration are C-layer
 orchestration over B leaf APIs. `checkpoint-kind-b.lisp` registers physical
 B children without including C. This preserves the C-to-B dependency direction
 and passes the actual C carrier rather than a caller-supplied ownership flag.
+
+`checkpoint-map-format.lisp` declares the generated linked-page body header
+for allocation maps, recovery arenas and retained event directories. The body
+carries its type/version, exact C cut, total entry count, page/entry ordinals,
+entry count, terminal bit and next full Ref. Header storage is padded to a
+32-byte boundary after the page header. Allocation-map slots are 47 bytes and
+arena slots 27 bytes, their existing codec maxima; entries and unused page
+bytes require zero padding. Page counts include one terminal page for an empty
+sequence. Actual readers must check the exact calculated count/continuity/link
+shape, decode every slot and verify padding, then authenticate the linked child.
+These format and local shape controls do not replace that reader or restoration.

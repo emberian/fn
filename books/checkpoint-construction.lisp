@@ -7,4 +7,3 @@
  ((live :bool) (token :u60) (owner-kind :u8) (owner-slot :u32) (owner-gen :u60)
   (role :u8) (ordinal :u60) (epoch :u60) (counter :u60)
   (intended-bytes :u60) (completed-bytes :u60)))
-
