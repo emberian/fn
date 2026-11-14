@@ -100,6 +100,7 @@ ACL2_BOOKS = \
   books/cursor-kind \
   books/declare \
   books/device-boundary \
+  books/digest-store \
   books/digests \
   books/dispatch-fresh \
   books/dispatch-heads \
@@ -151,6 +152,8 @@ ACL2_BOOKS = \
   books/machines-c-successor \
   books/machines-directory \
   books/merkle \
+  books/native-b3-correspondence \
+  books/native-b3-evidence \
   books/nntp-grammar \
   books/node-profile \
   books/operations \
