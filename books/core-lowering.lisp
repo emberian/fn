@@ -245,3 +245,58 @@
                   :children ,children :obligation ,(fn2-columns-sym child "-REFINES-CORE"))))))))
 (defmacro defcore-readonly-child (fn child &key teeth)
   `(make-event (value (fn2-lower-readonly-events ',fn ',child ',teeth (w state)))))
+
+; Plan the nonrecursive reader dependency DAG before emitting any events.
+; A refusal leaves no partially generated family in the world.
+(mutual-recursion
+ (defun fn2-lower-reader-plan (fn fields world seen stack fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond
+   ((zp fuel) (mv :expansion-budget nil seen))
+   ((or (member-eq fn fields)
+        (not (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world)))
+        (member-eq fn seen)
+        (assoc-eq fn (table-alist 'fn2-core-lowered world)))
+    (mv nil nil seen))
+   ((or (member-eq fn stack) (getpropc fn 'recursivep nil world))
+    (mv :recursive-callee nil seen))
+   ((member-eq fn '(fn2-corep fn2-core-wfp)) (mv :unlowered-core nil seen))
+   ((fn2-arms-stobjs-of (getpropc fn 'stobjs-out nil world))
+    (mv :callee-writes-state nil seen))
+   (t
+    (let ((body (getpropc fn 'unnormalized-body nil world)))
+     (if (or (null body) (not (pseudo-termp body)))
+         (mv :missing-body nil seen)
+      (mv-let (problem order seen)
+       (fn2-lower-reader-plan-list (all-fnnames body) fields world seen
+                                   (cons fn stack) (1- fuel))
+       (mv problem (append order (list fn)) (cons fn seen))))))))
+ (defun fn2-lower-reader-plan-list (fns fields world seen stack fuel)
+  (declare (xargs :verify-guards nil :measure (nfix fuel)))
+  (cond ((atom fns) (mv nil nil seen))
+        ((zp fuel) (mv :expansion-budget nil seen))
+        (t
+         (mv-let (problem first seen)
+          (fn2-lower-reader-plan (car fns) fields world seen stack (1- fuel))
+          (if problem (mv problem nil seen)
+           (mv-let (problem rest seen)
+            (fn2-lower-reader-plan-list (cdr fns) fields world seen stack (1- fuel))
+            (mv problem (append first rest) seen))))))))
+(defun fn2-lower-reader-family-events (order root child teeth)
+ (declare (xargs :verify-guards nil))
+ (if (atom order) nil
+  (cons `(defcore-readonly-child ,(car order)
+           ,(if (eq (car order) root) child
+              (fn2-columns-sym (car order) "-LOWERED-CHILD"))
+           ,@(and (eq (car order) root) teeth `(:teeth ,teeth)))
+        (fn2-lower-reader-family-events (cdr order) root child teeth))))
+(defmacro defcore-readonly-closure (fn child &key teeth)
+ `(make-event
+   (mv-let (problem order seen)
+    (fn2-lower-reader-plan ',fn (strip-cars (fn2-core-child-registry (w state)))
+                           (w state) nil nil 10000)
+    (declare (ignore seen))
+    (if (or problem (not (member-eq ',fn order)))
+        (er soft 'defcore-readonly-closure "Cannot plan ~x0: ~x1." ',fn
+            (or problem :already-lowered-or-not-core))
+      (value (cons 'progn (fn2-lower-reader-family-events order ',fn ',child ',teeth)))))))

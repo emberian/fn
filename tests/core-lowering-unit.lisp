@@ -128,3 +128,21 @@
              :teeth (fn2-lower-read-child-refines-core-positive)))
 (must-fail (defcore-readonly-child fn2-lower-read fn2-lower-duplicate-teeth
              :teeth (fn2-lower-read-child-refines-core-positive fn2-lower-read-child-refines-core-positive)))
+
+;; Bottom-up derivation discovers intermediate boundaries, without a hand list.
+(defun fn2-lower-auto-base (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (fn2-lower-read limit fn2-core))
+(defun fn2-lower-auto-top (limit fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (and (natp limit) (fn2-core-wfp fn2-core))))
+ (+ 1 (nfix (fn2-lower-auto-base limit fn2-core))))
+(in-theory (disable fn2-lower-auto-base fn2-lower-auto-top))
+(defcore-readonly-closure fn2-lower-auto-top fn2-lower-auto-top-child)
+(assert-event
+ (member-eq 'fn2-lower-auto-base-lowered-child
+  (all-fnnames (getpropc 'fn2-lower-auto-top-child 'unnormalized-body nil (w state)))))
+(fn2-lowering-fixture-teeth fn2-lower-auto-base fn2-lower-auto-base-lowered-child 1 (37))
+(fn2-lowering-fixture-teeth fn2-lower-auto-top fn2-lower-auto-top-child 1 (38))
+(fn2-check-lowering-teeth fn2-lower-auto-base fn2-lower-auto-top)
+(must-fail (defcore-readonly-closure fn2-lower-recursive fn2-lower-recursive-family))
+(assert-event (not (function-symbolp 'fn2-lower-recursive-family (w state))))
