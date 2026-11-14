@@ -82,15 +82,15 @@
            :do-not-induct
            t
            :use
-           (fn2-sim-physical-fence-save-roundtrip fn2-sim-ready-has-row-shape
+           (fn2-sim-physical-save-roundtrip fn2-sim-ready-has-row-shape
                                                   (:instance fn2-sim-gen-natp (i slot))
                                                   (:instance fn2-sim-gen-bound (i slot))
                                                   (:instance fn2-sim-range-len-natp (i slot))
                                                   (:instance fn2-sim-physical-keeps-incarnation
                                                              (i slot))
                                                   (:instance fn2-sim-physical-keeps-active (i slot))
-                                                  fn2-sim-physical-fence-packet-domain
-                                                  fn2-sim-physical-fence-code-tag)
+                                                  fn2-sim-physical-packet-domain
+                                                  fn2-sim-physical-return-domain)
            :in-theory
            (e/d (fn2-sim-native-cut fn2-sim-native-stage
                                     fn2-sim-native-post
@@ -99,10 +99,10 @@
                                     fn2-sim-native-flightp
                                     fn2-sim-complete
                                     fn2-sim-inject)
-                (fn2-sim-physical-fence-save-roundtrip fn2-sim-physical-keeps-incarnation
+                (fn2-sim-physical-save-roundtrip fn2-sim-physical-keeps-incarnation
                                                        fn2-sim-physical-keeps-active
-                                                       fn2-sim-physical-fence-packet-domain
-                                                       fn2-sim-physical-fence-code-tag
+                                                       fn2-sim-physical-packet-domain
+                                                       fn2-sim-physical-return-domain
                                                        fn2-sim-ready-has-row-shape
                                                        fn2-sim-physical
                                                        fn2-sim-complete-result

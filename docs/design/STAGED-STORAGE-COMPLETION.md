@@ -15,10 +15,11 @@ uses the same `fn2-sim-complete-result`, scalar normalizer and terminal publishe
 as ordinary completion. `fn2-sim-find-write` selects only active=1, so crash
 scanning cannot repeat an already performed active=4 write.
 
-The scheduled split is currently **Fence only**. Only Fence stores the packet
-in return columns and checks exact saved-packet equality at publication.
-The explicit cut driver can carry Read/Write packets in its caller; this does
-not establish scheduled Read/Write withholding or arbitrary-packet safety.
+The scheduled split is currently **Fence only**. The explicit paired stage/post
+API now stores the raw return for every kind it accepts, and requires exact
+saved-packet equality before publication. This packet-binding repair is source
+only; its general physical-result domain/guard proofs and new controls have not
+executed. It does not establish scheduled Read/Write withholding.
 Active=3 retains its Send early-release meaning and is unreachable for a fresh
 Fence in this domain. The supported-storage antecedent and every output of
 `fn2-sim-native-finish-is-atomic` remain unchanged.
@@ -84,3 +85,41 @@ audit passed (17 source cuts) and still reports `cut_mapping_status=incomplete`
 and `host_refinement=not_checked`. Each test's dry-run affected-by selection
 returned only that test. These are local source gates, not proof or runtime
 qualification.
+
+## Explicit-cut packet binding repair
+
+The original explicit API saved only Fence results, so a caller could stage a
+Read or Write, change its raw code/count, then publish that different result
+without another physical effect. The repair saves every returned packet before
+setting active=4 and removes the non-Fence equality bypass in `native-post`.
+`complete-result` saves the same representable receipt on the atomic path,
+retaining the existing whole-state staged/atomic equality statement. Function
+arguments and guards remain unchanged; the receipt absorption helper is stronger
+because it drops its Fence-only hypothesis. `native-post-rejects-changed-return`
+states the full unchanged core/sim/OWN frame on packet inequality.
+
+The same `defcolumns` enum adds actual physical refusal codes `:exhausted`,
+`:state`, and `:owner`, after the original fourteen tags. Count/aux remain u32;
+the packet retains all eleven coordinates. The domain fact must connect the
+actual transfer count bound and dispatch result codes to those generated fields;
+its new proof and the generalized stage guards are **unexecuted**. This is not
+an admission claim. `sim/native-cut-state` is unchanged, allowing the separate
+storage write-EIO fault-list addition to compose without an overlapping edit.
+
+`tests/native-cut-binding-unit` issues a two-byte Write with a one-byte short
+physical prefix and a two-byte Read that copies one initial-image byte before
+reaching disk bounds. It checks the actual raw code/count and byte projections,
+rejects changed code/count/aux/word/time/fault/generation, keeps the original
+packet usable once, refuses its duplicate, and refuses physical reissue while
+active=4. These assertions are prepared, **not executed**. The existing admitted
+nine-control source is byte-identical and is a dependency of the new unit.
+
+`staged-packet-binding-source.json` records exact file hashes and verifies all
+existing function declarations/guards plus the full atomic theorem statement
+against root `b2c2083e2`; the older packaging manifest remains historical.
+Strict parsing, secrets/diff checks, the 26 focused Python source controls, the
+source-only cut audit, and the new unit's isolated dry-run selection passed.
+No ACL2/native/record gate or remote allocation ran for this repair. Global cut
+mapping remains incomplete and host refinement remains unchecked. The next gate is actual general-domain/guard admission followed by
+this mutable unit and the unchanged full atomic equality proof, in a coherent
+allocated source-matched world.
