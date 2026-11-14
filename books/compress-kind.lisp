@@ -3,7 +3,12 @@
 (include-book "compress-policy")
 (include-book "columns")
 (include-book "core-children")
+(include-book "pool")
 (fn2-book-layer :d)
+
+(fn2-owed-discharge fn2-compress-plan-bounded fn2-compress-plan-bounded)
+(fn2-owed-discharge fn2-compress-observe-credit-bounded fn2-compress-observe-credit-bounded)
+
 
 (defcolumns fn2-compress-config
  ((enabled :bool) (input-quantum :u32) (output-quantum :u32)
