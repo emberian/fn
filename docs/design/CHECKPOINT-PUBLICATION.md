@@ -133,3 +133,24 @@ physical-page positive/corruption/truncation controls, full installation and
 anchor crash cuts, dependency protection, restored-map coverage and composed
 served lifetime/progress witnesses remain outstanding. The product reclamation
 requirement remains unbound.
+
+## Concrete writer dependencies before promotion
+
+The packet producer/checker is lower-level work, not an assertion that a caller
+will preserve packet bytes. The actual generated worker must own all three pool
+leases, admit PACK only in preparation, keep both output leases private and
+immutable after verification, and release them only after validated completion
+or backend exclusion. Its arms must establish that interval and frame unrelated
+mutations; a caller assertion cannot replace this invariant. The lower PACK
+entry already refuses every phase after preparation, but worker reachability
+and lease ownership still need composition.
+
+`fn2-checkpoint-installation-seal-row` in the registration book derives the
+installation's seal digest row from the actual installed commit directory,
+checks the saved seal-ready marker and predecessor, and uses the same stripe
+as `fn2-commit-seal-context`. The actual worker must call that operation rather
+than accept BEGIN's low-level batch-hash input from a caller. Its predecessor
+checkpoint hash must come from the selected retained anchor, and its geometry
+hash must come from the checked bootstrap/profile binding. Those two sources
+are still absent in current genesis-only boot. No caller-provided matching
+hashes can close those dependencies.
