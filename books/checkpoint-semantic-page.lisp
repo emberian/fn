@@ -45,6 +45,7 @@
 (fn2-fields-preserves fn2-checkpoint-semantic-page-read-header
  (slot gen base schema run level kind owner generation fn2-fields fn2-pool)
  :position 1
+ :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-checkpoint-semantic-page-header-p)))
  :hyps ((fn2-fieldsp fn2-fields) (fn2-run-readerp base fn2-fields)))
 
 (defthm fn2-checkpoint-semantic-page-read-header-reader-context
