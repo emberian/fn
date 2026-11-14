@@ -1,6 +1,7 @@
 ; One exact frozen allocator row per call. Gate authority is retained on the
 ; allocator itself by the C-held construction lifecycle, not a reader flag.
 (in-package "ACL2")
+(include-book "std/util/bstar" :dir :system)
 (include-book "checkpoint-map-format")
 (include-book "checkpoint-construction")
 (fn2-book-layer :b)
