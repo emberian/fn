@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "checkpoint-build-state")
 (include-book "checkpoint-publication")
-(fn2-book-layer :b)
+(fn2-book-layer :c)
 (defconst *fn2-checkpoint-descriptor-header* (* 32 (ceiling *fn2-format-page-header-max-size* 32)))
 
 (defun fn2-checkpoint-descriptor-root (role c base scratch sgen okind oslot ogen
