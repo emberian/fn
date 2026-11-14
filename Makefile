@@ -289,6 +289,7 @@ ACL2_BOOKS = \
   tests/machine-arms-unit \
   tests/machine-child-tables-unit \
   tests/machines-a-unit \
+  tests/shape-one-unit \
   tests/merkle-random \
   tests/merkle-unit \
   tests/native-envelope-prefix-unit \

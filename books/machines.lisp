@@ -4547,12 +4547,27 @@
 (defun fn2-shape-tuple-vars (n)
   (declare (xargs :verify-guards nil))
   (if (zp n) nil (append (fn2-shape-tuple-vars (- n 1)) (list (packn-pos (list 'fn2-shape-x (- n 1)) 'fn2-shape-x)))))
+(defun fn2-shape-column-readers (objs world)
+  (declare (xargs :verify-guards nil))
+  (if (atom objs) nil
+    (append (fn2-columns-projection-readers
+             (car objs) (fn2-decl-get :columns (fn2-decl-row (list :columns (car objs)) world)))
+            (fn2-shape-column-readers (cdr objs) world))))
 (defun fn2-shape-one-events (name fn args hyps claims objs enables disables world)
   (declare (xargs :verify-guards nil))
   (let* ((ok (fn2-columns-sym fn "-SHAPE-OK"))
          (n (len (getpropc fn 'stobjs-out nil world)))
          (tuple (cons 'list (fn2-shape-tuple-vars n)))
-         (call (cons fn args)))
+         (call (cons fn args))
+         ;; A shape consumes scalar bounds, never the readers' list layout.
+         ;; Include read-only input children too; OBJS names only the outputs
+         ;; whose shapes are claimed. Explicit ENABLES can open a needed reader.
+         (disables
+          (remove-duplicates-equal
+           (append disables
+                   (set-difference-equal
+                    (cons 'nth (fn2-shape-column-readers (remove-eq nil (getpropc fn 'stobjs-in nil world)) world))
+                    enables)))))
     `((defun-nx ,ok (fn2-shape-r ,@objs)
         (declare (xargs :verify-guards nil))
         (and ,@claims))
