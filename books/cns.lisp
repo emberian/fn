@@ -7,6 +7,7 @@
 ; grant service, never by a scan.
 (in-package "ACL2")
 (include-book "cns-kind")
+(include-book "sched-timers")
 (include-book "authority-kind")
 (include-book "machines-c-bind")
 (include-book "machines-c-read")
@@ -24,6 +25,15 @@
 (defcost fn2-cns-reclaim :child fn2-machines-reclaim :tables (fn2-core-machines)
  :effects ((:release (:wait-row)))
  :doc "Return a drained consumer request row to its partition's free chain.")
+
+(defcost fn2-cns-arm-wait-timer :child fn2-sched-arm-delay-ms
+ :answers (:ok :bounds :state) :tables (fn2-core-sched fn2-core-control)
+ :doc "Arm this live request's one-shot wait timer, converting milliseconds to an absolute monotonic deadline without wrapping.")
+(defcost fn2-cns-clear-wait-timer :child fn2-sched-clear-deadline
+ :answers (:ok :bounds) :tables (fn2-core-sched)
+ :doc "Disarm a request's timer before reclaiming its machine row; clear its expired bit as well.")
+(defcost fn2-cns-wait-expired-p :child fn2-sched-timer-expired-p
+ :doc "Whether the request's registered timer expired.")
 
 ;; ---------------------------------------------------------------------------
 ;; Pure helpers for fn2-ctl (L carrier) and fn2-cns (request).
@@ -919,7 +929,12 @@
     :accept (:ok :dropped) :why "the control connection may have closed while the consumer request ran")
    (:wake-row row-ctl)
    (:next :draining) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
+  (wait-timeout :on-refusal ((:stop :machine-phase))
+   (:set (edge *fn2-none*) (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*))
+   (:goto answer))
   (answer :on-refusal ((:stop :machine-phase))
+   (:do (timer-clear) (fn2-cns-clear-wait-timer id) :accept (:ok))
+   (:set (deadline 0) (wait-reason *fn2-wait-none*))
    (:goto hand))
   (refuse :on-refusal ((:stop :machine-phase))
    (:set (outcome *fn2-cns-outcome-refused*))
@@ -985,9 +1000,15 @@
            (:charge :steps *fn2-work-transition* :runnable t))
           ((< 0 row-count) (:set (outcome *fn2-cns-outcome-accepted*)) (:goto answer))
           ((equal row-verb *fn2-cns-verb-fetch*) (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
-          ((and (equal row-verb *fn2-cns-verb-wait*) (< 0 row-wait-ms) (equal row-deadline 0))
-           (:set (deadline row-wait-ms)) (:next :park)
-           (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+          ((and (equal row-verb *fn2-cns-verb-wait*) (< 0 row-wait-ms))
+           (:if (equal row-deadline 0)
+                ((:do (timer-code timer-deadline) (fn2-cns-arm-wait-timer id row-wait-ms)
+                  :case (((:ok) (:set (deadline timer-deadline)) (:next :park)
+                          (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                         (:otherwise (:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse)))))
+                ((:if (fn2-cns-wait-expired-p id)
+                      ((:set (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*)) (:goto answer))
+                      ((:next :park) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))))
           (t (:set (count 0) (more 0) (outcome *fn2-cns-outcome-accepted*)) (:goto answer))))
   (page-fail :on-refusal ((:stop :machine-phase))
    (:cond ((equal row-lease *fn2-cns-lease-held*)
@@ -1139,13 +1160,17 @@
                 ((:goto cancel))
                 ((:do () (fn2-cns-edge-unlink-core row-edge))
                  (:set (edge *fn2-none*)) (:goto cancel))))
+          ((fn2-cns-wait-expired-p id)
+           (:if (equal row-edge *fn2-none*)
+                ((:goto wait-timeout))
+                ((:do () (fn2-cns-edge-unlink-core row-edge)) (:goto wait-timeout))))
           ((equal row-edge *fn2-none*)
            (:do (code e) (fn2-cns-edge-link-core row-principal-slot id row-generation (+ 1 row-cpos))
             :case (((:behind) (:next :read) (:charge :steps *fn2-work-transition* :runnable t))
                    ((:exhausted) (:set (reason *fn2-cns-reason-meter*)) (:goto refuse))
                    ((:ok) (:set (edge e)) (:park :wait-row :steps *fn2-work-transition*)))))
           (t (:do () (fn2-cns-edge-unlink-core row-edge))
-             (:set (edge *fn2-none*) (deadline 0)) (:next :read)
+             (:set (edge *fn2-none*)) (:next :read)
              (:charge :steps *fn2-work-transition* :runnable t))))
   ;; :commit: a register or an advancing ack, a durable mutation through B
   ;; (the :commit word, machine-arms.lisp). WSTEP 0 declares the writes on
@@ -1297,6 +1322,10 @@
          (tx-slot *fn2-none*) (tx-gen 0) (ws-slot *fn2-none*) (ws-gen 0) (ns-slot *fn2-none*) (ns-gen 0)
          (next-free next) (wait-reason *fn2-wait-none*))
    (:next (:if retire :retired :free))
+   ;; A timer belongs to this incarnation. Clear it before the row enters
+   ;; the free chain, so an old deadline cannot wake a reused generation.
+   (:do (timer-clear) (fn2-cns-clear-wait-timer id) :accept (:ok))
+   (:set (deadline 0))
    (:do () (fn2-cns-reclaim id *fn2-cns-admission-ordinal* retire))
    (:charge :steps *fn2-work-release*))))
   (:retired (:idle)))

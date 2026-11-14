@@ -1,6 +1,7 @@
 """Controls for the generated coverage boundary; proof gates run separately."""
 import importlib.util
 import json
+import sys
 import contextlib
 import io
 from pathlib import Path
@@ -18,14 +19,25 @@ e=module('emit_served_certificate')
 class CoverageControls(unittest.TestCase):
     def test_attachment_proposal_preserves_logical_body_and_argument_order(self):
         missing=e.Atom(':MISSING'); attached=e.Atom('FN2-HOOK-IMPL')
-        call=e.proposal_body(missing, ['ID', 'BUDGET', 'FN2-CORE'], attached)
-        self.assertEqual(call, e.List([attached, e.Atom('ID'), e.Atom('BUDGET'), e.Atom('FN2-CORE')]))
-        # An attachment must not replace a real logical body, including NIL.
-        for body in [e.Atom('NIL'), e.List([e.Atom('QUOTE'), e.Atom('NIL')])]:
-            self.assertEqual(e.proposal_body(body, ['ID'], attached), body)
-        self.assertEqual(e.proposal_body(missing, ['ID'], e.Atom('NIL')), missing)
-        with self.assertRaisesRegex(ValueError, 'attachment must name'):
-            e.proposal_body(missing, ['ID'], e.List([attached]))
+        def symbol(name):
+            return e.List([e.Atom(':SYMBOL'),e.List([e.Atom(str(ord(c))) for c in 'ACL2']),
+                           e.List([e.Atom(str(ord(c))) for c in name])])
+        # The live fn2-tv-attachment export is an association pair, not a
+        # bare target like the separate print-world executable metadata.
+        canonical=e.List([e.Atom(':CONS'),symbol('FN2-HOOK'),symbol(str(attached))])
+        before=e.canonical_text(canonical)
+        attachment=e.decode(canonical)
+        call=e.proposal_body('FN2-HOOK',missing,['ID','BUDGET','FN2-CORE'],attachment)
+        self.assertEqual(call,e.List([attached,e.Atom('ID'),e.Atom('BUDGET'),e.Atom('FN2-CORE')]))
+        self.assertEqual(e.canonical_text(canonical),before)
+        for body in [e.Atom('NIL'),e.List([e.Atom('QUOTE'),e.Atom('NIL')])]:
+            self.assertEqual(e.proposal_body('FN2-HOOK',body,['ID'],attachment),body)
+        self.assertEqual(e.proposal_body('FN2-HOOK',missing,['ID'],e.Atom('NIL')),missing)
+        for malformed in [attached,e.List([attached]),
+                          e.List([e.Atom('OTHER'),e.Atom('.'),attached]),
+                          e.List([e.Atom('FN2-HOOK'),e.Atom('.'),e.Atom('NIL')])]:
+            with self.assertRaisesRegex(ValueError,'attachment must bind'):
+                e.proposal_body('FN2-HOOK',missing,['ID'],malformed)
 
     def test_elan_proxy_does_not_hide_selected_compiler_changes(self):
         with tempfile.TemporaryDirectory() as td:
@@ -44,6 +56,107 @@ class CoverageControls(unittest.TestCase):
                 self.assertNotEqual(a,b)
                 (root/'tool/lib/lean/libleanshared.so').write_text('different runtime')
                 self.assertNotEqual(b,c.toolchain_fingerprint(root))
+
+    def test_local_view_exposes_only_declared_transitive_dependencies(self):
+        with tempfile.TemporaryDirectory() as td:
+            lib=Path(td); (lib/'Fn2').mkdir()
+            for name in ['A.olean','A.olean.private','B.olean','Hidden.olean']:
+                (lib/'Fn2'/name).write_text(name)
+            graph={'Fn2.A':['Fn2.B'],'Fn2.B':[]}
+            declared=c.transitive_dependencies(['Fn2.A'],graph)
+            with c.local_dependency_view(lib,declared) as view:
+                self.assertEqual((view/'Fn2/A.olean').read_text(),'A.olean')
+                self.assertEqual((view/'Fn2/A.olean.private').read_text(),'A.olean.private')
+                self.assertTrue((view/'Fn2/B.olean').is_file())
+                self.assertFalse((view/'Fn2/Hidden.olean').exists())
+            with c.local_dependency_view(lib,[]) as view:
+                self.assertTrue((view/'Fn2').is_dir())
+                self.assertEqual(list((view/'Fn2').iterdir()),[])
+            with self.assertRaisesRegex(ValueError,'unqualified local import'):
+                c.transitive_dependencies(['Fn2.Hidden'],graph)
+
+    def test_external_import_mutation_invalidates_same_source_cache(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); lib=root/'lib'; ext=root/'external'
+            (root/'meta/Fn2').mkdir(parents=True); (root/'tool/bin').mkdir(parents=True)
+            (root/'tool/lib/lean').mkdir(parents=True); (ext/'Other').mkdir(parents=True)
+            for name in ['meta/lean-toolchain','meta/lake-manifest.json','proxy','tool/bin/lean']:
+                (root/name).write_text(name)
+            (root/'meta/Fn2/A.lean').write_text('import Other.Top\ndef a := 1')
+            (ext/'Other/Top.olean').write_text('imports Other.Transitive')
+            artifact=ext/'Other/Transitive.olean'; artifact.write_text('original')
+            calls=[]; cache={}
+            def query(args, **kwargs):
+                return str(root/'tool') if args[-1]=='--print-prefix' else 'Lean 4.30.0'
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source); (lib/'Fn2').mkdir(parents=True,exist_ok=True)
+                (lib/'Fn2/A.olean').write_text('checked')
+                (root/'log').write_text('checked'); return 0,'checked','log'
+            with mock.patch.dict(c.os.environ,{'LEAN_PATH':'../external'}), \
+                 mock.patch.object(c.shutil,'which',return_value=str(root/'proxy')), \
+                 mock.patch.object(c.subprocess,'check_output',side_effect=query), \
+                 mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                def check():
+                    c.compile_closure(['Fn2.A'],lib,5,1,root=root,cache=cache)
+                check(); calls.clear(); check(); self.assertEqual(calls,[])
+                for changed in [artifact,Path(str(artifact)+'.private'),
+                                Path(str(artifact)+'.server'),artifact.with_suffix('.ir'),
+                                root/'tool/lib/lean/Init.olean']:
+                    with self.subTest(changed=changed.name):
+                        calls.clear(); changed.write_text('changed external bytes')
+                        check(); self.assertEqual(calls,['meta/Fn2/A.lean'])
+                        calls.clear(); check(); self.assertEqual(calls,[])
+
+    def test_external_search_order_shadowing_and_symlink_target_are_bound(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); a=root/'a'; b=root/'b'; a.mkdir(); b.mkdir()
+            (b/'Other').mkdir(); (b/'Other/A.olean').write_text('external')
+            original=c.external_library_fingerprint([a,b])
+            self.assertNotEqual(original,c.external_library_fingerprint([b,a]))
+            (a/'Other').mkdir()  # Empty prefix shadows b/Other in Lean.
+            self.assertNotEqual(original,c.external_library_fingerprint([a,b]))
+            link=root/'link'; link.symlink_to(b,target_is_directory=True)
+            before=c.external_library_fingerprint([link])
+            (b/'Other/A.olean').write_text('different')
+            self.assertNotEqual(before,c.external_library_fingerprint([link]))
+
+    def test_only_checked_local_outputs_are_excluded_from_external_inventory(self):
+        with tempfile.TemporaryDirectory() as td:
+            lib=Path(td); (lib/'Fn2').mkdir()
+            checked=lib/'Fn2/Checked.olean'; checked.write_text('checked')
+            other=lib/'Fn2/ExternalDependency.olean'; other.write_text('old')
+            def fingerprint():
+                return c.external_library_fingerprint([lib],lib,{'Fn2.Checked'})
+            before=fingerprint(); checked.write_text('rebuilt')
+            self.assertEqual(before,fingerprint())
+            other.write_text('changed')
+            self.assertNotEqual(before,fingerprint())
+
+    def test_external_change_during_gate_discards_mixed_cache(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); lib=root/'lib'
+            def gate(*args):
+                args[7]['mixed']={'key':'old-tool'}
+            with mock.patch.object(c,'gate_plan',return_value=([],set())), \
+                 mock.patch.object(c,'toolchain_fingerprint',side_effect=['old','new']), \
+                 mock.patch.object(c,'lean_gates_locked',side_effect=gate):
+                with self.assertRaisesRegex(RuntimeError,'external libraries changed'):
+                    c.lean_gates({},lib,5,1,root=root)
+            self.assertEqual(json.loads((root/'build/served-lean-cache.json').read_text()),{})
+
+    def test_standalone_closure_rechecks_external_world(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            lib=root/'lib'
+            def compile_fake(source, lib, *args, **kwargs):
+                (lib/'Fn2').mkdir(); (lib/'Fn2/A.olean').write_text('checked')
+                (root/'log').write_text('checked'); return 0,'checked','log'
+            with mock.patch.object(c,'toolchain_fingerprint',side_effect=['old','changed']), \
+                 mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                with self.assertRaisesRegex(RuntimeError,'external libraries changed'):
+                    c.compile_closure(['Fn2.A'],lib,5,1,root=root)
+            self.assertEqual(json.loads((root/'build/served-lean-cache.json').read_text()),{})
 
     def test_dependency_rebuild_artifact_invalidates_downstream(self):
         with tempfile.TemporaryDirectory() as td:
@@ -64,6 +177,64 @@ class CoverageControls(unittest.TestCase):
                 (lib/'Fn2/A.olean').write_text('damaged artifact')
                 c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
                 self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+                calls.clear()
+                (lib/'Fn2/A.olean.private').write_text('changed private declarations')
+                c.compile_closure(['Fn2.B'],lib,5,1,root=root,cache=cache,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/A.lean','meta/Fn2/B.lean'])
+
+    def test_failed_dependency_preserves_only_verified_cache_for_resume(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); (root/'meta/Fn2').mkdir(parents=True)
+            (root/'meta/Fn2/A.lean').write_text('def a := 1')
+            (root/'meta/Fn2/B.lean').write_text('import Fn2.A\ndef b := 2')
+            lib=root/'lib'; calls=[]
+            def compile_fake(source, lib, seconds, logname, **kwargs):
+                calls.append(source)
+                log=root/logname;log.write_text('compiler output')
+                if source.endswith('/B.lean'):
+                    return 1,'refused',log.name
+                artifact=lib/Path(source).relative_to('meta').with_suffix('.olean')
+                artifact.parent.mkdir(parents=True,exist_ok=True)
+                artifact.write_text('checked A')
+                return 0,'',log.name
+            with mock.patch.object(c,'compile_one',side_effect=compile_fake):
+                with self.assertRaisesRegex(RuntimeError,'dependency refused'):
+                    c.compile_closure(['Fn2.B'],lib,5,1,root=root,tool='tool')
+                saved=json.loads((root/'build/served-lean-cache.json').read_text())
+                self.assertEqual(set(saved),{'Fn2.A'})
+                calls.clear()
+                with self.assertRaisesRegex(RuntimeError,'dependency refused'):
+                    c.compile_closure(['Fn2.B'],lib,5,1,root=root,tool='tool')
+                self.assertEqual(calls,['meta/Fn2/B.lean'])
+
+    def test_atomic_checkpoint_failure_keeps_previous_complete_json(self):
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/'cache.json';path.write_text('{"old": 1}\n')
+            old=path.read_bytes()
+            with mock.patch.object(c.os,'replace',side_effect=OSError('replace refused')):
+                with self.assertRaisesRegex(OSError,'replace refused'):
+                    c.atomic_cache_checkpoint(path,{'new':2})
+            self.assertEqual(path.read_bytes(),old)
+            self.assertEqual(list(path.parent.glob('*.tmp')),[])
+
+    def test_concurrent_cache_or_library_writer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'tree';lib=Path(td)/'shared-lib'
+            with c.lean_cache_session(root,lib): pass
+            cache=root/'build/served-lean-cache.json';old=cache.read_bytes()
+            for lock in [cache.with_suffix('.lock'),lib/'.served-lean-library.lock']:
+                code=('import fcntl,sys; f=open(sys.argv[1],"a+b"); '
+                      'fcntl.flock(f,fcntl.LOCK_EX); print("held",flush=True); sys.stdin.readline()')
+                with c.subprocess.Popen([sys.executable,'-c',code,str(lock)],
+                                        stdin=c.subprocess.PIPE,stdout=c.subprocess.PIPE,text=True) as holder:
+                    self.assertEqual(holder.stdout.readline().strip(),'held')
+                    try:
+                        with self.assertRaisesRegex(RuntimeError,'another served Lean gate'):
+                            with c.lean_cache_session(root,lib):
+                                self.fail('second writer entered')
+                        self.assertEqual(cache.read_bytes(),old)
+                    finally:
+                        holder.communicate('done\n',timeout=5)
 
     def test_filtered_cli_rejects_no_match_and_failed_proofs(self):
         with tempfile.TemporaryDirectory() as td:
@@ -94,7 +265,7 @@ class CoverageControls(unittest.TestCase):
                  mock.patch.object(c.subprocess,'run',return_value=result) as run:
                 c.compile_one('meta/F.lean',lib,5,'test.log',root=root)
                 args,kwargs=run.call_args
-                self.assertEqual(kwargs['env']['LEAN_PATH'],str(lib.resolve())+c.os.pathsep+'/other/old-lib')
+                self.assertTrue(kwargs['env']['LEAN_PATH'].endswith(c.os.pathsep+str(lib.resolve())+c.os.pathsep+'/other/old-lib'))
                 self.assertEqual(kwargs['cwd'],root/'meta')
                 self.assertIn(str(lib/'F.olean'),args[0])
 
@@ -197,18 +368,21 @@ class CoverageControls(unittest.TestCase):
               'import Fn2.Arms.Wrapper\nnamespace Fn2.Arms.Served.Root0\ndef contract := True\nend Fn2.Arms.Served.Root0\n'
               'namespace Fn2.Arms.Served.Root1\ndef contract := True\nend Fn2.Arms.Served.Root1\n'
               'namespace Fn2.Arms.Served.Root2\ndef contract := True\nend Fn2.Arms.Served.Root2\n', expose=True))
-            for ri in range(3):
-                pp=root/f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean'
-                pp.write_text(e.as_module(
-                  f'import Fn2.Instances.ServedCertificates.Kind0Contracts\nnamespace Fn2.Arms.Served.Root{ri}Proof\n'
+            def proof_source(ri, extra_import='', marker=''):
+                return e.as_module(
+                  f'import Fn2.Instances.ServedCertificates.Kind0Contracts\n{extra_import}'
+                  f'namespace Fn2.Arms.Served.Root{ri}Proof\n{marker}\n'
                   f'theorem validated : True := trivial\n'
                   f'theorem accepted_entry_positive : True := trivial\n'
                   f'theorem omitted_child_rejected : True := trivial\n'
-                  f'end Fn2.Arms.Served.Root{ri}Proof\n', expose=True))
+                  f'end Fn2.Arms.Served.Root{ri}Proof\n', expose=True)
+            for ri in range(3):
+                pp=root/f'meta/Fn2/Instances/ServedCertificates/Root{ri}Proof.lean'
+                pp.write_text(proof_source(ri))
 
             calls=[]
             fail_root=set()
-            def fake_compile_one(source, lib, seconds, logname, root=root, write_olean=True):
+            def fake_compile_one(source, lib, seconds, logname, root=root, write_olean=True, allowed_modules=()):
                 src_p=Path(source) if Path(source).is_absolute() else (root/source)
                 calls.append((src_p.name, write_olean))
                 txt=src_p.read_text()
@@ -221,7 +395,8 @@ class CoverageControls(unittest.TestCase):
                 for ri in range(3):
                     ns=f'Fn2.Arms.Served.Root{ri}Proof'
                     if f'namespace {ns}' in txt:
-                        if ri in fail_root:
+                        hidden = ri == 0 and 'external-needs-M' in txt and 'Fn2.M' not in allowed_modules
+                        if ri in fail_root or hidden:
                             rc=1
                             ln=next(idx+1 for idx,l in enumerate(txt.splitlines()) if f'namespace {ns}' in l)
                             lines.append(f'{src_p.name}:{ln}:0: error: tactic failed')
@@ -274,5 +449,36 @@ class CoverageControls(unittest.TestCase):
                 c.lean_gates(rep3,lib,30,2,root=root,batch_size=4)
                 self.assertEqual([r['status'] for r in rep3['roots']],['validated','unvalidated','validated'])
                 self.assertIn('Lean rejected proof/census',rep3['roots'][1]['reason'])
+
+                # A has a hidden external->M import; B declares M explicitly.
+                # Their union would wrongly lend M to A during batch checking.
+                fail_root.clear()
+                (root/'meta/Fn2/M.lean').write_text('def m := 1')
+                p0=root/'meta/Fn2/Instances/ServedCertificates/Root0Proof.lean'
+                p0.write_text(proof_source(0,marker='-- external-needs-M'))
+                p1=root/'meta/Fn2/Instances/ServedCertificates/Root1Proof.lean'
+                p1.write_text(proof_source(1,extra_import='import Fn2.M\n'))
+                self.assertIsNotNone(c.parse_module_slice(p0.read_text()))
+                self.assertIsNotNone(c.parse_module_slice(p1.read_text()))
+                cache_path=root/'build/served-lean-cache.json'
+                before_broken=cache_path.read_text()
+                calls.clear()
+                # Mutation control: restoring the old kind-only grouping lends M
+                # to A and incorrectly accepts it. Both inputs must really batch.
+                with mock.patch.object(c,'proof_batch_scope',return_value=('K0',())):
+                    broken=make_report()
+                    c.lean_gates(broken,lib,30,2,root=root,batch_size=4)
+                self.assertEqual(broken['roots'][0]['status'],'validated')
+                self.assertEqual(len([n for n,wo in calls if not wo and n.startswith('batch-proof-')]),1)
+                cache_path.write_text(before_broken)
+                calls.clear(); rep4=make_report()
+                c.lean_gates(rep4,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep4['roots']],['unvalidated','validated','validated'])
+                self.assertNotIn('proof:0',json.loads((root/'build/served-lean-cache.json').read_text()))
+                (root/'meta/Fn2/M.lean').write_text('def m := 2')
+                calls.clear(); rep5=make_report()
+                c.lean_gates(rep5,lib,30,2,root=root,batch_size=4)
+                self.assertEqual([r['status'] for r in rep5['roots']],['unvalidated','validated','validated'])
+                self.assertNotIn('proof:0',json.loads((root/'build/served-lean-cache.json').read_text()))
 
 if __name__=='__main__':unittest.main()

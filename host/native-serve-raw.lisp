@@ -1,4 +1,4 @@
-;;; The raw half of tests/native-serve.lsp: the served core on a configured listener.
+;;; Image startup and the common listener lifecycle. Seed fixtures load separately.
 (in-package "ACL2")
 
 (defun fn2-nserve-dotted (text)
@@ -25,23 +25,22 @@
         finally (return (nreverse acc))))
 
 (defvar *fn2-nserve-base* nil
-  "The served profile before the environment's keys; nil names the surface sessions'.
-A driver that serves another profile over the same seeded store (tests/native-consumer.lsp)
-sets it before fn2-nserve-main.")
+  "The launcher supplies its served profile before applying environment keys.")
 
 (defun fn2-nserve-profile ()
-  "The served profile, the listener and the owner from the environment (absent: the
-profile's own). By default the surface sessions' (tests/seeded-store.lsp): the cursor's
-profile less its posting, so the node serves reading over the store it seeds.
+  "The launcher's served profile, listener and owner from the environment.
 FN2_OWNER_UID names the local control socket's owner (:owner-uid, E's carrier L); the
 core rejects a present value that is not a u32; it never falls back to uid 0."
-  (let* ((profile (or *fn2-nserve-base* *fn2-ss-profile*))
+  (let* ((profile (or *fn2-nserve-base* (error "fn2 native: launcher profile absent")))
          (port (sb-ext:posix-getenv "FN2_LISTENER_PORT"))
          (address (sb-ext:posix-getenv "FN2_LISTENER_ADDRESS"))
          (path (sb-ext:posix-getenv "FN2_LISTENER_PATH"))
          (owner (sb-ext:posix-getenv "FN2_OWNER_UID"))
          (groups (sb-ext:posix-getenv "FN2_GROUPS"))
+         (storage-fault-model (sb-ext:posix-getenv "FN2_STORAGE_FAULT_MODEL"))
          (peering (sb-ext:posix-getenv "FN2_PEERING")))
+    (when storage-fault-model
+      (setf profile (put-assoc-equal :storage-fault-model storage-fault-model profile)))
     (when owner
       (setf profile (put-assoc-equal :owner-uid (or (ignore-errors (parse-integer owner)) -1) profile)))
     (when port
@@ -82,6 +81,9 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
     (unless kill-at
       (format t "REFUSED kill-at~%") (finish-output)
       (return-from fn2-nserve-main 2))
+    (unless image
+      (format t "REFUSED image-missing~%") (finish-output)
+      (return-from fn2-nserve-main 2))
     (when (and initialize (not image-bytes))
       (format t "REFUSED image-size~%") (finish-output)
       (return-from fn2-nserve-main 2))
@@ -93,10 +95,11 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
     (unless (fn2-core-profilep (if image (fn2-image-profile profile) profile))
       (format t "~%REFUSED profile~%") (finish-output)
       (return-from fn2-nserve-main 2))
+    (format t "STORAGE-FAULT-MODEL ~a~%" (fn2-profile-storage-fault-model profile))
+    (finish-output)
     (let ((host (handler-case
-                 (if image
-                   (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at :device-path image :create-size image-bytes)
-                   (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at :seeds *fn2-ss-seeds*))
+                 (fn2-n-make-host profile :trace-capacity capacity :kill-at kill-at
+                                  :device-path image :create-size image-bytes)
                  (error (condition)
                    (format t "~%REFUSED ~a~%" condition) (finish-output)
                    (return-from fn2-nserve-main 2)))))
@@ -104,18 +107,21 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
         (fn2-n-destroy host)
         (format t "~%INITIALIZED~%") (finish-output)
         (return-from fn2-nserve-main 0))
-      (format t "~%LISTENING ~d~%" (fn2-nhost-listen-port host))
-      (when (fn2-nhost-local-path host)
-        (format t "LISTENING-LOCAL ~a~%" (fn2-nhost-local-path host)))
-      (finish-output)
-      (unwind-protect
-           (let ((reason (fn2-n-run host)))
-             (format t "STOPPED ~d~%" reason)
-             (multiple-value-bind (kind detail) (fn2-host-stop-details (fn2-nhost-core host))
-               (format t "STOP-DETAIL ~d ~d~%" kind detail))
-             (when (plusp capacity)
-               (format t "ENVELOPE ~s~%"
-                       (car (fn2-ss-replay (fn2-n-trace-list host) profile *fn2-ss-seeds* nil))))
-             (finish-output)
-             0)
-        (fn2-n-destroy host)))))
+      (fn2-nserve-run-host host))))
+
+(defun fn2-nserve-run-host (host)
+  "Announce the initialized listener, serve, report the stop, and close I/O."
+  (when (plusp (fn2-nhost-kill-at host))
+    (format t "~%BOUNDARY-READY ~d~%" (fn2-nhost-boundaries host)))
+  (format t "~%LISTENING ~d~%" (fn2-nhost-listen-port host))
+  (when (fn2-nhost-local-path host)
+    (format t "LISTENING-LOCAL ~a~%" (fn2-nhost-local-path host)))
+  (finish-output)
+  (unwind-protect
+       (let ((reason (fn2-n-run host)))
+         (format t "STOPPED ~d~%" reason)
+         (multiple-value-bind (kind detail) (fn2-host-stop-details (fn2-nhost-core host))
+           (format t "STOP-DETAIL ~d ~d~%" kind detail))
+         (finish-output)
+         0)
+    (fn2-n-destroy host)))

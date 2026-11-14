@@ -1,6 +1,7 @@
 ; Concrete dispatcher over the intrusive scheduler. No fusion.
 (in-package "ACL2")
 (include-book "executor-wake")
+(include-book "executor-services")
 (include-book "assembly")
 
 ; One transition's largest declared work: a visit and the largest per-run
@@ -14,12 +15,14 @@
            (fn2-exec-kinds-work-max (cdr names) world)))))
 (make-event
  `(defconst *fn2-turn-transition-max*
-    ,(+ *fn2-work-empty* (fn2-exec-kinds-work-max (fn2-machine-names (w state)) (w state)))))
+    ,(max (+ *fn2-work-empty* (fn2-exec-kinds-work-max (fn2-machine-names (w state)) (w state)))
+           (+ *fn2-work-empty* *fn2-services-work-max* *fn2-work-transition*))))
 (assert-event (<= (+ *fn2-work-empty* *fn2-listener-run-bytes* *fn2-listener-run-steps*) *fn2-turn-transition-max*))
 
 (defun fn2-exec-eligible-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (or (fn2-exec-runnable-p fn2-core) (fn2-exec-wake-p fn2-core)))
+  (or (fn2-exec-runnable-p fn2-core) (fn2-exec-wake-p fn2-core)
+      (fn2-exec-services-ready-p fn2-core)))
 
 (defun fn2-turn-status (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -68,9 +71,11 @@
 (fn2-core-preserves fn2-exec-principal (principal position budget fn2-core) :position 5 :rows nil)
 
 (defun fn2-exec-service (service position budget fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :use fn2-exec-run-services-work-natp
+                                 :in-theory (disable fn2-exec-grant-p fn2-exec-system-row fn2-exec-queued)))))
   (b* ((start (fn2-exec-queued fn2-core))
-       (fn2-core (fn2-exec-clear-service service fn2-core))
+       ((mv service-steps fn2-core) (fn2-exec-run-services service fn2-core))
        ((mv wake fn2-core)
         (if (and (equal service 1) (fn2-exec-grant-p fn2-core))
             (fn2-machine-grant-one fn2-core) (mv *fn2-none* fn2-core)))
@@ -79,11 +84,11 @@
             (fn2-exec-arm fn2-core) (mv 0 fn2-core)))
        (fn2-core (fn2-exec-wake wake fn2-core))
        (fn2-core (fn2-exec-charge-run (fn2-exec-system-row fn2-core) 0
-                   (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*)
+                   (+ service-steps (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*))
                    fn2-core))
        (fn2-core (fn2-exec-record *fn2-trace-kind-service* *fn2-none* service position 0
-                    (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) actions nil wake start fn2-core)))
-    (mv 0 1 actions 0 (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*) fn2-core)))
+                    (+ service-steps (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*)) actions nil wake start fn2-core)))
+    (mv 0 1 actions 0 (+ service-steps (if (and (equal wake *fn2-none*) (equal actions 0)) *fn2-work-empty* *fn2-work-transition*)) fn2-core)))
 ; the predicates its tests read stay closed: opened, their cases multiplied
 ; the walk to 9,000 subgoals (D26: 44 s, 0.1 s closed)
 (fn2-core-preserves fn2-exec-service (service position budget fn2-core) :position 5 :rows nil

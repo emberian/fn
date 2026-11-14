@@ -4,7 +4,7 @@
 Exercises real TCP NNTP + `0600` FNCT Unix sockets across:
   1. `fn init` with custom `--size-mb` and `--group`s (+ existing-image refusal control)
   2. `fn serve` with `--control-sock` (+ mismatched-group genesis refusal control)
-  3. `fn principal create`, `fn grant set`, `fn grant get` (+ unauthorized/duplicate controls)
+  3. `fn principal create`, `fn grant set`, `fn grant get` (+ unauthorized/duplicate/stale-sidecar controls)
   4. `fn stream register`, parked `fn stream wait` woken by `fn post`, `fn stream append`,
      `fn stream read`, `fn stream ack`, `fn stream status` (+ behind/beyond-frontier controls)
   5. `fn groups` and `fn article` (by group+number and by Message-ID, with dot-transparency)
@@ -219,7 +219,27 @@ def main() -> int:
 
             # Issue grants: watcher gets consume + read/append on ops.alerts; anonymous gets append on ops.alerts.
             g_consume = run_fn("grant", "set", "watcher", "consume", "--control-sock", str(ctl_sock), as_json=True)
-            g_read = run_fn("grant", "set", "watcher", "read", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
+            # Capture both served identities before poisoning the local hint. The
+            # numeric reads below address those identities without name resolution.
+            before_alerts = run_fn("grant", "get", "watcher", "read", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
+            before_audit = run_fn("grant", "get", "watcher", "read", "ops.audit", "--control-sock", str(ctl_sock), as_json=True)
+            assert all(r["outcome"] == "accepted" and r["found"] is False and r["enabled"] is False
+                       for r in (before_alerts, before_audit)), (before_alerts, before_audit)
+            alerts_id, audit_id = before_alerts["target"], before_audit["target"]
+            assert alerts_id > 0 and audit_id > 0 and alerts_id != audit_id, (alerts_id, audit_id)
+            sidecar = Path(f"{ctl_sock}.groups")
+            original_sidecar = sidecar.read_bytes()
+            try:
+                sidecar.write_text(f"{audit_id}\tops.alerts\n{alerts_id}\tops.audit\n", encoding="utf-8")
+                g_read = run_fn("grant", "set", "watcher", "read", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
+                assert g_read["outcome"] == "accepted" and g_read["target"] == alerts_id, g_read
+                served_alerts = run_fn("grant", "get", "watcher", "read", str(alerts_id), "--control-sock", str(ctl_sock), as_json=True)
+                served_audit = run_fn("grant", "get", "watcher", "read", str(audit_id), "--control-sock", str(ctl_sock), as_json=True)
+                assert served_alerts["outcome"] == "accepted" and served_alerts["found"] is True and served_alerts["enabled"] is True, served_alerts
+                assert served_alerts["grant"] == g_read["grant"], (served_alerts, g_read)
+                assert served_audit["outcome"] == "accepted" and served_audit["found"] == before_audit["found"] and served_audit["enabled"] == before_audit["enabled"], (before_audit, served_audit)
+            finally:
+                sidecar.write_bytes(original_sidecar)
             g_append = run_fn("grant", "set", "watcher", "append", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
             g_anon = run_fn("grant", "set", "anonymous", "append", "ops.alerts", "--control-sock", str(ctl_sock), as_json=True)
             assert all(r["outcome"] == "accepted" for r in (g_consume, g_read, g_append, g_anon))

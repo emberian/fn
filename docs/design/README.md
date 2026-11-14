@@ -1,14 +1,16 @@
 # fn2 design record
 
-The decisions, rulings and briefs behind fn2, as present state (rewritten whole 2026-11-04; every file named here
-exists in this directory). Start with `FN2-ORIENTATION.md`, then `STATE-20261104.md`. A changed rule rewrites the
+The decisions, rulings and briefs behind fn2. Start with `FN2-ORIENTATION.md`, then
+[`FINISH-20261113.md`](FINISH-20261113.md) for current integration evidence and remaining work.
+`STATE-20261104.md` is the dated November 4 snapshot. A changed rule rewrites the
 document that carried it. The research record and the consultation rounds (the widest-role study and its council
 drafts, the universal constructions, planes and games, modal kernel, higher structures, realms, the scholar and
 Astra sessions, fn1's anatomy and gate measurements) are in history before 49787612f and in
 `build/coordinator/fn2/` on the Mac.
 
-- **Present state:** `STATE-20261104.md` (what serves, what is true of the served path, the Nov 4 commits),
-  `BRICKS-20261031.md` (the bricks, the meat, the order; §1-§5 present state).
+- **Active completion work:** `FINISH-20261113.md` (integrated changes, scoped validation and remaining work).
+- **Earlier snapshots:** `STATE-20261104.md` (November 4 served path and commits),
+  `BRICKS-20261031.md` (declaration forms and the earlier implementation order).
 - **Settled decisions:** `EXECUTION-MODEL.md`, `STORAGE-DESIGN.md` (with `STORAGE-DESIGN-ASTRA.md`, §3 normative
   in structure), `DSL-METATHEORY.md`, `INBOX-DELIVERY.md`, `RELEASE-PLAN.md`.
 - **Main's rulings (binding):** `MACHINE-FORM-20261030.md`, `IDENTITY-ACROSS-PEERS-20261030.md` (with

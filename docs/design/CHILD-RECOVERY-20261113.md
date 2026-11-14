@@ -75,7 +75,8 @@ symbols closed during refinement so the earlier equality applies. Its fixture
 checks single/multiple-result call retention, real values, full equality and
 teeth. Warm forge 2 Gi source loading passed all 40 reader forms and 40 product
 control forms. Record `certify-20261114T001322Z-3423416` passed the exact
-0c9d1a8a8 source (17 reused, 4 built, 21 books). Multi-result leaf
+0c9d1a8a8 source (17 reused, 4 built, 21 books), with no book over
+10 seconds. Multi-result leaf
 shape is an explicit fixture fact, not inferred from output metadata alone.
 `defcore-readonly-closure` now plans the nonrecursive core-reader dependency
 DAG before emitting any events, then derives intermediate boundaries bottom-up.

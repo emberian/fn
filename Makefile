@@ -101,6 +101,7 @@ ACL2_BOOKS = \
   books/executor \
   books/executor-access \
   books/executor-contracts \
+  books/executor-services \
   books/executor-wake \
   books/fnct-pool \
   books/fnv \
@@ -187,6 +188,7 @@ ACL2_BOOKS = \
   books/runs-schema \
   books/runs-served \
   books/sched \
+  books/sched-timers \
   books/sealer \
   books/squares \
   books/stobj-scope \
@@ -261,7 +263,9 @@ ACL2_BOOKS = \
   tests/cursor-unit \
   tests/death-unit \
   tests/declare-unit \
+  tests/dur-turn-counterexample \
   tests/executor-contracts-unit \
+  tests/executor-timers-unit \
   tests/executor-unit \
   tests/fnct-client \
   tests/folds-unit \
@@ -287,6 +291,10 @@ ACL2_BOOKS = \
   tests/machines-a-unit \
   tests/merkle-random \
   tests/merkle-unit \
+  tests/native-boot-refusal-unit \
+  tests/native-envelope-prefix-unit \
+  tests/envelope-input-unit \
+  tests/envelope-prefix-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
@@ -335,6 +343,8 @@ ACL2_BOOKS = \
   tests/squares-unit \
   tests/staging-unit \
   tests/stop-boundary-unit \
+  tests/storage-fault-policy-unit \
+  tests/translation-domain-unit \
   tests/translation-inventory-unit \
   tests/translation-validation-unit \
   tests/txn-unit \

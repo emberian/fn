@@ -2068,6 +2068,7 @@ class ArmProofBuilder:
         self.emitted_defs = []
         self.node_names = []
         self.used_multi_ops = set()  # {(callee, m), ...}
+        self.used_core_ops = set()
         self.used_subarms = set()    # {sub_tag, ...}
         self.modified_idxs = set()   # indices patched across arm
 
@@ -2283,12 +2284,12 @@ class ArmProofBuilder:
                     hcall = (
                         f"(Combinators.callFn_core_pure_op world coreTuple {lean_str(f)} "
                         f"world.ops[{op_idx}]! {pre_lean} {kv} {v_lean} (by decide) "
-                        f"(by decide +kernel) rfl rfl rfl rfl {fns_thm})"
+                        f"(by decide +kernel) (by decide +kernel) rfl rfl rfl {fns_thm})"
                     )
                 else:
                     hcall = (
                         f"(Combinators.callFn_core_link world coreTuple {lean_str(f)} {lean_str(base_fn)} "
-                        f"{pre_lean} {kv} {v_lean} (by decide) (by decide +kernel) rfl "
+                        f"{pre_lean} {kv} {v_lean} (by decide) (by decide +kernel) (by decide +kernel) "
                         f"rfl (by decide +kernel) {fns_thm})"
                     )
                 prf = (
@@ -2591,6 +2592,109 @@ class ArmProofBuilder:
                 ]
         return list(keys)
 
+    def prove_core_call(self, call_dict, ctx):
+        """Check the result tuple and core projection before composing the core adapter."""
+        op_name = call_dict['op']
+        op = self.kinfo['ops'][op_name]
+        outs = op['core_out']
+        if (not self.core_mode or not outs or outs[-1] != 'FN2-CORE'
+                or any(x is not None for x in outs[:-1])):
+            raise UnsupportedArmError(f'core result layout deferred: {op_name}')
+        scalar_count = len(outs)-1
+        if scalar_count and not self.tuple_analyzer.ensure(op_name, len(outs)):
+            raise UnsupportedArmError(f'core result tuple shape unavailable: {op_name}')
+        sin = op['core_in']
+        if sin.count('FN2-CORE') != 1 or len(sin) != len(op['core_formals']):
+            raise UnsupportedArmError(f'core argument layout deferred: {op_name}')
+        ai = sin.index('FN2-CORE')
+        shapes = self.tuple_analyzer.core_shapes
+        path = (scalar_count,) if scalar_count else ()
+        if not shapes.ensure(op_name, self.n_tup, path, ai):
+            raise UnsupportedArmError(f'core shape unavailable: {op_name}')
+        keys = self.expand_owner_py(call_dict['keys'])
+        keys_l = '[' + ', '.join(f'({lean_str(k)}, {val(v)})' for k,v in keys) + ']'
+        args = list(call_dict['args'])
+        vs, facts = [], []
+        for fm,s in zip(op['core_formals'],sin):
+            if s == 'FN2-CORE':
+                v = f'(Combinators.tupleImage {ctx.kids_var})'
+            elif s is not None:
+                v,h = self.prove_stobj(s,ctx); facts.append(h)
+            elif args:
+                v,h = self.prove_ev(args.pop(0),ctx); facts.append(h)
+            else:
+                entry = next(((k,e) for k,e in keys if k == ':'+fm),None)
+                if entry is None:
+                    raise UnsupportedArmError(f'core key argument deferred: {op_name}/{fm}')
+                k,e = entry
+                v,h = self.prove_ev(e,ctx)
+                facts.append(f'(Combinators.keyOrOwner_found {self.w_expr} {self.k_expr} {self.st_lean(ctx)} {lean_str(fm)} {keys_l} {lean_str(k)} ({val(e)}) {v} (by decide +kernel) {h})')
+            vs.append(v)
+        if args:
+            raise UnsupportedArmError(f'excess core arguments: {op_name}')
+        o = f'world.ops[{op["idx"]}]!'
+        cop = f'(coreOp coreTuple ({o}))'
+        c = call_to_lean(call_dict)
+        res = f'({ident(op_name)} ' + ' '.join(vs) + ')'
+        actuals = '[' + ', '.join(vs) + ']'
+        formals_l = '[' + ', '.join(lean_str(f) for f in op['core_formals']) + ']'
+        sin_l = '[' + ', '.join(opt_str_lean(s) for s in sin) + ']'
+        pos_l = '[' + ', '.join(val(a) for a in call_dict['args']) + ']'
+        hargs = (f'(by change Combinators.coreActuals {self.w_expr} {self.k_expr} {self.st_lean(ctx)} '
+                 f'(Combinators.tupleImage {ctx.kids_var}) {formals_l} {sin_l} {pos_l} {keys_l} = .ok {actuals}; '
+                 'simp only [Combinators.coreActuals, ' + ', '.join(facts + ['pure','Except.pure','List.isEmpty_nil','beq_self_eq_true','Bool.true_eq','↓reduceIte','except_ok_bind','except_pure_bind']) + '])')
+        stargs = f'{ctx.kids_var} {self.vars_lean(ctx)} {self.pend_lean(ctx.pending)} {self.next_lean(ctx.next_expr)} {str(ctx.next_done).lower()} {str(ctx.woken).lower()} (0, 0, 0)'
+        hfind = f'(Combinators.findOp_coreWorld world coreTuple {lean_str(op_name)} ({o}) rfl)'
+        hkeys = f'(by decide +kernel : expandOwner {self.w_expr} {self.k_expr} ({c}).keys = .ok {keys_l})'
+        hcall = (f'(Combinators.callOp_core_adapter world coreTuple kObj {stargs} {c} ({o}) {keys_l} {actuals} {res} '
+                 f'rfl (by decide +kernel) rfl rfl rfl rfl (by decide +kernel) (by decide +kernel) rfl '
+                 f'{hkeys} {hargs} ({ident(op_name)}.fns_eq ' + ' '.join(vs) + '))')
+        self.used_core_ops.add((op_name,self.n_tup,path,ai))
+        if scalar_count:
+            self.used_multi_ops.add((op_name,len(outs)))
+            out_l = '[' + ', '.join(opt_str_lean(x) for x in outs) + ']'
+            res = f'(spread {out_l} {res})'
+        return op,cop,op_name,vs,res,hfind,hcall
+
+    def prove_core_bind(self, bvars, result, callee, actuals, ctx):
+        from served_core_shape import shape_theorem_name
+        op = self.kinfo['ops'][callee]
+        ai = op['core_in'].index('FN2-CORE')
+        scalar_count = len(op['core_out'])-1
+        key = (callee,self.n_tup,(scalar_count,) if scalar_count else (),ai)
+        shape = f'(ServedCoreShapes.{ident(shape_theorem_name(key))} ' + ' '.join(actuals) + f' (isListB_tupleImage {ctx.kids_var}))'
+        kids = self.fresh_let('core_kids')
+        if scalar_count:
+            raw = self.fresh_let('core_result')
+            declarations = [f'let {raw} : Val := ({ident(callee)} ' + ' '.join(actuals) + ')']
+            core = f'(Native.nth (.int {scalar_count}) {raw})'
+            declarations.append(f'let {kids} : Fin {self.n_tup} → Val := Combinators.kidsOfVal {self.n_tup} {core}')
+            local_vars = list(ctx.local_vars)
+            for j,bvar in enumerate(bvars[:scalar_count]):
+                name = self.fresh_let('core_value')
+                declarations.append(f'let {name} : Val := Native.nth (.int {j}) {raw}')
+                local_vars.insert(0,(bvar,name))
+            self.modified_idxs.update(range(self.n_tup))
+            next_ctx = ctx.clone(kids_var=kids,local_vars=local_vars,snap_hyp=None)
+            bs = '[' + ', '.join(lean_str(v) for v in bvars) + ']'
+            tuple_shape = f'(ServedOps.{islistN_thm_name(callee,scalar_count+1)} ' + ' '.join(actuals) + ')'
+            hbind = (f'(by simpa only [Combinators.bindVarsList, List.range_succ, List.range_zero, '
+                     f'List.map_append, List.map_cons, List.map_nil, List.nil_append, List.cons_append] using '
+                     f'(Combinators.bindOuts_spread_core_multi coreTuple {ctx.kids_var} {self.vars_lean(ctx)} '
+                     f'{self.pend_lean(ctx.pending)} {self.next_lean(ctx.next_expr)} {str(ctx.next_done).lower()} '
+                     f'{str(ctx.woken).lower()} (0, 0, 0) {scalar_count} (by decide) (by decide) {bs} {raw} '
+                     f'rfl (by decide +kernel) {tuple_shape} (isListN_of_isListB {shape})))')
+            return declarations,declarations,hbind,next_ctx
+        decl = f'let {kids} : Fin {self.n_tup} → Val := Combinators.kidsOfVal {self.n_tup} {result}'
+        self.modified_idxs.update(range(self.n_tup))
+        next_ctx = ctx.clone(kids_var=kids,snap_hyp=None)
+        bs = '[' + ', '.join(lean_str(v) for v in bvars) + ']'
+        hbind = (f'(Combinators.bindOuts_spread_core_single coreTuple {ctx.kids_var} {self.vars_lean(ctx)} '
+                 f'{self.pend_lean(ctx.pending)} {self.next_lean(ctx.next_expr)} {str(ctx.next_done).lower()} '
+                 f'{str(ctx.woken).lower()} (0, 0, 0) (by decide) {bs} {result} rfl (by decide +kernel) '
+                 f'(isListN_of_isListB {shape}))')
+        return [decl],[decl],hbind,next_ctx
+
     def prove_callee_call(self, call_dict, ctx):
         """Proves `callOp` for an op with `o.callee = some callee` (`:CHILDREN` ops & shared child ops)."""
         op_name = call_dict["op"]
@@ -2599,7 +2703,7 @@ class ArmProofBuilder:
         op_info = self.kinfo["ops"][op_name]
         callee = op_info["callee"]
         if callee is None:
-            raise UnsupportedArmError(f"core-only op {op_name} requires @CORE adapter")
+            return self.prove_core_call(call_dict, ctx)
         if callee not in self.fn_defs:
             raise UnsupportedArmError(f"callee {callee} missing from world")
         op_idx = op_info["idx"]
@@ -2703,6 +2807,8 @@ class ArmProofBuilder:
 
     def prove_bind_outs(self, outs, bvars, r_var, callee, act_vs, ctx):
         """Returns `(let_defs, let_prfs, hbind_lines, new_ctx)`."""
+        if "FN2-CORE" in outs and self.core_mode:
+            return self.prove_core_bind(bvars, r_var, callee, act_vs, ctx)
         let_defs = []
         let_prfs = []
         rw_lines = []
@@ -2920,8 +3026,8 @@ class ArmProofBuilder:
                 if when_ is not None:
                     raise UnsupportedArmError(":do :when deferred")
                 op_info = self.kinfo["ops"].get(call_d["op"])
-                if op_info is None or op_info["callee"] is None:
-                    raise UnsupportedArmError(f"core op {call_d['op']} deferred")
+                if op_info is None:
+                    raise UnsupportedArmError(f"unknown op {call_d['op']}")
                 if op_info["answers"][0] == "none":
                     ld, lp, hfl, prw, fl_ctx = self.prove_flush(cur_ctx)
                     def_lines.extend("  " + x for x in ld)
@@ -2932,7 +3038,7 @@ class ArmProofBuilder:
                     def_lines.append(f"  let {rv_raw} : Val := {r_lean}")
                     len_lets.append(f"  let {rv_raw} : Val := {r_lean}")
                     prf_lines.append(f"  let {rv_raw} : Val := {r_lean}")
-                    bd, bp, hbind, nxt_ctx = self.prove_bind_outs(op_info["stobjs_out"], vs, rv_raw, callee, act_vs, fl_ctx)
+                    bd, bp, hbind, nxt_ctx = self.prove_bind_outs(op_info["core_out"] if op_info["callee"] is None else op_info["stobjs_out"], vs, rv_raw, callee, act_vs, fl_ctx)
                     def_lines.extend("  " + x for x in bd)
                     len_lets.extend("  " + x for x in bd)
                     prf_lines.extend("  " + x for x in bp)
@@ -3110,7 +3216,7 @@ class ArmProofBuilder:
             def_lines.append(f"  let {rv_raw} : Val := {r_lean}")
             len_lets.append(f"  let {rv_raw} : Val := {r_lean}")
             prf_lines.append(f"  let {rv_raw} : Val := {r_lean}")
-            bd, bp, hbind, nxt_ctx = self.prove_bind_outs(op_info["stobjs_out"], vs, rv_raw, callee, act_vs, fl_ctx)
+            bd, bp, hbind, nxt_ctx = self.prove_bind_outs(op_info["core_out"] if op_info["callee"] is None else op_info["stobjs_out"], vs, rv_raw, callee, act_vs, fl_ctx)
             def_lines.extend("  " + x for x in bd)
             len_lets.extend("  " + x for x in bd)
             prf_lines.extend("  " + x for x in bp)
@@ -3289,6 +3395,7 @@ class ArmProofBuilder:
                 raise UnsupportedArmError(f"subarm {sub_name} not available")
             sub_meta = self.subarm_mod[sub_name]
             self.used_subarms.add(sub_name)
+            self.used_core_ops.update(sub_meta["core_ops"])
             self.modified_idxs.update(sub_meta["modified_idxs"])
             ld, lp, hfl, prw, fl_ctx = self.prove_flush(cur_ctx)
             def_lines.extend("  " + x for x in ld)
@@ -3725,6 +3832,7 @@ def emit_kind_subarms(ki, kinfo, fn_defs, kcommon, tuple_analyzer, out_dir, fill
         if stag in ("RENDER-SINGLE", "SEEK-IDENTITY"):
             continue
 
+        tuple_analyzer.core_shape_targets.update(builder.used_core_ops)
         dep_mods = sorted({m for dep in builder.used_subarms for m in sub_registry[dep]["all_mods"]})
         max_hb = 3200000 if stag == "SEEK-SELECTED" else 800000
         lines = [
@@ -3732,6 +3840,7 @@ def emit_kind_subarms(ki, kinfo, fn_defs, kcommon, tuple_analyzer, out_dir, fill
             "import Fn2.Arms.Wrapper",
             "import Fn2.Instances.ServedCertificates.ServedCommon",
             *(["import Fn2.Instances.ServedCertificates.ServedOps"] if builder.used_multi_ops else []),
+            *(["import Fn2.Instances.ServedCertificates.ServedCoreShapes"] if builder.used_core_ops else []),
             f"import Fn2.Instances.ServedCertificates.Kind{ki}Common",
             *(f"import Fn2.Instances.ServedCertificates.{dm}" for dm in dep_mods),
             "",
@@ -3775,6 +3884,7 @@ def emit_kind_subarms(ki, kinfo, fn_defs, kcommon, tuple_analyzer, out_dir, fill
             "node_names": trans_node_names,
             "depth": root_node["depth"],
             "modified_idxs": set(builder.modified_idxs),
+            "core_ops": set(builder.used_core_ops),
             "fn_name": f"{kn}-SUB-{stag}-CHILDREN" if kinfo["child_form"] else f"{kn}-SUB-{stag}",
         }
         multi_ops.update(builder.used_multi_ops)
@@ -3832,6 +3942,7 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
     root_node, def_lines = builder.build()
     if not write_proof:
         return None, builder.used_multi_ops
+    tuple_analyzer.core_shape_targets.update(builder.used_core_ops)
     nname = root_node["name"]
     depth = root_node["depth"]
 
@@ -3840,6 +3951,7 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
         "import Fn2.Arms.Wrapper",
         "import Fn2.Instances.ServedCertificates.ServedCommon",
         *(["import Fn2.Instances.ServedCertificates.ServedOps"] if builder.used_multi_ops else []),
+            *(["import Fn2.Instances.ServedCertificates.ServedCoreShapes"] if builder.used_core_ops else []),
         f"import Fn2.Instances.ServedCertificates.Kind{ki}Common",
         f"import Fn2.Instances.ServedCertificates.Kind{ki}Contracts",
     ]
@@ -4135,7 +4247,9 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
             acl2_unfolds = ", ".join([ident(name)] + [ident(h) for h in helpers])
             row_rw_list = [f"{kcommon_ns}.row_read_{c.replace('-', '_')} id kids hs" for c, _ in kinfo["columns"] if f"{kn}-ROW-{c}" in fn_defs]
             write_rw_list = [f"{kcommon_ns}.{wthm}" for wthm in kcommon["write_lemmas"].values()]
-            extra_core_rws = []
+            from served_core_shape import shape_theorem_name
+            extra_core_rws = [f"ServedCoreShapes.{ident(shape_theorem_name(k)+'_reassembled')}"
+                              for k in sorted(builder.used_core_ops)]
             if "FN2-CORE-STOP" in fn_defs:
                 extra_core_rws.append(f"{kcommon_ns}.core_stop_eq")
             if "FN2-CORE-KIND-STOP" in fn_defs:
@@ -4238,6 +4352,7 @@ def emit_root_proof(ri, ki, kd, area, ai, tag, name, sig_sexp, decl_sexp, kinfo,
 
 
 VALIDATED_GENERATED_ROOTS = frozenset({
+    "FN2-UPLOAD-RUN-SEALED",
     "FN2-BOOT-ON-FENCE-RESULT",
     "FN2-BOOT-ON-READ-RESULT",
     "FN2-BOOT-ON-WRITE-RESULT",
@@ -4286,6 +4401,9 @@ def emit_served_proofs(kinds, inventory, layout, consts, ops_raw, waits_raw, cw_
 
     emit_served_common(out_dir, fill_world_bodies, widx)
     tuple_analyzer = TupleShapeAnalyzer(fn_defs, widx)
+    from served_core_shape import CoreShapeAnalyzer, emit_shape_candidates
+    tuple_analyzer.core_shapes = CoreShapeAnalyzer(fn_defs)
+    tuple_analyzer.core_shape_targets = set()
     all_multi_targets = set()
 
     kinfos = {}
@@ -4346,3 +4464,5 @@ def emit_served_proofs(kinds, inventory, layout, consts, ops_raw, waits_raw, cw_
             pass
 
     emit_served_ops(out_dir, all_multi_targets, fn_defs, fill_world_bodies, widx)
+    emit_shape_candidates(tuple_analyzer.core_shapes, out_dir / "ServedCoreShapes.lean", widx, fill_world_bodies,
+                          targets=tuple_analyzer.core_shape_targets)
